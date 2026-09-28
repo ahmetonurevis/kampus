@@ -10,7 +10,7 @@ Doğrudan kurulabilir imzalı APK: [kampus-1.3.0.apk](apklar/kampus-1.3.0.apk). 
 
 ## Çalıştırma
 
-Node.js 24 ve pnpm 11.12.0 kullanın. Sürümler `.nvmrc`, `package.json` ve `pnpm-lock.yaml` ile sabitlenir.
+Node.js 24 ve pnpm 11.21.0 kullanın. Sürümler `.nvmrc`, `package.json` ve `pnpm-lock.yaml` ile sabitlenir.
 
 ```bash
 pnpm install --frozen-lockfile

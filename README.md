@@ -1,2 +1,172 @@
-# kampus
-Kampüs: özel okullar için Vue web paneli ve React Native Android uygulaması; beş rollü LMS ve ERP demosu.
+# Kampüs · Akademi Özel Okulları
+
+Ortaokul ve lise için Vue 3 web paneli ve React Native Android uygulamasıyla hazırlanmış Türkçe LMS + ERP demosu. Yönetici, ön büro, öğretmen, öğrenci ve veli aynı ilişkili veri kümesini paylaşır. 57 panel sayfası, açık/koyu tema ve mobil görünüm bulunur. Backend veya hesap kurulumu gerekmez.
+
+## Android uygulaması
+
+Doğrudan kurulabilir imzalı APK: [kampus-1.3.0.apk](apklar/kampus-1.3.0.apk). Güncel teslim, yalnızca APK içeren `apklar/` klasöründedir. Beş rol, çevrimdışı kalıcı veri, iki yerel video, PDF kaydetme/paylaşma ve dosya teslimi desteklenir. Native kaynaklar `apps/mobile`, web ile paylaşılan iş kuralları `packages/school-core` içindedir. Web ve telefon kayıtları birbirinden bağımsızdır; canlı web yayını değiştirilmemiştir.
+
+`pnpm mobile` geliştirme sunucusunu, `pnpm build:apk` kalite kontrollerini ve yerel Android release derlemesini çalıştırır. Kurulum, desteklenen cihazlar, imzalama ve doğrulama ayrıntıları: [Android teslim notları](docs/mobile-release.md).
+
+## Çalıştırma
+
+Node.js 24 ve pnpm 11.12.0 kullanın. Sürümler `.nvmrc`, `package.json` ve `pnpm-lock.yaml` ile sabitlenir.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+**http://127.0.0.1:5173** adresini açın. Giriş ekranından veya üst bardan rol seçin.
+
+```bash
+pnpm build                 # apps/web/dist
+pnpm preview               # http://127.0.0.1:4173
+pnpm lint
+pnpm format:check
+pnpm test
+pnpm exec playwright install chromium
+pnpm test:e2e
+```
+
+Zorunlu ortam değişkeni yoktur. Statik barındırmada tüm uygulama yolları `index.html` dosyasına yönlendirilmelidir. Canlı demo `https://demo.onurevis.com` adresindedir. CI dosyası PR'larda format, lint, unit test, build ve tarayıcı testlerini çalıştırır.
+
+## Özel okul yapısı
+
+- **3 kampüs, 24 sınıf, 240 öğrenci, 48 branş öğretmeni, 30 aday.** Her kampüste 5–12. sınıflar bulunur; sınıf danışmanlığı ile ders öğretmenliği ayrı ilişkilerdir.
+- **16 ders:** Matematik, Türkçe, Fen Bilimleri, Sosyal Bilgiler, Türk Dili ve Edebiyatı, Fizik, Kimya, Biyoloji, Tarih, Coğrafya, İngilizce, Bilişim Teknolojileri, Müzik, Görsel Sanatlar, Beden Eğitimi, Din Kültürü ve Ahlak Bilgisi.
+- Öğrenci başına dört aylık ders notları, 32 yoklama ve 8 taksit. Toplam 11.760 not ve 1.920 ödeme kaydı.
+- 153 açıklamalı soru, sınıf/branşa göre 156 test ve 720 geçmiş sınav sonucu.
+- 277 ödev, 1.851 teslim, ders ve sınıf düzeyi filtreli 92 çalışma dokümanı.
+- 36 öğrenci sorusu; yanıtlar, yaklaşan ve aşılmış SLA süreleri. 16 okul duyurusu; dört konuşmada 8'er mesaj.
+- İki gerçek, yerel MP4 ders videosu: **Denklemleri adım adım çözelim** ve **Hücreyi keşfedelim: bitki ve hayvan**. Türkçe ses, altyazı, ders notları, ileri/geri sarma ve kaldığı yerden devam etme.
+
+Tarihler ilk açılış gününe göre üretilir. **Yönetici → Ayarlar → Demoyu sıfırla** tüm değişiklikleri sıfırlayıp tarihleri günceller. Yeni özel okul demosu ayrı depolama anahtarı (`kampus-private-school-v1`) kullanır; eski dil okulu verisi yüklenmez. Başlangıç verisi deterministik olarak üretilir; yalnızca değişiklikler localStorage'a yazılır. Açık sekmeler senkronize edilir.
+
+## Yönetici işlemleri
+
+**Kampüsler & Sınıflar:** kampüs ekleme, ad/adres düzenleme, sınıf açma, kontenjan ve derslik düzenleme, danışman ve her ders için branş öğretmeni atama. Sınıflar öğretmenin panelinde görünür.
+
+**Eğitim Kadrosu:** öğretmen ekleme; ad, e-posta, telefon, branş ve kampüs düzenleme; branş/kampüs filtreleme.
+
+**Arşivleme:** kayıtlar fiziksel silinmez. Kampüs kapatılırken sınıflar ve kadro başka kampüse, sınıf kapatılırken öğrenciler aynı düzeyde ve yeterli kontenjanı olan sınıfa, öğretmen ayrılırken aktif görevleri aynı branştaki uygun öğretmene aktarılır. Geçmiş notlar, yoklamalar ve finans kayıtları korunur. Çakışan program, yetersiz kontenjan ve uyumsuz branş Türkçe hata bildirimiyle engellenir. Arşivden geri alınabilir; geri alma, daha önce aktarılmış görevleri otomatik geri taşımaz.
+
+## Demo rolleri ve örnek gezinti
+
+| Rol      | Kişi                       | Giriş yolu            |
+| -------- | -------------------------- | --------------------- |
+| Yönetici | Murat Yılmaz               | `/yonetici/dashboard` |
+| Ön Büro  | Büşra Aydın                | `/onburo/dashboard`   |
+| Öğretmen | Selin Kaya · Matematik     | `/ogretmen/dashboard` |
+| Öğrenci  | Deniz Yılmaz · 7-A         | `/ogrenci/dashboard`  |
+| Veli     | Ayşe Yılmaz · Deniz ve Ece | `/veli/dashboard`     |
+
+Deniz 7-A, Ece 5-A sınıfındadır. Öğrenci ve veli ders/branş seçerek ilgili öğretmene soru, mesaj ve randevu iletebilir. Öğretmen demo oturumu Selin Kaya'dır; fen öğretmeni Derya Arslan gibi diğer branşların kayıtları da veri kümesinde ayrı tutulur.
+
+1. Yönetici olarak kampüs, öğretmen ve sınıf oluşturun. Sınıfın tüm derslerine branş öğretmeni atayın; öğretmen rolünde yeni sınıfı görün.
+2. Ön bürodan aday ekleyin, görüşme notu yazın, tanışma randevusu planlayın ve kesin kayda dönüştürün. Sözleşme PDF'si ve taksit planı oluşur.
+3. Öğretmenden yoklama kaydedin, 7-A'ya ödev atayın. Öğrenciden dosya teslim edin; öğretmenden puan ve geri bildirim verin. Veli ekranında sonucu görün.
+4. Öğrenciden ders seçip soru sorun. Matematik sorusunu öğretmen demo oturumundan yanıtlayın. Test çözün; sonuç ders analizine işlensin.
+5. İki sesli ders videosunu izleyin. Sayfayı yenilediğinizde aynı noktadan devam edin. Farklı derslerin çalışma PDF'lerini indirin.
+6. Veliden çocuk seçin, ödeme planını inceleyin. Demo banka yanıtını başarı/red seçerek ödeme akışını deneyin; başarılı tahsilat ön büroya yansır ve PDF dekont oluşur.
+7. Veli/öğrenciden branş öğretmeni seçip mesaj ve etüt talebi oluşturun. Ön bürodan veli talebini yönlendirin. Yönetici ayarlarından modülü kapatıp menü ve doğrudan URL erişiminin kapandığını görün.
+
+Tam sayfa listesi: [docs/sayfalar.md](docs/sayfalar.md).
+
+## Belge tasarımları, filtreler ve sayfalama
+
+PDF indirmeleri belge türüne göre ayrı hazırlanır:
+
+- **Dekont:** tahsil edilen tutar, işlem referansı, tarih/saat, yöntem, veli/öğrenci, alıcı kurum ve işlem açıklaması.
+- **Sözleşme:** taraflar, eğitim kapsamı, bedel ve imza alanları; ayrı sayfada taksit planı eki.
+- **Taksit taahhütnamesi:** toplam bedel, tahsil edilen, kalan bakiye, taksit tablosu ve onay alanları.
+- **Ders materyali ve ödev:** ders/öğretmen bilgileri, konu anlatımı veya görev yönergesi, yazılabilir çözüm alanları. Ödev kartlarında “Çalışma kâğıdını görüntüle” bulunur.
+- **Ödev değerlendirmesi:** teslim bilgileri, dosya adı, puan ve öğretmen geri bildirimi. Gerçek yüklenen dosyanın içeriği olarak sunulmaz.
+
+Türkçe fontlar yereldir. Uzun metinler sayfalanır; her sayfada belge numarası ve sayfa numarası, devam tablolarında sütun başlıkları bulunur. Altı belge türü indirmeden önce ortak önizleme penceresinde açılır. Sayfa geçişi, yakınlaştırma, PDF indirme, yazdırma ve yeni sekmede açma desteklenir. Oluşturma hatasında yeniden denenebilir; kapanan pencerenin geçici URL ve görüntüleme kaynakları temizlenir. İç içe pencerelerde klavye odağı önceki pencereye döner.
+
+PDF.js, gerçek PDF sayfalarını uygulamanın içinde gösterir; önizleme tarayıcının yerleşik PDF eklentisine bağlı değildir. Yazdırma penceresi de aynı PDF'nin tüm sayfalarından hazırlanır. PDF görüntüleyici ve yerel worker yalnızca belge açıldığında yüklenir.
+
+Tablolarda ve uzun içerik listelerinde numaralı sayfalar, kayıt aralığı ve sayfa boyutu seçimi bulunur. Arama, filtre, sıralama veya sayfa boyutu değişince ilk sayfaya dönülür; sonuçlar azaldığında geçersiz sayfada kalınmaz. Filtre paneli açılıp kapanabilir; seçilen filtreler tek tek veya birlikte temizlenir.
+
+Finansta kampüs/sınıf/yöntem/vade/tahsilat tarihi/tutar; CRM'de program/kampüs/kaynak/kayıt ve görüşme tarihi; okul yönetiminde danışman/sınıf düzeyi/doluluk/performans; akademik kayıtlarda konu/puan/tarih/devamsızlık; iletişimde kategori/birim/durum ve tarih filtreleri bulunur. Ödev, materyal, quiz, soru ve duyuru listelerinde içerikle ilgili filtreler ve sayfalama kullanılır. **CSV dışa aktarma tüm sayfalardaki filtrelenmiş ve sıralanmış sonuçları içerir.**
+
+## Liste, form ve menü kullanımı
+
+- Öğrenci adından akademik özet, taksit numarasından ödeme detayı, sınıf adından sınıf özeti sağ panelde açılır. Liste filtresi/sayfası/konumu korunur. Detay URL parametresinde taşınır; geri/ileri ve yenileme çalışır. Kısa düzenleme ve tahsilat formları sağ paneldedir; uzun sınıf/kayıt formları ve PDF önizlemesi geniş kalır. İç içe pencereler kapanırken odak önceki kontrole döner.
+- Sekmeler ortak alt çizgili seçim bileşenini kullanır; sağ/sol ok, Home/End ve azaltılmış hareket desteklenir. Mobil sayfalamada kayıt aralığı, sayfa boyutu ve önceki/sonraki okları; masaüstünde ayrıca sayfa numaraları görünür. Mobil alt navigasyon eklenmemiştir.
+- Masaüstü tablolarda başlık kaydırma alanının üstünde, işlem sütunu sağda sabittir. Satırlar ince yatay ayraçlarla ayrılır; fare ve klavye odağında vurgulanır. Öğrenci adıyla sınıf/numara tek hücrededir; sınıf filtreleri ve rapor alanları korunur. Öğretmenlerin uzun sınıf listeleri “+N sınıf” ile açılır. Mobilde temel bilgiler ve işlemler kartlarda, kalan sütunlar “Diğer bilgiler” altında gösterilir; sıralama ve sayfalama kullanılabilir.
+- Arama, filtre, sıralama, sayfa boyutu ve sayfa numarası sekme oturumunda saklanır; detaydan dönüşte sayfanın ve tablonun iç kaydırma konumu geri gelir. Filtre, sıralama veya sayfa değişiminde tablonun dikey konumu sıfırlanır. Veli ekranında her çocuğun tercihleri ayrıdır. Finans ve soru listelerindeki hazır filtreler geciken ödemelere veya yanıt süresi aşılmış sorulara hızlı erişim sağlar.
+- Sınıf formu **temel bilgiler → branş atamaları → kontrol**, kesin kayıt **öğrenci/sınıf → ödeme planı → kontrol** adımlarına ayrılmıştır. Son onaydan önce kayıt oluşturulmaz. Hatalar alan altında gösterilir; ilk hatalı alana odaklanılır. Geri dönüşte girilen bilgiler korunur.
+- Beş rolün menü kategorileri açılıp kapanabilir; tercihler rol bazında sekme oturumunda saklanır. Aktif sayfanın kategorisi, aday ve öğrenci detayları dahil otomatik açılır. Tüm sayfalara ana menüden erişilir. Hızlı erişim alanları bulunmaz; mobilde menü üst bardaki düğmeyle açılır. Kapalı modüllerin bağlantıları ve boş kalan kategoriler gösterilmez. Menü Escape ile kapanır ve odak açan düğmeye döner.
+
+## Mimari ve kapsam
+
+Görsel düzen düz renkler üzerine kuruludur: saf beyaz (`#FFFFFF`) zemin, koyu safir mavi (`#1E3A8A`) menü/ana işlem rengi, turuncu (`#F97316`) aksan, ince kenarlıklar ve yuvarlak köşeler. Açık ve koyu temada renk geçişleri kullanılmaz. Slogan bandı ve veriye dayanmayan mini grafikler kaldırılmıştır. Öğrenci, veli ve öğretmen panellerinde ders programı ile bekleyen işler üst bölümdedir; grafikler kayıtlı veriyi gösterir. Büyük para tutarları tek satırda, uzun ders adları doğal satırlarla gösterilir.
+
+Sidebar ve navbar kenarlardan 12 px ayrılmış, yuvarlak köşeli yüzeylerdir. Aktif menü öğesi metne göre genişleyen kısa turuncu pill ile vurgulanır; kategoriler ince ayraçlarla ayrılır. Navbar solda sayfa yolunu, sağda rol/tema/bildirim/avatar kapsülünü gösterir. Telefonlarda üst bar iki satıra geçer; yatay telefonda menüye daha çok yer bırakılır. Bildirim listesi ekran yüksekliğine göre kaydırılabilir.
+
+İkincil butonlar %9 safir dolgulu, arşiv işlemleri nötr; yalnızca sayfanın ana ekleme aksiyonları tam yuvarlaktır. Dashboard içerikleri 2:1 yerleşir, KPI boyutları eşit kalır; seçili özetler %5 ton farkıyla kenarlıksız görünür. Tahsilat ve öğrenci/veli not ortalaması kartlarındaki mini grafikler gerçek kayıtlardan türetilir, boş veri için uydurma çizgi üretilmez. Avatar renkleri Türkçe küçük harfe ve NFC biçimine dönüştürülmüş tam addan hesaplanır; aynı kişi üst bar, sidebar ve listelerde aynı rengi kullanır. Gecikmiş taksitler, yüksek risk ve SLA ihlalleri durum etiketleriyle gösterilir. Kart, takvim ve tablo satırlarında dekoratif renkli kenar çizgileri kullanılmaz.
+
+- `apps/web/src/styles/tokens.css`: temel renkler, açık/koyu tema ve ortak ölçüler. `--font-size-reduction: 2px`, giriş ve tüm rol ekranlarındaki yazıları aynı miktarda küçültür; kontrol boyutları ve PDF şablonları korunur. Sidebar menü bağlantıları 11 px, grup başlıkları 10 px olarak ayarlanmıştır.
+- `apps/web/src/styles/presentation.css`: menü, kart, form, tablo ve ekran boyutlarına göre görsel düzen.
+- `apps/web/src/components/LessonCover.vue`: matematik ve fen için düz renkli, kodla çizilen video kapakları.
+- `apps/web/src/components/LessonAgenda.vue`: ders ikonlarıyla günlük program listesi.
+
+Girişin 3B hareketi korunur; parlamalar ve geçişli yüzeyler kaldırılmıştır. Azaltılmış hareket tercihinde sahne durur. Oynat/durdur düğmesi önceki isteğe uygun olarak yorum satırındadır. Bu tasarım yenilemesinde yeni bağımlılık eklenmemiştir.
+
+- `apps/web/src/data/curriculum.js`: dersler, kazanımlar ve çalışma içerikleri.
+- `data/seed.js`, `data/question-bank.js`: tek ilişkili veri kümesi, öğrenci geçmişleri ve cevap anahtarlı sorular.
+- `stores/demo.js`: ortak Vue state, toast ve sekme senkronizasyonu.
+- `lib/demo-persistence.js`: başlangıç verisine göre değişikliklerin kalıcı saklanması.
+- `lib/school-management.js`: kampüs/sınıf/öğretmen doğrulaması, güvenli arşiv ve aktarım.
+- `lib/domain.js`: kayıt, taksit, ödeme, yoklama ve puanlama kuralları.
+- `modules/navigation.js`: rol, sayfa ve modül kaydı.
+- Ortak bileşenlerde arama/sıralama/sayfalama, grafik, takvim, odak yönetimli modal ve bildirimler.
+
+Para kuruş cinsinden tamsayıdır; `1.234,56 ₺` biçiminde gösterilir. Zaman damgaları UTC ISO 8601, ekranlar `Europe/Istanbul` kullanır. Açık tema varsayılandır. Yuvarlatılmış yüzeyler, hafif gölgeler ve sakin renkler her iki temada uygulanır.
+
+Hazır videolar sunulan gerçek medya dosyalarıdır ve dış servis gerektirmez. Yeniden üretim betiği `scripts/generate-lessons.py`; macOS Yelda Türkçe sesi, FFmpeg ve Pillow kullanır. Bu araçlar uygulamayı çalıştırmak için gerekli değildir. Ders görselleri ve metinleri bu demo için hazırlanmıştır; sesler bilgisayar üretimidir.
+
+Kullanıcı dosya yüklemeleri isim/boyut/tür metadata'sını saklar; içerik bir sunucuya gönderilmez. PDF/CSV indirmeleri gerçek örnek dosyalar üretir. Gerçek tahsilat, SMS/e-posta gönderimi, JWT ve WebRTC kapsam dışıdır. Rol URL'leri demo gezintisi içindir; güvenlik sınırı oluşturmaz.
+
+Arayüz, Metis panel yaklaşımını izleyen bağımsız Vue bileşenlerinden oluşur. Font ve ikonlar yereldir; Noto Sans lisansı [OFL.txt](apps/web/public/fonts/OFL.txt) dosyasındadır. Önizleme için `pdfjs-dist@6.3.289` sabit sürümü eklenmiştir ([Apache-2.0 lisansı](https://github.com/mozilla/pdf.js/blob/master/LICENSE)). Paket güncelliği ve derleme boyutu kontrol edilmiştir; görüntüleyici ayrı, yaklaşık 131 KB gzip JavaScript parçası ve 1,27 MB worker olarak yüklenir. En az Node.js 22.13 gerekir; proje `.nvmrc` ile Node.js 24 kullanır.
+
+## Yayın
+
+- Adres: **https://demo.onurevis.com**; sunucu: `45.136.6.28`.
+- Statik Vue build'i Nginx üzerinden sunulur. Sunucuda Node.js uygulama süreci, veritabanı veya gerçek kullanıcı/ödeme verisi bulunmaz; demo değişiklikleri ziyaretçinin tarayıcısında saklanır.
+- Yayın komutu: `pnpm run deploy`. Yerel SSH yapılandırmasındaki `abbara-server` hedefini kullanır; başka bir SSH alias'ı için `pnpm run deploy -- sunucu-aliasi` verilebilir. SSH anahtarları projeye eklenmez.
+- Komut lint, format, birim testi ve build kontrollerinden sonra yalnızca `dist` dosyalarını `/var/www/kampus-demo/releases/<surum>` dizinine aktarır. Siteye ait yapılandırmalar ayrı `deploy/<surum>` dizinindedir. `current` sembolik bağlantısı atomik olarak değiştirilir; başarısız aktivasyonda önceki sürüm/yapılandırma geri yüklenir.
+- Eski sürümler korunur. Önceki sekmelerin dinamik JavaScript yüklemeleri bozulmasın diye hash içeren dosyalar ortak `assets` dizininde tutulur. HTML ve sağlık yanıtları yeniden doğrulanır; hash içeren dosyalar uzun süre önbelleklenir.
+- Nginx ayarları: `deploy/http.conf`, `deploy/https.conf`, `deploy/site.conf`. Beş rolün doğrudan URL'leri SPA girişine yönlenir. Videolar aralık isteklerini destekler; PDF.js `.mjs` worker dosyaları JavaScript MIME türüyle sunulur.
+- HTTPS: Let's Encrypt; HTTP otomatik HTTPS'e yönlenir. Mevcut `certbot.timer` sertifikayı yeniler; başarılı yenilemede Nginx yapılandırması doğrulanıp yeniden yüklenir.
+- Sağlık kontrolü: `https://demo.onurevis.com/healthz`; yanıt aktif sürüm kimliğini içerir. Mevcut `sunucu.onurevis.com` izleme paneli sunucunun CPU/RAM/disk/uptime ve Nginx servis durumunu toplar. Statik site için ayrı bir süreç veya izleme ajanı gerekmez.
+
+Önceki sürüme dönüş için `ssh abbara-server 'ls -1 /var/www/kampus-demo/releases'` ile sürüm kimliğini seçip aşağıdaki komutta `<surum>` alanlarını değiştirin. Aktivasyon aynı doğrulama ve otomatik geri dönüş mekanizmasını kullanır:
+
+```bash
+ssh abbara-server 'bash /var/www/kampus-demo/deploy/<surum>/activate.sh <surum>'
+```
+
+## Doğrulama
+
+`pnpm lint`, `pnpm format:check`, `pnpm test` ve `pnpm build` temel kontrollerdir. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
+
+Kritik testler finansal doğruluk, mükerrer ödeme, kayıt atomikliği, yoklama, puanlama, ders/branş ilişkileri, çakışmasız program, kampüs/öğretmen/sınıf aktarımı ve değişikliklerin kayıpsız saklanmasını kapsar. Belge testleri finansal toplamları, altı PDF şablonunun içerik/sayfa sınırlarını, uzun metinleri, tekrarlanan tablo başlıklarını ve filtre sınırlarını da doğrular.
+
+Playwright senaryoları beş rolün 57 sayfasını masaüstü ve mobilde açar; rol geçişleri, yönetici ekleme/düzenleme/arşiv/geri alma, ders filtreleri, soru/mesaj yönlendirme, PDF önizleme ve indirmeleri, bileşik filtreler, filtrelenmiş CSV, sayfalama, mobil/koyu tema, gerçek video oynatma ve ilerleme kalıcılığını doğrular. Yeni senaryolar listeye dönüşte durum/konum, çocuk bazında filtre ayrımı, sabit işlemler, mobil taksit seçimi, adımlı form doğrulaması, menü klavye erişimi, PDF hata/yeniden deneme, dolu sayfa çizimi, çok sayfalı önizleme ve yazdırma penceresinin hazırlanmasını kapsar. Fiziksel yazıcıdan çıktı alınması test kapsamı dışındadır.
+
+Proje kuralları ve planı: [CLAUDE.md](CLAUDE.md).
+
+### Mobil 1.3.0 · İş akışları ve taslaklar
+
+Ders programı günlük saat akışına, mesajlar konuşma listesi/sohbete, videolar ders filtreli kütüphaneye dönüştürüldü. Metin alanları ortak klavye düzenini kullanır. Ödev/yanıt/mesaj/form/yoklama taslakları rol, çocuk, kayıt ve sınıf/gün bazında cihazda saklanır. Açık/koyu/sistem teması, beş rolün modülleri ve çevrimdışı kayıt korunur. APK sürüm kodu 6; canlı web yayını değiştirilmedi. Ayrıntılar: [Mobil sürüm notları](docs/mobile-release.md).
+
+## Teslimler ve proje çıktıları
+
+- Güncel Android uygulaması: [kampus-1.3.0.apk](apklar/kampus-1.3.0.apk).
+- Yatırımcı sunumu: [PowerPoint](sunumlar/kampus-yatirimci-sunumu-v2.pptx), [PDF](sunumlar/kampus-yatirimci-sunumu-v2.pdf) ve [yeniden üretim adımları](sunumlar/OKU.md). Kullanılan ekran görüntüleri `sunumlar/ekran-goruntuleri/`, üretim betikleri `scripts/sunum/` içindedir.
+- Menü/kod rehberi: [PDF](docs/kampus-menu-ve-kod-rehberi.pdf), [sayfa listesi](docs/sayfalar.md).
+
+`artifacts/`, `test-results/`, `playwright-report/`, mobil `dist/`, `.expo/` ve Android `build/`/`.cxx/` dizinleri yeniden üretilebilen yerel çıktılardır; kaynak kod veya teslim arşivi olarak kullanılmaz. `pnpm preview` çalışan web derlemesini `apps/web/dist/` içinden sunar. Eski APK ve sunum kopyaları yerine güncel teslimler tutulur. Android derleme önbellekleri temizlendikten sonraki ilk APK derlemesi daha uzun sürebilir.

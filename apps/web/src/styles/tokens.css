@@ -1,0 +1,115 @@
+/* Temel palet: düz yüzeyler, okunaklı metin ve sınırlı vurgu renkleri. */
+:root {
+  --ink-900: #18243b;
+  --ink-600: #59657b;
+  --paper-100: #f5f7fb;
+  --paper-200: #dde3ee;
+  --sapphire-900: #172554;
+  --sapphire-800: #1e3a8a;
+  --sapphire-300: #a5c3ff;
+  --sapphire-100: #edf2ff;
+  --orange-600: #ea580c;
+  --orange-500: #f97316;
+  --orange-100: #fff1e7;
+  --white: #ffffff;
+  --radius-control: 10px;
+  --radius-card: 18px;
+  --radius-dialog: 22px;
+  --space-section: 24px;
+  --space-card: 24px;
+  /* Bütün arayüz yazıları için mevcut boyuttan çıkarılan ortak miktar. */
+  --font-size-reduction: 2px;
+}
+
+/* Anlam katmanı: bütün roller aynı renk ve yüzey kurallarını kullanır. */
+:root {
+  color-scheme: light;
+  --bg: var(--white);
+  --surface: var(--white);
+  --surface-soft: var(--paper-100);
+  --text: var(--ink-900);
+  --muted: var(--ink-600);
+  --border: var(--paper-200);
+  --primary: var(--sapphire-800);
+  --primary-hover: var(--sapphire-900);
+  --primary-soft: var(--sapphire-100);
+  --on-primary: var(--white);
+  --accent: var(--orange-500);
+  --accent-hover: var(--orange-600);
+  --accent-soft: var(--orange-100);
+  --accent-ink: #9a3412;
+  --on-accent: #111827;
+  --green: #28664b;
+  --green-soft: #e8f2eb;
+  --red: #a93d38;
+  --red-soft: #f9eeeb;
+  --amber: #866021;
+  --amber-soft: #f6f0e0;
+  --blue: #315aa0;
+  --blue-soft: #edf3fc;
+  --shadow: none;
+  --sidebar: var(--sapphire-800);
+  --sidebar-text: #dbe7ff;
+  --sidebar-muted: #c0cfee;
+  --sidebar-border: #617bb4;
+  --sidebar-raised: #29478f;
+  --sidebar-active: var(--accent);
+  --sidebar-active-text: var(--on-accent);
+  --topbar-bg: var(--sapphire-100);
+  --topbar-border: #c5d2ed;
+  --scrim: #0f172a66;
+  --chart-1: var(--primary);
+  --chart-2: var(--accent);
+  --chart-3: var(--blue);
+  --chart-reference: var(--orange-600);
+  --radius: var(--radius-card);
+  --button-bg: var(--primary);
+  --button-hover: var(--primary-hover);
+  --button-text: var(--on-primary);
+  --button-soft: color-mix(in srgb, var(--primary) 9%, var(--surface));
+  --button-soft-hover: color-mix(in srgb, var(--primary) 15%, var(--surface));
+  --summary-surface: color-mix(in srgb, var(--primary) 5%, var(--surface));
+}
+
+/* Giriş sahnesi: safir yüzeyler, açık mavi katmanlar ve turuncu ayrıntılar. */
+:root {
+  --scene-surface: #2b4b98;
+  --scene-edge: #14285f;
+  --scene-border: #6486c6;
+  --scene-tile: #dbeafe;
+  --scene-step-1: #9db9e8;
+  --scene-step-2: #7e9cce;
+  --scene-step-3: #6385bd;
+  --scene-shadow: #0f172a59;
+  --scene-inset: #17255450;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --surface: #182235;
+  --surface-soft: #222f45;
+  --text: #e8eef8;
+  --muted: #afbdd3;
+  --border: #3a4b66;
+  --topbar-bg: var(--surface-soft);
+  --topbar-border: var(--border);
+  --primary: var(--sapphire-300);
+  --primary-hover: #c1d5ff;
+  --primary-soft: #253758;
+  --on-primary: var(--sapphire-900);
+  --accent-soft: #3c2c24;
+  --accent-ink: #fdba74;
+  --green: #a0d1b1;
+  --green-soft: #293d30;
+  --red: #efa6a0;
+  --red-soft: #402c29;
+  --amber: #e0c18c;
+  --amber-soft: #3c3527;
+  --blue: #a1bdd6;
+  --blue-soft: #283640;
+  --chart-reference: var(--accent);
+  --button-bg: var(--sapphire-800);
+  --button-hover: var(--sapphire-900);
+  --button-text: var(--white);
+}

@@ -1,0 +1,78 @@
+# Kampüs Android · 1.3.0
+
+Beş rolün mevcut modülleri React Native ile telefona uyarlandı. APK, Expo Go, geliştirme sunucusu veya internet bağlantısı gerektirmeden çalışır. Web yayını değişmedi.
+
+## 1.3.0 iş akışları, klavye ve taslaklar
+
+- Bütün metin/arama alanları ortak klavye düzenini kullanır. Sayfalarda odak ve imleç izlenir; seçim pencerelerinde ve sohbette klavyeye göre kullanılabilir alan ayarlanır. Uzun metin alanları sınırlı yükseklikte kendi içinde kayar.
+- Ders programı gün/hafta seçimi, ders/sınıf filtreleri ve saat aralıklarıyla gösterilir. Öğretmen ders ayrıntısından doğru sınıf ve güne ait yoklamayı açar.
+- Mesajlar konuşma listesi ve sohbet ekranına ayrıldı; yazma alanı konuşmanın altında kalır. Uzun konuşmalarda liste sanallaştırılır, önceki mesajlar istenince gösterilir.
+- Video kütüphanesi ders ve izlenme durumu filtreleri, süre ve ilerleme bilgisi gösterir. İki paketli video çevrimdışı oynatılır.
+- Ödev dosyası/notu, öğretmen yanıtı, mesaj, genel işlem formları ve sınıf/gün yoklaması ayrı yerel taslaklarda saklanır. Geri dönme, modal kapatma ve yeniden açılışta geri yüklenir. Taslaklar rol/çocuk/kayıt bazında ayrılır; başarılı kayıt sonrası temizlenir. Hata olursa başarılı gösterilmez.
+- Başlıklarda tekrarlanan ders önekleri görüntüleme katmanında temizlendi. Rol kapsamı hesaplamasındaki iç içe atama taramaları tek geçişe indirildi. Yazarken okul verisinin tamamı klonlanmaz.
+
+Yeni bağımlılıklar Expo 57 ile uyumlu `react-native-keyboard-controller` 1.21.9, `react-native-reanimated` 4.5.1 ve `react-native-worklets` 0.10.1; üçü de MIT lisanslıdır. Babel eklentisi Expo preset tarafından sağlanır. Native yapı Expo prebuild ile yeniden üretilebilir. Veri/snapshot biçimi ve imza korundu; eski APK kaldırılmadan güncellenebilir.
+
+Native kontroller Android 36 ARM64 emülatöründe yapıldı; fiziksel Android cihaz testi yapılmadı. Emülatör ölçümleri telefon performansı garantisi değildir.
+
+1.3.0 doğrulaması: ESLint, Prettier, 35 iş kuralı testi, web build, Expo web export ve aynı imzalı Android release build geçti. Beş rolün 55 sayfası açık/koyu temada açıldı (110 kontrol). Web akışlarında dosya/not/yanıt/mesaj/form/yoklama taslakları, çocuk ayrımı, filtreler, gerçek video ve yeniden açılış kontrol edildi. Android'de beş rolün metin alanları, uzun yanıt, sohbet, tam sayfa/modal düzenleri ve taslak kalıcılığı; 320 dp/%160 yazıda yanıt alanı ile sohbet alanı/Gönder düğmesi açık klavyenin üstünde ölçüldü. Native hata kaydı görülmedi.
+
+Performans: aynı Android emülatöründe ilk Activity çizimi medyanı önce 443 ms, sonra 463 ms (üçer açılış). Bu ölçüm okul verisinin bütünüyle yüklenmesini veya gerçek telefon akıcılığını temsil etmez; genel bir hızlanma iddiası değildir. Tek geçişli rol kapsamı hesabı Node üzerinde 5.000 tekrar için 153,44 ms'den 8,70 ms'ye indi. Fiziksel telefon doğrulaması yapılmadı.
+
+**Önceki Kampüs uygulamasını kaldırmayın.** Yeni APK aynı imzayla hazırlanmıştır; üzerine yükleyerek kayıtları ve tercihleri koruyabilirsiniz. Yerel veri biçimi değişmedi.
+
+## Kurulum
+
+1. `apklar/kampus-1.3.0.apk` dosyasını Android telefona aktarın.
+2. Dosyayı açın. Android isterse dosyayı açtığınız uygulama için “Bu kaynaktan yüklemeye izin ver” seçeneğini etkinleştirin.
+3. Kampüs'ü açıp Yönetici, Ön Büro & Satış, Öğretmen, Öğrenci veya Veli rolünü seçin.
+
+Android 7 ve üzeri 64 bit ARM telefonlar desteklenir. Aynı APK, x86_64 emülatörlerde de çalışır. Uygulama kimliği `com.onurevis.kampus`, sürüm kodu `6`'tir. Yalnızca APK dosyaları `apklar/` klasörüne çıkar; yeni derlemelerde SHA-256 özetleri `artifacts/mobile-build/` içinde aynı sürüm adıyla üretilir.
+
+## Kullanım
+
+- Üst bardaki menü düğmesi rolün bütün sayfalarını kategoriler halinde açar. Menüdeki hesap seçeneklerinden rol ve açık/koyu/sistem tema değişir. Tema tercihi ayrıca ayarlardan yönetilir. Veli, çocuk profilleri arasında geçebilir.
+- 3 kampüs, 24 sınıf, 240 öğrenci ve 48 öğretmenin ortak örnek verileri kullanılır. Kampüs/sınıf/öğretmen yönetimi, adaydan kayda dönüşüm, taksit/tahsilat, yoklama, ödev, quiz, soru-cevap, mesaj, randevu ve analizler aynı yerel kayıtlara dayanır.
+- İki ders videosu APK'ya dahildir; internet kapalıyken oynar, izleme ilerlemesi kaydedilir.
+- Dekont, sözleşme, taksit planı, ödev, değerlendirme ve çalışma kâğıdı kendi PDF şablonlarıyla üretilir. Belgeyi telefonda seçtiğiniz klasöre kaydedebilir, Android paylaşım ekranını veya yazdırma hizmetini kullanabilirsiniz. Klasör seçiminde Android'in izin verdiği bir alt klasör seçin; bazı cihazlarda İndirilenler kök dizinine izin verilmez.
+- Öğrenci ödev teslimi PDF, JPG veya PNG; diğer dosya formları ayrıca DOCX kabul eder. Sınır 10 MB'dir. Seçilen dosya uygulamanın kendi deposuna kopyalanır.
+- Form değişiklikleri, rol, çocuk ve tema cihazda saklanır. Uygulamayı kapatıp açmak verileri silmez. Uygulamayı kaldırmak veya Android ayarlarından verilerini temizlemek yerel kayıtları siler.
+- Yönetici ayarlarından modüller açılıp kapanır. Demo sıfırlama onay gerektirir.
+
+Ödemeler ve bildirimler demo işlemleridir. Gerçek banka tahsilatı veya SMS/e-posta gönderimi yapılmaz. Her cihaz bağımsızdır; web ve telefon arasında veri senkronizasyonu yoktur.
+
+## Geliştirme ve APK üretimi
+
+```bash
+pnpm install --frozen-lockfile
+pnpm mobile
+pnpm build:apk
+```
+
+Node.js 24, pnpm 11, JDK 21 ve Android SDK 36 kullanılır. `ANDROID_HOME` ve `JAVA_HOME` shell üzerinden veya kökteki git dışı `.env.android` dosyasında tanımlanabilir; örnekler `apps/mobile/.env.example` içindedir.
+
+`pnpm build:apk`, lint/format/birim testleri/web build kontrolünden sonra Expo prebuild ve Gradle release derlemesini çalıştırır. Android kaynakları `apps/mobile/android/` altında yeniden üretilebilir; native ayarlar `app.json` ve `plugins/` üzerinden yönetilir. Ortak saf iş kuralları `packages/school-core` paketindedir.
+
+İmzalama anahtarı ve parolası kaynak deposunun dışında `~/.config/kampus/android-release/` içinde, yalnızca kullanıcıya açık izinlerle tutulur. Bu dizini güvenli biçimde yedekleyin; parolayı veya anahtarı repoya eklemeyin. Gelecek güncellemelerde aynı anahtar ve uygulama kimliği kullanılmalı, `app.json` içindeki sürüm/sürüm kodu artırılmalıdır. APK'yı mevcut uygulamanın üzerine kurmak verileri korur.
+
+## Güncel teslim ve kaynak haritası
+
+Güncel APK: `apklar/kampus-1.3.0.apk` (65.467.277 bayt). SHA-256:
+
+```text
+a2fb398f6f5ba562d7325973bfb60e97c6364d630c212ed209a9de3591d6882e
+```
+
+İmzalama sertifikasının SHA-256 özeti:
+
+```text
+1b4f914f33f85bafe45f48296c966c07c356625dae287a2b0e3980b635b89e40
+```
+
+- `src/AppRoot.jsx`: üst bar, kategori menüsü ve gezinme.
+- `src/screens/RoleHome.jsx`, `SchoolLists.jsx`, `SchoolDetails.jsx`, `Attendance.jsx`: öğrenci/veli/öğretmen ana ekranları, listeler, teslim/yanıt ve yoklama.
+- `src/screens/Timetable.jsx`, `VideoLibrary.jsx`, `Conversations.jsx`: ders programı, video kütüphanesi ve mesajlar.
+- `src/ui/SchoolLayout.jsx`, `components.jsx`, `KeyboardLayout.jsx`: ortak bölüm/liste, alanlar, seçim pencereleri ve klavye düzeni.
+- `src/store/`: cihaz kalıcılığı, rol/tema ve taslaklar.
+
+Yollar `apps/mobile/` dizinine göredir. Proje JavaScript/JSX kullanır; ayrı TypeScript/typecheck komutu yoktur. Eski APK'lar, kaynak yedeği kopyaları ve geçici test raporları temizlik kapsamında kaldırılmıştır. Güncel teslim, uygulama kaynakları ve yeniden derleme araçları korunur.

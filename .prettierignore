@@ -1,0 +1,11 @@
+node_modules
+dist
+pnpm-lock.yaml
+test-results
+playwright-report
+artifacts
+apklar
+apps/mobile/android
+apps/mobile/ios
+apps/mobile/.expo
+__pycache__

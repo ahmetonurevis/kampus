@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  core-js: false
+minimumReleaseAgeExclude:
+  - '@eslint-react/ast@5.21.0'
+  - '@eslint-react/core@5.21.0'
+  - '@eslint-react/eslint@5.21.0'
+  - '@eslint-react/jsx@5.21.0'
+  - '@eslint-react/shared@5.21.0'
+  - '@eslint-react/var@5.21.0'
+  - eslint-plugin-react-x@5.21.0
+onlyBuiltDependencies:
+  - esbuild

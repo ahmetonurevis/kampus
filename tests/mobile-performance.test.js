@@ -61,6 +61,13 @@ test('Kategori geçişi ana ekran kimliğini korur ve eski detayları yığında
 test('Hızlı dashboard ve risk özeti bütün veriden hesaplanan sonuçla aynı; ödeme sonrası güncel', () => {
   const data = createSeed(),
     session = { role: 'yonetici', childId: 's1' }
+  // Ayın ilk günlerinde doğal örnek veride gecikmiş taksit bulunmayabilir.
+  data.invoices
+    .filter((i) => !i.paidAt)
+    .slice(0, 4)
+    .forEach((i) => {
+      i.dueDate = new Date(Date.now() - 2 * 86400000).toISOString()
+    })
   const expected = rowsFor(data, session, 'finans')
     .filter((r) => r.status === 'Gecikmiş')
     .slice(0, 3)

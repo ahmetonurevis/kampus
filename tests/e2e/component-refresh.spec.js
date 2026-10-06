@@ -102,6 +102,7 @@ test('Sınıf özeti içinden geniş düzenleme açılır; iptal özeti ve liste
 test('Alt çizgili seçimler klavyeyle değişir; mobil aralık ve masaüstü sayfalar eşleşir', async ({
   page,
 }) => {
+  await page.clock.setFixedTime(new Date('2026-10-15T09:00:00.000Z'))
   await page.goto('/yonetici/subeler')
   const tabs = page.getByRole('group', { name: 'Kayıt durumu' })
   await tabs.getByRole('button', { name: 'Aktif kayıtlar' }).focus()

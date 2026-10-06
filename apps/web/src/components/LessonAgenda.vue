@@ -19,7 +19,8 @@ defineProps({ lessons: { type: Array, required: true } })
       <div>
         <strong>{{ lesson.title }}</strong
         ><small
-          >{{ classById(lesson.classId).name }} · {{ teacherById(lesson.teacherId).name }}</small
+          >{{ lesson.isTutoring ? 'Kazanım etüdü' : classById(lesson.classId).name }} ·
+          {{ teacherById(lesson.teacherId).name }}</small
         >
       </div>
       <Badge :text="`Derslik ${lesson.room}`" tone="gray" />

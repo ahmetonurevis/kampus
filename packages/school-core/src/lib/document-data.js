@@ -1,10 +1,10 @@
 import { subjectById } from '../data/curriculum.js'
 import { invoiceStatus } from './format.js'
 
-function studentContext(state, studentId) {
+function studentContext(state, studentId, classId) {
   const student = state.students.find((s) => s.id === studentId)
   if (!student) throw new Error('Belge için öğrenci kaydı bulunamadı.')
-  const classroom = state.classes.find((c) => c.id === student.classId)
+  const classroom = state.classes.find((c) => c.id === (classId || student.classId))
   const parent = state.parents.find((p) => p.id === student.parentId)
   const branch = state.branches.find((b) => b.id === classroom?.branchId)
   return { student, classroom, parent, branch }
@@ -20,9 +20,18 @@ export function documentData(state, type, recordId, studentId) {
   if (type === 'contract' || type === 'payment-plan') {
     const contract = type === 'contract' ? state.contracts.find((c) => c.id === recordId) : null
     if (type === 'contract' && !contract) throw new Error('Sözleşme kaydı bulunamadı.')
-    const context = studentContext(state, contract?.studentId || recordId)
+    const context = studentContext(state, contract?.studentId || recordId, contract?.classId)
     const invoices = state.invoices
-      .filter((i) => i.studentId === context.student.id)
+      .filter(
+        (i) =>
+          i.studentId === context.student.id &&
+          (!contract ||
+            (contract.invoiceIds
+              ? contract.invoiceIds.includes(i.id)
+              : i.contractId
+                ? i.contractId === contract.id
+                : true)),
+      )
       .sort((a, b) => a.installment - b.installment)
       .map((i) => ({ ...i, status: invoiceStatus(i) }))
     return {

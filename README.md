@@ -1,10 +1,20 @@
 # Kampüs · Akademi Özel Okulları
 
-Ortaokul ve lise için Vue 3 web paneli ve React Native Android uygulamasıyla hazırlanmış Türkçe LMS + ERP demosu. Yönetici, ön büro, öğretmen, öğrenci ve veli aynı ilişkili veri kümesini paylaşır. 57 panel sayfası, açık/koyu tema ve mobil görünüm bulunur. Backend veya hesap kurulumu gerekmez.
+Ortaokul ve lise için Vue 3 web paneli ve React Native Android uygulamasıyla hazırlanmış Türkçe LMS + ERP demosu. Yönetici, ön büro, öğretmen, öğrenci ve veli aynı ilişkili veri kümesini paylaşır. Web tarafında 97 panel sayfası, açık/koyu tema ve mobil görünüm bulunur. Backend veya hesap kurulumu gerekmez.
+
+## Yeni okul iş akışları
+
+Rehberlik/takip dosyası, LGS/YKS/okul denemeleri ve CSV sonuç aktarımı, kayıt yenileme/dönem geçişi, çakışma kontrollü program yönetimi, çalışma planı/onay/değerlendirme, okul takvimi/veli izinleri, servis güzergâhları, yemek/alerjen menüsü ve kulüp/yoklama/proje akışları web paneline eklendi. Sekiz özellik servis/yemek ayrımıyla dokuz bağımsız modüldür. Yönetici ayarlarından ayrı ayrı kapatılabilir.
+
+Yeni akışlar ortak school-core 1.2.0 paketini kullanır. Eski yerel kayıtlar ve modül tercihleri korunur. Yenileme sözleşmesi yalnızca yeni dönem taksitlerini içerir; sınıf geçişi ayrı onayla uygulanır. Kullanım ve CSV şablonu: [Okul iş akışları](docs/okul-is-akislari.md).
+
+## Optik değerlendirme ve otomatik etüt
+
+CSV ve alan konumları ayarlanabilen DAT/TXT cevap dosyaları, kitapçık bazlı anahtarlarla soru/kazanım düzeyinde değerlendirilir. Başarı eşiği altında kalan kazanımlar için kapasite ve çakışma kontrollü etüt planı hazırlanır; önizleme ve son onaydan sonra öğrenci/veli programına yansır. Yoklama ve iptal geçmişi korunur. İki özellik ayrı modüllerdir; toplam on bir web iş akışı modülü bulunur. Kullanım ve dosya biçimleri: [Optik değerlendirme ve etüt](docs/optik-degerlendirme-etut.md).
 
 ## Android uygulaması
 
-Doğrudan kurulabilir imzalı APK: [kampus-1.3.0.apk](apklar/kampus-1.3.0.apk). Güncel teslim, yalnızca APK içeren `apklar/` klasöründedir. Beş rol, çevrimdışı kalıcı veri, iki yerel video, PDF kaydetme/paylaşma ve dosya teslimi desteklenir. Native kaynaklar `apps/mobile`, web ile paylaşılan iş kuralları `packages/school-core` içindedir. Web ve telefon kayıtları birbirinden bağımsızdır; canlı web yayını değiştirilmemiştir.
+Doğrudan kurulabilir imzalı APK: [kampus-1.3.0.apk](apklar/kampus-1.3.0.apk). Güncel teslim, yalnızca APK içeren `apklar/` klasöründedir. Beş rol, çevrimdışı kalıcı veri, iki yerel video, PDF kaydetme/paylaşma ve dosya teslimi desteklenir. Native kaynaklar `apps/mobile`, web ile paylaşılan iş kuralları `packages/school-core` içindedir. Web ve telefon kayıtları birbirinden bağımsızdır; yeni okul iş akışları yalnızca web panelinde bulunur.
 
 `pnpm mobile` geliştirme sunucusunu, `pnpm build:apk` kalite kontrollerini ve yerel Android release derlemesini çalıştırır. Kurulum, desteklenen cihazlar, imzalama ve doğrulama ayrıntıları: [Android teslim notları](docs/mobile-release.md).
 
@@ -135,6 +145,7 @@ Arayüz, Metis panel yaklaşımını izleyen bağımsız Vue bileşenlerinden ol
 ## Yayın
 
 - Adres: **https://demo.onurevis.com**; sunucu: `45.136.6.28`.
+- 6 Ekim 2026 aktif web sürümü: `20261006T174028Z-14263`. Optik değerlendirme, otomatik etüt ve diğer okul iş akışları yayındadır. Önceki sürüm `20260927T212127Z-3246` ve Nginx yapılandırması geri dönüş için korunur.
 - Statik Vue build'i Nginx üzerinden sunulur. Sunucuda Node.js uygulama süreci, veritabanı veya gerçek kullanıcı/ödeme verisi bulunmaz; demo değişiklikleri ziyaretçinin tarayıcısında saklanır.
 - Yayın komutu: `pnpm run deploy`. Yerel SSH yapılandırmasındaki `abbara-server` hedefini kullanır; başka bir SSH alias'ı için `pnpm run deploy -- sunucu-aliasi` verilebilir. SSH anahtarları projeye eklenmez.
 - Komut lint, format, birim testi ve build kontrollerinden sonra yalnızca `dist` dosyalarını `/var/www/kampus-demo/releases/<surum>` dizinine aktarır. Siteye ait yapılandırmalar ayrı `deploy/<surum>` dizinindedir. `current` sembolik bağlantısı atomik olarak değiştirilir; başarısız aktivasyonda önceki sürüm/yapılandırma geri yüklenir.
@@ -153,9 +164,11 @@ ssh abbara-server 'bash /var/www/kampus-demo/deploy/<surum>/activate.sh <surum>'
 
 `pnpm lint`, `pnpm format:check`, `pnpm test` ve `pnpm build` temel kontrollerdir. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
 
-Kritik testler finansal doğruluk, mükerrer ödeme, kayıt atomikliği, yoklama, puanlama, ders/branş ilişkileri, çakışmasız program, kampüs/öğretmen/sınıf aktarımı ve değişikliklerin kayıpsız saklanmasını kapsar. Belge testleri finansal toplamları, altı PDF şablonunun içerik/sayfa sınırlarını, uzun metinleri, tekrarlanan tablo başlıklarını ve filtre sınırlarını da doğrular.
+6 Ekim 2026 optik/etüt teslim kontrolü: lint, format ve web derlemesi başarılı; 65 birim testi ve 58 tarayıcı senaryosu geçti. Yayın öncesinde tüm 58 tarayıcı senaryosu tekrar geçti. Canlı adres üzerinde 14 senaryo; beş rolün masaüstü/dar ekran sayfaları, optik/etüt işlemleri, video ve PDF akışlarını doğruladı. Sağlık yanıtı sürümle eşleşti; HTTPS yönlendirmesi, video aralık isteği ve PDF worker MIME türü kontrol edildi.
 
-Playwright senaryoları beş rolün 57 sayfasını masaüstü ve mobilde açar; rol geçişleri, yönetici ekleme/düzenleme/arşiv/geri alma, ders filtreleri, soru/mesaj yönlendirme, PDF önizleme ve indirmeleri, bileşik filtreler, filtrelenmiş CSV, sayfalama, mobil/koyu tema, gerçek video oynatma ve ilerleme kalıcılığını doğrular. Yeni senaryolar listeye dönüşte durum/konum, çocuk bazında filtre ayrımı, sabit işlemler, mobil taksit seçimi, adımlı form doğrulaması, menü klavye erişimi, PDF hata/yeniden deneme, dolu sayfa çizimi, çok sayfalı önizleme ve yazdırma penceresinin hazırlanmasını kapsar. Fiziksel yazıcıdan çıktı alınması test kapsamı dışındadır.
+Kritik testler finansal doğruluk, mükerrer ödeme, kayıt atomikliği, yoklama, puanlama, ders/branş ilişkileri, çakışmasız program, kampüs/öğretmen/sınıf aktarımı ve değişikliklerin kayıpsız saklanmasını kapsar. Optik/etüt testleri hatalı dosyanın atomik reddini, kitapçık ve kazanım hesaplarını, mükerrer aktarımı, rol/çocuk kapsamını, çakışmasız gruplamayı, yoklamayı ve kalıcılığı doğrular. Belge testleri finansal toplamları, altı PDF şablonunun içerik/sayfa sınırlarını, uzun metinleri, tekrarlanan tablo başlıklarını ve filtre sınırlarını da doğrular.
+
+Playwright senaryoları beş rolün 97 sayfasını masaüstü ve mobilde açar; rol geçişleri, yönetici ekleme/düzenleme/arşiv/geri alma, ders filtreleri, soru/mesaj yönlendirme, PDF önizleme ve indirmeleri, bileşik filtreler, filtrelenmiş CSV, sayfalama, mobil/koyu tema, gerçek video oynatma ve ilerleme kalıcılığını doğrular. Yeni senaryolar listeye dönüşte durum/konum, çocuk bazında filtre ayrımı, sabit işlemler, mobil taksit seçimi, adımlı form doğrulaması, menü klavye erişimi, PDF hata/yeniden deneme, dolu sayfa çizimi, çok sayfalı önizleme ve yazdırma penceresinin hazırlanmasını kapsar. Fiziksel yazıcıdan çıktı alınması test kapsamı dışındadır.
 
 Proje kuralları ve planı: [CLAUDE.md](CLAUDE.md).
 

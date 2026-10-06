@@ -10,6 +10,10 @@ function save(blob, name) {
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+export function saveTextFile(content, name) {
+  save(new Blob([content], { type: 'text/plain;charset=utf-8' }), name)
+  notify('Örnek dosya indirildi.')
+}
 export function exportCsv(name, columns, rows) {
   const cell = (value) =>
     `"${String(value ?? '')

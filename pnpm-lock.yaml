@@ -39,7 +39,7 @@ importers:
   apps/mobile:
     dependencies:
       '@kampus/school-core':
-        specifier: workspace:1.0.2
+        specifier: workspace:1.2.0
         version: link:../../packages/school-core
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
@@ -126,7 +126,7 @@ importers:
         specifier: 5.3.0
         version: 5.3.0
       '@kampus/school-core':
-        specifier: workspace:1.0.2
+        specifier: workspace:1.2.0
         version: link:../../packages/school-core
       '@lucide/vue':
         specifier: 1.48.0

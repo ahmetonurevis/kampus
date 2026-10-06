@@ -42,6 +42,7 @@ export function restoreSnapshot(raw) {
   )
     throw new Error('Kayıtlı demo biçimi geçersiz.')
   const state = createSeed(new Date(snapshot.createdAt))
+  const moduleDefaults = { ...state.modules }
   if (snapshot.version !== state.version) throw new Error('Demo verisi güncellenmeli.')
   for (const [key, change] of Object.entries(snapshot.changes)) {
     if (!Object.hasOwn(state, key) || ['version', 'createdAt'].includes(key))
@@ -74,5 +75,6 @@ export function restoreSnapshot(raw) {
         throw new Error('Demo kayıt sırası geçersiz.')
     } else throw new Error('Demo değişikliği okunamadı.')
   }
+  state.modules = { ...moduleDefaults, ...state.modules }
   return state
 }

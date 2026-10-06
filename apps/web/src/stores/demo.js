@@ -156,6 +156,39 @@ export function action(callback, message) {
     return false
   }
 }
+// Yeni iş akışlarında işlem ve kalıcılık birlikte başarılı olmalıdır.
+export function transaction(mutate, message) {
+  try {
+    const next = JSON.parse(JSON.stringify(state))
+    const result = mutate(next, id)
+    next.audit.unshift({
+      id: id('audit'),
+      actor: role.value,
+      action: message,
+      date: new Date().toISOString(),
+    })
+    next.audit = next.audit.slice(0, 200)
+    const serialized = writeSnapshot(next)
+    localStorage.setItem(STORAGE_KEY, serialized)
+    lastPersisted = serialized
+    Object.assign(state, next)
+    notify(message)
+    return result ?? true
+  } catch (error) {
+    logError(error, 'workflow-transaction', 'warn')
+    notify(
+      error.issues?.[0]?.message ||
+        (error.name === 'QuotaExceededError'
+          ? 'Depolama alanı dolu. İşlem kaydedilmedi; yer açıp tekrar deneyin.'
+          : error.name === 'Error'
+            ? error.message
+            : 'İşlem kaydedilemedi. Tarayıcı depolama izinlerini kontrol edip tekrar deneyin.') ||
+        'İşlem kaydedilemedi.',
+      'error',
+    )
+    return false
+  }
+}
 export const studentById = (value) => state.students.find((s) => s.id === value)
 export const classById = (value) => state.classes.find((c) => c.id === value)
 export const teacherById = (value) => state.teachers.find((t) => t.id === value)

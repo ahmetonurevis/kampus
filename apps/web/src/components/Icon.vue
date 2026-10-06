@@ -1,5 +1,7 @@
 <script setup>
 import {
+  Bus,
+  Utensils,
   Calculator,
   FlaskConical,
   Globe,
@@ -98,6 +100,8 @@ defineProps({
   size: { type: [Number, String], default: 20 },
 })
 const icons = {
+  Bus,
+  Utensils,
   Calculator,
   FlaskConical,
   Globe,

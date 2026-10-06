@@ -2,7 +2,7 @@
 
 ## Amaç ve kapsam
 
-Vue 3 web paneli ve React Native Android uygulamasıyla beş rolün tüm Faz 1 ve Faz 2 sayfalarını kapsayan, backend ve veritabanı olmadan çalışan Türkçe LMS/ERP demosu. Canlı yayın kapsam dışıdır. Gerçek kimlik doğrulama, gerçek tahsilat, SMS/e-posta veya dosya sunucusu bulunmaz.
+Vue 3 web paneli ve React Native Android uygulamasıyla beş rolün tüm Faz 1 ve Faz 2 sayfalarını kapsayan, backend ve veritabanı olmadan çalışan Türkçe LMS/ERP demosu. Canlı ders yayını kapsam dışıdır. Gerçek kimlik doğrulama, gerçek tahsilat, SMS/e-posta veya dosya sunucusu bulunmaz.
 
 ## Çalışma yöntemi
 
@@ -21,6 +21,17 @@ Vue 3 web paneli ve React Native Android uygulamasıyla beş rolün tüm Faz 1 v
 - Form doğrulaması zod; kullanıcı hataları Türkçe toast/alan mesajı. Teknik hatalar merkezi yapılandırılmış yerel logda tutulur.
 - Öğrenci oturumu Deniz Yılmaz; veli Ayşe Yılmaz'ın çocukları Deniz ve Ece; öğretmen Selin Kaya.
 - Modül kapatıldığında menü ve doğrudan route erişimi kapanır.
+
+## Web okul iş akışları
+
+- Bu genişletme yalnızca web kapsamındadır; mobil menü ve ekranlarına yeni özellik eklenmez.
+- Okul iş akışları: `packages/school-core/src/modules/school-workflows.js` on bir bağımsız modülü; `lib/school-workflows.js` Zod doğrulaması, rol kapsamı ve atomik işlemleri; `lib/workflow-presentation.js` ortak liste/form/detay tanımlarını içerir. İlk sekiz özellik servis/yemek ayrımıyla dokuz modüldür; optik değerlendirme ve otomatik etüt iki ek modüldür. Backend eklenmez.
+- Yeni web işlemleri `transaction` ile önce depolamaya yazılır, sonra reaktif state değişir. Snapshot sürümü 3 ve eski kayıtlar korunur; restore yeni modül varsayılanlarını eski tercihlerle birleştirir.
+- Yenileme planlama ve sınıf geçişi ayrı işlemlerdir. Sözleşme `invoiceIds` ile yalnızca kendi taksitlerini çözümler. Rehberlik iç notları veli/öğrenciye gösterilmez. İptal dersleri günlük programlarda görünmez.
+
+- Optik/etüt doğrulaması `lib/assessment-automation.js`, CSV ayrıştırması `lib/delimited-input.js`, rezervasyon çakışmaları `lib/tutor-conflicts.js` içindedir. Okuyucu CSV/DAT/TXT çıktısı kullanılır; profil cevap anahtarının her sorusu ders/kazanıma bağlıdır. Anahtar revizyonu veya manuel sonuç değişikliği eski optik analizin kullanımını engeller.
+- Etütler mevcut öğretmen uygunluk saatlerini kullanır; kampüs/düzey/ders/kazanım grupları kapasite ve zaman çakışmalarıyla yerleştirilir. Önizleme saf işlemdir; son onay güncel planı yeniden hesaplar. İptal/yoklama geçmişi korunur; öğrenci/veli etüt katılımcıları, puanları ve yoklamaları kendi kapsamına daraltılır.
+- Gelecek etüt rezervasyonu modül kapanınca kaybolmaz; çakışan ders/randevu/etkinlik ve bağlı kaydın arşivi engellenir. Dönem geçişinden önce öğrencinin ileri tarihli etütleri iptal edilir. Kullanım: `docs/optik-degerlendirme-etut.md`.
 
 ## Ortak mobil yapı
 

@@ -17,6 +17,7 @@ import {
 } from '../stores/demo.js'
 import { dayKey, dateLabel, timeLabel } from '../lib/format.js'
 import { requiredText } from '../lib/domain.js'
+import { tutorConflict } from '@kampus/school-core/lib/tutor-conflicts.js'
 import PageHeading from '../components/PageHeading.vue'
 import DataTable from '../components/DataTable.vue'
 import Badge from '../components/Badge.vue'
@@ -107,6 +108,15 @@ const slots = computed(() =>
     .sort((a, b) => a.date.localeCompare(b.date)),
 )
 const slotTaken = (slot) =>
+  !!tutorConflict(
+    { ...state, schedule: [], schoolEvents: [] },
+    {
+      ...slot,
+      branchId: teacherById(slot.teacherId)?.branchId,
+      room: '',
+      studentIds: isTeacher.value ? [] : [currentStudent.value.id],
+    },
+  ) ||
   state.appointments.some(
     (a) =>
       a.teacherId === slot.teacherId &&
@@ -193,6 +203,18 @@ function setAppointmentStatus(entry, status) {
     () => {
       const appointment = state.appointments.find((a) => a.id === entry.id)
       if (appointment.teacherId !== teacherId) throw new Error('Bu görüşme size ait değil.')
+      if (status === 'Onaylandı') {
+        const reason = tutorConflict(
+          { ...state, schedule: [], appointments: [], schoolEvents: [] },
+          {
+            ...appointment,
+            branchId: teacherById(teacherId).branchId,
+            room: '',
+            studentIds: [appointment.studentId],
+          },
+        )
+        if (reason) throw new Error(reason)
+      }
       if (
         status === 'Onaylandı' &&
         state.appointments.some(
@@ -219,6 +241,18 @@ function addSlot() {
       }).parse(slotForm)
       const date = new Date(`${slotForm.date}T${slotForm.time}:00+03:00`).toISOString()
       if (new Date(date) < new Date()) throw new Error('Gelecek bir tarih seçin.')
+      const tutorReason = tutorConflict(
+        { ...state, schedule: [], appointments: [], schoolEvents: [] },
+        {
+          teacherId,
+          date,
+          duration: slotForm.duration,
+          branchId: teacherById(teacherId).branchId,
+          room: '',
+          studentIds: [],
+        },
+      )
+      if (tutorReason) throw new Error(tutorReason)
       const end = +new Date(date) + Number(slotForm.duration) * 60000
       if (
         state.availability.some(

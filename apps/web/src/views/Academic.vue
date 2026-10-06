@@ -1,5 +1,6 @@
 <script setup>
 import { useViewMemory } from '../lib/view-memory.js'
+import { tutoringCalendarEntries } from '@kampus/school-core/lib/assessment-automation.js'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -96,10 +97,12 @@ const attendance = computed(() =>
 )
 const lessons = computed(() =>
   state.schedule
+    .filter((l) => !l.cancelledAt)
     .filter((l) =>
       role.value === 'ogretmen' ? l.teacherId === teacherId : l.classId === profile.value?.classId,
     )
-    .map((l) => ({ ...l, subtitle: `${classById(l.classId).name} · Derslik ${l.room}` })),
+    .map((l) => ({ ...l, subtitle: `${classById(l.classId).name} · Derslik ${l.room}` }))
+    .concat(tutoringCalendarEntries(state, { role: role.value, childId: selectedChildId.value })),
 )
 const availableSubjects = computed(() =>
   subjectsForGrade(
@@ -725,6 +728,7 @@ const gradeColumns = [
       <WeekCalendar
         :events="
           state.schedule
+            .filter((l) => !l.cancelledAt)
             .filter((l) => l.classId === profile.classId)
             .map((l) => ({ ...l, subtitle: `Derslik ${l.room}` }))
         "
@@ -746,7 +750,9 @@ const gradeColumns = [
   </Modal>
   <Modal v-if="selectedLesson" drawer :title="selectedLesson.title" @close="selectedLesson = null"
     ><div class="lesson-detail">
-      <Badge :text="classById(selectedLesson.classId).name" />
+      <Badge
+        :text="selectedLesson.isTutoring ? 'Kazanım etüdü' : classById(selectedLesson.classId).name"
+      />
       <p>
         <Icon name="CalendarDays" />{{
           dateLabel(selectedLesson.date, { weekday: 'long', year: 'numeric' })

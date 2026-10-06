@@ -341,6 +341,12 @@ const visibleColumns = computed(() =>
     @close="studentPanel.close"
   >
     <StudentSummary v-if="panelStudent" :student="panelStudent" />
+    <RouterLink
+      v-if="panelStudent && state.modules.guidance"
+      class="btn"
+      :to="{ path: '/yonetici/rehberlik', query: { ogrenci: panelStudent.id } }"
+      >Rehberlik takip dosyası aç</RouterLink
+    >
     <p v-else class="muted">Öğrenci kaydı bulunamadı.</p>
   </Modal>
 </template>

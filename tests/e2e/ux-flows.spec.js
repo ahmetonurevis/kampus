@@ -81,6 +81,7 @@ test('Kaydırılan tabloda başlık sabit kalır; detaydan dönüş ve yenileme 
 })
 
 test('Hazır ödeme filtreleri çocuklar arasında karışmaz ve sıfırlanabilir', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-10-15T09:00:00.000Z'))
   await page.goto('/veli/finans')
   await page.getByRole('button', { name: 'Geciken ödemeler', exact: true }).click()
   await expect(page.getByLabel('Ödeme durumu')).toHaveValue('Gecikmiş')

@@ -5,6 +5,8 @@ import { readView, writeView, viewScope } from './lib/view-memory.js'
 import { nextTick } from 'vue'
 
 const views = {
+  AssessmentAutomation: () => import('./views/AssessmentAutomation.vue'),
+  SchoolWorkflows: () => import('./views/SchoolWorkflows.vue'),
   Dashboard: () => import('./views/Dashboard.vue'),
   SchoolManagement: () => import('./views/SchoolManagement.vue'),
   Management: () => import('./views/Management.vue'),

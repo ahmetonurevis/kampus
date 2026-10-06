@@ -1,10 +1,12 @@
 <script setup>
 import { useViewMemory } from '../lib/view-memory.js'
+import { tutoringCalendarEntries } from '@kampus/school-core/lib/assessment-automation.js'
 import { computed } from 'vue'
 import {
   state,
   role,
   currentStudent,
+  selectedChildId,
   teacherId,
   teacherClasses,
   classById,
@@ -90,6 +92,8 @@ const revenueSeries = computed(() => [
 ])
 const lessons = computed(() =>
   state.schedule
+    .concat(tutoringCalendarEntries(state, { role: role.value, childId: selectedChildId.value }))
+    .filter((l) => !l.cancelledAt)
     .filter(
       (l) =>
         dayKey(l.date) === dayKey() &&
@@ -97,7 +101,7 @@ const lessons = computed(() =>
           ? branch.value === 'all' || classById(l.classId).branchId === branch.value
           : role.value === 'ogretmen'
             ? l.teacherId === teacherId
-            : l.classId === currentStudent.value.classId),
+            : l.isTutoring || l.classId === currentStudent.value.classId),
     )
     .sort((a, b) => a.date.localeCompare(b.date)),
 )
@@ -349,12 +353,14 @@ const gradeSpark = computed(() =>
 )
 const upcomingLessons = computed(() =>
   state.schedule
+    .concat(tutoringCalendarEntries(state, { role: role.value, childId: selectedChildId.value }))
+    .filter((l) => !l.cancelledAt)
     .filter(
       (l) =>
         +new Date(l.date) >= Date.now() &&
         (role.value === 'ogretmen'
           ? l.teacherId === teacherId
-          : l.classId === currentStudent.value.classId),
+          : l.isTutoring || l.classId === currentStudent.value.classId),
     )
     .sort((a, b) => a.date.localeCompare(b.date)),
 )

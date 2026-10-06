@@ -10,6 +10,7 @@ import Badge from '../components/Badge.vue'
 import Icon from '../components/Icon.vue'
 import Modal from '../components/Modal.vue'
 import LineTabs from '../components/LineTabs.vue'
+import { schoolModules } from '@kampus/school-core/modules/school-workflows.js'
 const showReset = ref(false),
   tab = ref('general')
 const preferenceKey = computed(() => `${role.value}-${currentStudent.value.id}`)
@@ -24,6 +25,7 @@ const preferences = reactive({
   ...(state.preferences[preferenceKey.value] || {}),
 })
 const modules = [
+  ...schoolModules,
   {
     key: 'crm',
     title: 'Kayıt & CRM',

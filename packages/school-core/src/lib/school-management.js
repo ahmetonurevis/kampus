@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { requiredText } from './domain.js'
 import { subjectsForGrade, subjectById } from '../data/curriculum.js'
+import { tutorConflict } from './tutor-conflicts.js'
 export const branchSchema = z.object({ name: requiredText.max(80), address: requiredText.max(240) })
 export const teacherSchema = z.object({
   name: requiredText.max(80),
@@ -49,6 +50,19 @@ export function saveTeacher(state, input, makeId, recordId = null) {
     throw new Error('Bu e-posta adresi başka bir öğretmene ait.')
   const existing = recordId ? active(state.teachers, recordId) : null
   if (recordId && !existing) throw new Error('Düzenlenecek aktif öğretmen bulunamadı.')
+  if (
+    existing &&
+    (existing.branchId !== data.branchId || existing.subjectId !== data.subjectId) &&
+    (state.tutorSessions || []).some(
+      (session) =>
+        session.teacherId === recordId &&
+        session.status === 'Planlandı' &&
+        Date.parse(session.date) > Date.now(),
+    )
+  )
+    throw new Error(
+      'Öğretmenin ileri tarihli etütlerini iptal ettikten sonra kampüs veya branşını değiştirin.',
+    )
   if (
     existing &&
     existing.subjectId !== data.subjectId &&
@@ -103,12 +117,52 @@ export function saveClass(state, input, subjectTeachers, makeId, recordId = null
   })
   // Gelecek programda yeni öğretmenin başka bir dersiyle çakışmaya izin verilmez.
   const future = state.schedule.filter(
-    (l) => l.classId === recordId && +new Date(l.date) > Date.now(),
+    (l) => !l.cancelledAt && l.classId === recordId && +new Date(l.date) > Date.now(),
   )
+  if (
+    existing &&
+    (state.tutorSessions || []).some(
+      (s) =>
+        s.status === 'Planlandı' &&
+        Date.parse(s.date) > Date.now() &&
+        ((s.roomClassId === recordId &&
+          (data.room !== existing.room ||
+            data.branchId !== existing.branchId ||
+            data.capacity < s.studentIds.length)) ||
+          (data.branchId !== existing.branchId &&
+            s.studentIds.some(
+              (id) => state.students.find((student) => student.id === id)?.classId === recordId,
+            ))),
+    )
+  )
+    throw new Error(
+      'Bu derslikte gelecek etüt var. Önce etüdü iptal edin veya derslik değişikliğini erteleyin.',
+    )
   for (const lesson of future) {
     const teacher = assignments.find((a) => a.subjectId === lesson.subjectId)?.teacherId
+    const reason = tutorConflict(
+      {
+        ...state,
+        schedule: state.schedule.filter((l) => l.classId !== recordId),
+        appointments: [],
+        schoolEvents: [],
+      },
+      {
+        ...lesson,
+        teacherId: teacher,
+        room: data.room,
+        branchId: data.branchId,
+        studentIds: state.students
+          .filter((s) => s.isActive && s.classId === recordId)
+          .map((s) => s.id),
+      },
+    )
+    if (reason) throw new Error(reason)
     if (
-      [...state.schedule, ...state.appointments.filter((a) => a.status !== 'Reddedildi')].some(
+      [
+        ...state.schedule.filter((l) => !l.cancelledAt),
+        ...state.appointments.filter((a) => a.status !== 'Reddedildi'),
+      ].some(
         (other) =>
           other.classId !== recordId && other.teacherId === teacher && overlaps(lesson, other),
       )
@@ -151,6 +205,13 @@ export function saveClass(state, input, subjectTeachers, makeId, recordId = null
   for (const quiz of state.quizzes.filter((q) => q.classId === classId))
     quiz.teacherId =
       assignments.find((a) => a.subjectId === quiz.subjectId)?.teacherId || data.teacherId
+  for (const task of (state.studyTasks || []).filter(
+    (t) =>
+      t.status !== 'Tamamlandı' &&
+      state.students.some((s) => s.id === t.studentId && s.classId === classId),
+  ))
+    task.teacherId =
+      assignments.find((a) => a.subjectId === task.subjectId)?.teacherId || data.teacherId
   return classId
 }
 function overlaps(a, b) {
@@ -172,13 +233,37 @@ export function archiveRecord(
   const record = active(state[collection], recordId)
   if (!record) throw new Error('Aktif kayıt bulunamadı.')
   if (recordId === replacementId) throw new Error('Farklı bir aktarım hedefi seçin.')
+  if (
+    (state.tutorSessions || []).some(
+      (s) =>
+        s.status === 'Planlandı' &&
+        Date.parse(s.date) >= Date.parse(now) &&
+        (kind === 'teacher'
+          ? s.teacherId === recordId
+          : kind === 'branch'
+            ? s.branchId === recordId
+            : s.roomClassId === recordId ||
+              s.studentIds.some(
+                (id) => state.students.find((student) => student.id === id)?.classId === recordId,
+              )),
+    )
+  )
+    throw new Error(
+      'Bu kayıtla ilişkili gelecek etüt var. Önce Otomatik Etüt ekranından etüdü iptal edin.',
+    )
   if (kind === 'branch') {
     const classes = state.classes.filter((c) => c.isActive && c.branchId === recordId)
     const teachers = state.teachers.filter((t) => t.isActive && t.branchId === recordId)
     const prospects = state.prospects.filter(
       (p) => p.branchId === recordId && !p.studentId && p.stage !== 'Vazgeçti',
     )
-    if (classes.length || teachers.length || prospects.length) {
+    const related = [
+      ...(state.clubs || []).filter((c) => c.status === 'Aktif'),
+      ...(state.transportRoutes || []).filter((r) => r.status === 'Aktif'),
+      ...(state.schoolEvents || []).filter((e) => e.status === 'Planlandı' && e.date >= now),
+      ...(state.mealMenus || []).filter((m) => m.date >= now),
+    ].filter((r) => r.branchId === recordId)
+    if (classes.length || teachers.length || prospects.length || related.length) {
       if (!active(state.branches, replacementId))
         throw new Error('Sınıf ve öğretmenlerin aktarılacağı aktif kampüsü seçin.')
       for (const cls of classes)
@@ -193,14 +278,30 @@ export function archiveRecord(
           throw new Error(
             'Hedef kampüste aynı sınıf adı veya derslik var. Önce çakışan kayıtları düzenleyin.',
           )
+      if (
+        (state.mealMenus || []).some(
+          (m) =>
+            m.branchId === recordId &&
+            m.date >= now &&
+            state.mealMenus.some(
+              (other) =>
+                other.branchId === replacementId && other.date.slice(0, 10) === m.date.slice(0, 10),
+            ),
+        )
+      )
+        throw new Error('Hedef kampüste aynı gün için yemek menüsü var. Önce menüleri düzenleyin.')
       for (const cls of classes) cls.branchId = replacementId
       for (const teacher of teachers) teacher.branchId = replacementId
       for (const prospect of prospects) prospect.branchId = replacementId
+      for (const relatedRecord of related) relatedRecord.branchId = replacementId
     }
   }
   if (kind === 'class') {
     const students = state.students.filter((s) => s.isActive && s.classId === recordId)
-    if (students.length) {
+    const renewals = (state.renewals || []).filter(
+      (r) => r.status === 'Planlandı' && r.targetClassId === recordId,
+    )
+    if (students.length || renewals.length) {
       const destination = active(state.classes, replacementId)
       if (!destination || destination.grade !== record.grade)
         throw new Error('Öğrenciler için aynı düzeyde aktif bir sınıf seçin.')
@@ -210,7 +311,44 @@ export function archiveRecord(
         destination.capacity
       )
         throw new Error('Hedef sınıfta tüm öğrenciler için yeterli kontenjan yok.')
-      for (const student of students) student.classId = replacementId
+      for (const student of students) {
+        student.classId = replacementId
+        for (const task of (state.studyTasks || []).filter(
+          (t) => t.studentId === student.id && t.status !== 'Tamamlandı',
+        ))
+          task.teacherId =
+            state.assignments.find(
+              (a) => a.classId === replacementId && a.subjectId === task.subjectId,
+            )?.teacherId || destination.teacherId
+        for (const guidance of (state.guidanceCases || []).filter(
+          (g) => g.studentId === student.id && g.status !== 'Tamamlandı',
+        )) {
+          const subjectId = state.teachers.find((t) => t.id === guidance.teacherId)?.subjectId
+          guidance.teacherId =
+            state.assignments.find((a) => a.classId === replacementId && a.subjectId === subjectId)
+              ?.teacherId || destination.teacherId
+        }
+        for (const renewal of (state.renewals || []).filter(
+          (r) =>
+            r.studentId === student.id && r.status === 'Planlandı' && r.fromClassId === recordId,
+        ))
+          renewal.fromClassId = replacementId
+      }
+      for (const renewal of renewals) {
+        renewal.targetClassId = replacementId
+        const contract = state.contracts.find((c) => c.id === renewal.contractId)
+        if (contract) contract.classId = replacementId
+      }
+      if (destination.branchId !== record.branchId) {
+        const moved = new Set(students.map((s) => s.id))
+        state.transportAssignments = (state.transportAssignments || []).filter(
+          (a) => !moved.has(a.studentId),
+        )
+        for (const member of (state.clubMemberships || []).filter(
+          (m) => moved.has(m.studentId) && m.status === 'Aktif',
+        ))
+          member.status = 'Ayrıldı'
+      }
       for (const question of state.questions.filter(
         (q) => !q.answeredAt && students.some((s) => s.id === q.studentId),
       ))
@@ -219,7 +357,9 @@ export function archiveRecord(
             (a) => a.classId === replacementId && a.subjectId === question.subjectId,
           )?.teacherId || destination.teacherId
     }
-    state.schedule = state.schedule.filter((l) => l.classId !== recordId || l.date < now)
+    state.schedule = state.schedule.filter(
+      (l) => l.cancelledAt || l.classId !== recordId || l.date < now,
+    )
   }
   if (kind === 'teacher') {
     const assignments = state.assignments.filter(
@@ -227,34 +367,64 @@ export function archiveRecord(
     )
     const advisers = state.classes.filter((c) => c.isActive && c.teacherId === recordId)
     const pending = state.questions.filter((q) => q.teacherId === recordId && !q.answeredAt)
-    const future = state.schedule.filter((l) => l.teacherId === recordId && l.date >= now)
+    const future = state.schedule.filter(
+      (l) => !l.cancelledAt && l.teacherId === recordId && l.date >= now,
+    )
     const appointments = state.appointments.filter(
       (a) => a.teacherId === recordId && a.date >= now && a.status !== 'Reddedildi',
     )
+    const workflowRecords = [
+      ...(state.guidanceCases || []).filter((g) => g.status !== 'Tamamlandı'),
+      ...(state.studyTasks || []).filter((t) => t.status !== 'Tamamlandı'),
+      ...(state.clubs || []).filter((c) => c.status === 'Aktif'),
+    ].filter((r) => r.teacherId === recordId)
     if (
       assignments.length ||
       advisers.length ||
       pending.length ||
       future.length ||
-      appointments.length
+      appointments.length ||
+      workflowRecords.length
     ) {
       const replacement = active(state.teachers, replacementId)
       if (!replacement || replacement.subjectId !== record.subjectId)
         throw new Error('Aynı branştan aktif bir öğretmen seçerek görevleri devredin.')
+      if (
+        (state.clubs || []).some(
+          (c) =>
+            c.teacherId === recordId && c.status === 'Aktif' && c.branchId !== replacement.branchId,
+        )
+      )
+        throw new Error('Aktif kulüp sorumluluğu için aynı kampüsten öğretmen seçin.')
       const incoming = [...future, ...appointments]
       const existing = [
-        ...state.schedule,
+        ...state.schedule.filter((l) => !l.cancelledAt),
         ...state.appointments.filter((a) => a.status !== 'Reddedildi'),
       ].filter((l) => l.teacherId === replacementId && l.date >= now)
       if (incoming.some((a) => existing.some((b) => overlaps(a, b))))
         throw new Error(
           'Seçilen öğretmenin programında çakışma var. Uygun veya yeni bir branş öğretmeni seçin.',
         )
+      for (const interval of incoming) {
+        const classroom = state.classes.find((c) => c.id === interval.classId)
+        const reason = tutorConflict(
+          { ...state, schedule: [], appointments: [], schoolEvents: [] },
+          {
+            ...interval,
+            teacherId: replacementId,
+            branchId: classroom?.branchId,
+            room: interval.room || '',
+            studentIds: [],
+          },
+        )
+        if (reason) throw new Error(reason)
+      }
       for (const a of assignments) a.teacherId = replacementId
       for (const c of advisers) c.teacherId = replacementId
       for (const q of pending) q.teacherId = replacementId
       for (const l of future) l.teacherId = replacementId
       for (const a of appointments) a.teacherId = replacementId
+      for (const workflowRecord of workflowRecords) workflowRecord.teacherId = replacementId
       for (const h of state.homework.filter(
         (h) =>
           h.teacherId === recordId &&

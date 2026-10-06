@@ -1,6 +1,8 @@
 import { questionBank } from './question-bank.js'
 import { subjects, subjectsForGrade, subjectById } from './curriculum.js'
 import { gradeQuiz } from '../lib/domain.js'
+import { createSchoolWorkflows } from './school-workflows.js'
+import { createAssessmentAutomation } from './assessment-automation.js'
 export const topics = subjects.map((s) => s.name)
 export const studentNames = [
   'Deniz Yılmaz',
@@ -736,7 +738,7 @@ export function createSeed(now = new Date()) {
       duration: 30,
     })),
   )
-  return {
+  const state = {
     version: 3,
     createdAt: now.toISOString(),
     subjects: structuredClone(subjects),
@@ -777,4 +779,8 @@ export function createSeed(now = new Date()) {
     modules: { crm: true, finance: true, academic: true, learning: true, communication: true },
     audit: [],
   }
+  const extensions = createSchoolWorkflows(state, date)
+  const { workflowModules, ...records } = extensions
+  const expanded = { ...state, ...records, modules: { ...state.modules, ...workflowModules } }
+  return { ...expanded, ...createAssessmentAutomation(expanded) }
 }

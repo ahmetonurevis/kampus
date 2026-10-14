@@ -56,6 +56,32 @@ export const workflowSchemas = {
     followUp: day,
     status: z.enum(['Takipte', 'Tamamlandı']),
   }),
+  goal: z.object({
+    studentId: identifier,
+    subjectId: z.string(),
+    title: text.max(120),
+    targetNet: z.coerce
+      .number()
+      .min(1, 'Hedef net en az 1 olmalıdır.')
+      .max(500)
+      .refine(
+        (v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6,
+        'Hedef net en fazla iki ondalık basamak içerebilir.',
+      ),
+    deadline: day,
+    motivation: optionalText,
+  }),
+  'goal-review': z
+    .object({ status: z.enum(['Aktif', 'Reddedildi']), feedback: optionalText })
+    .refine((v) => v.status === 'Aktif' || v.feedback.length >= 2, {
+      message: 'Reddetme gerekçesini yazın.',
+      path: ['feedback'],
+    }),
+  'goal-step': z.object({ title: text.max(160), topic: optionalText, dueDate: day }),
+  'goal-step-done': z.object({ stepId: identifier }),
+  'goal-suggest': z.object({}),
+  'goal-comment': z.object({ text }),
+  'goal-close': z.object({}),
   exam: z.object({
     title: text,
     type: z.enum(['LGS', 'YKS', 'Okul denemesi']),
@@ -184,6 +210,13 @@ export const workflowSchemas = {
   }),
 }
 const commandModules = {
+  goal: 'goals',
+  'goal-review': 'goals',
+  'goal-step': 'goals',
+  'goal-step-done': 'goals',
+  'goal-suggest': 'goals',
+  'goal-comment': 'goals',
+  'goal-close': 'goals',
   guidance: 'guidance',
   'guidance-note': 'guidance',
   exam: 'exams',
@@ -213,6 +246,13 @@ const commandModules = {
   'club-archive': 'clubs',
 }
 const commandRoles = {
+  goal: ['yonetici', 'ogretmen', 'ogrenci'],
+  'goal-review': ['yonetici', 'ogretmen'],
+  'goal-step': ['yonetici', 'ogretmen', 'ogrenci'],
+  'goal-step-done': ['ogrenci'],
+  'goal-suggest': ['yonetici', 'ogretmen', 'ogrenci'],
+  'goal-comment': ['yonetici', 'ogretmen', 'veli'],
+  'goal-close': ['yonetici', 'ogretmen', 'ogrenci'],
   guidance: ['yonetici', 'ogretmen'],
   'guidance-note': ['yonetici', 'ogretmen'],
   exam: ['yonetici', 'ogretmen'],
@@ -317,6 +357,80 @@ export function examProgress(state, studentId) {
         results,
       }
     })
+}
+const round2 = (value) => Math.round(value * 100) / 100
+const OPEN_GOAL_STATUSES = ['Onay bekliyor', 'Aktif']
+// Hedefin ders/genel net serisi: yalnızca ilgili öğrencinin deneme sonuçlarından türetilir.
+export function goalSeries(state, studentId, subjectId) {
+  return examProgress(state, studentId).flatMap((exam) => {
+    const point = { examId: exam.id, title: exam.title, date: exam.date }
+    if (!subjectId) return exam.complete ? [{ ...point, net: exam.net }] : []
+    const results = exam.results.filter((r) => r.subjectId === subjectId)
+    if (!results.length) return []
+    return [{ ...point, net: round2(results.reduce((sum, r) => sum + examNet(r, exam), 0)) }]
+  })
+}
+export function goalProgress(state, goal) {
+  const series = goalSeries(state, goal.studentId, goal.subjectId)
+  const current = series.length ? series[series.length - 1].net : null
+  const achieved = current !== null && current >= goal.targetNet
+  const span = goal.targetNet - goal.baselineNet
+  const percent = achieved
+    ? 100
+    : current === null || span <= 0
+      ? 0
+      : Math.min(100, Math.max(0, Math.round(((current - goal.baselineNet) / span) * 100)))
+  return {
+    series,
+    current,
+    achieved,
+    percent,
+    stepsDone: goal.steps.filter((s) => s.done).length,
+    stepsTotal: goal.steps.length,
+  }
+}
+// Zayıf konulardan haftalık adım önerileri üretir; mevcut adımlarda olan konular tekrarlanmaz.
+export function suggestGoalSteps(state, goal, now = new Date().toISOString()) {
+  const known = new Set(goal.steps.map((s) => s.topic.toLocaleLowerCase('tr-TR')).filter(Boolean))
+  const picked = []
+  for (const result of state.mockResults) {
+    if (result.studentId !== goal.studentId) continue
+    if (goal.subjectId && result.subjectId !== goal.subjectId) continue
+    const subjectName = state.subjects.find((s) => s.id === result.subjectId)?.name || ''
+    for (const topic of result.weakTopics) {
+      const key = topic.toLocaleLowerCase('tr-TR')
+      if (known.has(key)) continue
+      known.add(key)
+      picked.push({ topic, subjectName })
+    }
+  }
+  const deadline = goal.deadline.slice(0, 10)
+  return picked.slice(0, 4).map(({ topic, subjectName }, index) => {
+    const weekly = dayKey(new Date(new Date(now).getTime() + (index + 1) * 7 * 86400000))
+    return {
+      title: goal.subjectId ? `${topic} konu tekrarı` : `${subjectName} · ${topic} konu tekrarı`,
+      topic,
+      dueDate: atDay(weekly < deadline ? weekly : deadline),
+      source: 'auto',
+    }
+  })
+}
+function goalRecord(state, session, recordId) {
+  const goal = requireRecord(state, 'studentGoals', recordId)
+  scopedStudent(state, session, goal.studentId)
+  if (
+    session.role === 'ogretmen' &&
+    goal.subjectId &&
+    goal.subjectId !== state.teachers.find((t) => t.id === 't1')?.subjectId
+  )
+    throw new Error('Bu hedef başka bir branşa ait.')
+  return goal
+}
+function openGoalRecord(state, session, recordId) {
+  const goal = goalRecord(state, session, recordId)
+  if (!OPEN_GOAL_STATUSES.includes(goal.status))
+    throw new Error('Reddedilmiş veya kapatılmış hedef üzerinde işlem yapılamaz.')
+  return goal
 }
 export function renewalQuote(input) {
   const data = workflowSchemas.renewal.parse(input)
@@ -467,6 +581,109 @@ function executeWorkflow(
   if (!mayRun(session, command)) throw new Error('Bu işlem için rolünüzün yetkisi yok.')
   if (session.role === 'ogretmen') active(state, 'teachers', 't1')
   const data = workflowSchemas[command] ? workflowSchemas[command].parse(input) : {}
+  if (command === 'goal') {
+    const student = scopedStudent(state, session, data.studentId)
+    if (data.deadline < dayKey(now)) throw new Error('Hedef son tarihi geçmişte olamaz.')
+    if (
+      data.subjectId &&
+      !subjectsForGrade(gradeOf(state, student)).some((s) => s.id === data.subjectId)
+    )
+      throw new Error('Seçilen ders öğrencinin sınıf düzeyine uygun değil.')
+    if (
+      session.role === 'ogretmen' &&
+      data.subjectId !== state.teachers.find((t) => t.id === 't1')?.subjectId
+    )
+      throw new Error('Yalnızca kendi dersiniz için hedef belirleyebilirsiniz.')
+    if (
+      state.studentGoals.some(
+        (g) =>
+          g.studentId === data.studentId &&
+          g.subjectId === data.subjectId &&
+          OPEN_GOAL_STATUSES.includes(g.status),
+      )
+    )
+      throw new Error('Bu kapsam için açık bir hedef zaten var. Önce mevcut hedefi kapatın.')
+    const series = goalSeries(state, data.studentId, data.subjectId)
+    const baselineNet = series.length ? series[series.length - 1].net : 0
+    if (data.targetNet <= baselineNet)
+      throw new Error(`Hedef net, mevcut net değerinin (${baselineNet}) üzerinde olmalıdır.`)
+    const entry = stamped(
+      makeId,
+      'goal',
+      {
+        ...data,
+        deadline: atDay(data.deadline),
+        baselineNet,
+        status: session.role === 'ogrenci' ? 'Onay bekliyor' : 'Aktif',
+        feedback: '',
+        steps: [],
+        comments: [],
+      },
+      now,
+    )
+    state.studentGoals.unshift(entry)
+    return entry
+  }
+  if (command === 'goal-review') {
+    const entry = goalRecord(state, session, recordId)
+    if (entry.status !== 'Onay bekliyor')
+      throw new Error('Yalnızca onay bekleyen hedef değerlendirilir.')
+    Object.assign(entry, data, { reviewedAt: now, updatedAt: now })
+    return entry
+  }
+  if (command === 'goal-step') {
+    const entry = openGoalRecord(state, session, recordId)
+    if (data.dueDate < dayKey(now)) throw new Error('Adım son tarihi geçmişte olamaz.')
+    if (data.dueDate > entry.deadline.slice(0, 10))
+      throw new Error('Adım son tarihi hedef son tarihinden sonra olamaz.')
+    if (entry.steps.length >= 30) throw new Error('Bir hedefe en fazla 30 adım eklenebilir.')
+    entry.steps.push({
+      id: makeId('step'),
+      title: data.title,
+      topic: data.topic,
+      dueDate: atDay(data.dueDate),
+      done: false,
+      source: 'manual',
+    })
+    entry.updatedAt = now
+    return entry
+  }
+  if (command === 'goal-step-done') {
+    const entry = openGoalRecord(state, session, recordId)
+    if (entry.status !== 'Aktif')
+      throw new Error('Adımlar hedef onaylandıktan sonra tamamlanabilir.')
+    const step = entry.steps.find((s) => s.id === data.stepId)
+    if (!step) throw new Error('Gelişim adımı bulunamadı. Listeyi yenileyin.')
+    if (step.done) throw new Error('Bu adım zaten tamamlanmış.')
+    Object.assign(step, { done: true, doneAt: now })
+    entry.updatedAt = now
+    return entry
+  }
+  if (command === 'goal-suggest') {
+    const entry = openGoalRecord(state, session, recordId)
+    const suggestions = suggestGoalSteps(state, entry, now)
+    if (!suggestions.length)
+      throw new Error(
+        'Önerilecek yeni zayıf konu bulunamadı. Deneme sonucu girildiğinde tekrar deneyin.',
+      )
+    if (entry.steps.length + suggestions.length > 30)
+      throw new Error('Bir hedefe en fazla 30 adım eklenebilir.')
+    for (const suggestion of suggestions)
+      entry.steps.push({ id: makeId('step'), ...suggestion, done: false })
+    entry.updatedAt = now
+    return entry
+  }
+  if (command === 'goal-comment') {
+    const entry = goalRecord(state, session, recordId)
+    entry.comments.push({ id: makeId('comment'), text: data.text, date: now, actor: session.role })
+    entry.updatedAt = now
+    return entry
+  }
+  if (command === 'goal-close') {
+    const entry = openGoalRecord(state, session, recordId)
+    Object.assign(entry, { status: 'Kapatıldı', closedAt: now, updatedAt: now })
+    return entry
+  }
   if (command === 'guidance') {
     scopedStudent(state, session, data.studentId)
     active(state, 'teachers', data.teacherId)
@@ -1056,6 +1273,13 @@ export function runWorkflow(
   now = new Date().toISOString(),
 ) {
   const collections = {
+    goal: 'studentGoals',
+    'goal-review': 'studentGoals',
+    'goal-step': 'studentGoals',
+    'goal-step-done': 'studentGoals',
+    'goal-suggest': 'studentGoals',
+    'goal-comment': 'studentGoals',
+    'goal-close': 'studentGoals',
     guidance: 'guidanceCases',
     'guidance-note': 'guidanceCases',
     exam: 'mockExams',

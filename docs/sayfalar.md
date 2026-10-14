@@ -17,6 +17,7 @@ Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’un
 | `/yonetici/optik-degerlendirme` | Optik Değerlendirme       |
 | `/yonetici/otomatik-etut`       | Otomatik Etüt             |
 | `/yonetici/rehberlik`           | Rehberlik & Takip         |
+| `/yonetici/hedef-plani`         | Hedef & Gelişim Planı     |
 | `/yonetici/deneme-sinavlari`    | Deneme Sınavları          |
 | `/yonetici/kayit-yenileme`      | Kayıt Yenileme            |
 | `/yonetici/program-yonetimi`    | Program Yönetimi          |
@@ -60,6 +61,7 @@ Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’un
 | `/ogretmen/optik-degerlendirme` | Optik Değerlendirme       |
 | `/ogretmen/otomatik-etut`       | Otomatik Etüt             |
 | `/ogretmen/rehberlik`           | Rehberlik & Takip         |
+| `/ogretmen/hedef-plani`         | Hedef & Gelişim Planı     |
 | `/ogretmen/deneme-sinavlari`    | Deneme Sınavları          |
 | `/ogretmen/program-yonetimi`    | Program Yönetimi          |
 | `/ogretmen/calisma-plani`       | Çalışma Planı             |
@@ -88,6 +90,7 @@ Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’un
 | `/ogrenci/ayarlar`          | Ayarlar                   |
 | `/ogrenci/otomatik-etut`    | Otomatik Etüt             |
 | `/ogrenci/rehberlik`        | Rehberlik & Takip         |
+| `/ogrenci/hedef-plani`      | Hedef & Gelişim Planı     |
 | `/ogrenci/deneme-sinavlari` | Deneme Sınavları          |
 | `/ogrenci/calisma-plani`    | Çalışma Planı             |
 | `/ogrenci/okul-takvimi`     | Okul Takvimi              |
@@ -116,6 +119,7 @@ Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’un
 | `/veli/ayarlar`                    | Ayarlar                   |
 | `/veli/otomatik-etut`              | Otomatik Etüt             |
 | `/veli/rehberlik`                  | Rehberlik & Takip         |
+| `/veli/hedef-plani`                | Hedef & Gelişim Planı     |
 | `/veli/deneme-sinavlari`           | Deneme Sınavları          |
 | `/veli/kayit-yenileme`             | Kayıt Yenileme            |
 | `/veli/calisma-plani`              | Çalışma Planı             |
@@ -124,6 +128,6 @@ Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’un
 | `/veli/yemek-menusu`               | Yemek Menüsü              |
 | `/veli/kulupler`                   | Kulüpler & Sosyal Gelişim |
 
-Toplam: **95 menü sayfası + 2 kayıt detayı = 97 panel sayfası**, ayrıca giriş ve 404 ekranı. Okul iş akışları ve okul yaşamı kategorilerinde on bir bağımsız web modülü bulunur.
+Toplam: **99 menü sayfası + 2 kayıt detayı = 101 panel sayfası**, ayrıca giriş ve 404 ekranı. Okul iş akışları ve okul yaşamı kategorilerinde on iki bağımsız web modülü bulunur.
 
 Kullanım rehberleri: [Okul iş akışları](okul-is-akislari.md), [Optik değerlendirme ve etüt](optik-degerlendirme-etut.md).

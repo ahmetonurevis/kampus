@@ -1,6 +1,6 @@
 # Kampüs · Akademi Özel Okulları
 
-Ortaokul ve lise için Vue 3 web paneli ve React Native Android uygulamasıyla hazırlanmış Türkçe LMS + ERP demosu. Yönetici, ön büro, öğretmen, öğrenci ve veli aynı ilişkili veri kümesini paylaşır. Web tarafında 97 panel sayfası, açık/koyu tema ve mobil görünüm bulunur. Backend veya hesap kurulumu gerekmez.
+Ortaokul ve lise için Vue 3 web paneli ve React Native Android uygulamasıyla hazırlanmış Türkçe LMS + ERP demosu. Yönetici, ön büro, öğretmen, öğrenci ve veli aynı ilişkili veri kümesini paylaşır. Web tarafında 101 panel sayfası, açık/koyu tema ve mobil görünüm bulunur. Backend veya hesap kurulumu gerekmez.
 
 ## Yeni okul iş akışları
 
@@ -10,7 +10,11 @@ Yeni akışlar ortak school-core 1.2.0 paketini kullanır. Eski yerel kayıtlar 
 
 ## Optik değerlendirme ve otomatik etüt
 
-CSV ve alan konumları ayarlanabilen DAT/TXT cevap dosyaları, kitapçık bazlı anahtarlarla soru/kazanım düzeyinde değerlendirilir. Başarı eşiği altında kalan kazanımlar için kapasite ve çakışma kontrollü etüt planı hazırlanır; önizleme ve son onaydan sonra öğrenci/veli programına yansır. Yoklama ve iptal geçmişi korunur. İki özellik ayrı modüllerdir; toplam on bir web iş akışı modülü bulunur. Kullanım ve dosya biçimleri: [Optik değerlendirme ve etüt](docs/optik-degerlendirme-etut.md).
+CSV ve alan konumları ayarlanabilen DAT/TXT cevap dosyaları, kitapçık bazlı anahtarlarla soru/kazanım düzeyinde değerlendirilir. Başarı eşiği altında kalan kazanımlar için kapasite ve çakışma kontrollü etüt planı hazırlanır; önizleme ve son onaydan sonra öğrenci/veli programına yansır. Yoklama ve iptal geçmişi korunur. İki özellik ayrı modüllerdir; toplam on iki web iş akışı modülü bulunur. Kullanım ve dosya biçimleri: [Optik değerlendirme ve etüt](docs/optik-degerlendirme-etut.md).
+
+## Hedef ve gelişim planı
+
+Öğrenci ders bazlı veya genel net hedefi belirler; yönetici ya da branş öğretmeni onaylar. İlerleme deneme sonuçlarından otomatik hesaplanır, zayıf konulardan haftalık gelişim adımları önerilir ve elle düzenlenir. Veli seçili çocuğun hedefini görür, yorum ekler. Modül ayrı açılıp kapanır. Kullanım: [Hedef ve gelişim planı](docs/hedef-gelisim-plani.md).
 
 ## Android uygulaması
 

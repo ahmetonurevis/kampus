@@ -1,6 +1,13 @@
 import { workflowPage } from '../modules/school-workflows.js'
 import { currentEvaluations } from './assessment-automation.js'
-import { workflowScope, mayRun, examNet, examProgress, eventStudents } from './school-workflows.js'
+import {
+  workflowScope,
+  mayRun,
+  examNet,
+  examProgress,
+  eventStudents,
+  goalProgress,
+} from './school-workflows.js'
 import { dateLabel, money, timeLabel, dayKey } from './format.js'
 import { subjectsForGrade } from '../data/curriculum.js'
 
@@ -19,6 +26,15 @@ const row = (source, title, subtitle, body, status, kind) => ({
   date: source.dueDate || source.followUp || source.date || source.createdAt,
 })
 
+const netLabel = (value) => value.toLocaleString('tr-TR')
+// Branş öğretmeni yalnızca kendi dersinin ve genel net hedeflerini görür.
+function goalVisibleToTeacher(state, session, goal) {
+  return (
+    session.role !== 'ogretmen' ||
+    !goal.subjectId ||
+    goal.subjectId === state.teachers.find((t) => t.id === 't1')?.subjectId
+  )
+}
 export function workflowCsvReferences(state, session) {
   const scope = workflowScope(state, session)
   return [
@@ -48,6 +64,24 @@ export function workflowRows(state, session, page) {
     (session.role === 'ogretmen'
       ? state.teachers.find((t) => t.id === 't1')?.branchId === id
       : studentClass?.branchId === id)
+  if (definition.key === 'goals')
+    return state.studentGoals
+      .filter((r) => own(r) && goalVisibleToTeacher(state, session, r))
+      .sort((a, b) => a.deadline.localeCompare(b.deadline))
+      .map((r) => {
+        const progress = goalProgress(state, r)
+        return {
+          ...row(
+            r,
+            r.title,
+            `${name(state, 'students', r.studentId)} · ${r.subjectId ? subject(state, r.subjectId) : 'Genel net'}`,
+            `Hedef: ${netLabel(r.targetNet)} net · Güncel: ${progress.current === null ? 'deneme sonucu yok' : `${netLabel(progress.current)} net`} · %${progress.percent}\nSon tarih: ${labelDate(r.deadline)} · Adım: ${progress.stepsDone}/${progress.stepsTotal}`,
+            progress.achieved && r.status === 'Aktif' ? 'Ulaşıldı' : r.status,
+            'goal',
+          ),
+          date: r.deadline,
+        }
+      })
   if (definition.key === 'guidance')
     return state.guidanceCases
       .filter((r) => own(r) && (session.role !== 'ogretmen' || r.teacherId === 't1'))
@@ -232,6 +266,7 @@ export function workflowCreateActions(state, session, page) {
   const definition = workflowPage(page)
   if (!definition || !state.modules[definition.key]) return []
   const candidates = {
+    goals: [['goal', 'Hedef belirle']],
     guidance: [['guidance', 'Takip dosyası aç']],
     exams: [
       ['exam', 'Deneme oluştur'],
@@ -267,6 +302,48 @@ export function workflowDetails(state, session, entry) {
     if (mayRun(session, command)) actions.push(action(command, label, recordId, initial))
   }
   const section = (title, lines) => sections.push({ title, lines: lines.filter(Boolean) })
+  if (entry.kind === 'goal') {
+    const progress = goalProgress(state, record)
+    section('Hedef ve ilerleme', [
+      `${record.subjectId ? subject(state, record.subjectId) : 'Genel net (tüm dersler)'} · Hedef ${netLabel(record.targetNet)} net`,
+      `Başlangıç: ${netLabel(record.baselineNet)} net · Güncel: ${progress.current === null ? 'deneme sonucu yok' : `${netLabel(progress.current)} net`} · İlerleme %${progress.percent}`,
+      progress.achieved ? 'Hedef net değerine ulaşıldı.' : '',
+      `Son tarih: ${labelDate(record.deadline)}`,
+      record.motivation && `Öğrencinin notu: ${record.motivation}`,
+      record.status === 'Onay bekliyor' && 'Öğretmen veya yönetici onayı bekleniyor.',
+      record.feedback && `Değerlendirme: ${record.feedback}`,
+    ])
+    section(
+      'Denemeler arası seyir',
+      progress.series.map(
+        (point) => `${labelDate(point.date)} · ${point.title}: ${netLabel(point.net)} net`,
+      ),
+    )
+    section(
+      'Gelişim adımları',
+      record.steps.map(
+        (step) =>
+          `${step.done ? '✓' : '○'} ${step.title} · ${labelDate(step.dueDate)}${step.source === 'auto' ? ' · Öneri' : ''}${step.done ? ` · Tamamlandı ${labelDate(step.doneAt)}` : ''}`,
+      ),
+    )
+    section(
+      'Yorumlar',
+      record.comments.map(
+        (c) =>
+          `${labelDate(c.date)} · ${{ veli: 'Veli', ogretmen: 'Öğretmen', yonetici: 'Yönetici' }[c.actor] || c.actor}: ${c.text}`,
+      ),
+    )
+    if (record.status === 'Onay bekliyor') add('goal-review', 'Hedefi değerlendir')
+    if (['Onay bekliyor', 'Aktif'].includes(record.status)) {
+      add('goal-step', 'Gelişim adımı ekle')
+      add('goal-suggest', 'Zayıf konulardan adım öner')
+      if (record.status === 'Aktif')
+        for (const step of record.steps.filter((s) => !s.done))
+          add('goal-step-done', `“${step.title}” adımını tamamla`, record.id, { stepId: step.id })
+      add('goal-close', 'Hedefi kapat')
+    }
+    add('goal-comment', 'Yorum ekle')
+  }
   if (entry.kind === 'guidance') {
     section('Paylaşılan destek planı', [
       record.plan,
@@ -532,6 +609,7 @@ export function workflowDetails(state, session, entry) {
 }
 export function workflowPageForKind(kind) {
   return {
+    goal: 'hedef-plani',
     guidance: 'rehberlik',
     exam: 'deneme-sinavlari',
     renewal: 'kayit-yenileme',
@@ -561,7 +639,14 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
     teachers = state.teachers.filter((t) => t.isActive),
     branches = state.branches.filter((b) => b.isActive)
   const initialStudent = overrides.studentId || scope.students[0]?.id || ''
+  const teacherSubjectId = state.teachers.find((t) => t.id === 't1')?.subjectId || ''
   const recordCollections = {
+    'goal-review': 'studentGoals',
+    'goal-step': 'studentGoals',
+    'goal-step-done': 'studentGoals',
+    'goal-suggest': 'studentGoals',
+    'goal-comment': 'studentGoals',
+    'goal-close': 'studentGoals',
     guidance: 'guidanceCases',
     'guidance-note': 'guidanceCases',
     'exam-result': 'mockExams',
@@ -585,6 +670,99 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
     initial: {},
     fields: () => [],
   }
+  if (command === 'goal')
+    Object.assign(form, {
+      title: 'Hedef belirle',
+      hint:
+        session.role === 'ogrenci'
+          ? 'Hedefiniz öğretmeniniz veya yönetici onayladıktan sonra aktif olur.'
+          : 'Hedef onaylı olarak açılır ve öğrenci ile veli ekranına yansır.',
+      initial: {
+        studentId: initialStudent,
+        subjectId: session.role === 'ogretmen' ? teacherSubjectId : '',
+        title: '',
+        targetNet: '',
+        deadline: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+        motivation: '',
+      },
+      fields: (values) => {
+        const student = state.students.find((s) => s.id === values.studentId),
+          classroom = state.classes.find((c) => c.id === student?.classId)
+        const subjectChoices = subjectsForGrade(classroom?.grade || 7).filter(
+          (s) => session.role !== 'ogretmen' || s.id === teacherSubjectId,
+        )
+        return [
+          choice('studentId', 'Öğrenci', studentOptions),
+          choice('subjectId', 'Hedef kapsamı', [
+            ...(session.role === 'ogretmen'
+              ? []
+              : [{ value: '', label: 'Genel net (tüm dersler toplamı)' }]),
+            ...options(subjectChoices),
+          ]),
+          field('title', 'Hedef başlığı'),
+          field('targetNet', 'Hedef net', 'number', { min: 1, max: 500, step: 0.25 }),
+          field('deadline', 'Hedef son tarihi', 'date'),
+          field('motivation', 'Hedefin nedeni / öğrenci notu', 'textarea'),
+        ]
+      },
+    })
+  if (command === 'goal-review')
+    Object.assign(form, {
+      title: 'Hedefi değerlendir',
+      initial: { status: 'Aktif', feedback: '' },
+      fields: () => [
+        choice('status', 'Karar', [
+          { value: 'Aktif', label: 'Onayla' },
+          { value: 'Reddedildi', label: 'Reddet' },
+        ]),
+        field('feedback', 'Geri bildirim (reddetmede zorunlu)', 'textarea'),
+      ],
+    })
+  if (command === 'goal-step')
+    Object.assign(form, {
+      title: 'Gelişim adımı ekle',
+      initial: {
+        title: '',
+        topic: '',
+        dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+      },
+      fields: () => [
+        field('title', 'Adım başlığı'),
+        field('topic', 'Konu (isteğe bağlı)'),
+        field('dueDate', 'Son tarih', 'date'),
+      ],
+    })
+  if (command === 'goal-step-done')
+    Object.assign(form, {
+      title: 'Adımı tamamla',
+      initial: { stepId: '' },
+      fields: () => [
+        choice(
+          'stepId',
+          'Tamamlanan adım',
+          options(
+            (record?.steps || []).filter((s) => !s.done),
+            (s) => s.title,
+          ),
+        ),
+      ],
+    })
+  if (command === 'goal-suggest')
+    Object.assign(form, {
+      title: 'Zayıf konulardan adım öner',
+      hint: 'Deneme sonuçlarındaki eksik konulardan en fazla dört haftalık adım eklenir. Mevcut adımlar değişmez.',
+    })
+  if (command === 'goal-comment')
+    Object.assign(form, {
+      title: 'Yorum ekle',
+      initial: { text: '' },
+      fields: () => [field('text', 'Yorumunuz', 'textarea')],
+    })
+  if (command === 'goal-close')
+    Object.assign(form, {
+      title: 'Hedefi kapat',
+      hint: 'Kapatılan hedef üzerinde yeni adım eklenemez. Geçmiş ilerleme ve yorumlar korunur.',
+    })
   if (command === 'guidance')
     Object.assign(form, {
       title: 'Takip dosyası aç',

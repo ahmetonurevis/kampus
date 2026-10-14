@@ -34,6 +34,15 @@ export const schoolModules = [
     roles: ['yonetici', 'ogretmen', 'veli', 'ogrenci'],
   },
   {
+    key: 'goals',
+    title: 'Hedef & Gelişim Planı',
+    path: 'hedef-plani',
+    icon: 'Target',
+    description:
+      'Ders ve genel net hedefleri, deneme sonuçlarıyla ilerleme ve haftalık gelişim adımları.',
+    roles: ['yonetici', 'ogretmen', 'ogrenci', 'veli'],
+  },
+  {
     key: 'renewal',
     title: 'Kayıt Yenileme',
     path: 'kayit-yenileme',

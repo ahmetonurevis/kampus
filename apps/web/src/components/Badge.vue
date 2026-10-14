@@ -7,7 +7,7 @@ const props = defineProps({
 const color = computed(
   () =>
     props.tone ||
-    (/Ödendi|Yanıtlandı|Onaylandı|Tamamlandı|Değerlendirildi|Kayıt oldu|Çözüldü|Geldi|Aktif/.test(
+    (/Ödendi|Yanıtlandı|Onaylandı|Tamamlandı|Değerlendirildi|Kayıt oldu|Çözüldü|Geldi|Aktif|Ulaşıldı/.test(
       props.text,
     )
       ? 'green'

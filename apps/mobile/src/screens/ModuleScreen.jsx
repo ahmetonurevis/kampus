@@ -21,6 +21,10 @@ import { createActions } from '../model/operations.js'
 import { dateLabel, average } from '@kampus/school-core/lib/format.js'
 import Attendance from './Attendance.jsx'
 import SchoolList from './SchoolLists.jsx'
+import WorkflowScreen from './WorkflowScreen.jsx'
+import OpticalScreen from './OpticalScreen.jsx'
+import TutoringScreen from './TutoringScreen.jsx'
+import { workflowPage } from '@kampus/school-core/modules/school-workflows.js'
 import { ThemePreference } from '../ui/SchoolLayout.jsx'
 import {
   Avatar,
@@ -298,6 +302,9 @@ export default function ModuleScreen(props) {
   )
     return <Conversations {...props} />
   if (availablePages(data, session.role).some((p) => p.path === page)) {
+    if (page === 'optik-degerlendirme') return <OpticalScreen {...props} />
+    if (page === 'otomatik-etut') return <TutoringScreen {...props} />
+    if (workflowPage(page)) return <WorkflowScreen {...props} />
     if (page === 'ders-programi') return <Timetable {...props} />
     if (page === 'videolar') return <VideoLibrary {...props} />
     if (session.role === 'ogrenci' && page === 'odevler')

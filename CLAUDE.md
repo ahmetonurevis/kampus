@@ -24,7 +24,7 @@ Vue 3 web paneli ve React Native Android uygulamasıyla beş rolün tüm Faz 1 v
 
 ## Web okul iş akışları
 
-- Bu genişletme yalnızca web kapsamındadır; mobil menü ve ekranlarına yeni özellik eklenmez.
+- Okul iş akışı modülleri web ve mobilde aynı `school-core` tanımlarını kullanır. Mobil karşılıkları `apps/mobile/src/screens/WorkflowScreen.jsx` (genel liste/detay/form), `OpticalScreen.jsx` ve `TutoringScreen.jsx` içindedir; menü `modules/full-navigation.js` ile paylaşılır.
 - Okul iş akışları: `packages/school-core/src/modules/school-workflows.js` on iki bağımsız modülü; `lib/school-workflows.js` Zod doğrulaması, rol kapsamı ve atomik işlemleri; `lib/workflow-presentation.js` ortak liste/form/detay tanımlarını içerir. İlk sekiz özellik servis/yemek ayrımıyla dokuz modüldür; optik değerlendirme, otomatik etüt ve hedef/gelişim planı üç ek modüldür. Backend eklenmez.
 - Yeni web işlemleri `transaction` ile önce depolamaya yazılır, sonra reaktif state değişir. Snapshot sürümü 3 ve eski kayıtlar korunur; restore yeni modül varsayılanlarını eski tercihlerle birleştirir.
 - Yenileme planlama ve sınıf geçişi ayrı işlemlerdir. Sözleşme `invoiceIds` ile yalnızca kendi taksitlerini çözümler. Rehberlik iç notları veli/öğrenciye gösterilmez. İptal dersleri günlük programlarda görünmez.
@@ -45,9 +45,9 @@ Vue 3 web paneli ve React Native Android uygulamasıyla beş rolün tüm Faz 1 v
 ## Kalıcı tasarım ve davranış kuralları
 
 - Akademi Özel Okulları; ortaokul/lise, bütün dersler. İngilizce yalnızca bir derstir; dil kursu/CEFR yerine ders ve kazanım gelişimi kullanılır.
-- Ana renk `#1E3A8A`, aksan `#F97316`, açık zemin `#FFFFFF`. Açık/koyu tema birlikte bulunur; varsayılan açık, mobilde sistem seçeneği de vardır. Tema tercihi saklanır.
+- Ana renk `#1E3A8A`, aksan `#F97316`, web açık zemini `#FFFFFF`; mobilde sayfa zemini yumuşak mavi-gri `#EFF3FB`, kartlar beyaz, üst başlık safirdir. Açık/koyu tema birlikte bulunur; varsayılan açık, mobilde sistem seçeneği de vardır. Tema tercihi saklanır.
 - Gradyan, cam efekti, ışık hüzmesi, yoğun gölge, dekoratif renkli kenar çizgisi veya veriye dayanmayan grafik kullanılmaz. İnce ayraçlar, düzenli boşluklar, ölçülü yuvarlak köşeler ve okunaklı metin esastır.
-- Hızlı erişim bölümü, navbar hızlı araması ve mobil alt navigasyon yoktur. Beş rolde kategorili menü kullanılır; kapalı modüller ve boş kategoriler gizlenir. Aktif kategori görünür, tercihler rol bazında saklanır.
+- Hızlı erişim bölümü, navbar hızlı araması ve mobil alt navigasyon yoktur. Beş rolde kategorili menü kullanılır; kapalı modüller ve boş kategoriler gizlenir. Mobilde hamburger menü yoktur: ana ekranda kategoriler kart olarak gelir, karta dokununca kategori ekranı o kategorinin modüllerini kart olarak listeler. Hesap sayfaları (Ayarlar) sağ üstteki isim/avatar menüsündedir; öğrenci ödemeleri telefonda gösterilmez. Aktif kategori görünür, tercihler rol bazında saklanır.
 - Web sidebar/navbar iç boşluklu yüzeylerdir; aktif bağlantı kısa pill, breadcrumb ve kontroller ayrıdır. `apps/web/src/styles/tokens.css` tema/ölçüleri, `presentation.css` ortak yerleşimi tanımlar. Sidebar bağlantıları 11 px, grup etiketleri 10 px; genel metin azaltımı token üzerinden yapılır.
 - Ana işlem görünür, ikincil işlemler sakin tutulur. Dashboard içerikleri 2:1; mini grafikler yalnızca gerçek örnek kayıtlardan türetilir. Avatar rengi normalleştirilmiş tam ada göre sabittir.
 - Masaüstü tablolarda sabit başlık/işlem sütunu, mobilde temel bilgiler ve açılan ayrıntılar kullanılır. Arama/filtre/sıralama/sayfa ve kaydırma konumu liste/çocuk bazında korunur. Filtre değişince sayfa ve konum sıfırlanır; veri azalınca geçersiz sayfada kalınmaz. CSV tüm filtrelenmiş/sıralanmış sonuçları içerir.

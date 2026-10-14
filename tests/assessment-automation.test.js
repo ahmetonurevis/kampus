@@ -510,6 +510,7 @@ test('Yeni ders ve arşiv işlemleri planlanmış etütlerle çakışamaz; kayı
         { ...state.teachers.find((t) => t.id === entry.teacherId), branchId: 'b2' },
         id,
         entry.teacherId,
+        now,
       ),
     /ileri tarihli etüt/,
   )

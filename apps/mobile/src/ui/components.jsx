@@ -96,7 +96,15 @@ export function Button({
     </Pressable>
   )
 }
-export function IconButton({ name, label, onPress, disabled, filled = false, selected = false }) {
+export function IconButton({
+  name,
+  label,
+  onPress,
+  disabled,
+  filled = false,
+  selected = false,
+  color,
+}) {
   const c = useColors()
   return (
     <Pressable
@@ -110,12 +118,18 @@ export function IconButton({ name, label, onPress, disabled, filled = false, sel
         borderRadius: shape.button,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: selected ? c.primarySoft : pressed || filled ? c.soft : 'transparent',
+        backgroundColor: selected
+          ? c.primarySoft
+          : pressed || filled
+            ? color
+              ? '#FFFFFF2E'
+              : c.soft
+            : 'transparent',
         opacity: disabled ? 0.4 : 1,
       })}
       onPress={onPress}
     >
-      <Icon name={name} color={selected ? c.primary : c.muted} />
+      <Icon name={name} color={color || (selected ? c.primary : c.muted)} />
     </Pressable>
   )
 }

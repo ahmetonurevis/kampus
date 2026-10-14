@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar'
 import { SchoolProvider, useSchool, recordError } from './store/SchoolProvider.jsx'
 import { roles, availablePages } from './model/school.js'
 import { moduleNavigationState } from './model/navigation.js'
+import { accountPages, categoryLabel, pageTitle } from './model/hub.js'
 import {
   Avatar,
   Button,
@@ -20,9 +21,10 @@ import {
   styles,
   useColors,
 } from './ui/components.jsx'
-import { TextAction, ThemePreference } from './ui/SchoolLayout.jsx'
+import { ThemePreference } from './ui/SchoolLayout.jsx'
 import Home from './screens/Home.jsx'
 import ModuleScreen from './screens/ModuleScreen.jsx'
+import CategoryScreen from './screens/CategoryScreen.jsx'
 import Detail from './screens/Detail.jsx'
 import Quiz from './screens/Quiz.jsx'
 import Video from './screens/Video.jsx'
@@ -145,18 +147,14 @@ function Login() {
 function Header({ navigation, route, back }) {
   const { data, session, preference } = useSchool(),
     c = useColors()
-  const [menu, setMenu] = useState(false),
-    [roleMenu, setRoleMenu] = useState(false)
+  const [roleMenu, setRoleMenu] = useState(false),
+    { fontScale } = useWindowDimensions()
   const pages = availablePages(data, session.role)
-  const groups = [...new Set(pages.map((p) => p.group))]
-  const targeted = {
-    'ogrenci/odevler': 'Ödevler',
-    'veli/finans': 'Ödeme planı',
-    'ogretmen/sorular': 'Öğrenci soruları',
-  }
-  const title =
-    route.name === 'Home'
-      ? 'Kampüs'
+  const isHome = route.name === 'Home'
+  const title = isHome
+    ? 'Kampüs'
+    : route.name === 'Category'
+      ? categoryLabel(route.params.category)
       : route.name === 'Detail'
         ? route.params?.row.kind === 'homework' && session.role === 'ogrenci'
           ? 'Ödev detayı'
@@ -165,22 +163,17 @@ function Header({ navigation, route, back }) {
             : route.params?.row.kind === 'conversation'
               ? route.params.row.title
               : 'Ayrıntılar'
-        : targeted[`${session.role}/${route.params?.page}`] ||
-          pages.find((p) => p.path === route.params?.page)?.title ||
+        : pageTitle(session.role, pages.find((p) => p.path === route.params?.page) || {}) ||
           { Video: 'Ders videosu', Quiz: 'Quiz' }[route.name] ||
           (route.params?.page === 'mesajlar' ? 'Mesajlar' : '') ||
           'Kampüs'
   function navigate(page) {
-    setMenu(false)
-    if (page === route.params?.page || (page === 'dashboard' && route.name === 'Home')) return
+    if (page === route.params?.page || (page === 'dashboard' && isHome)) return
     navigation.reset(moduleNavigationState(navigation.getState(), page))
   }
   return (
     <>
-      <SafeAreaView
-        edges={['top']}
-        style={{ backgroundColor: c.background, borderBottomWidth: 1, borderColor: c.border }}
-      >
+      <SafeAreaView edges={['top']} style={{ backgroundColor: c.hero }}>
         <View
           style={{
             flexDirection: 'row',
@@ -190,109 +183,57 @@ function Header({ navigation, route, back }) {
             paddingVertical: 4,
           }}
         >
-          <IconButton
-            name={back ? 'ChevronLeft' : 'Menu'}
-            label={back ? 'Geri' : 'Menüyü aç'}
-            onPress={() => (back ? navigation.goBack() : setMenu(true))}
-          />
-          <T
-            bold
-            size={route.name === 'Home' ? 23 : 19}
-            style={{ flex: 1, color: route.name === 'Home' ? c.primary : c.text }}
-          >
-            {title}
-          </T>
-          {back && <IconButton name="Menu" label="Menüyü aç" onPress={() => setMenu(true)} />}
-          {!back && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Rol ve hesap seçenekleri"
-              onPress={() => setRoleMenu(true)}
-              style={{
-                minHeight: 48,
-                minWidth: 48,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Avatar name={roles[session.role].name} size={32} />
-            </Pressable>
-          )}
-        </View>
-      </SafeAreaView>
-      {menu && (
-        <Sheet visible title="Modüller" onClose={() => setMenu(false)}>
-          <View style={{ gap: 4 }}>
-            <T bold size={16}>
-              {roles[session.role].name}
-            </T>
-            <T muted size={14}>
-              {roles[session.role].label}
-              {session.role === 'ogretmen' ? ' · Matematik' : ''}
-            </T>
-          </View>
-          {groups.map((group) => (
-            <View key={group} style={{ gap: 8 }}>
-              <T muted bold size={13}>
-                {group.charAt(0) + group.slice(1).toLocaleLowerCase('tr')}
+          {isHome ? (
+            <View style={[styles.row, { flex: 1, gap: 8, paddingLeft: 10, minHeight: 48 }]}>
+              <Icon name="GraduationCap" color={c.heroText} size={26} />
+              <T bold size={22} style={{ color: c.heroText, letterSpacing: -0.8 }}>
+                kampüs
+                <T bold size={22} style={{ color: c.accent }}>
+                  .
+                </T>
               </T>
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: c.border,
-                  borderRadius: 12,
-                  overflow: 'hidden',
-                }}
-              >
-                {pages
-                  .filter((p) => p.group === group)
-                  .map((p) => {
-                    const active =
-                      p.path === route.params?.page ||
-                      (p.path === 'dashboard' && route.name === 'Home')
-                    return (
-                      <Pressable
-                        key={p.path}
-                        accessibilityRole="button"
-                        accessibilityLabel={p.title}
-                        accessibilityState={{ selected: active }}
-                        onPress={() => navigate(p.path)}
-                        style={({ pressed }) => ({
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 12,
-                          minHeight: 58,
-                          paddingVertical: 14,
-                          paddingHorizontal: 14,
-                          borderBottomWidth: 1,
-                          borderColor: c.border,
-                          opacity: pressed ? 0.65 : 1,
-                        })}
-                      >
-                        <T
-                          bold={active}
-                          size={15}
-                          style={{ flex: 1, color: active ? c.primary : c.text }}
-                        >
-                          {targeted[`${session.role}/${p.path}`] || p.title}
-                        </T>
-                        <Icon name={active ? 'Check' : 'ChevronRight'} size={18} />
-                      </Pressable>
-                    )
-                  })}
-              </View>
             </View>
-          ))}
-          <TextAction
-            onPress={() => {
-              setMenu(false)
-              setRoleMenu(true)
+          ) : (
+            <>
+              <IconButton
+                name="ChevronLeft"
+                label="Geri"
+                color={c.heroText}
+                onPress={() => (back ? navigation.goBack() : navigate('dashboard'))}
+              />
+              <T bold size={19} numberOfLines={1} style={{ flex: 1, color: c.heroText }}>
+                {title}
+              </T>
+              <IconButton
+                name="LayoutGrid"
+                label="Modüller"
+                color={c.heroText}
+                onPress={() => navigate('dashboard')}
+              />
+            </>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Hesap: ${roles[session.role].name}`}
+            onPress={() => setRoleMenu(true)}
+            style={{
+              minHeight: 48,
+              minWidth: 48,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
             }}
           >
-            Hesap ve görünüm
-          </TextAction>
-        </Sheet>
-      )}
+            {isHome && fontScale <= 1.3 && (
+              <T bold size={13} numberOfLines={1} style={{ color: c.heroText, maxWidth: 130 }}>
+                {roles[session.role].name}
+              </T>
+            )}
+            <Avatar name={roles[session.role].name} size={34} />
+          </Pressable>
+        </View>
+      </SafeAreaView>
       {roleMenu && (
         <Sheet visible title="Hesap ve görünüm" onClose={() => setRoleMenu(false)}>
           <View style={{ gap: 5 }}>
@@ -302,6 +243,18 @@ function Header({ navigation, route, back }) {
             <T muted>{roles[session.role].subtitle}</T>
           </View>
           <ThemePreference />
+          {accountPages(data, session.role).map((page) => (
+            <Button
+              key={page.path}
+              icon={page.icon}
+              onPress={() => {
+                setRoleMenu(false)
+                navigate(page.path)
+              }}
+            >
+              {page.title}
+            </Button>
+          ))}
           {session.role === 'veli' && (
             <Button
               onPress={() => {
@@ -383,7 +336,9 @@ function Application() {
             onStateChange={() => setToast(null)}
             linking={{
               prefixes: ['kampus://'],
-              config: { screens: { Home: '', Module: 'sayfa/:page' } },
+              config: {
+                screens: { Home: '', Category: 'kategori/:category', Module: 'sayfa/:page' },
+              },
             }}
           >
             <Stack.Navigator
@@ -397,6 +352,7 @@ function Application() {
             >
               <Stack.Group navigationKey={session.role}>
                 <Stack.Screen name="Home" component={Home} />
+                <Stack.Screen name="Category" component={CategoryScreen} />
                 <Stack.Screen name="Module" component={ModuleScreen} />
                 <Stack.Screen name="Detail" component={Detail} />
                 <Stack.Screen name="Quiz" component={Quiz} />

@@ -1,6 +1,16 @@
-# Kampüs Android · 1.3.0
+# Kampüs Android · 1.4.0
 
 Beş rolün mevcut modülleri React Native ile telefona uyarlandı. APK, Expo Go, geliştirme sunucusu veya internet bağlantısı gerektirmeden çalışır. Web yayını değişmedi.
+
+## 1.4.0 yeni tasarım ve okul iş akışları
+
+- **Tasarım:** safir üst başlık, yumuşak mavi-gri sayfa zemini, beyaz kartlar ve turuncu aksan. Açık/koyu tema korunur; gradyan ve dekoratif renkli kenar çizgisi yoktur.
+- **Menü:** hamburger menü kalktı. Ana ekranda kategoriler kart olarak gelir; karta dokununca kategori ekranı o kategorinin modüllerini kart olarak açar. İç sayfalarda geri tuşu ve "Modüller" düğmesi bulunur.
+- **Hesap:** "Hesabım" kategorisi kalktı; Ayarlar, tema, rol değiştirme ve oturum kapatma sağ üstteki isim/avatar menüsündedir. Öğrenci ödemeleri telefonda gösterilmez (web menüsü değişmedi).
+- **Okul iş akışları:** rehberlik, deneme sınavları, hedef/gelişim planı, kayıt yenileme, program yönetimi, çalışma planı, okul takvimi, servis, yemek ve kulüpler ortak liste/detay/form ekranıyla; optik değerlendirme ve otomatik etüt kendi ekranlarıyla telefonda çalışır. İşlemler kontrol adımlıdır ve atomik kaydedilir. Optik dosyalar cihazdan seçilir (CSV/DAT/TXT, 1 MB, UTF-8 veya Windows-1254).
+- Ortak paket `school-core` 1.3.0: birleşik menü, hedef/gelişim planı modülü, metin çözücü. Veri/snapshot biçimi ve imza korundu; 1.3.0 üzerine yükleme kayıtları ve tercihleri korur.
+
+1.4.0 doğrulaması: ESLint, Prettier, 80 birim testi ve web build geçti; web tarafındaki 60 tarayıcı senaryosu etkilenmedi. Aynı imzalı Android release build üretildi ve Android 36 ARM64 emülatöründe (fiziksel cihaz değil) denendi: 1.3.0 üzerine güncelleme kayıtları ve rol tercihini korudu; yeni ana ekran, kategori ekranı, hedef planında adım tamamlama, hesap menüsü ve sistem geri tuşu çalıştı; native hata kaydı görülmedi. Beş rolün ana ekranları ile hedef, optik ve etüt ekranları tarayıcı önizlemesinde 390 ve 320 dp genişliklerde, açık ve koyu temada incelendi. Optik/etüt akışlarının tam dosya seçici ve Windows-1254 dosyası adımları cihazda ayrıca denenmedi.
 
 ## 1.3.0 iş akışları, klavye ve taslaklar
 
@@ -23,11 +33,11 @@ Performans: aynı Android emülatöründe ilk Activity çizimi medyanı önce 44
 
 ## Kurulum
 
-1. `apklar/kampus-1.3.0.apk` dosyasını Android telefona aktarın.
+1. `apklar/kampus-1.4.0.apk` dosyasını Android telefona aktarın.
 2. Dosyayı açın. Android isterse dosyayı açtığınız uygulama için “Bu kaynaktan yüklemeye izin ver” seçeneğini etkinleştirin.
 3. Kampüs'ü açıp Yönetici, Ön Büro & Satış, Öğretmen, Öğrenci veya Veli rolünü seçin.
 
-Android 7 ve üzeri 64 bit ARM telefonlar desteklenir. Aynı APK, x86_64 emülatörlerde de çalışır. Uygulama kimliği `com.onurevis.kampus`, sürüm kodu `6`'tir. Yalnızca APK dosyaları `apklar/` klasörüne çıkar; yeni derlemelerde SHA-256 özetleri `artifacts/mobile-build/` içinde aynı sürüm adıyla üretilir.
+Android 7 ve üzeri 64 bit ARM telefonlar desteklenir. Aynı APK, x86_64 emülatörlerde de çalışır. Uygulama kimliği `com.onurevis.kampus`, sürüm kodu `7`'dir. Yalnızca APK dosyaları `apklar/` klasörüne çıkar; yeni derlemelerde SHA-256 özetleri `artifacts/mobile-build/` içinde aynı sürüm adıyla üretilir.
 
 ## Kullanım
 
@@ -57,10 +67,10 @@ Node.js 24, pnpm 11, JDK 21 ve Android SDK 36 kullanılır. `ANDROID_HOME` ve `J
 
 ## Güncel teslim ve kaynak haritası
 
-Güncel APK: `apklar/kampus-1.3.0.apk` (65.467.277 bayt). SHA-256:
+Güncel APK: `apklar/kampus-1.4.0.apk` (65.689.445 bayt). SHA-256:
 
 ```text
-a2fb398f6f5ba562d7325973bfb60e97c6364d630c212ed209a9de3591d6882e
+a5c4d8eab035581112111ac13b8b6d8c46daa3f4b8950f1e4dd9d3cbd2c8cf14
 ```
 
 İmzalama sertifikasının SHA-256 özeti:

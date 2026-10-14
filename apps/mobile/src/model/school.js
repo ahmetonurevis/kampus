@@ -9,7 +9,7 @@ import {
   slaStatus,
   timeLabel,
 } from '@kampus/school-core/lib/format.js'
-import { navigation, roles } from '@kampus/school-core/modules/navigation.js'
+import { navigation, roles } from '@kampus/school-core/modules/full-navigation.js'
 import { subjectsForGrade } from '@kampus/school-core/data/curriculum.js'
 
 export { navigation, roles }
@@ -49,8 +49,12 @@ export const gradeAverage = (state, id) =>
   average(state.grades.filter((g) => g.studentId === id).map((g) => g.score))
 export const absentCount = (state, id) =>
   state.attendance.filter((a) => a.studentId === id && a.status === 'absent').length
+// Telefonda gösterilmeyen sayfalar (web menüsünde bulunmaya devam eder).
+const hiddenOnMobile = { ogrenci: ['odemelerim'] }
 export function availablePages(state, role) {
-  return (navigation[role] || []).filter((p) => !p.module || state.modules[p.module])
+  return (navigation[role] || []).filter(
+    (p) => (!p.module || state.modules[p.module]) && !hiddenOnMobile[role]?.includes(p.path),
+  )
 }
 export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = false } = {}) {
   const c = context(state, session)

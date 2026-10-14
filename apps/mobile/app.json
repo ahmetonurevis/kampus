@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kampüs",
     "slug": "kampus-mobil",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -11,7 +11,7 @@
     },
     "android": {
       "package": "com.onurevis.kampus",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#1E3A8A"

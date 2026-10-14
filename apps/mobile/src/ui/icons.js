@@ -1,4 +1,7 @@
 import {
+  Bus,
+  Utensils,
+  LayoutGrid,
   Calculator,
   FlaskConical,
   Globe,
@@ -99,6 +102,9 @@ import {
   FileDown,
 } from 'lucide-react-native'
 export const icons = {
+  Bus,
+  Utensils,
+  LayoutGrid,
   Calculator,
   FlaskConical,
   Globe,

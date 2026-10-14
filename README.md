@@ -6,7 +6,7 @@ Ortaokul ve lise için Vue 3 web paneli ve React Native Android uygulamasıyla h
 
 Rehberlik/takip dosyası, LGS/YKS/okul denemeleri ve CSV sonuç aktarımı, kayıt yenileme/dönem geçişi, çakışma kontrollü program yönetimi, çalışma planı/onay/değerlendirme, okul takvimi/veli izinleri, servis güzergâhları, yemek/alerjen menüsü ve kulüp/yoklama/proje akışları web paneline eklendi. Sekiz özellik servis/yemek ayrımıyla dokuz bağımsız modüldür. Yönetici ayarlarından ayrı ayrı kapatılabilir.
 
-Yeni akışlar ortak school-core 1.2.0 paketini kullanır. Eski yerel kayıtlar ve modül tercihleri korunur. Yenileme sözleşmesi yalnızca yeni dönem taksitlerini içerir; sınıf geçişi ayrı onayla uygulanır. Kullanım ve CSV şablonu: [Okul iş akışları](docs/okul-is-akislari.md).
+Yeni akışlar ortak school-core 1.3.0 paketini kullanır. Eski yerel kayıtlar ve modül tercihleri korunur. Yenileme sözleşmesi yalnızca yeni dönem taksitlerini içerir; sınıf geçişi ayrı onayla uygulanır. Kullanım ve CSV şablonu: [Okul iş akışları](docs/okul-is-akislari.md).
 
 ## Optik değerlendirme ve otomatik etüt
 
@@ -18,7 +18,7 @@ CSV ve alan konumları ayarlanabilen DAT/TXT cevap dosyaları, kitapçık bazlı
 
 ## Android uygulaması
 
-Doğrudan kurulabilir imzalı APK: [kampus-1.3.0.apk](apklar/kampus-1.3.0.apk). Güncel teslim, yalnızca APK içeren `apklar/` klasöründedir. Beş rol, çevrimdışı kalıcı veri, iki yerel video, PDF kaydetme/paylaşma ve dosya teslimi desteklenir. Native kaynaklar `apps/mobile`, web ile paylaşılan iş kuralları `packages/school-core` içindedir. Web ve telefon kayıtları birbirinden bağımsızdır; yeni okul iş akışları yalnızca web panelinde bulunur.
+Doğrudan kurulabilir imzalı APK: [kampus-1.4.0.apk](apklar/kampus-1.4.0.apk). Güncel teslim, yalnızca APK içeren `apklar/` klasöründedir. Beş rol, çevrimdışı kalıcı veri, iki yerel video, PDF kaydetme/paylaşma ve dosya teslimi desteklenir. Native kaynaklar `apps/mobile`, web ile paylaşılan iş kuralları `packages/school-core` içindedir. Web ve telefon kayıtları birbirinden bağımsızdır; okul iş akışı modüllerinin tamamı (optik değerlendirme, otomatik etüt ve hedef/gelişim planı dahil) telefonda da bulunur. Ana ekranda hamburger menü yerine kategori kartları yer alır; kategoriye dokununca modülleri kart olarak açılır. Hesap ayarları sağ üstteki isim menüsündedir.
 
 `pnpm mobile` geliştirme sunucusunu, `pnpm build:apk` kalite kontrollerini ve yerel Android release derlemesini çalıştırır. Kurulum, desteklenen cihazlar, imzalama ve doğrulama ayrıntıları: [Android teslim notları](docs/mobile-release.md).
 
@@ -176,13 +176,17 @@ Playwright senaryoları beş rolün 97 sayfasını masaüstü ve mobilde açar; 
 
 Proje kuralları ve planı: [CLAUDE.md](CLAUDE.md).
 
+### Mobil 1.4.0 · Yeni tasarım ve okul iş akışları
+
+Safir üst başlık, yumuşak mavi-gri zemin ve beyaz kartlarla yenilenen arayüz; hamburger menü yerine ana ekranda kategori kartları, kategori ekranında modül kartları ve sağ üstte isim/hesap menüsü. Okul iş akışı modüllerinin tamamı (rehberlik, deneme sınavları, hedef/gelişim planı, kayıt yenileme, program, çalışma planı, takvim, servis, yemek, kulüpler, optik değerlendirme ve otomatik etüt) telefonda çalışır. APK sürüm kodu 7. Ayrıntılar: [Mobil sürüm notları](docs/mobile-release.md).
+
 ### Mobil 1.3.0 · İş akışları ve taslaklar
 
 Ders programı günlük saat akışına, mesajlar konuşma listesi/sohbete, videolar ders filtreli kütüphaneye dönüştürüldü. Metin alanları ortak klavye düzenini kullanır. Ödev/yanıt/mesaj/form/yoklama taslakları rol, çocuk, kayıt ve sınıf/gün bazında cihazda saklanır. Açık/koyu/sistem teması, beş rolün modülleri ve çevrimdışı kayıt korunur. APK sürüm kodu 6; canlı web yayını değiştirilmedi. Ayrıntılar: [Mobil sürüm notları](docs/mobile-release.md).
 
 ## Teslimler ve proje çıktıları
 
-- Güncel Android uygulaması: [kampus-1.3.0.apk](apklar/kampus-1.3.0.apk).
+- Güncel Android uygulaması: [kampus-1.4.0.apk](apklar/kampus-1.4.0.apk).
 - Yatırımcı sunumu: [PowerPoint](sunumlar/kampus-yatirimci-sunumu-v2.pptx), [PDF](sunumlar/kampus-yatirimci-sunumu-v2.pdf) ve [yeniden üretim adımları](sunumlar/OKU.md). Kullanılan ekran görüntüleri `sunumlar/ekran-goruntuleri/`, üretim betikleri `scripts/sunum/` içindedir.
 - Menü/kod rehberi: [PDF](docs/kampus-menu-ve-kod-rehberi.pdf), [sayfa listesi](docs/sayfalar.md).
 

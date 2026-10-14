@@ -8,6 +8,8 @@ import {
 } from '../packages/school-core/src/lib/demo-persistence.js'
 import { availablePages, rowsFor, navigation, clone } from '../apps/mobile/src/model/school.js'
 import { operation, normalizeFields } from '../apps/mobile/src/model/operations.js'
+import { workflowPage } from '../packages/school-core/src/modules/school-workflows.js'
+import { workflowRows } from '../packages/school-core/src/lib/workflow-presentation.js'
 const session = (role) => ({ role, childId: 's1', theme: 'light' })
 let sequence = 0
 const id = (prefix) => `${prefix}-mobile-test-${++sequence}`
@@ -36,7 +38,11 @@ test('Mobil: beş rolün listeleri doludur, çocuk ve öğretmen kapsamları bir
     ])
   for (const [role, pages] of Object.entries(navigation))
     for (const page of pages) {
-      if (!special.has(page.path))
+      // İş akışı sayfaları yetkisiz rolde veya boş örnek veride de hatasız açılır;
+      // optik ve etüt ekranları kendi veri kaynaklarını (profil, uygunluk, etüt) kullanır.
+      if (workflowPage(page.path)) {
+        assert.ok(Array.isArray(workflowRows(state, session(role), page.path)))
+      } else if (!special.has(page.path))
         assert.ok(
           rowsFor(state, session(role), page.path).length > 0,
           `${role}/${page.path} dolu olmalı`,

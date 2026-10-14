@@ -41,7 +41,7 @@ export function saveBranch(state, input, makeId, recordId = null) {
       deletedAt: null,
     })
 }
-export function saveTeacher(state, input, makeId, recordId = null) {
+export function saveTeacher(state, input, makeId, recordId = null, now = new Date().toISOString()) {
   const data = teacherSchema.parse(input)
   if (!active(state.branches, data.branchId)) throw new Error('Aktif bir kampüs seçin.')
   const subject = subjectById(data.subjectId)
@@ -57,7 +57,7 @@ export function saveTeacher(state, input, makeId, recordId = null) {
       (session) =>
         session.teacherId === recordId &&
         session.status === 'Planlandı' &&
-        Date.parse(session.date) > Date.now(),
+        Date.parse(session.date) > Date.parse(now),
     )
   )
     throw new Error(

@@ -14,6 +14,7 @@ import {
 import { homeworkRows, paymentSummary } from '../model/experience.js'
 import { Badge, Button, Card, T, useColors } from '../ui/components.jsx'
 import { ChildSelector, ListRow, Screen, Section } from '../ui/SchoolLayout.jsx'
+import ModuleHub from '../ui/ModuleHub.jsx'
 import { useMinute } from '../ui/use-minute.js'
 import { dateLabel, dayKey, money, timeLabel } from '@kampus/school-core/lib/format.js'
 
@@ -72,6 +73,7 @@ export default function RoleHome({ navigation }) {
           {date}
         </T>
       </View>
+      <ModuleHub navigation={navigation} />
       {role === 'veli' ? (
         <>
           <ChildSelector />
@@ -202,21 +204,21 @@ export default function RoleHome({ navigation }) {
                 soft
                 onPress={() => detail(nextLesson)}
                 label="Sıradaki dersin ayrıntıları"
-                style={{ gap: 8, padding: 18, backgroundColor: c.primarySoft }}
+                style={{ gap: 8, padding: 20, backgroundColor: c.hero }}
               >
-                <T bold size={12} style={{ color: c.primary }}>
+                <T bold size={12} style={{ color: c.heroMuted }}>
                   Sıradaki ders
                   {dayKey(nextLesson.source.date) !== dayKey()
                     ? ` · ${dateLabel(nextLesson.source.date)}`
                     : ''}
                 </T>
-                <T bold size={20}>
+                <T bold size={20} style={{ color: c.heroText }}>
                   {nextLesson.title}
                 </T>
-                <T bold size={16} style={{ color: c.primary }}>
+                <T bold size={16} style={{ color: c.accent }}>
                   {timeRange(nextLesson.source)}
                 </T>
-                <T muted size={14}>
+                <T size={14} style={{ color: c.heroMuted }}>
                   {nameOf(data, 'teachers', nextLesson.source.teacherId)}
                 </T>
               </Card>

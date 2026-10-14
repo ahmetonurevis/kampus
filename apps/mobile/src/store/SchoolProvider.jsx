@@ -92,7 +92,8 @@ export function SchoolProvider({ children }) {
       return false
     }
   }
-  async function commit(mutate, message = 'İşlem kaydedildi.') {
+  // onError: açık bir pencerenin içinde hata metnini göstermek için (toast modalın arkasında kalabilir).
+  async function commit(mutate, message = 'İşlem kaydedildi.', onError) {
     if (lock.current) {
       notify('Önceki işlem tamamlanıyor.', 'warning')
       return false
@@ -113,10 +114,10 @@ export function SchoolProvider({ children }) {
         await AsyncStorage.setItem(DATA_KEY, writer.current(next))
       } catch (err) {
         recordError(err, 'storage-write')
-        notify(
-          'Kayıt için yeterli alan olmayabilir. İşlem kaydedilmedi; yer açıp tekrar deneyin.',
-          'error',
-        )
+        const text =
+          'Kayıt için yeterli alan olmayabilir. İşlem kaydedilmedi; yer açıp tekrar deneyin.'
+        notify(text, 'error')
+        onError?.(text)
         return false
       }
       current.current = next
@@ -125,7 +126,9 @@ export function SchoolProvider({ children }) {
       return true
     } catch (err) {
       recordError(err, 'operation', 'warn')
-      notify(err.issues?.[0]?.message || err.message || 'İşlem tamamlanamadı.', 'error')
+      const text = err.issues?.[0]?.message || err.message || 'İşlem tamamlanamadı.'
+      notify(text, 'error')
+      onError?.(text)
       return false
     } finally {
       lock.current = false

@@ -1,17 +1,17 @@
 export const palettes = {
   light: {
-    background: '#FFFFFF',
+    background: '#EFF3FB',
     surface: '#FFFFFF',
-    soft: '#F5F7FA',
-    text: '#192638',
-    muted: '#627084',
-    border: '#E8ECF2',
+    soft: '#E7EDF8',
+    text: '#14213D',
+    muted: '#566379',
+    border: '#D9E1F0',
     primary: '#1E3A8A',
-    primarySoft: '#EEF3FC',
+    primarySoft: '#DCE7FB',
     onPrimary: '#FFFFFF',
     accent: '#F97316',
-    onAccent: '#192638',
-    accentSoft: '#FFF0E5',
+    onAccent: '#14213D',
+    accentSoft: '#FFE6D2',
     accentText: '#A74109',
     hero: '#1E3A8A',
     heroText: '#FFFFFF',
@@ -26,14 +26,14 @@ export const palettes = {
     scrim: '#0F172A88',
   },
   dark: {
-    background: '#0F172A',
-    surface: '#182235',
-    soft: '#202E45',
+    background: '#0B1324',
+    surface: '#15223B',
+    soft: '#1E2E4D',
     text: '#F1F5FC',
     muted: '#B1BED2',
-    border: '#34455D',
+    border: '#2D4066',
     primary: '#ABC4FF',
-    primarySoft: '#26395E',
+    primarySoft: '#27406F',
     onPrimary: '#10224F',
     accent: '#F97316',
     onAccent: '#192638',
@@ -52,5 +52,5 @@ export const palettes = {
     scrim: '#000000AA',
   },
 }
-export const spaces = { page: 22, card: 18, gap: 12, section: 26, radius: 12 }
-export const shape = { field: 10, button: 10, card: 12, sheet: 20, pill: 999 }
+export const spaces = { page: 20, card: 16, gap: 12, section: 24, radius: 16 }
+export const shape = { field: 12, button: 12, card: 16, sheet: 24, pill: 999 }

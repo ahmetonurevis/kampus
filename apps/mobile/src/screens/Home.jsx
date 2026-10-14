@@ -9,6 +9,7 @@ import { dateLabel, dayKey, money, timeLabel } from '@kampus/school-core/lib/for
 import { Avatar, Button, Card, Icon, T, styles, useColors } from '../ui/components.jsx'
 import RoleHome from './RoleHome.jsx'
 import RecordCard from '../ui/RecordCard.jsx'
+import ModuleHub from '../ui/ModuleHub.jsx'
 
 function Section({ title, action, onPress, children }) {
   const c = useColors()
@@ -146,6 +147,8 @@ function InstitutionHome({ navigation }) {
                 : 'Okulunuzun güncel özeti burada.'}
         </T>
       </View>
+
+      <ModuleHub navigation={navigation} />
 
       {isParent && (
         <View style={{ gap: 16 }}>

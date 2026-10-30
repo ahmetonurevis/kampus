@@ -172,11 +172,10 @@ Toplam: **99 menü sayfası + 2 kayıt detayı = 101 panel sayfası**, ayrıca g
 
 React web (`apps/web-react`) menüsünde olup henüz kendi ekranı bulunmayan sayfalar "Bu ekran taşınıyor" yer tutucusuyla açılır. Liste `apps/web-react/tests/page-coverage.test.ts` izin listesidir: `school` ve `language_school` için beş rolün menüsü sayfa kaydıyla (`apps/web-react/src/lib/page-coverage.ts`) karşılaştırılır; liste yalnız küçülebilir, React karşılığı olmayan yeni menü sayfası testi kırar. Menü iki kurum türünde de aynı sayfaları verir (modül türe uymuyorsa sayfa o kurumda yoktur; aşağıdaki sayfaların hepsi iki türde de vardır). Vue karşılığı `apps/web/src/views/` altındaki görünümdür.
 
-Öncelik ölçüsü: P1 veli/öğrenci günlük kullanımı ve para (ödeme sayfaları W13'te, akademik analiz sayfaları W15'te, izin/mazeret ve şikayet/talep sayfaları W16'da, öğretmen Sınıf Analizi ile yönetici Risk Listesi ve Kayıt Raporları W17'de taşındı; İçerik Havuzu yeni sayfa olarak doğrudan React'te eklendi; P1 boş), P2 veli/öğrenci akademik ve iletişim, P3 öğretmen günlük işi, P4 yönetim ve ön büro raporları.
+Öncelik ölçüsü: P1 veli/öğrenci günlük kullanımı ve para (ödeme sayfaları W13'te, akademik analiz sayfaları W15'te, izin/mazeret ve şikayet/talep sayfaları W16'da, öğretmen Sınıf Analizi ile yönetici Risk Listesi ve Kayıt Raporları W17'de, yönetici SLA Raporu ile öğrenci Ders Videoları W18'de taşındı; İçerik Havuzu yeni sayfa olarak doğrudan React'te eklendi; P1 boş), P2 veli/öğrenci akademik ve iletişim, P3 öğretmen günlük işi, P4 yönetim ve ön büro raporları.
 
 | Öncelik | Rol      | Sayfa (yol)                                  | Vue karşılığı       |
 | ------- | -------- | -------------------------------------------- | ------------------- |
-| P2      | Öğrenci  | Ders Videoları (`videolar`)                  | `Learning.vue`      |
 | P2      | Öğrenci  | Öğretmenime Sor (`soru-sor`)                 | `Learning.vue`      |
 | P2      | Öğrenci  | Etüt Randevusu (`randevu-talep`)             | `Communication.vue` |
 | P3      | Öğretmen | Soru Kuyruğu (`sorular`)                     | `Learning.vue`      |
@@ -184,14 +183,16 @@ React web (`apps/web-react`) menüsünde olup henüz kendi ekranı bulunmayan sa
 | P4      | Ön büro  | Aday Öğrenciler (`adaylar`)                  | `Crm.vue`           |
 | P4      | Ön büro  | Kayıt İşlemleri (`kayit-islemleri`)          | `Crm.vue`           |
 | P4      | Ön büro  | Tanışma Görüşmeleri (`deneme-dersi-takvimi`) | `Crm.vue`           |
-| P4      | Yönetici | SLA Raporu (`sla-raporu`)                    | `Management.vue`    |
 
-Rol başına yer tutucu sayısı: yönetici 1, ön büro 3, öğretmen 2, öğrenci 3, veli 0 (toplam 9).
+Rol başına yer tutucu sayısı: yönetici 0, ön büro 3, öğretmen 2, öğrenci 2, veli 0 (toplam 7).
 
-Yer tutucu kalanların gerekçesi (W17 seçimi: yalnız mevcut API okuma uçlarıyla tam karşılanabilenler taşındı):
+Yer tutucu kalanların gerekçesi (W17 ve W18 seçimi: yalnız mevcut API okuma uçlarıyla tam karşılanabilenler taşındı):
 
 - Aday Öğrenciler (`adaylar`), Kayıt İşlemleri (`kayit-islemleri`) ve Tanışma Görüşmeleri (`deneme-dersi-takvimi`): aday ekleme, aşama değiştirme, not ve görüşme planlama yazma gerektirir; core'da `prospects` yazan API komutu yoktur. `TODO(api-prospect-write)`.
-- SLA Raporu (`sla-raporu`): öğretmen başına yanıt süresi ve ihlal, soru kuyruğu (`questions`) kayıtlarından hesaplanır; soru kuyruğu sayfalarıyla (`sorular`, `soru-sor`) aynı veriyi kullanır, onlarla birlikte yapılır. Okuma ucu vardır; W17'de üç sayfa sınırı nedeniyle bırakıldı.
+- Öğretmenime Sor (`soru-sor`) ve Soru Kuyruğu (`sorular`): öğrenci soru gönderir, öğretmen yanıtlar; `questions` yazan API komutu yoktur, sayfaların ana işlevi yazmadır. Okuma tarafı (kuyruk, SLA durumu) hazırdır ve yönetici SLA Raporu aynı kayıtları okur. `TODO(api-question-write)`.
+- Etüt Randevusu (`randevu-talep`) ve Etüt & Görüşmeler (`randevular`): randevu talebi, onay/red ve müsaitlik saati ekleme yazma gerektirir; `appointments` ve `availability` yazan API komutu yoktur. Veli Randevu & Mesajlar sayfasının Randevular sekmesi de buna bağlıdır. `TODO(web-randevu)`, `TODO(api-appointment-write)`.
+
+W18'de taşınan sayfaların açık noktaları: SLA Raporu soru kayıtlarını bütünüyle çeker, yanıt süresi ortalaması sunucu sayımında yoktur (`TODO(api-sla-aggregate)`); Ders Videoları izleme yüzdesini okur ama oynatırken kaydedemez, `videoProgress` yazan uç yoktur (`TODO(api-video-progress)`).
 
 ## Mobil (API modu)
 

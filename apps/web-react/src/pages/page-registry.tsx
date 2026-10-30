@@ -18,6 +18,9 @@ const EnrollmentReportsPage = lazy(async () => ({
 const RiskListPage = lazy(async () => ({
   default: (await import('./management/RiskListPage.tsx')).RiskListPage,
 }))
+const SlaReportPage = lazy(async () => ({
+  default: (await import('./management/SlaReportPage.tsx')).SlaReportPage,
+}))
 const StaffPage = lazy(async () => ({
   default: (await import('./management/StaffPage.tsx')).StaffPage,
 }))
@@ -97,6 +100,9 @@ const StudentHomeworkPage = lazy(async () => ({
 const StudentQuizzesPage = lazy(async () => ({
   default: (await import('./learning/StudentLearningPages.tsx')).StudentQuizzesPage,
 }))
+const StudentVideosPage = lazy(async () => ({
+  default: (await import('./learning/StudentVideosPage.tsx')).StudentVideosPage,
+}))
 const StudentMaterialsPage = lazy(async () => ({
   default: (await import('./learning/StudentMaterialsPage.tsx')).StudentMaterialsPage,
 }))
@@ -149,6 +155,8 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <EnrollmentReportsPage page={page} />
     case 'yonetici/risk-listesi':
       return <RiskListPage page={page} />
+    case 'yonetici/sla-raporu':
+      return <SlaReportPage page={page} />
     case 'yonetici/ayarlar':
       return <SettingsPage page={page} />
     case 'ogrenci/ayarlar':
@@ -201,6 +209,8 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <TeacherQuizzesPage page={page} />
     case 'ogrenci/odevler':
       return <StudentHomeworkPage page={page} />
+    case 'ogrenci/videolar':
+      return <StudentVideosPage page={page} />
     case 'ogrenci/materyaller':
       return <StudentMaterialsPage page={page} />
     case 'ogrenci/soru-coz':

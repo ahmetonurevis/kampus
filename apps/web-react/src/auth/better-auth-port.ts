@@ -1,11 +1,11 @@
 // `AuthPort`'un Better Auth uygulaması. İstemci dışarıdan verilir; testte sahte istemciyle çalışır.
-import type { AuthPort, LoginInput, SignInResult } from './auth-port.ts'
 import {
   retryAfterSeconds,
   SIGN_IN_MESSAGES,
   signInFailure,
   type AuthClientError,
-} from './sign-in-errors.ts'
+} from '@kampus/react-shared/sign-in-errors.ts'
+import type { AuthPort, LoginInput, SignInResult } from './auth-port.ts'
 
 /** `createAuthClient` (`better-auth/react`) çıktısının kullandığımız kısmı. */
 export interface SignInClient {

@@ -124,7 +124,7 @@ Taşıma tek migration'la yapılır: tablo oluşturulur, `records`'tan veri kopy
 ## 7. Arşivleme ve silme
 
 - Kullanıcı işlemiyle silme = arşivleme: `archived_at = now()`, `version + 1`. Sorgular varsayılan olarak `archived_at is null` süzer; depo fonksiyonları bunu varsayılan yapar.
-- Arşivden geri alma `archived_at = null`; aktarılmış bağlı görevler otomatik geri taşınmaz (CLAUDE.md iş kuralı).
+- Arşivden geri alma `archived_at = null`; çalıştırıcıda core arşivli bir kaydın kimliğini yeniden eklerse kayıt yeniden açılır: veri core'un yeni kaydıyla değişir, `version` arşivdeki sürümden artarak sürer, yazma `restore` olarak döner ve denetim kaydının `changes`'ına `restored: [{ collection, id }]` eklenir; aktarılmış bağlı görevler otomatik geri taşınmaz (CLAUDE.md iş kuralı).
 - Bağlı kaydı olan kayıt arşivlenirken bağlılar school-core kuralıyla aktarılır veya işlem reddedilir; geçmiş finans/not/yoklama korunur.
 - Kalıcı silme (`delete`) yalnız üç yolla: saklama süresi dolan kayıtların imha işi, veri sahibinin silme talebi, süresi dolan teknik kayıtlar (Better Auth `sessions` ve `verifications`, `idempotency_keys`; günlük `pg-boss` temizlik işiyle). Her biri denetim kaydına yazılır. Ayrıntı: [guvenlik-kvkk.md](guvenlik-kvkk.md#10-saklama-ve-silme).
 

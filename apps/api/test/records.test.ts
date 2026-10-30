@@ -172,6 +172,7 @@ describe('records deposu', () => {
       LATER,
     )
     assert.equal(revived?.version, 3)
+    assert.equal(revived?.kind, 'restore')
     const row = await findRecord(db, id, 'invoices', 'test-inv-2')
     assert.equal(row?.archivedAt, null)
     assert.equal(row?.data.amount, 5)

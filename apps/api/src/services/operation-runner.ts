@@ -278,6 +278,18 @@ function difference(
   return { writes, fields }
 }
 
+/**
+ * `audit_log.changes`: değişen alan adları; arşivden yeniden açılan kayıtlar ayrıca kimlikleriyle
+ * (`restored`) yazılır, çünkü yeniden açma eski veriyi yenisiyle değiştirir ve sürümü sürdürür.
+ */
+function auditChanges(fields: ReadonlySet<string>, changes: readonly WrittenRecord[]) {
+  const restored = changes
+    .filter((change) => change.kind === 'restore')
+    .map((change) => ({ collection: change.collection, id: change.id }))
+  const sorted = [...fields].sort()
+  return restored.length > 0 ? { fields: sorted, restored } : { fields: sorted }
+}
+
 export async function runOperation<R>(
   ctx: ServiceContext,
   request: OperationRequest<R>,
@@ -344,7 +356,7 @@ export async function runOperation<R>(
         action: request.action,
         entityType: request.entity.type,
         entityId: request.entity.id,
-        changes: { fields: [...fields].sort() },
+        changes: auditChanges(fields, changes),
         createdAt: ctx.now,
       })
     }
@@ -355,6 +367,7 @@ export async function runOperation<R>(
       updated: changes.filter((change) => change.kind === 'update').length,
       archived: changes.filter((change) => change.kind === 'archive').length,
       moved: changes.filter((change) => change.kind === 'move').length,
+      restored: changes.filter((change) => change.kind === 'restore').length,
     })
     return { result, changes }
   })

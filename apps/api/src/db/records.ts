@@ -170,8 +170,12 @@ export type RecordWrite =
     }
   | { kind: 'archive'; collection: CollectionName; id: string; expectedVersion: number }
 
+/**
+ * Yazılan kayıt. `restore`: ekleme, aynı anahtarda arşivlenmiş kaydı yeniden açtı; veri yenisiyle
+ * değişti, sürüm arşivdeki sürümden devam etti (denetimde "yeniden açıldı").
+ */
 export interface WrittenRecord {
-  kind: RecordWrite['kind']
+  kind: RecordWrite['kind'] | 'restore'
   collection: CollectionName
   id: string
   version: number
@@ -259,8 +263,9 @@ export async function writeRecords(
           .returning({ version: records.version })
         // Canlı kayıtla çakışan ekleme satır döndürmez: eşzamanlı ekleme veya görülmemiş kayıt.
         if (!row) throw new ConflictError()
+        // Yeni satır sürüm 1 ile başlar; arşivlenmiş satır en az 2'dedir (arşiv sürümü artırır).
         written.push({
-          kind: 'insert',
+          kind: row.version > 1 ? 'restore' : 'insert',
           collection: write.collection,
           id: write.id,
           version: row.version,

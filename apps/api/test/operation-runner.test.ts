@@ -516,6 +516,64 @@ describe('işlem çalıştırıcı', () => {
     assert.equal(outcome.changes.length, 1)
   })
 
+  test('arşivli kaydı yeniden açma sürümü sürdürür ve denetime yeniden açıldı düşer', async () => {
+    const ctx = await institution(['transportAssignments'])
+    const assignment = seed.transportAssignments[0]
+    assert.ok(assignment)
+    const entity = { type: 'transportAssignments', id: assignment.id }
+    await runOperation(ctx, {
+      action: 'transport.remove',
+      collections: ['transportAssignments'],
+      entity,
+      run: (state) => {
+        state.transportAssignments.splice(0, 1)
+      },
+    })
+    const archived = await findRecord(
+      db,
+      ctx.institutionId,
+      'transportAssignments',
+      assignment.id,
+      {
+        includeArchived: true,
+      },
+    )
+    assert.equal(archived?.version, 2)
+    assert.ok(archived?.archivedAt)
+
+    const reopened = { ...assignment, status: 'test-yeniden' }
+    const outcome = await runOperation(ctx, {
+      action: 'transport.assign',
+      collections: ['transportAssignments'],
+      entity,
+      run: (state) => {
+        state.transportAssignments.unshift(reopened)
+      },
+    })
+    assert.deepEqual(outcome.changes, [
+      { kind: 'restore', collection: 'transportAssignments', id: assignment.id, version: 3 },
+    ])
+    const live = await findRecord(db, ctx.institutionId, 'transportAssignments', assignment.id)
+    assert.equal(live?.archivedAt, null)
+    assert.equal(live?.version, 3)
+    assert.deepEqual(live?.data, JSON.parse(JSON.stringify(reopened)))
+    // Yeniden açılan kayıt core'un koyduğu yerde (başta) yüklenir.
+    const order = await loadRecords(db, ctx.institutionId, ['transportAssignments'])
+    assert.equal(order[0]?.id, assignment.id)
+
+    const entries = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.institutionId, ctx.institutionId))
+    const assign = entries.find((entry) => entry.action === 'transport.assign')
+    assert.deepEqual(assign?.changes, {
+      fields: Object.keys(JSON.parse(JSON.stringify(reopened))).sort(),
+      restored: [{ collection: 'transportAssignments', id: assignment.id }],
+    })
+    const remove = entries.find((entry) => entry.action === 'transport.remove')
+    assert.equal(remove?.changes && 'restored' in remove.changes, false)
+  })
+
   test('yüklenmeyen koleksiyona erişim programlama hatasıdır (500)', async () => {
     const ctx = await institution(['transportAssignments'])
     const before = await snapshot(ctx.institutionId)

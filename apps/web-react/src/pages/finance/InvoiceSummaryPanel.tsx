@@ -30,8 +30,6 @@ export function InvoiceSummaryPanel({ invoiceId, onClose, actions }: Props) {
 
 function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
   const item = useCoreItem('invoices', invoiceId)
-  // Okul numarası liste bağlı alanlarında yoktur; yalnız bu öğrencinin kaydı okunur.
-  const student = useCoreItem('students', item.data?.record.studentId ?? null)
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
   const row = invoiceRow(item.data, dayKey())
@@ -61,7 +59,7 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
             row.paidAt ? dateLabel(row.paidAt, { year: 'numeric' }) : 'Henüz tahsil edilmedi',
           ],
           ['Ödeme yöntemi', row.paidAt ? (row.method ?? '—') : '—'],
-          ['Okul numarası', student.data?.record.number ?? '—'],
+          ['Okul numarası', row.studentNumber],
           ['Kayıt numarası', row.id.toUpperCase()],
         ].map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 border-b py-2.5 last:border-b-0">

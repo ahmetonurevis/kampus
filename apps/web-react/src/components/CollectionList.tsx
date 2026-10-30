@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { useListView } from '@/hooks/use-list-view.ts'
-import { hasFilter, type FilterField, type FilterValues, type Row } from '@/lib/list-query.ts'
+import type { FilterField, FilterValues, Row } from '@/lib/list-query.ts'
 import type { ListState } from '@/lib/list-state.ts'
-import { orderRows, presetActive, type SortOption } from '@/lib/list-view.ts'
+import { listNarrowed, orderRows, presetActive, type SortOption } from '@/lib/list-view.ts'
 import { cn } from '@/lib/utils'
 
 export type ListPreset = { label: string; values: FilterValues }
@@ -64,8 +64,7 @@ export function CollectionList<T extends Row>({
   )
   const config = useMemo(() => ({ fields: filters, searchKeys, sort }), [filters, searchKeys, sort])
   const view = useListView(rows, state, dispatch, config)
-  const hasQuery =
-    externalActive || state.query !== '' || Object.values(state.filters).some(hasFilter)
+  const hasQuery = listNarrowed(state, externalActive)
 
   function reset() {
     dispatch({ type: 'clear' })
@@ -151,12 +150,16 @@ export function CollectionList<T extends Row>({
         <div className="mt-4">
           <EmptyState
             icon="Search"
-            title="Uygun kayıt bulunamadı."
-            description="Aramayı veya filtreleri değiştirerek yeniden deneyin."
+            title={hasQuery ? 'Uygun kayıt bulunamadı.' : 'Henüz kayıt yok.'}
+            description={
+              hasQuery ? 'Aramayı veya filtreleri değiştirerek yeniden deneyin.' : undefined
+            }
             action={
-              <Button variant="secondary" onClick={reset}>
-                Aramayı ve filtreleri temizle
-              </Button>
+              hasQuery ? (
+                <Button variant="secondary" onClick={reset}>
+                  Aramayı ve filtreleri temizle
+                </Button>
+              ) : undefined
             }
           />
         </div>

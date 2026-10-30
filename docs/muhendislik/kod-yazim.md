@@ -206,7 +206,7 @@ Parçalar:
 - `hooks/use-core-collection.ts`: koleksiyon adını `State` anahtarına bağlayan tipli sarmalayıcılar (`useCoreList/All/Item/FetchAll`); kayıt tipi elle yazılmaz.
 - `hooks/use-list-state.ts` + `lib/list-url.ts`: arama, sayfa, sıralama ve (`urlFilters` verilen) tekli filtreler URL'de; filtre değişince sayfa 1'e döner.
 - `lib/collection-list.ts`: `CollectionListConfig` ile `ListState` → sunucu sorgusu (`collectionQueryFromList`, CSV için sayfasız `exportQueryFromList`, `sortableColumns`). Kısa arama (<2 karakter) gönderilmez.
-- `components/DataTable.tsx` `ServerDataTable`: sunucu sayfalı tablo; masaüstünde sabit başlık/işlem sütunu, dar ekranda kart. Yükleniyor, boş ve hata durumları kendisindedir.
+- `components/DataTable.tsx` `ServerDataTable`: sunucu sayfalı tablo; masaüstünde sabit başlık/işlem sütunu, dar ekranda kart. Yükleniyor, boş ve hata durumları kendisindedir. Boş sonuçta arama, değeri dolu filtre veya `externalActive` yoksa `empty` metni (varsayılan "Henüz kayıt yok.") gösterilir ve "Aramayı ve filtreleri temizle" düğmesi çıkmaz; daraltma varsa `emptyFiltered` metni ve düğme gelir (`lib/list-view.ts` `emptyListView`; `CollectionList` aynı `listNarrowed`'i kullanır).
 - `hooks/use-detail-panel.ts` (`?parametre=<id>` ile URL'li sağ panel; geri/ileri kapatır ve açar), `use-debounced-value.ts` (arama 300 ms), `use-csv-export.ts` (tüm sayfaları çeker, indirir).
 - `components/QueryError.tsx`: Türkçe hata + "Yeniden dene"; `module_disabled` hatası kullanıcıyı dashboard'a götürür. `pages/page-registry.tsx`: taşınmış sayfaların tembel kaydı.
 

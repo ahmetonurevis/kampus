@@ -318,6 +318,23 @@ test.describe('otomatik etüt', () => {
       .toMatchObject({ status: 'İptal', cancelReason: 'Öğretmen izinli' })
   })
 
+  test('boş etüt listesi arama yokken "Henüz etüt yok" der; aranınca temizleme düğmesi çıkar', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici'], students: ['s1'] })
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/otomatik-etut')
+    await expect(page.getByText('Henüz etüt yok.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' })).toHaveCount(0)
+
+    await page.getByLabel('Tabloda ara').fill('zzzz-yok')
+    await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
+    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
+    await expect(page.getByText('Henüz etüt yok.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' })).toHaveCount(0)
+  })
+
   test('dil okulunda optik ve etüt adresleri kullanıma kapalı der', async ({ loginAs }) => {
     const page = await loginAs({ email: 'ozan.er@kampus.example' })
     for (const path of ['optik-degerlendirme', 'otomatik-etut']) {

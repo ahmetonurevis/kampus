@@ -34,7 +34,8 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
 import { ExamImportTools } from './ExamImportTools.tsx'
-import { dependentResets, formDefaults, formPreview } from './workflow-state.ts'
+import { RenewalSummary } from './RenewalSummary.tsx'
+import { dependentResets, formDefaults, formPreview, renewalSummary } from './workflow-state.ts'
 
 /** Kısa form sağ panelde, uzun form geniş pencerede (Vue: 6 alandan fazlası geniş). */
 const SHORT_FORM_FIELDS = 6
@@ -104,6 +105,7 @@ function WorkflowForm({ action, state, session, version, onClose }: FormProps) {
   })
   const values = useWatch({ control: form.control }) as FormValues
   const fields = definition.fields(values)
+  const quote = renewalSummary(command, values)
   const busy = run.isPending || form.formState.isSubmitting
 
   const onSubmit = form.handleSubmit(async (input) => {
@@ -186,6 +188,7 @@ function WorkflowForm({ action, state, session, version, onClose }: FormProps) {
           </div>
         </>
       )}
+      {quote ? <RenewalSummary quote={quote} /> : null}
       {rootError?.message ? (
         <p role="alert" className="text-sm text-danger">
           {rootError.message}

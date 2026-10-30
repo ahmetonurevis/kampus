@@ -1,11 +1,16 @@
 // Okul iş akışı ekranlarının saf hesapları: hangi koleksiyonlar okunur, okunan kayıtlardan core
 // `State` nasıl kurulur, satır/CSV/form önizlemesi nasıl türetilir. Sunum metinleri ve kapsam
 // kuralları core `workflow-presentation.ts`'tedir; burada ikinci kopya yazılmaz.
+import { ZodError } from 'zod'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import type { Session as CoreSession } from '@kampus/school-core/lib/domain.ts'
-import { dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
-import { parseResultsCsv } from '@kampus/school-core/lib/school-workflows.ts'
+import { dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
+import {
+  parseResultsCsv,
+  renewalQuote,
+  type RenewalQuote,
+} from '@kampus/school-core/lib/school-workflows.ts'
 import {
   changeFormValue,
   readFormValue,
@@ -27,7 +32,8 @@ export const MODULE_SOURCES = {
   goals: ['studentGoals', 'mockExams', 'mockResults', 'subjects'],
   guidance: ['guidanceCases'],
   exams: ['mockExams', 'mockResults', 'subjects', 'opticalProfiles', 'opticalEvaluations'],
-  renewal: ['renewals', 'branches'],
+  // Yeni dönem taksitleri ayrıntıda `invoices`'tan listelenir (finans modülü kapalıysa boş kalır).
+  renewal: ['renewals', 'branches', 'invoices'],
   planning: ['schedule', 'subjects', 'branches'],
   study: ['studyTasks', 'subjects'],
   calendar: ['schoolEvents', 'eventConsents', 'branches'],
@@ -214,6 +220,20 @@ export function csvSummary(text: unknown): CsvSummary {
     return { ok: true, rows: parseResultsCsv(text).length }
   } catch (error) {
     if (error instanceof DomainError) return { ok: false, message: error.message }
+    throw error
+  }
+}
+
+/**
+ * Kayıt yenileme formunun ücret özeti (core `renewalQuote`): yalnız "yenile" türünde ve değerler
+ * geçerliyken hesaplanır; geçersiz değerde özet gizlenir, hatayı alan doğrulaması gösterir.
+ */
+export function renewalSummary(command: string, values: FormValues): RenewalQuote | null {
+  if (command !== 'renewal' || values.mode !== 'renew') return null
+  try {
+    return renewalQuote(values)
+  } catch (error) {
+    if (error instanceof DomainError || error instanceof ZodError) return null
     throw error
   }
 }

@@ -19,6 +19,7 @@ import {
   formDefaults,
   formPreview,
   isWorkflowModuleKey,
+  renewalSummary,
   localDateTime,
   versionMap,
   workflowScopeLabel,
@@ -190,4 +191,26 @@ test('csvFileProblem yalnız 1 MB altı .csv dosyasını kabul eder', () => {
   assert.equal(csvFileProblem({ name: 'sonuc.CSV', size: 10 }), null)
   assert.match(csvFileProblem({ name: 'sonuc.xlsx', size: 10 }) ?? '', /CSV dosyası/)
   assert.match(csvFileProblem({ name: 'sonuc.csv', size: 1024 * 1024 + 1 }) ?? '', /1 MB/)
+})
+
+test('renewalSummary yalnız geçerli yenileme değerlerinde core hesabını döndürür', () => {
+  const values = {
+    studentId: 's3',
+    targetClassId: 'c1',
+    year: 2027,
+    mode: 'renew',
+    total: '30000',
+    scholarship: '10',
+    discount: '500',
+    count: '6',
+    startDate: '2027-01-10',
+  }
+  const quote = renewalSummary('renewal', values)
+  assert.equal(quote?.amount, 2_650_000)
+  assert.equal(quote?.installments.length, 6)
+  assert.equal(renewalSummary('renewal', { ...values, mode: 'graduate' }), null)
+  assert.equal(renewalSummary('meal', values), null)
+  // Burs ve indirim sonrası 100 ₺'nin altı ve şemaya uymayan değer özet üretmez.
+  assert.equal(renewalSummary('renewal', { ...values, discount: '29500' }), null)
+  assert.equal(renewalSummary('renewal', { ...values, total: '' }), null)
 })

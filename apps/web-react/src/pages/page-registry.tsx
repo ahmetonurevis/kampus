@@ -69,6 +69,7 @@ const WORKFLOW_PATHS = new Set([
   'hedef-plani',
   'rehberlik',
   'deneme-sinavlari',
+  'kayit-yenileme',
 ])
 
 const MIGRATED = new Set([

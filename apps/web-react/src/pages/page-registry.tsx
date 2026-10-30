@@ -36,6 +36,15 @@ const ParentTrackingPage = lazy(async () => ({
 const ChildrenPage = lazy(async () => ({
   default: (await import('./academic/ChildrenPage.tsx')).ChildrenPage,
 }))
+const ExamAnalysisPage = lazy(async () => ({
+  default: (await import('./academic/ExamAnalysisPage.tsx')).ExamAnalysisPage,
+}))
+const AcademicProgressPage = lazy(async () => ({
+  default: (await import('./academic/AcademicProgressPage.tsx')).AcademicProgressPage,
+}))
+const TeacherReviewsPage = lazy(async () => ({
+  default: (await import('./academic/TeacherReviewsPage.tsx')).TeacherReviewsPage,
+}))
 
 const PersonalSettingsPage = lazy(async () => ({
   default: (await import('./settings/PersonalSettingsPage.tsx')).PersonalSettingsPage,
@@ -148,6 +157,14 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <ParentTrackingPage page={page} />
     case 'veli/cocuk-secici':
       return <ChildrenPage page={page} />
+    case 'ogrenci/sinav-analizi':
+    case 'veli/sinav-analizi':
+      return <ExamAnalysisPage page={page} />
+    case 'ogrenci/seviye-takibi':
+    case 'veli/seviye-takibi':
+      return <AcademicProgressPage page={page} />
+    case 'veli/ogretmen-degerlendirmeleri':
+      return <TeacherReviewsPage page={page} />
     case 'ogretmen/odevler':
       return <TeacherHomeworkPage page={page} />
     case 'ogretmen/materyal-yukle':

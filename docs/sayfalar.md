@@ -168,32 +168,27 @@ Toplam: **99 menü sayfası + 2 kayıt detayı = 101 panel sayfası**, ayrıca g
 
 React web (`apps/web-react`) menüsünde olup henüz kendi ekranı bulunmayan sayfalar "Bu ekran taşınıyor" yer tutucusuyla açılır. Liste `apps/web-react/tests/page-coverage.test.ts` izin listesidir: `school` ve `language_school` için beş rolün menüsü sayfa kaydıyla (`apps/web-react/src/lib/page-coverage.ts`) karşılaştırılır; liste yalnız küçülebilir, React karşılığı olmayan yeni menü sayfası testi kırar. Menü iki kurum türünde de aynı sayfaları verir (modül türe uymuyorsa sayfa o kurumda yoktur; aşağıdaki sayfaların hepsi iki türde de vardır). Vue karşılığı `apps/web/src/views/` altındaki görünümdür.
 
-Öncelik ölçüsü: P1 veli/öğrenci günlük kullanımı ve para (ödeme sayfaları W13'te taşındı, P1 boş), P2 veli/öğrenci akademik ve iletişim, P3 öğretmen günlük işi, P4 yönetim ve ön büro raporları.
+Öncelik ölçüsü: P1 veli/öğrenci günlük kullanımı ve para (ödeme sayfaları W13'te, akademik analiz sayfaları W15'te taşındı; P1 boş), P2 veli/öğrenci akademik ve iletişim, P3 öğretmen günlük işi, P4 yönetim ve ön büro raporları.
 
-| Öncelik | Rol      | Sayfa (yol)                                       | Vue karşılığı       |
-| ------- | -------- | ------------------------------------------------- | ------------------- |
-| P2      | Veli     | Sınav Analizi (`sinav-analizi`)                   | `Academic.vue`      |
-| P2      | Veli     | Akademik Gelişim (`seviye-takibi`)                | `Academic.vue`      |
-| P2      | Veli     | Öğretmen Görüşleri (`ogretmen-degerlendirmeleri`) | `Academic.vue`      |
-| P2      | Veli     | İzin & Mazeret (`devamsizlik-bildirimi`)          | `Communication.vue` |
-| P2      | Veli     | Şikayet & Talep (`sikayet-talep`)                 | `Communication.vue` |
-| P2      | Öğrenci  | Ders Videoları (`videolar`)                       | `Learning.vue`      |
-| P2      | Öğrenci  | Öğretmenime Sor (`soru-sor`)                      | `Learning.vue`      |
-| P2      | Öğrenci  | Sınav Analizi (`sinav-analizi`)                   | `Academic.vue`      |
-| P2      | Öğrenci  | Akademik Gelişim (`seviye-takibi`)                | `Academic.vue`      |
-| P2      | Öğrenci  | Etüt Randevusu (`randevu-talep`)                  | `Communication.vue` |
-| P3      | Öğretmen | Soru Kuyruğu (`sorular`)                          | `Learning.vue`      |
-| P3      | Öğretmen | Sınıf Analizi (`sinif-analizi`)                   | `Academic.vue`      |
-| P3      | Öğretmen | Etüt & Görüşmeler (`randevular`)                  | `Communication.vue` |
-| P4      | Ön büro  | Aday Öğrenciler (`adaylar`)                       | `Crm.vue`           |
-| P4      | Ön büro  | Kayıt İşlemleri (`kayit-islemleri`)               | `Crm.vue`           |
-| P4      | Ön büro  | Tanışma Görüşmeleri (`deneme-dersi-takvimi`)      | `Crm.vue`           |
-| P4      | Ön büro  | Şikayet & Talepler (`talepler`)                   | `Communication.vue` |
-| P4      | Yönetici | Risk Altındaki Öğrenciler (`risk-listesi`)        | `Management.vue`    |
-| P4      | Yönetici | Kayıt Raporları (`kayit-raporlari`)               | `Management.vue`    |
-| P4      | Yönetici | SLA Raporu (`sla-raporu`)                         | `Management.vue`    |
+| Öncelik | Rol      | Sayfa (yol)                                  | Vue karşılığı       |
+| ------- | -------- | -------------------------------------------- | ------------------- |
+| P2      | Veli     | İzin & Mazeret (`devamsizlik-bildirimi`)     | `Communication.vue` |
+| P2      | Veli     | Şikayet & Talep (`sikayet-talep`)            | `Communication.vue` |
+| P2      | Öğrenci  | Ders Videoları (`videolar`)                  | `Learning.vue`      |
+| P2      | Öğrenci  | Öğretmenime Sor (`soru-sor`)                 | `Learning.vue`      |
+| P2      | Öğrenci  | Etüt Randevusu (`randevu-talep`)             | `Communication.vue` |
+| P3      | Öğretmen | Soru Kuyruğu (`sorular`)                     | `Learning.vue`      |
+| P3      | Öğretmen | Sınıf Analizi (`sinif-analizi`)              | `Academic.vue`      |
+| P3      | Öğretmen | Etüt & Görüşmeler (`randevular`)             | `Communication.vue` |
+| P4      | Ön büro  | Aday Öğrenciler (`adaylar`)                  | `Crm.vue`           |
+| P4      | Ön büro  | Kayıt İşlemleri (`kayit-islemleri`)          | `Crm.vue`           |
+| P4      | Ön büro  | Tanışma Görüşmeleri (`deneme-dersi-takvimi`) | `Crm.vue`           |
+| P4      | Ön büro  | Şikayet & Talepler (`talepler`)              | `Communication.vue` |
+| P4      | Yönetici | Risk Altındaki Öğrenciler (`risk-listesi`)   | `Management.vue`    |
+| P4      | Yönetici | Kayıt Raporları (`kayit-raporlari`)          | `Management.vue`    |
+| P4      | Yönetici | SLA Raporu (`sla-raporu`)                    | `Management.vue`    |
 
-Rol başına yer tutucu sayısı: yönetici 3, ön büro 4, öğretmen 3, öğrenci 5, veli 5 (toplam 20).
+Rol başına yer tutucu sayısı: yönetici 3, ön büro 4, öğretmen 3, öğrenci 3, veli 2 (toplam 15).
 
 ## Mobil (API modu)
 

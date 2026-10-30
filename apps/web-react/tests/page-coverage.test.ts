@@ -26,12 +26,7 @@ const KNOWN_PLACEHOLDERS: readonly string[] = [
   'ogretmen/randevular',
   'ogrenci/videolar',
   'ogrenci/soru-sor',
-  'ogrenci/sinav-analizi',
-  'ogrenci/seviye-takibi',
   'ogrenci/randevu-talep',
-  'veli/ogretmen-degerlendirmeleri',
-  'veli/sinav-analizi',
-  'veli/seviye-takibi',
   'veli/devamsizlik-bildirimi',
   'veli/sikayet-talep',
 ]

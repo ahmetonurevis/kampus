@@ -4,7 +4,7 @@ import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import type { Role } from '../modules/navigation.ts'
 import { requireAuthorized } from './authorize.ts'
-import type { MakeId } from './domain.ts'
+import { daySchema, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { average, dayKey } from './format.ts'
 import { linkedRecordId, requireReadable, scopeFor, type Actor } from './scope.ts'
@@ -32,15 +32,7 @@ export const GRADE_TYPE_LABELS = {
 } as const satisfies Record<GradeType, string>
 
 const identifier = z.string().trim().min(1, 'Bir kayıt seçin.')
-const day = z
-  .string()
-  .refine(
-    (v) =>
-      /^\d{4}-\d{2}-\d{2}$/.test(v) &&
-      Number.isFinite(Date.parse(`${v}T09:00:00Z`)) &&
-      new Date(`${v}T09:00:00Z`).toISOString().slice(0, 10) === v,
-    'Geçerli bir tarih seçin.',
-  )
+const day = daySchema
 // Puan 0–100 tam sayıdır (DOM-AKD-003); form değeri metin gelebilir.
 const score = z.coerce
   .number({ error: 'Geçerli bir puan girin.' })

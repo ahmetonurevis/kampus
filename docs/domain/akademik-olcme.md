@@ -187,11 +187,17 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 
 ### DOM-AKD-035 · Yoklama düzeltmesi geçmişi korur
 
-- **Kural:** Kaydedilmiş yoklama üzerine yazılmaz. Değişiklik eski değer, yeni değer, değiştiren, zaman ve gerekçeyle yeni sürüm olarak saklanır. Öğretmen kendi yoklamasını aynı gün düzeltebilir. Sonraki günlerde düzeltmeyi müdür yardımcısı veya yönetici yapar. Aynı öğrenci ve ders saati için tek geçerli kayıt bulunur.
-- **Gerekçe:** Devamsızlık resmî sonucu olan bir kayıttır; iz bırakmadan değişmesi itiraz ve denetimde savunulamaz.
+- **Kural:**
+  - **Geçmiş:** Kaydedilmiş yoklama üzerine iz bırakmadan yazılmaz. Durum değişince kayda düzeltme satırı eklenir: eski durum, yeni durum, gerekçe, düzelten kişi ve zaman. Durumu değişmeyen öğrenciye satır eklenmez; ilk kez alınan yoklama geçmiş taşımaz.
+  - **Kim düzeltir:** Öğretmen ders verdiği sınıfın yoklamasını aynı gün alır ve düzeltir; gerekçe isteğe bağlıdır. Sonraki günlerde düzeltmeyi yalnız müdür yardımcısı veya yönetici yapar; gerekçe zorunludur (en az 2 karakter, en çok 500).
+  - **Aynı gün güncellemesi:** Öğretmenin aynı gün içindeki her durum değişikliği de geçmişe yazılır. Tasarım kararı: "yoklamayı aldıktan sonra fikir değiştirme" ile "düzeltme" arasında ayrım yapılmaz; ayrım için ikinci bir süre kuralı gerekirdi ve itirazda iz bulunmazdı.
+  - **Görünürlük:** Veli ve öğrenci yalnız güncel durumu görür. Düzeltme geçmişi (gerekçe metni, düzelten kişi) onlara gönderilmez. Öğretmen ve yönetici kendi kapsamında görür. Denetim kaydına geçmişin içeriği değil, değişen alanın adı yazılır.
+  - **Atomiklik:** Bir sınıfın yoklaması tek işlemdir. Bir işaret veya gerekçe geçersizse hiçbir öğrencinin kaydı ve geçmişi değişmez.
+  - **Tekillik:** Aynı öğrenci ve ders saati için tek geçerli kayıt bulunur.
+- **Gerekçe:** Devamsızlık resmî sonucu olan bir kayıttır; iz bırakmadan değişmesi itiraz ve denetimde savunulamaz. Gerekçe ve düzelten kişi personelin iç bilgisidir; veliye giden bilgi güncel durumdur.
 - **Kaynak:** İşletme kuralı; e-Okul'a günlük işleme OİKY md. 18/1.
 - **Kurum türü:** `school`
-- **Kodda:** çelişiyor — `packages/school-core/src/lib/domain.js:59-63` var olan kaydın durumunu iz bırakmadan değiştirir; tekillik gün bazında sağlanır (`60-62`).
+- **Kodda:** kısmen — `packages/school-core/src/lib/domain.ts` (`recordAttendance`) düzeltmeyi kaydın `corrections` geçmişine yazar; yetki `lib/authorize.ts` (`attendance.record`), ayıklama `lib/scope.ts` (`HIDDEN_FIELDS`). Çelişen kısım: tekillik ders saati değil gün bazındadır (`DOM-AKD-030`).
 
 ## Sınıf geçme
 

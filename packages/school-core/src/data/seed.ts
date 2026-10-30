@@ -1,6 +1,6 @@
 import { questionBank } from './question-bank.ts'
 import { subjects, subjectsForGrade, subjectById } from './curriculum.ts'
-import { gradeQuiz } from '../lib/domain.ts'
+import { gradeQuiz, type AttendanceCorrection } from '../lib/domain.ts'
 import { createSchoolWorkflows } from './school-workflows.ts'
 import { createAssessmentAutomation } from './assessment-automation.ts'
 import type {
@@ -846,6 +846,8 @@ type StatePatches = {
   students: (Patch<Item<'students'>, { number?: string }> & { academicYear?: number })[]
   // Not girişinin alanları; örnek veri ve eski kayıtlar bunları taşımaz (lib/grades.ts).
   grades: (Item<'grades'> & Partial<OfficialGradeFields>)[]
+  // Düzeltme geçmişi; ilk kez alınan yoklama ve örnek veri taşımaz (DOM-AKD-035).
+  attendance: (Item<'attendance'> & { corrections?: AttendanceCorrection[] })[]
   invoices: (Item<'invoices'> & Timestamps & { contractId?: string; academicYear?: number })[]
   contracts: (Item<'contracts'> & {
     classId?: string

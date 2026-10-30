@@ -24,6 +24,9 @@ jobs:
       - run: pnpm test
       - run: pnpm --filter @kampus/api test
       - run: pnpm --filter @kampus/api openapi:check
+      - run: pnpm --filter @kampus/api-client generate:check
+      - run: pnpm --filter @kampus/api-client test:coverage
+      - run: pnpm --filter @kampus/react-shared test
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e

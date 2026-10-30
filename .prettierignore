@@ -13,3 +13,5 @@ __pycache__
 apps/api/drizzle/meta
 # Uygulama şemalarından üretilir (pnpm --filter @kampus/api openapi)
 apps/api/openapi.json
+# Üretilir (pnpm --filter @kampus/api-client generate)
+packages/api-client/src/schema.d.ts

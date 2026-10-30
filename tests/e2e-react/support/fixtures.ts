@@ -13,6 +13,12 @@ import {
   type ApiClient,
   type Principal,
 } from './api.ts'
+import {
+  createTenantFactory,
+  type Tenant,
+  type TenantFactory,
+  type TenantOptions,
+} from './tenant.ts'
 
 export interface LoginOptions {
   /**
@@ -31,9 +37,18 @@ interface Fixtures {
   loginAs: (principal: Principal, options?: LoginOptions) => Promise<Page>
   /** Doğrudan API istemcisi (test verisi kurma ve kalıcılığı doğrulama). `null`: oturumsuz. */
   api: (principal: Principal | null, options?: LoginOptions) => Promise<ApiClient>
+  /**
+   * Teste özel kurum (kendi kullanıcıları ve seed alt kümesiyle). Sunucuda veri yazan her test
+   * seed kurumlarına değil buna yazar; bkz. `tenant.ts`. Giriş: `loginAs(tenant.user('ogretmen'))`.
+   */
+  tenant: (options: TenantOptions) => Promise<Tenant>
 }
 
-export const test = base.extend<Fixtures>({
+interface WorkerFixtures {
+  tenantFactory: TenantFactory
+}
+
+export const test = base.extend<Fixtures, WorkerFixtures>({
   // Her test bağlamı kendi sahte IP'sini taşır (hız sınırı kovası ayrılır; bkz. api.ts).
   // Playwright fixture bağımlılıklarını ilk parametrenin desenine bakarak çözer: boş desen şarttır.
   // eslint-disable-next-line no-empty-pattern
@@ -60,6 +75,21 @@ export const test = base.extend<Fixtures>({
       expect(response.ok(), `giriş: ${principalEmail(principal)}`).toBe(true)
       return page
     })
+  },
+
+  // Havuz ve Better Auth örneği worker başına bir kez açılır.
+  tenantFactory: [
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      const factory = createTenantFactory()
+      await use(factory)
+      await factory.close()
+    },
+    { scope: 'worker' },
+  ],
+
+  tenant: async ({ tenantFactory }, use) => {
+    await use((options) => tenantFactory.create(options))
   },
 
   // eslint-disable-next-line no-empty-pattern

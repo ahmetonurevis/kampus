@@ -9,8 +9,8 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Finans & Tahsilat (yönetici /finans, ön büro /tahsilat-takip). Seed: 240 öğrenci × 8 taksit =
 // 1920 taksit; her öğrencinin ilk üç taksiti ödenmiş, 5.–8. taksitlerin vadesi ileridedir.
-// Testler paralel koşar: ödeme yapan her test kendi öğrencisinin ileri vadeli taksidini öder;
-// listeyi sayan testler bu öğrencilere ve ileri vadeli taksit sayısına dayanmaz.
+// Liste testleri seed kurumunu yalnız okur. Ödeme yapan her test kendi kurumunu kurar (öğrenci ve
+// taksit kimlikleri seed ile aynı, kurum ayrı): tekrar koşuda ve paralel testte taksit hâlâ ödenmemiştir.
 
 const ADMIN_URL = '/yonetici/finans'
 const FRONT_OFFICE_URL = '/onburo/tahsilat-takip'
@@ -65,9 +65,11 @@ test.describe('Finans: tahsilat', () => {
     page,
     loginAs,
     api,
+    tenant,
   }) => {
-    await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici')
+    const school = await tenant({ roles: [], students: ['s10'] })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     expect((await invoice(client, 'inv-s10-5')).paidAt).toBeNull()
     const payments = recordPayments(page)
 
@@ -103,9 +105,11 @@ test.describe('Finans: tahsilat', () => {
     page,
     loginAs,
     api,
+    tenant,
   }) => {
-    await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici')
+    const school = await tenant({ roles: [], students: ['s11'] })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     const payments = recordPayments(page)
 
     await page.goto(`${ADMIN_URL}?tahsilat=inv-s11-5`)
@@ -136,9 +140,11 @@ test.describe('Finans: tahsilat', () => {
     page,
     loginAs,
     api,
+    tenant,
   }) => {
-    await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici', { fresh: true })
+    const school = await tenant({ roles: [], students: ['s13'] })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
 
     await page.goto(ADMIN_URL)
     await page.getByLabel('Tabloda ara').fill('İpek Güneş')
@@ -159,9 +165,10 @@ test.describe('Finans: tahsilat', () => {
     expect((await invoice(client, 'inv-s13-5')).method).toBe('Kredi kartı')
   })
 
-  test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api }) => {
-    await loginAs('onburo', { fresh: true })
-    const client = await api('onburo')
+  test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api, tenant }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s12'] })
+    await loginAs(school.user('onburo'))
+    const client = await api(school.user('onburo'))
 
     await page.goto(FRONT_OFFICE_URL)
     await expect(page.getByRole('heading', { level: 1, name: 'Tahsilat Takibi' })).toBeVisible()

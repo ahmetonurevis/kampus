@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { Avatar } from '@/components/Avatar.tsx'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -33,7 +34,6 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
   const row = invoiceRow(item.data, dayKey())
-  // TODO(pdf-receipt): ödenmiş taksitte "Dekontu görüntüle" PDF görevinde eklenir.
   return (
     <>
       <div className="detail-person mb-5 flex items-center gap-3.5">
@@ -68,7 +68,11 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
           </div>
         ))}
       </dl>
-      {!row.paidAt && actions ? (
+      {row.paidAt ? (
+        <div className="detail-actions flex flex-wrap gap-2">
+          <PdfButton type="receipt" recordId={row.id} label="Dekontu görüntüle" size="default" />
+        </div>
+      ) : actions ? (
         <div className="detail-actions flex flex-wrap gap-2">{actions(row)}</div>
       ) : null}
     </>

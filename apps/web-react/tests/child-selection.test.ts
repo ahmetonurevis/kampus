@@ -7,6 +7,7 @@ import {
   resolveChildFrom,
   withChildNames,
   withChildParam,
+  withChildSwitch,
 } from '../src/lib/child-selection.ts'
 import { meFixture } from './fixtures/me.ts'
 
@@ -43,6 +44,18 @@ test('çocuk parametresi diğer adres parametrelerini korur', () => {
   assert.equal(withChildParam('', 's2'), '?cocuk=s2')
   assert.equal(withChildParam('?q=mat&sayfa=2', 's2'), '?q=mat&sayfa=2&cocuk=s2')
   assert.equal(withChildParam('?cocuk=s1&q=mat', 's2'), '?cocuk=s2&q=mat')
+})
+
+test('çocuk değişince çocuğa bağlı açık paneller kapanır, liste durumu ve çocuktan bağımsız paneller korunur', () => {
+  assert.equal(withChildSwitch('?cocuk=s1&randevu=a1', 's2'), '?cocuk=s2')
+  assert.equal(withChildSwitch('?cocuk=s1&randevu-form=yeni&odev=h1', 's2'), '?cocuk=s2')
+  assert.equal(
+    withChildSwitch('?cocuk=s1&q=mat&sayfa=2&ders=math&randevu=a1', 's2'),
+    '?cocuk=s2&q=mat&sayfa=2&ders=math',
+  )
+  assert.equal(withChildSwitch('?yazisma=k1&duyuru=d1', 's2'), '?yazisma=k1&duyuru=d1&cocuk=s2')
+  // Menü ve kabuk tamamlaması panele dokunmaz.
+  assert.equal(withChildParam('?randevu=a1', 's2'), '?randevu=a1&cocuk=s2')
 })
 
 test('çocuk adları kapsamlı öğrenci okumasından gelir; kapsamda olmayana ad uydurulmaz', () => {

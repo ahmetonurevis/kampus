@@ -35,6 +35,42 @@ export function withChildParam(search: string, childId: string): string {
 }
 
 /**
+ * Çocuğa bağlı kaydı açan sağ panel ve form parametreleri (`useDetailPanel` adları): veli
+ * sayfalarında seçili çocuğun ödevi, notu, randevusu vb. gösterir. Çocuk değişince açık kalırsa
+ * panel öncekinin kaydını yeni çocuğun başlığı altında gösterirdi; bu yüzden geçişte silinir.
+ * Çocuktan bağımsız paneller (yazışma, duyuru) ve süzgeç olarak da kullanılan adlar (`ders`)
+ * listede yoktur ve korunur.
+ */
+export const CHILD_SCOPED_PANEL_PARAMS = [
+  'randevu',
+  'randevu-form',
+  'odev',
+  'quiz',
+  'kayit',
+  'not',
+  'bildirim',
+  'bildirim-form',
+  'talep',
+  'talep-form',
+  'detay',
+  'tahsilat',
+  'materyal',
+  'video',
+] as const
+
+/**
+ * Çocuk değiştirilirken yeni arama dizgisi: çocuk yazılır, çocuğa bağlı açık paneller kapanır;
+ * liste durumu ve süzgeçler (`q`, `sayfa`, …) korunur. Menü ve kabuk adresi tamamlaması
+ * (`withChildParam`) panele dokunmaz; yalnız kullanıcının çocuk değiştirmesi panelleri kapatır.
+ */
+export function withChildSwitch(search: string, childId: string): string {
+  const params = new URLSearchParams(search)
+  for (const name of CHILD_SCOPED_PANEL_PARAMS) params.delete(name)
+  params.set(CHILD_PARAM, childId)
+  return `?${params.toString()}`
+}
+
+/**
  * `/me` bağlantıları yalnız kayıt kimliğidir; adlar veli kapsamlı `students` okumasından gelir.
  * Kapsamda olmayan kimliğe ad uydurulmaz: adı gelmeyen çocuk adsız kalır (seçici yükleniyor).
  */

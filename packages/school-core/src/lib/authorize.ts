@@ -1,0 +1,243 @@
+import type { State } from '../data/seed.ts'
+import {
+  collectionStatus,
+  type InstitutionType,
+  type ModuleKey,
+} from '../modules/collection-modules.ts'
+import type { Session } from './domain.ts'
+import { DomainError, type DomainErrorKind } from './errors.ts'
+import { dayKey } from './format.ts'
+import type { ArchiveKind } from './school-management.ts'
+import { scopeFor, sessionActor, type Actor, type ScopeSource } from './scope.ts'
+
+/**
+ * Yazma yetkisi (docs/domain/yetki-ve-kapsam.md). Okuma kapsamı `scopeFor` ile, temel yazma
+ * işlemlerinin yetkisi burada tek tabloda çözülür; API ve web/mobil aynı kararı verir
+ * (DOM-YTK-001: matriste açık izin yoksa ret). Okul iş akışı komutlarının yetkisi `runWorkflow`
+ * içindedir (`mayRun` + komuta özgü kapsam).
+ *
+ * İşlemler (`payInvoice`, `recordAttendance`, `archiveRecord` …) yetki denetlemez; çağıran işlemden
+ * önce `requireAuthorized` çalıştırır. Çevrimdışı demo aktörü `sessionActor` ile verir.
+ */
+
+export const WRITE_ACTIONS = [
+  'invoice.pay',
+  'attendance.record',
+  'grade.record',
+  'grade.update',
+  'record.archive',
+  'record.restore',
+] as const
+export type WriteAction = (typeof WRITE_ACTIONS)[number]
+
+/** Eylem başına yetkinin dayandığı hedef bilgisi; kimlikler istemciden gelse de kapsamla denetlenir. */
+export type WriteTargets = {
+  'invoice.pay': { studentId: string }
+  /** `reason`: yönetici düzeltmesinin gerekçesi (DOM-AKD-035). */
+  'attendance.record': { classId: string; date: string; reason?: string }
+  'grade.record': { studentId: string; subjectId: string }
+  /** `reason`: not düzeltmesinin gerekçesi (DOM-AKD-051). */
+  'grade.update': { studentId: string; subjectId: string; reason?: string }
+  'record.archive': { kind: ArchiveKind }
+  'record.restore': { kind: ArchiveKind }
+}
+
+/** Yetki için gereken kaynak; not yetkisi ders atamasının dersini de okur. */
+export type AuthorizationSource = Omit<ScopeSource, 'assignments'> & {
+  assignments: readonly Pick<State['assignments'][number], 'classId' | 'teacherId' | 'subjectId'>[]
+}
+export type AuthorizeOptions = {
+  institutionType?: InstitutionType
+  /** İşlem anı (ISO 8601); öğretmenin aynı gün yoklama kuralı buna göre denetlenir. */
+  now?: string
+}
+
+export type WriteDenial = {
+  allowed: false
+  code: string
+  message: string
+  kind: DomainErrorKind
+  /** Reddin dayandığı alan kuralı; log ve test için. */
+  rule: string
+}
+export type WriteDecision = { allowed: true } | WriteDenial
+
+/**
+ * Eylemin modülü; `null` modülden bağımsız (her zaman açık) eylemdir. Kampüs/sınıf/kadro çekirdek
+ * kayıtlardır, kapatılamaz (DOM-YTK-040).
+ */
+export const WRITE_ACTION_MODULES = {
+  'invoice.pay': 'finance',
+  'attendance.record': 'academic',
+  'grade.record': 'academic',
+  'grade.update': 'academic',
+  'record.archive': null,
+  'record.restore': null,
+} as const satisfies Record<WriteAction, ModuleKey | null>
+
+/** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları aşağıda). */
+export const WRITE_ACTION_ROLES = {
+  // Fatura, tahsilat: yönetici ve ön büro tahsilat kaydeder; veli ödeyici olduğu çocuğun
+  // taksitini öder; öğretmen ve öğrenci yazamaz (DOM-FIN-052, yetki matrisi).
+  'invoice.pay': ['yonetici', 'onburo', 'veli'],
+  // Yoklama: öğretmen ders verdiği sınıfta aynı gün; yönetici gerekçeyle düzeltir (DOM-YTK-022,
+  // DOM-AKD-035, DOM-AKD-054).
+  'attendance.record': ['yonetici', 'ogretmen'],
+  // Not girişi yalnız atandığı sınıf + dersin öğretmenindedir; yönetici yalnız gerekçeli düzeltme
+  // yapar (yetki matrisi "Not, değerlendirme", DOM-AKD-054).
+  'grade.record': ['ogretmen'],
+  'grade.update': ['yonetici', 'ogretmen'],
+  // Kampüs, sınıf, kadro yalnız yöneticidedir (yetki matrisi, DOM-YTK-020).
+  'record.archive': ['yonetici'],
+  'record.restore': ['yonetici'],
+} as const satisfies Record<WriteAction, readonly Actor['role'][]>
+
+const ROLE_TABLE: Readonly<Record<WriteAction, readonly string[]>> = WRITE_ACTION_ROLES
+
+const deny = (
+  code: string,
+  message: string,
+  rule: string,
+  kind: DomainErrorKind = 'forbidden',
+): WriteDenial => ({ allowed: false, code, message, kind, rule })
+const ALLOWED: WriteDecision = { allowed: true }
+const roleDenied = (rule: string) =>
+  deny('permission_denied', 'Bu işlem için yetkiniz bulunmuyor.', rule)
+const hasReason = (reason: string | undefined) => (reason?.trim().length ?? 0) >= 2
+const reasonRequired = (rule: string) =>
+  deny('correction_reason_required', 'Düzeltme için gerekçe yazın.', rule, 'rule')
+
+function moduleDecision(
+  action: WriteAction,
+  source: AuthorizationSource,
+  institutionType: InstitutionType,
+): WriteDecision {
+  const module = WRITE_ACTION_MODULES[action]
+  if (module === null) return ALLOWED
+  // Modülün sahibi olduğu bir koleksiyon üzerinden durum okunur; tek karar yeri koleksiyon tablosudur.
+  const collection = module === 'finance' ? 'invoices' : 'grades'
+  const status = collectionStatus(collection, source.modules, institutionType)
+  if (status === 'unavailable')
+    return deny('collection_not_found', 'İlgili kayıt bulunamadı.', 'DOM-YTK-012', 'not_found')
+  if (status !== 'enabled')
+    return deny('module_disabled', 'Bu modül kullanıma kapalı.', 'DOM-YTK-040')
+  return ALLOWED
+}
+
+/**
+ * Aktör bu eylemi bu hedefte yapabilir mi. Önce modül (DOM-YTK-040), sonra rol (matris), sonra
+ * kapsam (DOM-YTK-002, -022, -025) denetlenir. Kayıt varlığı işlemin işidir; burada yalnız yetki
+ * çözülür.
+ */
+export function authorize<A extends WriteAction>(
+  actor: Actor,
+  action: A,
+  target: WriteTargets[A],
+  source: AuthorizationSource,
+  options: AuthorizeOptions = {},
+): WriteDecision {
+  const institutionType = options.institutionType ?? 'school'
+  const moduleCheck = moduleDecision(action, source, institutionType)
+  if (!moduleCheck.allowed) return moduleCheck
+  if (!ROLE_TABLE[action].includes(actor.role)) return roleDenied('DOM-YTK-001')
+  // Hedef tipi eyleme bağlıdır; birleşimi daraltmak için eylem adıyla ayrıştırılır.
+  const request = { action, target } as WriteRequest
+  return decide(actor, request, source, institutionType, options.now)
+}
+
+type WriteRequest = {
+  [A in WriteAction]: { action: A; target: WriteTargets[A] }
+}[WriteAction]
+
+function decide(
+  actor: Actor,
+  request: WriteRequest,
+  source: AuthorizationSource,
+  institutionType: InstitutionType,
+  now: string | undefined,
+): WriteDecision {
+  const scope = scopeFor(source, actor, { institutionType })
+  const teacher = scope.teacher
+  const teaches = (classId: string | undefined, subjectId?: string) =>
+    !!teacher &&
+    classId !== undefined &&
+    source.assignments.some(
+      (a) =>
+        a.classId === classId &&
+        a.teacherId === teacher.id &&
+        (subjectId === undefined || a.subjectId === subjectId),
+    )
+  const classOf = (studentId: string) => source.students.find((s) => s.id === studentId)?.classId
+  switch (request.action) {
+    case 'invoice.pay': {
+      if (actor.role !== 'veli') return ALLOWED
+      // Veli yalnız bağlı çocuğunun taksitini öder (DOM-YTK-025, DOM-FIN-052).
+      return scope.studentIds.has(request.target.studentId)
+        ? ALLOWED
+        : deny('student_scope_denied', 'Bu öğrenci için işlem yetkiniz bulunmuyor.', 'DOM-YTK-025')
+    }
+    case 'attendance.record': {
+      const { classId, date, reason } = request.target
+      if (actor.role === 'yonetici')
+        return hasReason(reason) ? ALLOWED : reasonRequired('DOM-AKD-035')
+      if (!teaches(classId))
+        return deny(
+          'attendance_class_forbidden',
+          'Yalnızca ders verdiğiniz sınıfın yoklamasını alabilirsiniz.',
+          'DOM-YTK-022',
+        )
+      // Öğretmen yoklamayı aynı gün alır ve düzeltir; sonraki günler yöneticidedir (DOM-AKD-035).
+      if (Number.isFinite(Date.parse(date)) && dayKey(date) !== dayKey(now ?? new Date()))
+        return deny(
+          'attendance_correction_admin_only',
+          'Geçmiş günlerin yoklamasını yalnızca yönetici gerekçeyle düzeltebilir.',
+          'DOM-AKD-035',
+        )
+      return ALLOWED
+    }
+    case 'grade.record':
+    case 'grade.update': {
+      const { studentId, subjectId } = request.target
+      if (actor.role === 'yonetici')
+        return hasReason(request.action === 'grade.update' ? request.target.reason : undefined)
+          ? ALLOWED
+          : reasonRequired('DOM-AKD-051')
+      return teaches(classOf(studentId), subjectId)
+        ? ALLOWED
+        : deny(
+            'grade_assignment_forbidden',
+            'Yalnızca derse girdiğiniz sınıf ve branşta not girebilirsiniz.',
+            'DOM-AKD-054',
+          )
+    }
+    case 'record.archive':
+    case 'record.restore':
+      return ALLOWED
+    default:
+      return request satisfies never
+  }
+}
+
+/** `authorize` reddini `DomainError` olarak fırlatır (API: forbidden 403, rule 422, not_found 404). */
+export function requireAuthorized<A extends WriteAction>(
+  actor: Actor,
+  action: A,
+  target: WriteTargets[A],
+  source: AuthorizationSource,
+  options?: AuthorizeOptions,
+) {
+  const decision = authorize(actor, action, target, source, options)
+  if (!decision.allowed)
+    throw new DomainError(decision.code, decision.message, { kind: decision.kind })
+}
+
+/** Çevrimdışı demo: oturumun aktörüyle (`sessionActor`) aynı karar. */
+export function sessionAuthorize<A extends WriteAction>(
+  state: State,
+  session: Session,
+  action: A,
+  target: WriteTargets[A],
+  options?: AuthorizeOptions,
+): WriteDecision {
+  return authorize(sessionActor(state, session), action, target, state, options)
+}

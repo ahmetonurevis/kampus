@@ -12,6 +12,12 @@ const DashboardPage = lazy(async () => ({
 const CampusesPage = lazy(async () => ({
   default: (await import('./management/CampusesPage.tsx')).CampusesPage,
 }))
+const EnrollmentReportsPage = lazy(async () => ({
+  default: (await import('./management/EnrollmentReportsPage.tsx')).EnrollmentReportsPage,
+}))
+const RiskListPage = lazy(async () => ({
+  default: (await import('./management/RiskListPage.tsx')).RiskListPage,
+}))
 const StaffPage = lazy(async () => ({
   default: (await import('./management/StaffPage.tsx')).StaffPage,
 }))
@@ -41,6 +47,9 @@ const ExamAnalysisPage = lazy(async () => ({
 }))
 const AcademicProgressPage = lazy(async () => ({
   default: (await import('./academic/AcademicProgressPage.tsx')).AcademicProgressPage,
+}))
+const ClassAnalysisPage = lazy(async () => ({
+  default: (await import('./academic/ClassAnalysisPage.tsx')).ClassAnalysisPage,
 }))
 const TeacherReviewsPage = lazy(async () => ({
   default: (await import('./academic/TeacherReviewsPage.tsx')).TeacherReviewsPage,
@@ -130,6 +139,10 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <CampusesPage page={page} />
     case 'yonetici/personel':
       return <StaffPage page={page} />
+    case 'yonetici/kayit-raporlari':
+      return <EnrollmentReportsPage page={page} />
+    case 'yonetici/risk-listesi':
+      return <RiskListPage page={page} />
     case 'yonetici/ayarlar':
       return <SettingsPage page={page} />
     case 'ogrenci/ayarlar':
@@ -170,6 +183,8 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
     case 'ogrenci/seviye-takibi':
     case 'veli/seviye-takibi':
       return <AcademicProgressPage page={page} />
+    case 'ogretmen/sinif-analizi':
+      return <ClassAnalysisPage page={page} />
     case 'veli/ogretmen-degerlendirmeleri':
       return <TeacherReviewsPage page={page} />
     case 'ogretmen/odevler':

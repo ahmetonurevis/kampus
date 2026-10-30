@@ -70,8 +70,10 @@ export async function findIdempotentResponse(
 }
 
 /**
- * Başarılı yanıtı saklar. Aynı anahtarın süresi dolmuş kaydı varsa önce silinir (teknik kayıt,
- * veritabani.md §7); süresi dolmamış kayıt varsa çağıran onu zaten yanıtlamıştır.
+ * Başarılı yanıtı saklar. Önce kurumun süresi dolmuş bütün anahtarları silinir (aynı anahtarın
+ * eski kaydı dahil): 24 saat saklama sınırı (guvenlik-kvkk.md §10) iş kuyruğu kurulana kadar
+ * yazma sırasında fırsatçı olarak uygulanır; süresi dolmamış kayıt varsa çağıran onu zaten
+ * yanıtlamıştır. Açılışta ayrıca bütün kurumlar temizlenir (`server.ts`).
  */
 export async function saveIdempotentResponse(
   tx: Database,
@@ -84,12 +86,7 @@ export async function saveIdempotentResponse(
   await tx
     .delete(idempotencyKeys)
     .where(
-      and(
-        eq(idempotencyKeys.institutionId, institutionId),
-        eq(idempotencyKeys.userId, userId),
-        eq(idempotencyKeys.key, key),
-        lte(idempotencyKeys.expiresAt, now),
-      ),
+      and(eq(idempotencyKeys.institutionId, institutionId), lte(idempotencyKeys.expiresAt, now)),
     )
   await tx.insert(idempotencyKeys).values({
     institutionId,
@@ -106,7 +103,8 @@ export async function saveIdempotentResponse(
 /**
  * Süresi dolan anahtarları kalıcı siler (guvenlik-kvkk.md §10: 24 saat). Kurumlar arası teknik
  * temizliktir; silinen satır sayısını döndürür.
- * TODO(jobs): pg-boss günlük temizlik işi kurulunca buradan çağrılır.
+ * Bugün açılışta (`server.ts`) ve kurum başına yazma sırasında (`saveIdempotentResponse`) çalışır.
+ * TODO(jobs): pg-boss günlük temizlik işi kurulunca oradan da çağrılır.
  */
 export async function purgeExpiredIdempotencyKeys(db: Database, now: Date): Promise<number> {
   const deleted = await db

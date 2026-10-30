@@ -220,6 +220,41 @@ describe('routeCommandErrors', () => {
     assert.deepEqual(result, { fields: [], toasts: ['Beklenmeyen hata.'] })
   })
 
+  test('DOM-YTK-001: 422 iş kuralı issues yolu (byPath) yalnız o alanın altında görünür', () => {
+    const error = new ApiError({
+      status: 422,
+      code: 'subject_teacher_required',
+      message: 'Matematik dersi için uygun branş öğretmeni seçin.',
+      issues: [
+        {
+          path: ['subjectTeachers', 'math'],
+          code: 'subject_teacher_required',
+          message: 'Matematik dersi için uygun branş öğretmeni seçin.',
+        },
+      ],
+    })
+    const { fields, toasts } = route(error, {
+      fieldFor: (e) => e.issues.find((issue) => issue.path.length > 0)?.path.join('.'),
+    })
+    assert.deepEqual(fields, [
+      ['subjectTeachers.math', 'Matematik dersi için uygun branş öğretmeni seçin.'],
+      ['subjectTeachers.math', 'Matematik dersi için uygun branş öğretmeni seçin.'],
+    ])
+    assert.deepEqual(toasts, [])
+  })
+
+  test('yolsuz 422 (issues yok) alana yazılmaz; toast olarak kalır', () => {
+    const error = apiError(
+      422,
+      'capacity_below_students',
+      'Kontenjan mevcut 3 öğrenciden az olamaz.',
+    )
+    assert.deepEqual(commandFeedback(error).fieldIssues, [])
+    const { fields, toasts } = route(error, { fieldFor: () => undefined })
+    assert.deepEqual(fields, [])
+    assert.deepEqual(toasts, ['Kontenjan mevcut 3 öğrenciden az olamaz.'])
+  })
+
   test('bildirim yoksa mesaj root.server alanında kalır', () => {
     const error = apiError(403, 'forbidden', 'Yetkiniz yok.')
     const fields: [string, string][] = []

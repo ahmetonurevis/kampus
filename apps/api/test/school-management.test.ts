@@ -436,17 +436,20 @@ describe('kampüs, öğretmen ve sınıf kaydetme uçları', () => {
   })
 
   describe('POST /classes ve PATCH /classes/:classId', () => {
-    test('sınıf ders atamalarıyla tek işlemde açılır; eksik branş öğretmeni 422 ve hiçbir kayıt yazılmaz', async () => {
+    test('DOM-YTK-001: sınıf ders atamalarıyla tek işlemde açılır; eksik branş (422 issues yolu) öğretmeni 422 ve hiçbir kayıt yazılmaz', async () => {
       const a = await institution()
       const before = await snapshot(a.id, ['classes', 'assignments'])
-      assertError(
-        await create('classes', a.adminCookie, {
-          ...CLASS,
-          subjectTeachers: { ...C1_TEACHERS, math: 't2' },
-        }),
-        422,
-        'subject_teacher_required',
-      )
+      const wrongTeacher = await create('classes', a.adminCookie, {
+        ...CLASS,
+        subjectTeachers: { ...C1_TEACHERS, math: 't2' },
+      })
+      assertError(wrongTeacher, 422, 'subject_teacher_required')
+      // DOM-YTK-001: core hata yolu alan düzeyinde `issues` olarak taşınır (400 ile aynı biçim).
+      const wrongBody = wrongTeacher.json()
+      assert.equal(wrongBody.issues.length, 1)
+      assert.deepEqual(wrongBody.issues[0].path, ['subjectTeachers', 'math'])
+      assert.equal(wrongBody.issues[0].code, 'subject_teacher_required')
+      assert.equal(wrongBody.issues[0].message, wrongBody.message)
       assertError(
         await create('classes', a.adminCookie, { ...CLASS, capacity: 41 }),
         400,
@@ -484,11 +487,10 @@ describe('kampüs, öğretmen ve sınıf kaydetme uçları', () => {
       const b = await institution()
       const tracked: CollectionName[] = ['classes', 'assignments', 'schedule', 'quizzes']
       const before = await snapshot(a.id, tracked)
-      assertError(
-        await update('classes/c1', a.adminCookie, { capacity: 1 }),
-        422,
-        'capacity_below_students',
-      )
+      const lowCapacity = await update('classes/c1', a.adminCookie, { capacity: 1 })
+      assertError(lowCapacity, 422, 'capacity_below_students')
+      // Core bu kuralda yol vermez: gövde eskisi gibi, `issues` alanı yok.
+      assert.equal('issues' in lowCapacity.json(), false)
       assertError(
         await update('classes/c1', a.adminCookie, { room: '102' }),
         409,

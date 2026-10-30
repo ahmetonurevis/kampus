@@ -12,7 +12,12 @@ export const errorResponseSchema = z
   .object({
     code: z.string().describe('Kararlı, İngilizce, snake_case hata kodu'),
     message: z.string().describe('Kullanıcıya gösterilebilir Türkçe mesaj'),
-    issues: z.array(issueSchema).optional(),
+    issues: z
+      .array(issueSchema)
+      .optional()
+      .describe(
+        'Alan düzeyindeki hatalar: 400 doğrulama ve alan yolu bilinen iş kuralı hataları (422/409/403)',
+      ),
     requestId: z.string(),
   })
   .meta({ id: 'ErrorResponse' })

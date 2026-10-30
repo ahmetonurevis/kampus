@@ -194,8 +194,18 @@ function issuePath(path: readonly PropertyKey[]): (string | number)[] {
 }
 
 /**
+ * `DomainError.path` (core'un sabit alan yolu, kullanıcı girdisi değil) varsa 400 Zod yanıtıyla
+ * aynı `issues` biçimini üretir; yoksa alan hiç çıkmaz (`issues` isteğe bağlıdır, boş dizi
+ * "alan hatası yok" ile "yol bilinmiyor" ayrımını bulandırır). Mesaj core'un Türkçe metnidir.
+ */
+function domainIssues(error: DomainError): { issues?: Issue[] } {
+  if (error.path === undefined) return {}
+  return { issues: [{ path: error.path.slice(), code: error.code, message: error.message }] }
+}
+
+/**
  * school-core hatasını HTTP hatasına çevirir (api-tasarimi.md §5): `DomainError` türüne göre
- * 422/409/403/404, Zod 400. Düz `Error` ve alt sınıfları kullanıcı hatası sayılmaz (api.md):
+ * 422/409/403/404, Zod 400. `path` taşıyan hata 422/409/403'te `issues` da taşır. Düz `Error` ve alt sınıfları kullanıcı hatası sayılmaz (api.md):
  * 500 `internal_error` olur; iç mesaj yanıta gitmez, logda da yalnız hata adı ve yığın kalır
  * (`loggableError`).
  */
@@ -212,14 +222,23 @@ export function mapOperationError(error: unknown): Error {
   if (error instanceof DomainError) {
     switch (error.kind) {
       case 'rule':
-        return new RuleViolationError(error.code, error.message, { cause: error })
+        return new RuleViolationError(error.code, error.message, {
+          ...domainIssues(error),
+          cause: error,
+        })
       case 'conflict':
-        return new AppError(409, error.code, error.message, { cause: error })
+        return new AppError(409, error.code, error.message, {
+          ...domainIssues(error),
+          cause: error,
+        })
       case 'forbidden':
         // Modül kapalıysa mesaj API'nin tek modül mesajıdır (`requireModule` ile aynı).
         return error.code === 'module_disabled'
           ? new AppError(403, 'module_disabled', MESSAGES.module_disabled, { cause: error })
-          : new AppError(403, error.code, error.message, { cause: error })
+          : new AppError(403, error.code, error.message, {
+              ...domainIssues(error),
+              cause: error,
+            })
       case 'not_found':
         return new NotFoundError()
       default:

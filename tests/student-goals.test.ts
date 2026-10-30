@@ -1,7 +1,8 @@
-// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
+import type { Role } from '../packages/school-core/src/modules/navigation.ts'
+import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import {
   runWorkflow,
   goalProgress,
@@ -18,15 +19,24 @@ import {
   restoreSnapshot,
 } from '../packages/school-core/src/lib/demo-persistence.ts'
 import { navigation } from '../apps/web/src/modules/navigation.js'
+import { resultOf } from './support/result.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 const now = '2026-10-06T10:00:00.000Z'
 const seed = () => createSeed(new Date(now))
 let sequence = 0
-const id = (prefix) => `${prefix}-goal-test-${++sequence}`
-const session = (role, childId = 's1') => ({ role, childId })
-const run = (state, command, input = {}, recordId, role = 'yonetici', childId = 's1') =>
-  runWorkflow(state, session(role, childId), command, input, id, recordId, now)
+const id = (prefix: string) => `${prefix}-goal-test-${++sequence}`
+type Goal = State['studentGoals'][number]
+const session = (role: Role, childId = 's1'): Session => ({ role, childId })
+// Hedef komutları hedef kaydı döndürür; ham sonuç birleşim tipidir.
+const run = (
+  state: State,
+  command: string,
+  input: unknown = {},
+  recordId?: string,
+  role: Role = 'yonetici',
+  childId = 's1',
+) => resultOf<Goal>(runWorkflow(state, session(role, childId), command, input, id, recordId, now))
 const scienceGoal = {
   studentId: 's1',
   subjectId: 'science',
@@ -35,7 +45,11 @@ const scienceGoal = {
   deadline: '2026-11-15',
   motivation: 'Deneylerde daha emin olmak istiyorum.',
 }
-function unchangedOnFailure(state, callback, pattern) {
+function unchangedOnFailure(
+  state: State,
+  callback: () => unknown,
+  pattern: Parameters<typeof assert.throws>[1],
+) {
   const before = JSON.stringify(state)
   assert.throws(callback, pattern)
   assert.equal(JSON.stringify(state), before)
@@ -43,7 +57,7 @@ function unchangedOnFailure(state, callback, pattern) {
 
 test('Hedef modülü her rolde menüde görünür; örnek hedefin ilerlemesi deneme sonuçlarından hesaplanır', () => {
   const state = seed()
-  for (const role of ['yonetici', 'ogretmen', 'ogrenci', 'veli'])
+  for (const role of ['yonetici', 'ogretmen', 'ogrenci', 'veli'] as const)
     assert.ok(navigation[role].some((p) => p.path === 'hedef-plani' && p.module === 'goals'))
   assert.ok(!navigation.onburo.some((p) => p.path === 'hedef-plani'))
   const goal = state.studentGoals.find((g) => g.id === 'goal-s1-math')
@@ -51,14 +65,14 @@ test('Hedef modülü her rolde menüde görünür; örnek hedefin ilerlemesi den
     goalSeries(state, 's1', 'math').map((p) => p.net),
     [8.75, 12],
   )
-  const progress = goalProgress(state, goal)
+  const progress = goalProgress(state, goal!)
   assert.equal(progress.current, 12)
   assert.equal(progress.percent, 45)
   assert.equal(progress.achieved, false)
   assert.equal(progress.stepsDone, 1)
   const row = workflowRows(state, session('ogrenci'), 'hedef-plani')[0]
-  assert.equal(row.status, 'Aktif')
-  assert.match(row.body, /Hedef: 16 net · Güncel: 12 net · %45/)
+  assert.equal(row!.status, 'Aktif')
+  assert.match(row!.body, /Hedef: 16 net · Güncel: 12 net · %45/)
 })
 
 test('Veli yalnızca seçili çocuğun hedefini görür ve yorum dışında işlem yapamaz', () => {
@@ -73,7 +87,7 @@ test('Veli yalnızca seçili çocuğun hedefini görür ve yorum dışında işl
     forEce.map((r) => r.id),
     ['goal-s2-total'],
   )
-  const actions = workflowDetails(state, session('veli', 's1'), forDeniz[0]).actions
+  const actions = workflowDetails(state, session('veli', 's1'), forDeniz[0]!).actions
   assert.deepEqual(
     actions.map((a) => a.command),
     ['goal-comment'],
@@ -85,7 +99,7 @@ test('Veli yalnızca seçili çocuğun hedefini görür ve yorum dışında işl
     'goal-s1-math',
     'veli',
   )
-  assert.equal(state.studentGoals[0].comments.at(-1).actor, 'veli')
+  assert.equal(state.studentGoals[0]!.comments.at(-1)!.actor, 'veli')
   unchangedOnFailure(
     state,
     () => run(state, 'goal-close', {}, 'goal-s1-math', 'veli'),
@@ -111,7 +125,7 @@ test('Öğrenci hedefi onay bekler; onaydan sonra adım tamamlanır, tekrar tama
     goal.id,
     'ogrenci',
   )
-  const stepId = goal.steps[0].id
+  const stepId = goal.steps[0]!.id
   unchangedOnFailure(
     state,
     () => run(state, 'goal-step-done', { stepId }, goal.id, 'ogrenci'),
@@ -130,7 +144,7 @@ test('Öğrenci hedefi onay bekler; onaydan sonra adım tamamlanır, tekrar tama
   run(state, 'goal-review', { status: 'Aktif', feedback: 'Uygun.' }, goal.id, 'yonetici')
   assert.equal(goal.status, 'Aktif')
   run(state, 'goal-step-done', { stepId }, goal.id, 'ogrenci')
-  assert.equal(goal.steps[0].done, true)
+  assert.equal(goal.steps[0]!.done, true)
   unchangedOnFailure(
     state,
     () => run(state, 'goal-step-done', { stepId }, goal.id, 'ogrenci'),
@@ -207,18 +221,18 @@ test('Öğretmen yalnızca kendi branşında hedef belirler ve başka branş hed
 test('Otomatik öneri zayıf konulardan haftalık adım üretir; ikinci çalıştırmada kopya oluşturmaz', () => {
   const state = seed()
   const goal = state.studentGoals.find((g) => g.id === 'goal-s1-math')
-  const suggestions = suggestGoalSteps(state, goal, now)
+  const suggestions = suggestGoalSteps(state, goal!, now)
   assert.deepEqual(suggestions, [])
   unchangedOnFailure(
     state,
     () => run(state, 'goal-suggest', {}, 'goal-s1-math', 'ogrenci'),
     /Önerilecek yeni zayıf konu bulunamadı/,
   )
-  goal.steps.length = 0
+  goal!.steps.length = 0
   run(state, 'goal-suggest', {}, 'goal-s1-math', 'ogrenci')
-  assert.equal(goal.steps.length, 1)
-  assert.equal(goal.steps[0].source, 'auto')
-  assert.ok(goal.steps[0].dueDate <= goal.deadline)
+  assert.equal(goal!.steps.length, 1)
+  assert.equal(goal!.steps[0]!.source, 'auto')
+  assert.ok(goal!.steps[0]!.dueDate <= goal!.deadline)
   unchangedOnFailure(
     state,
     () => run(state, 'goal-suggest', {}, 'goal-s1-math', 'ogrenci'),
@@ -236,7 +250,7 @@ test('Reddedilen veya kapatılan hedefe adım eklenemez; kapatma geçmişi korur
     'yonetici',
   )
   const rejected = state.studentGoals.find((g) => g.id === 'goal-s2-total')
-  assert.equal(rejected.status, 'Reddedildi')
+  assert.equal(rejected!.status, 'Reddedildi')
   unchangedOnFailure(
     state,
     () =>
@@ -251,9 +265,9 @@ test('Reddedilen veya kapatılan hedefe adım eklenemez; kapatma geçmişi korur
   )
   run(state, 'goal-close', {}, 'goal-s1-math', 'ogrenci')
   const closed = state.studentGoals.find((g) => g.id === 'goal-s1-math')
-  assert.equal(closed.status, 'Kapatıldı')
-  assert.equal(closed.steps.length, 2)
-  assert.equal(closed.comments.length, 1)
+  assert.equal(closed!.status, 'Kapatıldı')
+  assert.equal(closed!.steps.length, 2)
+  assert.equal(closed!.comments.length, 1)
   unchangedOnFailure(
     state,
     () => run(state, 'goal-close', {}, 'goal-s1-math', 'ogrenci'),
@@ -270,16 +284,16 @@ test('Kapalı modül hedef verisini ve işlemleri kapatır; form ve denetim kayd
   assert.deepEqual(
     form
       .fields({})
-      .find((f) => f.key === 'stepId')
-      .options.map((o) => o.value),
+      .find((f) => f.key === 'stepId')!
+      .options!.map((o) => o.value),
     ['step-s1-2'],
   )
   run(state, 'goal-step-done', { stepId: 'step-s1-2' }, 'goal-s1-math', 'ogrenci')
   const audit = state.audit[0]
-  assert.equal(audit.action, 'goal-step-done')
-  assert.equal(audit.table_name, 'studentGoals')
-  assert.equal(audit.old_value.steps[1].done, false)
-  assert.equal(audit.new_value.steps[1].done, true)
+  assert.equal(audit!.action, 'goal-step-done')
+  assert.equal(audit!.table_name, 'studentGoals')
+  assert.equal(resultOf<{ steps: { done: boolean }[] }>(audit!.old_value).steps[1]!.done, false)
+  assert.equal(resultOf<{ steps: { done: boolean }[] }>(audit!.new_value).steps[1]!.done, true)
   state.modules.goals = false
   assert.deepEqual(workflowRows(state, session('ogrenci'), 'hedef-plani'), [])
   unchangedOnFailure(state, () => run(state, 'goal', scienceGoal, undefined, 'ogrenci'), /kapalı/)

@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
@@ -75,7 +74,7 @@ test('Yönetici kurum geneli okur; birebir yazışma dışındaki her koleksiyon
     assert.equal(scope.read(name, state[name]).length, expected ? state[name].length : 0, name)
   }
   assert.deepEqual(scope.access('conversations'), { allowed: false, reason: 'role_denied' })
-  assert.equal(scope.redact('students', state.students[0]).progress, state.students[0].progress)
+  assert.equal(scope.redact('students', state.students[0]!).progress, state.students[0]!.progress)
 })
 
 test('Ön büro idari koleksiyonları okur; akademik veri ve ilerleme kapalıdır (DOM-YTK-021)', () => {
@@ -107,7 +106,7 @@ test('Öğretmen kendi sınıfları ve branşıyla sınırlıdır (DOM-YTK-022)'
   const state = seed()
   const scope = scopeFor(state, teacher())
   const me = state.teachers.find((t) => t.id === 't1')
-  assert.equal(scope.teacher.id, 't1')
+  assert.equal(scope.teacher!.id, 't1')
   const taught = new Set(
     state.assignments.filter((a) => a.teacherId === 't1').map((a) => a.classId),
   )
@@ -123,13 +122,13 @@ test('Öğretmen kendi sınıfları ve branşıyla sınırlıdır (DOM-YTK-022)'
   const classOf = new Map(state.students.map((s) => [s.id, s.classId]))
   for (const g of grades) {
     assert.ok(scope.studentIds.has(g.studentId))
-    assert.ok(g.subjectId === me.subjectId || homeroom.has(classOf.get(g.studentId)))
+    assert.ok(g.subjectId === me!.subjectId || homeroom.has(classOf.get(g.studentId)!))
   }
   // Rehberi olmadığı lise sınıfında yalnız kendi dersinin notu görünür.
-  const highSchool = grades.filter((g) => !homeroom.has(classOf.get(g.studentId)))
+  const highSchool = grades.filter((g) => !homeroom.has(classOf.get(g.studentId)!))
   assert.ok(highSchool.length > 0)
-  assert.ok(highSchool.every((g) => g.subjectId === me.subjectId))
-  assert.ok(grades.some((g) => g.subjectId !== me.subjectId))
+  assert.ok(highSchool.every((g) => g.subjectId === me!.subjectId))
+  assert.ok(grades.some((g) => g.subjectId !== me!.subjectId))
   assert.deepEqual(
     ids(scope.read('teachers', state.teachers)),
     ['t1'],
@@ -141,7 +140,7 @@ test('Öğretmen kendi sınıfları ve branşıyla sınırlıdır (DOM-YTK-022)'
   assert.ok(
     scope
       .read('studentGoals', state.studentGoals)
-      .every((g) => !g.subjectId || g.subjectId === me.subjectId),
+      .every((g) => !g.subjectId || g.subjectId === me!.subjectId),
   )
   assert.deepEqual(scope.access('invoices'), { allowed: false, reason: 'role_denied' })
   // Modül kaydı yemek ve servis modülünü öğretmene açmaz.
@@ -149,7 +148,7 @@ test('Öğretmen kendi sınıfları ve branşıyla sınırlıdır (DOM-YTK-022)'
   assert.deepEqual(scope.access('transportRoutes'), { allowed: false, reason: 'role_denied' })
   const events = scope.read('schoolEvents', state.schoolEvents)
   assert.ok(
-    events.every((e) => (e.classId ? scope.classIds.has(e.classId) : e.branchId === me.branchId)),
+    events.every((e) => (e.classId ? scope.classIds.has(e.classId) : e.branchId === me!.branchId)),
   )
   assert.ok(scope.read('clubs', state.clubs).every((c) => c.teacherId === 't1'))
   const clubIds = new Set(scope.read('clubs', state.clubs).map((c) => c.id))
@@ -160,7 +159,7 @@ test('Öğretmen kendi sınıfları ve branşıyla sınırlıdır (DOM-YTK-022)'
 
 test('Pasif öğretmen kaydı ve başka kişinin bağlantısı kapsam vermez', () => {
   const state = seed()
-  state.teachers.find((t) => t.id === 't1').isActive = false
+  state.teachers.find((t) => t.id === 't1')!.isActive = false
   const scope = scopeFor(state, teacher())
   assert.equal(scope.teacher, undefined)
   assert.equal(scope.studentIds.size, 0)
@@ -174,11 +173,11 @@ test('Pasif öğretmen kaydı ve başka kişinin bağlantısı kapsam vermez', (
 test('Başka öğretmenin bağlantısı kendi sınıflarını verir', () => {
   const state = seed()
   const other = state.teachers.find((t) => t.branchId === 'b2')
-  const scope = scopeFor(state, teacher(other.id))
+  const scope = scopeFor(state, teacher(other!.id))
   assert.ok(scope.studentIds.size > 0)
   assert.ok(!scope.studentIds.has('s1'))
   assert.ok(
-    [...scope.classIds].every((c) => state.classes.find((x) => x.id === c).branchId === 'b2'),
+    [...scope.classIds].every((c) => state.classes.find((x) => x.id === c)!.branchId === 'b2'),
   )
 })
 
@@ -204,7 +203,7 @@ test('Öğrenci yalnız kendi kayıtlarını görür (DOM-YTK-024)', () => {
   assert.ok(conversations.every((c) => c.studentId === 's1' && c.audience === 'student'))
   // Sınıfında ders veren öğretmenler iletişim ve performans alanları olmadan görünür.
   const teachers = scope.read('teachers', state.teachers)
-  const classId = state.students.find((s) => s.id === 's1').classId
+  const classId = state.students.find((s) => s.id === 's1')!.classId
   assert.deepEqual(
     new Set(ids(teachers)),
     new Set(state.assignments.filter((a) => a.classId === classId).map((a) => a.teacherId)),
@@ -213,7 +212,7 @@ test('Öğrenci yalnız kendi kayıtlarını görür (DOM-YTK-024)', () => {
     for (const field of ['email', 'phone', 'attendanceRate', 'homeworkRate'])
       assert.ok(!(field in t))
   assert.ok(teachers.every((t) => t.name && t.subjectId))
-  const grade = state.classes.find((c) => c.id === classId).grade
+  const grade = state.classes.find((c) => c.id === classId)!.grade
   assert.ok(scope.read('mockExams', state.mockExams).every((e) => e.grade === grade))
   assert.deepEqual(ids(scope.read('classes', state.classes)), [classId])
   assert.ok(
@@ -221,7 +220,7 @@ test('Öğrenci yalnız kendi kayıtlarını görür (DOM-YTK-024)', () => {
       .read('announcements', state.announcements)
       .every((a) => !a.classId || a.classId === classId),
   )
-  const level = state.classes.find((c) => c.id === classId).level
+  const level = state.classes.find((c) => c.id === classId)!.level
   assert.ok(scope.read('materials', state.materials).every((m) => m.level === level))
 })
 
@@ -238,12 +237,12 @@ test('Öğrenci etüt grubunda yalnız kendi satırını görür', () => {
     attendance: { s1: 'Geldi', s9: 'Gelmedi' },
   }
   const [own] = scopeFor(state, student()).read('tutorSessions', [session])
-  assert.deepEqual(own.studentIds, ['s1'])
-  assert.deepEqual(own.scores, [{ studentId: 's1', percent: 40 }])
-  assert.deepEqual(own.attendance, { s1: 'Geldi' })
+  assert.deepEqual(own!.studentIds, ['s1'])
+  assert.deepEqual(own!.scores, [{ studentId: 's1', percent: 40 }])
+  assert.deepEqual(own!.attendance, { s1: 'Geldi' })
   assert.deepEqual(session.studentIds, ['s1', 's9'], 'kaynak kayıt değişmez')
   const [full] = scopeFor(state, teacher()).read('tutorSessions', [session])
-  assert.deepEqual(full.studentIds, ['s1', 's9'])
+  assert.deepEqual(full!.studentIds, ['s1', 's9'])
   assert.deepEqual(scopeFor(state, student('s3')).read('tutorSessions', [session]), [])
   // Alanları eksik JSON kaydı da güvenle daraltılır.
   const [bare] = scopeFor(state, student()).read('tutorSessions', [
@@ -356,14 +355,14 @@ test('Demo iş akışı kapsamı bugünkü davranışını korur', () => {
   const state = seed()
   const veli = workflowScope(state, { role: 'veli', childId: 's2' })
   assert.deepEqual([...veli.studentIds], ['s2'])
-  assert.equal(veli.student.id, 's2')
+  assert.equal(veli.student!.id, 's2')
   assert.equal(workflowScope(state, { role: 'veli', childId: 's3' }).studentIds.size, 0)
   assert.equal(workflowScope(state, { role: 'veli' }).studentIds.size, 0)
   const ogrenci = workflowScope(state, { role: 'ogrenci' })
   assert.deepEqual([...ogrenci.studentIds], ['s1'])
   assert.equal(workflowScope(state, { role: 'yonetici' }).institution, true)
   assert.equal(workflowScope(state, { role: 'onburo' }).institution, true)
-  assert.equal(workflowScope(state, { role: 'ogretmen' }).teacher.id, 't1')
+  assert.equal(workflowScope(state, { role: 'ogretmen' }).teacher!.id, 't1')
   assert.equal(automationScope(state, { role: 'onburo' }).studentIds.size, 0)
   assert.deepEqual([...automationScope(state, { role: 'veli', childId: 's2' }).studentIds], ['s2'])
   assert.equal(automationScope(state, { role: 'veli', childId: 's3' }).studentIds.size, 0)
@@ -372,16 +371,19 @@ test('Demo iş akışı kapsamı bugünkü davranışını korur', () => {
 
 test('API oturumu bağlantılarıyla iş akışı başka öğretmen adına çalışır', () => {
   const state = seed()
-  const classId = state.students.find((s) => s.id === 's9').classId
+  const classId = state.students.find((s) => s.id === 's9')!.classId
   const assignment = state.assignments.find((a) => a.classId === classId && a.teacherId !== 't1')
-  const session = { role: 'ogretmen', links: [{ kind: 'teacher', recordId: assignment.teacherId }] }
+  const session = {
+    role: 'ogretmen',
+    links: [{ kind: 'teacher', recordId: assignment!.teacherId }],
+  }
   const task = runWorkflow(
     state,
     session,
     'study-task',
     {
       studentId: 's9',
-      subjectId: assignment.subjectId,
+      subjectId: assignment!.subjectId,
       topic: 'Konu tekrarı',
       title: 'Haftalık tekrar',
       instructions: 'Örnek soruları çöz.',
@@ -392,8 +394,8 @@ test('API oturumu bağlantılarıyla iş akışı başka öğretmen adına çal�
     undefined,
     now,
   )
-  assert.equal(task.teacherId, assignment.teacherId)
-  assert.equal(state.audit[0].user_id, assignment.teacherId)
+  assert.equal(task.teacherId, assignment!.teacherId)
+  assert.equal(state.audit[0]!.user_id, assignment!.teacherId)
   // Aynı öğrenci demo öğretmeninin kapsamında değildir.
   assert.ok(!workflowScope(state, { role: 'ogretmen' }).studentIds.has('s9'))
   const parentSession = { role: 'veli', childId: 's9', links: [{ kind: 'child', recordId: 's9' }] }

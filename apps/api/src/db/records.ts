@@ -2,6 +2,11 @@ import { and, asc, eq, inArray, isNull, max, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
+  INVOICE_STATUS_LABELS as CORE_INVOICE_STATUS_LABELS,
+  type InvoiceStatus,
+} from '@kampus/school-core/lib/format.ts'
+
+import {
   AppError,
   ConflictError,
   MESSAGES,
@@ -92,9 +97,11 @@ export interface InvoiceStatusMatch {
   todayStart: string
 }
 
-/** Core `invoiceStatus` etiketleri (`lib/format.ts`). */
-export const INVOICE_STATUS_LABELS = ['Ödendi', 'Gecikmiş', 'Yaklaşan'] as const
-export type InvoiceStatusLabel = (typeof INVOICE_STATUS_LABELS)[number]
+/** Core `invoiceStatus` etiketleri (`lib/format.ts`), core'un tanım sırasıyla. */
+export const INVOICE_STATUS_LABELS: readonly InvoiceStatus[] = Object.values(
+  CORE_INVOICE_STATUS_LABELS,
+)
+export type InvoiceStatusLabel = InvoiceStatus
 
 export type RecordFilter = FieldMatch | ActiveMatch | DayRangeMatch | InvoiceStatusMatch
 

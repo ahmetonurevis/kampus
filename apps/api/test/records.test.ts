@@ -496,6 +496,12 @@ describe('records deposu', () => {
       'test-s-odendi-vadesiz': [{ dueDate: undefined, paidAt: '2026-10-01' }, 'Ödendi'],
       'test-s-bos-odeme': [{ dueDate: '2026-10-01', paidAt: '' }, 'Gecikmiş'],
       'test-s-yanlis-odeme': [{ dueDate: '2026-10-09', paidAt: false }, 'Yaklaşan'],
+      'test-s-sifir-odeme': [{ dueDate: '2026-10-01', paidAt: 0 }, 'Gecikmiş'],
+      // Metin olmayan doğru değerler core'da (`invoice.paidAt ?`) ve SQL'de ödenmiştir.
+      'test-s-dizi-odeme': [{ dueDate: '2026-10-01', paidAt: [] }, 'Ödendi'],
+      'test-s-nesne-odeme': [{ dueDate: '2026-10-01', paidAt: {} }, 'Ödendi'],
+      'test-s-dogru-odeme': [{ dueDate: '2026-10-09', paidAt: true }, 'Ödendi'],
+      'test-s-sayi-odeme': [{ dueDate: '2026-10-01', paidAt: 1 }, 'Ödendi'],
     }
     // Başka biçimli vade SQL'de adaydır; karar core'undur.
     const loose: Record<string, [Record<string, unknown>, string | null]> = {
@@ -516,7 +522,8 @@ describe('records deposu', () => {
       if (row.id in exact)
         assert.equal(
           invoiceStatus(
-            { paidAt: paidAt ? String(paidAt) : null, dueDate: String(dueDate) },
+            // Core'a kayıttaki değerin kendisi verilir: karar onun doğruluk değerlendirmesidir.
+            { paidAt: (paidAt || null) as string | null, dueDate: String(dueDate) },
             today,
           ),
           expected,

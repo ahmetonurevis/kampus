@@ -221,6 +221,56 @@ describe('koleksiyon sorguları: durum, sayım, bağlı alan', () => {
       assert.deepEqual(await ids(parent, invoicesUrl(`classId=${s11Class}`)), [])
     })
 
+    test('metin olmayan doğru ödeme değeri süzgeçte, sıralamada ve sayımda Ödendi', async () => {
+      const { id, adminCookie } = await institution()
+      const odd = [
+        { id: 'test-inv-dizi', paidAt: [] },
+        { id: 'test-inv-nesne', paidAt: {} },
+        { id: 'test-inv-dogru', paidAt: true },
+      ].map((item) => ({
+        ...item,
+        studentId: 's1',
+        installment: 10,
+        amount: 50_00,
+        dueDate: '2026-09-01',
+        method: null,
+        reminderAt: null,
+      }))
+      await insertMissingRecords(
+        db,
+        id,
+        odd.map((data) => ({ collection: 'invoices' as const, id: data.id, data })),
+        FIXED_NOW,
+      )
+      const oddIds = odd.map((item) => item.id)
+      const paid = await ids(adminCookie, invoicesUrl(status('Ödendi')))
+      assert.ok(
+        oddIds.every((key) => paid.includes(key)),
+        'SQL adayı ve bellek kararı aynı',
+      )
+      for (const label of ['Gecikmiş', 'Yaklaşan'])
+        assert.ok(
+          (await ids(adminCookie, invoicesUrl(status(label)))).every(
+            (key) => !oddIds.includes(key),
+          ),
+          label,
+        )
+      const response = await get(
+        '/api/v1/collections/invoices/counts?groupBy=status&studentId=s1',
+        adminCookie,
+      )
+      assert.equal(response.statusCode, 200, response.body)
+      const s1Paid = paid.filter((key) =>
+        [...PAID_SAMPLE.map((row) => row.data), ...odd].some(
+          (row) => row.id === key && row.studentId === 's1',
+        ),
+      )
+      assert.deepEqual(response.json().data, [
+        { value: 'Gecikmiş', count: 1 },
+        { value: 'Ödendi', count: s1Paid.length },
+      ])
+    })
+
     test('bilinmeyen durum değeri 400; kayıtlar değişmez', async () => {
       const { id, adminCookie } = await institution()
       const before = await rowsOf(id)

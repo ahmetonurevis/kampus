@@ -155,16 +155,18 @@ export const EMPTY_FILTERED_TEXT = 'Aramanızla eşleşen kayıt bulunamadı.'
 
 /**
  * Boş sonuç durumu: daraltma yoksa liste gerçekten boştur ("Henüz kayıt yok", düğme yok);
- * daraltma varsa "sonuç bulunamadı" metni ve temizleme düğmesi.
+ * daraltma varsa "sonuç bulunamadı" metni. Temizleme düğmesi tek olur: araç çubuğu zaten
+ * gösteriyorsa (`clearInToolbar`) boş durumda ikinci bir düğme çizilmez.
  */
 export function emptyListView(
   state: Pick<ListState, 'query' | 'filters'>,
   externalActive: boolean,
   copy: { empty?: string; emptyFiltered?: string },
+  clearInToolbar = false,
 ): { showClear: boolean; text: string } {
   if (!listNarrowed(state, externalActive))
     return { showClear: false, text: copy.empty ?? EMPTY_LIST_TEXT }
-  return { showClear: true, text: copy.emptyFiltered ?? EMPTY_FILTERED_TEXT }
+  return { showClear: !clearInToolbar, text: copy.emptyFiltered ?? EMPTY_FILTERED_TEXT }
 }
 
 /** Hazır filtre seçili mi: değerler birebir aynıysa (anahtar sırası önemsiz). */

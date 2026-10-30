@@ -3,7 +3,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { chromium, type Page } from '@playwright/test'
+import { chromium, type BrowserContext, type Page } from '@playwright/test'
 
 const { values } = parseArgs({
   options: {
@@ -13,8 +13,12 @@ const { values } = parseArgs({
     widths: { type: 'string', default: '1440,390' },
     height: { type: 'string', default: '900' },
     out: { type: 'string', default: 'artifacts/ekran-kontrol' },
-    // web-react geliştirme girişi: rol anahtarı (ör. yonetici). Vue için boş bırakılır.
+    // web-react gerçek girişi: rol anahtarı (ör. yonetici) Akademi demo hesabına eşlenir.
+    // Vue için boş bırakılır. Hesap ve parola `apps/api/src/db/demo-seed.ts`'ten gelir.
     rol: { type: 'string', default: '' },
+    eposta: { type: 'string', default: '' },
+    parola: { type: 'string', default: process.env.DEMO_PASSWORD || 'Demo-Giris-2026!' },
+    cikis: { type: 'boolean', default: false },
     tam: { type: 'boolean', default: false },
     'azaltilmis-hareket': { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
@@ -28,7 +32,10 @@ if (values.help) {
   --themes <light,dark>   Temalar
   --widths <1440,390>     Görüntü genişlikleri (px)
   --height <900>          Görüntü yüksekliği (px)
-  --rol <anahtar>         web-react geliştirme girişiyle bu rolde oturum açar
+  --rol <anahtar>         web-react'te bu rolün Akademi demo hesabıyla gerçek giriş yapar
+  --eposta <adres>        --rol yerine/üstüne giriş e-postası (ör. çok kurumlu hesap)
+  --parola <parola>       Giriş parolası (varsayılan DEMO_PASSWORD ya da demo parolası)
+  --cikis                 Sonda avatar menüsünden çıkış yapar, korumalı adresin girişe döndüğünü denetler
   --tam                   Tam sayfa ekran görüntüsü
   --azaltilmis-hareket    prefers-reduced-motion: reduce taklidi
   --out <klasör>          Çıktı klasörü (varsayılan artifacts/ekran-kontrol)`)
@@ -58,7 +65,24 @@ type Finding = {
   overflow: number
   overflowElements: string[]
   consoleErrors: string[]
+  /** Tema dışında tarayıcı deposuna yazılan anahtarlar (belirteç/kişisel veri yazılmamalı). */
+  storageKeys: string[]
 }
+
+/** `apps/api/src/db/demo-seed.ts` Akademi Özel Okulları demo hesapları. */
+const DEMO_EMAILS: Record<string, string> = {
+  yonetici: 'murat.yilmaz@kampus.example',
+  onburo: 'busra.aydin@kampus.example',
+  ogretmen: 'selin.kaya@kampus.example',
+  ogrenci: 'deniz.yilmaz@kampus.example',
+  veli: 'ayse.yilmaz@kampus.example',
+}
+const loginEmail = values.eposta || DEMO_EMAILS[values.rol] || ''
+if (values.rol && !loginEmail) {
+  console.error(`Bilinmeyen rol: ${values.rol}. Seçenekler: ${Object.keys(DEMO_EMAILS).join(', ')}`)
+  process.exit(2)
+}
+const signedIn = Boolean(loginEmail)
 
 const nextFrames = (page: Page) =>
   page.evaluate(
@@ -85,18 +109,63 @@ async function settle(page: Page) {
   await nextFrames(page)
 }
 
-// Oturum bellekte tutulduğu için route değişimi sayfa yenilemeden, istemci tarafında yapılır.
-async function clientNavigate(page: Page, route: string) {
-  await page.evaluate((target) => {
-    window.history.pushState({}, '', target)
-    window.dispatchEvent(new PopStateEvent('popstate'))
-  }, route)
+// Gerçek giriş (Better Auth): oturum çerezde olduğundan sonraki route'lar tam sayfa açılır.
+// Giriş uçunun hız sınırı (dakikada 5) için her koşuda bir kez girilir, çerez diğer temalara taşınır.
+async function login(page: Page) {
+  await page.goto(new URL('/giris', values.base).href)
+  await page.getByLabel('E-posta').fill(loginEmail)
+  await page.getByLabel('Parola').fill(values.parola)
+  await page.getByRole('button', { name: 'Giriş yap' }).click()
+  try {
+    await page.waitForURL((url) => !url.pathname.startsWith('/giris'), { timeout: 15_000 })
+  } catch (error) {
+    const reason = await page
+      .locator('[role="alert"], [data-sonner-toast], [data-slot="field-error"]')
+      .allInnerTexts()
+      .catch(() => [])
+    throw new Error(`Giriş başarısız (${loginEmail}): ${reason.join(' | ') || 'yanıt yok'}`, {
+      cause: error,
+    })
+  }
 }
 
-async function login(page: Page, role: string) {
-  await page.goto(new URL('/giris', values.base).href)
-  await page.locator(`[data-dev-role="${role}"]`).click()
-  await page.waitForURL((url) => !url.pathname.startsWith('/giris'))
+/** Çıkış: avatar menüsünden; ardından korumalı adres dönüş adresiyle girişe yönlenmeli. */
+async function signOut(page: Page): Promise<string[]> {
+  const problems: string[] = []
+  await page.getByRole('button', { name: /^Hesap menüsü/ }).click()
+  await page.getByRole('menuitem', { name: 'Oturumu kapat' }).click()
+  await page.waitForURL((url) => url.pathname === '/giris', { timeout: 15_000 })
+  const target = routes[0] ?? '/'
+  await page.goto(new URL(target, values.base).href)
+  await page
+    .waitForURL((url) => url.pathname === '/giris', { timeout: 15_000 })
+    .catch(() => {
+      problems.push(`çıkıştan sonra ${target} girişe yönlenmedi (${page.url()})`)
+    })
+  // Korumalı adres dönüş adresi olarak taşınmalı (yalnız göreli yol).
+  const back = new URL(page.url()).searchParams.get('donus')
+  if (target.startsWith('/') && target !== '/' && back !== target)
+    problems.push(`dönüş adresi beklenen ${target}, gelen ${back ?? 'yok'}`)
+  const stored = await storageKeys(page)
+  if (stored.length) problems.push(`çıkıştan sonra depoda: ${stored.join(', ')}`)
+  return problems
+}
+
+// İzinli anahtarlar: tema tercihi, react-router ScrollRestoration'ın yol → kaydırma konumu
+// eşlemesi ve Better Auth'un sekmeler arası oturum sinyali (yalnız olay adı ve zaman). Hiçbiri
+// belirteç veya kişisel veri taşımaz.
+const ALLOWED_STORAGE_KEYS = [
+  'localStorage:kampus-theme',
+  'sessionStorage:react-router-scroll-positions',
+  'localStorage:better-auth.message',
+]
+
+async function storageKeys(page: Page): Promise<string[]> {
+  const keys = await page.evaluate(() => [
+    ...Object.keys(localStorage).map((key) => `localStorage:${key}`),
+    ...Object.keys(sessionStorage).map((key) => `sessionStorage:${key}`),
+  ])
+  return keys.filter((key) => !ALLOWED_STORAGE_KEYS.includes(key))
 }
 
 async function measureOverflow(page: Page) {
@@ -124,16 +193,19 @@ async function measureOverflow(page: Page) {
 
 const browser = await chromium.launch()
 const findings: Finding[] = []
+const signOutProblems: string[] = []
 await mkdir(outDir, { recursive: true })
 
 try {
-  for (const theme of themes) {
+  let storageState: Awaited<ReturnType<BrowserContext['storageState']>> | undefined
+  for (const [index, theme] of themes.entries()) {
     const context = await browser.newContext({
       viewport: { width: widths[0] ?? 1440, height },
       reducedMotion: values['azaltilmis-hareket'] ? 'reduce' : 'no-preference',
       colorScheme: theme === 'dark' ? 'dark' : 'light',
       locale: 'tr-TR',
       timezoneId: 'Europe/Istanbul',
+      ...(storageState ? { storageState } : {}),
     })
     await context.addInitScript((value) => {
       try {
@@ -149,11 +221,13 @@ try {
     })
     page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`))
 
-    if (values.rol) await login(page, values.rol)
+    if (signedIn && !storageState) {
+      await login(page)
+      storageState = await context.storageState()
+    }
     for (const route of routes) {
       errors = []
-      if (values.rol) await clientNavigate(page, route)
-      else await page.goto(new URL(route, values.base).href)
+      await page.goto(new URL(route, values.base).href)
       for (const width of widths) {
         await page.setViewportSize({ width, height })
         await settle(page)
@@ -168,9 +242,12 @@ try {
           overflow,
           overflowElements: elements,
           consoleErrors: [...errors],
+          storageKeys: await storageKeys(page),
         })
       }
     }
+    if (signedIn && values.cikis && index === themes.length - 1)
+      signOutProblems.push(...(await signOut(page)))
     await context.close()
   }
 } finally {
@@ -178,17 +255,22 @@ try {
 }
 
 await writeFile(join(outDir, 'rapor.json'), `${JSON.stringify(findings, null, 2)}\n`)
-const problems = findings.filter((f) => f.overflow > 0 || f.consoleErrors.length)
+const problems = findings.filter(
+  (f) => f.overflow > 0 || f.consoleErrors.length || f.storageKeys.length,
+)
 for (const f of findings) {
   const marks = [
     f.overflow > 0 ? `TAŞMA ${f.overflow} px` : '',
     f.consoleErrors.length ? `KONSOL ${f.consoleErrors.length}` : '',
+    f.storageKeys.length ? `DEPO ${f.storageKeys.join(', ')}` : '',
   ].filter(Boolean)
   console.log(`${marks.length ? '✗' : '✓'} ${f.route} · ${f.theme} · ${f.width} → ${f.file}`)
   for (const element of f.overflowElements) console.log(`    taşan: ${element}`)
   for (const error of f.consoleErrors) console.log(`    konsol: ${error}`)
 }
+if (signedIn && values.cikis)
+  console.log(signOutProblems.length ? `✗ çıkış: ${signOutProblems.join('; ')}` : '✓ çıkış')
 console.log(
   `\n${findings.length} görüntü, ${problems.length} sorunlu. Rapor: ${join(outDir, 'rapor.json')}`,
 )
-process.exitCode = problems.length ? 1 : 0
+process.exitCode = problems.length || signOutProblems.length ? 1 : 0

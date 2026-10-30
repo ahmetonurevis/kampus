@@ -16,15 +16,22 @@ description: Kampüs web arayüzünü görsel olarak kontrol etme — route'lar�
 ## Komutlar
 
 ```bash
-pnpm dev:react                      # 5174 (paralel çalışmada görevdeki portu kullan)
+# API + veritabanı (paylaşılan sunucuda ayrı veritabanı kullan; DATABASE_URL yalnız ortamda)
+docker compose up -d
+pnpm --filter @kampus/api db:migrate && pnpm --filter @kampus/api db:seed
+pnpm dev:api                        # 3000; başka port: PORT=… ve web için KAMPUS_API_URL=…
+pnpm dev:react                      # 5174, /api → API vekili (paralel çalışmada görevdeki portu kullan)
 node scripts/ekran-kontrol.ts --routes /giris
 node scripts/ekran-kontrol.ts --rol yonetici --routes /yonetici/dashboard,/yonetici/finans,/yonetici/olmayan
-node scripts/ekran-kontrol.ts --rol veli --routes /veli/dashboard --widths 1440,390,320 --tam
+node scripts/ekran-kontrol.ts --rol veli --routes /veli/dashboard --widths 1440,390,320 --tam --cikis
+node scripts/ekran-kontrol.ts --eposta murat.yilmaz@kampus.example --routes /yonetici/dashboard
 node scripts/ekran-kontrol.ts --routes /giris --azaltilmis-hareket --out artifacts/ekran-kontrol/giris
 ```
 
 - Varsayılanlar: `--base http://127.0.0.1:5174`, temalar `light,dark`, genişlikler `1440,390`, yükseklik 900, çıktı `artifacts/ekran-kontrol` (git'e girmez).
-- `--rol <anahtar>`: `/giris`'teki `[data-dev-role="<anahtar>"]` geliştirme düğmesiyle oturum açar, sonra route'ları istemci tarafında (`pushState` + `popstate`) değiştirir; oturum bellekte olduğundan tam sayfa yenilemesi girişe döner. Yalnız geliştirme sunucusunda çalışır (TODO(D2): Better Auth gelince test hesabıyla).
+- `--rol <anahtar>`: rolün Akademi demo hesabıyla (`apps/api/src/db/demo-seed.ts`) giriş formundan gerçek Better Auth girişi yapar; `--eposta` hesabı, `--parola` parolayı değiştirir (varsayılan `DEMO_PASSWORD` ya da demo parolası). Oturum çerezdedir: route'lar tam sayfa açılır, çerez diğer temalara taşınır. Giriş ucu dakikada 5 denemeyle sınırlıdır; betik koşu başına bir kez girer, art arda çok rol koşarken 429 alırsan bir dakika bekle.
+- `--cikis`: son temada avatar menüsünden çıkış yapar ve ilk route'un girişe yönlendiğini denetler.
+- Rapor, tema tercihi ve react-router kaydırma konumu dışında `localStorage`/`sessionStorage`'a yazılan her anahtarı (`DEPO`) sorun sayar.
 - Vue referansı: `pnpm --filter @kampus/web dev --port 5175` ve `--base http://127.0.0.1:5175`, `--rol` olmadan (Vue rolü URL'den alır). İş bitince sunucuyu kapat: `lsof -ti:5175 | xargs kill`.
 
 ## İnceleme

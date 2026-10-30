@@ -3,9 +3,11 @@ import { useAuth } from '@/auth/use-auth.ts'
 import { pageHref } from '@/lib/navigation.ts'
 import { RootLayout } from '@/pages/shell/RootLayout.tsx'
 import { RouteErrorPage } from '@/pages/shell/RouteErrorPage.tsx'
+import { SessionPending } from '@/pages/shell/SessionPending.tsx'
 
 function HomeRedirect() {
-  const { session } = useAuth()
+  const { status, session } = useAuth()
+  if (status === 'loading') return <SessionPending />
   return (
     <Navigate to={session ? pageHref(session.role, { path: 'dashboard' }) : '/giris'} replace />
   )

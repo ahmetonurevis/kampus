@@ -1,4 +1,5 @@
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
+import { useActiveInstitution } from '@kampus/react-shared/use-active-institution.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import {
@@ -6,17 +7,39 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { Session } from '@/auth/auth-port.ts'
-import { accountPages, pageHref } from '@/lib/navigation.ts'
+import { accountPages, getRole, pageHref } from '@/lib/navigation.ts'
+import { notify } from '@/lib/notify.ts'
+import { clearViewMemory } from '@/lib/view-memory.ts'
 
 type AccountMenuProps = { session: Session; onSignOut: () => void }
 
-/** Sağ üstteki isim/avatar menüsü: hesap sayfaları ve oturum kapatma burada. */
+const SWITCH_FAILED = 'Kurum değiştirilemedi. Lütfen tekrar deneyin.'
+
+/** Sağ üstteki isim/avatar menüsü: hesap sayfaları, kurum değiştirme ve oturum kapatma burada. */
 export function AccountMenu({ session, onSignOut }: AccountMenuProps) {
   const pages = accountPages(session.role, session.modules)
+  const navigate = useNavigate()
+  const { switchInstitution } = useActiveInstitution()
+
+  function selectInstitution(institutionId: string) {
+    if (institutionId === session.institution.id || switchInstitution.isPending) return
+    // react-shared eski kurumun sorgularını siler ve `/me`'yi yeniler; görünüm belleği (liste
+    // durumu, seçili çocuk) da eski kuruma ait olduğundan burada temizlenir.
+    switchInstitution
+      .mutateAsync(institutionId)
+      .then(() => {
+        clearViewMemory()
+        return navigate('/', { replace: true })
+      })
+      .catch((error: unknown) => notify.error(SWITCH_FAILED, error))
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -31,6 +54,35 @@ export function AccountMenu({ session, onSignOut }: AccountMenuProps) {
           <span className="text-xs font-normal text-muted-foreground">{session.roleSubtitle}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {session.memberships.length > 1 ? (
+          <>
+            <DropdownMenuLabel className="px-2.5 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">
+              Kurum
+            </DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={session.institution.id}
+              onValueChange={selectInstitution}
+              aria-label="Kurum değiştir"
+            >
+              {session.memberships.map((membership) => (
+                <DropdownMenuRadioItem
+                  key={membership.id}
+                  value={membership.institutionId}
+                  disabled={switchInstitution.isPending}
+                  className="min-h-10 rounded-lg text-sm"
+                >
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate">{membership.institutionName}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {getRole(membership.role).label}
+                    </span>
+                  </span>
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         {pages.map((page) => (
           <DropdownMenuItem key={page.path} asChild className="min-h-10 rounded-lg text-sm">
             <Link to={pageHref(session.role, page)}>

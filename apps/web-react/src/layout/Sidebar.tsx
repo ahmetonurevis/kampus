@@ -4,6 +4,7 @@ import { Avatar } from '@/components/Avatar.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { Session } from '@/auth/auth-port.ts'
+import { academicYearLabel } from '@/auth/session-mapping.ts'
 import {
   isGroupExpanded,
   pageHref,
@@ -32,6 +33,7 @@ export function SidebarContent({ session, onNavigate, onSignOut }: SidebarConten
   const { page: activePath } = useParams()
   const [expanded, setExpanded] = useState<GroupState>(storedGroups)
   const groups = sidebarGroups(session.role, session.modules)
+  const term = academicYearLabel(session.institution.academicYear)
 
   function toggle(group: string, open: boolean) {
     const next = setGroupExpanded(expanded, session.role, group, open)
@@ -70,7 +72,7 @@ export function SidebarContent({ session, onNavigate, onSignOut }: SidebarConten
           <strong className="truncate text-2xs font-medium text-sidebar-strong">
             {session.institution.name}
           </strong>
-          <small className="text-[8px] text-sidebar-foreground">{session.institution.term}</small>
+          {term ? <small className="text-[8px] text-sidebar-foreground">{term}</small> : null}
         </div>
       </div>
 

@@ -6,8 +6,9 @@ import { readView, writeView } from '@/lib/view-memory.ts'
 
 /**
  * Velinin görüntülediği çocuk (Vue `selectedChildId`). Değişince sayfa kaydırması çocuk bazında
- * saklanır ve yeni çocuğun konumu geri yüklenir. TODO(D2): seçim API oturumuna bağlanınca
- * sunucu kapsamı (`childId`) da bu değerden gelir.
+ * saklanır ve yeni çocuğun konumu geri yüklenir. Seçenekler `/me` veli bağlantılarıdır (kayıt
+ * kimliği). TODO(core-scope): veli kapsamlı okuma gelince çocuğa ait sorgular `childId`'yi
+ * bu değerden alır; sunucu yine yalnız velinin bağlı çocuklarını döndürür.
  */
 export function useChildSelection(session: Session | null) {
   const { pathname } = useLocation()

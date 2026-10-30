@@ -46,6 +46,9 @@ test('etiket rolün karşı tarafını gösterir', () => {
   })
   assert.equal(conversationLabel(parentRow, 'veli', names).subtitle, 'Öğrenci: Deniz Yılmaz')
   assert.equal(conversationLabel(studentRow, 'yonetici', names).title, 'Selin Kaya ↔ Deniz Yılmaz')
+  // Yöneticide iki yazışma türü listede ayırt edilir (veli yazışmasına erişim açılamaz).
+  assert.equal(conversationLabel(studentRow, 'yonetici', names).subtitle, 'Öğrenci–öğretmen')
+  assert.equal(conversationLabel(parentRow, 'yonetici', names).subtitle, 'Veli yazışması')
 })
 
 test('iki velisi olan öğrencide veli adı tahmin edilmez; bilinmeyen ad kimlik göstermez', () => {

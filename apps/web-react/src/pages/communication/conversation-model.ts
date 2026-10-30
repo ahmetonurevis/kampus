@@ -47,7 +47,11 @@ export function conversationLabel(
       subtitle: `Öğrenci: ${student}`,
     }
   }
-  if (role === 'yonetici') return { title: `${teacher} ↔ ${student}`, subtitle: 'Öğrenci–öğretmen' }
+  if (role === 'yonetici')
+    return {
+      title: `${teacher} ↔ ${student}`,
+      subtitle: conversation.audience === 'parent' ? 'Veli yazışması' : 'Öğrenci–öğretmen',
+    }
   return { title: teacher, subtitle: role === 'veli' ? `Öğrenci: ${student}` : 'Öğretmen' }
 }
 

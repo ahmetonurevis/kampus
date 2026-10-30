@@ -695,6 +695,30 @@ describe('records deposu', () => {
     assert.deepEqual(await ids([{ field: "studentId' or '1'='1", values: ['s1'] }]), [])
   })
 
+  test('kesin eşitlik süzgeci yalnız metin değeri eşler (dizi ve sayı aday değil); SQL ile bellekte aynı', async () => {
+    const id = await institutionWith([
+      invoice('test-eq-a', { studentId: 's1' }),
+      invoice('test-eq-b', { studentId: ['s1'] }),
+      invoice('test-eq-c', { studentId: 1 }),
+      invoice('test-eq-d', { studentId: 's2' }),
+    ])
+    const cases: RecordFilter[] = [
+      { kind: 'equals', field: 'studentId', values: ['s1'] },
+      { kind: 'equals', field: 'studentId', values: ['s1', 's2', '1'] },
+      { kind: 'equals', field: 'studentId', values: [] },
+    ]
+    const all = await loadRecords(db, id, ['invoices'])
+    for (const filter of cases) {
+      const sqlIds = (await loadRecords(db, id, ['invoices'], { match: [filter] })).map((r) => r.id)
+      const memoryIds = all.filter((r) => matchesRecordFilter(r.data, filter)).map((r) => r.id)
+      assert.deepEqual(sqlIds, memoryIds, JSON.stringify(filter))
+    }
+    assert.deepEqual(
+      (await loadRecords(db, id, ['invoices'], { match: [cases[1]!] })).map((r) => r.id),
+      ['test-eq-a', 'test-eq-d'],
+    )
+  })
+
   describe('arama aday süzgeci (SQL)', () => {
     /** Katlamanın zor durumları: Türkçe harfler, aksan, ASCII dışı işaret, kaçış, üstel sayı. */
     const TEXTS: Record<string, Record<string, unknown>> = {

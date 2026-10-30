@@ -89,6 +89,7 @@ export const COLLECTION_MODULES = {
   materials: 'learning',
   announcements: 'communication',
   conversations: 'communication',
+  conversationMessages: 'communication',
   appointments: 'communication',
   requests: 'communication',
   availability: 'communication',

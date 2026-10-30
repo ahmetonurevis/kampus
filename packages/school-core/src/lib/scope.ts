@@ -79,6 +79,8 @@ export type HiddenField =
   | 'attendanceRate'
   | 'homeworkRate'
   | 'corrections'
+  | 'senderUserId'
+  | 'parentUserId'
 export type Redacted<T> = Omit<T, HiddenField> & Partial<Pick<T, Extract<keyof T, HiddenField>>>
 
 export type ReadDenial =
@@ -276,6 +278,18 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
     ogrenci: (c, r) => ownStudent(c, r) && text(r, 'audience') === 'student',
     veli: (c, r) => ownStudent(c, r) && text(r, 'audience') === 'parent',
   },
+  // Mesaj ayrı kayıttır ve yazışmanın taraf anahtarlarını taşır (ADR 0005): yalnız yazışmanın
+  // tarafı okur. Velide mesajın veli kimliği de aktörün kendisi olmalıdır; her velinin yazışması
+  // ayrıdır, kimliksiz eski kayıt hiçbir veliye açılmaz (DOM-ILT-010, DOM-YTK-052).
+  conversationMessages: {
+    ogretmen: ownTeacher,
+    ogrenci: (c, r) => ownStudent(c, r) && text(r, 'audience') === 'student',
+    veli: (c, r) =>
+      ownStudent(c, r) &&
+      text(r, 'audience') === 'parent' &&
+      c.userId !== undefined &&
+      text(r, 'parentUserId') === c.userId,
+  },
   appointments: { ...ADMIN, ogretmen: ownTeacher, ...PERSONAL },
   requests: { ...ADMIN_FRONT_OFFICE, ...PERSONAL },
   availability: { ...ADMIN, ogretmen: ownTeacher },
@@ -335,6 +349,7 @@ const NONE: readonly string[] = []
 const GUIDANCE_INTERNAL: readonly string[] = ['internalNote', 'notes']
 const TEACHER_PRIVATE: readonly string[] = ['email', 'phone', 'attendanceRate', 'homeworkRate']
 const CORRECTION_HISTORY: readonly string[] = ['corrections']
+const MESSAGE_HIDDEN_FIELDS: readonly string[] = ['senderUserId', 'parentUserId']
 const personal = (c: Context) => c.role === 'ogrenci' || c.role === 'veli'
 /**
  * Alan ayıklama: rol satırı görse de bu alanları hiç almaz (yanıt, arama, sıralama dahil).
@@ -355,6 +370,9 @@ const HIDDEN_FIELDS: Partial<Record<CollectionName, (context: Context) => readon
   guidanceCases: (c) => (c.counselor ? NONE : GUIDANCE_INTERNAL),
   // Okundu ayrıntısı ve alıcı listesi ham dönmez; sayı olarak eklenir (DOM-ILT-003).
   announcements: () => ANNOUNCEMENT_HIDDEN_FIELDS,
+  // Gönderenin kişi kimliği ve velinin kullanıcı kimliği kopyası hiçbir role ham dönmez;
+  // gönderen tarafı `sender` alanındadır (DOM-ILT-014).
+  conversationMessages: () => MESSAGE_HIDDEN_FIELDS,
 }
 const HIDDEN: Readonly<Record<string, ((context: Context) => readonly string[]) | undefined>> =
   HIDDEN_FIELDS

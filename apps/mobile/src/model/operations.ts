@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { subjects, subjectsForGrade } from '@kampus/school-core/data/curriculum.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
+import { addConversationMessage } from '@kampus/school-core/lib/communication.ts'
 import {
   requiredText,
   prospectSchema,
@@ -801,11 +802,10 @@ export function operation(
             studentId: c.student.id,
             teacherId: str(v.teacherId),
             audience,
-            messages: [],
           }
           s.conversations.push(conversation)
         }
-        conversation.messages.push({
+        addConversationMessage(s, conversation, {
           id: id('msg'),
           text: requiredText.parse(v.text),
           sender: audience,

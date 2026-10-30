@@ -200,10 +200,11 @@ export async function seedDemo(auth: Auth, db: Database, password: string, optio
     if (!institutionId) continue
     const state = demoState(institution.slug, options.now)
     const parentUserId = sampleParentUsers.get(institution.slug)
-    for (const conversation of state.conversations)
-      if (conversation.parentUserId !== undefined)
-        if (parentUserId === undefined) delete conversation.parentUserId
-        else conversation.parentUserId = parentUserId
+    // Mesajlar yazışmanın taraf anahtarlarını kopyalar (ADR 0005); veli kimliği ikisinde aynı.
+    for (const record of [...state.conversations, ...state.conversationMessages])
+      if (record.parentUserId !== undefined)
+        if (parentUserId === undefined) delete record.parentUserId
+        else record.parentUserId = parentUserId
     await ensureInstitutionSettings(db, institutionId, { academicYear: state.academicYear })
     const rows = stateRecords(state)
     insertedRecords[institution.slug] = await insertMissingRecords(

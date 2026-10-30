@@ -1,5 +1,17 @@
 # Değişiklikler
 
+## 2.7.0
+
+Yazışma mesajları ayrı kayıtlarda (ADR 0005). HTTP yanıt şekilleri değişmedi.
+
+- **Kırıcı:** State'e `conversationMessages` koleksiyonu eklendi; `conversations[].messages` kaldırıldı. Her mesaj ayrı kayıttır ve yazışmanın taraf anahtarlarını kopya olarak taşır: `conversationId`, `studentId`, `teacherId`, `audience`, veli yazışmasında `parentUserId`. Yazışmada yalnız üst veri ve son mesajın anı (`lastMessageAt`) kalır. Okunmamış sayısı, son mesaj ve yanıt bekleme saklanmaz; mesajlardan hesaplanır. Örnek veride yazışma ve mesaj kimlikleri (`conv1-m0` …) değişmedi. `COLLECTION_MODULES.conversationMessages` `communication` modülüdür.
+- **Kırıcı:** `messagePage(messages, side, { cursor, limit })` artık yazışma yerine tek yazışmanın mesaj dizisini alır (`messagesOf(state, conversationId)`). `conversationSummary(conversation, digest, side, now, calendar?)` ve `awaitingReply(digest, side, now, …)` mesaj özetini alır (`digestMessages(messages, side)` → `MessageDigest`).
+- Yeni: `addConversationMessage(state, conversation, NewMessage)` mesajı ayrı kayıt olarak ekler ve `lastMessageAt`'i günceller. Çevrimdışı demolar da bunu kullanır. `messagesOf`, `digestMessages`, `lastActivityOf` (liste sırası anahtarı) eklendi.
+- `markMessagesRead` yalnız ilgili yazışmanın karşı taraf mesajlarına bakar. `sendMessage` var olan mesajları okumaz. `startConversation` tekillik için yalnız aynı öğrencinin yazışmalarına bakar. API bu işlemlere yalnız gereken kayıtları yükler. `OPERATION_COMMANDS` `conversation.start`, `message.send` ve `message.read` için `conversationMessages`'ı ekler.
+- Kapsam (`lib/scope.ts`): `READ_RULES.conversationMessages`. Öğretmen yalnız kendi yazışmalarının mesajlarını görür. Öğrenci kendi öğrenci yazışmasınınkileri görür. Veli yalnız kendi `parentUserId`'li veli yazışmasınınkileri görür. `senderUserId` ve `parentUserId` gizli alanlardır.
+- Demo kalıcılığı: eski snapshot'taki gömülü `conversations[].messages` yüklemede yeni koleksiyona taşınır. Sıra ve kimlik korunur; snapshot sürümü 3 kalır. API'de aynı dönüşümü migration `0009` yapar.
+- Tüketiciler `workspace:2.7.0` sürümüne sabitlendi.
+
 ## 2.6.0
 
 İletişim güvenlik incelemesi (R3) düzeltmeleri. Davranış sıkılaştı; HTTP yanıt şekilleri değişmedi.

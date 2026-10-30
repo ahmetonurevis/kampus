@@ -7,6 +7,8 @@ import {
   awaitingReply,
   businessMinutesBetween,
   conversationSummary,
+  digestMessages,
+  messagesOf,
   conversationsFor,
   markAnnouncementRead,
   markMessagesRead,
@@ -29,6 +31,10 @@ import {
   readerKey,
   viewerOf,
 } from '../packages/school-core/src/lib/communication-access.ts'
+import {
+  createSnapshotWriter,
+  restoreSnapshot,
+} from '../packages/school-core/src/lib/demo-persistence.ts'
 import { scopeFor, visibleRecords, type Actor } from '../packages/school-core/src/lib/scope.ts'
 import type { Role } from '../packages/school-core/src/modules/navigation.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -93,9 +99,14 @@ function unchangedOnFailure(
   action: () => unknown,
   check: (error: unknown) => boolean,
 ) {
-  const before = JSON.stringify(state[key])
+  // Yazışma işlemi mesaj koleksiyonunu da değiştirebilir (ADR 0005); ikisi birlikte denetlenir.
+  const watched = () =>
+    JSON.stringify(
+      key === 'conversations' ? [state.conversations, state.conversationMessages] : state[key],
+    )
+  const before = watched()
   assert.throws(action, check)
-  assert.equal(JSON.stringify(state[key]), before)
+  assert.equal(watched(), before)
 }
 const visibleIds = (state: State, by: Participant) =>
   new Set(visibleRecords(state, by, 'announcements').map((a) => a.id))
@@ -686,7 +697,7 @@ test('DOM-ILT-010: öğretmen kendi öğrencisinin velisiyle yazışma açar; ya
   )
   assert.equal(again.created, false)
   assert.equal(again.conversation, first.conversation)
-  assert.equal(first.conversation.messages.length, 2)
+  assert.equal(messagesOf(state, first.conversation.id).length, 2)
   assert.equal(state.conversations.length, count + 1)
   const silent = startConversation(
     state,
@@ -873,7 +884,7 @@ test('DOM-ILT-010: veli kimliği olmayan eski yazışma hiçbir veliye görünme
     isDomainError('conversation_not_found', 'not_found'),
   )
   // Başlatma eski kayda eklemez; kendi yazışmasını ayrı açar.
-  const before = orphan.messages.length
+  const before = messagesOf(state, 'conv-eski').length
   const opened = startConversation(
     state,
     second,
@@ -884,7 +895,7 @@ test('DOM-ILT-010: veli kimliği olmayan eski yazışma hiçbir veliye görünme
   assert.equal(opened.created, true)
   assert.notEqual(opened.conversation.id, 'conv-eski')
   assert.equal(opened.conversation.parentUserId, 'u-ikinci')
-  assert.equal(orphan.messages.length, before)
+  assert.equal(messagesOf(state, 'conv-eski').length, before)
   // Öğretmen tarafı değişmez: eski kayıt öğretmene görünmeye devam eder.
   assert.ok(conversationsFor(state, scopeFor(state, teacher('t1')), 'u-t1').includes(orphan))
 })
@@ -936,7 +947,7 @@ test('DOM-ILT-011: öğrenci yalnız kendi öğretmeni ve rehber öğretmenle ya
 test('DOM-ILT-012: mesaj yalnız taraf tarafından eklenir; doğrulama hatası kaydı değiştirmez', () => {
   const state = seed()
   const conversation = state.conversations.find((c) => c.id === 'conv1')!
-  const count = conversation.messages.length
+  const count = messagesOf(state, 'conv1').length
   const message = sendMessage(
     state,
     teacher('t1'),
@@ -947,7 +958,21 @@ test('DOM-ILT-012: mesaj yalnız taraf tarafından eklenir; doğrulama hatası k
   )
   assert.equal(message.text, 'Yarın görüşelim.')
   assert.equal(message.sender, 'teacher')
-  assert.equal(conversation.messages.length, count + 1)
+  assert.equal(messagesOf(state, 'conv1').length, count + 1)
+  // Mesaj ayrı kayıttır; yazışmanın taraf anahtarlarını taşır, yazışmanın son mesaj anı güncellenir.
+  assert.deepEqual(state.conversationMessages.at(-1), {
+    id: message.id,
+    conversationId: 'conv1',
+    studentId: conversation.studentId,
+    teacherId: conversation.teacherId,
+    audience: conversation.audience,
+    text: 'Yarın görüşelim.',
+    sender: 'teacher',
+    senderUserId: 'u-t1',
+    date: now,
+  })
+  assert.equal(conversation.lastMessageAt, now)
+  assert.equal('messages' in conversation, false)
   unchangedOnFailure(
     state,
     'conversations',
@@ -1002,16 +1027,26 @@ test('DOM-ILT-012: mesaj yalnız taraf tarafından eklenir; doğrulama hatası k
 
 test('DOM-ILT-024: karşı tarafın mesajları ilk görmede okundu işaretlenir; tekrar etkisizdir', () => {
   const state = seed()
-  const conversation = state.conversations.find((c) => c.id === 'conv2')!
+  const messages = () => messagesOf(state, 'conv2')
+  const others = state.conversationMessages.filter((m) => m.conversationId !== 'conv2')
+  const othersBefore = JSON.stringify(others)
   const first = markMessagesRead(state, people.veli, 'conv2', now)
-  assert.equal(first.count, conversation.messages.filter((m) => m.sender === 'teacher').length)
+  assert.equal(first.count, messages().filter((m) => m.sender === 'teacher').length)
   assert.ok(
-    conversation.messages.filter((m) => m.sender === 'teacher').every((m) => m.readAt === now),
+    messages()
+      .filter((m) => m.sender === 'teacher')
+      .every((m) => m.readAt === now),
   )
-  assert.ok(conversation.messages.filter((m) => m.sender === 'parent').every((m) => !m.readAt))
-  const before = JSON.stringify(conversation)
+  assert.ok(
+    messages()
+      .filter((m) => m.sender === 'parent')
+      .every((m) => !m.readAt),
+  )
+  // Başka yazışmanın mesajlarına dokunulmaz.
+  assert.equal(JSON.stringify(others), othersBefore)
+  const before = JSON.stringify(state.conversationMessages)
   assert.equal(markMessagesRead(state, people.veli, 'conv2', later).count, 0)
-  assert.equal(JSON.stringify(conversation), before)
+  assert.equal(JSON.stringify(state.conversationMessages), before)
   assert.throws(
     () => markMessagesRead(state, people.yonetici, 'conv2', now),
     isDomainError('permission_denied', 'forbidden'),
@@ -1092,8 +1127,8 @@ test('DOM-YTK-052: yöneticinin erişimi gerekçe ister, süre sınırlıdır ve
 })
 
 test('Mesaj sayfası en yeniden geriye imleçle ilerler; geçersiz imleç reddedilir', () => {
-  const conversation = seed().conversations.find((c) => c.id === 'conv1')!
-  const ids = conversation.messages.map((m) => m.id)
+  const conversation = messagesOf(seed(), 'conv1')
+  const ids = conversation.map((m) => m.id)
   const first = messagePage(conversation, 'student', { limit: 3 })!
   assert.deepEqual(
     first.items.map((m) => m.id),
@@ -1119,7 +1154,9 @@ test('Mesaj sayfası en yeniden geriye imleçle ilerler; geçersiz imleç redded
 test('Yazışma özeti son mesajı, okunmamış sayısını ve yanıt beklemeyi taraf görünümüyle verir', () => {
   const state = seed()
   const conversation = state.conversations.find((c) => c.id === 'conv2')!
-  const forParent = conversationSummary(conversation, 'parent', now)
+  const digest = (side: 'teacher' | 'parent' | null) =>
+    digestMessages(messagesOf(state, 'conv2'), side)
+  const forParent = conversationSummary(conversation, digest('parent'), 'parent', now)
   assert.equal(forParent.unreadCount, 4)
   assert.equal(forParent.lastMessage?.fromMe, false)
   assert.equal(forParent.awaitingReply, null)
@@ -1131,17 +1168,35 @@ test('Yazışma özeti son mesajı, okunmamış sayısını ve yanıt beklemeyi 
     id,
     '2026-10-09T13:00:00.000Z',
   )
-  const forTeacher = conversationSummary(conversation, 'teacher', '2026-10-12T14:00:00.000Z')
+  const forTeacher = conversationSummary(
+    conversation,
+    digest('teacher'),
+    'teacher',
+    '2026-10-12T14:00:00.000Z',
+  )
   // Cuma 16.00'da (İstanbul) gelen mesajın hedefi pazartesi 16.00'dır.
   assert.deepEqual(forTeacher.awaitingReply, {
     since: '2026-10-09T13:00:00.000Z',
     dueAt: '2026-10-12T13:00:00.000Z',
     overdue: true,
   })
-  const admin = conversationSummary(conversation, null, now)
+  const admin = conversationSummary(conversation, digest(null), null, now)
   assert.equal(admin.lastMessage, null)
   assert.equal(admin.unreadCount, 0)
-  assert.equal(awaitingReply({ messages: [] }, 'teacher', now), null)
+  assert.equal(admin.messageCount, messagesOf(state, 'conv2').length)
+  assert.equal(awaitingReply({ firstUnanswered: null }, 'teacher', now), null)
+  assert.deepEqual(digestMessages([], 'teacher'), {
+    messageCount: 0,
+    lastMessage: null,
+    unreadCount: 0,
+    firstUnanswered: null,
+  })
+  // Öğretmenin son mesajından sonraki ilk mesaj; son mesaj öğretmenindeyse yanıt beklenmez.
+  const sample = messagesOf(state, 'conv2')
+  const lastTeacher = sample.findLastIndex((m) => m.sender === 'teacher')
+  assert.equal(digest('teacher').firstUnanswered, sample[lastTeacher + 1])
+  assert.equal(digestMessages(sample.slice(0, lastTeacher + 1), 'teacher').firstUnanswered, null)
+  assert.equal(digestMessages(sample.slice(0, 1), 'teacher').firstUnanswered, sample[0])
 })
 
 test('DOM-ILT-013: yanıt süresi çalışma saatiyle ölçülür; hafta sonu, gece ve tatil sayılmaz', () => {
@@ -1196,4 +1251,82 @@ test('Her rolün yazışma görünürlüğü: öğretmen kendi, öğrenci öğre
   assert.deepEqual(ids(people.yonetici), [])
   assert.deepEqual(ids(people.onburo), [])
   assert.equal(viewerOf(scopeFor(state, people.ogretmen)).teacherId, 't2')
+})
+
+test('Eski demo kaydındaki yazışma mesajları yüklenirken ayrı koleksiyona taşınır; sıra ve kimlik korunur', () => {
+  const base = createSeed(new Date(now))
+  const legacyOf = (conversationId: string) =>
+    messagesOf(base, conversationId).map(({ id: key, text, sender, date }) => ({
+      id: key,
+      text,
+      sender,
+      date,
+    }))
+  const conv1 = base.conversations.find((c) => c.id === 'conv1')!
+  const conv1Parties = {
+    id: conv1.id,
+    studentId: conv1.studentId,
+    teacherId: conv1.teacherId,
+    audience: conv1.audience,
+  }
+  const extra = {
+    id: 'conv1-test-yeni',
+    text: 'Eski kayıtta eklenen mesaj',
+    sender: 'student',
+    senderUserId: 's1',
+    date: '2026-10-07T08:00:00.000Z',
+    readAt: '2026-10-07T09:00:00.000Z',
+  }
+  // 2.7.0 öncesi biçim: değişen yazışma bütün mesajlarını `messages` dizisinde taşır.
+  const snapshot = JSON.stringify({
+    format: 'school-delta-v1',
+    version: base.version,
+    createdAt: base.createdAt,
+    changes: {
+      conversations: {
+        kind: 'records',
+        upsert: [
+          { ...conv1Parties, messages: [...legacyOf('conv1'), extra] },
+          {
+            id: 'conv-test-eski',
+            studentId: 's1',
+            teacherId: 't2',
+            audience: 'student',
+            messages: [{ id: 'conv-test-eski-m0', text: 'Merhaba', sender: 'student', date: now }],
+          },
+        ],
+        remove: [],
+      },
+    },
+  })
+  const state = restoreSnapshot(snapshot)
+  assert.ok(state.conversations.every((c) => !('messages' in c)))
+  const moved = messagesOf(state, 'conv1')
+  assert.deepEqual(
+    moved.map((m) => m.id),
+    [...legacyOf('conv1').map((m) => m.id), extra.id],
+  )
+  assert.deepEqual(moved.at(-1), {
+    ...extra,
+    conversationId: 'conv1',
+    studentId: 's1',
+    teacherId: 't1',
+    audience: 'student',
+  })
+  assert.equal(state.conversations.find((c) => c.id === 'conv1')!.lastMessageAt, extra.date)
+  assert.deepEqual(
+    messagesOf(state, 'conv-test-eski').map((m) => m.id),
+    ['conv-test-eski-m0'],
+  )
+  // Değişmeyen yazışmaların mesajları örnek veriden aynen gelir; mükerrer kimlik yok.
+  for (const other of ['conv2', 'conv3', 'conv4'])
+    assert.deepEqual(messagesOf(state, other), messagesOf(base, other))
+  const ids = state.conversationMessages.map((m) => m.id)
+  assert.equal(new Set(ids).size, ids.length)
+  // Yeni şekille yazılan kayıt aynı State'e döner (dönüşüm kalıcıdır).
+  const rewritten = restoreSnapshot(
+    createSnapshotWriter(createSeed(new Date(base.createdAt)))(state),
+  )
+  assert.deepEqual(rewritten.conversations, state.conversations)
+  assert.deepEqual(rewritten.conversationMessages, state.conversationMessages)
 })

@@ -6,6 +6,7 @@ import {
   INSTANT_PATTERN,
   type ActiveMatch,
   type DayRangeMatch,
+  type EqualsMatch,
   type FieldMatch,
   type InvoiceStatusLabel,
   type InvoiceStatusMatch,
@@ -170,11 +171,19 @@ export function matchesField(record: RecordData, { field, values }: FieldMatch):
   return candidates.some((text) => text !== null && values.includes(text))
 }
 
+/** Kesin metin eşitliği (`EqualsMatch`): dizi ve metin olmayan değer eşleşmez. */
+export function matchesEquals(record: RecordData, { field, values }: EqualsMatch): boolean {
+  const value = record[field]
+  return typeof value === 'string' && values.includes(value)
+}
+
 export function matchesRecordFilter(record: RecordData, filter: RecordFilter): boolean {
   switch (filter.kind) {
     case undefined:
     case 'in':
       return matchesField(record, filter)
+    case 'equals':
+      return matchesEquals(record, filter)
     case 'any':
       return filter.matches.some((match) => matchesField(record, match))
     case 'active':

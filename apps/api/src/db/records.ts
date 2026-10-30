@@ -52,6 +52,18 @@ export interface FieldMatch {
 }
 
 /**
+ * Kesin metin eşitliği: alan metin olmalı ve değerlerden birine eşit olmalı; dizi alan eşleşmez.
+ * `FieldMatch`'in dizi adaylığı (`or jsonb_typeof = 'array'`) ifade indeksini kullanamaz; tek
+ * değerli anahtarda (yazışma mesajının `conversationId`'si) bu süzgeç indeksle çalışır
+ * (`records_conversation_messages_idx`). Bellekteki `matchesEquals` ile aynı sonucu verir.
+ */
+export interface EqualsMatch {
+  kind: 'equals'
+  field: string
+  values: readonly string[]
+}
+
+/**
  * Birleşik eşitlik süzgeci: alan eşleşmelerinden biri yeter (`or`). Kapsam ön süzgecinde satırın
  * öğrenci veya sınıf anahtarından biriyle kapsama girdiği kurallar için (ör. not: verildiği
  * sınıf ya da öğrencinin güncel sınıfı). Her eşleşme `FieldMatch` gibi gerekli koşuldur.
@@ -142,6 +154,7 @@ export interface OwnOrViaMatch {
 
 export type RecordFilter =
   | FieldMatch
+  | EqualsMatch
   | AnyMatch
   | ActiveMatch
   | SetMatch
@@ -214,6 +227,12 @@ function ownOrViaMatch({ field, values, viaField, viaValues }: OwnOrViaMatch): S
   return sql`((${own} and ${fieldMatch({ field, values })}) or (not ${own} and ${fieldMatch({ field: viaField, values: viaValues })}))`
 }
 
+function equalsMatch({ field, values }: EqualsMatch): SQL {
+  if (values.length === 0) return sql`false`
+  const text = sql`(${records.data} ->> ${field}::text)`
+  return sql`(${inArray(text, [...values])} and jsonb_typeof(${records.data} -> ${field}::text) = 'string')`
+}
+
 function activeMatch({ field, active }: ActiveMatch): SQL {
   const value = sql`(${records.data} -> ${field}::text)`
   return active
@@ -273,6 +292,8 @@ export function recordFilter(filter: RecordFilter): SQL {
     case undefined:
     case 'in':
       return fieldMatch(filter)
+    case 'equals':
+      return equalsMatch(filter)
     case 'any':
       return filter.matches.length === 0
         ? sql`false`
@@ -627,7 +648,11 @@ function updateSet(write: Exclude<RecordWrite, { kind: 'insert' }>, now: Date) {
   }
 }
 
-/** Sırası verilmemiş eklemeler koleksiyonun (arşivliler dahil) en büyük sırasından sonra gelir. */
+/**
+ * Sırası verilmemiş eklemeler koleksiyonun (arşivliler dahil) en büyük sırasından sonra gelir.
+ * Koleksiyon başına ayrı `max` sorgusu `records_institution_collection_position_idx` üzerinde
+ * geriye tek adımdır; büyük koleksiyonda (yazışma mesajları) her ekleme koleksiyonu taramaz.
+ */
 async function appendPositions(
   tx: Database,
   institutionId: string,
@@ -638,16 +663,13 @@ async function appendPositions(
     ...new Set(inserts.filter((w) => w.position === undefined).map((w) => w.collection)),
   ]
   const next = new Map<string, number>()
-  if (missing.length > 0) {
-    const rows = await tx
-      .select({ collection: records.collection, last: max(records.position) })
+  for (const collection of missing) {
+    const [row] = await tx
+      .select({ last: max(records.position) })
       .from(records)
-      .where(and(eq(records.institutionId, institutionId), inArray(records.collection, missing)))
-      .groupBy(records.collection)
-    for (const collection of missing) {
-      const last = rows.find((row) => row.collection === collection)?.last
-      next.set(collection, last === null || last === undefined ? 0 : Number(last) + POSITION_STEP)
-    }
+      .where(and(eq(records.institutionId, institutionId), eq(records.collection, collection)))
+    const last = row?.last
+    next.set(collection, last === null || last === undefined ? 0 : Number(last) + POSITION_STEP)
   }
   return inserts.map((write) => {
     if (write.position !== undefined) return write.position

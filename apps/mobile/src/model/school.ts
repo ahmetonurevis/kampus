@@ -513,7 +513,11 @@ export function rowsFor(
           'appointment',
         ),
       )
-  if (page === 'mesajlar')
+  if (page === 'mesajlar') {
+    // Mesajlar ayrı koleksiyondadır; son mesaj yazışma başına bir kez indekslenir.
+    const lastMessage = new Map<string, State['conversationMessages'][number]>()
+    for (const message of state.conversationMessages)
+      lastMessage.set(message.conversationId, message)
     return state.conversations
       .filter((i) =>
         c.teacher
@@ -527,12 +531,13 @@ export function rowsFor(
           c.teacher
             ? studentName(i.studentId) + (i.audience === 'parent' ? ' · Velisi' : '')
             : teacherName(i.teacherId),
-          dateLabel(i.messages.at(-1)?.date),
-          i.messages.at(-1)?.text,
+          dateLabel(lastMessage.get(i.id)?.date),
+          lastMessage.get(i.id)?.text,
           '',
           'conversation',
         ),
       )
+  }
   if (page === 'talepler' || page === 'sikayet-talep')
     return state.requests
       .filter((i) => session.role === 'onburo' || own(i))

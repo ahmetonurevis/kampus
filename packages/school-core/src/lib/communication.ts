@@ -19,8 +19,11 @@ import { scopeFor, type Actor, type Scope } from './scope.ts'
  * (`announcement.*`, `conversation.*`, `message.*`; kararlar `lib/communication-access.ts`).
  *
  * Veri modeli `records` deposundadır (ADR 0004 onay bekliyor): duyuru `announcements`,
- * yazışma `conversations` kaydıdır ve mesajlar yazışma kaydının `messages` dizisindedir
- * (örnek veriyle aynı şekil). Mesaj eklenir, düzenlenmez ve silinmez (DOM-ILT-012).
+ * yazışma `conversations` kaydıdır; mesajlar ayrı `conversationMessages` kayıtlarıdır (mesaj
+ * başına bir kayıt, `conversationId` ile; ADR 0005). Yazışma kaydı yalnız taraf bilgisini ve son
+ * mesaj anını (`lastMessageAt`, liste sırası) taşır; okunmamış sayısı, son mesaj ve yanıt
+ * bekleme mesajlardan hesaplanır (`digestMessages`). Mesaj eklenir, düzenlenmez ve silinmez
+ * (DOM-ILT-012).
  *
  * Kişi kimliği: core aktörü kayıt bağlantılarını taşır (`Actor`); yayınlayan, gönderen ve
  * velinin yazışması için ayrıca kalıcı kişi kimliği gerekir (`Participant.userId`; API'de
@@ -405,7 +408,7 @@ export const CONVERSATION_AUDIENCES = ['student', 'parent'] as const
 export type ConversationAudience = (typeof CONVERSATION_AUDIENCES)[number]
 export type MessageSender = 'teacher' | ConversationAudience
 
-/** Mesaj üst sınırı; yazışma kaydı `records` belge sınırına (256 KB) sığmalıdır. */
+/** Mesaj üst sınırı; mesaj kaydı `records` belge sınırına (256 KB) rahatça sığar. */
 export const MESSAGE_MAX_LENGTH = 2000
 
 // kvkk: K — mesaj metni; loglanmaz, denetim kaydına yazılmaz, aramaya ve CSV'ye girmez (DOM-ILT-014).
@@ -446,6 +449,9 @@ export type ConversationMessageFields = {
   senderUserId?: string
   /** Karşı tarafın ilk görme anı (DOM-ILT-024). */
   readAt?: string
+  /** Veli yazışmasında velinin kişi kimliği; yazışmanın kopyası (DOM-ILT-010). */
+  // kvkk: K
+  parentUserId?: string
 }
 /** Yazışmaya işlemlerin eklediği alanlar; örnek veri taşımaz. */
 export type ConversationFields = {
@@ -456,7 +462,9 @@ export type ConversationFields = {
   startedBy?: Role
 }
 type Conversation = State['conversations'][number]
-type Message = Conversation['messages'][number]
+export type ConversationMessage = State['conversationMessages'][number]
+type Message = ConversationMessage
+type MessageState = Pick<State, 'conversations' | 'conversationMessages'>
 
 const SIDES: Partial<Record<Role, MessageSender>> = {
   ogretmen: 'teacher',
@@ -507,7 +515,40 @@ function parentUserFor(
   return only
 }
 
+/** Eklenecek mesajın kendi alanları; taraf anahtarları yazışmadan kopyalanır. */
+export type NewMessage = Pick<Message, 'id' | 'text' | 'sender' | 'date'> &
+  Pick<ConversationMessageFields, 'senderUserId'>
+
+/**
+ * Mesajı ayrı kayıt olarak ekler (ADR 0005) ve yazışmanın son mesaj anını günceller. Mesaj
+ * yazışmanın taraf anahtarlarını taşır: kapsam kuralı (`lib/scope.ts`) ve depo süzgeci mesajın
+ * kendisinden karar verir; taraflar yazışma açıldıktan sonra değişmez. Doğrulama ve yetki
+ * çağıranındır (`sendMessage`, `startConversation`); çevrimdışı demolar yalnız bu şekli kullanır.
+ */
+export function addConversationMessage(
+  state: Pick<State, 'conversationMessages'>,
+  conversation: Conversation,
+  input: NewMessage,
+): Message {
+  const message: Message = {
+    id: input.id,
+    conversationId: conversation.id,
+    studentId: conversation.studentId,
+    teacherId: conversation.teacherId,
+    audience: conversation.audience,
+    ...(conversation.parentUserId === undefined ? {} : { parentUserId: conversation.parentUserId }),
+    text: input.text,
+    sender: input.sender,
+    ...(input.senderUserId === undefined ? {} : { senderUserId: input.senderUserId }),
+    date: input.date,
+  }
+  state.conversationMessages.push(message)
+  conversation.lastMessageAt = message.date
+  return message
+}
+
 function appendMessage(
+  state: MessageState,
   conversation: Conversation,
   by: Participant,
   side: MessageSender,
@@ -515,20 +556,27 @@ function appendMessage(
   makeId: MakeId,
   now: string,
 ): Message {
-  const message: Message = {
+  return addConversationMessage(state, conversation, {
     id: makeId('msg'),
     text,
     sender: side,
     senderUserId: by.userId,
     date: now,
-  }
-  conversation.messages.push(message)
-  return message
+  })
+}
+
+/** Yazışmanın mesajları, eklenme sırasıyla (bellekteki State; API mesajları SQL'de süzer). */
+export function messagesOf(
+  state: Pick<State, 'conversationMessages'>,
+  conversationId: string,
+): Message[] {
+  return state.conversationMessages.filter((m) => m.conversationId === conversationId)
 }
 
 /**
  * Yazışma başlatır (DOM-ILT-010, -011). Aynı öğrenci, öğretmen, hedef kitle ve veli için tek
  * yazışma vardır: varsa yenisi açılmaz, ilk mesaj var olan yazışmaya eklenir (`created: false`).
+ * Tekillik yalnız aynı öğrencinin yazışmalarına bakar; API yalnız onları yükler.
  */
 export function startConversation(
   state: State,
@@ -575,12 +623,13 @@ export function startConversation(
       ...(parentUserId === undefined ? {} : { parentUserId }),
       createdAt: now,
       startedBy: by.role,
-      messages: [],
     }
     state.conversations.push(conversation)
   }
   const message =
-    data.text === undefined ? null : appendMessage(conversation, by, side, data.text, makeId, now)
+    data.text === undefined
+      ? null
+      : appendMessage(state, conversation, by, side, data.text, makeId, now)
   return { conversation, created, message }
 }
 
@@ -590,7 +639,10 @@ function requireConversation(conversation: Conversation | undefined): Conversati
   return conversation
 }
 
-/** Mesaj gönderir (DOM-ILT-012): yalnız taraf gönderir; mesaj eklenir, değiştirilmez. */
+/**
+ * Mesaj gönderir (DOM-ILT-012): yalnız taraf gönderir; mesaj eklenir, değiştirilmez. Var olan
+ * mesajları okumaz; API mesaj koleksiyonundan hiçbir kayıt yüklemez.
+ */
 export function sendMessage(
   state: State,
   by: Participant,
@@ -608,14 +660,15 @@ export function sendMessage(
   if (!side)
     throw new DomainError('conversation_not_found', 'Yazışma bulunamadı.', { kind: 'not_found' })
   // TODO(notifications): karşı tarafa bildirim; sessiz saat (DOM-ILT-021) bildirim katmanında.
-  return appendMessage(conversation, by, side, data.text, makeId, now)
+  return appendMessage(state, conversation, by, side, data.text, makeId, now)
 }
 
 export type MessagesReadResult = { conversationId: string; count: number }
 
 /**
  * Karşı tarafın okunmamış mesajlarını okundu işaretler (DOM-ILT-024); ilk görme anı bir kez
- * yazılır. Yöneticinin gerekçeli okuması taraf okuması değildir, okundu üretmez.
+ * yazılır. Yöneticinin gerekçeli okuması taraf okuması değildir, okundu üretmez. Yalnız bu
+ * yazışmanın karşı taraf mesajlarına bakar; API yalnız onların okunmamışlarını yükler.
  */
 export function markMessagesRead(
   state: State,
@@ -629,8 +682,8 @@ export function markMessagesRead(
   const conversation = requireConversation(found)
   const side = senderSide(by.role)
   let count = 0
-  for (const message of conversation.messages)
-    if (message.sender !== side && !message.readAt) {
+  for (const message of state.conversationMessages)
+    if (message.conversationId === conversation.id && message.sender !== side && !message.readAt) {
       message.readAt = now
       count += 1
     }
@@ -696,16 +749,16 @@ export function messageView(message: Message, side: MessageSender | null): Messa
 export type MessagePage = { items: MessageView[]; nextCursor: string | null }
 
 /**
- * Mesaj sayfası: en yeniden geriye. `cursor` önceki sayfanın en eski mesajının kimliğidir
- * (mesajlar değişmediği ve silinmediği için kararlıdır); sayfa içinde sıra eskiden yeniye.
- * Geçersiz imleç `null` döner (API 400).
+ * Mesaj sayfası: en yeniden geriye. `messages` tek yazışmanın mesajlarıdır, eklenme sırasıyla
+ * (`messagesOf`). `cursor` önceki sayfanın en eski mesajının kimliğidir (mesajlar değişmediği ve
+ * silinmediği için kararlıdır); sayfa içinde sıra eskiden yeniye. Geçersiz imleç `null` döner
+ * (API 400). API aynı sözleşmeyi SQL'de uygular (`services/communication.ts`).
  */
 export function messagePage(
-  conversation: Pick<Conversation, 'messages'>,
+  messages: readonly Message[],
   side: MessageSender | null,
   { cursor, limit }: { cursor?: string | undefined; limit: number },
 ): MessagePage | null {
-  const messages = conversation.messages
   let end = messages.length
   if (cursor !== undefined) {
     end = messages.findIndex((m) => m.id === cursor)
@@ -820,11 +873,42 @@ export function responseDueAt(
 export type AwaitingReply = { since: string; dueAt: string; overdue: boolean }
 
 /**
- * Öğretmenin yanıt beklemesi (DOM-ILT-013): son mesaj öğrenci veya velidense, karşı tarafın yanıtsız ilk mesajından
- * itibaren hedef süre. Yanıt verilmişse veya bakan öğretmen değilse `null`.
+ * Yazışmanın mesajlarından hesaplanan özet (saklanmaz). API aynı değerleri SQL'de, yalnız
+ * sayfadaki yazışmaların mesajları üzerinden hesaplar; testler iki tarafın aynı olduğunu
+ * doğrular.
+ * - `unreadCount`: bakan tarafın okumadığı karşı taraf mesajları; taraf değilse 0.
+ * - `firstUnanswered`: öğretmenin son mesajından sonraki ilk mesaj; son mesaj öğretmenin veya
+ *   mesaj yoksa `null` (DOM-ILT-013).
+ */
+export type MessageDigest = {
+  messageCount: number
+  lastMessage: Message | null
+  unreadCount: number
+  firstUnanswered: Pick<Message, 'date'> | null
+}
+
+/** Tek yazışmanın mesajlarından (eklenme sırasıyla) özet. */
+export function digestMessages(
+  messages: readonly Message[],
+  side: MessageSender | null,
+): MessageDigest {
+  let index = messages.length
+  while (index > 0 && messages[index - 1]?.sender !== 'teacher') index -= 1
+  return {
+    messageCount: messages.length,
+    lastMessage: messages.at(-1) ?? null,
+    unreadCount: side === null ? 0 : messages.filter((m) => m.sender !== side && !m.readAt).length,
+    firstUnanswered: index < messages.length ? (messages[index] ?? null) : null,
+  }
+}
+
+/**
+ * Öğretmenin yanıt beklemesi (DOM-ILT-013): son mesaj öğrenci veya velidense, karşı tarafın
+ * yanıtsız ilk mesajından (`firstUnanswered`) itibaren hedef süre. Yanıt verilmişse veya bakan
+ * öğretmen değilse `null`.
  */
 export function awaitingReply(
-  conversation: Pick<Conversation, 'messages'>,
+  digest: Pick<MessageDigest, 'firstUnanswered'>,
   side: MessageSender | null,
   now: string,
   calendar: WorkingCalendar = DEFAULT_WORKING_CALENDAR,
@@ -832,11 +916,8 @@ export function awaitingReply(
 ): AwaitingReply | null {
   // Hedef süre öğrenci sorusu ve veli mesajı içindir; öğretmenin mesajı süre başlatmaz.
   if (side !== 'teacher') return null
-  const messages = conversation.messages
-  let index = messages.length
-  while (index > 0 && messages[index - 1]?.sender !== side) index -= 1
-  const first = messages[index]
-  if (!first || index === messages.length) return null
+  const first = digest.firstUnanswered
+  if (!first) return null
   const dueAt = responseDueAt(first.date, calendar, targetMinutes)
   return { since: first.date, dueAt, overdue: Date.parse(now) > Date.parse(dueAt) }
 }
@@ -854,23 +935,28 @@ export type ConversationSummary = {
 
 /** Liste satırı: son mesaj, okunmamış sayısı ve yanıt bekleme durumu (taraf görünümü). */
 export function conversationSummary(
-  conversation: Conversation,
+  conversation: Pick<Conversation, 'id' | 'studentId' | 'teacherId' | 'audience'>,
+  digest: MessageDigest,
   side: MessageSender | null,
   now: string,
   calendar: WorkingCalendar = DEFAULT_WORKING_CALENDAR,
 ): ConversationSummary {
-  const last = conversation.messages.at(-1)
+  const last = digest.lastMessage
   return {
     id: conversation.id,
     studentId: conversation.studentId,
     teacherId: conversation.teacherId,
     audience: conversation.audience,
-    messageCount: conversation.messages.length,
+    messageCount: digest.messageCount,
     lastMessage: last && side !== null ? messageView(last, side) : null,
-    unreadCount:
-      side === null
-        ? 0
-        : conversation.messages.filter((m) => m.sender !== side && !m.readAt).length,
-    awaitingReply: awaitingReply(conversation, side, now, calendar),
+    unreadCount: side === null ? 0 : digest.unreadCount,
+    awaitingReply: awaitingReply(digest, side, now, calendar),
   }
+}
+
+/** Liste sırası anahtarı: son mesaj anı, yoksa açılış anı (azalan sıralanır). */
+export function lastActivityOf(
+  conversation: Partial<Pick<Conversation, 'lastMessageAt' | 'createdAt'>>,
+): string {
+  return conversation.lastMessageAt ?? conversation.createdAt ?? ''
 }

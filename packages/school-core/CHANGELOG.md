@@ -5,6 +5,7 @@
 İçerik havuzu ekranı için menü kaydı (F3c1; ADR 0004, `docs/domain/kaynak-platformu.md`). Kural değişmedi; yalnız menüye sayfa eklendi.
 
 - `modules/full-navigation.ts`: "İçerik Havuzu" (`icerik-havuzu`, simge `Library`, modül `learning`, kategori `ÖĞRENME`, görünüm `ContentPool`) yönetici ve öğretmen menüsüne eklendi (DOM-YTK-021). Öğrenci ve veli içeriği paylaşım ve atamayla görür, ön büro görmez. Sayfa `apiOnly: true` taşır: Vue demosu ve mobil çevrimdışı demo menüsü düşürür, mobil API menüsü yalnız `MIGRATED` ile eşleşeni gösterir (bu sayfa telefonda yoktur). Öğretmende `ÖĞRENME` kategorisinin sonuna, yöneticide `RAPORLAR`'dan önce yeni `ÖĞRENME` kategorisi olarak girer.
+- `content/taxonomy.ts`: telif beyanı metni `COPYRIGHT_DECLARATION` (DOM-KYN-020, 025); içerik formu onay kutusunda gösterir.
 - Tüketiciler `workspace:2.11.0` sürümüne sabitlendi.
 
 ## 2.10.0

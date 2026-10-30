@@ -6,8 +6,9 @@ import { AppLayout } from '@/layout/AppLayout.tsx'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
 import { withChildParam } from '@/lib/child-selection.ts'
 import { loginHref } from '@/lib/return-path.ts'
-import { resolveShell } from '@/lib/route-guard.ts'
+import { resolveShell, showsClosedNotice } from '@/lib/route-guard.ts'
 import { isMigratedPage, MigratedPage } from '@/pages/page-registry.tsx'
+import { ModuleClosedPage } from './ModuleClosedPage.tsx'
 import { ModuleClosedRedirect } from './ModuleClosedRedirect.tsx'
 import { NotFoundContent, NotFoundPage } from './NotFoundPage.tsx'
 import { PlaceholderPage } from './PlaceholderPage.tsx'
@@ -64,7 +65,17 @@ export function RoleShell() {
     case 'redirect':
       return <Navigate to={decision.to} replace />
     case 'module-closed':
-      return <ModuleClosedRedirect to={decision.to} />
+      if (!session || !showsClosedNotice(decision.page))
+        return <ModuleClosedRedirect to={decision.to} />
+      return (
+        <AppLayout
+          session={session}
+          title={decision.page.title}
+          child={child.options.length ? child : undefined}
+        >
+          <ModuleClosedPage page={decision.page} />
+        </AppLayout>
+      )
     case 'not-found':
     case 'page':
       if (!session) return null

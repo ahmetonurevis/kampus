@@ -55,3 +55,12 @@ Etütler öğrenci/veli ders programına ve dashboard'daki yaklaşan derslere ya
 İleri tarihli etüt rezervasyonuyla çakışan yeni ders, etkinlik veya randevu engellenir. İlgili öğretmen/kampüs/sınıf arşivi ve öğrencinin dönem geçişi için önce ileri tarihli etüt iptal edilmelidir. Saatler UTC kaydedilir ve Türkiye saatiyle gösterilir.
 
 Yönetici → Ayarlar ekranında Optik Değerlendirme ve Otomatik Etüt ayrı ayrı kapatılabilir. Kapalı modülün menüsü ve doğrudan bağlantısı kapanır; kayıtlar silinmez. Optik modülü kapanınca mevcut etüt takibi devam eder. Yeni değerlendirme ve etüt planlama için Deneme Sınavları modülü açık olmalıdır. Etüt modülü kapalı olsa da mevcut rezervasyonlar çakışma denetiminde korunur.
+
+## React web ekranı (geçiş durumu)
+
+`apps/web-react` içindeki Optik Değerlendirme ve Otomatik Etüt ekranları API üzerinden çalışır; Vue demosundaki her işlem henüz yoktur:
+
+- Optik ekran: profiller salt okunur listelenir; cevap dosyası seçilip core ile ön kontrol edilir (ilk hata satır numarasıyla gösterilir, toplu hata listesi yoktur). "Onayla ve sonuçları kaydet" düğmesi API'de `evaluate` ucu olmadığı için kilitlidir ve bunu söyler. Profil oluşturma/düzenleme de API'de yoktur.
+- Etüt ekranı: plan önizlemesi istemcide core ile hesaplanır; onay `POST /tutor-sessions` ile gönderilir, sunucu planı yeniden hesaplar ve fark varsa ekran yeni planı ve farkı gösterir. Yoklama ve gerekçeli iptal API'ye bağlıdır. Öğretmen uygunluk saati ekleme/kaldırma ekranda yoktur (API ucu yok); uygunluk saatleri seed/yönetici verisinden gelir.
+- Plan önizlemesi için gereken koleksiyonlar tarayıcıda okunur; sunucu önizleme ucu gelince bu okuma kalkacaktır.
+- Dil okulunda iki sayfa "Modül kullanıma kapalı" der.

@@ -69,6 +69,11 @@ export interface TenantOptions {
   classes?: readonly string[]
   /** Varsayılanlara ek taşınacak koleksiyonlar (öğrenciye bağlıysa süzülür, değilse bütün gelir). */
   collections?: readonly CollectionName[]
+  /**
+   * Seed'de olmayan, testin kendi kayıtları (ör. optik analiz, geçmiş etüt); API'de bunları
+   * yazan uç yoksa doğrudan veritabanına konur. Kimlik `recordKey` kuralıyla (`id`) belirlenir.
+   */
+  records?: readonly { collection: CollectionName; data: RecordData }[]
 }
 
 export interface TenantUser {
@@ -120,7 +125,7 @@ function tenantRecords(options: TenantOptions, now: Date) {
     ...DEFAULT_STUDENT_COLLECTIONS,
     ...(options.collections ?? []),
   ])
-  return [...wanted].flatMap((collection) =>
+  const fromSeed = [...wanted].flatMap((collection) =>
     items(collection)
       .filter(collection === 'students' ? keepStudent : keepStudents)
       .map((data) => {
@@ -129,6 +134,12 @@ function tenantRecords(options: TenantOptions, now: Date) {
         return { collection, id, data }
       }),
   )
+  const extra = (options.records ?? []).map(({ collection, data }) => {
+    const id = recordKey(collection, data)
+    if (id === null) throw new Error(`Anahtarsız test kaydı: ${collection}`)
+    return { collection, id, data }
+  })
+  return [...fromSeed, ...extra]
 }
 
 /**

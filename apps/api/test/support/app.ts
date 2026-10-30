@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Writable } from 'node:stream'
 
 import { PGlite } from '@electric-sql/pglite'
+import { btree_gin } from '@electric-sql/pglite/contrib/btree_gin'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
 
@@ -34,9 +35,17 @@ export function testConfig(overrides: Record<string, string> = {}): Config {
   })
 }
 
+/**
+ * Bellek içi PostgreSQL. `btree_gin` içerik havuzu arama indeksi içindir (migration 0010); üretim
+ * PostgreSQL'inde contrib paketiyle gelir.
+ */
+export function newPGlite(): PGlite {
+  return new PGlite({ extensions: { btree_gin } })
+}
+
 /** Dosya başına bellek içi PostgreSQL (PGlite) ve üretim migration'ları. */
 export async function createTestDatabase(): Promise<{ db: Database; close: () => Promise<void> }> {
-  const client = new PGlite()
+  const client = newPGlite()
   const db = drizzle({ client, schema })
   await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
   return { db, close: () => client.close() }

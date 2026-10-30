@@ -2670,6 +2670,1020 @@
           "version"
         ]
       },
+      "ResourceTagsInput": {
+        "type": "object",
+        "properties": {
+          "subjectId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gradeLevels": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "cefrLevel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Pre-A1",
+                  "A1",
+                  "A2",
+                  "A2+",
+                  "B1",
+                  "B1+",
+                  "B2",
+                  "B2+",
+                  "C1",
+                  "C2"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "primarySkill": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reading",
+                  "listening",
+                  "writing",
+                  "speaking",
+                  "mediation",
+                  "language_use"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "reading",
+                "listening",
+                "writing",
+                "speaking",
+                "mediation",
+                "language_use",
+                "vocabulary",
+                "grammar",
+                "pronunciation"
+              ]
+            }
+          },
+          "activityMode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reception",
+                  "production",
+                  "interaction",
+                  "mediation"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interactionChannel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "spoken",
+                  "written",
+                  "online"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mediation": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "sourceSkill": {
+                    "type": "string",
+                    "enum": [
+                      "reading",
+                      "listening",
+                      "writing",
+                      "speaking"
+                    ]
+                  },
+                  "targetSkill": {
+                    "type": "string",
+                    "enum": [
+                      "reading",
+                      "listening",
+                      "writing",
+                      "speaking"
+                    ]
+                  }
+                },
+                "required": [
+                  "sourceSkill",
+                  "targetSkill"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "durationMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "easy",
+                  "medium",
+                  "hard"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcomes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "outcomeId": {
+                  "type": "string"
+                },
+                "outcomeSource": {
+                  "type": "string",
+                  "enum": [
+                    "platform",
+                    "institution"
+                  ]
+                }
+              },
+              "required": [
+                "outcomeId",
+                "outcomeSource"
+              ]
+            }
+          }
+        },
+        "required": [
+          "subjectId",
+          "gradeLevels",
+          "cefrLevel",
+          "primarySkill",
+          "skills",
+          "activityMode",
+          "interactionChannel",
+          "mediation",
+          "durationMinutes",
+          "difficulty",
+          "outcomes"
+        ]
+      },
+      "ResourceAttributionInput": {
+        "type": "object",
+        "properties": {
+          "work": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "work",
+          "author",
+          "source",
+          "year"
+        ]
+      },
+      "ResourceVersionSummaryInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "in_review",
+              "published",
+              "rejected",
+              "archived",
+              "removed"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "authorUserId": {
+            "type": "string"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/ResourceTagsInput"
+          },
+          "licenseKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "institution_original",
+                  "contains_quotation",
+                  "platform_derived",
+                  "open_license",
+                  "public_domain",
+                  "licensed_publication",
+                  "external_reference"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lisans türü; seçilmemişse `null`"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Arşivlendiği an; arşivli sürüm geçmişte okunur"
+          },
+          "removedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "versionNumber",
+          "status",
+          "title",
+          "authorUserId",
+          "tags",
+          "licenseKind",
+          "createdAt",
+          "updatedAt",
+          "publishedAt",
+          "archivedAt",
+          "removedAt"
+        ]
+      },
+      "ResourceVersionInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "in_review",
+              "published",
+              "rejected",
+              "archived",
+              "removed"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "authorUserId": {
+            "type": "string"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/ResourceTagsInput"
+          },
+          "licenseKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "institution_original",
+                  "contains_quotation",
+                  "platform_derived",
+                  "open_license",
+                  "public_domain",
+                  "licensed_publication",
+                  "external_reference"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lisans türü; seçilmemişse `null`"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Arşivlendiği an; arşivli sürüm geçmişte okunur"
+          },
+          "removedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {},
+                "description": "Tür başına içerik (school-core `resourceContentSchema`; `type` alanı türdür)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kaldırılan sürümde `null` (DOM-KYN-051)"
+          },
+          "answerKey": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cevap anahtarı (school-core `answerKeySchema`); yalnız personel"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel"
+          },
+          "attributions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceAttributionInput"
+            }
+          },
+          "submittedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewedByUserId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rejectionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "removalReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "İyimser kilit sürümü (`If-Match`)"
+          }
+        },
+        "required": [
+          "id",
+          "versionNumber",
+          "status",
+          "title",
+          "authorUserId",
+          "tags",
+          "licenseKind",
+          "createdAt",
+          "updatedAt",
+          "publishedAt",
+          "archivedAt",
+          "removedAt",
+          "content",
+          "answerKey",
+          "license",
+          "attributions",
+          "submittedAt",
+          "reviewedByUserId",
+          "reviewedAt",
+          "rejectionReason",
+          "removalReason",
+          "rowVersion"
+        ]
+      },
+      "LearnerResourceVersionInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "Öğrenci görünümü: seçenekler kişiye sabit karıştırılır, dinleme görevinde döküm gizlidir"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/ResourceTagsInput"
+          },
+          "attributions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceAttributionInput"
+            }
+          },
+          "licenseKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "institution_original",
+                  "contains_quotation",
+                  "platform_derived",
+                  "open_license",
+                  "public_domain",
+                  "licensed_publication",
+                  "external_reference"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "resourceId",
+          "title",
+          "content",
+          "tags",
+          "attributions",
+          "licenseKind"
+        ]
+      },
+      "StaffResourceListItemInput": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "staff"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "reading_passage",
+              "audio",
+              "video",
+              "worksheet",
+              "file",
+              "link",
+              "book_reference",
+              "question",
+              "quiz",
+              "exercise_set",
+              "homework_template"
+            ]
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "shareScope": {
+            "type": "string",
+            "enum": [
+              "private",
+              "students",
+              "classes",
+              "department",
+              "institution"
+            ]
+          },
+          "currentVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Güncel yayındaki sürüm; hiç yayımlanmadıysa `null`"
+          },
+          "derivedFromVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kopyalandığı sürüm"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "version": {
+            "description": "Okunabilir baş sürüm",
+            "$ref": "#/components/schemas/ResourceVersionSummaryInput"
+          }
+        },
+        "required": [
+          "view",
+          "id",
+          "contentType",
+          "ownerUserId",
+          "shareScope",
+          "currentVersionId",
+          "derivedFromVersionId",
+          "createdAt",
+          "updatedAt",
+          "version"
+        ]
+      },
+      "LearnerResourceListItemInput": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "learner"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "reading_passage",
+              "audio",
+              "video",
+              "worksheet",
+              "file",
+              "link",
+              "book_reference",
+              "question",
+              "quiz",
+              "exercise_set",
+              "homework_template"
+            ]
+          },
+          "version": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "title": {
+                "type": "string"
+              },
+              "tags": {
+                "$ref": "#/components/schemas/ResourceTagsInput"
+              },
+              "licenseKind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "institution_original",
+                      "contains_quotation",
+                      "platform_derived",
+                      "open_license",
+                      "public_domain",
+                      "licensed_publication",
+                      "external_reference"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "tags",
+              "licenseKind"
+            ]
+          }
+        },
+        "required": [
+          "view",
+          "id",
+          "contentType",
+          "version"
+        ]
+      },
+      "StaffResourceDetailInput": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "staff"
+          },
+          "resource": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "contentType": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "reading_passage",
+                  "audio",
+                  "video",
+                  "worksheet",
+                  "file",
+                  "link",
+                  "book_reference",
+                  "question",
+                  "quiz",
+                  "exercise_set",
+                  "homework_template"
+                ]
+              },
+              "ownerUserId": {
+                "type": "string"
+              },
+              "shareScope": {
+                "type": "string",
+                "enum": [
+                  "private",
+                  "students",
+                  "classes",
+                  "department",
+                  "institution"
+                ]
+              },
+              "currentVersionId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Güncel yayındaki sürüm; hiç yayımlanmadıysa `null`"
+              },
+              "derivedFromVersionId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Kopyalandığı sürüm"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "sharedStudentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sharedClassIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "contentType",
+              "ownerUserId",
+              "shareScope",
+              "currentVersionId",
+              "derivedFromVersionId",
+              "createdAt",
+              "updatedAt",
+              "sharedStudentIds",
+              "sharedClassIds"
+            ]
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceVersionSummaryInput"
+            },
+            "description": "Okunabilir sürümler, numaraya göre artan"
+          },
+          "head": {
+            "$ref": "#/components/schemas/ResourceVersionInput"
+          },
+          "publicationIssues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "code",
+                "message",
+                "path"
+              ]
+            },
+            "description": "Açık sürümde (taslak, incelemede, reddedildi) yayım eksikleri; diğerlerinde boş"
+          }
+        },
+        "required": [
+          "view",
+          "resource",
+          "versions",
+          "head",
+          "publicationIssues"
+        ]
+      },
+      "LearnerResourceDetailInput": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "learner"
+          },
+          "resource": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "contentType": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "reading_passage",
+                  "audio",
+                  "video",
+                  "worksheet",
+                  "file",
+                  "link",
+                  "book_reference",
+                  "question",
+                  "quiz",
+                  "exercise_set",
+                  "homework_template"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "contentType"
+            ]
+          },
+          "version": {
+            "$ref": "#/components/schemas/LearnerResourceVersionInput"
+          }
+        },
+        "required": [
+          "view",
+          "resource",
+          "version"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -5421,6 +6435,1035 @@
           "moduleKey",
           "enabled",
           "enabledModules",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "ResourceTags": {
+        "type": "object",
+        "properties": {
+          "subjectId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gradeLevels": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "cefrLevel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Pre-A1",
+                  "A1",
+                  "A2",
+                  "A2+",
+                  "B1",
+                  "B1+",
+                  "B2",
+                  "B2+",
+                  "C1",
+                  "C2"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "primarySkill": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reading",
+                  "listening",
+                  "writing",
+                  "speaking",
+                  "mediation",
+                  "language_use"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "reading",
+                "listening",
+                "writing",
+                "speaking",
+                "mediation",
+                "language_use",
+                "vocabulary",
+                "grammar",
+                "pronunciation"
+              ]
+            }
+          },
+          "activityMode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reception",
+                  "production",
+                  "interaction",
+                  "mediation"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interactionChannel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "spoken",
+                  "written",
+                  "online"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mediation": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "sourceSkill": {
+                    "type": "string",
+                    "enum": [
+                      "reading",
+                      "listening",
+                      "writing",
+                      "speaking"
+                    ]
+                  },
+                  "targetSkill": {
+                    "type": "string",
+                    "enum": [
+                      "reading",
+                      "listening",
+                      "writing",
+                      "speaking"
+                    ]
+                  }
+                },
+                "required": [
+                  "sourceSkill",
+                  "targetSkill"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "durationMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "easy",
+                  "medium",
+                  "hard"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcomes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "outcomeId": {
+                  "type": "string"
+                },
+                "outcomeSource": {
+                  "type": "string",
+                  "enum": [
+                    "platform",
+                    "institution"
+                  ]
+                }
+              },
+              "required": [
+                "outcomeId",
+                "outcomeSource"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "subjectId",
+          "gradeLevels",
+          "cefrLevel",
+          "primarySkill",
+          "skills",
+          "activityMode",
+          "interactionChannel",
+          "mediation",
+          "durationMinutes",
+          "difficulty",
+          "outcomes"
+        ],
+        "additionalProperties": false
+      },
+      "ResourceAttribution": {
+        "type": "object",
+        "properties": {
+          "work": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "work",
+          "author",
+          "source",
+          "year"
+        ],
+        "additionalProperties": false
+      },
+      "ResourceVersionSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "in_review",
+              "published",
+              "rejected",
+              "archived",
+              "removed"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "authorUserId": {
+            "type": "string"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/ResourceTags"
+          },
+          "licenseKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "institution_original",
+                  "contains_quotation",
+                  "platform_derived",
+                  "open_license",
+                  "public_domain",
+                  "licensed_publication",
+                  "external_reference"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lisans türü; seçilmemişse `null`"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Arşivlendiği an; arşivli sürüm geçmişte okunur"
+          },
+          "removedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "versionNumber",
+          "status",
+          "title",
+          "authorUserId",
+          "tags",
+          "licenseKind",
+          "createdAt",
+          "updatedAt",
+          "publishedAt",
+          "archivedAt",
+          "removedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ResourceVersion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "in_review",
+              "published",
+              "rejected",
+              "archived",
+              "removed"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "authorUserId": {
+            "type": "string"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/ResourceTags"
+          },
+          "licenseKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "institution_original",
+                  "contains_quotation",
+                  "platform_derived",
+                  "open_license",
+                  "public_domain",
+                  "licensed_publication",
+                  "external_reference"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lisans türü; seçilmemişse `null`"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Arşivlendiği an; arşivli sürüm geçmişte okunur"
+          },
+          "removedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {},
+                "description": "Tür başına içerik (school-core `resourceContentSchema`; `type` alanı türdür)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kaldırılan sürümde `null` (DOM-KYN-051)"
+          },
+          "answerKey": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cevap anahtarı (school-core `answerKeySchema`); yalnız personel"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel"
+          },
+          "attributions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceAttribution"
+            }
+          },
+          "submittedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewedByUserId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rejectionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "removalReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "İyimser kilit sürümü (`If-Match`)"
+          }
+        },
+        "required": [
+          "id",
+          "versionNumber",
+          "status",
+          "title",
+          "authorUserId",
+          "tags",
+          "licenseKind",
+          "createdAt",
+          "updatedAt",
+          "publishedAt",
+          "archivedAt",
+          "removedAt",
+          "content",
+          "answerKey",
+          "license",
+          "attributions",
+          "submittedAt",
+          "reviewedByUserId",
+          "reviewedAt",
+          "rejectionReason",
+          "removalReason",
+          "rowVersion"
+        ],
+        "additionalProperties": false
+      },
+      "LearnerResourceVersion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "Öğrenci görünümü: seçenekler kişiye sabit karıştırılır, dinleme görevinde döküm gizlidir"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/ResourceTags"
+          },
+          "attributions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceAttribution"
+            }
+          },
+          "licenseKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "institution_original",
+                  "contains_quotation",
+                  "platform_derived",
+                  "open_license",
+                  "public_domain",
+                  "licensed_publication",
+                  "external_reference"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "resourceId",
+          "title",
+          "content",
+          "tags",
+          "attributions",
+          "licenseKind"
+        ],
+        "additionalProperties": false
+      },
+      "StaffResourceListItem": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "staff"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "reading_passage",
+              "audio",
+              "video",
+              "worksheet",
+              "file",
+              "link",
+              "book_reference",
+              "question",
+              "quiz",
+              "exercise_set",
+              "homework_template"
+            ]
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "shareScope": {
+            "type": "string",
+            "enum": [
+              "private",
+              "students",
+              "classes",
+              "department",
+              "institution"
+            ]
+          },
+          "currentVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Güncel yayındaki sürüm; hiç yayımlanmadıysa `null`"
+          },
+          "derivedFromVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kopyalandığı sürüm"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "version": {
+            "description": "Okunabilir baş sürüm",
+            "$ref": "#/components/schemas/ResourceVersionSummary"
+          }
+        },
+        "required": [
+          "view",
+          "id",
+          "contentType",
+          "ownerUserId",
+          "shareScope",
+          "currentVersionId",
+          "derivedFromVersionId",
+          "createdAt",
+          "updatedAt",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "LearnerResourceListItem": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "learner"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "reading_passage",
+              "audio",
+              "video",
+              "worksheet",
+              "file",
+              "link",
+              "book_reference",
+              "question",
+              "quiz",
+              "exercise_set",
+              "homework_template"
+            ]
+          },
+          "version": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "title": {
+                "type": "string"
+              },
+              "tags": {
+                "$ref": "#/components/schemas/ResourceTags"
+              },
+              "licenseKind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "institution_original",
+                      "contains_quotation",
+                      "platform_derived",
+                      "open_license",
+                      "public_domain",
+                      "licensed_publication",
+                      "external_reference"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "tags",
+              "licenseKind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "view",
+          "id",
+          "contentType",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "StaffResourceDetail": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "staff"
+          },
+          "resource": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "contentType": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "reading_passage",
+                  "audio",
+                  "video",
+                  "worksheet",
+                  "file",
+                  "link",
+                  "book_reference",
+                  "question",
+                  "quiz",
+                  "exercise_set",
+                  "homework_template"
+                ]
+              },
+              "ownerUserId": {
+                "type": "string"
+              },
+              "shareScope": {
+                "type": "string",
+                "enum": [
+                  "private",
+                  "students",
+                  "classes",
+                  "department",
+                  "institution"
+                ]
+              },
+              "currentVersionId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Güncel yayındaki sürüm; hiç yayımlanmadıysa `null`"
+              },
+              "derivedFromVersionId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Kopyalandığı sürüm"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "sharedStudentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sharedClassIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "contentType",
+              "ownerUserId",
+              "shareScope",
+              "currentVersionId",
+              "derivedFromVersionId",
+              "createdAt",
+              "updatedAt",
+              "sharedStudentIds",
+              "sharedClassIds"
+            ],
+            "additionalProperties": false
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceVersionSummary"
+            },
+            "description": "Okunabilir sürümler, numaraya göre artan"
+          },
+          "head": {
+            "$ref": "#/components/schemas/ResourceVersion"
+          },
+          "publicationIssues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "code",
+                "message",
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Açık sürümde (taslak, incelemede, reddedildi) yayım eksikleri; diğerlerinde boş"
+          }
+        },
+        "required": [
+          "view",
+          "resource",
+          "versions",
+          "head",
+          "publicationIssues"
+        ],
+        "additionalProperties": false
+      },
+      "LearnerResourceDetail": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "learner"
+          },
+          "resource": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "contentType": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "reading_passage",
+                  "audio",
+                  "video",
+                  "worksheet",
+                  "file",
+                  "link",
+                  "book_reference",
+                  "question",
+                  "quiz",
+                  "exercise_set",
+                  "homework_template"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "contentType"
+            ],
+            "additionalProperties": false
+          },
+          "version": {
+            "$ref": "#/components/schemas/LearnerResourceVersion"
+          }
+        },
+        "required": [
+          "view",
+          "resource",
           "version"
         ],
         "additionalProperties": false
@@ -20180,6 +22223,560 @@
                         ],
                         "additionalProperties": false
                       }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources": {
+      "get": {
+        "operationId": "listResources",
+        "summary": "İçerik havuzu",
+        "tags": [
+          "resources"
+        ],
+        "description": "Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve `view: 'staff'` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü `view: 'learner'` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Süzgeçler baş sürüme uygulanır; bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Başlık, metin ve kaynak gösteriminde önek araması. Türkçe harf, büyük/küçük harf ve uyumluluk biçimleri (NFKD) duyarsız; en fazla 8 terim, hepsi eşleşmeli. Cevap anahtarı ve dinleme dökümü aranmaz"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "text",
+                "reading_passage",
+                "audio",
+                "video",
+                "worksheet",
+                "file",
+                "link",
+                "book_reference",
+                "question",
+                "quiz",
+                "exercise_set",
+                "homework_template"
+              ]
+            },
+            "in": "query",
+            "name": "contentType",
+            "required": false,
+            "description": "İçerik türü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Pre-A1",
+                "A1",
+                "A2",
+                "A2+",
+                "B1",
+                "B1+",
+                "B2",
+                "B2+",
+                "C1",
+                "C2"
+              ]
+            },
+            "in": "query",
+            "name": "cefrLevel",
+            "required": false,
+            "description": "CEFR seviyesi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "reading",
+                "listening",
+                "writing",
+                "speaking",
+                "mediation",
+                "language_use"
+              ]
+            },
+            "in": "query",
+            "name": "primarySkill",
+            "required": false,
+            "description": "Birincil beceri"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "reading",
+                "listening",
+                "writing",
+                "speaking",
+                "mediation",
+                "language_use",
+                "vocabulary",
+                "grammar",
+                "pronunciation"
+              ]
+            },
+            "in": "query",
+            "name": "skill",
+            "required": false,
+            "description": "Beceri listesinde bulunan beceri"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "subjectId",
+            "required": false,
+            "description": "Ders kimliği"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 5,
+              "maximum": 12
+            },
+            "in": "query",
+            "name": "gradeLevel",
+            "required": false,
+            "description": "Sınıf düzeyi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "in_review",
+                "published",
+                "rejected",
+                "archived",
+                "removed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Baş sürümün durumu. Yalnız personel; öğrenci ve velide 400 `staff_only_filter`"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "ownerUserId",
+            "required": false,
+            "description": "Kaynak sahibi. Yalnız personel; öğrenci ve velide 400 `staff_only_filter`"
+          },
+          {
+            "schema": {
+              "default": "-updatedAt",
+              "type": "string",
+              "enum": [
+                "-updatedAt",
+                "updatedAt",
+                "title",
+                "-title"
+              ]
+            },
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "description": "Sıralama; eksi azalan. Eşitlikte kaynak kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "$ref": "#/components/schemas/StaffResourceListItem"
+                          },
+                          {
+                            "$ref": "#/components/schemas/LearnerResourceListItem"
+                          }
+                        ]
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{resourceId}": {
+      "get": {
+        "operationId": "getResource",
+        "summary": "Kaynak ayrıntısı",
+        "tags": [
+          "resources"
+        ],
+        "description": "Personel: kaynak, paylaşım hedefleri, okunabilir sürümler, baş sürümün tamamı (içerik, cevap anahtarı, lisans) ve açık sürümde yayım eksikleri. Öğrenci/veli: güncel yayın sürümünün öğrenci görünümü (seçenekler kişiye sabit karıştırılır, cevap anahtarı yok, dinleme dökümü gizli; DOM-KYN-003, 024). Okunabilir sürümü olmayan veya başka kurumun kaynağı 404. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "resourceId",
+            "required": true,
+            "description": "Kaynak kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/StaffResourceDetail"
+                        },
+                        {
+                          "$ref": "#/components/schemas/LearnerResourceDetail"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{resourceId}/versions/{versionId}": {
+      "get": {
+        "operationId": "getResourceVersion",
+        "summary": "Kaynak sürümü",
+        "tags": [
+          "resources"
+        ],
+        "description": "Tek sürüm. Personel okuyabildiği her sürümü (arşivli dahil; DOM-KYN-032) tam görür; öğrenci/veli yalnız güncel yayın sürümünü öğrenci görünümüyle. Diğer durumlarda 404. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "resourceId",
+            "required": true,
+            "description": "Kaynak kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "description": "Sürüm kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "view": {
+                              "type": "string",
+                              "enum": [
+                                "staff"
+                              ]
+                            },
+                            "version": {
+                              "$ref": "#/components/schemas/ResourceVersion"
+                            }
+                          },
+                          "required": [
+                            "view",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "view": {
+                              "type": "string",
+                              "enum": [
+                                "learner"
+                              ]
+                            },
+                            "version": {
+                              "$ref": "#/components/schemas/LearnerResourceVersion"
+                            }
+                          },
+                          "required": [
+                            "view",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
                     }
                   },
                   "required": [

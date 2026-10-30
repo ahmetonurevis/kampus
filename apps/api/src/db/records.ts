@@ -193,10 +193,24 @@ function checkData(write: { id: string; data: RecordData }): RecordData {
   return parsed.data
 }
 
+/** Yazma sırası: (koleksiyon, kimlik), kod birimi karşılaştırması; bütün çağıranlarda aynı. */
+function compareKeys(
+  left: { collection: string; id: string },
+  right: { collection: string; id: string },
+): number {
+  if (left.collection !== right.collection) return left.collection < right.collection ? -1 : 1
+  if (left.id !== right.id) return left.id < right.id ? -1 : 1
+  return 0
+}
+
 /**
  * Değişiklikleri tek transaction'da yazar (çağıran zaten transaction içindeyse kayıt noktası).
  * Güncelleme ve arşiv `version = beklenen` ile; tutmazsa 409 ve hiçbir yazma kalmaz. Ekleme,
  * aynı anahtarda arşivlenmiş kayıt varsa onu yeniden açar; canlı kayıt varsa 409.
+ *
+ * Satırlar verilen sırayla değil (koleksiyon, kimlik) sırasıyla yazılır: aynı satırları farklı
+ * sırada kilitleyen iki transaction birbirini beklemez (kilitlenme yok). Yine de oluşan
+ * kilitlenme/serileştirme hatası 409 `conflict` olur (`mapDatabaseError`).
  */
 export async function writeRecords(
   db: Database,
@@ -212,50 +226,50 @@ export async function writeRecords(
       : { ...write, data: checkData(write) },
   )
   const work = db.transaction(async (tx) => {
-    const written: WrittenRecord[] = []
+    // Sırası verilmemiş eklemeler verilen sırayla sona eklenir; değerler yazmadan önce belirlenir.
     const inserts = prepared.filter((write) => write.kind === 'insert')
-    if (inserts.length > 0) {
-      const positions = await appendPositions(tx, institutionId, inserts)
-      const rows = await tx
-        .insert(records)
-        .values(
-          inserts.map((write, index) => ({
+    const appended = await appendPositions(tx, institutionId, inserts)
+    const positions = new Map(inserts.map((write, index) => [write, appended[index] ?? 0]))
+
+    const written: WrittenRecord[] = []
+    for (const write of [...prepared].sort(compareKeys)) {
+      if (write.kind === 'insert') {
+        const [row] = await tx
+          .insert(records)
+          .values({
             institutionId,
             collection: write.collection,
             id: write.id,
             data: write.data,
-            position: positions[index] ?? 0,
+            position: positions.get(write) ?? 0,
             createdAt: now,
             updatedAt: now,
-          })),
-        )
-        .onConflictDoUpdate({
-          target: [records.institutionId, records.collection, records.id],
-          set: {
-            data: sql`excluded.data`,
-            position: sql`excluded.position`,
-            version: sql`${records.version} + 1`,
-            updatedAt: now,
-            archivedAt: null,
-          },
-          setWhere: sql`${records.archivedAt} is not null`,
+          })
+          .onConflictDoUpdate({
+            target: [records.institutionId, records.collection, records.id],
+            set: {
+              data: sql`excluded.data`,
+              position: sql`excluded.position`,
+              version: sql`${records.version} + 1`,
+              updatedAt: now,
+              archivedAt: null,
+            },
+            setWhere: sql`${records.archivedAt} is not null`,
+          })
+          .returning({ version: records.version })
+        // Canlı kayıtla çakışan ekleme satır döndürmez: eşzamanlı ekleme veya görülmemiş kayıt.
+        if (!row) throw new ConflictError()
+        written.push({
+          kind: 'insert',
+          collection: write.collection,
+          id: write.id,
+          version: row.version,
         })
-        .returning({ collection: records.collection, id: records.id, version: records.version })
-      // Canlı kayıtla çakışan ekleme satır döndürmez: eşzamanlı ekleme veya görülmemiş kayıt.
-      if (rows.length !== inserts.length) throw new ConflictError()
-      const versions = new Map(rows.map((row) => [`${row.collection}\u0000${row.id}`, row.version]))
-      for (const write of inserts) {
-        const version = versions.get(`${write.collection}\u0000${write.id}`)
-        if (version === undefined) throw new ConflictError()
-        written.push({ kind: 'insert', collection: write.collection, id: write.id, version })
+        continue
       }
-    }
-    for (const write of prepared) {
-      if (write.kind === 'insert') continue
-      const set = updateSet(write, now)
       const [row] = await tx
         .update(records)
-        .set(set)
+        .set(updateSet(write, now))
         .where(
           and(
             eq(records.institutionId, institutionId),
@@ -301,6 +315,7 @@ async function appendPositions(
   institutionId: string,
   inserts: readonly { collection: CollectionName; position?: number | undefined }[],
 ): Promise<number[]> {
+  if (inserts.length === 0) return []
   const missing = [
     ...new Set(inserts.filter((w) => w.position === undefined).map((w) => w.collection)),
   ]

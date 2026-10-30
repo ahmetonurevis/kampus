@@ -221,6 +221,43 @@ describe('records deposu', () => {
     assert.deepEqual(await rowsOf(id), before)
   })
 
+  test('yazmalar verilen sırayla değil (koleksiyon, kimlik) sırasıyla yapılır', async () => {
+    const id = await institutionWith([invoice('test-inv-2'), invoice('test-inv-4')])
+    const written = await writeRecords(
+      db,
+      id,
+      [
+        { kind: 'insert', ...invoice('test-inv-5') },
+        { kind: 'archive', collection: 'invoices', id: 'test-inv-4', expectedVersion: 1 },
+        { kind: 'insert', collection: 'students', id: 'test-s-1', data: { id: 'test-s-1' } },
+        { kind: 'insert', ...invoice('test-inv-1') },
+        {
+          kind: 'update',
+          collection: 'invoices',
+          id: 'test-inv-2',
+          data: invoice('test-inv-2', { amount: 3 }).data,
+          expectedVersion: 1,
+        },
+      ],
+      LATER,
+    )
+    assert.deepEqual(
+      written.map((row) => `${row.collection}:${row.id}`),
+      [
+        'invoices:test-inv-1',
+        'invoices:test-inv-2',
+        'invoices:test-inv-4',
+        'invoices:test-inv-5',
+        'students:test-s-1',
+      ],
+    )
+    // Sırası verilmeyen eklemeler yine verilen sırayla sona eklenir.
+    assert.deepEqual(
+      (await loadRecords(db, id, ['invoices'])).map((row) => row.id),
+      ['test-inv-2', 'test-inv-5', 'test-inv-1'],
+    )
+  })
+
   test('canlı kayıtla aynı anahtarda ekleme 409 verir', async () => {
     const id = await institutionWith([invoice('test-inv-1')])
     const before = await rowsOf(id)

@@ -13,7 +13,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
-import { AppError } from '../src/errors.ts'
+import { AppError, mapDatabaseError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { mapOperationError, runOperation } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
@@ -574,6 +574,27 @@ describe('işlem çalıştırıcı', () => {
     assert.equal(outcome.result, seed.invoices.length)
     assert.deepEqual(outcome.changes, [])
     assert.deepEqual(await snapshot(ctx.institutionId), before)
+  })
+})
+
+describe('veritabanı hata eşlemesi', () => {
+  /** Drizzle sürücü hatasını `cause`'a sarar; eşleme zinciri izler. */
+  const wrapped = (code: string, constraint?: string) =>
+    new Error('Failed query', { cause: Object.assign(new Error('pg'), { code, constraint }) })
+
+  test('kilitlenme ve serileştirme 409 conflict, boyut kısıtı 422; ötekiler aynen kalır', () => {
+    for (const code of ['40P01', '40001']) {
+      const mapped = mapDatabaseError(wrapped(code))
+      assert.ok(mapped instanceof AppError)
+      assert.deepEqual([mapped.statusCode, mapped.code], [409, 'conflict'])
+    }
+    const size = mapDatabaseError(wrapped('23514', 'records_data_size_check'))
+    assert.ok(size instanceof AppError)
+    assert.deepEqual([size.statusCode, size.code], [422, 'record_too_large'])
+    const otherCheck = wrapped('23514', 'başka_check')
+    assert.equal(mapDatabaseError(otherCheck), otherCheck)
+    const node = Object.assign(new Error('x'), { code: 'ERR_INVALID_ARG_TYPE' })
+    assert.equal(mapDatabaseError(node), node)
   })
 })
 

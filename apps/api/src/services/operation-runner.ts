@@ -32,6 +32,7 @@ import {
   NotFoundError,
   RuleViolationError,
   ValidationError,
+  withDatabaseErrors,
   type Issue,
 } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -262,7 +263,8 @@ export async function runOperation<R>(
   const now = ctx.now.toISOString()
   const tools: OperationTools = { now, makeId: request.makeId ?? defaultMakeId }
 
-  return ctx.db.transaction(async (tx) => {
+  // Kilit beklerken veya yüklerken oluşan kilitlenme de 409 `conflict` olur.
+  const work = ctx.db.transaction(async (tx) => {
     // Yüklemeden önce: aynı kurumun eşzamanlı işlemi bu görüntüyü bayatlatamaz.
     await lockInstitution(tx, ctx.institutionId)
     const loaded = await loadRecords(tx, ctx.institutionId, collections)
@@ -318,4 +320,5 @@ export async function runOperation<R>(
     })
     return { result, changes }
   })
+  return withDatabaseErrors(work)
 }

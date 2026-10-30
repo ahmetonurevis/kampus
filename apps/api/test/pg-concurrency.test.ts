@@ -86,13 +86,13 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     return row?.n
   }
 
-  /** Bir bağlantı danışma kilidini bekleyene kadar yoklar (sabit uyku yerine koşul). */
-  async function untilLockWait() {
+  /** Bir bağlantı kilit bekleyene kadar yoklar (sabit uyku yerine koşul). */
+  async function untilLockWait(locktype: 'advisory' | 'transactionid' = 'advisory') {
     for (let attempt = 0; ; attempt += 1) {
       const [waiting] = await db
         .select({ n: count() })
         .from(sql`pg_locks`)
-        .where(sql`locktype = 'advisory' and not granted`)
+        .where(sql`locktype = ${locktype} and not granted`)
       if ((waiting?.n ?? 0) > 0) return
       assert.ok(attempt < 300, 'işlem kurum kilidini beklemedi')
       await delay(10)
@@ -176,6 +176,95 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
         error instanceof AppError && error.statusCode === 422 && error.code === 'record_too_large',
     )
     assert.equal(await attendanceCount(ctx.institutionId), 0)
+  })
+
+  const mark = (id: string) => ({
+    id,
+    studentId: STUDENT,
+    classId: 'test-c-pg',
+    date: DAY,
+    status: 'present',
+    reason: '',
+  })
+  const update = (id: string, status: string) => ({
+    kind: 'update' as const,
+    collection: 'attendance' as const,
+    id,
+    data: { ...mark(id), status },
+    expectedVersion: 1,
+  })
+
+  async function twoMarks() {
+    const ctx = await context()
+    await writeRecords(
+      db,
+      ctx.institutionId,
+      ['test-att-a', 'test-att-b'].map((id) => ({
+        kind: 'insert' as const,
+        collection: 'attendance' as const,
+        id,
+        data: mark(id),
+      })),
+      FIXED_NOW,
+    )
+    return ctx
+  }
+
+  test('yazmalar (koleksiyon, kimlik) sırasıyla: ters sırada verilen yazma kilitlenme üretmez', async () => {
+    const { institutionId } = await twoMarks()
+    const held = gate()
+    const release = gate()
+    const first = db.transaction(async (tx) => {
+      await writeRecords(tx, institutionId, [update('test-att-a', 'late')], FIXED_NOW)
+      held.open()
+      await release.opened
+      await writeRecords(tx, institutionId, [update('test-att-b', 'late')], FIXED_NOW)
+    })
+    await held.opened
+    // B, A sırasıyla verildi; depo önce A'yı yazar ve ilk transaction'ı bekler, B'yi tutmaz.
+    const second = writeRecords(
+      db,
+      institutionId,
+      [update('test-att-b', 'absent'), update('test-att-a', 'absent')],
+      FIXED_NOW,
+    )
+    second.catch(() => {})
+    try {
+      await untilLockWait('transactionid')
+    } finally {
+      release.open()
+    }
+    await first
+    await assert.rejects(
+      second,
+      (error: unknown) => error instanceof AppError && error.code === 'version_conflict',
+    )
+  })
+
+  test('kilitlenme kurbanı 409 conflict ile döner; öteki transaction tamamlanır', async () => {
+    const { institutionId } = await twoMarks()
+    const aLocked = gate()
+    const bLocked = gate()
+    const outcomes = await Promise.allSettled([
+      db.transaction(async (tx) => {
+        await writeRecords(tx, institutionId, [update('test-att-a', 'late')], FIXED_NOW)
+        aLocked.open()
+        await bLocked.opened
+        await writeRecords(tx, institutionId, [update('test-att-b', 'late')], FIXED_NOW)
+      }),
+      db.transaction(async (tx) => {
+        await aLocked.opened
+        await writeRecords(tx, institutionId, [update('test-att-b', 'absent')], FIXED_NOW)
+        bLocked.open()
+        await writeRecords(tx, institutionId, [update('test-att-a', 'absent')], FIXED_NOW)
+      }),
+    ])
+    assert.equal(outcomes.filter((item) => item.status === 'fulfilled').length, 1)
+    const [victim] = outcomes.filter((item) => item.status === 'rejected')
+    assert.ok(victim?.status === 'rejected')
+    assert.ok(victim.reason instanceof AppError, String(victim.reason))
+    assert.equal(victim.reason.statusCode, 409)
+    assert.equal(victim.reason.code, 'conflict')
   })
 
   test('farklı kurumların işlemleri birbirini beklemez', async () => {

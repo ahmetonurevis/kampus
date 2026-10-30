@@ -101,24 +101,24 @@ Bütün hata yanıtları aynı şekildedir:
 
 ## 5. HTTP durum kodları
 
-| Durum | `code` örnekleri                                                                                      | Ne zaman                                                                                                   |
-| ----- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| 200   | —                                                                                                     | Okuma, güncelleme, komut, arşivleme                                                                        |
-| 201   | —                                                                                                     | Oluşturma (`Location` başlığıyla)                                                                          |
-| 202   | —                                                                                                     | Uzun süren içe aktarma kuyruğa alındı (`/imports/:importId` ile izlenir)                                   |
-| 204   | —                                                                                                     | Gövdesiz başarı (çıkış)                                                                                    |
-| 400   | `validation_failed`, `invalid_query`, `idempotency_key_required`                                      | Şema/biçim hatası                                                                                          |
-| 401   | `unauthenticated`                                                                                     | Oturum yok, geçersiz, iptal edilmiş veya süresi dolmuş                                                     |
-| 403   | `forbidden`, `module_disabled`, `no_active_institution`, `reauthentication_required`, `csrf_rejected` | Rol/kapsam yetmiyor; modül kapalı; etkin kurum yok; hassas işlem için taze oturum gerekli; kaynak denetimi |
-| 404   | `not_found`                                                                                           | Yok **veya başka kuruma ait** (varlığı sızdırılmaz)                                                        |
-| 409   | `version_conflict`, `duplicate`, `idempotency_in_progress`                                            | Sürüm çakışması, benzersizlik ihlali, aynı anahtarla süren istek                                           |
-| 413   | `payload_too_large`                                                                                   | Gövde sınırı (varsayılan 1 MB)                                                                             |
-| 415   | `unsupported_media_type`                                                                              | Beklenmeyen `Content-Type`                                                                                 |
-| 422   | iş kuralı kodu (`goal_already_open`), `idempotency_key_reused`                                        | Biçim doğru, iş kuralı reddetti (`DomainError` kind `rule`)                                                |
-| 426   | `client_upgrade_required`                                                                             | Mobil sürümü artık desteklenmiyor                                                                          |
-| 429   | `rate_limited`                                                                                        | Hız sınırı (`Retry-After` başlığıyla)                                                                      |
-| 500   | `internal_error`                                                                                      | Beklenmeyen hata                                                                                           |
-| 503   | `unavailable`                                                                                         | Bakım veya bağımlılık (veritabanı) erişilemez                                                              |
+| Durum | `code` örnekleri                                                                                      | Ne zaman                                                                                                        |
+| ----- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 200   | —                                                                                                     | Okuma, güncelleme, komut, arşivleme                                                                             |
+| 201   | —                                                                                                     | Oluşturma (`Location` başlığıyla)                                                                               |
+| 202   | —                                                                                                     | Uzun süren içe aktarma kuyruğa alındı (`/imports/:importId` ile izlenir)                                        |
+| 204   | —                                                                                                     | Gövdesiz başarı (çıkış)                                                                                         |
+| 400   | `validation_failed`, `invalid_query`, `idempotency_key_required`                                      | Şema/biçim hatası                                                                                               |
+| 401   | `unauthenticated`                                                                                     | Oturum yok, geçersiz, iptal edilmiş veya süresi dolmuş                                                          |
+| 403   | `forbidden`, `module_disabled`, `no_active_institution`, `reauthentication_required`, `csrf_rejected` | Rol/kapsam yetmiyor; modül kapalı; etkin kurum yok; hassas işlem için taze oturum gerekli; kaynak denetimi      |
+| 404   | `not_found`                                                                                           | Yok **veya başka kuruma ait** (varlığı sızdırılmaz)                                                             |
+| 409   | `version_conflict`, `conflict`, `duplicate`, `idempotency_in_progress`                                | Sürüm çakışması, kilitlenme/serileştirme (yeniden denenebilir), benzersizlik ihlali, aynı anahtarla süren istek |
+| 413   | `payload_too_large`                                                                                   | Gövde sınırı (varsayılan 1 MB)                                                                                  |
+| 415   | `unsupported_media_type`                                                                              | Beklenmeyen `Content-Type`                                                                                      |
+| 422   | iş kuralı kodu (`goal_already_open`), `idempotency_key_reused`                                        | Biçim doğru, iş kuralı reddetti (`DomainError` kind `rule`)                                                     |
+| 426   | `client_upgrade_required`                                                                             | Mobil sürümü artık desteklenmiyor                                                                               |
+| 429   | `rate_limited`                                                                                        | Hız sınırı (`Retry-After` başlığıyla)                                                                           |
+| 500   | `internal_error`                                                                                      | Beklenmeyen hata                                                                                                |
+| 503   | `unavailable`                                                                                         | Bakım veya bağımlılık (veritabanı) erişilemez                                                                   |
 
 400 ile 422 ayrımı: Zod şemasını geçemeyen istek 400; şemayı geçip school-core kuralına takılan istek 422.
 
@@ -126,7 +126,7 @@ Modül denetimi: modüle bağlı rota `app.requireModule('<anahtar>')` ön işle
 
 ## 6. Eşzamanlılık
 
-- Güncelleme ve komut gövdesi okunan kaydın `version` değerini taşır. Sunucu yazarken `WHERE version = $beklenen` uygular; eşleşmezse 409 `version_conflict`. İstemci kaydı yeniden yükler ve kullanıcıya "Kayıt başka biri tarafından değiştirildi." gösterir.
+- Güncelleme ve komut gövdesi okunan kaydın `version` değerini taşır. Sunucu yazarken `WHERE version = $beklenen` uygular; eşleşmezse 409 `version_conflict`. İstemci kaydı yeniden yükler ve kullanıcıya "Kayıt başka biri tarafından değiştirildi." gösterir. Veritabanı kilitlenme (40P01) veya serileştirme (40001) nedeniyle transaction'ı geri alırsa 409 `conflict` döner: hiçbir kayıt değişmemiştir, aynı istek yeniden denenebilir.
 - Başarılı yazma yeni `version`'ı döndürür.
 
 ## 7. Idempotency anahtarı

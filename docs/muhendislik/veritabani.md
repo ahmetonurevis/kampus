@@ -78,7 +78,7 @@ update records
  where institution_id = $2 and collection = $3 and id = $4 and version = $5
 ```
 
-- Bir işlemin değiştirdiği bütün kayıtlar tek transaction'da yazılır; biri çakışırsa hepsi geri alınır.
+- Bir işlemin değiştirdiği bütün kayıtlar tek transaction'da yazılır; biri çakışırsa hepsi geri alınır. Yazmalar verilen sırayla değil `(collection, id)` sırasıyla yapılır; aynı satırları farklı sırada değiştiren iki transaction kilitlenmez. Yine de oluşan kilitlenme (40P01) veya serileştirme hatası (40001) 409 `conflict` olur (yeniden denenebilir, `mapDatabaseError`).
 - Koleksiyonlar arası bütünlük (yabancı anahtar) jsonb'de veritabanınca sağlanmaz; school-core sağlar. Bütünlüğün veritabanı garantisi gerekiyorsa koleksiyon normalleştirilir.
 - Hesaplanabilen değer (`goalProgress`, quiz puanı, rubrik toplamı) `data`'ya yazılmaz.
 - Dosya ve medya `data`'ya gömülmez (base64 yok); depolama arayüzünde tutulur, kayıt yalnız anahtar ve meta veri taşır. Belge başına sınır 256 KB. Uygulama yazmadan önce JSON metin boyutunu denetler; jsonb'nin ikili boyutu metinden büyük olabildiği için (ör. çok sayıda küçük sayı) `records_data_size_check` yine de reddedebilir. Bu ihlal (23514, bu kısıt) de 422 `record_too_large`'a çevrilir (`mapDatabaseError`).

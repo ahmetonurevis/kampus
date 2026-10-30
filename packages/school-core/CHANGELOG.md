@@ -1,5 +1,11 @@
 # Değişiklikler
 
+## 2.9.1
+
+Örnek veri düzeltmesi: Deniz'in (`s1`) `hw-review` ödevi için otomatik üretilen teslim kaldırıldı; yalnız elle tanımlı `sub-deniz` (puan 88, özel geri bildirim) kalır. Daha önce aynı (ödev, öğrenci) çifti için iki kayıt vardı ve `submissions.find` otomatik üretileni buluyordu. Diğer öğrencilerin teslimleri ve tüm kimlikler aynı; yoklama, quiz denemesi ve not kimliklerinin tekilliği testle güvence altına alındı.
+
+- Tüketiciler `workspace:2.9.1` sürümüne sabitlendi.
+
 ## 2.9.0
 
 İçerik havuzunun core katmanı eklendi (ADR 0004 karar 3, 9, 11; `docs/domain/kaynak-platformu.md`). Yeni modüller State'e koleksiyon eklemez (karar 2): girdi servisin yüklediği tipli satırlardır, fonksiyonlar `now` alır ve yazılacak değişikliği döndürür. Mevcut davranış değişmedi; veritabanı tablosu, API ucu ve ekran F3b ve sonrasındadır.

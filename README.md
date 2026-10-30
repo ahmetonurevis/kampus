@@ -37,13 +37,14 @@ pnpm dev
 pnpm build                 # apps/web/dist
 pnpm preview               # http://127.0.0.1:4173
 pnpm lint
+pnpm typecheck             # TypeScript paketlerinde tip denetimi
 pnpm format:check
 pnpm test
 pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-Zorunlu ortam değişkeni yoktur. Statik barındırmada tüm uygulama yolları `index.html` dosyasına yönlendirilmelidir. Canlı demo `https://demo.onurevis.com` adresindedir. CI dosyası PR'larda format, lint, unit test, build ve tarayıcı testlerini çalıştırır.
+Zorunlu ortam değişkeni yoktur. Statik barındırmada tüm uygulama yolları `index.html` dosyasına yönlendirilmelidir. Canlı demo `https://demo.onurevis.com` adresindedir. CI dosyası PR'larda format, lint, tip denetimi, unit test, build ve tarayıcı testlerini çalıştırır.
 
 ## Özel okul yapısı
 
@@ -166,7 +167,7 @@ ssh abbara-server 'bash /var/www/kampus-demo/deploy/<surum>/activate.sh <surum>'
 
 ## Doğrulama
 
-`pnpm lint`, `pnpm format:check`, `pnpm test` ve `pnpm build` temel kontrollerdir. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
+`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test` ve `pnpm build` temel kontrollerdir. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
 
 6 Ekim 2026 optik/etüt teslim kontrolü: lint, format ve web derlemesi başarılı; 65 birim testi ve 58 tarayıcı senaryosu geçti. Yayın öncesinde tüm 58 tarayıcı senaryosu tekrar geçti. Canlı adres üzerinde 14 senaryo; beş rolün masaüstü/dar ekran sayfaları, optik/etüt işlemleri, video ve PDF akışlarını doğruladı. Sağlık yanıtı sürümle eşleşti; HTTPS yönlendirmesi, video aralık isteği ve PDF worker MIME türü kontrol edildi.
 

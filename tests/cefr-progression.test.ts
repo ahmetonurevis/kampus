@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import {
   ABSENCE_NOTICES,
   ASSESSMENT_POINTS,
-  MIN_ATTENDANCE_RATIO,
+  EXAM_BARRED_MESSAGE_KEY,
+  MIN_ATTENDANCE_PERMILLE,
   PASS_RULES,
   PROGRESSION_OUTCOMES,
   absenceNoticeDue,
@@ -45,7 +46,7 @@ const teacher: ProgressionActor = { userId: 'test-u-teacher', role: 'ogretmen' }
 const coordinator: ProgressionActor = {
   userId: 'test-u-coord',
   role: 'ogretmen',
-  coordinator: { cefrLevels: ['B1', 'B1+'] },
+  coordinator: true,
 }
 const admin: ProgressionActor = { userId: 'test-u-admin', role: 'yonetici' }
 
@@ -136,13 +137,20 @@ describe('devam şartı (DOM-DIL-060, 061)', () => {
       excusedAbsentHours: 0,
       unrecordedHours: 0,
       requiredHours: 32,
-      minAttendanceRatio: 0.8,
+      minAttendancePermille: 800,
       status: 'eligible',
     })
     assert.equal(attendanceSummary({ totalHours: 40, rows: hours(31, 9) }).status, 'ineligible')
     // Kayan nokta: 0,8 × 35 = 28,000…04; gereken saat 28'dir.
     assert.equal(attendanceSummary({ totalHours: 35, rows: hours(28, 7) }).requiredHours, 28)
     assert.equal(attendanceSummary({ totalHours: 35, rows: hours(28, 7) }).status, 'eligible')
+    assert.equal(attendanceSummary({ totalHours: 35, rows: hours(27, 8) }).status, 'ineligible')
+    // Tam bölünmeyen toplamda gereken saat yukarı yuvarlanır: 0,8 × 7 = 5,6 → 6; 0,8 × 3 = 2,4 → 3.
+    assert.equal(attendanceSummary({ totalHours: 7, rows: hours(6, 1) }).status, 'eligible')
+    assert.equal(attendanceSummary({ totalHours: 7, rows: hours(5, 2) }).status, 'ineligible')
+    assert.equal(attendanceSummary({ totalHours: 7, rows: [] }).requiredHours, 6)
+    assert.equal(attendanceSummary({ totalHours: 3, rows: hours(2, 1) }).status, 'ineligible')
+    assert.equal(attendanceSummary({ totalHours: 3, rows: hours(3, 0) }).status, 'eligible')
   })
 
   test('DOM-DIL-061 geç katılmış sayılır, gelmedi sayılmaz; özürlü devamsızlık da sayılır', () => {
@@ -168,24 +176,37 @@ describe('devam şartı (DOM-DIL-060, 061)', () => {
     const strict = attendanceSummary({
       totalHours: 40,
       rows: hours(35, 5),
-      minAttendanceRatio: 0.9,
+      minAttendancePermille: 900,
     })
     assert.equal(strict.requiredHours, 36)
     assert.equal(strict.status, 'ineligible')
-    assert.equal(MIN_ATTENDANCE_RATIO, 0.8)
-    assert.throws(
-      () => attendanceSummary({ totalHours: 40, rows: [], minAttendanceRatio: 0.79 }),
-      ZodError,
+    // Sıkı oranda da tam sınır geçer, bir saat eksiği geçmez.
+    const edge = (attended: number) =>
+      attendanceSummary({
+        totalHours: 40,
+        rows: hours(attended, 40 - attended),
+        minAttendancePermille: 900,
+      }).status
+    assert.equal(edge(36), 'eligible')
+    assert.equal(edge(35), 'ineligible')
+    assert.equal(
+      attendanceSummary({ totalHours: 40, rows: [], minAttendancePermille: 875 }).requiredHours,
+      35,
     )
-    assert.throws(
-      () => attendanceSummary({ totalHours: 40, rows: [], minAttendanceRatio: 1.01 }),
-      ZodError,
-    )
+    assert.equal(MIN_ATTENDANCE_PERMILLE, 800)
+    for (const minAttendancePermille of [799, 1001, 800.5])
+      assert.throws(
+        () => attendanceSummary({ totalHours: 40, rows: [], minAttendancePermille }),
+        ZodError,
+      )
     assert.deepEqual(progressionSettingsSchema.parse({}), {
-      minAttendanceRatio: 0.8,
+      minAttendancePermille: 800,
       finalPassScore: 60,
     })
-    assert.equal(progressionSettingsSchema.parse({ minAttendanceRatio: 1 }).minAttendanceRatio, 1)
+    assert.equal(
+      progressionSettingsSchema.parse({ minAttendancePermille: 1000 }).minAttendancePermille,
+      1000,
+    )
   })
 
   test('DOM-DIL-061 aynı ders saatine ikinci yoklama ve kur saatini aşan satır reddedilir', () => {
@@ -233,6 +254,7 @@ describe('devamsızlık bildirimi (DOM-DIL-062)', () => {
       label: 'Birinci devamsızlık bildirimi',
       percent: 10,
       warnsExamBar: false,
+      examBarred: false,
       messageKey: 'absence_notice_first',
       message: 'Devamsızlık kur saatinin %10 eşiğine ulaştı.',
       recipients: ['learner'],
@@ -261,8 +283,49 @@ describe('devamsızlık bildirimi (DOM-DIL-062)', () => {
       second?.message,
       'Devamsızlık kur saatinin %15 eşiğine ulaştı. Devamsızlık %20 sınırını aşarsa kur sonu sınavına girilemez.',
     )
+    assert.equal(second?.examBarred, false)
     assert.equal(due(7, { sentNotices: [...sentNotices, { kind: 'second' }] }), null)
     assert.equal(ABSENCE_NOTICES.first.warnsExamBar, false)
+  })
+
+  test('DOM-DIL-062 üst eşik gönderildiyse yoklama düzeltmesiyle oran düşse de alttaki önerilmez', () => {
+    const sentNotices = [{ kind: 'second' as const }]
+    // 4 saat %10'a ulaşır ama %15'lik bildirim zaten gitti.
+    assert.equal(due(4, { sentNotices }), null)
+    assert.equal(due(5, { sentNotices }), null)
+    // Yalnız alt eşik gittiyse üst eşik hâlâ önerilir.
+    assert.equal(due(6, { sentNotices: [{ kind: 'first' }] })?.kind, 'second')
+  })
+
+  test('DOM-DIL-060 DOM-DIL-062 sınır aşılmışsa bildirim sınava girilemeyeceğini söyler', () => {
+    // 40 saatte binde 900: gereken 36, 5 saat devamsızlıkta 35 saate çıkılabilir → sınır aşıldı.
+    const barred = due(5, { minAttendancePermille: 900 })
+    assert.equal(barred?.kind, 'first')
+    assert.equal(barred?.examBarred, true)
+    assert.equal(barred?.messageKey, EXAM_BARRED_MESSAGE_KEY)
+    assert.equal(
+      barred?.message,
+      'Devamsızlık kur saatinin %10 eşiğine ulaştı. Devamsızlık %10 sınırını aştı; kur sonu sınavına girilemez.',
+    )
+    // 4 saatte 36 saate hâlâ çıkılabilir: sınır aşılmamış, birinci bildirim eski metinde.
+    const notYet = due(4, { minAttendancePermille: 900 })
+    assert.equal(notYet?.examBarred, false)
+    assert.equal(notYet?.messageKey, 'absence_notice_first')
+    // İkinci bildirim: aşılmış (900) ve aşılmamış (800) durum.
+    const sentNotices = [{ kind: 'first' as const }]
+    const secondBarred = due(6, { minAttendancePermille: 900, sentNotices })
+    assert.equal(secondBarred?.kind, 'second')
+    assert.equal(secondBarred?.examBarred, true)
+    assert.equal(secondBarred?.messageKey, 'absence_notice_exam_barred')
+    assert.match(secondBarred?.message ?? '', /%10 sınırını aştı; kur sonu sınavına girilemez\.$/)
+    const secondOpen = due(6, { minAttendancePermille: 800, sentNotices })
+    assert.equal(secondOpen?.examBarred, false)
+    assert.equal(secondOpen?.messageKey, 'absence_notice_second_exam_bar')
+    assert.match(secondOpen?.message ?? '', /%20 sınırını aşarsa/)
+    // Varsayılan oranda 8 saat hâlâ sınırda (32 saate çıkılır), 9 saat aşar.
+    assert.equal(due(8)?.examBarred, false)
+    assert.equal(due(9)?.examBarred, true)
+    assert.equal(due(9)?.messageKey, EXAM_BARRED_MESSAGE_KEY)
   })
 
   test('DOM-DIL-062 iki eşik birlikte aşılırsa yalnız ikinci bildirim önerilir', () => {
@@ -270,8 +333,10 @@ describe('devamsızlık bildirimi (DOM-DIL-062)', () => {
   })
 
   test('DOM-DIL-062 kurum oranı sıkıysa uyarı kurumun sınırını yazar', () => {
-    assert.match(due(6, { minAttendanceRatio: 0.9 })?.message ?? '', /%10 sınırını/)
-    assert.match(due(6, { minAttendanceRatio: 0.875 })?.message ?? '', /%12,5 sınırını/)
+    assert.match(due(6, { minAttendancePermille: 900 })?.message ?? '', /%10 sınırını/)
+    assert.match(due(6, { minAttendancePermille: 875 })?.message ?? '', /%12,5 sınırını/)
+    // 850'de 6 saat henüz aşmaz (34 saate çıkılır): ikinci bildirim uyarı olarak kalır.
+    assert.match(due(6, { minAttendancePermille: 850 })?.message ?? '', /%15 sınırını aşarsa/)
   })
 
   test('DOM-DIL-062 DOM-DIL-091 18 yaş altında veli de alıcıdır; yaş İstanbul gününe göre', () => {
@@ -284,6 +349,27 @@ describe('devamsızlık bildirimi (DOM-DIL-062)', () => {
     assert.equal(isMinorOn('2008-02-29', '2026-02-28T12:00:00.000Z'), true)
     assert.equal(isMinorOn('2008-02-29', '2026-03-01T12:00:00.000Z'), false)
     assert.throws(() => isMinorOn('04.11.2008', now), isDomainError('birth_date_invalid'))
+  })
+
+  test('DOM-DIL-062 doğum tarihi gerçek takvim günü olmalı; geçersiz anda ret', () => {
+    for (const birthDate of ['2008-02-30', '2007-02-29', '2008-13-01', '2008-00-10', '2008-04-31'])
+      assert.throws(
+        () => isMinorOn(birthDate, now),
+        (error: unknown) =>
+          isDomainError('birth_date_invalid')(error) &&
+          JSON.stringify((error as { path: unknown }).path) === '["birthDate"]',
+        birthDate,
+      )
+    assert.throws(() => due(4, { birthDate: '2008-02-30' }), isDomainError('birth_date_invalid'))
+    assert.equal(isMinorOn('2008-02-29', now), false)
+    for (const bad of ['bozuk', '2026-13-45T00:00:00Z', new Date(Number.NaN)])
+      assert.throws(
+        () => isMinorOn('2008-01-01', bad),
+        (error: unknown) =>
+          isDomainError('invalid_now')(error) &&
+          JSON.stringify((error as { path: unknown }).path) === '["now"]',
+      )
+    assert.throws(() => due(4, { now: 'x' }), isDomainError('invalid_now'))
   })
 })
 
@@ -432,7 +518,7 @@ describe('kur geçme koşulları (DOM-DIL-070, 013)', () => {
     assert.deepEqual(strict.allowedOutcomes, ['repeat'])
     assert.equal(strict.basis.finalPassScore, 80)
     assert.throws(() => evaluate({ settings: { finalPassScore: 59 } }), ZodError)
-    assert.throws(() => evaluate({ settings: { minAttendanceRatio: 0.75 } }), ZodError)
+    assert.throws(() => evaluate({ settings: { minAttendancePermille: 750 } }), ZodError)
   })
 
   test('DOM-DIL-013 başlangıç ölçmesi hesaba ve kopyaya girmez', () => {
@@ -609,26 +695,34 @@ describe('kur geçme kararı (DOM-DIL-070)', () => {
 })
 
 describe('onay ve düzeltme (DOM-DIL-070)', () => {
-  test('DOM-DIL-070 koordinatör veya yönetici onaylar; karar onaylı olur', () => {
+  test('DOM-DIL-070 akademik koordinatör onaylar; karar onaylı olur', () => {
     const approved = review()
     assert.equal(approved.status, 'approved')
     assert.equal(approved.reviewedByUserId, 'test-u-coord')
     assert.equal(approved.reviewedAt, '2026-11-05T09:00:00.000Z')
     assert.equal(approved.rejectionReason, null)
-    assert.equal(review({ actor: admin }).reviewedByUserId, 'test-u-admin')
   })
 
-  test('DOM-DIL-070 DOM-YTK-027 onay yetkisi koordinatörün seviyesiyle sınırlı', () => {
-    const otherLevel: ProgressionActor = { ...coordinator, coordinator: { cefrLevels: ['A2'] } }
+  test('DOM-DIL-070 DOM-YTK-027 onayı yalnız koordinatör verir; yönetici yerine geçmez', () => {
     for (const actor of [
-      otherLevel,
+      admin,
       teacher,
+      { ...coordinator, coordinator: false },
       { userId: 'test-u-ob', role: 'onburo' as const },
       { userId: 'test-u-v', role: 'veli' as const },
     ])
       assert.throws(() => review({ actor }), isDomainError('permission_denied', 'forbidden'))
-    assert.equal(canReviewProgression(coordinator, 'B1+'), true)
-    assert.equal(canReviewProgression(coordinator, 'B2'), false)
+    assert.throws(
+      () =>
+        review({
+          actor: admin,
+          input: { action: 'reject', decisionId: 'test-pd1', reason: 'Gerekçe' },
+        }),
+      isDomainError('permission_denied', 'forbidden'),
+    )
+    assert.equal(canReviewProgression(coordinator), true)
+    assert.equal(canReviewProgression(admin), false)
+    assert.equal(canReviewProgression(teacher), false)
     assert.throws(
       () => review({ institutionType: 'school' }),
       isDomainError('module_unavailable_for_type', 'not_found'),
@@ -636,14 +730,10 @@ describe('onay ve düzeltme (DOM-DIL-070)', () => {
   })
 
   test('DOM-DIL-070 iki kişi kuralı: kararı veren kendi kararını onaylayamaz', () => {
+    // Koordinatör aynı zamanda grubun öğretmeniyse de kendi önerisini onaylayamaz.
     const coordinatorTeacher: ProgressionActor = { ...coordinator, userId: 'test-u-teacher' }
     assert.throws(
       () => review({ actor: coordinatorTeacher }),
-      isDomainError('progression_self_review', 'forbidden'),
-    )
-    const byAdmin = record({ decidedByUserId: 'test-u-admin' })
-    assert.throws(
-      () => review({ decision: byAdmin, actor: admin }),
       isDomainError('progression_self_review', 'forbidden'),
     )
   })
@@ -681,12 +771,66 @@ describe('onay ve düzeltme (DOM-DIL-070)', () => {
     )
   })
 
-  test('DOM-DIL-070 onay anında koşullar güncel verilerle yeniden hesaplanır', () => {
-    // Kur sonu puanı düzeltildi: geçti artık izinli değil.
-    assert.throws(
-      () => review({ assessments: fullAssessments(50) }),
-      isDomainError('pass_conditions_not_met'),
+  test('DOM-DIL-070 onay anında dayanak değişmişse onay reddedilir, öğretmen yeniden önerir', () => {
+    const rejectsBasis = (over: Parameters<typeof review>[0]) =>
+      assert.throws(
+        () => review(over),
+        (error: unknown) =>
+          isDomainError('progression_basis_changed', 'conflict')(error) &&
+          JSON.stringify((error as { path: unknown }).path) === '["basis"]',
+      )
+    // Kur sonu puanı düzeltildi (artık geçti de izinli değil): önce dayanak değişimi yakalanır.
+    rejectsBasis({ assessments: fullAssessments(50) })
+    // Geçmeye izin veren bir değişiklik de (puan 75 → 80) onaylanmış sayılmaz.
+    rejectsBasis({ assessments: fullAssessments(80) })
+    // Devam verisi değişti.
+    rejectsBasis({ attendance: hours(37, 3) })
+    // Kurum eşiği değişti.
+    rejectsBasis({ settings: { finalPassScore: 70 } })
+    // Reddetmek dayanağa bakmaz; öğretmen yeniden önereceği için gerekçe yeter.
+    assert.equal(
+      review({
+        assessments: fullAssessments(50),
+        input: { action: 'reject', decisionId: 'test-pd1', reason: 'Puan değişti.' },
+      }).status,
+      'rejected',
     )
+  })
+
+  test('DOM-DIL-070 dayanak aynı kalıp geri bildirim silinmişse onay assessments_incomplete verir', () => {
+    // Geri bildirim dayanağa girmez: basis aynı, ama koşullar artık hesaplanamaz.
+    const noFeedback = fullAssessments().map((row) =>
+      row.point === 'final'
+        ? {
+            ...row,
+            skills: row.skills.map((s) => (s.skill === 'writing' ? { ...s, feedback: '' } : s)),
+          }
+        : row,
+    )
+    assert.throws(
+      () => review({ assessments: noFeedback }),
+      (error: unknown) =>
+        isDomainError('assessments_incomplete')(error) &&
+        JSON.stringify((error as { path: unknown }).path) ===
+          '["assessments","final","skills","writing","feedback"]',
+    )
+  })
+
+  test('DOM-DIL-070 jsonb anahtar sırasını değiştirse de dayanak aynıysa onay geçer', () => {
+    const reverse = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(reverse)
+      if (value !== null && typeof value === 'object')
+        return Object.fromEntries(
+          Object.entries(value)
+            .reverse()
+            .map(([k, v]) => [k, reverse(v)]),
+        )
+      return value
+    }
+    const original = record()
+    const shuffled = { ...original, basis: reverse(original.basis) as typeof original.basis }
+    assert.notDeepEqual(Object.keys(shuffled.basis), Object.keys(original.basis))
+    assert.equal(review({ decision: shuffled }).status, 'approved')
   })
 
   test('DOM-DIL-070 düzeltme gerekçeli yeni karardır, geçerli karara referans verir', () => {

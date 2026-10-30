@@ -430,8 +430,7 @@ describe('hesap ve karar kopyası (DOM-BEC-030)', () => {
     const snapshot = evidenceSnapshotOf(suggest([]))
     // Sürüm 1 hiç kalıcı yazılmadı; okunmaz.
     assert.throws(() => evidenceSnapshotSchema.parse({ ...snapshot, schemaVersion: 1 }), ZodError)
-    const { context: _context, ...withoutContext } = snapshot
-    assert.throws(() => evidenceSnapshotSchema.parse(withoutContext), ZodError)
+    assert.throws(() => evidenceSnapshotSchema.parse({ ...snapshot, context: undefined }), ZodError)
     assert.throws(
       () => evidenceSnapshotSchema.parse({ ...snapshot, context: 'bilinmeyen' }),
       ZodError,
@@ -440,7 +439,7 @@ describe('hesap ve karar kopyası (DOM-BEC-030)', () => {
       () =>
         evidenceSnapshotSchema.parse({
           ...snapshot,
-          skills: snapshot.skills.map(({ demonstratedBy: _d, ...rest }) => rest),
+          skills: snapshot.skills.map((row) => ({ ...row, demonstratedBy: undefined })),
         }),
       ZodError,
     )

@@ -28,10 +28,15 @@ import {
 z.config(z.locales.tr())
 
 type Instant = Date | string
-const toMs = (value: Instant) => (typeof value === 'string' ? Date.parse(value) : value.getTime())
+/** Geçersiz `now` programlama hatası değil, alan yollu iş kuralı reddidir (`lib/domain.ts` deseni). */
+function toMs(value: Instant): number {
+  const ms = typeof value === 'string' ? Date.parse(value) : value.getTime()
+  if (!Number.isFinite(ms)) {
+    throw new DomainError('invalid_now', 'Geçerli bir tarih ve saat girin.', { path: ['now'] })
+  }
+  return ms
+}
 const toIso = (value: Instant) => new Date(toMs(value)).toISOString()
-// Oran × saat çarpımındaki kayan nokta hatası (0,8 × 35 = 28,000…04) eşiği kaydırmasın.
-const EPSILON = 1e-9
 
 const identifier = z.string().trim().min(1, 'Bir kayıt seçin.').max(200)
 const coreSkill = z.enum(CORE_SKILLS)
@@ -67,8 +72,11 @@ export type CourseEnrollment = {
   teacherUserIds: readonly string[]
 }
 
-/** Devam şartı (DOM-DIL-060): toplam kur saatinin en az 4/5'i. */
-export const MIN_ATTENDANCE_RATIO = 0.8
+/**
+ * Devam şartı (DOM-DIL-060): toplam kur saatinin en az 4/5'i, binde 800. Oran binde tamsayı
+ * tutulur; karşılaştırma `katılım × 1000 ≥ oran × toplam` tamsayı aritmetiğiyle yapılır.
+ */
+export const MIN_ATTENDANCE_PERMILLE = 800
 
 /** Kur geçme eşikleri (DOM-DIL-070), 100 üzerinden. */
 export const PASS_RULES = {
@@ -85,11 +93,15 @@ export const PASS_RULES = {
 // TODO(cefr-meb-esigi): Kurum eşiği MEB kurs başarı ölçütünün altına inemez (DOM-DIL-070), ölçüt
 // doğrulanmadı; en muhafazakâr yorumla varsayılan 60'ın altı reddedilir.
 export const progressionSettingsSchema = z.object({
-  minAttendanceRatio: z
+  minAttendancePermille: z
     .number()
-    .min(MIN_ATTENDANCE_RATIO, 'Devam oranı en az 4/5 (0,8) olmalıdır; kurum yalnız artırabilir.')
-    .max(1, 'Devam oranı en fazla 1 olabilir.')
-    .default(MIN_ATTENDANCE_RATIO),
+    .int('Devam oranı binde tamsayı olarak girilir.')
+    .min(
+      MIN_ATTENDANCE_PERMILLE,
+      'Devam oranı en az binde 800 (4/5) olmalıdır; kurum yalnız artırabilir.',
+    )
+    .max(1000, 'Devam oranı en fazla binde 1.000 olabilir.')
+    .default(MIN_ATTENDANCE_PERMILLE),
   finalPassScore: score100
     .min(PASS_RULES.finalScore, 'Kur sonu eşiği 60’ın altına inemez.')
     .default(PASS_RULES.finalScore),
@@ -131,7 +143,7 @@ export type AttendanceSummary = {
   unrecordedHours: number
   /** Sınava girmek için gereken en az katılım saati. */
   requiredHours: number
-  minAttendanceRatio: number
+  minAttendancePermille: number
   /**
    * `eligible`: şart sağlandı; `ineligible`: kalan saatlerin hepsine katılsa da sağlanamaz;
    * `pending`: henüz belli değil.
@@ -146,7 +158,7 @@ export type AttendanceSummary = {
 export function attendanceSummary(input: {
   totalHours: number
   rows: readonly LessonHourAttendance[]
-  minAttendanceRatio?: number
+  minAttendancePermille?: number
 }): AttendanceSummary {
   const { totalHours } = input
   if (!Number.isInteger(totalHours) || totalHours < 1) {
@@ -154,7 +166,9 @@ export function attendanceSummary(input: {
       path: ['totalHours'],
     })
   }
-  const ratio = progressionSettingsSchema.shape.minAttendanceRatio.parse(input.minAttendanceRatio)
+  const permille = progressionSettingsSchema.shape.minAttendancePermille.parse(
+    input.minAttendancePermille,
+  )
   const seen = new Set<string>()
   let attendedHours = 0
   let absentHours = 0
@@ -183,13 +197,14 @@ export function attendanceSummary(input: {
     )
   }
   const unrecordedHours = totalHours - recordedHours
-  const requiredHours = Math.ceil(ratio * totalHours - EPSILON)
-  const status =
-    attendedHours >= requiredHours
-      ? 'eligible'
-      : attendedHours + unrecordedHours < requiredHours
-        ? 'ineligible'
-        : 'pending'
+  // Tamsayı aritmetiği: katılım × 1000 ≥ binde oran × toplam.
+  const meets = (hours: number) => hours * 1000 >= permille * totalHours
+  const requiredHours = Math.floor((permille * totalHours + 999) / 1000)
+  const status = meets(attendedHours)
+    ? 'eligible'
+    : meets(attendedHours + unrecordedHours)
+      ? 'pending'
+      : 'ineligible'
   return {
     totalHours,
     recordedHours,
@@ -198,7 +213,7 @@ export function attendanceSummary(input: {
     excusedAbsentHours,
     unrecordedHours,
     requiredHours,
-    minAttendanceRatio: ratio,
+    minAttendancePermille: permille,
     status,
   }
 }
@@ -208,6 +223,8 @@ export function attendanceSummary(input: {
 /**
  * Devamsızlık bildirimleri (DOM-DIL-062): devamsızlık kur saatinin %10'una ve %15'ine ulaşınca.
  * İkinci bildirim sınava girememe uyarısını taşır (`warnsExamBar`, metin anahtarı `messageKey`).
+ * Devamsızlık kurumun sınırını zaten aşmışsa (sıkı kurum oranı) bildirim uyarı değil, sınava
+ * girilemeyeceği bilgisidir (`examBarred`, `EXAM_BARRED_MESSAGE_KEY`).
  */
 // TODO(cefr-bildirim-kurum-orani): Kurum daha sıkı devam oranı tanımlarsa bildirim eşiklerinin ne
 // olacağı domain'de yok; eşikler sabit kalır, uyarı kurumun kendi sınırını yazar.
@@ -228,6 +245,9 @@ export const ABSENCE_NOTICES = {
 export type AbsenceNoticeKind = keyof typeof ABSENCE_NOTICES
 const NOTICE_KINDS = enumKeys(ABSENCE_NOTICES)
 
+/** Devamsızlık kurum sınırını aşmışken gönderilen bildirimin metin anahtarı. */
+export const EXAM_BARRED_MESSAGE_KEY = 'absence_notice_exam_barred'
+
 /** Bildirimin alıcısı: kursiyer her zaman, 18 yaş altında veli de (DOM-DIL-062, 091). */
 export type NoticeRecipient = 'learner' | 'guardian'
 
@@ -236,6 +256,8 @@ export type AbsenceNoticeDue = {
   label: string
   percent: number
   warnsExamBar: boolean
+  /** Devamsızlık kurumun sınırını aştı: kursiyer kur sonu sınavına giremez (DOM-DIL-060). */
+  examBarred: boolean
   messageKey: string
   /** Ekranda ve bildirimde kullanılacak Türkçe metin. */
   message: string
@@ -244,11 +266,11 @@ export type AbsenceNoticeDue = {
   totalHours: number
 }
 
-const age = (birthDate: string, now: Instant) => {
-  const today = dayKey(toMs(now))
-  const years = Number(today.slice(0, 4)) - Number(birthDate.slice(0, 4))
-  return today.slice(5) < birthDate.slice(5) ? years - 1 : years
-}
+/** Gerçek takvim günü mü (`YYYY-MM-DD`; 2008-02-30 değildir). */
+const isCalendarDay = (value: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+  Number.isFinite(Date.parse(`${value}T09:00:00Z`)) &&
+  new Date(`${value}T09:00:00Z`).toISOString().slice(0, 10) === value
 
 /**
  * Kayıt gününde değil, bildirim anında reşit mi (DOM-DIL-091, 092): yaş Europe/Istanbul gününe
@@ -256,49 +278,55 @@ const age = (birthDate: string, now: Instant) => {
  * bilgilenir; muhafazakâr).
  */
 export function isMinorOn(birthDate: string, now: Instant): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+  if (!isCalendarDay(birthDate)) {
     throw new DomainError('birth_date_invalid', 'Doğum tarihi geçerli değil.', {
       path: ['birthDate'],
     })
   }
-  return age(birthDate, now) < 18
+  const today = dayKey(toMs(now))
+  const years = Number(today.slice(0, 4)) - Number(birthDate.slice(0, 4))
+  return (today.slice(5) < birthDate.slice(5) ? years - 1 : years) < 18
 }
 
 /**
  * Şu an gönderilmesi gereken devamsızlık bildirimi (DOM-DIL-062) veya `null`. Gönderilmiş
  * bildirimler girdi olarak gelir; aynı eşik iki kez önerilmez. İki eşik birlikte aşılmışsa yalnız
- * üstteki (ikinci) bildirim önerilir, çünkü uyarıyı o taşır; alttaki atlanmış sayılır.
+ * üstteki (ikinci) bildirim önerilir, çünkü uyarıyı o taşır; alttaki atlanmış sayılır. Üst eşik
+ * gönderildiyse yoklama düzeltmesiyle oran düşse de alttaki artık önerilmez.
  */
 export function absenceNoticeDue(input: {
   totalHours: number
   rows: readonly LessonHourAttendance[]
-  minAttendanceRatio?: number
+  minAttendancePermille?: number
   sentNotices: readonly { kind: AbsenceNoticeKind }[]
   // kvkk: K
   birthDate: string
   now: Instant
 }): AbsenceNoticeDue | null {
   const summary = attendanceSummary(input)
-  const sent = new Set(input.sentNotices.map((notice) => notice.kind))
+  const sentRank = Math.max(-1, ...input.sentNotices.map((n) => NOTICE_KINDS.indexOf(n.kind)))
   const reached = NOTICE_KINDS.filter(
     (kind) => summary.absentHours * 100 >= ABSENCE_NOTICES[kind].percent * summary.totalHours,
   )
   const highest = reached.at(-1)
-  if (highest === undefined || sent.has(highest)) return null
+  if (highest === undefined || NOTICE_KINDS.indexOf(highest) <= sentRank) return null
   const notice = ABSENCE_NOTICES[highest]
-  // Kurum oranı daha sıkıysa uyarı kurumun sınırını yazar (%20 yerine ör. %10).
-  const barPercent = Math.round((1 - summary.minAttendanceRatio) * 1000) / 10
-  const percentLabel = String(barPercent).replace('.', ',')
+  // Kurum oranı daha sıkıysa metin kurumun sınırını yazar (%20 yerine ör. %10).
+  const barPercent = String((1000 - summary.minAttendancePermille) / 10).replace('.', ',')
+  const examBarred = summary.status === 'ineligible'
   const reachedText = `Devamsızlık kur saatinin %${notice.percent} eşiğine ulaştı.`
-  const message = notice.warnsExamBar
-    ? `${reachedText} Devamsızlık %${percentLabel} sınırını aşarsa kur sonu sınavına girilemez.`
-    : reachedText
+  const message = examBarred
+    ? `${reachedText} Devamsızlık %${barPercent} sınırını aştı; kur sonu sınavına girilemez.`
+    : notice.warnsExamBar
+      ? `${reachedText} Devamsızlık %${barPercent} sınırını aşarsa kur sonu sınavına girilemez.`
+      : reachedText
   return {
     kind: highest,
     label: notice.label,
     percent: notice.percent,
     warnsExamBar: notice.warnsExamBar,
-    messageKey: notice.messageKey,
+    examBarred,
+    messageKey: examBarred ? EXAM_BARRED_MESSAGE_KEY : notice.messageKey,
     message,
     recipients: isMinorOn(input.birthDate, input.now) ? ['learner', 'guardian'] : ['learner'],
     absentHours: summary.absentHours,
@@ -367,13 +395,17 @@ export type CourseAssessmentRow = {
 }
 export type CourseAssessmentDraft = Omit<CourseAssessmentRow, 'id'>
 
-/** Kişi: kullanıcı kimliği, rolü ve akademik koordinatörse sorumlu olduğu seviyeler. */
+/**
+ * Kişi: kullanıcı kimliği, rolü ve akademik koordinatör yetkisi. Koordinatör F4a2 puanlayıcısıyla
+ * aynı modeldir (`skills/rubric.ts` `RubricRater.coordinator`, DOM-YTK-027): öğretmene verilen ek
+ * yetkinin bayrağı; hangi kurdan sorumlu olduğu serviste çözülür. Yönetici koordinatörün yerine
+ * geçmez.
+ */
 export type ProgressionActor = {
   // kvkk: K
   userId: string
   role: Role
-  /** Akademik koordinatör ek yetkisi (DOM-YTK-027): sorumlu olduğu CEFR seviyeleri. */
-  coordinator?: { cefrLevels: readonly CefrLevel[] } | undefined
+  coordinator?: boolean | undefined
 }
 
 function assertCourseTeacher(actor: ProgressionActor, enrollment: CourseEnrollment, what: string) {
@@ -483,7 +515,7 @@ export const progressionBasisSchema = z.object({
     absentHours: z.number().int().min(0),
     unrecordedHours: z.number().int().min(0),
     requiredHours: z.number().int().min(0),
-    minAttendanceRatio: z.number().min(MIN_ATTENDANCE_RATIO).max(1),
+    minAttendancePermille: z.number().int().min(MIN_ATTENDANCE_PERMILLE).max(1000),
     met: z.boolean(),
   }),
   finalPassScore: score100,
@@ -538,7 +570,7 @@ export function evaluateProgression(input: {
   const attendance = attendanceSummary({
     totalHours: input.enrollment.totalHours,
     rows: input.attendance,
-    minAttendanceRatio: settings.minAttendanceRatio,
+    minAttendancePermille: settings.minAttendancePermille,
   })
   const gaps = assessmentGaps(own)
   const final = own.find((row) => row.point === 'final')
@@ -575,7 +607,7 @@ export function evaluateProgression(input: {
       absentHours: attendance.absentHours,
       unrecordedHours: attendance.unrecordedHours,
       requiredHours: attendance.requiredHours,
-      minAttendanceRatio: attendance.minAttendanceRatio,
+      minAttendancePermille: attendance.minAttendancePermille,
       met: conditions.attendance,
     },
     finalPassScore: settings.finalPassScore,
@@ -783,16 +815,31 @@ export const progressionReviewInputSchema = z.discriminatedUnion('action', [
 ])
 export type ProgressionReviewInput = z.input<typeof progressionReviewInputSchema>
 
-/** Onaylayabilen: yönetici veya kurun seviyesinden sorumlu akademik koordinatör (DOM-YTK-027). */
-export function canReviewProgression(actor: ProgressionActor, level: CefrLevel): boolean {
-  if (actor.role === 'yonetici') return true
-  return actor.role === 'ogretmen' && actor.coordinator?.cefrLevels.includes(level) === true
+/**
+ * Onaylayabilen yalnız akademik koordinatördür (DOM-DIL-070, DOM-YTK-027); yönetici rolü tek başına
+ * yetki vermez. F4a2'de uyuşmazlık puanını veren koordinatörle aynı kural (DOM-BEC-024).
+ */
+// TODO(cefr-koordinator-kapsam): Koordinatörün sorumlu olduğu seviye/kur verisi yok (F4a2 ile
+// aynı); kapsamı servis daraltır.
+export function canReviewProgression(actor: ProgressionActor): boolean {
+  return actor.coordinator === true
+}
+
+/** Anahtar sırasından bağımsız karşılaştırma için kararlı JSON (jsonb sırayı korumaz). */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value).sort(([a], [b]) => (a < b ? -1 : 1))
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`
+  }
+  return JSON.stringify(value)
 }
 
 /**
  * Kararı onaylar veya reddeder (DOM-DIL-070). Kararı veren kendi kararını onaylayamaz (dört göz,
- * DOM-KYN-031 ile aynı ilke). Onay anında koşullar güncel verilerle yeniden hesaplanır; sonuç artık
- * izinli değilse onay reddedilir. Onaylı veya reddedilmiş karar değişmez.
+ * DOM-KYN-031 ile aynı ilke). Onay anında koşullar güncel verilerle yeniden hesaplanır; dayanak
+ * (devam, ara ve kur sonu puanları, eşik) öneri anındakinden farklıysa onay reddedilir ve öğretmen
+ * yeniden önerir (`progression_basis_changed`). Onaylı veya reddedilmiş karar değişmez.
  */
 export function planProgressionReview(input: {
   institutionType: InstitutionType
@@ -806,12 +853,10 @@ export function planProgressionReview(input: {
   now: Instant
 }): ProgressionDecisionRecord {
   assertLanguageSchool(input.institutionType)
-  if (!canReviewProgression(input.actor, input.enrollment.level)) {
-    throw new DomainError(
-      'permission_denied',
-      'Kur sonu kararını akademik koordinatör veya yönetici onaylar.',
-      { kind: 'forbidden' },
-    )
+  if (!canReviewProgression(input.actor)) {
+    throw new DomainError('permission_denied', 'Kur sonu kararını akademik koordinatör onaylar.', {
+      kind: 'forbidden',
+    })
   }
   const data = progressionReviewInputSchema.parse(input.input)
   const { decision } = input
@@ -840,6 +885,13 @@ export function planProgressionReview(input: {
     return { ...decision, ...reviewed, status: 'rejected', rejectionReason: data.reason }
   }
   const evaluation = evaluateProgression(input)
+  if (canonical(evaluation.basis) !== canonical(decision.basis)) {
+    throw new DomainError(
+      'progression_basis_changed',
+      'Karardan sonra devam veya ölçme verisi değişti; öğretmen kararı yeniden önermelidir.',
+      { kind: 'conflict', path: ['basis'] },
+    )
+  }
   if (!evaluation.allowedOutcomes.includes(decision.outcome)) {
     throw outcomeError(evaluation, decision.outcome)
   }

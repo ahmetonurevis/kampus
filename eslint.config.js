@@ -3,7 +3,7 @@ import vue from 'eslint-plugin-vue'
 import globals from 'globals'
 import prettier from 'eslint-config-prettier'
 import react from 'eslint-plugin-react-x'
-import tsParser from '@typescript-eslint/parser'
+import tseslint from 'typescript-eslint'
 
 export default [
   {
@@ -24,11 +24,15 @@ export default [
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     rules: { 'vue/multi-word-component-names': 'off' },
   },
+  ...tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files: ['**/*.ts', '**/*.tsx'],
+  })),
   prettier,
   {
     files: ['apps/mobile/**/*.{js,jsx}'],
     plugins: { react },
-    languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
+    languageOptions: { parser: tseslint.parser, parserOptions: { ecmaFeatures: { jsx: true } } },
     rules: { 'react/no-missing-key': 'error', 'react/rules-of-hooks': 'error' },
   },
 ]

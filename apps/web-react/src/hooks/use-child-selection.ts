@@ -7,8 +7,8 @@ import { readView, writeView } from '@/lib/view-memory.ts'
 /**
  * Velinin görüntülediği çocuk (Vue `selectedChildId`). Değişince sayfa kaydırması çocuk bazında
  * saklanır ve yeni çocuğun konumu geri yüklenir. Seçenekler `/me` veli bağlantılarıdır (kayıt
- * kimliği). TODO(D1b1): öğrenci okuma uçları gelince çocuğa ait sorgular `childId`'yi bu
- * değerden alır; sunucu yine yalnız velinin bağlı çocuklarını döndürür.
+ * kimliği). TODO(core-scope): veli kapsamlı okuma gelince çocuğa ait sorgular `childId`'yi
+ * bu değerden alır; sunucu yine yalnız velinin bağlı çocuklarını döndürür.
  */
 export function useChildSelection(session: Session | null) {
   const { pathname } = useLocation()

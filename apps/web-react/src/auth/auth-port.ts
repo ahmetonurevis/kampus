@@ -22,7 +22,7 @@ const institutionTypeSchema = z.enum(['school', 'language_school'])
 export const sessionSchema = z.object({
   user: z.object({ id: z.string(), name: z.string(), email: z.string() }),
   role: z.enum(ROLE_KEYS),
-  /** Rolün görünen adı (Veli, Öğretmen…). TODO(D1b1): sınıf/branş gibi ayrıntı `/me`'ye gelince. */
+  /** Rolün görünen adı (Veli, Öğretmen…). TODO(core-scope): sınıf/branş ayrıntısı kapsamla gelir. */
   roleSubtitle: z.string(),
   membershipId: z.string(),
   institution: z.object({
@@ -30,15 +30,16 @@ export const sessionSchema = z.object({
     name: z.string(),
     slug: z.string(),
     type: institutionTypeSchema,
-    /** TODO(D1b1): dönem/akademik yıl `/me`'ye eklenince zorunlu olur; yokken arayüzde boş kalır. */
-    term: z.string().optional(),
+    /** Etkin eğitim-öğretim yılının başlangıcı (2026 → 2026–2027); kurum ayarı yoksa `null`. */
+    academicYear: z.number().int().nullable(),
   }),
   /** Kurumda açık modüller; kapalı modül menüden, route'tan ve API'den düşer. */
   modules: z.record(z.string(), z.boolean()),
   /**
    * Veli hesabının çocukları (diğer rollerde boş); görüntülenen öğrenci bunlardan seçilir.
-   * TODO(D1b1): ad `GET /api/v1/collections/students/:id` okuma ucundan gelecek; yokken seçici
-   * yükleniyor durumundadır, uydurma ad gösterilmez.
+   * TODO(core-scope): veli kendi çocuğunun öğrenci kaydını okuyamıyor (core'da kişiye göre kapsam
+   * yok, `students` 403); kapsam gelince ad okuma ucundan doldurulur. Yokken seçici yükleniyor
+   * durumundadır, kayıt kimliği veya uydurma ad gösterilmez.
    */
   children: z.array(z.object({ id: z.string(), name: z.string().optional() })),
   /** Kullanıcının bütün kurum üyelikleri; birden çoksa avatar menüsünde kurum değiştirilir. */

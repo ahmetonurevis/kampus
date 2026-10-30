@@ -11,8 +11,8 @@ type ChildBarProps = {
 
 /** Veli çocuk seçici çubuğu (Vue `.child-bar`): sayfadaki bütün bilgiler seçili çocuğa aittir. */
 export function ChildBar({ options, value, onChange }: ChildBarProps) {
-  // TODO(D1b1): çocuk adları öğrenci okuma ucundan gelene kadar seçici yükleniyor durumundadır;
-  // kayıt kimliği veya uydurma ad etiket yapılmaz.
+  // TODO(core-scope): çocuk adları veli kapsamlı öğrenci okuması gelene kadar seçici yükleniyor
+  // durumundadır; kayıt kimliği veya uydurma ad etiket yapılmaz.
   const pending = childNamesPending(options)
   return (
     <div className="child-bar mb-6 flex items-center gap-4 rounded-2xl border bg-primary-soft px-[18px] py-3 text-sm max-[650px]:mb-[23px] max-[650px]:flex-wrap max-[650px]:gap-2.5 max-[650px]:p-3">

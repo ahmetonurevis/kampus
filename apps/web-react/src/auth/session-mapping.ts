@@ -47,6 +47,7 @@ export function toSession(me: Me): Session | null {
       name: institution.name,
       slug: institution.slug,
       type: institution.type,
+      academicYear: institution.academicYear,
     },
     modules: mergeModules(institution.enabledModules),
     children:
@@ -57,6 +58,11 @@ export function toSession(me: Me): Session | null {
         : [],
     memberships: me.memberships,
   }
+}
+
+/** Dönem etiketi (`2026–2027 Eğitim Dönemi`); kurum ayarı yoksa `null` ve arayüzde boş kalır. */
+export function academicYearLabel(year: number | null): string | null {
+  return year === null ? null : `${year}–${year + 1} Eğitim Dönemi`
 }
 
 /** Çocuk seçicide adı olmayan kayıt varsa liste yükleniyor sayılır (ad okuma ucu gelene kadar). */

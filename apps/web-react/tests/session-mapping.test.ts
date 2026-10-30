@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { ApiError } from '@kampus/api-client/errors.ts'
 import { authStateFrom } from '../src/auth/auth-state.ts'
 import {
+  academicYearLabel,
   childNamesPending,
   defaultModules,
   mergeModules,
@@ -22,10 +23,20 @@ test('/me oturumu rol, kurum, üyelik ve modülleri taşır', () => {
     name: 'Test Okulu',
     slug: 'test-okulu',
     type: 'school',
+    academicYear: null,
   })
-  // Dönem /me'de yok: uydurma değer yazılmaz (TODO(D1b1)).
-  assert.equal(session.institution.term, undefined)
   assert.equal(session.memberships.length, 1)
+})
+
+test('dönem /me akademik yılından gelir; kurum ayarı yoksa boş kalır', () => {
+  const base = meFixture().activeInstitution!
+  const session = toSession(
+    meFixture('veli', { activeInstitution: { ...base, academicYear: 2026 } }),
+  )
+  assert.equal(session?.institution.academicYear, 2026)
+  assert.equal(academicYearLabel(2026), '2026–2027 Eğitim Dönemi')
+  // Uydurma dönem yazılmaz.
+  assert.equal(academicYearLabel(null), null)
 })
 
 test('veli bağlantıları çocuk listesi olur; ad gelene kadar seçici yükleniyor durumundadır', () => {

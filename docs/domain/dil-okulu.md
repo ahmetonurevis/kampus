@@ -46,7 +46,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Yalnız çoktan seçmeli bölüm üretici becerileri ölçmez; makinenin önerisi karar yerine geçmez.
 - **Kaynak:** İşletme kuralı. ÖÖKY md. 46/9 özel öğretim kurslarında seviye belirleme sınavlarının ücretsiz ve kurum binasında yapılmasını, dönem başı/ortası/sonunda tekrarlanmasını ister; bu hükmün kişisel gelişim kursu olan dil okuluna uygulanıp uygulanmadığı **doğrulanmalı**. Platform muhafazakâr olarak ücretsizliği her türde uygular.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `planPlacementSession`, `placementSectionResults`, `placementSummary`, `planPlacementDecision` (gerekçe her zaman zorunlu, karar oturum başına bir). Tek oturum DOM-BEC-032 eşiğini karşılamadığından adayda öneri çoğunlukla "yetersiz kanıt"tır (`TODO(cefr-tespit-esigi)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ### DOM-DIL-011 · Uzaktan yapılan tespit ön tahmindir
 
@@ -54,7 +54,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Gözetimsiz sonuç güvenilir değildir; özel öğretim kursları için yer şartı vardır.
 - **Kaynak:** ÖÖKY md. 46/9; dil okuluna uygulanışı **doğrulanmalı**.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `PLACEMENT_MODES` (`remote` ön tespit), `planPlacementDecision` uzaktan oturumu reddeder, `placementRequired`; ön tespit `packages/school-core/src/cefr/suggestion.ts` seçiminde kanıt değildir. Ruhsat türüne göre yer şartı yok (`TODO(cefr-ruhsat-turu)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ### DOM-DIL-012 · Tespit sonucunun geçerlilik süresi
 
@@ -62,7 +62,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Dil seviyesi zamanla değişir; aynı formu tekrar çözmek sonucu şişirir.
 - **Kaynak:** İşletme kuralı (90 gün ve iki sınav sınırı).
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `placementValidity` (bitiş anı + 90 × 24 saat, son an hariç; `TODO(cefr-gecerlilik-siniri)`), `planPlacementSession` (dönemde iki oturum, ikincisi farklı formla; `TODO(cefr-donem)`, `TODO(cefr-farkli-form)`); dondurma sonrası yeniden tespit yok (`TODO(cefr-dondurma)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ### DOM-DIL-013 · Kur içi ilerleme değerlendirmesi
 

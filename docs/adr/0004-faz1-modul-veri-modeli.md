@@ -62,19 +62,19 @@ Bu modüllerin `records`'a sığıp sığmadığını belirleyen ihtiyaçlar (ve
 
 11. **Core'a gelecekler (yeni koleksiyon değil, modül).**
 
-    | Modül                      | İçerik                                                                                                                |
-    | -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-    | `content/taxonomy.ts`      | CEFR seviyeleri, beceri ve kip sözlüğü, içerik türleri, lisans türleri, dosya amaçları (ADR 0003 karar 3)             |
-    | `content/resource.ts`      | Tür başına içerik şeması, yayım denetimi (DOM-KYN-003, 010, 013, 020, 024), durum geçişleri, onaylayıcı, kopya kuralı |
-    | `content/visibility.ts`    | Paylaşım kapsamı ve öğrencinin gördüğü kaynak (DOM-KYN-040…042)                                                       |
-    | `skills/assignment.ts`     | Atama ayarları, hedef kapsamı, sabitleme, yeniden puanlama önizlemesi                                                 |
-    | `skills/scoring.ts`        | Otomatik puan, kısa cevap normalleştirmesi, deneme sayımı, süre ve geç teslim (DOM-BEC-010, 042…045)                  |
-    | `skills/submission.ts`     | Sürüm sınırı, taslak, sözcük sayısı, konuşma deneme hakkı                                                             |
-    | `skills/rubric.ts`         | Rubrik şeması, puan hesabı, ikinci puanlayıcı ve uyuşmazlık (DOM-BEC-020…024)                                         |
-    | `cefr/suggestion.ts`       | Kanıt seçimi, beceri ve genel öneri (DOM-BEC-030…034)                                                                 |
-    | `cefr/placement.ts`        | Bölüm sonuçları, öneri, yerleştirme kararı, geçerlilik (DOM-DIL-010…012)                                              |
-    | `cefr/progression.ts`      | Geçiş koşulları ve karar (DOM-DIL-060, 070)                                                                           |
-    | `data/cefr-targets` şeması | `cefrTargets` State koleksiyonu                                                                                       |
+    | Modül                   | İçerik                                                                                                                |
+    | ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
+    | `content/taxonomy.ts`   | CEFR seviyeleri, beceri ve kip sözlüğü, içerik türleri, lisans türleri, dosya amaçları (ADR 0003 karar 3)             |
+    | `content/resource.ts`   | Tür başına içerik şeması, yayım denetimi (DOM-KYN-003, 010, 013, 020, 024), durum geçişleri, onaylayıcı, kopya kuralı |
+    | `content/visibility.ts` | Paylaşım kapsamı ve öğrencinin gördüğü kaynak (DOM-KYN-040…042)                                                       |
+    | `skills/assignment.ts`  | Atama ayarları, hedef kapsamı, sabitleme, yeniden puanlama önizlemesi                                                 |
+    | `skills/scoring.ts`     | Otomatik puan, kısa cevap normalleştirmesi, deneme sayımı, süre ve geç teslim (DOM-BEC-010, 042…045)                  |
+    | `skills/submission.ts`  | Sürüm sınırı, taslak, sözcük sayısı, konuşma deneme hakkı                                                             |
+    | `skills/rubric.ts`      | Rubrik şeması, puan hesabı, ikinci puanlayıcı ve uyuşmazlık (DOM-BEC-020…024)                                         |
+    | `cefr/suggestion.ts`    | Kanıt seçimi, beceri ve genel öneri (DOM-BEC-030…034)                                                                 |
+    | `cefr/placement.ts`     | Bölüm sonuçları, öneri, yerleştirme kararı, geçerlilik (DOM-DIL-010…012)                                              |
+    | `cefr/progression.ts`   | Geçiş koşulları ve karar (DOM-DIL-060, 070)                                                                           |
+    | `cefr/targets.ts`       | `cefrTargets` şeması ve yıllık kilit (DOM-BEC-063); State koleksiyonu kaydı F5b'de. `data/` yalnız örnek veridir      |
 
 12. **API'ye gelecek tablolar.**
 

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  effectivePage,
   initialListState,
   listReducer,
   MAX_PAGE_SIZE,
@@ -82,4 +83,15 @@ test('saklanmış durum doğrulanır, bozuk alanlar varsayılana döner', () => 
   assert.equal(restored.sortKey, '')
   assert.equal(restored.sortDirection, -1)
   assert.deepEqual(restored.filters, {})
+})
+
+test('replace durumu olduğu gibi kurar', () => {
+  const next = { ...initialListState(), query: 'ada', page: 4 }
+  assert.equal(listReducer(initialListState(), { type: 'replace', state: next }), next)
+})
+
+test('effectivePage veri azalınca son geçerli sayfaya, boş listede 1e iner', () => {
+  assert.equal(effectivePage({ page: 5 }, 3), 3)
+  assert.equal(effectivePage({ page: 2 }, 3), 2)
+  assert.equal(effectivePage({ page: 4 }, 0), 1)
 })

@@ -35,6 +35,8 @@ export type ListAction =
   | { type: 'external' }
   /** Veri değişti; sayfa geçerli aralığa çekilir. */
   | { type: 'clamp'; pageCount: number }
+  /** Durum dışarıdan (URL geri/ileri, liste anahtarı değişimi) yeniden kuruldu. */
+  | { type: 'replace'; state: ListState }
 
 export const MAX_PAGE_SIZE = 100
 const TOP: ScrollPosition = { top: 0, left: 0 }
@@ -135,5 +137,12 @@ export function listReducer(state: ListState, action: ListAction): ListState {
       const page = Math.min(state.page, Math.max(1, action.pageCount))
       return page === state.page ? state : { ...state, page }
     }
+    case 'replace':
+      return action.state
   }
+}
+
+/** Veri azalınca geçersiz sayfada kalınmaz (çizimde türetilir). */
+export function effectivePage(state: Pick<ListState, 'page'>, pageCount: number): number {
+  return Math.min(state.page, Math.max(1, pageCount))
 }

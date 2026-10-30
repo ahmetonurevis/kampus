@@ -44,3 +44,55 @@ export function listStateToParams(
   set(key.direction, state.sortKey && state.sortDirection === -1 ? 'azalan' : null)
   return next
 }
+
+export type NavigationKind = 'POP' | 'PUSH' | 'REPLACE'
+
+/** URL'yi kendi yazdığı (`REPLACE`) değişiklikler dışında liste durumu URL'den yeniden okunur. */
+export function shouldReadParams(navigationType: NavigationKind): boolean {
+  return navigationType !== 'REPLACE'
+}
+
+export type ListSyncSeen = { memoryKey: string; locationKey: string }
+export type ListSync = 'none' | 'track' | 'restore' | 'read-url'
+
+/**
+ * Çizimde ne yapılacağı: liste anahtarı (yol, çocuk, sekme) değiştiyse o anahtarın belleği
+ * kurulur (A'nın durumu B'ye taşınmaz); yalnız adres değiştiyse ve gezinme bizim `replace`
+ * yazımımız değilse URL okunur; aksi halde yalnız görülen adres güncellenir.
+ */
+export function listSync(
+  seen: ListSyncSeen,
+  current: ListSyncSeen,
+  navigationType: NavigationKind,
+): ListSync {
+  if (seen.memoryKey !== current.memoryKey) return 'restore'
+  if (seen.locationKey === current.locationKey) return 'none'
+  return shouldReadParams(navigationType) ? 'read-url' : 'track'
+}
+
+const sameUrlState = (left: ListState, right: ListState) =>
+  left.query === right.query &&
+  left.page === right.page &&
+  left.sortKey === right.sortKey &&
+  (left.sortKey === '' || left.sortDirection === right.sortDirection)
+
+/**
+ * Geri/ileri veya bağlantıyla gelen URL'yi duruma uygular. URL'de olmayan değer varsayılandır
+ * (ilk yüklemedeki bellek yedeği burada kullanılmaz). Değişiklik yoksa aynı nesne döner; varsa
+ * dikey kaydırma başa alınır. Filtreler URL'de tutulmadığı için korunur.
+ */
+export function applyListParams(
+  state: ListState,
+  params: URLSearchParams,
+  prefix: string,
+): ListState {
+  const next = listStateFromParams(params, prefix, {
+    ...state,
+    query: '',
+    page: 1,
+    sortKey: '',
+    sortDirection: 1,
+  })
+  if (sameUrlState(state, next)) return state
+  return { ...next, scroll: { top: 0, left: state.scroll.left } }
+}

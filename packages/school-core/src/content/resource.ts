@@ -947,7 +947,8 @@ export function planVersionTransition(input: TransitionInput): VersionTransition
     )
   }
   // Bir kez yayımlanmış sürüm (telif bildirimiyle incelemede olsa da) taslağa dönemez: atanmış
-  // görevler bu sürüme bağlıdır. Sonuç yeniden yayın, arşiv veya kaldırmadır (DOM-KYN-025, 032).
+  // görevler bu sürüme bağlıdır. İncelemedeki sürüm arşivlenmez (DOM-KYN-030); bildirilen içeriğin
+  // sonucu yönetici kararıyla yeniden yayın veya kaynağın kaldırılmasıdır (DOM-KYN-025, 032, 051).
   if (version.publishedAt !== null && (action === 'withdraw' || action === 'reject')) {
     throw new DomainError(
       'version_immutable',
@@ -1571,14 +1572,18 @@ export function learnerView(
 
 /**
  * Arama metni normalleştirmesi (ADR 0004 açık soru 5a: `simple` yapılandırma + normalleştirme).
- * Türkçe kurala göre küçültülür (`I` → `ı`, `İ` → `i`), aksanlar atılır ve `ı` `i`'ye katlanır;
+ * NFKD ile uyumluluk biçimleri açılır, Türkçe kurala göre küçültülür (`I` → `ı`, `İ` → `i`),
+ * aksanlar atılır ve `ı` `i`'ye katlanır;
  * böylece "IŞIK", "ışık" ve "isik", İngilizce "Island" ve "island" aynı terime iner. Harf ve
  * rakam dışındaki her şey tek boşluk olur; çıktı `to_tsvector('simple', …)` girdisidir.
  */
 export function normalizeSearchText(value: string): string {
+  // NFKD önce: uyumluluk biçimleri (ﬁ, Ａ, ℌ) sade harfe iner, büyük harf çıkarsa küçültülür.
+  // `İ` → `I` + nokta; Türkçe küçültme bunu `i` yapar, kalan işaretler atılır.
   return value
+    .normalize('NFKD')
     .toLocaleLowerCase('tr')
-    .normalize('NFD')
+    .normalize('NFKD')
     .replace(/\p{M}+/gu, '')
     .replaceAll('ı', 'i')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')

@@ -732,6 +732,22 @@ describe('Sürüm durum geçişleri', () => {
     )
   })
 
+  test('DOM-KYN-025, 030: incelemedeki sürüm arşivlenmez; bildirilen içerik yeniden yayına veya kaldırmaya gider', () => {
+    const inReview = build(schoolText(), { version: { status: 'in_review' } })
+    const reported = build(schoolText(), {
+      version: { status: 'in_review', publishedAt: '2026-09-01T08:00:00.000Z' },
+      resource: { currentVersionId: 'test-r1-v1' },
+    })
+    for (const built of [inReview, reported]) {
+      for (const actor of [author, admin]) {
+        assert.throws(
+          () => transition('archive', actor, built),
+          isDomainError('resource_transition_invalid', 'conflict'),
+        )
+      }
+    }
+  })
+
   test('arşivi sahip, zümre başkanı ve yönetici yapar', () => {
     const published = build(schoolText(), { version: { status: 'published' } })
     assert.equal(transition('archive', author, published).status, 'archived')
@@ -1361,6 +1377,11 @@ describe('Dosya, görünüm ve arama', () => {
     assert.equal(normalizeSearchText('Island ISLAND'), 'island island')
     assert.equal(normalizeSearchText('  Çağ—ğüşöç, ÇĞÜŞÖ!  '), 'cag gusoc cguso')
     assert.equal(normalizeSearchText('café naïve'), 'cafe naive')
+    // NFKD: uyumluluk biçimleri (bağlı harf, tam genişlik) sade harfe iner.
+    assert.equal(normalizeSearchText('ﬁle ﬂow'), 'file flow')
+    assert.equal(normalizeSearchText('Ａ１ ＫＥＳİＲ'), 'a1 kesir')
+    assert.equal(normalizeSearchText('İ ı Ş ş ℌ'), 'i i s s h')
+    assert.deepEqual(searchQueryTerms('ﬁle'), searchQueryTerms('FILE'))
     assert.deepEqual(searchQueryTerms('Kesir kesir KESİR & toplama | !'), ['kesir', 'toplama'])
     assert.equal(searchQueryTerms('a b c d e f g h i j').length, 8)
     assert.deepEqual(searchQueryTerms('  ...  '), [])

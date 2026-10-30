@@ -1,26 +1,26 @@
+import type { AnswerKeyQuestion } from '../lib/assessment-automation.ts'
+
 export function createAssessmentAutomation(state: { createdAt: string }) {
-  const subjectIds = ['math', 'turkish', 'science']
-  const topics: Record<string, string> = {
+  const subjectIds = ['math', 'turkish', 'science'] as const
+  const topics = {
     math: 'Denklemler',
     turkish: 'Sözcükte anlam',
     science: 'Hücre ve canlılar',
   }
-  const questions = subjectIds.flatMap((subjectId, index) =>
+  const questions: AnswerKeyQuestion[] = subjectIds.flatMap((subjectId, index) =>
     Array.from({ length: 4 }, (_, n) => ({
       number: index * 4 + n + 1,
       subjectId,
       topic: topics[subjectId],
-      answer: ['A', 'B', 'C', 'D'][n],
+      answer: 'ABCD'.charAt(n),
     })),
   )
   const keys = [
     { booklet: 'A', questions },
     {
       booklet: 'B',
-      questions: questions.map((q, i) => ({
-        ...questions[questions.length - i - 1],
-        number: i + 1,
-      })),
+      // B kitapçığı aynı soruları ters sırada içerir.
+      questions: [...questions].reverse().map((q, i) => ({ ...q, number: i + 1 })),
     },
   ]
   const keyCsv = [

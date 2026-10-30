@@ -1,11 +1,13 @@
-// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { z } from 'zod'
-z.config(z.locales.tr())
+import type { State } from '../data/seed.ts'
+import type { MakeId, Session } from './domain.ts'
 import { dayKey } from './format.ts'
 import { csvObjects } from './delimited-input.ts'
 import { tutorConflict } from './tutor-conflicts.ts'
 
-const integer = (min, max) => z.coerce.number().int().min(min).max(max)
+z.config(z.locales.tr())
+
+const integer = (min: number, max: number) => z.coerce.number().int().min(min).max(max)
 const identifier = z.string().trim().min(1, 'Bir kayıt seçin.')
 const day = z
   .string()
@@ -29,8 +31,8 @@ const fileText = z
   .string()
   .min(1, 'Dosya içeriği boş.')
   .refine((v) => new TextEncoder().encode(v).length <= 1024 * 1024, 'Dosya en fazla 1 MB olabilir.')
-export const keyHeader = ['booklet', 'question', 'subjectId', 'topic', 'answer']
-export const responseHeader = ['student', 'booklet', 'answers']
+export const keyHeader = ['booklet', 'question', 'subjectId', 'topic', 'answer'] as const
+export const responseHeader = ['student', 'booklet', 'answers'] as const
 export const automationSchemas = {
   profile: z.object({
     examId: identifier,
@@ -94,6 +96,8 @@ export type OpticalPreviewRow = {
   replaces: boolean
 }
 type Stamp = { id: string; createdAt: string; updatedAt: string }
+type MockExam = State['mockExams'][number]
+type OpticalProfile = State['opticalProfiles'][number]
 export type OpticalEvaluation = Omit<OpticalPreviewRow, 'studentName' | 'replaces'> & Stamp
 export type TutorGroup = {
   examId: string
@@ -122,23 +126,26 @@ export type TutorSession = PlannedTutorSession &
     attendanceAt?: string
   }
 
-const record = (state, collection, id) => {
-  const value = state[collection]?.find((r) => r.id === id)
+const record = <T extends { id: string }>(list: readonly T[] | undefined, id: string) => {
+  const value = list?.find((r) => r.id === id)
   if (!value) throw new Error('İlgili kayıt bulunamadı. Listeyi yenileyin.')
   return value
 }
-const active = (state, collection, id) => {
-  const value = record(state, collection, id)
+const active = <T extends { id: string; isActive?: boolean; deletedAt?: string | null }>(
+  list: readonly T[] | undefined,
+  id: string,
+) => {
+  const value = record(list, id)
   if (value.isActive === false || value.deletedAt) throw new Error('Pasif kayıt kullanılamaz.')
   return value
 }
-function access(state, session, module, write = false) {
+function access(state: State, session: Session, module: string, write = false) {
   if (!state.modules[module]) throw new Error('Bu modül kurum ayarlarından kapalı.')
   if (write && !['yonetici', 'ogretmen'].includes(session.role))
     throw new Error('Bu işlem için yetkiniz bulunmuyor.')
-  if (session.role === 'ogretmen') active(state, 'teachers', 't1')
+  if (session.role === 'ogretmen') active(state.teachers, 't1')
 }
-export function automationScope(state, session) {
+export function automationScope(state: State, session: Session) {
   const teacher = state.teachers.find((t) => t.id === 't1')
   const classIds = new Set(
     state.assignments.filter((a) => a.teacherId === 't1').map((a) => a.classId),
@@ -159,7 +166,7 @@ export function automationScope(state, session) {
     classIds,
   }
 }
-export function automationExams(state, session) {
+export function automationExams(state: State, session: Session) {
   const scope = automationScope(state, session)
   return state.mockExams.filter(
     (exam) =>
@@ -170,9 +177,9 @@ export function automationExams(state, session) {
   )
 }
 
-export function parseAnswerKey(state, exam, raw) {
+export function parseAnswerKey(state: State, exam: MockExam, raw: string) {
   const rows = csvObjects(raw, keyHeader, 3200)
-  const keys = new Map()
+  const keys = new Map<string, AnswerKeyQuestion[]>()
   for (const [index, row] of rows.entries()) {
     const booklet = row.booklet.trim().toLocaleUpperCase('tr'),
       number = Number(row.question.trim())
@@ -193,8 +200,11 @@ export function parseAnswerKey(state, exam, raw) {
       throw new Error(
         `Anahtar ${index + 2}. satırda kazanım veya cevap geçersiz. Cevap A–E, iptal soru - olmalıdır.`,
       )
-    if (!keys.has(booklet)) keys.set(booklet, [])
-    const questions = keys.get(booklet)
+    let questions = keys.get(booklet)
+    if (!questions) {
+      questions = []
+      keys.set(booklet, questions)
+    }
     if (questions.some((q) => q.number === number))
       throw new Error(`${booklet} kitapçığında ${number}. soru yineleniyor.`)
     questions.push({ number, subjectId, topic, answer })
@@ -212,7 +222,7 @@ export function parseAnswerKey(state, exam, raw) {
       throw new Error(
         `${key.booklet} kitapçığı soruları 1'den başlayan kesintisiz sıra içermelidir.`,
       )
-    const counts = {}
+    const counts: Record<string, number> = {}
     for (const question of key.questions) {
       const signature = JSON.stringify([
         question.subjectId,
@@ -236,18 +246,18 @@ export function parseAnswerKey(state, exam, raw) {
   }
   return sorted
 }
-export function prepareProfile(state, session, input, profileId = '') {
+export function prepareProfile(state: State, session: Session, input: unknown, profileId = '') {
   access(state, session, 'optical', true)
   if (session.role !== 'yonetici')
     throw new Error('Cevap anahtarını yalnızca yönetici düzenleyebilir.')
   if (!state.modules.exams) throw new Error('Deneme sınavları modülü kapalı.')
   const data = automationSchemas.profile.parse(input),
-    exam = record(state, 'mockExams', data.examId)
+    exam = record(state.mockExams, data.examId)
   if (state.opticalProfiles.some((p) => p.examId === exam.id && p.id !== profileId))
     throw new Error('Bu sınavın zaten optik profili var. Mevcut profili düzenleyin.')
   const keys = parseAnswerKey(state, exam, data.keyCsv)
   if (data.format === 'fixed') {
-    const fields = [
+    const fields: [number, number][] = [
       [data.studentStart, data.studentLength],
       [data.bookletStart, data.bookletLength],
       [data.answersStart, data.answersLength],
@@ -265,7 +275,7 @@ export function prepareProfile(state, session, input, profileId = '') {
     if (keys.some((k) => k.booklet.length > data.bookletLength))
       throw new Error('Kitapçık alanı kodu içerecek kadar uzun olmalıdır.')
   }
-  const existing = profileId ? record(state, 'opticalProfiles', profileId) : null
+  const existing = profileId ? record(state.opticalProfiles, profileId) : null
   if (existing && existing.examId !== exam.id) throw new Error('Profilin sınavı değiştirilemez.')
   return {
     ...data,
@@ -275,14 +285,14 @@ export function prepareProfile(state, session, input, profileId = '') {
       : 1,
   }
 }
-function responseRows(profile, raw) {
+function responseRows(profile: OpticalProfile, raw: string) {
   if (profile.format === 'csv')
     return csvObjects(raw, responseHeader).map((row, i) => ({ ...row, line: i + 2 }))
   const lines = raw
     .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
     .slice(profile.headerLines)
-  while (lines.length && !lines.at(-1).trim()) lines.pop()
+  while (lines.length && !lines.at(-1)?.trim()) lines.pop()
   if (!lines.length || lines.length > 1000)
     throw new Error('DAT/TXT 1–1000 öğrenci satırı içermelidir.')
   const width = Math.max(
@@ -295,7 +305,8 @@ function responseRows(profile, raw) {
       rowNumber = i + profile.headerLines + 1
     if (characters.length < width)
       throw new Error(`DAT/TXT ${rowNumber}. satır alanları dolduracak kadar uzun değil.`)
-    const field = (start, length) => characters.slice(start - 1, start - 1 + length).join('')
+    const field = (start: number, length: number) =>
+      characters.slice(start - 1, start - 1 + length).join('')
     return {
       student: field(profile.studentStart, profile.studentLength),
       booklet: field(profile.bookletStart, profile.bookletLength),
@@ -304,7 +315,7 @@ function responseRows(profile, raw) {
     }
   })
 }
-function summarize(questions) {
+function summarize(questions: readonly OpticalQuestionResult[]) {
   const counts = { correct: 0, wrong: 0, blank: 0, multiple: 0, cancelled: 0 }
   for (const q of questions) {
     if (q.outcome === 'multiple') {
@@ -330,25 +341,29 @@ function summarize(questions) {
       .map((t) => t.topic),
   }
 }
-export function previewOptical(state, session, input) {
+export function previewOptical(
+  state: State,
+  session: Session,
+  input: unknown,
+): OpticalPreviewRow[] {
   access(state, session, 'optical', true)
   if (!state.modules.exams) throw new Error('Deneme sınavları modülü kapalı.')
   const data = automationSchemas.evaluate.parse(input),
-    profile = record(state, 'opticalProfiles', data.profileId)
-  const exam = record(state, 'mockExams', profile.examId),
+    profile = record(state.opticalProfiles, data.profileId)
+  const exam = record(state.mockExams, profile.examId),
     scope = automationScope(state, session),
-    seen = new Set()
-  const output = []
+    seen = new Set<string>()
+  const output: OpticalPreviewRow[] = []
   for (const row of responseRows(profile, data.text)) {
     const identity = row.student.trim(),
       matches = state.students.filter(
         (s) => String(s[profile.identifier === 'number' ? 'number' : 'id']) === identity,
       )
-    if (matches.length !== 1)
+    const [student] = matches
+    if (matches.length !== 1 || !student)
       throw new Error(
         `${row.line}. satırdaki öğrenci tekil eşleşmedi: ${identity || 'boş kimlik'}.`,
       )
-    const student = matches[0]
     if (!student.isActive || !scope.studentIds.has(student.id))
       throw new Error(`${row.line}. satırdaki öğrenci pasif veya yetki kapsamınız dışında.`)
     if (state.classes.find((c) => c.id === student.classId)?.grade !== exam.grade)
@@ -368,18 +383,19 @@ export function previewOptical(state, session, input) {
         `${row.line}. satırda geçersiz cevap var. A–E, boş için -/./_/boşluk, çoklu işaret için * kullanın.`,
       )
     for (const subjectId of exam.subjectIds.filter(
-      (id) => session.role !== 'ogretmen' || scope.teacher.subjectId === id,
+      // Öğretmen için access() aktif öğretmen kaydını zaten doğruladı.
+      (id) => session.role !== 'ogretmen' || scope.teacher?.subjectId === id,
     )) {
       const questionResults = key.questions
         .filter((q) => q.subjectId === subjectId)
         .map((q) => {
           const response = responses[q.number - 1]
-          const outcome =
+          const outcome: QuestionOutcome =
             q.answer === '-'
               ? 'cancelled'
               : response === '*'
                 ? 'multiple'
-                : ' -._'.includes(response)
+                : response !== undefined && ' -._'.includes(response)
                   ? 'blank'
                   : response === q.answer
                     ? 'correct'
@@ -411,7 +427,7 @@ export function previewOptical(state, session, input) {
   return output
 }
 
-export function currentEvaluations(state, examId, session) {
+export function currentEvaluations(state: State, examId: string, session: Session) {
   const scope = automationScope(state, session)
   return (state.opticalEvaluations || []).filter((evaluation) => {
     const profile = state.opticalProfiles.find((p) => p.id === evaluation.profileId)
@@ -430,7 +446,7 @@ export function currentEvaluations(state, examId, session) {
     )
   })
 }
-export function tutoringSessions(state, session) {
+export function tutoringSessions(state: State, session: Session) {
   if (!state.modules.tutoring) return []
   const scope = automationScope(state, session)
   return (state.tutorSessions || [])
@@ -457,7 +473,7 @@ export function tutoringSessions(state, session) {
     }))
 }
 
-export function tutoringCalendarEntries(state, session) {
+export function tutoringCalendarEntries(state: State, session: Session) {
   return tutoringSessions(state, session)
     .filter((s) => s.status !== 'İptal')
     .map((s) => ({
@@ -468,38 +484,40 @@ export function tutoringCalendarEntries(state, session) {
       subtitle: `${s.studentIds.length} öğrenci · Derslik ${s.room}`,
     }))
 }
-function planInput(state, session, input, now) {
+function planInput(state: State, session: Session, input: unknown, now: string) {
   access(state, session, 'tutoring', true)
   const data = automationSchemas.plan.parse(input)
   if (!state.modules.exams) throw new Error('Deneme sınavları modülü kapalı.')
-  record(state, 'mockExams', data.examId)
+  record(state.mockExams, data.examId)
   if (
     data.fromDate < dayKey(now) ||
     data.toDate < data.fromDate ||
     (Date.parse(data.toDate) - Date.parse(data.fromDate)) / 86400000 > 30
   )
     throw new Error('Etüt tarih aralığı bugün veya sonrasında, en fazla 31 gün olmalıdır.')
-  if (data.branchId) active(state, 'branches', data.branchId)
-  if (
-    data.subjectId &&
-    !record(state, 'mockExams', data.examId).subjectIds.includes(data.subjectId)
-  )
+  if (data.branchId) active(state.branches, data.branchId)
+  if (data.subjectId && !record(state.mockExams, data.examId).subjectIds.includes(data.subjectId))
     throw new Error('Ders sınav kapsamında değil.')
   return data
 }
-export function planTutoring(state, session, input, now = new Date().toISOString()) {
+export function planTutoring(
+  state: State,
+  session: Session,
+  input: unknown,
+  now = new Date().toISOString(),
+) {
   const data = planInput(state, session, input, now),
-    exam = record(state, 'mockExams', data.examId)
-  const candidates = new Map(),
-    covered = [],
-    sessions = [],
-    unresolved = []
+    exam = record(state.mockExams, data.examId)
+  const candidates = new Map<string, TutorGroup>(),
+    covered: { studentId: string; topic: string; sessionId: string }[] = [],
+    sessions: PlannedTutorSession[] = [],
+    unresolved: (TutorGroup & { reason: string })[] = []
   const evaluations = currentEvaluations(state, data.examId, session)
   for (const evaluation of evaluations) {
     if (data.subjectId && evaluation.subjectId !== data.subjectId) continue
-    const student = record(state, 'students', evaluation.studentId)
+    const student = record(state.students, evaluation.studentId)
     if (!student.isActive) continue
-    const classroom = active(state, 'classes', student.classId)
+    const classroom = active(state.classes, student.classId)
     if (classroom.grade !== exam.grade || (data.branchId && classroom.branchId !== data.branchId))
       continue
     if (!state.branches.find((b) => b.id === classroom.branchId)?.isActive) continue
@@ -524,8 +542,9 @@ export function planTutoring(state, session, input, now = new Date().toISOString
         evaluation.subjectId,
         topic.topic,
       ])
-      if (!candidates.has(signature))
-        candidates.set(signature, {
+      let group = candidates.get(signature)
+      if (!group) {
+        group = {
           examId: exam.id,
           branchId: classroom.branchId,
           grade: classroom.grade,
@@ -533,8 +552,9 @@ export function planTutoring(state, session, input, now = new Date().toISOString
           topic: topic.topic,
           studentIds: [],
           scores: [],
-        })
-      const group = candidates.get(signature)
+        }
+        candidates.set(signature, group)
+      }
       group.studentIds.push(student.id)
       group.scores.push({ studentId: student.id, percent: topic.percent })
     }
@@ -580,10 +600,10 @@ export function planTutoring(state, session, input, now = new Date().toISOString
     const remaining = [...group.studentIds].sort()
     let lastReason = ''
     while (remaining.length) {
-      let selected = null
+      let selected: PlannedTutorSession | null = null
       for (const slot of slots) {
         for (const room of rooms) {
-          const candidate = {
+          const candidate: PlannedTutorSession = {
             ...group,
             teacherId: slot.teacherId,
             date: slot.date,
@@ -632,18 +652,19 @@ export function planTutoring(state, session, input, now = new Date().toISOString
 }
 
 export function runAssessment(
-  state,
-  session,
-  command,
-  input,
-  makeId,
+  state: State,
+  session: Session,
+  command: string,
+  input: Readonly<Record<string, unknown>>,
+  makeId: MakeId,
   recordId = '',
   now = new Date().toISOString(),
 ) {
-  let result,
-    oldValue = null,
-    collection
-  const stamp = (prefix, value) => ({
+  // Komuta göre farklı kayıtlar döner; denetim kaydı yalnız kimliği ve JSON kopyasını kullanır.
+  let result: { id?: string } & Record<string, unknown>,
+    oldValue: unknown = null,
+    collection: string | undefined
+  const stamp = <T extends object>(prefix: string, value: T) => ({
     id: makeId(prefix),
     ...value,
     createdAt: now,
@@ -651,10 +672,13 @@ export function runAssessment(
   })
   if (command === 'profile') {
     const data = prepareProfile(state, session, input, recordId)
-    const previous = recordId ? record(state, 'opticalProfiles', recordId) : null
+    const previous = recordId ? record(state.opticalProfiles, recordId) : null
     oldValue = previous ? structuredClone(previous) : null
-    result = previous ? { ...previous, ...data, updatedAt: now } : stamp('optical-profile', data)
-    state.opticalProfiles = [...state.opticalProfiles.filter((p) => p.id !== result.id), result]
+    const profile = previous
+      ? { ...previous, ...data, updatedAt: now }
+      : stamp('optical-profile', data)
+    result = profile
+    state.opticalProfiles = [...state.opticalProfiles.filter((p) => p.id !== profile.id), profile]
     collection = 'opticalProfiles'
   } else if (command === 'evaluate') {
     const preview = previewOptical(state, session, input)
@@ -663,16 +687,21 @@ export function runAssessment(
     const evaluations = [...state.opticalEvaluations],
       results = [...state.mockResults]
     for (const row of preview) {
-      const match = (r) =>
+      const match = (r: { examId: string; studentId: string; subjectId: string }) =>
         r.examId === row.examId && r.studentId === row.studentId && r.subjectId === row.subjectId
       const evaluationIndex = evaluations.findIndex(match),
         previous = evaluations[evaluationIndex]
-      const data = { ...row }
+      // Önizlemeye özgü alanlar kalıcı değerlendirmeye yazılmaz.
+      const data: Omit<OpticalPreviewRow, 'studentName' | 'replaces'> &
+        Partial<Pick<OpticalPreviewRow, 'studentName' | 'replaces'>> = { ...row }
       delete data.studentName
       delete data.replaces
-      result = previous ? { ...previous, ...data, updatedAt: now } : stamp('optical-result', data)
-      if (evaluationIndex < 0) evaluations.push(result)
-      else evaluations[evaluationIndex] = result
+      const evaluation = previous
+        ? { ...previous, ...data, updatedAt: now }
+        : stamp('optical-result', data)
+      result = evaluation
+      if (evaluationIndex < 0) evaluations.push(evaluation)
+      else evaluations[evaluationIndex] = evaluation
       const existingIndex = results.findIndex(match),
         existing = results[existingIndex]
       const aggregate = {
@@ -722,7 +751,7 @@ export function runAssessment(
     access(state, session, 'tutoring', true)
     const data = automationSchemas.slot.parse(input)
     data.date = new Date(data.date).toISOString()
-    const teacher = active(state, 'teachers', data.teacherId)
+    const teacher = active(state.teachers, data.teacherId)
     if (session.role === 'ogretmen' && teacher.id !== 't1')
       throw new Error('Yalnızca kendi uygunluk saatinizi ekleyebilirsiniz.')
     if (Date.parse(data.date) <= Date.parse(now))
@@ -743,12 +772,13 @@ export function runAssessment(
       )
     )
       throw new Error('Bu saat başka bir uygunluk aralığıyla çakışıyor.')
-    result = stamp('slot', data)
-    state.availability.push(result)
+    const slot = stamp('slot', data)
+    result = slot
+    state.availability.push(slot)
     collection = 'availability'
   } else if (command === 'slot-remove') {
     access(state, session, 'tutoring', true)
-    const slot = record(state, 'availability', recordId)
+    const slot = record(state.availability, recordId)
     if (session.role === 'ogretmen' && slot.teacherId !== 't1')
       throw new Error('Yalnızca kendi uygunluk saatinizi kaldırabilirsiniz.')
     oldValue = structuredClone(slot)
@@ -757,7 +787,7 @@ export function runAssessment(
     collection = 'availability'
   } else if (command === 'cancel' || command === 'attendance') {
     access(state, session, 'tutoring', true)
-    const entry = record(state, 'tutorSessions', recordId)
+    const entry = record(state.tutorSessions, recordId)
     if (session.role === 'ogretmen' && entry.teacherId !== 't1')
       throw new Error('Yalnızca kendi etüdünüzü yönetebilirsiniz.')
     if (entry.status === 'İptal') throw new Error('Etüt iptal edilmiş.')
@@ -806,8 +836,12 @@ export function runAssessment(
   return result
 }
 
-export function exampleOpticalFile(state, profile, session = { role: 'yonetici' }) {
-  const exam = record(state, 'mockExams', profile.examId),
+export function exampleOpticalFile(
+  state: State,
+  profile: OpticalProfile,
+  session: Session = { role: 'yonetici' },
+) {
+  const exam = record(state.mockExams, profile.examId),
     key = profile.keys[0]
   const students = automationScope(state, session)
     .students.filter(
@@ -815,6 +849,7 @@ export function exampleOpticalFile(state, profile, session = { role: 'yonetici' 
     )
     .slice(0, 3)
   const rows = students.map((student, i) => {
+    if (!key) throw new TypeError('Optik profilinde cevap anahtarı yok.')
     const identity = String(student[profile.identifier === 'number' ? 'number' : 'id'])
     const answers = key.questions
       .map((q, n) => (q.answer === '-' ? '-' : n % 3 === i ? '-' : q.answer === 'A' ? 'B' : 'A'))
@@ -828,11 +863,12 @@ export function exampleOpticalFile(state, profile, session = { role: 'yonetici' 
       cells = Array(width).fill(' ')
     if (identity.length > profile.studentLength)
       throw new Error('Örnek öğrenci kimliği alan uzunluğuna sığmıyor.')
-    for (const [start, value] of [
+    const placements: [number, string][] = [
       [profile.studentStart, identity],
       [profile.bookletStart, key.booklet],
       [profile.answersStart, answers],
-    ])
+    ]
+    for (const [start, value] of placements)
       Array.from(value).forEach((c, n) => {
         cells[start - 1 + n] = c
       })

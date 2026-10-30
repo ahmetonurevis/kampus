@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { questionBank } from '../data/question-bank.ts'
 import type { State } from '../data/seed.ts'
+import type { Role } from '../modules/navigation.ts'
 import { dayKey } from './format.ts'
 
 z.config(z.locales.tr())
@@ -30,6 +31,8 @@ export const registrationSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'İlk ödeme tarihini seçin.'),
 })
 export type MakeId = (prefix: string) => string
+// Demo oturumu: rol ve velinin seçili çocuğu. API'de kimlik oturumdan gelir.
+export type Session = { role: Role; childId?: string }
 export type BankQuestion = (typeof questionBank)[number]
 
 export function installmentAmounts(cents: number, count: number) {

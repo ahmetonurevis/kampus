@@ -863,6 +863,8 @@ type StatePatches = {
     date: string
   }[]
   preferences: Record<string, unknown>
+  // Okul iş akışı modülleri kayıttan eklenir; anahtar kümesi derleme anında sabit değildir.
+  modules: Record<string, boolean>
   audit: AuditEntry[]
   guidanceCases: Patch<Item<'guidanceCases'>, { notes: GuidanceNote[]; updatedAt?: string }>[]
   mockExams: (Item<'mockExams'> & { updatedAt?: string })[]

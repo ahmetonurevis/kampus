@@ -2608,13 +2608,26 @@
                 "type",
                 "grade",
                 "isActive",
-                "level"
+                "level",
+                "date:month",
+                "joinedAt:month",
+                "dueDate:month",
+                "paidAt:month",
+                "createdAt:month",
+                "trialAt:month",
+                "submittedAt:month",
+                "answeredAt:month",
+                "followUp:month",
+                "deadline:month",
+                "reviewedAt:month",
+                "endDate:month",
+                "consentDeadline:month"
               ]
             },
             "in": "query",
             "name": "groupBy",
             "required": true,
-            "description": "Gruplama alanı (zorunlu). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır"
+            "description": "Gruplama alanı (zorunlu) ya da aylık gruplama `<tarih alanı>:month` (ör. `paidAt:month`, `dueDate:month`; değer `YYYY-MM`, Europe/Istanbul ayı; tarih alanı `dateField` izin listesindedir, dışındaki 400; tarih olmayan değer `null` grubudur). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır"
           },
           {
             "schema": {

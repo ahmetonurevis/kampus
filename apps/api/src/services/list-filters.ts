@@ -99,6 +99,18 @@ export function matchesDayRange(record: RecordData, match: DayRangeMatch): boole
   return false
 }
 
+/**
+ * Tarih alanının Europe/Istanbul ayı (`YYYY-MM`): gün biçimli değer kendi ayıdır, an (ISO UTC)
+ * Istanbul gününe çevrilir. Başka biçim ve metin olmayan değer `null` grubudur (`matchesDayRange`
+ * ile aynı biçim kuralı).
+ */
+export function monthOf(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  if (DAY.test(value)) return value.slice(0, 7)
+  if (INSTANT.test(value)) return dayKey(value).slice(0, 7)
+  return null
+}
+
 export function matchesActive(record: RecordData, { field, active }: ActiveMatch): boolean {
   return (record[field] === false) !== active
 }

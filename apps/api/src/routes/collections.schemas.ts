@@ -6,7 +6,7 @@ import {
   ARCHIVED_MODES,
   DATE_FIELD_NAMES,
   FILTER_FIELDS,
-  GROUP_FIELDS,
+  GROUP_BY_VALUES,
   SORT_FIELDS,
   SUM_FIELDS,
 } from '../services/collection-reads.ts'
@@ -120,9 +120,9 @@ export const collectionCountsQuerySchema = z
   .object({
     ...readQueryShape,
     groupBy: z
-      .enum(GROUP_FIELDS)
+      .enum(GROUP_BY_VALUES)
       .describe(
-        'Gruplama alanı (zorunlu). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır',
+        'Gruplama alanı (zorunlu) ya da aylık gruplama `<tarih alanı>:month` (ör. `paidAt:month`, `dueDate:month`; değer `YYYY-MM`, Europe/Istanbul ayı; tarih alanı `dateField` izin listesindedir, dışındaki 400; tarih olmayan değer `null` grubudur). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır',
       ),
     sum: z
       .enum(SUM_FIELDS)

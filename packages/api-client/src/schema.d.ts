@@ -1830,8 +1830,8 @@ export interface operations {
                 type?: string | string[];
                 /** @description `grade` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 grade?: string | string[];
-                /** @description Gruplama alanı (zorunlu). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır */
-                groupBy: "studentId" | "classId" | "teacherId" | "subjectId" | "branchId" | "parentId" | "examId" | "clubId" | "routeId" | "quizId" | "homeworkId" | "videoId" | "status" | "stage" | "category" | "type" | "grade" | "isActive" | "level";
+                /** @description Gruplama alanı (zorunlu) ya da aylık gruplama `<tarih alanı>:month` (ör. `paidAt:month`, `dueDate:month`; değer `YYYY-MM`, Europe/Istanbul ayı; tarih alanı `dateField` izin listesindedir, dışındaki 400; tarih olmayan değer `null` grubudur). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır */
+                groupBy: "studentId" | "classId" | "teacherId" | "subjectId" | "branchId" | "parentId" | "examId" | "clubId" | "routeId" | "quizId" | "homeworkId" | "videoId" | "status" | "stage" | "category" | "type" | "grade" | "isActive" | "level" | "date:month" | "joinedAt:month" | "dueDate:month" | "paidAt:month" | "createdAt:month" | "trialAt:month" | "submittedAt:month" | "answeredAt:month" | "followUp:month" | "deadline:month" | "reviewedAt:month" | "endDate:month" | "consentDeadline:month";
                 /** @description Grup başına toplanacak sayısal alan; sayı olmayan değer toplama girmez. `amount` kuruştur. Rolün göremediği alan 400 */
                 sum?: "amount" | "capacity" | "score" | "progress" | "attendanceRate" | "homeworkRate";
             };

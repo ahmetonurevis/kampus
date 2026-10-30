@@ -240,4 +240,117 @@ describe('tarih aralığı süzgeci: dateField', () => {
       assert.equal(denied.statusCode, 403)
     })
   })
+
+  describe('aylık gruplama: groupBy=<tarih alanı>:month', () => {
+    const monthly = async (cookie: string, query: string) => {
+      const response = await get(`/api/v1/collections/invoices/counts?${query}`, cookie)
+      assert.equal(response.statusCode, 200, `${query} ${response.body}`)
+      return response.json() as {
+        data: { value: unknown; count: number; sum?: number }[]
+        meta: { total: number; sum?: number }
+      }
+    }
+
+    test('sayı ve toplam Europe/Istanbul ayına göre; tarihsiz değer null grubunda sonda', async () => {
+      const { adminCookie } = await institution()
+      assert.deepEqual(await monthly(adminCookie, 'groupBy=dueDate:month&sum=amount'), {
+        data: [
+          { value: '2026-10', count: 3, sum: 300_00 },
+          { value: '2026-11', count: 1, sum: 100_00 },
+        ],
+        meta: { total: 4, sum: 400_00 },
+      })
+      // c'nin ödemesi UTC'de ekimde, Istanbul'da 1 Kasım 00:00'dır; d ödenmemiştir.
+      assert.deepEqual(await monthly(adminCookie, 'groupBy=paidAt:month&sum=amount'), {
+        data: [
+          { value: '2026-10', count: 2, sum: 200_00 },
+          { value: '2026-11', count: 1, sum: 100_00 },
+          { value: null, count: 1, sum: 100_00 },
+        ],
+        meta: { total: 4, sum: 400_00 },
+      })
+    })
+
+    test('ay sınırı Istanbul gününe göredir: 30 Eylül 21:00Z ekim, 20:59:59.999Z eylül', async () => {
+      const { id, adminCookie } = await institution()
+      await insertMissingRecords(
+        db,
+        id,
+        [
+          invoice('test-d-e', 's1', '2026-09-30T21:00:00.000Z', null),
+          invoice('test-d-f', 's1', '2026-09-30T20:59:59.999Z', null),
+          invoice('test-d-g', 's1', '2026-12-31T21:00:00.000Z', null),
+          invoice('test-d-h', 's1', 'bozuk', null),
+        ],
+        FIXED_NOW,
+      )
+      const { data } = await monthly(adminCookie, 'groupBy=dueDate:month')
+      assert.deepEqual(data, [
+        { value: '2026-09', count: 1 },
+        { value: '2026-10', count: 4 },
+        { value: '2026-11', count: 1 },
+        { value: '2027-01', count: 1 },
+        { value: null, count: 1 },
+      ])
+    })
+
+    test('süzgeç ve arama liste ucuyla aynıdır: grup toplamı liste toplamına eşit', async () => {
+      const { adminCookie } = await institution()
+      const filter = 'dateField=paidAt&dateFrom=2026-10-01&dateTo=2026-10-31&studentId=s1'
+      const grouped = await monthly(adminCookie, `groupBy=paidAt:month&${filter}`)
+      assert.deepEqual(grouped.data, [{ value: '2026-10', count: 2 }])
+      assert.equal(grouped.meta.total, (await ids(adminCookie, 'invoices', filter)).length)
+      const status = encodeURIComponent('Ödendi')
+      const paid = await monthly(adminCookie, `groupBy=dueDate:month&status=${status}`)
+      assert.equal(paid.meta.total, (await ids(adminCookie, 'invoices', `status=${status}`)).length)
+    })
+
+    test('DOM-YTK-025: veli yalnız kendi çocuğunun taksitlerini aylara böler', async () => {
+      const { id } = await institution()
+      const parent = await member(id, 'veli', [{ kind: 'child', recordId: 's2' }])
+      assert.deepEqual(await monthly(parent, 'groupBy=paidAt:month&sum=amount'), {
+        data: [{ value: '2026-11', count: 1, sum: 100_00 }],
+        meta: { total: 1, sum: 100_00 },
+      })
+      const student = await member(id, 'ogrenci', [{ kind: 'student', recordId: 's11' }])
+      assert.deepEqual((await monthly(student, 'groupBy=paidAt:month')).data, [
+        { value: null, count: 1 },
+      ])
+    })
+
+    test('başka kurum sayılmaz; oturumsuz 401', async () => {
+      await institution()
+      const other = await signInAs(app, (await createInstitution(app)).admin)
+      assert.deepEqual(await monthly(other, 'groupBy=dueDate:month'), {
+        data: [],
+        meta: { total: 0 },
+      })
+      const anonymous = await app.inject({
+        method: 'GET',
+        url: '/api/v1/collections/invoices/counts?groupBy=dueDate:month',
+      })
+      assert.equal(anonymous.statusCode, 401)
+    })
+
+    test('izin dışı tarih alanı ve geçersiz biçim 400', async () => {
+      const { adminCookie } = await institution()
+      for (const [collection, groupBy] of [
+        ['invoices', 'date:month'],
+        ['grades', 'paidAt:month'],
+        ['invoices', 'studentId:month'],
+        ['invoices', 'dueDate:year'],
+        ['invoices', 'dueDate:'],
+        ['invoices', ':month'],
+      ]) {
+        const response = await get(
+          `/api/v1/collections/${collection}/counts?groupBy=${groupBy}`,
+          adminCookie,
+        )
+        assert.equal(response.statusCode, 400, `${collection} ${groupBy}`)
+        const body = response.json()
+        assert.equal(body.code, 'validation_failed')
+        assert.equal(body.issues[0].path[0], 'groupBy')
+      }
+    })
+  })
 })

@@ -30,6 +30,7 @@ import {
   invoiceStatusFilter,
   invoiceStatusOf,
   matchesRecordFilter,
+  monthOf,
 } from './list-filters.ts'
 import {
   assertReadable,
@@ -629,6 +630,23 @@ export async function listCollection(
 export const GROUP_FIELDS = [...FILTER_FIELDS, 'isActive', 'level'] as const
 export type GroupField = (typeof GROUP_FIELDS)[number]
 
+const MONTH_SUFFIX = ':month'
+
+/**
+ * `groupBy` değerleri: gruplanabilir alanlar ve tarih alanının aylık gruplaması
+ * (`<tarih alanı>:month`, değer `YYYY-MM` Europe/Istanbul ayı). Tarih alanı koleksiyonun izin
+ * listesindedir (`DATE_FIELDS`).
+ */
+export const GROUP_BY_VALUES = [
+  ...GROUP_FIELDS,
+  ...DATE_FIELD_NAMES.map((field) => `${field}${MONTH_SUFFIX}`),
+] as [string, ...string[]]
+
+/** `paidAt:month` → `paidAt`; aylık gruplama değilse `null`. */
+function monthGroupField(groupBy: string): string | null {
+  return groupBy.endsWith(MONTH_SUFFIX) ? groupBy.slice(0, -MONTH_SUFFIX.length) : null
+}
+
 /** Grup başına toplanabilen sayısal alanlar (beyaz liste; para alanı kuruş). */
 export const SUM_FIELDS = [
   'amount',
@@ -641,7 +659,8 @@ export const SUM_FIELDS = [
 export type SumField = (typeof SUM_FIELDS)[number]
 
 export interface CollectionCountQuery extends CollectionReadQuery {
-  groupBy: GroupField
+  /** `GROUP_BY_VALUES`: alan adı ya da `<tarih alanı>:month`. */
+  groupBy: string
   sum?: SumField | undefined
 }
 
@@ -683,10 +702,14 @@ export async function countCollection(
   name: string,
   query: CollectionCountQuery,
 ): Promise<{ groups: CountGroup[]; total: number; sum?: number }> {
+  const month = monthGroupField(query.groupBy)
   const result = await readRows(ctx, name, query, {
     check(scope, collection) {
       const hidden = scope.hiddenFields(collection)
-      if (hidden.includes(query.groupBy)) throw hiddenFieldError('groupBy')
+      // Aylık gruplama tarih alanının izin listesinden geçer; ayıklanan alanla gruplama 400.
+      if (month !== null && !dateFieldsOf(collection).includes(month))
+        throw hiddenFieldError('groupBy')
+      if (hidden.includes(month ?? query.groupBy)) throw hiddenFieldError('groupBy')
       if (query.sum && hidden.includes(query.sum)) throw hiddenFieldError('sum')
     },
   })
@@ -699,6 +722,7 @@ export async function countCollection(
       ? await studentClasses(ctx)
       : null
   const valueOf = (record: RecordData): GroupValue => {
+    if (month !== null) return monthOf(record[month])
     if (classOf) {
       const student = record.studentId
       return typeof student === 'string' ? (classOf.get(student) ?? null) : null

@@ -57,7 +57,7 @@ type AttendanceViewProps = {
  * öğretmende sınıf) filtresi, tarih/durum sıralaması, satırdan sağ panelde ayrıntı. Öğrencide
  * katılım sayıları kayıtlardan hesaplanır. Yalnız okuma.
  * TODO(D-attendance-write): yoklama alma core işlemi gelince "Yoklama al" eklenir.
- * TODO(api-date-filter): yoklamada `date` eşitlik/aralık filtresi yoktur; tarih filtresi
+ * TODO(api-filter-date): yoklamada `date` eşitlik/aralık filtresi yoktur; tarih filtresi
  * sunucu aramasına `YYYY-MM-DD` gönderir (kayıtta başka tarih biçimli alan yoktur). Bu yüzden
  * serbest arama kapalıdır; filtre API'de gelince arama geri açılır.
  */

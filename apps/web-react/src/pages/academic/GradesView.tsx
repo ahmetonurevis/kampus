@@ -69,6 +69,7 @@ export function GradesView({ audience, studentId, urlPrefix = '', title }: Grade
   const search = useDebouncedValue(list.state.query)
   const classId = teacher ? filterValue(list.state.filters.classId) : ''
   const subjectId = filterValue(list.state.filters.subjectId)
+  // TODO(api-filter-class): notlarda `classId` filtresi gelince sınıf süzmesi doğrudan sunucuya gider.
   const scope = studentScope(studentId, classId, lookups)
   const scopeEmpty = scope.empty
 

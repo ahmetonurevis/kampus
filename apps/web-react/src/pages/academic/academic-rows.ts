@@ -106,7 +106,7 @@ export type StudentScope = {
 /**
  * Not kaydında sınıf alanı yoktur; sınıf filtresi sınıftaki öğrencilerin `studentId` filtresine
  * çevrilir. Sabit öğrenci (veli: seçili çocuk) sınıftan önce gelir.
- * TODO(api-grade-class): notlarda `classId` filtresi gelince bu çeviri ve 20 kimlik sınırı kalkar.
+ * TODO(api-filter-class): notlarda `classId` filtresi gelince bu çeviri ve 20 kimlik sınırı kalkar.
  */
 export function studentScope(
   studentId: string | undefined,

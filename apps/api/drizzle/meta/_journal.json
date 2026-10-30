@@ -29,6 +29,13 @@
       "when": 1793324647234,
       "tag": "0003_add_records_position",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793325211005,
+      "tag": "0004_archive_core_audit_records",
+      "breakpoints": true
     }
   ]
 }

@@ -12,7 +12,7 @@ import {
   seedDemo,
   stateRecords,
 } from '../src/db/demo-seed.ts'
-import { RECORD_COLLECTIONS } from '../src/db/collections.ts'
+import { STORED_COLLECTIONS } from '../src/db/collections.ts'
 import { findRecord, loadRecords, writeRecords } from '../src/db/records.ts'
 import { institutions, memberships, users } from '../src/db/schema/auth.ts'
 import { membershipLinks } from '../src/db/schema/membership-links.ts'
@@ -120,8 +120,8 @@ describe('demo tohumu', () => {
     // Kimlik sırası karşılaştırılır: öteki test bir kaydın verisini değiştirmiş olabilir.
     const expected = stateRecords(demoState('akademi', FIXED_NOW))
     const check = async () => {
-      const rows = await loadRecords(db, akademi, RECORD_COLLECTIONS)
-      for (const collection of RECORD_COLLECTIONS)
+      const rows = await loadRecords(db, akademi, STORED_COLLECTIONS)
+      for (const collection of STORED_COLLECTIONS)
         assert.deepEqual(
           rows.filter((row) => row.collection === collection).map((row) => row.id),
           expected.filter((item) => item.collection === collection).map((item) => item.id),

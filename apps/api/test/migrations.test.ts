@@ -56,7 +56,7 @@ describe('veri dönüştüren migration’lar', () => {
     await rm(folder, { recursive: true, force: true })
   })
 
-  test('0003: mevcut sıra korunarak numaralanır; tohum sırayı veri ve sürüme dokunmadan core dizisine eşitler', async () => {
+  test('0003–0004: mevcut sıra korunarak numaralanır; tohum sırayı veri ve sürüme dokunmadan core dizisine eşitler; core denetimi arşivlenir', async () => {
     const app = await buildTestApp(db)
     try {
       const { id } = await createInstitution(app)
@@ -81,7 +81,18 @@ describe('veri dönüştüren migration’lar', () => {
         sql`update records set data = data || '{"progress": 1}'::jsonb, version = version + 1 where institution_id = ${id} and collection = 'students' and id = ${updated.id}`,
       )
 
+      // Eski sürümün yazdığı core denetim satırı (değerleri maskesiz).
+      await db.execute(
+        sql`insert into records (institution_id, collection, id, data, created_at, updated_at) values (${id}, 'audit', 'audit-legacy', '{"id": "audit-legacy"}'::jsonb, ${FIXED_NOW}, ${FIXED_NOW})`,
+      )
+
       await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+
+      // 0004: core denetim satırları arşivlenir ve yüklenmez.
+      assert.deepEqual(await loadRecords(db, id, ['audit']), [])
+      const [legacy] = await loadRecords(db, id, ['audit'], { includeArchived: true })
+      assert.equal(legacy?.version, 2)
+      assert.ok(legacy?.archivedAt)
 
       // Dolgu, sıra kolonundan önceki yükleme sırasını (kimlik) korur; core sırası SQL'de bilinmez.
       const coreOrder = (collection: string) =>

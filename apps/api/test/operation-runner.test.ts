@@ -321,12 +321,12 @@ describe('işlem çalıştırıcı', () => {
   })
 
   test('listeden çıkarılan kayıt arşivlenir; State dışı alanlar bağlamdan gelir', async () => {
-    const ctx = await institution(['transportAssignments', 'audit'])
+    const ctx = await institution(['transportAssignments'])
     const assignment = seed.transportAssignments[0]
     assert.ok(assignment)
     const outcome = await runOperation(ctx, {
       action: 'transport.remove',
-      collections: ['transportAssignments', 'audit'],
+      collections: ['transportAssignments'],
       scalars: { modules: seed.modules },
       makeId: counterIds(),
       run: (state, { now, makeId }) =>
@@ -342,7 +342,7 @@ describe('işlem çalıştırıcı', () => {
     })
     assert.deepEqual(
       outcome.changes.map((change) => `${change.kind}:${change.collection}:${change.id}`).sort(),
-      ['archive:transportAssignments:' + assignment.id, 'insert:audit:audit-test-1'],
+      ['archive:transportAssignments:' + assignment.id],
     )
     const live = await loadRecords(db, ctx.institutionId, ['transportAssignments'])
     assert.ok(!live.some((row) => row.id === assignment.id))
@@ -357,6 +357,101 @@ describe('işlem çalıştırıcı', () => {
     )
     assert.equal(archived?.archivedAt?.toISOString(), LATER.toISOString())
     assert.equal(archived?.version, 2)
+  })
+
+  test('core denetimi kalıcı yazılmaz; rehberlik iç notu loga ve denetim kaydına düşmez', async () => {
+    const logs: string[] = []
+    const logged = await buildTestApp(db, { logs })
+    try {
+      const guidance = ['guidanceCases', 'students', 'teachers', 'classes', 'assignments'] as const
+      const ctx = { ...(await institution(guidance)), log: logged.log }
+      // Eski sürümden kalmış core denetim satırı: yüklenmez, dokunulmaz.
+      await db.insert(records).values({
+        institutionId: ctx.institutionId,
+        collection: 'audit',
+        id: 'test-audit-legacy',
+        data: { id: 'test-audit-legacy', action: 'guidance' },
+        position: 0,
+        createdAt: FIXED_NOW,
+        updatedAt: FIXED_NOW,
+      })
+      const secret = 'GIZLI-IC-NOT-7f3a'
+      const secretNote = 'GIZLI-GORUSME-NOTU-91c2'
+      const session = { role: 'yonetici' as const }
+      const ids = counterIds()
+      const created = await runOperation(ctx, {
+        action: 'guidance.create',
+        collections: guidance,
+        scalars: { modules: seed.modules },
+        entity: { type: 'guidanceCases', id: 'guidance-new' },
+        makeId: ids,
+        run: (state, { now, makeId }) => {
+          const result = runWorkflow(
+            state,
+            session,
+            'guidance',
+            {
+              studentId: 's1',
+              teacherId: 't1',
+              title: 'Takip',
+              plan: 'Plan',
+              sharedNote: '',
+              internalNote: secret,
+              followUp: '2026-10-20',
+            },
+            makeId,
+            undefined,
+            now,
+          )
+          // Core kendi denetimini State'e ekledi; sunucu bunu yazmaz.
+          assert.equal(state.audit.length, 1)
+          return result
+        },
+      })
+      const caseId = created.changes.find((change) => change.collection === 'guidanceCases')?.id
+      assert.ok(caseId)
+      await runOperation(ctx, {
+        action: 'guidance.note',
+        collections: guidance,
+        scalars: { modules: seed.modules },
+        entity: { type: 'guidanceCases', id: caseId },
+        makeId: ids,
+        run: (state, { now, makeId }) =>
+          runWorkflow(
+            state,
+            session,
+            'guidance-note',
+            { text: secretNote, sharedNote: '', followUp: '2026-10-27', status: 'Takipte' },
+            makeId,
+            caseId,
+            now,
+          ),
+      })
+      const auditRecords = await loadRecords(db, ctx.institutionId, ['audit'], {
+        includeArchived: true,
+      })
+      assert.deepEqual(
+        auditRecords.map((row) => [row.id, row.version]),
+        [['test-audit-legacy', 1]],
+      )
+      const entries = await db
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.institutionId, ctx.institutionId))
+      assert.deepEqual(entries.map((entry) => entry.action).sort(), [
+        'guidance.create',
+        'guidance.note',
+      ])
+      for (const entry of entries) assert.equal(entry.actorUserId, ctx.actor.userId)
+      const note = entries.find((entry) => entry.action === 'guidance.note')
+      assert.deepEqual(note?.changes, { fields: ['followUp', 'notes'] })
+      const text = JSON.stringify(entries) + logs.join('')
+      assert.ok(logs.some((line) => line.includes('operation.applied')))
+      assert.ok(!text.includes(secret), 'iç not sızdı')
+      assert.ok(!text.includes(secretNote), 'görüşme notu sızdı')
+    } finally {
+      await logged.close()
+    }
   })
 
   test('yüklenmeyen koleksiyona erişim programlama hatasıdır (500)', async () => {

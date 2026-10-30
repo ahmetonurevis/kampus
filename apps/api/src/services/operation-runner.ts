@@ -7,6 +7,7 @@ import type { State } from '@kampus/school-core/data/seed.ts'
 import type { MakeId } from '@kampus/school-core/lib/domain.ts'
 
 import {
+  isEphemeralCollection,
   isRecordCollection,
   isScalarStateKey,
   recordKey,
@@ -58,7 +59,10 @@ export interface ExpectedVersion {
 export interface OperationRequest<R> {
   /** Denetim kaydı eylemi, ör. `invoice.pay`. */
   action: string
-  /** İşlemin okuduğu ve yazabileceği koleksiyonlar; yüklenmeyen koleksiyona erişim 500'dür. */
+  /**
+   * İşlemin okuduğu ve yazabileceği koleksiyonlar; yüklenmeyen koleksiyona erişim 500'dür.
+   * Core `audit` her zaman boş verilir ve yazılmaz; listede olması gerekmez.
+   */
   collections: readonly CollectionName[]
   /**
    * Dizi olmayan State alanları (`modules`, `academicYear` …). `records`'ta tutulmaz; çağıran
@@ -250,7 +254,9 @@ export async function runOperation<R>(
   ctx: ServiceContext,
   request: OperationRequest<R>,
 ): Promise<OperationResult<R>> {
-  const collections = [...new Set(request.collections)]
+  const collections = [...new Set(request.collections)].filter(
+    (collection) => !isEphemeralCollection(collection),
+  )
   for (const key of Object.keys(request.scalars ?? {}))
     if (!isScalarStateKey(key)) throw programmingError(`unknown scalar state key: ${key}`)
   const now = ctx.now.toISOString()
@@ -273,6 +279,8 @@ export async function runOperation<R>(
 
     // Core State'i yerinde değiştirir; yüklenen satırlar fark için dokunulmadan kalır.
     const target: Record<string, unknown> = structuredClone(request.scalars ?? {})
+    // Core denetimi yalnız bu işlem içinde yaşar: boş başlar, farka girmez (collections.ts).
+    target.audit = []
     for (const collection of collections)
       target[collection] = [...(before.get(collection)?.values() ?? [])].map((row) =>
         structuredClone(row.data),

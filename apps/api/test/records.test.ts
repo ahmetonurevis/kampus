@@ -271,6 +271,15 @@ describe('records deposu', () => {
     )
   })
 
+  test("core denetim koleksiyonu (audit) records'a yazılamaz (500)", async () => {
+    const { id } = await createInstitution(app)
+    const audit = { collection: 'audit' as const, id: 'test-audit-1', data: { id: 'test-audit-1' } }
+    const isInternal = (error: unknown) => error instanceof AppError && error.statusCode === 500
+    await assert.rejects(writeRecords(db, id, [{ kind: 'insert', ...audit }], LATER), isInternal)
+    await assert.rejects(insertMissingRecords(db, id, [audit], LATER), isInternal)
+    assert.deepEqual(await rowsOf(id), [])
+  })
+
   test('eksik kayıt ekleme idempotenttir ve değişmiş kaydı ezmez', async () => {
     const id = await institutionWith([invoice('test-inv-1')])
     await writeRecords(

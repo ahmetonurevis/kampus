@@ -3,7 +3,12 @@ import { z } from 'zod'
 
 import { AppError, ConflictError, MESSAGES, RuleViolationError } from '../errors.ts'
 import type { Database } from './client.ts'
-import { isRecordCollection, type CollectionName, type RecordData } from './collections.ts'
+import {
+  isEphemeralCollection,
+  isRecordCollection,
+  type CollectionName,
+  type RecordData,
+} from './collections.ts'
 import { planPositions, POSITION_STEP } from './positions.ts'
 import { RECORD_MAX_BYTES, records } from './schema/records.ts'
 
@@ -45,6 +50,14 @@ function programmingError(what: string, cause?: unknown): AppError {
 function assertCollections(collections: readonly string[]): void {
   for (const collection of collections)
     if (!isRecordCollection(collection)) throw programmingError(`unknown collection ${collection}`)
+}
+
+/** Geçici koleksiyon (`audit`) `records`'a yazılmaz; yazma girişimi programlama hatasıdır. */
+function assertWritable(collections: readonly string[]): void {
+  assertCollections(collections)
+  for (const collection of collections)
+    if (isEphemeralCollection(collection))
+      throw programmingError(`collection is not stored: ${collection}`)
 }
 
 function toStored(row: typeof records.$inferSelect): StoredRecord {
@@ -186,7 +199,7 @@ export async function writeRecords(
   now: Date,
 ): Promise<WrittenRecord[]> {
   if (writes.length === 0) return []
-  assertCollections(writes.map((write) => write.collection))
+  assertWritable(writes.map((write) => write.collection))
   const prepared = writes.map((write) =>
     write.kind === 'archive' || write.kind === 'move'
       ? write
@@ -319,7 +332,7 @@ export async function insertMissingRecords(
   chunkSize = 1000,
 ): Promise<number> {
   const collections = [...new Set(items.map((item) => item.collection))]
-  assertCollections(collections)
+  assertWritable(collections)
   return db.transaction(async (tx) => {
     const stored = new Map<string, number>()
     if (collections.length > 0) {

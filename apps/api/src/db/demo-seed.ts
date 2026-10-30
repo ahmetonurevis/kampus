@@ -10,7 +10,7 @@ import {
   type MembershipLinkInput,
 } from '../services/identity.ts'
 import type { Database } from './client.ts'
-import { RECORD_COLLECTIONS, recordKey, type RecordData } from './collections.ts'
+import { recordKey, STORED_COLLECTIONS, type RecordData } from './collections.ts'
 import { insertMissingRecords } from './records.ts'
 
 /** Üretim dışında `DEMO_PASSWORD` verilmezse kullanılan demo parolası. */
@@ -146,9 +146,9 @@ export function demoState(slug: DemoSlug, now: Date): State {
   return state
 }
 
-/** State'in bütün koleksiyonlarını `records` satırlarına çevirir. */
+/** State'in saklanan koleksiyonlarını `records` satırlarına çevirir (core `audit` hariç). */
 export function stateRecords(state: State) {
-  return RECORD_COLLECTIONS.flatMap((collection) => {
+  return STORED_COLLECTIONS.flatMap((collection) => {
     const items: readonly RecordData[] = state[collection]
     return items.map((data) => {
       const id = recordKey(collection, data)

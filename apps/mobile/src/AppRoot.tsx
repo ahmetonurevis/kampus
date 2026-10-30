@@ -1,4 +1,4 @@
-import { Component, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { View, ScrollView, Pressable, useWindowDimensions } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { NavigationContainer, DefaultTheme, DarkTheme, type Route } from '@react-navigation/native'
@@ -8,7 +8,10 @@ import {
 } from '@react-navigation/native-stack'
 import { StatusBar } from 'expo-status-bar'
 import type { Role } from '@kampus/school-core/modules/navigation.ts'
-import { SchoolProvider, useSchool, useActiveSchool, recordError } from './store/SchoolProvider.tsx'
+import { SchoolProvider, useSchool, useActiveSchool } from './store/SchoolProvider.tsx'
+import { appMode } from './api/config.ts'
+import { AppearanceContext, type Appearance } from './ui/appearance.ts'
+import { ErrorBoundary } from './ui/ErrorBoundary.tsx'
 import { roles, availablePages } from './model/school.ts'
 import { moduleNavigationState } from './model/navigation.ts'
 import { accountPages, categoryLabel, pageTitle } from './model/hub.ts'
@@ -403,29 +406,43 @@ function Application() {
     </SafeAreaView>
   )
 }
-class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  override state = { failed: false }
-  static getDerivedStateFromError() {
-    return { failed: true }
-  }
-  override componentDidCatch(error: unknown) {
-    recordError(error, 'render')
-  }
-  override render() {
-    return this.state.failed ? (
-      <View style={{ flex: 1, padding: 28, justifyContent: 'center', gap: 18 }}>
+// API modu yalnız `EXPO_PUBLIC_API_URL` verilince tembel yüklenir; demo modu onu hiç çalıştırmaz.
+const ApiApp = lazy(() => import('./api/ApiApp.tsx'))
+const fixedAppearance = {
+  theme: 'light',
+  resolvedTheme: 'light',
+  reduceMotion: false,
+  setTheme: () => {},
+} satisfies Appearance
+function InvalidConfig() {
+  return (
+    <AppearanceContext.Provider value={fixedAppearance}>
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 18 }}>
         <T bold size={22}>
-          Ekran açılamadı
+          Uygulama yapılandırması geçersiz
         </T>
-        <T>Kayıtlı verileriniz korunuyor. Ekranı yeniden açabilirsiniz.</T>
-        <Button onPress={() => this.setState({ failed: false })}>Yeniden dene</Button>
-      </View>
-    ) : (
-      this.props.children
-    )
-  }
+        <T>Sunucu adresi kullanılamıyor. Uygulamanın güncel sürümünü kurun.</T>
+      </SafeAreaView>
+    </AppearanceContext.Provider>
+  )
 }
 export default function App() {
+  if (appMode.kind === 'invalid')
+    return (
+      <SafeAreaProvider>
+        <InvalidConfig />
+      </SafeAreaProvider>
+    )
+  if (appMode.kind === 'api')
+    return (
+      <SafeAreaProvider>
+        <KeyboardScope>
+          <Suspense fallback={null}>
+            <ApiApp url={appMode.url} />
+          </Suspense>
+        </KeyboardScope>
+      </SafeAreaProvider>
+    )
   return (
     <SafeAreaProvider>
       <KeyboardScope>

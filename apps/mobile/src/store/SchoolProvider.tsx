@@ -22,6 +22,7 @@ import {
   type ThemePreference,
 } from '../model/experience.ts'
 import { clone, roles } from '../model/school.ts'
+import { AppearanceContext } from '../ui/appearance.ts'
 
 // Oturum rolü giriş yapılana kadar boştur.
 export type AppSession = { role: Role | ''; childId: string; theme: ThemePreference }
@@ -267,7 +268,16 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
         reset,
       }}
     >
-      {children}
+      <AppearanceContext.Provider
+        value={{
+          theme: session.theme,
+          resolvedTheme,
+          reduceMotion,
+          setTheme: (theme) => void preference({ theme }),
+        }}
+      >
+        {children}
+      </AppearanceContext.Provider>
     </Context.Provider>
   )
 }

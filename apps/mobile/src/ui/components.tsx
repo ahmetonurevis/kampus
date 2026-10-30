@@ -11,6 +11,7 @@ import {
   StyleSheet,
   type KeyboardTypeOptions,
   type StyleProp,
+  type TextInputProps,
   type TextProps,
   type TextStyle,
   type ViewStyle,
@@ -19,11 +20,11 @@ import type { LucideProps } from 'lucide-react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { icons, type IconName } from './icons.ts'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { useSchool } from '../store/SchoolProvider.tsx'
+import { useAppearance } from './appearance.ts'
 import { palettes, spaces, shape, type Palette } from './theme.ts'
 import { initials, dateLabel } from '@kampus/school-core/lib/format.ts'
 
-export const useColors = (): Palette => palettes[useSchool().resolvedTheme]
+export const useColors = (): Palette => palettes[useAppearance().resolvedTheme]
 
 type IconProps = Omit<LucideProps, 'ref'> & { name?: IconName }
 export function Icon({ name = 'Circle', size = 21, color, ...props }: IconProps) {
@@ -311,6 +312,12 @@ type FieldProps = {
   maxLength?: number
   compact?: boolean
   hideLabel?: boolean
+  /** Parola alanı: metin gizlenir, otomatik düzeltme kapanır. */
+  secure?: boolean
+  /** Alan hatası; alanın altında gösterilir ve ekran okuyucuya duyurulur. */
+  error?: string
+  autoComplete?: TextInputProps['autoComplete']
+  onSubmit?: () => void
 }
 export function Field({
   label,
@@ -324,6 +331,10 @@ export function Field({
   maxLength,
   compact = false,
   hideLabel = false,
+  secure = false,
+  error,
+  autoComplete,
+  onSubmit,
 }: FieldProps) {
   const c = useColors()
   const [focused, setFocused] = useState(false)
@@ -347,10 +358,14 @@ export function Field({
         editable={editable}
         maxLength={maxLength}
         multiline={multiline}
-        autoCapitalize={keyboard === 'email-address' ? 'none' : 'sentences'}
+        autoCapitalize={keyboard === 'email-address' || secure ? 'none' : 'sentences'}
+        {...(secure ? { secureTextEntry: true, autoCorrect: false } : {})}
+        {...(autoComplete ? { autoComplete } : {})}
+        {...(onSubmit ? { onSubmitEditing: onSubmit } : {})}
+        aria-invalid={error ? true : undefined}
         style={{
           borderWidth: 1,
-          borderColor: focused ? c.primary : c.border,
+          borderColor: error ? c.red : focused ? c.primary : c.border,
           borderRadius: shape.field,
           padding: 14,
           minHeight: 52,
@@ -364,6 +379,11 @@ export function Field({
       {!!hint && (
         <T muted size={12}>
           {hint}
+        </T>
+      )}
+      {!!error && (
+        <T size={13} accessibilityLiveRegion="polite" style={{ color: c.red }}>
+          {error}
         </T>
       )}
     </View>
@@ -432,7 +452,7 @@ type SheetProps = {
 export function Sheet({ visible, title, onClose, children, footer, compact = false }: SheetProps) {
   const c = useColors()
   const insets = useSafeAreaInsets()
-  const { reduceMotion } = useSchool()
+  const { reduceMotion } = useAppearance()
   return (
     <Modal
       visible={visible}
@@ -507,7 +527,7 @@ type SelectProps = {
 export function Select({ label, value, options, onChange, required = false }: SelectProps) {
   const c = useColors()
   const insets = useSafeAreaInsets()
-  const { reduceMotion } = useSchool()
+  const { reduceMotion } = useAppearance()
   const [open, setOpen] = useState(false),
     [query, setQuery] = useState('')
   const visible = options.filter((o) =>

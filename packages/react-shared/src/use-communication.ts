@@ -77,6 +77,8 @@ export const MESSAGE_MESSAGES = {
 } as const satisfies CommandMessages
 
 export const ACCESS_MESSAGES = {
+  forbidden:
+    'Bu yazışmanın içeriğini açma yetkiniz yok. Veli yazışmaları yönetici erişimine kapalıdır.',
   access_reason_required: 'Erişim gerekçesi en az 10 karakter olmalıdır.',
   conversation_not_found: 'Yazışma bulunamadı.',
   not_found: 'Yazışma bulunamadı.',

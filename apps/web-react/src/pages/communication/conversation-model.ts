@@ -1,7 +1,12 @@
 // Mesaj ekranının saf hesapları (docs/domain/iletisim-ve-veli.md DOM-ILT-010…014, -024). Yazışma
 // satırı yalnız kimlik taşır (öğrenci, öğretmen, veli hesabı); karşı tarafın adı başvuru
 // koleksiyonlarından kurulur. Ad bulunamazsa genel etiket gösterilir, kimlik gösterilmez.
-import type { ConversationSummary } from '@kampus/react-shared/use-communication.ts'
+import { z } from 'zod'
+import type {
+  ConversationSummary,
+  StartConversationInput,
+} from '@kampus/react-shared/use-communication.ts'
+import { sendMessageSchema } from '@kampus/school-core/lib/communication.ts'
 import { timeLabel, dateLabel } from '@kampus/school-core/lib/format.ts'
 import type { RoleKey } from '@/lib/navigation.ts'
 
@@ -120,4 +125,66 @@ export function counterpartBody(counterpart: string): {
       parentUserId: counterpart.slice(COUNTERPART_PARENT_PREFIX.length),
     }
   return { audience: 'student' }
+}
+
+/**
+ * Gerekçeli erişim yalnız öğrenci–öğretmen yazışmasında açılır (DOM-YTK-052); veli yazışması
+ * yönetici erişimine kapalıdır, bu yüzden "Gerekçeyle aç" yalnız burada gösterilir.
+ */
+export function canOpenAccess(conversation: Pick<ConversationSummary, 'audience'>): boolean {
+  return conversation.audience === 'student'
+}
+
+const SENDER_LABELS: Readonly<Record<string, string>> = {
+  teacher: 'Öğretmen',
+  student: 'Öğrenci',
+  parent: 'Veli',
+}
+
+/** Mesajın gönderen etiketi (yönetici görünümünde iki taraf da karşı taraftır). */
+export function senderLabel(sender: string): string {
+  return SENDER_LABELS[sender] ?? 'Katılımcı'
+}
+
+/** Mesajın altındaki durum: yalnız kendi mesajında, karşı tarafın görmesine göre (DOM-ILT-024). */
+export function deliveryLabel(message: { fromMe: boolean; readAt: string | null }): string | null {
+  if (!message.fromMe) return null
+  return message.readAt ? 'Okundu' : 'Gönderildi'
+}
+
+/**
+ * Yeni yazışma formu: öğretmen öğrenciyi ve muhatabı (öğrenci/veli), öğrenci ve veli öğretmeni
+ * seçer. Alan şekli API gövdesinden ayrıdır (`newConversationBody` çevirir); ilk mesaj zorunludur,
+ * boş yazışma açılmaz.
+ */
+export function newConversationSchema(role: RoleKey) {
+  return z
+    .object({
+      studentId: z.string().min(1, 'Öğrenci seçin.'),
+      teacherId: z.string(),
+      counterpart: z.string(),
+      text: sendMessageSchema.shape.text,
+    })
+    .superRefine((value, context) => {
+      if (role === 'ogretmen' && value.counterpart === '')
+        context.addIssue({
+          code: 'custom',
+          path: ['counterpart'],
+          message: 'Yazışılacak kişiyi seçin.',
+        })
+      if (role !== 'ogretmen' && value.teacherId === '')
+        context.addIssue({ code: 'custom', path: ['teacherId'], message: 'Öğretmen seçin.' })
+    })
+}
+export type NewConversationValues = z.output<ReturnType<typeof newConversationSchema>>
+
+/** Form değerlerini `POST /conversations` gövdesine çevirir; rolün kullanmadığı alan gönderilmez. */
+export function newConversationBody(
+  role: RoleKey,
+  values: NewConversationValues,
+): StartConversationInput {
+  const base = { studentId: values.studentId, text: values.text }
+  return role === 'ogretmen'
+    ? { ...base, ...counterpartBody(values.counterpart) }
+    : { ...base, teacherId: values.teacherId }
 }

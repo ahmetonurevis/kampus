@@ -27,9 +27,8 @@ test.describe('giriş ve çıkış', () => {
       await expect(accountMenuButton(page, name)).toBeVisible()
 
       await signOutThroughMenu(page, name)
-      // Çıkışta oturum kabuktan önce temizlendiğinde adres `?donus=` taşıyabilir (bilinen
-      // yarış, rapor takibi); her iki durumda da giriş sayfası açılır.
-      await expect(page).toHaveURL(/\/giris(\?donus=.*)?$/)
+      // Bilinçli çıkışta dönüş adresi (`?donus=`) olmaz.
+      await expect(page).toHaveURL(/\/giris$/)
       await expect(page.getByRole('button', { name: 'Giriş yap' })).toBeVisible()
 
       // Oturum gerçekten kapandı: korumalı adres yeniden girişe götürür.

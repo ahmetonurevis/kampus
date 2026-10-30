@@ -379,7 +379,14 @@ describe('işlem çalıştırıcı', () => {
     const logs: string[] = []
     const logged = await buildTestApp(db, { logs })
     try {
-      const guidance = ['guidanceCases', 'students', 'teachers', 'classes', 'assignments'] as const
+      const guidance = [
+        'guidanceCases',
+        'students',
+        'teachers',
+        'classes',
+        'assignments',
+        'clubs',
+      ] as const
       const ctx = { ...(await institution(guidance)), log: logged.log }
       // Eski sürümden kalmış core denetim satırı: yüklenmez, dokunulmaz.
       await db.insert(records).values({
@@ -393,7 +400,8 @@ describe('işlem çalıştırıcı', () => {
       })
       const secret = 'GIZLI-IC-NOT-7f3a'
       const secretNote = 'GIZLI-GORUSME-NOTU-91c2'
-      const session = { role: 'yonetici' as const }
+      // Rehberlik iç notunu yalnız rehberlik görevli öğretmen (örnek veride t1) yazar (DOM-YTK-020).
+      const session = { role: 'ogretmen' as const }
       const ids = counterIds()
       const created = await runOperation(ctx, {
         action: 'guidance.create',

@@ -12,15 +12,13 @@ import {
   goalProgress,
 } from './school-workflows.ts'
 import { dateLabel, money, timeLabel, dayKey } from './format.ts'
+import { DEMO_TEACHER_ID, sessionTeacherId, type Redacted } from './scope.ts'
 import { subjectsForGrade } from '../data/curriculum.ts'
 
 type Goal = State['studentGoals'][number]
 type GuidanceCase = State['guidanceCases'][number]
-// Veli ve öğrenciye dönen rehberlik kaydında iç notlar boşaltılır.
-type RedactedGuidanceCase = Omit<GuidanceCase, 'internalNote' | 'notes'> & {
-  internalNote: undefined
-  notes: undefined
-}
+// İç notu görmeyen aktöre dönen rehberlik kaydında iç not alanları yoktur (`lib/scope.ts`).
+type RedactedGuidanceCase = Redacted<GuidanceCase>
 type NamedCollection = 'subjects' | 'students' | 'classes' | 'teachers' | 'branches'
 type RowSource = {
   id: string
@@ -114,13 +112,17 @@ function row<K extends string, T extends RowSource>(
   }
 }
 
+// Formlar ve listeler işlemi yapan öğretmene göre kurulur; öğretmen olmayan rolde demo
+// öğretmeni varsayılan seçimdir.
+const teacherOf = (state: State, session: Session) =>
+  sessionTeacherId(state, session) ?? DEMO_TEACHER_ID
 const netLabel = (value: number) => value.toLocaleString('tr-TR')
 // Branş öğretmeni yalnızca kendi dersinin ve genel net hedeflerini görür.
 function goalVisibleToTeacher(state: State, session: Session, goal: Goal) {
   return (
     session.role !== 'ogretmen' ||
     !goal.subjectId ||
-    goal.subjectId === state.teachers.find((t) => t.id === 't1')?.subjectId
+    goal.subjectId === state.teachers.find((t) => t.id === teacherOf(state, session))?.subjectId
   )
 }
 export function workflowCsvReferences(state: State, session: Session) {
@@ -134,7 +136,7 @@ export function workflowCsvReferences(state: State, session: Session) {
       .filter(
         (s) =>
           session.role !== 'ogretmen' ||
-          s.id === state.teachers.find((t) => t.id === 't1')?.subjectId,
+          s.id === state.teachers.find((t) => t.id === teacherOf(state, session))?.subjectId,
       )
       .map((s) => `subjectId: ${s.id} · ${s.name}`),
   ]
@@ -154,7 +156,7 @@ export function workflowRows(
   const allowedBranch = (id: string | null | undefined) =>
     scope.institution ||
     (session.role === 'ogretmen'
-      ? state.teachers.find((t) => t.id === 't1')?.branchId === id
+      ? state.teachers.find((t) => t.id === teacherOf(state, session))?.branchId === id
       : studentClass?.branchId === id)
   if (definition.key === 'goals')
     return state.studentGoals
@@ -176,12 +178,11 @@ export function workflowRows(
       })
   if (definition.key === 'guidance')
     return state.guidanceCases
-      .filter((r) => own(r) && (session.role !== 'ogretmen' || r.teacherId === 't1'))
+      .filter(
+        (r) => own(r) && (session.role !== 'ogretmen' || r.teacherId === teacherOf(state, session)),
+      )
       .map((r) => {
-        const source =
-          scope.institution || session.role === 'ogretmen'
-            ? r
-            : { ...r, internalNote: undefined, notes: undefined }
+        const source: GuidanceCase | RedactedGuidanceCase = scope.scope.redact('guidanceCases', r)
         return row(
           source,
           r.title,
@@ -235,7 +236,12 @@ export function workflowRows(
       )
   if (definition.key === 'planning')
     return state.schedule
-      .filter((l) => scope.institution || l.teacherId === 't1' || l.originalTeacherId === 't1')
+      .filter(
+        (l) =>
+          scope.institution ||
+          l.teacherId === teacherOf(state, session) ||
+          l.originalTeacherId === teacherOf(state, session),
+      )
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((l) =>
         row(
@@ -249,7 +255,9 @@ export function workflowRows(
       )
   if (definition.key === 'study')
     return state.studyTasks
-      .filter((r) => own(r) && (session.role !== 'ogretmen' || r.teacherId === 't1'))
+      .filter(
+        (r) => own(r) && (session.role !== 'ogretmen' || r.teacherId === teacherOf(state, session)),
+      )
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
       .map((r) =>
         row(
@@ -329,7 +337,7 @@ export function workflowRows(
         (c) =>
           (allowedBranch(c.branchId) ||
             state.clubMemberships.some((m) => m.clubId === c.id && own(m))) &&
-          (session.role !== 'ogretmen' || c.teacherId === 't1'),
+          (session.role !== 'ogretmen' || c.teacherId === teacherOf(state, session)),
       )
       .map((c) => {
         const count = state.clubMemberships.filter(
@@ -467,7 +475,7 @@ export function workflowDetails(
       record.sharedNote,
       `Sonraki takip: ${labelDate(record.followUp)}`,
     ])
-    if (scope.institution || session.role === 'ogretmen') {
+    if (scope.scope.counselor) {
       section('Kurum içi görüşme notları', [
         record.internalNote,
         ...present(record.notes).map((n) => `${labelDate(n.date)} · ${n.text}`),
@@ -545,7 +553,8 @@ export function workflowDetails(
         (r) =>
           r.weakTopics.length &&
           (session.role !== 'ogretmen' ||
-            r.subjectId === state.teachers.find((t) => t.id === 't1')?.subjectId),
+            r.subjectId ===
+              state.teachers.find((t) => t.id === teacherOf(state, session))?.subjectId),
       )) {
         if (mayRun(session, 'study-task'))
           actions.push(
@@ -645,7 +654,7 @@ export function workflowDetails(
     )
     if (record.status !== 'İptal') {
       if (record.requiresConsent) add('consent', 'Veli onayı ver / güncelle')
-      if (session.role !== 'ogretmen' || record.teacherId === 't1')
+      if (session.role !== 'ogretmen' || record.teacherId === teacherOf(state, session))
         add('event-cancel', 'Etkinliği iptal et')
     }
   }
@@ -778,7 +787,8 @@ export function workflowForm(
     teachers = state.teachers.filter((t) => t.isActive),
     branches = state.branches.filter((b) => b.isActive)
   const initialStudent = overrides.studentId || scope.students[0]?.id || ''
-  const teacherSubjectId = state.teachers.find((t) => t.id === 't1')?.subjectId || ''
+  const teacherSubjectId =
+    state.teachers.find((t) => t.id === teacherOf(state, session))?.subjectId || ''
   // Kayıt yalnız onu kullanan komutun koleksiyonunda aranır; kimlik yoksa null, bulunamazsa undefined.
   const recordIn = <T extends { id: string }>(list: readonly T[] | undefined) =>
     recordId ? list?.find((r) => r.id === recordId) : null
@@ -889,7 +899,7 @@ export function workflowForm(
       title: 'Takip dosyası aç',
       initial: {
         studentId: initialStudent,
-        teacherId: 't1',
+        teacherId: teacherOf(state, session),
         title: '',
         plan: '',
         sharedNote: '',
@@ -901,12 +911,17 @@ export function workflowForm(
         choice(
           'teacherId',
           'Sorumlu öğretmen',
-          options(session.role === 'ogretmen' ? teachers.filter((t) => t.id === 't1') : teachers),
+          options(
+            session.role === 'ogretmen'
+              ? teachers.filter((t) => t.id === teacherOf(state, session))
+              : teachers,
+          ),
         ),
         field('title', 'Takip başlığı'),
         field('plan', 'Destek planı', 'textarea'),
         field('sharedNote', 'Veli ve öğrenciyle paylaşılan not', 'textarea'),
-        field('internalNote', 'Kurum içi not', 'textarea'),
+        // İç notu yalnız rehberlik görevli öğretmen yazar (DOM-ILT-040).
+        ...(scope.scope.counselor ? [field('internalNote', 'Kurum içi not', 'textarea')] : []),
         field('followUp', 'Sonraki takip tarihi', 'date'),
       ],
     })
@@ -1000,7 +1015,8 @@ export function workflowForm(
                 (s) =>
                   exam?.subjectIds.includes(s.id) &&
                   (session.role !== 'ogretmen' ||
-                    s.id === state.teachers.find((t) => t.id === 't1')?.subjectId),
+                    s.id ===
+                      state.teachers.find((t) => t.id === teacherOf(state, session))?.subjectId),
               ),
             ),
           ),
@@ -1087,7 +1103,7 @@ export function workflowForm(
       title: record ? 'Dersi düzenle' : 'Ders planla',
       initial: {
         classId: record?.classId || 'c1',
-        teacherId: record?.teacherId || 't1',
+        teacherId: record?.teacherId || teacherOf(state, session),
         subjectId: record?.subjectId || 'math',
         date: record?.date || `${future}T09:00:00.000Z`,
         duration: record?.duration || 40,
@@ -1179,7 +1195,8 @@ export function workflowForm(
               subjectsForGrade(classroom?.grade || 7).filter(
                 (s) =>
                   session.role !== 'ogretmen' ||
-                  s.id === state.teachers.find((t) => t.id === 't1')?.subjectId,
+                  s.id ===
+                    state.teachers.find((t) => t.id === teacherOf(state, session))?.subjectId,
               ),
             ),
           ),
@@ -1363,7 +1380,7 @@ export function workflowForm(
       initial: {
         title: '',
         branchId: 'b1',
-        teacherId: 't1',
+        teacherId: teacherOf(state, session),
         capacity: 20,
         description: '',
         meeting: '',
@@ -1377,7 +1394,8 @@ export function workflowForm(
           options(
             teachers.filter(
               (t) =>
-                t.branchId === values.branchId && (session.role !== 'ogretmen' || t.id === 't1'),
+                t.branchId === values.branchId &&
+                (session.role !== 'ogretmen' || t.id === teacherOf(state, session)),
             ),
           ),
         ),
@@ -1449,7 +1467,9 @@ export function workflowForm(
           'Kulüp',
           options(
             state.clubs.filter(
-              (c) => c.status === 'Aktif' && (session.role !== 'ogretmen' || c.teacherId === 't1'),
+              (c) =>
+                c.status === 'Aktif' &&
+                (session.role !== 'ogretmen' || c.teacherId === teacherOf(state, session)),
             ),
             (c) => c.title,
           ),

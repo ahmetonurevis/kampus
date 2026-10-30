@@ -9,6 +9,7 @@ import {
 } from '@kampus/school-core/lib/assessment-automation.ts'
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
+import { userErrorMessage } from '../lib/error-message.ts'
 import { recordError, useActiveSchool } from '../store/SchoolProvider.tsx'
 import type { ScreenProps } from '../route-types.ts'
 import {
@@ -144,18 +145,7 @@ export default function TutoringScreen({ route }: ScreenProps<'Module'>) {
   }
   function showError(exception: unknown) {
     recordError(exception, 'tutoring', 'warn')
-    const issues: unknown =
-      typeof exception === 'object' && exception !== null && 'issues' in exception
-        ? exception.issues
-        : undefined
-    const first: unknown = Array.isArray(issues) ? issues[0] : undefined
-    const issue =
-      typeof first === 'object' && first !== null && 'message' in first ? first.message : undefined
-    const message =
-      (typeof issue === 'string' && issue) ||
-      (exception instanceof Error && exception.name === 'Error'
-        ? exception.message
-        : 'Etüt işlemi tamamlanamadı. Tekrar deneyin.')
+    const message = userErrorMessage(exception, 'Etüt işlemi tamamlanamadı. Tekrar deneyin.')
     setError(message)
     notify(message, 'error')
   }

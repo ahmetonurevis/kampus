@@ -58,7 +58,8 @@ export type Skill = keyof typeof SKILLS
 
 /**
  * Birincil beceri olabilenler (DOM-BEC-001): bir görev tek beceriye puan yazar. Dil kullanımı
- * otomatik puanlı görevlerin birincil becerisi olabilir (DOM-BEC-002); alt bileşenler olamaz.
+ * yalnız soru, quiz ve alıştırma setinde birincil beceri olabilir (DOM-KYN-012 istisnası; denetim
+ * `resource.ts` `publicationIssues`); alt bileşenler olamaz.
  */
 export const PRIMARY_SKILLS = [
   'reading',

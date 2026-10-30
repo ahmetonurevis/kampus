@@ -44,6 +44,7 @@ import {
   schoolText,
   student,
 } from './support/content-fixtures.ts'
+import type { PrimarySkill } from '../packages/school-core/src/content/taxonomy.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 const parse = (input: ResourceVersionInput) => resourceVersionInputSchema.parse(input)
@@ -411,6 +412,63 @@ describe('Yayım denetimi', () => {
       ),
       ['cefr_requires_english', 'skill_required'],
     )
+  })
+
+  test('DOM-KYN-012, DOM-BEC-001: dil kullanımı yalnız soru, quiz ve alıştırma setinde birincil beceridir', () => {
+    const tagged = (content: ResourceVersionInput['content'], primarySkill: PrimarySkill) =>
+      languagePassage({ content, tags: { cefrLevel: 'B1', primarySkill } })
+    const text = { type: 'text' as const, body: 'Grammar notes.' }
+    const audio = { type: 'audio' as const, fileId: 'f', transcript: 'Döküm' }
+    const homework = {
+      type: 'homework_template' as const,
+      instructions: 'Write an email.',
+      submissionKinds: ['text' as const],
+      criteria: 'Görev, tutarlılık.',
+    }
+    for (const content of [
+      { type: 'reading_passage' as const, body: 'Text.' },
+      audio,
+      { type: 'video' as const, fileId: 'f', transcript: 'Döküm' },
+      text,
+      homework,
+    ]) {
+      assert.deepEqual(
+        issuesOf(tagged(content, 'language_use'), 'language_school'),
+        ['language_use_primary_not_allowed'],
+        content.type,
+      )
+    }
+    // Soru (fikstür birincil beceri dil kullanımı), iki kurum türünde de geçerlidir.
+    assert.deepEqual(issuesOf(multipleChoice(), 'language_school'), [])
+    assert.deepEqual(issuesOf(multipleChoice()), [])
+
+    // Okuma parçası, ses ve video dört temel beceriden birini ister; aracılık da yetmez.
+    const mediated = languagePassage({
+      content: audio,
+      tags: {
+        cefrLevel: 'B1',
+        primarySkill: 'mediation',
+        mediation: { sourceSkill: 'listening', targetSkill: 'speaking' },
+      },
+    })
+    assert.deepEqual(issuesOf(mediated, 'language_school'), ['core_skill_required'])
+    assert.deepEqual(issuesOf(tagged(audio, 'listening'), 'language_school'), [])
+    // Aracılık görevi (ödev şablonu) aracılığı birincil beceri olarak taşıyabilir.
+    assert.deepEqual(
+      issuesOf(
+        languagePassage({
+          content: homework,
+          tags: {
+            cefrLevel: 'B1',
+            primarySkill: 'mediation',
+            mediation: { sourceSkill: 'reading', targetSkill: 'writing' },
+          },
+        }),
+        'language_school',
+      ),
+      [],
+    )
+    assert.deepEqual(issuesOf(tagged(homework, 'writing'), 'language_school'), [])
   })
 
   test('DOM-KYN-020, 024: lisans ve gereken kaynak gösterimi olmadan yayın yok', () => {
@@ -1346,21 +1404,6 @@ describe('Dosya, görünüm ve arama', () => {
     assert.ok(shown.type === 'audio')
     assert.equal(shown.transcript, 'Döküm metni')
     assert.equal(shown.captionsVtt, vtt)
-
-    // Dinleme kaynağından aracılık görevi de dinlemedir.
-    const mediation = build(
-      languagePassage({
-        content: { type: 'video', fileId: 'f', transcript: 'Döküm metni' },
-        tags: {
-          cefrLevel: 'B1',
-          primarySkill: 'mediation',
-          mediation: { sourceSkill: 'listening', targetSkill: 'speaking' },
-        },
-      }),
-    ).version
-    const mediated = learnerView(mediation, { random }).content
-    assert.ok(mediated.type === 'video')
-    assert.equal(mediated.transcript, null)
 
     // Dinleme görevi olmayan ses ve videoda döküm erişilebilirlik içindir, hep görünür.
     const lesson = build(

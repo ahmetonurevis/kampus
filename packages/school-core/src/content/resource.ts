@@ -601,6 +601,10 @@ export type PublicationContext = {
 }
 
 const ENGLISH_SUBJECT_ID = 'english'
+/** Birincil becerisi dil kullanımı olabilen türler (ürün kararı; DOM-KYN-012 istisnası). */
+const LANGUAGE_USE_PRIMARY_TYPES: readonly ContentType[] = ['question', 'quiz', 'exercise_set']
+/** Birincil becerisi dört temel beceriden biri olmak zorunda olan türler. */
+const CORE_SKILL_TYPES: readonly ContentType[] = ['reading_passage', 'audio', 'video']
 
 /**
  * Yayım koşulları (DOM-KYN-003, 010, 013, 020, 021, 024; IST-031, IST-036). Bütün eksikleri
@@ -674,6 +678,29 @@ export function publicationIssues(context: PublicationContext): PublicationIssue
     if (tags.primarySkill === null) {
       add('skill_required', 'Birincil beceriyi seçin.', 'tags', 'primarySkill')
     }
+  }
+
+  // DOM-KYN-012, DOM-BEC-001: dil kullanımı yalnız otomatik puanlı soru, quiz ve alıştırma setinde
+  // birincil beceridir; okuma parçası, ses ve video dört temel beceriden birini ister.
+  const primary = tags.primarySkill
+  if (primary === 'language_use' && !LANGUAGE_USE_PRIMARY_TYPES.includes(content.type)) {
+    add(
+      'language_use_primary_not_allowed',
+      'Dil kullanımı yalnız soru, quiz ve alıştırma setinde birincil beceri olur; okuma, dinleme, yazma veya konuşmayı seçin.',
+      'tags',
+      'primarySkill',
+    )
+  } else if (
+    primary !== null &&
+    CORE_SKILL_TYPES.includes(content.type) &&
+    SKILLS[primary].group !== 'core'
+  ) {
+    add(
+      'core_skill_required',
+      'Okuma parçası, ses ve videonun birincil becerisi okuma, dinleme, yazma veya konuşmadır.',
+      'tags',
+      'primarySkill',
+    )
   }
 
   // Okuma ve dinleme parçası tek düzeye bağlanır (DOM-KYN-002, DOM-KYN-012).
@@ -1528,9 +1555,11 @@ export type LearnerViewOptions = {
   showTranscript?: boolean | undefined
 }
 
-/** Dinleme becerisini ölçen içerik mi: birincil beceri dinleme veya dinlemeden aracılık. */
-const isListeningTask = (tags: ResourceTags) =>
-  tags.primarySkill === 'listening' || tags.mediation?.sourceSkill === 'listening'
+/**
+ * Dinleme becerisini ölçen içerik mi. Ses ve videonun birincil becerisi dört temel beceriden
+ * biridir (`publicationIssues`); aracılık birincil beceri olamadığı için yalnız dinleme bakılır.
+ */
+const isListeningTask = (tags: ResourceTags) => tags.primarySkill === 'listening'
 
 /**
  * Öğrenci/veli görünümü: `answerKey` (doğru cevap ve çözüm açıklaması) ve lisans ayrıntısı

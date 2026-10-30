@@ -67,11 +67,11 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 
 ### DOM-KYN-012 · CEFR seviyesi ve beceri sözlüğü
 
-- **Kural:** CEFR etiketi `Pre-A1, A1, A2, A2+, B1, B1+, B2, B2+, C1, C2` listesinden seçilir. Beceri etiketi en az biri olmak üzere `okuma`, `dinleme`, `yazma`, `konuşma`; isteğe bağlı `sözlü etkileşim`, `yazılı etkileşim`, `aracılık`, `kelime`, `dil bilgisi`, `sesletim`. Okuma ve dinleme parçasında tek seviye verilir, seviye aralığı verilmez.
+- **Kural:** CEFR etiketi `Pre-A1, A1, A2, A2+, B1, B1+, B2, B2+, C1, C2` listesinden seçilir. Beceri etiketi en az biri olmak üzere `okuma`, `dinleme`, `yazma`, `konuşma`; isteğe bağlı `sözlü etkileşim`, `yazılı etkileşim`, `aracılık`, `kelime`, `dil bilgisi`, `sesletim`. Okuma ve dinleme parçasında tek seviye verilir, seviye aralığı verilmez. İstisna (DOM-KYN-012, dil kullanımı): `dil kullanımı` yalnız soru, quiz ve alıştırma setinde birincil beceri olabilir; okuma parçası, ses ve video dört temel beceriden (`okuma`, `dinleme`, `yazma`, `konuşma`) birini, yazma/konuşma görevi (ödev şablonu) dört temel beceriden birini veya aracılık görevinde `aracılık`ı birincil beceri olarak taşır. Kural iki kurum türünde de uygulanır.
 - **Gerekçe:** Seviye aralıklı parça seviye önerisi hesabını bozar; beceri sözlüğü sabit olmazsa raporlar bölünür.
 - **Kaynak:** CEFR-CV (2020) seviye ve ölçek yapısı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/taxonomy.ts` (`CEFR_LEVELS`, `SKILLS`, `PRIMARY_SKILLS`).
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/taxonomy.ts` (`CEFR_LEVELS`, `SKILLS`, `PRIMARY_SKILLS`), `packages/school-core/src/content/resource.ts` (`publicationIssues`: `language_use_primary_not_allowed`, `core_skill_required`).
 
 ### DOM-KYN-013 · Etiketsiz soru değerlendirmeye girmez
 

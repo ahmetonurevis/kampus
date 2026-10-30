@@ -200,7 +200,7 @@ describe('üretim güvenlik varsayılanları', () => {
     }
   })
 
-  test('DOM-ILT-100, DOM-ILT-102, DOM-ILT-092: log gizleme üst düzey, iç içe ve geçmiş dizisindeki serbest metni yazmaz', async () => {
+  test('DOM-ILT-100, DOM-ILT-102, DOM-ILT-092, DOM-KAY-003, DOM-KAY-032: log gizleme üst düzey, iç içe ve geçmiş dizisindeki serbest metni yazmaz', async () => {
     const logs: string[] = []
     const texts = {
       note: 'Gizli görüşme konusu.',
@@ -213,6 +213,13 @@ describe('üretim güvenlik varsayılanları', () => {
       followUp: 'Gizli ek yanıt.',
       bodyAnswer: 'Gövdedeki gizli yanıt.',
       reasonCategory: 'health',
+      phone: '05559990777',
+      recordPhone: '05559990778',
+      recordEmail: 'gizli-aday@kampus.example',
+      guardianName: 'Gizli Veli Adı',
+      recordGuardianName: 'Kayıttaki Gizli Veli',
+      prospectNote: 'Gizli aday görüşme notu.',
+      recordProspectNote: 'Kayıttaki gizli aday notu.',
     }
     // Uygulamanın gerçek logger yapılandırması (`REDACTED_PATHS`); hem uygulama hem istek logu.
     const app = await buildTestApp(db, {
@@ -239,8 +246,34 @@ describe('üretim güvenlik varsayılanları', () => {
       app.log.info({ answer: texts.answer, followUps: [{ text: texts.followUp }] }, 'soru')
       app.log.info({ body: { answer: texts.bodyAnswer } }, 'soru gövdesi')
       app.log.info({ reasonCategory: texts.reasonCategory }, 'mazeret')
+      app.log.info(
+        {
+          phone: texts.phone,
+          guardianName: texts.guardianName,
+          notes: [{ text: texts.prospectNote }],
+        },
+        'aday',
+      )
+      app.log.info(
+        {
+          record: {
+            phone: texts.recordPhone,
+            email: texts.recordEmail,
+            guardianName: texts.recordGuardianName,
+            notes: [{ text: texts.recordProspectNote, author: 'Ön Büro' }],
+          },
+        },
+        'aday kaydı',
+      )
       const lines = logs.join('').split('\n').filter(Boolean)
-      for (const message of ['redaksiyon üst düzey', 'redaksiyon gövde', 'geçmiş', 'soru'])
+      for (const message of [
+        'redaksiyon üst düzey',
+        'redaksiyon gövde',
+        'geçmiş',
+        'soru',
+        'aday',
+        'aday kaydı',
+      ])
         assert.ok(
           lines.some((line) => line.includes(`"msg":"${message}"`)),
           `log satırı yok: ${message}`,

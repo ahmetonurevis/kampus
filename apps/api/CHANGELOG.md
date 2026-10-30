@@ -2,6 +2,17 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Aday/CRM yazma uçları
+
+- `POST /api/v1/prospects` (aday ekle; 201 + `Location`; `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`), `PATCH /api/v1/prospects/:prospectId` (aşama; gövde `{ stage, lostReason?, siblingOfId? }`), `POST /api/v1/prospects/:prospectId/notes` (not; 201 + `Location`), `POST /api/v1/prospects/:prospectId/meetings` (tanışma görüşmesi; 200) ve `POST /api/v1/prospects/:prospectId/trial-lessons` (deneme dersi; 200; yalnız `language_school`, okulda her rol için 404). Var olan adayı değiştiren uçlarda `If-Match` zorunlu (eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`). Kurallar core 2.19.0 `lib/prospects.ts` (DOM-KAY-001…009, DOM-KAY-030…034, DOM-DIL-030); roller yalnız `yonetici` ve `onburo` (öteki roller 403 `forbidden`), modül `crm`.
+- Aşama değişikliği `/stage` alt yolu yerine adayın kendi `PATCH`'idir: api-tasarimi.md §1 iç içe yolu yalnız sahiplikte kabul eder; durum geçişi talep ve randevuda da kaynağın `PATCH`'idir.
+- Adaylar kısmi yüklenmez: tekillik (DOM-KAY-002, -031), kardeş doğrulaması, görüşme çakışması ve deneme dersi katılımcı/kapasite sayımı kurumun bütün adaylarına kurum kilidi altında bakar. Aynı adayı eşzamanlı açan iki istekten ve aynı odaya eşzamanlı iki görüşmeden yalnız biri yazılır, öteki 409 `prospect_duplicate` / `meeting_conflict` alır (test:pg).
+- Not yazarının gösterilen adı oturum kullanıcısından (`users.name`) okunur; gövdede `authorName` 400 `validation_failed`. Kullanıcı satırı bulunamazsa not boş yazarla yazılmaz: programlama hatası olarak düz `Error` fırlar (500 `internal_error`, ayrıntı yalnız logda).
+- Mükerrer reddi (`prospect_duplicate`, `prospect_contact_shared`) eşleşen adayın kimliğini, telefonunu, e-postasını ve adını taşımaz; yanıt yalnız kod, ileti ve alan yolu içerir, logda da kimlik yoktur.
+- Log gizleme listesine `phone` (üst düzey), `guardianName`, `*.guardianName`, `notes` ve `*.notes` eklendi (kvkk: K); `test/security-defaults.test.ts` gerçek logger yapılandırmasıyla doğrular. Denetim kaydına yalnız değişen alan adları yazılır.
+- Kesin kayıt ucu (`prospect.enroll`) açılmadı; öğrenci, fatura ve sözleşme yazdığı için ayrı görevdir (`TODO(api-prospect-enroll)`).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
 ## Alınabilir randevu saatleri okuma ucu
 
 - `GET /api/v1/appointments/slots?studentId=…&from=…&to=…` (öğrenci, veli): öğrencinin sınıfına ders veren etkin öğretmenlerin gelecekteki uygunluk saatleri; her saat `slotId`, `teacherId`, `teacherName`, `startsAt`, `duration`, `campusName` (varsa), `subjectNames` ve `available` taşır (`BookableSlot`). Kural core 2.19.0 `bookableSlots` (DOM-ILT-105); `available: false` talepteki `appointment_conflict` kararıyla aynıdır, nedeni, saati tutan randevu ve kişisi ile saatin iç notu dönmez (DOM-ILT-073).

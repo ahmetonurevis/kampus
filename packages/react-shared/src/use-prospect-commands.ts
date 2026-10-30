@@ -1,0 +1,179 @@
+import type { KampusClient } from '@kampus/api-client/client.ts'
+import type { operations } from '@kampus/api-client/schema.d.ts'
+
+import { collectionKeyPrefix } from './collections.ts'
+import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
+import { useApiCommand } from './use-api-command.ts'
+
+// Aday/CRM yazma komutları (`POST /prospects`, `PATCH /prospects/:id`,
+// `POST /prospects/:id/{notes,meetings,trial-lessons}`; core `prospect.create` `prospect.stage`
+// `prospect.note` `prospect.meeting` `prospect.trial`, docs/domain/kayit-ve-crm.md DOM-KAY-002…009,
+// DOM-KAY-030…034, DOM-DIL-030). Okuma genel koleksiyon kancalarındadır (`prospects`).
+// Hepsi `exclusive`: yollu `issues` (mükerrer aday `phone`, kardeş `siblingOfId`, görüşme çakışması
+// `date`, veli onayı `guardianConsent`) yalnız form alanında görünür, toast çıkmaz; yolsuz hata
+// tek toast olur. Aday ekleme `Idempotency-Key` taşır; var olan adayı değiştiren komutlar okunan
+// sürümü `If-Match` olarak taşır, sürüm yoksa istek atılmaz (`requireIfMatch`).
+// TODO(api-prospect-enroll): kesin kayıt kancası uç açılınca eklenir (DOM-KAY-035).
+
+type JsonBody<TOperation extends keyof operations> = NonNullable<
+  operations[TOperation]['requestBody']
+>['content']['application/json']
+
+export type CreateProspectBody = JsonBody<'createProspect'>
+export type ChangeProspectStageBody = JsonBody<'changeProspectStage'>
+export type AddProspectNoteBody = JsonBody<'addProspectNote'>
+export type ScheduleProspectMeetingBody = JsonBody<'scheduleProspectMeeting'>
+export type ScheduleTrialLessonBody = JsonBody<'scheduleTrialLesson'>
+
+/** Var olan adayı değiştiren komut: okunan sürüm `If-Match` olarak zorunludur. */
+interface ProspectCommandInput<TBody> {
+  prospectId: string
+  version: number
+  body: TBody
+}
+export type ChangeProspectStageInput = ProspectCommandInput<ChangeProspectStageBody>
+export type AddProspectNoteInput = ProspectCommandInput<AddProspectNoteBody>
+export type ScheduleProspectMeetingInput = ProspectCommandInput<ScheduleProspectMeetingBody>
+export type ScheduleTrialLessonInput = ProspectCommandInput<ScheduleTrialLessonBody>
+
+/** Aday bu arada başka biri tarafından güncellendi (`If-Match` tutmadı): güncel kart yüklenir. */
+export const PROSPECT_CHANGED_MESSAGE =
+  'Aday kartı başka biri tarafından güncellendi. Güncel hâlini yükleyip yeniden deneyin.'
+
+export const PROSPECT_MESSAGES = {
+  version_conflict: PROSPECT_CHANGED_MESSAGE,
+} as const satisfies CommandMessages
+
+const versioned = (headers: CommandHeaders) => ({
+  'idempotency-key': headers['idempotency-key'],
+  'if-match': requireIfMatch(headers),
+})
+
+export function createProspectRequest(
+  client: KampusClient,
+  body: CreateProspectBody,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/prospects', {
+    params: { header: { 'idempotency-key': headers['idempotency-key'] } },
+    body,
+  })
+}
+
+export function changeProspectStageRequest(
+  client: KampusClient,
+  { prospectId, body }: ChangeProspectStageInput,
+  headers: CommandHeaders,
+) {
+  return client.PATCH('/api/v1/prospects/{prospectId}', {
+    params: { path: { prospectId }, header: versioned(headers) },
+    body,
+  })
+}
+
+export function addProspectNoteRequest(
+  client: KampusClient,
+  { prospectId, body }: AddProspectNoteInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/prospects/{prospectId}/notes', {
+    params: { path: { prospectId }, header: versioned(headers) },
+    body,
+  })
+}
+
+export function scheduleProspectMeetingRequest(
+  client: KampusClient,
+  { prospectId, body }: ScheduleProspectMeetingInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/prospects/{prospectId}/meetings', {
+    params: { path: { prospectId }, header: versioned(headers) },
+    body,
+  })
+}
+
+export function scheduleTrialLessonRequest(
+  client: KampusClient,
+  { prospectId, body }: ScheduleTrialLessonInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/prospects/{prospectId}/trial-lessons', {
+    params: { path: { prospectId }, header: versioned(headers) },
+    body,
+  })
+}
+
+interface CommandOptions {
+  onSuccess?: () => void | Promise<void>
+}
+
+/**
+ * Başarıda ve 409'da geçersiz kılınan sorgular: aday listesi ve kartı (`prospects` koleksiyonu).
+ * Genel Bakış her açılışta tazelenir (`staleTime: 0`); ayrıca düşürülmez.
+ */
+export const PROSPECT_INVALIDATES: readonly (readonly unknown[])[] = [
+  collectionKeyPrefix('prospects'),
+]
+const versionOf = <TBody>(input: ProspectCommandInput<TBody>) => input.version
+const success = (options: CommandOptions) =>
+  options.onSuccess ? { onSuccess: options.onSuccess } : {}
+
+/** Ön büro yeni aday açar (201); aday listesi tazelenir (DOM-KAY-009). */
+export function useCreateProspect(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: createProspectRequest,
+    invalidates: PROSPECT_INVALIDATES,
+    messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}
+
+/** Adayın aşamasını değiştirir; vazgeçmede neden, yeniden açmada kardeş seçilir (DOM-KAY-030). */
+export function useChangeProspectStage(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: changeProspectStageRequest,
+    version: versionOf<ChangeProspectStageBody>,
+    invalidates: PROSPECT_INVALIDATES,
+    messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}
+
+/** Aday kartına not ekler (201); yazar adı sunucuda oturumdan alınır (DOM-KAY-032). */
+export function useAddProspectNote(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: addProspectNoteRequest,
+    version: versionOf<AddProspectNoteBody>,
+    invalidates: PROSPECT_INVALIDATES,
+    messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}
+
+/** Tanışma görüşmesi planlar veya yeniden planlar (DOM-KAY-033). */
+export function useScheduleProspectMeeting(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: scheduleProspectMeetingRequest,
+    version: versionOf<ScheduleProspectMeetingBody>,
+    invalidates: PROSPECT_INVALIDATES,
+    messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}
+
+/** Dil okulunda deneme dersi planlar; okulda uç 404'tür (DOM-DIL-030, DOM-KAY-034). */
+export function useScheduleTrialLesson(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: scheduleTrialLessonRequest,
+    version: versionOf<ScheduleTrialLessonBody>,
+    invalidates: PROSPECT_INVALIDATES,
+    messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}

@@ -70,6 +70,12 @@ export type WriteTargets = {
   'question.ask': { studentId: string | undefined; subjectId: string; teacherId?: string }
   'question.answer': { question: QuestionParties | undefined }
   'question.withdraw': { question: QuestionParties | undefined }
+  // Aday/CRM (`lib/prospects.ts`): kurum kapsamlıdır, hedef kaydı yetkiyi değiştirmez.
+  'prospect.create': Record<string, never>
+  'prospect.stage': Record<string, never>
+  'prospect.note': Record<string, never>
+  'prospect.meeting': Record<string, never>
+  'prospect.trial': Record<string, never>
 }
 
 /** Soru yetkisinin dayandığı taraflar (DOM-ILT-090…092). */
@@ -148,6 +154,13 @@ export const WRITE_ACTION_ROLES = {
   'question.ask': ['ogrenci'],
   'question.answer': ['ogretmen'],
   'question.withdraw': ['ogrenci'],
+  // Aday ve tanışma görüşmesi kurum genelinde yönetici ve ön büronundur; öğretmen, öğrenci ve
+  // veli aday kaydına erişmez (yetki matrisi "Aday, tanışma görüşmesi", DOM-YTK-021).
+  'prospect.create': ['yonetici', 'onburo'],
+  'prospect.stage': ['yonetici', 'onburo'],
+  'prospect.note': ['yonetici', 'onburo'],
+  'prospect.meeting': ['yonetici', 'onburo'],
+  'prospect.trial': ['yonetici', 'onburo'],
 } as const satisfies Record<WriteAction, readonly Actor['role'][]>
 
 const ROLE_TABLE: Readonly<Record<WriteAction, readonly string[]>> = WRITE_ACTION_ROLES
@@ -376,6 +389,17 @@ function decide(
         ? ALLOWED
         : deny('question_not_found', 'Soru bulunamadı.', 'DOM-ILT-091', 'not_found')
     }
+    case 'prospect.create':
+    case 'prospect.stage':
+    case 'prospect.note':
+    case 'prospect.meeting':
+      return ALLOWED
+    case 'prospect.trial':
+      // Deneme dersi yalnız dil okulundadır (DOM-DIL-030); okulda işlem bulunmaz gibi davranır
+      // (DOM-YTK-012).
+      return institutionType === 'language_school'
+        ? ALLOWED
+        : deny('trial_lesson_unavailable', 'İlgili kayıt bulunamadı.', 'DOM-DIL-030', 'not_found')
     default:
       return request satisfies never
   }

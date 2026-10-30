@@ -70,6 +70,14 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Kurum türü:** ikisi
 - **Kodda:** yok.
 
+### DOM-KAY-009 · Aday kaydının asgari alanları
+
+- **Kural:** Aday ad, kampüs, ilgi (hedef düzey/seviye, program), kaynak (`DOM-KAY-007`), telefon ve gösterilen aydınlatma metninin sürümüyle açılır; e-posta isteğe bağlıdır. T.C. kimlik no, doğum tarihi, adres, okul notu gibi veriler aday aşamasında alınmaz; kesin kayıtta istenir (`DOM-KAY-012`). 18 yaş altı adayda telefon ve e-posta velinindir ve veli adı zorunludur; yetişkin adayda veli verisi saklanmaz. `school` adayı her zaman 18 yaş altı sayılır; `language_school`'da adayın 18 yaş altı olup olmadığı açıkça seçilir, seçimi olmayan eski kayıt 18 yaş altı sayılır. Ticari ileti onayı (`DOM-KAY-004`) kanal bazında, varsayılan "onay yok" olarak kaydedilir; e-postası olmayan adaya e-posta onayı yazılmaz.
+- **Gerekçe:** Aday satış hunisindedir; amaçla sınırlı ve ölçülü veri dışında veri işlemek gereksiz risk doğurur. Veli kuralı yaş bilinmeden uygulanamayacağı için bilinmeyen yaş en korumalı biçimde yorumlanır.
+- **Kaynak:** KVKK md. 4/2-ç (amaçla bağlantılı, sınırlı ve ölçülü işleme), md. 10 (aydınlatma); 6563 sayılı Kanun md. 6 — **doğrulanmalı** (bkz. `DOM-KAY-004`).
+- **Kurum türü:** ikisi
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`createProspectSchema`, `createProspect`).
+
 ## Kesin kayıt
 
 ### DOM-KAY-010 · Kontenjan
@@ -169,6 +177,50 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Kaynak:** ÖÖKY md. 55/2 (yenilememe ve resmî okula nakil); karne/belge alıkoyma yasağı işletme yorumu — **doğrulanmalı**.
 - **Kurum türü:** `school`
 - **Kodda:** yok — yenileme borç denetimi yapmaz.
+
+## Aday işlemleri (ön büro)
+
+`DOM-KAY-002`, `-005`, `-006` ve `DOM-DIL-030`'un işlem düzeyindeki muhafazakâr yorumu. İşlemleri yalnız `yonetici` ve `onburo` yapar (yetki matrisi "Aday, tanışma görüşmesi"); modül `crm`.
+
+### DOM-KAY-030 · Aşama geçiş tablosu
+
+- **Kural:** Açık aşamalar (`Yeni aday`, `İletişime geçildi`, `Görüşme planlandı`, `Teklif verildi`) arasında yalnız ileri gidilir; aşama atlanabilir. Geri dönüş yoktur. `Görüşme planlandı` elle seçilmez, görüşme veya deneme dersi planlanınca girilir; `Kayıt oldu` yalnız kesin kayıtla girilir (`DOM-KAY-005`). `Vazgeçti` her açık aşamadan nedenle girilir; adayın ileri tarihli görüşmesi ve deneme dersi kalkar, gerçekleşmiş olanlar kalır. `Vazgeçti` aday yalnız `İletişime geçildi` aşamasına yeniden açılır, neden temizlenir ve açılış tekillik denetiminden (`DOM-KAY-002`) geçer.
+- **Gerekçe:** Geri alınabilen aşama dönüşüm raporunu bozar; vazgeçen adayın tuttuğu görüşme saati ve deneme yeri başkasına açılmalıdır.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`nextProspectStages`, `changeProspectStage`). Yanlış ileri geçişi düzelten işlem yoktur; gerekirse yönetici onaylı ayrı işlem olarak gelir (`TODO(crm-stage-back)`).
+
+### DOM-KAY-031 · İletişimi paylaşan aday (kardeş)
+
+- **Kural:** Aynı telefon veya e-postayı taşıyan açık aday varken: ad da aynıysa (boşluk ve büyük/küçük harf farkı gözetilmeden) yeni aday açılmaz; ad farklıysa yeni aday yalnız ön büro iletişimi paylaşan açık adayı kardeş olarak açıkça seçerse açılır. Kardeş seçimi aynı adın mükerrerliğini kaldırmaz. Ret iletisi telefon, e-posta veya diğer adayın adını içermez.
+- **Gerekçe:** `DOM-KAY-002` kardeşe izin verir ama yazım farkıyla aynı kişinin ikinci kez açılmasını da engellemelidir; açık onay en muhafazakâr yoldur.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`findProspectDuplicate`, `createProspect`).
+
+### DOM-KAY-032 · Aday notu eklenir, değişmez
+
+- **Kural:** Aday kartına not yalnız eklenir; düzenlenmez ve silinmez. Notu yazan kişi ve an saklanır. `Kayıt oldu` veya `Vazgeçti` adaya not eklenmez; vazgeçen adayla yeni temas önce adayı yeniden açar (`DOM-KAY-030`). Not alanında özel nitelikli veri yazılmaması için form uyarı gösterir.
+- **Gerekçe:** Temas geçmişi satış ve şikâyet incelemesinin kanıtıdır; kapalı adaya temas eklemek imha süresini (`DOM-KAY-008`) sessizce uzatır.
+- **Kaynak:** İşletme kuralı; KVKK md. 6 (özel nitelikli veri).
+- **Kurum türü:** ikisi
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`addProspectNote`, `PROSPECT_NOTE_NOTICE`).
+
+### DOM-KAY-033 · Tanışma görüşmesi planlama
+
+- **Kural:** Görüşme adayın kampüsünde, gelecek bir anda, 15–120 dakika süreyle ve bir odada yapılır; isteğe bağlı görevli öğretmen aynı kampüsün aktif öğretmenidir. Aynı kampüsteki başka adayın görüşmesiyle aynı oda veya aynı öğretmen için aralık örtüşemez; oda bilgisi olmayan eski görüşme kampüsün bütün odalarını tutuyor sayılır. Öğretmenin dersi, randevusu, etüdü ve odanın ders/etüt/etkinlik kullanımı da çakışma sayılır. Yeniden planlama önceki görüşmenin yerini alır. Görüşme `Yeni aday`/`İletişime geçildi` adayı `Görüşme planlandı` yapar; `Teklif verildi` aday geri gitmez (`DOM-KAY-030`).
+- **Gerekçe:** `DOM-KAY-006`'nın "görevli/oda" çakışması; bilinmeyen kaynak çakışıyor sayılır.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleProspectMeeting`), çakışma `packages/school-core/src/lib/tutor-conflicts.ts`. Ön büro görevlisinin (kullanıcı) kendi çakışması yoktur (`TODO(crm-meeting-host)`).
+
+### DOM-KAY-034 · Deneme dersi planlama
+
+- **Kural:** Deneme dersi (`DOM-DIL-030`) yalnız `language_school`'da, adayın kampüsündeki açık grubun gelecek ve iptal edilmemiş gerçek dersine planlanır. "Program başına bir kez" aday kaydı başına bir kez olarak uygulanır: gerçekleşmiş deneme dersi tekrar planlanmaz, ileri tarihli olan değiştirilebilir. Derse en fazla iki deneme katılımcısı alınır; aktif kursiyer + deneme katılımcısı grup kapasitesini ve 18'i (`DOM-DIL-040`) aşamaz. 18 yaş altı (veya yaşı bilinmeyen) adayda veli adı, veli iletişim bilgisi ve ön büronun kaydettiği veli onayı zorunludur. Adayın görüşmesi ile deneme dersi örtüşemez. Deneme kaydı yoklamaya yazılmaz.
+- **Gerekçe:** `DOM-DIL-030`'un kapasite ve veli onayı şartlarının en korumalı uygulanışı; seviye ve yaş bandı uygunluğu henüz veriyle denetlenemez.
+- **Kaynak:** İşletme kuralı; ÖÖKY md. 48/2.
+- **Kurum türü:** `language_school`
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleTrialLesson`). Seviye ve yaş bandı uygunluğu (`DOM-DIL-041`) ön büro seçimine bırakılır (`TODO(crm-trial-level)`); öğretmenin deneme sonucu (`DOM-DIL-031`) yoktur (`TODO(crm-trial-result)`).
 
 ## Mevcut kodla farklar
 

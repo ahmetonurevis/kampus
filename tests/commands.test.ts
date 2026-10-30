@@ -51,6 +51,13 @@ import {
   askQuestion,
   withdrawQuestion,
 } from '../packages/school-core/src/lib/questions.ts'
+import {
+  addProspectNote,
+  changeProspectStage,
+  createProspect,
+  scheduleProspectMeeting,
+  scheduleTrialLesson,
+} from '../packages/school-core/src/lib/prospects.ts'
 import { csvTemplate } from '../packages/school-core/src/lib/workflow-presentation.ts'
 import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -559,4 +566,70 @@ test('Öğretmenime Sor işlemleri yalnız komut tablosundaki koleksiyonlarla ç
     now,
   )
   withdrawQuestion(operation(state, 'question.withdraw'), student, 'ask1', { withdrawn: true }, now)
+})
+
+test('Aday/CRM işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır', () => {
+  const state = seed()
+  const front = { role: 'onburo' as const, links: [], userId: 'u-front' }
+  const language = { institutionType: 'language_school' } as const
+  const created = createProspect(
+    operation(state, 'prospect.create'),
+    front,
+    {
+      name: 'Komut Aday',
+      phone: '05559998001',
+      branchId: 'b1',
+      interest: 'B1 · Genel İngilizce',
+      source: 'Telefon',
+      minor: true,
+      guardianName: 'Komut Veli',
+      privacyNoticeVersion: 'aydinlatma-2026-1',
+    },
+    id,
+    now,
+    language,
+  )
+  changeProspectStage(
+    operation(state, 'prospect.stage'),
+    front,
+    created.id,
+    { stage: 'İletişime geçildi' },
+    now,
+    language,
+  )
+  addProspectNote(
+    operation(state, 'prospect.note'),
+    front,
+    created.id,
+    { text: 'Aradım.' },
+    id,
+    now,
+  )
+  scheduleProspectMeeting(
+    operation(state, 'prospect.meeting'),
+    front,
+    created.id,
+    { date: '2026-10-10T10:00:00.000Z', room: 'Görüşme odası', teacherId: 't1' },
+    now,
+    language,
+  )
+  const lesson = state.schedule.find(
+    (l) => l.classId === 'c1' && Date.parse(l.date) > Date.parse(now),
+  )!
+  scheduleTrialLesson(
+    operation(state, 'prospect.trial'),
+    front,
+    created.id,
+    { lessonId: lesson.id, guardianConsent: true },
+    now,
+    language,
+  )
+  changeProspectStage(
+    operation(state, 'prospect.stage'),
+    front,
+    created.id,
+    { stage: 'Vazgeçti', lostReason: 'price' },
+    now,
+    language,
+  )
 })

@@ -1,26 +1,35 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
-import { scopeFor, visibleRecords } from '../packages/school-core/src/lib/scope.ts'
+import { scopeFor, visibleRecords, type Actor } from '../packages/school-core/src/lib/scope.ts'
+import type { Session } from '../packages/school-core/src/lib/domain.ts'
+import type { State } from '../packages/school-core/src/data/seed.ts'
 import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
 import {
   workflowDetails,
   workflowRows,
 } from '../packages/school-core/src/lib/workflow-presentation.ts'
+import { resultOf } from './support/result.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 // Rehberlik gizliliği: DOM-ILT-040, DOM-ILT-041, DOM-YTK-020, DOM-YTK-021, DOM-YTK-026.
 const now = '2026-10-06T10:00:00.000Z'
 const seed = () => createSeed(new Date(now))
 let sequence = 0
-const id = (prefix) => `${prefix}-guidance-test-${++sequence}`
+const id = (prefix: string) => `${prefix}-guidance-test-${++sequence}`
 const INTERNAL = 'İlk görüşmede çalışma ortamı ve zaman yönetimi konuşuldu.'
 const SECRET_NOTE = 'Gizli görüşme ayrıntısı guidance-test.'
-const admin = { role: 'yonetici', links: [] }
-const frontOffice = { role: 'onburo', links: [] }
-const teacher = (recordId = 't1') => ({ role: 'ogretmen', links: [{ kind: 'teacher', recordId }] })
-const student = (recordId = 's1') => ({ role: 'ogrenci', links: [{ kind: 'student', recordId }] })
-const parent = (...ids) => ({
+const admin: Actor = { role: 'yonetici', links: [] }
+const frontOffice: Actor = { role: 'onburo', links: [] }
+const teacher = (recordId = 't1'): Actor => ({
+  role: 'ogretmen',
+  links: [{ kind: 'teacher', recordId }],
+})
+const student = (recordId = 's1'): Actor => ({
+  role: 'ogrenci',
+  links: [{ kind: 'student', recordId }],
+})
+const parent = (...ids: string[]): Actor => ({
   role: 'veli',
   links: ids.map((recordId) => ({ kind: 'child', recordId })),
 })
@@ -38,14 +47,18 @@ const opening = {
   sharedNote: 'Paylaşılan plan notu.',
   followUp: '2026-10-20',
 }
-function unchangedOnFailure(state, callback, matcher) {
+function unchangedOnFailure(
+  state: State,
+  callback: () => unknown,
+  matcher: Parameters<typeof assert.throws>[1],
+) {
   const before = JSON.stringify(state)
   assert.throws(callback, matcher)
   assert.equal(JSON.stringify(state), before)
 }
 // Rehberlik görevi olmayan, dosyanın sorumlusu olan öğretmen: demo öğretmeninin görevi alınır.
-function withoutCounselor(state) {
-  state.teachers.find((t) => t.id === 't1').guidanceCounselor = false
+function withoutCounselor(state: State) {
+  state.teachers.find((t) => t.id === 't1')!.guidanceCounselor = false
   return state
 }
 
@@ -61,7 +74,7 @@ test('Örnek veride rehberlik görevi yalnız demo öğretmenindedir', () => {
 test('Rehberlik görevli öğretmen kurumun bütün dosyalarını iç notlarıyla görür', () => {
   const state = seed()
   state.guidanceCases.push({
-    ...structuredClone(state.guidanceCases[0]),
+    ...structuredClone(state.guidanceCases[0]!),
     id: 'guidance-other-campus',
     studentId: 's9',
     teacherId: 't20',
@@ -80,7 +93,7 @@ test('Rehberlik görevli öğretmen kurumun bütün dosyalarını iç notlarıyl
 
 test('Yönetici, görevsiz öğretmen, öğrenci ve veli iç notu görmez; ön büro dosyayı hiç görmez', () => {
   const state = withoutCounselor(seed())
-  const cases = [
+  const cases: [Actor, string[]][] = [
     [admin, ['guidance-s1', 'guidance-s2']],
     [teacher(), ['guidance-s1', 'guidance-s2']],
     [student(), ['guidance-s1']],
@@ -89,7 +102,7 @@ test('Yönetici, görevsiz öğretmen, öğrenci ve veli iç notu görmez; ön b
     [parent('s3'), []],
   ]
   for (const [actor, expected] of cases) {
-    const scope = scopeFor(state, actor!)
+    const scope = scopeFor(state, actor)
     assert.equal(scope.counselor, false)
     const rows = scope.read('guidanceCases', state.guidanceCases)
     assert.deepEqual(
@@ -106,7 +119,7 @@ test('Yönetici, görevsiz öğretmen, öğrenci ve veli iç notu görmez; ön b
   // Dosyada görevli olmayan ve sınıfında öğrencisi olmayan öğretmen dosyayı görmez.
   const stranger = state.teachers.find((t) => t.branchId === 'b2' && !t.guidanceCounselor)
   assert.deepEqual(
-    scopeFor(state, teacher(stranger.id)).read('guidanceCases', state.guidanceCases),
+    scopeFor(state, teacher(stranger!.id)).read('guidanceCases', state.guidanceCases),
     [],
   )
   assert.deepEqual(scopeFor(state, frontOffice).access('guidanceCases'), {
@@ -121,7 +134,8 @@ test('İç not arama, liste ve ayrıntı çıktısına sızmaz', () => {
   runWorkflow(state, { role: 'ogretmen' }, 'guidance-note', note, id, 'guidance-s1', now)
   const counselorRows = workflowRows(state, { role: 'ogretmen' }, 'rehberlik')
   assert.ok(JSON.stringify(counselorRows).includes(SECRET_NOTE), 'görevli öğretmen görür')
-  const search = (rows, term) => rows.filter((row) => JSON.stringify(row).includes(term))
+  const search = (rows: unknown[], term: string) =>
+    rows.filter((row) => JSON.stringify(row).includes(term))
   for (const actor of [admin, student(), parent('s1', 's2')]) {
     const rows = visibleRecords(state, actor, 'guidanceCases')
     assert.ok(rows.length > 0)
@@ -134,7 +148,7 @@ test('İç not arama, liste ve ayrıntı çıktısına sızmaz', () => {
     { role: 'ogrenci' },
     { role: 'veli', childId: 's1' },
     { role: 'veli', childId: 's2' },
-  ]) {
+  ] satisfies Session[]) {
     const rows = workflowRows(state, session, 'rehberlik')
     assert.ok(rows.length > 0, session.role)
     const details = rows.map((row) => workflowDetails(state, session, row))
@@ -162,10 +176,13 @@ test('Denetim kaydı iç not içeriğini değil yalnız alan adını yazar (DOM-
   assert.deepEqual(noteEntry!.masked_fields, ['notes'])
   assert.ok(!JSON.stringify(noteEntry).includes(SECRET_NOTE))
   assert.ok(!JSON.stringify(noteEntry).includes(INTERNAL))
-  assert.ok(!('internalNote' in noteEntry!.old_value) && !('notes' in noteEntry!.new_value))
-  assert.equal(noteEntry!.new_value.sharedNote, 'Düzenli çalışıyor.')
+  assert.ok(
+    !('internalNote' in resultOf(noteEntry!.old_value)) &&
+      !('notes' in resultOf(noteEntry!.new_value)),
+  )
+  assert.equal(resultOf(noteEntry!.new_value).sharedNote, 'Düzenli çalışıyor.')
   assert.equal(
-    noteEntry!.old_value.sharedNote,
+    resultOf(noteEntry!.old_value).sharedNote,
     'Kısa ve düzenli tekrarlar üzerinde birlikte çalışacağız.',
   )
   // Kayıt kendisi iç notu korur; yalnız denetim çıktısı maskelenir.
@@ -194,7 +211,10 @@ test('Denetim kaydı iç not içeriğini değil yalnız alan adını yazar (DOM-
     now,
   )
   assert.ok(!('masked_fields' in state.audit[0]!))
-  assert.equal(state.audit[0]!.new_value.comments.at(-1).text, 'Yorum')
+  assert.equal(
+    resultOf<{ comments: { text: string }[] }>(state.audit[0]!.new_value).comments.at(-1)!.text,
+    'Yorum',
+  )
 })
 
 test('İç notu yalnız rehberlik görevli öğretmen yazar; başarısızlıkta kayıt değişmez', () => {
@@ -218,7 +238,9 @@ test('İç notu yalnız rehberlik görevli öğretmen yazar; başarısızlıkta 
       ),
     isDomainError('guidance_counselor_only', 'forbidden'),
   )
-  const opened = runWorkflow(state, { role: 'yonetici' }, 'guidance', opening, id, undefined, now)
+  const opened = resultOf(
+    runWorkflow(state, { role: 'yonetici' }, 'guidance', opening, id, undefined, now),
+  )
   assert.equal(opened.internalNote, '')
   withoutCounselor(state)
   unchangedOnFailure(

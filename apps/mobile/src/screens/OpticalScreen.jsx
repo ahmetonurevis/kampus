@@ -22,8 +22,8 @@ import {
   Sheet,
   T,
   useColors,
-} from '../ui/components.jsx'
-import { ListRow, Notice, Screen, Section, TextAction } from '../ui/SchoolLayout.jsx'
+} from '../ui/components.tsx'
+import { ListRow, Notice, Screen, Section, TextAction } from '../ui/SchoolLayout.tsx'
 
 const OUTCOME = {
   correct: 'Doğru',

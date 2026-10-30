@@ -1,4 +1,4 @@
-import { KeyboardScope } from './ui/KeyboardLayout.jsx'
+import { KeyboardScope } from './ui/KeyboardLayout.tsx'
 import React, { useState } from 'react'
 import { View, ScrollView, Pressable, useWindowDimensions } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
@@ -20,8 +20,8 @@ import {
   T,
   styles,
   useColors,
-} from './ui/components.jsx'
-import { ThemePreference } from './ui/SchoolLayout.jsx'
+} from './ui/components.tsx'
+import { ThemePreference } from './ui/SchoolLayout.tsx'
 import Home from './screens/Home.jsx'
 import ModuleScreen from './screens/ModuleScreen.jsx'
 import CategoryScreen from './screens/CategoryScreen.jsx'

@@ -21,8 +21,8 @@ import {
   Sheet,
   T,
   useColors,
-} from '../ui/components.jsx'
-import { ListRow, Notice, Screen, Section } from '../ui/SchoolLayout.jsx'
+} from '../ui/components.tsx'
+import { ListRow, Notice, Screen, Section } from '../ui/SchoolLayout.tsx'
 import { useMinute } from '../ui/use-minute.ts'
 
 const ATTENDANCE = ['Geldi', 'Gelmedi', 'İzinli'].map((value) => ({ value, label: value }))

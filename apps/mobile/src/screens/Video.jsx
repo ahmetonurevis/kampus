@@ -3,7 +3,7 @@ import { ScrollView, View } from 'react-native'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { useSchool } from '../store/SchoolProvider.tsx'
 import { context } from '../model/school.ts'
-import { Card, Heading, Icon, T, styles, useColors } from '../ui/components.jsx'
+import { Card, Heading, Icon, T, styles, useColors } from '../ui/components.tsx'
 
 const media = {
   v1: require('../../assets/videos/denklemler.mp4'),

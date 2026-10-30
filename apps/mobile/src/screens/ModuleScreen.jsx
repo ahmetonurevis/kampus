@@ -1,7 +1,7 @@
 import Timetable from './Timetable.jsx'
 import VideoLibrary from './VideoLibrary.jsx'
 import Conversations from './Conversations.jsx'
-import { FormScrollView } from '../ui/KeyboardLayout.jsx'
+import { FormScrollView } from '../ui/KeyboardLayout.tsx'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Switch } from 'react-native'
 import { useSchool } from '../store/SchoolProvider.tsx'
@@ -25,7 +25,7 @@ import WorkflowScreen from './WorkflowScreen.jsx'
 import OpticalScreen from './OpticalScreen.jsx'
 import TutoringScreen from './TutoringScreen.jsx'
 import { workflowPage } from '@kampus/school-core/modules/school-workflows.ts'
-import { ThemePreference } from '../ui/SchoolLayout.jsx'
+import { ThemePreference } from '../ui/SchoolLayout.tsx'
 import {
   Avatar,
   Badge,
@@ -39,10 +39,10 @@ import {
   T,
   styles,
   useColors,
-} from '../ui/components.jsx'
-import OperationForm from '../ui/OperationForm.jsx'
+} from '../ui/components.tsx'
+import OperationForm from '../ui/OperationForm.tsx'
 import { useMinute } from '../ui/use-minute.ts'
-import RecordCard from '../ui/RecordCard.jsx'
+import RecordCard from '../ui/RecordCard.tsx'
 import appConfig from '../../app.json'
 
 function Settings() {

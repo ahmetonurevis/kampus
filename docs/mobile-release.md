@@ -82,7 +82,7 @@ a5c4d8eab035581112111ac13b8b6d8c46daa3f4b8950f1e4dd9d3cbd2c8cf14
 - `src/AppRoot.jsx`: üst bar, kategori menüsü ve gezinme.
 - `src/screens/RoleHome.jsx`, `SchoolLists.jsx`, `SchoolDetails.jsx`, `Attendance.jsx`: öğrenci/veli/öğretmen ana ekranları, listeler, teslim/yanıt ve yoklama.
 - `src/screens/Timetable.jsx`, `VideoLibrary.jsx`, `Conversations.jsx`: ders programı, video kütüphanesi ve mesajlar.
-- `src/ui/SchoolLayout.jsx`, `components.jsx`, `KeyboardLayout.jsx`: ortak bölüm/liste, alanlar, seçim pencereleri ve klavye düzeni.
+- `src/ui/SchoolLayout.tsx`, `components.tsx`, `KeyboardLayout.tsx`: ortak bölüm/liste, alanlar, seçim pencereleri ve klavye düzeni.
 - `src/store/`: cihaz kalıcılığı, rol/tema ve taslaklar.
 
 Yollar `apps/mobile/` dizinine göredir. Proje JavaScript/JSX kullanır; ayrı TypeScript/typecheck komutu yoktur. Eski APK'lar, kaynak yedeği kopyaları ve geçici test raporları temizlik kapsamında kaldırılmıştır. Güncel teslim, uygulama kaynakları ve yeniden derleme araçları korunur.

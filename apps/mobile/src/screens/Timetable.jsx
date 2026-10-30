@@ -14,8 +14,8 @@ import {
   Sheet,
   T,
   styles,
-} from '../ui/components.jsx'
-import { EmptyResults, ListRow, Notice, Screen, Tabs, TextAction } from '../ui/SchoolLayout.jsx'
+} from '../ui/components.tsx'
+import { EmptyResults, ListRow, Notice, Screen, Tabs, TextAction } from '../ui/SchoolLayout.tsx'
 
 function shiftDay(day, offset) {
   return dayKey(new Date(+new Date(`${day}T12:00:00+03:00`) + offset * 86400000))

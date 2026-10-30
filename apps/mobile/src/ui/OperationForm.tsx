@@ -1,14 +1,25 @@
-import { usePersistentDraft } from '../store/use-persistent-draft.ts'
-import DraftStatus from './DraftStatus.jsx'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { View, Pressable } from 'react-native'
-import { useSchool, recordError } from '../store/SchoolProvider.tsx'
-import { operation, normalizeFields } from '../model/operations.ts'
-import { Button, DateField, Field, Icon, Select, Sheet, T, useColors } from './components.jsx'
+import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
+import { usePersistentDraft } from '../store/use-persistent-draft.ts'
+import {
+  operation,
+  normalizeFields,
+  pickedFile,
+  str,
+  stringList,
+  type OperationKind,
+  type OperationRecord,
+} from '../model/operations.ts'
 import { pickFile, fileSelectionMessage } from '../lib/files.ts'
+import { Button, DateField, Field, Icon, Select, Sheet, T, useColors } from './components.tsx'
+import DraftStatus from './DraftStatus.tsx'
 
-export default function OperationForm({ descriptor, onClose }) {
-  const { data, session, commit, busy, notify } = useSchool(),
+export type OperationDescriptor = { kind: OperationKind; record?: OperationRecord | null }
+type OperationFormProps = { descriptor: OperationDescriptor; onClose: () => void }
+
+export default function OperationForm({ descriptor, onClose }: OperationFormProps) {
+  const { data, session, commit, busy, notify } = useActiveSchool(),
     c = useColors()
   const definition = operation(data, session, descriptor.kind, descriptor.record)
   const draft = usePersistentDraft(
@@ -21,7 +32,7 @@ export default function OperationForm({ descriptor, onClose }) {
   const [formError, setFormError] = useState(''),
     [picking, setPicking] = useState(false)
   const fields = definition.fields(values)
-  const change = (key, value) => {
+  const change = (key: string, value: unknown) => {
     setValues((old) => ({
       ...old,
       [key]: value,
@@ -35,8 +46,9 @@ export default function OperationForm({ descriptor, onClose }) {
     try {
       normalizeFields(fields, validated)
     } catch (error) {
-      setFormError(error.message)
-      notify(error.message, 'error')
+      const message = error instanceof Error ? error.message : 'İşlem tamamlanamadı.'
+      setFormError(message)
+      notify(message, 'error')
       return
     }
     const ok = await commit(
@@ -48,7 +60,7 @@ export default function OperationForm({ descriptor, onClose }) {
       onClose()
     }
   }
-  async function chooseFile(key) {
+  async function chooseFile(key: string) {
     setPicking(true)
     try {
       const file = await pickFile()
@@ -96,14 +108,14 @@ export default function OperationForm({ descriptor, onClose }) {
               <DateField
                 {...field}
                 time={field.type === 'time'}
-                value={values[fieldKey]}
+                value={str(values[fieldKey])}
                 onChange={(value) => change(fieldKey, value)}
               />
             ) : field.type === 'file' ? (
               <View style={{ gap: 8 }}>
                 <T bold>{field.label}</T>
                 <Button icon="Paperclip" disabled={picking} onPress={() => chooseFile(fieldKey)}>
-                  {values[fieldKey]?.name || 'Dosya seç'}
+                  {pickedFile(values[fieldKey])?.name || 'Dosya seç'}
                 </Button>
                 <T muted size={12}>
                   PDF, JPG, PNG veya DOCX · En fazla 10 MB
@@ -112,10 +124,10 @@ export default function OperationForm({ descriptor, onClose }) {
             ) : field.type === 'multi' ? (
               <View style={{ gap: 10 }}>
                 <T bold>
-                  {field.label} ({values[fieldKey]?.length || 0} seçili)
+                  {field.label} ({stringList(values[fieldKey]).length} seçili)
                 </T>
                 {field.options.map((option) => {
-                  const selected = values[fieldKey]?.includes(option.value)
+                  const selected = stringList(values[fieldKey]).includes(option.value)
                   return (
                     <Pressable
                       key={option.value}
@@ -125,8 +137,8 @@ export default function OperationForm({ descriptor, onClose }) {
                         change(
                           fieldKey,
                           selected
-                            ? values[fieldKey].filter((id) => id !== option.value)
-                            : [...(values[fieldKey] || []), option.value],
+                            ? stringList(values[fieldKey]).filter((id) => id !== option.value)
+                            : [...stringList(values[fieldKey]), option.value],
                         )
                       }
                       style={{

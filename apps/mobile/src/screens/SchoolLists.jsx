@@ -4,7 +4,7 @@ import { View } from 'react-native'
 import { useSchool } from '../store/SchoolProvider.tsx'
 import { context, nameOf, rowsFor } from '../model/school.ts'
 import { homeworkRows, paymentSummary, waitingLabel } from '../model/experience.ts'
-import { Badge, Button, Card, SearchField, Select, Sheet, T, styles } from '../ui/components.jsx'
+import { Badge, Button, Card, SearchField, Select, Sheet, T, styles } from '../ui/components.tsx'
 import {
   ChildSelector,
   EmptyResults,
@@ -13,7 +13,7 @@ import {
   Screen,
   Tabs,
   TextAction,
-} from '../ui/SchoolLayout.jsx'
+} from '../ui/SchoolLayout.tsx'
 import { useMinute } from '../ui/use-minute.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 

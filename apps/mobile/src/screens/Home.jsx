@@ -6,10 +6,10 @@ import { homeSummary, roles, availablePages } from '../model/school.ts'
 import { moduleNavigationState } from '../model/navigation.ts'
 import { useMinute } from '../ui/use-minute.ts'
 import { dateLabel, dayKey, money, timeLabel } from '@kampus/school-core/lib/format.ts'
-import { Avatar, Button, Card, Icon, T, styles, useColors } from '../ui/components.jsx'
+import { Avatar, Button, Card, Icon, T, styles, useColors } from '../ui/components.tsx'
 import RoleHome from './RoleHome.jsx'
-import RecordCard from '../ui/RecordCard.jsx'
-import ModuleHub from '../ui/ModuleHub.jsx'
+import RecordCard from '../ui/RecordCard.tsx'
+import ModuleHub from '../ui/ModuleHub.tsx'
 
 function Section({ title, action, onPress, children }) {
   const c = useColors()

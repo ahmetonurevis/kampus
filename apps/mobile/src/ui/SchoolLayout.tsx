@@ -1,11 +1,29 @@
-import { FormScrollView } from './KeyboardLayout.jsx'
-import React, { useRef, useState } from 'react'
-import { View, ScrollView, Pressable, useWindowDimensions } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.tsx'
+import { Children, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { View, ScrollView, Pressable, useWindowDimensions, type ViewStyle } from 'react-native'
+import type { KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import type { ThemePreference as ThemeChoice } from '../model/experience.ts'
 import { context, nameOf } from '../model/school.ts'
-import { Avatar, Button, Icon, Select, Sheet, T, styles, useColors } from './components.jsx'
+import { FormScrollView } from './KeyboardLayout.tsx'
+import {
+  Avatar,
+  Button,
+  Icon,
+  Select,
+  Sheet,
+  T,
+  styles,
+  toneSoft,
+  useColors,
+  type Tone,
+} from './components.tsx'
 
-export function Screen({ children, footer, scrollRef }) {
+type ScreenProps = {
+  children?: ReactNode
+  footer?: ReactNode
+  scrollRef?: RefObject<KeyboardAwareScrollViewRef | null>
+}
+export function Screen({ children, footer, scrollRef }: ScreenProps) {
   const c = useColors()
   return (
     <View style={{ flex: 1 }}>
@@ -30,14 +48,20 @@ export function Screen({ children, footer, scrollRef }) {
     </View>
   )
 }
-export function TextAction({ children, onPress, disabled, label }) {
+type TextActionProps = {
+  children?: ReactNode
+  onPress?: () => void
+  disabled?: boolean
+  label?: string
+}
+export function TextAction({ children, onPress, disabled, label }: TextActionProps) {
   const c = useColors()
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={
         label ||
-        React.Children.toArray(children)
+        Children.toArray(children)
           .filter((child) => typeof child === 'string' || typeof child === 'number')
           .join('')
       }
@@ -57,7 +81,14 @@ export function TextAction({ children, onPress, disabled, label }) {
     </Pressable>
   )
 }
-export function Section({ title, action, onPress, children, panel = false }) {
+type SectionProps = {
+  title: string
+  action?: string
+  onPress?: () => void
+  children?: ReactNode
+  panel?: boolean
+}
+export function Section({ title, action, onPress, children, panel = false }: SectionProps) {
   const { fontScale, width } = useWindowDimensions()
   const c = useColors()
   return (
@@ -96,6 +127,16 @@ export function Divider() {
   const c = useColors()
   return <View style={{ height: 1, backgroundColor: c.border }} />
 }
+type ListRowProps = {
+  title: ReactNode
+  subtitle?: ReactNode
+  eyebrow?: ReactNode
+  badge?: ReactNode
+  onPress?: () => void
+  label?: string
+  children?: ReactNode
+  card?: boolean
+}
 export function ListRow({
   title,
   subtitle,
@@ -105,7 +146,7 @@ export function ListRow({
   label,
   children,
   card = false,
-}) {
+}: ListRowProps) {
   const c = useColors()
   const body = (
     <>
@@ -129,7 +170,7 @@ export function ListRow({
       {onPress && <Icon name="ChevronRight" size={19} />}
     </>
   )
-  const style = {
+  const style: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -155,19 +196,20 @@ export function ListRow({
     <View style={style}>{body}</View>
   )
 }
-export function Notice({ title, text, tone = 'primary', children }) {
+type NoticeProps = { title: string; text?: string; tone?: Tone; children?: ReactNode }
+export function Notice({ title, text, tone = 'primary', children }: NoticeProps) {
   const c = useColors()
   return (
     <View
       accessibilityRole={tone === 'red' ? 'alert' : undefined}
       accessibilityLiveRegion="polite"
-      style={{ padding: 16, gap: 8, backgroundColor: c[tone + 'Soft'] || c.soft, borderRadius: 10 }}
+      style={{ padding: 16, gap: 8, backgroundColor: toneSoft(c, tone), borderRadius: 10 }}
     >
-      <T bold style={{ color: c[tone] || c.text }}>
+      <T bold style={{ color: c[tone] }}>
         {title}
       </T>
       {!!text && (
-        <T size={14} style={{ color: c[tone] || c.muted }}>
+        <T size={14} style={{ color: c[tone] }}>
           {text}
         </T>
       )}
@@ -175,10 +217,15 @@ export function Notice({ title, text, tone = 'primary', children }) {
     </View>
   )
 }
-export function Tabs({ value, onChange, options }) {
+type TabsProps<V extends string> = {
+  value: V
+  onChange: (value: V) => void
+  options: readonly { value: V; label: string }[]
+}
+export function Tabs<V extends string>({ value, onChange, options }: TabsProps<V>) {
   const c = useColors()
-  const scrollRef = useRef(null)
-  const offsets = useRef({})
+  const scrollRef = useRef<ScrollView>(null)
+  const offsets = useRef<Partial<Record<string, number>>>({})
   return (
     <ScrollView
       ref={scrollRef}
@@ -220,7 +267,13 @@ export function Tabs({ value, onChange, options }) {
     </ScrollView>
   )
 }
-export function Pagination({ count, index, pageSize = 10, onChange }) {
+type PaginationProps = {
+  count: number
+  index: number
+  pageSize?: number
+  onChange: (index: number) => void
+}
+export function Pagination({ count, index, pageSize = 10, onChange }: PaginationProps) {
   const c = useColors()
   if (!count) return null
   const last = Math.max(0, Math.ceil(count / pageSize) - 1)
@@ -252,7 +305,7 @@ export function Pagination({ count, index, pageSize = 10, onChange }) {
     </View>
   )
 }
-export function EmptyResults({ noun, onClear }) {
+export function EmptyResults({ noun, onClear }: { noun: string; onClear: () => void }) {
   const c = useColors()
   return (
     <View
@@ -275,11 +328,14 @@ export function EmptyResults({ noun, onClear }) {
   )
 }
 export function ChildSelector() {
-  const { data, session, preference } = useSchool(),
+  const { data, session, preference } = useActiveSchool(),
     c = useColors(),
     scope = context(data, session)
   const [open, setOpen] = useState(false),
     [saving, setSaving] = useState(false)
+  const parent = data.parents[0]
+  if (!parent) throw new Error('Veli kaydı bulunamadı.')
+  if (!scope.classroom) throw new Error('Sınıf kaydı bulunamadı.')
   return (
     <>
       <Pressable
@@ -320,7 +376,7 @@ export function ChildSelector() {
             </Button>
           }
         >
-          {data.parents[0].studentIds.map((id) => {
+          {parent.studentIds.map((id) => {
             const student = data.students.find((s) => s.id === id)
             if (!student) return null
             return (
@@ -366,23 +422,27 @@ export function ChildSelector() {
     </>
   )
 }
+const themeOptions: { value: ThemeChoice; label: string }[] = [
+  { value: 'light', label: 'Açık' },
+  { value: 'dark', label: 'Koyu' },
+  { value: 'system', label: 'Sistem ayarı' },
+]
 export function ThemePreference() {
-  const { session, preference } = useSchool()
+  const { session, preference } = useActiveSchool()
   return (
     <Select
       label="Tema"
       required
       value={session.theme}
-      onChange={(theme) => preference({ theme })}
-      options={[
-        { value: 'light', label: 'Açık' },
-        { value: 'dark', label: 'Koyu' },
-        { value: 'system', label: 'Sistem ayarı' },
-      ]}
+      onChange={(value) => {
+        const choice = themeOptions.find((option) => option.value === value)
+        if (choice) void preference({ theme: choice.value })
+      }}
+      options={themeOptions}
     />
   )
 }
-export function DetailPair({ label, value }) {
+export function DetailPair({ label, value }: { label: string; value: ReactNode }) {
   const { fontScale, width } = useWindowDimensions()
   const narrow = fontScale > 1.3 || width < 350
   return (

@@ -206,3 +206,7 @@ export const icons = {
   FileDown,
 } satisfies Record<string, LucideIcon>
 export type IconName = keyof typeof icons
+const isIconName = (name: string): name is IconName => Object.hasOwn(icons, name)
+// Çekirdek veri simge adlarını düz metin taşır; kayıtlı olmayan ad varsayılan simgeye düşer.
+export const toIconName = (name: string | undefined): IconName =>
+  name !== undefined && isIconName(name) ? name : 'Circle'

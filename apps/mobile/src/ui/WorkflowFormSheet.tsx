@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { View } from 'react-native'
+import type { ZodType } from 'zod'
 import {
   runWorkflow,
   workflowSchemas,
@@ -12,32 +13,39 @@ import {
   normalizeWorkflowInput,
   csvTemplate,
   workflowCsvReferences,
+  type FormValues,
+  type WorkflowField as WorkflowFieldDefinition,
 } from '@kampus/school-core/lib/workflow-presentation.ts'
 import { money } from '@kampus/school-core/lib/format.ts'
-import { useSchool, recordError } from '../store/SchoolProvider.tsx'
+import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
 import { pickTextFile } from '../lib/text-files.ts'
-import { Button, Card, Sheet, T, useColors } from './components.jsx'
-import { TextAction } from './SchoolLayout.jsx'
-import WorkflowField from './WorkflowFields.jsx'
+import { clone } from '../model/school.ts'
+import { stringList } from '../model/operations.ts'
+import { Button, Card, Sheet, T, useColors } from './components.tsx'
+import { TextAction } from './SchoolLayout.tsx'
+import WorkflowField from './WorkflowFields.tsx'
 
-const clone = (value) => JSON.parse(JSON.stringify(value))
+const schemas: Partial<Record<string, ZodType>> = workflowSchemas
 
 // Alan değerini kontrol ekranında okunur metne çevirir.
-function previewValue(field, values) {
+function previewValue(field: WorkflowFieldDefinition, values: FormValues) {
   const value = readFormValue(values, field.key)
+  const options = field.options ?? []
   if (field.type === 'select')
-    return field.options.find((o) => String(o.value) === String(value))?.label || 'Seçilmedi'
-  if (field.type === 'multi')
-    return field.options
-      .filter((o) => value?.includes(o.value))
+    return options.find((o) => String(o.value) === String(value))?.label || 'Seçilmedi'
+  if (field.type === 'multi') {
+    const chosen = stringList(value)
+    return options
+      .filter((o) => chosen.includes(o.value))
       .map((o) => o.label)
       .join(', ')
+  }
   if (field.type === 'checkbox') return value ? 'Evet' : 'Hayır'
   return String(value ?? '')
 }
 
-function CsvImport({ onText }) {
-  const { data, session, notify } = useSchool()
+function CsvImport({ onText }: { onText: (text: string) => void }) {
+  const { data, session, notify } = useActiveSchool()
   const [busy, setBusy] = useState(false),
     [showReferences, setShowReferences] = useState(false)
   async function choose() {
@@ -47,7 +55,7 @@ function CsvImport({ onText }) {
       if (file) onText(file.text)
     } catch (error) {
       recordError(error, 'exam-csv-read', 'warn')
-      notify(error.message, 'error')
+      notify(error instanceof Error ? error.message : 'Dosya okunamadı.', 'error')
     } finally {
       setBusy(false)
     }
@@ -73,13 +81,16 @@ function CsvImport({ onText }) {
   )
 }
 
-export default function WorkflowFormSheet({ descriptor, onClose }) {
-  const { data, session, commit, busy, notify } = useSchool(),
+export type WorkflowDescriptor = { command: string; recordId?: string; initial?: FormValues }
+type WorkflowFormSheetProps = { descriptor: WorkflowDescriptor; onClose: () => void }
+
+export default function WorkflowFormSheet({ descriptor, onClose }: WorkflowFormSheetProps) {
+  const { data, session, commit, busy, notify } = useActiveSchool(),
     c = useColors()
   const { command, recordId } = descriptor
   const definition = workflowForm(data, session, command, recordId, descriptor.initial)
-  const [values, setValues] = useState(() => clone(definition.initial)),
-    [errors, setErrors] = useState({}),
+  const [values, setValues] = useState<FormValues>(() => clone(definition.initial)),
+    [errors, setErrors] = useState<Record<string, string>>({}),
     [reviewing, setReviewing] = useState(false),
     [formError, setFormError] = useState('')
   const fields = definition.fields(values)
@@ -91,7 +102,7 @@ export default function WorkflowFormSheet({ descriptor, onClose }) {
       return null
     }
   }, [command, values])
-  function change(key, value) {
+  function change(key: string, value: unknown) {
     setValues((old) => changeFormValue(old, key, value))
     setErrors({})
     setFormError('')
@@ -99,14 +110,14 @@ export default function WorkflowFormSheet({ descriptor, onClose }) {
   }
   async function submit() {
     const input = normalizeWorkflowInput(definition, values),
-      schema = workflowSchemas[command]
+      schema = schemas[command]
     if (schema) {
       const parsed = schema.safeParse(input)
       if (!parsed.success) {
-        const next = {}
+        const next: Record<string, string> = {}
         for (const issue of parsed.error.issues) next[issue.path.join('.')] ||= issue.message
         setErrors(next)
-        notify(parsed.error.issues[0].message, 'error')
+        notify(parsed.error.issues[0]?.message ?? 'Girdiğiniz bilgileri kontrol edin.', 'error')
         return
       }
     }

@@ -1,17 +1,28 @@
-import React from 'react'
-import { Pressable, View } from 'react-native'
+import type { ReactNode } from 'react'
+import { Pressable, View, type KeyboardTypeOptions } from 'react-native'
 import { dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
-import { readFormValue } from '@kampus/school-core/lib/workflow-presentation.ts'
-import { DateField, Field, Icon, Select, T, useColors } from './components.jsx'
+import {
+  readFormValue,
+  type FieldType,
+  type FormValues,
+  type WorkflowField as WorkflowFieldDefinition,
+} from '@kampus/school-core/lib/workflow-presentation.ts'
+import { str, stringList } from '../model/operations.ts'
+import { DateField, Field, Icon, Select, T, useColors } from './components.tsx'
 
-const KEYBOARDS = { number: 'decimal-pad' }
+const KEYBOARDS: Partial<Record<FieldType, KeyboardTypeOptions>> = { number: 'decimal-pad' }
 
 // Tarih+saat alanı iki parçadan oluşur; birleşik değer "YYYY-AA-GGTSS:DD" olarak saklanır.
-function DateTimeField({ field, value, onChange }) {
+type DateTimeFieldProps = {
+  field: WorkflowFieldDefinition
+  value: string
+  onChange: (value: string) => void
+}
+function DateTimeField({ field, value, onChange }: DateTimeFieldProps) {
   const valid = Number.isFinite(Date.parse(value))
   const date = valid ? dayKey(value) : ''
   const time = valid ? timeLabel(value) : ''
-  const join = (nextDate, nextTime) =>
+  const join = (nextDate: string, nextTime: string) =>
     onChange(`${nextDate || date || dayKey()}T${nextTime || time || '09:00'}`)
   return (
     <View style={{ gap: 12 }}>
@@ -22,36 +33,52 @@ function DateTimeField({ field, value, onChange }) {
 }
 
 // Ortak iş akışı formundaki tek bir alanı türüne göre çizer.
-export default function WorkflowField({ field, values, error, onChange }) {
+type WorkflowFieldProps = {
+  field: WorkflowFieldDefinition
+  values: FormValues
+  error?: string
+  onChange: (key: string, value: unknown) => void
+}
+export default function WorkflowField({ field, values, error, onChange }: WorkflowFieldProps) {
   const c = useColors()
   const value = readFormValue(values, field.key)
-  let control
+  const options = field.options ?? []
+  const chosen = stringList(values[field.key])
+  let control: ReactNode
   if (field.type === 'select')
     control = (
       <Select
         label={field.label}
         value={value ?? ''}
-        options={field.options}
+        options={options}
         onChange={(next) => onChange(field.key, next)}
-        required={field.options.some((option) => option.value === '')}
+        required={options.some((option) => option.value === '')}
       />
     )
   else if (field.type === 'date')
     control = (
-      <DateField label={field.label} value={value} onChange={(next) => onChange(field.key, next)} />
+      <DateField
+        label={field.label}
+        value={str(value)}
+        onChange={(next) => onChange(field.key, next)}
+      />
     )
   else if (field.type === 'datetime')
     control = (
-      <DateTimeField field={field} value={value} onChange={(next) => onChange(field.key, next)} />
+      <DateTimeField
+        field={field}
+        value={str(value)}
+        onChange={(next) => onChange(field.key, next)}
+      />
     )
   else if (field.type === 'multi')
     control = (
       <View style={{ gap: 10 }}>
         <T bold size={14}>
-          {field.label} ({values[field.key]?.length || 0} seçili)
+          {field.label} ({chosen.length} seçili)
         </T>
-        {field.options.map((option) => {
-          const selected = values[field.key]?.includes(option.value)
+        {options.map((option) => {
+          const selected = chosen.includes(option.value)
           return (
             <Pressable
               key={option.value}
@@ -61,9 +88,7 @@ export default function WorkflowField({ field, values, error, onChange }) {
               onPress={() =>
                 onChange(
                   field.key,
-                  selected
-                    ? values[field.key].filter((id) => id !== option.value)
-                    : [...(values[field.key] || []), option.value],
+                  selected ? chosen.filter((id) => id !== option.value) : [...chosen, option.value],
                 )
               }
               style={{

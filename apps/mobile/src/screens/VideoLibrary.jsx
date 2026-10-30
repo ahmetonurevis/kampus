@@ -14,8 +14,8 @@ import {
   T,
   styles,
   useColors,
-} from '../ui/components.jsx'
-import { EmptyResults, Pagination, Screen, TextAction } from '../ui/SchoolLayout.jsx'
+} from '../ui/components.tsx'
+import { EmptyResults, Pagination, Screen, TextAction } from '../ui/SchoolLayout.tsx'
 
 export default function VideoLibrary({ navigation }) {
   const { data, session } = useSchool(),

@@ -8,9 +8,9 @@ import { SidePanel } from '@/components/SidePanel.tsx'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { notify } from '@/lib/notify.ts'
-import { errorRoutes, FormActions, RootError } from '../management/FormParts.tsx'
+import { FormActions, RootError } from '../management/FormParts.tsx'
 import { ChildrenGate, ChildSelectField, type ChildOption } from './ChildSelectField.tsx'
-import { ABSENCE_ERROR_FIELDS, ABSENCE_REASON_OPTIONS } from './request-forms.ts'
+import { ABSENCE_REASON_OPTIONS, focusFirstError } from './request-forms.ts'
 
 type Values = z.input<typeof notifyAbsenceSchema>
 type Output = z.output<typeof notifyAbsenceSchema>
@@ -60,10 +60,7 @@ function AbsenceForm({
   const errors = form.formState.errors
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const outcome = await notice.submit(values, {
-      setError: form.setError,
-      ...errorRoutes(ABSENCE_ERROR_FIELDS, true),
-    })
+    const outcome = await notice.submit(values, { setError: focusFirstError(form.setError) })
     if (outcome.status === 'success') {
       notify.success('Bildiriminiz kuruma iletildi.')
       onClose()

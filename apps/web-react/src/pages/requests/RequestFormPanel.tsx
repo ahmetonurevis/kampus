@@ -14,13 +14,9 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
-import { errorRoutes, FormActions, RootError } from '../management/FormParts.tsx'
+import { FormActions, RootError } from '../management/FormParts.tsx'
 import { ChildrenGate, ChildSelectField, type ChildOption } from './ChildSelectField.tsx'
-import {
-  OPEN_REQUEST_ERROR_FIELDS,
-  openRequestDefaults,
-  type OpenRequestValues,
-} from './request-forms.ts'
+import { focusFirstError, openRequestDefaults, type OpenRequestValues } from './request-forms.ts'
 
 type Output = z.output<typeof openRequestSchema>
 
@@ -68,10 +64,7 @@ function RequestForm({
   const errors = form.formState.errors
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const outcome = await open.submit(values, {
-      setError: form.setError,
-      ...errorRoutes(OPEN_REQUEST_ERROR_FIELDS, true),
-    })
+    const outcome = await open.submit(values, { setError: focusFirstError(form.setError) })
     if (outcome.status === 'success') {
       notify.success('Talebiniz ön büroya iletildi.')
       onClose()

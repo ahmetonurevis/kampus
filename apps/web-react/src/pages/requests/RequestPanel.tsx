@@ -92,6 +92,7 @@ function RequestDetail({
       {canUpdate ? (
         <SummarySection title="Talebi güncelle">
           <RequestUpdateForm
+            key={recordId}
             record={item.data.record}
             version={item.data.version}
             reload={async () => {

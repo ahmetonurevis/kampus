@@ -5,13 +5,14 @@
 import { z } from 'zod'
 import {
   ABSENCE_REASON_CATEGORIES,
+  ABSENCE_REASON_LABELS,
   REQUEST_STATUSES,
   REQUEST_TEXT_MAX_LENGTH,
   REQUEST_UNITS,
+  updateRequestSchema,
   type AbsenceReasonCategory,
   type RequestStatus,
   type openRequestSchema,
-  type updateRequestSchema,
 } from '@kampus/school-core/lib/requests.ts'
 import type { CoreRecord } from '@/hooks/use-core-collection.ts'
 
@@ -24,47 +25,44 @@ export function openRequestDefaults(studentId: string): OpenRequestValues {
   return { studentId, category: 'Talep', title: '', text: '' }
 }
 
-const ABSENCE_REASON_LABELS: Record<AbsenceReasonCategory, string> = {
-  health: 'Sağlık',
-  family: 'Aile',
-  official: 'Resmî işlem',
-  other: 'Diğer',
-}
-
 /**
  * Gerekçe seçenekleri. Gerekçe yalnız kategoridir; serbest açıklama alanı yoktur
- * (DOM-ILT-053, KVKK md. 6). Listede ve ayrıntıda kategorinin core etiketi görünür.
+ * (DOM-ILT-053, KVKK md. 6). Etiket core tablosundan gelir; liste ve ayrıntıda da aynısı görünür.
  */
 export const ABSENCE_REASON_OPTIONS: ReadonlyArray<{
   value: AbsenceReasonCategory
   label: string
 }> = ABSENCE_REASON_CATEGORIES.map((value) => ({ value, label: ABSENCE_REASON_LABELS[value] }))
 
-/** Sunucu kodu → hatanın gösterileceği alan. Yollu hata (`issues`) kendi yolundaki alana düşer. */
-export const OPEN_REQUEST_ERROR_FIELDS = {
-  student_inactive: 'studentId',
-  student_scope_denied: 'studentId',
-} as const
-
-export const UPDATE_REQUEST_ERROR_FIELDS = {
-  request_resolved: 'status',
-  request_status_invalid: 'status',
-  request_unchanged: 'reply',
-} as const
-
-export const ABSENCE_ERROR_FIELDS = {
-  student_inactive: 'studentId',
-  student_scope_denied: 'studentId',
-  absence_notice_late: 'endDate',
-  absence_overlap: 'startDate',
-} as const
+/**
+ * Sunucu alan hatasında ilk hatalı alana odak taşır (`setError` seçeneği `shouldFocus`). Form düzeyi
+ * (`root`) hata odak almaz ve sırayı tüketmez.
+ */
+export function focusFirstError<TName extends string>(
+  setError: (
+    name: TName,
+    error: { type: string; message: string },
+    options?: { shouldFocus: boolean },
+  ) => void,
+) {
+  let focused = false
+  return (name: TName, error: { type: string; message: string }) => {
+    const field = !name.startsWith('root')
+    setError(name, error, { shouldFocus: field && !focused })
+    if (field) focused = true
+  }
+}
 
 // --- Ön büro güncellemesi ---------------------------------------------------------------------
 
-/** Güncelleme formu: yanıt boş bırakılabilir, doluysa en az iki karakterdir (core ile aynı sınır). */
+/**
+ * Güncelleme formu: durum ve birim kayıttaki değerdir (listede olmayan eski değer de olabilir);
+ * değiştirilirse core şeması (`updateRequestSchema`) denetler. Yanıt boş bırakılabilir, doluysa
+ * en az iki karakterdir (core ile aynı sınır).
+ */
 export const updateFormSchema = z.object({
-  status: z.enum(REQUEST_STATUSES, 'Durumu seçin.'),
-  assignedTo: z.enum(REQUEST_UNITS, 'İlgili birimi seçin.'),
+  status: z.string().min(1, 'Durumu seçin.'),
+  assignedTo: z.string().min(1, 'İlgili birimi seçin.'),
   reply: z
     .string()
     .trim()
@@ -75,29 +73,36 @@ export type UpdateFormValues = z.input<typeof updateFormSchema>
 
 const isStatus = (value: string): value is RequestStatus =>
   (REQUEST_STATUSES as readonly string[]).includes(value)
-const isUnit = (value: string): value is (typeof REQUEST_UNITS)[number] =>
-  (REQUEST_UNITS as readonly string[]).includes(value)
 
+/** Formun başlangıç değerleri kayıttaki gibidir: dokunulmayan alan değişmiş sayılmaz. */
 export function updateDefaults(
   record: Pick<RequestRecord, 'status' | 'assignedTo'>,
 ): UpdateFormValues {
-  return {
-    status: isStatus(record.status) ? record.status : 'Yeni',
-    // Kayıttaki birim listede yoksa (eski kayıt) ilk birim seçili gelir; kullanıcı bilerek seçer.
-    assignedTo: isUnit(record.assignedTo) ? record.assignedTo : REQUEST_UNITS[0],
-    reply: '',
-  }
+  return { status: record.status, assignedTo: record.assignedTo, reply: '' }
 }
 
-/** Ele alınmış talep "Yeni"ye dönemez (`request_status_invalid`): seçenek hiç sunulmaz. */
-export function statusOptions(current: string): readonly RequestStatus[] {
-  return current === 'Yeni' || !isStatus(current)
+/**
+ * Durum seçenekleri. Ele alınmış talep "Yeni"ye dönemez (`request_status_invalid`): seçenek hiç
+ * sunulmaz. Listede olmayan mevcut değer seçenek olarak görünür, böylece sessizce başka değere
+ * çevrilmez.
+ */
+export function statusOptions(current: string): readonly string[] {
+  if (!isStatus(current)) return [current, ...REQUEST_STATUSES]
+  return current === 'Yeni'
     ? REQUEST_STATUSES
     : REQUEST_STATUSES.filter((value) => value !== 'Yeni')
 }
 
+/** İlgili birim seçenekleri; listede olmayan mevcut birim de seçenek olarak görünür. */
+export function unitOptions(current: string): readonly string[] {
+  return (REQUEST_UNITS as readonly string[]).includes(current)
+    ? REQUEST_UNITS
+    : [current, ...REQUEST_UNITS]
+}
+
 export type UpdateOutcome =
-  { ok: true; body: UpdateRequestBody } | { ok: false; field: 'status' | 'reply'; message: string }
+  | { ok: true; body: UpdateRequestBody }
+  | { ok: false; field: 'status' | 'assignedTo' | 'reply'; message: string }
 
 /**
  * Yalnız değişen alanlar gönderilir (core `updateRequest`). Değişiklik yoksa ya da çözülmüş
@@ -109,7 +114,7 @@ export function updateRequestBody(
   values: UpdateFormValues,
 ): UpdateOutcome {
   const reply = values.reply.trim()
-  const body: UpdateRequestBody = {
+  const body: Partial<Record<'status' | 'assignedTo' | 'reply', string>> = {
     ...(values.status !== record.status ? { status: values.status } : {}),
     ...(values.assignedTo !== record.assignedTo ? { assignedTo: values.assignedTo } : {}),
     ...(reply !== '' ? { reply } : {}),
@@ -126,5 +131,13 @@ export function updateRequestBody(
       field: 'status',
       message: 'Çözülen talep değiştirilemez; önce durumu "İnceleniyor" yapın.',
     }
-  return { ok: true, body }
+  // Değişen alan listedeki bir değer olmalı (core şeması); değişmeyen eski değer gönderilmez.
+  const parsed = updateRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]
+    const field =
+      issue?.path[0] === 'status' || issue?.path[0] === 'assignedTo' ? issue.path[0] : 'reply'
+    return { ok: false, field, message: issue?.message ?? 'Değerleri kontrol edin.' }
+  }
+  return { ok: true, body: parsed.data }
 }

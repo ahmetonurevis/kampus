@@ -4,20 +4,14 @@ import type { Role } from '../modules/navigation.ts'
 import { DomainError } from '../lib/errors.ts'
 import {
   canManage,
-  canReview,
   isContentStaff,
   requiresReview,
+  staffCanReadVersion,
   type ContentActor,
   type ResourceRecord,
   type ResourceVersion,
 } from './resource.ts'
-import {
-  SHARE_SCOPES,
-  enumKeys,
-  licenseExpired,
-  type CefrLevel,
-  type ShareScope,
-} from './taxonomy.ts'
+import { SHARE_SCOPES, enumKeys, licenseExpired, type CefrLevel } from './taxonomy.ts'
 
 /**
  * İçerik havuzunda kim neyi görür (DOM-KYN-030, 040…044; yetki-ve-kapsam.md matrisi).
@@ -189,66 +183,13 @@ export type VisibilityContext = {
 export function canReadVersion(viewer: ContentViewer, context: VisibilityContext): boolean {
   switch (viewer.kind) {
     case 'staff':
-      return staffCanRead(viewer.actor, context)
+      return staffCanReadVersion(viewer.actor, context)
     case 'student':
       return learnerCanRead(viewer.learner, context)
     case 'parent':
       return viewer.children.some((child) => learnerCanRead(child, context))
     default:
       return viewer satisfies never
-  }
-}
-
-function staffCanRead(actor: ContentActor, context: VisibilityContext): boolean {
-  const { institutionType, resource, version } = context
-  if (!isContentStaff(actor.role) || version.resourceId !== resource.id) return false
-  const owner = actor.userId === resource.ownerUserId
-  const admin = actor.role === 'yonetici'
-  switch (version.status) {
-    case 'removed':
-      // Başlık, menşe ve gerekçe kalır; yalnız sahibi ve yönetici görür (DOM-KYN-051).
-      return owner || admin
-    case 'draft':
-    case 'rejected':
-      // Taslak sahibine (ve yazarına) aittir; sahip ayrılınca yöneticiye açılır (DOM-KYN-052).
-      return owner || actor.userId === version.authorUserId || (admin && !resource.ownerActive)
-    case 'in_review':
-      return (
-        owner ||
-        actor.userId === version.authorUserId ||
-        canReview(actor, resource, version, institutionType)
-      )
-    case 'published':
-    case 'archived':
-      return owner || admin || sharedWithStaff(actor, resource, version, institutionType)
-    default:
-      return version.status satisfies never
-  }
-}
-
-function sharedWithStaff(
-  actor: ContentActor,
-  resource: ResourceRecord,
-  version: ResourceVersion,
-  institutionType: InstitutionType,
-): boolean {
-  const scope: ShareScope = resource.shareScope
-  // Zümre başkanı ve koordinatör kendi branşının kaynaklarını okur (DOM-YTK-027).
-  if (scope !== 'private' && canReview(actor, resource, version, institutionType)) return true
-  switch (scope) {
-    case 'institution':
-      return true
-    case 'department': {
-      // Dersi olmayan (dil okulu) içerikte zümre kurumun öğretmenleridir.
-      const subjectId = version.tags.subjectId
-      return subjectId === null || (actor.subjectIds ?? []).includes(subjectId)
-    }
-    case 'private':
-    case 'students':
-    case 'classes':
-      return false
-    default:
-      return scope satisfies never
   }
 }
 

@@ -750,6 +750,7 @@ describe('Sürüm durum geçişleri', () => {
   test('telif bildirimi yayını incelemeye alır; yeniden onay ilk yayın anını korur', () => {
     const published = build(schoolText(), {
       version: { status: 'published', publishedAt: '2026-09-01T08:00:00.000Z' },
+      resource: { shareScope: 'institution' },
     })
     assert.throws(
       () => transition('report', colleague, published),
@@ -786,6 +787,54 @@ describe('Sürüm durum geçişleri', () => {
     const approved = transition('approve', admin, inReview)
     assert.equal(approved.versionChanges.publishedAt, '2026-09-01T08:00:00.000Z')
     assert.equal(approved.supersededVersionId, null, 'aynı sürüm yeniden yayında')
+  })
+
+  test('DOM-KYN-025: telif bildirimiyle incelenen içeriği zümre başkanı değil yalnız yönetici yeniden yayına alır', () => {
+    const reported = build(schoolText(), {
+      version: {
+        status: 'in_review',
+        publishedAt: '2026-09-01T08:00:00.000Z',
+        submittedAt: now,
+      },
+      resource: { currentVersionId: 'test-r1-v1', shareScope: 'institution' },
+    })
+    assert.throws(
+      () => transition('approve', head, reported),
+      (error: unknown) =>
+        isDomainError('resource_action_forbidden', 'forbidden')(error) &&
+        /yalnız yönetici/.test((error as Error).message),
+    )
+    assert.equal(transition('approve', admin, reported).status, 'published')
+    // İlk yayından önceki olağan onayda zümre başkanı yetkisi sürer.
+    const fresh = build(schoolText(), { version: { status: 'in_review' } })
+    assert.equal(transition('approve', head, fresh).status, 'published')
+  })
+
+  test('DOM-KYN-025: kaynağı göremeyen kişi telif bildirimi yapamaz; varlığı sızmaz', () => {
+    const reason = { reason: 'Telif ihlali var.' }
+    const privatePublished = build(schoolText(), { version: { status: 'published' } })
+    for (const actor of [colleague, outsider, head]) {
+      assert.throws(
+        () => transition('report', actor, privatePublished, reason),
+        isDomainError('resource_not_found', 'not_found'),
+      )
+    }
+    // Taslağı göremeyen kişi durum çakışması değil "bulunamadı" alır.
+    assert.throws(
+      () => transition('report', outsider, build(schoolText()), reason),
+      isDomainError('resource_not_found', 'not_found'),
+    )
+    assert.equal(transition('report', author, privatePublished, reason).status, 'in_review')
+    assert.equal(transition('report', admin, privatePublished, reason).status, 'in_review')
+    const department = build(schoolText(), {
+      version: { status: 'published' },
+      resource: { shareScope: 'department' },
+    })
+    assert.equal(transition('report', colleague, department, reason).status, 'in_review')
+    assert.throws(
+      () => transition('report', outsider, department, reason),
+      isDomainError('resource_not_found', 'not_found'),
+    )
   })
 
   test('kaldırmayı yalnız yönetici gerekçeyle yapar; içerik silinir', () => {

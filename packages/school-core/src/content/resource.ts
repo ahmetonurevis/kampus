@@ -800,6 +800,71 @@ export function canManage(
   return canReview(actor, resource, { authorUserId: '', tags: version.tags }, institutionType)
 }
 
+/** Personel okuma kararının girdisi; `visibility.ts` `VisibilityContext`'in alt kümesidir. */
+export type StaffReadContext = {
+  institutionType: InstitutionType
+  resource: ResourceRecord
+  version: ResourceVersion
+}
+
+/**
+ * Personel bu sürümü okuyabilir mi (DOM-KYN-030, 040, 042, 051, 052). `visibility.ts`
+ * `canReadVersion` personel için bunu çağırır; telif bildirimi de aynı kararla sınırlanır
+ * (DOM-KYN-025). Kural bu dosyadadır: `visibility.ts` `resource.ts`'e bağlıdır, tersi döngü doğururdu.
+ */
+export function staffCanReadVersion(actor: ContentActor, context: StaffReadContext): boolean {
+  const { institutionType, resource, version } = context
+  if (!isContentStaff(actor.role) || version.resourceId !== resource.id) return false
+  const owner = actor.userId === resource.ownerUserId
+  const admin = actor.role === 'yonetici'
+  switch (version.status) {
+    case 'removed':
+      // Başlık, menşe ve gerekçe kalır; yalnız sahibi ve yönetici görür (DOM-KYN-051).
+      return owner || admin
+    case 'draft':
+    case 'rejected':
+      // Taslak sahibine (ve yazarına) aittir; sahip ayrılınca yöneticiye açılır (DOM-KYN-052).
+      return owner || actor.userId === version.authorUserId || (admin && !resource.ownerActive)
+    case 'in_review':
+      return (
+        owner ||
+        actor.userId === version.authorUserId ||
+        canReview(actor, resource, version, institutionType)
+      )
+    case 'published':
+    case 'archived':
+      return owner || admin || sharedWithStaff(actor, resource, version, institutionType)
+    default:
+      return version.status satisfies never
+  }
+}
+
+function sharedWithStaff(
+  actor: ContentActor,
+  resource: ResourceRecord,
+  version: ResourceVersion,
+  institutionType: InstitutionType,
+): boolean {
+  const scope: ShareScope = resource.shareScope
+  // Zümre başkanı ve koordinatör kendi branşının kaynaklarını okur (DOM-YTK-027).
+  if (scope !== 'private' && canReview(actor, resource, version, institutionType)) return true
+  switch (scope) {
+    case 'institution':
+      return true
+    case 'department': {
+      // Dersi olmayan (dil okulu) içerikte zümre kurumun öğretmenleridir.
+      const subjectId = version.tags.subjectId
+      return subjectId === null || (actor.subjectIds ?? []).includes(subjectId)
+    }
+    case 'private':
+    case 'students':
+    case 'classes':
+      return false
+    default:
+      return scope satisfies never
+  }
+}
+
 // --- Durum geçişleri ----------------------------------------------------------------------
 
 export const RESOURCE_ACTIONS = {
@@ -867,6 +932,15 @@ export function planVersionTransition(input: TransitionInput): VersionTransition
   const rule = TRANSITIONS[action]
   if (version.resourceId !== resource.id) {
     throw new DomainError('resource_version_not_found', 'Sürüm bulunamadı.', { kind: 'not_found' })
+  }
+  // DOM-KYN-025: bildirim yalnız görülen kaynağa yapılır. Görülemeyen kaynak (durumu dahil) var
+  // olmamış gibi davranır; yetkisiz rol aşağıda olağan "yetkiniz yok" iletisini alır.
+  if (
+    action === 'report' &&
+    isContentStaff(actor.role) &&
+    !staffCanReadVersion(actor, { institutionType, resource, version })
+  ) {
+    throw new DomainError('resource_not_found', 'İçerik bulunamadı.', { kind: 'not_found' })
   }
   if (!(rule.from as readonly ResourceStatus[]).includes(version.status)) {
     throw new DomainError(
@@ -983,6 +1057,11 @@ function assertActionAllowed(input: TransitionInput): void {
             ? 'Kendi içeriğinizi onaylayamazsınız.'
             : 'Bu içeriği onaylama yetkiniz yok.',
         )
+      }
+      // DOM-KYN-025: telif bildirimiyle incelemeye alınan (önceden yayımlanmış) içeriği yeniden
+      // yayına yalnız yönetici alır; zümre başkanı ve koordinatör yalnız ilk yayını onaylar.
+      if (action === 'approve' && version.publishedAt !== null && actor.role !== 'yonetici') {
+        forbidden('Telif bildirimi incelenen içeriği yalnız yönetici yeniden yayına alır.')
       }
       return
     case 'archive':

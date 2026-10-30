@@ -24,6 +24,18 @@ Kampüs API'si JSON üzerinden REST'tir; tek istemcisi `packages/api-client`'tı
 
 - CRUD'a sığmayan iş adımı fiil olarak alt yoldur (`/approve`, `/reject`, `/close`); adı kebab-case İngilizce emir kipindedir.
 - Geçiş köprüsü: school-core `runWorkflow` komutları API'ye `POST /workflows/:command` ile taşınabilir. Bir modül kendi kaynak uçlarına geçince köprüdeki komutları kaldırılır.
+- Yazma uçları (`apps/api/src/routes/commands.ts`, servis `services/commands.ts`). Yanıt `{ data: CommandResult }`: işlemin konusu (`entity`), değişiklik sayıları ve yazılan kayıtların yeni `version`'ı. Konu kaydı için isteğe bağlı `If-Match` sürümü tutmazsa 409 `version_conflict`. Core'un rol denetlemediği işlemlerde (ödeme, yoklama, arşiv) uç en dar varsayılanı uygular; core bu kuralları verince rol oradan okunur.
+
+  | Yöntem ve yol                                                     | Rol                                                      | Modül                 | Anahtar                                                  |
+  | ----------------------------------------------------------------- | -------------------------------------------------------- | --------------------- | -------------------------------------------------------- |
+  | `POST /workflows/<komut>[/:recordId]` (34 komut, `?childId` veli) | core `mayRun` + `scopeFor`                               | core (komutun modülü) | `exam-import`, `renewal` zorunlu; diğerleri isteğe bağlı |
+  | `POST /invoices/:invoiceId/pay`                                   | `yonetici`, `onburo`                                     | `finance`             | zorunlu                                                  |
+  | `POST /classes/:classId/attendance`                               | `yonetici`; `ogretmen` core kapsamındaki sınıfta         | `academic`            | isteğe bağlı                                             |
+  | `DELETE /{branches,classes,teachers}/:id?replacementId=`          | `yonetici`                                               | —                     | isteğe bağlı                                             |
+  | `POST /{branches,classes,teachers}/:id/restore`                   | `yonetici`                                               | —                     | isteğe bağlı                                             |
+  | `POST /tutor-sessions` (plan onayı, `expectedPlan`)               | core `runAssessment` (yönetici; öğretmen kendi etüdünde) | `tutoring`            | isteğe bağlı                                             |
+  | `POST /tutor-sessions/:sessionId/{cancel,attendance}`             | core `runAssessment`                                     | `tutoring`            | isteğe bağlı                                             |
+
 - Okuma köprüsü: `GET /collections/:collection` ve `GET /collections/:collection/:id`. Ad school-core State anahtarıdır (camelCase, ör. `studentGoals`); izin listesinde olmayan veya açılmamış (`audit`, `conversations`) ad 404. Rol × koleksiyon erişimi, alan kapsamı (`omit`) ve koleksiyonun modülü tek tabloda, `apps/api/src/services/collection-access.ts`'tedir; kayıt düzeyinde kapsam school-core fonksiyonundan gelir, core'da yoksa o rolde koleksiyon kapalıdır (403). Filtre alanları ve sıralama alanları sorgu şemasında beyaz listedir. Varsayılan sıra deponun sırasıdır. Bir modül kendi kaynak uçlarına geçince köprüdeki koleksiyonları kapanır.
 - `PUT` kullanılmaz; güncelleme `PATCH` ile gönderilen alanları değiştirir. `null` alanı temizler, gönderilmeyen alan dokunulmadan kalır.
 - Kalıcı silme API'de yoktur; yalnız KVKK silme süreciyle yapılır (bkz. [guvenlik-kvkk.md](guvenlik-kvkk.md#10-saklama-ve-silme)).

@@ -146,6 +146,11 @@ test.describe('öğretmen: Sınıflarım, not listesi, yoklama geçmişi', () =>
     )
     expect(classStudents.size).toBe(10)
     const grades = (await teacher.get(`${COLLECTIONS}/grades?pageSize=1`)).body as CollectionPage
+    // Sınıf süzgeci sunucuda `classId` ile uygulanır (öğrencinin güncel sınıfı).
+    const classGrades = (await teacher.get(`${COLLECTIONS}/grades?pageSize=1&classId=c1`))
+      .body as CollectionPage
+    expect(classGrades.meta.total).toBeGreaterThan(0)
+    expect(classGrades.meta.total).toBeLessThan(grades.meta.total)
 
     await page.goto('/ogretmen/siniflarim?sekme=notlar')
     const table = 'Not listesi'
@@ -156,8 +161,8 @@ test.describe('öğretmen: Sınıflarım, not listesi, yoklama geçmişi', () =>
     await page.getByLabel('Not sınıfı').selectOption({ label: '7-A' })
     await expect(page).toHaveURL(/[?&]not-sinif=c1/)
     await expect(page).not.toHaveURL(/[?&]not-sayfa=/)
-    await expect(resultCount(page)).toContainText('1–8 / ')
-    await expect(resultCount(page)).not.toContainText(`/ ${grades.meta.total} kayıt`)
+    await expect(resultCount(page)).toContainText(`/ ${classGrades.meta.total} kayıt`)
+    await expect(page.getByText(/ilk 20 öğrenciyle sınırlıdır/)).toHaveCount(0)
     for (const row of await bodyRows(page, table).all())
       expect(classStudents.has((await row.locator('strong').first().innerText()).trim())).toBe(true)
 
@@ -186,8 +191,9 @@ test.describe('öğretmen: Sınıflarım, not listesi, yoklama geçmişi', () =>
     const teacher = await api('ogretmen')
     const c1 = await listAll(teacher, 'attendance', '&classId=c1')
     const day = String(c1[0]?.date).slice(0, 10)
-    const onDay = c1.filter((record) => String(record.date).startsWith(day))
+    const onDay = await listAll(teacher, 'attendance', `&classId=c1&dateFrom=${day}&dateTo=${day}`)
     expect(onDay.length).toBeGreaterThan(0)
+    expect(onDay.length).toBeLessThan(c1.length)
 
     await page.goto('/ogretmen/yoklama')
     await expect(page.getByRole('heading', { level: 1, name: 'Yoklama' })).toBeVisible()
@@ -213,6 +219,22 @@ test.describe('öğretmen: Sınıflarım, not listesi, yoklama geçmişi', () =>
 
     await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
     await expect(page).not.toHaveURL(/[?&](sinif|tarih)=/)
+  })
+
+  test('yoklama tarih adresi doğrudan açılır ve tek günü sunucuda süzer', async ({ page, api }) => {
+    const teacher = await api('ogretmen')
+    const all = await listAll(teacher, 'attendance')
+    const day = String(all[0]?.date).slice(0, 10)
+    const onDay = await listAll(teacher, 'attendance', `&dateFrom=${day}&dateTo=${day}`)
+    expect(onDay.length).toBeGreaterThan(0)
+    expect(onDay.length).toBeLessThan(all.length)
+
+    await page.goto(`/ogretmen/yoklama?tarih=${day}`)
+    await expect(page.getByLabel('Yoklama tarihi')).toHaveValue(day)
+    await expect(resultCount(page)).toContainText(`/ ${onDay.length} kayıt`)
+    await expect(bodyRows(page, 'Yoklama geçmişi')).toHaveCount(Math.min(8, onDay.length))
+    // Tarih süzgeci serbest aramayı kapatmaz.
+    await expect(page.getByLabel('Tabloda ara')).toBeVisible()
   })
 
   test('yoklama kaydı paneli geri ve ileriyle gezilir', async ({ page }) => {

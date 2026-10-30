@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll, useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
+import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import {
@@ -22,6 +23,7 @@ import {
   ATTENDANCE_OPTIONS,
   attendanceCounts,
   attendanceCsvRow,
+  attendanceDayFilters,
   attendanceRow,
   isDayKey,
   NO_REASON,
@@ -57,9 +59,8 @@ type AttendanceViewProps = {
  * öğretmende sınıf) filtresi, tarih/durum sıralaması, satırdan sağ panelde ayrıntı. Öğrencide
  * katılım sayıları kayıtlardan hesaplanır. Yalnız okuma.
  * TODO(D-attendance-write): yoklama alma core işlemi gelince "Yoklama al" eklenir.
- * TODO(api-filter-date): yoklamada `date` eşitlik/aralık filtresi yoktur; tarih filtresi
- * sunucu aramasına `YYYY-MM-DD` gönderir (kayıtta başka tarih biçimli alan yoktur). Bu yüzden
- * serbest arama kapalıdır; filtre API'de gelince arama geri açılır.
+ * Tarih süzgeci tek gündür (`?tarih=YYYY-MM-DD`) ve sunucuya `dateFrom` = `dateTo` olarak gider
+ * (Europe/Istanbul günü); serbest arama ayrıdır.
  */
 export function AttendanceView({
   audience,
@@ -76,13 +77,22 @@ export function AttendanceView({
   const status = filterValue(list.state.filters.status)
   const dateValue = filterValue(list.state.filters.date)
   const day = isDayKey(dateValue) ? dateValue : ''
+  const search = useDebouncedValue(list.state.query)
 
+  // Sabit öğrenci (veli: seçili çocuk) ve tek gün süzgeci sunucu filtresi olarak eklenir.
   const withScope = <T extends { filters?: Record<string, string | readonly string[]> }>(
     query: T,
-  ): T => (studentId ? { ...query, filters: { ...query.filters, studentId } } : query)
+  ): T => ({
+    ...query,
+    filters: {
+      ...query.filters,
+      ...attendanceDayFilters(day),
+      ...(studentId ? { studentId } : {}),
+    },
+  })
   const records = useCoreList(
     'attendance',
-    withScope(collectionQueryFromList(list.state, ATTENDANCE_LIST, day)),
+    withScope(collectionQueryFromList(list.state, ATTENDANCE_LIST, search)),
   )
   const rows = useMemo(
     () => records.data?.rows.map((item) => attendanceRow(item, lookups)),
@@ -155,7 +165,7 @@ export function AttendanceView({
   )
 
   function download() {
-    const query = withScope(exportQueryFromList(list.state, ATTENDANCE_LIST, day))
+    const query = withScope(exportQueryFromList(list.state, ATTENDANCE_LIST, search))
     void csv.download(title, columns, async () =>
       (await fetchAll(query)).map((item) => attendanceCsvRow(attendanceRow(item, lookups))),
     )
@@ -198,7 +208,6 @@ export function AttendanceView({
           columns={columns}
           mobileColumns={teacher ? ['student', 'date', 'statusLabel'] : ['date', 'statusLabel']}
           caption={title}
-          search={false}
           loading={records.isPending}
           fetching={records.isFetching && !records.isPending}
           error={

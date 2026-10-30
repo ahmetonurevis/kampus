@@ -24,7 +24,6 @@ import {
   overallAverage,
   scoreText,
   scoreTone,
-  studentScope,
   subjectAverages,
   type GradeRow,
 } from './academic-rows.ts'
@@ -33,7 +32,7 @@ import { useAcademicLookups } from './use-academic-lookups.ts'
 
 const GRADE_LIST = {
   sortFields: { title: 'title', date: 'date', score: 'score' },
-  filterFields: { subjectId: 'subjectId' },
+  filterFields: { classId: 'classId', subjectId: 'subjectId' },
   defaultSort: ['-date'],
 } satisfies CollectionListConfig
 const SORTABLE = sortableColumns(GRADE_LIST)
@@ -69,21 +68,17 @@ export function GradesView({ audience, studentId, urlPrefix = '', title }: Grade
   const search = useDebouncedValue(list.state.query)
   const classId = teacher ? filterValue(list.state.filters.classId) : ''
   const subjectId = filterValue(list.state.filters.subjectId)
-  // TODO(api-filter-class): notlarda `classId` filtresi gelince sınıf süzmesi doğrudan sunucuya gider.
-  const scope = studentScope(studentId, classId, lookups)
-  const scopeEmpty = scope.empty
 
-  // Sınıf filtresi öğrenci kimliklerine çevrilir; öğrenciler gelmeden süzülmemiş liste çekilmez.
+  // Sınıf süzgeci sunucuya `classId` olarak gider (öğrencinin güncel sınıfı); sabit öğrenci
+  // (veli: seçili çocuk) `studentId` filtresidir.
   const withScope = <T extends { filters?: Record<string, string | readonly string[]> }>(
     query: T,
-  ): T =>
-    scope.ids.length ? { ...query, filters: { ...query.filters, studentId: scope.ids } } : query
+  ): T => (studentId ? { ...query, filters: { ...query.filters, studentId } } : query)
   const grades = useCoreList(
     'grades',
     withScope(collectionQueryFromList(list.state, GRADE_LIST, search)),
-    { enabled: !scope.empty && !(classId !== '' && data.pending) },
   )
-  const rows = scopeEmpty ? [] : grades.data?.rows.map((item) => gradeRow(item, lookups))
+  const rows = grades.data?.rows.map((item) => gradeRow(item, lookups))
   const panel = useDetailPanel('not')
   const openGrade = panel.open
   const fetchAll = useCoreFetchAll('grades')
@@ -146,7 +141,7 @@ export function GradesView({ audience, studentId, urlPrefix = '', title }: Grade
     )
   }
 
-  const total = scope.empty ? 0 : (grades.data?.total ?? 0)
+  const total = grades.data?.total ?? 0
   const className = lookups.classes.get(classId)?.name
   const subjectName = lookups.subjects.get(subjectId)?.name
   const classOptions = sources.classes.map((item) => item.record)
@@ -180,11 +175,6 @@ export function GradesView({ audience, studentId, urlPrefix = '', title }: Grade
           )}
         </>
       ) : null}
-      {scope.truncated ? (
-        <p role="status" className="mb-4 text-sm text-muted-foreground">
-          Bu sınıf 20 öğrenciden fazla; not listesi ilk 20 öğrenciyle sınırlıdır.
-        </p>
-      ) : null}
       <TableSection
         title={teacher ? 'Not listesi' : 'Notlar'}
         subtitle={`${total} kayıt`}
@@ -200,7 +190,7 @@ export function GradesView({ audience, studentId, urlPrefix = '', title }: Grade
           columns={columns}
           mobileColumns={teacher ? ['student', 'subject', 'score'] : ['subject', 'title', 'score']}
           caption={title}
-          loading={grades.isPending && !scope.empty}
+          loading={grades.isPending}
           fetching={grades.isFetching && !grades.isPending}
           error={
             grades.error ? (

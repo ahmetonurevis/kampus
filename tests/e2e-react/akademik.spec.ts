@@ -4,7 +4,7 @@ import type { Download, Page } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Akademik okuma ekranları: öğretmen (Selin Kaya), öğrenci (Deniz Yılmaz), veli (Ayşe Yılmaz;
 // çocukları Deniz ve Ece). Paylaşılan oturumlar salt okunurdur; hiçbir test kayıt yazmaz. Seed
@@ -169,8 +169,7 @@ test.describe('öğretmen: Sınıflarım, not listesi, yoklama geçmişi', () =>
     await page.getByLabel('Not dersi').selectOption({ label: 'Matematik' })
     await expect(page).toHaveURL(/[?&]not-ders=/)
     await expect(bodyRows(page, table).first()).toBeVisible()
-    for (const row of await bodyRows(page, table).all())
-      await expect(row).toContainText('Matematik')
+    await expectEveryRow(bodyRows(page, table), 'Matematik')
 
     const first = bodyRows(page, table).first()
     await first.getByRole('button').first().click()
@@ -202,8 +201,7 @@ test.describe('öğretmen: Sınıflarım, not listesi, yoklama geçmişi', () =>
     await page.getByLabel('Yoklama sınıfı').selectOption({ label: '7-A' })
     await expect(page).toHaveURL(/[?&]sinif=c1/)
     await expect(resultCount(page)).toContainText(`/ ${c1.length} kayıt`)
-    for (const row of await bodyRows(page, 'Yoklama geçmişi').all())
-      await expect(row).toContainText('7-A')
+    await expectEveryRow(bodyRows(page, 'Yoklama geçmişi'), '7-A')
 
     // Görünen yalnız ilk sayfadır; dosya filtrelenmiş sınıfın bütün kayıtlarıdır.
     const all = await downloadList(page)
@@ -285,8 +283,7 @@ test.describe('öğrenci: Notlarım, Devamsızlığım, Ders Programım', () => 
     await page.getByLabel('Not dersi').selectOption({ label: 'Matematik' })
     await expect(page).toHaveURL(/[?&]ders=/)
     await expect(resultCount(page)).toContainText(`/ ${math.length} kayıt`)
-    for (const row of await bodyRows(page, 'Notlarım').all())
-      await expect(row).toContainText('Matematik')
+    await expectEveryRow(bodyRows(page, 'Notlarım'), 'Matematik')
   })
 
   test('başka öğrencinin notu adresle açılamaz', async ({ page, api }) => {
@@ -319,8 +316,7 @@ test.describe('öğrenci: Notlarım, Devamsızlığım, Ders Programım', () => 
     await page.getByLabel('Katılım durumu').selectOption({ label: 'Gelmedi' })
     await expect(page).toHaveURL(/[?&]durum=absent/)
     await expect(resultCount(page)).toContainText(`/ ${absent} kayıt`)
-    for (const row of await bodyRows(page, 'Devamsızlığım').all())
-      await expect(row).toContainText('Gelmedi')
+    await expectEveryRow(bodyRows(page, 'Devamsızlığım'), 'Gelmedi')
   })
 
   test('ders programı yalnız kendi sınıfının derslerini gösterir; hafta adreste tutulur', async ({
@@ -332,7 +328,7 @@ test.describe('öğrenci: Notlarım, Devamsızlığım, Ders Programım', () => 
     const lessons = program.getByRole('button', { name: /dk/ })
     await expect(lessons.first()).toBeVisible()
     // 7-A sınıfı Derslik 101'dedir.
-    for (const lesson of await lessons.all()) await expect(lesson).toContainText('Derslik 101')
+    await expectEveryRow(lessons, 'Derslik 101')
     await expect(page.getByRole('button', { name: 'Bu hafta' })).toBeDisabled()
 
     await page.getByRole('button', { name: 'Sonraki hafta' }).click()

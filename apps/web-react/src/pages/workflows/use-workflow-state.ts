@@ -7,6 +7,7 @@ import {
   versionMap,
   workflowSources,
   type WorkflowModuleKey,
+  type WorkflowSource,
 } from './workflow-state.ts'
 
 /**
@@ -23,7 +24,11 @@ import {
  * koleksiyonun hatası sayfada gösterilir.
  */
 export function useWorkflowState(module: WorkflowModuleKey, session: Session) {
-  const sources = workflowSources(module, session.role)
+  return useSourcesState(workflowSources(module, session.role), session)
+}
+
+/** Verilen koleksiyon kaynaklarını okuyup core `State` kurar (optik ve etüt sayfaları da kullanır). */
+export function useSourcesState(sources: readonly WorkflowSource[], session: Session) {
   const results = useCollectionsAll(sources.map(({ collection }) => ({ collection })))
 
   const failed = results.find(

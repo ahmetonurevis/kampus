@@ -55,16 +55,23 @@ export function isWorkflowModuleKey(key: string): key is WorkflowModuleKey {
   return Object.hasOwn(MODULE_SOURCES, key)
 }
 
-/** Okunacak koleksiyonlar (tekrarsız, ana koleksiyon ilk sırada). */
-export function workflowSources(module: WorkflowModuleKey, role: Role): WorkflowSource[] {
+/**
+ * Okunacak koleksiyonlar (tekrarsız, ilk ad ana koleksiyon): verilen modül koleksiyonları ve rolün
+ * kapsam kaynakları. Optik ve etüt sayfaları da bunu kullanır.
+ */
+export function collectionSources(names: readonly CollectionName[], role: Role): WorkflowSource[] {
   const institution = role === 'yonetici' || role === 'onburo'
-  const names = new Set<CollectionName>([
-    ...MODULE_SOURCES[module],
+  const all = new Set<CollectionName>([
+    ...names,
     ...SCOPE_SOURCES,
     ...(institution ? [] : MEMBER_SCOPE_SOURCES),
   ])
-  const [primary] = MODULE_SOURCES[module]
-  return [...names].map((collection) => ({ collection, primary: collection === primary }))
+  const [primary] = names
+  return [...all].map((collection) => ({ collection, primary: collection === primary }))
+}
+
+export function workflowSources(module: WorkflowModuleKey, role: Role): WorkflowSource[] {
+  return collectionSources(MODULE_SOURCES[module], role)
 }
 
 export type WorkflowContext = {

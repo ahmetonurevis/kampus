@@ -71,7 +71,7 @@ docker compose down
 
 - Kurum kimliği yalnız oturumun etkin kurumundan gelir; her istekte üyelik doğrulanır. Başarı `{ data, meta? }`, hata `{ code, message, issues?, requestId }`.
 - Demo kullanıcıları (`@kampus.example`, parola `.env`'deki `DEMO_PASSWORD`, boşsa `Demo-Giris-2026!`; üretimde varsayılan parola yok): Akademi Özel Okulları'nda `murat.yilmaz` (yönetici, iki kurumda), `busra.aydin`, `selin.kaya`, `deniz.yilmaz`, `ayse.yilmaz`; Kampüs Dil Akademisi'nde `gizem.tunc`, `ozan.er`, `lale.sezer`, `hakan.sezer`.
-- Diğer komutlar: `test` (PGlite, Docker gerektirmez), `typecheck`, `openapi` / `openapi:check` (`apps/api/openapi.json`), `db:generate` (drizzle-kit migration), `auth:schema` (Better Auth şeması).
+- Diğer komutlar: `test` (PGlite, Docker gerektirmez), `test:pg` (PostgreSQL 16 eşzamanlılık takımı; `TEST_PG_URL` atılabilir bir veritabanını gösterir, verilmezse atlanır — bkz. `docs/muhendislik/test-stratejisi.md` §4), `typecheck`, `openapi` / `openapi:check` (`apps/api/openapi.json`), `db:generate` (drizzle-kit migration), `auth:schema` (Better Auth şeması).
 
 ## İstemci paketleri (`packages/api-client`, `packages/react-shared`)
 

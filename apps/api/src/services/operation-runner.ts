@@ -16,6 +16,7 @@ import {
 } from '../db/collections.ts'
 import {
   loadRecords,
+  lockInstitution,
   writeRecords,
   type RecordWrite,
   type StoredRecord,
@@ -37,7 +38,8 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
  * school-core işlemlerini sunucuda çalıştırır (ADR 0001 karar 6): gereken koleksiyonları kurum
  * kapsamında yükler, State şekline getirir, saf işlemi `now` ile çalıştırır, önceki ve sonraki
  * State'i kayıt düzeyinde farklar ve farkı sürüm kontrolüyle tek transaction'da yazar. Denetim
- * kaydı aynı transaction'dadır. Başarısızlıkta hiçbir kayıt değişmez.
+ * kaydı aynı transaction'dadır. Başarısızlıkta hiçbir kayıt değişmez. Transaction kurum
+ * kilidiyle başlar; aynı kurumun işlemleri sırayla çalışır (`lockInstitution`).
  */
 
 export interface OperationTools {
@@ -234,6 +236,8 @@ export async function runOperation<R>(
   const tools: OperationTools = { now, makeId: request.makeId ?? defaultMakeId }
 
   return ctx.db.transaction(async (tx) => {
+    // Yüklemeden önce: aynı kurumun eşzamanlı işlemi bu görüntüyü bayatlatamaz.
+    await lockInstitution(tx, ctx.institutionId)
     const loaded = await loadRecords(tx, ctx.institutionId, collections)
     const before = new Map<CollectionName, Map<string, StoredRecord>>(
       collections.map((collection) => [collection, new Map()]),

@@ -58,6 +58,26 @@ function toStored(row: typeof records.$inferSelect): StoredRecord {
   }
 }
 
+/**
+ * İki anahtarlı danışma kilidinin ad alanı ("KMPR"). İki anahtarlı ve tek anahtarlı (bigint)
+ * kilitlerin anahtar uzayları ayrıdır; pg-boss gibi tek anahtarlı kilit kullananlarla çakışmaz.
+ */
+const INSTITUTION_LOCK_NAMESPACE = 0x4b4d5052
+
+/**
+ * Kurumun yazma işlemlerini sıraya sokar: aynı kurumda aynı anda yalnız bir işlem yükleyip
+ * yazabilir. READ COMMITTED altında kilitsiz iki işlem aynı görüntüyü yükleyip farklı yeni
+ * kimlikle ekleme yapabilir (aynı gün iki yoklama, son boş yere iki kayıt); sürüm denetimi
+ * yalnız var olan satırı korur. Kilit transaction sonunda kendiliğinden bırakılır, bu yüzden
+ * yalnız transaction içinde çağrılır. Kurum başına tek kilit olduğundan sıralama (kilitlenme)
+ * sorunu yoktur; `hashtext` çakışması iki kurumu yalnız gereksiz yere sıraya sokar.
+ */
+export async function lockInstitution(tx: Database, institutionId: string): Promise<void> {
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(${INSTITUTION_LOCK_NAMESPACE}::int, hashtext(${institutionId}))`,
+  )
+}
+
 /** Koleksiyonların kayıtları; sıra kararlı (koleksiyon, kimlik). */
 export async function loadRecords(
   db: Database,

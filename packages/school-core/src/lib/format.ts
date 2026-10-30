@@ -81,6 +81,7 @@ export function homeworkStatus(
   homework: { id: string; dueDate: DateInput },
   submissions: readonly { homeworkId: string; studentId: string; score?: number | null }[],
   studentId: string,
+  now: DateInput = new Date(),
 ) {
   const submission = submissions.find(
     (s) => s.homeworkId === homework.id && s.studentId === studentId,
@@ -89,7 +90,7 @@ export function homeworkStatus(
     ? submission.score != null
       ? 'Değerlendirildi'
       : 'Teslim edildi'
-    : new Date(homework.dueDate) < new Date()
+    : new Date(homework.dueDate) < new Date(now)
       ? 'Gecikmiş'
       : 'Bekliyor'
 }

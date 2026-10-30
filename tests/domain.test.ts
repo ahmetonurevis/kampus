@@ -131,15 +131,15 @@ test('Dolu sınıfa veya geçersiz tarihle kayıt kısmi veri oluşturmaz', () =
   assert.equal(JSON.stringify(s), snapshot2)
 })
 test('Yoklama aynı gün tekrar kaydedilince mevcut kaydı günceller', () => {
-  const s = createSeed(),
-    date = new Date().toISOString(),
+  const date = '2026-10-06T10:00:00.000Z',
+    s = createSeed(new Date(date)),
     students = s.students.filter((st) => st.classId === 'c1')
   const marks = Object.fromEntries(students.map((st) => [st.id, 'present']))
   const before = s.attendance.length
-  recordAttendance(s, 'c1', date, marks)
+  recordAttendance(s, 'c1', date, marks, date)
   assert.equal(s.attendance.length, before + students.length)
   marks.s1 = 'absent'
-  recordAttendance(s, 'c1', date, marks)
+  recordAttendance(s, 'c1', date, marks, date)
   assert.equal(s.attendance.length, before + students.length)
   assert.equal(
     s.attendance.find((a) => a.studentId === 's1' && dayKey(a.date) === dayKey(date))!.status,
@@ -147,16 +147,11 @@ test('Yoklama aynı gün tekrar kaydedilince mevcut kaydı günceller', () => {
   )
 })
 test('Eksik veya ileri tarihli yoklama kaydı eklenmez', () => {
-  const s = createSeed(),
+  const now = '2026-10-06T10:00:00.000Z',
+    s = createSeed(new Date(now)),
     count = s.attendance.length
-  assert.throws(
-    () => recordAttendance(s, 'c1', new Date().toISOString(), { s1: 'present' }),
-    /Tüm öğrencilerin/,
-  )
-  assert.throws(
-    () => recordAttendance(s, 'c1', new Date(Date.now() + 86400000).toISOString(), {}),
-    /Gelecek/,
-  )
+  assert.throws(() => recordAttendance(s, 'c1', now, { s1: 'present' }, now), /Tüm öğrencilerin/)
+  assert.throws(() => recordAttendance(s, 'c1', '2026-10-07T10:00:00.000Z', {}, now), /Gelecek/)
   assert.equal(s.attendance.length, count)
 })
 test('Quiz skoru cevaplardan ve konu dağılımından hesaplanır', () => {

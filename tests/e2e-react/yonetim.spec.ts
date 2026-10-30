@@ -119,6 +119,34 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await expect(resultCount(page)).toContainText('/ 24 kayıt')
   })
 
+  test('Arşiv sekmesi sunucuda isActive=false ister; adres korunur, Aktif kayıtlar geri döner', async ({
+    page,
+  }) => {
+    // Seed'de arşivlenmiş kampüs/sınıf yoktur: arşiv boş, aktif liste 24 kayıttır.
+    const request = page.waitForRequest(
+      (item) =>
+        item.url().includes('/collections/classes') && item.url().includes('isActive=false'),
+    )
+    await page.goto(`${CLASSES_URL}?durum=arsiv`)
+    await request
+    await expect(page.getByRole('button', { name: 'Arşiv', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(page.getByText('0 arşiv kaydı · 5–12. sınıf düzeyleri')).toBeVisible()
+    await expect(page.getByText('Arşivde kampüs yok')).toBeVisible()
+
+    // Temizle arama ve filtreleri siler, sekmeyi değil.
+    await page.getByLabel('Tabloda ara').fill('zz-yok')
+    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
+    await expect(page).toHaveURL(/[?&]durum=arsiv/)
+
+    await page.getByRole('button', { name: 'Aktif kayıtlar' }).click()
+    await expect(page).not.toHaveURL(/[?&]durum=/)
+    await expect(resultCount(page)).toContainText('1–8 / 24 kayıt')
+    await expect(page.getByRole('list', { name: 'Kampüsler' }).getByRole('listitem')).toHaveCount(3)
+  })
+
   test('sınıf özeti URLde açılır, geri ve ileri paneli kapatıp açar', async ({ page }) => {
     await page.goto(CLASSES_URL)
     await page.getByLabel('Tabloda ara').fill('7-A')
@@ -235,6 +263,24 @@ test.describe('yönetici: Eğitim Kadrosu', () => {
     await header.getByRole('button').click()
     await expect(header).toHaveAttribute('aria-sort', 'descending')
     await expect(page).toHaveURL(/[?&]yon=azalan/)
+  })
+
+  test('Arşiv sekmesi öğretmenlerde isActive=false ister ve Aktif kayıtlara dönülür', async ({
+    page,
+  }) => {
+    await page.goto(STAFF_URL)
+    await expect(resultCount(page)).toContainText('1–8 / 48 kayıt')
+    const request = page.waitForRequest(
+      (item) =>
+        item.url().includes('/collections/teachers') && item.url().includes('isActive=false'),
+    )
+    await page.getByRole('button', { name: 'Arşiv', exact: true }).click()
+    await request
+    await expect(page).toHaveURL(/[?&]durum=arsiv/)
+    await expect(page.getByText('0 arşiv kaydı · İletişim, branş ve görev bilgileri')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Aktif kayıtlar' }).click()
+    await expect(resultCount(page)).toContainText('1–8 / 48 kayıt')
   })
 
   test('kampüs ve branş filtreleri birleşir, sayfa 1e döner', async ({ page }) => {

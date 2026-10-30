@@ -24,11 +24,16 @@ import type { FilterField } from '@/lib/list-query.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { CampusSummaryPanel } from './CampusSummaryPanel.tsx'
+import { ArchiveTabs } from './ArchiveTabs.tsx'
 import { ClassSummaryPanel } from './ClassSummaryPanel.tsx'
 import {
+  archiveViewFilter,
+  campusesInView,
   campusSummaries,
   classCsvRow,
   classRow,
+  isActiveFilter,
+  isArchiveView,
   type CampusSummary,
   type ClassRow,
 } from './management-rows.ts'
@@ -39,7 +44,7 @@ const CLASS_LIST = {
   sortFields: { name: 'name' },
   filterFields: { branchId: 'branchId', grade: 'grade' },
 } satisfies CollectionListConfig
-const CLASS_URL_FILTERS = { branchId: 'kampus', grade: 'duzey' }
+const CLASS_URL_FILTERS = { branchId: 'kampus', grade: 'duzey', archive: 'durum' }
 const SORTABLE = sortableColumns(CLASS_LIST)
 const GRADE_FILTER: FilterField[] = [
   {
@@ -58,8 +63,8 @@ const ALL = 'all'
  * Kampüsler & Sınıflar (yönetici, Vue `SchoolManagement.vue` `/subeler`): kampüs kartları ve
  * sunucu sayfalı sınıf tablosu; satır ve kartlar sağ panelde özet açar. Yalnız okuma.
  * TODO(D1b2): "Kampüs ekle", "Sınıf ekle", düzenle/arşivle yazma uçlarıyla eklenir.
- * TODO(api-archive-filter): Vue'daki "Aktif kayıtlar / Arşiv" sekmesi koleksiyon listesinde
- * `isActive` filtresi gelince eklenir.
+ * "Aktif kayıtlar / Arşiv" sekmesi (`?durum=arsiv`) sınıf tablosunda sunucu `isActive` filtresidir;
+ * kampüs kartları aynı sekmeyle başvuru koleksiyonundan süzülür.
  * TODO(api-aggregate): Vue'daki "Ortalama" sütunu not verisinden hesaplanır; toplu uç gelince.
  * TODO(api-search-joined): arama yalnız sınıfın kendi alanlarında çalışır; kampüs adıyla sınıf
  * aranamaz (Vue'da aranabilir) — ilişkili ad araması API'de gelince eklenir.
@@ -68,11 +73,19 @@ export function CampusesPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const data = useManagementLookups({ students: true })
   const { lookups, sources } = data
-  const campuses = useMemo(() => campusSummaries(sources, lookups), [sources, lookups])
+  const allCampuses = useMemo(() => campusSummaries(sources, lookups), [sources, lookups])
 
   const list = useListState('siniflar', { urlFilters: CLASS_URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
-  const classes = useCoreList('classes', collectionQueryFromList(list.state, CLASS_LIST, search))
+  const archived = isArchiveView(list.state.filters.archive)
+  const campuses = useMemo(() => campusesInView(allCampuses, archived), [allCampuses, archived])
+  const withActive = <T extends { filters?: Record<string, string | readonly string[]> }>(
+    query: T,
+  ): T => ({ ...query, filters: { ...query.filters, ...isActiveFilter(archived) } })
+  const classes = useCoreList(
+    'classes',
+    withActive(collectionQueryFromList(list.state, CLASS_LIST, search)),
+  )
   const rows = useMemo(
     () => classes.data?.rows.map((item) => classRow(item, lookups)),
     [classes.data, lookups],
@@ -87,6 +100,7 @@ export function CampusesPage({ page }: { page: NavPage }) {
     typeof list.state.filters.branchId === 'string' ? list.state.filters.branchId : ''
   const setBranch = (value: string) =>
     list.dispatch({ type: 'filter', key: 'branchId', value: value === ALL ? '' : value })
+  const setArchive = (value: string) => list.dispatch({ type: 'filter', key: 'archive', value })
 
   const columns = useMemo<DataColumn<ClassRow>[]>(
     () => [
@@ -142,7 +156,7 @@ export function CampusesPage({ page }: { page: NavPage }) {
   )
 
   function download() {
-    const query = exportQueryFromList(list.state, CLASS_LIST, search)
+    const query = withActive(exportQueryFromList(list.state, CLASS_LIST, search))
     void csv.download(
       page.title,
       columns.filter((column) => column.key !== ACTIONS_KEY),
@@ -168,6 +182,11 @@ export function CampusesPage({ page }: { page: NavPage }) {
           </Button>
         }
       />
+      <ArchiveTabs
+        archived={archived}
+        onChange={setArchive}
+        activeNote="Sınıf danışmanı ve branş öğretmenleri ayrı ayrı atanır."
+      />
       {data.error ? (
         <div role="alert" className="mb-6 rounded-card border bg-surface p-8">
           <QueryError error={data.error} onRetry={data.retry} />
@@ -175,6 +194,7 @@ export function CampusesPage({ page }: { page: NavPage }) {
       ) : (
         <CampusCards
           campuses={campuses}
+          archived={archived}
           pending={data.pending}
           onOpen={(id) => campusPanel.open(id)}
         />
@@ -187,7 +207,9 @@ export function CampusesPage({ page }: { page: NavPage }) {
           <h2 id="sinif-tablosu" className="text-lg font-semibold">
             Sınıflar ve ders atamaları
           </h2>
-          <p className="text-sm text-muted-foreground">{total} kayıt · 5–12. sınıf düzeyleri</p>
+          <p className="text-sm text-muted-foreground">
+            {total} {archived ? 'arşiv kaydı' : 'kayıt'} · 5–12. sınıf düzeyleri
+          </p>
         </header>
         <ServerDataTable
           list={list}
@@ -208,7 +230,11 @@ export function CampusesPage({ page }: { page: NavPage }) {
           onRowClick={(row) => classPanel.open(row.id)}
           externalActive={branchId !== ''}
           externalLabel={`Kampüs: ${lookups.branches.get(branchId)?.name ?? ''}`}
-          onReset={() => setBranch(ALL)}
+          onReset={() => {
+            setBranch(ALL)
+            // "Temizle" bütün filtreleri siler; kayıt durumu sekmesi arama/filtre değildir, kalır.
+            setArchive(archiveViewFilter(archived))
+          }}
           toolbar={
             <NativeSelect
               aria-label="Kampüs filtresi"
@@ -243,10 +269,12 @@ export function CampusesPage({ page }: { page: NavPage }) {
 
 function CampusCards({
   campuses,
+  archived,
   pending,
   onOpen,
 }: {
   campuses: readonly CampusSummary[]
+  archived: boolean
   pending: boolean
   onOpen: (id: string) => void
 }) {
@@ -259,7 +287,7 @@ function CampusCards({
   if (!campuses.length)
     return (
       <div className="mb-6">
-        <EmptyState icon="School" title="Henüz kampüs yok" />
+        <EmptyState icon="School" title={archived ? 'Arşivde kampüs yok' : 'Henüz kampüs yok'} />
       </div>
     )
   return (

@@ -262,7 +262,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mali veri hassastır; onay ile kayıt aynı kişide toplanmamalıdır.
 - **Kaynak:** İşletme kuralı; KVKK md. 12 (veri güvenliği); ADR 0001 karar 4 ve 7.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — yenileme `yonetici` ve `onburo` rollerine açık (`packages/school-core/src/lib/school-workflows.js:261`); iade/iptal onayı ve ödeyici kapsamı yok.
+- **Kodda:** kısmen — tahsilat kaydı (`invoice.pay`) yalnız `yonetici` ve `onburo` rollerinde (`packages/school-core/src/lib/authorize.ts`, `WRITE_ACTION_ROLES`); veli tahsilat kaydedemez. Velinin bağlı çocuğu için çevrim içi ödemesi ayrı eylemdir (`invoice.payOnline`, `finance` modülü); ödeme sağlayıcısı onayı gerektirir (`PROVIDER_CONFIRMATION_ACTIONS`) ve sağlayıcı seçilene kadar hiçbir işlem çağırmaz (`TODO(payment-provider)`). Yenileme `yonetici` ve `onburo` rollerine açık (`packages/school-core/src/lib/school-workflows.ts`); iade/iptal onayı ve ödeyici (sözleşme) kapsamı yok, veli kapsamı bağlı çocuklardır.
 
 ### DOM-FIN-053 · Finans denetim izi
 

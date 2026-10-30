@@ -21,7 +21,8 @@ test.describe('giriş ve çıkış', () => {
       const { name } = accounts[role]
       await loginThroughForm(page, role)
 
-      await expect(page).toHaveURL(new RegExp(`/${role}/dashboard$`))
+      // Veli adresine seçili çocuk `?cocuk=` ile tamamlanır (RoleShell).
+      await expect(page).toHaveURL(new RegExp(`/${role}/dashboard(\\?cocuk=[^&]+)?$`))
       await expect(page.getByRole('heading', { level: 1, name: 'Genel Bakış' })).toBeVisible()
       await expect(page.getByText(ROLE_PANEL[role])).toBeVisible()
       await expect(accountMenuButton(page, name)).toBeVisible()

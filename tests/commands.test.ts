@@ -1,0 +1,341 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
+import {
+  ASSESSMENT_COMMANDS,
+  OPERATION_COMMANDS,
+  WORKFLOW_COMMANDS,
+  commandSpec,
+  isAssessmentCommand,
+  isOperationCommand,
+  isWorkflowCommand,
+  type CommandSpec,
+} from '../packages/school-core/src/modules/commands.ts'
+import {
+  COLLECTION_NAMES,
+  MODULE_KEYS,
+} from '../packages/school-core/src/modules/collection-modules.ts'
+import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '../packages/school-core/src/lib/scope.ts'
+import { WRITE_ACTIONS, requireAuthorized } from '../packages/school-core/src/lib/authorize.ts'
+import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
+import { runAssessment } from '../packages/school-core/src/lib/assessment-automation.ts'
+import { payInvoice, recordAttendance } from '../packages/school-core/src/lib/domain.ts'
+import { recordGrade, updateGrade } from '../packages/school-core/src/lib/grades.ts'
+import { archiveRecord, restoreRecord } from '../packages/school-core/src/lib/school-management.ts'
+import { csvTemplate } from '../packages/school-core/src/lib/workflow-presentation.ts'
+import type { Session } from '../packages/school-core/src/lib/domain.ts'
+import { isDomainError } from './support/domain-error.ts'
+import { resultOf } from './support/result.ts'
+
+const now = '2026-10-06T10:00:00.000Z'
+const seed = () => createSeed(new Date(now))
+let sequence = 0
+const id = (prefix: string) => `${prefix}-command-test-${++sequence}`
+const admin: Session = { role: 'yonetici', childId: 's1' }
+const STATE_KEYS = new Set(Object.keys(seed()))
+
+/**
+ * API'nin State görünümü gibi: yalnız komut tablosundaki anahtarlar yüklenir; başka State
+ * anahtarını okumak veya yazmak hemen hata verir. Denetim listesi her zaman boş verilir.
+ */
+function guarded(state: State, spec: CommandSpec): State {
+  const target: Record<string, unknown> = { audit: [] }
+  for (const key of [...spec.collections, ...spec.scalars]) target[key] = state[key]
+  const fail = (key: PropertyKey) => {
+    throw new Error(`Komut tablosunda olmayan State anahtarı: ${String(key)}`)
+  }
+  return new Proxy(target, {
+    get(object, key, receiver) {
+      if (typeof key === 'string' && !Object.hasOwn(object, key) && STATE_KEYS.has(key)) fail(key)
+      return Reflect.get(object, key, receiver)
+    },
+    set(object, key, value, receiver) {
+      if (typeof key !== 'string' || !Object.hasOwn(object, key)) fail(key)
+      // Diziyi yeniden atayan işlemin sonucu sonraki komutlar için asıl State'e de yazılır.
+      if (key !== 'audit') Reflect.set(state, key, value)
+      return Reflect.set(object, key, value, receiver)
+    },
+  }) as unknown as State
+}
+const workflow = (
+  state: State,
+  command: string,
+  input: unknown,
+  recordId?: string,
+  session = admin,
+) => {
+  const spec = commandSpec('workflow', command)
+  assert.ok(spec, command)
+  return runWorkflow(guarded(state, spec), session, command, input, id, recordId, now)
+}
+const assessment = (
+  state: State,
+  command: string,
+  input: Record<string, unknown>,
+  recordId = '',
+  session = admin,
+) => {
+  const spec = commandSpec('assessment', command)
+  assert.ok(spec, command)
+  return runAssessment(guarded(state, spec), session, command, input, id, recordId, now)
+}
+const operation = (state: State, command: string) => {
+  const spec = commandSpec('operation', command)
+  assert.ok(spec, command)
+  return guarded(state, spec)
+}
+
+test('Komut tabloları geçerli modül ve koleksiyon adlarını, kapsam kaynağını içerir', () => {
+  const tables = { ...WORKFLOW_COMMANDS, ...ASSESSMENT_COMMANDS, ...OPERATION_COMMANDS }
+  for (const [command, spec] of Object.entries(tables)) {
+    assert.ok(spec.module === null || MODULE_KEYS.includes(spec.module), command)
+    for (const collection of spec.collections)
+      assert.ok(COLLECTION_NAMES.includes(collection), `${command}: ${collection}`)
+    for (const collection of SCOPE_SOURCE_COLLECTIONS)
+      assert.ok(spec.collections.includes(collection), `${command}: ${collection}`)
+    assert.ok(!spec.collections.includes('audit'), command)
+    assert.equal(new Set(spec.collections).size, spec.collections.length, command)
+    assert.ok(spec.scalars.includes('modules'), command)
+  }
+  assert.deepEqual(Object.keys(OPERATION_COMMANDS), [...WRITE_ACTIONS])
+  assert.equal(OPERATION_COMMANDS['record.archive'].module, null)
+  assert.equal(OPERATION_COMMANDS['invoice.pay'].module, 'finance')
+})
+
+test('Komut adı yerleşik özellik olduğunda tanınmaz; yürütücü adı ayırır', () => {
+  for (const name of ['toString', 'constructor', '__proto__', 'hasOwnProperty', 'yok']) {
+    assert.equal(isWorkflowCommand(name), false)
+    assert.equal(isAssessmentCommand(name), false)
+    assert.equal(isOperationCommand(name), false)
+    assert.equal(commandSpec('workflow', name), undefined)
+  }
+  assert.equal(isAssessmentCommand('attendance'), true)
+  assert.equal(isWorkflowCommand('attendance'), false)
+  assert.equal(commandSpec('assessment', 'attendance')?.module, 'tutoring')
+  assert.equal(commandSpec('operation', 'attendance.record')?.module, 'academic')
+})
+
+test('Her iş akışı komutu tablodaki modül kapalıyken reddedilir', () => {
+  for (const [command, spec] of Object.entries(WORKFLOW_COMMANDS)) {
+    const state = seed()
+    state.modules[spec.module] = false
+    assert.throws(
+      () => runWorkflow(state, admin, command, {}, id, undefined, now),
+      isDomainError('module_disabled', 'forbidden'),
+      command,
+    )
+  }
+})
+
+test('İş akışı komutları yalnız tablodaki koleksiyonlarla çalışır', () => {
+  const state = seed()
+  const goal = resultOf<{ id: string }>(
+    workflow(state, 'goal', {
+      studentId: 's1',
+      subjectId: 'science',
+      title: 'Fen netini yükseltmek',
+      targetNet: 18,
+      deadline: '2026-11-15',
+      motivation: 'Deneylerde daha emin olmak istiyorum.',
+    }),
+  )
+  workflow(state, 'goal-suggest', {}, goal.id)
+  workflow(state, 'goal-step', { title: 'Tekrar', topic: '', dueDate: '2026-10-20' }, goal.id)
+  workflow(state, 'goal-comment', { text: 'Destekliyoruz.' }, goal.id, {
+    role: 'veli',
+    childId: 's1',
+  })
+  workflow(state, 'goal-close', { status: 'Tamamlandı', note: 'Hedefe ulaşıldı.' }, goal.id)
+  workflow(
+    state,
+    'guidance',
+    {
+      studentId: 's1',
+      teacherId: 't1',
+      title: 'Tablo takibi',
+      plan: 'Haftalık görüşme planı.',
+      sharedNote: '',
+      followUp: '2026-10-20',
+    },
+    undefined,
+    { role: 'ogretmen' },
+  )
+  workflow(state, 'exam-import', { csv: csvTemplate })
+  workflow(state, 'exam-result', {
+    examId: 'exam-7-1',
+    studentId: 's1',
+    subjectId: 'math',
+    correct: 10,
+    wrong: 5,
+    blank: 5,
+    weakTopics: 'Denklemler',
+  })
+  const lesson = state.schedule.find((l) => l.classId === 'c1' && l.subjectId === 'math')!
+  const created = resultOf<{ id: string }>(
+    workflow(state, 'lesson', {
+      classId: lesson.classId,
+      teacherId: 't1',
+      subjectId: lesson.subjectId,
+      date: '2026-10-18T06:00:00Z',
+      duration: lesson.duration,
+      room: lesson.room,
+    }),
+  )
+  workflow(state, 'lesson-cancel', {}, created.id)
+  workflow(
+    state,
+    'study-task',
+    {
+      studentId: 's1',
+      subjectId: 'math',
+      topic: 'Denklemler',
+      title: 'Haftalık tekrar',
+      instructions: 'Beş soru çöz.',
+      dueDate: '2026-10-12',
+      minutes: 30,
+    },
+    undefined,
+    { role: 'ogrenci' },
+  )
+  workflow(state, 'consent', { decision: 'Onaylandı', note: 'Katılabilir.' }, 'event-science', {
+    role: 'veli',
+    childId: 's1',
+  })
+  // İptal edilen etkinliğe onay verilemez; iptal onaydan sonra çalışır.
+  workflow(state, 'event-cancel', {}, 'event-science')
+  // `transport-assign` güzergâhı döndürür; atama kaydı State'ten okunur.
+  workflow(state, 'transport-assign', { studentId: 's1', routeId: 'route-b1', stop: 'Bahariye' })
+  const assigned = state.transportAssignments.find((a) => a.studentId === 's1')
+  assert.ok(assigned)
+  workflow(state, 'transport-remove', {}, assigned.id)
+  workflow(
+    state,
+    'meal',
+    {
+      branchId: 'b1',
+      date: '2026-10-06',
+      title: 'Çorba ve pilav',
+      allergens: 'Gluten, süt',
+      description: 'Yeni menü',
+    },
+    'meal-0',
+  )
+  workflow(state, 'club-enroll', { studentId: 's1' }, 'club-art', { role: 'ogrenci' })
+  workflow(
+    state,
+    'club-attendance',
+    { date: '2026-10-06', marks: { s1: 'Geldi', s2: 'İzinli' } },
+    'club-science',
+    {
+      role: 'ogretmen',
+    },
+  )
+  workflow(state, 'club-archive', {}, 'club-science', { role: 'ogretmen' })
+  const renewal = resultOf<{ id: string }>(
+    workflow(state, 'renewal', {
+      studentId: 's1',
+      targetClassId: 'c4',
+      year: 2027,
+      mode: 'renew',
+      total: 28500.01,
+      scholarship: 15,
+      discount: 100.02,
+      count: 7,
+      startDate: '2027-01-31',
+    }),
+  )
+  workflow(state, 'renewal-activate', {}, renewal.id)
+})
+
+test('Optik ve etüt komutları yalnız tablodaki koleksiyonlarla çalışır', () => {
+  const state = seed()
+  const text =
+    'student;booklet;answers\n2026001;A;BBBDABCDABCD\n2026025;A;BBBDABCDABCD\n2026049;A;BBBDABCDABCD'
+  assessment(state, 'evaluate', { profileId: 'optical-exam-7-1', text })
+  const plan = {
+    examId: 'exam-7-1',
+    threshold: 70,
+    fromDate: '2026-10-07',
+    toDate: '2026-10-20',
+    duration: 30,
+    maxGroupSize: 12,
+    branchId: '',
+    subjectId: '',
+  }
+  assessment(state, 'plan', plan)
+  const session = state.tutorSessions.at(-1)
+  assert.ok(session)
+  assessment(state, 'cancel', { reason: 'Öğretmen izinli.' }, session.id)
+  const slot = resultOf<{ id: string }>(
+    assessment(state, 'slot', { teacherId: 't1', date: '2026-10-21T13:00:00.000Z', duration: 30 }),
+  )
+  assessment(state, 'slot-remove', {}, slot.id)
+})
+
+test('Temel yazma işlemleri yetkiyle birlikte yalnız tablodaki koleksiyonlarla çalışır', () => {
+  const state = seed()
+  const teacher: Actor = { role: 'ogretmen', links: [{ kind: 'teacher', recordId: 't1' }] }
+  const director: Actor = { role: 'yonetici', links: [] }
+  const invoice = state.invoices.find((i) => i.studentId === 's1' && !i.paidAt)!
+  const pay = operation(state, 'invoice.pay')
+  requireAuthorized(director, 'invoice.pay', { studentId: 's1' }, pay)
+  payInvoice(pay, invoice.id, 'Banka havalesi', now)
+  // Çevrim içi ödeme henüz işlem çağırmaz; yetkisi tablodaki kaynakla çözülür.
+  const parent: Actor = { role: 'veli', links: [{ kind: 'child', recordId: 's1' }] }
+  requireAuthorized(
+    parent,
+    'invoice.payOnline',
+    { studentId: 's1' },
+    operation(state, 'invoice.payOnline'),
+  )
+  const marks = Object.fromEntries(
+    state.students.filter((s) => s.classId === 'c1' && s.isActive).map((s) => [s.id, 'present']),
+  )
+  const attendance = operation(state, 'attendance.record')
+  requireAuthorized(teacher, 'attendance.record', { classId: 'c1', date: now }, attendance, { now })
+  recordAttendance(attendance, 'c1', now, marks, now)
+  const quiz = state.quizzes.find((q) => q.classId === 'c1' && q.subjectId === 'math')!
+  const grade = recordGrade(
+    operation(state, 'grade.record'),
+    teacher,
+    {
+      studentId: 's1',
+      subjectId: 'math',
+      term: 1,
+      assessmentType: 'performans',
+      date: '2026-10-05',
+      quizId: quiz.id,
+    },
+    id,
+    now,
+  )
+  const graded = recordGrade(
+    operation(state, 'grade.record'),
+    teacher,
+    {
+      studentId: 's1',
+      subjectId: 'math',
+      term: 1,
+      assessmentType: 'sinav',
+      date: '2026-10-05',
+      score: 70,
+    },
+    id,
+    now,
+  )
+  assert.ok(grade.quizId)
+  updateGrade(
+    operation(state, 'grade.update'),
+    teacher,
+    graded.id,
+    { score: 72, reason: 'Toplama' },
+    now,
+  )
+  const replacement = state.classes.find((c) => c.id !== 'c1' && c.grade === 7 && c.isActive)!
+  const archive = operation(state, 'record.archive')
+  requireAuthorized(director, 'record.archive', { kind: 'class' }, archive)
+  archiveRecord(archive, 'class', 'c1', replacement.id, now)
+  const restore = operation(state, 'record.restore')
+  requireAuthorized(director, 'record.restore', { kind: 'class' }, restore)
+  restoreRecord(restore, 'class', 'c1')
+})

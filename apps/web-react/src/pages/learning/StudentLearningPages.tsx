@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { Avatar } from '@/components/Avatar.tsx'
 import { EmptyState } from '@/components/EmptyState.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -63,20 +62,5 @@ export function StudentQuizzesPage({ page }: { page: NavPage }) {
     <LearningStudentGate page={page}>
       {(student) => <StudentQuizzesView student={student} title="Quizlerim" />}
     </LearningStudentGate>
-  )
-}
-
-export function StudentSummary({ student }: { student: Student }) {
-  return (
-    <section
-      aria-label="Öğrenci özeti"
-      className="panel mb-6 flex flex-wrap items-center gap-4 rounded-card border bg-surface px-6 py-5"
-    >
-      <Avatar name={student.name} size="large" />
-      <div className="min-w-0">
-        <h2 className="text-lg font-semibold [overflow-wrap:anywhere]">{student.name}</h2>
-        <p className="text-sm text-muted-foreground">Okul no: {student.number ?? '—'}</p>
-      </div>
-    </section>
   )
 }

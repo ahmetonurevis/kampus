@@ -71,11 +71,12 @@ export function recordAttendance(
   classId: string,
   date: string,
   marks: Readonly<Record<string, string>>,
+  now = new Date().toISOString(),
 ) {
   const students = state.students.filter((s) => s.classId === classId && s.isActive)
   if (!Number.isFinite(+new Date(date)))
     throw new DomainError('invalid_attendance_date', 'Geçerli bir yoklama tarihi seçin.')
-  if (dayKey(date) > dayKey())
+  if (dayKey(date) > dayKey(now))
     throw new DomainError('attendance_future_date', 'Gelecek tarih için yoklama alınamaz.')
   if (!students.length)
     throw new DomainError('class_has_no_active_students', 'Bu sınıfta aktif öğrenci bulunmuyor.')

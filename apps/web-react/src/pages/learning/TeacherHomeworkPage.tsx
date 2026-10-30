@@ -59,7 +59,8 @@ export function TeacherHomeworkPage({ page }: { page: NavPage }) {
   )
   const rows = useMemo(() => {
     const entries = submissions.data?.map((row) => row.record) ?? NONE
-    return homework.data?.rows.map((item) => teacherHomeworkRow(item, entries, lookups))
+    const now = new Date()
+    return homework.data?.rows.map((item) => teacherHomeworkRow(item, entries, lookups, now))
   }, [homework.data, submissions.data, lookups])
   // Teslimler gelene kadar sayılar yanıltmasın: satırlar görünür, teslim sütunu "…" kalır.
   const countsReady = ids.length === 0 || submissions.data !== undefined

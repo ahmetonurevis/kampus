@@ -22,7 +22,7 @@ const institutionTypeSchema = z.enum(['school', 'language_school'])
 export const sessionSchema = z.object({
   user: z.object({ id: z.string(), name: z.string(), email: z.string() }),
   role: z.enum(ROLE_KEYS),
-  /** Rolün görünen adı (Veli, Öğretmen…). TODO(core-scope): sınıf/branş ayrıntısı kapsamla gelir. */
+  /** Rolün görünen adı (Veli, Öğretmen…). */
   roleSubtitle: z.string(),
   membershipId: z.string(),
   institution: z.object({
@@ -37,9 +37,9 @@ export const sessionSchema = z.object({
   modules: z.record(z.string(), z.boolean()),
   /**
    * Veli hesabının çocukları (diğer rollerde boş); görüntülenen öğrenci bunlardan seçilir.
-   * TODO(core-scope): veli kendi çocuğunun öğrenci kaydını okuyamıyor (core'da kişiye göre kapsam
-   * yok, `students` 403); kapsam gelince ad okuma ucundan doldurulur. Yokken seçici yükleniyor
-   * durumundadır, kayıt kimliği veya uydurma ad gösterilmez.
+   * `/me` yalnız kayıt kimliğini verir; ad velinin kapsamlı `students` okumasından gelir
+   * (`useChildSelection`). Ad gelene kadar seçici yükleniyor durumundadır, kayıt kimliği veya
+   * uydurma ad gösterilmez.
    */
   children: z.array(z.object({ id: z.string(), name: z.string().optional() })),
   /** Kullanıcının bütün kurum üyelikleri; birden çoksa avatar menüsünde kurum değiştirilir. */

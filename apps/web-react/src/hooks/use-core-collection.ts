@@ -18,7 +18,7 @@ export type CoreRow<K extends CoreCollection> = CollectionRow<CoreRecord<K>>
 
 type AllQuery = Omit<CollectionQuery, 'page' | 'pageSize'>
 
-/** Sunucu sayfalı liste (tablo sayfası); `enabled: false` iken istek atılmaz. */
+/** Sunucu sayfalı liste (tablo sayfası). `enabled: false` sorgu hazır olana kadar bekletir. */
 export function useCoreList<K extends CoreCollection>(
   collection: K,
   query: CollectionQuery,

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -30,7 +30,8 @@ export function StudentHomeworkView({ student, title }: Props) {
   const rows = useMemo(() => {
     if (!homework.data || !submissions.data) return undefined
     const entries = submissions.data.map((row) => row.record)
-    return homework.data.map((item) => homeworkRow(item, entries, student.id))
+    const now = new Date()
+    return homework.data.map((item) => homeworkRow(item, entries, student.id, now))
   }, [homework.data, submissions.data, student.id])
 
   const panel = useDetailPanel('odev')
@@ -147,6 +148,7 @@ function HomeworkDetail({ homeworkId, studentId, classNameOf }: Omit<PanelProps,
   // Tek kayıt ucu kapsamı uygular: kapsam dışı ödev 404 döner ve "bulunamadı" görünür.
   const item = useCoreItem('homework', homeworkId)
   const submissions = useCoreAll('submissions', { filters: { homeworkId, studentId } })
+  const [now] = useState(() => new Date())
   const error = item.error ?? submissions.error
   if (error)
     return (
@@ -163,6 +165,7 @@ function HomeworkDetail({ homeworkId, studentId, classNameOf }: Omit<PanelProps,
     item.data,
     submissions.data.map((entry) => entry.record),
     studentId,
+    now,
   )
   const submission = submissions.data[0]?.record
   return (

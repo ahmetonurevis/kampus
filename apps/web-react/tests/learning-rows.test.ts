@@ -18,10 +18,9 @@ import {
 } from '../src/pages/learning/learning-rows.ts'
 
 const NOW = new Date('2026-10-15T09:00:00.000Z')
-// Core `homeworkStatus` gerçek saati kullanır; testler saati sabitlemek yerine uzak geçmiş ve
-// uzak gelecek son teslim tarihleriyle sonucu saatten bağımsız kılar.
-const PAST = '2000-01-01T09:00:00.000Z'
-const FUTURE = '2999-01-01T09:00:00.000Z'
+// Core `homeworkStatus` saati `now` parametresiyle alır; testler `NOW`'ı iletir.
+const PAST = '2026-10-01T09:00:00.000Z'
+const FUTURE = '2026-11-01T09:00:00.000Z'
 
 const wrap = <T extends { id: string }>(records: readonly T[]) =>
   records.map((record) => ({
@@ -75,16 +74,16 @@ test('homeworkRow durumu core homeworkStatus ile verir ve yalnız o öğrencinin
   const past = wrap([homework('hw-p', PAST)])[0]
   assert.ok(future && past)
 
-  assert.equal(homeworkRow(future, [], 's1').status, 'Bekliyor')
-  assert.equal(homeworkRow(past, [], 's1').status, 'Gecikmiş')
+  assert.equal(homeworkRow(future, [], 's1', NOW).status, 'Bekliyor')
+  assert.equal(homeworkRow(past, [], 's1', NOW).status, 'Gecikmiş')
   const delivered = [submission('hw-p', 's1')]
-  assert.equal(homeworkRow(past, delivered, 's1').status, 'Teslim edildi')
-  assert.equal(homeworkRow(past, delivered, 's2').status, 'Gecikmiş')
+  assert.equal(homeworkRow(past, delivered, 's1', NOW).status, 'Teslim edildi')
+  assert.equal(homeworkRow(past, delivered, 's2', NOW).status, 'Gecikmiş')
   const graded = [submission('hw-p', 's1', 88)]
-  const row = homeworkRow(past, graded, 's1')
+  const row = homeworkRow(past, graded, 's1', NOW)
   assert.equal(row.status, 'Değerlendirildi')
   assert.equal(row.score, 88)
-  assert.equal(homeworkRow(past, delivered, 's1').score, null)
+  assert.equal(homeworkRow(past, delivered, 's1', NOW).score, null)
 })
 
 test('deliverySummary teslim eden, geciken, bekleyen ve değerlendirilen sayılarını verir', () => {
@@ -94,7 +93,7 @@ test('deliverySummary teslim eden, geciken, bekleyen ve değerlendirilen sayıla
   const late = homework('hw-late', PAST)
   const submissions = [submission('hw-late', a.id, 70), submission('hw-late', b.id)]
 
-  const summary = deliverySummary(late, submissions, lookups.studentsByClass)
+  const summary = deliverySummary(late, submissions, lookups.studentsByClass, NOW)
   assert.equal(summary.total, classStudents.length)
   assert.equal(summary.delivered, 2)
   assert.equal(summary.evaluated, 1)
@@ -104,15 +103,25 @@ test('deliverySummary teslim eden, geciken, bekleyen ve değerlendirilen sayıla
 
   // Süresi süren ödevde teslim etmeyenler "bekleyen"dir, geciken yoktur.
   const open = homework('hw-open', FUTURE)
-  const openSummary = deliverySummary(open, [submission('hw-open', a.id)], lookups.studentsByClass)
+  const openSummary = deliverySummary(
+    open,
+    [submission('hw-open', a.id)],
+    lookups.studentsByClass,
+    NOW,
+  )
   assert.equal(openSummary.late, 0)
   assert.equal(openSummary.pending, classStudents.length - 1)
   assert.equal(openSummary.delivered, 1)
 
   // Başka ödevin teslimi sayılmaz; başka sınıfın öğrencisi listeye girmez.
-  const other = deliverySummary(late, [submission('hw-open', a.id)], lookups.studentsByClass)
+  const other = deliverySummary(late, [submission('hw-open', a.id)], lookups.studentsByClass, NOW)
   assert.equal(other.delivered, 0)
-  const noClass = deliverySummary({ ...late, classId: 'yok' }, submissions, lookups.studentsByClass)
+  const noClass = deliverySummary(
+    { ...late, classId: 'yok' },
+    submissions,
+    lookups.studentsByClass,
+    NOW,
+  )
   assert.equal(noClass.total, 0)
   assert.equal(classId, 'c1')
 })
@@ -123,7 +132,7 @@ test('teacherHomeworkRow sınıf adı ve teslim sayısını eşler', () => {
   assert.ok(a)
   const item = wrap([homework('hw-t', PAST)])[0]
   assert.ok(item)
-  const row = teacherHomeworkRow(item, [submission('hw-t', a.id)], lookups)
+  const row = teacherHomeworkRow(item, [submission('hw-t', a.id)], lookups, NOW)
   assert.equal(row.className, '7-A')
   assert.equal(row.delivered, 1)
   assert.equal(row.total, classStudents.length)

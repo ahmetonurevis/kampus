@@ -176,8 +176,9 @@ function auditEntity(fallback: string) {
 function auditedEntity(state: State, command: string): Entity {
   const entry = state.audit[0]
   const collection = entry?.table_name
-  if (!entry || collection === undefined || !isRecordCollection(collection)) return null
-  return entry.record_id === command ? null : { collection, id: entry.record_id }
+  const id = entry?.record_id
+  if (collection === undefined || id === undefined || !isRecordCollection(collection)) return null
+  return id === command ? null : { collection, id }
 }
 
 export interface WorkflowInput {

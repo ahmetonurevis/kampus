@@ -39,6 +39,7 @@ function DeliveryDetail({ homeworkId, lookups }: Omit<Props, 'onClose'>) {
             homework,
             submissions.data.map((row) => row.record),
             lookups.studentsByClass,
+            new Date(),
           )
         : null,
     [homework, submissions.data, lookups.studentsByClass],

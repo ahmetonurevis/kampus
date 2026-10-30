@@ -90,6 +90,7 @@ export function homeworkRow(
   item: CoreRow<'homework'>,
   submissions: readonly SubmissionRef[],
   studentId: string,
+  now: Date,
 ): HomeworkRow {
   const homework = item.record
   const submission = submissions.find(
@@ -100,7 +101,7 @@ export function homeworkRow(
     title: homework.title,
     subject: homework.subject,
     dueDate: homework.dueDate,
-    status: homeworkStatus(homework, submissions, studentId),
+    status: homeworkStatus(homework, submissions, studentId, now),
     score: submission?.score ?? null,
     description: homework.description,
   }
@@ -122,9 +123,10 @@ export function teacherHomeworkRow(
   item: CoreRow<'homework'>,
   submissions: readonly SubmissionRef[],
   lookups: LearningLookups,
+  now: Date,
 ): TeacherHomeworkRow {
   const homework = item.record
-  const summary = deliverySummary(homework, submissions, lookups.studentsByClass)
+  const summary = deliverySummary(homework, submissions, lookups.studentsByClass, now)
   return {
     id: homework.id,
     title: homework.title,
@@ -165,12 +167,13 @@ export function deliverySummary(
   homework: Pick<Homework, 'id' | 'classId' | 'dueDate'>,
   submissions: readonly SubmissionRef[],
   studentsByClass: ReadonlyMap<string, readonly Student[]>,
+  now: Date,
 ): DeliverySummary {
   const own = submissions.filter((entry) => entry.homeworkId === homework.id)
   const students = (studentsByClass.get(homework.classId) ?? []).map((student): DeliveryEntry => ({
     studentId: student.id,
     name: student.name,
-    status: homeworkStatus(homework, own, student.id),
+    status: homeworkStatus(homework, own, student.id, now),
   }))
   const count = (status: HomeworkStatus) =>
     students.filter((entry) => entry.status === status).length

@@ -65,6 +65,20 @@ export function managementLookups(sources: ManagementSources): ManagementLookups
 export const recordStatus = (record: { isActive?: boolean }) =>
   record.isActive === false ? 'Arşivde' : 'Aktif'
 
+/** Kayıt durumu sekmesi: adreste `?durum=arsiv`; boşsa aktif kayıtlar (Vue "Aktif kayıtlar / Arşiv"). */
+export const ARCHIVE_VIEW = 'arsiv'
+export const archiveViewFilter = (archived: boolean) => (archived ? ARCHIVE_VIEW : '')
+export const isArchiveView = (value: unknown): boolean => value === ARCHIVE_VIEW
+/** Sekmenin sunucu karşılığı: etkin kayıtlar `isActive=true`, arşiv `isActive=false`. */
+export const isActiveFilter = (archived: boolean): { isActive: 'true' | 'false' } => ({
+  isActive: archived ? 'false' : 'true',
+})
+/** Kampüs kartları sekmeye göre süzülür (kartlar başvuru koleksiyonundan gelir). */
+export const campusesInView = <T extends { status: string }>(
+  campuses: readonly T[],
+  archived: boolean,
+): T[] => campuses.filter((campus) => (campus.status === 'Arşivde') === archived)
+
 export type ClassRow = {
   id: string
   name: string

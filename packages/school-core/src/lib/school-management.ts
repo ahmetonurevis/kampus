@@ -124,6 +124,7 @@ export function saveClass(
   subjectTeachers: Readonly<Record<string, string>>,
   makeId: MakeId,
   recordId: string | null = null,
+  now = new Date().toISOString(),
 ) {
   const data = classSchema.parse(input)
   if (!active(state.branches, data.branchId))
@@ -175,14 +176,14 @@ export function saveClass(
   })
   // Gelecek programda yeni öğretmenin başka bir dersiyle çakışmaya izin verilmez.
   const future = state.schedule.filter(
-    (l) => !l.cancelledAt && l.classId === recordId && +new Date(l.date) > Date.now(),
+    (l) => !l.cancelledAt && l.classId === recordId && +new Date(l.date) > Date.parse(now),
   )
   if (
     existing &&
     (state.tutorSessions || []).some(
       (s) =>
         s.status === 'Planlandı' &&
-        Date.parse(s.date) > Date.now() &&
+        Date.parse(s.date) > Date.parse(now) &&
         ((s.roomClassId === recordId &&
           (data.room !== existing.room ||
             data.branchId !== existing.branchId ||
@@ -260,8 +261,7 @@ export function saveClass(
   for (const homework of state.homework.filter(
     (h) =>
       h.classId === classId &&
-      (h.dueDate >= new Date().toISOString() ||
-        state.submissions.some((s) => s.homeworkId === h.id && s.score == null)),
+      (h.dueDate >= now || state.submissions.some((s) => s.homeworkId === h.id && s.score == null)),
   )) {
     homework.teacherId =
       assignments.find((a) => a.subjectId === homework.subjectId)?.teacherId || data.teacherId

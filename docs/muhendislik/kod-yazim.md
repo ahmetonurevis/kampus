@@ -220,6 +220,8 @@ Yeni ekran eklerken:
 6. CSV `useCoreFetchAll` + `exportQueryFromList` + `useCsvExport` ile; dosya yalnız görünen sayfayı değil tüm filtrelenmiş sonucu içerir. 5000 kayıt sınırı aşılırsa kullanıcıya Türkçe uyarı çıkar.
 7. Sayfa `page-registry.tsx`'e (`lazy` + `MIGRATED` kümesi) eklenir; modül kapalıysa `QueryError` yönlendirir, ayrıca rota koruması RoleShell'dedir. e2e `tests/e2e-react/` altına: liste, arama, filtre (sayfa sıfırlanır), sayfalama, panel + geri/ileri, CSV içeriği, 390 px taşma.
 
+Veli ekranlarında seçili çocuk adreste `?cocuk=<öğrenci kimliği>` taşınır (`use-child-selection`, `RoleShell` eksikse tamamlar); çocuğa bağlı sorgular `studentId` filtresi taşıdığından çocuk değişince önbellek anahtarı değişir ve liste kendiliğinden tazelenir. Kapsam dışı `?<panel>=<kimlik>` adresi tek kayıt ucundan 404 alır ve `QueryError` "Kayıt bulunamadı" gösterir; kayıt satırdan okunmaz.
+
 ### API'li yazma kalıbı (react-shared + web-react)
 
 Yazma uçları (`POST /invoices/:id/pay`, iş akışı komutları; api-tasarimi.md §1, §7) `@kampus/react-shared/use-api-command.ts` `useApiCommand` ile çağrılır; saf mantık `commands.ts`'tedir ve `node:test` ile sınanır. Örnek: `use-invoice-commands.ts` `usePayInvoice`, ekran `pages/finance/PaymentPanel.tsx`.

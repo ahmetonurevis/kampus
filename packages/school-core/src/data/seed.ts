@@ -15,6 +15,7 @@ import type {
   Renewal,
 } from '../lib/school-workflows.ts'
 import type { OpticalEvaluation, TutorSession } from '../lib/assessment-automation.ts'
+import type { OfficialGradeFields } from '../lib/grades.ts'
 export const topics = subjects.map((s) => s.name)
 
 // Örnek veri kendi içinde tutarlıdır; aranan kayıt yoksa üretici hatalıdır ve hemen durur.
@@ -843,19 +844,23 @@ export type State = Omit<SeedState, keyof StatePatches> & StatePatches
 type StatePatches = {
   // Arayüzden kaydedilen öğrenciye okul numarası verilmez.
   students: (Patch<Item<'students'>, { number?: string }> & { academicYear?: number })[]
+  // Not girişinin alanları; örnek veri ve eski kayıtlar bunları taşımaz (lib/grades.ts).
+  grades: (Item<'grades'> & Partial<OfficialGradeFields>)[]
   invoices: (Item<'invoices'> & Timestamps & { contractId?: string; academicYear?: number })[]
   contracts: (Item<'contracts'> & {
     classId?: string
     academicYear?: number
     invoiceIds?: string[]
   })[]
-  // İş akışıyla eklenen dersin adı ders listesinden okunur; listede yoksa boş kalır.
-  schedule: (Patch<Item<'schedule'>, { title?: string }> &
+  // İş akışıyla eklenen dersin adı ders listesinden okunur; listede yoksa boş kalır. Eski
+  // kayıtlarda ders adı `subject` alanındadır.
+  schedule: (Patch<Item<'schedule'>, { title?: string; subject?: string }> &
     Timestamps & {
       cancelledAt?: string
       originalTeacherId?: string
       substitutions?: LessonSubstitution[]
     })[]
+  // Web bildirimi `status` ve `date` yazar; çevrimdışı telefon yalnız `createdAt` yazar.
   absences: {
     id: string
     studentId: string
@@ -863,9 +868,24 @@ type StatePatches = {
     endDate: string
     category: string
     reason: string
-    status: string
-    date: string
+    status?: string
+    date?: string
+    createdAt?: string
   }[]
+  // Telefon yüklenen dosyanın cihazdaki yolunu da saklar; örnek veri ve web taşımaz.
+  questions: (Item<'questions'> & {
+    // kvkk: Ç — öğrencinin yüklediği dosyanın yolu.
+    fileUri?: string | null
+  })[]
+  submissions: (Item<'submissions'> & {
+    // kvkk: Ç — öğrencinin yüklediği ödev dosyasının yolu.
+    fileUri?: string | null
+    // kvkk: Ç — öğrencinin öğretmene teslim notu.
+    note?: string
+  })[]
+  materials: (Item<'materials'> & { fileUri?: string | null })[]
+  // Randevu süresi dakikadır; eski kayıtlar taşımaz, çakışma denetimi 30 dakika varsayar.
+  appointments: (Item<'appointments'> & { duration?: number })[]
   preferences: Record<string, unknown>
   // Okul iş akışı modülleri kayıttan eklenir; anahtar kümesi derleme anında sabit değildir.
   modules: Record<string, boolean>

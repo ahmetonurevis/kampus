@@ -19,6 +19,7 @@ import { moduleNavigationState } from '../model/navigation.ts'
 import type { FormValues } from '../model/operations.ts'
 import type { ScreenProps } from '../route-types.ts'
 import { pickTextFile } from '../lib/text-files.ts'
+import { userErrorMessage } from '../lib/error-message.ts'
 import {
   Badge,
   Button,
@@ -73,15 +74,7 @@ const FIXED_FIELDS = [
 
 // Hata nesnesinden kullanıcıya gösterilecek Türkçe mesajı çıkarır.
 function errorMessage(error: unknown) {
-  const issues: unknown =
-    typeof error === 'object' && error !== null && 'issues' in error ? error.issues : undefined
-  const first: unknown = Array.isArray(issues) ? issues[0] : undefined
-  const issue =
-    typeof first === 'object' && first !== null && 'message' in first ? first.message : undefined
-  if (typeof issue === 'string' && issue) return issue
-  return error instanceof Error && error.name === 'Error'
-    ? error.message
-    : 'Dosya işlenemedi. Biçimini ve karakter kodlamasını kontrol edin.'
+  return userErrorMessage(error, 'Dosya işlenemedi. Biçimini ve karakter kodlamasını kontrol edin.')
 }
 
 function newKey(state: State, examId: string) {

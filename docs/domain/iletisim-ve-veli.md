@@ -180,7 +180,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Danışan dosyası özel ve gizli bilgi içerir; bireyin (reşit değilse velisinin) izni olmadan adli ve idari soruşturma dışında paylaşılmaz. Öğrenci iç notun veliye veya sınıf öğretmenine gideceğini bilirse rehberlik görüşmesinin değeri kalmaz.
 - **Kaynak:** MEB Rehberlik ve Psikolojik Danışma Hizmetleri Yönetmeliği (RG 14/8/2020-31213) md. 3/1-ç ("Danışan dosyası" tanımı; Resmî Gazete metninden okundu). Diğer görevlilerin rehber öğretmenden gizli bilgi "talep etmez" hükmü ve Rehberlik Etik Yönergesi gizlilik ilkesi ikincil kaynaklardan görüldü; madde numarası ve güncel hâli **doğrulanmalı**. Sağlık içeren notlar için KVKK md. 6.
 - **Kurum türü:** `school` (dil okulunda rehberlik modülü yoksa uygulanmaz; 18 yaş altı kursiyere danışmanlık verilirse aynı kural)
-- **Kodda:** çelişiyor — veli/öğrenci için iç not ve görüşme notları gizlenir (`packages/school-core/src/lib/workflow-presentation.js:85-101,347-359`), ama gizleme istemci sunumunda yapılır ve `scope.institution` (yönetici **ve ön büro**) ile dosyanın öğretmeni iç notu görür (`packages/school-core/src/lib/school-workflows.js:293`). Rehber öğretmen rolü yok; dosyayı yazan `ogretmen` rolüdür (`packages/school-core/src/lib/school-workflows.js:256-257`).
+- **Kodda:** kısmen — iç not alanları (`internalNote`, `notes`) yalnız öğretmen kaydında `guidanceCounselor` görevi olan aktöre döner; yönetici, ön büro, görevsiz öğretmen, öğrenci ve veli için core kapsamında ayıklanır (`packages/school-core/src/lib/scope.ts`, `HIDDEN_FIELDS`); ön büro rehberlik dosyasını hiç okumaz. Görüşme notunu ve açılış iç notunu yalnız görevli öğretmen yazar (`guidance_counselor_only`). Yöneticinin gerekçeli soruşturma erişimi yok (TODO(IST-020)); API koleksiyon okumaları kapsam fonksiyonunu henüz kullanmıyor.
 
 ### DOM-ILT-041 · İç not hiçbir yan kanala çıkmaz
 
@@ -188,7 +188,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Gizlilik ihlalleri çoğunlukla ana ekrandan değil yan çıktılardan olur.
 - **Kaynak:** `DOM-ILT-040` ile aynı; KVKK md. 12/1.
 - **Kurum türü:** `school`
-- **Kodda:** çelişiyor — `runWorkflow` denetim kaydına kaydın tamamını eski/yeni değer olarak yazar, iç not dahil (`packages/school-core/src/lib/school-workflows.js:1311-1333`).
+- **Kodda:** kısmen — core denetim kaydı rehberlik kaydının eski/yeni değerinden iç not alanlarını çıkarır, yalnız değişen alan adını `masked_fields` olarak yazar (`packages/school-core/src/lib/school-workflows.ts`, `maskAuditValues`). Bildirim, PDF ve CSV yan kanalları ayrıca denetlenmedi.
 
 ### DOM-ILT-042 · Paylaşılan plan bilerek yazılır
 
@@ -294,16 +294,16 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 
 ## Mevcut kodla farklar
 
-| Kural            | Fark                                                                                                                                                                                                                                                          |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DOM-ILT-001, 002 | Duyuru oluşturma yok; hedef kitle yalnız sınıf/genel, süzme istemcide (`apps/web/src/views/Communication.vue:126-134`).                                                                                                                                       |
-| DOM-ILT-003, 024 | Duyuru ve mesajda okundu bilgisi yok.                                                                                                                                                                                                                         |
-| DOM-ILT-010      | Konuşma veli başına değil, öğrenci + hedef kitle başına; iki veli aynı konuşmayı paylaşır (`apps/web/src/views/Communication.vue:85-91`). Öğretmen yeni konuşma başlatamaz (`apps/web/src/views/Communication.vue:147`).                                      |
-| DOM-ILT-013      | Yanıt süresi duvar saatiyle 24 saat; sessiz saat, hafta sonu, tatil sayılıyor (`packages/school-core/src/lib/format.js:51-60`).                                                                                                                               |
-| DOM-ILT-020, 021 | Tercih kaydediliyor ama gönderim, zorunlu bildirim ve sessiz saat yok (`apps/web/src/views/Settings.vue:16-26,212`).                                                                                                                                          |
-| DOM-ILT-030, 034 | Veli kararı üzerine yazılıyor, geçmiş ve metin sürümü yok (`packages/school-core/src/lib/school-workflows.js:1062-1065`).                                                                                                                                     |
-| DOM-ILT-032      | Etkinlik iptalinde veliye bildirim yok (`packages/school-core/src/lib/school-workflows.js:1077-1083`).                                                                                                                                                        |
-| DOM-ILT-040      | Ön büro (`scope.institution`) ve yönetici iç notu görüyor; gizleme sunucuda değil sunum katmanında (`packages/school-core/src/lib/workflow-presentation.js:88-92,353-359`, `packages/school-core/src/lib/school-workflows.js:293`). Rehber öğretmen rolü yok. |
-| DOM-ILT-041      | Denetim kaydı rehberlik kaydının tamamını iç not dahil eski/yeni değer olarak saklıyor (`packages/school-core/src/lib/school-workflows.js:1311-1333`).                                                                                                        |
-| DOM-ILT-053      | Geçmiş tarihli mazeret bildirimi engelli, yoklamaya bağlanmıyor (`apps/web/src/views/Communication.vue:312-345`).                                                                                                                                             |
-| DOM-ILT-070, 073 | Velayet durumu ve çoklu veli yok; öğrenci başına tek `parentId` (`packages/school-core/src/data/seed.js:197,205-212`).                                                                                                                                        |
+| Kural            | Fark                                                                                                                                                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| DOM-ILT-001, 002 | Duyuru oluşturma yok; hedef kitle yalnız sınıf/genel, süzme istemcide (`apps/web/src/views/Communication.vue:126-134`).                                                                                                  |
+| DOM-ILT-003, 024 | Duyuru ve mesajda okundu bilgisi yok.                                                                                                                                                                                    |
+| DOM-ILT-010      | Konuşma veli başına değil, öğrenci + hedef kitle başına; iki veli aynı konuşmayı paylaşır (`apps/web/src/views/Communication.vue:85-91`). Öğretmen yeni konuşma başlatamaz (`apps/web/src/views/Communication.vue:147`). |
+| DOM-ILT-013      | Yanıt süresi duvar saatiyle 24 saat; sessiz saat, hafta sonu, tatil sayılıyor (`packages/school-core/src/lib/format.js:51-60`).                                                                                          |
+| DOM-ILT-020, 021 | Tercih kaydediliyor ama gönderim, zorunlu bildirim ve sessiz saat yok (`apps/web/src/views/Settings.vue:16-26,212`).                                                                                                     |
+| DOM-ILT-030, 034 | Veli kararı üzerine yazılıyor, geçmiş ve metin sürümü yok (`packages/school-core/src/lib/school-workflows.js:1062-1065`).                                                                                                |
+| DOM-ILT-032      | Etkinlik iptalinde veliye bildirim yok (`packages/school-core/src/lib/school-workflows.js:1077-1083`).                                                                                                                   |
+| DOM-ILT-040      | İç not core kapsamında yalnız rehberlik görevli öğretmene dönüyor; yöneticinin gerekçeli erişimi ve API'nin kapsam fonksiyonunu kullanması yok (`packages/school-core/src/lib/scope.ts`).                                |
+| DOM-ILT-041      | Core denetim kaydı iç notu maskeliyor; bildirim, PDF ve CSV yan kanalları ayrıca denetlenmedi.                                                                                                                           |
+| DOM-ILT-053      | Geçmiş tarihli mazeret bildirimi engelli, yoklamaya bağlanmıyor (`apps/web/src/views/Communication.vue:312-345`).                                                                                                        |
+| DOM-ILT-070, 073 | Velayet durumu ve çoklu veli yok; öğrenci başına tek `parentId` (`packages/school-core/src/data/seed.js:197,205-212`).                                                                                                   |

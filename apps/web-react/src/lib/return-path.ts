@@ -41,8 +41,12 @@ export function returnPathFor(raw: unknown, role: RoleKey): string {
   return path?.startsWith(`/${role}/`) ? path : pageHref(role, { path: 'dashboard' })
 }
 
-/** Korumalı adresten giriş sayfasına: dönüş adresi sorgu parametresinde. */
-export function loginHref(pathname: string, search = ''): string {
+/**
+ * Korumalı adresten giriş sayfasına: dönüş adresi sorgu parametresinde. Bilinçli çıkışta
+ * (`intentionalSignOut`) dönüş adresi yoktur; kullanıcı kendi bıraktığı sayfaya çağrılmaz.
+ */
+export function loginHref(pathname: string, search = '', intentionalSignOut = false): string {
+  if (intentionalSignOut) return LOGIN_PATH
   const from = safeRelativePath(`${pathname}${search}`)
   if (!from || from === '/' || from.startsWith(LOGIN_PATH)) return LOGIN_PATH
   return `${LOGIN_PATH}?${new URLSearchParams({ [RETURN_PARAM]: from }).toString()}`

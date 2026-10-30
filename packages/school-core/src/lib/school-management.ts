@@ -114,6 +114,8 @@ export function saveTeacher(
       homeworkRate: 100,
       isActive: true,
       deletedAt: null,
+      // Rehberlik görevi öğretmen formundan verilmez; yeni öğretmen görevsiz başlar.
+      guidanceCounselor: false,
     })
 }
 export function saveClass(

@@ -5,6 +5,7 @@ import { dayKey } from './format.ts'
 import { csvObjects } from './delimited-input.ts'
 import { tutorConflict } from './tutor-conflicts.ts'
 import { DomainError } from './errors.ts'
+import { scopeFor, sessionActor, sessionTeacherId } from './scope.ts'
 
 z.config(z.locales.tr())
 
@@ -153,27 +154,32 @@ function access(state: State, session: Session, module: string, write = false) {
     throw new DomainError('permission_denied', 'Bu işlem için yetkiniz bulunmuyor.', {
       kind: 'forbidden',
     })
-  if (session.role === 'ogretmen') active(state.teachers, 't1')
+  if (session.role === 'ogretmen') active(state.teachers, sessionTeacherId(state, session) ?? '')
 }
+/**
+ * Optik ve etüt kapsamı `scopeFor` üzerindendir. Ön büro bu modülleri kullanmaz (DOM-YTK-021);
+ * veli kapsamı seçili çocukla daraltılır.
+ */
 export function automationScope(state: State, session: Session) {
-  const teacher = state.teachers.find((t) => t.id === 't1')
-  const classIds = new Set(
-    state.assignments.filter((a) => a.teacherId === 't1').map((a) => a.classId),
-  )
-  const permitted = state.students.filter(
-    (s) =>
-      session.role === 'yonetici' ||
-      (session.role === 'ogretmen' && teacher?.isActive && classIds.has(s.classId)) ||
-      (session.role === 'ogrenci' && s.id === 's1') ||
-      (session.role === 'veli' &&
-        s.id === session.childId &&
-        state.parents.find((p) => p.id === 'p1')?.studentIds.includes(s.id)),
-  )
+  const scope = scopeFor(state, sessionActor(state, session))
+  const teacherId = sessionTeacherId(state, session)
+  const teacher = state.teachers.find((t) => t.id === teacherId)
+  const studentIds: ReadonlySet<string> =
+    session.role === 'onburo'
+      ? new Set()
+      : session.role === 'veli'
+        ? new Set(
+            session.childId !== undefined && scope.studentIds.has(session.childId)
+              ? [session.childId]
+              : [],
+          )
+        : scope.studentIds
+  const permitted = state.students.filter((s) => studentIds.has(s.id))
   return {
     students: permitted.filter((s) => s.isActive),
-    studentIds: new Set(permitted.map((s) => s.id)),
+    studentIds,
     teacher,
-    classIds,
+    classIds: scope.classIds,
   }
 }
 export function automationExams(state: State, session: Session) {
@@ -536,7 +542,7 @@ export function tutoringSessions(state: State, session: Session) {
       (s) =>
         session.role === 'yonetici' ||
         (session.role === 'ogretmen'
-          ? s.teacherId === 't1'
+          ? s.teacherId === sessionTeacherId(state, session)
           : s.studentIds.some((id) => scope.studentIds.has(id))),
     )
     .map((s) => ({
@@ -659,7 +665,7 @@ export function planTutoring(
         t.isActive &&
         t.branchId === group.branchId &&
         t.subjectId === group.subjectId &&
-        (session.role !== 'ogretmen' || t.id === 't1'),
+        (session.role !== 'ogretmen' || t.id === sessionTeacherId(state, session)),
     )
     const rooms = state.classes
       .filter((c) => c.isActive && c.branchId === group.branchId)
@@ -849,7 +855,7 @@ export function runAssessment(
     const data = automationSchemas.slot.parse(input)
     data.date = new Date(data.date).toISOString()
     const teacher = active(state.teachers, data.teacherId)
-    if (session.role === 'ogretmen' && teacher.id !== 't1')
+    if (session.role === 'ogretmen' && teacher.id !== sessionTeacherId(state, session))
       throw new DomainError(
         'availability_own_only',
         'Yalnızca kendi uygunluk saatinizi ekleyebilirsiniz.',
@@ -884,7 +890,7 @@ export function runAssessment(
   } else if (command === 'slot-remove') {
     access(state, session, 'tutoring', true)
     const slot = record(state.availability, recordId)
-    if (session.role === 'ogretmen' && slot.teacherId !== 't1')
+    if (session.role === 'ogretmen' && slot.teacherId !== sessionTeacherId(state, session))
       throw new DomainError(
         'availability_own_only',
         'Yalnızca kendi uygunluk saatinizi kaldırabilirsiniz.',
@@ -897,7 +903,7 @@ export function runAssessment(
   } else if (command === 'cancel' || command === 'attendance') {
     access(state, session, 'tutoring', true)
     const entry = record(state.tutorSessions, recordId)
-    if (session.role === 'ogretmen' && entry.teacherId !== 't1')
+    if (session.role === 'ogretmen' && entry.teacherId !== sessionTeacherId(state, session))
       throw new DomainError('tutoring_own_only', 'Yalnızca kendi etüdünüzü yönetebilirsiniz.', {
         kind: 'forbidden',
       })
@@ -941,7 +947,8 @@ export function runAssessment(
   state.audit.unshift({
     id: makeId('audit'),
     actor: session.role,
-    user_id: session.role === 'ogretmen' ? 't1' : 'demo-yonetici',
+    user_id:
+      session.role === 'ogretmen' ? (sessionTeacherId(state, session) ?? '') : 'demo-yonetici',
     action: command,
     table_name: collection,
     record_id: result.id || recordId || command,

@@ -42,11 +42,12 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 ### DOM-DIL-010 · Seviye tespit sınavı
 
-- **Kural:** Aday veya kursiyer için seviye tespiti ücretsizdir ve iki bölümden oluşur: otomatik puanlanan okuma, dinleme ve dil kullanımı bölümü; öğretmenin rubrikle puanladığı yazma görevi ve konuşma görüşmesi. Platform beceri bazında sonuç ve seviye önerisi üretir (`DOM-BEC-030`); yerleştirme seviyesini öğretmen veya akademik koordinatör gerekçe yazarak seçer. Sonuç ve karar ayrı alanlardır.
+- **Kural:** Aday veya kursiyer için seviye tespiti ücretsizdir ve iki bölümden oluşur: otomatik puanlanan okuma, dinleme ve dil kullanımı bölümü; öğretmenin rubrikle puanladığı yazma görevi ve konuşma görüşmesi. Platform beceri bazında sonuç ve seviye önerisi üretir (`DOM-BEC-030`); yerleştirme seviyesini öğretmen veya akademik koordinatör gerekçe yazarak seçer. Sonuç ve karar ayrı alanlardır. Tespit önerisi kendi eşiğiyle hesaplanır: oturumun her tamamlanmış bölüm sonucu bir kanıttır ve `DOM-BEC-032`'nin "en az 2 farklı gün" şartı aranmaz (başarı payı ve okuma/dinlemede en az 10 madde aynen geçerlidir). Otomatik puanlanan bölümlerden (dil kullanımı, okuma, dinleme) biri tamamlanmamışsa genel öneri çıkmaz. Yazma veya konuşma henüz puanlanmamışsa o becerinin önerisi çıkmaz, diğer becerilerinki çıkar; genel öneri `DOM-BEC-033` gereği dört beceriyi istediği için o durumda genel öneri de yetersiz kalır. Uzaktan tespit ön tespit olarak kalır (`DOM-DIL-011`). Öğrencinin görev kanıtları genel eşikle birlikte sayılır; tespiti yalnız destekler, aynı seviyede başarı payını 2/3'ün altına düşürürse tespit yolunu kapatır.
 - **Gerekçe:** Yalnız çoktan seçmeli bölüm üretici becerileri ölçmez; makinenin önerisi karar yerine geçmez.
 - **Kaynak:** İşletme kuralı. ÖÖKY md. 46/9 özel öğretim kurslarında seviye belirleme sınavlarının ücretsiz ve kurum binasında yapılmasını, dönem başı/ortası/sonunda tekrarlanmasını ister; bu hükmün kişisel gelişim kursu olan dil okuluna uygulanıp uygulanmadığı **doğrulanmalı**. Platform muhafazakâr olarak ücretsizliği her türde uygular.
 - **Kurum türü:** `language_school`
-- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `planPlacementSession`, `placementSectionResults`, `placementSummary`, `planPlacementDecision` (gerekçe her zaman zorunlu, karar oturum başına bir). Tek oturum DOM-BEC-032 eşiğini karşılamadığından adayda öneri çoğunlukla "yetersiz kanıt"tır (`TODO(cefr-tespit-esigi)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `planPlacementSession`, `placementSectionResults`, `placementSummary` (tespit bağlamı, `PLACEMENT_AUTO_SECTIONS`), `planPlacementDecision` (gerekçe her zaman zorunlu, karar oturum başına bir; karar kopyası tespit önerisini taşır). Tespit eşiği `packages/school-core/src/cefr/suggestion.ts` `suggestCefrLevels({ context: { kind: 'placement' } })` ve `PLACEMENT_DEMONSTRATION_RULES`; genel bağlam değişmedi, `LevelTally.demonstratedBy` dayanağı gösterir (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
+- **Not:** Tespit önerisi eşiği — kullanıcı onayı bekliyor (patron kararı, 30 Ekim 2026).
 
 ### DOM-DIL-011 · Uzaktan yapılan tespit ön tahmindir
 
@@ -70,7 +71,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Mevzuat kurslarda dönem başı, ortası ve sonunda gelişim takibi ve konu bazında geri bildirim ister; tanı amaçlı ölçme cezalandırmamalı.
 - **Kaynak:** ÖÖKY md. 46/9 (özel öğretim kursları); dil okulunda örnek alınarak uygulanır.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/progression.ts` `ASSESSMENT_POINTS` (`baseline` hesaba ve karar kopyasına girmez), `courseAssessmentInputSchema`/`planCourseAssessment` (yalnız grubun öğretmeni, nokta başına bir kez, dört becerinin her birinde puan ve boş olmayan geri bildirim; boş geri bildirim alan yollu doğrulama hatası) ve `assessmentGaps` (eksik nokta, eksik beceri, boş geri bildirim tamamlanmamış sayılır; devam şartı sağlanmışsa kur sonu kararını engeller). Konu bazında geri bildirim için kurun konu modeli yok, beceri geri bildirimi metnine yazılır (`TODO(cefr-konu-geri-bildirimi)`); her nokta bir kez girilir, ek ara ölçme yok (`TODO(cefr-ek-olcme)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ## Deneme dersi
 
@@ -148,7 +149,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Mevzuat kurslarda ücreti ders saati üzerinden hesaplatır ve indirimi sınırlar.
 - **Kaynak:** ÖÖKY md. 54/1-a ve d, md. 55/1-c, md. 53/5. Ayrıntı `DOM-FIN`.
 - **Kurum türü:** `language_school`
-- **Kodda:** çelişiyor — kayıt tutarı serbest toplam TL, saat bilgisi yok (`packages/school-core/src/lib/domain.js:19-29`).
+- **Kodda:** çelişiyor — kayıt tutarı serbest toplam TL, saat bilgisi yok (`packages/school-core/src/lib/domain.ts:27-31`).
 
 ### DOM-DIL-051 · Saat bakiyesi hesaplanır ve yanmaz
 
@@ -190,7 +191,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Kurslara devam zorunludur.
 - **Kaynak:** ÖÖKY md. 10/8.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/progression.ts` `attendanceSummary` (ders saati satırlarından, saklanmaz; gereken saat kur saatinin kurum oranıyla çarpımının tavanı, tamsayı hesapla; yoklaması alınmamış saat katılmış sayılmaz, sonuç `eligible`/`ineligible`/`pending`) ve `progressionSettingsSchema` (oran binde tamsayı `minAttendancePermille`, 800–1000, varsayılan `MIN_ATTENDANCE_PERMILLE` = 800; daha gevşek ya da tamsayı olmayan değer şemada reddedilir; karşılaştırma `katılım × 1000 ≥ oran × toplam` tamsayı aritmetiğiyle yapılır, kayan nokta yok). Girdi ders saati satırıdır (`lessonHourAttendanceSchema`); mevcut gün bazlı yoklama (`packages/school-core/src/lib/domain.ts`) değişmedi ve bu hesaba bağlı değildir: ders saati yoklaması F5b'de ayrı gelir (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ### DOM-DIL-061 · Yoklama ders saati bazlıdır
 
@@ -198,7 +199,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Devam şartı ve saat tüketimi ders saatiyle ölçülür; denetimde MEBBİS'teki ders saatleriyle karşılaştırılır.
 - **Kaynak:** ÖÖKY md. 10/8, md. 67/5; yarım saat eşiği işletme kuralı.
 - **Kurum türü:** `language_school`
-- **Kodda:** çelişiyor — yoklama sınıf ve gün bazlıdır, durumlar `present/absent/late/excused` (`packages/school-core/src/lib/domain.js:50-74`).
+- **Kodda:** çelişiyor — yoklama sınıf ve gün bazlıdır, durumlar `present/absent/late/excused` (`packages/school-core/src/lib/domain.ts:111-113`). Devam hesabının girdisi olarak ders saati satırı `packages/school-core/src/cefr/progression.ts` `lessonHourAttendanceSchema`'dadır (`present`/`late`/`absent`, geç katılmış sayılır, aynı ders saatinin ikinci satırı reddedilir); yoklama kaydı, düzeltme geçmişi ve uç F5b'dedir.
 
 ### DOM-DIL-062 · Devamsızlık bildirimi
 
@@ -206,7 +207,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Kursiyer sınır aşılmadan uyarılmalı.
 - **Kaynak:** İşletme kuralı (eşikler).
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/progression.ts` `ABSENCE_NOTICES` ve `absenceNoticeDue` (eşiğe ulaşıldığı an; gönderilmiş bildirimler girdi, aynı eşik iki kez önerilmez; iki eşik birlikte aşılırsa yalnız ikinci; ikinci eşik gönderildiyse yoklama düzeltmesiyle oran düşse de alttaki (birinci) bir daha önerilmez; ikinci bildirim `warnsExamBar` ve `absence_notice_second_exam_bar` metin anahtarı taşır, uyarı kurumun devam sınırını yazar; devamsızlık kurumun sınırını zaten aştıysa (`examBarred`, kalan saatlerin hepsine katılsa da şart sağlanamaz) bildirim `absence_notice_exam_barred` anahtarıyla "sınırını aştı; kur sonu sınavına girilemez" der; 18 yaş altında alıcı veli de, yaş Europe/Istanbul gününe göre `isMinorOn`; doğum tarihi gerçek takvim günü olmalı, `birth_date_invalid`; geçersiz `now` `invalid_now`). Kurum oranı sıkıysa eşikler domain'de yok, sabit kalır (`TODO(cefr-bildirim-kurum-orani)`). Gönderim ve kayıt F5b'dedir.
 
 ## Kur geçme ve kur atlama
 
@@ -216,7 +217,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Tek bir toplam puan zayıf bir beceriyi gizler; makine önerisi denetlenebilir öğretmen kararının yerini almaz.
 - **Kaynak:** İşletme kuralı (eşikler). ÖÖKY md. 46/4 ve 46/A başarının tespitini Bakanlık esaslarına bağlar; MEB'in kurs başarı ölçütü **doğrulanmalı** ve kurum eşiği bu ölçütün altına inemez.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/progression.ts` `PROGRESSION_OUTCOMES` (`passed`/`repeat`/`incomplete_attendance`), `evaluateProgression` (devam şartı yoksa yalnız `incomplete_attendance`, ölçme aranmaz; devam belirsizse veya üç ölçme tamamlanmamışsa karar yok; `passed` için kur sonu puanı kurum eşiğine ve dört becerinin her biri 50'ye ulaşmalı, koşullar sağlansa da `repeat` verilebilir; dayanak kopyası `progressionBasisSchema`), `planProgressionDecision` (grubun öğretmeni önerir, onay bekler; koşulsuz sonuç alan yollu `DomainError`; seviye önerisi `evidenceSnapshot` olarak gerekçeye girer), `planProgressionReview` (onayı yalnız akademik koordinatör verir ya da gerekçeyle reddeder; F4a2 `RubricRater.coordinator` ile aynı bayrak modeli, yönetici rolü yerine geçmez, `TODO(cefr-koordinator-kapsam)`; kararı veren onaylayamaz; onayda koşullar yeniden hesaplanır ve dayanak öneri anındakinden farklıysa `progression_basis_changed` ile reddedilir, öğretmen yeniden önerir, anahtar sırası farkı sayılmaz) ve `effectiveProgressionDecision` (düzeltme `correctsDecisionId` ile geçerli onaylı karara referans veren gerekçeli yeni karardır; onaylı karar değişmez). Eşikler kur sonu ölçmesine uygulanır, ara ölçme tamamlanmış olmalı ve kopyaya girer (`TODO(cefr-ara-olcme-agirligi)`); MEB ölçütü doğrulanmadığından kurum eşiği 60'ın altına inemez (`TODO(cefr-meb-esigi)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ### DOM-DIL-071 · Kur atlama ve kur tekrarı
 
@@ -224,7 +225,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Hızlı ilerleyen kursiyer tutulmamalı, ama atlama kanıta dayanmalı.
 - **Kaynak:** İşletme kuralı; ÖÖKY md. 54/1-a.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** yok — F5a2 kapsamı dışında bırakıldı (`cefr/progression.ts` kur atlama içermez).
 
 ### DOM-DIL-072 · Yanlış yerleştirme düzeltmesi
 
@@ -232,7 +233,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Seviye tespitinin hatası kursiyere yüklenmemeli.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** yok — F5a2 kapsamı dışında bırakıldı; düzeltme kararı türü `level_decisions.kind = correction` olarak ayrılmıştır.
 
 ## Belgeler
 
@@ -268,7 +269,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Ergin kişi kendi adına sözleşme yapar; verisine erişim onun kararıdır.
 - **Kaynak:** 4721 sayılı TMK md. 11–12 (erginlik) — **doğrulanmalı**; KVKK md. 5.
 - **Kurum türü:** `language_school`
-- **Kodda:** çelişiyor — kesin kayıt her öğrenci için yeni veli üretir (`packages/school-core/src/lib/domain.js:119,153-157`).
+- **Kodda:** çelişiyor — kesin kayıt her öğrenci için yeni veli üretir (`packages/school-core/src/lib/domain.ts:280,314-318`).
 
 ### DOM-DIL-091 · Reşit olmayan kursiyer
 
@@ -304,11 +305,11 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 ## Mevcut kodla farklar
 
-| Kural       | Fark                                                                                                                                            |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| DOM-DIL-001 | CEFR seviyesi, kur ve `language_school` kurum türü kodda yok; ders/sınıf düzeyi modeli tek modeldir.                                            |
-| DOM-DIL-040 | Dil grubu kavramı yok; sınıf kapasitesi 40'a kadar girilebiliyor (`packages/school-core/src/lib/school-management.js:23`), dil grubu tavanı 18. |
-| DOM-DIL-050 | Kayıt tutarı serbest TL toplamıdır, ders saati ve saat ücreti yok (`packages/school-core/src/lib/domain.js:19-29`).                             |
-| DOM-DIL-053 | Dönem `academicYear` tamsayı yıldır; kur bazlı esnek dönem yok.                                                                                 |
-| DOM-DIL-061 | Yoklama gün bazlıdır ve `excused` durumu vardır; ders saati bazlı yoklama yok (`packages/school-core/src/lib/domain.js:50-74`).                 |
-| DOM-DIL-090 | Her kesin kayıt yeni veli üretir; velisiz yetişkin kursiyer kaydı yapılamaz (`packages/school-core/src/lib/domain.js:119,153-157`).             |
+| Kural       | Fark                                                                                                                                                                                                                         |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DOM-DIL-001 | CEFR seviyesi, kur ve `language_school` kurum türü kodda yok; ders/sınıf düzeyi modeli tek modeldir.                                                                                                                         |
+| DOM-DIL-040 | Dil grubu kavramı yok; sınıf kapasitesi 40'a kadar girilebiliyor (`packages/school-core/src/lib/school-management.js:23`), dil grubu tavanı 18.                                                                              |
+| DOM-DIL-050 | Kayıt tutarı serbest TL toplamıdır, ders saati ve saat ücreti yok (`packages/school-core/src/lib/domain.ts:27-31`).                                                                                                          |
+| DOM-DIL-053 | Dönem `academicYear` tamsayı yıldır; kur bazlı esnek dönem yok.                                                                                                                                                              |
+| DOM-DIL-061 | Yoklama gün bazlıdır ve `excused` durumu vardır; ders saati bazlı yoklama yok (`packages/school-core/src/lib/domain.ts:111-113`). Devam hesabı (`cefr/progression.ts`) ders saati satırı bekler, gün bazlı yoklamayı okumaz. |
+| DOM-DIL-090 | Her kesin kayıt yeni veli üretir; velisiz yetişkin kursiyer kaydı yapılamaz (`packages/school-core/src/lib/domain.ts:280,314-318`).                                                                                          |

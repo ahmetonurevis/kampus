@@ -307,14 +307,21 @@ export type PlacementSummary = {
   suggestion: CefrSuggestion
 }
 
+/** Tamamlanmadan tespitin genel önerisi çıkmayan otomatik bölümler (DOM-DIL-010). */
+export const PLACEMENT_AUTO_SECTIONS = SECTION_KEYS.filter(
+  (section) => PLACEMENT_SECTIONS[section].scoring === 'auto',
+)
+
 /**
  * Tespit sonucu ve öneri (DOM-DIL-010): bölüm sonuçları ve oturumun kanıtları ile kişinin diğer
- * geçerli kanıtlarından DOM-BEC-030 önerisi. Sonuç ve karar ayrıdır; bu fonksiyon karar vermez.
+ * geçerli kanıtlarından DOM-BEC-030 önerisi, tespit bağlamında (`suggestion.ts`
+ * `PLACEMENT_DEMONSTRATION_RULES`). Oturumun her puanlanmış bölümü bir kanıttır ve farklı gün
+ * aranmaz; otomatik bölümlerden biri tamamlanmamışsa genel öneri çıkmaz; yazma veya konuşma
+ * puanlanmamışsa yalnız o becerinin önerisi çıkmaz. Uzaktan oturumun bölümleri ön tespittir ve
+ * kanıt değildir (DOM-DIL-011). Öğrencinin görev kanıtları eskisi gibi genel eşikle birlikte
+ * sayılır; yalnız destekler, aynı seviyede başarı payını 2/3'ün altına düşürürse tespit yolunu
+ * kapatır. Sonuç ve karar ayrıdır; bu fonksiyon karar vermez.
  */
-// TODO(cefr-tespit-esigi): Tek oturumun bölümleri aynı gündedir; DOM-BEC-032 "en az 3 kanıt, en az
-// 2 farklı gün" eşiği tek başına bir tespitle karşılanmaz. Tespite özel eşik domain'de yok; en
-// muhafazakâr yorumla genel kural uygulandı. Adayda öneri çoğunlukla "yetersiz kanıt" döner,
-// seviyeyi öğretmen gerekçeyle seçer.
 export function placementSummary(input: {
   session: PlacementSessionRow
   sections: readonly PlacementSectionRow[]
@@ -323,16 +330,19 @@ export function placementSummary(input: {
   now: Instant
 }): PlacementSummary {
   const validity = placementValidity(input.session, input.now)
+  const session = placementEvidence(input.session, input.sections)
   return {
     sections: placementSectionResults(input.sections),
     validity,
     preliminary: validity.preliminary,
     suggestion: suggestCefrLevels({
-      candidates: [
-        ...placementEvidence(input.session, input.sections),
-        ...(input.otherEvidence ?? []),
-      ],
+      candidates: [...session, ...(input.otherEvidence ?? [])],
       now: input.now,
+      context: {
+        kind: 'placement',
+        sessionTaskIds: session.map((candidate) => candidate.taskId),
+        requiredSkills: PLACEMENT_AUTO_SECTIONS,
+      },
     }),
   }
 }

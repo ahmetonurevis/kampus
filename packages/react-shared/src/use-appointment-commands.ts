@@ -2,12 +2,14 @@ import type { KampusClient } from '@kampus/api-client/client.ts'
 import { ApiError } from '@kampus/api-client/errors.ts'
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
+import { appointmentSlotsPrefix } from './appointment-slots.ts'
 import { collectionKeyPrefix } from './collections.ts'
 import type { CommandHeaders, CommandMessages } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 
 // Öğretmen randevusu yazma komutları (`POST /appointments`, `PATCH /appointments/:id`; core
-// `appointment.book` `appointment.update`, DOM-ILT-100…104). Okuma genel koleksiyon kancalarındadır.
+// `appointment.book` `appointment.update`, DOM-ILT-100…104). Randevu okuması genel koleksiyon
+// kancalarında, alınabilir saatler `useBookableSlots`'tadır (DOM-ILT-105).
 // İki komut da `exclusive`: yollu `issues` (dolu saat `slotId`, eksik gerekçe `reason`, yanlış geçiş
 // `status`) yalnız form alanında görünür, toast çıkmaz; yolsuz hata tek toast olur.
 
@@ -81,13 +83,20 @@ interface CommandOptions {
   onSuccess?: () => void | Promise<void>
 }
 
-const appointments = [collectionKeyPrefix('appointments')]
+/**
+ * Randevu yazıldıktan sonra randevular ve alınabilir saat listeleri tazelenir: talep, onay, red,
+ * geri çekme ve iptal saatin doluluğunu değiştirir (DOM-ILT-104, DOM-ILT-105).
+ */
+export const APPOINTMENT_INVALIDATES = [
+  collectionKeyPrefix('appointments'),
+  appointmentSlotsPrefix(),
+] as const
 
 /** Veli bağlı çocuğu, öğrenci kendisi için randevu talep eder (201); randevular tazelenir. */
 export function useBookAppointment(options: CommandOptions = {}) {
   return useApiCommand({
     request: bookAppointmentRequest,
-    invalidates: appointments,
+    invalidates: APPOINTMENT_INVALIDATES,
     messages: APPOINTMENT_MESSAGES,
     exclusive: true,
     ...(options.onSuccess ? { onSuccess: options.onSuccess } : {}),
@@ -99,7 +108,7 @@ export function useUpdateAppointment(options: CommandOptions = {}) {
   return useApiCommand({
     request: updateAppointmentRequest,
     version: (input: UpdateAppointmentInput) => input.version,
-    invalidates: appointments,
+    invalidates: APPOINTMENT_INVALIDATES,
     messages: APPOINTMENT_MESSAGES,
     exclusive: true,
     ...(options.onSuccess ? { onSuccess: options.onSuccess } : {}),

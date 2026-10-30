@@ -4,7 +4,7 @@ import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import type { Role } from '../modules/navigation.ts'
 import { requireAuthorized } from './authorize.ts'
-import type { MakeId } from './domain.ts'
+import { daySchema, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { average, dayKey } from './format.ts'
 import { linkedRecordId, requireReadable, scopeFor, type Actor } from './scope.ts'
@@ -32,15 +32,7 @@ export const GRADE_TYPE_LABELS = {
 } as const satisfies Record<GradeType, string>
 
 const identifier = z.string().trim().min(1, 'Bir kayıt seçin.')
-const day = z
-  .string()
-  .refine(
-    (v) =>
-      /^\d{4}-\d{2}-\d{2}$/.test(v) &&
-      Number.isFinite(Date.parse(`${v}T09:00:00Z`)) &&
-      new Date(`${v}T09:00:00Z`).toISOString().slice(0, 10) === v,
-    'Geçerli bir tarih seçin.',
-  )
+const day = daySchema
 // Puan 0–100 tam sayıdır (DOM-AKD-003); form değeri metin gelebilir.
 const score = z.coerce
   .number({ error: 'Geçerli bir puan girin.' })
@@ -103,6 +95,8 @@ export type GradeCorrection = {
 }
 /** Not girişinin eklediği alanlar; örnek veri ve eski kayıtlar bunları taşımayabilir. */
 export type OfficialGradeFields = {
+  /** Notun verildiği sınıf; düzeltme yetkisi buna göre verilir (öğrenci sonra sınıf değiştirebilir). */
+  classId: string
   assessmentType: GradeType
   term: number
   sequence: number
@@ -153,6 +147,7 @@ function actorUserId(actor: Actor) {
 
 /**
  * Resmî not girer. Yetki: yalnız öğrencinin sınıfında o dersin atanmış öğretmeni (DOM-AKD-054).
+ * Öğrencinin o anki sınıfı notta saklanır (`classId`); sonraki düzeltme yetkisi ona bağlıdır.
  * Önce bütün kurallar denetlenir, sonra tek kayıt eklenir; hata olursa State değişmez.
  */
 export function recordGrade(
@@ -228,6 +223,7 @@ export function recordGrade(
     studentId: student.id,
     subjectId: subject.id,
     subject: subject.name,
+    classId: classroom.id,
     title: `${subject.name} · ${data.term}. dönem ${sequence}. ${GRADE_TYPE_LABELS[data.assessmentType]}`,
     topic: data.topic,
     score: gradeScore,
@@ -246,8 +242,9 @@ export function recordGrade(
 
 /**
  * Not puanını gerekçeyle düzeltir; eski puan `corrections` geçmişine yazılır (DOM-AKD-051).
- * Yetki: atanmış ders öğretmeni veya gerekçeyle yönetici. Aktörün göremediği not bulunamadı
- * sayılır (DOM-YTK-002: varlık sızdırılmaz).
+ * Yetki: notun verildiği sınıfta (`classId`) o dersin atanmış öğretmeni veya gerekçeyle yönetici.
+ * Sınıfı saklanmamış eski notta öğrencinin güncel sınıfı kullanılır. Aktörün göremediği not
+ * bulunamadı sayılır (DOM-YTK-002: varlık sızdırılmaz).
  */
 export function updateGrade(
   state: State,
@@ -267,7 +264,12 @@ export function updateGrade(
   requireAuthorized(
     actor,
     'grade.update',
-    { studentId: grade.studentId, subjectId: grade.subjectId, reason: data.reason },
+    {
+      studentId: grade.studentId,
+      subjectId: grade.subjectId,
+      ...(grade.classId === undefined ? {} : { classId: grade.classId }),
+      reason: data.reason,
+    },
     state,
     options,
   )

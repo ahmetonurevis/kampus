@@ -831,6 +831,148 @@ describe('yazma uçları', () => {
     })
   })
 
+  describe('DOM-AKD-035: yoklama düzeltme geçmişi', () => {
+    const url = '/api/v1/classes/c1/attendance'
+    const [first, second] = classStudents('c1')
+    if (!first || !second) throw new Error('örnek veride c1 öğrencileri eksik')
+    const read = (cookie: string, path: string) =>
+      app.inject({ method: 'GET', url: path, headers: { origin: TEST_ORIGIN, cookie } })
+    type Correction = {
+      previousStatus: string
+      status: string
+      reason: string
+      by: string
+      at: string
+    }
+    const rowOf = async (institutionId: string, studentId: string) =>
+      (await loadRecords(db, institutionId, ['attendance'])).find(
+        (row) => row.data.studentId === studentId,
+      )
+
+    /** Öğretmen t1 bugünün yoklamasını alır; kullanıcı kimliği ve çerezi döner. */
+    async function taken(institutionId: string) {
+      const user = await createMember(app, institutionId, 'ogretmen', [
+        { kind: 'teacher', recordId: 't1' },
+      ])
+      const cookie = await signInAs(app, user)
+      const response = await post(url, cookie, { date: DAY, marks: marksFor('c1') })
+      assert.equal(response.statusCode, 200, response.body)
+      return { user, cookie }
+    }
+
+    test('yönetici düzeltmesi geçmişe kalıcı yazılır; değişmeyen öğrenciye yazılmaz, denetimde içerik yok', async () => {
+      const a = await institution()
+      await taken(a.id)
+      const response = await post(url, a.adminCookie, {
+        date: DAY,
+        marks: { ...marksFor('c1'), [first.id]: 'absent' },
+        reason: `  ${REASON}  `,
+      })
+      assert.equal(response.statusCode, 200, response.body)
+      assert.equal(response.json().data.changes.updated, 1)
+      const row = await rowOf(a.id, first.id)
+      assert.equal(row?.version, 2)
+      assert.equal(row?.data.status, 'absent')
+      assert.deepEqual(row?.data.corrections, [
+        {
+          previousStatus: 'present',
+          status: 'absent',
+          reason: REASON,
+          by: a.admin.id,
+          at: FIXED_NOW.toISOString(),
+        },
+      ] satisfies Correction[])
+      const unchanged = await rowOf(a.id, second.id)
+      assert.equal(unchanged?.version, 1)
+      assert.equal('corrections' in (unchanged?.data ?? {}), false)
+      const entries = await db
+        .select()
+        .from(auditLog)
+        .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'attendance.record')))
+        .orderBy(asc(auditLog.createdAt))
+      const last = entries.find((entry) => entry.actorUserId === a.admin.id)
+      assert.deepEqual(last?.changes?.fields, ['corrections', 'status'])
+      assert.equal(JSON.stringify(last?.changes).includes(REASON), false)
+    })
+
+    test('öğretmenin aynı gün güncellemesi gerekçesiz de geçmişe yazılır', async () => {
+      const a = await institution()
+      const { user, cookie } = await taken(a.id)
+      const response = await post(url, cookie, {
+        date: DAY,
+        marks: { ...marksFor('c1'), [first.id]: 'late' },
+      })
+      assert.equal(response.statusCode, 200, response.body)
+      const row = await rowOf(a.id, first.id)
+      assert.deepEqual(row?.data.corrections, [
+        {
+          previousStatus: 'present',
+          status: 'late',
+          reason: '',
+          by: user.id,
+          at: FIXED_NOW.toISOString(),
+        },
+      ] satisfies Correction[])
+    })
+
+    test('gerekçesiz yönetici düzeltmesi 422; kayıt ve geçmiş değişmez', async () => {
+      const a = await institution()
+      await taken(a.id)
+      for (const reason of [undefined, '   '])
+        assertError(
+          await post(url, a.adminCookie, {
+            date: DAY,
+            marks: { ...marksFor('c1'), [first.id]: 'absent' },
+            reason,
+          }),
+          422,
+          'correction_reason_required',
+        )
+      assertError(
+        await post(url, a.adminCookie, {
+          date: DAY,
+          marks: { ...marksFor('c1'), [first.id]: 'absent' },
+          reason: 'x'.repeat(501),
+        }),
+        400,
+        'validation_failed',
+      )
+      const row = await rowOf(a.id, first.id)
+      assert.equal(row?.version, 1)
+      assert.equal(row?.data.status, 'present')
+      assert.equal('corrections' in (row?.data ?? {}), false)
+    })
+
+    test('veli ve öğrenci yoklama okumasında corrections yok; öğretmen ve yönetici görür', async () => {
+      const a = await institution()
+      const { cookie } = await taken(a.id)
+      await post(url, a.adminCookie, {
+        date: DAY,
+        marks: { ...marksFor('c1'), s1: 'excused' },
+        reason: REASON,
+      })
+      const row = await rowOf(a.id, 's1')
+      assert.ok(row)
+      for (const reader of [
+        await member(a.id, 'veli', [{ kind: 'child', recordId: 's1' }]),
+        await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's1' }]),
+      ]) {
+        const single = await read(reader, `/api/v1/collections/attendance/${row.id}`)
+        assert.equal(single.statusCode, 200, single.body)
+        assert.equal(single.json().data.record.status, 'excused', 'güncel durum döner')
+        assert.equal('corrections' in single.json().data.record, false)
+        const list = await read(reader, '/api/v1/collections/attendance?pageSize=100')
+        assert.equal(list.statusCode, 200, list.body)
+        for (const item of list.json().data) assert.equal('corrections' in item.record, false)
+        assert.equal(list.body.includes(REASON), false)
+      }
+      for (const reader of [cookie, a.adminCookie]) {
+        const single = await read(reader, `/api/v1/collections/attendance/${row.id}`)
+        assert.equal(single.json().data.record.corrections?.[0]?.reason, REASON)
+      }
+    })
+  })
+
   // --- Core yazma yetkisi (DOM-YTK-001) ----------------------------------------------------
 
   describe('DOM-YTK-001: temel yazma yetkisi core `authorize` tablosundandır', () => {

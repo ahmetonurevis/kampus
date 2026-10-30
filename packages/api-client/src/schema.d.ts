@@ -6256,7 +6256,7 @@ export interface operations {
                     marks: {
                         [key: string]: "present" | "absent" | "late" | "excused";
                     };
-                    /** @description Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); yöneticide zorunlu, yoksa 422 `correction_reason_required` */
+                    /** @description Düzeltme gerekçesi (DOM-AKD-035); kırpılır, en çok 500 karakter. Yöneticide zorunlu, yoksa 422 `correction_reason_required`; öğretmende isteğe bağlı. Durumu değişen öğrencinin düzeltme geçmişine yazılır */
                     reason?: string;
                 };
             };

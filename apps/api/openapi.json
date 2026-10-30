@@ -9593,7 +9593,7 @@
                     "description": "Öğrenci kimliği → durum; sınıfın bütün aktif öğrencileri bulunmalı"
                   },
                   "reason": {
-                    "description": "Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); yöneticide zorunlu, yoksa 422 `correction_reason_required`",
+                    "description": "Düzeltme gerekçesi (DOM-AKD-035); kırpılır, en çok 500 karakter. Yöneticide zorunlu, yoksa 422 `correction_reason_required`; öğretmende isteğe bağlı. Durumu değişen öğrencinin düzeltme geçmişine yazılır",
                     "type": "string",
                     "maxLength": 500
                   }
@@ -9780,7 +9780,8 @@
                     ]
                   },
                   "date": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                   },
                   "score": {
                     "type": "integer",

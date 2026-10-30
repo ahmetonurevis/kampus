@@ -27,7 +27,7 @@
     "@fastify/rate-limit": "11.2.1",
     "@fastify/swagger": "9.9.2",
     "@fastify/swagger-ui": "6.1.2",
-    "@kampus/school-core": "workspace:2.2.0",
+    "@kampus/school-core": "workspace:2.3.0",
     "better-auth": "1.7.10",
     "drizzle-orm": "0.45.4",
     "fastify": "5.12.7",

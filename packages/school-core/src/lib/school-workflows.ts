@@ -3,6 +3,7 @@ import { subjectsForGrade } from '../data/curriculum.ts'
 import type { State } from '../data/seed.ts'
 import { WORKFLOW_COMMANDS, isWorkflowCommand, type WorkflowCommand } from '../modules/commands.ts'
 import type { Role } from '../modules/navigation.ts'
+import { toAuditValue, type AuditValue, type RecordAuditEntry } from './audit.ts'
 import { installmentAmounts, type MakeId, type Session } from './domain.ts'
 import { dayKey } from './format.ts'
 import { tutorConflict, type Interval } from './tutor-conflicts.ts'
@@ -267,20 +268,8 @@ export type ClubAttendanceRecord = Stamp & {
   date: string
   status: WorkflowInput<'club-attendance'>['marks'][string]
 }
-export type AuditEntry = {
-  id: string
-  actor: Role
-  user_id: string
-  action: string
-  table_name: string | undefined
-  record_id: string
-  date: string
-  changed_at: string
-  old_value: unknown
-  new_value: unknown
-  /** Değeri denetim kaydına yazılmayan, değişen gizli alanların adları (DOM-ILT-041). */
-  masked_fields?: string[]
-}
+// Denetim kaydı tipleri `lib/audit.ts` içindedir; eski içe aktarımlar için buradan da verilir.
+export type { AuditEntry, AuditValue, JsonValue, RecordAuditEntry } from './audit.ts'
 export type { WorkflowCommand }
 const commandRoles: Partial<Record<string, readonly Role[]>> = {
   goal: ['yonetici', 'ogretmen', 'ogrenci'],
@@ -1569,7 +1558,6 @@ function executeWorkflow(
 type AuditedCollection = {
   [K in keyof State]: State[K] extends readonly { id: string }[] ? K : never
 }[keyof State]
-const clone = (value: unknown): unknown => JSON.parse(JSON.stringify(value))
 const findById = (list: readonly { id: string }[], id: string) => list.find((r) => r.id === id)
 
 // Denetim kaydı gizli alanlara arka kapı olmamalıdır: rehberlik iç notu eski/yeni değerden
@@ -1579,16 +1567,16 @@ const AUDIT_MASKED_FIELDS: Partial<Record<AuditedCollection, readonly string[]>>
 }
 function maskAuditValues(
   collection: AuditedCollection | undefined,
-  oldValue: unknown,
-  newValue: unknown,
+  oldValue: AuditValue,
+  newValue: AuditValue,
 ) {
   const fields = (collection && AUDIT_MASKED_FIELDS[collection]) || []
   if (!fields.length) return { oldValue, newValue, fields: [] }
-  const read = (value: unknown, key: string): unknown =>
+  const read = (value: AuditValue, key: string): unknown =>
     typeof value === 'object' && value !== null && Object.hasOwn(value, key)
       ? Reflect.get(value, key)
       : undefined
-  const strip = (value: unknown) =>
+  const strip = (value: AuditValue): AuditValue =>
     typeof value === 'object' && value !== null
       ? Object.fromEntries(Object.entries(value).filter(([key]) => !fields.includes(key)))
       : value
@@ -1648,12 +1636,12 @@ export function runWorkflow(
   }
   const collection = collections[command]
   const previous = recordId && collection ? findById(state[collection], recordId) : null
-  const oldValue = previous ? clone(previous) : null
+  const oldValue = previous ? toAuditValue(previous) : null
   const result = executeWorkflow(state, session, command, input, makeId, recordId, now)
   const resultId = typeof result === 'object' && 'id' in result ? result.id : undefined
-  const newValue = typeof result === 'object' ? clone(result) : { result }
+  const newValue = toAuditValue(typeof result === 'object' ? result : { result })
   const masked = maskAuditValues(collection, oldValue, newValue)
-  state.audit.unshift({
+  const entry: RecordAuditEntry = {
     id: makeId('audit'),
     actor: session.role,
     // TODO(core-audit-user): kişi kimliği oturumdan gelince veli ve idari roller de kişiye bağlanır.
@@ -1673,7 +1661,8 @@ export function runWorkflow(
     old_value: masked.oldValue,
     new_value: masked.newValue,
     ...(masked.fields.length ? { masked_fields: masked.fields } : {}),
-  })
+  }
+  state.audit.unshift(entry)
   state.audit = state.audit.slice(0, 200)
   return result
 }

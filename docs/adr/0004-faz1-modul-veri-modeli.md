@@ -73,7 +73,7 @@ Bu modüllerin `records`'a sığıp sığmadığını belirleyen ihtiyaçlar (ve
     | `skills/rubric.ts`      | Rubrik şeması, puan hesabı, ikinci puanlayıcı ve uyuşmazlık (DOM-BEC-020…024)                                         |
     | `cefr/suggestion.ts`    | Kanıt seçimi, beceri ve genel öneri (DOM-BEC-030…034)                                                                 |
     | `cefr/placement.ts`     | Bölüm sonuçları, öneri, yerleştirme kararı, geçerlilik (DOM-DIL-010…012)                                              |
-    | `cefr/progression.ts`   | Geçiş koşulları ve karar (DOM-DIL-060, 070)                                                                           |
+    | `cefr/progression.ts`   | Ölçme, devam, devamsızlık bildirimi, geçiş koşulları ve karar (DOM-DIL-013, 060…062, 070)                             |
     | `cefr/targets.ts`       | `cefrTargets` şeması ve yıllık kilit (DOM-BEC-063); State koleksiyonu kaydı F5b'de. `data/` yalnız örnek veridir      |
 
 12. **API'ye gelecek tablolar.**

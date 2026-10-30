@@ -36,6 +36,7 @@ import { registerMembershipRoutes } from './routes/memberships.ts'
 import { registerModuleRoutes } from './routes/modules.ts'
 import { registerResourceCommandRoutes } from './routes/resource-commands.ts'
 import { registerRequestRoutes } from './routes/requests.ts'
+import { registerAppointmentRoutes } from './routes/appointments.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
 
 // Şemada özel mesajı olmayan Zod hataları da Türkçe döner.
@@ -70,6 +71,9 @@ export const REDACTED_PATHS = [
   '*.nationalId',
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).
   '*.reasonCategory',
+  // kvkk: Ç — randevu görüşme konusu ve red/iptal gerekçesi (DOM-ILT-100, DOM-ILT-102).
+  '*.note',
+  '*.reason',
   '*.cookie',
   '*.authorization',
 ]
@@ -209,6 +213,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   // Komut uçlarından sonra: ham gövde süsü (`commandInput`) orada tanımlanır.
   registerCommunicationRoutes(app)
   registerRequestRoutes(app)
+  registerAppointmentRoutes(app)
   registerResourceRoutes(app)
   registerResourceCommandRoutes(app)
 

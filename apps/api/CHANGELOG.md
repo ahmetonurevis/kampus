@@ -2,6 +2,15 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Randevu yazma uçları
+
+- `POST /api/v1/appointments` (öğrenci, veli; uygunluk saati `slotId` seçilerek talep; 201 + `Location`; `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`) ve `PATCH /api/v1/appointments/:appointmentId` (öğretmen, öğrenci, veli; `Onaylandı`, `Reddedildi`, `İptal`, `Geri çekildi`; `If-Match` zorunlu). Kurallar core 2.18.0 `lib/appointments.ts` (DOM-ILT-100…104); modül `communication`. Yönetici ve ön büro yazamaz (403 `forbidden`).
+- Talepte uygunluk saatlerinden yalnız seçilen saat yüklenir (`loadScope`); ders, etüt, etkinlik ve randevular çakışma denetimi için bütünüyle yüklenir. Kurum kilidi aynı saate eşzamanlı iki talepten yalnız birini yazar, öteki 409 `appointment_conflict` alır (test:pg).
+- Durum değişikliğinde görünürlük sürümden önce denetlenir: aktörün göremediği randevu (`requireVisibleAppointment`) `If-Match` ne olursa olsun 404'tür, sürüm farkı ancak görünür kayıtta 409 `version_conflict` olur. Çalıştırıcıya `expectedVersions` verilmez; satır sürümü kurum kilidi altında okunur.
+- Yeni hata kodları: `appointment_teacher_only`, `appointment_requester_only`, `appointment_cancel_forbidden` (403); `appointment_conflict`, `appointment_closed` (409); `appointment_slot_unavailable`, `appointment_in_past`, `appointment_type_invalid`, `appointment_transition_invalid` (422, `issues` alan yoluyla). Red ve iptalde gerekçe yoksa 400 `validation_failed` (`reason`).
+- Log gizleme listesine `*.note` ve `*.reason` eklendi (kvkk: Ç); denetim kaydına yalnız değişen alan adları yazılır.
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
 ## Talep ve izin/mazeret yazma uçları
 
 - `POST /api/v1/requests` (veli; bağlı çocuğu için talep, şikayet veya öneri; 201 + `Location`), `PATCH /api/v1/requests/:requestId` (ön büro ve yönetici; durum, ilgili birim, eklenen yanıt; `If-Match` zorunlu), `POST /api/v1/absences` (veli; izin veya mazeret; 201 + `Location`). Oluşturma uçlarında `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`. Kurallar core `lib/requests.ts`'tedir (DOM-ILT-053, DOM-ILT-080); rol ve kapsam core `requireAuthorized`, modül talepte `communication`, bildirimde `academic`. Yazma `runCommand` ile kurum kilidi, `audit_log` (yalnız alan adları) ve kısmi yüklemeyle (`loadScope`: talep açarken hiçbir talep, güncellemede hedef talep, bildirimde aynı öğrencinin bildirimleri) tek transaction'dadır.

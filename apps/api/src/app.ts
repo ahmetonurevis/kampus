@@ -23,6 +23,7 @@ import { registerErrorHandler } from './plugins/error-handler.ts'
 import { registerModuleGuard } from './plugins/modules.ts'
 import { genRequestId, registerRequestContext } from './plugins/request-context.ts'
 import { registerCollectionRoutes } from './routes/collections.ts'
+import { registerAssessmentRoutes } from './routes/assessment.ts'
 import { registerCommandRoutes } from './routes/commands.ts'
 import { registerCommunicationRoutes } from './routes/communication.ts'
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
@@ -193,6 +194,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerModuleRoutes(app)
   registerCollectionRoutes(app)
   registerCommandRoutes(app)
+  registerAssessmentRoutes(app)
   // Komut uçlarından sonra: ham gövde süsü (`commandInput`) orada tanımlanır.
   registerCommunicationRoutes(app)
 

@@ -56,11 +56,21 @@ Etütler öğrenci/veli ders programına ve dashboard'daki yaklaşan derslere ya
 
 Yönetici → Ayarlar ekranında Optik Değerlendirme ve Otomatik Etüt ayrı ayrı kapatılabilir. Kapalı modülün menüsü ve doğrudan bağlantısı kapanır; kayıtlar silinmez. Optik modülü kapanınca mevcut etüt takibi devam eder. Yeni değerlendirme ve etüt planlama için Deneme Sınavları modülü açık olmalıdır. Etüt modülü kapalı olsa da mevcut rezervasyonlar çakışma denetiminde korunur.
 
+## API uçları
+
+Aynı işlemler API'de de çalışır (`POST /api/v1/assessment/<komut>`; ayrıntı `docs/muhendislik/api-tasarimi.md`). Rol, kapsam ve kurallar web ile aynıdır, çünkü school-core `runAssessment`'ı çalıştırır.
+
+- **Komutlar:** `profile` (yalnız yönetici), `evaluate`, `plan`, `slot`, `slot-remove`, `cancel`, `attendance`. Yazma yönetici ve öğretmendedir; öğrenci, veli ve ön büro 403 alır. `optical` kapalıysa `profile` ve `evaluate`, `tutoring` kapalıysa diğerleri 403 `module_disabled` döner; dil okulunda bu modüller 404'tür.
+- **Okuyucu dosyası:** `evaluate` gövdesine dosyanın metni (`text`) ve `profileId` konur; cevap anahtarı `profile` gövdesinde `keyCsv`'dir. Alan en çok 1 MB'tır; aşarsa 413 ve hiçbir kayıt yazılmaz. Dosya hatası (bilinmeyen öğrenci/kitapçık, yanlış cevap uzunluğu, sütun sayısı…) 422'dir ve `issues[0].path` `["text","line",<satır>]` ile hatalı dosya satırını gösterir; hatada hiçbir sonuç kaydedilmez. Dosyayı çözmek ve kodlama (UTF-8/Windows-1254) istemcidedir.
+- **Önizleme (yazmaz):** `POST /assessment/evaluate/preview` ve `POST /assessment/plan/preview` kaydı, sürümü ve denetim kaydını değiştirmez. Plan önizlemesi önerilen etütleri (kapasiteyle), yerleşemeyen grupları nedenleriyle (öğretmen, derslik, uygunluk, kapasite, çakışma) ve zaten karşılanan kazanımları döner.
+- **Son onay:** `plan` ve `evaluate` `Idempotency-Key` ister; aynı anahtar aynı sonucu tekrarlar, çoğaltmaz. `plan` her zaman güncel planı yeniden hesaplar. Önizlemedeki `expectedPlan` gönderilirse ve plan değişmişse hiçbir şey yazılmaz: 409 `tutoring_plan_stale` ve `issues` içinde eklenen/kalkan/öğrencisi değişen etütler döner; yeni önizleme alın. `evaluate` aynı şekilde `expectedDigest` ile 409 `evaluation_stale` döner. Aynı anda iki onaydan yalnız biri etüt oluşturur; ikincisi 422 `tutoring_nothing_to_create` alır.
+- **Okuma:** `GET /api/v1/collections/opticalProfiles|opticalEvaluations|tutorSessions|availability`. Etüt kaydında öğrenci ve veli yalnız kendi adını, başarısını ve yoklamasını görür; öğretmen kendi etütlerini ve uygunluklarını, kendi branşının sonuçlarını görür. Öğrencinin ve velinin soru analizini API'den okuması henüz açık değildir (`TODO(core-optical-student-read)`: `optical` modülünün rolleri koleksiyon erişimini kapatır).
+
 ## React web ekranı (geçiş durumu)
 
 `apps/web-react` içindeki Optik Değerlendirme ve Otomatik Etüt ekranları API üzerinden çalışır; Vue demosundaki her işlem henüz yoktur:
 
-- Optik ekran: profiller salt okunur listelenir; cevap dosyası seçilip core ile ön kontrol edilir (ilk hata satır numarasıyla gösterilir, toplu hata listesi yoktur). "Onayla ve sonuçları kaydet" düğmesi API'de `evaluate` ucu olmadığı için kilitlidir ve bunu söyler. Profil oluşturma/düzenleme de API'de yoktur.
-- Etüt ekranı: plan önizlemesi istemcide core ile hesaplanır; onay `POST /tutor-sessions` ile gönderilir, sunucu planı yeniden hesaplar ve fark varsa ekran yeni planı ve farkı gösterir. Yoklama ve gerekçeli iptal API'ye bağlıdır. Öğretmen uygunluk saati ekleme/kaldırma ekranda yoktur (API ucu yok); uygunluk saatleri seed/yönetici verisinden gelir.
-- Plan önizlemesi için gereken koleksiyonlar tarayıcıda okunur; sunucu önizleme ucu gelince bu okuma kalkacaktır.
+- Optik ekran: profiller salt okunur listelenir; cevap dosyası seçilip core ile ön kontrol edilir (ilk hata satır numarasıyla gösterilir, toplu hata listesi yoktur). "Onayla ve sonuçları kaydet" düğmesi ve profil oluşturma/düzenleme henüz kilitlidir; API uçları (`evaluate`, `profile`) hazırdır, ekran bağlantısı sıradadır.
+- Etüt ekranı: plan önizlemesi istemcide core ile hesaplanır; onay `POST /tutor-sessions` ile gönderilir, sunucu planı yeniden hesaplar ve fark varsa ekran yeni planı ve farkı gösterir. Yoklama ve gerekçeli iptal API'ye bağlıdır. Öğretmen uygunluk saati ekleme/kaldırma ekranda henüz yoktur (API ucu `slot`/`slot-remove` hazır); uygunluk saatleri seed/yönetici verisinden gelir.
+- Plan önizlemesi için gereken koleksiyonlar tarayıcıda okunur; ekran `POST /assessment/plan/preview` ucuna bağlanınca bu okuma kalkacaktır.
 - Dil okulunda iki sayfa "Modül kullanıma kapalı" der.

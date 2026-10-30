@@ -1164,6 +1164,206 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assessment/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Optik profil ve cevap anahtarı oluştur veya güncelle
+         * @description school-core `runAssessment('profile')`. Gövde core `automationSchemas` şemasıdır. Modül: `optical`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.
+         */
+        post: operations["runAssessmentProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessment/profile/{recordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Optik profil ve cevap anahtarı oluştur veya güncelle
+         * @description school-core `runAssessment('profile')`. Gövde core `automationSchemas` şemasıdır. Modül: `optical`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.
+         */
+        post: operations["runAssessmentProfileUpdate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessment/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Okuyucu dosyasını değerlendir ve sonuçları kaydet
+         * @description school-core `runAssessment('evaluate')`. Gövde core `automationSchemas` şemasıdır. Modül: `optical`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.
+         */
+        post: operations["runAssessmentEvaluate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessment/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Etüt planını onayla
+         * @description school-core `runAssessment('plan')`. Gövde core `automationSchemas` şemasıdır. Modül: `tutoring`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.
+         */
+        post: operations["runAssessmentPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessment/slot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğretmen uygunluk saati ekle
+         * @description school-core `runAssessment('slot')`. Gövde core `automationSchemas` şemasıdır. Modül: `tutoring`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.
+         */
+        post: operations["runAssessmentSlot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessment/slot-remove/{recordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğretmen uygunluk saatini kaldır
+         * @description school-core `runAssessment('slot-remove')`. Gövde core `automationSchemas` şemasıdır. Modül: `tutoring`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.
+         */
+        post: operations["runAssessmentSlotRemove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessment/cancel/{recordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Etüdü gerekçeyle iptal et
+         * @description school-core `runAssessment('cancel')`. Gövde core `automationSchemas` şemasıdır. Modül: `tutoring`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.
+         */
+        post: operations["runAssessmentCancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessment/attendance/{recordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Etüt yoklaması al
+         * @description school-core `runAssessment('attendance')`. Gövde core `automationSchemas` şemasıdır. Modül: `tutoring`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.
+         */
+        post: operations["runAssessmentAttendance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessment/plan/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Etüt planını önizle
+         * @description Etüt planını güncel veriyle hesaplar (core `planTutoring`) ve **hiçbir şey yazmaz** (transaction geri alınır; kayıt, sürüm ve denetim kaydı değişmez). Yanıt: önerilen etütler (`sessions`, kapasite ile), yerleşemeyen gruplar ve nedenleri (`unresolved`: öğretmen, derslik, uygunluk, kapasite ve çakışma uyarıları), zaten karşılanan kazanımlar (`covered`) ve onayda geri gönderilecek `expectedPlan`. Onay (`POST /assessment/plan`) planı yeniden hesaplar; fark varsa 409 `tutoring_plan_stale`. Roller core `runAssessment` ile aynıdır: `yonetici`, `ogretmen`.
+         */
+        post: operations["previewAssessmentPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessment/evaluate/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Okuyucu dosyasını önizle
+         * @description Okuyucu dosyasını (CSV/DAT/TXT, en çok 1 MB; aşarsa 413) profile göre değerlendirir (core `previewOptical`) ve **hiçbir şey yazmaz**. Yanıt öğrenci/ders başına doğru, yanlış, boş, çoklu, iptal, net, zayıf kazanımlar ve üzerine yazılacak sonuç işaretidir (soru bazında ayrıntı yok) ile onayda `expectedDigest` olarak gönderilecek `digest`. Dosya hatası 422 ve `issues`: yol `["text","line",<satır>]`, satır dosya satırıdır (başlık 1).
+         */
+        post: operations["previewAssessmentEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/announcements": {
         parameters: {
             query?: never;
@@ -1450,6 +1650,106 @@ export interface components {
                 change: "insert" | "update" | "archive" | "restore" | "move";
             }[];
         };
+        TutoringPlanPreviewInput: {
+            /** @description Çözümlenmiş plan girdisi */
+            input: {
+                examId: string;
+                threshold: number;
+                fromDate: string;
+                toDate: string;
+                duration: number;
+                maxGroupSize: number;
+                branchId: string;
+                subjectId: string;
+            };
+            /** @description Önerilen etütler */
+            sessions: {
+                examId: string;
+                branchId: string;
+                grade: number;
+                subjectId: string;
+                /** @description Eksik kazanım */
+                topic: string;
+                studentIds: string[];
+                scores: {
+                    studentId: string;
+                    percent: number | null;
+                }[];
+                teacherId: string;
+                /** @description Başlangıç anı, ISO 8601 UTC */
+                date: string;
+                /** @description Dakika */
+                duration: number;
+                room: string;
+                roomClassId: string;
+                /** @description Grup kapasitesi: en küçük(grup üst sınırı, derslik kapasitesi) */
+                capacity: number;
+            }[];
+            /** @description Yerleşemeyen gruplar ve nedeni: kapasite, öğretmen, derslik, uygunluk veya çakışma uyarısı */
+            unresolved: {
+                examId: string;
+                branchId: string;
+                grade: number;
+                subjectId: string;
+                /** @description Eksik kazanım */
+                topic: string;
+                studentIds: string[];
+                scores: {
+                    studentId: string;
+                    percent: number | null;
+                }[];
+                reason: string;
+            }[];
+            /** @description Zaten planlanmış veya tamamlanmış etütle karşılanan öğrenci/kazanımlar */
+            covered: {
+                studentId: string;
+                topic: string;
+                sessionId: string;
+            }[];
+            evaluatedStudents: number;
+            summary: {
+                sessionCount: number;
+                plannedStudentCount: number;
+                unresolvedGroupCount: number;
+                unresolvedStudentCount: number;
+                coveredCount: number;
+            };
+            /** @description Planın JSON metni; onay isteğinde `expectedPlan` olarak aynen geri gönderilir */
+            expectedPlan: string;
+        };
+        EvaluationPreviewInput: {
+            rows: {
+                examId: string;
+                studentId: string;
+                studentName: string;
+                subjectId: string;
+                booklet: string;
+                profileId: string;
+                keyRevision: number;
+                correct: number;
+                wrong: number;
+                blank: number;
+                multiple: number;
+                cancelled: number;
+                net: number;
+                topicScores: {
+                    topic: string;
+                    total: number;
+                    correct: number;
+                    percent: number | null;
+                }[];
+                weakTopics: string[];
+                /** @description Aynı sınav/öğrenci/ders sonucunun üzerine yazar */
+                replaces: boolean;
+            }[];
+            summary: {
+                rowCount: number;
+                studentCount: number;
+                replacesCount: number;
+            };
+            /** @description Önizlemenin SHA-256 özeti (hex); onay isteğinde `expectedDigest` olarak gönderilir */
+            digest: string;
+        };
         ConversationMessageInput: {
             id: string;
             text: string;
@@ -1680,6 +1980,106 @@ export interface components {
                 /** @enum {string} */
                 change: "insert" | "update" | "archive" | "restore" | "move";
             }[];
+        };
+        TutoringPlanPreview: {
+            /** @description Çözümlenmiş plan girdisi */
+            input: {
+                examId: string;
+                threshold: number;
+                fromDate: string;
+                toDate: string;
+                duration: number;
+                maxGroupSize: number;
+                branchId: string;
+                subjectId: string;
+            };
+            /** @description Önerilen etütler */
+            sessions: {
+                examId: string;
+                branchId: string;
+                grade: number;
+                subjectId: string;
+                /** @description Eksik kazanım */
+                topic: string;
+                studentIds: string[];
+                scores: {
+                    studentId: string;
+                    percent: number | null;
+                }[];
+                teacherId: string;
+                /** @description Başlangıç anı, ISO 8601 UTC */
+                date: string;
+                /** @description Dakika */
+                duration: number;
+                room: string;
+                roomClassId: string;
+                /** @description Grup kapasitesi: en küçük(grup üst sınırı, derslik kapasitesi) */
+                capacity: number;
+            }[];
+            /** @description Yerleşemeyen gruplar ve nedeni: kapasite, öğretmen, derslik, uygunluk veya çakışma uyarısı */
+            unresolved: {
+                examId: string;
+                branchId: string;
+                grade: number;
+                subjectId: string;
+                /** @description Eksik kazanım */
+                topic: string;
+                studentIds: string[];
+                scores: {
+                    studentId: string;
+                    percent: number | null;
+                }[];
+                reason: string;
+            }[];
+            /** @description Zaten planlanmış veya tamamlanmış etütle karşılanan öğrenci/kazanımlar */
+            covered: {
+                studentId: string;
+                topic: string;
+                sessionId: string;
+            }[];
+            evaluatedStudents: number;
+            summary: {
+                sessionCount: number;
+                plannedStudentCount: number;
+                unresolvedGroupCount: number;
+                unresolvedStudentCount: number;
+                coveredCount: number;
+            };
+            /** @description Planın JSON metni; onay isteğinde `expectedPlan` olarak aynen geri gönderilir */
+            expectedPlan: string;
+        };
+        EvaluationPreview: {
+            rows: {
+                examId: string;
+                studentId: string;
+                studentName: string;
+                subjectId: string;
+                booklet: string;
+                profileId: string;
+                keyRevision: number;
+                correct: number;
+                wrong: number;
+                blank: number;
+                multiple: number;
+                cancelled: number;
+                net: number;
+                topicScores: {
+                    topic: string;
+                    total: number;
+                    correct: number;
+                    percent: number | null;
+                }[];
+                weakTopics: string[];
+                /** @description Aynı sınav/öğrenci/ders sonucunun üzerine yazar */
+                replaces: boolean;
+            }[];
+            summary: {
+                rowCount: number;
+                studentCount: number;
+                replacesCount: number;
+            };
+            /** @description Önizlemenin SHA-256 özeti (hex); onay isteğinde `expectedDigest` olarak gönderilir */
+            digest: string;
         };
         ConversationMessage: {
             id: string;
@@ -8061,6 +8461,1194 @@ export interface operations {
             };
             /** @description Default Response */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    runAssessmentProfile: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    examId: string;
+                    title: string;
+                    /** @enum {string} */
+                    format: "csv" | "fixed";
+                    /** @enum {string} */
+                    identifier: "id" | "number";
+                    headerLines: number;
+                    studentStart: number;
+                    studentLength: number;
+                    bookletStart: number;
+                    bookletLength: number;
+                    answersStart: number;
+                    answersLength: number;
+                    keyCsv: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    runAssessmentProfileUpdate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Komutun konusu: profil, uygunluk saati veya etüt kimliği */
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    examId: string;
+                    title: string;
+                    /** @enum {string} */
+                    format: "csv" | "fixed";
+                    /** @enum {string} */
+                    identifier: "id" | "number";
+                    headerLines: number;
+                    studentStart: number;
+                    studentLength: number;
+                    bookletStart: number;
+                    bookletLength: number;
+                    answersStart: number;
+                    answersLength: number;
+                    keyCsv: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    runAssessmentEvaluate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    profileId: string;
+                    text: string;
+                    /** @description Önizlemedeki `digest`. Güncel sonuç farklıysa hiçbir şey yazılmaz: 409 `evaluation_stale` */
+                    expectedDigest?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    runAssessmentPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    examId: string;
+                    threshold: number;
+                    fromDate: string;
+                    toDate: string;
+                    duration: number;
+                    maxGroupSize: number;
+                    /** @default  */
+                    branchId?: string;
+                    /** @default  */
+                    subjectId?: string;
+                    /** @description Önizlemedeki `expectedPlan` metni. Güncel plan farklıysa hiçbir şey yazılmaz: 409 `tutoring_plan_stale` ve `issues` içinde fark döner */
+                    expectedPlan?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    runAssessmentSlot: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    teacherId: string;
+                    date: string;
+                    duration: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    runAssessmentSlotRemove: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Komutun konusu: profil, uygunluk saati veya etüt kimliği */
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        /** @description Gövdesiz komut */
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    runAssessmentCancel: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Komutun konusu: profil, uygunluk saati veya etüt kimliği */
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    runAssessmentAttendance: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Komutun konusu: profil, uygunluk saati veya etüt kimliği */
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Etüt öğrencisi → durum; bütün etüt öğrencileri ve yalnız onlar */
+                    marks: {
+                        [key: string]: "Geldi" | "Gelmedi" | "İzinli";
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewAssessmentPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    examId: string;
+                    threshold: number;
+                    fromDate: string;
+                    toDate: string;
+                    duration: number;
+                    maxGroupSize: number;
+                    /** @default  */
+                    branchId?: string;
+                    /** @default  */
+                    subjectId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TutoringPlanPreview"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewAssessmentEvaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    profileId: string;
+                    text: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EvaluationPreview"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };

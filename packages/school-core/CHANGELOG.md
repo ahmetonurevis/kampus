@@ -1,5 +1,12 @@
 # Değişiklikler
 
+## 2.11.0
+
+İçerik havuzu ekranı için menü kaydı (F3c1; ADR 0004, `docs/domain/kaynak-platformu.md`). Kural değişmedi; yalnız menüye sayfa eklendi.
+
+- `modules/full-navigation.ts`: "İçerik Havuzu" (`icerik-havuzu`, simge `Library`, modül `learning`, kategori `ÖĞRENME`, görünüm `ContentPool`) yönetici ve öğretmen menüsüne eklendi (DOM-YTK-021). Öğrenci ve veli içeriği paylaşım ve atamayla görür, ön büro görmez. Sayfa `apiOnly: true` taşır: Vue demosu ve mobil çevrimdışı demo menüsü düşürür, mobil API menüsü yalnız `MIGRATED` ile eşleşeni gösterir (bu sayfa telefonda yoktur). Öğretmende `ÖĞRENME` kategorisinin sonuna, yöneticide `RAPORLAR`'dan önce yeni `ÖĞRENME` kategorisi olarak girer.
+- Tüketiciler `workspace:2.11.0` sürümüne sabitlendi.
+
 ## 2.10.0
 
 Kampüs, öğretmen ve sınıf kaydı API'ye hazırlandı (D12). Yetki yalnız yöneticidedir (yetki matrisi "Kampüs, sınıf, kadro"; ön büro sınıf ve kontenjanı yalnız okur, DOM-YTK-001). Mevcut kontenjan, branş, derslik ve program çakışması kuralları aynen korundu.

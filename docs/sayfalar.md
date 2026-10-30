@@ -2,7 +2,7 @@
 
 Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’una yönlenir.
 
-React web (`apps/web-react`, `pnpm dev:react`) sayfaları API'den okur; taşınmayan sayfalar yer tutucudur. Taşınanlar: `/yonetici/subeler` ve `/yonetici/personel` (yalnız okuma; sunucu sayfalı tablo, URL'de arama/filtre/sıralama/sayfa, sağ panel `?sinif=`, `?kampus-ozet=`, `?ogretmen=`). Aşağıdaki tablolar Vue demosunun sayfa yollarıdır.
+React web (`apps/web-react`, `pnpm dev:react`) sayfaları API'den okur; taşınmayan sayfalar yer tutucudur. Taşınanlar: `/yonetici/subeler` ve `/yonetici/personel` (yalnız okuma; sunucu sayfalı tablo, URL'de arama/filtre/sıralama/sayfa, sağ panel `?sinif=`, `?kampus-ozet=`, `?ogretmen=`), yönetici `/yonetici/finans` ve ön büro `/onburo/tahsilat-takip` (Finans & Tahsilat: ilk API'li yazma ekranı; taksit listesi arama/durum filtresi/sıralama/sayfa URL'de, taksit detayı `?detay=`, tahsilat formu `?tahsilat=`, CSV; tahsilat `Idempotency-Key` ile tek kez yazılır, ikinci deneme 409 mesajı verir; toplam kartları ve dekont PDF'i sonra). Aşağıdaki tablolar Vue demosunun sayfa yollarıdır.
 
 ## Yönetici
 

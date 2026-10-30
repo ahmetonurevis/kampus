@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 
 import type { KampusClient } from '@kampus/api-client/client.ts'
+import type { ApiError } from '@kampus/api-client/errors.ts'
 
 /** Better Auth `useSession` çıktısının kullandığımız kısmı (gerçek istemci buna uyar). */
 export interface SessionState {
@@ -21,9 +22,13 @@ export interface AuthClientLike {
   }
 }
 
+/** Kullanıcıya hata bildirimi (web'de sonner toast). Mesaj Türkçedir; hata yalnız log içindir. */
+export type NotifyError = (message: string, error: ApiError) => void
+
 export interface KampusContextValue {
   client: KampusClient
   auth: AuthClientLike
+  notifyError?: NotifyError | undefined
 }
 
 export const KampusContext = createContext<KampusContextValue | null>(null)
@@ -40,4 +45,9 @@ export function useKampusClient(): KampusClient {
 
 export function useAuthClient(): AuthClientLike {
   return useKampusContext().auth
+}
+
+/** Platformun hata bildirimi; sağlayıcıya verilmediyse `undefined` (mesaj forma yazılır). */
+export function useNotifyError(): NotifyError | undefined {
+  return useKampusContext().notifyError
 }

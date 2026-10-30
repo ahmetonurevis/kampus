@@ -18,9 +18,13 @@ export type CoreRow<K extends CoreCollection> = CollectionRow<CoreRecord<K>>
 
 type AllQuery = Omit<CollectionQuery, 'page' | 'pageSize'>
 
-/** Sunucu sayfalı liste (tablo sayfası). */
-export function useCoreList<K extends CoreCollection>(collection: K, query: CollectionQuery) {
-  return useCollectionList<CoreRecord<K>>(collection, query)
+/** Sunucu sayfalı liste (tablo sayfası); `enabled: false` iken istek atılmaz. */
+export function useCoreList<K extends CoreCollection>(
+  collection: K,
+  query: CollectionQuery,
+  options: { enabled?: boolean } = {},
+) {
+  return useCollectionList<CoreRecord<K>>(collection, query, options)
 }
 
 /** Küçük başvuru koleksiyonunun bütün kayıtları (ad eşlemeleri, sayımlar). */

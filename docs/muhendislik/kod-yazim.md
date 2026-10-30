@@ -220,6 +220,28 @@ Yeni ekran eklerken:
 6. CSV `useCoreFetchAll` + `exportQueryFromList` + `useCsvExport` ile; dosya yalnız görünen sayfayı değil tüm filtrelenmiş sonucu içerir. 5000 kayıt sınırı aşılırsa kullanıcıya Türkçe uyarı çıkar.
 7. Sayfa `page-registry.tsx`'e (`lazy` + `MIGRATED` kümesi) eklenir; modül kapalıysa `QueryError` yönlendirir, ayrıca rota koruması RoleShell'dedir. e2e `tests/e2e-react/` altına: liste, arama, filtre (sayfa sıfırlanır), sayfalama, panel + geri/ileri, CSV içeriği, 390 px taşma.
 
+### API'li yazma kalıbı (react-shared + web-react)
+
+Yazma uçları (`POST /invoices/:id/pay`, iş akışı komutları; api-tasarimi.md §1, §7) `@kampus/react-shared/use-api-command.ts` `useApiCommand` ile çağrılır; saf mantık `commands.ts`'tedir ve `node:test` ile sınanır. Örnek: `use-invoice-commands.ts` `usePayInvoice`, ekran `pages/finance/PaymentPanel.tsx`.
+
+- **İstek anahtarı:** her kullanıcı eylemi `crypto.randomUUID()` ile yeni `Idempotency-Key` alır. Sonucu belirsiz hatadan (ağ, 5xx, `idempotency_in_progress`) sonra aynı gövdenin yeniden gönderimi aynı anahtarı taşır; sunucu işlemişse ilk yanıtı tekrarlar. Başarı, kesin hata veya gövde değişikliği anahtarı bırakır.
+- **Sürüm:** `version(variables)` verilirse `If-Match: "<version>"` gider (form düzenlemeleri); tutmazsa 409 `version_conflict`. Core'un ikinci işlemi kendisi reddettiği komutlarda (ödeme) gönderilmez.
+- **Kilit:** `submit` eşzamanlı bir kilitle korunur; çift tıklama veya Enter + tıklama ikinci isteği atmaz (`{ status: 'busy' }`). Düğme ayrıca `isPending` ile kilitlenir ve `aria-busy` taşır.
+- **Tazeleme:** başarıda ve 409 çakışmada `invalidates` önekleri (`collectionKeyPrefix('invoices')`) etkin kurumla geçersiz kılınır; liste ve detay birlikte güncellenir. Ekran sonucu state'e kopyalamaz.
+- **Hata:** `ApiError.issues` alanlara `setError` ile, mesaj `KampusProvider` `notifyError`'ı ile (web'de sonner toast) gider; 401'de bildirim yoktur (oturum katmanı yönlendirir). Koda özgü metin `messages` ile verilir (`invoice_already_paid`). `submit` hata fırlatmaz; `success | failed | busy` sonucu döner.
+
+```tsx
+const pay = usePayInvoice({ onSuccess: () => notify.success('Tahsilat kaydedildi.') })
+const form = useForm<PaymentForm>({ resolver: zodResolver(paymentSchema) })
+const onSubmit = form.handleSubmit(async (values) => {
+  const outcome = await pay.submit({ invoiceId, ...values }, { setError: form.setError })
+  if (outcome.status === 'success') onClose()
+})
+// <Button type="submit" disabled={pay.isPending} aria-busy={pay.isPending || undefined}>
+```
+
+Yeni komut: `react-shared`'de `use-<alan>-commands.ts` içinde `useApiCommand({ request, invalidates, messages? })`; `request` `client.POST(…, { params: { path, header: headers }, body })` biçimindedir. e2e: başarı ve kalıcılık (API sorgusu), çift tıklamada tek istek, 409 yolu, yetkisiz rolde menü ve rota kapalı.
+
 ### Expo (mobil)
 
 - Hazır paketler: React Navigation, TanStack Query, react-hook-form, `@better-auth/expo` + `expo-secure-store`. Cam yüzey iOS'ta `expo-glass-effect`, Android ve desteklenmeyen platformda opak token zemini.

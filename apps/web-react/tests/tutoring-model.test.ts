@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
+import { ApiError } from '@kampus/api-client/errors.ts'
+import type { TutoringPlanPreview } from '@kampus/react-shared/use-assessment-commands.ts'
 import {
   exampleOpticalFile,
   planTutoring,
@@ -9,11 +11,15 @@ import {
 import type { Session } from '@kampus/school-core/lib/domain.ts'
 import {
   attendanceDefaults,
+  availabilityRows,
+  AVAILABILITY_SOURCES,
+  checkPlanForm,
   defaultPlanValues,
-  planDifference,
+  planFailure,
   planRequest,
-  previewPlan,
-  sendsExpectedPlan,
+  planView,
+  slotRequest,
+  slotTeachers,
   tutorRows,
   TUTORING_PLAN_SOURCES,
   type PlanFormValues,
@@ -60,92 +66,145 @@ test('plan formu bugünden bir hafta, eşik %70 ile başlar', () => {
   assert.equal(initial.examId, 'exam-7-1')
 })
 
-test('plan kaynakları ana koleksiyonla başlar ve uygunluk/çakışma kaynaklarını içerir', () => {
+test('plan kaynakları ana koleksiyonla başlar; plan hesabı için koleksiyon okunmaz', () => {
   assert.equal(TUTORING_PLAN_SOURCES[0], 'mockExams')
   for (const name of ['availability', 'schedule', 'appointments', 'tutorSessions', 'schoolEvents'])
-    assert.ok(TUTORING_PLAN_SOURCES.includes(name as never), name)
+    assert.ok(!TUTORING_PLAN_SOURCES.includes(name as never), name)
+  assert.equal(AVAILABILITY_SOURCES[0], 'availability')
 })
 
-test('önizleme core planıdır, kayıt oluşturmaz ve imza sunucuya gidecek metindir', () => {
+/** Sunucunun döneceği önizleme: core planı + özet (sunucu da aynı çekirdeği çalıştırır). */
+function serverPreview(state: State, input: PlanFormValues): TutoringPlanPreview {
+  const plan = planTutoring(state, admin, input, NOW)
+  const plannedStudents = new Set(plan.sessions.flatMap((item) => item.studentIds))
+  return {
+    ...plan,
+    summary: {
+      sessionCount: plan.sessions.length,
+      plannedStudentCount: plannedStudents.size,
+      unresolvedGroupCount: plan.unresolved.length,
+      unresolvedStudentCount: plan.unresolved.reduce(
+        (sum, item) => sum + item.studentIds.length,
+        0,
+      ),
+      coveredCount: plan.covered.length,
+    },
+    expectedPlan: JSON.stringify(plan),
+  } as TutoringPlanPreview
+}
+
+test('plan görünümü kimlikleri adlara çevirir ve özeti sayar', () => {
   const state = evaluated()
-  const before = JSON.stringify(state)
-  const input = values()
-  const preview = previewPlan(state, admin, input, NOW)
-  assert.ok(preview.ok)
-  assert.equal(JSON.stringify(state), before)
-  assert.equal(state.tutorSessions.length, 0)
-  assert.equal(preview.signature, JSON.stringify(planTutoring(state, admin, input, NOW)))
-  assert.ok(preview.summary.sessions + preview.summary.unresolvedGroups > 0)
-  assert.equal(preview.summary.sessions, preview.sessions.length)
-  assert.equal(preview.unresolved.length, preview.summary.unresolvedGroups)
+  const preview = serverPreview(state, values())
+  const view = planView(preview, state)
+  assert.equal(view.sessions.length, preview.sessions.length)
+  assert.equal(view.unresolved.length, preview.unresolved.length)
+  assert.ok(view.sessions.length + view.unresolved.length > 0)
+  assert.equal(view.summary.sessions, preview.summary.sessionCount)
+  assert.equal(view.summary.evaluatedStudents, preview.evaluatedStudents)
+  for (const row of view.sessions) {
+    assert.ok(!/^teacher-|^student-/.test(row.teacher + row.students), row.key)
+    assert.match(row.capacity, /^\d+\/\d+$/)
+  }
 })
 
-test('kapasite dolu ve yerleşemeyen gruplar uyarı olur', () => {
+test('kapasitesi dolan etüt ve yerleşemeyen grup nedeniyle görünür', () => {
   const state = evaluated()
-  const small = previewPlan(state, admin, values({ maxGroupSize: '1' }), NOW)
-  assert.ok(small.ok)
+  const small = planView(serverPreview(state, values({ maxGroupSize: '1' })), state)
   assert.ok(small.sessions.length > 0)
-  assert.ok(small.warnings.some((warning) => warning.includes('kapasitesi doldu')))
+  assert.ok(small.sessions.every((row) => row.full))
 
-  // Uygunluk saati yokken tüm gruplar yerleşemez ve nedeni yazılır.
+  // Uygunluk saati yokken tüm gruplar yerleşemez ve neden yazılır.
   state.availability = []
-  const none = previewPlan(state, admin, values(), NOW)
-  assert.ok(none.ok)
+  const none = planView(serverPreview(state, values()), state)
   assert.equal(none.summary.sessions, 0)
   assert.ok(none.unresolved.length > 0)
-  assert.ok(none.warnings.some((warning) => warning.includes('uygunluk saati yok')))
+  assert.ok(none.unresolved.every((row) => row.reason.length > 0 && row.studentCount > 0))
 })
 
-test('form hataları alan alan Türkçe döner', () => {
+test('zaten etütte olan kazanımlar kazanım başına gruplanır', () => {
   const state = evaluated()
-  const threshold = previewPlan(state, admin, values({ threshold: '0' }), NOW)
+  runAssessment(state, admin, 'plan', values(), makeId, '', NOW)
+  const view = planView(serverPreview(state, values()), state)
+  assert.equal(view.summary.sessions, 0)
+  assert.ok(view.covered.length > 0)
+  assert.equal(new Set(view.covered.map((row) => row.topic)).size, view.covered.length)
+  assert.ok(view.covered.every((row) => row.students.length > 0))
+})
+
+test('form denetimi core şemasıyla alan alan Türkçe döner', () => {
+  const ok = checkPlanForm(values())
+  assert.ok(ok.ok)
+  assert.equal(ok.request.threshold, 100)
+
+  const threshold = checkPlanForm(values({ threshold: '0' }))
   assert.ok(!threshold.ok)
-  assert.ok(threshold.fields.threshold)
+  assert.ok(threshold.failure.fields.threshold)
 
-  const duration = previewPlan(state, admin, values({ duration: '5' }), NOW)
+  const duration = checkPlanForm(values({ duration: '5' }))
   assert.ok(!duration.ok)
-  assert.ok(duration.fields.duration)
-
-  const range = previewPlan(state, admin, values({ fromDate: '2026-10-01' }), NOW)
-  assert.ok(!range.ok)
-  assert.match(range.fields.fromDate ?? '', /bugün veya sonrasında/)
-
-  const long = previewPlan(state, admin, values({ toDate: '2026-12-31' }), NOW)
-  assert.ok(!long.ok)
-  assert.match(long.message, /en fazla 31 gün/)
-
-  const exam = previewPlan(state, admin, values({ examId: 'yok' }), NOW)
-  assert.ok(!exam.ok)
-  assert.ok(exam.fields.examId)
-
-  const subject = previewPlan(state, admin, values({ subjectId: 'physics' }), NOW)
-  assert.ok(!subject.ok)
-  assert.ok(subject.fields.subjectId)
+  assert.ok(duration.failure.fields.duration)
 })
 
-test('plan farkı yalnız sayılar değişince bildirilir', () => {
-  const summary = {
-    sessions: 3,
-    students: 6,
-    unresolvedGroups: 0,
-    unresolvedStudents: 0,
-    covered: 0,
-    evaluatedStudents: 6,
-  }
-  assert.equal(planDifference(summary, { ...summary }), null)
-  const changed = planDifference(summary, { ...summary, sessions: 2, unresolvedStudents: 2 })
-  assert.match(changed ?? '', /Önceki plan: 3 etüt/)
-  assert.match(changed ?? '', /Güncel plan: 2 etüt/)
+test('sunucu hataları alana bağlanır; diğerleri deneme alanına yazılır', () => {
+  const zod = new ApiError({
+    status: 400,
+    code: 'validation_error',
+    message: 'Geçersiz.',
+    issues: [
+      { path: ['fromDate'], code: 'custom', message: 'Başlangıç bugün veya sonrasında olmalı.' },
+    ],
+  })
+  const fromZod = planFailure(zod, values())
+  assert.match(fromZod.fields.fromDate ?? '', /bugün veya sonrasında/)
+
+  const range = planFailure(
+    new ApiError({ status: 422, code: 'tutoring_date_range_invalid', message: 'En fazla 31 gün.' }),
+    values(),
+  )
+  assert.equal(range.fields.fromDate, 'En fazla 31 gün.')
+
+  const subject = planFailure(
+    new ApiError({ status: 422, code: 'subject_out_of_scope', message: 'Ders kapsamda değil.' }),
+    values(),
+  )
+  assert.equal(subject.fields.subjectId, 'Ders kapsamda değil.')
+
+  const exam = planFailure(
+    new ApiError({ status: 404, code: 'not_found', message: 'Deneme bulunamadı.' }),
+    values(),
+  )
+  assert.equal(exam.fields.examId, 'Deneme bulunamadı.')
 })
 
-test('onay isteği sayıları çevirir; beklenen plan yalnız yöneticide gönderilir', () => {
+test('plan isteği sayıları çevirir; beklenen plan verilince eklenir', () => {
   const request = planRequest(values(), '{"sessions":[]}')
   assert.equal(request.threshold, 100)
   assert.equal(request.duration, 30)
   assert.equal(request.expectedPlan, '{"sessions":[]}')
-  assert.ok(!('expectedPlan' in planRequest(values(), null)))
-  assert.equal(sendsExpectedPlan(admin), true)
-  assert.equal(sendsExpectedPlan(teacher), false)
+  assert.ok(!('expectedPlan' in planRequest(values())))
+})
+
+test('uygunluk satırları role göre kaldırılabilir; yerel saat İstanbul saatine çevrilir', () => {
+  const state = evaluated()
+  assert.ok(state.availability.length > 0)
+  const all = availabilityRows(state, admin, NOW)
+  assert.equal(all.length, state.availability.length)
+  assert.ok(all.every((row) => row.manageable))
+  const own = availabilityRows(state, teacher, NOW)
+  assert.ok(own.some((row) => row.manageable))
+  assert.ok(own.filter((row) => !row.manageable).every((row) => row.teacherId !== 't1'))
+  assert.ok(availabilityRows(state, student, NOW).every((row) => !row.manageable))
+
+  const request = slotRequest({ teacherId: 't1', date: '2026-11-02T15:30', duration: '45' })
+  assert.deepEqual(request, { teacherId: 't1', date: '2026-11-02T12:30:00.000Z', duration: 45 })
+  assert.equal(slotRequest({ teacherId: 't1', date: 'x', duration: '45' }).date, 'x')
+
+  assert.ok(slotTeachers(state, admin).length > 1)
+  assert.deepEqual(
+    slotTeachers(state, teacher).map((item) => item.id),
+    ['t1'],
+  )
 })
 
 test('etüt satırları role göre daraltılır; öğrenci/veli yalnız kendi çocuğunu görür', () => {

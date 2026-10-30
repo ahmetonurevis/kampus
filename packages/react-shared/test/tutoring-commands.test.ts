@@ -8,9 +8,7 @@ import { runRequest } from '../src/api-result.ts'
 import { commandFeedback, commandHeaders } from '../src/commands.ts'
 import {
   TUTORING_MESSAGES,
-  TUTORING_PLAN_STALE_CODE,
   cancelTutorSessionRequest,
-  createTutorSessionsRequest,
   recordTutorAttendanceRequest,
 } from '../src/use-tutoring-commands.ts'
 
@@ -52,29 +50,7 @@ function fakeClient() {
   return { client, sent }
 }
 
-const plan = {
-  examId: 'exam-7-1',
-  threshold: 70,
-  fromDate: '2026-11-02',
-  toDate: '2026-11-09',
-  duration: 30,
-  maxGroupSize: 6,
-  branchId: '',
-  subjectId: '',
-  expectedPlan: '{"sessions":[]}',
-} as const
-
 describe('etüt komutları', () => {
-  test('plan onayı önizlenen planı gönderir; If-Match gitmez', async () => {
-    const { client, sent } = fakeClient()
-    await runRequest(() => createTutorSessionsRequest(client, plan, commandHeaders('key-12345', 3)))
-    assert.equal(sent[0]?.method, 'POST')
-    assert.equal(sent[0]?.path, '/api/v1/tutor-sessions')
-    assert.deepEqual(sent[0]?.body, plan)
-    assert.equal(sent[0]?.headers.get('idempotency-key'), 'key-12345')
-    assert.equal(sent[0]?.headers.get('if-match'), null)
-  })
-
   test('iptal gerekçeyi etüt yoluna gönderir; sürüm If-Match olur', async () => {
     const { client, sent } = fakeClient()
     await runRequest(() =>
@@ -103,14 +79,7 @@ describe('etüt komutları', () => {
     assert.equal(sent[0]?.headers.get('if-match'), null)
   })
 
-  test('eskimiş plan Türkçe mesaja eşlenir ve tazelemeyi tetikler', () => {
-    const stale = commandFeedback(
-      new ApiError({ status: 409, code: TUTORING_PLAN_STALE_CODE, message: 'x' }),
-      TUTORING_MESSAGES,
-    )
-    assert.match(stale.message ?? '', /Etüt planı değişmiş/)
-    assert.equal(stale.refresh, true)
-
+  test('sürüm çakışması Türkçe mesaja eşlenir ve tazelemeyi tetikler', () => {
     const conflict = commandFeedback(
       new ApiError({ status: 409, code: 'version_conflict', message: 'x' }),
       TUTORING_MESSAGES,

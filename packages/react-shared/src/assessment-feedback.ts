@@ -66,9 +66,13 @@ export function planChanges(error: ApiError): PlanChanges {
 }
 
 /**
- * Önizleme çağrısında toast gösterilmeyecek hatalar: 413 ve 422 alan hatasıdır, ekran bunları
- * forma yazar. Geri kalanı (403, 404, 409, ağ) kullanıcıya toast olarak gider.
+ * Önizleme çağrısında toast gösterilmeyecek hatalar: 413, 422 ve alan maddeli 400 (Zod
+ * doğrulaması) alan hatasıdır, ekran bunları forma yazar. Geri kalanı (403, 404, 409, ağ) kullanıcıya toast olarak gider.
  */
 export function isFieldFailure(error: ApiError): boolean {
-  return error.status === 413 || error.status === 422
+  return (
+    error.status === 413 ||
+    error.status === 422 ||
+    (error.status === 400 && error.issues.length > 0)
+  )
 }

@@ -281,6 +281,14 @@ describe('hata iletileri', () => {
     assert.equal(isFieldFailure(large), true)
     assert.equal(isFieldFailure(new ApiError({ status: 422, code: 'a', message: 'x' })), true)
     assert.equal(isFieldFailure(new ApiError({ status: 409, code: 'a', message: 'x' })), false)
+    assert.equal(isFieldFailure(new ApiError({ status: 400, code: 'a', message: 'x' })), false)
+    const invalid = new ApiError({
+      status: 400,
+      code: 'validation_error',
+      message: 'x',
+      issues: [{ path: ['threshold'], code: 'too_small', message: 'Eşik en az 1 olmalı.' }],
+    })
+    assert.equal(isFieldFailure(invalid), true)
     assert.equal(fileFailure(new ApiError({ status: 500, code: 'a', message: 'x' }), 'text'), null)
   })
 

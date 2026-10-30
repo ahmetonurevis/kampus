@@ -131,7 +131,7 @@ function buildSeed(now: Date) {
       id: `t${b * subjects.length + i + 1}`,
       name:
         b === 0
-          ? teacherNames[i]
+          ? required(teacherNames[i], 'öğretmen adı')
           : `${['Aylin', 'Cem', 'Sevgi', 'Barış', 'Banu', 'Erdem', 'Sibel', 'Hakan', 'Nur', 'Deniz', 'Özge', 'Alper', 'Gizem', 'Koray', 'Pelin', 'Suat'][i]} ${b === 1 ? ['Özer', 'Akın', 'Uslu', 'Çetin'][i % 4] : ['Güler', 'Kurt', 'Toprak', 'Erdem'][i % 4]}`,
       subjectId: subject.id,
       subject: subject.name,

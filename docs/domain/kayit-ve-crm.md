@@ -20,7 +20,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Mükerrer aday, mükerrer arama ve yanlış dönüşüm oranı üretir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — `apps/web/src/views/Crm.vue:139-158` mükerrer denetimi yapmaz.
+- **Kodda:** var (core) — `packages/school-core/src/lib/prospects.ts` (`findProspectDuplicate`, `createProspect`, yeniden açmada `changeProspectStage`; kardeş ayrıntısı `DOM-KAY-031`). Çevrimdışı demo `apps/web/src/views/Crm.vue:139-158` mükerrer denetimi yapmaz; API ucu D16b'dedir.
 
 ### DOM-KAY-003 · Aday iletişim verisi ve aydınlatma
 
@@ -28,7 +28,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Aydınlatma yükümlülüğü veri toplanırken yerine getirilir; ispat yükü veri sorumlusundadır.
 - **Kaynak:** KVKK md. 10.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — aydınlatma sürümü ve anı (`privacyNotice`), 18 yaş altında veli adı ve en az veri `packages/school-core/src/lib/prospects.ts` (`createProspect`, `DOM-KAY-009`). Aydınlatma metninin kendisi ve sürüm kaydı (metin deposu) yok.
 
 ### DOM-KAY-004 · Pazarlama iletisi onayı
 
@@ -36,7 +36,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Onaysız ticari ileti idari para cezası doğurur; İYS kaydı gerekir.
 - **Kaynak:** 6563 sayılı Kanun md. 6 ve İYS düzenlemeleri — **doğrulanmalı** (eşik ve İYS kapsamı).
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — onay kanal bazında, varsayılan onaysız ve anıyla saklanır (`marketingConsent`, `packages/school-core/src/lib/prospects.ts`). Onayın geri alınması (ret), İYS bildirimi ve gönderimde onay denetimi yok (`TODO(crm-consent)`).
 
 ### DOM-KAY-005 · Aşama geçişleri
 
@@ -44,7 +44,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Dönüşüm raporu kayıtla tutarlı olmalı; kayıp nedeni satış stratejisinin girdisidir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `apps/web/src/views/Crm.vue:174-186` (Kayıt oldu seçimi kayıt ekranına yönlendirir, kayıtlı adayın aşaması kilitli); vazgeçme nedeni yok.
+- **Kodda:** var (core) — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/domain.ts`) yazar. Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
 
 ### DOM-KAY-006 · Tanışma görüşmesi / deneme dersi çakışması
 
@@ -52,7 +52,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Ön büro kapasitesi sınırlıdır; yalnız başlangıç saati karşılaştırması 10:00–10:45 ile 10:30'u çakıştırmaz.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi (dil okulunda deneme dersi için bkz. `DOM-DIL-030`)
-- **Kodda:** çelişiyor — `apps/web/src/views/Crm.vue:198-203` yalnız aynı kampüs ve birebir aynı başlangıç zamanını engeller; süre ve görevli yok.
+- **Kodda:** var (core) — `packages/school-core/src/lib/prospects.ts` (`scheduleProspectMeeting`, süre ve oda/öğretmen çakışması, `tutorConflict`; ayrıntı `DOM-KAY-033`). Çevrimdışı demo çelişiyor: `apps/web/src/views/Crm.vue:198-203` yalnız aynı kampüs ve birebir aynı başlangıç zamanını engeller.
 
 ### DOM-KAY-007 · Kaynak (lead source) zorunlu
 
@@ -60,7 +60,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Pazarlama bütçesi kaynak bazlı dönüşümle ölçülür.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `packages/school-core/src/lib/domain.js:17` (zorunlu serbest metin); sabit liste ve referans bağı yok.
+- **Kodda:** kısmen — sabit liste (`PROSPECT_SOURCES`) ve veli referansında referans öğrenci (`referrerStudentId`) `packages/school-core/src/lib/prospects.ts`; aday düzenleme işlemi olmadığı için değişmezlik kendiliğinden. Referans indirimi bağı (`DOM-FIN-024`) yok.
 
 ### DOM-KAY-008 · Aday saklama ve imha
 
@@ -226,7 +226,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 | Kural       | Fark                                                                                                                                                                                                                      |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DOM-KAY-006 | Tanışma görüşmesi çakışması yalnız aynı başlangıç anını yakalar (`apps/web/src/views/Crm.vue:198-203`).                                                                                                                   |
+| DOM-KAY-006 | Çevrimdışı demoda tanışma görüşmesi çakışması yalnız aynı başlangıç anını yakalar (`apps/web/src/views/Crm.vue:198-203`); core (`lib/prospects.ts`) süreyi ve oda/görevliyi denetler.                                     |
 | DOM-KAY-010 | Sınıf kapasitesi 40'a kadar girilebilir (`packages/school-core/src/lib/school-management.js:23`), ÖÖKY tavanı 30; kesin kayıt planlanmış yenilemeleri kontenjandan düşmez (`packages/school-core/src/lib/domain.js:113`). |
 | DOM-KAY-012 | Kimlik no, doğum tarihi, yakınlık, ödeyici tutulmaz; veli adı "<öğrenci> velisi" olarak üretilir (`packages/school-core/src/lib/domain.js:153-157`).                                                                      |
 | DOM-KAY-013 | Kardeş kaydı mevcut veliye bağlanmaz, her kayıt yeni veli açar (`packages/school-core/src/lib/domain.js:119`).                                                                                                            |

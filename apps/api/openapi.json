@@ -4784,7 +4784,7 @@
             },
             "in": "header",
             "name": "idempotency-key",
-            "required": false,
+            "required": true,
             "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
           }
         ],
@@ -4983,7 +4983,7 @@
             },
             "in": "header",
             "name": "idempotency-key",
-            "required": false,
+            "required": true,
             "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
           }
         ],
@@ -9437,7 +9437,7 @@
             },
             "in": "header",
             "name": "idempotency-key",
-            "required": false,
+            "required": true,
             "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
           },
           {

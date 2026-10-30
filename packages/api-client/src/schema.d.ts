@@ -3185,9 +3185,9 @@ export interface operations {
                 /** @description Yalnız veli: işlemin yapıldığı çocuk (velinin bağlı çocuklarından biri; değilse kapsam boştur ve core 403 döner) */
                 childId?: string;
             };
-            header?: {
+            header: {
                 /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
-                "idempotency-key"?: string;
+                "idempotency-key": string;
             };
             path?: never;
             cookie?: never;
@@ -3291,9 +3291,9 @@ export interface operations {
                 /** @description Yalnız veli: işlemin yapıldığı çocuk (velinin bağlı çocuklarından biri; değilse kapsam boştur ve core 403 döner) */
                 childId?: string;
             };
-            header?: {
+            header: {
                 /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
-                "idempotency-key"?: string;
+                "idempotency-key": string;
             };
             path?: never;
             cookie?: never;
@@ -6086,9 +6086,9 @@ export interface operations {
     payInvoice: {
         parameters: {
             query?: never;
-            header?: {
+            header: {
                 /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
-                "idempotency-key"?: string;
+                "idempotency-key": string;
                 /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
                 "if-match"?: string;
             };

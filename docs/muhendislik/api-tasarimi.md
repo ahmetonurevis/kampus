@@ -157,6 +157,7 @@ Modül denetimi: modüle bağlı rota `app.requireModule('<anahtar>')` ön işle
 
 Zorunlu uçlar: ödeme/tahsilat kaydı, iade, taksit planı oluşturma, sözleşme oluşturma, toplu içe aktarma, toplu mesaj/bildirim gönderimi. Diğer `POST` uçlarında isteğe bağlıdır.
 
+- OpenAPI'de zorunlu uçların başlığı `required: true`'dur (üretilen istemci tipi başlığı ister); çalışma zamanında şema başlığı isteğe bağlı tutar ki eksik anahtar Zod `validation_failed` yerine 400 `idempotency_key_required` dönsün. Belge dönüşümü işaretli başlığı zorunlu yapar (`requireMarkedHeaders`, `routes/commands.schemas.ts`).
 - İstemci `Idempotency-Key: <UUID>` başlığı gönderir. Anahtar kullanıcı eylemi başına bir kez üretilir; ağ hatasında **aynı anahtarla** yeniden denenir (mobilde anahtar taslakla birlikte saklanır).
 - Sunucu `idempotency_keys` tablosunda `(institution_id, user_id, key)` ile istek özetini (metot + yol + gövde SHA-256) ve yanıtı tutar; kayıt iş işlemiyle **aynı transaction'da** yazılır.
 

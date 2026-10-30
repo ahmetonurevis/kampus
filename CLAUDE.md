@@ -27,7 +27,7 @@ Proje çevrimdışı Vue/JS demosundan TypeScript, React ve gerçek API'li platf
 - Örnek kurum Akademi Özel Okulları: öğrenci Deniz Yılmaz; veli Ayşe Yılmaz'ın çocukları Deniz ve Ece; öğretmen Selin Kaya. Örnek dil okulu Kampüs Dil Akademisi.
 - Modül kapatıldığında menü, doğrudan route erişimi ve ilgili API uçları kapanır.
 
-Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokunulduğunda yüklenir. Mobil kurallar ayrıca `apps/mobile/CLAUDE.md` ve `apps/mobile/AGENTS.md` içindedir.
+Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokunulduğunda yüklenir; ayrıntılı mühendislik kuralları `docs/muhendislik/`, alan (iş) kuralları `docs/domain/`, ürün ister listesi ve yol haritası `docs/urun/ister-listesi.md` içindedir. Mobil kurallar ayrıca `apps/mobile/CLAUDE.md` ve `apps/mobile/AGENTS.md` içindedir.
 
 ## Okul iş akışları ve iş kuralları
 

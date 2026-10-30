@@ -292,6 +292,16 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Kurum türü:** ikisi
 - **Kodda:** yok — öğrenci başına tek veli olduğu için ayrım yok.
 
+## Talep ve şikayet
+
+### DOM-ILT-080 · Veli talebi kayıtlı yanıtla kapanır
+
+- **Kural:** Veli bağlı çocuğu için talep, şikayet veya öneri açar; talep `Yeni` durumunda ön büroya düşer. Ön büro ve yönetici durumu (`Yeni`, `İnceleniyor`, `Çözüldü`) ve ilgili birimi (ön büro, akademik koordinatör, finans birimi, şube müdürü) değiştirir, yanıt yazar. Yanıt eklenir, düzenlenmez ve silinmez; veli yanıtları çocuğunun talebinde görür. Ele alınmış talep `Yeni`'ye dönmez; çözülmüş talep yeniden incelemeye alınmadan değişmez. Hedef ilk yanıt süresi `DOM-ILT-013` ile aynıdır ve hesaplanır, saklanmaz. Pasif öğrenci için yeni talep açılmaz (`DOM-YTK-025`).
+- **Gerekçe:** Talebin kimde olduğu ve ne yanıt verildiği uyuşmazlıkta kayıttan okunabilmeli; yanıtın sonradan değişmesi bu kaydı bozar.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — core `lib/requests.ts` (`openRequest`, `updateRequest`, `requestResponse`); yetki `request.open`, `request.update`. Velayeti olmayan ebeveynin ve ikinci velinin ayrımı yok (`DOM-ILT-073`); talep açıldığında ve yanıtlandığında bildirim gitmez.
+
 ## Mevcut kodla farklar
 
 | Kural                | Fark                                                                                                                                                                                                                                                                                                                                                         |

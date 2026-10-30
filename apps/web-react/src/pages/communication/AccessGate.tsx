@@ -12,7 +12,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { Modal } from '@/components/Modal.tsx'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { remainingLabel } from './conversation-model.ts'
+import { remainingLabel } from '@kampus/react-shared/conversation-model.ts'
 
 const REASON_MAX_LENGTH = 500
 

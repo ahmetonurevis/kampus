@@ -11,8 +11,8 @@ import {
   COUNTERPART_STUDENT,
   newConversationBody,
   parentCounterpart,
-  validateNewConversation,
-} from '../communication.ts'
+} from '@kampus/react-shared/conversation-model.ts'
+import { validateNewConversation } from '../communication.ts'
 import { useConversationNames } from './use-conversation-names.ts'
 
 type Props = {

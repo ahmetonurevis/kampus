@@ -15,7 +15,7 @@ import {
   STATUS_UPDATED,
   STATUS_WITHDRAWN,
   type AnnouncementRecord,
-} from '../src/pages/communication/announcement-model.ts'
+} from '../src/announcement-model.ts'
 
 const base: AnnouncementRecord = { id: 'ann-1', title: 'Gezi', text: 'Metin', category: 'Etkinlik' }
 

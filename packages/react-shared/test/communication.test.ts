@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
+import { InfiniteQueryObserver, QueryClient } from '@tanstack/react-query'
+
 import { createKampusClient } from '@kampus/api-client/client.ts'
 import { ApiError } from '@kampus/api-client/errors.ts'
 
@@ -15,6 +17,12 @@ import {
 import {
   accessRemainingMs,
   ACCESS_MESSAGES,
+  CONVERSATION_PAGE_SIZE,
+  conversationListQueryOptions,
+  mergeConversationPages,
+  nextConversationPage,
+  type ConversationPage,
+  type ConversationSummary,
   ANNOUNCEMENT_CHANGED_MESSAGE,
   ANNOUNCEMENT_MESSAGES,
   flattenMessagePages,
@@ -39,8 +47,8 @@ interface Sent {
   body: unknown
 }
 
-/** Gerçek istemci + sahte fetch: giden istek kaydedilir, yanıt sabittir. */
-function fakeClient(reply: () => Response) {
+/** Gerçek istemci + sahte fetch: giden istek kaydedilir; yanıt isteğe göre `reply` ile verilir. */
+function fakeClient(reply: (request: Sent) => Response) {
   const sent: Sent[] = []
   const client = createKampusClient({
     baseUrl: 'https://api.kampus.test',
@@ -50,14 +58,15 @@ function fakeClient(reply: () => Response) {
       const request = input instanceof Request ? input : new Request(input)
       const text = await request.text()
       const url = new URL(request.url)
-      sent.push({
+      const entry: Sent = {
         method: request.method,
         path: url.pathname,
         search: url.search,
         headers: request.headers,
         body: text ? JSON.parse(text) : undefined,
-      })
-      return reply()
+      }
+      sent.push(entry)
+      return reply(entry)
     },
   })
   return { client, sent }
@@ -246,5 +255,100 @@ describe('mesaj akışı ve erişim süresi', () => {
       assert.equal(key[0], 'conversations')
     assert.notDeepEqual(conversationListKey({ studentId: 's1' }), conversationListKey())
     assert.notDeepEqual(conversationMessagesKey('a'), conversationMessagesKey('b'))
+  })
+})
+
+const summary = (id: string): ConversationSummary => ({
+  id,
+  studentId: 's1',
+  teacherId: 't1',
+  audience: 'student',
+  unreadCount: 0,
+  awaitingReply: null,
+  lastMessage: null,
+  parentUserId: null,
+  messageCount: 0,
+})
+const page = (ids: string[], total: number): ConversationPage => ({
+  data: ids.map(summary),
+  meta: { total },
+})
+
+describe('yazışma listesi sayfalaması', () => {
+  test('sonraki sayfa yüklenen kayıt toplama ulaşana kadar sürer; boş sayfa listeyi bitirir', () => {
+    assert.equal(nextConversationPage([]), undefined)
+    assert.equal(nextConversationPage([page(['a', 'b'], 5)]), 2)
+    assert.equal(nextConversationPage([page(['a', 'b'], 5), page(['c', 'd'], 5)]), 3)
+    assert.equal(nextConversationPage([page(['a', 'b'], 5), page(['c', 'd'], 4)]), undefined)
+    // Sunucuda kayıt azalmış: toplam eskide kalsa da boş sayfadan sonra istek atılmaz.
+    assert.equal(nextConversationPage([page(['a'], 3), page([], 3)]), undefined)
+  })
+
+  test('sayfalar birleşir; sayfalar arasında kayan yazışma bir kez görünür', () => {
+    const merged = mergeConversationPages([page(['a', 'b'], 4), page(['b', 'c'], 3)])
+    assert.deepEqual(
+      merged.items.map((item) => item.id),
+      ['a', 'b', 'c'],
+    )
+    assert.equal(merged.total, 3)
+    assert.deepEqual(mergeConversationPages(undefined), { items: [], total: 0 })
+  })
+
+  test('ikinci sayfa page/pageSize ile istenir, süzgeç taşınır ve son sayfada durulur', async () => {
+    const all = Array.from({ length: CONVERSATION_PAGE_SIZE + 3 }, (_, index) => `c${index}`)
+    const { client, sent } = fakeClient((request) => {
+      const query = new URLSearchParams(request.search)
+      const number = Number(query.get('page'))
+      const size = Number(query.get('pageSize'))
+      return json(200, {
+        data: all.slice((number - 1) * size, number * size).map(summary),
+        meta: { total: all.length, page: number, pageSize: size },
+      })
+    })
+    const observer = new InfiniteQueryObserver(
+      new QueryClient(),
+      conversationListQueryOptions(client, 'inst-1', { studentId: 's9' }),
+    )
+    const first = await observer.refetch()
+    assert.equal(first.data?.pages.length, 1)
+    assert.equal(first.data?.pages[0]?.data.length, CONVERSATION_PAGE_SIZE)
+    assert.equal(observer.getCurrentResult().hasNextPage, true)
+
+    const second = await observer.fetchNextPage()
+    assert.equal(second.data?.pages.length, 2)
+    assert.equal(second.data?.pages[1]?.data.length, 3)
+    assert.equal(second.hasNextPage, false, 'liste sonu algılanır')
+    assert.deepEqual(
+      mergeConversationPages(second.data?.pages).items.map((item) => item.id),
+      all,
+    )
+
+    assert.deepEqual(
+      sent.map((request) => new URLSearchParams(request.search).get('page')),
+      ['1', '2'],
+    )
+    for (const request of sent) {
+      assert.equal(request.path, '/api/v1/conversations')
+      assert.equal(new URLSearchParams(request.search).get('studentId'), 's9')
+      assert.equal(
+        new URLSearchParams(request.search).get('pageSize'),
+        String(CONVERSATION_PAGE_SIZE),
+      )
+    }
+    observer.destroy()
+  })
+
+  test('tek sayfaya sığan liste ikinci istek atmaz', async () => {
+    const { client, sent } = fakeClient(() =>
+      json(200, { data: [summary('a'), summary('b')], meta: { total: 2, page: 1, pageSize: 50 } }),
+    )
+    const observer = new InfiniteQueryObserver(
+      new QueryClient(),
+      conversationListQueryOptions(client, 'inst-1'),
+    )
+    await observer.refetch()
+    assert.equal(observer.getCurrentResult().hasNextPage, false)
+    assert.equal(sent.length, 1)
+    observer.destroy()
   })
 })

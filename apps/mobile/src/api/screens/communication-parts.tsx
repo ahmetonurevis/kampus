@@ -1,6 +1,6 @@
 import { View } from 'react-native'
 import { T, toneSoft, useColors } from '../../ui/components.tsx'
-import type { StatusBadge } from '../communication.ts'
+import type { StatusBadge } from '@kampus/react-shared/status-badge.ts'
 
 /** Durum rozeti: renk metinle birlikte anlam taşır (renge tek başına dayanılmaz). */
 export function ToneBadge({ text, tone }: StatusBadge) {

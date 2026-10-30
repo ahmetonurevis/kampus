@@ -22,7 +22,7 @@ import {
   STATUS_WITHDRAWN,
   type AnnouncementRecord,
   type AnnouncementRow,
-} from './announcement-model.ts'
+} from '@kampus/react-shared/announcement-model.ts'
 import { AnnouncementFormModal } from './AnnouncementFormModal.tsx'
 import { AnnouncementPanel } from './AnnouncementPanel.tsx'
 

@@ -367,6 +367,9 @@ importers:
       '@kampus/school-core':
         specifier: workspace:2.8.0
         version: link:../school-core
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@tanstack/react-query':
         specifier: 5.105.0

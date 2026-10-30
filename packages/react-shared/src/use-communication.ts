@@ -1,9 +1,5 @@
-import {
-  useInfiniteQuery,
-  useQuery,
-  type InfiniteData,
-  type UseQueryResult,
-} from '@tanstack/react-query'
+import { infiniteQueryOptions, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query'
+import { useMemo } from 'react'
 
 import type { ApiError } from '@kampus/api-client/errors.ts'
 import type { components, operations } from '@kampus/api-client/schema.d.ts'
@@ -35,10 +31,6 @@ import { useApiQuery } from './use-api-query.ts'
 
 export type ConversationSummary = components['schemas']['ConversationSummary']
 export type ConversationMessage = components['schemas']['ConversationMessage']
-export interface ConversationList {
-  items: ConversationSummary[]
-  total: number
-}
 
 type Body<K extends keyof operations> = operations[K] extends {
   requestBody: { content: { 'application/json': infer B } }
@@ -204,42 +196,104 @@ export function useMarkAnnouncementRead() {
 
 // --- Yazışma okuma --------------------------------------------------------------------------
 
-/** Yazışma listesinin tek sayfadaki üst sınırı (API `pageSize` ≤ 100). */
-export const CONVERSATION_PAGE_SIZE = 100
+/** Yazışma listesinin bir sayfadaki kaydı (API `pageSize` ≤ 100); sonraki sayfalar istek üzerine gelir. */
+export const CONVERSATION_PAGE_SIZE = 50
 /** Açık ekranın liste tazeleme aralığı; arka plan sekmesinde çalışmaz. */
 export const CONVERSATION_REFRESH_MS = 30_000
 
+/** `GET /conversations` yanıtının kullandığımız kısmı: sayfa kayıtları ve süzgeçli toplam. */
+export interface ConversationPage {
+  data: ConversationSummary[]
+  meta: { total: number }
+}
+
 /**
- * Oturum sahibinin yazışmaları (`GET /conversations`), son etkinliğe göre. Yöneticide `studentId`
- * zorunludur (yalnız üst veri döner).
- * TODO(web-conversation-paging): 100'den fazla yazışma için sayfalama.
+ * Sonraki sayfa numarası; yoksa `undefined` (liste sonu). Sayfalar `page/pageSize` ile gelir:
+ * yüklenen kayıt sayısı toplama ulaştıysa ya da son sayfa boşsa son sayfadır. Boş sayfa koşulu,
+ * sunucuda kayıt azalınca (toplam eskiden kalma) sonsuz istek atılmasını önler.
  */
-export function useConversations(
-  options: { studentId?: string | undefined; enabled?: boolean } = {},
-): UseQueryResult<ConversationList, ApiError> {
-  const { studentId, enabled = true } = options
-  const client = useKampusClient()
-  const institutionId = useActiveInstitutionId()
-  return useQuery<ConversationList, ApiError>({
-    queryKey: institutionKey(institutionId, ...conversationListKey({ studentId })),
-    queryFn: async ({ signal }) => {
-      const page = await runRequest(() =>
+export function nextConversationPage(pages: readonly ConversationPage[]): number | undefined {
+  const last = pages.at(-1)
+  if (!last || last.data.length === 0) return undefined
+  const loaded = pages.reduce((sum, page) => sum + page.data.length, 0)
+  return loaded < last.meta.total ? pages.length + 1 : undefined
+}
+
+/**
+ * Sayfaları tek listeye birleştirir. Sayfalar arasında bir yazışma yeni mesajla öne geçerse iki
+ * sayfada da görünebilir; aynı kimlik bir kez, ilk görüldüğü yerde kalır. `total` son sayfanın
+ * (en güncel) süzgeçli toplamıdır.
+ */
+export function mergeConversationPages(pages: readonly ConversationPage[] | undefined): {
+  items: ConversationSummary[]
+  total: number
+} {
+  if (!pages || pages.length === 0) return { items: [], total: 0 }
+  const seen = new Set<string>()
+  const items: ConversationSummary[] = []
+  for (const page of pages)
+    for (const item of page.data)
+      if (!seen.has(item.id)) {
+        seen.add(item.id)
+        items.push(item)
+      }
+  return { items, total: pages.at(-1)?.meta.total ?? 0 }
+}
+
+/**
+ * Yazışma listesi sorgu seçenekleri: sayfa numarasıyla sonsuz sorgu. Kanca ve testler aynı
+ * seçenekleri kullanır; ekran yalnız `fetchNextPage` çağırır.
+ */
+export function conversationListQueryOptions(
+  client: KampusClient,
+  institutionId: string | null,
+  filters: { studentId?: string | undefined } = {},
+) {
+  return infiniteQueryOptions<
+    ConversationPage,
+    ApiError,
+    InfiniteData<ConversationPage, number>,
+    readonly unknown[],
+    number
+  >({
+    queryKey: institutionKey(institutionId, ...conversationListKey(filters)),
+    initialPageParam: 1,
+    queryFn: ({ pageParam, signal }) =>
+      runRequest(() =>
         client.GET('/api/v1/conversations', {
           params: {
             query: {
-              page: 1,
+              page: pageParam,
               pageSize: CONVERSATION_PAGE_SIZE,
-              ...(studentId ? { studentId } : {}),
+              ...(filters.studentId ? { studentId: filters.studentId } : {}),
             },
           },
           signal,
         }),
-      )
-      return { items: page.data, total: page.meta.total }
-    },
+      ),
+    getNextPageParam: (_last, pages) => nextConversationPage(pages),
+  })
+}
+
+/**
+ * Oturum sahibinin yazışmaları (`GET /conversations`), son etkinliğe göre, sayfa sayfa. `items`
+ * şimdiye kadar yüklenen kayıtlardır; `hasNextPage` doğruysa `fetchNextPage` sonrakini getirir
+ * ("Daha fazla yükle", mobilde `onEndReached`). Yöneticide `studentId` zorunludur (yalnız üst
+ * veri döner). Tazeleme (30 sn, mesaj gönderimi) yüklenmiş sayfaların hepsini yeniler.
+ */
+export function useConversations(
+  options: { studentId?: string | undefined; enabled?: boolean } = {},
+) {
+  const { studentId, enabled = true } = options
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  const query = useInfiniteQuery({
+    ...conversationListQueryOptions(client, institutionId, { studentId }),
     enabled: institutionId !== null && enabled,
     refetchInterval: CONVERSATION_REFRESH_MS,
   })
+  const merged = useMemo(() => mergeConversationPages(query.data?.pages), [query.data])
+  return { ...query, items: merged.items, total: merged.total }
 }
 
 export const MESSAGE_PAGE_SIZE = 30

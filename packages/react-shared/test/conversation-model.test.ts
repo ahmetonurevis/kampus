@@ -18,7 +18,7 @@ import {
   senderLabel,
   unreadLabel,
   type PartyNames,
-} from '../src/pages/communication/conversation-model.ts'
+} from '../src/conversation-model.ts'
 
 const names: PartyNames = {
   students: new Map([['s1', 'Deniz Yılmaz']]),

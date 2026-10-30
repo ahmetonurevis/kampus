@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { CoreRow } from '@/hooks/use-core-collection.ts'
 import type { RoleKey } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
-import { AUDIENCE_LABELS, publishCapabilities } from './announcement-model.ts'
+import { AUDIENCE_LABELS, publishCapabilities } from '@kampus/react-shared/announcement-model.ts'
 import { CheckGroup } from './CheckGroup.tsx'
 
 type FormInput = z.input<typeof publishAnnouncementSchema>

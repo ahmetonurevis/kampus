@@ -15,15 +15,13 @@ import { KeyboardFrame } from '../../ui/KeyboardLayout.tsx'
 import { Notice, Screen, TextAction } from '../../ui/SchoolLayout.tsx'
 import { useApiSession } from '../auth.tsx'
 import {
-  canUseMessages,
   conversationLabel,
   deliveryLabel,
   messageStamp,
-  readMarkKey,
   senderLabel,
-  validateMessageText,
   type ConversationLabel,
-} from '../communication.ts'
+} from '@kampus/react-shared/conversation-model.ts'
+import { canUseMessages, readMarkKey, validateMessageText } from '../communication.ts'
 import { canOpenScreen } from '../pages.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { useConversationNames } from './use-conversation-names.ts'
@@ -41,7 +39,15 @@ export default function Conversation({ route }: ApiScreenProps<'ApiConversation'
   const open = canOpenScreen(session, 'Messages') && canUseMessages(role)
   const conversations = useConversations({ enabled: open })
   const { names } = useConversationNames(role)
-  const conversation = conversations.data?.items.find((item) => item.id === conversationId)
+  const conversation = conversations.items.find((item) => item.id === conversationId)
+
+  // Yazışma henüz yüklenmemiş bir sayfadaysa, bulunana ya da liste bitene kadar sıradaki sayfa
+  // getirilir (dış sistemle eşitleme; "bulunamadı" yanlış gösterilmez).
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = conversations
+  const searching = open && !conversation && hasNextPage
+  useEffect(() => {
+    if (searching && !isFetchingNextPage) void fetchNextPage()
+  }, [searching, isFetchingNextPage, fetchNextPage])
 
   if (!open)
     return (
@@ -59,7 +65,7 @@ export default function Conversation({ route }: ApiScreenProps<'ApiConversation'
   if (!conversation)
     return (
       <Screen>
-        {conversations.isFetching ? (
+        {conversations.isFetching || searching ? (
           <ListLoading label="Yazışma yükleniyor…" />
         ) : (
           <Notice

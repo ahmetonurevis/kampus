@@ -2,13 +2,16 @@
 // role göre daraltılmıştır (`narrowAnnouncement`): yayınlayan ve yönetici `readCount` ile
 // `recipientCount`, alıcı `myReadAt` alır; geri çekilen duyurunun metni alıcıya gelmez. Burada
 // yalnız gösterim kararı verilir; yetkiyi sunucu uygular.
-import type { CollectionRow } from '@kampus/react-shared/collections.ts'
 import {
   ANNOUNCEMENT_CATEGORIES,
   type AnnouncementTarget,
 } from '@kampus/school-core/lib/communication.ts'
+import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
-import type { RoleKey } from '@/lib/navigation.ts'
+import type { Role } from '@kampus/school-core/modules/navigation.ts'
+
+import type { CollectionRow } from './collections.ts'
+import type { StatusBadge } from './status-badge.ts'
 
 /** API'nin döndürdüğü duyuru kaydı; alanların bir kısmı role göre yoktur. */
 export type AnnouncementRecord = {
@@ -38,6 +41,7 @@ export const STATUS_PUBLISHED = 'Yayında'
 export const STATUS_UNREAD = 'Okunmadı'
 export const STATUS_UPDATED = 'Güncellendi'
 export const STATUS_WITHDRAWN = 'Geri çekildi'
+export const WITHDRAWN_NOTICE = 'Bu duyuru geri çekildi. İçeriği artık görüntülenemez.'
 
 export type AnnouncementRow = {
   id: string
@@ -58,7 +62,7 @@ export type AnnouncementRow = {
   record: AnnouncementRecord
 }
 
-export type Viewer = { role: RoleKey; userId: string }
+export type Viewer = { role: Role; userId: string }
 
 /** Satırın tek durum değeri; rozetler ayrıca `withdrawn`/`revised`/`unread`'dan çizilir. */
 export function announcementStatus(record: AnnouncementRecord): string {
@@ -110,9 +114,9 @@ export function hasText(record: AnnouncementRecord): boolean {
 }
 
 /** Duyuru yayınlayabilen roller (core `WRITE_ACTION_ROLES['announcement.publish']`). */
-export const PUBLISHER_ROLES: readonly RoleKey[] = ['yonetici', 'onburo', 'ogretmen']
+export const PUBLISHER_ROLES: readonly Role[] = ['yonetici', 'onburo', 'ogretmen']
 
-export function canPublish(role: RoleKey): boolean {
+export function canPublish(role: Role): boolean {
   return PUBLISHER_ROLES.includes(role)
 }
 
@@ -131,7 +135,7 @@ export type PublishCapabilities = {
 }
 
 export function publishCapabilities(
-  role: RoleKey,
+  role: Role,
   institutionType: InstitutionType,
 ): PublishCapabilities {
   switch (role) {
@@ -201,4 +205,45 @@ export function reviseChanges(current: Content, next: Content) {
   if (next.text.trim() !== current.text) changes.text = next.text.trim()
   if (next.category !== current.category) changes.category = next.category
   return changes
+}
+
+// --- Alıcı görünümü (mobil liste ve ayrıntı) -------------------------------------------------
+
+export type AnnouncementView = {
+  id: string
+  title: string
+  category: string
+  /** Yayın günü, gösterim biçiminde; tarih yoksa boş. */
+  date: string
+  /** Geri çekilen duyurunun metni her durumda gizlenir. */
+  text: string
+  withdrawn: boolean
+  unread: boolean
+  badges: StatusBadge[]
+}
+
+/**
+ * Satırın rozetleri: geri çekilen yalnız "Geri çekildi" alır; diğerlerinde okunmadı ve
+ * güncellendi birlikte görünebilir (güncellenmiş duyuru yeniden okunmamış sayılabilir).
+ */
+export function announcementBadges(record: AnnouncementRecord): StatusBadge[] {
+  if (record.withdrawnAt) return [{ text: STATUS_WITHDRAWN, tone: 'red' }]
+  const badges: StatusBadge[] = []
+  if (record.myReadAt === null) badges.push({ text: STATUS_UNREAD, tone: 'primary' })
+  if (record.revisedAt) badges.push({ text: STATUS_UPDATED, tone: 'amber' })
+  return badges
+}
+
+export function announcementView(record: AnnouncementRecord): AnnouncementView {
+  const withdrawn = Boolean(record.withdrawnAt)
+  return {
+    id: record.id,
+    title: record.title ?? 'Başlıksız duyuru',
+    category: record.category ?? '',
+    date: record.date ? dateLabel(record.date, { year: 'numeric' }) : '',
+    text: withdrawn ? '' : (record.text ?? ''),
+    withdrawn,
+    unread: record.myReadAt === null && !withdrawn,
+    badges: announcementBadges(record),
+  }
 }

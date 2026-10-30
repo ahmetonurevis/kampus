@@ -1,3 +1,5 @@
+import { DomainError } from './errors.ts'
+
 // Optik/CSV dosyaları için bayt dizisini metne çevirir. Windows-1254 el ile çözülür;
 // böylece Node, tarayıcı ve telefon motorlarında aynı sonuç alınır.
 // 0x80–0x9F aralığı Windows-1254 tablosuna göre eşlenir; tanımsız baytlar
@@ -42,7 +44,8 @@ const WINDOWS_1254_TURKISH: Record<number, string> = {
 export const textEncodings = ['utf-8', 'windows-1254']
 
 export function decodeText(bytes: Uint8Array, encoding = 'utf-8') {
-  if (!textEncodings.includes(encoding)) throw new Error('Desteklenmeyen karakter kodlaması.')
+  if (!textEncodings.includes(encoding))
+    throw new DomainError('unsupported_encoding', 'Desteklenmeyen karakter kodlaması.')
   if (encoding === 'utf-8') return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
   let text = ''
   for (const byte of bytes)

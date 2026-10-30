@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import { decodeText } from '../packages/school-core/src/lib/text-decoding.ts'
+import { isDomainError } from './support/domain-error.js'
 import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
 import {
   createSnapshotWriter,
@@ -115,4 +116,11 @@ test('Mobil oturum bilgisiyle çalışan iş akışı kalıcı kayıttan kayıps
   const restored = restoreSnapshot(write(state))
   assert.deepEqual(restored.studentGoals, state.studentGoals)
   assert.equal(restored.modules.goals, true)
+})
+
+test('Desteklenmeyen karakter kodlaması DomainError ile reddedilir', () => {
+  assert.throws(
+    () => decodeText(new Uint8Array(), 'iso-8859-9'),
+    isDomainError('unsupported_encoding'),
+  )
 })

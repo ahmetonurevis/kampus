@@ -9,6 +9,7 @@ import {
   recordAttendance,
 } from '../apps/web/src/lib/domain.js'
 import { dayKey } from '../apps/web/src/lib/format.js'
+import { isDomainError } from './support/domain-error.js'
 
 test('Zengin veri kümesinin kimlikleri ve ilişkileri tutarlı', () => {
   const s = createSeed()
@@ -171,4 +172,19 @@ test('Quiz skoru cevaplardan ve konu dağılımından hesaplanır', () => {
   assert.equal(gradeQuiz(quiz, s.bank, answers).score, 90)
   delete answers[first]
   assert.throws(() => gradeQuiz(quiz, s.bank, answers), /tüm soruları/)
+})
+
+test('Domain işlemleri DomainError, kod ve tür ile reddeder', () => {
+  const s = createSeed()
+  assert.throws(() => installmentAmounts(10.5, 3), isDomainError('invalid_installment'))
+  assert.throws(
+    () => payInvoice(s, 'missing', 'Nakit'),
+    isDomainError('invoice_not_found', 'not_found'),
+  )
+  const invoice = s.invoices.find((i) => !i.paidAt)
+  payInvoice(s, invoice.id, 'Nakit', '2026-09-26T12:00:00.000Z')
+  assert.throws(
+    () => payInvoice(s, invoice.id, 'Nakit'),
+    isDomainError('invoice_already_paid', 'conflict'),
+  )
 })

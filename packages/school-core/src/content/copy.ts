@@ -118,6 +118,8 @@ export function planCopy(input: CopyInput): CopyPlan {
         { kind: 'conflict' },
       )
     }
+    // TODO(F3b): platform `fileId`'leri kurumun dosyası değildir; servis kopyada dosyaları kurum
+    // deposuna kopyalayıp yeni kimliklerle değiştirmeli (ADR 0003 karar 3, kurum kapsamı).
     data = { ...versionData(source.version), license: copyLineage(source).license }
   }
 

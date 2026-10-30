@@ -12,7 +12,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Kurumun kendi kaynak havuzu ancak içerik kişiye değil kuruma bağlıysa birikir.
 - **Kaynak:** 5846 sayılı FSEK md. 18/2 ("memur, hizmetli ve işçilerin işlerini görürken meydana getirdikleri eserler üzerindeki haklar bunları çalıştıran veya tayin edenlerce kullanılır"; RG 13/12/1951-7981, mevzuat.gov.tr konsolide metin). Öğretmen iş sözleşmelerinin bu konuda ne yazdığı **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `materials` ve `videos` kayıtlarında `teacherId` var (`packages/school-core/src/data/seed.js:457-527`); kurum kimliği yok.
+- **Kodda:** kısmen — `materials` ve `videos` kayıtlarında `teacherId` var (`packages/school-core/src/data/seed.js:457-527`); kurum kimliği yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planNewResource`: sahip ve yazar işlemi yapan kişi); kurum kimliği servis ve tablo kolonudur.
 
 ### DOM-KYN-002 · İçerik türleri
 
@@ -98,11 +98,11 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 
 ### DOM-KYN-021 · Yayınevi içeriği yalnız yazılı lisansla yüklenir
 
-- **Kural:** Yayınevi kitabının taranmış sayfası, test kitabı sorusu, cevap anahtarı, yayınevi dijital platformundan indirilen ses/video veya etkileşimli içerik yalnız `Lisanslı yayın` kaydıyla yüklenir. Lisans bitiş tarihinde kaynak otomatik yayından kalkar (arşiv), yeni atamaya girmez. Lisans kapsamı "basılı kitap sahibi öğrenciler" ile sınırlıysa paylaşım kapsamı da bu öğrencilerle sınırlanır. Lisanslı içerik kopyalanamaz ve uyarlanamaz (`DOM-KYN-050`).
+- **Kural:** Yayınevi kitabının taranmış sayfası, test kitabı sorusu, cevap anahtarı, yayınevi dijital platformundan indirilen ses/video veya etkileşimli içerik yalnız `Lisanslı yayın` kaydıyla yüklenir. Lisans bitiş tarihinde kaynak otomatik yayından kalkar (arşiv), yeni atamaya girmez. Lisans kapsamı "basılı kitap sahibi öğrenciler" ile sınırlıysa paylaşım kapsamı da bu öğrencilerle sınırlanır. Lisanslı yayın kurum dışına çıkmaz: Kampüs kütüphanesine girmez, başka kuruma paylaşılmaz (`DOM-KYN-043`). Kurum içindeki kopya ve uyarlama `DOM-KYN-050`'ye uyar: lisans uyarlamaya açıkça izin vermiyorsa veya süresi dolmuşsa kopyalanamaz, kopya lisansı aynen miras alır.
 - **Gerekçe:** Ders kitabı alınmış olması, içeriğin dijital ortamda çoğaltılması ve umuma iletimi için izin değildir.
 - **Kaynak:** FSEK md. 22 (çoğaltma), md. 25 (umuma iletim), md. 52; md. 34/1 son cümlesi ("bu serbestlik, hak sahibinin meşru menfaatlerine haklı bir sebep olmadan zarar verir veya eserden normal yararlanma ile çelişir şekilde kullanılamaz"). Eğitim amaçlı piyasaya sürülen yayınlar için md. 34 serbestisine dayanılamayacağı işletme yorumudur — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (bitiş günü), `packages/school-core/src/content/visibility.ts` (kitap sahibi sınırı, `isAssignable`), `packages/school-core/src/content/copy.ts` (uyarlama izni); otomatik arşiv işi yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (bitiş günü), `packages/school-core/src/content/visibility.ts` (kitap sahibi sınırı, `isAssignable`), `packages/school-core/src/content/copy.ts` (uyarlama izni, süresi dolmuş lisansın kopyası); otomatik arşiv işi yok.
 
 ### DOM-KYN-022 · Alıntı sınırı ve biçimi
 
@@ -134,7 +134,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** İhlal iddiasında yayına devam etmek zararı ve sorumluluğu büyütür.
 - **Kaynak:** İşletme kuralı; FSEK md. 66-68 (tecavüzün ref'i ve men'i) — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planVersionTransition` `report`); bildirim kaydı yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planVersionTransition` `report`: bildirimi yalnız kaynağı okuyabilen personel yapar, `staffCanReadVersion`; bildirilen içeriği yalnız yönetici yeniden onaylar; kaldırma `planResourceRemoval`); bildirim kaydı yok.
 
 ### DOM-KYN-026 · Öğrenci eseri kaynak havuzuna alınmaz
 
@@ -232,11 +232,11 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 
 ### DOM-KYN-050 · Kopya ve uyarlama soyu
 
-- **Kural:** Kopyalanan veya uyarlanan kaynak yeni bir kaynaktır: yeni sahibi kopyalayan kişidir, `Taslak` olarak başlar, "türetildiği kaynak + sürüm" bağını ve lisans/menşe alanını miras alır, kaynak gösterimleri korunur (`DOM-KYN-024`). `Lisanslı yayın` kaynağı lisans uyarlamaya açıkça izin vermiyorsa kopyalanamaz. Asıl kaynağın yeni sürümü kopyaları değiştirmez; kopya sahibine "asıl kaynak güncellendi" bildirimi gider.
+- **Kural:** Kopyalanan veya uyarlanan kaynak yeni bir kaynaktır: yeni sahibi kopyalayan kişidir, `Taslak` olarak başlar, "türetildiği kaynak + sürüm" bağını ve lisans/menşe alanını miras alır, kaynak gösterimleri korunur (`DOM-KYN-024`). `Lisanslı yayın` kaynağı lisans uyarlamaya açıkça izin vermiyorsa veya lisans süresi dolmuşsa kopyalanamaz; kopyanın lisansı bütün alanlarıyla (bitiş tarihi, kitap sahibi sınırı, uyarlama izni) kaynağınkiyle aynı kalır, kopyalayan değiştiremez. Asıl kaynağın yeni sürümü kopyaları değiştirmez; kopya sahibine "asıl kaynak güncellendi" bildirimi gider.
 - **Gerekçe:** Uyarlama hakkı (işleme) eser sahibine aittir; soy bilgisi telif bildiriminde etkilenen tüm kopyaların bulunmasını sağlar.
 - **Kaynak:** FSEK md. 21 (işleme hakkı), md. 18/2.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/copy.ts` (`planCopy`, `copyLineage`); "asıl kaynak güncellendi" bildirimi yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/copy.ts` (`planCopy`, `copyLineage`), `packages/school-core/src/content/resource.ts` (`assertLineagePreserved`); "asıl kaynak güncellendi" bildirimi yok.
 
 ### DOM-KYN-051 · Arşiv ve kaldırma
 

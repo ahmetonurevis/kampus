@@ -940,7 +940,11 @@ export type VersionTransition = {
   versionChanges: Partial<ResourceVersionMeta>
   /** Kaynak satırına yazılacak değişiklik (yalnız yayımda güncel sürüm). */
   resourceChanges: Partial<Pick<ResourceRecord, 'currentVersionId'>>
-  /** Yayımla birlikte arşive alınacak önceki yayın sürümü (DOM-KYN-032). */
+  /**
+   * Yayımla birlikte arşive alınacak önceki yayın sürümü (DOM-KYN-032).
+   * TODO(F3b): bu sürümün arşiv kolonlarını (`status: 'archived'`, `archivedAt`) servis hesaplar
+   * ve aynı transaction'da yazar; core yalnız kimliği döndürür.
+   */
   supersededVersionId: string | null
 }
 

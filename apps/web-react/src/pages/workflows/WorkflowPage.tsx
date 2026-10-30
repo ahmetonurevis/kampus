@@ -30,6 +30,7 @@ import { WorkflowFormPanel } from './WorkflowFormPanel.tsx'
 import {
   coreSession,
   isWorkflowModuleKey,
+  apiAction,
   workflowScopeLabel,
   workflowTableRow,
   type WorkflowModuleKey,
@@ -132,7 +133,7 @@ function WorkflowView({ page, module, session }: ViewProps) {
           <Button
             key={item.command}
             variant={index === 0 ? 'default' : 'secondary'}
-            onClick={() => setAction(item)}
+            onClick={() => setAction(apiAction(item))}
             disabled={data.pending}
           >
             <Icon name="Plus" size={17} aria-hidden="true" />
@@ -179,7 +180,7 @@ function WorkflowView({ page, module, session }: ViewProps) {
         row={selected}
         details={details}
         pending={data.pending}
-        onAction={setAction}
+        onAction={(item) => setAction(apiAction(item))}
         onClose={panel.close}
       />
       <WorkflowFormPanel

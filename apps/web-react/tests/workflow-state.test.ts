@@ -8,9 +8,11 @@ import {
   workflowForm,
   workflowRows,
 } from '@kampus/school-core/lib/workflow-presentation.ts'
+import { WORKFLOW_ROUTES } from '../../api/src/routes/workflows.schemas.ts'
 import { schoolModules } from '@kampus/school-core/modules/school-workflows.ts'
 import type { Role } from '@kampus/school-core/modules/navigation.ts'
 import {
+  apiAction,
   buildWorkflowState,
   csvFileProblem,
   csvSummary,
@@ -213,4 +215,34 @@ test('renewalSummary yalnız geçerli yenileme değerlerinde core hesabını dö
   // Burs ve indirim sonrası 100 ₺'nin altı ve şemaya uymayan değer özet üretmez.
   assert.equal(renewalSummary('renewal', { ...values, discount: '29500' }), null)
   assert.equal(renewalSummary('renewal', { ...values, total: '' }), null)
+})
+
+test('apiAction: ayrıntı eylemleri API komut tablosundaki kayıt kuralına uyar', () => {
+  let checked = 0
+  let leaks = 0
+  for (const page of pages) {
+    const key = page.key as WorkflowModuleKey
+    for (const role of page.roles) {
+      const session = coreSession({ role, links: LINKS[role] }, role === 'veli' ? 's2' : '')
+      const state = clientState(key, role)
+      // Yöneticide ~1440 ders satırı var; her türün ilk satırları kuralı görmeye yeter.
+      const rows = workflowRows(state, session, page.path).slice(0, 12)
+      for (const row of rows) {
+        for (const raw of workflowDetails(state, session, row).actions) {
+          const action = apiAction(raw)
+          const route = WORKFLOW_ROUTES[action.command as keyof typeof WORKFLOW_ROUTES]
+          if (route?.record === 'none' && raw.recordId !== undefined) leaks++
+          assert.ok(route, `${action.command} API tablosunda yok`)
+          if (route.record === 'none')
+            assert.equal(action.recordId, undefined, `${action.command} kimlik taşımamalı`)
+          if (route.record === 'required')
+            assert.ok(action.recordId, `${action.command} kayıt kimliği ister`)
+          checked++
+        }
+      }
+    }
+  }
+  assert.ok(checked > 30)
+  // Core şu an kimliksiz komutlara da kayıt kimliği verir; düzelince bu doğrulama ve `apiAction` kalkar.
+  assert.ok(leaks > 0)
 })

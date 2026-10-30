@@ -116,6 +116,41 @@ test.describe('deneme sınavları', () => {
     expect(await resultsOf(client, examId)).toHaveLength(0)
   })
 
+  test('denemenin ayrıntısından tek sonuç girilir (kayıt kimliği gönderilmez)', async ({
+    loginAs,
+    api,
+  }) => {
+    const page = await loginAs('yonetici', { fresh: true })
+    const client = await api('yonetici', { fresh: true })
+    const title = `E2E tekil ${randomUUID().slice(0, 8)}`
+    const examId = await createExam(client, title)
+
+    await page.goto('/yonetici/deneme-sinavlari')
+    await page.getByLabel('Tabloda ara').fill(title)
+    await page.getByRole('button', { name: title }).click()
+    await page
+      .getByRole('dialog', { name: title })
+      .getByRole('button', { name: 'Sonuç gir' })
+      .click()
+    const form = page.getByRole('dialog', { name: 'Ders sonucu gir' })
+    // Deneme ayrıntıdan açıldığı için seçili gelir; öğrenci 7. sınıf düzeyinden seçilir.
+    await expect(form.getByLabel('Deneme')).toHaveValue(examId)
+    await form.getByLabel('Öğrenci', { exact: true }).selectOption({ label: 'Deniz Yılmaz' })
+    await form.getByLabel('Doğru').fill('10')
+    await form.getByLabel('Yanlış').fill('4')
+    await form.getByLabel('Boş').fill('6')
+    await form.getByRole('button', { name: 'Kontrol et' }).click()
+    await form.getByRole('button', { name: 'Onayla ve kaydet' }).click()
+    await expect(form).toBeHidden()
+    await expect.poll(async () => (await resultsOf(client, examId)).length).toBe(1)
+    expect((await resultsOf(client, examId))[0]?.record).toMatchObject({
+      studentId: 's1',
+      correct: 10,
+      wrong: 4,
+      blank: 6,
+    })
+  })
+
   test('veli denemeleri görür ama oluşturma ve aktarım işlemi sunulmaz', async ({ loginAs }) => {
     const page = await loginAs('veli')
     await page.goto('/veli/deneme-sinavlari?cocuk=s1')

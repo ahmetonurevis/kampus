@@ -15,6 +15,13 @@
       "when": 1793321350167,
       "tag": "0001_add_memberships_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793323129151,
+      "tag": "0002_create_records",
+      "breakpoints": true
     }
   ]
 }

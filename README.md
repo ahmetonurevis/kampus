@@ -56,7 +56,7 @@ Platform geçişinin ([ADR 0001](docs/adr/0001-platform-mimarisi.md), [ADR 0002]
 docker compose up -d                       # PostgreSQL 16, 127.0.0.1:5433
 cp apps/api/.env.example apps/api/.env     # BETTER_AUTH_SECRET'ı değiştirin
 pnpm --filter @kampus/api db:migrate
-pnpm --filter @kampus/api db:seed          # idempotent demo kurumları ve kullanıcıları
+pnpm --filter @kampus/api db:seed          # idempotent demo kurumları, kullanıcıları ve kayıtları
 pnpm dev:api                               # http://127.0.0.1:3000
 docker compose down
 ```
@@ -155,8 +155,8 @@ Finansta kampüs/sınıf/yöntem/vade/tahsilat tarihi/tutar; CRM'de program/kamp
 Platform geçişi (ADR 0001, 0002) durumu:
 
 - `packages/school-core` TypeScript'e taşındı.
-- `apps/api` iskeleti, Better Auth kimliği ve kurum kapsamı, `packages/api-client` ve `packages/react-shared` hazır; `records` deposu, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır.
-- `apps/web-react` iskeleti hazır: Vue ile aynı tokenlar ve ölçülü cam (yalnız sidebar, navbar, menü, diyalog ve toast), beş rolün korumalı kabuğu, kategorili sidebar, avatar menüsündeki hesap sayfaları, kapalı modül yönlendirmesi, 404/hata sınırı, giriş formu ve 3B giriş sahnesi. Ekranlar henüz yer tutucudur; oturum geliştirme sahtesidir (Better Auth istemcisi bekleniyor). Ekran kontrolü: `node scripts/ekran-kontrol.ts` (`.claude/skills/ekran-kontrol/SKILL.md`).
+- `apps/api` iskeleti, Better Auth kimliği, kurum kapsamı, `records` deposu, school-core işlem çalıştırıcısı ve iki örnek kurumun kayıt tohumu hazır; `packages/api-client` ve `packages/react-shared` hazır. Koleksiyon ve iş akışı uçları, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır.
+- `apps/web-react` iskeleti hazır: Vue ile aynı tokenlar ve ölçülü cam (yalnız sidebar, navbar, menü, diyalog ve toast), beş rolün korumalı kabuğu, kategorili sidebar, avatar menüsündeki hesap sayfaları, kapalı modül yönlendirmesi, 404/hata sınırı, giriş formu, 3B giriş sahnesi ve ortak liste bileşenleri (DataTable, ListFilters, CollectionList, CSV). Ekranlar henüz yer tutucudur; oturum geliştirme sahtesidir. Ekran kontrolü: `node scripts/ekran-kontrol.ts` (`.claude/skills/ekran-kontrol/SKILL.md`).
 - Statik yayın (`pnpm run deploy`) yalnız Vue derlemesini (`apps/web/dist`) yayımlar. Aşağıdaki bölüm Vue demosunu anlatır.
 
 Görsel düzen düz renkler üzerine kuruludur: saf beyaz (`#FFFFFF`) zemin, koyu safir mavi (`#1E3A8A`) menü/ana işlem rengi, turuncu (`#F97316`) aksan, ince kenarlıklar ve yuvarlak köşeler. Açık ve koyu temada renk geçişleri kullanılmaz. Slogan bandı ve veriye dayanmayan mini grafikler kaldırılmıştır. Öğrenci, veli ve öğretmen panellerinde ders programı ile bekleyen işler üst bölümdedir; grafikler kayıtlı veriyi gösterir. Büyük para tutarları tek satırda, uzun ders adları doğal satırlarla gösterilir.
@@ -209,7 +209,7 @@ ssh abbara-server 'bash /var/www/kampus-demo/deploy/<surum>/activate.sh <surum>'
 
 ## Doğrulama
 
-`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test`, `pnpm --filter @kampus/api test`, `pnpm --filter @kampus/api-client test`, `pnpm --filter @kampus/react-shared test` ve `pnpm build` temel kontrollerdir. 30 Ekim 2026 API iskeleti: 49 API testi (PGlite) ve 80 birim testi geçti; istemci paketlerinde 23 api-client ve 21 react-shared testi geçti; PostgreSQL 16 üzerinde migrate, iki kez seed, sağlık ve giriş duman testi başarılı. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
+`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test`, `pnpm --filter @kampus/api test`, `pnpm --filter @kampus/api-client test`, `pnpm --filter @kampus/react-shared test` ve `pnpm build` temel kontrollerdir. 30 Ekim 2026: 169 birim testi (64'ü web-react), 71 API testi (PGlite), 23 api-client ve 21 react-shared testi geçti; PostgreSQL 16 üzerinde migrate, iki kez seed (kurum başına 27.464 kayıt, ikincisinde 0 yeni), sağlık/giriş ve eşzamanlı iki ödemede 409 duman testi başarılı. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
 
 6 Ekim 2026 optik/etüt teslim kontrolü: lint, format ve web derlemesi başarılı; 65 birim testi ve 58 tarayıcı senaryosu geçti. Yayın öncesinde tüm 58 tarayıcı senaryosu tekrar geçti. Canlı adres üzerinde 14 senaryo; beş rolün masaüstü/dar ekran sayfaları, optik/etüt işlemleri, video ve PDF akışlarını doğruladı. Sağlık yanıtı sürümle eşleşti; HTTPS yönlendirmesi, video aralık isteği ve PDF worker MIME türü kontrol edildi.
 

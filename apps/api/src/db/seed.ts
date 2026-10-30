@@ -13,8 +13,12 @@ const password = config.DEMO_PASSWORD ?? DEFAULT_DEMO_PASSWORD
 
 const { db, close } = connectPostgres(config.DATABASE_URL)
 try {
-  await seedDemo(createAuth(config, db), db, password)
+  const { insertedRecords } = await seedDemo(createAuth(config, db), db, password, {
+    now: new Date(),
+  })
   console.log(`Demo verisi hazır: ${DEMO_MEMBERS.length} kullanıcı, 2 kurum.`)
+  for (const [slug, count] of Object.entries(insertedRecords))
+    console.log(`  ${slug}: ${count} yeni kayıt`)
   for (const member of DEMO_MEMBERS)
     console.log(`  ${member.email} (${member.memberships.map((item) => item.role).join(', ')})`)
   if (!config.DEMO_PASSWORD) console.log(`Parola: ${DEFAULT_DEMO_PASSWORD}`)

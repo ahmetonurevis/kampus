@@ -26,6 +26,8 @@ export const MESSAGES = {
   no_active_institution: 'Etkin bir kurum üyeliğiniz bulunmuyor.',
   csrf_rejected: 'İstek güvenilmeyen bir kaynaktan geldi.',
   not_found: 'İstenen kayıt bulunamadı.',
+  version_conflict: 'Kayıt başka biri tarafından değiştirildi. Sayfayı yenileyip yeniden deneyin.',
+  record_too_large: 'Kayıt izin verilen boyutu aşıyor.',
   payload_too_large: 'Gönderilen veri çok büyük.',
   unsupported_media_type: 'İstek biçimi desteklenmiyor.',
   rate_limited: 'Çok fazla istek gönderildi. Lütfen biraz sonra yeniden deneyin.',
@@ -78,6 +80,22 @@ export class NotFoundError extends AppError {
   constructor() {
     super(404, 'not_found', MESSAGES.not_found)
     this.name = 'NotFoundError'
+  }
+}
+
+/** 409: iyimser kilit (`version`) tutmadı; istemci kaydı yeniden yükler. */
+export class ConflictError extends AppError {
+  constructor(options: { cause?: unknown } = {}) {
+    super(409, 'version_conflict', MESSAGES.version_conflict, options)
+    this.name = 'ConflictError'
+  }
+}
+
+/** 422: biçim doğru, iş kuralı reddetti. `message` school-core'un Türkçe mesajıdır. */
+export class RuleViolationError extends AppError {
+  constructor(code: string, message: string, options: { issues?: Issue[]; cause?: unknown } = {}) {
+    super(422, code, message, options)
+    this.name = 'RuleViolationError'
   }
 }
 

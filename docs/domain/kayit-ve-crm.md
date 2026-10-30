@@ -44,7 +44,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Dönüşüm raporu kayıtla tutarlı olmalı; kayıp nedeni satış stratejisinin girdisidir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var (core) — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/domain.ts`) yazar. Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
+- **Kodda:** var (core) — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/domain.ts`) yazar; yalnız açık aday kayda alınır (`DOM-KAY-035`). Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
 
 ### DOM-KAY-006 · Tanışma görüşmesi / deneme dersi çakışması
 
@@ -221,6 +221,14 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Kaynak:** İşletme kuralı; ÖÖKY md. 48/2.
 - **Kurum türü:** `language_school`
 - **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleTrialLesson`). Seviye ve yaş bandı uygunluğu (`DOM-DIL-041`) ön büro seçimine bırakılır (`TODO(crm-trial-level)`); öğretmenin deneme sonucu (`DOM-DIL-031`) yoktur (`TODO(crm-trial-result)`).
+
+### DOM-KAY-035 · Kesin kayıt yetkisi ve açık aday şartı
+
+- **Kural:** Adayı kesin kayda (öğrenci, veli, taksit planı, sözleşme) yalnız yönetici ve ön büro dönüştürür; işlem `crm` modülüne bağlıdır, modül kapalıyken reddedilir. Yalnız açık aşamadaki (`Yeni aday`, `İletişime geçildi`, `Görüşme planlandı`, `Teklif verildi`) aday kayda alınır; `Vazgeçti` aday önce `İletişime geçildi` ile yeniden açılır (`DOM-KAY-030`), kayıtlı aday ikinci kez alınmaz (`DOM-KAY-011`), tanınmayan eski aşama reddedilir.
+- **Gerekçe:** Kesin kayıt borç ve sözleşme doğurur; vazgeçen adayın doğrudan kaydı yeniden açılıştaki tekillik denetimini (`DOM-KAY-002`) atlatır.
+- **Kaynak:** İşletme kuralı; yetki matrisi (`docs/domain/yetki-ve-kapsam.md`).
+- **Kurum türü:** ikisi
+- **Kodda:** var (core) — `packages/school-core/src/lib/domain.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). `enrollProspect` yetkiyi kendisi denetlemez (`payInvoice` gibi); API ucu D16b'de önce `requireAuthorized` çağırır. Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`).
 
 ## Mevcut kodla farklar
 

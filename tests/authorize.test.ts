@@ -65,6 +65,7 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'prospect.note': ['yonetici', 'onburo'],
     'prospect.meeting': ['yonetici', 'onburo'],
     'prospect.trial': ['yonetici', 'onburo'],
+    'prospect.enroll': ['yonetici', 'onburo'],
   })
   assert.deepEqual(Object.keys(WRITE_ACTION_ROLES), [...WRITE_ACTIONS])
 })

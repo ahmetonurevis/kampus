@@ -5,6 +5,7 @@ import type { Role } from '../modules/navigation.ts'
 import { dayKey } from './format.ts'
 import type { ActorLink } from './scope.ts'
 import { DomainError } from './errors.ts'
+import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 
 z.config(z.locales.tr())
 
@@ -254,6 +255,13 @@ export function gradeQuiz(
     topicScores,
   }
 }
+/**
+ * Kesin kayıt: açık aşamadaki adayı öğrenci, veli, taksit ve sözleşmeyle birlikte kayda alır
+ * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetkiyi kendisi denetlemez (`payInvoice` gibi); API
+ * önce `requireAuthorized(actor, 'prospect.enroll', …)` çalıştırır.
+ * TODO(crm-enroll): çevrimdışı demo çağıranları (Vue `Crm.vue`, mobil `model/operations.ts`) yetki
+ * denetlemez; demo kalıcılığı silinince kalkar. Kesin kayıt API ucu D16b'dedir.
+ */
 export function enrollProspect(
   state: State,
   input: unknown,
@@ -271,6 +279,13 @@ export function enrollProspect(
     throw new DomainError('prospect_already_enrolled', 'Bu adayın kaydı zaten tamamlanmış.', {
       kind: 'conflict',
     })
+  // Yalnız açık aşamadaki aday kayda alınır; vazgeçen aday önce yeniden açılır (DOM-KAY-035).
+  if (!(OPEN_PROSPECT_STAGES as readonly (string | undefined)[]).includes(prospect.stage))
+    throw new DomainError(
+      'prospect_closed',
+      'Yalnız açık aşamadaki aday kayda alınır; vazgeçen adayı önce yeniden açın.',
+      { kind: 'conflict' },
+    )
   if (state.students.filter((s) => s.classId === cls.id && s.isActive).length >= cls.capacity)
     throw new DomainError('class_capacity_full', 'Seçilen sınıfın kontenjanı dolu.')
   const student = {

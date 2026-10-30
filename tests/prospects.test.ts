@@ -2,6 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
 import type { Participant } from '../packages/school-core/src/lib/communication.ts'
+import { authorize } from '../packages/school-core/src/lib/authorize.ts'
+import { enrollProspect } from '../packages/school-core/src/lib/domain.ts'
 import { DomainError } from '../packages/school-core/src/lib/errors.ts'
 import * as prospects from '../packages/school-core/src/lib/prospects.ts'
 import {
@@ -809,6 +811,52 @@ test('Tanınmayan eski aşama değiştirilemez; dil okulu görüşme aşamasın�
   assert.equal(prospectStageLabel('Görüşme planlandı'), 'Görüşme planlandı')
   assert.equal(prospectStageLabel('Teklif verildi', 'language_school'), 'Teklif verildi')
   assert.equal(prospectStageLabel(undefined), '')
+})
+
+// --- Kesin kayıt ------------------------------------------------------------------------------
+
+const registration = (prospectId: string) => ({
+  prospectId,
+  classId: 'c1',
+  total: 120000,
+  count: 3,
+  startDate: '2026-11-01',
+})
+
+test('DOM-KAY-035: kesin kayıt yetkisi yalnız yönetici ve ön büroda, CRM modülüne bağlı', () => {
+  const state = seed()
+  const decision = (role: Role) => {
+    const result = authorize(people[role], 'prospect.enroll', {}, state)
+    return result.allowed ? 'allowed' : result.code
+  }
+  assert.equal(decision('yonetici'), 'allowed')
+  assert.equal(decision('onburo'), 'allowed')
+  for (const role of ['ogretmen', 'ogrenci', 'veli'] as const)
+    assert.equal(decision(role), 'permission_denied')
+  state.modules.crm = false
+  assert.equal(decision('yonetici'), 'module_disabled')
+})
+
+test('DOM-KAY-035: yalnız açık aşamadaki aday kayda alınır; Vazgeçti ve tanınmayan aşama reddedilir', () => {
+  const state = seed()
+  const closed = fails('prospect_closed', 'conflict')
+  unchangedOnFailure(state, () => enrollProspect(state, registration('pr5'), id, now), closed)
+  prospectOf(state, 'pr4').stage = 'Eski aşama'
+  unchangedOnFailure(state, () => enrollProspect(state, registration('pr4'), id, now), closed)
+  unchangedOnFailure(
+    state,
+    () => enrollProspect(state, registration('pr15'), id, now),
+    fails('prospect_already_enrolled', 'conflict'),
+  )
+  // Her açık aşama kayda alınabilir; vazgeçen aday yeniden açılınca kayda alınır.
+  for (const prospectId of ['pr1', 'pr2', 'pr3', 'pr9']) {
+    const { student } = enrollProspect(state, registration(prospectId), id, now)
+    assert.equal(prospectOf(state, prospectId).stage, 'Kayıt oldu')
+    assert.equal(prospectOf(state, prospectId).studentId, student.id)
+  }
+  changeProspectStage(state, front, 'pr5', { stage: 'İletişime geçildi' }, now)
+  enrollProspect(state, registration('pr5'), id, now)
+  assert.equal(prospectOf(state, 'pr5').stage, 'Kayıt oldu')
 })
 
 // --- Not ------------------------------------------------------------------------------------

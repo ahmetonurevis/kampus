@@ -19,7 +19,11 @@ import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '../packages/school-core/sr
 import { WRITE_ACTIONS, requireAuthorized } from '../packages/school-core/src/lib/authorize.ts'
 import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
 import { runAssessment } from '../packages/school-core/src/lib/assessment-automation.ts'
-import { payInvoice, recordAttendance } from '../packages/school-core/src/lib/domain.ts'
+import {
+  enrollProspect,
+  payInvoice,
+  recordAttendance,
+} from '../packages/school-core/src/lib/domain.ts'
 import { recordGrade, updateGrade } from '../packages/school-core/src/lib/grades.ts'
 import {
   archiveRecord,
@@ -631,5 +635,11 @@ test('Aday/CRM işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır
     { stage: 'Vazgeçti', lostReason: 'price' },
     now,
     language,
+  )
+  enrollProspect(
+    operation(state, 'prospect.enroll'),
+    { prospectId: 'pr1', classId: 'c1', total: 120000, count: 3, startDate: '2026-11-01' },
+    id,
+    now,
   )
 })

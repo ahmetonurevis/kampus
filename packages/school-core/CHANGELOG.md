@@ -2,7 +2,7 @@
 
 ## 2.19.0
 
-Ön büro aday/CRM (`prospects`) yazma işlemleri eklendi (D16a; `docs/domain/kayit-ve-crm.md` DOM-KAY-002…009, DOM-KAY-030…034; `docs/domain/dil-okulu.md` DOM-DIL-030). Okuma kapsamı ve kesin kayıt (`enrollProspect`) değişmedi; API uçları D16b'dedir. 2.18.0 başka açık dalda kullanıldığı için bu dal 2.19.0'dır.
+Ön büro aday/CRM (`prospects`) yazma işlemleri eklendi (D16a; `docs/domain/kayit-ve-crm.md` DOM-KAY-002…009, DOM-KAY-030…034; `docs/domain/dil-okulu.md` DOM-DIL-030). Okuma kapsamı değişmedi; kesin kayıt (`enrollProspect`) yalnız açık aday şartı ve `prospect.enroll` yetki eylemini aldı. API uçları D16b'dedir. 2.18.0 başka açık dalda kullanıldığı için bu dal 2.19.0'dır.
 
 - `lib/prospects.ts` (yeni): `createProspect` (en az veri: ad, kampüs, ilgi, sabit listeden kaynak, telefon, aydınlatma metni sürümü; e-posta isteğe bağlı ve küçük harfe çevrilir; gövde katıdır, kimlik no/doğum tarihi gibi alanlar 400). 18 yaş altında veli adı zorunlu; okulda aday her zaman 18 yaş altıdır (`minor: false` 422 `prospect_guardian_required`), dil okulunda yaş seçimi zorunludur (422 `prospect_age_required`); yetişkinde veli adı saklanmaz. Aydınlatma sürümü ve anı `privacyNotice`, ticari ileti onayı kanal bazında (`sms`, `email`, `call`, varsayılan onaysız) `marketingConsent`'e yazılır; e-postasız e-posta onayı 422 `consent_contact_missing`. Veli referansı referans veren aktif öğrenciyi ister (422 `referrer_required`, `referrer_not_found`). Pasif kampüs 422 `branch_unavailable`.
 - Tekillik `findProspectDuplicate`: aynı telefon veya e-posta ve aynı adla açık aday 409 `prospect_duplicate`; iletişimi paylaşan farklı adlı aday kardeş seçilmezse 409 `prospect_contact_shared`, seçilen kardeş iletişimi paylaşan açık aday değilse 422 `sibling_not_found`. Kapalı adaylar sayılmaz.
@@ -17,6 +17,7 @@
   - `scheduleProspectMeeting` çakışmasında yalnız açık adayların görüşmesi sayılır; kayda alınmış (seed `pr18`) veya vazgeçmiş adayın kalan ileri tarihli görüşmesi saati tutmaz (DOM-KAY-033).
   - `scheduleTrialLesson`: `trial_already_used` dersin güncel kaydından okunur; iptal edilen veya programdan kalkan derse bağlı deneme yeniden planlanabilir. Katılımcı sınırı ve kapasitede yalnız açık adayların denemesi sayılır (kayda alınan aday kursiyer olarak bir kez sayılır); kapasite tam 18'de kabul edilir (DOM-KAY-034, DOM-DIL-030, DOM-DIL-040).
   - `authorize`: `prospect.trial` okulda (`school`) her rol için 404 `trial_lesson_unavailable` döner; kurum türü rol denetiminden önce gelir (önce yetkisiz rol 403 alıyordu; DOM-YTK-012).
+  - Kesin kayıt: yeni yetki eylemi `prospect.enroll` (`['yonetici', 'onburo']`, `OPERATION_COMMANDS` modül `crm`). `enrollProspect` yalnız açık aşamadaki adayı kayda alır; `Vazgeçti` ve tanınmayan eski aşama 409 `prospect_closed` (DOM-KAY-035). İşlem yetkiyi kendisi denetlemez (`payInvoice` gibi); çevrimdışı demo çağıranları değişmedi.
 - Tüketiciler `workspace:2.19.0` sürümüne sabitlendi.
 
 ## 2.17.0

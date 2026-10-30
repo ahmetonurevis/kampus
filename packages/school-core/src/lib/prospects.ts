@@ -31,9 +31,8 @@ import { intervalsOverlap, tutorConflict } from './tutor-conflicts.ts'
  *   ve 18 yaş altında veli onayıyla planlanır (DOM-DIL-030, DOM-KAY-034).
  *
  * Kesin kayıt (aday → öğrenci) mevcut `enrollProspect` işlemidir (`lib/domain.ts`, DOM-KAY-001,
- * DOM-KAY-011); `Kayıt oldu` aşamasını yalnız o yazar.
- * TODO(crm-enroll): `enrollProspect` için yetki eylemi ve API ucu yoktur; `Vazgeçti` adayın
- * kaydını da kabul eder. Kesin kayıt API'ye taşınırken açık aday şartı ve yetki eklenir.
+ * DOM-KAY-011, DOM-KAY-035); `Kayıt oldu` aşamasını yalnız o yazar ve yalnız açık adayı kabul
+ * eder. Yetki eylemi `prospect.enroll`'dur; işlem `payInvoice` gibi yetkiyi kendisi denetlemez.
  *
  * Şemalar API gövde şeması ve web/mobil form şemasıdır (`zodResolver`). Hata iletileri kişisel veri
  * (telefon, e-posta, başka adayın adı) taşımaz.

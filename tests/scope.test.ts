@@ -1,7 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSeed } from '../packages/school-core/src/data/seed.ts'
-import { COLLECTION_NAMES } from '../packages/school-core/src/modules/collection-modules.ts'
+import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
+import type { Session } from '../packages/school-core/src/lib/domain.ts'
+import {
+  COLLECTION_NAMES,
+  type CollectionName,
+} from '../packages/school-core/src/modules/collection-modules.ts'
 import {
   DEMO_TEACHER_ID,
   SCOPE_SOURCE_COLLECTIONS,
@@ -12,25 +16,38 @@ import {
   sessionActor,
   sessionTeacherId,
   visibleRecords,
+  type Actor,
+  type ActorLink,
 } from '../packages/school-core/src/lib/scope.ts'
 import { runWorkflow, workflowScope } from '../packages/school-core/src/lib/school-workflows.ts'
 import { automationScope } from '../packages/school-core/src/lib/assessment-automation.ts'
+import { resultOf } from './support/result.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 const now = '2026-10-06T10:00:00.000Z'
 const seed = () => createSeed(new Date(now))
 let sequence = 0
-const id = (prefix) => `${prefix}-scope-test-${++sequence}`
-const admin = { role: 'yonetici', links: [] }
-const frontOffice = { role: 'onburo', links: [] }
-const teacher = (recordId = 't1') => ({ role: 'ogretmen', links: [{ kind: 'teacher', recordId }] })
-const student = (recordId = 's1') => ({ role: 'ogrenci', links: [{ kind: 'student', recordId }] })
-const parent = (...ids) => ({
+const id = (prefix: string) => `${prefix}-scope-test-${++sequence}`
+const admin: Actor = { role: 'yonetici', links: [] }
+const frontOffice: Actor = { role: 'onburo', links: [] }
+const teacher = (recordId = 't1'): Actor => ({
+  role: 'ogretmen',
+  links: [{ kind: 'teacher', recordId }],
+})
+const student = (recordId = 's1'): Actor => ({
+  role: 'ogrenci',
+  links: [{ kind: 'student', recordId }],
+})
+const parent = (...ids: string[]): Actor => ({
   role: 'veli',
   links: ids.map((recordId) => ({ kind: 'child', recordId })),
 })
-const ids = (rows) => rows.map((r) => r.id)
-const studentsOf = (rows) => new Set(rows.map((r) => r.studentId))
+// Koleksiyon adı birleşimi için satırlar ortak nesne şekline daraltılır.
+const rowsOf = (state: State, name: CollectionName): readonly Record<string, unknown>[] =>
+  state[name]
+const ids = (rows: readonly { id: unknown }[]) => rows.map((r) => r.id)
+const studentsOf = (rows: readonly { studentId?: unknown }[]) =>
+  new Set(rows.map((r) => r.studentId))
 
 test('Demo oturumu sabit demo kimliklerine, API oturumu kendi bağlantılarına eşlenir', () => {
   const state = seed()
@@ -39,8 +56,9 @@ test('Demo oturumu sabit demo kimliklerine, API oturumu kendi bağlantılarına 
   assert.deepEqual(sessionActor(state, { role: 'veli', childId: 's2' }), parent('s1', 's2'))
   assert.deepEqual(sessionActor(state, { role: 'yonetici' }), admin)
   assert.deepEqual(sessionActor(state, { role: 'onburo' }), frontOffice)
+  // @ts-expect-error — bilinçli bilinmeyen rol
   assert.deepEqual(sessionActor(state, { role: 'olmayan' }), { role: 'olmayan', links: [] })
-  const links = [{ kind: 'teacher', recordId: 't2' }]
+  const links: ActorLink[] = [{ kind: 'teacher', recordId: 't2' }]
   assert.deepEqual(sessionActor(state, { role: 'ogretmen', links }), { role: 'ogretmen', links })
   assert.equal(sessionTeacherId(state, { role: 'ogretmen', links }), 't2')
   assert.equal(sessionTeacherId(state, { role: 'yonetici' }), undefined)
@@ -53,7 +71,10 @@ test('Demo oturumu sabit demo kimliklerine, API oturumu kendi bağlantılarına 
 
 test('Kapsam kaynağı yalnız tanımlı koleksiyonlarla kurulabilir', () => {
   const state = seed()
-  const source = Object.fromEntries(SCOPE_SOURCE_COLLECTIONS.map((name) => [name, state[name]]))
+  const source = Object.fromEntries(
+    SCOPE_SOURCE_COLLECTIONS.map((name) => [name, rowsOf(state, name)]),
+  )
+  // @ts-expect-error — kaynak, tanımlı koleksiyon listesinden dinamik kurulur
   const scope = scopeFor({ ...source, modules: state.modules }, teacher())
   assert.ok(scope.studentIds.has('s1'))
   assert.deepEqual(
@@ -71,7 +92,11 @@ test('Yönetici kurum geneli okur; birebir yazışma dışındaki her koleksiyon
   for (const name of COLLECTION_NAMES) {
     const expected = name !== 'conversations'
     assert.equal(scope.access(name).allowed, expected, name)
-    assert.equal(scope.read(name, state[name]).length, expected ? state[name].length : 0, name)
+    assert.equal(
+      scope.read(name, rowsOf(state, name)).length,
+      expected ? rowsOf(state, name).length : 0,
+      name,
+    )
   }
   assert.deepEqual(scope.access('conversations'), { allowed: false, reason: 'role_denied' })
   assert.equal(scope.redact('students', state.students[0]!).progress, state.students[0]!.progress)
@@ -192,8 +217,8 @@ test('Öğrenci yalnız kendi kayıtlarını görür (DOM-YTK-024)', () => {
     'quizAttempts',
     'submissions',
     'mockResults',
-  ])
-    assert.deepEqual([...studentsOf(scope.read(name, state[name]))], ['s1'], name)
+  ] as const)
+    assert.deepEqual([...studentsOf(scope.read(name, rowsOf(state, name)))], ['s1'], name)
   assert.deepEqual(ids(scope.read('students', state.students)), ['s1'])
   assert.deepEqual(scope.access('contracts'), { allowed: false, reason: 'role_denied' })
   assert.deepEqual(scope.access('prospects'), { allowed: false, reason: 'role_denied' })
@@ -255,8 +280,8 @@ test('Veli yalnız bağlı çocuklarını görür; bağlı olmayan çocuk sızma
   const state = seed()
   const scope = scopeFor(state, parent('s1', 's2', 'olmayan-ogrenci'))
   assert.deepEqual(new Set(scope.studentIds), new Set(['s1', 's2']))
-  for (const name of ['grades', 'attendance', 'invoices', 'contracts', 'mockResults']) {
-    const visible = studentsOf(scope.read(name, state[name]))
+  for (const name of ['grades', 'attendance', 'invoices', 'contracts', 'mockResults'] as const) {
+    const visible = studentsOf(scope.read(name, rowsOf(state, name)))
     assert.ok(!visible.has('s3'), name)
     assert.ok(
       [...visible].every((s) => s === 's1' || s === 's2'),
@@ -274,7 +299,7 @@ test('Veli yalnız bağlı çocuklarını görür; bağlı olmayan çocuk sızma
       state,
       parent('s1'),
       'grades',
-      state.grades.find((g) => g.studentId === 's3'),
+      state.grades.find((g) => g.studentId === 's3')!,
     ),
     undefined,
   )
@@ -293,8 +318,10 @@ test('Bilinmeyen koleksiyon ve rol en dar varsayılandır', () => {
       isDomainError('collection_not_found', 'not_found'),
     )
   }
+  // @ts-expect-error — bilinçli bilinmeyen koleksiyon
   assert.deepEqual(visibleRecords(state, admin, 'olmayan'), [])
   const stranger = scopeFor(state, {
+    // @ts-expect-error — bilinçli bilinmeyen rol
     role: 'misafir',
     links: [{ kind: 'student', recordId: 's1' }],
   })
@@ -344,8 +371,8 @@ test('Her rol ve koleksiyon için okuma hata vermez, yalnız izinli satırları 
   for (const actor of [admin, frontOffice, teacher(), student(), parent('s1', 's2')]) {
     const scope = scopeFor(state, actor)
     for (const name of COLLECTION_NAMES) {
-      const rows = scope.read(name, state[name])
-      assert.ok(rows.length <= state[name].length, `${actor.role}/${name}`)
+      const rows = scope.read(name, rowsOf(state, name))
+      assert.ok(rows.length <= rowsOf(state, name).length, `${actor.role}/${name}`)
       if (!scope.access(name).allowed) assert.equal(rows.length, 0)
     }
   }
@@ -373,31 +400,37 @@ test('API oturumu bağlantılarıyla iş akışı başka öğretmen adına çal�
   const state = seed()
   const classId = state.students.find((s) => s.id === 's9')!.classId
   const assignment = state.assignments.find((a) => a.classId === classId && a.teacherId !== 't1')
-  const session = {
+  const session: Session = {
     role: 'ogretmen',
     links: [{ kind: 'teacher', recordId: assignment!.teacherId }],
   }
-  const task = runWorkflow(
-    state,
-    session,
-    'study-task',
-    {
-      studentId: 's9',
-      subjectId: assignment!.subjectId,
-      topic: 'Konu tekrarı',
-      title: 'Haftalık tekrar',
-      instructions: 'Örnek soruları çöz.',
-      dueDate: '2026-10-20',
-      minutes: 30,
-    },
-    id,
-    undefined,
-    now,
+  const task = resultOf<{ teacherId: string }>(
+    runWorkflow(
+      state,
+      session,
+      'study-task',
+      {
+        studentId: 's9',
+        subjectId: assignment!.subjectId,
+        topic: 'Konu tekrarı',
+        title: 'Haftalık tekrar',
+        instructions: 'Örnek soruları çöz.',
+        dueDate: '2026-10-20',
+        minutes: 30,
+      },
+      id,
+      undefined,
+      now,
+    ),
   )
   assert.equal(task.teacherId, assignment!.teacherId)
   assert.equal(state.audit[0]!.user_id, assignment!.teacherId)
   // Aynı öğrenci demo öğretmeninin kapsamında değildir.
   assert.ok(!workflowScope(state, { role: 'ogretmen' }).studentIds.has('s9'))
-  const parentSession = { role: 'veli', childId: 's9', links: [{ kind: 'child', recordId: 's9' }] }
+  const parentSession: Session = {
+    role: 'veli',
+    childId: 's9',
+    links: [{ kind: 'child', recordId: 's9' }],
+  }
   assert.deepEqual([...workflowScope(state, parentSession).studentIds], ['s9'])
 })

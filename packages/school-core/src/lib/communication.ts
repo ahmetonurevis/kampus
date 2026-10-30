@@ -655,8 +655,9 @@ export function openConversationAccess(
   options: CommunicationOptions = {},
 ): ConversationAccess {
   const { reason } = conversationAccessSchema.parse(input)
-  requireAuthorized(actor, 'conversation.access', { reason }, state, options)
-  requireConversation(state.conversations.find((c) => c.id === conversationId))
+  const found = state.conversations.find((c) => c.id === conversationId)
+  requireAuthorized(actor, 'conversation.access', { reason, conversation: found }, state, options)
+  requireConversation(found)
   const expiresAt = new Date(Date.parse(now) + CONVERSATION_ACCESS_MINUTES * 60_000).toISOString()
   return { conversationId, reason, expiresAt }
 }

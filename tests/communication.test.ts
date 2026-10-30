@@ -1064,6 +1064,25 @@ test('DOM-YTK-052: yöneticinin erişimi gerekçe ister, süre sınırlıdır ve
       ),
     isDomainError('conversation_not_found', 'not_found'),
   )
+  // DOM-ILT-011: gerekçeli erişim yalnız öğrenci–öğretmen yazışmasındadır; veli yazışması kapalı.
+  for (const parentConversation of ['conv2', 'conv3'])
+    assert.throws(
+      () =>
+        openConversationAccess(
+          state,
+          people.yonetici,
+          parentConversation,
+          { reason: 'Gerekçe yeterli uzun' },
+          now,
+        ),
+      isDomainError('conversation_access_student_only', 'forbidden'),
+    )
+  // Gerekçe eksikse önce gerekçe hatası: veli yazışmasında da 422.
+  assert.throws(
+    () => openConversationAccess(state, people.yonetici, 'conv2', { reason: 'kısa' }, now),
+    isDomainError('access_reason_required'),
+  )
+  assert.equal(JSON.stringify(state.conversations), before)
   // Yönetici taraf değildir: listesi boş.
   assert.deepEqual(conversationsFor(state, scopeFor(state, people.yonetici), 'u-admin'), [])
   assert.equal(

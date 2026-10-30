@@ -201,7 +201,9 @@ export async function listConversationMessages(
   if (!conversation) throw new NotFoundError()
   if (scope) {
     if (!isConversationParty(scope, ctx.actor.userId, conversation)) throw new NotFoundError()
-  } else if (!(await activeAccess(ctx, conversationId))) throw new NotFoundError()
+  } else if (conversation.audience !== 'student' || !(await activeAccess(ctx, conversationId)))
+    // Yönetici yalnız öğrenci–öğretmen yazışmasını gerekçeyle okur (DOM-ILT-011).
+    throw new NotFoundError()
   const page = messagePage(conversation, admin ? null : senderSide(ctx.actor.role), query)
   if (!page)
     throw new ValidationError([

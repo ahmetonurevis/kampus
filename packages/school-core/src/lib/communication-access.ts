@@ -421,13 +421,27 @@ export function readDecision(
 
 /** Yöneticinin gerekçeli erişimi (DOM-YTK-052, DOM-ILT-011): gerekçe en az 10 karakter. */
 export const ACCESS_REASON_MIN_LENGTH = 10
-export function accessDecision(reason: string): CommunicationDenial | null {
-  return reason.trim().length >= ACCESS_REASON_MIN_LENGTH
-    ? null
-    : {
-        code: 'access_reason_required',
-        message: 'Yazışmayı açmak için şikâyet veya soruşturma gerekçesini yazın.',
-        rule: 'DOM-YTK-052',
-        kind: 'rule',
+/**
+ * Gerekçe önce denetlenir; yazışma verilmişse erişim yalnız öğrenci–öğretmen yazışmasındadır
+ * (DOM-ILT-011): veli tarafı yazışma gerekçeyle de açılmaz. Yazışma yoksa karar işleme bırakılır
+ * (404).
+ */
+export function accessDecision(
+  reason: string,
+  conversation?: Pick<ConversationParties, 'audience'>,
+): CommunicationDenial | null {
+  if (reason.trim().length < ACCESS_REASON_MIN_LENGTH)
+    return {
+      code: 'access_reason_required',
+      message: 'Yazışmayı açmak için şikâyet veya soruşturma gerekçesini yazın.',
+      rule: 'DOM-YTK-052',
+      kind: 'rule',
+    }
+  return conversation && conversation.audience !== 'student'
+    ? {
+        code: 'conversation_access_student_only',
+        message: 'Yönetici yalnız öğrenci ile öğretmen arasındaki yazışmayı gerekçeyle açabilir.',
+        rule: 'DOM-ILT-011',
       }
+    : null
 }

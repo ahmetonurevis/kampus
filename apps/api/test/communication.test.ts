@@ -541,6 +541,57 @@ describe('iletişim uçları', () => {
       }
     })
 
+    test('DOM-ILT-011: gerekçeli yönetici erişimi veli yazışmasında kapalıdır; denetim kaydı yazılmaz', async () => {
+      const a = await institution()
+      const teacherCookie = await teacher(a.id)
+      const mother = await parent(a.id)
+      const opened = await start(teacherCookie, {
+        studentId: 's1',
+        audience: 'parent',
+        text: 'Merhaba Ayşe Hanım',
+      })
+      assert.equal(opened.statusCode, 201, opened.body)
+      const id: string = opened.json().data.entity.id
+      const before = await conversation(a.id, id)
+      const url = `/api/v1/conversations/${id}/access`
+      assertError(
+        await send('POST', url, a.adminCookie, { reason: REASON }),
+        403,
+        'conversation_access_student_only',
+      )
+      // Gerekçe eksikse önce gerekçe hatası; yazışma yoksa 404.
+      assertError(
+        await send('POST', url, a.adminCookie, { reason: 'kısa' }),
+        422,
+        'access_reason_required',
+      )
+      assert.equal((await audits(a.id, 'conversation.access')).length, 0)
+      assertError(await read(a.adminCookie, `/api/v1/conversations/${id}/messages`), 404)
+      // Öğrenci yazışmasında erişim sürer; eski bir erişim kaydı veli yazışmasını açmaz.
+      const studentId = await studentConversation(a.id, teacherCookie)
+      const ok = await send('POST', `/api/v1/conversations/${studentId}/access`, a.adminCookie, {
+        reason: REASON,
+      })
+      assert.equal(ok.statusCode, 200, ok.body)
+      await db.insert(auditLog).values({
+        institutionId: a.id,
+        actorUserId: a.admin.id,
+        actorRole: 'yonetici',
+        action: 'conversation.access',
+        entityType: 'conversations',
+        entityId: id,
+        changes: { fields: [] },
+        createdAt: FIXED_NOW,
+      })
+      assertError(await read(a.adminCookie, `/api/v1/conversations/${id}/messages`), 404)
+      assert.deepEqual(await conversation(a.id, id), before)
+      // Veli kendi yazışmasını okumaya devam eder.
+      assert.equal(
+        (await read(mother.cookie, `/api/v1/conversations/${id}/messages`)).statusCode,
+        200,
+      )
+    })
+
     test(`429: kullanıcı başına dakikada ${String(MESSAGE_RATE_LIMIT)} mesaj isteği`, async () => {
       const a = await institution()
       const cookie = await student(a.id)

@@ -89,3 +89,26 @@ test('etkin sayfanın grubu tercih yoksa açık, kapatma tercihi ise önceliklid
   const closed = setGroupExpanded({}, 'yonetici', 'FİNANS', false)
   assert.equal(isGroupExpanded(closed, 'yonetici', 'FİNANS', true), false)
 })
+
+test('web iletişim sayfaları yönetici, ön büro ve öğretmen menüsüne eklenir', () => {
+  const paths = (role: Parameters<typeof visiblePages>[0]) =>
+    visiblePages(role, allOpen).map((page) => page.path)
+  assert.ok(paths('yonetici').includes('duyurular') && paths('yonetici').includes('mesajlar'))
+  assert.ok(paths('ogretmen').includes('duyurular') && paths('ogretmen').includes('mesajlar'))
+  assert.ok(paths('onburo').includes('duyurular'))
+  // Ön büro yazışmaya taraf değildir: Mesajlar menüsü yoktur.
+  assert.ok(!paths('onburo').includes('mesajlar'))
+  // Öğrenci ve veli iletişim sayfalarını çekirdek menüden alır; çift kayıt oluşmaz.
+  assert.equal(paths('ogrenci').filter((path) => path === 'duyurular').length, 1)
+  assert.equal(paths('veli').filter((path) => path === 'duyurular').length, 1)
+  assert.ok(paths('veli').includes('randevu-mesaj'))
+})
+
+test('iletişim sayfaları hesap grubundan önce, iletişim kategorisinde durur', () => {
+  const groups = sidebarGroups('yonetici', allOpen)
+  const labels = groups.map((group) => group.label)
+  const communication = groups.find((group) => group.pages.some((page) => page.path === 'mesajlar'))
+  assert.ok(communication)
+  assert.ok(communication.pages.some((page) => page.path === 'duyurular'))
+  assert.ok(!labels.includes('Hesap'))
+})

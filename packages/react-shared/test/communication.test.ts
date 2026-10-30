@@ -206,6 +206,8 @@ describe('yazışma komutları', () => {
     assert.equal(commandFeedback(limited, MESSAGE_MESSAGES).message, MESSAGE_RATE_LIMITED_MESSAGE)
     const reason = new ApiError({ status: 422, code: 'access_reason_required', message: 'x' })
     assert.match(commandFeedback(reason, ACCESS_MESSAGES).message ?? '', /en az 10/)
+    const forbidden = new ApiError({ status: 403, code: 'forbidden', message: 'x' })
+    assert.match(commandFeedback(forbidden, ACCESS_MESSAGES).message ?? '', /Veli yazışmaları/)
     const ended = new ApiError({
       status: 403,
       code: 'conversation_relationship_ended',

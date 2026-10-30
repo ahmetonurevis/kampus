@@ -176,7 +176,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğrenci bir soruyu cevapladıktan sonra sorunun değişmesi puanı geriye dönük anlamsızlaştırır.
 - **Kaynak:** İşletme kuralı; CLAUDE.md "anahtar revizyonu eski optik analizin kullanımını engeller" ilkesinin kaynak platformuna genellemesi.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planDraftUpdate`, `planNewVersion`). API: `PATCH /api/v1/resources/:id/versions/:versionId` (`If-Match` zorunlu; yayındaki sürüm 409 `version_immutable`), `POST /api/v1/resources/:id/versions` (ikinci açık sürüm 409 `open_version_exists`); yeni yayın önceki sürümü aynı işlemde arşivler.
+- **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planDraftUpdate`, `planNewVersion`); atama yalnız güncel yayındaki sürüme bağlanır ve onu sabitler: `packages/school-core/src/skills/assignment.ts` `resolveAssignmentSettings` (`resourceVersionId`, başta ona eşit `scoringVersionId`, `rubricVersionId`). API: `PATCH /api/v1/resources/:id/versions/:versionId` (`If-Match` zorunlu; yayındaki sürüm 409 `version_immutable`), `POST /api/v1/resources/:id/versions` (ikinci açık sürüm 409 `open_version_exists`); yeni yayın önceki sürümü aynı işlemde arşivler.
 
 ### DOM-KYN-033 · Hatalı soru düzeltmesi
 
@@ -184,7 +184,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Sessiz puan değişikliği not itirazı ve güven sorununa yol açar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/assignment.ts` `previewRescore` (etkilenen öğrenci sayısı ve puan farkı, saf) ve `planRescore` (gerekçeli ayrı işlem, son onayda yeniden hesaplanır, eski ve yeni puanlama sürümünü döndürür); denetim kaydı ve bildirim API'dedir.
 
 ## Paylaşım kapsamı
 

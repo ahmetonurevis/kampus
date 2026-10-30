@@ -389,28 +389,36 @@ export async function openNewVersion(
       status: 201,
       load: async (tx) => {
         const target = await loadTarget(tx, ctx, staff, resourceId)
-        return () =>
-          planNewVersion({
+        return () => ({
+          reopens: target.resource.archivedAt !== null,
+          version: planNewVersion({
             actor: staff.actor,
             institutionType: staff.institutionType,
             resource: target.resource,
             versions: target.versions.map(asCoreVersion),
             versionId,
             now: ctx.now,
-          })
+          }),
+        })
       },
-      write: async (tx, version) => {
+      write: async (tx, { reopens, version }) => {
         await insertNewVersion(tx, ctx.institutionId, version, ctx.now)
         // Bütün sürümleri arşivli kaynak yeni sürümle yeniden açılır (R8: `resources.archived_at`).
-        await updateResourceRow(
-          tx,
-          ctx.institutionId,
+        // Arşivli değilse kaynak satırına dokunulmaz: satır sürümü artmaz, eldeki `If-Match` geçerli kalır.
+        if (reopens)
+          await updateResourceRow(
+            tx,
+            ctx.institutionId,
+            resourceId,
+            null,
+            { archivedAt: null },
+            ctx.now,
+          )
+        return {
           resourceId,
-          null,
-          { archivedAt: null },
-          ctx.now,
-        )
-        return { resourceId, versionId, fields: ['versionNumber'] }
+          versionId,
+          fields: reopens ? ['versionNumber', 'archivedAt'] : ['versionNumber'],
+        }
       },
     },
     idempotency,
@@ -471,8 +479,10 @@ export async function transitionVersion(
           transition.versionChanges,
           ctx.now,
         )
+        // Core önceki sürümü durumdan bağımsız bildirir; zaten arşivli sürüme (ör. sahibi arşivlemiş,
+        // `currentVersionId` değişmemiş) dokunulmaz: asıl arşiv tarihi ve satır sürümü korunur.
         const superseded = target.versions.find(
-          (item) => item.id === transition.supersededVersionId,
+          (item) => item.id === transition.supersededVersionId && item.status === 'published',
         )
         if (superseded)
           await updateVersionMeta(
@@ -590,6 +600,10 @@ export async function shareResource(
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   const staff = await staffOf(ctx)
+  // TODO(scope-in-tx): öğretim kapsamı (atamalar) ve kurum kimlikleri kurum kilidinden ÖNCE okunur;
+  // PGlite tek bağlantılı olduğundan bu okuma transaction içinde `ctx.db` ile yapılamaz. Atama
+  // kaldırılırken eşzamanlı paylaşım bayat kapsamla geçebilir (docs/muhendislik/api-tasarimi.md,
+  // "Bilinen sınırlamalar"). Kapsam okuması transaction'a taşınabilince kilitten sonra okunmalı.
   const [scope, source] = await Promise.all([readScope(ctx), readSource(ctx)])
   const known = {
     studentIds: new Set(source.students.map((student) => student.id)),

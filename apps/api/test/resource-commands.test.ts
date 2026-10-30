@@ -97,6 +97,11 @@ describe('içerik havuzu yazma uçları', () => {
           data: { id: 's-1', name: 'Deniz Yılmaz', classId: '9-A', isActive: true },
         },
         {
+          collection: 'students',
+          id: 's-2',
+          data: { id: 's-2', name: 'Ece Yılmaz', classId: '10-B', isActive: true },
+        },
+        {
           collection: 'assignments',
           id: 'as-1',
           data: { id: 'as-1', classId: '9-A', teacherId: 't-mat', subjectId: 'matematik' },
@@ -545,6 +550,119 @@ describe('içerik havuzu yazma uçları', () => {
     assert.equal(reopened.version.versionNumber, 2)
   })
 
+  /** Sürüm ve kaynak satırlarının tam hali (satır sürümü, arşiv/yayın tarihleri) ve denetim sayısı. */
+  async function rowsOf(institutionId: string, resourceId: string) {
+    const versions = await db
+      .select({
+        id: resourceVersions.id,
+        number: resourceVersions.versionNumber,
+        status: resourceVersions.status,
+        rowVersion: resourceVersions.version,
+        archivedAt: resourceVersions.archivedAt,
+        publishedAt: resourceVersions.publishedAt,
+      })
+      .from(resourceVersions)
+      .where(eq(resourceVersions.resourceId, resourceId))
+      .orderBy(resourceVersions.versionNumber)
+    const [resource] = await db
+      .select({
+        rowVersion: resources.version,
+        currentVersionId: resources.currentVersionId,
+        archivedAt: resources.archivedAt,
+      })
+      .from(resources)
+      .where(eq(resources.id, resourceId))
+    const audits = await db
+      .select({ id: auditLog.id })
+      .from(auditLog)
+      .where(eq(auditLog.institutionId, institutionId))
+    return { versions, resource, audits: audits.length }
+  }
+
+  test('DOM-KYN-032: sahibi arşivlediği önceki sürüm, yeni sürüm yayımlanınca yeniden arşivlenmez', async () => {
+    const t = await tenant()
+    const data = await create(t.cookies.teacher)
+    await ok(await act(t.cookies.teacher, data, 'submit'))
+    await ok(await act(t.cookies.admin, data, 'approve'))
+    await ok(await act(t.cookies.teacher, data, 'archive'))
+    const v2 = await ok(
+      await post(`/resources/${data.resource.id}/versions`, t.cookies.teacher),
+      201,
+    )
+    await ok(await act(t.cookies.teacher, v2, 'submit'))
+    const before = await rowsOf(t.institution.id, data.resource.id)
+    const [first] = before.versions
+    assert.equal(first?.status, 'archived')
+    assert.equal(
+      before.resource?.currentVersionId,
+      data.version.id,
+      'arşiv güncel sürümü değiştirmez',
+    )
+
+    const published = await ok(await act(t.cookies.admin, v2, 'approve'))
+    assert.equal(published.resource.currentVersionId, v2.version.id)
+    const after = await rowsOf(t.institution.id, data.resource.id)
+    assert.deepEqual(after.versions[0], first, 'önceki sürümün arşiv tarihi ve satır sürümü sabit')
+    assert.equal(after.versions[1]?.status, 'published')
+  })
+
+  test('DOM-KYN-032: arşivli olmayan kaynakta yeni sürüm kaynak satırına dokunmaz; eldeki If-Match geçerli kalır', async () => {
+    const t = await tenant()
+    const data = await create(t.cookies.teacher)
+    await ok(await act(t.cookies.teacher, data, 'submit'))
+    const approved = await ok(await act(t.cookies.admin, data, 'approve'))
+    const before = await rowsOf(t.institution.id, data.resource.id)
+    const opened = await ok(
+      await post(`/resources/${data.resource.id}/versions`, t.cookies.teacher),
+      201,
+    )
+    assert.equal(opened.resource.rowVersion, approved.resource.rowVersion)
+    const after = await rowsOf(t.institution.id, data.resource.id)
+    assert.deepEqual(after.resource, before.resource)
+    const shared = await post(
+      `/resources/${data.resource.id}/share`,
+      t.cookies.teacher,
+      { scope: 'private' },
+      { 'if-match': `"${approved.resource.rowVersion}"` },
+    )
+    assert.equal(shared.statusCode, 200, shared.body)
+  })
+
+  test('DOM-KYN-032: geçiş ortasında hata çıkarsa hiçbir satır ve denetim kaydı değişmez', async () => {
+    const t = await tenant()
+    const data = await create(t.cookies.teacher)
+    await ok(await act(t.cookies.teacher, data, 'submit'))
+    await ok(await act(t.cookies.admin, data, 'approve'))
+    const v2 = await ok(
+      await post(`/resources/${data.resource.id}/versions`, t.cookies.teacher),
+      201,
+    )
+    await ok(await act(t.cookies.teacher, v2, 'submit'))
+    const before = await rowsOf(t.institution.id, data.resource.id)
+    // Önceki sürümün arşivlenmesi, yeni sürüm ve kaynak satırı yazıldıktan sonra serileştirme hatası verir.
+    await db.execute(sql`
+      CREATE FUNCTION f3b_fail_archive() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'önceki sürüm çakışması' USING ERRCODE = '40001';
+      END $$ LANGUAGE plpgsql`)
+    await db.execute(
+      sql.raw(`CREATE TRIGGER f3b_fail_archive BEFORE UPDATE ON resource_versions
+        FOR EACH ROW WHEN (NEW.id = '${data.version.id}' AND NEW.status = 'archived')
+        EXECUTE FUNCTION f3b_fail_archive()`),
+    )
+    try {
+      const failed = await act(t.cookies.admin, v2, 'approve')
+      assert.equal(failed.statusCode, 409, failed.body)
+    } finally {
+      await db.execute(sql`DROP TRIGGER f3b_fail_archive ON resource_versions`)
+      await db.execute(sql`DROP FUNCTION f3b_fail_archive()`)
+    }
+    assert.deepEqual(await rowsOf(t.institution.id, data.resource.id), before)
+    // Hata giderilince aynı istek geçer.
+    const published = await ok(await act(t.cookies.admin, v2, 'approve'))
+    assert.equal(published.resource.currentVersionId, v2.version.id)
+  })
+
   test('DOM-KYN-051: kaldırma yalnız yönetici, gerekçeyle; içerik silinir, kopyalar ve quizler listelenir', async () => {
     const t = await tenant()
     const item = await create(t.cookies.teacher, question())
@@ -669,6 +787,78 @@ describe('içerik havuzu yazma uçları', () => {
       ],
     )
     assert.equal((await post(url, t.cookies.otherTeacher, { scope: 'private' })).statusCode, 404)
+  })
+
+  test('DOM-KYN-040: öğretmen ders vermediği öğrenciyle paylaşamaz; ders verdiğiyle paylaşır, hiçbir kayıt değişmez', async () => {
+    const t = await tenant()
+    const data = await create(t.cookies.teacher)
+    const url = `/resources/${data.resource.id}/share`
+    const before = await snapshot(t.institution.id)
+    const outside = await post(url, t.cookies.teacher, {
+      scope: 'students',
+      studentIds: ['s-1', 's-2'],
+    })
+    assert.equal(outside.statusCode, 403)
+    assert.equal(outside.json().code, 'share_target_out_of_scope')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    const own = await ok(
+      await post(url, t.cookies.teacher, { scope: 'students', studentIds: ['s-1'] }),
+    )
+    assert.deepEqual(own.resource.sharedStudentIds, ['s-1'])
+    // Yönetici yayındaki kaynağı görür ve kurumdaki her öğrenciyle paylaşabilir.
+    await ok(await act(t.cookies.teacher, data, 'publish'))
+    const admin = await ok(
+      await post(url, t.cookies.admin, { scope: 'students', studentIds: ['s-1', 's-2'] }),
+    )
+    assert.deepEqual(admin.resource.sharedStudentIds, ['s-1', 's-2'])
+  })
+
+  test('DOM-KYN-025/051: denetim kaydı yalnız alan adlarını taşır; gerekçe ve içerik değeri yazılmaz', async () => {
+    const t = await tenant()
+    const data = await create(t.cookies.teacher, question())
+    await ok(
+      await post(`/resources/${data.resource.id}/share`, t.cookies.teacher, {
+        scope: 'institution',
+      }),
+    )
+    await ok(await act(t.cookies.teacher, data, 'submit'))
+    const rejected = await ok(
+      await act(t.cookies.admin, data, 'reject', { reason: 'Gerekçe-gizli-ret' }),
+    )
+    await ok(
+      await patch(
+        `/resources/${data.resource.id}/versions/${data.version.id}`,
+        t.cookies.teacher,
+        { title: 'Işık sorusu düzeltildi' },
+        rejected.version.rowVersion,
+      ),
+    )
+    await ok(await act(t.cookies.teacher, data, 'submit'))
+    await ok(await act(t.cookies.admin, data, 'approve'))
+    await ok(
+      await act(t.cookies.otherTeacher, data, 'report', { reason: 'Gerekçe-gizli-bildirim' }),
+    )
+    await ok(
+      await post(`/resources/${data.resource.id}/remove`, t.cookies.admin, {
+        reason: 'Gerekçe-gizli-kaldırma',
+      }),
+    )
+    const rows = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.institutionId, t.institution.id))
+    const resourceRows = rows.filter((row) => row.action.startsWith('resource.'))
+    const actions = resourceRows.map((row) => row.action)
+    for (const action of ['reject', 'report', 'remove'])
+      assert.ok(actions.includes(`resource.${action}`), `${action} denetim kaydı var`)
+    for (const row of resourceRows) {
+      assert.deepEqual(Object.keys(row.changes as object), ['fields'], row.action)
+      const text = JSON.stringify(row.changes)
+      for (const secret of ['Gerekçe-gizli', 'Gizli çözüm', 'Işık hangi', 'Saniyede'])
+        assert.ok(!text.includes(secret), `${row.action}: ${secret} yazılmamalı`)
+      for (const field of (row.changes as { fields: unknown[] }).fields)
+        assert.equal(typeof field, 'string')
+    }
   })
 
   test('DOM-KYN-050: kopya soyu ve lisans mirası; kopyalanamayan kaynaklar', async () => {

@@ -109,9 +109,9 @@ export async function environment(
   }
 }
 
-type Entity = { collection: CollectionName; id: string } | null
+export type Entity = { collection: CollectionName; id: string } | null
 
-function execute(
+export function execute(
   ctx: ServiceContext,
   request: OperationRequest<Entity>,
   options: CommandOptions,
@@ -125,13 +125,13 @@ function execute(
   )
 }
 
-function auditEntity(fallback: string) {
+export function auditEntity(fallback: string) {
   return (entity: Entity) =>
     entity ? { type: entity.collection, id: entity.id } : { type: 'workflow', id: fallback }
 }
 
 /** Core denetim girdisinden işlemin konusu (yalnız işlem içinde yaşar, yazılmaz). */
-function auditedEntity(state: State, command: string): Entity {
+export function auditedEntity(state: State, command: string): Entity {
   const entry = state.audit[0]
   const collection = entry?.table_name
   const id = entry?.record_id

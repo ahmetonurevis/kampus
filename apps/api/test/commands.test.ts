@@ -16,6 +16,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
+import { ASSESSMENT_ROUTES } from '../src/routes/assessment.schemas.ts'
 import { WORKFLOW_ROUTES } from '../src/routes/workflows.schemas.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
@@ -401,6 +402,10 @@ describe('yazma uçları', () => {
         ...Object.entries(WORKFLOW_ROUTES)
           .filter(([, route]) => route.idempotency === 'required')
           .map(([command]) => `POST /api/v1/workflows/${command}`),
+        // Optik değerlendirme ve etüt köprüsü (routes/assessment.ts).
+        ...Object.entries(ASSESSMENT_ROUTES)
+          .filter(([, route]) => route.idempotency === 'required')
+          .map(([command]) => `POST /api/v1/assessment/${command}`),
         'POST /api/v1/invoices/{invoiceId}/pay',
         'POST /api/v1/grades',
         // İletişim (routes/communication.ts): oluşturma ve mesaj gönderimi.

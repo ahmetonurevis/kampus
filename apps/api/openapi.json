@@ -312,6 +312,455 @@
           "records"
         ]
       },
+      "TutoringPlanPreviewInput": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "object",
+            "properties": {
+              "examId": {
+                "type": "string"
+              },
+              "threshold": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "fromDate": {
+                "type": "string"
+              },
+              "toDate": {
+                "type": "string"
+              },
+              "duration": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "maxGroupSize": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "branchId": {
+                "type": "string"
+              },
+              "subjectId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "examId",
+              "threshold",
+              "fromDate",
+              "toDate",
+              "duration",
+              "maxGroupSize",
+              "branchId",
+              "subjectId"
+            ],
+            "description": "Çözümlenmiş plan girdisi"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "examId": {
+                  "type": "string"
+                },
+                "branchId": {
+                  "type": "string"
+                },
+                "grade": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "topic": {
+                  "type": "string",
+                  "description": "Eksik kazanım"
+                },
+                "studentIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "scores": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "studentId": {
+                        "type": "string"
+                      },
+                      "percent": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "studentId",
+                      "percent"
+                    ]
+                  }
+                },
+                "teacherId": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "description": "Başlangıç anı, ISO 8601 UTC"
+                },
+                "duration": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Dakika"
+                },
+                "room": {
+                  "type": "string"
+                },
+                "roomClassId": {
+                  "type": "string"
+                },
+                "capacity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Grup kapasitesi: en küçük(grup üst sınırı, derslik kapasitesi)"
+                }
+              },
+              "required": [
+                "examId",
+                "branchId",
+                "grade",
+                "subjectId",
+                "topic",
+                "studentIds",
+                "scores",
+                "teacherId",
+                "date",
+                "duration",
+                "room",
+                "roomClassId",
+                "capacity"
+              ]
+            },
+            "description": "Önerilen etütler"
+          },
+          "unresolved": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "examId": {
+                  "type": "string"
+                },
+                "branchId": {
+                  "type": "string"
+                },
+                "grade": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "topic": {
+                  "type": "string",
+                  "description": "Eksik kazanım"
+                },
+                "studentIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "scores": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "studentId": {
+                        "type": "string"
+                      },
+                      "percent": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "studentId",
+                      "percent"
+                    ]
+                  }
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "examId",
+                "branchId",
+                "grade",
+                "subjectId",
+                "topic",
+                "studentIds",
+                "scores",
+                "reason"
+              ]
+            },
+            "description": "Yerleşemeyen gruplar ve nedeni: kapasite, öğretmen, derslik, uygunluk veya çakışma uyarısı"
+          },
+          "covered": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "studentId": {
+                  "type": "string"
+                },
+                "topic": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "studentId",
+                "topic",
+                "sessionId"
+              ]
+            },
+            "description": "Zaten planlanmış veya tamamlanmış etütle karşılanan öğrenci/kazanımlar"
+          },
+          "evaluatedStudents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "sessionCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "plannedStudentCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "unresolvedGroupCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "unresolvedStudentCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "coveredCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "sessionCount",
+              "plannedStudentCount",
+              "unresolvedGroupCount",
+              "unresolvedStudentCount",
+              "coveredCount"
+            ]
+          },
+          "expectedPlan": {
+            "type": "string",
+            "description": "Planın JSON metni; onay isteğinde `expectedPlan` olarak aynen geri gönderilir"
+          }
+        },
+        "required": [
+          "input",
+          "sessions",
+          "unresolved",
+          "covered",
+          "evaluatedStudents",
+          "summary",
+          "expectedPlan"
+        ]
+      },
+      "EvaluationPreviewInput": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "examId": {
+                  "type": "string"
+                },
+                "studentId": {
+                  "type": "string"
+                },
+                "studentName": {
+                  "type": "string"
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "booklet": {
+                  "type": "string"
+                },
+                "profileId": {
+                  "type": "string"
+                },
+                "keyRevision": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "correct": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "wrong": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "blank": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "multiple": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "cancelled": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "net": {
+                  "type": "number"
+                },
+                "topicScores": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "topic": {
+                        "type": "string"
+                      },
+                      "total": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "correct": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "percent": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "topic",
+                      "total",
+                      "correct",
+                      "percent"
+                    ]
+                  }
+                },
+                "weakTopics": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "replaces": {
+                  "type": "boolean",
+                  "description": "Aynı sınav/öğrenci/ders sonucunun üzerine yazar"
+                }
+              },
+              "required": [
+                "examId",
+                "studentId",
+                "studentName",
+                "subjectId",
+                "booklet",
+                "profileId",
+                "keyRevision",
+                "correct",
+                "wrong",
+                "blank",
+                "multiple",
+                "cancelled",
+                "net",
+                "topicScores",
+                "weakTopics",
+                "replaces"
+              ]
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "rowCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "studentCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "replacesCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "rowCount",
+              "studentCount",
+              "replacesCount"
+            ]
+          },
+          "digest": {
+            "type": "string",
+            "description": "Önizlemenin SHA-256 özeti (hex); onay isteğinde `expectedDigest` olarak gönderilir"
+          }
+        },
+        "required": [
+          "rows",
+          "summary",
+          "digest"
+        ]
+      },
       "ConversationMessageInput": {
         "type": "object",
         "properties": {
@@ -1077,6 +1526,467 @@
           "entity",
           "changes",
           "records"
+        ],
+        "additionalProperties": false
+      },
+      "TutoringPlanPreview": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "object",
+            "properties": {
+              "examId": {
+                "type": "string"
+              },
+              "threshold": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "fromDate": {
+                "type": "string"
+              },
+              "toDate": {
+                "type": "string"
+              },
+              "duration": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "maxGroupSize": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "branchId": {
+                "type": "string"
+              },
+              "subjectId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "examId",
+              "threshold",
+              "fromDate",
+              "toDate",
+              "duration",
+              "maxGroupSize",
+              "branchId",
+              "subjectId"
+            ],
+            "additionalProperties": false,
+            "description": "Çözümlenmiş plan girdisi"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "examId": {
+                  "type": "string"
+                },
+                "branchId": {
+                  "type": "string"
+                },
+                "grade": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "topic": {
+                  "type": "string",
+                  "description": "Eksik kazanım"
+                },
+                "studentIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "scores": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "studentId": {
+                        "type": "string"
+                      },
+                      "percent": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "studentId",
+                      "percent"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "teacherId": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "description": "Başlangıç anı, ISO 8601 UTC"
+                },
+                "duration": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Dakika"
+                },
+                "room": {
+                  "type": "string"
+                },
+                "roomClassId": {
+                  "type": "string"
+                },
+                "capacity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Grup kapasitesi: en küçük(grup üst sınırı, derslik kapasitesi)"
+                }
+              },
+              "required": [
+                "examId",
+                "branchId",
+                "grade",
+                "subjectId",
+                "topic",
+                "studentIds",
+                "scores",
+                "teacherId",
+                "date",
+                "duration",
+                "room",
+                "roomClassId",
+                "capacity"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Önerilen etütler"
+          },
+          "unresolved": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "examId": {
+                  "type": "string"
+                },
+                "branchId": {
+                  "type": "string"
+                },
+                "grade": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "topic": {
+                  "type": "string",
+                  "description": "Eksik kazanım"
+                },
+                "studentIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "scores": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "studentId": {
+                        "type": "string"
+                      },
+                      "percent": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "studentId",
+                      "percent"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "examId",
+                "branchId",
+                "grade",
+                "subjectId",
+                "topic",
+                "studentIds",
+                "scores",
+                "reason"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Yerleşemeyen gruplar ve nedeni: kapasite, öğretmen, derslik, uygunluk veya çakışma uyarısı"
+          },
+          "covered": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "studentId": {
+                  "type": "string"
+                },
+                "topic": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "studentId",
+                "topic",
+                "sessionId"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Zaten planlanmış veya tamamlanmış etütle karşılanan öğrenci/kazanımlar"
+          },
+          "evaluatedStudents": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "sessionCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "plannedStudentCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "unresolvedGroupCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "unresolvedStudentCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "coveredCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "sessionCount",
+              "plannedStudentCount",
+              "unresolvedGroupCount",
+              "unresolvedStudentCount",
+              "coveredCount"
+            ],
+            "additionalProperties": false
+          },
+          "expectedPlan": {
+            "type": "string",
+            "description": "Planın JSON metni; onay isteğinde `expectedPlan` olarak aynen geri gönderilir"
+          }
+        },
+        "required": [
+          "input",
+          "sessions",
+          "unresolved",
+          "covered",
+          "evaluatedStudents",
+          "summary",
+          "expectedPlan"
+        ],
+        "additionalProperties": false
+      },
+      "EvaluationPreview": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "examId": {
+                  "type": "string"
+                },
+                "studentId": {
+                  "type": "string"
+                },
+                "studentName": {
+                  "type": "string"
+                },
+                "subjectId": {
+                  "type": "string"
+                },
+                "booklet": {
+                  "type": "string"
+                },
+                "profileId": {
+                  "type": "string"
+                },
+                "keyRevision": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "correct": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "wrong": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "blank": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "multiple": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "cancelled": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "net": {
+                  "type": "number"
+                },
+                "topicScores": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "topic": {
+                        "type": "string"
+                      },
+                      "total": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "correct": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "percent": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "topic",
+                      "total",
+                      "correct",
+                      "percent"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "weakTopics": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "replaces": {
+                  "type": "boolean",
+                  "description": "Aynı sınav/öğrenci/ders sonucunun üzerine yazar"
+                }
+              },
+              "required": [
+                "examId",
+                "studentId",
+                "studentName",
+                "subjectId",
+                "booklet",
+                "profileId",
+                "keyRevision",
+                "correct",
+                "wrong",
+                "blank",
+                "multiple",
+                "cancelled",
+                "net",
+                "topicScores",
+                "weakTopics",
+                "replaces"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "rowCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "studentCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "replacesCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "rowCount",
+              "studentCount",
+              "replacesCount"
+            ],
+            "additionalProperties": false
+          },
+          "digest": {
+            "type": "string",
+            "description": "Önizlemenin SHA-256 özeti (hex); onay isteğinde `expectedDigest` olarak gönderilir"
+          }
+        },
+        "required": [
+          "rows",
+          "summary",
+          "digest"
         ],
         "additionalProperties": false
       },
@@ -12316,6 +13226,1830 @@
             }
           },
           "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessment/profile": {
+      "post": {
+        "operationId": "runAssessmentProfile",
+        "summary": "Optik profil ve cevap anahtarı oluştur veya güncelle",
+        "tags": [
+          "assessment"
+        ],
+        "description": "school-core `runAssessment('profile')`. Gövde core `automationSchemas` şemasıdır. Modül: `optical`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "examId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100
+                  },
+                  "format": {
+                    "type": "string",
+                    "enum": [
+                      "csv",
+                      "fixed"
+                    ]
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "enum": [
+                      "id",
+                      "number"
+                    ]
+                  },
+                  "headerLines": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10
+                  },
+                  "studentStart": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "studentLength": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "bookletStart": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "bookletLength": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "answersStart": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "answersLength": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 400
+                  },
+                  "keyCsv": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "examId",
+                  "title",
+                  "format",
+                  "identifier",
+                  "headerLines",
+                  "studentStart",
+                  "studentLength",
+                  "bookletStart",
+                  "bookletLength",
+                  "answersStart",
+                  "answersLength",
+                  "keyCsv"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessment/profile/{recordId}": {
+      "post": {
+        "operationId": "runAssessmentProfileUpdate",
+        "summary": "Optik profil ve cevap anahtarı oluştur veya güncelle",
+        "tags": [
+          "assessment"
+        ],
+        "description": "school-core `runAssessment('profile')`. Gövde core `automationSchemas` şemasıdır. Modül: `optical`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "examId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100
+                  },
+                  "format": {
+                    "type": "string",
+                    "enum": [
+                      "csv",
+                      "fixed"
+                    ]
+                  },
+                  "identifier": {
+                    "type": "string",
+                    "enum": [
+                      "id",
+                      "number"
+                    ]
+                  },
+                  "headerLines": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10
+                  },
+                  "studentStart": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "studentLength": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "bookletStart": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "bookletLength": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "answersStart": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "answersLength": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 400
+                  },
+                  "keyCsv": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "examId",
+                  "title",
+                  "format",
+                  "identifier",
+                  "headerLines",
+                  "studentStart",
+                  "studentLength",
+                  "bookletStart",
+                  "bookletLength",
+                  "answersStart",
+                  "answersLength",
+                  "keyCsv"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "description": "Komutun konusu: profil, uygunluk saati veya etüt kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessment/evaluate": {
+      "post": {
+        "operationId": "runAssessmentEvaluate",
+        "summary": "Okuyucu dosyasını değerlendir ve sonuçları kaydet",
+        "tags": [
+          "assessment"
+        ],
+        "description": "school-core `runAssessment('evaluate')`. Gövde core `automationSchemas` şemasıdır. Modül: `optical`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "expectedDigest": {
+                    "description": "Önizlemedeki `digest`. Güncel sonuç farklıysa hiçbir şey yazılmaz: 409 `evaluation_stale`",
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "profileId",
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessment/plan": {
+      "post": {
+        "operationId": "runAssessmentPlan",
+        "summary": "Etüt planını onayla",
+        "tags": [
+          "assessment"
+        ],
+        "description": "school-core `runAssessment('plan')`. Gövde core `automationSchemas` şemasıdır. Modül: `tutoring`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "examId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "threshold": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "fromDate": {
+                    "type": "string"
+                  },
+                  "toDate": {
+                    "type": "string"
+                  },
+                  "duration": {
+                    "type": "integer",
+                    "minimum": 15,
+                    "maximum": 120
+                  },
+                  "maxGroupSize": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 40
+                  },
+                  "branchId": {
+                    "default": "",
+                    "type": "string"
+                  },
+                  "subjectId": {
+                    "default": "",
+                    "type": "string"
+                  },
+                  "expectedPlan": {
+                    "description": "Önizlemedeki `expectedPlan` metni. Güncel plan farklıysa hiçbir şey yazılmaz: 409 `tutoring_plan_stale` ve `issues` içinde fark döner",
+                    "type": "string",
+                    "maxLength": 1048576
+                  }
+                },
+                "required": [
+                  "examId",
+                  "threshold",
+                  "fromDate",
+                  "toDate",
+                  "duration",
+                  "maxGroupSize"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessment/slot": {
+      "post": {
+        "operationId": "runAssessmentSlot",
+        "summary": "Öğretmen uygunluk saati ekle",
+        "tags": [
+          "assessment"
+        ],
+        "description": "school-core `runAssessment('slot')`. Gövde core `automationSchemas` şemasıdır. Modül: `tutoring`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "teacherId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "duration": {
+                    "type": "integer",
+                    "minimum": 15,
+                    "maximum": 120
+                  }
+                },
+                "required": [
+                  "teacherId",
+                  "date",
+                  "duration"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessment/slot-remove/{recordId}": {
+      "post": {
+        "operationId": "runAssessmentSlotRemove",
+        "summary": "Öğretmen uygunluk saatini kaldır",
+        "tags": [
+          "assessment"
+        ],
+        "description": "school-core `runAssessment('slot-remove')`. Gövde core `automationSchemas` şemasıdır. Modül: `tutoring`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "description": "Gövdesiz komut"
+              }
+            }
+          },
+          "description": "Gövdesiz komut"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "description": "Komutun konusu: profil, uygunluk saati veya etüt kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessment/cancel/{recordId}": {
+      "post": {
+        "operationId": "runAssessmentCancel",
+        "summary": "Etüdü gerekçeyle iptal et",
+        "tags": [
+          "assessment"
+        ],
+        "description": "school-core `runAssessment('cancel')`. Gövde core `automationSchemas` şemasıdır. Modül: `tutoring`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "description": "Komutun konusu: profil, uygunluk saati veya etüt kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessment/attendance/{recordId}": {
+      "post": {
+        "operationId": "runAssessmentAttendance",
+        "summary": "Etüt yoklaması al",
+        "tags": [
+          "assessment"
+        ],
+        "description": "school-core `runAssessment('attendance')`. Gövde core `automationSchemas` şemasıdır. Modül: `tutoring`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`. Yazma yalnız `yonetici` ve `ogretmen` (öğretmen kendi kapsamında; cevap anahtarı yalnız yönetici); diğer roller 403 `permission_denied`. Yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "marks": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "enum": [
+                        "Geldi",
+                        "Gelmedi",
+                        "İzinli"
+                      ]
+                    },
+                    "description": "Etüt öğrencisi → durum; bütün etüt öğrencileri ve yalnız onlar"
+                  }
+                },
+                "required": [
+                  "marks"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "description": "Komutun konusu: profil, uygunluk saati veya etüt kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessment/plan/preview": {
+      "post": {
+        "operationId": "previewAssessmentPlan",
+        "summary": "Etüt planını önizle",
+        "tags": [
+          "assessment"
+        ],
+        "description": "Etüt planını güncel veriyle hesaplar (core `planTutoring`) ve **hiçbir şey yazmaz** (transaction geri alınır; kayıt, sürüm ve denetim kaydı değişmez). Yanıt: önerilen etütler (`sessions`, kapasite ile), yerleşemeyen gruplar ve nedenleri (`unresolved`: öğretmen, derslik, uygunluk, kapasite ve çakışma uyarıları), zaten karşılanan kazanımlar (`covered`) ve onayda geri gönderilecek `expectedPlan`. Onay (`POST /assessment/plan`) planı yeniden hesaplar; fark varsa 409 `tutoring_plan_stale`. Roller core `runAssessment` ile aynıdır: `yonetici`, `ogretmen`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "examId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "threshold": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "fromDate": {
+                    "type": "string"
+                  },
+                  "toDate": {
+                    "type": "string"
+                  },
+                  "duration": {
+                    "type": "integer",
+                    "minimum": 15,
+                    "maximum": 120
+                  },
+                  "maxGroupSize": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 40
+                  },
+                  "branchId": {
+                    "default": "",
+                    "type": "string"
+                  },
+                  "subjectId": {
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "examId",
+                  "threshold",
+                  "fromDate",
+                  "toDate",
+                  "duration",
+                  "maxGroupSize"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TutoringPlanPreview"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessment/evaluate/preview": {
+      "post": {
+        "operationId": "previewAssessmentEvaluation",
+        "summary": "Okuyucu dosyasını önizle",
+        "tags": [
+          "assessment"
+        ],
+        "description": "Okuyucu dosyasını (CSV/DAT/TXT, en çok 1 MB; aşarsa 413) profile göre değerlendirir (core `previewOptical`) ve **hiçbir şey yazmaz**. Yanıt öğrenci/ders başına doğru, yanlış, boş, çoklu, iptal, net, zayıf kazanımlar ve üzerine yazılacak sonuç işaretidir (soru bazında ayrıntı yok) ile onayda `expectedDigest` olarak gönderilecek `digest`. Dosya hatası 422 ve `issues`: yol `[\"text\",\"line\",<satır>]`, satır dosya satırıdır (başlık 1).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "profileId",
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/EvaluationPreview"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
             "description": "Default Response",
             "content": {
               "application/json": {

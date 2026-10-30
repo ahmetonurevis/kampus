@@ -41,7 +41,7 @@ import { useManagementLookups } from './use-management-lookups.ts'
 
 // Sunucu listesi yapılandırması: hangi sütun sunucuda sıralanır, hangi filtre hangi alana gider.
 const CLASS_LIST = {
-  sortFields: { name: 'name' },
+  sortFields: { name: 'name', branch: 'branchName' },
   filterFields: { branchId: 'branchId', grade: 'grade' },
 } satisfies CollectionListConfig
 const CLASS_URL_FILTERS = { branchId: 'kampus', grade: 'duzey', archive: 'durum' }
@@ -65,13 +65,14 @@ const ALL = 'all'
  * TODO(D1b2): "Kampüs ekle", "Sınıf ekle", düzenle/arşivle yazma uçlarıyla eklenir.
  * "Aktif kayıtlar / Arşiv" sekmesi (`?durum=arsiv`) sınıf tablosunda sunucu `isActive` filtresidir;
  * kampüs kartları aynı sekmeyle başvuru koleksiyonundan süzülür.
- * TODO(api-aggregate): Vue'daki "Ortalama" sütunu not verisinden hesaplanır; toplu uç gelince.
- * TODO(api-search-joined): arama yalnız sınıfın kendi alanlarında çalışır; kampüs adıyla sınıf
- * aranamaz (Vue'da aranabilir) — ilişkili ad araması API'de gelince eklenir.
+ * Arama sunucuda sınıfın alanlarında ve kampüs adında (`q`), kampüs sütunu kampüs adına göre
+ * (`branchName`) sıralanır. Öğrenci sayıları `counts?groupBy=classId` yanıtındandır.
+ * TODO(api-aggregate): Vue'daki "Ortalama" sütunu notlardan hesaplanır (`grades` sayımı
+ * `groupBy=classId&sum=score`); sütun ayrı görevde eklenir.
  */
 export function CampusesPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
-  const data = useManagementLookups({ students: true })
+  const data = useManagementLookups({ studentCounts: true })
   const { lookups, sources } = data
   const allCampuses = useMemo(() => campusSummaries(sources, lookups), [sources, lookups])
 

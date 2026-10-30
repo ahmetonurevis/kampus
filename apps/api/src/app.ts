@@ -151,7 +151,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
     origin: config.CORS_ORIGINS,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-    exposedHeaders: ['x-request-id', 'retry-after'],
+    exposedHeaders: ['x-request-id', 'retry-after', 'idempotent-replayed'],
   })
   await app.register(cookie)
   await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' })

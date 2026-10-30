@@ -9,11 +9,12 @@ import { DomainError } from '@kampus/school-core/lib/errors.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
+import { tryLockIdempotencyKey } from '../src/db/idempotency.ts'
 import { lockInstitution, writeRecords } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
-import { runOperation, type OperationTools } from '../src/services/operation-runner.ts'
+import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, FIXED_NOW } from './support/app.ts'
 import { createPgDatabase, PG_SKIP } from './support/pg.ts'
 
@@ -269,6 +270,54 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     assert.ok(victim.reason instanceof AppError, String(victim.reason))
     assert.equal(victim.reason.statusCode, 409)
     assert.equal(victim.reason.code, 'conflict')
+  })
+
+  test('aynı Idempotency-Key ile süren istek varken ikincisi 409 idempotency_in_progress', async () => {
+    const ctx = await context()
+    const idem = { key: 'test-key-pg-0001', fingerprint: 'f' }
+    const held = gate()
+    const release = gate()
+    const holder = db.transaction(async (tx) => {
+      assert.equal(
+        await tryLockIdempotencyKey(tx, ctx.institutionId, ctx.actor.userId, idem.key),
+        true,
+      )
+      held.open()
+      await release.opened
+    })
+    await held.opened
+    try {
+      await assert.rejects(
+        runCommand(ctx, request, () => ({ statusCode: 200, body: {} }), idem),
+        (error: unknown) =>
+          error instanceof AppError &&
+          error.statusCode === 409 &&
+          error.code === 'idempotency_in_progress',
+      )
+    } finally {
+      release.open()
+      await holder
+    }
+    assert.equal(await attendanceCount(ctx.institutionId), 0)
+  })
+
+  test('aynı Idempotency-Key ile eşzamanlı iki istek: biri yazar, öteki süren istek veya tekrar', async () => {
+    const ctx = await context()
+    const idem = { key: 'test-key-pg-0002', fingerprint: 'f' }
+    const respond = () => ({ statusCode: 200, body: { data: 'ok' } })
+    const outcomes = await Promise.allSettled([
+      runCommand(ctx, request, respond, idem),
+      runCommand(ctx, request, respond, idem),
+    ])
+    const fulfilled = outcomes.filter((item) => item.status === 'fulfilled')
+    assert.ok(fulfilled.length >= 1)
+    for (const item of outcomes)
+      if (item.status === 'rejected')
+        assert.ok(
+          item.reason instanceof AppError && item.reason.code === 'idempotency_in_progress',
+          String(item.reason),
+        )
+    assert.equal(await attendanceCount(ctx.institutionId), 1)
   })
 
   test('farklı kurumların işlemleri birbirini beklemez', async () => {

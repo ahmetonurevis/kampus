@@ -145,6 +145,7 @@ Zorunlu uçlar: ödeme/tahsilat kaydı, iade, taksit planı oluşturma, sözleş
 | Aynı anahtar + farklı gövde            | 422 `idempotency_key_reused`                            |
 
 - Anahtarlar 24 saat saklanır, sonra temizlenir. Doğrulama hatası (4xx) saklanmaz; aynı anahtarla düzeltilmiş istek gönderilebilir.
+- Uygulama: `runCommand` (`apps/api/src/services/operation-runner.ts`) anahtar başına danışma kilidini `try` ile alır (alınamazsa 409 `idempotency_in_progress`), sonra kurum kilidini alır, saklanan yanıtı arar, işlemi çalıştırır ve yanıtı aynı transaction'da yazar. Yalnız 2xx yanıt saklanır; özet kanonik gövdedendir (anahtar sırası önemsizdir). Süresi dolan satır sorguda yok sayılır ve `purgeExpiredIdempotencyKeys` ile silinir.
 - Anahtar iş kuralının yerini almaz: aynı taksitin iki kez ödenmesi school-core'da ayrıca engellenir.
 
 ## 8. Sürümleme

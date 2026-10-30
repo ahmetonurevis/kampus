@@ -16,6 +16,7 @@ export default [
       'apps/mobile/android/**',
       'apps/mobile/ios/**',
       'apps/mobile/.expo/**',
+      '.claude/worktrees/**',
     ],
   },
   js.configs.recommended,

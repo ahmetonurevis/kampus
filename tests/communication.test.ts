@@ -369,7 +369,7 @@ test('DOM-ILT-004: düzeltme önceki içeriği geçmişte tutar; yalnız yayınl
   assert.equal(front.title, 'Servis saatleri')
 })
 
-test('DOM-ILT-004: geri çekilen duyuru alıcılara görünmez; yayınlayan ve yönetici görür', () => {
+test('DOM-ILT-004: geri çekilen duyuru alıcılara "Geri çekildi" olarak görünür; metni yalnız yayınlayan ve yöneticide', () => {
   const state = seed()
   const own = publishAnnouncement(state, people.ogretmen, announcement(), id, now)
   unchangedOnFailure(
@@ -381,10 +381,27 @@ test('DOM-ILT-004: geri çekilen duyuru alıcılara görünmez; yayınlayan ve y
   withdrawAnnouncement(state, people.ogretmen, own.id, { reason: 'Tarih yanlış yazıldı' }, later)
   assert.equal(own.withdrawnAt, later)
   assert.ok(state.announcements.includes(own))
-  assert.ok(!visibleIds(state, people.veli).has(own.id))
-  assert.ok(!visibleIds(state, people.onburo).has(own.id))
-  assert.ok(visibleIds(state, people.ogretmen).has(own.id))
-  assert.ok(visibleIds(state, people.yonetici).has(own.id))
+  const viewOf = (by: Participant) =>
+    visibleRecords(state, by, 'announcements').find((a) => a.id === own.id) as
+      Record<string, unknown> | undefined
+  // Alıcı ve ön büro işareti, başlığı ve kategoriyi görür; metni ve gerekçeyi görmez.
+  for (const by of [people.veli, people.onburo]) {
+    const view = viewOf(by)
+    assert.ok(view)
+    assert.equal(view.withdrawnAt, later)
+    assert.equal(view.title, own.title)
+    assert.equal(view.category, own.category)
+    for (const key of ['text', 'withdrawReason', 'withdrawnBy', 'revisions', 'reads', 'recipients'])
+      assert.ok(!(key in view), key)
+  }
+  // Alıcı olmayan yine görmez.
+  assert.ok(!viewOf(parentOf(onlyClass(state, 'c12'))))
+  for (const by of [people.ogretmen, people.yonetici]) {
+    const view = viewOf(by)
+    assert.ok(view)
+    assert.equal(view.text, own.text)
+    assert.equal(view.withdrawReason, 'Tarih yanlış yazıldı')
+  }
   unchangedOnFailure(
     state,
     'announcements',
@@ -399,8 +416,24 @@ test('DOM-ILT-004: geri çekilen duyuru alıcılara görünmez; yayınlayan ve y
   )
   assert.throws(
     () => markAnnouncementRead(state, people.veli, own.id, later),
-    isDomainError('announcement_not_found', 'not_found'),
+    isDomainError('announcement_withdrawn', 'conflict'),
   )
+})
+
+test('DOM-ILT-004: geri çekilen eski duyurunun (alıcı listesi yok) metni de yalnız yetkiliye döner', () => {
+  const state = seed()
+  const legacy = state.announcements.find((a) => a.classId === null)!
+  withdrawAnnouncement(state, people.yonetici, legacy.id, { reason: 'Etkinlik ertelendi' }, later)
+  const view = visibleRecords(state, people.veli, 'announcements').find(
+    (a) => a.id === legacy.id,
+  ) as Record<string, unknown>
+  assert.equal(view.withdrawnAt, later)
+  assert.equal(view.title, legacy.title)
+  assert.ok(!('text' in view) && !('withdrawReason' in view))
+  const admin = visibleRecords(state, people.yonetici, 'announcements').find(
+    (a) => a.id === legacy.id,
+  ) as Record<string, unknown>
+  assert.equal(admin.text, legacy.text)
 })
 
 test('DOM-ILT-003: okundu bilgisi ilk açılış anıdır; tekrar çağrı kaydı değiştirmez', () => {

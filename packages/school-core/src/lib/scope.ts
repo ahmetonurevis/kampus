@@ -249,8 +249,9 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
   videos: { ...ADMIN, ogretmen: all, ogrenci: ownLevel, veli: ownLevel },
   videoProgress: { ...ADMIN, ogretmen: ownStudent, ...PERSONAL },
   materials: { ...ADMIN, ogretmen: all, ogrenci: ownLevel, veli: ownLevel },
-  // Yayında çözülen alıcı listesi varsa yalnız alıcılar ve yayınlayan, geri çekileni yalnız
-  // yayınlayan ve yönetici görür; listesi olmayan eski kayıt sınıfa özel veya genel kalır
+  // Yayında çözülen alıcı listesi varsa yalnız alıcılar ve yayınlayan görür; geri çekilen
+  // duyuru alıcılara "Geri çekildi" olarak görünür, metnini yalnız yayınlayan ve yönetici alır;
+  // listesi olmayan eski kayıt sınıfa özel veya genel kalır
   // (DOM-ILT-001, DOM-ILT-004; lib/communication-access.ts).
   announcements: {
     yonetici: announcementRule(all),

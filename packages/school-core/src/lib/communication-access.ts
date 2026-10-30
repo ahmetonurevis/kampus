@@ -175,15 +175,15 @@ function privileged(viewer: AnnouncementViewer, row: object) {
 
 /**
  * Duyuru görünürlüğü (DOM-ILT-001, -004). Alıcı listesi olan duyuruyu alıcılar, yayınlayan,
- * yönetici ve ön büro görür; geri çekileni yalnız yayınlayan ve yönetici. Alıcı listesi olmayan
- * eski kayıtta karar `legacy` kuralınındır (sınıfa özel veya genel).
+ * yönetici ve ön büro görür. Geri çekilen duyuru aynı kişilere "Geri çekildi" olarak görünmeye
+ * devam eder; içeriğini `narrowAnnouncement` yalnız yayınlayan ve yöneticiye bırakır. Alıcı
+ * listesi olmayan eski kayıtta karar `legacy` kuralınındır (sınıfa özel veya genel).
  */
 export function announcementVisible(
   viewer: AnnouncementViewer,
   row: object,
   legacy: () => boolean,
 ): boolean {
-  if (textOf(row, 'withdrawnAt') !== undefined) return privileged(viewer, row)
   const recipients = recipientsOf(row)
   if (!recipients) return legacy()
   if (privileged(viewer, row) || viewer.role === 'onburo') return true
@@ -194,12 +194,18 @@ export function announcementVisible(
 export const ANNOUNCEMENT_HIDDEN_FIELDS: readonly string[] = ['reads', 'recipients']
 // Yalnız yayınlayan ve yöneticinin gördüğü alanlar.
 const PRIVILEGED_FIELDS = ['revisions', 'withdrawReason', 'withdrawnBy']
+/**
+ * Geri çekilen duyuruda alıcıdan ayıklanan içerik (DOM-ILT-004). Başlık, kategori, tarih ve
+ * `withdrawnAt` kalır: alıcı hangi duyurunun geri çekildiğini görür, metnini görmez.
+ */
+export const WITHDRAWN_CONTENT_FIELDS: readonly string[] = ['text']
 
 /**
  * Duyurunun role göre biçimi: yönetici ve yayınlayan okundu ve alıcı sayısını
  * (`readCount`, `recipientCount`), diğer okuyucular kendi ilk açılış anını (`myReadAt`) alır;
  * düzeltme geçmişi, geri çekme gerekçesi ve yayınlayanın kişi kimliği yalnız yetkiliye döner.
- * Eski kayıt (alıcı listesi yok) değişmeden döner.
+ * Geri çekilen duyurunun metni (`WITHDRAWN_CONTENT_FIELDS`) yetkili olmayana dönmez
+ * (DOM-ILT-004). Geri çekilmemiş eski kayıt (alıcı listesi yok) değişmeden döner.
  */
 export function narrowAnnouncement(
   viewer: AnnouncementViewer,
@@ -207,24 +213,27 @@ export function narrowAnnouncement(
   copy: Record<string, unknown>,
 ): Record<string, unknown> {
   const recipients = recipientsOf(original)
-  if (!recipients) return copy
+  const withdrawn = textOf(original, 'withdrawnAt') !== undefined
+  if (!recipients && !withdrawn) return copy
   const value = field(original, 'reads')
   const reads: Record<string, unknown> =
     typeof value === 'object' && value !== null ? Object.fromEntries(Object.entries(value)) : {}
   if (privileged(viewer, original))
-    return {
-      ...copy,
-      readCount: Object.keys(reads).length,
-      recipientCount: recipientCount(recipients),
-    }
+    return recipients
+      ? {
+          ...copy,
+          readCount: Object.keys(reads).length,
+          recipientCount: recipientCount(recipients),
+        }
+      : copy
+  const hidden = withdrawn ? [...PRIVILEGED_FIELDS, ...WITHDRAWN_CONTENT_FIELDS] : PRIVILEGED_FIELDS
+  const narrowed = Object.fromEntries(Object.entries(copy).filter(([key]) => !hidden.includes(key)))
+  if (!recipients) return narrowed
   const mine = readerKeysFor(viewer, recipients)
     .map((key) => reads[key])
     .filter((at): at is string => typeof at === 'string')
     .sort()
   const publisher = publisherOf(original)
-  const narrowed = Object.fromEntries(
-    Object.entries(copy).filter(([key]) => !PRIVILEGED_FIELDS.includes(key)),
-  )
   return {
     ...narrowed,
     ...(publisher ? { publishedBy: { role: publisher.role } } : {}),

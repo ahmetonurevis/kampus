@@ -4,7 +4,7 @@ import { after, before, describe, test } from 'node:test'
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
-import type { CollectionName } from '../src/db/collections.ts'
+import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import {
   buildTestApp,
@@ -33,6 +33,9 @@ const VIA_STUDENT = [
   'transportAssignments',
   'clubMemberships',
   'socialAchievements',
+  'clubAttendance',
+  'opticalEvaluations',
+  'videoProgress',
 ] as const satisfies readonly CollectionName[]
 
 /** Örnek veride boş olan koleksiyonlar için elle kayıtlar (`studentId` var, `classId` yok). */
@@ -44,6 +47,15 @@ const MANUAL: Partial<Record<CollectionName, Record<string, unknown>[]>> = {
   eventConsents: [
     { id: 'test-cons-s2', studentId: 's2', eventId: 'ev1', parentId: 'p1', consent: true },
     { id: 'test-cons-s3', studentId: 's3', eventId: 'ev1', parentId: 'p3', consent: false },
+  ],
+  videoProgress: [{ studentId: 's3', videoId: 'v1', progress: 50 }],
+  clubAttendance: [
+    { id: 'test-att-s1', clubId: 'club1', studentId: 's1', date: '2026-09-01', status: 'Geldi' },
+    { id: 'test-att-s2', clubId: 'club1', studentId: 's2', date: '2026-09-01', status: 'Geldi' },
+  ],
+  opticalEvaluations: [
+    { id: 'test-opt-s1', examId: 'e1', studentId: 's1', subjectId: 'math', net: 10 },
+    { id: 'test-opt-s3', examId: 'e1', studentId: 's3', subjectId: 'math', net: 8 },
   ],
   // Kendi `classId` alanı olanlar: süzgeç kaydın alanıdır, öğrencinin sınıfı değil.
   contracts: [
@@ -65,7 +77,11 @@ const classOf = (studentId: unknown) =>
 function extraRows() {
   const names = [...VIA_STUDENT, 'contracts', 'enrollmentHistory'] as const
   return names.flatMap((collection) =>
-    dataset(collection).map((data) => ({ collection, id: String(data.id), data })),
+    dataset(collection).map((data) => ({
+      collection,
+      id: String(recordKey(collection, data)),
+      data,
+    })),
   )
 }
 
@@ -106,7 +122,7 @@ describe('classId süzgeci: öğrenciye bağlı koleksiyonlar', () => {
   const expected = (collection: CollectionName, ...classIds: string[]) =>
     dataset(collection)
       .filter((row) => classIds.includes(String(classOf(row.studentId))))
-      .map((row) => String(row.id))
+      .map((row) => String(recordKey(collection, row)))
       .sort()
 
   for (const collection of VIA_STUDENT) {
@@ -199,5 +215,79 @@ describe('classId süzgeci: öğrenciye bağlı koleksiyonlar', () => {
       (counts.json().data as { value: string; count: number }[]).filter((g) => g.value === 'c2'),
       [{ value: 'c2', count: 2 }],
     )
+  })
+
+  describe('not: kaydın kendi sınıfı ve kapsam dışı öğrenci (DOM-YTK-022)', () => {
+    /** `studentId` öğrencisine, başka sınıfta verilmiş (kaydında `classId` olan) Türkçe notu. */
+    const givenIn = (id: string, studentId: string, classId: string) => {
+      const base = SEED.grades.find((x) => x.studentId === studentId && x.subjectId === 'turkish')
+      assert.ok(base, 'örnek verideki Türkçe not')
+      return { collection: 'grades' as const, id, data: { ...base, id, classId, score: 77 } }
+    }
+    async function withGrades(extra: ReturnType<typeof givenIn>[]) {
+      const created = await createInstitution(app)
+      await insertMissingRecords(db, created.id, [...sampleRows(), ...extra], FIXED_NOW)
+      return {
+        ...created,
+        adminCookie: await signInAs(app, created.admin),
+        t2: await member(created.id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }]),
+      }
+    }
+    const groupsOf = async (cookie: string) => {
+      const response = await get('/api/v1/collections/grades/counts?groupBy=classId', cookie)
+      assert.equal(response.statusCode, 200, response.body)
+      return (response.json().data as { value: string | null; count: number }[]).map(
+        (group) => group.value,
+      )
+    }
+
+    test('kapsam dışı öğrencinin güncel sınıfı süzgeçte ve gruplamada görünmez', async () => {
+      // s11, t2'nin sınıfları dışında bir sınıftadır; nota c1'de verilmiştir (t2 kapsamındaki sınıf).
+      const outClass = String(classOf('s11'))
+      assert.ok(!['c1', 'c2', 'c3'].includes(outClass))
+      const moved = givenIn('test-g-s11-in-c1', 's11', 'c1')
+      const { adminCookie, t2 } = await withGrades([moved])
+      assert.equal((await get('/api/v1/collections/students/s11', t2)).statusCode, 404)
+      // Not kendi sınıfı (c1) yüzünden okunur; öğrencinin başka sınıfı hiçbir yoldan çıkmaz.
+      assert.ok((await idsOf(t2, 'grades')).includes(moved.id))
+      assert.deepEqual(await idsOf(t2, 'grades', `classId=${outClass}`), [])
+      assert.ok((await idsOf(t2, 'grades', 'classId=c1')).includes(moved.id))
+      const groups = await groupsOf(t2)
+      assert.ok(!groups.includes(outClass), `kapsam dışı sınıf gruplamada: ${groups.join()}`)
+      assert.ok(groups.includes('c1'))
+      // Yönetici davranışı değişmez: öğrencinin güncel sınıfı ve kaydın sınıfı birlikte görünür.
+      assert.ok((await idsOf(adminCookie, 'grades', `classId=${outClass}`)).length > 0)
+      assert.ok(!(await idsOf(adminCookie, 'grades', `classId=${outClass}`)).includes(moved.id))
+      assert.ok((await groupsOf(adminCookie)).includes(outClass))
+    })
+
+    test('classId süzgeci ve gruplaması notun kendi sınıfını kullanır; sınıfsız not öğrencinin sınıfına düşer', async () => {
+      // s1 c1'dedir; nota c3'te verilmiştir.
+      const moved = givenIn('test-g-s1-in-c3', 's1', 'c3')
+      const { adminCookie, t2 } = await withGrades([moved])
+      for (const cookie of [adminCookie, t2]) {
+        assert.ok((await idsOf(cookie, 'grades')).includes(moved.id))
+        assert.ok((await idsOf(cookie, 'grades', 'classId=c3')).includes(moved.id))
+        assert.ok(!(await idsOf(cookie, 'grades', 'classId=c1')).includes(moved.id))
+        assert.ok(!(await idsOf(cookie, 'grades', 'classId=c1&classId=c2')).includes(moved.id))
+        assert.ok(
+          (await idsOf(cookie, 'grades', 'classId=c1&classId=c3')).includes(moved.id),
+          'çoklu sınıf birleşimi',
+        )
+      }
+      // Sınıfsız (örnek veri) s1 notu öğrencinin güncel sınıfı c1'de görünür, c3'te görünmez.
+      const plain = SEED.grades.find((x) => x.studentId === 's1' && x.subjectId === 'math')
+      assert.ok(plain && !('classId' in plain))
+      const inC1 = await idsOf(adminCookie, 'grades', 'classId=c1')
+      assert.ok(inC1.includes(plain.id))
+      assert.ok(!(await idsOf(adminCookie, 'grades', 'classId=c3')).includes(plain.id))
+      // Sayım aynı kuralı izler: c3 grubunda yalnız kaydı c3 olan not ve s3'ün sınıfsız notları.
+      const counts = await get('/api/v1/collections/grades/counts?groupBy=classId', adminCookie)
+      const c3 = (counts.json().data as { value: string; count: number }[]).find(
+        (group) => group.value === 'c3',
+      )
+      const c3List = await idsOf(adminCookie, 'grades', 'classId=c3')
+      assert.equal(c3?.count, c3List.length)
+    })
   })
 })

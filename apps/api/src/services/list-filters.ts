@@ -185,6 +185,10 @@ export function matchesRecordFilter(record: RecordData, filter: RecordFilter): b
       return matchesDayRange(record, filter)
     case 'invoiceStatus':
       return matchesInvoiceStatus(record, filter)
+    case 'ownOrVia':
+      return record[filter.field] !== null && record[filter.field] !== undefined
+        ? matchesField(record, { field: filter.field, values: filter.values })
+        : matchesField(record, { field: filter.viaField, values: filter.viaValues })
     default:
       return filter satisfies never
   }

@@ -126,8 +126,28 @@ export const INVOICE_STATUS_LABELS: readonly InvoiceStatus[] = Object.values(
 )
 export type InvoiceStatusLabel = InvoiceStatus
 
+/**
+ * Kendi alanı varsa onunla, yoksa dolaylı alanla eşleşen süzgeç (ör. not: kaydında `classId` varsa
+ * o, yoksa öğrencinin sınıfından çözülen öğrenci kimlikleri). Alan "var" sayılması için değerin
+ * `null` olmaması yeter; dolu alan dolaylı alana bakmaz. Kesin koşuldur: bellekteki
+ * `matchesRecordFilter` ile aynı sonucu verir.
+ */
+export interface OwnOrViaMatch {
+  kind: 'ownOrVia'
+  field: string
+  values: readonly string[]
+  viaField: string
+  viaValues: readonly string[]
+}
+
 export type RecordFilter =
-  FieldMatch | AnyMatch | ActiveMatch | SetMatch | DayRangeMatch | InvoiceStatusMatch
+  | FieldMatch
+  | AnyMatch
+  | ActiveMatch
+  | SetMatch
+  | DayRangeMatch
+  | InvoiceStatusMatch
+  | OwnOrViaMatch
 
 /** Gün ve an biçimleri; SQL (`~`) ve bellek (`RegExp`) aynı metni kullanır. */
 export const DAY_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
@@ -187,6 +207,11 @@ function fieldMatch({ field, values }: FieldMatch): SQL {
   const text = sql`(${records.data} ->> ${field}::text)`
   const array = sql`jsonb_typeof(${records.data} -> ${field}::text) = 'array'`
   return values.length === 0 ? array : sql`(${inArray(text, [...values])} or ${array})`
+}
+
+function ownOrViaMatch({ field, values, viaField, viaValues }: OwnOrViaMatch): SQL {
+  const own = sql`(coalesce(${records.data} -> ${field}::text, 'null'::jsonb) <> 'null'::jsonb)`
+  return sql`((${own} and ${fieldMatch({ field, values })}) or (not ${own} and ${fieldMatch({ field: viaField, values: viaValues })}))`
 }
 
 function activeMatch({ field, active }: ActiveMatch): SQL {
@@ -260,6 +285,8 @@ export function recordFilter(filter: RecordFilter): SQL {
       return dayRangeMatch(filter)
     case 'invoiceStatus':
       return invoiceStatusMatch(filter)
+    case 'ownOrVia':
+      return ownOrViaMatch(filter)
     default:
       return filter satisfies never
   }

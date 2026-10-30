@@ -65,6 +65,10 @@ export type WriteTargets = {
   'request.open': { studentId: string }
   'request.update': Record<string, never>
   'absence.notify': { studentId: string }
+  // Randevu (`lib/appointments.ts`): talep hedef öğrenciyle; durum değişikliğinin kaydı ve
+  // aktörün o kayıttaki rolü (öğretmen, talep eden) işlemde denetlenir.
+  'appointment.book': { studentId: string }
+  'appointment.update': Record<string, never>
 }
 
 /** Yetki için gereken kaynak; not yetkisi ders atamasının dersini de okur. */
@@ -129,6 +133,11 @@ export const WRITE_ACTION_ROLES = {
   'request.update': ['yonetici', 'onburo'],
   // İzin ve mazereti veli bildirir (DOM-ILT-053); ön büro yoklama ve mazeret görmez (DOM-YTK-021).
   'absence.notify': ['veli'],
+  // Randevuyu veli bağlı çocuğu, öğrenci kendisi için talep eder; onay ve red ilgili
+  // öğretmenindir, geri çekme talep edenindir (DOM-ILT-100, -102). Yönetici ve ön büro yazmaz.
+  // TODO(randevu-yonetici-iptal): yöneticinin onaylı randevuyu iptal etmesi kural olarak yok.
+  'appointment.book': ['ogrenci', 'veli'],
+  'appointment.update': ['ogretmen', 'ogrenci', 'veli'],
 } as const satisfies Record<WriteAction, readonly Actor['role'][]>
 
 const ROLE_TABLE: Readonly<Record<WriteAction, readonly string[]>> = WRITE_ACTION_ROLES
@@ -299,11 +308,13 @@ function decide(
       return fromCommunication(accessDecision(request.target.reason, request.target.conversation))
     case 'request.open':
     case 'absence.notify':
+    case 'appointment.book':
       // Veli yalnız bağlı çocuğu için bildirir (DOM-YTK-025, DOM-ILT-053).
       return scope.studentIds.has(request.target.studentId)
         ? ALLOWED
         : deny('student_scope_denied', 'Bu öğrenci için işlem yetkiniz bulunmuyor.', 'DOM-YTK-025')
     case 'request.update':
+    case 'appointment.update':
       return ALLOWED
     default:
       return request satisfies never

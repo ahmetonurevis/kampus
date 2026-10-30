@@ -1,4 +1,5 @@
 import type { State } from '../data/seed.ts'
+import { appointmentHoldsTime } from './appointment-status.ts'
 
 // Süre verilmeyen kayıtlar 30 dakikalık sayılır.
 export type Interval = { date: string; duration?: number }
@@ -41,7 +42,7 @@ export function tutorConflict(
       return 'Derslik bu saatte kullanımda.'
   }
   for (const appointment of state.appointments.filter(
-    (a) => a.status !== 'Reddedildi' && intervalsOverlap(candidate, a),
+    (a) => appointmentHoldsTime(a) && intervalsOverlap(candidate, a),
   )) {
     if (appointment.teacherId === candidate.teacherId) return 'Öğretmenin bu saatte randevusu var.'
     if (students.has(appointment.studentId)) return 'Öğrencinin bu saatte randevusu var.'

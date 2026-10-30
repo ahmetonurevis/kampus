@@ -178,6 +178,10 @@ export const OPERATION_COMMANDS = {
   'request.open': spec('communication', [...SCOPE, 'requests']),
   'request.update': spec('communication', [...SCOPE, 'requests']),
   'absence.notify': spec('academic', [...SCOPE, 'absences']),
+  // Randevu (`lib/appointments.ts`): talep seçilen uygunluk saatini, onay ve talep çakışmayı
+  // okur (DOM-ILT-101). API talepte yalnız seçilen uygunluk saatini yükler.
+  'appointment.book': spec('communication', [...SCOPE, 'availability', ...CONFLICTS]),
+  'appointment.update': spec('communication', [...SCOPE, ...CONFLICTS]),
 } as const satisfies Record<string, CommandSpec>
 export type OperationCommand = keyof typeof OPERATION_COMMANDS
 

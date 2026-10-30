@@ -22,6 +22,7 @@ import type {
   ConversationMessageFields,
 } from '../lib/communication.ts'
 import type { AbsenceReasonCategory, RequestActor, RequestFields } from '../lib/requests.ts'
+import type { AppointmentFields } from '../lib/appointments.ts'
 export const topics = subjects.map((s) => s.name)
 
 // Örnek veri kendi içinde tutarlıdır; aranan kayıt yoksa üretici hatalıdır ve hemen durur.
@@ -917,8 +918,8 @@ type StatePatches = {
   announcements: (Item<'announcements'> & AnnouncementFields)[]
   conversations: (Patch<Item<'conversations'>, { lastMessageAt?: string }> & ConversationFields)[]
   conversationMessages: (Item<'conversationMessages'> & ConversationMessageFields)[]
-  // Randevu süresi dakikadır; eski kayıtlar taşımaz, çakışma denetimi 30 dakika varsayar.
-  appointments: (Item<'appointments'> & { duration?: number })[]
+  // Randevu işlemlerinin alanları (süre dakika); eski kayıtlar taşımaz (lib/appointments.ts).
+  appointments: (Item<'appointments'> & AppointmentFields)[]
   preferences: Record<string, unknown>
   // Okul iş akışı modülleri kayıttan eklenir; anahtar kümesi derleme anında sabit değildir.
   modules: Record<string, boolean>

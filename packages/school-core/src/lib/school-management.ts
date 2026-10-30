@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { subjectsForGrade, subjectById } from '../data/curriculum.ts'
 import type { State } from '../data/seed.ts'
 import { requiredText, type MakeId } from './domain.ts'
+import { appointmentHoldsTime } from './appointment-status.ts'
 import { tutorConflict, type Interval } from './tutor-conflicts.ts'
 import { DomainError } from './errors.ts'
 
@@ -239,7 +240,7 @@ export function saveClass(
     if (reason) throw new DomainError('tutor_schedule_conflict', reason, { kind: 'conflict' })
     const busy: Booked[] = [
       ...state.schedule.filter((l) => !l.cancelledAt),
-      ...state.appointments.filter((a) => a.status !== 'Reddedildi'),
+      ...state.appointments.filter(appointmentHoldsTime),
     ]
     if (
       busy.some(
@@ -585,7 +586,7 @@ export function archiveRecord(
       (l) => !l.cancelledAt && l.teacherId === recordId && l.date >= now,
     )
     const appointments = state.appointments.filter(
-      (a) => a.teacherId === recordId && a.date >= now && a.status !== 'Reddedildi',
+      (a) => a.teacherId === recordId && a.date >= now && appointmentHoldsTime(a),
     )
     const workflowRecords = [
       ...(state.guidanceCases || []).filter((g) => g.status !== 'Tamamlandı'),
@@ -619,7 +620,7 @@ export function archiveRecord(
       const incoming: Booked[] = [...future, ...appointments]
       const existing = [
         ...state.schedule.filter((l) => !l.cancelledAt),
-        ...state.appointments.filter((a) => a.status !== 'Reddedildi'),
+        ...state.appointments.filter(appointmentHoldsTime),
       ].filter((l) => l.teacherId === replacementId && l.date >= now)
       if (incoming.some((a) => existing.some((b) => overlaps(a, b))))
         throw new DomainError(

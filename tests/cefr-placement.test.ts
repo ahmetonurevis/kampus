@@ -1,8 +1,10 @@
 import test, { describe } from 'node:test'
 import assert from 'node:assert/strict'
 import { bandMeaning } from '../packages/school-core/src/skills/rubric.ts'
+import type { PrimarySkill } from '../packages/school-core/src/content/taxonomy.ts'
 import {
   PLACEMENT_ATTEMPTS_PER_TERM,
+  PLACEMENT_AUTO_SECTIONS,
   PLACEMENT_VALIDITY_DAYS,
   placementDecisionInputSchema,
   placementEvidence,
@@ -20,9 +22,10 @@ import {
   cefrTargetFor,
   planCefrTargets,
 } from '../packages/school-core/src/cefr/targets.ts'
-import type {
-  EvidenceCandidate,
-  EvidenceResult,
+import {
+  suggestCefrLevels,
+  type EvidenceCandidate,
+  type EvidenceResult,
 } from '../packages/school-core/src/cefr/suggestion.ts'
 import { isDomainError } from './support/domain-error.ts'
 
@@ -253,16 +256,122 @@ describe('bölüm sonuçları ve öneri (DOM-DIL-010)', () => {
     assert.deepEqual(placementEvidence(session({ completedAt: null }), sections()), [])
   })
 
-  test('DOM-DIL-010 DOM-BEC-032 tek oturum aynı gündedir; adayda öneri yetersiz kanıttır', () => {
-    const summary = placementSummary({ session: session(), sections: sections(), now })
+  const levelOf = (summary: ReturnType<typeof placementSummary>, skill: PrimarySkill) => {
+    const s = summary.suggestion.skills[skill]
+    return s.status === 'suggested' ? s.level : null
+  }
+  const passing = () => sections({ listening: { result: auto(0.8) } })
+
+  test('DOM-DIL-010 tespit eşiği: her tamamlanmış bölüm bir kanıt, farklı gün aranmaz', () => {
+    const summary = placementSummary({ session: session(), sections: passing(), now })
     assert.equal(summary.preliminary, false)
     assert.equal(summary.validity.status, 'valid')
+    assert.equal(summary.suggestion.context, 'placement')
     assert.equal(summary.suggestion.evidence.length, 5)
-    assert.equal(summary.suggestion.skills.writing.status, 'insufficient')
+    for (const skill of ['language_use', 'reading', 'listening', 'writing', 'speaking'] as const)
+      assert.equal(levelOf(summary, skill), 'B1')
+    const writing = summary.suggestion.skills.writing
+    assert.equal(writing.levels[0]?.demonstratedBy, 'placement')
+    assert.equal(writing.levels[0]?.days, 1)
+    assert.deepEqual(summary.suggestion.overall, { status: 'suggested', level: 'B1' })
+    assert.deepEqual([...PLACEMENT_AUTO_SECTIONS], ['language_use', 'reading', 'listening'])
+  })
+
+  test('DOM-DIL-010 başarısız bölüm o beceriyi gösterir saymaz; genel öneri çıkmaz', () => {
+    // Dinleme %60: tek bölümde başarı payı 2/3 değil.
+    const summary = placementSummary({ session: session(), sections: sections(), now })
+    assert.equal(levelOf(summary, 'reading'), 'B1')
+    const listening = summary.suggestion.skills.listening
+    assert.equal(listening.status, 'insufficient')
+    assert.equal(listening.levels[0]?.demonstratedBy, null)
+    // Eksik kanıt genel eşiğe göredir; yeni kanıt görevden gelir.
+    assert.equal(listening.status === 'insufficient' && listening.missingEvidence, 2)
     assert.deepEqual(summary.suggestion.overall, {
+      status: 'insufficient',
+      missingSkills: ['listening'],
+    })
+  })
+
+  test('DOM-DIL-010 otomatik bölüm tamamlanmamışsa genel öneri çıkmaz, beceri önerileri çıkar', () => {
+    const cases = [
+      passing().filter((row) => row.section !== 'language_use'),
+      sections({ listening: { result: auto(0.8) }, language_use: { result: null } }),
+      sections({ listening: { result: auto(0.8) }, language_use: { appealPending: true } }),
+      sections({ listening: { result: auto(0.8) }, language_use: { targetLevel: null } }),
+    ]
+    for (const rows of cases) {
+      const summary = placementSummary({ session: session(), sections: rows, now })
+      assert.deepEqual(summary.suggestion.overall, {
+        status: 'insufficient',
+        missingSkills: ['language_use'],
+      })
+      assert.equal(levelOf(summary, 'reading'), 'B1')
+      assert.equal(levelOf(summary, 'speaking'), 'B1')
+    }
+    const noReading = placementSummary({
+      session: session(),
+      sections: passing().filter((row) => row.section !== 'reading'),
+      now,
+    })
+    assert.deepEqual(noReading.suggestion.overall, {
+      status: 'insufficient',
+      missingSkills: ['reading'],
+    })
+  })
+
+  test('DOM-DIL-010 yazma veya konuşma puanlanmamışsa yalnız o becerinin önerisi çıkmaz', () => {
+    const summary = placementSummary({
+      session: session(),
+      sections: sections({ listening: { result: auto(0.8) }, writing: { result: null } }),
+      now,
+    })
+    assert.equal(summary.suggestion.skills.writing.status, 'insufficient')
+    for (const skill of ['language_use', 'reading', 'listening', 'speaking'] as const)
+      assert.equal(levelOf(summary, skill), 'B1')
+    // Genel öneri DOM-BEC-033 gereği dört beceriyi ister.
+    assert.deepEqual(summary.suggestion.overall, {
+      status: 'insufficient',
+      missingSkills: ['writing'],
+    })
+  })
+
+  test('DOM-DIL-010 DOM-BEC-032 tespitte de okuma ve dinlemede en az 10 madde gerekir', () => {
+    const summary = placementSummary({
+      session: session(),
+      sections: sections({ listening: { result: auto(0.8) }, reading: { result: auto(0.8, 9) } }),
+      now,
+    })
+    const reading = summary.suggestion.skills.reading
+    assert.equal(reading.status === 'insufficient' && reading.missingItems, 1)
+    assert.equal(levelOf(summary, 'listening'), 'B1')
+  })
+
+  test('DOM-DIL-010 tespit eşiği yalnız tespit bağlamında; genel öneri değişmez', () => {
+    const candidates = placementEvidence(session(), passing())
+    const general = suggestCefrLevels({ candidates, now })
+    assert.equal(general.context, 'general')
+    assert.equal(general.skills.writing.status, 'insufficient')
+    assert.deepEqual(general.overall, {
       status: 'insufficient',
       missingSkills: ['reading', 'listening', 'writing', 'speaking'],
     })
+  })
+
+  test('DOM-DIL-010 tespit oturumu kanıtı yalnız tespit kaynaklı olabilir', () => {
+    const [first] = placementEvidence(session(), passing())
+    assert.throws(
+      () =>
+        suggestCefrLevels({
+          candidates: [{ ...first!, source: 'task' }],
+          now,
+          context: {
+            kind: 'placement',
+            sessionTaskIds: [first!.taskId],
+            requiredSkills: PLACEMENT_AUTO_SECTIONS,
+          },
+        }),
+      isDomainError('placement_evidence_mismatch', 'conflict'),
+    )
   })
 
   test('DOM-DIL-011 DOM-BEC-031 uzaktan tespitin bölümleri kanıt sayılmaz', () => {
@@ -277,6 +386,10 @@ describe('bölüm sonuçları ve öneri (DOM-DIL-010)', () => {
       [...new Set(summary.suggestion.excluded.map((e) => e.reason))],
       ['preliminary'],
     )
+    assert.deepEqual(summary.suggestion.overall, {
+      status: 'insufficient',
+      missingSkills: ['reading', 'listening', 'writing', 'speaking', 'language_use'],
+    })
   })
 
   test('DOM-DIL-010 öğrencide tespit ve görev kanıtı birlikte öneri verir', () => {
@@ -301,6 +414,36 @@ describe('bölüm sonuçları ve öneri (DOM-DIL-010)', () => {
     })
     const writing = summary.suggestion.skills.writing
     assert.equal(writing.status === 'suggested' && writing.level, 'B1')
+    // Üç kanıt, üç gün: genel eşik karşılanır, tespit eşiğine gerek kalmaz.
+    assert.equal(writing.levels[0]?.demonstratedBy, 'general')
+  })
+
+  test('DOM-DIL-010 başarısız görev kanıtı aynı seviyede tespit yolunu kapatır', () => {
+    const failedTask = (days: number): EvidenceCandidate => ({
+      id: `test-task-f${days}`,
+      taskId: `test-task-f${days}`,
+      title: 'Yazma görevi',
+      source: 'task',
+      kind: 'evaluation',
+      preliminary: false,
+      skill: 'writing',
+      targetLevel: 'B1',
+      performedAt: ago(days),
+      appealPending: false,
+      result: rubric(2),
+    })
+    const summarize = (otherEvidence: EvidenceCandidate[]) =>
+      placementSummary({
+        session: session({ learnerKind: 'student', learnerId: 's1' }),
+        sections: passing(),
+        otherEvidence,
+        now,
+      })
+    // 1 başarılı bölüm + 1 başarısız görev: 1/2 < 2/3.
+    assert.equal(summarize([failedTask(10)]).suggestion.skills.writing.status, 'insufficient')
+    // Başka seviyedeki görev tespit yolunu etkilemez.
+    const other = summarize([{ ...failedTask(10), targetLevel: 'B2' }])
+    assert.equal(levelOf(other, 'writing'), 'B1')
   })
 })
 
@@ -420,6 +563,13 @@ describe('yerleştirme kararı (DOM-DIL-010, 011, 012)', () => {
       decide({ existingDecisions: [{ placementSessionId: 'test-ps-old' }] }).decisions.length,
       2,
     )
+  })
+
+  test('DOM-DIL-010 adayda tespit önerisi kopyaya girer; aynı seviye fark bayrağını düşürür', () => {
+    const plan = decide({ sections: sections({ listening: { result: auto(0.8) } }) })
+    assert.deepEqual(plan.snapshot.overall, { status: 'suggested', level: 'B1' })
+    assert.equal(plan.snapshot.skills.find((s) => s.skill === 'writing')?.level, 'B1')
+    assert.equal(plan.differsFromSuggestion, false)
   })
 
   test('DOM-DIL-010 öneri ile aynı seviye seçilince fark bayrağı düşer', () => {

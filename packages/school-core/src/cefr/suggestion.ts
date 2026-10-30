@@ -77,6 +77,15 @@ export const DEMONSTRATION_RULES = {
   plusSuccesses: 2,
 } as const
 
+/**
+ * Seviye tespit oturumunda gösterilme (DOM-DIL-010). Tespit tek günde yapılır ve her beceri bir
+ * bölümle ölçülür; genel eşik (3 kanıt, 2 gün) tek oturumla hiç karşılanmaz. Oturumun her
+ * tamamlanmış bölüm sonucu bir kanıttır ve farklı gün aranmaz. Başarı payı (2/3, tek bölümde
+ * bölümün başarılı olması) ve okuma/dinlemede en az 10 madde genel kuraldaki gibidir.
+ * Patron kararı, 30 Ekim 2026; kullanıcı onayı bekliyor.
+ */
+export const PLACEMENT_DEMONSTRATION_RULES = { minEvidence: 1, minDays: 1 } as const
+
 /** Madde sayısı koşulu olan beceriler (DOM-BEC-032). */
 export const ITEM_COUNTED_SKILLS = [
   'reading',
@@ -283,6 +292,11 @@ export type LevelTally = {
   items: number
   demonstrated: boolean
   /**
+   * Gösterilmenin dayanağı: genel eşik (`general`, DOM-BEC-032) veya tespit oturumunun kendi eşiği
+   * (`placement`, DOM-DIL-010). Gösterilmemişse `null`.
+   */
+  demonstratedBy: SuggestionContextKind | null
+  /**
    * Gösterilme için gereken en az ek kanıt (her biri başarılı ve yeni bir günde varsayılarak).
    * Madde eksiği ayrıca `missingItems`'tadır.
    */
@@ -317,7 +331,32 @@ export type OverallSuggestion =
   | { status: 'suggested'; level: CefrLevel }
   | { status: 'insufficient'; missingSkills: PrimarySkill[] }
 
+/**
+ * Önerinin bağlamı. `general`: kursiyerin bütün kanıtları DOM-BEC-032 eşiğiyle. `placement`: bir
+ * seviye tespit oturumunun önerisi (DOM-DIL-010); oturum bölümleri tespit eşiğiyle, diğer
+ * kanıtlar genel eşikle değerlendirilir.
+ */
+export const SUGGESTION_CONTEXTS = {
+  general: { label: 'Genel öneri' },
+  placement: { label: 'Seviye tespiti önerisi' },
+} as const
+export type SuggestionContextKind = keyof typeof SUGGESTION_CONTEXTS
+
+export type SuggestionContext =
+  | { kind: 'general' }
+  | {
+      kind: 'placement'
+      /** Oturumun bölüm kanıtlarının `taskId`'leri; yalnız bunlara tespit eşiği uygulanır. */
+      sessionTaskIds: readonly string[]
+      /**
+       * Genel öneri için oturumda kanıt olarak tamamlanmış olması gereken bölümler (otomatik
+       * puanlanan dil kullanımı, okuma, dinleme).
+       */
+      requiredSkills: readonly PrimarySkill[]
+    }
+
 export type CefrSuggestion = {
+  context: SuggestionContextKind
   computedAt: string
   skills: Record<PrimarySkill, SkillSuggestion>
   overall: OverallSuggestion
@@ -328,7 +367,14 @@ export type CefrSuggestion = {
 const itemCounted = (skill: PrimarySkill) =>
   (ITEM_COUNTED_SKILLS as readonly PrimarySkill[]).includes(skill)
 
-function tally(skill: PrimarySkill, level: CefrLevel, list: readonly Evidence[]): LevelTally {
+type DemonstrationThresholds = { minEvidence: number; minDays: number }
+
+function tally(
+  skill: PrimarySkill,
+  level: CefrLevel,
+  list: readonly Evidence[],
+  thresholds: DemonstrationThresholds = DEMONSTRATION_RULES,
+): LevelTally {
   const rules = DEMONSTRATION_RULES
   const evidence = list.length
   const successful = list.filter((e) => e.successful).length
@@ -339,19 +385,56 @@ function tally(skill: PrimarySkill, level: CefrLevel, list: readonly Evidence[])
   // k ek başarılı kanıtla: c + k ≥ 3, d + k ≥ 2 ve (s + k) / (c + k) ≥ 2/3.
   const missingEvidence = Math.max(
     0,
-    rules.minEvidence - evidence,
-    rules.minDays - days,
+    thresholds.minEvidence - evidence,
+    thresholds.minDays - days,
     Math.ceil((numerator * evidence - denominator * successful) / (denominator - numerator)),
   )
+  const demonstrated = missingEvidence === 0 && missingItems === 0
   return {
     level,
     evidence,
     successful,
     days,
     items,
-    demonstrated: missingEvidence === 0 && missingItems === 0,
+    demonstrated,
+    demonstratedBy: demonstrated ? 'general' : null,
     missingEvidence,
     missingItems,
+  }
+}
+
+const shareMet = (list: readonly Evidence[]) => {
+  const { numerator, denominator } = DEMONSTRATION_RULES.successShare
+  return denominator * list.filter((e) => e.successful).length >= numerator * list.length
+}
+
+/**
+ * Tespit bağlamında bir seviyenin özeti (DOM-DIL-010): genel eşik sağlanmıyorsa oturumun o
+ * seviyedeki bölüm kanıtları tespit eşiğiyle (`PLACEMENT_DEMONSTRATION_RULES`) denenir.
+ * Muhafazakâr birleştirme: diğer kanıtlar tespiti yalnız destekler; aynı seviyedeki bütün
+ * kanıtların başarı payı 2/3'ün altındaysa tespit yolu da kapanır. Eksik kanıt sayısı genel
+ * eşiğe göredir, çünkü oturum bittikten sonra yeni kanıt görevden gelir.
+ */
+function placementTally(
+  skill: PrimarySkill,
+  level: CefrLevel,
+  list: readonly Evidence[],
+  sessionTaskIds: ReadonlySet<string>,
+): LevelTally {
+  const general = tally(skill, level, list)
+  if (general.demonstrated) return general
+  const session = list.filter((e) => sessionTaskIds.has(e.taskId))
+  const byPlacement =
+    session.length > 0 &&
+    tally(skill, level, session, PLACEMENT_DEMONSTRATION_RULES).demonstrated &&
+    shareMet(list)
+  if (!byPlacement) return general
+  return {
+    ...general,
+    demonstrated: true,
+    demonstratedBy: 'placement',
+    missingEvidence: 0,
+    missingItems: 0,
   }
 }
 
@@ -360,18 +443,23 @@ function tally(skill: PrimarySkill, level: CefrLevel, list: readonly Evidence[])
  * ise ve bir sonraki ana seviyede (B1, B2, C1) gösterilmeden en az 2 başarılı kanıt varsa öneri
  * artı seviyedir. Artı seviyeyi hedefleyen kanıt bir sonraki ana seviyeye sayılmaz. Hiçbir seviye
  * gösterilmemişse öneri yetersiz kanıttır; seviye tahmini yapılmaz, eksik kanıt sayısı verilir.
+ * `sessionTaskIds` verilirse bu kanıtlar ayrıca tespit eşiğiyle denenir (DOM-DIL-010).
  */
 export function suggestSkillLevel(
   skill: PrimarySkill,
   evidence: readonly Evidence[],
+  sessionTaskIds?: ReadonlySet<string>,
 ): SkillSuggestion {
   const own = evidence.filter((e) => e.skill === skill)
   const byLevel = new Map<CefrLevel, Evidence[]>()
   for (const entry of own)
     byLevel.set(entry.targetLevel, [...(byLevel.get(entry.targetLevel) ?? []), entry])
-  const levels = LEVELS_BY_RANK.filter((level) => byLevel.has(level)).map((level) =>
-    tally(skill, level, byLevel.get(level) ?? []),
-  )
+  const levels = LEVELS_BY_RANK.filter((level) => byLevel.has(level)).map((level) => {
+    const list = byLevel.get(level) ?? []
+    return sessionTaskIds === undefined
+      ? tally(skill, level, list)
+      : placementTally(skill, level, list, sessionTaskIds)
+  })
   const demonstrated = levels.filter((t) => t.demonstrated).at(-1)
   if (demonstrated === undefined) {
     // Hiç kanıt yoksa ilk seviyenin bütün eşiği eksiktir.
@@ -423,21 +511,66 @@ export function overallSuggestion(
 }
 
 /**
+ * Tespit bağlamında genel öneri (DOM-DIL-010): DOM-BEC-033'e ek olarak oturumun otomatik
+ * puanlanan bölümlerinin her biri kanıt olarak tamamlanmış olmalıdır. Tamamlanmayan bölüm
+ * (eksik, puanlanmamış, itirazlı, hedef seviyesiz veya ön tespit) eksik beceri olarak listelenir;
+ * böylece genel öneriye girmeyen dil kullanımı da genel öneriyi engelleyebilir.
+ */
+function placementOverall(
+  skills: Readonly<Record<PrimarySkill, SkillSuggestion>>,
+  sessionEvidence: readonly Evidence[],
+  requiredSkills: readonly PrimarySkill[],
+): OverallSuggestion {
+  const overall = overallSuggestion(skills)
+  const incomplete = requiredSkills.filter(
+    (skill) => !sessionEvidence.some((e) => e.skill === skill),
+  )
+  if (incomplete.length === 0) return overall
+  const missing = overall.status === 'insufficient' ? overall.missingSkills : []
+  return {
+    status: 'insufficient',
+    missingSkills: [...missing, ...incomplete.filter((skill) => !missing.includes(skill))],
+  }
+}
+
+/**
  * Bir kursiyerin bütün önerisi (DOM-BEC-030…033): kanıt seçimi, her birincil beceride öneri ve
- * genel öneri. Saftır ve saklanmaz; aynı aday listesi ve `now` aynı sonucu verir.
+ * genel öneri. Saftır ve saklanmaz; aynı aday listesi ve `now` aynı sonucu verir. Bağlam
+ * verilmezse genel kural uygulanır; `placement` bağlamı DOM-DIL-010 tespit eşiğini ekler.
  */
 export function suggestCefrLevels(input: {
   candidates: readonly EvidenceCandidate[]
   now: Instant
+  context?: SuggestionContext
 }): CefrSuggestion {
+  const context = input.context ?? { kind: 'general' }
   const { evidence, excluded } = selectEvidence(input.candidates, input.now)
+  const sessionTaskIds = context.kind === 'placement' ? new Set(context.sessionTaskIds) : undefined
+  const foreign = input.candidates.find(
+    (c) => sessionTaskIds?.has(c.taskId) === true && c.source !== 'placement',
+  )
+  if (foreign !== undefined) {
+    throw new DomainError(
+      'placement_evidence_mismatch',
+      'Tespit oturumunun kanıtı seviye tespiti kaynaklı olmalıdır.',
+      { kind: 'conflict', path: ['candidates', foreign.taskId] },
+    )
+  }
   const skills = Object.fromEntries(
-    PRIMARY_SKILLS.map((skill) => [skill, suggestSkillLevel(skill, evidence)]),
+    PRIMARY_SKILLS.map((skill) => [skill, suggestSkillLevel(skill, evidence, sessionTaskIds)]),
   ) as Record<PrimarySkill, SkillSuggestion>
   return {
+    context: context.kind,
     computedAt: toIso(toMs(input.now)),
     skills,
-    overall: overallSuggestion(skills),
+    overall:
+      context.kind === 'placement'
+        ? placementOverall(
+            skills,
+            evidence.filter((e) => sessionTaskIds?.has(e.taskId) === true),
+            context.requiredSkills,
+          )
+        : overallSuggestion(skills),
     evidence,
     excluded,
   }

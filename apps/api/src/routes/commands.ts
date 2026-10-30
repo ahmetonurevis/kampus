@@ -10,7 +10,15 @@ import { z } from 'zod'
 import { automationSchemas } from '@kampus/school-core/lib/assessment-automation.ts'
 import { WRITE_ACTION_ROLES, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
 import { gradeRecordSchema, gradeUpdateSchema } from '@kampus/school-core/lib/grades.ts'
-import type { ArchiveKind } from '@kampus/school-core/lib/school-management.ts'
+import {
+  branchPatchSchema,
+  branchSchema,
+  classInputSchema,
+  classPatchSchema,
+  teacherPatchSchema,
+  teacherSchema,
+  type ArchiveKind,
+} from '@kampus/school-core/lib/school-management.ts'
 import {
   mayRun,
   workflowSchemas,
@@ -19,6 +27,7 @@ import {
 import { OPERATION_COMMANDS, WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import { ROLES, type Role } from '../auth.ts'
+import { AppError, MESSAGES } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import {
   archiveCommand,
@@ -28,6 +37,7 @@ import {
   recordGradeCommand,
   recordAttendanceCommand,
   restoreCommand,
+  saveRecordCommand,
   updateGradeCommand,
   type CommandOptions,
   type TutoringCommand,
@@ -101,6 +111,18 @@ export function rejectIfMatch(): preValidationAsyncHookHandler {
   }
 }
 
+/**
+ * Düzenleme (`PATCH`) uçları: `If-Match` zorunludur, gövde doğrulamasından önce eksikse 400
+ * `if_match_required` (api-tasarimi.md §6). Kayıt bütün olarak yazıldığı için kilitsiz
+ * düzenleme başkasının değişikliğini sessizce ezerdi.
+ */
+export function requireIfMatch(): preValidationAsyncHookHandler {
+  return async function (request) {
+    if (ifMatchVersion(request) === null)
+      throw new AppError(400, 'if_match_required', MESSAGES.if_match_required)
+  }
+}
+
 /** Ham gövde nesnesi; şema doğrulaması geçtiği için nesnedir, değilse boş sayılır. */
 function inputObject(request: FastifyRequest): Readonly<Record<string, unknown>> {
   const input = request.commandInput
@@ -122,21 +144,27 @@ function workflowBody(command: WorkflowCommand): z.ZodType {
     : emptyCommandBodySchema
 }
 
+type GuardOptions = { subject?: boolean; ifMatch?: 'optional' | 'required' }
+
 export function registerCommandRoutes(app: FastifyInstance) {
   app.decorateRequest('commandInput', null)
   const typed = app.withTypeProvider<ZodTypeProvider>()
 
-  /** Rota ön işleyicileri: kimlik → modül → rol → `If-Match` (oluşturmada) → ham gövde. */
+  /**
+   * Rota ön işleyicileri: kimlik → modül → rol → `If-Match` (oluşturmada yasak, düzenlemede
+   * zorunlu) → ham gövde.
+   */
   function guard(
     roles: readonly Role[],
     module: string | null,
-    { subject = true }: { subject?: boolean } = {},
+    { subject = true, ifMatch = 'optional' }: GuardOptions = {},
   ): preValidationAsyncHookHandler[] {
     return [
       app.authenticate,
       ...(module === null ? [] : [app.requireModule(module)]),
       app.requireRole(roles),
       ...(subject ? [] : [rejectIfMatch()]),
+      ...(ifMatch === 'required' ? [requireIfMatch()] : []),
       captureInput(),
     ]
   }
@@ -204,7 +232,7 @@ export function registerCommandRoutes(app: FastifyInstance) {
    * core yetki tablosundan (`WRITE_ACTION_ROLES`) gelir. Rol reddi gövde ve sürüm denetiminden
    * önce 403 olur; kapsam ve gerekçe kuralları serviste core `requireAuthorized`'dadır.
    */
-  const operationGuard = (action: WriteAction, opts?: { subject?: boolean }) =>
+  const operationGuard = (action: WriteAction, opts?: GuardOptions) =>
     guard(WRITE_ACTION_ROLES[action], OPERATION_COMMANDS[action].module, opts)
   const rolesOf = (action: WriteAction) =>
     WRITE_ACTION_ROLES[action].map((role) => `\`${role}\``).join(', ')
@@ -339,6 +367,10 @@ export function registerCommandRoutes(app: FastifyInstance) {
       params: branchParamsSchema,
       label: 'Kampüs',
       name: 'Branch',
+      action: 'branch.save',
+      createBody: branchSchema,
+      patchBody: branchPatchSchema,
+      rules: 'Aktif kampüs adı kurumda tekildir (409 `branch_name_taken`).',
     },
     {
       kind: 'class',
@@ -347,6 +379,11 @@ export function registerCommandRoutes(app: FastifyInstance) {
       params: classParamsSchema,
       label: 'Sınıf',
       name: 'Class',
+      action: 'class.save',
+      createBody: classInputSchema,
+      patchBody: classPatchSchema,
+      rules:
+        'Gövde sınıf bilgisi ve `subjectTeachers` (ders → branş öğretmeni) taşır; düzeyin her dersi için dersin branşında aktif öğretmen gerekir (422 `subject_teacher_required`), danışman ve kampüs aktif olmalıdır (422 `advisor_required`, `campus_required`). Kampüste aynı sınıf adı veya derslik 409 (`class_name_taken`, `classroom_in_use`). Düzenlemede kontenjan mevcut öğrenciden az olamaz (422 `capacity_below_students`), öğrencili sınıfın düzeyi değişmez (422 `class_level_locked`), gelecek derslerde yeni öğretmenin veya dersliğin çakışması 409 (`teacher_schedule_conflict`, `tutor_schedule_conflict`), derslikte gelecek etüt 422 `classroom_has_future_tutoring`. `subjectTeachers` düzenlemede ders bazında mevcut atamalarla birleşir; aynı dersin ataması kimliğini korur. Gelecek dersler, açık soru/ödev, quiz ve çalışma görevleri yeni ders öğretmenine geçer.',
     },
     {
       kind: 'teacher',
@@ -355,12 +392,81 @@ export function registerCommandRoutes(app: FastifyInstance) {
       params: teacherParamsSchema,
       label: 'Öğretmen',
       name: 'Teacher',
+      action: 'teacher.save',
+      createBody: teacherSchema,
+      patchBody: teacherPatchSchema,
+      rules:
+        'Yalnız core `teachers` kaydını yazar; hesap ve üyelik kurum üyeleri ucundadır. Aktif öğretmen e-postası tekildir (409 `teacher_email_taken`); kampüs aktif (422 `campus_required`), branş müfredatta olmalıdır (422 `subject_invalid`). Ders ataması olan öğretmenin branşı değişmez (422 `teacher_has_assignments`); ileri tarihli etüdü olan öğretmenin kampüs/branşı değişmez (422 `teacher_has_future_tutoring`). Rehberlik görevi bu uçtan verilmez.',
     },
-  ] as const satisfies readonly { kind: ArchiveKind; [key: string]: unknown }[]
+  ] as const satisfies readonly { kind: ArchiveKind; action: WriteAction; [key: string]: unknown }[]
 
   for (const target of archiveTargets) {
     const recordIdOf = (request: FastifyRequest): string =>
       z.object({ [target.param]: z.string() }).parse(request.params)[target.param] ?? ''
+    // Kayıt oluşturma ve düzenleme de yöneticinindir (core `branch.save`, `teacher.save`,
+    // `class.save`; yetki matrisi "Kampüs, sınıf, kadro").
+    typed.post(
+      `/api/v1/${target.path}`,
+      {
+        preValidation: operationGuard(target.action, { subject: false }),
+        schema: {
+          operationId: `create${target.name}`,
+          tags: ['school-management'],
+          summary: `${target.label} oluştur`,
+          description: `${target.label} kaydı oluşturur; yetki core \`authorize('${target.action}')\`. ${target.rules} \`Idempotency-Key\` zorunludur. Başarı 201 ve \`Location\`. Roller: ${rolesOf(target.action)}.`,
+          headers: commandHeadersSchema('required', { ifMatch: false }),
+          body: target.createBody,
+          response: created,
+        },
+      },
+      async (request, reply) => {
+        const body = sendCommand(
+          reply,
+          await saveRecordCommand(
+            contextOf(request),
+            target.kind,
+            null,
+            request.commandInput,
+            options(request, 'required'),
+          ),
+        )
+        // Tekrarlanan yanıt da aynı konumu verir: kimlik saklanan gövdededir.
+        const entity = body.data.entity
+        if (entity)
+          reply.header(
+            'location',
+            `/api/v1/collections/${target.path}/${encodeURIComponent(entity.id)}`,
+          )
+        return body
+      },
+    )
+    typed.patch(
+      `/api/v1/${target.path}/:${target.param}`,
+      {
+        preValidation: operationGuard(target.action, { ifMatch: 'required' }),
+        schema: {
+          operationId: `update${target.name}`,
+          tags: ['school-management'],
+          summary: `${target.label} düzenle`,
+          description: `${target.label} kaydını kısmi gövdeyle düzenler: gönderilmeyen alan güncel değerinde kalır, sonuç kayıt şemasıyla bütün olarak doğrulanır. Yetki core \`authorize('${target.action}')\`. ${target.rules} Arşivli, olmayan veya başka kurumun kaydı 404. \`If-Match\` zorunludur (yoksa 400 \`if_match_required\`, tutmazsa 409 \`version_conflict\`). Denetim kaydına değer değil alan adı yazılır. Roller: ${rolesOf(target.action)}.`,
+          headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+          params: target.params,
+          body: target.patchBody,
+          response,
+        },
+      },
+      async (request, reply) =>
+        sendCommand(
+          reply,
+          await saveRecordCommand(
+            contextOf(request),
+            target.kind,
+            recordIdOf(request),
+            request.commandInput,
+            options(request, 'optional'),
+          ),
+        ),
+    )
     // Kampüs/sınıf/kadro yönetimi yöneticinindir (core `record.archive`, `record.restore`).
     typed.delete(
       `/api/v1/${target.path}/:${target.param}`,

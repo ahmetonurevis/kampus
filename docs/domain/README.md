@@ -1,6 +1,6 @@
 # Alan (domain) kuralları
 
-Bu klasör, Türkiye'de özel okul (`school`: ortaokul/lise) ve dil okulu (`language_school`: CEFR A1–C2) işletmenin iş kurallarını uygulanabilir hâle getirir. Ürün ister listesi (`docs/urun/`) ve mühendislik kuralları (`.claude/rules/`) ayrıdır; buradaki kurallar "ne doğru" sorusunu cevaplar, "nasıl kodlanır" sorusunu değil.
+Bu klasör, Türkiye'de özel okul (`school`: ortaokul/lise) ve dil okulu (`language_school`: CEFR Pre-A1, A1–C2 ve A2+/B1+/B2+ artı seviyeleri) işletmenin iş kurallarını uygulanabilir hâle getirir. Ürün ister listesi (`docs/urun/`) ve mühendislik kuralları (`.claude/rules/`) ayrıdır; buradaki kurallar "ne doğru" sorusunu cevaplar, "nasıl kodlanır" sorusunu değil.
 
 Temel mimari çerçeve [ADR 0001](../adr/0001-platform-mimarisi.md): çok kurumlu yapı, her kayıt bir kuruma (`institution_id`) aittir, kurum kimliği yalnız doğrulanmış oturumdan gelir, kapsam sunucuda school-core kurallarıyla uygulanır, çevrimdışı demo modu kaldırılır.
 

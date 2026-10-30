@@ -27,7 +27,7 @@ export const ROLES = ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'] as co
 export const roleSchema = z.enum(ROLES)
 export type Role = z.infer<typeof roleSchema>
 
-/** `school` ders + kazanım, `language_school` CEFR A1–C2 + beceri. */
+/** `school` ders + kazanım, `language_school` CEFR (Pre-A1, A1–C2, A2+/B1+/B2+) + beceri. */
 export const INSTITUTION_TYPES = ['school', 'language_school'] as const
 export type InstitutionType = (typeof INSTITUTION_TYPES)[number]
 

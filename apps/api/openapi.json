@@ -1104,6 +1104,196 @@
           "memberships"
         ]
       },
+      "AuditEventActorInput": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "description": "Kullanıcının görünen adı; hesap yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "yonetici",
+                  "onburo",
+                  "ogretmen",
+                  "ogrenci",
+                  "veli"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "İşlem anındaki rol; kayıtlı değilse üyelik rolü"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "role"
+        ]
+      },
+      "AuditEventInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "İşlemin anı (UTC)"
+          },
+          "action": {
+            "type": "string",
+            "description": "İşlem adı (ör. `module.set`, `workflow.goal`)"
+          },
+          "entityType": {
+            "description": "Varlık türü; rehberlik kayıtlarında `guidanceCases`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entityId": {
+            "description": "Varlık kimliği; rehberlik kayıtlarında (DOM-YTK-020) hiçbir zaman dönmez",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditEventActorInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yapan kişi; sistem olaylarında `null`"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Değişen alan adları (değerler hiçbir zaman dönmez); rehberlikte boştur"
+          },
+          "reason": {
+            "description": "Gerekçeli hassas okumanın gerekçesi (DOM-YTK-052); diğer kayıtlarda `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "action",
+          "entityType",
+          "entityId",
+          "actor",
+          "fields",
+          "reason"
+        ]
+      },
+      "InstitutionMemberLinkInput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "student",
+              "child",
+              "teacher"
+            ],
+            "description": "Bağlantı türü: öğrenci, çocuk (veli) veya öğretmen"
+          },
+          "name": {
+            "description": "Bağlı kişinin adı; kayıt yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "name"
+        ]
+      },
+      "InstitutionMemberInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Üyelik kimliği"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Görünen ad"
+          },
+          "email": {
+            "type": "string",
+            "description": "Giriş e-postası; yalnız yöneticiye döner"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "yonetici",
+              "onburo",
+              "ogretmen",
+              "ogrenci",
+              "veli"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "passive"
+            ]
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InstitutionMemberLinkInput"
+            },
+            "description": "Bağlı öğrenci, çocuk veya öğretmen"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "Üyeliğin açıldığı an (UTC)"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "name",
+          "email",
+          "role",
+          "status",
+          "links",
+          "createdAt"
+        ]
+      },
       "InstitutionMembershipInput": {
         "type": "object",
         "properties": {
@@ -2347,6 +2537,200 @@
         ],
         "additionalProperties": false
       },
+      "AuditEventActor": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "description": "Kullanıcının görünen adı; hesap yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "yonetici",
+                  "onburo",
+                  "ogretmen",
+                  "ogrenci",
+                  "veli"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "İşlem anındaki rol; kayıtlı değilse üyelik rolü"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "AuditEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "İşlemin anı (UTC)"
+          },
+          "action": {
+            "type": "string",
+            "description": "İşlem adı (ör. `module.set`, `workflow.goal`)"
+          },
+          "entityType": {
+            "description": "Varlık türü; rehberlik kayıtlarında `guidanceCases`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entityId": {
+            "description": "Varlık kimliği; rehberlik kayıtlarında (DOM-YTK-020) hiçbir zaman dönmez",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditEventActor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yapan kişi; sistem olaylarında `null`"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Değişen alan adları (değerler hiçbir zaman dönmez); rehberlikte boştur"
+          },
+          "reason": {
+            "description": "Gerekçeli hassas okumanın gerekçesi (DOM-YTK-052); diğer kayıtlarda `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "action",
+          "entityType",
+          "entityId",
+          "actor",
+          "fields",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "InstitutionMemberLink": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "student",
+              "child",
+              "teacher"
+            ],
+            "description": "Bağlantı türü: öğrenci, çocuk (veli) veya öğretmen"
+          },
+          "name": {
+            "description": "Bağlı kişinin adı; kayıt yoksa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "InstitutionMember": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Üyelik kimliği"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Görünen ad"
+          },
+          "email": {
+            "type": "string",
+            "description": "Giriş e-postası; yalnız yöneticiye döner"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "yonetici",
+              "onburo",
+              "ogretmen",
+              "ogrenci",
+              "veli"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "passive"
+            ]
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InstitutionMemberLink"
+            },
+            "description": "Bağlı öğrenci, çocuk veya öğretmen"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "Üyeliğin açıldığı an (UTC)"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "name",
+          "email",
+          "role",
+          "status",
+          "links",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
       "InstitutionMembership": {
         "type": "object",
         "properties": {
@@ -2651,6 +3035,335 @@
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/InstitutionMembership"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/institution-members": {
+      "get": {
+        "operationId": "listInstitutionMembers",
+        "summary": "Kurum kullanıcıları",
+        "tags": [
+          "institution"
+        ],
+        "description": "Etkin kurumun üyelerini görünen ad, rol, durum, bağlı kişi ve oluşturulma tarihiyle sayfalı döndürür. E-posta yalnız yöneticiye döner; telefon, parola, oturum ve IP dönmez. Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Ad veya e-postada arama (Türkçe harf ve büyük/küçük harf duyarsız)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "yonetici",
+                "onburo",
+                "ogretmen",
+                "ogrenci",
+                "veli"
+              ]
+            },
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "description": "Role göre süz"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "passive"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Duruma göre süz. `passive`: bağlı kişi kaydı (öğrenci, çocuk, öğretmen) olan ve hepsi pasif ya da arşivli üyelik"
+          },
+          {
+            "schema": {
+              "default": "name",
+              "type": "string",
+              "enum": [
+                "name",
+                "-name",
+                "role",
+                "-role",
+                "createdAt",
+                "-createdAt"
+              ]
+            },
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "description": "Sıralama; eksi azalan. Eşitlikte üyelik kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InstitutionMember"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-events": {
+      "get": {
+        "operationId": "listAuditEvents",
+        "summary": "İşlem geçmişi",
+        "tags": [
+          "institution"
+        ],
+        "description": "Etkin kurumun denetim kayıtlarını en yeniden eskiye sayfalı döndürür: zaman, işlem, varlık, yapan kişi, değişen alan adları ve gerekçe. Değer, mesaj metni, IP ve kullanıcı ajanı dönmez. Rehberlik kayıtlarında alan adı ve kimlik de dönmez (DOM-YTK-020). Tarih süzgeci Europe/Istanbul günüdür. Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "description": "Europe/Istanbul günü olarak başlangıç (`YYYY-MM-DD`, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "description": "Europe/Istanbul günü olarak bitiş (`YYYY-MM-DD`, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "in": "query",
+            "name": "actorUserId",
+            "required": false,
+            "description": "Yapan kişinin kullanıcı kimliği (`institution-members` listesindeki `userId`)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$"
+            },
+            "in": "query",
+            "name": "entityType",
+            "required": false,
+            "description": "Varlık türü (ör. `invoices`, `module`); eşitlik"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AuditEvent"
                       }
                     },
                     "meta": {

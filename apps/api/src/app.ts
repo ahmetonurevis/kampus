@@ -29,6 +29,8 @@ import { registerCommunicationRoutes } from './routes/communication.ts'
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 import { registerHealthRoutes } from './routes/health.ts'
 import { registerMeRoutes } from './routes/me.ts'
+import { registerAuditEventRoutes } from './routes/audit-events.ts'
+import { registerInstitutionMemberRoutes } from './routes/institution-members.ts'
 import { registerMembershipRoutes } from './routes/memberships.ts'
 import { registerModuleRoutes } from './routes/modules.ts'
 
@@ -191,6 +193,8 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerHealthRoutes(app)
   registerMeRoutes(app)
   registerMembershipRoutes(app)
+  registerInstitutionMemberRoutes(app)
+  registerAuditEventRoutes(app)
   registerModuleRoutes(app)
   registerCollectionRoutes(app)
   registerCommandRoutes(app)

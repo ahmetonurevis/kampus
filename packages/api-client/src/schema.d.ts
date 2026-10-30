@@ -64,6 +64,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/institution-members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kurum kullanıcıları
+         * @description Etkin kurumun üyelerini görünen ad, rol, durum, bağlı kişi ve oluşturulma tarihiyle sayfalı döndürür. E-posta yalnız yöneticiye döner; telefon, parola, oturum ve IP dönmez. Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.
+         */
+        get: operations["listInstitutionMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İşlem geçmişi
+         * @description Etkin kurumun denetim kayıtlarını en yeniden eskiye sayfalı döndürür: zaman, işlem, varlık, yapan kişi, değişen alan adları ve gerekçe. Değer, mesaj metni, IP ve kullanıcı ajanı dönmez. Rehberlik kayıtlarında alan adı ve kimlik de dönmez (DOM-YTK-020). Tarih süzgeci Europe/Istanbul günüdür. Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.
+         */
+        get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/modules": {
         parameters: {
             query?: never;
@@ -1850,6 +1890,62 @@ export interface components {
                 role: "yonetici" | "onburo" | "ogretmen" | "ogrenci" | "veli";
             }[];
         };
+        AuditEventActorInput: {
+            userId: string;
+            /** @description Kullanıcının görünen adı; hesap yoksa `null` */
+            name: string | null;
+            /** @description İşlem anındaki rol; kayıtlı değilse üyelik rolü */
+            role: ("yonetici" | "onburo" | "ogretmen" | "ogrenci" | "veli") | null;
+        };
+        AuditEventInput: {
+            id: string;
+            /**
+             * Format: date-time
+             * @description İşlemin anı (UTC)
+             */
+            createdAt: string;
+            /** @description İşlem adı (ör. `module.set`, `workflow.goal`) */
+            action: string;
+            /** @description Varlık türü; rehberlik kayıtlarında `guidanceCases` */
+            entityType: string | null;
+            /** @description Varlık kimliği; rehberlik kayıtlarında (DOM-YTK-020) hiçbir zaman dönmez */
+            entityId: string | null;
+            /** @description Yapan kişi; sistem olaylarında `null` */
+            actor: components["schemas"]["AuditEventActorInput"] | null;
+            /** @description Değişen alan adları (değerler hiçbir zaman dönmez); rehberlikte boştur */
+            fields: string[];
+            /** @description Gerekçeli hassas okumanın gerekçesi (DOM-YTK-052); diğer kayıtlarda `null` */
+            reason: string | null;
+        };
+        InstitutionMemberLinkInput: {
+            /**
+             * @description Bağlantı türü: öğrenci, çocuk (veli) veya öğretmen
+             * @enum {string}
+             */
+            kind: "student" | "child" | "teacher";
+            /** @description Bağlı kişinin adı; kayıt yoksa `null` */
+            name: string | null;
+        };
+        InstitutionMemberInput: {
+            /** @description Üyelik kimliği */
+            id: string;
+            userId: string;
+            /** @description Görünen ad */
+            name: string;
+            /** @description Giriş e-postası; yalnız yöneticiye döner */
+            email: string;
+            /** @enum {string} */
+            role: "yonetici" | "onburo" | "ogretmen" | "ogrenci" | "veli";
+            /** @enum {string} */
+            status: "active" | "passive";
+            /** @description Bağlı öğrenci, çocuk veya öğretmen */
+            links: components["schemas"]["InstitutionMemberLinkInput"][];
+            /**
+             * Format: date-time
+             * @description Üyeliğin açıldığı an (UTC)
+             */
+            createdAt: string;
+        };
         InstitutionMembershipInput: {
             /** @description Üyelik kimliği */
             id: string;
@@ -2181,6 +2277,62 @@ export interface components {
                 role: "yonetici" | "onburo" | "ogretmen" | "ogrenci" | "veli";
             }[];
         };
+        AuditEventActor: {
+            userId: string;
+            /** @description Kullanıcının görünen adı; hesap yoksa `null` */
+            name: string | null;
+            /** @description İşlem anındaki rol; kayıtlı değilse üyelik rolü */
+            role: ("yonetici" | "onburo" | "ogretmen" | "ogrenci" | "veli") | null;
+        };
+        AuditEvent: {
+            id: string;
+            /**
+             * Format: date-time
+             * @description İşlemin anı (UTC)
+             */
+            createdAt: string;
+            /** @description İşlem adı (ör. `module.set`, `workflow.goal`) */
+            action: string;
+            /** @description Varlık türü; rehberlik kayıtlarında `guidanceCases` */
+            entityType: string | null;
+            /** @description Varlık kimliği; rehberlik kayıtlarında (DOM-YTK-020) hiçbir zaman dönmez */
+            entityId: string | null;
+            /** @description Yapan kişi; sistem olaylarında `null` */
+            actor: components["schemas"]["AuditEventActor"] | null;
+            /** @description Değişen alan adları (değerler hiçbir zaman dönmez); rehberlikte boştur */
+            fields: string[];
+            /** @description Gerekçeli hassas okumanın gerekçesi (DOM-YTK-052); diğer kayıtlarda `null` */
+            reason: string | null;
+        };
+        InstitutionMemberLink: {
+            /**
+             * @description Bağlantı türü: öğrenci, çocuk (veli) veya öğretmen
+             * @enum {string}
+             */
+            kind: "student" | "child" | "teacher";
+            /** @description Bağlı kişinin adı; kayıt yoksa `null` */
+            name: string | null;
+        };
+        InstitutionMember: {
+            /** @description Üyelik kimliği */
+            id: string;
+            userId: string;
+            /** @description Görünen ad */
+            name: string;
+            /** @description Giriş e-postası; yalnız yöneticiye döner */
+            email: string;
+            /** @enum {string} */
+            role: "yonetici" | "onburo" | "ogretmen" | "ogrenci" | "veli";
+            /** @enum {string} */
+            status: "active" | "passive";
+            /** @description Bağlı öğrenci, çocuk veya öğretmen */
+            links: components["schemas"]["InstitutionMemberLink"][];
+            /**
+             * Format: date-time
+             * @description Üyeliğin açıldığı an (UTC)
+             */
+            createdAt: string;
+        };
         InstitutionMembership: {
             /** @description Üyelik kimliği */
             id: string;
@@ -2349,6 +2501,168 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["InstitutionMembership"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listInstitutionMembers: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Ad veya e-postada arama (Türkçe harf ve büyük/küçük harf duyarsız) */
+                q?: string;
+                /** @description Role göre süz */
+                role?: "yonetici" | "onburo" | "ogretmen" | "ogrenci" | "veli";
+                /** @description Duruma göre süz. `passive`: bağlı kişi kaydı (öğrenci, çocuk, öğretmen) olan ve hepsi pasif ya da arşivli üyelik */
+                status?: "active" | "passive";
+                /** @description Sıralama; eksi azalan. Eşitlikte üyelik kimliği */
+                sort?: "name" | "-name" | "role" | "-role" | "createdAt" | "-createdAt";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["InstitutionMember"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listAuditEvents: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Europe/Istanbul günü olarak başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Europe/Istanbul günü olarak bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+                /** @description Yapan kişinin kullanıcı kimliği (`institution-members` listesindeki `userId`) */
+                actorUserId?: string;
+                /** @description Varlık türü (ör. `invoices`, `module`); eşitlik */
+                entityType?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AuditEvent"][];
                         meta: components["schemas"]["PageMeta"];
                     };
                 };

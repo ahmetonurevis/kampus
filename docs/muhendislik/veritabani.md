@@ -142,8 +142,10 @@ create table audit_log (
   request_id       text,
   ip_hash          text,            -- tuzlanmış SHA-256; ham IP tutulmaz
   changes          jsonb,           -- değişen alan adları; özel nitelikli değerler yok
+  reason           text,            -- yalnız gerekçeli hassas okumada; en çok 500 karakter
   created_at       timestamptz not null default now()
 );
+alter table audit_log add constraint audit_log_reason_check check (reason is null or char_length(reason) <= 500);
 create index audit_log_entity_idx on audit_log (institution_id, entity_type, entity_id, created_at desc);
 create index audit_log_actor_idx on audit_log (institution_id, actor_user_id, created_at desc);
 ```
@@ -153,4 +155,5 @@ create index audit_log_actor_idx on audit_log (institution_id, actor_user_id, cr
 - Yazılan olaylar: bütün yazma işlemleri; giriş başarısı/başarısızlığı, çıkış, parola değişimi/sıfırlama, oturumların toplu kapatılması (Better Auth `hooks`/`databaseHooks` ile); rol, üyelik ve modül değişikliği; kişisel veri dışa aktarımı (CSV/PDF); özel nitelikli veri okuması (sağlık, rehberlik iç notu); veri sahibi talepleri ve imha.
 - School-core'un kendi `audit` koleksiyonu sunucuda kalıcı yazılmaz: core onu değerleri maskesiz (rehberlik iç notu, sağlık), sabit demo kullanıcısıyla (`t1`, `s1`) doldurur ve 200 kayda kırpar. İşlem çalıştırıcı bu koleksiyonu her işlemde boş verir ve değişikliklerini yok sayar; depo `audit` koleksiyonuna yazmayı reddeder, tohum yazmaz. Önceden yazılmış satırlar `0005_archive_core_audit_records` ile arşivlendi. Sunucu denetimi yalnız bu tablodadır: gerçek aktör (`actor_user_id`, `actor_role`), işlem (`action`), çağıranın zorunlu verdiği varlık ve değişen alan adları.
 - `changes` önceki/sonraki değer değil, değişen alan adlarını tutar (`{ "fields": ["status", "feedback"] }`). Değer gerekiyorsa yalnız sınıflandırması "genel" olan alanların değeri yazılır.
+- `reason` serbest metin gerekçedir (`kvkk: K`): yalnız gerekçeli hassas okumada (yöneticinin öğrenci–öğretmen yazışması erişimi, `conversation.access`, DOM-YTK-052) dolar, diğer kayıtlarda boştur; en çok 500 karakter (`audit_log_reason_check`). Gerekçe `changes`'e yazılmaz. Denetim kaydı görünürlüğünde (DOM-YTK-053) `reason` yalnız `yonetici`ye ve yalnız kendi kurumu için döner. Migration `0008` eski kayıtlardaki `changes.reason` değerini bu kolona taşır.
 - Denetim kaydı imleçli sayfalamayla yalnız `yonetici` rolüne açılır.

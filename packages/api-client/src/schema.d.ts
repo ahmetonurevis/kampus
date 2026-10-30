@@ -1199,7 +1199,7 @@ export interface paths {
         head?: never;
         /**
          * Duyuruyu düzelt
-         * @description Duyurunun başlık, metin veya kategorisini düzeltir; önceki içerik `revisions` geçmişinde kalır, alıcı "Güncellendi" işaretini görür (core `reviseAnnouncement`, DOM-ILT-004). Hedef kitle değişmez. Yalnız yayınlayan veya yönetici (403 `announcement_publisher_only`); değişiklik yoksa 409 `announcement_unchanged`, geri çekilmişse 409 `announcement_withdrawn`. `If-Match` duyurunun sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`, `ogretmen`.
+         * @description Duyurunun başlık, metin veya kategorisini düzeltir; önceki içerik `revisions` geçmişinde kalır, alıcı "Güncellendi" işaretini görür (core `reviseAnnouncement`, DOM-ILT-004). Hedef kitle değişmez. Duyuruyu görmeye yetkisi olmayan olmayan kayıtla aynı 404'ü alır; görüp yayınlayan olmayan 403 `announcement_publisher_only` alır (yalnız yayınlayan veya yönetici, ön büroda yayınlayan kişi); değişiklik yoksa 409 `announcement_unchanged`, geri çekilmişse 409 `announcement_withdrawn`. `If-Match` duyurunun sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`, `ogretmen`.
          */
         patch: operations["reviseAnnouncement"];
         trace?: never;
@@ -1215,7 +1215,7 @@ export interface paths {
         put?: never;
         /**
          * Duyuruyu geri çek
-         * @description Duyuruyu silmeden geri çeker (core `withdrawAnnouncement`, DOM-ILT-004): alıcılar duyuruyu "Geri çekildi" işaretiyle (`withdrawnAt`) görmeye devam eder, metni ve gerekçeyi yalnız yayınlayan ve yönetici görür. Gerekçe zorunludur. Yalnız yayınlayan veya yönetici; ikinci geri çekme 409 `announcement_withdrawn`. Roller: `yonetici`, `onburo`, `ogretmen`.
+         * @description Duyuruyu silmeden geri çeker (core `withdrawAnnouncement`, DOM-ILT-004): alıcılar duyuruyu "Geri çekildi" işaretiyle (`withdrawnAt`) görmeye devam eder, metni ve gerekçeyi yalnız yayınlayan ve yönetici görür. Gerekçe zorunludur. Yalnız yayınlayan veya yönetici (görmeye yetkisi olmayana 404, görüp yayınlayan olmayana 403); ikinci geri çekme 409 `announcement_withdrawn`. Roller: `yonetici`, `onburo`, `ogretmen`.
          */
         post: operations["withdrawAnnouncement"];
         delete?: never;
@@ -1259,7 +1259,7 @@ export interface paths {
         put?: never;
         /**
          * Yazışma başlat
-         * @description Öğrenci + öğretmen + hedef kitle + veli hesabı için tek yazışma açar; varsa yenisi açılmaz, `text` var olan yazışmaya eklenir (core `startConversation`, DOM-ILT-010, -011). Yeni yazışma 201, var olan 200. Öğretmen `studentId` + `audience` verir; veli yazışmasında öğrencinin tek veli hesabı kendiliğinden seçilir, birden çoksa `parentUserId` zorunludur (422 `parent_choice_required`; hesaplar `GET /students/{id}/parent-accounts`). Öğrenci ve veli `studentId` + `teacherId` verir. İlişki yoksa 403 `conversation_party_forbidden`. `Idempotency-Key` zorunludur. Roller: `ogretmen`, `ogrenci`, `veli`.
+         * @description Öğrenci + öğretmen + hedef kitle + veli hesabı için tek yazışma açar; varsa yenisi açılmaz, `text` var olan yazışmaya eklenir (core `startConversation`, DOM-ILT-010, -011). Yeni yazışma 201, var olan 200. Öğretmen `studentId` + `audience` verir; veli yazışmasında öğrencinin tek veli hesabı kendiliğinden seçilir, birden çoksa `parentUserId` zorunludur (422 `parent_choice_required`; hesaplar `GET /students/{id}/parent-accounts`). Öğrenci ve veli `studentId` + `teacherId` verir. İlişki yoksa 403 `conversation_party_forbidden`. `text` varsa istek bir mesaj sayılır ve mesaj gönderme ile aynı kotayı kullanır (kullanıcı ve kurum başına dakikada 30, aşılırsa 429); metinsiz başlatma saymaz. `Idempotency-Key` zorunludur. Roller: `ogretmen`, `ogrenci`, `veli`.
          */
         post: operations["startConversation"];
         delete?: never;
@@ -1277,13 +1277,13 @@ export interface paths {
         };
         /**
          * Yazışmanın mesajları
-         * @description Mesajlar en yeniden geriye imleçli sayfalanır (core `messagePage`); sayfa içinde sıra eskiden yeniyedir, `meta.nextCursor` daha eski sayfayı verir. Mesajlar değişmez ve silinmez, imleç kararlıdır; geçersiz imleç 400. Taraf olmayana 404. Yönetici yalnız son 30 dakikada açtığı gerekçeli erişimle okur, yoksa 404; okuması okundu üretmez (DOM-YTK-052).
+         * @description Mesajlar en yeniden geriye imleçli sayfalanır (core `messagePage`); sayfa içinde sıra eskiden yeniyedir, `meta.nextCursor` daha eski sayfayı verir. Mesajlar değişmez ve silinmez, imleç kararlıdır; geçersiz imleç 400. Taraf olmayana 404. Yönetici yalnız öğrenci–öğretmen yazışmasını ve yalnız son 30 dakikada açtığı gerekçeli erişimle okur, aksi halde 404; okuması okundu üretmez (DOM-YTK-052).
          */
         get: operations["listConversationMessages"];
         put?: never;
         /**
          * Mesaj gönder
-         * @description Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core `sendMessage`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 `conversation_relationship_ended`). En fazla 2000 karakter. `Idempotency-Key` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı başına dakikada 30 istek, aşılırsa 429. Başarı 201. Roller: `ogretmen`, `ogrenci`, `veli`.
+         * @description Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core `sendMessage`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 `conversation_relationship_ended`). En fazla 2000 karakter. `Idempotency-Key` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı ve kurum başına dakikada 30 mesaj (`POST /conversations` gövdesindeki `text` ile aynı kota), aşılırsa 429 ve `Retry-After`. Başarı 201. Roller: `ogretmen`, `ogrenci`, `veli`.
          */
         post: operations["sendConversationMessage"];
         delete?: never;
@@ -1323,7 +1323,7 @@ export interface paths {
         put?: never;
         /**
          * Yazışmayı gerekçeyle aç
-         * @description Yöneticinin şikâyet veya soruşturma gerekçesiyle yazışmayı açması (core `openConversationAccess`, DOM-YTK-052, DOM-ILT-011). Gerekçe en az 10 karakter, yoksa 422 `access_reason_required`. Erişim gerekçesiyle `audit_log`'a (`conversation.access`) yazılır ve 30 dakika geçerlidir; bu sürede `GET /conversations/{id}/messages` açıktır. Yazışma yoksa 404. Roller: `yonetici`.
+         * @description Yöneticinin şikâyet veya soruşturma gerekçesiyle yazışmayı açması (core `openConversationAccess`, DOM-YTK-052, DOM-ILT-011). Yalnız öğrenci–öğretmen yazışmasında geçerlidir: veli tarafı yazışma gerekçeyle de açılmaz (403 `conversation_access_student_only`). Gerekçe en az 10 karakter, yoksa 422 `access_reason_required`. Erişim gerekçesiyle `audit_log`'a (`conversation.access`) yazılır ve 30 dakika geçerlidir; bu sürede `GET /conversations/{id}/messages` açıktır. Yazışma yoksa 404. Roller: `yonetici`.
          */
         post: operations["openConversationAccess"];
         delete?: never;
@@ -1341,7 +1341,7 @@ export interface paths {
         };
         /**
          * Öğrencinin veli hesapları
-         * @description Öğrenciye bağlı platform veli hesapları (kullanıcı kimliği ve ad); öğretmenin veli yazışması başlatırken `parentUserId` seçimi için (DOM-ILT-010). Öğretmen yalnız kapsamındaki (ders verdiği, rehberi olduğu) öğrenci için okur; kapsam dışı veya başka kurumun öğrencisi 404.
+         * @description Öğrenciye bağlı platform veli hesapları (kullanıcı kimliği ve ad); öğretmenin veli yazışması başlatırken `parentUserId` seçimi için (DOM-ILT-010). Yalnız veliyle yazışma başlatabilen öğretmen okur (yönetici, ön büro, öğrenci ve veli 403); kapsam `POST /conversations` ile birebir aynıdır: ders verdiği, sınıf rehberi olduğu öğrenci ya da rehberlik görevlisi olarak her öğrenci. Kapsam dışı, var olmayan veya başka kurumun öğrencisi 404.
          */
         get: operations["listStudentParentAccounts"];
         put?: never;

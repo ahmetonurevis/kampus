@@ -1,5 +1,15 @@
 # Değişiklikler
 
+## 2.6.0
+
+İletişim güvenlik incelemesi (R3) düzeltmeleri. Davranış sıkılaştı; HTTP yanıt şekilleri değişmedi.
+
+- **Kırıcı davranış (DOM-ILT-010):** veli kimliği (`parentUserId`) olmayan veli tarafı yazışma hiçbir veliye görünmez (`isConversationParty`) ve `startConversation` onunla eşleşmez; veli yeni yazışmasını ayrı açar. Öğretmen ve yönetici kuralları değişmedi. Örnek veride `conv2` ve `conv3` `parentUserId: 'p1'` (örnek veli kaydı) taşır; mevcut kimlikler değişmedi. API tohumu bu değeri velinin kalıcı kullanıcı kimliğine çevirir, migration `0007` eski kayıtları tek veli hesabı varsa doldurur.
+- **Kırıcı davranış (DOM-ILT-004):** ön büro duyuru yayıncısı rolle değil kişiyle eşlenir (`isPublisher`: `publishedBy.userId`). `Actor` isteğe bağlı `userId` alır (`Participant` zaten taşır); kimliği olmayan ön büro aktörü yayıncı sayılmaz. Düzeltme, geri çekme, okundu sayısı, geçmiş ve `withdrawReason` yalnız yayınlayan ve yöneticidedir. `AnnouncementViewer.userId` eklendi.
+- **Davranış (DOM-ILT-004):** `reviseAnnouncement` ve `withdrawAnnouncement` sırası rol/modül, görünürlük, yayıncılıktır: duyuruyu görmeye yetkisi olmayan olmayan kayıtla aynı `announcement_not_found` (404) alır; görüp yayıncı olmayan `announcement_publisher_only` (403) alır.
+- **Yeni (DOM-ILT-010):** `parentAccountsDecision(scope, source, studentId)` öğrencinin veli hesaplarını görme kararı; `startDecision` ile birebir aynı kapsamı kullanır (rehberlik görevli öğretmen dahil), öğretmen dışındaki roller reddedilir.
+- **Kırıcı davranış (DOM-ILT-011):** gerekçeli yönetici erişimi yalnız öğrenci–öğretmen yazışmasındadır; veli tarafı yazışma `conversation_access_student_only` (403) alır. `authorize('conversation.access')` hedefi isteğe bağlı `conversation` alır, `accessDecision(reason, conversation?)` önce gerekçeyi, sonra hedef kitleyi denetler.
+
 ## 2.5.0
 
 - `lib/institution-modules.ts` eklendi: `setModuleEnabled(source, actor, moduleKey, input)` kurum modülünü açar/kapatır (DOM-YTK-040, DOM-YTK-042, DOM-YTK-012). Saf işlemdir: saklanan haritayı değiştirmez, yeni haritayı döndürür; koleksiyon kayıtlarına (gelecek etüt rezervasyonları dahil) dokunmaz, yani kapatma veri silmez ve arşivlemez. Reddler: yönetici olmayan rol `permission_denied` (forbidden), bilinmeyen modül `module_not_found` (not_found), kurum türünde olmayan modül `module_unavailable_for_type` (rule, `path: ['moduleKey']`), durum zaten istenen gibiyse `module_unchanged` (conflict). Core'da modüller arası bağımlılık tanımı yoktur; yeni bağımlılık eklenmedi. `moduleToggleInputSchema` (`{ enabled }`) API gövde şeması ve ayar ekranı formudur.

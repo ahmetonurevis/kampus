@@ -274,6 +274,23 @@ function requireVisibleAnnouncement(
     throw new DomainError('announcement_not_found', 'Duyuru bulunamadı.', { kind: 'not_found' })
   return announcement
 }
+/**
+ * Düzeltme ve geri çekme yetkisi: önce rol ve modül, sonra görünürlük, en sonda yayıncılık.
+ * Görmeye yetkisi olmayan duyuru olmayanla aynı 404'ü alır (varlık sızmaz); görüp yayıncı
+ * olmayan 403 alır (DOM-ILT-004).
+ */
+function authorizeChange(
+  state: State,
+  by: Participant,
+  action: 'announcement.revise' | 'announcement.withdraw',
+  found: Announcement | undefined,
+  options: CommunicationOptions,
+): Announcement {
+  requireAuthorized(by, action, { announcement: undefined }, state, options)
+  const announcement = requireVisibleAnnouncement(state, by, found, options)
+  requireAuthorized(by, action, { announcement }, state, options)
+  return announcement
+}
 function requireNotWithdrawn(announcement: Announcement) {
   if (announcement.withdrawnAt)
     throw new DomainError('announcement_withdrawn', 'Duyuru geri çekilmiş.', { kind: 'conflict' })
@@ -293,8 +310,7 @@ export function reviseAnnouncement(
 ): Announcement {
   const data = reviseAnnouncementSchema.parse(input)
   const found = findAnnouncement(state, announcementId)
-  requireAuthorized(by, 'announcement.revise', { announcement: found }, state, options)
-  const announcement = requireVisibleAnnouncement(state, by, found, options)
+  const announcement = authorizeChange(state, by, 'announcement.revise', found, options)
   requireNotWithdrawn(announcement)
   const next = {
     title: data.title ?? announcement.title,
@@ -337,8 +353,7 @@ export function withdrawAnnouncement(
 ): Announcement {
   const data = withdrawAnnouncementSchema.parse(input)
   const found = findAnnouncement(state, announcementId)
-  requireAuthorized(by, 'announcement.withdraw', { announcement: found }, state, options)
-  const announcement = requireVisibleAnnouncement(state, by, found, options)
+  const announcement = authorizeChange(state, by, 'announcement.withdraw', found, options)
   requireNotWithdrawn(announcement)
   Object.assign(announcement, {
     withdrawnAt: now,
@@ -548,7 +563,7 @@ export function startConversation(
       c.studentId === data.studentId &&
       c.teacherId === teacherId &&
       c.audience === audience &&
-      (c.parentUserId === undefined || c.parentUserId === parentUserId),
+      c.parentUserId === parentUserId,
   )
   const created = !conversation
   if (!conversation) {
@@ -640,8 +655,9 @@ export function openConversationAccess(
   options: CommunicationOptions = {},
 ): ConversationAccess {
   const { reason } = conversationAccessSchema.parse(input)
-  requireAuthorized(actor, 'conversation.access', { reason }, state, options)
-  requireConversation(state.conversations.find((c) => c.id === conversationId))
+  const found = state.conversations.find((c) => c.id === conversationId)
+  requireAuthorized(actor, 'conversation.access', { reason, conversation: found }, state, options)
+  requireConversation(found)
   const expiresAt = new Date(Date.parse(now) + CONVERSATION_ACCESS_MINUTES * 60_000).toISOString()
   return { conversationId, reason, expiresAt }
 }

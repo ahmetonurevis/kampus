@@ -237,7 +237,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Özel nitelikli veriye kimin baktığı ihlal incelemesinin ilk sorusudur; her okumayı kaydetmek ise gereksiz kişisel veri üretir.
 - **Kaynak:** KVKK md. 6/4 (Kurul'un yeterli önlemleri: erişim kayıtları) — **doğrulanmalı**; md. 4/2.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — yöneticinin gerekçeli yazışma erişimi var: `POST /conversations/:id/access` gerekçeyi (≥ 10 karakter) `audit_log.reason` kolonuna, `changes` boş bırakarak yazar (`conversation.access`, 30 dk geçerli). Rehberlik iç notu, sağlık ve acil bilgi, velayet belgesi okumaları ve toplu dışa aktarım denetim kaydı üretmez.
 
 ### DOM-YTK-053 · Denetim kaydının görünürlüğü ve maskesi
 

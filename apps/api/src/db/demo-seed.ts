@@ -178,11 +178,14 @@ export async function seedDemo(auth: Auth, db: Database, password: string, optio
     const { id } = await ensureInstitution(auth, db, { ...institution, creatorUserId: founder.id })
     institutionIds.set(institution.slug, id)
   }
+  // Örnek veri velisi `p1`; veli yazışması kalıcı kullanıcı kimliğiyle eşleşir (DOM-ILT-010).
+  const sampleParentUsers = new Map<string, string>()
   for (const member of DEMO_MEMBERS) {
     const user = await ensureUser(auth, { name: member.name, email: member.email, password })
     for (const membership of member.memberships) {
       const institutionId = institutionIds.get(membership.institution)
       if (!institutionId) continue
+      if (membership.role === 'veli') sampleParentUsers.set(membership.institution, user.id)
       const { id } = await ensureMember(auth, db, {
         institutionId,
         userId: user.id,
@@ -196,6 +199,11 @@ export async function seedDemo(auth: Auth, db: Database, password: string, optio
     const institutionId = institutionIds.get(institution.slug)
     if (!institutionId) continue
     const state = demoState(institution.slug, options.now)
+    const parentUserId = sampleParentUsers.get(institution.slug)
+    for (const conversation of state.conversations)
+      if (conversation.parentUserId !== undefined)
+        if (parentUserId === undefined) delete conversation.parentUserId
+        else conversation.parentUserId = parentUserId
     await ensureInstitutionSettings(db, institutionId, { academicYear: state.academicYear })
     const rows = stateRecords(state)
     insertedRecords[institution.slug] = await insertMissingRecords(

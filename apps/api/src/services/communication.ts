@@ -2,7 +2,10 @@ import { and, asc, desc, eq, gt } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
-import { isConversationParty } from '@kampus/school-core/lib/communication-access.ts'
+import {
+  isConversationParty,
+  parentAccountsDecision,
+} from '@kampus/school-core/lib/communication-access.ts'
 import {
   conversationSummary,
   CONVERSATION_ACCESS_MINUTES,
@@ -40,7 +43,7 @@ import {
   type CommandResponse,
   type OperationTools,
 } from './operation-runner.ts'
-import { assertReadable, readScope } from './read-scope.ts'
+import { assertReadable, readScope, readSource } from './read-scope.ts'
 
 /**
  * İletişim modülünün servisi (docs/domain/iletisim-ve-veli.md): duyuru ve birebir yazışma.
@@ -198,7 +201,9 @@ export async function listConversationMessages(
   if (!conversation) throw new NotFoundError()
   if (scope) {
     if (!isConversationParty(scope, ctx.actor.userId, conversation)) throw new NotFoundError()
-  } else if (!(await activeAccess(ctx, conversationId))) throw new NotFoundError()
+  } else if (conversation.audience !== 'student' || !(await activeAccess(ctx, conversationId)))
+    // Yönetici yalnız öğrenci–öğretmen yazışmasını gerekçeyle okur (DOM-ILT-011).
+    throw new NotFoundError()
   const page = messagePage(conversation, admin ? null : senderSide(ctx.actor.role), query)
   if (!page)
     throw new ValidationError([
@@ -209,15 +214,16 @@ export async function listConversationMessages(
 
 /**
  * Öğrencinin platformdaki veli hesapları (`membership_links` kind `child`): öğretmenin veli
- * yazışmasında veli seçimi için (DOM-ILT-010). Öğretmen yalnız kapsamındaki öğrenci için okur;
- * kapsam dışı öğrenci 404. Ad dışında kişisel veri dönmez.
+ * yazışmasında veli seçimi için (DOM-ILT-010). Kapsam `startConversation` kuralıyla birebir
+ * aynıdır (core `parentAccountsDecision`): öğretmen o öğrenci için veli yazışması açabiliyorsa
+ * görür, aksi halde (kapsam dışı, var olmayan, başka kurum) 404. Ad dışında kişisel veri dönmez.
  */
 export async function listStudentParentAccounts(
   ctx: ServiceContext,
   studentId: string,
 ): Promise<{ userId: string; name: string }[]> {
-  const scope = await readScope(ctx)
-  if (!scope.studentIds.has(studentId)) throw new NotFoundError()
+  const [scope, source] = await Promise.all([readScope(ctx), readSource(ctx)])
+  if (parentAccountsDecision(scope, source, studentId)) throw new NotFoundError()
   return parentAccounts(ctx.db, ctx.institutionId, studentId)
 }
 
@@ -513,8 +519,8 @@ export async function openConversationAccessCommand(
         action: 'conversation.access',
         entityType: 'conversations',
         entityId: conversationId,
-        // kvkk: K — gerekçe yalnız denetim kaydında tutulur (DOM-YTK-052).
-        changes: { reason: access.reason },
+        // kvkk: K — gerekçe yalnız `reason` kolonunda tutulur; `changes` boş kalır (DOM-YTK-052).
+        reason: access.reason,
         createdAt: ctx.now,
       })
     },

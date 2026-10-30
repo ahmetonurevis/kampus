@@ -102,6 +102,16 @@ describe('demo tohumu', () => {
       me.data.activeMembership.links.map((link: { recordId: string }) => link.recordId),
       ['s1', 's2'],
     )
+    // Örnek veli yazışması velinin kalıcı kullanıcı kimliğine bağlanır (DOM-ILT-010).
+    for (const id of ['conv2', 'conv3'])
+      assert.equal(
+        (await findRecord(db, akademi, 'conversations', id))?.data.parentUserId,
+        me.data.user.id,
+      )
+    assert.equal(
+      (await findRecord(db, akademi, 'conversations', 'conv1'))?.data.parentUserId,
+      undefined,
+    )
 
     const founder = await signInAs(app, {
       email: 'murat.yilmaz@kampus.example',

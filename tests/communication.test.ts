@@ -24,11 +24,12 @@ import {
 import {
   isConversationParty,
   isPublisher,
+  parentAccountsDecision,
   publishDecision,
   readerKey,
   viewerOf,
 } from '../packages/school-core/src/lib/communication-access.ts'
-import { scopeFor, visibleRecords } from '../packages/school-core/src/lib/scope.ts'
+import { scopeFor, visibleRecords, type Actor } from '../packages/school-core/src/lib/scope.ts'
 import type { Role } from '../packages/school-core/src/modules/navigation.ts'
 import { isDomainError } from './support/domain-error.ts'
 
@@ -51,7 +52,7 @@ const people: Record<Role, Participant> = {
       { kind: 'child', recordId: 's1' },
       { kind: 'child', recordId: 's2' },
     ],
-    userId: 'u-ayse',
+    userId: 'p1',
   },
 }
 const teacher = (recordId: string, userId = `u-${recordId}`): Participant => ({
@@ -326,7 +327,7 @@ test('DOM-ILT-004: düzeltme önceki içeriği geçmişte tutar; yalnız yayınl
     state,
     'announcements',
     () => reviseAnnouncement(state, teacher('t3'), own.id, { title: 'Başka başlık' }, later),
-    isDomainError('announcement_publisher_only', 'forbidden'),
+    isDomainError('announcement_not_found', 'not_found'),
   )
   unchangedOnFailure(
     state,
@@ -367,6 +368,102 @@ test('DOM-ILT-004: düzeltme önceki içeriği geçmişte tutar; yalnız yayınl
   )
   reviseAnnouncement(state, people.onburo, front.id, { title: 'Servis saatleri' }, later)
   assert.equal(front.title, 'Servis saatleri')
+})
+
+test('DOM-ILT-004: görmeye yetkisi olmayan duyuru yok sayılır (404); görüp yayıncı olmayan 403 alır', () => {
+  const state = seed()
+  // Yönetici öğretmenlere duyurur: t3 alıcıdır, t17 de; veli duyurusunu öğretmen görmez.
+  const forTeachers = publishAnnouncement(
+    state,
+    people.yonetici,
+    announcement({ target: { roles: ['ogretmen'] } }),
+    id,
+    now,
+  )
+  const forParents = publishAnnouncement(state, people.ogretmen, announcement(), id, now)
+  const stranger = teacher('t3')
+  for (const run of [
+    (aid: string) => reviseAnnouncement(state, stranger, aid, { title: 'Başka başlık' }, later),
+    (aid: string) =>
+      withdrawAnnouncement(state, stranger, aid, { reason: 'Gerekçe yazıldı' }, later),
+  ]) {
+    // Var olup görmeyen, hiç olmayan kayıtla aynı hatayı alır.
+    for (const missing of [forParents.id, 'ann-yok'])
+      unchangedOnFailure(
+        state,
+        'announcements',
+        () => run(missing),
+        isDomainError('announcement_not_found', 'not_found'),
+      )
+    // Görüp yayıncı olmayan 403 alır.
+    unchangedOnFailure(
+      state,
+      'announcements',
+      () => run(forTeachers.id),
+      isDomainError('announcement_publisher_only', 'forbidden'),
+    )
+  }
+  // Rol kapalıysa varlık ayrımı yoktur: veli ucu yine yetki hatasıdır.
+  assert.throws(
+    () => reviseAnnouncement(state, people.veli, forParents.id, { title: 'Başka başlık' }, later),
+    isDomainError('permission_denied', 'forbidden'),
+  )
+  assert.throws(
+    () => withdrawAnnouncement(state, people.veli, 'ann-yok', { reason: 'Gerekçe yazıldı' }, later),
+    isDomainError('permission_denied', 'forbidden'),
+  )
+})
+
+test('DOM-ILT-004: ön büro yayıncısı kişiyle eşlenir; başka ön büro kullanıcısı değiştiremez, geçmişi ve gerekçeyi görmez', () => {
+  const state = seed()
+  const other: Participant = { role: 'onburo', links: [], userId: 'u-front-2' }
+  // Kişi kimliği olmayan aktör (eski istemci) yayıncı sayılmaz.
+  const noUser: Actor = { role: 'onburo', links: [] }
+  const front = publishAnnouncement(
+    state,
+    people.onburo,
+    announcement({ category: 'İdari', target: { roles: ['veli'] } }),
+    id,
+    now,
+  )
+  assert.equal(front.publishedBy?.userId, 'u-front')
+  assert.equal(
+    isPublisher({ role: 'onburo', userId: 'u-front', teacherId: undefined }, front.publishedBy),
+    true,
+  )
+  unchangedOnFailure(
+    state,
+    'announcements',
+    () => reviseAnnouncement(state, other, front.id, { title: 'Servis saatleri' }, later),
+    isDomainError('announcement_publisher_only', 'forbidden'),
+  )
+  unchangedOnFailure(
+    state,
+    'announcements',
+    () => withdrawAnnouncement(state, other, front.id, { reason: 'Yanlış duyuru' }, later),
+    isDomainError('announcement_publisher_only', 'forbidden'),
+  )
+  reviseAnnouncement(state, people.onburo, front.id, { title: 'Servis saatleri' }, later)
+  markAnnouncementRead(state, people.veli, front.id, later)
+  const viewOf = (by: Actor) =>
+    visibleRecords(state, by, 'announcements').find((a) => a.id === front.id) as Record<
+      string,
+      unknown
+    >
+  // Yayınlayan okundu sayısını ve geçmişi görür; diğer ön büro kullanıcısı görmez.
+  assert.equal(viewOf(people.onburo).readCount, 2)
+  assert.ok(Array.isArray(viewOf(people.onburo).revisions))
+  for (const by of [other, noUser]) {
+    const view = viewOf(by)
+    assert.ok(view)
+    assert.ok(!('readCount' in view) && !('revisions' in view))
+  }
+  withdrawAnnouncement(state, people.yonetici, front.id, { reason: 'Hatalı bilgi içeriyor' }, later)
+  const hidden = viewOf(other)
+  assert.equal(hidden.withdrawnAt, later)
+  for (const key of ['text', 'withdrawReason', 'withdrawnBy', 'revisions'])
+    assert.ok(!(key in hidden), key)
+  assert.equal(viewOf(people.onburo).withdrawReason, 'Hatalı bilgi içeriyor')
 })
 
 test('DOM-ILT-004: geri çekilen duyuru alıcılara "Geri çekildi" olarak görünür; metni yalnız yayınlayan ve yöneticide', () => {
@@ -556,7 +653,7 @@ test('DOM-ILT-010: öğretmen kendi öğrencisinin velisiyle yazışma açar; ya
     { studentId: 's1', audience: 'parent', text: 'Merhaba, Deniz’in ödevleri hakkında.' },
     id,
     now,
-    { parentUserIds: ['u-ayse'] },
+    { parentUserIds: ['p1'] },
   )
   assert.equal(first.created, true)
   assert.equal(state.conversations.length, count + 1)
@@ -572,7 +669,7 @@ test('DOM-ILT-010: öğretmen kendi öğrencisinin velisiyle yazışma açar; ya
       studentId: 's1',
       teacherId: 't2',
       audience: 'parent',
-      parentUserId: 'u-ayse',
+      parentUserId: 'p1',
       startedBy: 'ogretmen',
     },
   )
@@ -585,7 +682,7 @@ test('DOM-ILT-010: öğretmen kendi öğrencisinin velisiyle yazışma açar; ya
     { studentId: 's1', audience: 'parent', text: 'Bir de kitap listesi.' },
     id,
     later,
-    { parentUserIds: ['u-ayse'] },
+    { parentUserIds: ['p1'] },
   )
   assert.equal(again.created, false)
   assert.equal(again.conversation, first.conversation)
@@ -636,6 +733,30 @@ test('DOM-ILT-010: öğretmen kapsam dışı öğrencinin velisiyle yazışma a�
     () => startConversation(state, people.ogretmen, { studentId: 's1' }, id, now),
     isDomainError('conversation_audience_required'),
   )
+})
+
+test('DOM-ILT-010: veli hesapları yalnız veli yazışması başlatabilen öğretmene, yazışma kuralıyla aynı kapsamda açılır', () => {
+  const state = seed()
+  const outside = onlyClass(state, 'c12')
+  const decide = (by: Participant, studentId: string) =>
+    parentAccountsDecision(scopeFor(state, by), state, studentId)
+  // Kendi öğrencisi: açık. Kapsam dışı öğrenci ve var olmayan öğrenci: kapalı.
+  assert.equal(decide(people.ogretmen, 's1'), null)
+  assert.equal(decide(people.ogretmen, outside)?.code, 'conversation_party_forbidden')
+  assert.equal(decide(people.ogretmen, 's-yok')?.code, 'conversation_party_forbidden')
+  // Rehberlik görevli öğretmen, yazışma açabildiği her öğrencinin veli hesaplarını görür.
+  assert.equal(decide(teacher('t1'), outside), null)
+  assert.equal(
+    startConversation(state, teacher('t1'), { studentId: outside, audience: 'parent' }, id, now, {
+      parentUserIds: ['u-p'],
+    }).created,
+    true,
+  )
+  // Yazışma başlatamayan roller veli hesaplarını görmez: yönetici, ön büro, öğrenci, veli.
+  for (const role of ['yonetici', 'onburo', 'ogrenci', 'veli'] as const)
+    assert.equal(decide(people[role], 's1')?.code, 'conversation_party_forbidden', role)
+  // Kayıtlı öğretmen kaydı bulunmayan (pasif) öğretmen de göremez.
+  assert.equal(decide(teacher('t-yok'), 's1')?.code, 'conversation_party_forbidden')
 })
 
 test('DOM-ILT-010: veli hesabı seçimi öğrencinin veli hesaplarıyla sınırlıdır', () => {
@@ -731,6 +852,43 @@ test('DOM-ILT-010: iki velinin yazışması ayrıdır; biri diğerininkini görm
   )
 })
 
+test('DOM-ILT-010: veli kimliği olmayan eski yazışma hiçbir veliye görünmez ve yeni yazışmayla eşleşmez', () => {
+  const state = seed()
+  // Örnek veri velisi p1'dir; kimliksiz eski kayıt aynı öğrencinin ikinci velisine sızmamalı.
+  const legacy = state.conversations.find((c) => c.id === 'conv2')!
+  assert.equal(legacy.parentUserId, 'p1')
+  const orphan: typeof legacy = { ...legacy, id: 'conv-eski' }
+  delete orphan.parentUserId
+  state.conversations.push(orphan)
+  const second = parentOf('s1', 'u-ikinci')
+  const mine = (by: Participant) =>
+    conversationsFor(state, scopeFor(state, by), by.userId).map((c) => c.id)
+  assert.deepEqual(mine(second), [])
+  assert.deepEqual(mine(people.veli), ['conv2', 'conv3'])
+  assert.equal(isConversationParty(scopeFor(state, second), 'u-ikinci', orphan), false)
+  unchangedOnFailure(
+    state,
+    'conversations',
+    () => sendMessage(state, second, 'conv-eski', { text: 'Ben de yazayım' }, id, now),
+    isDomainError('conversation_not_found', 'not_found'),
+  )
+  // Başlatma eski kayda eklemez; kendi yazışmasını ayrı açar.
+  const before = orphan.messages.length
+  const opened = startConversation(
+    state,
+    second,
+    { studentId: 's1', teacherId: 't1', text: 'Merhaba' },
+    id,
+    now,
+  )
+  assert.equal(opened.created, true)
+  assert.notEqual(opened.conversation.id, 'conv-eski')
+  assert.equal(opened.conversation.parentUserId, 'u-ikinci')
+  assert.equal(orphan.messages.length, before)
+  // Öğretmen tarafı değişmez: eski kayıt öğretmene görünmeye devam eder.
+  assert.ok(conversationsFor(state, scopeFor(state, teacher('t1')), 'u-t1').includes(orphan))
+})
+
 test('DOM-ILT-011: öğrenci yalnız kendi öğretmeni ve rehber öğretmenle yazışır; öğrenci–öğrenci yok', () => {
   const state = seed()
   const own = startConversation(
@@ -765,9 +923,7 @@ test('DOM-ILT-011: öğrenci yalnız kendi öğretmeni ve rehber öğretmenle ya
       isDomainError('conversation_party_forbidden', 'forbidden'),
     )
   // Veli, öğrencinin öğretmen yazışmasını görmez (DOM-ILT-011).
-  assert.ok(
-    !conversationsFor(state, scopeFor(state, people.veli), 'u-ayse').includes(own.conversation),
-  )
+  assert.ok(!conversationsFor(state, scopeFor(state, people.veli), 'p1').includes(own.conversation))
   for (const role of ['yonetici', 'onburo'] as const)
     unchangedOnFailure(
       state,
@@ -908,6 +1064,25 @@ test('DOM-YTK-052: yöneticinin erişimi gerekçe ister, süre sınırlıdır ve
       ),
     isDomainError('conversation_not_found', 'not_found'),
   )
+  // DOM-ILT-011: gerekçeli erişim yalnız öğrenci–öğretmen yazışmasındadır; veli yazışması kapalı.
+  for (const parentConversation of ['conv2', 'conv3'])
+    assert.throws(
+      () =>
+        openConversationAccess(
+          state,
+          people.yonetici,
+          parentConversation,
+          { reason: 'Gerekçe yeterli uzun' },
+          now,
+        ),
+      isDomainError('conversation_access_student_only', 'forbidden'),
+    )
+  // Gerekçe eksikse önce gerekçe hatası: veli yazışmasında da 422.
+  assert.throws(
+    () => openConversationAccess(state, people.yonetici, 'conv2', { reason: 'kısa' }, now),
+    isDomainError('access_reason_required'),
+  )
+  assert.equal(JSON.stringify(state.conversations), before)
   // Yönetici taraf değildir: listesi boş.
   assert.deepEqual(conversationsFor(state, scopeFor(state, people.yonetici), 'u-admin'), [])
   assert.equal(

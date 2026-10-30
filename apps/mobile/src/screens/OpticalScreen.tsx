@@ -14,7 +14,8 @@ import {
   type QuestionOutcome,
 } from '@kampus/school-core/lib/assessment-automation.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
-import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 import { moduleNavigationState } from '../model/navigation.ts'
 import type { FormValues } from '../model/operations.ts'
 import type { ScreenProps } from '../route-types.ts'

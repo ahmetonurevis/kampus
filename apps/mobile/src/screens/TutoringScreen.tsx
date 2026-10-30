@@ -10,7 +10,8 @@ import {
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { userErrorMessage } from '../lib/error-message.ts'
-import { recordError, useActiveSchool } from '../store/SchoolProvider.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 import type { ScreenProps } from '../route-types.ts'
 import {
   Badge,

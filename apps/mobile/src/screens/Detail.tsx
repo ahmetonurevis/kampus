@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { View } from 'react-native'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
 import type { ArchiveKind } from '@kampus/school-core/lib/school-management.ts'
-import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 import {
   context,
   rowsFor,

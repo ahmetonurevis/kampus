@@ -1,0 +1,320 @@
+# Beceri gelişimi
+
+İngilizcede okuma, dinleme, yazma ve konuşma (ve aracılık) görevleri; otomatik ve öğretmen puanlaması, CEFR'e bağlı rubrikler, seviye önerisi hesabı, teslim kuralları ve ses kaydı. Modül iki kurum türünde de çalışır: `language_school`'da kur programının, `school`'da İngilizce dersinin parçasıdır. Kur geçme ve seviye tespiti [dil-okulu.md](dil-okulu.md), not sistemine aktarım [akademik-olcme.md](akademik-olcme.md), içerik etiketleri ve lisans [kaynak-platformu.md](kaynak-platformu.md) içindedir.
+
+## Beceri modeli ve görev tipleri
+
+### DOM-BEC-001 · Beceri taksonomisi
+
+- **Kural:** Her görevin tek bir birincil becerisi vardır: `okuma`, `dinleme`, `yazma`, `konuşma` veya `aracılık`. İsteğe bağlı ikincil beceriler ve etkinlik kipi (`alımlama`, `üretim`, `etkileşim`, `aracılık`; etkileşim için `sözlü`, `yazılı`, `çevrim içi`) etiketlenir. Aracılık görevi kaynak beceri ile hedef beceriyi birlikte taşır (ör. okuduğunu sözlü aktarma: kaynak `okuma`, hedef `konuşma`). Dilbilgisi ve sözcük bilgisi `dil kullanımı` bileşenidir; dört beceriden birine sayılmaz ve seviye önerisinde ayrı gösterilir.
+- **Gerekçe:** Seviye önerisi beceri bazında hesaplanır; bir görevin iki beceriye birden puan yazması profili bozar. CEFR-CV dört beceriyi etkinlik kipleriyle tanımlar ve aracılığı ayrı kip olarak ekler.
+- **Kaynak:** CEFR (2001) ve CEFR-CV (alımlama, üretim, etkileşim, aracılık; çevrim içi etkileşim ölçekleri).
+- **Kurum türü:** ikisi
+- **Kodda:** yok — İngilizce konuları serbest metin `Reading, Vocabulary, Grammar, Writing` (`packages/school-core/src/data/curriculum.js:129`); dinleme ve konuşma yok.
+
+### DOM-BEC-002 · Görev tipleri kataloğu
+
+- **Kural:** Görev tipi sabit listeden seçilir. Otomatik puanlanan tipler (okuma, dinleme, dil kullanımı): çoktan seçmeli (tek doğru), doğru/yanlış/belirtilmemiş, eşleştirme, sıralama, kapalı listeden boşluk doldurma, kabul edilen cevap listeli kısa cevap. Öğretmen puanlı tipler: serbest yazma (sözcük alt/üst sınırlı; mesaj, e-posta, paragraf, deneme), ses kaydıyla konuşma (hazırlık süresi + konuşma süresi; resim betimleme, soruya yanıt, kısa sunum, sesli okuma), yüz yüze konuşma görüşmesi (kayıt olmadan öğretmen puanı), aracılık (özetleme, aktarma; kaynak metin İngilizce veya Türkçe). Yeni tip ancak bu dosya güncellenerek eklenir.
+- **Gerekçe:** Puanlama yolu görev tipine bağlıdır; serbest tip tanımı otomatik puanlanamayan görevi otomatik puanlatır.
+- **Kaynak:** İşletme kuralı; CEFR-CV etkinlik ölçekleri.
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — yalnız dört seçenekli tek doğrulu soru var (`packages/school-core/src/data/question-bank.js:693-712`).
+
+### DOM-BEC-003 · Görev CEFR seviyesine ve tanımlayıcıya bağlanır
+
+- **Kural:** Her görevin bir hedef seviyesi (`DOM-DIL-001` listesi) ve en az bir CEFR tanımlayıcı referansı (ölçek adı + seviye) vardır. `school`'da görev ayrıca en az bir MEB İngilizce kazanım koduna bağlanır (`DOM-BEC-062`). Hedef seviyesi veya tanımlayıcısı olmayan görev yayımlanamaz ve seviye önerisine kanıt olamaz.
+- **Gerekçe:** Seviye önerisi görevin hedef seviyesini kullanır; bağsız görev kanıt değildir.
+- **Kaynak:** CEFR-CV.
+- **Kurum türü:** ikisi
+- **Kodda:** yok — soruların yalnız serbest metin `topic` alanı var (`packages/school-core/src/data/question-bank.js:709`).
+
+### DOM-BEC-004 · Tanımlayıcı metni ve telif
+
+- **Kural:** Platform CEFR tanımlayıcılarını kimlikle (ölçek, seviye, sıra) anar ve kısa alıntıyla gösterir; tanımlayıcı setinin tamamı ürün içine çoğaltılmaz. Rubrik bant metinlerini kurum kendi cümleleriyle yazar ve ilgili tanımlayıcıya bağlar. Her alıntıda kaynak "Council of Europe (2020)" olarak yazılır.
+- **Gerekçe:** CEFR-CV'nin yayım koşulları ticari olmayan amaçla 500 sözcüğe kadar alıntıya izin verir; platform ticari üründür.
+- **Kaynak:** CEFR-CV yayın künyesindeki çoğaltma izni (Fransızca ve İspanyolca baskılarda görüldü); ticari kullanım koşulları **doğrulanmalı** (Avrupa Konseyi izin birimi). Ayrıca 5846 (`DOM-KYN`).
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+### DOM-BEC-005 · Dinleme kaydı
+
+- **Kural:** Dinleme görevinin ses dosyası ve transkripti birlikte yüklenir; transkript olmadan görev yayımlanmaz. Görev ayarı dinleme hakkını belirler (1, 2 veya sınırsız; değerlendirme türünde varsayılan 2). Transkript kursiyere görev kapanmadan gösterilmez; işitme engelli kursiyer için öğretmen transkripti erişilebilirlik uyarlaması olarak açabilir. Dinleme sayısı teslimle birlikte kaydedilir.
+- **Gerekçe:** Transkript öğretmen kontrolü ve erişilebilirlik için gerekir; dinleme sayısı ölçmenin koşuludur.
+- **Kaynak:** İşletme kuralı (iki dinleme, yaygın sınav uygulaması).
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+## Otomatik puanlama
+
+### DOM-BEC-010 · Otomatik puan cevaplardan hesaplanır
+
+- **Kural:** Otomatik puanlanan görevde kursiyerin cevapları ve kullanılan cevap anahtarı sürümü saklanır; puan bunlardan her okumada hesaplanır, ayrı alanda saklanmaz. Kısa cevapta karşılaştırma öncesi büyük/küçük harf, baştaki/sondaki boşluk ve art arda boşluk normalleştirilir; yazım farkı yalnız kabul listesinde varsa doğru sayılır. Yanlış cevap eksi puan getirmez. Çok maddeli görevlerde (eşleştirme, sıralama) her madde ayrı puanlanır.
+- **Gerekçe:** Hesaplanabilen değer saklanmaz; saklanan puan anahtar düzeltilince bayatlar.
+- **Kaynak:** Proje kuralı (quiz puanı cevaplardan hesaplanır); eksi puan yokluğu işletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** çelişiyor — `gradeQuiz` cevaplardan hesaplar (`packages/school-core/src/lib/domain.js:75-104`), ama sonuç denemeye ve not kaydına kopyalanarak saklanır (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.jsx:43-60`); kısa cevap, eşleştirme, sıralama yok.
+
+### DOM-BEC-011 · Anahtar düzeltmesi
+
+- **Kural:** Yayımlanmış görevin anahtarı yalnız yeni anahtar sürümüyle düzeltilir; gerekçe zorunludur. Düzeltmeden sonra tüm teslimlerin puanı yeni sürümle hesaplanır ve etkilenen kursiyerlere (18 yaş altında veliye) bildirim gider. Not defterine aktarılmış (`DOM-BEC-060`) veya kur geçme kararına girmiş sonuç kendiliğinden değişmez; öğretmen fark listesini görüp onaylar.
+- **Gerekçe:** Hatalı anahtar düzeltilmeli, ama resmî nota veya kesinleşmiş karara sessizce dokunulmamalı.
+- **Kaynak:** İşletme kuralı (optik değerlendirmedeki anahtar revizyonu kuralıyla aynı ilke).
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+## Öğretmen puanlaması ve rubrikler
+
+### DOM-BEC-020 · Rubrik yapısı
+
+- **Kural:** Yazma, konuşma ve aracılık görevleri rubrikle puanlanır. Rubrik kriterleri CEFR-CV niteliksel yönlerinden seçilir: yazmada `görevin yerine getirilmesi`, `tutarlılık ve bağdaşıklık`, `sözcük dağarcığı`, `dilbilgisel doğruluk`; konuşmada `kapsam`, `doğruluk`, `akıcılık`, `etkileşim`, `tutarlılık`, `sesbilgisel denetim`; aracılıkta `kaynak anlamın aktarımı`, `hedef kitleye uygunluk`, `dil`. Her kriter 0–5 bantla puanlanır; bant 3 "hedef seviyede", 4–5 "hedefin üstünde", 0–2 "hedefin altında" anlamına gelir. Her bandın tanımı kurum cümlesiyle yazılır ve bir tanımlayıcıya bağlanır (`DOM-BEC-004`).
+- **Gerekçe:** Tek toplam puan neyin geliştirilmesi gerektiğini söylemez; bant anlamı sabit olmazsa seviye önerisi hesaplanamaz.
+- **Kaynak:** CEFR-CV (konuşulan dilin niteliksel yönleri; yeni sesbilgisel denetim ölçeği: genel, ses üretimi, bürünsel özellikler). Bant sayısı ve anlamı işletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** çelişiyor — ödev tek 0–100 puan ve yorumla değerlendirilir (`apps/web/src/views/Learning.vue:250-269`).
+
+### DOM-BEC-021 · Rubrik puanı hesaplanır
+
+- **Kural:** Saklanan veri kriter başına seçilen bant, kriter yorumu, genel yorum, puanlayan ve zamandır. Görev puanı (100 üzerinden = bant toplamı / azami bant toplamı × 100, en yakın tamsayıya yuvarlanır) saklanmaz, hesaplanır. Genel yorum zorunludur; "hedefin altında" bant verilen her kriter için kısa yorum zorunludur.
+- **Gerekçe:** Rubrik toplamı hesaplanabilir; düşük bant gerekçesiz kalmamalı.
+- **Kaynak:** Proje kuralı (rubrik toplamı saklanmaz); yorum zorunluluğu işletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+### DOM-BEC-022 · Rubrik sürümü
+
+- **Kural:** Rubrik sürümlüdür. Puanlanmış teslim, puanlandığı rubrik sürümüne bağlıdır; rubrik değişince eski puanlar eski sürümle hesaplanmaya devam eder. Kullanılmış rubrik sürümü silinemez, yalnız arşivlenir.
+- **Gerekçe:** Geçmiş puanlar sonradan değişen ölçütle yeniden yorumlanmamalı.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+### DOM-BEC-023 · Yazma ve konuşma otomatik puanlanmaz
+
+- **Kural:** Yazma, konuşma ve aracılık puanını yalnız öğretmen verir. Platform sözcük sayısı, süre ve yazım uyarısı gibi yardımcı bilgileri gösterebilir; bunlar bant önermez. Ses ve metin, otomatik puanlama, konuşmayı yazıya çevirme veya model eğitimi için kurum dışındaki bir hizmete gönderilmez.
+- **Gerekçe:** Otomatik puanlamanın geçerliliği ve hatası kursiyere karşı denetlenemez; çocuk sesi ve yazısının yurt dışı/üçüncü taraf hizmete aktarımı ayrı hukuki dayanak ister.
+- **Kaynak:** ADR 0001 karar 8 (dış SaaS yok); KVKK md. 8–9 (aktarım) — yurt dışı aktarım koşulları **doğrulanmalı**.
+- **Kurum türü:** ikisi
+- **Kodda:** yok (kodda otomatik yazma/konuşma puanı da yok).
+
+### DOM-BEC-024 · İkinci puanlayıcı
+
+- **Kural:** Seviye tespiti ve kur sonu değerlendirmesindeki yazma/konuşma teslimlerinin en az %10'u (en az bir teslim) ikinci bir öğretmence, ilk puanı görmeden puanlanır. Herhangi bir kriterde iki puan arasında birden fazla bant fark varsa akademik koordinatör son puanı verir. Diğer görevlerde ikinci puanlama isteğe bağlıdır.
+- **Gerekçe:** Yüksek sonuçlu kararlarda puanlayıcı tutarlılığı ölçülmeli.
+- **Kaynak:** İşletme kuralı (%10 ve bir bant eşiği).
+- **Kurum türü:** ikisi (`school`'da sınav niteliğindeki konuşma/yazma bölümleri için)
+- **Kodda:** yok.
+
+### DOM-BEC-025 · Puanlama süresi ve itiraz
+
+- **Kural:** Öğretmen teslimi son teslim tarihinden sonra 7 gün içinde puanlar; süre aşımı öğretmen ve koordinatör listesinde görünür. `school`'da sınav niteliğindeki görevin sonucu yönetmelikteki süre içinde duyurulur. Kursiyer/öğrenci veya veli sonuç duyurusundan sonra 5 iş günü içinde gerekçeli itiraz eder; itiraz ilk puanlayıcı dışında bir öğretmene gider, sonuç gerekçesiyle bildirilir ve ilk puan kayıt geçmişinde kalır.
+- **Gerekçe:** Geri bildirim gecikirse işe yaramaz; itirazın bağımsız değerlendirilmesi güven sağlar.
+- **Kaynak:** OİKY md. 23 (itiraz 5 iş günü), md. 25 (sonuç 10 iş günü) ortaokul sınavları için; lisedeki karşılığı (OKY) **doğrulanmalı**. 7 gün ve dil okulundaki itiraz işletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+## Seviye önerisi
+
+### DOM-BEC-030 · Seviye önerisi hesaplanır, saklanmaz
+
+- **Kural:** Bir kursiyerin beceri bazında seviye önerisi her istekte aşağıdaki kurallarla, `now` parametresine göre hesaplanır; sonuç kayda yazılmaz. Aynı girdiler aynı öneriyi verir. Kur geçme kararı (`DOM-DIL-070`) verilirken o anki öneri ve kullanılan kanıt listesi kararın gerekçesi olarak karar kaydına eklenir; bu bir kopya değil, kararın parçasıdır ve sonradan değişmez.
+- **Gerekçe:** Hesaplanabilen değer saklanmaz; karar ise verildiği anın kanıtıyla denetlenebilmeli.
+- **Kaynak:** Proje kuralı (`.claude/rules/cekirdek.md`); hedef ilerlemesiyle aynı ilke.
+- **Kurum türü:** ikisi
+- **Kodda:** yok — aynı ilkenin örneği hedef ilerlemesi (`packages/school-core/src/lib/school-workflows.js:373-392`).
+
+### DOM-BEC-031 · Kanıt nedir
+
+- **Kural:** Kanıt; `değerlendirme` türündeki, hedef seviyesi ve birincil becerisi olan, puanlanmış bir görevin kursiyer başına tek sonucudur (otomatik görevde sayılan deneme `DOM-BEC-042`, öğretmen puanlı görevde puanlanan sürüm `DOM-BEC-040`). `alıştırma` türü görevler, itirazı sürmekte olan sonuçlar ve ön tespit (`DOM-DIL-011`) kanıt değildir. Seviye tespit sınavı sonucu 90 gün, diğer kanıtlar 120 gün geçerlidir (pencere `now`'dan geriye sayılır). Bir görev başarılıdır: otomatik görevde doğru oranı ≥ %70; rubrikli görevde bantların ortalaması ≥ 3 ve hiçbir kriter ≤ 1.
+- **Gerekçe:** Sınırsız tekrar edilebilen alıştırma ve gözetimsiz sonuç seviye kanıtı olamaz; eski kanıt bugünkü seviyeyi göstermez. Tek kriterde çok düşük performans ortalamayla gizlenmemeli.
+- **Kaynak:** İşletme kuralı (eşikler ve pencere). v1'de eşikler sabittir; kurum değiştiremez, böylece kurumlar arası rapor karşılaştırılabilir kalır.
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+### DOM-BEC-032 · Bir seviyenin gösterilmesi ve öneri
+
+- **Kural:** Sıralı liste `Pre-A1 < A1 < A2 < A2+ < B1 < B1+ < B2 < B2+ < C1 < C2` kullanılır. Bir beceride L seviyesi **gösterilmiş** sayılır, eğer pencerede L hedefli en az 3 kanıt varsa, bunlar en az 2 farklı günden geliyorsa ve en az 2/3'ü başarılıysa; okuma ve dinlemede ayrıca bu kanıtlardaki toplam madde sayısı en az 10'dur. Beceri önerisi gösterilmiş en yüksek seviyedir. Öneri artısı olan bir ana seviye (A2, B1, B2) ise ve bir sonraki ana seviyede gösterilme koşulu sağlanmadan en az 2 başarılı kanıt varsa öneri artı seviye olur (ör. B1 → B1+). Hiçbir seviye gösterilmemişse öneri `yetersiz kanıt`tır ve eksik kanıt sayısı gösterilir; seviye tahmini yapılmaz.
+- **Gerekçe:** Tek iyi gün seviye göstermez; muhafazakâr eşik kursiyeri hazır olmadığı kura taşımaz. Artı seviye, CEFR-CV'deki "bir sonraki seviyeye doğru güçlü performans" anlamına karşılık gelir.
+- **Kaynak:** CEFR-CV (artı seviyeler); sayılar işletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+### DOM-BEC-033 · Genel seviye önerisi
+
+- **Kural:** Genel seviye önerisi yalnız dört becerinin (okuma, dinleme, yazma, konuşma) hepsinde öneri varsa hesaplanır: dört öneri sıralanır, ikinci en düşük değer genel önerisidir. Aracılık ve dil kullanımı genel öneriye girmez, ayrı gösterilir. Genel öneri her zaman beceri profiliyle birlikte gösterilir, tek başına gösterilmez.
+- **Gerekçe:** Dil profilleri dengesizdir; tek beceriyle genel seviye yükseltmek veya düşürmek yanıltır. Alt medyan, aritmetik ortalamadan daha muhafazakârdır ve harf ölçekte tanımlıdır.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+### DOM-BEC-034 · Önerinin gösterimi
+
+- **Kural:** Öneri ekranlarda "Tahmini seviye" olarak, öğretmen kararından (yerleştirme, kur geçme) ayrı gösterilir ve hangi görevlere dayandığı listelenir. Öneri karar değildir: kursiyerin kurunu, grubunu veya notunu değiştirmez. Öğrenci/kursiyer ve veli öneriyi yalnız kendi kapsamında görür; başka kursiyerlerle sıralama gösterilmez (`DOM-DIL-094`).
+- **Gerekçe:** Makine önerisinin kesin hüküm gibi okunması kursiyeri ve veliyi yanıltır.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+## Teslim kuralları
+
+### DOM-BEC-040 · Tek teslim, değişmez sürümler
+
+- **Kural:** Bir kursiyerin bir görev ataması için tek teslim kaydı vardır. Her yeniden gönderim yeni bir sürüm ekler; önceki sürümler silinmez ve değiştirilmez. Öğretmen her zaman son sürümü puanlar ve puanlanan sürüm sabitlenir. Son teslim tarihine kadar en fazla 3 sürüm gönderilebilir (görev ayarıyla 1–5). Puanlandıktan sonra yeni sürüm yalnız öğretmen "yeniden teslim iste" dediğinde açılır; yeni puan eski puanın yerine geçer, eski puan geçmişte kalır.
+- **Gerekçe:** Teslimin üzerine yazmak öğretmenin neyi okuduğunu belirsizleştirir ve itirazda kanıt bırakmaz.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** çelişiyor — tek kayıt var ama yeniden teslim dosya adını ve zamanı üzerine yazar, sürüm tutulmaz (`apps/web/src/views/Learning.vue:222-248`); puanlanınca kilitlenir.
+
+### DOM-BEC-041 · Görev türü: değerlendirme veya alıştırma
+
+- **Kural:** Her görev `değerlendirme` veya `alıştırma` türündedir ve tür yayımdan sonra değişmez. Yalnız değerlendirme türü seviye önerisine (`DOM-BEC-031`) ve not aktarımına (`DOM-BEC-060`) girer. Alıştırma sınırsız denenebilir ve sonuçları yalnız kursiyere ve öğretmene ilerleme olarak gösterilir.
+- **Gerekçe:** Pratik yapmayı cezalandırmamak ile ölçmeyi güvenilir tutmak ayrı türler gerektirir.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** yok — her quiz denemesi not üretir.
+
+### DOM-BEC-042 · Deneme hakkı
+
+- **Kural:** Otomatik puanlanan değerlendirme görevinde deneme hakkı varsayılan 1'dir; öğretmen 1–3 arası tanımlayabilir. Sayılan sonuç ilk tamamlanan denemedir; deneme hakkı 1'den büyükse öğretmen görev yayımlanırken "en yüksek" politikasını seçebilir, politika yayımdan sonra değişmez. Hakkı biten kursiyer yeni deneme başlatamaz. Her deneme saklanır; not defterine ve kanıta görev başına yalnız sayılan sonuç gider.
+- **Gerekçe:** Sınırsız deneme cevapları ezberletir; her denemenin ayrı not üretmesi ortalamayı bozar.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** çelişiyor — deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.jsx:43-60`).
+
+### DOM-BEC-043 · Süreli görev
+
+- **Kural:** Süreli görevde deneme başlangıcı ve bitişi sunucu saatine göre tutulur. Süre dolunca deneme o ana kadar kaydedilmiş cevaplarla otomatik teslim edilir; yanıtsız madde yanlış sayılır. Bağlantı kopması veya uygulamanın kapanması süreyi durdurmaz. Öğretmen özel gereksinimi olan kursiyere bireysel ek süre tanımlar; ek süre kayıt geçmişinde gerekçesiyle görünür.
+- **Gerekçe:** İstemci saati değiştirilebilir; erişilebilirlik uyarlaması herkese açık bir istisna olmamalı.
+- **Kaynak:** İşletme kuralı; proje kuralı (doğrulama sunucuda).
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — mobil süre dolunca yanıtsız maddelerle teslim eder (`apps/mobile/src/screens/Quiz.jsx:43,68`); süre istemci sayacıdır.
+
+### DOM-BEC-044 · Geç teslim
+
+- **Kural:** Son teslim tarihi Europe/Istanbul yerel saatiyle girilir ve UTC olarak saklanır. Tarihten sonra gelen teslim `geç` işaretlenir. Görev ayarı geç teslimi kapatabilir veya en fazla 7 günlük geç kabul süresi tanımlayabilir; süre bitince teslim kapanır. Platform geç teslimden otomatik puan kesmez; öğretmen kesinti uygulayacaksa gerekçesini yazar. Hiç teslim edilmeyen görev `teslim edilmedi` olur; `school`'da proje teslim etmeyen öğrencinin proje puanı sıfırdır, sıradan ödev için not yazılmaz.
+- **Gerekçe:** Gecikme görünür olmalı; mekanik kesinti mazereti ayırt etmez. Mevzuat yalnız proje için sıfır puan öngörür.
+- **Kaynak:** İşletme kuralı; OİKY md. 22/2 (proje teslim etmeyen sıfır).
+- **Kurum türü:** ikisi
+- **Kodda:** yok — teslimde son tarih denetimi ve geç işareti yok (`apps/web/src/views/Learning.vue:222-248`).
+
+### DOM-BEC-045 · Cevap ve geri bildirimin açılması
+
+- **Kural:** Otomatik görevde doğru cevaplar ve açıklamalar, görevin son teslim tarihi ve geç kabul süresi bitene kadar hiçbir kursiyere gösterilmez; kursiyer yalnız kendi puanını görür. Alıştırma türünde cevaplar deneme biter bitmez gösterilir. Öğretmen geri bildirimi puanlama tamamlanınca açılır.
+- **Gerekçe:** Erken açılan anahtar aynı grubun diğer kursiyerlerine kopya imkânı verir.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** çelişiyor — sonuç ekranı açıklamayı deneme biter bitmez gösterir (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.jsx:96`).
+
+### DOM-BEC-046 · Yazma teslimi metindir
+
+- **Kural:** Yazma görevi platformda metin olarak teslim edilir; sözcük sayısı sunucuda hesaplanır ve alt/üst sınır dışındaki teslim uyarıyla kabul edilir (red edilmez, öğretmen görür). El yazısı istenen görevde görüntü veya PDF yüklenir ve görev ayarında belirtilir.
+- **Gerekçe:** Metin teslimi sözcük sayısını, sürüm karşılaştırmasını ve erişilebilir okumayı mümkün kılar.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** çelişiyor — ödev yalnız dosya adı olarak saklanır, içerik tutulmaz (`apps/web/src/views/Learning.vue:232-240`).
+
+## Ses kaydı ve kişisel veri
+
+### DOM-BEC-050 · Ses kaydı kişisel veridir
+
+- **Kural:** Konuşma görevinin ses kaydı kişisel veridir ve yalnız o görevin puanlanması, geri bildirimi ve itirazı için işlenir. Kayıt başlamadan kursiyere (18 yaş altında ayrıca veliye kayıt sırasında) aydınlatma gösterilir ve gösterim sürümü ile zamanı saklanır. 18 yaş altı öğrencinin ses kaydı için veli onayı alınır; onay yoksa konuşma görevi yüz yüze görüşmeyle (kayıtsız) değerlendirilir ve öğrenci bu yüzden puan kaybetmez. Onay her an geri alınabilir; geri alma yeni kayıt almayı durdurur ve onaya dayalı mevcut kayıtları siler.
+- **Gerekçe:** Çocuğun sesi tanınabilir kişisel veridir; onay hizmete erişimin şartı yapılamaz.
+- **Kaynak:** KVKK md. 3 (kişisel veri), md. 5 (işleme şartları), md. 10 (aydınlatma). Ses kaydının "sözleşmenin ifası" şartıyla mı açık rızayla mı işleneceği **doğrulanmalı**; platform muhafazakâr olarak 18 yaş altında veli onayı arar.
+- **Kurum türü:** ikisi
+- **Kodda:** yok — ses kaydı yok.
+
+### DOM-BEC-051 · Biyometrik işleme yok
+
+- **Kural:** Ses kaydından konuşmacı tanıma, ses izi veya duygu analizi çıkarılmaz; kayıt kimlik doğrulama için kullanılmaz. Kayıt kurum dışındaki bir hizmete gönderilmez (`DOM-BEC-023`).
+- **Gerekçe:** Kişiyi tanımlamaya yönelik ses işleme biyometrik veri işlemesidir ve özel nitelikli veri rejimine girer.
+- **Kaynak:** KVKK md. 6 (biyometrik veri özel niteliklidir).
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+### DOM-BEC-052 · Ses kaydı saklama süresi
+
+- **Kural:** Ses kaydı, puanlama ve itiraz süresi kapandıktan sonra `language_school`'da kur bitiminden itibaren 6 ay, `school`'da eğitim-öğretim yılı sonundan itibaren 6 ay saklanır, sonra bir sonraki periyodik imhada silinir. Silmeden sonra rubrik bantları, yorumlar ve kaydın süresi kalır. Kursiyer/öğrenci ve veli kendi kaydını saklama süresi içinde indirebilir. Ayrılan kursiyer için süre aynı şekilde işler; kursiyer veya veli daha erken silme isteyebilir, bu durumda itiraz hakkının kalkacağı bildirilir.
+- **Gerekçe:** Veri amaç için gerekli süre kadar tutulur; ses kaydı puanın kanıtıdır ama sonsuza kadar gerekmez.
+- **Kaynak:** KVKK md. 4/2-ç, md. 7; periyodik imha süresi (en fazla 6 ay) Silme, Yok Etme veya Anonim Hâle Getirme Yönetmeliği — **doğrulanmalı**. 6 aylık saklama işletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+### DOM-BEC-053 · Ses kaydına erişim
+
+- **Kural:** Ses kaydını yalnız kaydın sahibi, 18 yaş altında velisi, görevin öğretmeni, ikinci puanlayıcı/itiraz değerlendiricisi ve akademik koordinatör dinler. Sınıf arkadaşları ve diğer veliler erişemez; akran değerlendirmesi ses kaydıyla yapılmaz. Dosya kısa ömürlü imzalı bağlantıyla sunulur; her dinleme/indirme erişim günlüğüne yazılır.
+- **Gerekçe:** Erişim amaçla sınırlı olmalı ve izlenebilmeli.
+- **Kaynak:** KVKK md. 12 (veri güvenliği); ADR 0001 karar 7–8.
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+### DOM-BEC-054 · Ses dosyası sınırları
+
+- **Kural:** Kabul edilen biçimler `m4a`, `webm`, `mp3`; azami süre görev ayarıdır (varsayılan 3 dakika, en fazla 10), azami boyut 20 MB. Boş veya süre sınırını aşan kayıt reddedilir ve kursiyere Türkçe hata mesajı gösterilir. Kayıt teslim edilene kadar yalnız cihazda tutulur.
+- **Gerekçe:** Sınırsız dosya depolama ve puanlama yükü getirir; yarım yüklenen kayıt sessizce kaybolmamalı.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+### DOM-BEC-055 · Öğrenci ürünü tanıtımda kullanılmaz
+
+- **Kural:** Öğrencinin/kursiyerin ses kaydı ve yazısı kurum tanıtımında, örnek havuzunda veya başka sınıflarla paylaşılmaz. Anonimleştirilmiş yazı örneği (ses hiçbir zaman) yalnız sahibinin (18 yaş altında velinin) ayrı açık rızasıyla örnek olarak kullanılabilir.
+- **Gerekçe:** Değerlendirme amacıyla toplanan veri başka amaçla işlenemez; ses anonimleştirilemez.
+- **Kaynak:** KVKK md. 4/2-b ve c, md. 5/1 (açık rıza).
+- **Kurum türü:** ikisi
+- **Kodda:** yok.
+
+## Okul ve dil okulu farkı
+
+### DOM-BEC-060 · `school`: beceri görevi İngilizce dersinin parçasıdır
+
+- **Kural:** `school`'da beceri görevleri İngilizce dersine ve sınıf/şubeye atanır, MEB kazanım koduna bağlıdır. Görev sonucu not sistemine kendiliğinden yazılmaz; öğretmen değerlendirme türündeki görevi açıkça "not olarak aktar" ile sınav, performans veya proje türünde aktarır (`DOM-AKD`) ve aktarım görev başına bir kayıttır. CEFR seviye önerisi karnede ve resmî belgede gösterilmez; yalnız veli/öğrenci ekranında "kurum içi beceri profili" olarak yer alır. Lisede İngilizce yazılı sınavı dinleme, konuşma, okuma ve yazmayı birlikte ölçer: sınav taslağında dört becerinin her biri için en az bir bölüm yoksa sınav yayımlanmaz.
+- **Gerekçe:** Resmî not MEB not sistemine tabidir; CEFR önerisi resmî değildir. Mevzuat lisede yabancı dil sınavlarının dört beceriyi ölçmesini ister.
+- **Kaynak:** OKY md. 45/1-h (yabancı dil sınavları dört beceri, yazılı ve uygulamalı). Ortaokul için OİKY'de karşılık bulunamadı; ÖDY'deki karşılığı **doğrulanmalı**.
+- **Kurum türü:** `school`
+- **Kodda:** çelişiyor — quiz sonucu otomatik not kaydı üretir (`apps/web/src/views/Learning.vue:411-430`).
+
+### DOM-BEC-061 · `language_school`: beceri görevi kur programının parçasıdır
+
+- **Kural:** `language_school`'da beceri görevleri kura ve gruba atanır, kurun seviyesine uygun hedef seviye taşır (bir alt veya bir üst seviye tanılama için kullanılabilir). Kur sonu değerlendirmesindeki beceri puanları kur geçme kararına (`DOM-DIL-070`), seviye önerisi karar gerekçesine girer. MEB not sistemi uygulanmaz.
+- **Gerekçe:** Dil okulunda ölçme birimi kur ve CEFR seviyesidir.
+- **Kaynak:** İşletme kuralı; ÖÖKY md. 46/4.
+- **Kurum türü:** `language_school`
+- **Kodda:** yok.
+
+### DOM-BEC-062 · İngilizce kazanımı ile beceri bağı
+
+- **Kural:** MEB İngilizce kazanım kodundaki beceri harfi görevin birincil becerisini belirler: `L` dinleme, `S` konuşma, `R` okuma, `W` yazma (ör. `E7.1.R1`: 7. sınıf, 1. ünite, okuma). Görevin birincil becerisi bağlı kazanımın becerisiyle çelişirse kayıt reddedilir; birden çok kazanıma bağlı görevde biri birincil beceriyle eşleşmelidir. Kazanım kodu, sınıf düzeyi ve ünite `topics` serbest metni yerine yapılandırılmış alanlar olarak tutulur.
+- **Gerekçe:** Okulun İngilizce öğretmeni MEB kazanımına göre plan yapar; beceri etiketi kazanımdan türetilebiliyorsa elle yeniden girilmemeli.
+- **Kaynak:** MEB İngilizce Dersi Öğretim Programı (2018, 2–8. sınıflar) kazanım kodlaması; kod biçimi yalnız üçüncü taraf sınav belgesinden görüldü (`E7.1.R1`) ve 2024 sonrası programlardaki kodlama **doğrulanmalı**.
+- **Kurum türü:** `school`
+- **Kodda:** yok — İngilizce konuları serbest metin, dinleme/konuşma yok (`packages/school-core/src/data/curriculum.js:123-133`).
+
+### DOM-BEC-063 · Sınıf düzeyi ile CEFR hedefi eşlemesi
+
+- **Kural:** `school`'da sınıf düzeyi → hedef CEFR seviyesi eşlemesi platformda varsayılan olarak dolu gelmez; İngilizce zümresi eğitim yılı başında düzey başına hedef seviyeyi girer ve eşleme o yıl için kilitlenir. Eşleme yoksa beceri görevleri yayımlanabilir ama düzey raporu "hedef tanımlı değil" gösterir.
+- **Gerekçe:** MEB programının düzey hedefleri ve özel okulun yoğunlaştırılmış İngilizce programı farklıdır; yanlış varsayılan eşleme veliyi yanıltır.
+- **Kaynak:** İşletme kuralı; MEB programının düzeylere göre CEFR hedefi **doğrulanmalı**.
+- **Kurum türü:** `school`
+- **Kodda:** yok.
+
+### DOM-BEC-064 · Hazırlık sınıfı
+
+- **Kural:** Lise hazırlık sınıfında İngilizce ders saatinin dört beceriye dağılımı zümre tarafından girilir ve beceri görevleri bu dağılıma göre raporlanır. Hazırlık yeterlilik sınavı yazılı ve sözlü bölüm içerir; bir öğrenci için en fazla iki yeterlilik sınavı kaydı açılır ve sınava girme talebi veli tarafından kesin kayıtta yazılı bildirilmiş olmalıdır.
+- **Gerekçe:** Mevzuat hazırlık sınıfında beceri dağılımını zümreye, yeterlilik sınavını iki sınavla sınırlar.
+- **Kaynak:** OKY md. 10/2-a; ÖÖKY md. 51/3.
+- **Kurum türü:** `school`
+- **Kodda:** yok.
+
+## Mevcut kodla farklar
+
+| Kural       | Fark                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| DOM-BEC-001 | İngilizce konuları `Reading, Vocabulary, Grammar, Writing`; dinleme ve konuşma becerisi yok (`packages/school-core/src/data/curriculum.js:129`).                   |
+| DOM-BEC-002 | Yalnız dört seçenekli tek doğrulu soru tipi var (`packages/school-core/src/data/question-bank.js:693-712`).                                                        |
+| DOM-BEC-010 | Quiz puanı hesaplanıyor ama denemeye ve not kaydına kopyalanarak saklanıyor (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.jsx:43-60`). |
+| DOM-BEC-020 | Ödev değerlendirmesi tek 0–100 puan + yorum; rubrik ve kriter yok (`apps/web/src/views/Learning.vue:250-269`).                                                     |
+| DOM-BEC-040 | Yeniden teslim önceki teslimin üzerine yazar, sürüm tutulmaz (`apps/web/src/views/Learning.vue:230-234`).                                                          |
+| DOM-BEC-042 | Quiz deneme sınırı yok; her deneme yeni not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`).                                                               |
+| DOM-BEC-044 | Teslimde son tarih denetimi ve `geç` işareti yok (`apps/web/src/views/Learning.vue:222-248`).                                                                      |
+| DOM-BEC-045 | Doğru cevap açıklamaları deneme biter bitmez gösteriliyor (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.jsx:96`).                          |
+| DOM-BEC-046 | Ödev içeriği saklanmıyor, yalnız dosya adı tutuluyor (`apps/web/src/views/Learning.vue:232-240`).                                                                  |
+| DOM-BEC-060 | Quiz sonucu öğretmen onayı olmadan otomatik not kaydı üretir (`apps/web/src/views/Learning.vue:411-430`).                                                          |

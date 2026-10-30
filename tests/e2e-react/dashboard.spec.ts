@@ -3,7 +3,7 @@ import type { Locator, Page } from '@playwright/test'
 import type { ApiClient } from './support/api.ts'
 import { accounts, roles, type RoleKey } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectContentInsideCards, expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Genel Bakış (dashboard): beş rolün ekranı, sayaçların sunucu sayımıyla eşleşmesi, velide çocuk
 // değişince özetin değişmesi, öğrencide ödeme bilgisinin ve isteğinin bulunmaması, 390 px'te
@@ -389,6 +389,34 @@ test.describe('Genel Bakış: dar ekran', () => {
       await loginAs(role)
       await openDashboard(page, role)
       await expectCardsLoaded(page)
+      await expectNoHorizontalOverflow(page)
+    })
+  }
+
+  for (const width of [390, 320]) {
+    test(`yönetici: ${width} px genişlikte büyük tutar sayaç kartının içinde kalır`, async ({
+      page,
+      loginAs,
+    }) => {
+      await page.setViewportSize({ width, height: 844 })
+      await loginAs('yonetici')
+      // Taksit tutarları ×1000: "27.540.000.000,00 ₺" düzeyinde en kötü durum.
+      await page.route(/\/collections\/invoices\/counts\?/, async (route) => {
+        const response = await route.fetch()
+        const body = (await response.json()) as {
+          data: { sum?: number }[]
+          meta: { sum?: number }
+        }
+        const scale = (value?: number) => (value === undefined ? value : value * 1000)
+        body.meta.sum = scale(body.meta.sum)
+        for (const group of body.data) group.sum = scale(group.sum)
+        // Gerçek yanıtın başlıkları (içerik uzunluğu, sıkıştırma) değişen gövdeyle uyuşmaz.
+        await route.fulfill({ status: response.status(), json: body })
+      })
+      await openDashboard(page, 'yonetici')
+      const cards = page.locator('.stat-card')
+      await expect(cards.filter({ hasText: '27.540.000.000,00' })).toHaveCount(1)
+      await expectContentInsideCards(cards)
       await expectNoHorizontalOverflow(page)
     })
   }

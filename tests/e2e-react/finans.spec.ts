@@ -5,7 +5,11 @@ import type { Download, Page, Request } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
-import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
+import {
+  expectContentInsideCards,
+  expectEveryRow,
+  expectNoHorizontalOverflow,
+} from './support/ui.ts'
 
 // Finans & Tahsilat (yönetici /finans, ön büro /tahsilat-takip). Seed: 240 öğrenci × 8 taksit =
 // 1920 taksit; her öğrencinin ilk üç taksiti ödenmiş, 5.–8. taksitlerin vadesi ileridedir.
@@ -432,6 +436,30 @@ test.describe('Finans: liste', () => {
       expect(row[5]).toBe('Ödendi')
     }
   })
+
+  for (const width of [1440, 390, 320]) {
+    test(`${width} px genişlikte büyük tutarlar toplam kartının içinde kalır`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      // Gerçek yanıtın tutarları ×1000: "51.840.000.000,00 ₺" düzeyinde en kötü durum.
+      await page.route(/\/collections\/invoices\/counts\?.*groupBy=status/, async (route) => {
+        const response = await route.fetch()
+        const body = (await response.json()) as {
+          data: { sum?: number }[]
+          meta: { sum?: number }
+        }
+        const scale = (value?: number) => (value === undefined ? value : value * 1000)
+        body.meta.sum = scale(body.meta.sum)
+        for (const group of body.data) group.sum = scale(group.sum)
+        // Gerçek yanıtın başlıkları (içerik uzunluğu, sıkıştırma) değişen gövdeyle uyuşmaz.
+        await route.fulfill({ status: response.status(), json: body })
+      })
+      await page.goto(ADMIN_URL)
+      const totals = page.getByLabel('Kurum geneli ödeme toplamları')
+      await expect(totals).toContainText('51.840.000.000,00')
+      await expectContentInsideCards(totals.locator(':scope > div'))
+      await expectNoHorizontalOverflow(page)
+    })
+  }
 
   test('390 px genişlikte yatay taşma yok; kart, filtre ve panel açılır', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })

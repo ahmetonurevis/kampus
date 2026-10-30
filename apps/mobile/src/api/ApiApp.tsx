@@ -14,6 +14,7 @@ import { ErrorBoundary } from '../ui/ErrorBoundary.tsx'
 import { ApiHeader } from './ApiHeader.tsx'
 import { ApiAuthProvider, useApiAuth } from './auth.tsx'
 import { createApiClients } from './clients.ts'
+import Announcements from './screens/Announcements.tsx'
 import ApiCategory from './screens/ApiCategory.tsx'
 import ApiHome from './screens/ApiHome.tsx'
 import ApiLogin from './screens/ApiLogin.tsx'
@@ -67,6 +68,7 @@ function SignedIn({ session }: { session: MobileSession }) {
             <Stack.Screen name="ApiCategory" component={ApiCategory} />
             <Stack.Screen name="TeacherClasses" component={TeacherClasses} />
             <Stack.Screen name="ParentGrades" component={ParentGrades} />
+            <Stack.Screen name="Announcements" component={Announcements} />
           </Stack.Group>
         </Stack.Navigator>
       </NavigationContainer>

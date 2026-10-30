@@ -154,20 +154,32 @@ describe('yazışma etiketleri', () => {
 describe('liste rozetleri ve metinler', () => {
   test('yanıt bekliyor rozeti yalnız öğretmende; süre aşımı kırmızı', () => {
     assert.deepEqual(
-      awaitingBadge({ since: '2026-10-12T08:00:00.000Z', overdue: false }, 'ogretmen'),
+      awaitingBadge(
+        { since: '2026-10-12T08:00:00.000Z', dueAt: '2026-10-13T08:00:00.000Z', overdue: false },
+        'ogretmen',
+      ),
       {
         text: 'Yanıt bekliyor',
         tone: 'amber',
       },
     )
     assert.deepEqual(
-      awaitingBadge({ since: '2026-10-12T08:00:00.000Z', overdue: true }, 'ogretmen'),
+      awaitingBadge(
+        { since: '2026-10-12T08:00:00.000Z', dueAt: '2026-10-13T08:00:00.000Z', overdue: true },
+        'ogretmen',
+      ),
       {
         text: 'Yanıt süresi aştı',
         tone: 'red',
       },
     )
-    assert.equal(awaitingBadge({ since: '2026-10-12T08:00:00.000Z', overdue: true }, 'veli'), null)
+    assert.equal(
+      awaitingBadge(
+        { since: '2026-10-12T08:00:00.000Z', dueAt: '2026-10-13T08:00:00.000Z', overdue: true },
+        'veli',
+      ),
+      null,
+    )
     assert.equal(awaitingBadge(null, 'ogretmen'), null)
   })
 

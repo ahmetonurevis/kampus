@@ -10,7 +10,6 @@ import type {
 } from '@kampus/react-shared/use-communication.ts'
 import { sendMessageSchema } from '@kampus/school-core/lib/communication.ts'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
-import type { Tone } from '../ui/components.tsx'
 import type { MemberRole } from './session-state.ts'
 
 // --- Duyuru ----------------------------------------------------------------------------------
@@ -34,7 +33,10 @@ export const STATUS_UPDATED = 'Güncellendi'
 export const STATUS_WITHDRAWN = 'Geri çekildi'
 export const WITHDRAWN_NOTICE = 'Bu duyuru geri çekildi. İçeriği artık görüntülenemez.'
 
-export type StatusBadge = { text: string; tone: Tone }
+/** `ui/components.tsx` `Tone` ile aynı birleşim; saf modül arayüz dosyasına bağlanmaz (testler JSX'siz derlenir). */
+export type BadgeTone = 'primary' | 'green' | 'amber' | 'red'
+
+export type StatusBadge = { text: string; tone: BadgeTone }
 
 export type AnnouncementView = {
   id: string

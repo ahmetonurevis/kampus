@@ -2,6 +2,7 @@
 
 ## Yayımlanmamış
 
+- `modules/collection-modules.ts` eklendi: her State koleksiyonu tek modüle bağlıdır veya açıkça `ALWAYS_ON`'dur (`COLLECTION_MODULES`); modüllerin açılabildiği kurum türleri `MODULE_INSTITUTION_TYPES` içindedir (DOM-YTK-012: deneme, optik, etüt, hedef, rehberlik ve kayıt yenileme yalnız `school`). `collectionStatus` koleksiyonun kurumdaki durumunu (`unknown`, `unavailable`, `disabled`, `enabled`) verir; haritada olmayan modül kapalı sayılır.
 - `lib/errors.ts` eklendi: iş kuralı reddi için `DomainError` (`code`, Türkçe `message`, `kind`: `rule` | `conflict` | `forbidden` | `not_found`, isteğe bağlı `path`). Core'daki 201 iş kuralı `throw new Error('…')` çağrısı mesaj metni değişmeden `DomainError`'a çevrildi; API `kind` değerini HTTP durumuna eşler (422, 409, 403, 404). İç tutarsızlık niteliğindeki `TypeError`/`Error` çağrıları ve demo kalıcılığı hataları düz kalır.
 - Düzeltme: `mayRun` ve `runWorkflow`, komut adı `toString`, `constructor` veya `__proto__` gibi yerleşik özellik olduğunda TypeError fırlatıyor ya da yanıltıcı "modül kapalı" hatası veriyordu; komut tabloları `Object.hasOwn` ile aranır, bilinmeyen komut `unknown_command` (`rule`) olur.
 - Düzeltme: `workflowCreateActions` optik değerlendirme ve otomatik etüt sayfalarında TypeError fırlatıyordu; eylem tablosunda karşılığı olmayan modül boş liste döner.

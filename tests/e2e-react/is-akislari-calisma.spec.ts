@@ -4,8 +4,8 @@ import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 
 // Çalışma planı: öğrenci planı öğretmen onayına açar, onaylanınca teslim eder; veli yalnız
-// seçili çocuğun görevlerini görür. Tohumdaki study-s1/study-s2 yalnız okunur; yazan test kendi
-// görevini oluşturur.
+// seçili çocuğun görevlerini görür. Yazan test kendi kurumunu kurar (`tenant`); veli okuma testi
+// tohum kurumunda study-s2 görevini okur.
 
 const TASKS = '/api/v1/collections/studyTasks?pageSize=100'
 
@@ -30,10 +30,18 @@ async function tasksTitled(client: ApiClient, title: string): Promise<Row<TaskRe
 }
 
 test.describe('çalışma planı', () => {
-  test('öğrenci planı açar, öğretmen onaylar, öğrenci teslim eder', async ({ loginAs, api }) => {
-    const client = await api('yonetici', { fresh: true })
+  test('öğrenci planı açar, öğretmen onaylar, öğrenci teslim eder', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici', 'ogrenci', 'ogretmen'],
+      collections: ['studyTasks'],
+    })
+    const client = await api(school.user('yonetici'))
     const title = `E2E çalışma ${randomUUID().slice(0, 8)}`
-    const page = await loginAs('ogrenci', { fresh: true })
+    const page = await loginAs(school.user('ogrenci'))
     await page.goto('/ogrenci/calisma-plani')
     await expect(page.getByRole('heading', { name: 'Çalışma Planı', level: 2 })).toBeVisible()
     await page.getByRole('button', { name: 'Çalışma görevi ekle' }).click()
@@ -55,7 +63,7 @@ test.describe('çalışma planı', () => {
     await expect(own.getByRole('button', { name: 'Çalışmayı teslim et' })).toHaveCount(0)
     await expect(own.getByRole('button', { name: 'Planı onayla' })).toHaveCount(0)
 
-    await loginAs('ogretmen', { fresh: true })
+    await loginAs(school.user('ogretmen'))
     await page.goto('/ogretmen/calisma-plani')
     await page.getByLabel('Tabloda ara').fill(title)
     await page.getByRole('button', { name: title }).click()
@@ -72,7 +80,7 @@ test.describe('çalışma planı', () => {
       .poll(async () => (await tasksTitled(client, title))[0]?.record.status)
       .toBe('Onaylandı')
 
-    await loginAs('ogrenci', { fresh: true })
+    await loginAs(school.user('ogrenci'))
     await page.goto('/ogrenci/calisma-plani')
     await page.getByLabel('Tabloda ara').fill(title)
     await page.getByRole('button', { name: title }).click()

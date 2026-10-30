@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto'
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 
-// Kayıt yenileme: yenileme planlama ile dönem geçişi (sınıf değişimi) ayrı işlemlerdir. Her test
-// kendi öğrencisini kullanır (aynı öğrenci için aynı yıla ikinci yenileme reddedilir): s3
-// (Zeynep, 6-A → 7-A) yalnız planlanır, s4 (Arda, 8-A → 9-A) geçişi uygulanır.
+// Kayıt yenileme: yenileme planlama ile dönem geçişi (sınıf değişimi) ayrı işlemlerdir. Her yazan
+// test kendi kurumunu kurar (`tenant`): s3 (Zeynep, 6-A → 7-A) yalnız planlanır, s4 (Arda, 8-A →
+// 9-A) geçişi uygulanır.
 
 interface Row<T> {
   id: string
@@ -50,9 +50,15 @@ test.describe('kayıt yenileme', () => {
   test('yönetici ücret özetini görür, yenilemeyi planlar; sınıf değişmez', async ({
     loginAs,
     api,
+    tenant,
   }) => {
-    const page = await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici', { fresh: true })
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s3'],
+      collections: ['renewals'],
+    })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     await page.goto('/yonetici/kayit-yenileme')
     await expect(page.getByRole('heading', { name: 'Kayıt Yenileme', level: 2 })).toBeVisible()
     await page.getByRole('button', { name: 'Kayıt yenile' }).click()
@@ -84,8 +90,17 @@ test.describe('kayıt yenileme', () => {
     await expect(detail.getByRole('button', { name: 'Dönem geçişini uygula' })).toBeVisible()
   })
 
-  test('dönem geçişi ayrı işlemle uygulanır ve sınıfı değiştirir', async ({ loginAs, api }) => {
-    const client = await api('yonetici', { fresh: true })
+  test('dönem geçişi ayrı işlemle uygulanır ve sınıfı değiştirir', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s4'],
+      collections: ['renewals'],
+    })
+    const client = await api(school.user('yonetici'))
     // Yenileme `Idempotency-Key` zorunlu kılar; ortak istemci başlık eklemediği için doğrudan gönderilir.
     const created = await client.context.post('/api/v1/workflows/renewal', {
       headers: { 'idempotency-key': randomUUID() },
@@ -105,7 +120,7 @@ test.describe('kayıt yenileme', () => {
     expect(created.status()).toBeLessThan(300)
     expect(await classOf(client, 's4')).toBe('c4')
 
-    const page = await loginAs('yonetici', { fresh: true })
+    const page = await loginAs(school.user('yonetici'))
     await page.goto('/yonetici/kayit-yenileme')
     await page.getByLabel('Tabloda ara').fill('Arda Çelik')
     await page.getByRole('button', { name: 'Arda Çelik' }).click()

@@ -5,9 +5,8 @@ import type { Page } from '@playwright/test'
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 
-// Program yönetimi: tohumdaki dersler (yöneticide ~1440 kayıt) değişmez. Yazan test uzak bir
-// haftaya (bugünden ~120 gün sonra) kendi dersini planlar; haftalık program sayfaları başka
-// testlerin baktığı haftalarda ders görmez.
+// Program yönetimi: yazan test kendi kurumunu kurar (`tenant`, ders kaydı yok) ve uzak bir haftaya
+// kendi dersini planlar. Tohumdaki ~1440 ders kaydı okuma testinde (öğretmen) kullanılır.
 
 interface Row<T> {
   id: string
@@ -48,9 +47,14 @@ test.describe('program yönetimi', () => {
   test('yönetici ders planlar, iptal eder; iptal ders programlarda görünmez', async ({
     loginAs,
     api,
+    tenant,
   }) => {
-    const page = await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici', { fresh: true })
+    // Kurumda ders kaydı yoktur (tohum programı gerekmez); 7-A öğrencisi (s1) programı izler.
+    const school = await tenant({ roles: ['yonetici', 'ogrenci'] })
+    const admin = school.user('yonetici')
+    const student = school.user('ogrenci')
+    const page = await loginAs(admin)
+    const client = await api(admin)
     const room = `E2E-${randomUUID().slice(0, 6)}`
     const { day, monday } = farDay(120)
     await page.goto('/yonetici/program-yonetimi')
@@ -70,10 +74,10 @@ test.describe('program yönetimi', () => {
 
     // Öğrenci (7-A) planlanan dersi kendi haftalık programında görür. Tek tarayıcı bağlamı
     // olduğundan oturum sırayla değiştirilir.
-    await loginAs('ogrenci', { fresh: true })
+    await loginAs(student)
     await expect.poll(() => weekHasRoom(page, monday, room)).toBe(true)
 
-    await loginAs('yonetici', { fresh: true })
+    await loginAs(admin)
     await page.goto('/yonetici/program-yonetimi')
     await page.getByLabel('Tabloda ara').fill(room)
     await page.getByRole('button', { name: 'Matematik' }).click()
@@ -91,7 +95,7 @@ test.describe('program yönetimi', () => {
 
     // Yönetim listesinde iptal kaydı korunur; günlük programda ders yoktur.
     await expect(page.getByText('İptal', { exact: true }).first()).toBeVisible()
-    await loginAs('ogrenci', { fresh: true })
+    await loginAs(student)
     await expect.poll(() => weekHasRoom(page, monday, room)).toBe(false)
   })
 

@@ -3,9 +3,8 @@ import { randomUUID } from 'node:crypto'
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 
-// Hedef & gelişim planı: kurala özgü senaryolar. Aynı öğrenci ve kapsam için tek açık hedef
-// kuralı yüzünden her yazan test ayrı kapsam kullanır (fen, Türkçe); tohumdaki goal-s1-math ve
-// goal-s2-total kayıtlarına yazılmaz.
+// Hedef & gelişim planı: kurala özgü senaryolar. Yazan her test kendi kurumunu kurar (`tenant`);
+// tohum kaydı goal-s1-math o kurumda açık matematik hedefidir.
 
 const GOALS = '/api/v1/collections/studentGoals?pageSize=100'
 
@@ -43,9 +42,14 @@ test.describe('hedef ve gelişim planı', () => {
   test('öğrenci hedefi onay bekler; yönetici gerekçesiz reddedemez, onaylar', async ({
     loginAs,
     api,
+    tenant,
   }) => {
-    const student = await loginAs('ogrenci', { fresh: true })
-    const admin = await api('yonetici', { fresh: true })
+    const school = await tenant({
+      roles: ['ogrenci', 'yonetici'],
+      collections: ['studentGoals', 'mockExams', 'mockResults'],
+    })
+    const student = await loginAs(school.user('ogrenci'))
+    const admin = await api(school.user('yonetici'))
     const title = `E2E hedef ${randomUUID().slice(0, 8)}`
     await student.goto('/ogrenci/hedef-plani')
     await student.getByRole('button', { name: 'Hedef belirle' }).click()
@@ -68,7 +72,7 @@ test.describe('hedef ve gelişim planı', () => {
     await expect(ownDetail.getByText('Öğretmen veya yönetici onayı bekleniyor.')).toBeVisible()
     await expect(ownDetail.getByRole('button', { name: 'Hedefi değerlendir' })).toHaveCount(0)
 
-    const page = await loginAs('yonetici', { fresh: true })
+    const page = await loginAs(school.user('yonetici'))
     await page.goto('/yonetici/hedef-plani')
     await page.getByLabel('Tabloda ara').fill(title)
     await page.getByRole('button', { name: title }).click()
@@ -89,9 +93,17 @@ test.describe('hedef ve gelişim planı', () => {
     await expect.poll(async () => (await goalsTitled(admin, title))[0]?.record.status).toBe('Aktif')
   })
 
-  test('aynı öğrenci ve kapsam için ikinci açık hedef reddedilir', async ({ loginAs, api }) => {
-    const student = await loginAs('ogrenci', { fresh: true })
-    const admin = await api('yonetici', { fresh: true })
+  test('aynı öğrenci ve kapsam için ikinci açık hedef reddedilir', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['ogrenci', 'yonetici'],
+      collections: ['studentGoals', 'mockExams', 'mockResults'],
+    })
+    const student = await loginAs(school.user('ogrenci'))
+    const admin = await api(school.user('yonetici'))
     await student.goto('/ogrenci/hedef-plani')
     await student.getByRole('button', { name: 'Hedef belirle' }).click()
     const form = student.getByRole('dialog', { name: 'Hedef belirle' })
@@ -108,8 +120,12 @@ test.describe('hedef ve gelişim planı', () => {
     expect(await goalsTitled(admin, 'E2E yinelenen hedef')).toHaveLength(0)
   })
 
-  test('veli hedefe yalnız yorum ekler', async ({ loginAs, api }) => {
-    const admin = await api('yonetici', { fresh: true })
+  test('veli hedefe yalnız yorum ekler', async ({ loginAs, api, tenant }) => {
+    const school = await tenant({
+      roles: ['veli', 'yonetici'],
+      collections: ['studentGoals', 'mockExams', 'mockResults'],
+    })
+    const admin = await api(school.user('yonetici'))
     const title = `E2E veli hedef ${randomUUID().slice(0, 8)}`
     const created = await admin.post('/api/v1/workflows/goal', {
       studentId: 's1',
@@ -121,7 +137,7 @@ test.describe('hedef ve gelişim planı', () => {
     })
     expect(created.status).toBeLessThan(300)
 
-    const page = await loginAs('veli', { fresh: true })
+    const page = await loginAs(school.user('veli'))
     await page.goto('/veli/hedef-plani?cocuk=s1')
     await expect(page.getByRole('button', { name: 'Hedef belirle' })).toHaveCount(0)
     await page.getByLabel('Tabloda ara').fill(title)

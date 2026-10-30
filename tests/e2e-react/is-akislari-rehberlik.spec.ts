@@ -48,9 +48,14 @@ test.describe('rehberlik ve takip', () => {
     expect(row?.record).not.toHaveProperty('internalNote')
   })
 
-  test('rehberlik görevli öğretmen iç notu görür ve yazar', async ({ loginAs, api }) => {
-    const page = await loginAs('ogretmen', { fresh: true })
-    const client = await api('ogretmen', { fresh: true })
+  test('rehberlik görevli öğretmen iç notu görür ve yazar', async ({ loginAs, api, tenant }) => {
+    const school = await tenant({
+      roles: ['ogretmen', 'yonetici'],
+      students: ['s1', 's2'],
+      collections: ['guidanceCases'],
+    })
+    const page = await loginAs(school.user('ogretmen'))
+    const client = await api(school.user('ogretmen'))
     await page.goto('/ogretmen/rehberlik')
     await page.getByRole('button', { name: SEED_TITLE }).click()
     const detail = page.getByRole('dialog', { name: SEED_TITLE })
@@ -75,7 +80,7 @@ test.describe('rehberlik ve takip', () => {
       .toBe(internal)
 
     // Yönetici aynı dosyayı görür; iç not ne yanıtta ne ekranda vardır.
-    const admin = await api('yonetici', { fresh: true })
+    const admin = await api(school.user('yonetici'))
     await expect.poll(async () => (await casesTitled(admin, title)).length).toBe(1)
     expect((await casesTitled(admin, title))[0]?.record).not.toHaveProperty('internalNote')
   })

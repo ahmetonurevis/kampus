@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto'
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 
-// Okul servisi: yönetici kendi güzergâhını açar (kapasite 1) ve öğrenci atar; ikinci atama
-// kontenjan kuralıyla reddedilir. Tohumdaki route-b1/route-b2 ve s1/s2 atamaları yazılmaz.
-// Kadıköy kampüsü öğrencileri: s5 (Elif Şahin, 9-A) ve s6 (Mert Aydın, 10-A).
+// Okul servisi: yönetici kendi kurumunda güzergâhını (kapasite 1) açar ve öğrenci atar; ikinci
+// atama kontenjan kuralıyla reddedilir. Kadıköy kampüsü öğrencileri: s5 (Elif Şahin, 9-A) ve s6
+// (Mert Aydın, 10-A). Veli okuma testi tohum kurumunda route-b1'i okur.
 
 interface Row<T> {
   id: string
@@ -32,9 +32,15 @@ test.describe('okul servisi', () => {
   test('yönetici güzergâh açar, öğrenci atar; kontenjan dolunca reddedilir', async ({
     loginAs,
     api,
+    tenant,
   }) => {
-    const page = await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici', { fresh: true })
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s5', 's6'],
+      collections: ['transportRoutes', 'transportAssignments'],
+    })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     const title = `E2E hat ${randomUUID().slice(0, 8)}`
     await page.goto('/yonetici/okul-servisi')
     await expect(page.getByRole('heading', { name: 'Okul Servisi', level: 2 })).toBeVisible()

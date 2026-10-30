@@ -10,6 +10,7 @@ import { expect, test } from './support/fixtures.ts'
 
 const RESULTS = '/api/v1/collections/mockResults?pageSize=100'
 const IMPORT = /\/api\/v1\/workflows\/exam-import(\?|$)/
+const EXAM_DATA = ['mockExams', 'mockResults'] as const
 const HEADER = 'examId;studentId;subjectId;correct;wrong;blank;weakTopics'
 
 interface Row<T> {
@@ -54,9 +55,14 @@ async function resultsOf(client: ApiClient, examId: string): Promise<Row<ResultR
 }
 
 test.describe('deneme sınavları', () => {
-  test('yönetici CSV dosyasını aktarır; çift tıklama tek kez yazar', async ({ loginAs, api }) => {
-    const page = await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici', { fresh: true })
+  test('yönetici CSV dosyasını aktarır; çift tıklama tek kez yazar', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici'], students: ['s1'], collections: EXAM_DATA })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     const examId = await createExam(client, `E2E deneme ${randomUUID().slice(0, 8)}`)
     const posts: Request[] = []
     page.on('request', (r) => {
@@ -93,9 +99,11 @@ test.describe('deneme sınavları', () => {
   test('şablona uymayan CSV ön kontrolde bildirilir ve hiçbir sonuç yazılmaz', async ({
     loginAs,
     api,
+    tenant,
   }) => {
-    const page = await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici', { fresh: true })
+    const school = await tenant({ roles: ['yonetici'], students: ['s1'], collections: EXAM_DATA })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     const examId = await createExam(client, `E2E bozuk ${randomUUID().slice(0, 8)}`)
 
     await page.goto('/yonetici/deneme-sinavlari')
@@ -119,9 +127,11 @@ test.describe('deneme sınavları', () => {
   test('denemenin ayrıntısından tek sonuç girilir (kayıt kimliği gönderilmez)', async ({
     loginAs,
     api,
+    tenant,
   }) => {
-    const page = await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici', { fresh: true })
+    const school = await tenant({ roles: ['yonetici'], students: ['s1'], collections: EXAM_DATA })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     const title = `E2E tekil ${randomUUID().slice(0, 8)}`
     const examId = await createExam(client, title)
 

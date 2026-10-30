@@ -16,7 +16,6 @@ import { isMigratedPage } from '../src/lib/page-coverage.ts'
 const KNOWN_PLACEHOLDERS: readonly string[] = [
   'yonetici/kayit-raporlari',
   'yonetici/sla-raporu',
-  'yonetici/risk-listesi',
   'onburo/adaylar',
   'onburo/deneme-dersi-takvimi',
   'onburo/kayit-islemleri',

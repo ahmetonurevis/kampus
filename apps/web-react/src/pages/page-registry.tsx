@@ -12,6 +12,9 @@ const DashboardPage = lazy(async () => ({
 const CampusesPage = lazy(async () => ({
   default: (await import('./management/CampusesPage.tsx')).CampusesPage,
 }))
+const RiskListPage = lazy(async () => ({
+  default: (await import('./management/RiskListPage.tsx')).RiskListPage,
+}))
 const StaffPage = lazy(async () => ({
   default: (await import('./management/StaffPage.tsx')).StaffPage,
 }))
@@ -133,6 +136,8 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <CampusesPage page={page} />
     case 'yonetici/personel':
       return <StaffPage page={page} />
+    case 'yonetici/risk-listesi':
+      return <RiskListPage page={page} />
     case 'yonetici/ayarlar':
       return <SettingsPage page={page} />
     case 'ogrenci/ayarlar':

@@ -1,12 +1,13 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
 import { useChildSelection } from '@/hooks/use-child-selection.ts'
 import { AppLayout } from '@/layout/AppLayout.tsx'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
-import { notify } from '@/lib/notify.ts'
 import { loginHref } from '@/lib/return-path.ts'
 import { resolveShell } from '@/lib/route-guard.ts'
+import { isMigratedPage, MigratedPage } from '@/pages/page-registry.tsx'
+import { ModuleClosedRedirect } from './ModuleClosedRedirect.tsx'
 import { NotFoundContent, NotFoundPage } from './NotFoundPage.tsx'
 import { PlaceholderPage } from './PlaceholderPage.tsx'
 import { SessionPending } from './SessionPending.tsx'
@@ -18,13 +19,12 @@ const ListDemoPage = import.meta.env.DEV
   ? lazy(async () => ({ default: (await import('@/pages/dev/ListDemoPage.tsx')).ListDemoPage }))
   : null
 
-const MODULE_CLOSED = 'Bu modül kurum ayarlarından kapatılmış.'
-
-function ModuleClosedRedirect({ to }: { to: string }) {
-  useEffect(() => {
-    notify.warning(MODULE_CLOSED, 'module-closed')
-  }, [])
-  return <Navigate to={to} replace />
+function PageLoading() {
+  return (
+    <p role="status" className="text-sm text-muted-foreground">
+      Sayfa yükleniyor…
+    </p>
+  )
 }
 
 /** Korumalı rol kabuğu: karar `resolveShell`'de, burada yalnız çizilir. */
@@ -75,7 +75,15 @@ export function RoleShell() {
         >
           {/* Vue gibi: çocuk değişince sayfa yeniden kurulur; her çocuğun kendi görünüm belleği var. */}
           <ViewScopeContext value={child.childId}>
-            {decision.kind === 'page' ? (
+            {decision.kind === 'page' && isMigratedPage(session.role, decision.page.path) ? (
+              <Suspense fallback={<PageLoading />}>
+                <MigratedPage
+                  key={`${decision.page.path}:${child.childId}`}
+                  role={session.role}
+                  page={decision.page}
+                />
+              </Suspense>
+            ) : decision.kind === 'page' ? (
               <PlaceholderPage
                 key={`${decision.page.path}:${child.childId}`}
                 page={decision.page}

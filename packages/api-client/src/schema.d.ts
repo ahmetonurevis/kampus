@@ -84,6 +84,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/collections/{collection}/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Koleksiyon sayımı
+         * @description Liste ucuyla aynı kapsam, süzgeç ve aramayla `groupBy` alanına göre grup başına kayıt sayısı; `sum` verilirse grup başına toplam (ör. durum başına taksit sayısı ve tutarı, sınıf başına öğrenci). Kapsam dışı kayıt sayılmaz; rolün göremediği alanla gruplama/toplama 400. Durumlar liste ucuyla aynıdır.
+         */
+        get: operations["countCollection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/collections/{collection}/{id}": {
         parameters: {
             query?: never;
@@ -1110,6 +1130,20 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        CollectionCountGroupInput: {
+            /** @description Grup değeri; alanı olmayan veya skaler olmayan değerli kayıtlar `null` grubundadır */
+            value: string | number | boolean | null;
+            /** @description Gruptaki kayıt sayısı */
+            count: number;
+            /** @description Yalnız `sum` istendiğinde: gruptaki değerlerin toplamı (`amount` kuruş) */
+            sum?: number;
+        };
+        CollectionCountsMetaInput: {
+            /** @description Süzgeçten geçen toplam kayıt sayısı */
+            total: number;
+            /** @description Yalnız `sum` istendiğinde: bütün grupların toplamı */
+            sum?: number;
+        };
         CommandResultInput: {
             /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
             entity: {
@@ -1260,6 +1294,20 @@ export interface components {
             record: {
                 [key: string]: unknown;
             };
+        };
+        CollectionCountGroup: {
+            /** @description Grup değeri; alanı olmayan veya skaler olmayan değerli kayıtlar `null` grubundadır */
+            value: string | number | boolean | null;
+            /** @description Gruptaki kayıt sayısı */
+            count: number;
+            /** @description Yalnız `sum` istendiğinde: gruptaki değerlerin toplamı (`amount` kuruş) */
+            sum?: number;
+        };
+        CollectionCountsMeta: {
+            /** @description Süzgeçten geçen toplam kayıt sayısı */
+            total: number;
+            /** @description Yalnız `sum` istendiğinde: bütün grupların toplamı */
+            sum?: number;
         };
         CommandResult: {
             /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
@@ -1561,8 +1609,6 @@ export interface operations {
                 pageSize?: number;
                 /** @description Serbest arama; Türkçe büyük/küçük harf ve aksan duyarsız */
                 q?: string;
-                /** @description En çok üç alan, virgülle; eksi azalan (ör. `-createdAt,name`). Alanlar: id, createdAt, updatedAt, name, title, date, dueDate, deadline, followUp, status, stage, grade, score, amount, installment, number. Verilmezse deponun sırası */
-                sort?: string;
                 /** @description Arşivliler varsayılan olarak dönmez; `include` ekler, `only` yalnız onları verir */
                 archived?: "include" | "only";
                 /** @description Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır */
@@ -1605,6 +1651,8 @@ export interface operations {
                 type?: string | string[];
                 /** @description `grade` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 grade?: string | string[];
+                /** @description En çok üç alan, virgülle; eksi azalan (ör. `-createdAt,name`). Alanlar: id, createdAt, updatedAt, name, title, date, dueDate, deadline, followUp, status, stage, grade, score, amount, installment, number. Verilmezse deponun sırası */
+                sort?: string;
             };
             header?: never;
             path: {
@@ -1624,6 +1672,136 @@ export interface operations {
                     "application/json": {
                         data: components["schemas"]["CollectionItem"][];
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    countCollection: {
+        parameters: {
+            query: {
+                /** @description Serbest arama; Türkçe büyük/küçük harf ve aksan duyarsız */
+                q?: string;
+                /** @description Arşivliler varsayılan olarak dönmez; `include` ekler, `only` yalnız onları verir */
+                archived?: "include" | "only";
+                /** @description Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır */
+                isActive?: "true" | "false";
+                /** @description `date` alanının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                dateFrom?: string;
+                /** @description `date` alanının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                dateTo?: string;
+                /** @description `studentId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                studentId?: string | string[];
+                /** @description `classId` eşitlik filtresi; çoklu değer parametre tekrarıyla. Kaydında sınıf olmayan öğrenci koleksiyonlarında (`grades`, `absences`, `submissions`, `quizAttempts`, `mockResults`, `studentGoals`) öğrencinin güncel sınıfıdır */
+                classId?: string | string[];
+                /** @description `teacherId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                teacherId?: string | string[];
+                /** @description `subjectId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                subjectId?: string | string[];
+                /** @description `branchId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                branchId?: string | string[];
+                /** @description `parentId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                parentId?: string | string[];
+                /** @description `examId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                examId?: string | string[];
+                /** @description `clubId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                clubId?: string | string[];
+                /** @description `routeId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                routeId?: string | string[];
+                /** @description `quizId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                quizId?: string | string[];
+                /** @description `homeworkId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                homeworkId?: string | string[];
+                /** @description `videoId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                videoId?: string | string[];
+                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla. `invoices`'ta durum saklanmaz, core `invoiceStatus` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: `Ödendi`, `Gecikmiş`, `Yaklaşan`; başka değer 400 */
+                status?: string | string[];
+                /** @description `stage` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                stage?: string | string[];
+                /** @description `category` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                category?: string | string[];
+                /** @description `type` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                type?: string | string[];
+                /** @description `grade` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                grade?: string | string[];
+                /** @description Gruplama alanı (zorunlu). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır */
+                groupBy: "studentId" | "classId" | "teacherId" | "subjectId" | "branchId" | "parentId" | "examId" | "clubId" | "routeId" | "quizId" | "homeworkId" | "videoId" | "status" | "stage" | "category" | "type" | "grade" | "isActive" | "level";
+                /** @description Grup başına toplanacak sayısal alan; sayı olmayan değer toplama girmez. `amount` kuruştur. Rolün göremediği alan 400 */
+                sum?: "amount" | "capacity" | "score" | "progress" | "attendanceRate" | "homeworkRate";
+            };
+            header?: never;
+            path: {
+                /** @description school-core koleksiyon adı (State anahtarı). Okunabilir olanlar: `subjects`, `assignments`, `branches`, `teachers`, `classes`, `students`, `parents`, `grades`, `attendance`, `invoices`, `prospects`, `bank`, `quizzes`, `homework`, `submissions`, `questions`, `videos`, `videoProgress`, `materials`, `announcements`, `appointments`, `requests`, `schedule`, `availability`, `quizAttempts`, `absences`, `contracts`, `guidanceCases`, `mockExams`, `mockResults`, `studentGoals`, `renewals`, `enrollmentHistory`, `studyTasks`, `schoolEvents`, `eventConsents`, `transportRoutes`, `transportAssignments`, `mealMenus`, `clubs`, `clubMemberships`, `clubAttendance`, `socialAchievements`, `opticalProfiles`, `opticalEvaluations`, `tutorSessions`. Bilinmeyen ad 404. */
+                collection: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Gruplar, değere göre sıralı; `null` sonda */
+                        data: components["schemas"]["CollectionCountGroup"][];
+                        meta: components["schemas"]["CollectionCountsMeta"];
                     };
                 };
             };

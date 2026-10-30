@@ -19,7 +19,13 @@ import {
   invoiceStatusOf,
   matchesRecordFilter,
 } from './list-filters.ts'
-import { assertReadable, readScope, scopePrefilter, studentsOfClasses } from './read-scope.ts'
+import {
+  assertReadable,
+  readScope,
+  scopePrefilter,
+  studentClasses,
+  studentsOfClasses,
+} from './read-scope.ts'
 
 /**
  * Koleksiyon okuma servisi (geçiş köprüsü: modüller kendi kaynak uçlarına geçene kadar). Kayıtlar
@@ -113,11 +119,9 @@ export interface SortKey {
   descending: boolean
 }
 
-export interface CollectionListQuery {
-  page: number
-  pageSize: number
+/** Liste ve sayım uçlarının ortak süzgeçleri. */
+export interface CollectionReadQuery {
   q?: string | undefined
-  sort?: readonly SortKey[] | undefined
   archived?: ArchivedMode | undefined
   filters?: Partial<Record<FilterField, readonly string[]>> | undefined
   /** `isActive` süzgeci; verilmezse etkin ve pasif kayıtlar birlikte döner. */
@@ -125,6 +129,12 @@ export interface CollectionListQuery {
   /** `date` alanının Europe/Istanbul günü aralığı (`YYYY-MM-DD`, iki uç dahil). */
   dateFrom?: string | undefined
   dateTo?: string | undefined
+}
+
+export interface CollectionListQuery extends CollectionReadQuery {
+  page: number
+  pageSize: number
+  sort?: readonly SortKey[] | undefined
 }
 
 /** Yanıt kaydı: üst alanlar kolondan, `record` school-core kaydının role göre görünen alanları. */
@@ -194,7 +204,7 @@ async function listFilters(
   ctx: ServiceContext,
   scope: Scope,
   collection: CollectionName,
-  query: CollectionListQuery,
+  query: CollectionReadQuery,
 ): Promise<RecordFilter[] | null> {
   const filters: RecordFilter[] = []
   for (const field of FILTER_FIELDS) {
@@ -292,50 +302,180 @@ function sorted(
     .map((entry) => entry.item)
 }
 
-export async function listCollection(
+/** Kapsamdan ve süzgeçlerden geçen satırlar; karar ayıklanmış kayıtta verilir. */
+interface ReadResult {
+  collection: CollectionName
+  scope: Scope
+  /** Kapsamdan geçmiş satırlar; `narrowed` ise süzgeç/arama da ham kayıtta adaydan geçmiştir. */
+  rows: StoredRecord[]
+  narrowed: boolean
+  /** Ayıklanmış kayıtta süzgeç ve arama kararı. */
+  matches: (record: RecordData) => boolean
+}
+
+async function readRows(
   ctx: ServiceContext,
   name: string,
-  query: CollectionListQuery,
-): Promise<{ items: CollectionItem[]; total: number }> {
+  query: CollectionReadQuery,
+  fields: (scope: Scope, collection: CollectionName) => void = () => {},
+): Promise<ReadResult | null> {
   const collection = readableCollection(name)
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, collection)
+  fields(scope, collection)
   const filters = await listFilters(ctx, scope, collection, query)
-  if (filters === null) return { items: [], total: 0 }
+  if (filters === null) return null
   const needle = query.q ? searchKey(query.q) : null
   const narrowed = filters.length > 0 || needle !== null
   const matches = (record: RecordData) =>
     filters.every((filter) => matchesRecordFilter(record, filter)) &&
     (needle === null || matchesSearch(record, needle))
   const prefilter = scopePrefilter(scope, collection)
-  const rows = await loadRecords(ctx.db, ctx.institutionId, [collection], {
+  const loaded = await loadRecords(ctx.db, ctx.institutionId, [collection], {
     includeArchived: query.archived !== undefined,
     match: prefilter ? [prefilter, ...filters] : filters,
   })
   // Ayıklama alan çıkarır veya daraltır, eklemez: ham kayıtta eşleşmeyen ayıklanmışta da
   // eşleşmez. Ham eşleşme yalnız adaydır; karar ayıklanmış kayıtta verilir.
-  const visible = rows.filter(
+  const rows = loaded.filter(
     (row) =>
       (query.archived !== 'only' || row.archivedAt !== null) &&
       scope.canRead(collection, row.data) &&
       (!narrowed || matches(row.data)),
   )
-  const redact = (row: StoredRecord): VisibleRow => ({
-    row,
-    record: scope.redact(collection, row.data),
-  })
+  return { collection, scope, rows, narrowed, matches }
+}
+
+/** Ayıklanmış kayıtlar; daraltılmış sorguda son karar burada verilir. */
+function visibleRows({ collection, scope, rows, narrowed, matches }: ReadResult): VisibleRow[] {
+  const items = rows.map((row) => ({ row, record: scope.redact(collection, row.data) }))
+  return narrowed ? items.filter((item) => matches(item.record)) : items
+}
+
+export async function listCollection(
+  ctx: ServiceContext,
+  name: string,
+  query: CollectionListQuery,
+): Promise<{ items: CollectionItem[]; total: number }> {
+  const result = await readRows(ctx, name, query)
+  if (result === null) return { items: [], total: 0 }
+  const { collection, scope, rows, narrowed } = result
   const start = (query.page - 1) * query.pageSize
   const sort = query.sort ?? []
   if (!narrowed && sort.length === 0)
     // Arama ve sıralama yoksa yalnız istenen sayfa ayıklanır.
     return {
-      items: visible.slice(start, start + query.pageSize).map((row) => toItem(redact(row))),
-      total: visible.length,
+      items: rows
+        .slice(start, start + query.pageSize)
+        .map((row) => toItem({ row, record: scope.redact(collection, row.data) })),
+      total: rows.length,
     }
-  let items = visible.map(redact)
-  if (narrowed) items = items.filter((item) => matches(item.record))
-  items = sorted(fieldResolver(ctx, collection), items, sort)
+  const items = sorted(fieldResolver(ctx, collection), visibleRows(result), sort)
   return { items: items.slice(start, start + query.pageSize).map(toItem), total: items.length }
+}
+
+/** Gruplanabilen alanlar (beyaz liste): eşitlik süzgeci alanları, `isActive` ve `level`. */
+export const GROUP_FIELDS = [...FILTER_FIELDS, 'isActive', 'level'] as const
+export type GroupField = (typeof GROUP_FIELDS)[number]
+
+/** Grup başına toplanabilen sayısal alanlar (beyaz liste; para alanı kuruş). */
+export const SUM_FIELDS = [
+  'amount',
+  'capacity',
+  'score',
+  'progress',
+  'attendanceRate',
+  'homeworkRate',
+] as const
+export type SumField = (typeof SUM_FIELDS)[number]
+
+export interface CollectionCountQuery extends CollectionReadQuery {
+  groupBy: GroupField
+  sum?: SumField | undefined
+}
+
+/** Grup değeri: kaydın skaler değeri; dizi, nesne veya eksik değer `null` grubudur. */
+export type GroupValue = string | number | boolean | null
+
+export interface CountGroup {
+  value: GroupValue
+  count: number
+  /** Yalnız `sum` istendiğinde: gruptaki sonlu sayı değerlerinin toplamı. */
+  sum?: number
+}
+
+function groupValue(value: unknown): GroupValue {
+  if (typeof value === 'string' || typeof value === 'boolean') return value
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  return null
+}
+
+function hiddenFieldError(field: 'groupBy' | 'sum'): ValidationError {
+  return new ValidationError([
+    {
+      path: [field],
+      code: 'invalid_value',
+      message: field === 'groupBy' ? 'Bu alana göre gruplama yapılamaz.' : 'Bu alan toplanamaz.',
+    },
+  ])
+}
+
+/**
+ * Toplu sayım (`GET /collections/:c/counts`): liste ucuyla aynı kapsam, süzgeç ve arama; sonuç
+ * grup başına sayı ve istenirse toplam. Rolün göremediği (ayıklanan) alanla gruplama veya toplama
+ * 400'dür: alan o rol için yoktur. Değer ayıklanmış kayıttan okunur; taksit `status`'u türetilir,
+ * `isActive` alanı olmayan kayıt etkindir, kaydında sınıf olmayan öğrenci koleksiyonlarında
+ * `classId` öğrencinin güncel sınıfıdır (süzgeçle aynı). Gruplar değere göre sıralıdır, `null` sonda.
+ */
+export async function countCollection(
+  ctx: ServiceContext,
+  name: string,
+  query: CollectionCountQuery,
+): Promise<{ groups: CountGroup[]; total: number; sum?: number }> {
+  const result = await readRows(ctx, name, query, (scope, collection) => {
+    const hidden = scope.hiddenFields(collection)
+    if (hidden.includes(query.groupBy)) throw hiddenFieldError('groupBy')
+    if (query.sum && hidden.includes(query.sum)) throw hiddenFieldError('sum')
+  })
+  const withSum = query.sum !== undefined
+  if (result === null) return { groups: [], total: 0, ...(withSum ? { sum: 0 } : {}) }
+  const { collection } = result
+  const resolver = fieldResolver(ctx, collection)
+  const classOf =
+    query.groupBy === 'classId' && CLASS_VIA_STUDENT.has(collection)
+      ? await studentClasses(ctx)
+      : null
+  const valueOf = (record: RecordData): GroupValue => {
+    if (classOf) {
+      const student = record.studentId
+      return typeof student === 'string' ? (classOf.get(student) ?? null) : null
+    }
+    if (query.groupBy === 'isActive') return record.isActive !== false
+    return groupValue(recordValue(resolver, record, query.groupBy))
+  }
+  const groups = new Map<string, CountGroup>()
+  let total = 0
+  let sum = 0
+  for (const { record } of visibleRows(result)) {
+    const value = valueOf(record)
+    const key = JSON.stringify(value)
+    const group = groups.get(key) ?? { value, count: 0, ...(withSum ? { sum: 0 } : {}) }
+    group.count += 1
+    total += 1
+    if (query.sum) {
+      const amount = record[query.sum]
+      if (typeof amount === 'number' && Number.isFinite(amount)) {
+        group.sum = (group.sum ?? 0) + amount
+        sum += amount
+      }
+    }
+    groups.set(key, group)
+  }
+  return {
+    groups: [...groups.values()].sort((a, b) => compareValues(a.value, b.value, false)),
+    total,
+    ...(withSum ? { sum } : {}),
+  }
 }
 
 /** Tek kayıt. Yok, arşivde, başka kurumda veya aktörün kapsamı dışında: aynı 404 (DOM-YTK-011). */

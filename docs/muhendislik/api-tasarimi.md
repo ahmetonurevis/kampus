@@ -85,6 +85,15 @@ Filtre:
 - Arşivli kayıtlar varsayılan olarak dönmez; `?archived=include` veya `?archived=only`.
 - Her ucun kabul ettiği filtre ve sıralama alanları sorgu şemasında beyaz listedir; bilinmeyen parametre 400.
 
+Türetilmiş alanlar saklanmaz, istekte hesaplanır ve süzgeç, sıralama ve gruplamada saklanan alan gibi kullanılır. Taksitin (`invoices`) `status`'u core `invoiceStatus` ile `paidAt`, vade ve isteğin saatinden (`ctx.now`, Europe/Istanbul günü) türetilir; değerler core etiketleridir (`Ödendi`, `Gecikmiş`, `Yaklaşan`), başka değer 400. SQL koşulu core kuralının çevirisidir (gün ve an biçimli vadede kesin, başka biçimde aday); karar core fonksiyonuyla verilir ve iki tarafın eşitliği sınır günleriyle testte sabittir.
+
+Toplu sayım: `GET /collections/:collection/counts?groupBy=<alan>[&sum=<alan>]` liste ucunun kapsam, süzgeç ve aramasını (`q`, `archived`, `isActive`, `dateFrom`/`dateTo`, eşitlik süzgeçleri) aynen uygular; sayfalama ve sıralama almaz. Yanıt `{ data: [{ value, count, sum? }], meta: { total, sum? } }`; gruplar değere göre sıralı, `null` (alan yok veya skaler değil) sonda. Kararlar:
+
+- `groupBy` zorunlu ve beyaz listedir (eşitlik süzgeci alanları, `isActive`, `level`); `sum` beyaz listeli sayısal alandır (`amount` kuruş, `capacity`, `score`, `progress`, `attendanceRate`, `homeworkRate`), sayı olmayan değer toplama girmez. Ortalama istemcide `sum / count`'tur.
+- Sayım ayıklanmış kayıt üzerinde yapılır: kapsam dışı kayıt sayılmaz, toplama girmez. Rolün göremediği (ayıklanan) alanla gruplama veya toplama 400 `validation_failed`'dir (`issues[0].path` `groupBy`/`sum`); boş sonuç dönmez, çünkü boş sonuç alanın varlığını sızdırmadan "veri yok" ile karışır.
+- Değer süzgeçle aynı anlamdadır: `isActive` alanı olmayan kayıt `true`; taksit `status`'u türetilmiş; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfı.
+- İlişki zinciri sunucuda kurulmaz: kampüs başına öğrenci, sınıf başına öğrenci sayımı ile sınıfın kampüsünden istemcide birleşir. Sayım bellekte yapılır (liste ucuyla aynı yükleme; `TODO(perf)`).
+
 Sıralama: `sort=-createdAt,lastName` (eksi azalan). Sonuç her zaman `id` ile kararlı hale getirilir; aynı sorgu aynı sırayı verir.
 
 Dışa aktarma: liste ucu `Accept: text/csv` ile çağrılınca sayfalamayı yok sayar, aynı filtre ve sıralamayla bütün sonucu akış olarak (stream) döner. Hücre `=`, `+`, `-`, `@` ile başlıyorsa başına `'` eklenir (CSV enjeksiyonu). Kişisel veri dışa aktarımı denetim kaydına yazılır.

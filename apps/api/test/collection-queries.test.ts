@@ -413,4 +413,187 @@ describe('koleksiyon sorguları: durum, sayım, bağlı alan', () => {
       )
     })
   })
+
+  describe('bağlı adla arama ve sıralama', () => {
+    const q = (text: string) => `q=${encodeURIComponent(text)}`
+    const invoicesOf = (...students: string[]) =>
+      [...PAID_SAMPLE.map((row) => row.data), ...EXTRA_INVOICES]
+        .filter((row) => students.includes(String(row.studentId)))
+        .map((row) => String(row.id))
+    const listed = (collection: string, query: string) =>
+      `/api/v1/collections/${collection}?pageSize=100&${query}`
+
+    /**
+     * Selin Kaya (`t1`, Kadıköy) Beşiktaş kampüsündeki bir sınıfta da ders verir: sınıfı görür,
+     * kampüsünü (b2) okuyamaz. Kampüs adıyla arama ve sıralama bu kampüsü kullanmamalı.
+     */
+    async function withOtherCampusClass() {
+      const created = await institution()
+      await insertMissingRecords(
+        db,
+        created.id,
+        [
+          {
+            collection: 'classes',
+            id: 'test-c-b2',
+            data: {
+              id: 'test-c-b2',
+              name: 'Test-B2',
+              grade: 7,
+              section: 'B',
+              level: '7. Sınıf',
+              branchId: 'b2',
+              teacherId: 'test-t-b2',
+              capacity: 20,
+            },
+          },
+          {
+            collection: 'assignments',
+            id: 'test-a-b2',
+            data: { id: 'test-a-b2', classId: 'test-c-b2', teacherId: 't1', subjectId: 'math' },
+          },
+        ],
+        FIXED_NOW,
+      )
+      return created
+    }
+
+    test('sınıf listesinde kampüs adı; taksit, not ve yoklamada öğrenci adı, numarası, sınıf adı', async () => {
+      const { adminCookie } = await withOtherCampusClass()
+      assert.deepEqual(await ids(adminCookie, listed('classes', q('kadıköy kampüsü'))), [
+        'c1',
+        'c2',
+        'c3',
+      ])
+      assert.deepEqual(await ids(adminCookie, listed('classes', q('BEŞİKTAŞ'))), ['test-c-b2'])
+      // Öğrenci adı (Türkçe duyarsız), okul numarası ve öğrencinin sınıfının adı.
+      assert.deepEqual(
+        await ids(adminCookie, listed('invoices', q('deniz yilmaz'))),
+        invoicesOf('s1'),
+      )
+      assert.deepEqual(
+        await ids(adminCookie, listed('invoices', q('Yılmaz'))),
+        invoicesOf('s1', 's2'),
+      )
+      assert.deepEqual(await ids(adminCookie, listed('invoices', q('2026011'))), invoicesOf('s11'))
+      assert.deepEqual(await ids(adminCookie, listed('invoices', q('5-A'))), invoicesOf('s2'))
+      // Kendi alanında arama sürer; bağlı alan ve süzgeç birlikte.
+      assert.deepEqual(await ids(adminCookie, listed('invoices', q('test-inv-late'))), [
+        'test-inv-late-s1',
+        'test-inv-late-s11',
+      ])
+      assert.deepEqual(
+        await ids(adminCookie, listed('invoices', `${q('Yılmaz')}&${status('Gecikmiş')}`)),
+        ['test-inv-late-s1'],
+      )
+      const grades = (SAMPLE.grades ?? [])
+        .filter((row) => row.studentId === 's2')
+        .map((row) => String(row.id))
+      assert.deepEqual(await ids(adminCookie, listed('grades', q('Ece'))), grades)
+      // Yoklamada sınıf adı kaydın kendi sınıfından.
+      const attendance = (SAMPLE.attendance ?? [])
+        .filter((row) => row.classId === 'c3')
+        .map((row) => String(row.id))
+      assert.deepEqual(await ids(adminCookie, listed('attendance', q('6-A'))), attendance)
+      // Sayım ucu aynı aramayı kullanır.
+      const counted = await get(
+        `/api/v1/collections/invoices/counts?groupBy=studentId&${q('Yılmaz')}`,
+        adminCookie,
+      )
+      assert.deepEqual(
+        counted.json().data.map((group: { value: string }) => group.value),
+        ['s1', 's2'],
+      )
+    })
+
+    test('bağlı alanla sıralama: öğrenci adı, kampüs adı; eşitlikte depo sırası', async () => {
+      const { adminCookie } = await withOtherCampusClass()
+      const collator = new Intl.Collator('tr-TR', { numeric: true })
+      const name = (id: string) => SEED.students.find((item) => item.id === id)?.name ?? ''
+      const all = invoicesOf('s1', 's2', 's11')
+      const stored = await ids(adminCookie, listed('invoices', ''))
+      const byName = [...all].sort((a, b) => {
+        const studentOf = (id: string) => {
+          const row = [...PAID_SAMPLE.map((item) => item.data), ...EXTRA_INVOICES].find(
+            (item) => item.id === id,
+          )
+          return String(row?.studentId)
+        }
+        return (
+          collator.compare(name(studentOf(a)), name(studentOf(b))) ||
+          stored.indexOf(a) - stored.indexOf(b)
+        )
+      })
+      assert.deepEqual(await ids(adminCookie, listed('invoices', 'sort=studentName')), byName)
+      const descending = await ids(adminCookie, listed('invoices', 'sort=-studentName,dueDate'))
+      assert.deepEqual(descending.slice(0, invoicesOf('s2').length).sort(), invoicesOf('s2').sort())
+      assert.deepEqual(await ids(adminCookie, listed('classes', 'sort=-branchName,id')), [
+        'c1',
+        'c2',
+        'c3',
+        'test-c-b2',
+      ])
+      // Beşiktaş < Kadıköy (tr-TR).
+      assert.deepEqual(await ids(adminCookie, listed('classes', 'sort=branchName')), [
+        'test-c-b2',
+        'c1',
+        'c2',
+        'c3',
+      ])
+      // Öğrencinin sınıfı örnek kesitte yoksa sınıf adı boştur: sıralamada sona düşer.
+      const byClass = await ids(adminCookie, listed('invoices', 'sort=className'))
+      assert.deepEqual(byClass.slice(-invoicesOf('s11').length).sort(), invoicesOf('s11').sort())
+      // Bağlı alanı olmayan listede veya başka listenin bağlı alanıyla sıralama 400.
+      for (const url of [
+        listed('students', 'sort=studentName'),
+        listed('invoices', 'sort=branchName'),
+        listed('branches', 'sort=className'),
+      ]) {
+        const response = await get(url, adminCookie)
+        assert.equal(response.statusCode, 400, url)
+        assert.deepEqual(response.json().issues[0].path, ['sort'])
+      }
+    })
+
+    test('DOM-YTK-022/025: kapsam dışı bağlı kaydın adı eşleşme ve sıra üretmez', async () => {
+      const { id, adminCookie } = await withOtherCampusClass()
+      const teacher = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+      // Öğretmen sınıfı görür, kampüsünü okuyamaz: kampüs adıyla bulunmaz, sıralamada sondadır.
+      assert.ok((await ids(teacher, listed('classes', ''))).includes('test-c-b2'))
+      assert.deepEqual(await ids(teacher, listed('classes', q('Beşiktaş'))), [])
+      assert.deepEqual(
+        (await ids(teacher, listed('classes', 'sort=-branchName'))).at(-1),
+        'test-c-b2',
+      )
+      assert.deepEqual(await ids(teacher, listed('classes', q('Kadıköy'))), ['c1', 'c2', 'c3'])
+      // Veli bağlı olmayan çocuğun adı, numarası ve sınıfıyla taksit bulamaz; yönetici bulur.
+      const parent = await memberCookie(id, 'veli', [
+        { kind: 'child', recordId: 's1' },
+        { kind: 'child', recordId: 's2' },
+      ])
+      for (const text of ['Duru Aksoy', '2026011']) {
+        assert.deepEqual(await ids(parent, listed('invoices', q(text))), [], text)
+        assert.deepEqual(
+          await ids(adminCookie, listed('invoices', q(text))),
+          invoicesOf('s11'),
+          text,
+        )
+        const counted = await get(
+          `/api/v1/collections/invoices/counts?groupBy=status&${q(text)}`,
+          parent,
+        )
+        assert.deepEqual(counted.json().meta, { total: 0 })
+      }
+      assert.deepEqual(await ids(parent, listed('invoices', q('Yılmaz'))), invoicesOf('s1', 's2'))
+      // Öğrenci yalnız kendini görür: kardeşinin adıyla not bulunmaz.
+      const student = await memberCookie(id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
+      assert.deepEqual(await ids(student, listed('grades', q('Ece'))), [])
+      // Branş öğretmeni (Türkçe) kapsamındaki öğrencinin adıyla yalnız kendi dersini bulur.
+      const branch = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }])
+      const turkish = (SAMPLE.grades ?? [])
+        .filter((row) => row.studentId === 's1' && row.subjectId === 'turkish')
+        .map((row) => String(row.id))
+      assert.deepEqual(await ids(branch, listed('grades', q('Deniz'))), turkish)
+    })
+  })
 })

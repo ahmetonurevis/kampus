@@ -14,6 +14,15 @@ import { NotFoundError, ValidationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { moduleOfCollection, readableCollection } from './collection-access.ts'
 import {
+  isJoinedField,
+  joinedFieldsOf,
+  JOINED_FIELDS,
+  loadJoiner,
+  type JoinedField,
+  type JoinedValues,
+  type Joiner,
+} from './collection-joins.ts'
+import {
   dayRange,
   invoiceStatusFilter,
   invoiceStatusOf,
@@ -32,6 +41,10 @@ import {
  * kurum kapsamlı depodan yüklenir; core kapsamı (`scopeFor`) satırları süzüp alanları ayıkladıktan
  * sonra arama, filtre, sıralama ve sayfalama bellekte, ayıklanmış alanlar üzerinde yapılır: rolün
  * göremediği alan aramada da eşleşmez. Varsayılan sıra deponun döndürdüğü sıradır.
+ *
+ * Arama ve sıralama bağlı adlarda da çalışır (`collection-joins.ts`: sınıfta kampüs adı; taksit,
+ * not, yoklamada öğrenci adı/numarası ve sınıf adı); bağlı kayıt da aktörün kapsamından ve
+ * ayıklanmış biçiminden okunur. Taksit `status`'u türetilmiş alandır (`DERIVED_STATUS`).
  *
  * Veritabanı yalnız aday satırları döndürür: eşitlik filtreleri ve büyük kişisel koleksiyonlarda
  * kapsam kimlikleri SQL ön süzgecidir (`FieldMatch`, `scopePrefilter`); karar yine bellekte,
@@ -90,7 +103,10 @@ function isInvoiceStatus(value: string): value is InvoiceStatusLabel {
 /** Gün aralığı süzgecinin alanı (`dateFrom`/`dateTo`). */
 export const DATE_FILTER_FIELD = 'date'
 
-/** Sıralama alanları. `createdAt`/`updatedAt` kayıt kolonudur; diğerleri veri alanıdır. */
+/**
+ * Sıralama alanları. `createdAt`/`updatedAt` kayıt kolonudur; bağlı alanlar (`JOINED_FIELDS`)
+ * yalnız tanımlı oldukları koleksiyonda geçerlidir (başkasında 400); diğerleri veri alanıdır.
+ */
 export const SORT_FIELDS = [
   'id',
   'createdAt',
@@ -108,6 +124,7 @@ export const SORT_FIELDS = [
   'amount',
   'installment',
   'number',
+  ...JOINED_FIELDS,
 ] as const
 export type SortField = (typeof SORT_FIELDS)[number]
 
@@ -165,6 +182,8 @@ export function parseSort(raw: string | undefined): SortKey[] {
 interface VisibleRow {
   row: StoredRecord
   record: RecordData
+  /** İstenen bağlı alanların değerleri (arama veya sıralama istediyse). */
+  joined?: JoinedValues
 }
 
 function toItem({ row, record }: VisibleRow): CollectionItem {
@@ -257,6 +276,7 @@ function recordValue(resolver: FieldResolver, record: RecordData, field: string)
 }
 
 function sortValue(resolver: FieldResolver, item: VisibleRow, field: SortField): unknown {
+  if (isJoinedField(field)) return item.joined?.[field]
   // Kolon zamanları ISO metni olarak karşılaştırılır (yanıttaki biçimle aynı sıra).
   if (field === 'id') return item.row.id
   if (field === 'createdAt') return item.row.createdAt.toISOString()
@@ -309,27 +329,60 @@ interface ReadResult {
   /** Kapsamdan geçmiş satırlar; `narrowed` ise süzgeç/arama da ham kayıtta adaydan geçmiştir. */
   rows: StoredRecord[]
   narrowed: boolean
-  /** Ayıklanmış kayıtta süzgeç ve arama kararı. */
-  matches: (record: RecordData) => boolean
+  /** Ayıklanmış kayıtta süzgeç ve arama kararı (bağlı alanlar dahil). */
+  matches: (item: VisibleRow) => boolean
+  /** Bağlı alan istendiyse değerleri veren işlev. */
+  joiner: Joiner | null
+}
+
+interface ReadOptions {
+  /** Kapsam bilindikten sonra, süzgeçlerden önce sorgu alanlarının denetimi. */
+  check?: (scope: Scope, collection: CollectionName) => void
+  /** Sıralamada istenen bağlı alanlar. */
+  joined?: readonly JoinedField[]
+}
+
+function invalidSort(): ValidationError {
+  return new ValidationError([
+    {
+      path: ['sort'],
+      code: 'invalid_value',
+      message: 'Bu listede bu alana göre sıralama yapılamaz.',
+    },
+  ])
 }
 
 async function readRows(
   ctx: ServiceContext,
   name: string,
   query: CollectionReadQuery,
-  fields: (scope: Scope, collection: CollectionName) => void = () => {},
+  options: ReadOptions = {},
 ): Promise<ReadResult | null> {
   const collection = readableCollection(name)
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, collection)
-  fields(scope, collection)
+  const joinable = joinedFieldsOf(collection)
+  if (options.joined?.some((field) => !joinable.includes(field))) throw invalidSort()
+  options.check?.(scope, collection)
   const filters = await listFilters(ctx, scope, collection, query)
   if (filters === null) return null
   const needle = query.q ? searchKey(query.q) : null
   const narrowed = filters.length > 0 || needle !== null
-  const matches = (record: RecordData) =>
-    filters.every((filter) => matchesRecordFilter(record, filter)) &&
-    (needle === null || matchesSearch(record, needle))
+  // Arama bağlı alanlarda da çalışır; bağlı alanı olan koleksiyonda ham kayıtta arama adayı yok.
+  const joinedSearch = needle !== null && joinable.length > 0
+  const wanted = new Set<JoinedField>([
+    ...(options.joined ?? []),
+    ...(joinedSearch ? joinable : []),
+  ])
+  const joiner = wanted.size > 0 ? await loadJoiner(ctx, scope, [...wanted]) : null
+  const passes = (record: RecordData) =>
+    filters.every((filter) => matchesRecordFilter(record, filter))
+  const matches = (item: VisibleRow) =>
+    passes(item.record) &&
+    (needle === null ||
+      matchesSearch(item.record, needle) ||
+      (joinedSearch &&
+        Object.values(item.joined ?? {}).some((value) => searchKey(value).includes(needle))))
   const prefilter = scopePrefilter(scope, collection)
   const loaded = await loadRecords(ctx.db, ctx.institutionId, [collection], {
     includeArchived: query.archived !== undefined,
@@ -337,19 +390,32 @@ async function readRows(
   })
   // Ayıklama alan çıkarır veya daraltır, eklemez: ham kayıtta eşleşmeyen ayıklanmışta da
   // eşleşmez. Ham eşleşme yalnız adaydır; karar ayıklanmış kayıtta verilir.
+  const candidate = (record: RecordData) =>
+    passes(record) && (needle === null || joinedSearch || matchesSearch(record, needle))
   const rows = loaded.filter(
     (row) =>
       (query.archived !== 'only' || row.archivedAt !== null) &&
       scope.canRead(collection, row.data) &&
-      (!narrowed || matches(row.data)),
+      (!narrowed || candidate(row.data)),
   )
-  return { collection, scope, rows, narrowed, matches }
+  return { collection, scope, rows, narrowed, matches, joiner }
 }
 
 /** Ayıklanmış kayıtlar; daraltılmış sorguda son karar burada verilir. */
-function visibleRows({ collection, scope, rows, narrowed, matches }: ReadResult): VisibleRow[] {
-  const items = rows.map((row) => ({ row, record: scope.redact(collection, row.data) }))
-  return narrowed ? items.filter((item) => matches(item.record)) : items
+function visibleRows({
+  collection,
+  scope,
+  rows,
+  narrowed,
+  matches,
+  joiner,
+}: ReadResult): VisibleRow[] {
+  const items = rows.map((row): VisibleRow => {
+    const record = scope.redact(collection, row.data)
+    // Bağlı kaydın kimliği de ayıklanmış kayıttan okunur.
+    return joiner ? { row, record, joined: joiner(record) } : { row, record }
+  })
+  return narrowed ? items.filter(matches) : items
 }
 
 export async function listCollection(
@@ -357,11 +423,13 @@ export async function listCollection(
   name: string,
   query: CollectionListQuery,
 ): Promise<{ items: CollectionItem[]; total: number }> {
-  const result = await readRows(ctx, name, query)
+  const sort = query.sort ?? []
+  const result = await readRows(ctx, name, query, {
+    joined: sort.flatMap((key) => (isJoinedField(key.field) ? [key.field] : [])),
+  })
   if (result === null) return { items: [], total: 0 }
   const { collection, scope, rows, narrowed } = result
   const start = (query.page - 1) * query.pageSize
-  const sort = query.sort ?? []
   if (!narrowed && sort.length === 0)
     // Arama ve sıralama yoksa yalnız istenen sayfa ayıklanır.
     return {
@@ -432,10 +500,12 @@ export async function countCollection(
   name: string,
   query: CollectionCountQuery,
 ): Promise<{ groups: CountGroup[]; total: number; sum?: number }> {
-  const result = await readRows(ctx, name, query, (scope, collection) => {
-    const hidden = scope.hiddenFields(collection)
-    if (hidden.includes(query.groupBy)) throw hiddenFieldError('groupBy')
-    if (query.sum && hidden.includes(query.sum)) throw hiddenFieldError('sum')
+  const result = await readRows(ctx, name, query, {
+    check(scope, collection) {
+      const hidden = scope.hiddenFields(collection)
+      if (hidden.includes(query.groupBy)) throw hiddenFieldError('groupBy')
+      if (query.sum && hidden.includes(query.sum)) throw hiddenFieldError('sum')
+    },
   })
   const withSum = query.sum !== undefined
   if (result === null) return { groups: [], total: 0, ...(withSum ? { sum: 0 } : {}) }

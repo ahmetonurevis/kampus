@@ -61,7 +61,9 @@ const readQueryShape = {
     .min(2)
     .max(100)
     .optional()
-    .describe('Serbest arama; Türkçe büyük/küçük harf ve aksan duyarsız'),
+    .describe(
+      'Serbest arama; Türkçe büyük/küçük harf ve aksan duyarsız. Kaydın görünen alanlarında ve bağlı adlarda arar: `classes`ta kampüs adı; `invoices`, `grades`, `attendance`ta öğrenci adı, okul numarası ve sınıf adı (yalnız aktörün okuyabildiği bağlı kayıtlar)',
+    ),
   archived: z
     .enum(ARCHIVED_MODES)
     .optional()
@@ -89,7 +91,7 @@ export const collectionListQuerySchema = pageQuerySchema
       .regex(SORT_PATTERN)
       .optional()
       .describe(
-        `En çok üç alan, virgülle; eksi azalan (ör. \`-createdAt,name\`). Alanlar: ${SORT_FIELDS.join(', ')}. Verilmezse deponun sırası`,
+        `En çok üç alan, virgülle; eksi azalan (ör. \`-createdAt,name\`). Alanlar: ${SORT_FIELDS.join(', ')}. Bağlı alanlar yalnız tanımlı listede: \`branchName\` \`classes\`; \`studentName\`, \`studentNumber\`, \`className\` \`invoices\`, \`grades\`, \`attendance\` (başka listede 400). \`invoices\` \`status\`u türetilmiş durumdur. Verilmezse deponun sırası`,
       ),
   })
   .strict()

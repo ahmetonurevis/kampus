@@ -1607,7 +1607,7 @@ export interface operations {
                 page?: number;
                 /** @description Sayfa boyutu (≤ 100) */
                 pageSize?: number;
-                /** @description Serbest arama; Türkçe büyük/küçük harf ve aksan duyarsız */
+                /** @description Serbest arama; Türkçe büyük/küçük harf ve aksan duyarsız. Kaydın görünen alanlarında ve bağlı adlarda arar: `classes`ta kampüs adı; `invoices`, `grades`, `attendance`ta öğrenci adı, okul numarası ve sınıf adı (yalnız aktörün okuyabildiği bağlı kayıtlar) */
                 q?: string;
                 /** @description Arşivliler varsayılan olarak dönmez; `include` ekler, `only` yalnız onları verir */
                 archived?: "include" | "only";
@@ -1651,7 +1651,7 @@ export interface operations {
                 type?: string | string[];
                 /** @description `grade` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 grade?: string | string[];
-                /** @description En çok üç alan, virgülle; eksi azalan (ör. `-createdAt,name`). Alanlar: id, createdAt, updatedAt, name, title, date, dueDate, deadline, followUp, status, stage, grade, score, amount, installment, number. Verilmezse deponun sırası */
+                /** @description En çok üç alan, virgülle; eksi azalan (ör. `-createdAt,name`). Alanlar: id, createdAt, updatedAt, name, title, date, dueDate, deadline, followUp, status, stage, grade, score, amount, installment, number, studentName, studentNumber, className, branchName. Bağlı alanlar yalnız tanımlı listede: `branchName` `classes`; `studentName`, `studentNumber`, `className` `invoices`, `grades`, `attendance` (başka listede 400). `invoices` `status`u türetilmiş durumdur. Verilmezse deponun sırası */
                 sort?: string;
             };
             header?: never;
@@ -1734,7 +1734,7 @@ export interface operations {
     countCollection: {
         parameters: {
             query: {
-                /** @description Serbest arama; Türkçe büyük/küçük harf ve aksan duyarsız */
+                /** @description Serbest arama; Türkçe büyük/küçük harf ve aksan duyarsız. Kaydın görünen alanlarında ve bağlı adlarda arar: `classes`ta kampüs adı; `invoices`, `grades`, `attendance`ta öğrenci adı, okul numarası ve sınıf adı (yalnız aktörün okuyabildiği bağlı kayıtlar) */
                 q?: string;
                 /** @description Arşivliler varsayılan olarak dönmez; `include` ekler, `only` yalnız onları verir */
                 archived?: "include" | "only";

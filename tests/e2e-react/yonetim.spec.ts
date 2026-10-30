@@ -1,0 +1,337 @@
+import { readFile } from 'node:fs/promises'
+
+import type { Download, Page } from '@playwright/test'
+
+import { expect, test } from './support/fixtures.ts'
+import { expectNoHorizontalOverflow } from './support/ui.ts'
+
+// Yönetici okuma ekranları (Kampüsler & Sınıflar, Eğitim Kadrosu). Paylaşılan yönetici oturumu
+// salt okunurdur; hiçbir test kayıt yazmaz. Seed: 3 kampüs, 24 sınıf (kampüs başına 8), 48 öğretmen
+// (kampüs başına 16, 16 branş × 3). Sayfa boyutu 8.
+
+const CLASSES_URL = '/yonetici/subeler'
+const STAFF_URL = '/yonetici/personel'
+const CLASS_TABLE = 'Sınıflar ve ders atamaları'
+const STAFF_TABLE = 'Branş öğretmenleri'
+const KADIKOY = 'Kadıköy Kampüsü'
+
+const tableOf = (page: Page, name: string) => page.getByRole('table', { name })
+/** Başlık satırı hariç gövde satırları. */
+const bodyRows = (page: Page, name: string) => tableOf(page, name).locator('tbody tr')
+const resultCount = (page: Page) => page.locator('.result-count')
+
+async function readCsv(download: Download): Promise<string[][]> {
+  const path = await download.path()
+  const text = await readFile(path, 'utf8')
+  expect(text.charCodeAt(0), 'UTF-8 BOM').toBe(0xfeff)
+  return text
+    .slice(1)
+    .split('\r\n')
+    .map((line) => line.split(';').map((cell) => cell.replace(/^"|"$/g, '')))
+}
+
+async function downloadList(page: Page): Promise<string[][]> {
+  const pending = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Listeyi indir' }).click()
+  return readCsv(await pending)
+}
+
+test.describe('yönetici: Kampüsler & Sınıflar', () => {
+  test.beforeEach(async ({ loginAs }) => {
+    await loginAs('yonetici')
+  })
+
+  test('kampüs kartları ve sınıf listesi API verisiyle açılır', async ({ page }) => {
+    await page.goto(CLASSES_URL)
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Kampüsler & Sınıflar' }),
+    ).toBeVisible()
+
+    const campuses = page.getByRole('list', { name: 'Kampüsler' }).getByRole('listitem')
+    await expect(campuses).toHaveCount(3)
+    await expect(campuses.first().getByRole('heading', { level: 2 })).toHaveText(KADIKOY)
+
+    await expect(page.getByText('24 kayıt · 5–12. sınıf düzeyleri')).toBeVisible()
+    await expect(bodyRows(page, CLASS_TABLE)).toHaveCount(8)
+    await expect(resultCount(page)).toContainText('1–8 / 24 kayıt')
+  })
+
+  test('arama sunucuda süzer ve URL parametresine yazılır', async ({ page }) => {
+    await page.goto(CLASSES_URL)
+    await expect(bodyRows(page, CLASS_TABLE)).toHaveCount(8)
+
+    await page.getByLabel('Tabloda ara').fill('7-A')
+    await expect(page).toHaveURL(/[?&]q=7-A/)
+    await expect(resultCount(page)).not.toContainText('/ 24 kayıt')
+    const rows = bodyRows(page, CLASS_TABLE)
+    await expect(rows.first()).toContainText('7-A')
+    for (const row of await rows.all()) await expect(row).toContainText('7-A')
+
+    // Yenileme durumu korur.
+    await page.reload()
+    await expect(page.getByLabel('Tabloda ara')).toHaveValue('7-A')
+    await expect(rows.first()).toContainText('7-A')
+
+    await page.getByLabel('Tabloda ara').fill('yok-boyle-bir-sinif')
+    await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
+    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
+    await expect(bodyRows(page, CLASS_TABLE)).toHaveCount(8)
+    await expect(page).not.toHaveURL(/[?&]q=/)
+  })
+
+  test('sayfalama ilerler; kampüs filtresi sayfayı 1e döndürür', async ({ page }) => {
+    await page.goto(CLASSES_URL)
+    await expect(resultCount(page)).toContainText('1–8 / 24 kayıt')
+
+    await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
+    await expect(page).toHaveURL(/[?&]sayfa=2/)
+    await expect(resultCount(page)).toContainText('9–16 / 24 kayıt')
+    await expect(page.getByRole('button', { name: '2. sayfa' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+
+    await page.getByLabel('Kampüs filtresi').selectOption({ label: KADIKOY })
+    await expect(page).toHaveURL(/[?&]kampus=/)
+    await expect(page).not.toHaveURL(/[?&]sayfa=/)
+    await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
+    for (const row of await bodyRows(page, CLASS_TABLE).all())
+      await expect(row).toContainText(KADIKOY)
+
+    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).click()
+    await expect(resultCount(page)).toContainText('1–8 / 24 kayıt')
+    await expect(page).not.toHaveURL(/[?&]kampus=/)
+  })
+
+  test('sınıf düzeyi filtresi Filtreler panelinden uygulanır ve kaldırılır', async ({ page }) => {
+    await page.goto(CLASSES_URL)
+    await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
+    await expect(page).toHaveURL(/[?&]sayfa=2/)
+
+    await page.getByRole('button', { name: 'Filtreler' }).click()
+    await page.getByLabel('Sınıf düzeyi').selectOption({ label: '7. Sınıf' })
+    await expect(page).toHaveURL(/[?&]duzey=7/)
+    await expect(page).not.toHaveURL(/[?&]sayfa=/)
+    await expect(resultCount(page)).toContainText('1–3 / 3 kayıt')
+    for (const row of await bodyRows(page, CLASS_TABLE).all()) await expect(row).toContainText('7-')
+
+    await page.getByRole('button', { name: 'Sınıf düzeyi filtresini kaldır' }).click()
+    await expect(resultCount(page)).toContainText('/ 24 kayıt')
+  })
+
+  test('sınıf özeti URLde açılır, geri ve ileri paneli kapatıp açar', async ({ page }) => {
+    await page.goto(CLASSES_URL)
+    await page.getByLabel('Tabloda ara').fill('7-A')
+    await expect(bodyRows(page, CLASS_TABLE).first()).toContainText('7-A')
+
+    const opener = tableOf(page, CLASS_TABLE)
+      .getByRole('button', { name: '7-A', exact: true })
+      .first()
+    await opener.click()
+    const dialog = page.getByRole('dialog', { name: 'Sınıf özeti' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByText('7-A').first()).toBeVisible()
+    await expect(page).toHaveURL(/[?&]sinif=/)
+
+    await page.goBack()
+    await expect(dialog).toBeHidden()
+    await expect(page).not.toHaveURL(/[?&]sinif=/)
+    // Liste bağlamı (arama) geri gidişte korunur.
+    await expect(page.getByLabel('Tabloda ara')).toHaveValue('7-A')
+
+    await page.goForward()
+    await expect(dialog).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(page).not.toHaveURL(/[?&]sinif=/)
+  })
+
+  test('klavyeyle açılan sınıf özeti Escape ile kapanır ve odak düğmeye döner', async ({
+    page,
+  }) => {
+    await page.goto(CLASSES_URL)
+    const opener = page.getByRole('button', { name: '7-A özeti' }).first()
+    await opener.focus()
+    await page.keyboard.press('Enter')
+    const dialog = page.getByRole('dialog', { name: 'Sınıf özeti' })
+    await expect(dialog).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(page).not.toHaveURL(/[?&]ogretmen=/)
+  })
+
+  test('kampüs özeti kartından açılır ve doğrudan bağlantıyla yüklenir', async ({ page }) => {
+    await page.goto(CLASSES_URL)
+    await page.getByRole('button', { name: `${KADIKOY} özeti` }).click()
+    const dialog = page.getByRole('dialog', { name: 'Kampüs özeti' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByText(KADIKOY).first()).toBeVisible()
+    await expect(page).toHaveURL(/[?&]kampus-ozet=/)
+
+    // Bağlantıyla gelinen panel: kapatmak parametreyi siler, listeden çıkmaz.
+    const link = page.url()
+    await page.goto('about:blank')
+    await page.goto(link)
+    await expect(page.getByRole('dialog', { name: 'Kampüs özeti' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: 'Kampüs özeti' })).toBeHidden()
+    await expect(page).toHaveURL(/\/yonetici\/subeler$/)
+  })
+
+  test('CSV tüm sonuçları indirir; filtre uygulanınca yalnız filtrelenmiş satırları', async ({
+    page,
+  }) => {
+    await page.goto(CLASSES_URL)
+    await expect(bodyRows(page, CLASS_TABLE)).toHaveCount(8)
+
+    const all = await downloadList(page)
+    expect(all[0]).toEqual(['Sınıf', 'Kampüs', 'Sınıf danışmanı', 'Öğrenci / Kontenjan', 'Branş'])
+    // Görünen yalnız ilk sayfa (8 satır) olsa da dosya 24 sınıfın tamamıdır.
+    expect(all).toHaveLength(1 + 24)
+
+    await page.getByLabel('Kampüs filtresi').selectOption({ label: KADIKOY })
+    await expect(resultCount(page)).toContainText('/ 8 kayıt')
+    const filtered = await downloadList(page)
+    expect(filtered).toHaveLength(1 + 8)
+    for (const row of filtered.slice(1)) expect(row[1]).toBe(KADIKOY)
+  })
+
+  test('390 px genişlikte yatay taşma yok, kart ve ayrıntılar açılır', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(CLASSES_URL)
+    await expect(page.getByRole('article').first()).toBeVisible()
+    await expect(page.getByRole('article')).toHaveCount(8)
+    await expectNoHorizontalOverflow(page)
+
+    await page.getByText('Diğer bilgiler').first().click()
+    await expectNoHorizontalOverflow(page)
+
+    await page.getByRole('button', { name: 'Filtreler' }).click()
+    await expect(page.getByLabel('Kampüs filtresi')).toBeVisible()
+    await page.getByLabel('Kampüs filtresi').selectOption({ label: KADIKOY })
+    await expect(page.getByRole('article')).toHaveCount(8)
+    await expectNoHorizontalOverflow(page)
+  })
+})
+
+test.describe('yönetici: Eğitim Kadrosu', () => {
+  test.beforeEach(async ({ loginAs }) => {
+    await loginAs('yonetici')
+  })
+
+  test('öğretmen listesi API verisiyle açılır ve ada göre sıralanır', async ({ page }) => {
+    await page.goto(STAFF_URL)
+    await expect(page.getByRole('heading', { level: 1, name: 'Eğitim Kadrosu' })).toBeVisible()
+    await expect(page.getByText('48 kayıt · İletişim, branş ve görev bilgileri')).toBeVisible()
+    await expect(bodyRows(page, STAFF_TABLE)).toHaveCount(8)
+    await expect(resultCount(page)).toContainText('1–8 / 48 kayıt')
+
+    const header = tableOf(page, STAFF_TABLE).getByRole('columnheader', { name: /Öğretmen/ })
+    await expect(header).toHaveAttribute('aria-sort', 'none')
+    await header.getByRole('button').click()
+    await expect(header).toHaveAttribute('aria-sort', 'ascending')
+    await expect(page).toHaveURL(/[?&]sirala=name/)
+    await header.getByRole('button').click()
+    await expect(header).toHaveAttribute('aria-sort', 'descending')
+    await expect(page).toHaveURL(/[?&]yon=azalan/)
+  })
+
+  test('kampüs ve branş filtreleri birleşir, sayfa 1e döner', async ({ page }) => {
+    await page.goto(STAFF_URL)
+    await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
+    await expect(page).toHaveURL(/[?&]sayfa=2/)
+
+    await page.getByLabel('Kampüs filtresi').selectOption({ label: KADIKOY })
+    await expect(page).toHaveURL(/[?&]kampus=/)
+    await expect(page).not.toHaveURL(/[?&]sayfa=/)
+    await expect(resultCount(page)).toContainText('1–8 / 16 kayıt')
+
+    await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
+    await expect(resultCount(page)).toContainText('9–16 / 16 kayıt')
+    await expect(page.getByRole('button', { name: 'Sonraki sayfa' })).toBeDisabled()
+
+    await page.getByLabel('Branş filtresi').selectOption({ label: 'Matematik' })
+    await expect(page).toHaveURL(/[?&]brans=/)
+    await expect(page).not.toHaveURL(/[?&]sayfa=/)
+    await expect(resultCount(page)).toContainText('1–1 / 1 kayıt')
+    const row = bodyRows(page, STAFF_TABLE).first()
+    await expect(row).toContainText('Matematik')
+    await expect(row).toContainText(KADIKOY)
+
+    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).click()
+    await expect(resultCount(page)).toContainText('/ 48 kayıt')
+    await expect(page).not.toHaveURL(/[?&](kampus|brans)=/)
+  })
+
+  test('arama öğretmeni bulur; bulunamayınca boş durum gösterilir', async ({ page }) => {
+    await page.goto(STAFF_URL)
+    await page.getByLabel('Tabloda ara').fill('Selin Kaya')
+    await expect(page).toHaveURL(/[?&]q=Selin/)
+    await expect(bodyRows(page, STAFF_TABLE).first()).toContainText('Selin Kaya')
+
+    await page.getByLabel('Tabloda ara').fill('zzzz-yok')
+    await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
+  })
+
+  test('öğretmen özeti URLde açılır; geri paneli kapatır, ileri açar', async ({ page }) => {
+    await page.goto(STAFF_URL)
+    await page.getByLabel('Tabloda ara').fill('Selin Kaya')
+    const opener = tableOf(page, STAFF_TABLE)
+      .getByRole('button', { name: 'Selin Kaya özeti' })
+      .first()
+    await opener.click()
+    const dialog = page.getByRole('dialog', { name: 'Öğretmen özeti' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByText('Selin Kaya').first()).toBeVisible()
+    await expect(page).toHaveURL(/[?&]ogretmen=/)
+
+    await page.goBack()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByLabel('Tabloda ara')).toHaveValue('Selin Kaya')
+    await page.goForward()
+    await expect(dialog).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(page).not.toHaveURL(/[?&]ogretmen=/)
+  })
+
+  test('CSV filtrelenmiş tüm öğretmenleri içerir', async ({ page }) => {
+    await page.goto(STAFF_URL)
+    await expect(bodyRows(page, STAFF_TABLE)).toHaveCount(8)
+
+    const all = await downloadList(page)
+    expect(all[0]?.slice(0, 3)).toEqual(['Öğretmen', 'Branş', 'Kampüs'])
+    expect(all).toHaveLength(1 + 48)
+
+    await page.getByLabel('Kampüs filtresi').selectOption({ label: KADIKOY })
+    await expect(resultCount(page)).toContainText('/ 16 kayıt')
+    const filtered = await downloadList(page)
+    expect(filtered).toHaveLength(1 + 16)
+    for (const row of filtered.slice(1)) expect(row[2]).toBe(KADIKOY)
+  })
+
+  test('390 px genişlikte yatay taşma yok ve filtreler panelde', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(STAFF_URL)
+    await expect(page.getByRole('article')).toHaveCount(8)
+    await expectNoHorizontalOverflow(page)
+
+    await page.getByText('Diğer bilgiler').first().click()
+    await expectNoHorizontalOverflow(page)
+
+    await page.getByRole('button', { name: 'Filtreler' }).click()
+    await page.getByLabel('Branş filtresi').selectOption({ label: 'Matematik' })
+    await expect(page.getByRole('article')).toHaveCount(3)
+    await expectNoHorizontalOverflow(page)
+  })
+})
+
+test.describe('yönetim ekranları: yetki', () => {
+  test('öğretmen yönetim sayfasına giremez', async ({ page, loginAs }) => {
+    await loginAs('ogretmen')
+    await page.goto(CLASSES_URL)
+    await expect(page).not.toHaveURL(/\/yonetici\/subeler/)
+  })
+})

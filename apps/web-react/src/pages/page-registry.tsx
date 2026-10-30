@@ -34,6 +34,9 @@ const ChildrenPage = lazy(async () => ({
   default: (await import('./academic/ChildrenPage.tsx')).ChildrenPage,
 }))
 
+const PersonalSettingsPage = lazy(async () => ({
+  default: (await import('./settings/PersonalSettingsPage.tsx')).PersonalSettingsPage,
+}))
 const SettingsPage = lazy(async () => ({
   default: (await import('./settings/SettingsPage.tsx')).SettingsPage,
 }))
@@ -106,6 +109,8 @@ const MIGRATED = new Set([
   'yonetici/subeler',
   'yonetici/personel',
   'yonetici/ayarlar',
+  'ogrenci/ayarlar',
+  'veli/ayarlar',
   'yonetici/finans',
   'onburo/tahsilat-takip',
   'ogretmen/siniflarim',
@@ -155,6 +160,9 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <StaffPage page={page} />
     case 'yonetici/ayarlar':
       return <SettingsPage page={page} />
+    case 'ogrenci/ayarlar':
+    case 'veli/ayarlar':
+      return <PersonalSettingsPage page={page} />
     case 'yonetici/finans':
     case 'onburo/tahsilat-takip':
       return <FinancePage page={page} />

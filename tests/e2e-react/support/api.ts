@@ -57,10 +57,12 @@ export async function apiRequest(
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   data?: unknown,
+  headers?: Record<string, string>,
 ): Promise<ApiResult> {
   const response = await context.fetch(path, {
     method,
     ...(data === undefined ? {} : { data }),
+    ...(headers ? { headers } : {}),
     failOnStatusCode: false,
   })
   const text = await response.text()
@@ -77,7 +79,8 @@ export interface ApiClient {
   /** Ham bağlam: çerez ve başlıklar burada. */
   context: APIRequestContext
   get: (path: string) => Promise<ApiResult>
-  post: (path: string, data?: unknown) => Promise<ApiResult>
+  /** `headers`: isteğe özel başlıklar (ör. `Idempotency-Key`). */
+  post: (path: string, data?: unknown, headers?: Record<string, string>) => Promise<ApiResult>
   patch: (path: string, data?: unknown) => Promise<ApiResult>
   put: (path: string, data?: unknown) => Promise<ApiResult>
   delete: (path: string) => Promise<ApiResult>
@@ -88,7 +91,7 @@ export function wrapContext(context: APIRequestContext): ApiClient {
   return {
     context,
     get: (path) => apiRequest(context, 'GET', path),
-    post: (path, data) => apiRequest(context, 'POST', path, data),
+    post: (path, data, headers) => apiRequest(context, 'POST', path, data, headers),
     patch: (path, data) => apiRequest(context, 'PATCH', path, data),
     put: (path, data) => apiRequest(context, 'PUT', path, data),
     delete: (path) => apiRequest(context, 'DELETE', path),

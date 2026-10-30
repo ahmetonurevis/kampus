@@ -75,7 +75,7 @@ importers:
         specifier: 6.1.2
         version: 6.1.2
       '@kampus/school-core':
-        specifier: workspace:2.1.0
+        specifier: workspace:2.2.0
         version: link:../../packages/school-core
       better-auth:
         specifier: 1.7.10
@@ -112,7 +112,7 @@ importers:
   apps/mobile:
     dependencies:
       '@kampus/school-core':
-        specifier: workspace:2.1.0
+        specifier: workspace:2.2.0
         version: link:../../packages/school-core
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
@@ -203,7 +203,7 @@ importers:
         specifier: 5.3.0
         version: 5.3.0
       '@kampus/school-core':
-        specifier: workspace:2.1.0
+        specifier: workspace:2.2.0
         version: link:../../packages/school-core
       '@lucide/vue':
         specifier: 1.48.0
@@ -246,7 +246,7 @@ importers:
         specifier: workspace:0.1.0
         version: link:../../packages/react-shared
       '@kampus/school-core':
-        specifier: workspace:2.1.0
+        specifier: workspace:2.2.0
         version: link:../../packages/school-core
       '@tanstack/react-query':
         specifier: 5.105.0

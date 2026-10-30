@@ -24,6 +24,7 @@ import {
 import { archiveRecord } from '../packages/school-core/src/lib/school-management.ts'
 import { workflowSchemas } from '../packages/school-core/src/lib/school-workflows.ts'
 import { documentData } from '../packages/school-core/src/lib/document-data.ts'
+import { isDomainError } from './support/domain-error.js'
 const now = '2026-10-06T10:00:00.000Z'
 const seed = () => createSeed(new Date(now))
 let sequence = 0
@@ -507,4 +508,19 @@ test('Eski snapshot kayıt ve kapalı modülleri korur; yeni kayıtlar kalıcı 
   assert.deepEqual(changeFormValue({ marks: { s1: 'Geldi' } }, 'marks.s1', 'Gelmedi').marks, {
     s1: 'Gelmedi',
   })
+})
+
+test('İş akışı reddi DomainError, kod ve tür taşır: kapalı modül, bulunamayan kayıt', () => {
+  const state = seed()
+  unchangedOnFailure(
+    state,
+    () => run(state, 'renewal', { ...renewal, studentId: 'yok' }),
+    isDomainError('record_not_found', 'not_found'),
+  )
+  state.modules.guidance = false
+  unchangedOnFailure(
+    state,
+    () => run(state, 'guidance', { studentId: 's1' }),
+    isDomainError('module_disabled', 'forbidden'),
+  )
 })

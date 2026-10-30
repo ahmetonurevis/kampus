@@ -25,7 +25,7 @@ export function SearchField({ label, value, onChange, placeholder, className }: 
         aria-label={label}
         placeholder={placeholder ?? `${label}…`}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-[37px] w-full min-w-0 border-0 bg-transparent py-2 text-sm text-foreground outline-hidden placeholder:text-muted-foreground"
+        className="min-h-[37px] w-full min-w-0 border-0 bg-transparent py-2 text-sm text-foreground outline-hidden placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:appearance-none"
       />
     </label>
   )

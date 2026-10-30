@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
 import { useChildSelection } from '@/hooks/use-child-selection.ts'
@@ -8,6 +8,13 @@ import { notify } from '@/lib/notify.ts'
 import { resolveShell } from '@/lib/route-guard.ts'
 import { NotFoundContent, NotFoundPage } from './NotFoundPage.tsx'
 import { PlaceholderPage } from './PlaceholderPage.tsx'
+
+// Yalnız geliştirmede: liste bileşenleri örnek sayfası. Üretimde koşul sabit `false` olur ve
+// parça derlemeye girmez.
+const DEV_DEMO_PATH = 'ornek-liste'
+const ListDemoPage = import.meta.env.DEV
+  ? lazy(async () => ({ default: (await import('@/pages/dev/ListDemoPage.tsx')).ListDemoPage }))
+  : null
 
 const MODULE_CLOSED = 'Bu modül kurum ayarlarından kapatılmış.'
 
@@ -25,6 +32,21 @@ export function RoleShell() {
   const location = useLocation()
   const decision = resolveShell(session, role, path)
   const child = useChildSelection(session)
+
+  if (ListDemoPage && session && role === session.role && path === DEV_DEMO_PATH)
+    return (
+      <AppLayout
+        session={session}
+        title="Liste bileşenleri"
+        child={child.options.length ? child : undefined}
+      >
+        <ViewScopeContext value={child.childId}>
+          <Suspense fallback={null}>
+            <ListDemoPage key={child.childId} />
+          </Suspense>
+        </ViewScopeContext>
+      </AppLayout>
+    )
 
   switch (decision.kind) {
     case 'not-found-outside':

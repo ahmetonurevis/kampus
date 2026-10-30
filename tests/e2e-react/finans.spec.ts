@@ -284,9 +284,12 @@ test.describe('Finans: liste', () => {
       (await bodyRows(page).locator('.person-cell strong').allTextContents()).map((name) =>
         name.trim(),
       )
-    await expect.poll(async () => (await names()).length).toBe(8)
+    // URL hemen değişir ama önceki sayfa yeni yanıt gelene kadar ekranda kalır; sıralı listeyi bekle.
+    const sortedAscending = (list: string[]) =>
+      list.length === 8 &&
+      list.every((name, index) => index === 0 || list[index - 1]!.localeCompare(name, 'tr') <= 0)
+    await expect.poll(async () => sortedAscending(await names())).toBe(true)
     const ascending = await names()
-    expect(ascending).toEqual([...ascending].sort((a, b) => a.localeCompare(b, 'tr')))
 
     await header.getByRole('button').click()
     await expect(header).toHaveAttribute('aria-sort', 'descending')

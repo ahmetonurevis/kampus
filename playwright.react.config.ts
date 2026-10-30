@@ -1,5 +1,5 @@
 // React web + API uçtan uca testleri (tests/e2e-react). Vue demosunun yapılandırması
-// `playwright.config.js` ayrıdır. Sunucular `webServer` ile değil global kurulumla başlar çünkü
+// `playwright.config.ts` ayrıdır. Sunucular `webServer` ile değil global kurulumla başlar çünkü
 // veritabanı sıfırlanıp seed edildikten sonra API ayağa kalkmalıdır (tests/e2e-react/support).
 import { defineConfig } from '@playwright/test'
 

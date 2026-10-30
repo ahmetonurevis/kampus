@@ -22,6 +22,7 @@ import { scopeFor, sessionActor, type Actor, type ScopeSource } from './scope.ts
 
 export const WRITE_ACTIONS = [
   'invoice.pay',
+  'invoice.payOnline',
   'attendance.record',
   'grade.record',
   'grade.update',
@@ -33,6 +34,7 @@ export type WriteAction = (typeof WRITE_ACTIONS)[number]
 /** Eylem başına yetkinin dayandığı hedef bilgisi; kimlikler istemciden gelse de kapsamla denetlenir. */
 export type WriteTargets = {
   'invoice.pay': { studentId: string }
+  'invoice.payOnline': { studentId: string }
   /** `reason`: yönetici düzeltmesinin gerekçesi (DOM-AKD-035). */
   'attendance.record': { classId: string; date: string; reason?: string }
   'grade.record': { studentId: string; subjectId: string }
@@ -68,6 +70,7 @@ export type WriteDecision = { allowed: true } | WriteDenial
  */
 export const WRITE_ACTION_MODULES = {
   'invoice.pay': 'finance',
+  'invoice.payOnline': 'finance',
   'attendance.record': 'academic',
   'grade.record': 'academic',
   'grade.update': 'academic',
@@ -77,9 +80,11 @@ export const WRITE_ACTION_MODULES = {
 
 /** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları aşağıda). */
 export const WRITE_ACTION_ROLES = {
-  // Fatura, tahsilat: yönetici ve ön büro tahsilat kaydeder; veli ödeyici olduğu çocuğun
-  // taksitini öder; öğretmen ve öğrenci yazamaz (DOM-FIN-052, yetki matrisi).
-  'invoice.pay': ['yonetici', 'onburo', 'veli'],
+  // Tahsilat kaydı (taksiti "ödendi" işaretler) yalnız yönetici ve ön büroda; veli ve öğrenci
+  // tahsilat kaydedemez, öğretmenin finans erişimi yoktur (DOM-FIN-052, yetki matrisi).
+  'invoice.pay': ['yonetici', 'onburo'],
+  // Çevrim içi ödeme: veli yalnız bağlı çocuğunun taksiti için başlatır (DOM-FIN-052, DOM-YTK-025).
+  'invoice.payOnline': ['veli'],
   // Yoklama: öğretmen ders verdiği sınıfta aynı gün; yönetici gerekçeyle düzeltir (DOM-YTK-022,
   // DOM-AKD-035, DOM-AKD-054).
   'attendance.record': ['yonetici', 'ogretmen'],
@@ -93,6 +98,24 @@ export const WRITE_ACTION_ROLES = {
 } as const satisfies Record<WriteAction, readonly Actor['role'][]>
 
 const ROLE_TABLE: Readonly<Record<WriteAction, readonly string[]>> = WRITE_ACTION_ROLES
+
+/**
+ * Yetki tek başına yetmeyen eylemler: izinli istek de ödeme sağlayıcısının onayı gelmeden hiçbir
+ * kaydı değiştirmez. Veli `invoice.payOnline` ile yalnız ödeme başlatabilir; taksiti "ödendi"
+ * işaretlemek sağlayıcı onayından sonra sunucudaki tahsilat işlemine (`invoice.pay`) aittir.
+ * Veliye `invoice.pay` açmak para alınmadan taksiti kapattırırdı.
+ */
+// TODO(payment-provider): Çevrim içi ödeme sağlayıcısı seçilince `invoice.payOnline` sağlayıcı
+// oturumunu başlatan ve onay geri çağrısında tahsilatı kaydeden işleme bağlanır; o zamana kadar
+// bu eylem hiçbir işlem çağırmaz.
+export const PROVIDER_CONFIRMATION_ACTIONS = [
+  'invoice.payOnline',
+] as const satisfies readonly WriteAction[]
+
+/** Eylem, izin verilse bile ödeme sağlayıcısı onayı bekler mi. */
+export function requiresProviderConfirmation(action: WriteAction): boolean {
+  return (PROVIDER_CONFIRMATION_ACTIONS as readonly WriteAction[]).includes(action)
+}
 
 const deny = (
   code: string,
@@ -169,9 +192,10 @@ function decide(
     )
   const classOf = (studentId: string) => source.students.find((s) => s.id === studentId)?.classId
   switch (request.action) {
-    case 'invoice.pay': {
-      if (actor.role !== 'veli') return ALLOWED
-      // Veli yalnız bağlı çocuğunun taksitini öder (DOM-YTK-025, DOM-FIN-052).
+    case 'invoice.pay':
+      return ALLOWED
+    case 'invoice.payOnline': {
+      // Veli yalnız bağlı çocuğunun taksiti için ödeme başlatır (DOM-YTK-025, DOM-FIN-052).
       return scope.studentIds.has(request.target.studentId)
         ? ALLOWED
         : deny('student_scope_denied', 'Bu öğrenci için işlem yetkiniz bulunmuyor.', 'DOM-YTK-025')

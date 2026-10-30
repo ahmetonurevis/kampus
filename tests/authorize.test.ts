@@ -6,8 +6,10 @@ import type { Actor } from '../packages/school-core/src/lib/scope.ts'
 import {
   WRITE_ACTIONS,
   WRITE_ACTION_ROLES,
+  PROVIDER_CONFIRMATION_ACTIONS,
   authorize,
   requireAuthorized,
+  requiresProviderConfirmation,
   sessionAuthorize,
   type WriteDecision,
 } from '../packages/school-core/src/lib/authorize.ts'
@@ -34,7 +36,8 @@ const code = (decision: WriteDecision) => (decision.allowed ? 'allowed' : decisi
 
 test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
   assert.deepEqual(WRITE_ACTION_ROLES, {
-    'invoice.pay': ['yonetici', 'onburo', 'veli'],
+    'invoice.pay': ['yonetici', 'onburo'],
+    'invoice.payOnline': ['veli'],
     'attendance.record': ['yonetici', 'ogretmen'],
     'grade.record': ['ogretmen'],
     'grade.update': ['yonetici', 'ogretmen'],
@@ -44,17 +47,33 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
   assert.deepEqual(Object.keys(WRITE_ACTION_ROLES), [...WRITE_ACTIONS])
 })
 
-test('Tahsilat yönetici ve ön büroda; veli yalnız bağlı çocuğunun taksitini öder', () => {
+test('Tahsilat kaydı yalnız yönetici ve ön büroda; veli tahsilat kaydedemez', () => {
   const state = seed()
   const pay = (role: Role, studentId: string) =>
     code(authorize(actors[role], 'invoice.pay', { studentId }, state))
   assert.equal(pay('yonetici', 's9'), 'allowed')
   assert.equal(pay('onburo', 's9'), 'allowed')
-  assert.equal(pay('veli', 's1'), 'allowed')
-  assert.equal(pay('veli', 's2'), 'allowed')
-  assert.equal(pay('veli', 's9'), 'student_scope_denied')
+  // Ödeme sağlayıcısı yokken veliye tahsilat açmak para alınmadan taksiti kapattırırdı.
+  assert.equal(pay('veli', 's1'), 'permission_denied')
+  assert.equal(pay('veli', 's9'), 'permission_denied')
   assert.equal(pay('ogretmen', 's1'), 'permission_denied')
   assert.equal(pay('ogrenci', 's1'), 'permission_denied')
+  assert.equal(requiresProviderConfirmation('invoice.pay'), false)
+})
+
+test('Çevrim içi ödeme yalnız velinin bağlı çocuğunda izinli ve sağlayıcı onayı bekler', () => {
+  const state = seed()
+  const payOnline = (role: Role, studentId: string) =>
+    code(authorize(actors[role], 'invoice.payOnline', { studentId }, state))
+  assert.equal(payOnline('veli', 's1'), 'allowed')
+  assert.equal(payOnline('veli', 's2'), 'allowed')
+  assert.equal(payOnline('veli', 's9'), 'student_scope_denied')
+  for (const role of ['yonetici', 'onburo', 'ogretmen', 'ogrenci'] as const)
+    assert.equal(payOnline(role, 's1'), 'permission_denied')
+  assert.deepEqual(PROVIDER_CONFIRMATION_ACTIONS, ['invoice.payOnline'])
+  assert.equal(requiresProviderConfirmation('invoice.payOnline'), true)
+  state.modules.finance = false
+  assert.equal(payOnline('veli', 's1'), 'module_disabled')
 })
 
 test('Yoklama: öğretmen ders verdiği sınıfta aynı gün; yönetici gerekçeyle düzeltir', () => {
@@ -213,13 +232,19 @@ test('Çevrimdışı demo oturumu sessionActor ile aynı kararı alır', () => {
   const state = seed()
   assert.equal(
     code(
-      sessionAuthorize(state, { role: 'veli', childId: 's1' }, 'invoice.pay', { studentId: 's2' }),
+      sessionAuthorize(state, { role: 'veli', childId: 's1' }, 'invoice.payOnline', {
+        studentId: 's2',
+      }),
     ),
     'allowed',
   )
   assert.equal(
-    code(sessionAuthorize(state, { role: 'veli' }, 'invoice.pay', { studentId: 's9' })),
+    code(sessionAuthorize(state, { role: 'veli' }, 'invoice.payOnline', { studentId: 's9' })),
     'student_scope_denied',
+  )
+  assert.equal(
+    code(sessionAuthorize(state, { role: 'veli' }, 'invoice.pay', { studentId: 's1' })),
+    'permission_denied',
   )
   assert.equal(
     code(

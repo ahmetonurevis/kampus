@@ -72,7 +72,7 @@ src/
   lib/        # iş kuralları, girdi Zod şemaları, kapsam, biçimleyiciler; errors.ts burada
   modules/    # modül ve menü kaydı
   content/    # içerik havuzu: taksonomi, kaynak/sürüm, görünürlük, kopya (ADR 0004; State dışı)
-  skills/     # beceri görevleri: otomatik puan, deneme, süre, geç teslim, teslim sürümü, taslak (ADR 0004; State dışı)
+  skills/     # beceri görevleri: otomatik puan, deneme, süre, geç teslim, teslim sürümü, taslak, rubrik ve puanlayıcı, atama (ADR 0004; State dışı)
 ```
 
 `content/`, `skills/` (ileride `cefr/`) modülleri State'e koleksiyon eklemez (ADR 0004 karar 2): girdi API servisinin ilişkisel tablolardan yüklediği tipli satırlardır, fonksiyon `now` alır ve yazılacak değişikliği döndürür.

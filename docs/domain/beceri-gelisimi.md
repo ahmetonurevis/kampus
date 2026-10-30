@@ -42,7 +42,7 @@
 - **Gerekçe:** Transkript öğretmen kontrolü ve erişilebilirlik için gerekir; dinleme sayısı ölçmenin koşuludur.
 - **Kaynak:** İşletme kuralı (iki dinleme, yaygın sınav uygulaması).
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/assignment.ts` `assignmentSettingsSchema` (dinleme hakkı 1, 2 veya sınırsız, varsayılan 2; alıştırmada da 2, `TODO(beceri-dinleme-alistirma)`; değerlendirmede atama düzeyinde döküm açılamaz) ve `resolveAssignmentSettings` (dinleme hakkı yalnız dinleme görevinde sabitlenir); dökümün gizlenmesi `content/resource.ts` `learnerView`. Hakkın sayılması API'dedir (ADR 0003 karar 6).
 
 ## Otomatik puanlama
 
@@ -60,7 +60,7 @@
 - **Gerekçe:** Hatalı anahtar düzeltilmeli, ama resmî nota veya kesinleşmiş karara sessizce dokunulmamalı.
 - **Kaynak:** İşletme kuralı (optik değerlendirmedeki anahtar revizyonu kuralıyla aynı ilke).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — puan anahtardan her okumada hesaplandığı için aynı cevaplar yeni anahtar sürümüyle yeniden okunur (`packages/school-core/src/skills/scoring.ts` `scoreAttempt`); gerekçeli düzeltme işlemi, fark önizlemesi ve bildirim F4a2 (`skills/assignment.ts`) ve API'dedir (ADR 0004 açık soru 2).
+- **Kodda:** kısmen — puan anahtardan her okumada hesaplandığı için aynı cevaplar yeni anahtar sürümüyle yeniden okunur (`packages/school-core/src/skills/scoring.ts` `scoreAttempt`); gerekçeli düzeltme işlemi ve fark önizlemesi `packages/school-core/src/skills/assignment.ts` `previewRescore`/`planRescore` (etkilenen kursiyer sayısı, sayılan denemenin eski/yeni puanı ve farkı, aktarılmış/karara girmiş sonuç `locked`; ADR 0004 açık soru 2a); bildirim API'dedir.
 
 ## Öğretmen puanlaması ve rubrikler
 
@@ -70,7 +70,7 @@
 - **Gerekçe:** Tek toplam puan neyin geliştirilmesi gerektiğini söylemez; bant anlamı sabit olmazsa seviye önerisi hesaplanamaz.
 - **Kaynak:** CEFR-CV (konuşulan dilin niteliksel yönleri; yeni sesbilgisel denetim ölçeği: genel, ses üretimi, bürünsel özellikler). Bant sayısı ve anlamı işletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — ödev tek 0–100 puan ve yorumla değerlendirilir (`apps/web/src/views/Learning.vue:250-269`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/rubric.ts` `rubricVersionInputSchema` (`RUBRIC_ASPECTS`, 0–5 bant, `bandMeaning`, bant başına kurum cümlesi ve CEFR tanımlayıcısı veya kazanım; bütüncül rubrik tek `overall` kriteri, `TODO(beceri-butuncul-rubrik)`; dil okulunda kazanım eşlemesi yok, `assertRubricFitsInstitution`); yazma/konuşma/aracılık görevinde rubrik zorunluluğu `skills/assignment.ts` `resolveAssignmentSettings`. Eski demo hâlâ çelişiyor: ödev tek 0–100 puan ve yorumla değerlendirilir (`apps/web/src/views/Learning.vue:250-269`).
 
 ### DOM-BEC-021 · Rubrik puanı hesaplanır
 
@@ -78,7 +78,7 @@
 - **Gerekçe:** Rubrik toplamı hesaplanabilir; düşük bant gerekçesiz kalmamalı.
 - **Kaynak:** Proje kuralı (rubrik toplamı saklanmaz); yorum zorunluluğu işletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/rubric.ts` `rubricScore` (ağırlıklı toplam / azami toplam × 100, tamsayı aritmetiğiyle yarım yukarı; ağırlıklar 1 iken bu formül), `rubricScoreInputSchema` ve `assertRubricScoreFits` (genel yorum ve 0–2 banttaki kriter yorumu zorunlu), `planRubricScore`. Tablo ve uç F4b'dedir.
 
 ### DOM-BEC-022 · Rubrik sürümü
 
@@ -86,7 +86,7 @@
 - **Gerekçe:** Geçmiş puanlar sonradan değişen ölçütle yeniden yorumlanmamalı.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/rubric.ts` `planNewRubricVersion` (tek açık taslak), `planRubricDraftUpdate` (yalnız kullanılmamış taslak), `planRubricPublish` (önceki yayındaki sürüm arşivlenir), `planRubricArchive`, `assertRubricVersionDeletable` (kullanılmış sürüm silinmez), `assertRubricAssignable` (yalnız yayındaki sürüm atanır; arşivli sürüm sabitlendiği atamada puanlanır); atamaya sabitleme `skills/assignment.ts`. FK koruması F4b'dedir.
 
 ### DOM-BEC-023 · Yazma ve konuşma otomatik puanlanmaz
 
@@ -102,7 +102,7 @@
 - **Gerekçe:** Yüksek sonuçlu kararlarda puanlayıcı tutarlılığı ölçülmeli.
 - **Kaynak:** İşletme kuralı (%10 ve bir bant eşiği).
 - **Kurum türü:** ikisi (`school`'da sınav niteliğindeki konuşma/yazma bölümleri için)
-- **Kodda:** yok.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/rubric.ts` `secondRatingQuota`/`pickSecondRatingSample` (en az %10, en az bir teslim; örneklemin zamanı `TODO(beceri-ikinci-puan-orneklem)`), `planRubricScore` (ikinci puan yalnız istenince ve başka öğretmence; son puan yalnız uyuşmazlıkta, iki puanlayıcıdan bağımsız koordinatörce, `TODO(beceri-koordinator-bagimsiz)`), `bandDisagreements` (tam bir bant fark uyuşmazlık değildir), `scoreResolution` (uyuşmazlık yoksa ilk puan, `TODO(beceri-ikinci-puan-sonucu)`), `scoresVisibleToRater` (kör puanlama); oran ayarı `skills/assignment.ts` (`highStakes`, `secondRatingPercent`). Not: DOM-YTK-027 koordinatöre öğrenci bazında not yazma yetkisi vermez; buradaki son puan bu kuralın özel istisnası sayıldı.
 
 ### DOM-BEC-025 · Puanlama süresi ve itiraz
 
@@ -110,7 +110,7 @@
 - **Gerekçe:** Geri bildirim gecikirse işe yaramaz; itirazın bağımsız değerlendirilmesi güven sağlar.
 - **Kaynak:** OİKY md. 23 (itiraz 5 iş günü), md. 25 (sonuç 10 iş günü) ortaokul sınavları için; lisedeki karşılığı (OKY) **doğrulanmalı**. 7 gün ve dil okulundaki itiraz işletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/rubric.ts` `gradingDueAt`/`gradingOverdue` (son teslim + 7 gün; sonraki gönderimde gönderimden, `TODO(beceri-puanlama-suresi-gec)`; 7 gün 10 iş gününü de karşılar), `addBusinessDays`/`appealDeadline` (duyurunun ertesi gününden 5 iş günü, hafta sonu ve verilen tatil sayılmaz, Europe/Istanbul gün sonu), `planAppeal` (kursiyer veya velisi, kesinleşmiş son sonuç, sürüm başına bir; yalnız değerlendirme, `TODO(beceri-itiraz-alistirma)`) ve `planAppealDecision` (o sürümü puanlamamış öğretmen, `TODO(beceri-itiraz-bagimsiz)`; kabulde yeni `final` puan, ilk puan kalır). Tatil takvimi ve bildirim API'dedir.
 
 ## Seviye önerisi
 
@@ -162,7 +162,7 @@
 - **Gerekçe:** Teslimin üzerine yazmak öğretmenin neyi okuduğunu belirsizleştirir ve itirazda kanıt bırakmaz.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/submission.ts` `planSubmissionVersion` (tek teslim kaydı, değişmez yeni sürüm), `versionAllowance` (sınır 1–5, yeniden teslim isteği sınıra sayılmaz), `assertGradableVersion` (yalnız son sürüm). Eski demo hâlâ çelişiyor: yeniden teslim dosya adını ve zamanı üzerine yazar (`apps/web/src/views/Learning.vue:222-248`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/submission.ts` `planSubmissionVersion` (tek teslim kaydı, değişmez yeni sürüm), `versionAllowance` (sınır 1–5, yeniden teslim isteği sınıra sayılmaz), `assertGradableVersion` (yalnız son sürüm); puanlanan sürüm `skills/rubric.ts` `gradedVersionNumbers` (ilk puanı olan sürüm), yeniden teslim isteği ve kendi son tarihi `skills/assignment.ts` `planResubmissionRequest`/`deadlineForVersion` (en çok 14 gün, geç kabulsüz, `TODO(beceri-yeniden-teslim-suresi)`). Eski demo hâlâ çelişiyor: yeniden teslim dosya adını ve zamanı üzerine yazar (`apps/web/src/views/Learning.vue:222-248`).
 
 ### DOM-BEC-041 · Görev türü: değerlendirme veya alıştırma
 
@@ -170,7 +170,7 @@
 - **Gerekçe:** Pratik yapmayı cezalandırmamak ile ölçmeyi güvenilir tutmak ayrı türler gerektirir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `TASK_KINDS`, `attemptRulesSchema` (alıştırma sınırsız) ve `countedAttempt` (alıştırma sayılan sonuç üretmez); türün yayımdan sonra değişmemesi F4a2 (`skills/assignment.ts`). Eski demoda her quiz denemesi not üretir.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `TASK_KINDS`, `attemptRulesSchema` (alıştırma sınırsız) ve `countedAttempt` (alıştırma sayılan sonuç üretmez); türün yayımdan sonra değişmemesi `packages/school-core/src/skills/assignment.ts` `planAssignmentChange` (atamada yalnız son teslim uzatılır). Eski demoda her quiz denemesi not üretir.
 
 ### DOM-BEC-042 · Deneme hakkı
 
@@ -178,7 +178,7 @@
 - **Gerekçe:** Sınırsız deneme cevapları ezberletir; her denemenin ayrı not üretmesi ortalamayı bozar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `attemptRulesSchema` (hak 1–3, "en yüksek" yalnız hak 1'den büyükse), `planAttemptStart` (başlatılan her deneme hak tüketir, `TODO(beceri-deneme-sayimi)`), `countedAttempt`. Eski demo hâlâ çelişiyor: deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `attemptRulesSchema` (hak 1–3, "en yüksek" yalnız hak 1'den büyükse), `planAttemptStart` (başlatılan her deneme hak tüketir, `TODO(beceri-deneme-sayimi)`), `countedAttempt`; hak ve politika atamada sabitlenir ve değişmez (`skills/assignment.ts` `resolveAssignmentSettings`, `planAssignmentChange`). Eski demo hâlâ çelişiyor: deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
 
 ### DOM-BEC-043 · Süreli görev
 
@@ -194,7 +194,7 @@
 - **Gerekçe:** Gecikme görünür olmalı; mekanik kesinti mazereti ayırt etmez. Mevzuat yalnız proje için sıfır puan öngörür.
 - **Kaynak:** İşletme kuralı; OİKY md. 22/2 (proje teslim etmeyen sıfır).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `deadlineSchema` (geç kabul 0–7 gün, varsayılan kapalı, `TODO(beceri-gec-kabul-varsayilan)`), `istanbulLocalToUtc`, `submissionWindow`, `isLate` (son teslim anı dahil zamanında), `assertSubmissionOpen`; `packages/school-core/src/skills/submission.ts` `versionIsLate`, `submissionStatus` (`teslim edilmedi`). Eski demoda teslimde son tarih denetimi ve geç işareti yok (`apps/web/src/views/Learning.vue:222-248`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `deadlineSchema` (geç kabul 0–7 gün, varsayılan kapalı, `TODO(beceri-gec-kabul-varsayilan)`), `istanbulLocalToUtc`, `submissionWindow`, `isLate` (son teslim anı dahil zamanında), `assertSubmissionOpen`; `packages/school-core/src/skills/submission.ts` `versionIsLate`, `submissionStatus` (`teslim edilmedi`); `skills/assignment.ts` değerlendirmede son teslimi zorunlu ve ileri tutar, yalnız uzatır (`TODO(beceri-atama-duzenleme)`), yeniden teslimin kendi son tarihi `deadlineForVersion`. Eski demoda teslimde son tarih denetimi ve geç işareti yok (`apps/web/src/views/Learning.vue:222-248`).
 
 ### DOM-BEC-045 · Cevap ve geri bildirimin açılması
 

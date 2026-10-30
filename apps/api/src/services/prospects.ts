@@ -56,14 +56,20 @@ interface ProspectRun {
 
 const COLLECTION: CollectionName = 'prospects'
 
-/** Oturum kullanıcısının gösterilen adı; gövdeden okunmaz (D16b API notu). */
+/**
+ * Oturum kullanıcısının gösterilen adı; gövdeden okunmaz (D16b API notu). Oturum açık olduğu için
+ * kullanıcı satırı vardır; yoksa bu bir programlama/veri bütünlüğü hatasıdır: boş yazarla not
+ * yazılmaz, düz `Error` 500 olur ve ayrıntı yalnız logda kalır (kullanıcıya gitmez).
+ */
 async function sessionUserName(tx: Database, userId: string): Promise<string> {
   const [row] = await tx
     .select({ name: users.name })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
-  return row?.name ?? ''
+  if (row === undefined)
+    throw new Error('Oturum kullanıcısı bulunamadı: not yazarının adı okunamıyor.')
+  return row.name
 }
 
 function execute(

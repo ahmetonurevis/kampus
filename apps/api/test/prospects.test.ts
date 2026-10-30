@@ -11,6 +11,9 @@ import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { AppError } from '../src/errors.ts'
+import type { ServiceContext } from '../src/plugins/authenticate.ts'
+import { addProspectNoteCommand } from '../src/services/prospects.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -636,6 +639,35 @@ describe('aday uçları', () => {
         'prospect_closed',
       )
     })
+  })
+
+  test('DOM-KAY-032: oturum kullanıcısı bulunamazsa not boş yazarla yazılmaz; düz hata fırlar (500), kayıt değişmez', async () => {
+    const a = await institution()
+    const desk = await member(a.id, 'onburo')
+    const ghost: ServiceContext = {
+      db,
+      institutionId: a.id,
+      actor: { userId: 'test-user-yok', role: 'onburo', membershipId: desk.membershipId },
+      now: FIXED_NOW,
+      log: app.log,
+    }
+    const version = await versionOf(a.id, 'pr1')
+    await unchanged(a.id, 'pr1', async () => {
+      const reason = await addProspectNoteCommand(
+        ghost,
+        'pr1',
+        { text: NOTE },
+        { idempotency: null, expectedVersion: version },
+      ).then(
+        () => null,
+        (error: unknown) => error,
+      )
+      // AppError olmayan düz Error: hata işleyicisi 500 internal_error'a çevirir, ayrıntı logda kalır.
+      assert.ok(reason instanceof Error, String(reason))
+      assert.equal(reason instanceof AppError, false)
+    })
+    const record = await findRecord(db, a.id, 'prospects', 'pr1')
+    assert.equal((record?.data.notes as unknown[]).length, 1)
   })
 
   // --- Görüşme -----------------------------------------------------------------------------------

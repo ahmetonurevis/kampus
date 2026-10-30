@@ -2,7 +2,7 @@ import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { collectionKeyPrefix } from './collections.ts'
-import type { CommandHeaders, CommandMessages } from './commands.ts'
+import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 
 // Öğretmenime Sor yazma komutları (`POST /questions`, `POST /questions/:id/answers`,
@@ -50,9 +50,10 @@ export function askQuestionRequest(
   })
 }
 
+/** Yanıt ve geri çekme `If-Match` ister; okunan sürüm yoksa istek atılmaz (`requireIfMatch`). */
 const versioned = (headers: CommandHeaders) => ({
   'idempotency-key': headers['idempotency-key'],
-  'if-match': headers['if-match'] ?? '',
+  'if-match': requireIfMatch(headers),
 })
 
 export function answerQuestionRequest(

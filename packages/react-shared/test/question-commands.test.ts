@@ -4,7 +4,7 @@ import { describe, test } from 'node:test'
 import { createKampusClient } from '@kampus/api-client/client.ts'
 
 import { runRequest } from '../src/api-result.ts'
-import { commandHeaders } from '../src/commands.ts'
+import { commandHeaders, IF_MATCH_MISSING_CODE } from '../src/commands.ts'
 import {
   answerQuestionRequest,
   askQuestionRequest,
@@ -97,6 +97,30 @@ describe('Öğretmenime Sor komutları', () => {
     assert.equal(`${sent[0]?.method} ${sent[0]?.path}`, 'PATCH /api/v1/questions/ask1')
     assert.equal(sent[0]?.headers.get('if-match'), '"2"')
     assert.deepEqual(sent[0]?.body, { withdrawn: true })
+  })
+
+  test('DOM-ILT-091, DOM-ILT-092: okunan sürüm yoksa yanıt ve geri çekme isteği atılmaz', async () => {
+    const { client, sent } = fakeClient()
+    const missing = (error: unknown) =>
+      error instanceof Error && 'code' in error && error.code === IF_MATCH_MISSING_CODE
+    const headers = commandHeaders('key-12345')
+    await assert.rejects(
+      runRequest(() =>
+        answerQuestionRequest(
+          client,
+          { questionId: 'ask1', version: 1, body: { text: 'Yanıt metni.' } },
+          headers,
+        ),
+      ),
+      missing,
+    )
+    await assert.rejects(
+      runRequest(() =>
+        withdrawQuestionRequest(client, { questionId: 'ask1', version: 1 }, headers),
+      ),
+      missing,
+    )
+    assert.equal(sent.length, 0)
   })
 
   test('sürüm çakışması kullanıcıya güncel soruyu yükleme mesajı verir', () => {

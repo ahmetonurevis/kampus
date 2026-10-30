@@ -1,12 +1,12 @@
 import type { QueryClient } from '@tanstack/react-query'
 
 import {
+  ApiError,
   CLIENT_ERROR_CODES,
   isApiError,
   issuesToFieldIssues,
   ROOT_FIELD,
   toApiError,
-  type ApiError,
   type FieldIssue,
 } from '@kampus/api-client/errors.ts'
 
@@ -95,6 +95,26 @@ export function commandHeaders(key: string, version?: number | null): CommandHea
   return version == null
     ? { 'idempotency-key': key }
     : { 'idempotency-key': key, 'if-match': `"${version}"` }
+}
+
+/** İstemcinin okunan sürümü bilmeden sürümlü komut göndermeye kalkması (`requireIfMatch`). */
+export const IF_MATCH_MISSING_CODE = 'if_match_missing'
+export const IF_MATCH_MISSING_MESSAGE =
+  'Kaydın güncel hâli yüklenmeden işlem gönderilemez. Sayfayı yenileyip yeniden deneyin.'
+
+/**
+ * `If-Match`'i zorunlu uç için başlık değeri. Okunan sürüm yoksa istek hiç atılmaz: boş başlık
+ * sunucuda 400 `if_match_required` olurdu, burada aynı eylem açık bir istemci hatasıyla durur.
+ */
+export function requireIfMatch(headers: CommandHeaders): string {
+  const value = headers['if-match']
+  if (value === undefined || value.trim() === '')
+    throw new ApiError({
+      status: 0,
+      code: IF_MATCH_MISSING_CODE,
+      message: IF_MATCH_MISSING_MESSAGE,
+    })
+  return value
 }
 
 /** Kod → kullanıcı mesajı; verilmeyen kodda sunucunun Türkçe mesajı kullanılır. */

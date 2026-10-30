@@ -4,7 +4,7 @@ import { describe, test } from 'node:test'
 import { createKampusClient } from '@kampus/api-client/client.ts'
 
 import { runRequest } from '../src/api-result.ts'
-import { commandFeedback, commandHeaders } from '../src/commands.ts'
+import { commandFeedback, commandHeaders, IF_MATCH_MISSING_CODE } from '../src/commands.ts'
 import {
   notifyAbsenceRequest,
   openRequestRequest,
@@ -96,6 +96,22 @@ describe('talep ve izin/mazeret komutları', () => {
     assert.equal(sent[0]?.path, '/api/v1/requests/req%201')
     assert.equal(sent[0]?.headers.get('if-match'), '"4"')
     assert.deepEqual(sent[0]?.body, body)
+  })
+
+  test('DOM-ILT-080: okunan sürüm yoksa talep güncellemesi istek atmaz', async () => {
+    const { client, sent } = fakeClient()
+    await assert.rejects(
+      runRequest(() =>
+        updateRequestRequest(
+          client,
+          { requestId: 'req-1', version: 1, body: { status: 'Çözüldü' } },
+          commandHeaders('key-12345'),
+        ),
+      ),
+      (error: unknown) =>
+        error instanceof Error && 'code' in error && error.code === IF_MATCH_MISSING_CODE,
+    )
+    assert.equal(sent.length, 0)
   })
 
   test('sürüm çakışması kullanıcıya güncel kaydı yükleme mesajı verir', () => {

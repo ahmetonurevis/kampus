@@ -33,7 +33,7 @@ export const meSchema = z
         enabledModules: z
           .record(z.string(), z.boolean())
           .describe(
-            'Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir; kapalı modülün API uçları 403 `module_disabled` döner',
+            'Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir. Kurum türünde bulunmayan modül her zaman `false`tır ve uçları 404 döner (DOM-YTK-012); kurumun kapattığı modülün uçları 403 `module_disabled`',
           ),
         academicYear: z
           .number()

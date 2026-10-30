@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
 import { runAssessment } from '@kampus/school-core/lib/assessment-automation.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
+import { runWorkflow, type WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
+import { MODULE_KEYS, moduleAvailableFor } from '@kampus/school-core/modules/collection-modules.ts'
 
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
@@ -12,6 +15,8 @@ import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { records } from '../src/db/schema/records.ts'
+import { WORKFLOW_MODULES, WORKFLOW_ROUTES } from '../src/routes/workflows.schemas.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
   buildTestApp,
@@ -388,6 +393,87 @@ describe('yazma uçları', () => {
         'idempotency_key_required',
       )
       assert.equal(await count(a.id, 'mockResults'), SEED.mockResults.length)
+    })
+  })
+
+  // --- Kurum türü modül kısıtı (DOM-YTK-012) -----------------------------------------------
+
+  describe('DOM-YTK-012: kurum türünde olmayan modülün yazma uçları bulunmaz (404)', () => {
+    const commands = Object.keys(WORKFLOW_MODULES) as WorkflowCommand[]
+
+    /** Kurumun bütün kayıtları ve denetim satırları: reddedilen istek hiçbirini değiştirmez. */
+    async function snapshot(institutionId: string) {
+      const stored = await db
+        .select()
+        .from(records)
+        .where(eq(records.institutionId, institutionId))
+        .orderBy(asc(records.collection), asc(records.id))
+      const audit = await db
+        .select({ id: auditLog.id })
+        .from(auditLog)
+        .where(eq(auditLog.institutionId, institutionId))
+      return { stored, audit: audit.length }
+    }
+
+    test('komut → modül tablosu core ile aynıdır: yalnız o modül kapanınca core reddeder', () => {
+      const allOn = Object.fromEntries(MODULE_KEYS.map((key) => [key, true]))
+      const run = (command: WorkflowCommand, modules: Record<string, boolean>) => {
+        const state = createSeed(FIXED_NOW)
+        state.modules = { ...state.modules, ...modules }
+        try {
+          runWorkflow(state, { role: 'yonetici' }, command, {}, (p) => `${p}-t`, 'test-yok')
+          return null
+        } catch (error) {
+          return error instanceof DomainError ? error.code : 'other'
+        }
+      }
+      for (const command of commands) {
+        const module = WORKFLOW_MODULES[command]
+        assert.equal(run(command, { ...allOn, [module]: false }), 'module_disabled', command)
+        assert.notEqual(run(command, allOn), 'module_disabled', command)
+      }
+    })
+
+    test('dil okulunda okul türü modül komutları 404 not_found; kayıt ve denetim değişmez', async () => {
+      const a = await institution({
+        type: 'language_school',
+        enabledModules: Object.fromEntries(MODULE_KEYS.map((key) => [key, true])),
+      })
+      const before = await snapshot(a.id)
+      const unavailable = commands.filter(
+        (command) => !moduleAvailableFor(WORKFLOW_MODULES[command], 'language_school'),
+      )
+      assert.ok(unavailable.includes('goal') && unavailable.includes('renewal'))
+      let serial = 0
+      for (const command of unavailable) {
+        const route = WORKFLOW_ROUTES[command]
+        const url = `/api/v1/workflows/${command}${route.record === 'required' ? '/goal-s1-math' : ''}`
+        const headers = { 'idempotency-key': `test-lang-${String(++serial).padStart(4, '0')}` }
+        assertError(await post(url, a.adminCookie, {}, headers), 404, 'not_found')
+      }
+      for (const url of [
+        '/api/v1/tutor-sessions',
+        '/api/v1/tutor-sessions/test-yok/cancel',
+        '/api/v1/tutor-sessions/test-yok/attendance',
+      ])
+        assertError(await post(url, a.adminCookie, {}), 404, 'not_found')
+      assert.deepEqual(await snapshot(a.id), before)
+    })
+
+    test('dil okulunda iki türde bulunan modülün komutu çalışır; modül kapalıysa 403', async () => {
+      const a = await institution({ type: 'language_school' })
+      const meal = { branchId: 'b1', date: DAY, title: 'Öğle menüsü', allergens: 'Gluten' }
+      const open = await post('/api/v1/workflows/meal', a.adminCookie, meal)
+      assert.equal(open.statusCode, 200, open.body)
+      const closed = await institution({
+        type: 'language_school',
+        enabledModules: { meals: false },
+      })
+      assertError(
+        await post('/api/v1/workflows/meal', closed.adminCookie, meal),
+        403,
+        'module_disabled',
+      )
     })
   })
 

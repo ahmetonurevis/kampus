@@ -340,7 +340,7 @@
                     "additionalProperties": {
                       "type": "boolean"
                     },
-                    "description": "Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir; kapalı modülün API uçları 403 `module_disabled` döner"
+                    "description": "Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir. Kurum türünde bulunmayan modül her zaman `false`tır ve uçları 404 döner (DOM-YTK-012); kurumun kapattığı modülün uçları 403 `module_disabled`"
                   },
                   "academicYear": {
                     "anyOf": [
@@ -847,7 +847,7 @@
                     "additionalProperties": {
                       "type": "boolean"
                     },
-                    "description": "Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir; kapalı modülün API uçları 403 `module_disabled` döner"
+                    "description": "Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir. Kurum türünde bulunmayan modül her zaman `false`tır ve uçları 404 döner (DOM-YTK-012); kurumun kapattığı modülün uçları 403 `module_disabled`"
                   },
                   "academicYear": {
                     "anyOf": [
@@ -1998,7 +1998,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('goal')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('goal')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `goals`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2186,7 +2186,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('goal-review')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('goal-review')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `goals`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2368,7 +2368,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('goal-step')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('goal-step')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `goals`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2552,7 +2552,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('goal-step-done')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('goal-step-done')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `goals`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2726,7 +2726,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('goal-suggest')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('goal-suggest')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `goals`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2892,7 +2892,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('goal-comment')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `veli`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('goal-comment')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `veli`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `goals`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -3067,7 +3067,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('goal-close')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('goal-close')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `goals`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -3233,7 +3233,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('guidance')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('guidance')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `guidance`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -3427,7 +3427,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('guidance-note')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('guidance-note')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `guidance`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -3619,7 +3619,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('exam')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('exam')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `exams`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -3817,7 +3817,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('exam-result')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('exam-result')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `exams`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4013,7 +4013,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('exam-import')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('exam-import')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `exams`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4176,7 +4176,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('renewal')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('renewal')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `renewal`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4385,7 +4385,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('renewal-activate')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('renewal-activate')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `renewal`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4553,7 +4553,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('lesson')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('lesson')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `planning`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4742,7 +4742,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('lesson')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('lesson')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `planning`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4942,7 +4942,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('substitute')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('substitute')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `planning`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5122,7 +5122,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('lesson-cancel')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('lesson-cancel')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `planning`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5290,7 +5290,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('study-task')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('study-task')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `study`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5486,7 +5486,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('study-complete')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('study-complete')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `ogrenci`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `study`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5661,7 +5661,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('study-review')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('study-review')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `study`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5845,7 +5845,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('event')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('event')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `calendar`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6046,7 +6046,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('consent')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `veli`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('consent')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `veli`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `calendar`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6228,7 +6228,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('event-cancel')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('event-cancel')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `calendar`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6396,7 +6396,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('route')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('route')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `transport`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6593,7 +6593,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('route')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('route')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `transport`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6801,7 +6801,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('route-archive')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('route-archive')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `transport`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6969,7 +6969,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('transport-assign')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('transport-assign')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `transport`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -7142,7 +7142,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('transport-remove')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('transport-remove')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `transport`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -7310,7 +7310,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('meal')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('meal')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `meals`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -7494,7 +7494,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('meal')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('meal')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `onburo`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `meals`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -7689,7 +7689,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('club')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('club')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `clubs`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -7881,7 +7881,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('club-enroll')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('club-enroll')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `clubs`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8055,7 +8055,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('club-leave')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('club-leave')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `clubs`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8223,7 +8223,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('club-attendance')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('club-attendance')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `clubs`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8412,7 +8412,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('achievement')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('achievement')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `clubs`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8596,7 +8596,7 @@
         "tags": [
           "workflows"
         ],
-        "description": "school-core `runWorkflow('club-archive')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
+        "description": "school-core `runWorkflow('club-archive')`. Gövde core `workflowSchemas` şemasıdır. Core'un izin verdiği roller: `yonetici`, `ogretmen`; kayıt kapsamı core `scopeFor` ile üyelik bağlantılarından hesaplanır. Modül: `clubs`; kurum türünde olmayan modül 404, kapalı modül 403 `module_disabled`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.",
         "requestBody": {
           "required": true,
           "content": {

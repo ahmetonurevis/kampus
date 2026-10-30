@@ -4,6 +4,7 @@ import { after, before, describe, test } from 'node:test'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
+import { moduleAvailableFor } from '@kampus/school-core/modules/collection-modules.ts'
 import { navigation } from '@kampus/school-core/modules/full-navigation.ts'
 import { schoolModules } from '@kampus/school-core/modules/school-workflows.ts'
 
@@ -80,10 +81,24 @@ describe('modül kaydı ve requireModule (DOM-YTK-040)', () => {
   })
 
   test('saklanmayan modül açık, yalnız false kapalı; bilinmeyen anahtar düşer', () => {
-    const map = effectiveModules({ guidance: false, bilinmeyen: true })
+    const map = effectiveModules({ guidance: false, bilinmeyen: true }, 'school')
     assert.equal(map.guidance, false)
     assert.equal(map.finance, true)
+    assert.equal(map.goals, true)
     assert.equal('bilinmeyen' in map, false)
+  })
+
+  test('DOM-YTK-012: kurum türünde olmayan modül saklanan değerden bağımsız kapalıdır', () => {
+    const stored = Object.fromEntries(MODULE_KEYS.map((key) => [key, true]))
+    const language = effectiveModules(stored, 'language_school')
+    const school = effectiveModules(stored, 'school')
+    for (const key of MODULE_KEYS) {
+      assert.equal(language[key], moduleAvailableFor(key, 'language_school'), key)
+      assert.equal(school[key], true, key)
+    }
+    for (const key of ['optical', 'tutoring', 'guidance', 'exams', 'goals', 'renewal'])
+      assert.equal(effectiveModules({}, 'language_school')[key], false, key)
+    assert.equal(effectiveModules({}, 'language_school').meals, true)
   })
 
   test('core rol listesi olan modülde rol denetlenir, temel modülde karar çağıranındır', () => {

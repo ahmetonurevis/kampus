@@ -45,6 +45,7 @@ import {
 } from './commands.schemas.ts'
 import {
   emptyCommandBodySchema,
+  WORKFLOW_MODULES,
   WORKFLOW_ROUTES,
   workflowDescription,
   workflowQuerySchema,
@@ -54,7 +55,8 @@ import {
 
 /**
  * Yazma uçları (api-tasarimi.md §1, §6, §7). Kimlik, modül ve rol denetimi doğrulamadan önce
- * (`preValidation`) çalışır: sıra 401 → 403 `module_disabled` → 403 `forbidden` → 400 gövde →
+ * (`preValidation`) çalışır: sıra 401 → 404 kurum türünde olmayan modül → 403 `module_disabled`
+ * → 403 `forbidden` → 400 gövde →
  * işlem (404 kayıt, 422 kural, 409 çakışma). İş kuralı ve kapsam serviste core'dadır.
  */
 
@@ -142,12 +144,14 @@ export function registerCommandRoutes(app: FastifyInstance) {
         options(request, route.idempotency),
       ).then((result) => sendCommand(reply, result))
 
-    // Rol kuralı core'dadır (`mayRun`): rota her rolü kabul eder, core reddi 403'tür.
+    // Rol kuralı core'dadır (`mayRun`): rota her rolü kabul eder, core reddi 403'tür. Modül
+    // rotada denetlenir (okuma uçlarıyla aynı 404/403); core da kapalı modülü ayrıca reddeder.
+    const module = WORKFLOW_MODULES[name]
     if (route.record !== 'required')
       typed.post(
         `/api/v1/workflows/${name}`,
         {
-          preValidation: guard(ROLES, null),
+          preValidation: guard(ROLES, module),
           schema: { ...base, operationId: `runWorkflow${pascal(name)}` },
         },
         (request, reply) => run(request, reply, undefined),
@@ -156,7 +160,7 @@ export function registerCommandRoutes(app: FastifyInstance) {
       typed.post(
         `/api/v1/workflows/${name}/:recordId`,
         {
-          preValidation: guard(ROLES, null),
+          preValidation: guard(ROLES, module),
           schema: {
             ...base,
             operationId: `runWorkflow${pascal(name)}${route.record === 'optional' ? 'Update' : ''}`,

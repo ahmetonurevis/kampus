@@ -8,15 +8,19 @@ import { isModuleOpen, type MemberRole, type MobileSession } from './session-sta
  * API'ye taşınmış modül ekranları (gezinme yığınında parametresiz). Gezinme tipleri bu
  * birleşimden türer (`route-types.ts`); bu dosya React Navigation tiplerine bağlı kalmaz.
  */
-export type ApiScreen = 'TeacherClasses' | 'ParentGrades' | 'Announcements'
+export type ApiScreen = 'TeacherClasses' | 'ParentGrades' | 'Announcements' | 'Messages'
 
 /** Rol + sayfa yolu → API'li ekran. Demo ekranlarının API karşılıkları buraya eklenir. */
 const MIGRATED: Partial<Record<MemberRole, Partial<Record<string, ApiScreen>>>> = {
   yonetici: { duyurular: 'Announcements' },
   onburo: { duyurular: 'Announcements' },
-  ogretmen: { siniflarim: 'TeacherClasses', duyurular: 'Announcements' },
-  ogrenci: { duyurular: 'Announcements' },
-  veli: { 'akademik-takip': 'ParentGrades', duyurular: 'Announcements' },
+  ogretmen: { siniflarim: 'TeacherClasses', duyurular: 'Announcements', mesajlar: 'Messages' },
+  ogrenci: { duyurular: 'Announcements', mesajlar: 'Messages' },
+  veli: {
+    'akademik-takip': 'ParentGrades',
+    duyurular: 'Announcements',
+    'randevu-mesaj': 'Messages',
+  },
 }
 
 type CorePage = (typeof navigation)[MemberRole][number]

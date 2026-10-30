@@ -27,6 +27,8 @@ export type ScreenProps<Name extends keyof RootStackParamList> = NativeStackScre
 export type ApiStackParamList = {
   ApiHome: undefined
   ApiCategory: { category: string }
+  /** Yazışma akışı; menü sayfası değildir, Mesajlar listesinden açılır. */
+  ApiConversation: { conversationId: string }
 } & Record<ApiScreen, undefined>
 export type ApiScreenProps<Name extends keyof ApiStackParamList> = NativeStackScreenProps<
   ApiStackParamList,

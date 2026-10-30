@@ -1,14 +1,24 @@
-import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  queryOptions,
+  useQueries,
+  useQuery,
+  type UseQueryResult,
+} from '@tanstack/react-query'
 import { useCallback } from 'react'
 
 import type { ApiError } from '@kampus/api-client/errors.ts'
 
 import {
+  collectionCountsKey,
   collectionItemKey,
   collectionQueryKey,
   fetchAllCollectionPages,
+  fetchCollectionCounts,
   fetchCollectionItem,
   fetchCollectionPage,
+  type CollectionCounts,
+  type CollectionCountsQuery,
   type CollectionPage,
   type CollectionQuery,
   type CollectionRow,
@@ -84,4 +94,65 @@ export function useCollectionFetchAll<TRecord>(collection: string) {
       fetchAllCollectionPages<TRecord>(client, collection, query),
     [client, collection],
   )
+}
+
+/**
+ * Toplu sayım (`/counts`): sayaçlar ve dağılımlar bütün koleksiyon çekilmeden sunucuda sayılır.
+ * Kapsam ve süzgeçler liste ucuyla aynıdır; anahtar etkin kurumla başlar.
+ */
+export function useCollectionCounts(
+  collection: string,
+  query: CollectionCountsQuery,
+  options: CollectionOptions = {},
+): UseQueryResult<CollectionCounts, ApiError> {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQuery<CollectionCounts, ApiError>({
+    queryKey: institutionKey(institutionId, ...collectionCountsKey(collection, query)),
+    queryFn: ({ signal }) => fetchCollectionCounts(client, collection, query, signal),
+    enabled: institutionId !== null && (options.enabled ?? true),
+  })
+}
+
+export interface CollectionCountSeries {
+  /** Sorgu sırasıyla sayımlar; hepsi gelene kadar `undefined`. */
+  data: CollectionCounts[] | undefined
+  isPending: boolean
+  error: ApiError | null
+  refetch: () => void
+}
+
+/**
+ * Aynı koleksiyonda birden çok sayım (ör. haftalık dilimler). Bir dilim hata verirse seri hatalıdır;
+ * kısmi seri gösterilmez, çünkü eksik dilim "sıfır" ile karışır.
+ */
+export function useCollectionCountSeries(
+  collection: string,
+  queries: readonly CollectionCountsQuery[],
+  options: CollectionOptions = {},
+): CollectionCountSeries {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  const enabled = institutionId !== null && (options.enabled ?? true)
+  return useQueries({
+    queries: queries.map((query) =>
+      queryOptions<CollectionCounts, ApiError>({
+        queryKey: institutionKey(institutionId, ...collectionCountsKey(collection, query)),
+        queryFn: ({ signal }) => fetchCollectionCounts(client, collection, query, signal),
+        enabled,
+      }),
+    ),
+    combine: (results) => {
+      const error = results.find((result) => result.error)?.error ?? null
+      const data = results.flatMap((result) => (result.data ? [result.data] : []))
+      return {
+        data: data.length === results.length ? data : undefined,
+        isPending: results.some((result) => result.isPending),
+        error,
+        refetch: () => {
+          for (const result of results) void result.refetch()
+        },
+      }
+    },
+  })
 }

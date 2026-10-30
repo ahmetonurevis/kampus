@@ -1,9 +1,15 @@
 // school-core koleksiyonlarının tipli okuma kancaları: koleksiyon adı State anahtarıdır, kayıt
 // tipi core örnek veri üreticisinden türetilen State'ten gelir (elle ikinci tip yazılmaz).
 import type { State } from '@kampus/school-core/data/seed.ts'
-import type { CollectionQuery, CollectionRow } from '@kampus/react-shared/collections.ts'
+import type {
+  CollectionCountsQuery,
+  CollectionQuery,
+  CollectionRow,
+} from '@kampus/react-shared/collections.ts'
 import {
   useCollectionAll,
+  useCollectionCounts,
+  useCollectionCountSeries,
   useCollectionFetchAll,
   useCollectionItem,
   useCollectionList,
@@ -44,4 +50,22 @@ export function useCoreItem<K extends CoreCollection>(collection: K, id: string 
 /** CSV için filtrelenmiş/sıralanmış bütün sonucu çeken işlev. */
 export function useCoreFetchAll<K extends CoreCollection>(collection: K) {
   return useCollectionFetchAll<CoreRecord<K>>(collection)
+}
+
+/** Sunucuda toplu sayım (sayaç, dağılım); koleksiyon istemciye çekilmez. */
+export function useCoreCounts(
+  collection: CoreCollection,
+  query: CollectionCountsQuery,
+  options: { enabled?: boolean } = {},
+) {
+  return useCollectionCounts(collection, query, options)
+}
+
+/** Aynı koleksiyonda sıralı sayımlar (haftalık dilimler gibi). */
+export function useCoreCountSeries(
+  collection: CoreCollection,
+  queries: readonly CollectionCountsQuery[],
+  options: { enabled?: boolean } = {},
+) {
+  return useCollectionCountSeries(collection, queries, options)
 }

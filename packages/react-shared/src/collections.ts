@@ -11,6 +11,13 @@ import { runRequest } from './api-result.ts'
 
 export type CollectionItem = components['schemas']['CollectionItem']
 type ListQueryParams = NonNullable<operations['listCollection']['parameters']['query']>
+type CountQueryParams = operations['countCollection']['parameters']['query']
+export type CollectionCountGroup = components['schemas']['CollectionCountGroup']
+export type CollectionCountsMeta = components['schemas']['CollectionCountsMeta']
+/** Sayımda gruplanabilen alanlar (API beyaz listesi). */
+export type CollectionGroupField = CountQueryParams['groupBy']
+/** Sayımda toplanabilen sayısal alanlar (`amount` kuruş). */
+export type CollectionSumField = NonNullable<CountQueryParams['sum']>
 
 /** Sunucunun eşitlik filtresi kabul ettiği alanlar (API beyaz listesi; bilinmeyen alan 400). */
 export type CollectionFilterField = Exclude<
@@ -107,6 +114,77 @@ export function collectionQueryKey(collection: string, query: CollectionQuery): 
     Object.entries(params).sort(([left], [right]) => left.localeCompare(right)),
   )
   return ['collections', collection, 'list', sorted]
+}
+
+/**
+ * Toplu sayım sorgusu (`GET /collections/:c/counts`): liste ucunun arama ve süzgeçleri aynen
+ * geçerlidir; sayfa ve sıralama yoktur. `groupBy` zorunlu, `sum` isteğe bağlıdır.
+ */
+export interface CollectionCountsQuery {
+  groupBy: CollectionGroupField
+  sum?: CollectionSumField
+  q?: string
+  archived?: 'include' | 'only'
+  filters?: CollectionFilters
+}
+
+export interface CollectionCounts {
+  /** Gruplar değere göre sıralı; `null` grubu (alan yok) sondadır. */
+  groups: CollectionCountGroup[]
+  total: number
+  /** Yalnız `sum` istendiğinde: bütün grupların toplamı. */
+  sum?: number
+}
+
+export function collectionCountsParams(query: CollectionCountsQuery): CountQueryParams {
+  const { groupBy, sum, ...rest } = query
+  return {
+    ...collectionListParams(rest),
+    groupBy,
+    ...(sum ? { sum } : {}),
+  } as CountQueryParams
+}
+
+export function collectionCountsKey(collection: string, query: CollectionCountsQuery): unknown[] {
+  const params = collectionCountsParams(query)
+  const sorted = Object.fromEntries(
+    Object.entries(params).sort(([left], [right]) => left.localeCompare(right)),
+  )
+  return ['collections', collection, 'counts', sorted]
+}
+
+/** Grubun sayısı; grup yoksa 0. Değer metin karşılaştırılır (`true` ↔ `'true'`). */
+export function countOf(counts: CollectionCounts | undefined, value: string | boolean): number {
+  return groupOf(counts, value)?.count ?? 0
+}
+
+/** Grubun toplamı (`sum` istenmişse); grup yoksa 0. */
+export function sumOf(counts: CollectionCounts | undefined, value: string | boolean): number {
+  return groupOf(counts, value)?.sum ?? 0
+}
+
+function groupOf(counts: CollectionCounts | undefined, value: string | boolean) {
+  const wanted = String(value)
+  return counts?.groups.find((group) => group.value !== null && String(group.value) === wanted)
+}
+
+export async function fetchCollectionCounts(
+  client: KampusClient,
+  collection: string,
+  query: CollectionCountsQuery,
+  signal?: AbortSignal,
+): Promise<CollectionCounts> {
+  const body = await runRequest(() =>
+    client.GET('/api/v1/collections/{collection}/counts', {
+      params: { path: { collection }, query: collectionCountsParams(query) },
+      ...(signal ? { signal } : {}),
+    }),
+  )
+  return {
+    groups: body.data,
+    total: body.meta.total,
+    ...(body.meta.sum === undefined ? {} : { sum: body.meta.sum }),
+  }
 }
 
 export function collectionItemKey(collection: string, id: string): unknown[] {

@@ -222,6 +222,18 @@ Yeni ekran eklerken:
 
 Veli ekranlarında seçili çocuk adreste `?cocuk=<öğrenci kimliği>` taşınır (`use-child-selection`, `RoleShell` eksikse tamamlar); çocuğa bağlı sorgular `studentId` filtresi taşıdığından çocuk değişince önbellek anahtarı değişir ve liste kendiliğinden tazelenir. Kapsam dışı `?<panel>=<kimlik>` adresi tek kayıt ucundan 404 alır ve `QueryError` "Kayıt bulunamadı" gösterir; kayıt satırdan okunmaz.
 
+### API'li dashboard kalıbı (web-react)
+
+Örnek: `pages/dashboard/` (beş rolün "Genel Bakış" sayfası). Parçalar `DashboardParts.tsx` (`StatGrid`, `StatCard`, `DashboardGrid`, `ListCard`, `CardList`, `ShareBar`, `combineStates`), saf hesaplar `dashboard-model.ts` (birim testi `tests/dashboard-model.test.ts`).
+
+- **Sayaçlar sunucuda sayılır:** `useCoreCounts(koleksiyon, { groupBy, sum?, filters })` (`GET /collections/:c/counts`); değer `countOf`/`sumOf` ile okunur, ortalama `sum / count`'tur. Sayaç için koleksiyon istemciye çekilip sayılmaz. Haftalık dilim gibi sıralı sayımlar `useCoreCountSeries` ile; bir dilim hata verirse seri gösterilmez.
+- **Kısa listeler** sunucu sıralı ve sayfalıdır (`useCoreList(…, { sort, pageSize: 5 })`); ad eşlemesi küçük başvuru koleksiyonundan veya satır başına `useCoreItem`'dan gelir. Sunucuda süzgeci olmayan koşul (ör. `dueDate ≥ bugün`) yalnız kısa listeyi daraltır, sayaç üretmez ve `TODO(api-…)` taşır.
+- **Düzen:** üstte sayaç ızgarası, altında 2:1 içerik (`DashboardGrid`: ana kart solda). Hızlı erişim bölümü yoktur; ikincil işlem kart başlığında sakin "Tümünü gör" bağlantısıdır. Kartlar opaktır.
+- **Derin bağlantı:** kart ilgili listeyi filtresi adreste açar (`dashboardHref(rol, yol, { durum: 'gecikmis' }, çocuk)`); velide `?cocuk=` taşınır.
+- **Durumlar:** her kart kendi yükleniyor/boş/hata durumunu gösterir (`ListCard` hatada `QueryError`). Kart modülü kapalıysa çizilmez (`session.modules` ve `module_disabled` yanıtı); dashboard kendine yönlendirilmez.
+- **Kapsam:** sorgular rolün kapsamına sunucuda daraltılır; ekran rolün görmemesi gereken koleksiyonu hiç istemez (öğrenci `invoices` okumaz). Velide çocuğa bağlı sorgular `studentId` (veya çocuğun `classId`'si) taşır; çocuk değişince anahtar değişir.
+- **Mini grafik** yalnız gerçek kayıtlardan türer; seri boşsa çizilmez ve metin gösterilir. Grafiğin yanında görünür metin özeti (`trendSummary`) bulunur, SVG `aria-hidden`'dır. `recharts` grafik bileşeninde `lazy(() => import(…))` ile ayrı parçadır; dashboard parçası onu ilk yüklemede getirmez.
+
 ### API'li yazma kalıbı (react-shared + web-react)
 
 Yazma uçları (`POST /invoices/:id/pay`, iş akışı komutları; api-tasarimi.md §1, §7) `@kampus/react-shared/use-api-command.ts` `useApiCommand` ile çağrılır; saf mantık `commands.ts`'tedir ve `node:test` ile sınanır. Örnek: `use-invoice-commands.ts` `usePayInvoice`, ekran `pages/finance/PaymentPanel.tsx`.

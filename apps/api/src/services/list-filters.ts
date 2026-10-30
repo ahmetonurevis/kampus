@@ -156,6 +156,8 @@ export function matchesRecordFilter(record: RecordData, filter: RecordFilter): b
     case undefined:
     case 'in':
       return matchesField(record, filter)
+    case 'any':
+      return filter.matches.some((match) => matchesField(record, match))
     case 'active':
       return matchesActive(record, filter)
     case 'dayRange':

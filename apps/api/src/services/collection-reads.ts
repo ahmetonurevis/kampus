@@ -255,8 +255,11 @@ async function listFilters(
   const range = dayRange(DATE_FILTER_FIELD, query.dateFrom, query.dateTo)
   if (range) filters.push(range)
   const hidden = scope.hiddenFields(collection)
-  const fieldOf = (filter: RecordFilter) =>
-    filter.kind === 'invoiceStatus' ? ['paidAt', 'dueDate'] : [filter.field]
+  const fieldOf = (filter: RecordFilter): string[] => {
+    if (filter.kind === 'invoiceStatus') return ['paidAt', 'dueDate']
+    if (filter.kind === 'any') return filter.matches.map((match) => match.field)
+    return [filter.field]
+  }
   return filters.some((filter) => fieldOf(filter).some((field) => hidden.includes(field)))
     ? null
     : filters

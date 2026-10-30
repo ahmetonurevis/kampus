@@ -52,6 +52,16 @@ export interface FieldMatch {
 }
 
 /**
+ * Birleşik eşitlik süzgeci: alan eşleşmelerinden biri yeter (`or`). Kapsam ön süzgecinde satırın
+ * öğrenci veya sınıf anahtarından biriyle kapsama girdiği kurallar için (ör. not: verildiği
+ * sınıf ya da öğrencinin güncel sınıfı). Her eşleşme `FieldMatch` gibi gerekli koşuldur.
+ */
+export interface AnyMatch {
+  kind: 'any'
+  matches: readonly FieldMatch[]
+}
+
+/**
  * Etkinlik süzgeci (`isActive`): `active: false` yalnız alanı `false` olanı, `active: true`
  * alanı `false` olmayanı (eksik alan dahil; core'da alanı olmayan kayıt etkindir) eşler. Kesin
  * koşuldur: bellekteki `matchesActive` ile aynı sonucu verir.
@@ -103,7 +113,7 @@ export const INVOICE_STATUS_LABELS: readonly InvoiceStatus[] = Object.values(
 )
 export type InvoiceStatusLabel = InvoiceStatus
 
-export type RecordFilter = FieldMatch | ActiveMatch | DayRangeMatch | InvoiceStatusMatch
+export type RecordFilter = FieldMatch | AnyMatch | ActiveMatch | DayRangeMatch | InvoiceStatusMatch
 
 /** Gün ve an biçimleri; SQL (`~`) ve bellek (`RegExp`) aynı metni kullanır. */
 export const DAY_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
@@ -217,6 +227,10 @@ export function recordFilter(filter: RecordFilter): SQL {
     case undefined:
     case 'in':
       return fieldMatch(filter)
+    case 'any':
+      return filter.matches.length === 0
+        ? sql`false`
+        : sql`(${sql.join(filter.matches.map(fieldMatch), sql` or `)})`
     case 'active':
       return activeMatch(filter)
     case 'dayRange':

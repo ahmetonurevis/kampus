@@ -107,7 +107,7 @@ form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 ## 9. Açık rıza ve aydınlatma
 
 - **Aydınlatma** (KVKK m.10) her durumda yapılır: ilk girişte ve hesap menüsünde, rol bazlı (veli, öğrenci, personel) sürümlü metin. Gösterim kaydı `notice_acknowledgements` tablosunda (kullanıcı, metin sürümü, zaman). Aydınlatma rıza değildir; "okudum" işareti rıza yerine geçmez.
-- **İşleme şartı** her veri kategorisi ve amaç için belirlenir (sözleşme, hukuki yükümlülük, meşru menfaat, açık rıza). Açık rıza yalnız başka şart yoksa kullanılır (hukuk onayı).
+- **İşleme şartı** her veri kategorisi ve amaç için belirlenir (sözleşme, hukuki yükümlülük, meşru menfaat, açık rıza). Açık rıza yalnız başka şart yoksa kullanılır (**doğrulanmalı**).
 - **Açık rıza** gerekiyorsa: belirli amaca özgü, ayrı onay kutusu, önceden işaretli değil, hizmet şartına bağlanmamış; reddetmek temel eğitim hizmetini engellemez. Reşit olmayan için veli verir.
 - Rıza kaydı: `consents` (kurum, veri sahibi, veren kullanıcı, amaç kodu, metin sürümü, kanal, `given_at`, `withdrawn_at`). Geri çekme verildiği kadar kolaydır (aynı ekranda tek işlem) ve ilgili işleme hemen durur.
 - Metin değişince yeni sürüm yayımlanır; eski sürüme verilmiş rıza yeni amacı kapsamaz.
@@ -118,7 +118,7 @@ form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 - Her koleksiyon/tablo için saklama süresi ve imha yöntemi bir saklama ve imha tablosunda tutulur; tablo hukuk onayıyla `docs/muhendislik/saklama-imha.md` olarak yazılacak (açık soru). Mühendislik varsayılanı: arşivlenen kayıt süre dolana kadar saklanır, sonra silinir veya anonimleştirilir.
 - İmha işi zamanlanmış çalışır; periyodik imha aralığı 6 ayı geçmez (Kişisel Verilerin Silinmesi, Yok Edilmesi veya Anonim Hale Getirilmesi Hakkında Yönetmelik). Her imha `audit_log`'a ve imha tutanağına yazılır.
 - Anonimleştirme geri döndürülemez olmalıdır: ad, iletişim, kimlik alanları silinir; istatistik için yalnız toplu değerler kalır.
-- Teknik kayıtlar: Better Auth `sessions` ve `verifications` süresi dolunca 7 gün sonra, `idempotency_keys` 24 saat sonra, uygulama logları 90 gün sonra silinir. `audit_log` saklama süresi hukuk onayıyla belirlenir (öneri 2 yıl).
+- Teknik kayıtlar: Better Auth `sessions` ve `verifications` süresi dolunca 7 gün sonra, `idempotency_keys` 24 saat sonra, uygulama logları 90 gün sonra silinir. `audit_log` saklama süresi hukukçu onayıyla belirlenir (öneri 2 yıl, **doğrulanmalı**).
 - Yedekler aynı saklama süresine uyar; silinen veri yedek dönüşü sonunda yedekten de çıkar.
 - Kurum sözleşmesi bitince kurum verisi dışa aktarılıp teslim edilir, sonra sözleşmedeki sürede silinir.
 

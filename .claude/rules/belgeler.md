@@ -13,5 +13,5 @@ paths:
 - Domain iş kuralları `docs/domain/` altındadır; mühendislik belgelerine iş kuralı yazılmaz.
 - Yeni modül: `docs/sayfalar.md` rol bazlı sayfa, README'de kısa bölüm, gerekiyorsa `docs/<modul>.md` kullanım rehberi.
 - Davranış değişikliği ilgili paketin `CHANGELOG.md`'sine yazılır (en yeni üstte, `## x.y.z`, geçmiş zaman edilgen, kırıcı satır "**Kırıcı:**" ile). README "Doğrulama" bölümündeki sayılar değişiklikten sonra güncellenir.
-- Hukuki süre veya yükümlülük yazan madde kaynağını belirtir ya da "hukuk onayı" ile işaretlenir.
+- Hukuki süre veya yükümlülük yazan madde kaynağını belirtir; kaynağı doğrulanmamış ya da hukukçu onayı bekleyen madde tek etiketle, **doğrulanmalı**, işaretlenir.
 - `sunumlar/` altındaki sunum ve ekran görüntüleri yalnız istekle değişir.

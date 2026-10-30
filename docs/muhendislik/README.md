@@ -95,7 +95,7 @@ Bu bölüm öneri listesidir; uygulanmadı. Mevcut taban (`chore/ts-arac-zinciri
 - Better Auth tablo/kolon adlarının snake_case çoğul eşlemesi tam yapılabiliyor mu; yapılamayanlar istisna listesine.
 - React bileşen testi aracı (Vitest + Testing Library mi, yalnız e2e mi).
 - PostgreSQL RLS ek savunma olarak v1'e girecek mi (ADR).
-- Saklama süreleri, işleme şartları ve `audit_log` saklama süresi (hukuk onayı; `saklama-imha.md`).
+- Saklama süreleri, işleme şartları ve `audit_log` saklama süresi (**doğrulanmalı**; `saklama-imha.md`).
 - Anlık bildirim (FCM/APNs) ve e-posta/SMS sağlayıcısı için yurt dışı aktarım değerlendirmesi.
 - Mevcut Türkçe durum değerleri (`'Aktif'`, `'Onay bekliyor'`) normalleştirmede İngilizce koda çevrilecek mi (domain ekibiyle).
 - Saha performans ölçümü (`web-vitals` + kendi ucumuz) ve axe taraması için yeni geliştirme bağımlılıklarının onayı.

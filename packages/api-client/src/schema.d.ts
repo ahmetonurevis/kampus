@@ -127,10 +127,12 @@ export interface components {
                  * @enum {string}
                  */
                 type: "school" | "language_school";
-                /** @description Modül anahtarı → açık mı; listede olmayan modül varsayılanındadır */
+                /** @description Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir; kapalı modülün API uçları 403 `module_disabled` döner */
                 enabledModules: {
                     [key: string]: boolean;
                 };
+                /** @description Etkin eğitim-öğretim yılının (dönemin) başlangıç yılı: 2026 → 2026–2027. Kurum ayarı yoksa `null` */
+                academicYear: number | null;
             } | null;
             /** @description Etkin kurumdaki üyelik ve school-core kayıt bağlantıları */
             activeMembership: {
@@ -228,10 +230,12 @@ export interface components {
                  * @enum {string}
                  */
                 type: "school" | "language_school";
-                /** @description Modül anahtarı → açık mı; listede olmayan modül varsayılanındadır */
+                /** @description Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir; kapalı modülün API uçları 403 `module_disabled` döner */
                 enabledModules: {
                     [key: string]: boolean;
                 };
+                /** @description Etkin eğitim-öğretim yılının (dönemin) başlangıç yılı: 2026 → 2026–2027. Kurum ayarı yoksa `null` */
+                academicYear: number | null;
             } | null;
             /** @description Etkin kurumdaki üyelik ve school-core kayıt bağlantıları */
             activeMembership: {

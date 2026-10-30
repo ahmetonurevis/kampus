@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import type { Auth, InstitutionType, Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
 import { institutions, memberships } from '../db/schema/auth.ts'
+import { institutionSettings } from '../db/schema/institution-settings.ts'
 import { membershipLinks, type MembershipLinkKind } from '../db/schema/membership-links.ts'
 import { AppError, MESSAGES } from '../errors.ts'
 
@@ -80,6 +81,21 @@ export async function ensureInstitution(
   })
   if (!created) throw systemFailure('createOrganization')
   return { id: created.id }
+}
+
+/**
+ * Kurum ayar satırını açar; satır varsa dokunmaz (akademik yıl değişimi ayrı bir yönetici
+ * işlemidir, tohum onu ezmez).
+ */
+export async function ensureInstitutionSettings(
+  db: Database,
+  institutionId: string,
+  input: { academicYear: number },
+): Promise<void> {
+  await db
+    .insert(institutionSettings)
+    .values({ institutionId, academicYear: input.academicYear })
+    .onConflictDoNothing()
 }
 
 export async function ensureMember(

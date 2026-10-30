@@ -179,7 +179,20 @@
                     "additionalProperties": {
                       "type": "boolean"
                     },
-                    "description": "Modül anahtarı → açık mı; listede olmayan modül varsayılanındadır"
+                    "description": "Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir; kapalı modülün API uçları 403 `module_disabled` döner"
+                  },
+                  "academicYear": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Etkin eğitim-öğretim yılının (dönemin) başlangıç yılı: 2026 → 2026–2027. Kurum ayarı yoksa `null`"
                   }
                 },
                 "required": [
@@ -187,7 +200,8 @@
                   "name",
                   "slug",
                   "type",
-                  "enabledModules"
+                  "enabledModules",
+                  "academicYear"
                 ]
               },
               {
@@ -506,7 +520,20 @@
                     "additionalProperties": {
                       "type": "boolean"
                     },
-                    "description": "Modül anahtarı → açık mı; listede olmayan modül varsayılanındadır"
+                    "description": "Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir; kapalı modülün API uçları 403 `module_disabled` döner"
+                  },
+                  "academicYear": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Etkin eğitim-öğretim yılının (dönemin) başlangıç yılı: 2026 → 2026–2027. Kurum ayarı yoksa `null`"
                   }
                 },
                 "required": [
@@ -514,7 +541,8 @@
                   "name",
                   "slug",
                   "type",
-                  "enabledModules"
+                  "enabledModules",
+                  "academicYear"
                 ],
                 "additionalProperties": false
               },

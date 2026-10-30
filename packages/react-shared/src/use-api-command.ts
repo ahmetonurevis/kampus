@@ -33,6 +33,8 @@ export interface ApiCommandOptions<TVariables, TResult extends ApiResult> {
   version?: (variables: TVariables) => number | null | undefined
   /** Koda özgü kullanıcı mesajı (ör. `invoice_already_paid`); yoksa sunucunun mesajı. */
   messages?: CommandMessages
+  /** Alan hatası yalnız alanda, alansız hata toast olarak gösterilir (ikisi birden değil). */
+  exclusive?: boolean
   onSuccess?: (data: DataOf<TResult>, variables: TVariables) => void | Promise<void>
 }
 
@@ -74,6 +76,7 @@ export function useApiCommand<TVariables, TResult extends ApiResult>(
         refresh: () =>
           invalidateInstitutionQueries(queryClient, institutionId, options.invalidates),
         messages: options.messages,
+        exclusive: options.exclusive,
       },
       variables,
       // Sunucu yolu formun alan adıdır; tanınmayan yol react-hook-form'da yalnız boşta bir hatadır.

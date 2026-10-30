@@ -175,6 +175,23 @@ export interface CommandSteps<TVariables, TData> {
   /** Çakışmada ilgili sorguları tazeler. */
   refresh: () => Promise<void>
   messages?: CommandMessages | undefined
+  /**
+   * Alana bağlanan hata yalnız alanın altında gösterilir, toast çıkmaz; alan yolu olmayan hata
+   * (ve alan hatasını yazacak form verilmemişse her hata) toast olur. İçerik havuzu formları.
+   */
+  exclusive?: boolean | undefined
+}
+
+/**
+ * Hatanın nereye gösterileceği: `exclusive` ise alan maddesi varken toast bastırılır.
+ */
+export function routeFeedback(
+  feedback: CommandFeedback,
+  { exclusive, hasForm }: { exclusive: boolean; hasForm: boolean },
+): CommandFeedback {
+  return exclusive && hasForm && feedback.fieldIssues.length > 0
+    ? { ...feedback, message: null }
+    : feedback
 }
 
 /**
@@ -197,7 +214,10 @@ export async function runCommand<TVariables, TData>(
   } catch (cause) {
     const error = toApiError(cause)
     session.tracker.fail(error)
-    const feedback = commandFeedback(error, steps.messages)
+    const feedback = routeFeedback(commandFeedback(error, steps.messages), {
+      exclusive: steps.exclusive ?? false,
+      hasForm: targets.setError !== undefined,
+    })
     if (feedback.refresh) await steps.refresh()
     reportCommandError(error, feedback, targets)
     return { status: 'failed', error }

@@ -49,10 +49,15 @@ export function idempotencyOf(
   return { key, fingerprint: requestFingerprint(request.method, request.url, request.body) }
 }
 
-/** `If-Match` başlığındaki sürüm (`"4"`, `4`, `W/"4"`); yoksa `null`. */
-export function ifMatchVersion(request: FastifyRequest): number | null {
+/**
+ * `If-Match` başlığındaki sürüm (`"4"`, `4`, `W/"4"`); yoksa `null`. `supported: false`: işlemin
+ * önceden var olan konusu yok (oluşturma komutu); başlık gelirse 400 `if_match_not_supported`
+ * (api-tasarimi.md §6): istemci kilit beklediği halde sessizce kilitsiz yazılmaz.
+ */
+export function ifMatchVersion(request: FastifyRequest, supported = true): number | null {
   const raw = singleHeader(request, 'if-match')
   if (raw === undefined) return null
+  if (!supported) throw new AppError(400, 'if_match_not_supported', MESSAGES.if_match_not_supported)
   const match = /^(?:W\/)?"?(\d{1,9})"?$/.exec(raw.trim())
   const version = match?.[1] === undefined ? Number.NaN : Number(match[1])
   if (!Number.isSafeInteger(version) || version < 1)

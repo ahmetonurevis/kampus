@@ -11,10 +11,11 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { tryLockIdempotencyKey } from '../src/db/idempotency.ts'
 import { insertMissingRecords, lockInstitution, writeRecords } from '../src/db/records.ts'
+import { institutions } from '../src/db/schema/auth.ts'
 import { records } from '../src/db/schema/records.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
-import { recordAttendanceCommand } from '../src/services/commands.ts'
+import { executeWorkflowCommand, recordAttendanceCommand } from '../src/services/commands.ts'
 import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, FIXED_NOW } from './support/app.ts'
 import { createPgDatabase, PG_SKIP } from './support/pg.ts'
@@ -372,5 +373,37 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       ['fulfilled', 'fulfilled'],
     )
     assert.equal(await attendanceCount(ctx.institutionId), students.length)
+  })
+  test('komut ortamı kurum kilidinden sonra okunur: kilit sahibinin kapattığı modül görülür', async () => {
+    const ctx = await context()
+    const held = gate()
+    const release = gate()
+    const holder = db.transaction(async (tx) => {
+      await lockInstitution(tx, ctx.institutionId)
+      await tx
+        .update(institutions)
+        .set({ enabledModules: { goals: false } })
+        .where(eq(institutions.id, ctx.institutionId))
+      held.open()
+      await release.opened
+    })
+    await held.opened
+    const waiting = executeWorkflowCommand(
+      ctx,
+      { command: 'goal', input: {}, recordId: undefined, childId: undefined },
+      { idempotency: null, expectedVersion: null },
+    )
+    waiting.catch(() => {})
+    try {
+      await untilLockWait()
+    } finally {
+      release.open()
+      await holder
+    }
+    // Ortam kilitten önce okunsaydı modül açık görünür, işlem gövde doğrulamasına takılırdı.
+    await assert.rejects(
+      waiting,
+      (error) => error instanceof AppError && error.code === 'module_disabled',
+    )
   })
 })

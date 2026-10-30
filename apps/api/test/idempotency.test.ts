@@ -229,6 +229,45 @@ describe('Idempotency-Key (api-tasarimi.md §7, DOM-FIN aynı ödeme iki kez iş
     assert.equal(after.length, 0)
   })
 
+  test('yeni anahtar yazılırken kurumun süresi dolan anahtarları silinir; başka kurum ve taze anahtar kalır', async () => {
+    const { created, ctx } = await institution()
+    const { ctx: otherCtx } = await institution()
+    const colleague = await createMember(app, created.id, 'onburo')
+    const colleagueCtx: ServiceContext = {
+      ...ctx,
+      actor: { userId: colleague.id, role: 'onburo', membershipId: colleague.membershipId },
+    }
+    await runCommand(ctx, payRequest(first.id), respond(first.id), {
+      key: key(7),
+      fingerprint: 'f',
+    })
+    await runCommand(otherCtx, payRequest(first.id), respond(first.id), {
+      key: key(8),
+      fingerprint: 'f',
+    })
+    const keysOf = async (institutionId: string) =>
+      (
+        await db
+          .select({ key: idempotencyKeys.key })
+          .from(idempotencyKeys)
+          .where(eq(idempotencyKeys.institutionId, institutionId))
+      )
+        .map((row) => row.key)
+        .sort()
+
+    // 25 saat sonra kurumdaki başka bir kullanıcının yazması eski anahtarı temizler.
+    const later: ServiceContext = {
+      ...colleagueCtx,
+      now: new Date(FIXED_NOW.getTime() + 25 * HOUR),
+    }
+    await runCommand(later, payRequest(second.id), respond(second.id), {
+      key: key(9),
+      fingerprint: 'f',
+    })
+    assert.deepEqual(await keysOf(created.id), [key(9)])
+    assert.deepEqual(await keysOf(otherCtx.institutionId), [key(8)])
+  })
+
   test('özet metot, yol ve gövdeye bağlıdır; anahtar sırasına bağlı değildir', () => {
     const a = requestFingerprint('post', '/x', { b: 1, a: [2, { d: 1, c: 2 }] })
     assert.equal(a, requestFingerprint('POST', '/x', { a: [2, { c: 2, d: 1 }], b: 1 }))

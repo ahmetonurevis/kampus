@@ -57,7 +57,7 @@ export async function getInstitution(db: Database, institutionId: string) {
   return {
     ...row,
     academicYear: row.academicYear ?? null,
-    enabledModules: effectiveModules(toModuleMap(row.enabledModules)),
+    enabledModules: effectiveModules(toModuleMap(row.enabledModules), row.type),
   }
 }
 

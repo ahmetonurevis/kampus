@@ -13,10 +13,12 @@ import {
   insertMissingRecords,
   loadRecords,
   writeRecords,
+  type RecordFilter,
   type RecordWrite,
 } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
 import { AppError, ConflictError, databaseErrorInfo } from '../src/errors.ts'
+import { dayRange, istanbulDayStart, matchesRecordFilter } from '../src/services/list-filters.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
 
 const LATER = new Date('2026-10-06T10:00:00.000Z')
@@ -409,6 +411,68 @@ describe('records deposu', () => {
       .where(and(eq(records.institutionId, id), eq(records.id, 'test-inv-1')))
     assert.equal(row?.data.amount, 7)
     assert.equal(row?.version, 2)
+  })
+
+  test('gün başlangıcı Europe/Istanbul saatine göredir (yaz saati dönemi dahil)', () => {
+    assert.equal(istanbulDayStart('2026-10-06'), '2026-10-05T21:00:00.000Z')
+    assert.equal(istanbulDayStart('2026-01-01'), '2025-12-31T21:00:00.000Z')
+    // 2016 öncesinde yaz saati vardı: 2015-07-01 UTC+3, 2015-01-01 UTC+2.
+    assert.equal(istanbulDayStart('2015-07-01'), '2015-06-30T21:00:00.000Z')
+    assert.equal(istanbulDayStart('2015-01-01'), '2014-12-31T22:00:00.000Z')
+  })
+
+  test('etkinlik ve gün aralığı süzgeci SQL ile bellekte aynı sonucu verir', async () => {
+    const data: Record<string, Record<string, unknown>> = {
+      'test-f-a': { date: '2026-10-05T20:59:59.999Z', isActive: true },
+      'test-f-b': { date: '2026-10-05T21:00:00.000Z', isActive: false },
+      'test-f-c': { date: '2026-10-06' },
+      'test-f-d': { date: '2026-10-06T20:59:59.999Z', isActive: 'false' },
+      'test-f-e': { date: '2026-10-06T21:00:00.000Z', isActive: null },
+      'test-f-f': { date: '2026-10-06T12:00:00Z' },
+      'test-f-g': { date: 'bozuk' },
+      'test-f-h': { date: 20261006 },
+      'test-f-i': { date: ['2026-10-06'] },
+      'test-f-j': { date: '2026-10-07' },
+      'test-f-k': {},
+    }
+    const id = await institutionWith(
+      Object.entries(data).map(([key, extra]) => invoice(key, { studentId: 's1', ...extra })),
+    )
+    const filters: [string, RecordFilter][] = [
+      ['etkin', { kind: 'active', field: 'isActive', active: true }],
+      ['pasif', { kind: 'active', field: 'isActive', active: false }],
+      ['tek gün', dayRange('date', '2026-10-06', '2026-10-06') ?? assert.fail()],
+      ['başlangıçtan', dayRange('date', '2026-10-06', undefined) ?? assert.fail()],
+      ['bitişe kadar', dayRange('date', undefined, '2026-10-05') ?? assert.fail()],
+    ]
+    const stored = await loadRecords(db, id, ['invoices'])
+    for (const [label, filter] of filters) {
+      const sqlIds = (await loadRecords(db, id, ['invoices'], { match: [filter] })).map((r) => r.id)
+      const memoryIds = stored
+        .filter((row) => matchesRecordFilter(row.data, filter))
+        .map((r) => r.id)
+      assert.deepEqual(sqlIds, memoryIds, label)
+    }
+    const only = async (filter: RecordFilter) =>
+      (await loadRecords(db, id, ['invoices'], { match: [filter] })).map((row) => row.id)
+    assert.deepEqual(await only(filters[2]?.[1] ?? assert.fail()), [
+      'test-f-b',
+      'test-f-c',
+      'test-f-d',
+    ])
+    assert.deepEqual(await only(filters[1]?.[1] ?? assert.fail()), ['test-f-b'])
+    assert.deepEqual(await only(filters[0]?.[1] ?? assert.fail()), [
+      'test-f-a',
+      'test-f-c',
+      'test-f-d',
+      'test-f-e',
+      'test-f-f',
+      'test-f-g',
+      'test-f-h',
+      'test-f-i',
+      'test-f-j',
+      'test-f-k',
+    ])
   })
 
   test('alan ön süzgeci metin, sayı ve mantıksal değeri eşler; dizi alanı adaydır', async () => {

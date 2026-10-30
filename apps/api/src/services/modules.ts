@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import {
   MODULE_KEYS as CORE_MODULE_KEYS,
   isModuleKey as isCoreModuleKey,
+  moduleAvailableFor,
 } from '@kampus/school-core/modules/collection-modules.ts'
 import { schoolModules } from '@kampus/school-core/modules/school-workflows.ts'
 
@@ -37,12 +38,19 @@ export function moduleAllowsRole(moduleKey: string, role: Role): boolean {
 }
 
 /**
- * Kurumun saklanan modül haritasından etkin harita: her bilinen modül listelenir. Saklanmayan
- * modül açıktır (core örnek verisinde bütün modüller açık başlar); yalnız açıkça `false`
- * olan kapalıdır. Bilinmeyen anahtar yok sayılır.
+ * Kurumun saklanan modül haritasından etkin harita: her bilinen modül listelenir. Kurum türünde
+ * bulunmayan modül saklanan değere bakılmadan kapalıdır (core `moduleAvailableFor`, DOM-YTK-012):
+ * `/me`, okuma kapsamı ve core işlemlerine verilen State aynı haritayı görür. Türde bulunan ve
+ * saklanmayan modül açıktır (core örnek verisinde bütün modüller açık başlar); yalnız açıkça
+ * `false` olan kapalıdır. Bilinmeyen anahtar yok sayılır.
  */
-export function effectiveModules(stored: Readonly<Record<string, boolean>>) {
-  return Object.fromEntries(MODULE_KEYS.map((key) => [key, stored[key] !== false]))
+export function effectiveModules(
+  stored: Readonly<Record<string, boolean>>,
+  type: InstitutionType,
+): Record<string, boolean> {
+  return Object.fromEntries(
+    MODULE_KEYS.map((key) => [key, moduleAvailableFor(key, type) && stored[key] !== false]),
+  )
 }
 
 /** Better Auth `json` alanı: yalnız boolean değerli anahtarlar alınır. */
@@ -74,5 +82,7 @@ export async function getInstitutionModules(
     .from(institutions)
     .where(eq(institutions.id, institutionId))
     .limit(1)
-  return row ? { type: row.type, modules: effectiveModules(toModuleMap(row.enabledModules)) } : null
+  return row
+    ? { type: row.type, modules: effectiveModules(toModuleMap(row.enabledModules), row.type) }
+    : null
 }

@@ -5,6 +5,8 @@ import { and, eq } from 'drizzle-orm'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
+import { moduleAvailableFor } from '@kampus/school-core/modules/collection-modules.ts'
+
 import type { App } from '../src/app.ts'
 import { ROLES } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
@@ -85,6 +87,24 @@ describe('kimlik ve kurum kapsamı', () => {
     assert.equal(data.activeInstitution.enabledModules.goals, true)
     assert.equal('bilinmeyen' in data.activeInstitution.enabledModules, false)
     assert.equal(data.activeInstitution.academicYear, null)
+  })
+
+  test('DOM-YTK-012: dil okulunda /me okul türü modülleri açık saklansa da false verir', async () => {
+    const institution = await createInstitution(app, {
+      type: 'language_school',
+      enabledModules: { goals: true, guidance: true, meals: false },
+    })
+    const cookie = await signInAs(app, institution.admin)
+
+    const { data } = (await get('/api/v1/me', cookie)).json()
+
+    const modules = data.activeInstitution.enabledModules
+    assert.deepEqual(Object.keys(modules), [...MODULE_KEYS])
+    for (const key of MODULE_KEYS)
+      if (!moduleAvailableFor(key, 'language_school')) assert.equal(modules[key], false, key)
+    assert.equal(modules.meals, false)
+    assert.equal(modules.finance, true)
+    assert.equal(modules.clubs, true)
   })
 
   test('bozuk veya bilinmeyen oturum çerezi 401 döner', async () => {

@@ -41,21 +41,88 @@ export interface StoredRecord {
  * satırları yine kendi kuralıyla süzer. Alan adı ve değerler sorgu parametresidir.
  */
 export interface FieldMatch {
+  kind?: 'in'
   field: string
   values: readonly string[]
 }
+
+/**
+ * Etkinlik süzgeci (`isActive`): `active: false` yalnız alanı `false` olanı, `active: true`
+ * alanı `false` olmayanı (eksik alan dahil; core'da alanı olmayan kayıt etkindir) eşler. Kesin
+ * koşuldur: bellekteki `matchesActive` ile aynı sonucu verir.
+ */
+export interface ActiveMatch {
+  kind: 'active'
+  field: string
+  active: boolean
+}
+
+/**
+ * Gün aralığı süzgeci (`dateFrom`/`dateTo`, Europe/Istanbul günü, iki uç dahil). Değer ya
+ * `YYYY-MM-DD` günüdür (günle karşılaştırılır) ya da `toISOString` biçiminde an (aralığın UTC
+ * sınırlarıyla karşılaştırılır); başka biçim eşleşmez. Karşılaştırma bayt sırasıyladır
+ * (`collate "C"`); bellekteki `matchesDayRange` ile aynı sonucu verir.
+ */
+export interface DayRangeMatch {
+  kind: 'dayRange'
+  field: string
+  fromDay: string | null
+  toDay: string | null
+  /** `fromDay` gününün başladığı an (UTC, dahil). */
+  fromInstant: string | null
+  /** `toDay`'den sonraki günün başladığı an (UTC, hariç). */
+  toInstant: string | null
+}
+
+export type RecordFilter = FieldMatch | ActiveMatch | DayRangeMatch
+
+/** Gün ve an biçimleri; SQL (`~`) ve bellek (`RegExp`) aynı metni kullanır. */
+export const DAY_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+export const INSTANT_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z$'
 
 export interface LoadOptions {
   /** Arşivlenmişler varsayılan olarak dışarıda kalır. */
   includeArchived?: boolean
   /** Hepsi sağlanmalı (`and`); boş değer listesinde yalnız alanı dizi olan satırlar kalır. */
-  match?: readonly FieldMatch[]
+  match?: readonly RecordFilter[]
 }
 
 function fieldMatch({ field, values }: FieldMatch): SQL {
   const text = sql`(${records.data} ->> ${field}::text)`
   const array = sql`jsonb_typeof(${records.data} -> ${field}::text) = 'array'`
   return values.length === 0 ? array : sql`(${inArray(text, [...values])} or ${array})`
+}
+
+function activeMatch({ field, active }: ActiveMatch): SQL {
+  const value = sql`(${records.data} -> ${field}::text)`
+  return active
+    ? sql`coalesce(${value}, 'null'::jsonb) <> 'false'::jsonb`
+    : sql`${value} = 'false'::jsonb`
+}
+
+function dayRangeMatch(match: DayRangeMatch): SQL {
+  const text = sql`(${records.data} ->> ${match.field}::text)`
+  const ordered = sql`(${text} collate "C")`
+  const bound = (value: string | null, op: SQL) =>
+    value === null ? sql`true` : sql`${ordered} ${op} (${value}::text collate "C")`
+  const day = sql`(${text} ~ ${DAY_PATTERN} and ${bound(match.fromDay, sql`>=`)} and ${bound(match.toDay, sql`<=`)})`
+  const instant = sql`(${text} ~ ${INSTANT_PATTERN} and ${bound(match.fromInstant, sql`>=`)} and ${bound(match.toInstant, sql`<`)})`
+  return sql`(jsonb_typeof(${records.data} -> ${match.field}::text) = 'string' and (${day} or ${instant}))`
+}
+
+/** Süzgecin SQL koşulu (alan adı ve değerler parametredir). */
+export function recordFilter(filter: RecordFilter): SQL {
+  switch (filter.kind) {
+    case undefined:
+    case 'in':
+      return fieldMatch(filter)
+    case 'active':
+      return activeMatch(filter)
+    case 'dayRange':
+      return dayRangeMatch(filter)
+    default:
+      return filter satisfies never
+  }
 }
 
 /**
@@ -133,7 +200,7 @@ export async function loadRecords(
     inArray(records.collection, [...collections]),
   ]
   if (!options.includeArchived) filters.push(isNull(records.archivedAt))
-  for (const match of options.match ?? []) filters.push(fieldMatch(match))
+  for (const match of options.match ?? []) filters.push(recordFilter(match))
   const rows = await db
     .select()
     .from(records)

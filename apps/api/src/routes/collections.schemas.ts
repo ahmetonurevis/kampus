@@ -25,9 +25,21 @@ const filterValue = z
 const filterShape = Object.fromEntries(
   FILTER_FIELDS.map((field) => [
     field,
-    filterValue.describe(`\`${field}\` eşitlik filtresi; çoklu değer parametre tekrarıyla`),
+    filterValue.describe(
+      field === 'classId'
+        ? '`classId` eşitlik filtresi; çoklu değer parametre tekrarıyla. Kaydında sınıf olmayan öğrenci koleksiyonlarında (`grades`, `absences`, `submissions`, `quizAttempts`, `mockResults`, `studentGoals`) öğrencinin güncel sınıfıdır'
+        : `\`${field}\` eşitlik filtresi; çoklu değer parametre tekrarıyla`,
+    ),
   ]),
 ) as Record<(typeof FILTER_FIELDS)[number], typeof filterValue>
+
+const dayValue = (edge: string) =>
+  z.iso
+    .date()
+    .optional()
+    .describe(
+      `\`date\` alanının Europe/Istanbul günü için ${edge} (\`YYYY-MM-DD\`, dahil). Gün (\`YYYY-MM-DD\`) veya an (ISO UTC) değerli kayıtlar eşlenir`,
+    )
 
 export const collectionListQuerySchema = pageQuerySchema
   .extend({
@@ -49,9 +61,21 @@ export const collectionListQuerySchema = pageQuerySchema
       .enum(ARCHIVED_MODES)
       .optional()
       .describe('Arşivliler varsayılan olarak dönmez; `include` ekler, `only` yalnız onları verir'),
+    isActive: z
+      .enum(['true', 'false'])
+      .optional()
+      .describe(
+        'Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır',
+      ),
+    dateFrom: dayValue('başlangıç'),
+    dateTo: dayValue('bitiş'),
     ...filterShape,
   })
   .strict()
+  .refine((query) => !query.dateFrom || !query.dateTo || query.dateFrom <= query.dateTo, {
+    path: ['dateTo'],
+    message: 'Bitiş günü başlangıç gününden önce olamaz.',
+  })
 
 export const collectionRecordQuerySchema = z
   .object({

@@ -45,6 +45,7 @@ import {
 } from './commands.schemas.ts'
 import {
   emptyCommandBodySchema,
+  WORKFLOW_MODULES,
   WORKFLOW_ROUTES,
   workflowDescription,
   workflowQuerySchema,
@@ -54,7 +55,8 @@ import {
 
 /**
  * Yazma uçları (api-tasarimi.md §1, §6, §7). Kimlik, modül ve rol denetimi doğrulamadan önce
- * (`preValidation`) çalışır: sıra 401 → 403 `module_disabled` → 403 `forbidden` → 400 gövde →
+ * (`preValidation`) çalışır: sıra 401 → 404 kurum türünde olmayan modül → 403 `module_disabled`
+ * → 403 `forbidden` → 400 gövde →
  * işlem (404 kayıt, 422 kural, 409 çakışma). İş kuralı ve kapsam serviste core'dadır.
  */
 
@@ -77,6 +79,16 @@ function options(request: FastifyRequest, idempotency: 'required' | 'optional'):
   return {
     idempotency: idempotencyOf(request, idempotency === 'required'),
     expectedVersion: ifMatchVersion(request),
+  }
+}
+
+/**
+ * Konusu önceden var olmayan (oluşturma) uç: `If-Match` gövde doğrulamasından önce 400
+ * `if_match_not_supported` olur; istemci kilit beklediği halde sessizce kilitsiz yazılmaz.
+ */
+function rejectIfMatch(): preValidationAsyncHookHandler {
+  return async function (request) {
+    ifMatchVersion(request, false)
   }
 }
 
@@ -105,12 +117,17 @@ export function registerCommandRoutes(app: FastifyInstance) {
   app.decorateRequest('commandInput', null)
   const typed = app.withTypeProvider<ZodTypeProvider>()
 
-  /** Rota ön işleyicileri: kimlik → modül → rol → ham gövde. */
-  function guard(roles: readonly Role[], module: string | null): preValidationAsyncHookHandler[] {
+  /** Rota ön işleyicileri: kimlik → modül → rol → `If-Match` (oluşturmada) → ham gövde. */
+  function guard(
+    roles: readonly Role[],
+    module: string | null,
+    { subject = true }: { subject?: boolean } = {},
+  ): preValidationAsyncHookHandler[] {
     return [
       app.authenticate,
       ...(module === null ? [] : [app.requireModule(module)]),
       app.requireRole(roles),
+      ...(subject ? [] : [rejectIfMatch()]),
       captureInput(),
     ]
   }
@@ -125,7 +142,6 @@ export function registerCommandRoutes(app: FastifyInstance) {
       tags: ['workflows'],
       summary: route.summary,
       description: workflowDescription(name, roles),
-      headers: commandHeadersSchema(route.idempotency),
       querystring: workflowQuerySchema,
       body: workflowBody(name),
       response,
@@ -142,13 +158,19 @@ export function registerCommandRoutes(app: FastifyInstance) {
         options(request, route.idempotency),
       ).then((result) => sendCommand(reply, result))
 
-    // Rol kuralı core'dadır (`mayRun`): rota her rolü kabul eder, core reddi 403'tür.
+    // Rol kuralı core'dadır (`mayRun`): rota her rolü kabul eder, core reddi 403'tür. Modül
+    // rotada denetlenir (okuma uçlarıyla aynı 404/403); core da kapalı modülü ayrıca reddeder.
+    const module = WORKFLOW_MODULES[name]
     if (route.record !== 'required')
       typed.post(
         `/api/v1/workflows/${name}`,
         {
-          preValidation: guard(ROLES, null),
-          schema: { ...base, operationId: `runWorkflow${pascal(name)}` },
+          preValidation: guard(ROLES, module, { subject: false }),
+          schema: {
+            ...base,
+            operationId: `runWorkflow${pascal(name)}`,
+            headers: commandHeadersSchema(route.idempotency, { ifMatch: false }),
+          },
         },
         (request, reply) => run(request, reply, undefined),
       )
@@ -156,10 +178,11 @@ export function registerCommandRoutes(app: FastifyInstance) {
       typed.post(
         `/api/v1/workflows/${name}/:recordId`,
         {
-          preValidation: guard(ROLES, null),
+          preValidation: guard(ROLES, module),
           schema: {
             ...base,
             operationId: `runWorkflow${pascal(name)}${route.record === 'optional' ? 'Update' : ''}`,
+            headers: commandHeadersSchema(route.idempotency),
             params: workflowRecordParamsSchema,
           },
         },
@@ -208,7 +231,7 @@ export function registerCommandRoutes(app: FastifyInstance) {
         tags: ['attendance'],
         summary: 'Sınıf yoklaması al',
         description:
-          'Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. Roller: `yonetici`; `ogretmen` yalnız core kapsamındaki sınıfta.',
+          'Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. `If-Match` sınıf kaydının sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`; `ogretmen` yalnız core kapsamındaki sınıfta.',
         headers: commandHeadersSchema('optional'),
         params: classParamsSchema,
         body: attendanceBodySchema,
@@ -334,14 +357,14 @@ export function registerCommandRoutes(app: FastifyInstance) {
   typed.post(
     '/api/v1/tutor-sessions',
     {
-      preValidation: guard(ROLES, 'tutoring'),
+      preValidation: guard(ROLES, 'tutoring', { subject: false }),
       schema: {
         operationId: 'createTutorSessions',
         tags: ['tutoring'],
         summary: 'Etüt planını onayla',
         description:
           "Deneme sonuçlarından etüt planını güncel veriyle yeniden hesaplar ve etütleri oluşturur (core `runAssessment('plan')`). `expectedPlan` önizlemedeki plandır; plan değiştiyse 409 `tutoring_plan_stale`.",
-        headers: commandHeadersSchema('optional'),
+        headers: commandHeadersSchema('optional', { ifMatch: false }),
         body: automationSchemas.plan.extend({
           expectedPlan: z
             .string()

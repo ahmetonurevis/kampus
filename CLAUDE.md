@@ -64,7 +64,7 @@ Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokun
 
 ## Komutlar ve teslimler
 
-`pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm mobile`, `pnpm build:apk`. API komutları `apps/api/package.json` içindedir.
+`pnpm dev` (Vue, 5173), `pnpm dev:react` (React, 5174), `pnpm build` (Vue + React), `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm mobile`, `pnpm build:apk`. API komutları `apps/api/package.json` içindedir.
 
 Android teslim bilgileri `docs/mobile-release.md`, sayfa rehberi `docs/sayfalar.md`, yatırımcı sunumu `sunumlar/` (üretim: `sunumlar/OKU.md`). Mevcut statik yayın (`pnpm run deploy`, `demo.onurevis.com`) backend'siz demoya aittir; API yayını ayrı ADR ile planlanır. Geçici build/cache/rapor klasörleri, eski APK'lar ve yinelenen sunum kopyaları tutulmaz; ortam dosyaları, lockfile ve imzalama bilgileri temizliğe dahil edilmez.
 

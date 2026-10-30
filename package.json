@@ -8,14 +8,15 @@
   },
   "scripts": {
     "dev": "pnpm --filter @kampus/web dev",
-    "build": "pnpm --filter @kampus/web build",
+    "dev:react": "pnpm --filter @kampus/web-react dev",
+    "build": "pnpm --filter @kampus/web --filter @kampus/web-react build",
     "preview": "pnpm --filter @kampus/web preview",
     "deploy": "bash scripts/deploy.sh",
     "lint": "eslint .",
     "typecheck": "pnpm -r --if-present typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test tests/*.test.js",
+    "test": "node --test tests/*.test.js apps/web-react/tests/*.test.ts",
     "test:e2e": "playwright test",
     "mobile": "pnpm --filter @kampus/mobile start",
     "build:apk": "bash scripts/build-android.sh"

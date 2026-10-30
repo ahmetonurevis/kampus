@@ -2,6 +2,12 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## İçerik havuzu tabloları ve okuma uçları
+
+- Migration `0010_enable_btree_gin` (`btree_gin` eklentisi) ve `0011_create_content_pool`: `resources`, `resource_versions`, `resource_version_outcomes`, `resource_version_items`, `resource_shares` (bileşik kurum yabancı anahtarları, durum/sözlük `check`'leri, kaynak başına tek düzenlenen sürüm, `(institution_id, search_vector)` bileşik GIN). Ayrıntı `docs/muhendislik/veritabani.md` §4, §6.
+- `GET /api/v1/resources`, `GET /api/v1/resources/:resourceId`, `GET /api/v1/resources/:resourceId/versions/:versionId` (`learning` modülü; yönetici, öğretmen, öğrenci, veli; ön büro 403). Görünürlük core `canReadVersion`'dır (SQL ön süzgeci + core yeniden doğrulama); öğrenci/veli yalnız güncel yayın sürümünü cevap anahtarı ve lisans ayrıntısı olmadan görür. Arama Türkçe harf ve NFKD duyarsız önek araması; süzgeçler beyaz listede, bilinmeyen parametre 400.
+- Yazma uçları yok (sonraki dilim). OpenAPI ve `api-client` şeması yeniden üretildi. Test PGlite'ı `btree_gin` ile açılır (`newPGlite`).
+
 ## Genel Bakış tek özet ucu
 
 - `GET /api/v1/dashboard` (beş rol): Genel Bakış'ın kartları, kısa listeleri ve mini grafik verisi tek yanıtta; yanıt `role` ayırıcılı. Web rol başına 6-17 `counts`/liste isteği yerine tek istek atar. Değerler `countCollection`/`listCollection` ile hesaplanır (rol/kurum kapsamı, alan ayıklama ve türetilmiş durum `counts` ucuyla aynıdır); sayım hâlâ bellekte (`TODO(perf)`).

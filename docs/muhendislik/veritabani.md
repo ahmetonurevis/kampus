@@ -101,6 +101,17 @@ Bir koleksiyon aşağıdakilerden **biri** doğrulanınca kendi tablosuna taşı
 
 Taşıma tek migration'la yapılır: tablo oluşturulur, `records`'tan veri kopyalanır, eski satırlar silinir; school-core'a aynı state şeklini veren bir depo bağdaştırıcısı yazılır. Öncesi ve sonrası için aynı servis testleri geçmelidir.
 
+### İçerik havuzu tabloları (ADR 0004 karar 3)
+
+İçerik havuzu `records`'ta değil, baştan ilişkisel tablodadır (migration `0011_create_content_pool`; şema `apps/api/src/db/schema/resources.ts`, depo `apps/api/src/db/resources.ts`). Kural school-core `content/*`'tadır; tablolar onun satırlarıdır.
+
+- `resources`: kimlik, tür, sahip, paylaşım kapsamı, güncel yayın sürümü (`current_version_id`) ve kopya soyu (`derived_from_version_id`; platform sürümü için yabancı anahtarsız `derived_from_platform_version_id`, `TODO(F3b-library)`).
+- `resource_versions`: durum kolonları, başlık, tür başına içerik (`content` jsonb; yalnız `removed` durumunda boş, `resource_versions_content_check`), ayrı `answer_key`, `license` jsonb ve ondan türetilen `license_kind` (generated), kaynak gösterimi, süzülen etiket kolonları ve `search_vector` (core `searchDocument` çıktısının `to_tsvector('simple', …)`'ı; SQL'de ikinci normalleştirme yok). Sürüm numarası kaynakta tekildir; kaynakta en fazla bir düzenlenen (taslak/reddedildi) sürüm vardır (`resource_versions_editable_key`, inceleme hariç: telif bildirimi yayındaki sürümü incelemeye alırken açık taslak olabilir).
+- `resource_version_outcomes` (kazanım bağlantıları, sıra `position`), `resource_version_items` (quiz/alıştırma sorularının sürüm kimlikleri ve puanları), `resource_shares` (`target_kind` `student`/`class`; kimlikler `records` kayıtlarıdır, yabancı anahtar yok).
+- Her yabancı anahtar `(institution_id, …_id)` bileşiktir: başka kurumun satırına bağlanmak veritabanınca imkânsızdır. `resources` ↔ `resource_versions` anahtarları döngüseldir; kaynak önce güncel sürümsüz yazılır, sürümden sonra bağlanır (`insertResourceWithVersions`). Drizzle tip çıkarımı için iki tablonun ekstra yapılandırması açık dönüş tipi (`PgTableExtraConfigValue[]`) taşır.
+- Sürümde `archived_at` core `archivedAt`'tır (durum `archived`): arşivlenen sürüm geçmiş görevlerde ve sürüm geçmişinde okunmaya devam eder (DOM-KYN-032, 051), bu yüzden sürüm sorguları arşivliyi varsayılan olarak dışlamaz, görünürlüğü `status` belirler. Bağlantı tabloları (kazanım, soru, paylaşım) değişince silinmez, arşivlenir.
+- Yayımlanmış sürümün içerik, etiket ve lisans kolonları değişmez; tetikleyici yoktur, servis reddeder.
+
 ## 5. Migration kuralları
 
 - Şema değişikliği yalnız migration ile: `pnpm --filter @kampus/api exec drizzle-kit generate --name <ne_yapildigi>` (ör. `add_audit_log`). Üretilen SQL okunur, gerekirse elle düzenlenir ve commit edilir.
@@ -124,6 +135,8 @@ Taşıma tek migration'la yapılır: tablo oluşturulur, `records`'tan veri kopy
 - `records` üzerinde sık filtrelenen anahtar için ifade indeksi: `create index records_student_idx on records (institution_id, collection, (data->>'studentId'))`. `data` üzerinde genel GIN indeksi ölçüm olmadan eklenmez.
 - Yeni indeks `EXPLAIN (ANALYZE, BUFFERS)` çıktısıyla gerekçelendirilir (commit gövdesinde); kullanılmayan indeks kaldırılır.
 - Mevcut `records` indeksleri (`0009`): `records_institution_collection_position_idx (institution_id, collection, position)` sona ekleme sırası ve sıralı yükleme içindir. `records_conversation_messages_idx (institution_id, (data ->> 'conversationId'), position, id) where collection = 'conversationMessages' and archived_at is null` yazışmanın mesaj sayfası, liste özeti ve okundu yükü içindir. Sorgular indeksin ifadesini ve koşulunu birebir kullanır (`apps/api/src/db/conversation-messages.ts`).
+- İçerik havuzu arama indeksi `resource_versions_search_idx` `(institution_id, search_vector)` bileşik GIN'dir: `text` kolonunun GIN operatör sınıfı `btree_gin` eklentisindedir (migration `0010_enable_btree_gin`; PostgreSQL 13+ eklentiyi güvenilir sayar, veritabanı sahibi süper kullanıcı olmadan kurar; testte PGlite `contrib/btree_gin` ile açılır). Böylece kural istisnasız kalır. Gerekçe (`kampus_pg_f3b`, PostgreSQL 16, 200.000 sürüm, 50 kurum, `isik:* & kitap:*` + kurum koşulu, `EXPLAIN (ANALYZE, BUFFERS)`): tek kolon GIN bütün kurumların 40.000 aday satırını bitmap'e alıp birincil anahtar taramasıyla `BitmapAnd` yapar (65 buffer, 7,5 ms); bileşik GIN tek `Bitmap Index Scan`'dir (44 buffer, 5,6 ms). Aday sayısı kurum sayısıyla büyümez; indeks 1,9 MB yerine 2,3 MB'tır. Sorgu kurum koşulunu sürüm satırına açıkça verir (`resource_versions.institution_id = $kurum`).
+- İçerik havuzunun diğer indeksleri: sahip süzgeci `resources_owner_idx`, kısmi yabancı anahtar indeksleri (`resources_current_version_idx`, `resources_derived_from_version_idx`, boş değerler girmez), soru → quiz `resource_version_items_item_idx`, öğrencinin kütüphanesi `resource_shares_target_idx where archived_at is null`. Personel listesinin baş sürümü kaynak başına `resource_versions_resource_number_key` üzerinden tek erişimdir.
 - 100 ms'yi aşan sorgu `db.slow_query` olayıyla loglanır.
 
 ## 7. Arşivleme ve silme

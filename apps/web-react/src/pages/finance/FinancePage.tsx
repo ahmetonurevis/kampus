@@ -4,6 +4,7 @@ import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
@@ -123,9 +124,15 @@ export function FinancePage({ page }: { page: NavPage }) {
       {
         key: ACTIONS_KEY,
         label: 'İşlemler',
-        // TODO(pdf-receipt): ödenmiş taksitte "Dekont" düğmesi PDF görevinde eklenir.
         cell: (row) =>
-          row.paidAt ? null : (
+          row.paidAt ? (
+            <PdfButton
+              type="receipt"
+              recordId={row.id}
+              label="Dekont"
+              ariaLabel={`${row.studentName} ${row.installment}. taksit dekontunu görüntüle`}
+            />
+          ) : (
             <Button
               size="sm"
               aria-label={`${row.studentName} ${row.installment}. taksiti tahsil et`}

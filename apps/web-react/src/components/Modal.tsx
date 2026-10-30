@@ -22,6 +22,8 @@ type ModalProps = {
   description?: string
   size?: keyof typeof SIZES
   footer?: ReactNode
+  /** Kapanınca odak yönetimi: Radix tetikleyicisiz pencerede odağı kendisi geri vermez. */
+  onCloseAutoFocus?: (event: Event) => void
   children: ReactNode
 }
 
@@ -36,12 +38,16 @@ export function Modal({
   description,
   size = 'default',
   footer,
+  onCloseAutoFocus,
   children,
 }: ModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         {...(description ? {} : { 'aria-describedby': undefined })}
+        {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
+        // Portal olaylarının React ağacında üst öğeye (ör. satır tıklaması) sızmasını keser.
+        onClick={(event) => event.stopPropagation()}
         className={cn(
           'flex max-h-[calc(100dvh-48px)] flex-col gap-0 overflow-hidden p-0',
           SIZES[size],

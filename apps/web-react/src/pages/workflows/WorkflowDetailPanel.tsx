@@ -3,6 +3,7 @@ import type {
   WorkflowDetails,
   WorkflowRow,
 } from '@kampus/school-core/lib/workflow-presentation.ts'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
@@ -55,7 +56,18 @@ export function WorkflowDetailPanel({
               )}
             </section>
           ))}
-          {/* TODO(pdf-contract): sözleşme belgesi (`details.documents`) web-react PDF bileşeniyle gelir. */}
+          {details.documents.length ? (
+            <section aria-label="Belgeler" className="flex flex-wrap gap-2 border-t pt-4">
+              {details.documents.map((document) => (
+                <PdfButton
+                  key={`${document.type}-${document.id}`}
+                  type={document.type}
+                  recordId={document.id}
+                  label={document.title}
+                />
+              ))}
+            </section>
+          ) : null}
           {details.actions.length ? (
             <div className="flex flex-wrap gap-2 border-t pt-4">
               {details.actions.map((action, index) => (

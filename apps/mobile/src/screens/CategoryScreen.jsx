@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { View, useWindowDimensions } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.jsx'
+import { useSchool } from '../store/SchoolProvider.tsx'
 import { categoryLabel, categoryPages } from '../model/hub.ts'
 import { Empty, Heading } from '../ui/components.jsx'
 import { Screen } from '../ui/SchoolLayout.jsx'

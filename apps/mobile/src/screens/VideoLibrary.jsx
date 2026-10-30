@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { View } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.jsx'
+import { useSchool } from '../store/SchoolProvider.tsx'
 import { context, rowsFor } from '../model/school.ts'
 import { contentTitle } from '../model/presentation.ts'
 import {

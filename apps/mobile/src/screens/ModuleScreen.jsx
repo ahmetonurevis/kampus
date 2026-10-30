@@ -4,7 +4,7 @@ import Conversations from './Conversations.jsx'
 import { FormScrollView } from '../ui/KeyboardLayout.jsx'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Switch } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.jsx'
+import { useSchool } from '../store/SchoolProvider.tsx'
 import {
   availablePages,
   context,
@@ -41,7 +41,7 @@ import {
   useColors,
 } from '../ui/components.jsx'
 import OperationForm from '../ui/OperationForm.jsx'
-import { useMinute } from '../ui/use-minute.js'
+import { useMinute } from '../ui/use-minute.ts'
 import RecordCard from '../ui/RecordCard.jsx'
 import appConfig from '../../app.json'
 

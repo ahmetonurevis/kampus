@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react'
 import { View } from 'react-native'
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
-import { useSchool } from '../store/SchoolProvider.jsx'
+import { useSchool } from '../store/SchoolProvider.tsx'
 import { context, nameOf, rowsFor } from '../model/school.ts'
 import { contentTitle } from '../model/presentation.ts'
-import { useMinute } from '../ui/use-minute.js'
+import { useMinute } from '../ui/use-minute.ts'
 import {
   Badge,
   Button,

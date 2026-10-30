@@ -1,5 +1,4 @@
 import type { State } from '@kampus/school-core/data/seed.ts'
-import type { Session } from '@kampus/school-core/lib/domain.ts'
 
 export type DraftValue = Record<string, unknown>
 // AsyncStorage'ın kullanılan alt kümesi; testlerde bellek içi karşılığı verilir.
@@ -11,7 +10,8 @@ export type DraftStorage = {
 
 export function draftKey(
   data: Pick<State, 'createdAt'>,
-  session: Session,
+  // Oturum açılmadan önce rol boştur; anahtar yine de üretilebilir.
+  session: { role: string; childId?: string },
   kind: string,
   recordId = '',
 ) {

@@ -1,7 +1,7 @@
 import { FormScrollView } from './KeyboardLayout.jsx'
 import React, { useRef, useState } from 'react'
 import { View, ScrollView, Pressable, useWindowDimensions } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.jsx'
+import { useSchool } from '../store/SchoolProvider.tsx'
 import { context, nameOf } from '../model/school.ts'
 import { Avatar, Button, Icon, Select, Sheet, T, styles, useColors } from './components.jsx'
 

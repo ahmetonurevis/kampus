@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react'
 import { Pressable, View, useWindowDimensions } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.jsx'
+import { useSchool } from '../store/SchoolProvider.tsx'
 import { hubCategories } from '../model/hub.ts'
 import { Icon, T, useColors } from './components.jsx'
-import { shape } from './theme.js'
+import { shape } from './theme.ts'
 
 // Modül kartının ortak görünümü: ikon kutusu, başlık ve isteğe bağlı açıklama.
 export function ModuleCard({ icon, title, caption, accent = false, onPress, stacked = false }) {

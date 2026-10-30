@@ -1,7 +1,7 @@
 import { contentTitle } from '../model/presentation.ts'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { View } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.jsx'
+import { useSchool } from '../store/SchoolProvider.tsx'
 import { context, nameOf, rowsFor } from '../model/school.ts'
 import { homeworkRows, paymentSummary, waitingLabel } from '../model/experience.ts'
 import { Badge, Button, Card, SearchField, Select, Sheet, T, styles } from '../ui/components.jsx'
@@ -14,7 +14,7 @@ import {
   Tabs,
   TextAction,
 } from '../ui/SchoolLayout.jsx'
-import { useMinute } from '../ui/use-minute.js'
+import { useMinute } from '../ui/use-minute.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 
 export default function SchoolList({ kind, navigation }) {

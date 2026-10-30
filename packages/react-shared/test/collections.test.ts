@@ -173,6 +173,38 @@ describe('toplu sayım', () => {
     })
   })
 
+  test('tarih aralığı, aylık gruplama ve doluluk süzgeçleri parametre ve anahtara girer', () => {
+    const query = {
+      groupBy: 'paidAt:month',
+      sum: 'amount',
+      filters: { dateField: 'paidAt', dateFrom: '2026-05-01', dateTo: '2026-10-30' },
+    } as const
+    assert.deepEqual(collectionCountParams(query), {
+      groupBy: 'paidAt:month',
+      sum: 'amount',
+      dateField: 'paidAt',
+      dateFrom: '2026-05-01',
+      dateTo: '2026-10-30',
+    })
+    // Aralık değişince anahtar da değişir: önbellek eski aralığı yeni sorguya vermez.
+    const shifted = collectionCountsKey('invoices', {
+      ...query,
+      filters: { ...query.filters, dateTo: '2026-10-31' },
+    })
+    assert.notDeepEqual(collectionCountsKey('invoices', query), shifted)
+
+    assert.deepEqual(
+      collectionListParams({
+        filters: { cancelled: 'false', graded: 'true', dateFrom: '2026-10-30' },
+      }),
+      { cancelled: 'false', graded: 'true', dateFrom: '2026-10-30' },
+    )
+    assert.notDeepEqual(
+      collectionQueryKey('schedule', { filters: { cancelled: 'true' } }),
+      collectionQueryKey('schedule', { filters: { cancelled: 'false' } }),
+    )
+  })
+
   test('sayım anahtarı liste önekinin altındadır ve süzgeç sırasından bağımsızdır', () => {
     const left = collectionCountsKey('invoices', {
       groupBy: 'status',

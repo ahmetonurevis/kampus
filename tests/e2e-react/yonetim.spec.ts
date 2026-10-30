@@ -301,6 +301,16 @@ test.describe('yönetici: Eğitim Kadrosu', () => {
     await expect(resultCount(page)).toContainText('1–8 / 48 kayıt')
   })
 
+  test('arama kampüs adıyla öğretmen bulur; kampüs sütunu bağlı alandan gelir', async ({
+    page,
+  }) => {
+    await page.goto(STAFF_URL)
+    await page.getByLabel('Tabloda ara').fill('kadikoy')
+    await expect(page).toHaveURL(/[?&]q=kadikoy/)
+    await expect(resultCount(page)).toContainText('1–8 / 16 kayıt')
+    await expectEveryRow(bodyRows(page, STAFF_TABLE), KADIKOY)
+  })
+
   test('kampüs ve branş filtreleri birleşir, sayfa 1e döner', async ({ page }) => {
     await page.goto(STAFF_URL)
     await page.getByRole('button', { name: 'Sonraki sayfa' }).click()

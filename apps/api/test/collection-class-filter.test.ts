@@ -4,7 +4,7 @@ import { after, before, describe, test } from 'node:test'
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
-import type { CollectionName } from '../src/db/collections.ts'
+import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import {
   buildTestApp,
@@ -33,6 +33,9 @@ const VIA_STUDENT = [
   'transportAssignments',
   'clubMemberships',
   'socialAchievements',
+  'clubAttendance',
+  'opticalEvaluations',
+  'videoProgress',
 ] as const satisfies readonly CollectionName[]
 
 /** Örnek veride boş olan koleksiyonlar için elle kayıtlar (`studentId` var, `classId` yok). */
@@ -44,6 +47,15 @@ const MANUAL: Partial<Record<CollectionName, Record<string, unknown>[]>> = {
   eventConsents: [
     { id: 'test-cons-s2', studentId: 's2', eventId: 'ev1', parentId: 'p1', consent: true },
     { id: 'test-cons-s3', studentId: 's3', eventId: 'ev1', parentId: 'p3', consent: false },
+  ],
+  videoProgress: [{ studentId: 's3', videoId: 'v1', progress: 50 }],
+  clubAttendance: [
+    { id: 'test-att-s1', clubId: 'club1', studentId: 's1', date: '2026-09-01', status: 'Geldi' },
+    { id: 'test-att-s2', clubId: 'club1', studentId: 's2', date: '2026-09-01', status: 'Geldi' },
+  ],
+  opticalEvaluations: [
+    { id: 'test-opt-s1', examId: 'e1', studentId: 's1', subjectId: 'math', net: 10 },
+    { id: 'test-opt-s3', examId: 'e1', studentId: 's3', subjectId: 'math', net: 8 },
   ],
   // Kendi `classId` alanı olanlar: süzgeç kaydın alanıdır, öğrencinin sınıfı değil.
   contracts: [
@@ -65,7 +77,11 @@ const classOf = (studentId: unknown) =>
 function extraRows() {
   const names = [...VIA_STUDENT, 'contracts', 'enrollmentHistory'] as const
   return names.flatMap((collection) =>
-    dataset(collection).map((data) => ({ collection, id: String(data.id), data })),
+    dataset(collection).map((data) => ({
+      collection,
+      id: String(recordKey(collection, data)),
+      data,
+    })),
   )
 }
 
@@ -106,7 +122,7 @@ describe('classId süzgeci: öğrenciye bağlı koleksiyonlar', () => {
   const expected = (collection: CollectionName, ...classIds: string[]) =>
     dataset(collection)
       .filter((row) => classIds.includes(String(classOf(row.studentId))))
-      .map((row) => String(row.id))
+      .map((row) => String(recordKey(collection, row)))
       .sort()
 
   for (const collection of VIA_STUDENT) {

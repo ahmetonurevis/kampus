@@ -106,6 +106,9 @@ const CLASS_VIA_STUDENT: ReadonlySet<CollectionName> = new Set<CollectionName>([
   'transportAssignments',
   'clubMemberships',
   'socialAchievements',
+  'clubAttendance',
+  'opticalEvaluations',
+  'videoProgress',
 ])
 
 /**

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { QUESTION_ANSWER_LIMIT } from '@kampus/school-core/lib/questions.ts'
 import { useWithdrawQuestion } from '@kampus/react-shared/use-question-commands.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { Modal } from '@/components/Modal.tsx'
@@ -156,15 +157,12 @@ function AnswerSection({
     return (
       <SummarySection title="Ek yanıt">
         <p role="status" className="text-sm text-muted-foreground">
-          Bu soruya en fazla 10 yanıt yazılabilir; sınıra ulaşıldı.
+          Bu soruya en fazla {QUESTION_ANSWER_LIMIT} yanıt yazılabilir; sınıra ulaşıldı.
         </p>
       </SummarySection>
     )
-  return (
-    <SummarySection title={row.state === 'answered' ? 'Ek yanıt yaz' : 'Soruyu yanıtla'}>
-      <QuestionAnswerForm key={row.id} row={row} reload={reload} />
-    </SummarySection>
-  )
+  // Bölüm başlığı formun kendisindedir: başlık, etiket ve düğme formun tuttuğu kayıttan türer.
+  return <QuestionAnswerForm key={row.id} row={row} reload={reload} />
 }
 
 /** Yanıtsız soruyu geri çekme: onay sorulur; `If-Match` okunan sürümdür (DOM-ILT-091). */

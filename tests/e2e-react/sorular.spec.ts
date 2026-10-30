@@ -17,7 +17,9 @@ const STUDENT_TABLE = 'Sorularım'
 const TEACHER_TABLE = 'Gelen sorular'
 const TEXT = 'Üçgenin alanını bulurken yüksekliği hangi kenara göre alacağız?'
 const ANSWER = 'Yüksekliği seçtiğiniz tabana dik olacak biçimde alın.'
-const REASSIGNED = 'Bu sınıfın dersine artık girmediğiniz için ek yanıt yazamazsınız.'
+const REASSIGNED = 'Bu derse artık girmediğiniz için ek yanıt yazamazsınız.'
+/** Sunucunun 403 iletisi; ekranda toast olarak görünmemelidir (not formun yerine geçer). */
+const REASSIGNED_SERVER = 'Bu sınıfın dersine artık girmediğiniz için ek yanıt yazamazsınız.'
 
 type Make = (options: TenantOptions) => Promise<Tenant>
 
@@ -295,7 +297,7 @@ test.describe('soru gönderme ve yanıtlama', () => {
     await expect(detail.getByRole('listitem').filter({ hasText: 'Ek yanıt' })).toHaveCount(1)
   })
 
-  test('dersten alınan öğretmen ek yanıt yazamaz; Türkçe mesaj görünür, yanıt kaydedilmez (DOM-ILT-092)', async ({
+  test('dersten alınan öğretmen ek yanıt yazamaz; form kapanır, not görünür ve yazılan metin korunur, yanıt kaydedilmez (DOM-ILT-092)', async ({
     page,
     loginAs,
     api,
@@ -326,10 +328,16 @@ test.describe('soru gönderme ve yanıtlama', () => {
 
     await form.getByLabel('Ek yanıt').fill('Bu ek yanıt kaydedilmemeli.')
     await form.getByRole('button', { name: 'Ek yanıtı gönder' }).click()
-    await expect(toast(page, REASSIGNED)).toBeVisible()
-    // Hata tek yerde görünür: alan altında ikinci bir kopyası yoktur; yazılan metin korunur.
-    await expect(page.getByText(REASSIGNED)).toHaveCount(1)
-    await expect(form.getByLabel('Ek yanıt')).toHaveValue('Bu ek yanıt kaydedilmemeli.')
+    // Form yerine sakin bir not çıkar; toast tekrar etmez, yazılan metin salt okunur kalır.
+    const panel = page.getByRole('dialog', { name: 'Soru ayrıntısı' })
+    await expect(panel.getByText(REASSIGNED)).toBeVisible()
+    await expect(page.getByRole('form', { name: 'Ek yanıt yaz' })).toHaveCount(0)
+    await expect(toast(page, REASSIGNED_SERVER)).toHaveCount(0)
+    await expect(toast(page, /./)).toHaveCount(0)
+    const kept = panel.getByLabel('Yazdığınız metin (gönderilmedi)')
+    await expect(kept).toHaveValue('Bu ek yanıt kaydedilmemeli.')
+    await expect(kept).not.toBeEditable()
+    await expect(panel.getByRole('button', { name: 'Ek yanıtı gönder' })).toHaveCount(0)
     expect((await questionById(teacher, id)).record.followUps ?? []).toHaveLength(0)
   })
 

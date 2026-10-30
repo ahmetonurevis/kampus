@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
+import { dateLabel, dayKey, INVOICE_STATUS_LABELS, money } from '@kampus/school-core/lib/format.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -8,29 +8,35 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { useCoreAll, useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
+import {
+  useCoreAll,
+  useCoreCounts,
+  useCoreFetchAll,
+  useCoreList,
+} from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
-import { isSearchActive, sortableColumns } from '@/lib/collection-list.ts'
+import { sortableColumns } from '@/lib/collection-list.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import {
   financeLookups,
   INVOICE_LIST,
-  INVOICE_STATUSES,
+  INVOICE_STATUS_OPTIONS,
   invoiceCsvRow,
-  invoiceListPlan,
+  invoiceExportQuery,
+  invoiceListQuery,
   invoiceRow,
-  isInvoiceStatusSlug,
-  matchingStudentIds,
-  selectInvoicePage,
+  invoiceTotals,
+  isInvoiceStatusKey,
   type InvoiceRow,
 } from './finance-rows.ts'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 import { PaymentPanel } from './PaymentPanel.tsx'
+import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
 
 const INVOICE_URL_FILTERS = { status: 'durum' }
 const SORTABLE = sortableColumns(INVOICE_LIST)
@@ -38,16 +44,14 @@ const MOBILE_COLUMNS = ['installment', 'dueDate', 'amount', 'status']
 const CSV_NAME = 'finans-raporu'
 const ALL = 'all'
 const NONE: readonly never[] = []
-const STATUS_OPTIONS = Object.entries(INVOICE_STATUSES)
+const TOTALS_QUERY = { groupBy: 'status', sum: 'amount' } as const
 
 /**
  * Finans & Tahsilat (yönetici `/finans`, ön büro `/tahsilat-takip`; Vue `Finance.vue`): kurumun
- * taksitleri sunucu sayfalı; öğrenci araması, ödeme durumu filtresi, vade/tutar/taksit sıralaması,
- * satırdan taksit detayı ve CSV.
- * TODO(api-aggregate): Vue'daki toplam/tahsil edilen/kalan/gecikmiş kartları toplu uçla gelir
- * (şimdilik gösterilmez).
- * TODO(api-filter-invoice-status): durum filtresi sunucuda olmadığından durum seçilince filtrenin bütün
- * taksitleri çekilir (bkz. `invoiceListPlan`).
+ * taksitleri sunucu sayfalı; öğrenci adı/numarası/sınıf araması, ödeme durumu filtresi,
+ * öğrenci/vade/tutar/taksit sıralaması sunucuda uygulanır. Toplam kartları kurum geneli
+ * `counts?groupBy=status&sum=amount` yanıtından gelir (liste araması ve durumundan bağımsız).
+ * Öğrenci ve sınıf adları yalnız satırda gösterilir; ad eşlemesi için kendi okumalarıdır.
  */
 export function FinancePage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -62,36 +66,22 @@ export function FinancePage({ page }: { page: NavPage }) {
 
   const list = useListState('taksitler', { urlFilters: INVOICE_URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
-  const searching = isSearchActive(search)
-  // Arama öğrenci eşlemesine dayanır; öğrenciler gelmeden sorgu kurulmaz.
-  const canQuery = !searching || !lookupsPending
-  const studentIds = useMemo(
-    () => (searching ? matchingStudentIds(lookups, search) : null),
-    [searching, lookups, search],
+  const query = useMemo(() => invoiceListQuery(list.state, search), [list.state, search])
+  const active = useCoreList('invoices', query)
+  const totalsQuery = useCoreCounts('invoices', TOTALS_QUERY)
+  const totals = useMemo(
+    () => (totalsQuery.data ? invoiceTotals(totalsQuery.data) : null),
+    [totalsQuery.data],
   )
-  const plan = useMemo(() => invoiceListPlan(list.state, studentIds), [list.state, studentIds])
-  const pageQuery = useCoreList('invoices', plan.kind === 'server' ? plan.query : {}, {
-    enabled: canQuery && plan.kind === 'server',
-  })
-  const allQuery = useCoreAll('invoices', plan.kind === 'all' ? plan.query : {}, {
-    enabled: canQuery && plan.kind === 'all',
-  })
-  const active = plan.kind === 'all' ? allQuery : pageQuery
 
   const today = dayKey()
-  const view = useMemo(() => {
-    if (plan.kind === 'empty') return { rows: NONE, total: 0 }
-    if (plan.kind === 'server') {
-      const data = pageQuery.data
-      return {
-        rows: data?.rows.map((item) => invoiceRow(item, lookups, today)),
-        total: data?.total ?? 0,
-      }
-    }
-    if (!allQuery.data) return { rows: undefined, total: 0 }
-    const rows = allQuery.data.map((item) => invoiceRow(item, lookups, today))
-    return selectInvoicePage(rows, list.state, plan.status)
-  }, [plan, pageQuery.data, allQuery.data, lookups, today, list.state])
+  const view = useMemo(
+    () => ({
+      rows: active.data?.rows.map((item) => invoiceRow(item, lookups, today)),
+      total: active.data?.total ?? 0,
+    }),
+    [active.data, lookups, today],
+  )
 
   const panel = useDetailPanel('detay')
   const openInvoice = panel.open
@@ -101,7 +91,7 @@ export function FinancePage({ page }: { page: NavPage }) {
   const csv = useCsvExport()
 
   const status = list.state.filters.status
-  const statusSlug = isInvoiceStatusSlug(status) ? status : ''
+  const statusKey = isInvoiceStatusKey(status) ? status : ''
   const setStatus = (value: string) =>
     list.dispatch({ type: 'filter', key: 'status', value: value === ALL ? '' : value })
 
@@ -169,14 +159,12 @@ export function FinancePage({ page }: { page: NavPage }) {
   function download() {
     const csvColumns = columns.filter((column) => column.key !== ACTIONS_KEY)
     void csv.download(CSV_NAME, csvColumns, async () => {
-      if (plan.kind === 'empty') return []
-      const rows = (await fetchAll(plan.query)).map((item) => invoiceRow(item, lookups, today))
-      const filtered = plan.kind === 'all' ? rows.filter((row) => row.status === plan.status) : rows
-      return filtered.map(invoiceCsvRow)
+      const items = await fetchAll(invoiceExportQuery(list.state, search))
+      return items.map((item) => invoiceCsvRow(invoiceRow(item, lookups, today)))
     })
   }
 
-  const loading = lookupsPending || (plan.kind !== 'empty' && active.isPending)
+  const loading = lookupsPending || active.isPending
   const error = active.error ?? lookupsError
   return (
     <>
@@ -195,6 +183,28 @@ export function FinancePage({ page }: { page: NavPage }) {
           </Button>
         }
       />
+      {totalsQuery.error ? (
+        <LookupError error={totalsQuery.error} onRetry={() => void totalsQuery.refetch()} />
+      ) : null}
+      {totals ? (
+        <StatGrid
+          label="Kurum geneli ödeme toplamları"
+          items={[
+            {
+              label: 'Toplam eğitim bedeli',
+              value: money(totals.total),
+              note: 'Tüm ödeme planları',
+            },
+            { label: 'Tahsil edilen', value: money(totals.paid) },
+            {
+              label: 'Kalan bakiye',
+              value: money(totals.remaining),
+              note: 'Gelecek ve gecikmiş taksitler',
+            },
+            { label: 'Gecikmiş tutar', value: money(totals.overdue) },
+          ]}
+        />
+      ) : null}
       <section
         aria-labelledby="taksit-tablosu"
         className="panel overflow-hidden rounded-card border bg-surface"
@@ -232,19 +242,19 @@ export function FinancePage({ page }: { page: NavPage }) {
             ) : undefined
           }
           onRowClick={(row) => openInvoice(row.id)}
-          externalActive={statusSlug !== ''}
-          externalLabel={statusSlug ? `Ödeme durumu: ${INVOICE_STATUSES[statusSlug]}` : ''}
+          externalActive={statusKey !== ''}
+          externalLabel={statusKey ? `Ödeme durumu: ${INVOICE_STATUS_LABELS[statusKey]}` : ''}
           onReset={() => setStatus(ALL)}
           toolbar={
             <NativeSelect
               aria-label="Ödeme durumu"
-              value={statusSlug || ALL}
+              value={statusKey || ALL}
               onChange={(event) => setStatus(event.target.value)}
               className="min-h-9 text-sm"
             >
               <NativeSelectOption value={ALL}>Tüm durumlar</NativeSelectOption>
-              {STATUS_OPTIONS.map(([slug, label]) => (
-                <NativeSelectOption key={slug} value={slug}>
+              {INVOICE_STATUS_OPTIONS.map(({ key, label }) => (
+                <NativeSelectOption key={key} value={key}>
                   {label}
                 </NativeSelectOption>
               ))}

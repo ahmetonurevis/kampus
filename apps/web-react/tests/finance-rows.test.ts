@@ -4,14 +4,13 @@ import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   financeLookups,
-  INVOICE_STATUSES,
+  INVOICE_STATUS_OPTIONS,
   invoiceCsvRow,
-  invoiceListPlan,
+  invoiceExportQuery,
+  invoiceListQuery,
   invoiceRow,
-  isInvoiceStatusSlug,
-  matchingStudentIds,
-  searchKey,
-  selectInvoicePage,
+  invoiceTotals,
+  isInvoiceStatusKey,
 } from '../src/pages/finance/finance-rows.ts'
 import { initialListState, type ListState } from '../src/lib/list-state.ts'
 
@@ -67,80 +66,88 @@ test('öğrencisi bulunamayan taksit kırılmaz, yer tutucu gösterir', () => {
   assert.equal(row.studentNumber, '—')
 })
 
-test('durum kısa adları core etiketlerine eşlenir; bilinmeyen ad reddedilir', () => {
-  assert.deepEqual(Object.values(INVOICE_STATUSES), ['Ödendi', 'Gecikmiş', 'Yaklaşan'])
-  assert.equal(isInvoiceStatusSlug('gecikmis'), true)
-  assert.equal(isInvoiceStatusSlug('Gecikmiş'), false)
-  assert.equal(isInvoiceStatusSlug('toString'), false)
-  assert.equal(isInvoiceStatusSlug(undefined), false)
+test('durum seçenekleri core etiketleridir; bilinmeyen anahtar reddedilir', () => {
+  assert.deepEqual(
+    INVOICE_STATUS_OPTIONS.map((option) => option.label),
+    ['Ödendi', 'Gecikmiş', 'Yaklaşan'],
+  )
+  assert.equal(isInvoiceStatusKey('gecikmis'), true)
+  assert.equal(isInvoiceStatusKey('Gecikmiş'), false)
+  assert.equal(isInvoiceStatusKey('toString'), false)
+  assert.equal(isInvoiceStatusKey(undefined), false)
 })
 
-test('arama Türkçe ve aksan duyarsız; ad, okul numarası ve sınıfla eşleşir', () => {
-  const { lookups } = setup()
-  assert.equal(searchKey('İPEK Işık'), 'ipek isik')
-  assert.deepEqual(matchingStudentIds(lookups, 'deniz yilmaz'), ['s1'])
-  assert.deepEqual(matchingStudentIds(lookups, ' 2026001 '), ['s1'])
-  const classIds = matchingStudentIds(lookups, '7-A')
-  assert.ok(classIds.length > 1)
-  assert.ok(classIds.every((id) => lookups.students.get(id)?.classId === 'c1'))
-  assert.deepEqual(matchingStudentIds(lookups, 'zzzz-yok'), [])
-})
-
-test('plan: varsayılan sunucu sayfası, vadeye göre ve kimlikle kararlı sıra', () => {
-  assert.deepEqual(invoiceListPlan(state({ page: 3 }), null), {
-    kind: 'server',
-    query: { sort: ['dueDate', 'id'], page: 3, pageSize: 8 },
+test('sorgu: varsayılan sunucu sayfası, vadeye göre ve kimlikle kararlı sıra', () => {
+  assert.deepEqual(invoiceListQuery(state({ page: 3 }), ''), {
+    sort: ['dueDate', 'id'],
+    page: 3,
+    pageSize: 8,
   })
 })
 
-test('plan: kullanıcı sıralaması önce gelir; sıralanamayan sütun gönderilmez', () => {
-  const sorted = invoiceListPlan(state({ sortKey: 'amount', sortDirection: -1 }), null)
-  assert.equal(sorted.kind, 'server')
-  if (sorted.kind === 'server') assert.deepEqual(sorted.query.sort, ['-amount', 'dueDate', 'id'])
-  const unsortable = invoiceListPlan(state({ sortKey: 'studentName' }), null)
-  if (unsortable.kind === 'server') assert.deepEqual(unsortable.query.sort, ['dueDate', 'id'])
+test('sorgu: kullanıcı sıralaması önce gelir; öğrenci adı sunucuda sıralanır', () => {
+  assert.deepEqual(invoiceListQuery(state({ sortKey: 'amount', sortDirection: -1 }), '').sort, [
+    '-amount',
+    'dueDate',
+    'id',
+  ])
+  assert.deepEqual(invoiceListQuery(state({ sortKey: 'studentName' }), '').sort, [
+    'studentName',
+    'dueDate',
+    'id',
+  ])
+  // Durum türetilmiş sütundur; sıralama alanı olarak gönderilmez.
+  assert.deepEqual(invoiceListQuery(state({ sortKey: 'status' }), '').sort, ['dueDate', 'id'])
 })
 
-test('plan: arama öğrenci kimliği filtresine çevrilir, `q` gönderilmez; eşleşme yoksa istek yok', () => {
-  const plan = invoiceListPlan(state({ query: 'Deniz' }), ['s1', 's7'])
-  assert.equal(plan.kind, 'server')
-  if (plan.kind === 'server') {
-    assert.deepEqual(plan.query.filters, { studentId: ['s1', 's7'] })
-    assert.equal(plan.query.q, undefined)
-  }
-  assert.deepEqual(invoiceListPlan(state({ query: 'zzz' }), []), { kind: 'empty' })
+test('sorgu: arama doğrudan q olur; öğrenci kimliği süzgeci kurulmaz', () => {
+  const query = invoiceListQuery(state({ query: 'Deniz' }), 'Deniz')
+  assert.equal(query.q, 'Deniz')
+  assert.equal(query.filters, undefined)
+  // Gecikmeli arama metni durumdaki yazıdan önceliklidir; kısa arama gönderilmez.
+  assert.equal(invoiceListQuery(state({ query: 'Deniz' }), '').q, undefined)
+  assert.equal(invoiceListQuery(state(), 'D').q, undefined)
 })
 
-test('plan: durum seçilince filtrenin bütün taksitleri sayfasız çekilir', () => {
-  const plan = invoiceListPlan(state({ filters: { status: 'odendi' }, page: 2 }), ['s1'])
-  assert.deepEqual(plan, {
-    kind: 'all',
-    query: { sort: ['dueDate', 'id'], filters: { studentId: ['s1'] } },
-    status: 'Ödendi',
+test('sorgu: durum anahtarı core etiketiyle status süzgecine gider; bozuk değer yok sayılır', () => {
+  const query = invoiceListQuery(state({ filters: { status: 'gecikmis' }, page: 2 }), '')
+  assert.deepEqual(query.filters, { status: 'Gecikmiş' })
+  assert.equal(query.page, 2)
+  assert.equal(invoiceListQuery(state({ filters: { status: 'hepsi' } }), '').filters, undefined)
+})
+
+test('CSV sorgusu sayfasızdır; arama, durum ve sıralamayı taşır', () => {
+  assert.deepEqual(
+    invoiceExportQuery(
+      state({ query: 'Deniz', filters: { status: 'odendi' }, sortKey: 'studentName' }),
+      'Deniz',
+    ),
+    {
+      q: 'Deniz',
+      sort: ['studentName', 'dueDate', 'id'],
+      filters: { status: 'Ödendi' },
+    },
+  )
+})
+
+test('toplam kartları sayım yanıtından kuruş olarak hesaplanır', () => {
+  const totals = invoiceTotals({
+    total: 10,
+    sum: 100_000,
+    groups: [
+      { value: 'Gecikmiş', count: 2, sum: 20_000 },
+      { value: 'Yaklaşan', count: 5, sum: 50_000 },
+      { value: 'Ödendi', count: 3, sum: 30_000 },
+    ],
   })
-  // Bozuk URL değeri filtre sayılmaz.
-  assert.equal(invoiceListPlan(state({ filters: { status: 'hepsi' } }), null).kind, 'server')
-})
-
-test('durum sayfası süzer, sırayı korur ve sayfalar; toplam süzülmüş sayıdır', () => {
-  const { lookups, invoices } = setup()
-  const rows = invoices
-    .filter((item) => ['s1', 's2'].includes(item.record.studentId))
-    .map((item) => invoiceRow(item, lookups, TODAY))
-
-  const first = selectInvoicePage(rows, { page: 1, pageSize: 4 }, 'Yaklaşan')
-  assert.equal(first.total, 8)
-  assert.equal(first.rows.length, 4)
-  assert.ok(first.all.every((row) => row.status === 'Yaklaşan'))
-  assert.deepEqual(
-    first.rows.map((row) => row.id),
-    first.all.slice(0, 4).map((row) => row.id),
-  )
-  const second = selectInvoicePage(rows, { page: 2, pageSize: 4 }, 'Yaklaşan')
-  assert.deepEqual(
-    second.rows.map((row) => row.id),
-    first.all.slice(4).map((row) => row.id),
-  )
+  assert.deepEqual(totals, { total: 100_000, paid: 30_000, remaining: 70_000, overdue: 20_000 })
+  // Kayıt yoksa sıfır; grup eksikse o kart sıfırdır.
+  assert.deepEqual(invoiceTotals({ total: 0, groups: [] }), {
+    total: 0,
+    paid: 0,
+    remaining: 0,
+    overdue: 0,
+  })
 })
 
 test('CSV satırı tutarı TL, vadeyi okunur tarih olarak yazar', () => {

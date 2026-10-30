@@ -25,8 +25,10 @@ import {
 import { planPositions } from '../db/positions.ts'
 import {
   loadRecords,
+  loadRecordsByIds,
   lockInstitution,
   writeRecords,
+  type RecordFilter,
   type RecordWrite,
   type StoredRecord,
   type WrittenRecord,
@@ -69,6 +71,17 @@ export interface AuditEntity {
   id: string
 }
 
+/**
+ * Koleksiyonun kısmi yüklemesi: yalnız verilen kimlikler (`ids`) ya da süzgece uyan kayıtlar
+ * (`match`, `loadRecords` süzgeçleri; hepsi sağlanmalı). Kısmi yüklenen koleksiyonda fark yalnız
+ * yüklenen kayıtlar üzerinden hesaplanır: yüklenmeyen kayıt silinmiş veya arşivlenmiş sayılmaz,
+ * ona hiç yazılmaz. Yeni kayıt koleksiyonun sonuna eklenir; yüklenen kayıtların sırası
+ * değiştirilemez (koleksiyonun bütününü görmeyen işlem sıra planlayamaz, değiştirirse 500).
+ * İşlem yalnız gördüğü kayıtlarla doğru karar verebilmelidir: tekillik denetimi gibi kurallar
+ * için süzgeç, kuralın baktığı bütün kayıtları kapsamalıdır (ör. aynı öğrencinin yazışmaları).
+ */
+export type LoadScope = { ids: readonly string[] } | { match: readonly RecordFilter[] }
+
 /** İşlemin State'i değiştiren saf adımı (core işlemi). */
 export type OperationRun<R> = (state: State, tools: OperationTools) => R
 
@@ -91,6 +104,12 @@ interface OperationBase<R> {
    * Core `audit` her zaman boş verilir ve yazılmaz; listede olması gerekmez.
    */
   collections: readonly CollectionName[]
+  /**
+   * Koleksiyon başına kısmi yükleme (`LoadScope`); verilmeyen koleksiyon bütünüyle yüklenir.
+   * Anahtar `collections` listesinde olmalıdır (değilse 500). Büyük koleksiyonlarda (yazışma
+   * mesajları) işlemin yalnız gereken kayıtları kurum kilidi altında yüklemesi içindir.
+   */
+  loadScope?: Partial<Record<CollectionName, LoadScope>>
   /** İstemcinin okuduğu sürümler (gövdedeki `version`); tutmazsa 409, kayıt yoksa 404. */
   expectedVersions?: readonly ExpectedVersion[]
   /**
@@ -127,6 +146,8 @@ export type OperationRequest<R> = OperationBase<R> &
 export interface OperationResult<R> {
   result: R
   changes: WrittenRecord[]
+  /** Koleksiyon başına yüklenen kayıt sayısı (ölçüm ve log; kişisel veri yok). */
+  loaded: Partial<Record<CollectionName, number>>
 }
 
 function programmingError(what: string, cause?: unknown): AppError {
@@ -260,6 +281,7 @@ function difference(
   collections: readonly CollectionName[],
   before: ReadonlyMap<CollectionName, ReadonlyMap<string, StoredRecord>>,
   after: Record<string, unknown>,
+  partial: ReadonlySet<CollectionName> = new Set(),
 ): Difference {
   const writes: RecordWrite[] = []
   const fields = new Set<string>()
@@ -276,18 +298,27 @@ function difference(
       seen.add(id)
       return { id, data, old: previous.get(id) }
     })
-    const positions = planPositions(entries.map((entry) => entry.old?.position ?? null))
+    const isPartial = partial.has(collection)
+    if (isPartial) assertOrderKept(collection, entries)
+    // Kısmi yükte sıra planlanmaz: yeni kayıt sona eklenir (`writeRecords`), eski yerinde kalır.
+    const positions = isPartial
+      ? entries.map((entry) => entry.old?.position ?? null)
+      : planPositions(entries.map((entry) => entry.old?.position ?? null))
     entries.forEach(({ id, data, old }, index) => {
-      const position = positions[index] ?? 0
+      const position = positions[index] ?? null
       if (!old) {
-        writes.push({ kind: 'insert', collection, id, data, position })
+        writes.push(
+          position === null
+            ? { kind: 'insert', collection, id, data }
+            : { kind: 'insert', collection, id, data, position },
+        )
         for (const key of Object.keys(data)) fields.add(key)
         return
       }
-      const moved = position !== old.position
+      const moved = position !== null && position !== old.position
       const changed = changedFields(old.data, data)
       if (changed.length === 0) {
-        if (moved)
+        if (moved && position !== null)
           writes.push({ kind: 'move', collection, id, position, expectedVersion: old.version })
         return
       }
@@ -297,16 +328,41 @@ function difference(
         id,
         data,
         expectedVersion: old.version,
-        ...(moved ? { position } : {}),
+        ...(moved && position !== null ? { position } : {}),
       })
       for (const key of changed) fields.add(key)
     })
-    // Core'un listeden çıkardığı kayıt silinmez, arşivlenir (veritabani.md §7).
+    // Core'un listeden çıkardığı kayıt silinmez, arşivlenir (veritabani.md §7). `previous` yalnız
+    // yüklenen kayıtlardır: kısmi yükte görülmeyen kayıt burada hiç yoktur, arşivlenmez.
     for (const [id, old] of previous)
       if (!seen.has(id))
         writes.push({ kind: 'archive', collection, id, expectedVersion: old.version })
   }
   return { writes, fields }
+}
+
+/**
+ * Kısmi yüklenen koleksiyonda yüklenen kayıtların göreli sırası korunmalıdır; yeni kayıtlar
+ * yalnız sona eklenebilir. Koleksiyonun bütününü görmeyen işlem başa/araya ekleyemez.
+ */
+function assertOrderKept(
+  collection: CollectionName,
+  entries: readonly { old: StoredRecord | undefined }[],
+): void {
+  let last: { position: number; id: string } | null = null
+  let appended = false
+  for (const { old } of entries) {
+    if (!old) {
+      appended = true
+      continue
+    }
+    const out =
+      appended ||
+      (last !== null &&
+        (old.position < last.position || (old.position === last.position && old.id < last.id)))
+    if (out) throw programmingError(`${collection}: partial load cannot reorder records`)
+    last = { position: old.position, id: old.id }
+  }
 }
 
 /**
@@ -330,11 +386,14 @@ async function applyOperation<R>(
 ): Promise<OperationResult<R>> {
   // Yüklemeden önce: aynı kurumun eşzamanlı işlemi bu görüntüyü bayatlatamaz.
   await lockInstitution(tx, ctx.institutionId)
-  const loaded = await loadRecords(tx, ctx.institutionId, collections)
+  const { rows, partial } = await loadOperationRecords(tx, ctx, collections, request.loadScope)
   const before = new Map<CollectionName, Map<string, StoredRecord>>(
     collections.map((collection) => [collection, new Map()]),
   )
-  for (const row of loaded) before.get(row.collection)?.set(row.id, row)
+  for (const row of rows) before.get(row.collection)?.set(row.id, row)
+  const loaded = Object.fromEntries(
+    collections.map((collection) => [collection, before.get(collection)?.size ?? 0]),
+  )
 
   for (const expected of request.expectedVersions ?? []) {
     const row = before.get(expected.collection)?.get(expected.id)
@@ -380,7 +439,7 @@ async function applyOperation<R>(
     throw programmingError(`operation changed scalar state: ${scalarChanges.join(', ')}`)
   }
 
-  const { writes, fields } = difference(collections, before, target)
+  const { writes, fields } = difference(collections, before, target, partial)
   const changes = await writeRecords(tx, ctx.institutionId, writes, ctx.now)
   const first = changes[0]
   if (first) {
@@ -406,8 +465,40 @@ async function applyOperation<R>(
     archived: changes.filter((change) => change.kind === 'archive').length,
     moved: changes.filter((change) => change.kind === 'move').length,
     restored: changes.filter((change) => change.kind === 'restore').length,
+    loaded,
   })
-  return { result, changes }
+  return { result, changes, loaded }
+}
+
+/**
+ * İşlemin kayıtları: kısmi yükleme verilmeyen koleksiyonlar tek sorguda, kısmi olanlar kendi
+ * süzgeciyle (kimlikle birincil anahtardan, süzgeçle `loadRecords`). Hepsi aynı transaction'da,
+ * kurum kilidinden sonra.
+ */
+async function loadOperationRecords(
+  tx: Database,
+  ctx: ServiceContext,
+  collections: readonly CollectionName[],
+  loadScope: OperationBase<unknown>['loadScope'],
+): Promise<{ rows: StoredRecord[]; partial: Set<CollectionName> }> {
+  const scopes = Object.entries(loadScope ?? {})
+  const partial = new Set<CollectionName>()
+  for (const [collection] of scopes) {
+    if (!isRecordCollection(collection) || !collections.includes(collection))
+      throw programmingError(`load scope for unlisted collection: ${collection}`)
+    partial.add(collection)
+  }
+  const full = collections.filter((collection) => !partial.has(collection))
+  const rows = await loadRecords(tx, ctx.institutionId, full)
+  for (const [collection, scope] of scopes) {
+    if (!scope || !isRecordCollection(collection)) continue
+    const part =
+      'ids' in scope
+        ? await loadRecordsByIds(tx, ctx.institutionId, collection, scope.ids)
+        : await loadRecords(tx, ctx.institutionId, [collection], { match: scope.match })
+    rows.push(...part)
+  }
+  return { rows, partial }
 }
 
 function prepare<R>(ctx: ServiceContext, request: OperationRequest<R>) {

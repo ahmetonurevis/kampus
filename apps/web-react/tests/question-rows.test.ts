@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
+import { responseDueAt } from '@kampus/school-core/lib/communication.ts'
+import { sortRows } from '../src/lib/list-query.ts'
 import {
+  DUE_SOON_MINUTES,
   OVERDUE_LABEL,
   durationText,
+  matchesSla,
   orderQuestions,
   questionLookups,
   questionRow,
@@ -185,5 +189,78 @@ test('örnek veri: bütün seed soruları satıra dönüşür ve durumu core hes
   assert.equal(
     rows.filter((row) => row.state === 'answered').length,
     seed.questions.filter((record) => record.answeredAt).length,
+  )
+})
+
+test('DOM-ILT-013: hedefe kalan dakika yalnız bekleyen soruda hesaplanır; aşılınca negatiftir', () => {
+  const due = Date.parse(responseDueAt(base.createdAt))
+  const at = (offsetMinutes: number) => new Date(due + offsetMinutes * 60_000).toISOString()
+  const remaining = (offsetMinutes: number) =>
+    questionRow(wrap(base), lookups, at(offsetMinutes)).remainingMinutes
+  assert.equal(remaining(-90), 90)
+  assert.equal(remaining(0), 0)
+  assert.equal(remaining(1), -1)
+  const answered = questionRow(
+    wrap({ ...base, answeredAt: '2026-10-14T12:20:00.000Z', answer: 'Yanıt.' }),
+    lookups,
+    at(-90),
+  )
+  assert.equal(answered.remainingMinutes, null)
+  const withdrawn = questionRow(
+    wrap({ ...base, withdrawnAt: '2026-10-14T09:30:00.000Z' }),
+    lookups,
+    at(-90),
+  )
+  assert.equal(withdrawn.remainingMinutes, null)
+})
+
+test('DOM-ILT-013: yanıt süresi süzgeci aşılmış ve yaklaşan soruları ayırır, yanıtlananı hiçbirine saymaz', () => {
+  const due = Date.parse(responseDueAt(base.createdAt))
+  const row = (offsetMinutes: number, extra: Partial<Question> = {}) =>
+    questionRow(
+      wrap({ ...base, ...extra }),
+      lookups,
+      new Date(due + offsetMinutes * 60_000).toISOString(),
+    )
+  const farAway = row(-(DUE_SOON_MINUTES + 1))
+  const edge = row(-DUE_SOON_MINUTES)
+  const justBefore = row(0)
+  const overdue = row(1)
+  const answered = row(1, { answeredAt: '2026-10-14T12:20:00.000Z', answer: 'Yanıt.' })
+
+  assert.deepEqual(
+    [farAway, edge, justBefore, overdue, answered].map((item) => matchesSla(item, 'all')),
+    [true, true, true, true, true],
+  )
+  assert.deepEqual(
+    [farAway, edge, justBefore, overdue, answered].map((item) => matchesSla(item, 'overdue')),
+    [false, false, false, true, false],
+  )
+  // Hedefe tam 4 saat kalan ve hedef anındaki soru yaklaşandır; aşılmış ve uzak olan değildir.
+  assert.deepEqual(
+    [farAway, edge, justBefore, overdue, answered].map((item) => matchesSla(item, 'soon')),
+    [false, true, true, false, false],
+  )
+})
+
+test('DOM-ILT-093: kalan dakika sayısal sıralanır; acil soru önce gelir, yanıtlananlar sona düşer', () => {
+  const due = Date.parse(responseDueAt(base.createdAt))
+  const now = new Date(due - 120 * 60_000).toISOString()
+  const make = (id: string, createdAt: string, extra: Partial<Question> = {}) =>
+    questionRow(wrap({ ...base, id, createdAt, ...extra }), lookups, now)
+  const rows = [
+    make('answered', '2026-10-14T09:00:00.000Z', { answeredAt: now, answer: 'Yanıt.' }),
+    make('late', '2026-10-13T09:00:00.000Z'),
+    make('fresh', '2026-10-14T09:00:00.000Z'),
+  ]
+  // "Yanıt süresi" sütunu `remainingMinutes` anahtarıyla DataTable'ın sayısal sıralamasından geçer.
+  const sorted = sortRows(rows, 'remainingMinutes', 1)
+  assert.deepEqual(
+    sorted.map((item) => item.id),
+    ['late', 'fresh', 'answered'],
+  )
+  assert.deepEqual(
+    sortRows(rows, 'remainingMinutes', -1).map((item) => item.id),
+    ['fresh', 'late', 'answered'],
   )
 })

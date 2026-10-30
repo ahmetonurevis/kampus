@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -6,6 +6,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
@@ -18,11 +19,14 @@ import { TableGate } from './LearningParts.tsx'
 import { QuestionPanel, type QuestionAudience } from './QuestionPanel.tsx'
 import {
   OVERDUE_LABEL,
+  SLA_FILTERS,
+  matchesSla,
   orderQuestions,
   questionLookups,
   questionRow,
   questionStamp,
   type QuestionRow,
+  type SlaFilter,
 } from './question-rows.ts'
 
 const NONE: readonly never[] = []
@@ -32,6 +36,8 @@ const STATE_TONES = {
   withdrawn: 'gray',
 } as const satisfies Record<QuestionRow['state'], BadgeTone>
 
+const SLA_LABELS = Object.fromEntries(SLA_FILTERS.map((item) => [item.value, item.label]))
+
 const STUDENT_MOBILE = ['subject', 'status']
 const TEACHER_MOBILE = ['student', 'status']
 const STUDENT_SEARCH = ['title', 'text', 'subject', 'teacher', 'topic', 'answer']
@@ -40,8 +46,9 @@ const TEACHER_SEARCH = ['title', 'text', 'subject', 'student', 'topic']
 /**
  * Öğretmenime Sor (öğrenci) ve Soru Kuyruğu (öğretmen), Vue `Learning.vue`: kapsamı sunucu
  * uygular (öğrenci kendi, öğretmen kendisine atanan soruları okur; DOM-ILT-093). Durum ve yanıt
- * süresi kayıttan hesaplanır, saklanmaz. Liste küçüktür: arama, durum/ders filtresi ve sayfalama
- * tarayıcıdadır ve liste durumu korunur. Satırdan sağ panelde ayrıntı açılır (`?soru=<kimlik>`);
+ * süresi kayıttan hesaplanır, saklanmaz. Liste küçüktür: arama, durum/ders filtresi, yanıt süresi
+ * süzgeci ("Süresi aşılmış", "Süresi yaklaşan") ve sayfalama tarayıcıdadır; liste durumu korunur
+ * ve süzgeç değişince sayfa başa döner (`filterKey`). Satırdan sağ panelde ayrıntı açılır (`?soru=<kimlik>`);
  * öğrenci "Yeni soru"yu sağ panelde açar (`?soru-form=yeni`).
  */
 export function QuestionsPage({ page, audience }: { page: NavPage; audience: QuestionAudience }) {
@@ -54,6 +61,7 @@ export function QuestionsPage({ page, audience }: { page: NavPage; audience: Que
   const panel = useDetailPanel('soru')
   const form = useDetailPanel('soru-form')
   const openQuestion = panel.open
+  const [sla, setSla] = useState<SlaFilter>('all')
 
   const lookups = useMemo(
     () =>
@@ -70,6 +78,8 @@ export function QuestionsPage({ page, audience }: { page: NavPage; audience: Que
         : undefined,
     [questions.data, lookups, now, audience],
   )
+
+  const visibleRows = useMemo(() => rows?.filter((row) => matchesSla(row, sla)), [rows, sla])
 
   const columns = useMemo<DataColumn<QuestionRow>[]>(() => {
     const title: DataColumn<QuestionRow> = {
@@ -128,7 +138,8 @@ export function QuestionsPage({ page, audience }: { page: NavPage; audience: Que
       { key: 'subject', label: 'Ders' },
       status,
       {
-        key: 'response',
+        // Anahtar sıralama değeridir (kalan dakika); metin `cell`'den gelir.
+        key: 'remainingMinutes',
         label: 'Yanıt süresi',
         cell: (row) =>
           row.overdue ? (
@@ -170,13 +181,35 @@ export function QuestionsPage({ page, audience }: { page: NavPage; audience: Que
         <TableGate error={error} onRetry={retry} loading={rows === undefined}>
           <DataTable
             listKey={student ? 'sorularim' : 'soru-kuyrugu'}
-            rows={rows ?? NONE}
+            rows={visibleRows ?? NONE}
             columns={columns}
             mobileColumns={student ? STUDENT_MOBILE : TEACHER_MOBILE}
             caption={tableName}
             searchKeys={student ? STUDENT_SEARCH : TEACHER_SEARCH}
             empty={student ? 'Henüz soru sormadınız.' : 'Size atanmış soru yok.'}
             onRowClick={(row) => openQuestion(row.id)}
+            filterKey={sla}
+            externalActive={sla !== 'all'}
+            externalLabel={`Yanıt süresi: ${SLA_LABELS[sla]}`}
+            onReset={() => setSla('all')}
+            toolbar={
+              <NativeSelect
+                aria-label="Yanıt süresi durumu"
+                value={sla}
+                onChange={(event) =>
+                  setSla(
+                    SLA_FILTERS.find((item) => item.value === event.target.value)?.value ?? 'all',
+                  )
+                }
+                className="min-h-9 text-sm"
+              >
+                {SLA_FILTERS.map((item) => (
+                  <NativeSelectOption key={item.value} value={item.value}>
+                    {item.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            }
           />
         </TableGate>
       </TableSection>

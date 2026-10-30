@@ -19,6 +19,17 @@ export type QuestionLookups = {
 
 export const OVERDUE_LABEL = 'Süre aşıldı'
 
+/** "Süresi yaklaşan": hedefe en çok bu kadar dakika kalmış, henüz aşılmamış soru (Vue 4 saat). */
+export const DUE_SOON_MINUTES = 4 * 60
+
+/** Yanıt süresi süzgeci (Vue "Süresi aşılmış sorular" ve "Süresi yaklaşan sorular" ön ayarları). */
+export const SLA_FILTERS = [
+  { value: 'all', label: 'Tüm süreler' },
+  { value: 'overdue', label: 'Süresi aşılmış' },
+  { value: 'soon', label: 'Süresi yaklaşan' },
+] as const
+export type SlaFilter = (typeof SLA_FILTERS)[number]['value']
+
 /** Yanıtı yazanın rolü ekranda yalnız "Öğretmen" olarak görünür; kişi adı gösterilmez. */
 const ANSWER_AUTHOR = 'Öğretmen'
 
@@ -56,6 +67,12 @@ export type QuestionRow = {
   answers: AnswerRow[]
   /** Yanıt süresi metni: yanıtlandıysa geçen süre, bekliyorsa hedef ya da "Süre aşıldı". */
   response: string
+  /**
+   * Yanıt bekleyen soruda hedefe kalan tam dakika (aşıldıysa negatif); yanıtlanan ve geri çekilen
+   * soruda `null`. "Yanıt süresi" sütununun sayısal sıralama anahtarıdır: en acil soru önce gelir,
+   * `null`'lar sona düşer.
+   */
+  remainingMinutes: number | null
   overdue: boolean
   /** Öğrenci yalnız yanıtsız soruyu geri çeker (DOM-ILT-091). */
   canWithdraw: boolean
@@ -151,11 +168,30 @@ export function questionRow(
       timing.dueAt,
       timing.overdue,
     ),
+    remainingMinutes:
+      state === 'pending'
+        ? Math.floor((Date.parse(timing.dueAt) - Date.parse(now)) / 60_000)
+        : null,
     overdue: timing.overdue,
     canWithdraw: state === 'pending',
     canAnswer: state !== 'withdrawn' && !limitReached,
     answerLimitReached: state !== 'withdrawn' && limitReached,
   }
+}
+
+/** Yanıt süresi süzgecine uyar mı: aşılmış ya da hedefe `DUE_SOON_MINUTES` kala (aşılmamış). */
+export function matchesSla(
+  row: Pick<QuestionRow, 'overdue' | 'remainingMinutes'>,
+  filter: SlaFilter,
+): boolean {
+  if (filter === 'overdue') return row.overdue
+  if (filter === 'soon')
+    return (
+      row.remainingMinutes !== null &&
+      row.remainingMinutes >= 0 &&
+      row.remainingMinutes <= DUE_SOON_MINUTES
+    )
+  return true
 }
 
 /** Ders adı ve öğretmen adı eşlemeleri; kapsamlı koleksiyon satırlarından. */

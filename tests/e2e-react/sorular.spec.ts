@@ -474,6 +474,85 @@ test.describe('soru gönderme ve yanıtlama', () => {
   })
 })
 
+test.describe('yanıt süresi süzgeci ve sıralaması', () => {
+  test('öğretmen kuyruğu "Süresi aşılmış" ve "Süresi yaklaşan" süzgeciyle daralır; yanıt süresi sayısal sıralanır (DOM-ILT-013)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const overdueTitle = 'E2E süresi aşılmış soru'
+    const freshTitle = 'E2E yeni soru'
+    const school = await tenant({
+      roles: ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+      records: [
+        {
+          collection: 'questions',
+          data: {
+            id: 'e2e-q-overdue',
+            studentId: 's1',
+            teacherId: 't1',
+            subjectId: 'math',
+            title: overdueTitle,
+            text: TEXT,
+            // On gün önce açıldı: bir iş günü hedefi hafta sonundan bağımsız aşılmıştır.
+            createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+            answeredAt: null,
+            answer: '',
+            fileName: null,
+          },
+        },
+      ],
+    })
+    // Yeni soru: hedefi en az bir iş günü (9 saat) uzaktadır, yaklaşan sayılmaz.
+    await ask(await api(school.user('ogrenci')), freshTitle)
+
+    await loginAs(school.user('ogretmen'))
+    await page.goto('/ogretmen/sorular')
+    await expect(titleButton(page, overdueTitle)).toBeVisible()
+    await expect(titleButton(page, freshTitle)).toBeVisible()
+    const filter = page.getByLabel('Yanıt süresi durumu')
+    await expect(filter.locator('option')).toHaveText([
+      'Tüm süreler',
+      'Süresi aşılmış',
+      'Süresi yaklaşan',
+    ])
+
+    await filter.selectOption({ label: 'Süresi aşılmış' })
+    await expect(titleButton(page, overdueTitle)).toBeVisible()
+    await expect(titleButton(page, freshTitle)).toHaveCount(0)
+    await expect(withTitle(page, TEACHER_TABLE, overdueTitle)).toContainText('Süre aşıldı')
+
+    await filter.selectOption({ label: 'Süresi yaklaşan' })
+    await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
+    await expect(titleButton(page, overdueTitle)).toHaveCount(0)
+    await expect(titleButton(page, freshTitle)).toHaveCount(0)
+
+    await filter.selectOption({ label: 'Tüm süreler' })
+    await expect(titleButton(page, overdueTitle)).toBeVisible()
+    await expect(titleButton(page, freshTitle)).toBeVisible()
+
+    // Sütun metne değil kalan süreye göre sıralanır: aşılmış (negatif) önce, yeni soru sonra.
+    // Metin sırasıyla "Hedef …" "Süre aşıldı"dan önce gelirdi.
+    const header = page
+      .getByRole('table', { name: TEACHER_TABLE })
+      .getByRole('columnheader', { name: /Yanıt süresi/ })
+    const order = async () =>
+      (
+        await page
+          .getByRole('table', { name: TEACHER_TABLE })
+          .getByRole('button', { name: /sorusunu aç$/ })
+          .allTextContents()
+      ).map((text) => text.trim())
+    await header.getByRole('button').click()
+    await expect(header).toHaveAttribute('aria-sort', 'ascending')
+    await expect.poll(order).toEqual([overdueTitle, freshTitle])
+    await header.getByRole('button').click()
+    await expect(header).toHaveAttribute('aria-sort', 'descending')
+    await expect.poll(order).toEqual([freshTitle, overdueTitle])
+  })
+})
+
 test.describe('soru formu doğrulaması', () => {
   test('boş veya çok uzun metinde alan hatası çıkar, toast çıkmaz ve istek atılmaz', async ({
     page,

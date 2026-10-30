@@ -47,6 +47,8 @@ export const MIGRATED = new Set([
   'ogrenci/materyaller',
   'ogrenci/videolar',
   'ogrenci/soru-coz',
+  'ogrenci/soru-sor',
+  'ogretmen/sorular',
   'ogrenci/mesajlar',
   'ogretmen/mesajlar',
   'yonetici/mesajlar',

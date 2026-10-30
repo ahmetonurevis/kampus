@@ -8,6 +8,9 @@ import { useApiCommand } from './use-api-command.ts'
 // Öğretmenime Sor yazma komutları (`POST /questions`, `POST /questions/:id/answers`,
 // `PATCH /questions/:id`; core `question.ask` `question.answer` `question.withdraw`,
 // DOM-ILT-090…092). Okuma genel koleksiyon kancalarındadır (DOM-ILT-093).
+// Soru gönderme ve yanıt `exclusive`: yollu `issues` (pasif öğrenci `subjectId`, kazanım `topic`,
+// yanıt sınırı `text`) yalnız form alanında görünür, toast çıkmaz; yolsuz hata (ör. 403
+// `question_teacher_reassigned`) tek toast olur. Geri çekme formsuzdur: hata tek toast.
 
 type JsonBody<TOperation extends keyof operations> = NonNullable<
   operations[TOperation]['requestBody']
@@ -90,6 +93,7 @@ export function useAskQuestion(options: CommandOptions = {}) {
     request: askQuestionRequest,
     invalidates: questions,
     messages: QUESTION_MESSAGES,
+    exclusive: true,
     ...(options.onSuccess ? { onSuccess: options.onSuccess } : {}),
   })
 }
@@ -101,6 +105,7 @@ export function useAnswerQuestion(options: CommandOptions = {}) {
     version: (input: AnswerQuestionInput) => input.version,
     invalidates: questions,
     messages: QUESTION_MESSAGES,
+    exclusive: true,
     ...(options.onSuccess ? { onSuccess: options.onSuccess } : {}),
   })
 }

@@ -1,3 +1,5 @@
+import type { ResolvedTheme } from '../model/experience.ts'
+
 export const palettes = {
   light: {
     background: '#EFF3FB',
@@ -51,6 +53,7 @@ export const palettes = {
     amberSoft: '#493923',
     scrim: '#000000AA',
   },
-}
+} satisfies Record<ResolvedTheme, Record<string, string>>
+export type Palette = Record<keyof (typeof palettes)['light'], string>
 export const spaces = { page: 20, card: 16, gap: 12, section: 24, radius: 16 }
 export const shape = { field: 12, button: 12, card: 16, sheet: 24, pill: 999 }

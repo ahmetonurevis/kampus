@@ -4,7 +4,7 @@ import Conversations from './Conversations.jsx'
 import { FormScrollView } from '../ui/KeyboardLayout.jsx'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Switch } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.jsx'
+import { useSchool } from '../store/SchoolProvider.tsx'
 import {
   availablePages,
   context,
@@ -16,8 +16,8 @@ import {
   teacherId,
   gradeAverage,
   absentCount,
-} from '../model/school.js'
-import { createActions } from '../model/operations.js'
+} from '../model/school.ts'
+import { createActions } from '../model/operations.ts'
 import { dateLabel, average } from '@kampus/school-core/lib/format.ts'
 import Attendance from './Attendance.jsx'
 import SchoolList from './SchoolLists.jsx'
@@ -41,7 +41,7 @@ import {
   useColors,
 } from '../ui/components.jsx'
 import OperationForm from '../ui/OperationForm.jsx'
-import { useMinute } from '../ui/use-minute.js'
+import { useMinute } from '../ui/use-minute.ts'
 import RecordCard from '../ui/RecordCard.jsx'
 import appConfig from '../../app.json'
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Platform } from 'react-native'
-import { useSchool, recordError } from '../store/SchoolProvider.jsx'
-import { createDocument, shareFile, saveFile, printFile } from '../lib/files.js'
+import { useSchool, recordError } from '../store/SchoolProvider.tsx'
+import { createDocument, shareFile, saveFile, printFile } from '../lib/files.ts'
 import { Button, Sheet, T } from './components.jsx'
 import { ListRow } from './SchoolLayout.jsx'
 

@@ -154,7 +154,7 @@ Finansta kampüs/sınıf/yöntem/vade/tahsilat tarihi/tutar; CRM'de program/kamp
 
 Platform geçişi (ADR 0001, 0002) durumu:
 
-- `packages/school-core` TypeScript'e taşındı.
+- `packages/school-core` TypeScript'e taşındı. Mobilde TypeScript altyapısı (`apps/mobile/tsconfig.json`, `typecheck`) ve UI dışı katman (`model`, `lib`, `store`) taşındı; ekranlar sıradadır.
 - `apps/api` iskeleti, Better Auth kimliği, kurum kapsamı, `records` deposu, school-core işlem çalıştırıcısı ve iki örnek kurumun kayıt tohumu hazır; `packages/api-client` ve `packages/react-shared` hazır. Koleksiyon ve iş akışı uçları, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır.
 - `apps/web-react` iskeleti hazır: Vue ile aynı tokenlar ve ölçülü cam (yalnız sidebar, navbar, menü, diyalog ve toast), beş rolün korumalı kabuğu, kategorili sidebar, avatar menüsündeki hesap sayfaları, kapalı modül yönlendirmesi, 404/hata sınırı, giriş formu, 3B giriş sahnesi ve ortak liste bileşenleri (DataTable, ListFilters, CollectionList, CSV). Ekranlar henüz yer tutucudur; oturum geliştirme sahtesidir. Ekran kontrolü: `node scripts/ekran-kontrol.ts` (`.claude/skills/ekran-kontrol/SKILL.md`).
 - Statik yayın (`pnpm run deploy`) yalnız Vue derlemesini (`apps/web/dist`) yayımlar. Aşağıdaki bölüm Vue demosunu anlatır.

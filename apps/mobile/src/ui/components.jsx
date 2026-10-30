@@ -11,10 +11,10 @@ import {
   StyleSheet,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { icons } from './icons.js'
+import { icons } from './icons.ts'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { useSchool } from '../store/SchoolProvider.jsx'
-import { palettes, spaces, shape } from './theme.js'
+import { useSchool } from '../store/SchoolProvider.tsx'
+import { palettes, spaces, shape } from './theme.ts'
 import { initials, dateLabel } from '@kampus/school-core/lib/format.ts'
 
 export const useColors = () => palettes[useSchool().resolvedTheme]

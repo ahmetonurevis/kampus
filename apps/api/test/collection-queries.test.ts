@@ -699,6 +699,102 @@ describe('koleksiyon sorguları: durum, sayım, bağlı alan', () => {
         .map((row) => String(row.id))
       assert.deepEqual(await ids(branch, listed('grades', q('Deniz'))), turkish)
     })
+
+    /*
+     * Yönetici ve ön büro ASCII aranan metinde SQL aday süzgecini kullanır (`SearchMatch`).
+     * Aday yalnız daraltır: ayıklanan alan, başka kurum ve arşivlenmiş bağlı kayıt eşleşmez.
+     */
+    test('DOM-YTK-020: SQL aday süzgecinde iç not ve rehberlik notu eşleşme üretmez', async () => {
+      const { id, adminCookie } = await institution()
+      const base = SEED.guidanceCases[0]
+      assert.ok(base)
+      await insertMissingRecords(
+        db,
+        id,
+        [
+          {
+            collection: 'guidanceCases',
+            id: 'test-g-ascii',
+            data: {
+              ...base,
+              id: 'test-g-ascii',
+              sharedNote: 'paylasilan zeytin dali',
+              internalNote: 'test-ic-not-kestane',
+              notes: [{ text: 'test-not-findik', at: '2026-10-05T09:00:00.000Z' }],
+            },
+          },
+        ],
+        FIXED_NOW,
+      )
+      const countsOf = async (cookie: string, text: string) =>
+        (
+          await get(`/api/v1/collections/guidanceCases/counts?groupBy=status&${q(text)}`, cookie)
+        ).json().meta.total
+      for (const text of ['test-ic-not-kestane', 'kestane', 'test-not-findik']) {
+        assert.deepEqual(await ids(adminCookie, listed('guidanceCases', q(text))), [], text)
+        assert.equal(await countsOf(adminCookie, text), 0, text)
+      }
+      assert.deepEqual(await ids(adminCookie, listed('guidanceCases', q('Zeytin Dalı'))), [
+        'test-g-ascii',
+      ])
+      // Rehberlik görevli öğretmen iç notu görür; aynı metinle bulur (metin gerçekten kayıtta).
+      const counselor = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+      assert.deepEqual(await ids(counselor, listed('guidanceCases', q('test-ic-not-kestane'))), [
+        'test-g-ascii',
+      ])
+      assert.equal(await countsOf(counselor, 'kestane'), 1)
+      // Kişisel kapsamlı rollerde de: görevsiz öğretmen ve veli iç notla bulamaz.
+      const teacher = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }])
+      const parent = await memberCookie(id, 'veli', [{ kind: 'child', recordId: 's1' }])
+      for (const cookie of [teacher, parent]) {
+        assert.ok((await ids(cookie, listed('guidanceCases', q('zeytin dali')))).length <= 1)
+        assert.deepEqual(await ids(cookie, listed('guidanceCases', q('kestane'))), [])
+        assert.equal(await countsOf(cookie, 'test-not-findik'), 0)
+      }
+      assert.deepEqual(await ids(parent, listed('guidanceCases', q('zeytin dali'))), [
+        'test-g-ascii',
+      ])
+    })
+
+    test('DOM-YTK-011: SQL aday süzgecinde başka kurum ve arşivlenmiş bağlı kayıt eşleşmez', async () => {
+      const first = await institution()
+      const second = await institution()
+      await writeRecords(
+        db,
+        second.id,
+        [
+          {
+            kind: 'update',
+            collection: 'students',
+            id: 's11',
+            expectedVersion: 1,
+            data: { ...SEED.students.find((item) => item.id === 's11'), name: 'Test Zeytinoglu' },
+          },
+        ],
+        FIXED_NOW,
+      )
+      for (const collection of ['students', 'invoices', 'grades']) {
+        assert.deepEqual(
+          await ids(first.adminCookie, listed(collection, q('zeytinoglu'))),
+          [],
+          collection,
+        )
+        assert.ok((await ids(second.adminCookie, listed(collection, q('zeytinoglu')))).length > 0)
+      }
+      // Arşivlenmiş öğrencinin adı ve numarası taksitlerinde bağlı eşleşme üretmez.
+      assert.deepEqual(
+        await ids(first.adminCookie, listed('invoices', q('2026011'))),
+        invoicesOf('s11'),
+      )
+      await writeRecords(
+        db,
+        first.id,
+        [{ kind: 'archive', collection: 'students', id: 's11', expectedVersion: 1 }],
+        FIXED_NOW,
+      )
+      for (const text of ['2026011', 'Duru Aksoy'])
+        assert.deepEqual(await ids(first.adminCookie, listed('invoices', q(text))), [], text)
+    })
   })
 
   describe('SQL sayfalaması (koleksiyonun tamamını okuyan rol)', () => {

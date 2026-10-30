@@ -9,6 +9,7 @@ import {
   loadRecords,
   type InvoiceStatusLabel,
   type RecordFilter,
+  type SearchMatch,
   type StoredRecord,
 } from '../db/records.ts'
 import { NotFoundError, ValidationError } from '../errors.ts'
@@ -212,7 +213,7 @@ function searchable(value: unknown): string[] {
   return []
 }
 
-function matchesSearch(record: RecordData, needle: string): boolean {
+export function matchesSearch(record: RecordData, needle: string): boolean {
   return Object.values(record).some((value) =>
     searchable(value).some((text) => searchKey(text).includes(needle)),
   )
@@ -325,6 +326,22 @@ function sorted(
     .map((entry) => entry.item)
 }
 
+/**
+ * SQL arama adayının (`SearchMatch`, `db/records.ts`) bellekteki sonucun üst kümesi olduğu
+ * aranan metinler: yazdırılabilir ASCII, JSON'da kaçışlanan `"` ve `\\` yok. Diğer metinler
+ * yalnız bellekte aranır. Ön süzgeç her rolde kullanılır ve yalnız adayları daraltır: rolün
+ * ayıklanan alanları aday metinden çıkarılır, kapsam ve son karar yine core'undur (ayıklanmış
+ * kayıtta `matches`). Ayıklama alan çıkarır veya daraltır, eklemez; bu yüzden ham kayıttaki
+ * aday bellekteki sonucu kapsar.
+ */
+export const SQL_SAFE_NEEDLE = /^[\x20-\x21\x23-\x5b\x5d-\x7e]+$/
+
+/**
+ * Bağlı adı eşleşen kimliklerin SQL'e taşınan en fazla sayısı; aşılırsa (ör. `q=9` bütün
+ * sınıfları tutar) aday süzgeci kullanılmaz, arama bellekte yapılır.
+ */
+const MAX_SQL_SEARCH_KEYS = 1000
+
 /** Kapsamdan ve süzgeçlerden geçen satırlar; karar ayıklanmış kayıtta verilir. */
 interface ReadResult {
   collection: CollectionName
@@ -371,7 +388,7 @@ async function readRows(
   if (filters === null) return null
   const needle = query.q ? searchKey(query.q) : null
   const narrowed = filters.length > 0 || needle !== null
-  // Arama bağlı alanlarda da çalışır; bağlı alanı olan koleksiyonda ham kayıtta arama adayı yok.
+  // Arama bağlı alanlarda da çalışır (`collection-joins.ts`).
   const joinedSearch = needle !== null && joinable.length > 0
   const wanted = new Set<JoinedField>([
     ...(options.joined ?? []),
@@ -380,21 +397,43 @@ async function readRows(
   const joiner = wanted.size > 0 ? await loadJoiner(ctx, scope, [...wanted]) : null
   const passes = (record: RecordData) =>
     filters.every((filter) => matchesRecordFilter(record, filter))
+  // Bağlı adlar az sayıda farklı değerdir; arama biçimi değer başına bir kez hesaplanır.
+  const keys = new Map<string, string>()
+  const keyOf = (value: string) => {
+    let key = keys.get(value)
+    if (key === undefined) keys.set(value, (key = searchKey(value)))
+    return key
+  }
+  const joinedMatch = (joined: JoinedValues) =>
+    needle !== null && Object.values(joined).some((value) => keyOf(value).includes(needle))
   const matches = (item: VisibleRow) =>
     passes(item.record) &&
     (needle === null ||
       matchesSearch(item.record, needle) ||
-      (joinedSearch &&
-        Object.values(item.joined ?? {}).some((value) => searchKey(value).includes(needle))))
+      (joinedSearch && joinedMatch(item.joined ?? {})))
   const prefilter = scopePrefilter(scope, collection)
+  const search = sqlSearch()
+  function sqlSearch(): SearchMatch | undefined {
+    if (needle === null || !SQL_SAFE_NEEDLE.test(needle)) return undefined
+    const keys =
+      joinedSearch && joiner ? joiner.relatedKeys((value) => keyOf(value).includes(needle)) : []
+    if (keys.reduce((total, key) => total + key.values.length, 0) > MAX_SQL_SEARCH_KEYS)
+      return undefined
+    return { needle, exclude: scope.hiddenFields(collection), keys }
+  }
   const loaded = await loadRecords(ctx.db, ctx.institutionId, [collection], {
     includeArchived: query.archived !== undefined,
     match: prefilter ? [prefilter, ...filters] : filters,
+    ...(search ? { search } : {}),
   })
   // Ayıklama alan çıkarır veya daraltır, eklemez: ham kayıtta eşleşmeyen ayıklanmışta da
   // eşleşmez. Ham eşleşme yalnız adaydır; karar ayıklanmış kayıtta verilir.
+  // Bağlı kimlik alanları ayıklanmaz; ham kayıttaki bağlı eşleşme de yalnız adaydır.
   const candidate = (record: RecordData) =>
-    passes(record) && (needle === null || joinedSearch || matchesSearch(record, needle))
+    passes(record) &&
+    (needle === null ||
+      matchesSearch(record, needle) ||
+      (joinedSearch && joiner !== null && joinedMatch(joiner.values(record))))
   const rows = loaded.filter(
     (row) =>
       (query.archived !== 'only' || row.archivedAt !== null) &&
@@ -416,7 +455,7 @@ function visibleRows({
   const items = rows.map((row): VisibleRow => {
     const record = scope.redact(collection, row.data)
     // Bağlı kaydın kimliği de ayıklanmış kayıttan okunur.
-    return joiner ? { row, record, joined: joiner(record) } : { row, record }
+    return joiner ? { row, record, joined: joiner.values(record) } : { row, record }
   })
   return narrowed ? items.filter(matches) : items
 }

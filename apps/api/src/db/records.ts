@@ -109,11 +109,54 @@ export type RecordFilter = FieldMatch | ActiveMatch | DayRangeMatch | InvoiceSta
 export const DAY_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
 export const INSTANT_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z$'
 
+/**
+ * Arama aday süzgeci (`q`, yalnız SQL); gerekli koşuldur, karar bellekte ayıklanmış kayıtta
+ * `searchKey` ile verilir. Kaydın gizli alanları çıkarılmış JSON metni şöyle katlanır: NFD,
+ * yalnız ASCII harflerde küçük harf (`collate "C"`, veritabanı yerel ayarından bağımsız),
+ * `ı` → `i`, ASCII dışı her karakter silinir. Aranan metin yazdırılabilir ASCII ve `"`/`\\`
+ * içermiyorsa (`collection-reads.ts` `SQL_SAFE_NEEDLE`) bu katlama bellekte eşleşen her kaydı
+ * bulur: `searchKey`'in her karakterden ürettiği ASCII kısım SQL'dekiyle aynıdır, silinen ASCII
+ * dışı karakterler yalnız fazladan aday üretir; JSON kaçışları (`\\n`, `\\"`) aranan metinde
+ * olmayan karakterlerin yerine geçer. Sayının JSON metni yalnız üstel biçimde (`1e+21`,
+ * `1e-7`) JS'den ayrılır; aranan metin sayı karakterlerinden oluşuyorsa üstel aralıktaki sayısı
+ * olan kayıt da adaydır. Bağlı adı eşleşen kayıtlar kimlik alanıyla aday olur.
+ */
+export interface SearchMatch {
+  needle: string
+  /** Aramaya girmeyen (ayıklanan) üst düzey alanlar. */
+  exclude: readonly string[]
+  /** Bağlı adı eşleşen kayıtların kimlikleri, kimlik alanı başına. */
+  keys: readonly FieldMatch[]
+}
+
 export interface LoadOptions {
   /** Arşivlenmişler varsayılan olarak dışarıda kalır. */
   includeArchived?: boolean
   /** Hepsi sağlanmalı (`and`); boş değer listesinde yalnız alanı dizi olan satırlar kalır. */
   match?: readonly RecordFilter[]
+  search?: SearchMatch
+}
+
+/** JS'nin üstel yazdığı sayılar (`String(n)`); JSON metninde ondalık yazılırlar. */
+const EXPONENT_NUMBER =
+  '$.* ? (@.type() == "number" && (@.abs() >= 1e21 || (@ != 0 && @.abs() < 1e-6)))'
+/** ASCII dışı karakterler (PostgreSQL düzenli ifadesi). */
+const NON_ASCII = '[^\\x01-\\x7f]'
+const NUMBER_TEXT = /^[0-9.e+-]+$/
+
+function searchMatch({ needle, exclude, keys }: SearchMatch): SQL {
+  const visible = exclude.reduce<SQL>(
+    (document, field) => sql`(${document} - ${field}::text)`,
+    sql`${records.data}`,
+  )
+  const folded = sql`regexp_replace(translate(lower(normalize(${visible}::text, NFD) collate "C"), 'ı', 'i'), ${NON_ASCII}::text, '', 'g')`
+  const parts = [sql`(strpos(${folded}, ${needle}::text) > 0)`]
+  if (NUMBER_TEXT.test(needle))
+    parts.push(sql`jsonb_path_exists(${visible}, ${EXPONENT_NUMBER}::jsonpath)`)
+  for (const key of keys)
+    if (key.values.length > 0)
+      parts.push(inArray(sql`(${records.data} ->> ${key.field}::text)`, [...key.values]))
+  return sql`(${sql.join(parts, sql` or `)})`
 }
 
 function fieldMatch({ field, values }: FieldMatch): SQL {
@@ -261,6 +304,7 @@ export async function loadRecords(
   ]
   if (!options.includeArchived) filters.push(isNull(records.archivedAt))
   for (const match of options.match ?? []) filters.push(recordFilter(match))
+  if (options.search) filters.push(searchMatch(options.search))
   const rows = await db
     .select()
     .from(records)

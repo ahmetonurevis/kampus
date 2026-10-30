@@ -27,7 +27,10 @@ export function isInvoiceStatusSlug(value: unknown): value is InvoiceStatusSlug 
   return typeof value === 'string' && Object.hasOwn(INVOICE_STATUSES, value)
 }
 
-/** Sunucunun taksitte sıralayabildiği sütunlar; öğrenci adı ve durum türetilmiş alandır. */
+/**
+ * Sunucunun taksitte sıralayabildiği sütunlar; öğrenci adı ve durum türetilmiş alandır.
+ * TODO(api-search-joined): öğrenci adı/sınıf sütunu sıralaması ilişkili alan sıralaması ister.
+ */
 export const INVOICE_LIST = {
   sortFields: { installment: 'installment', dueDate: 'dueDate', amount: 'amount' },
   // Vue gibi vadeye göre; eşitlikte kimlik (sayfalar arası kararlı sıra).
@@ -119,7 +122,7 @@ type AllQuery = Omit<CollectionQuery, 'page' | 'pageSize'>
 /**
  * Listenin nasıl okunacağı. Durum türetilmiş olduğundan (`paidAt` + vade) sunucu süzemez:
  * durum seçiliyse filtrenin bütün taksitleri çekilir, süzme/sıralama/sayfa burada yapılır.
- * TODO(api-invoice-status): sunucu durum filtresi verince her durum `server` olur.
+ * TODO(api-filter-invoice-status): sunucu durum filtresi verince her durum `server` olur.
  */
 export type InvoiceListPlan =
   | { kind: 'empty' }

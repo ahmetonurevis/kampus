@@ -44,8 +44,9 @@ const STATUS_OPTIONS = Object.entries(INVOICE_STATUSES)
  * Finans & Tahsilat (yönetici `/finans`, ön büro `/tahsilat-takip`; Vue `Finance.vue`): kurumun
  * taksitleri sunucu sayfalı; öğrenci araması, ödeme durumu filtresi, vade/tutar/taksit sıralaması,
  * satırdan taksit detayı ve CSV.
- * TODO(api-aggregate): Vue'daki toplam/tahsil edilen/kalan/gecikmiş kartları toplu uçla gelir.
- * TODO(api-invoice-status): durum filtresi sunucuda olmadığından durum seçilince filtrenin bütün
+ * TODO(api-aggregate): Vue'daki toplam/tahsil edilen/kalan/gecikmiş kartları toplu uçla gelir
+ * (şimdilik gösterilmez).
+ * TODO(api-filter-invoice-status): durum filtresi sunucuda olmadığından durum seçilince filtrenin bütün
  * taksitleri çekilir (bkz. `invoiceListPlan`).
  */
 export function FinancePage({ page }: { page: NavPage }) {

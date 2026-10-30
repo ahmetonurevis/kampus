@@ -82,7 +82,7 @@ export const DEMONSTRATION_RULES = {
  * bölümle ölçülür; genel eşik (3 kanıt, 2 gün) tek oturumla hiç karşılanmaz. Oturumun her
  * tamamlanmış bölüm sonucu bir kanıttır ve farklı gün aranmaz. Başarı payı (2/3, tek bölümde
  * bölümün başarılı olması) ve okuma/dinlemede en az 10 madde genel kuraldaki gibidir.
- * Patron kararı, 30 Ekim 2026; kullanıcı onayı bekliyor.
+ * Patron kararı, 30 Ekim 2026; kullanıcı onayladı.
  */
 export const PLACEMENT_DEMONSTRATION_RULES = { minEvidence: 1, minDays: 1 } as const
 

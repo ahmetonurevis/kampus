@@ -1,7 +1,7 @@
 # ADR 0004 · Faz 1 içerik, beceri ve CEFR modüllerinin veri modeli
 
-- Durum: Önerildi (2026-10-30) — kullanıcı onayı bekliyor
-- Onaylayacak: Oğuzhan Demirci
+- Durum: Kabul edildi (2026-10-30, Oğuzhan Demirci); "Açık sorular" bölümünde önerilen seçenekler kabul edildi
+- Onaylayan: Oğuzhan Demirci
 - Ayrıntılandırdığı: ADR 0001 karar 6 (kademeli normalleştirme); dosyalar için ADR 0003
 
 ## Bağlam
@@ -114,7 +114,7 @@ Bu modüllerin `records`'a sığıp sığmadığını belirleyen ihtiyaçlar (ve
 - **Hesaplanan puan ve öneriyi saklamak:** okuma hızlı, ama anahtar/rubrik düzeltmesinde eski değerlerin sessizce yanlış kalması CLAUDE.md "hesaplanan değer saklanmaz" kuralına aykırı. Gereken yerde yeniden üretilebilir görünüm kullanılır.
 - **Ayrı içerik mikro hizmeti veya belge veritabanı:** ikinci veri deposu ve dağıtık transaction gerektirir; ADR 0001 tek PostgreSQL kararıyla çelişir. Elendi.
 
-## Açık sorular
+## Açık sorular (önerilen seçeneklerle kapandı)
 
 1. **Kampüs kütüphanesinden kopyalanan öğe hangi durumda başlar?**
    - a) Değiştirilmemiş kopya doğrudan `Yayında`; düzenlenince yeni sürüm onaya girer **(önerilen; platform içeriği zaten gözden geçirilmiş)**

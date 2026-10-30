@@ -81,7 +81,7 @@ export function useListState(
     element.current?.scrollTo({ top: state.scroll.top, left: state.scroll.left })
   }, [state.scroll])
 
-  const scrollRef = useCallback((node: HTMLElement | null) => {
+  const attachScrollRegion = useCallback((node: HTMLElement | null) => {
     element.current = node
     node?.scrollTo({ top: position.current.top, left: position.current.left })
   }, [])
@@ -97,5 +97,5 @@ export function useListState(
     [memoryKey],
   )
 
-  return { state, dispatch, scrollProps: { ref: scrollRef, onScroll } } as const
+  return { state, dispatch, attachScrollRegion, onScroll } as const
 }

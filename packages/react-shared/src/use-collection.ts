@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { keepPreviousData, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { useCallback } from 'react'
 
 import type { ApiError } from '@kampus/api-client/errors.ts'
@@ -61,6 +61,33 @@ export function useCollectionAll<TRecord>(
     queryFn: ({ signal }) => fetchAllCollectionPages<TRecord>(client, collection, query, signal),
     enabled: institutionId !== null && (options.enabled ?? true),
   })
+}
+
+/** `useCollectionsAll` girdisi: koleksiyon adı ve isteğe bağlı süzgeç. */
+export interface CollectionAllRequest {
+  collection: string
+  query?: Omit<CollectionQuery, 'page' | 'pageSize'>
+  enabled?: boolean
+}
+
+/**
+ * Değişken sayıda koleksiyonun bütün kayıtları (birden çok koleksiyondan kurulan ekran
+ * görünümü, ör. iş akışı sunumu). Anahtarlar `useCollectionAll` ile aynıdır; önbellek paylaşılır.
+ * Sonuç girdiyle aynı sıradadır.
+ */
+export function useCollectionsAll(
+  requests: readonly CollectionAllRequest[],
+): UseQueryResult<CollectionRow<unknown>[], ApiError>[] {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQueries({
+    queries: requests.map(({ collection, query = {}, enabled = true }) => ({
+      queryKey: institutionKey(institutionId, ...collectionQueryKey(collection, query), 'all'),
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        fetchAllCollectionPages<unknown>(client, collection, query, signal),
+      enabled: institutionId !== null && enabled,
+    })),
+  }) as UseQueryResult<CollectionRow<unknown>[], ApiError>[]
 }
 
 /**

@@ -263,3 +263,12 @@ export async function fetchCollectionItem<TRecord>(
 export function isModuleDisabledError(error: unknown): boolean {
   return isApiError(error) && error.status === 403 && error.code === 'module_disabled'
 }
+
+/**
+ * Yardımcı koleksiyonun okunamaması (403 rol/modül, 404 kurum türünde yok): birden çok
+ * koleksiyondan kurulan görünümde o koleksiyon boş sayılır. Ağ ve 5xx hataları bu kapsamda
+ * değildir; onlar kullanıcıya gösterilir.
+ */
+export function isUnreadableCollectionError(error: unknown): boolean {
+  return isApiError(error) && (error.status === 403 || error.status === 404)
+}

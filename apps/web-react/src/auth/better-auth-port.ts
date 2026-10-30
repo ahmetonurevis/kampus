@@ -1,6 +1,11 @@
 // `AuthPort`'un Better Auth uygulaması. İstemci dışarıdan verilir; testte sahte istemciyle çalışır.
 import type { AuthPort, LoginInput, SignInResult } from './auth-port.ts'
-import { SIGN_IN_MESSAGES, signInFailure, type AuthClientError } from './sign-in-errors.ts'
+import {
+  retryAfterSeconds,
+  SIGN_IN_MESSAGES,
+  signInFailure,
+  type AuthClientError,
+} from './sign-in-errors.ts'
 
 /** `createAuthClient` (`better-auth/react`) çıktısının kullandığımız kısmı. */
 export interface SignInClient {
@@ -35,13 +40,25 @@ export function createBetterAuthPort({ client, refreshSession }: BetterAuthPortO
   return {
     async signIn({ email, password }: LoginInput): Promise<SignInResult> {
       let result: { error: AuthClientError | null }
+      // 429'da bekleme süresi yanıt başlığındadır (API `Retry-After`, Better Auth `X-Retry-After`).
+      let retryAfter: number | null = null
       try {
-        result = await client.signIn.email({ email, password })
+        result = await client.signIn.email({
+          email,
+          password,
+          fetchOptions: {
+            onError: ({ response }) => {
+              retryAfter = retryAfterSeconds(
+                response.headers.get('retry-after') ?? response.headers.get('x-retry-after'),
+              )
+            },
+          },
+        })
       } catch (error) {
         console.error('[auth] giriş isteği başarısız', error)
         return { ok: false, message: SIGN_IN_MESSAGES.unavailable }
       }
-      if (result.error) return signInFailure(result.error)
+      if (result.error) return signInFailure(result.error, retryAfter)
       // Yönlendirmeden önce oturum durumu güncellenir; aksi hâlde korumalı kabuk eski (boş)
       // durumu görüp girişe geri gönderir.
       await refreshSession()

@@ -22,3 +22,17 @@ export function authStateFrom(sessionStatus: SessionStatus, me: MeQueryState): A
   if (me.error) return { status: 'error', session: null }
   return { status: 'loading', session: null }
 }
+
+export type SettledStatus = Exclude<AuthState['status'], 'loading'>
+
+/**
+ * Açık oturum kullanıcı çıkış yapmadan kapandıysa (süre doldu, başka cihazdan sonlandırıldı,
+ * herhangi bir istek 401 aldı) kullanıcıya bildirilir. `loading` ara durumu yok sayılır.
+ */
+export function sessionExpired(
+  previous: SettledStatus | null,
+  next: AuthState['status'],
+  intentionalSignOut: boolean,
+): boolean {
+  return previous === 'signed-in' && next === 'signed-out' && !intentionalSignOut
+}

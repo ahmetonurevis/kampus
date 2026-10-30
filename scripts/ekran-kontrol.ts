@@ -142,14 +142,22 @@ async function signOut(page: Page): Promise<string[]> {
     .catch(() => {
       problems.push(`çıkıştan sonra ${target} girişe yönlenmedi (${page.url()})`)
     })
+  // Korumalı adres dönüş adresi olarak taşınmalı (yalnız göreli yol).
+  const back = new URL(page.url()).searchParams.get('donus')
+  if (target.startsWith('/') && target !== '/' && back !== target)
+    problems.push(`dönüş adresi beklenen ${target}, gelen ${back ?? 'yok'}`)
+  const stored = await storageKeys(page)
+  if (stored.length) problems.push(`çıkıştan sonra depoda: ${stored.join(', ')}`)
   return problems
 }
 
-// İzinli anahtarlar: tema tercihi ve react-router ScrollRestoration'ın yol → kaydırma konumu
-// eşlemesi (yalnız sayı; belirteç veya kişisel veri değil).
+// İzinli anahtarlar: tema tercihi, react-router ScrollRestoration'ın yol → kaydırma konumu
+// eşlemesi ve Better Auth'un sekmeler arası oturum sinyali (yalnız olay adı ve zaman). Hiçbiri
+// belirteç veya kişisel veri taşımaz.
 const ALLOWED_STORAGE_KEYS = [
   'localStorage:kampus-theme',
   'sessionStorage:react-router-scroll-positions',
+  'localStorage:better-auth.message',
 ]
 
 async function storageKeys(page: Page): Promise<string[]> {

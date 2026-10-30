@@ -5,6 +5,7 @@ import { useChildSelection } from '@/hooks/use-child-selection.ts'
 import { AppLayout } from '@/layout/AppLayout.tsx'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
 import { notify } from '@/lib/notify.ts'
+import { loginHref } from '@/lib/return-path.ts'
 import { resolveShell } from '@/lib/route-guard.ts'
 import { NotFoundContent, NotFoundPage } from './NotFoundPage.tsx'
 import { PlaceholderPage } from './PlaceholderPage.tsx'
@@ -58,7 +59,7 @@ export function RoleShell() {
     case 'not-found-outside':
       return <NotFoundPage />
     case 'login':
-      return <Navigate to="/giris" replace state={{ from: location.pathname }} />
+      return <Navigate to={loginHref(location.pathname, location.search)} replace />
     case 'redirect':
       return <Navigate to={decision.to} replace />
     case 'module-closed':

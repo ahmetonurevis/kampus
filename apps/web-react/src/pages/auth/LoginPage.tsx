@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Navigate, useLocation } from 'react-router'
+import { Navigate, useSearchParams } from 'react-router'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { Button } from '@/components/ui/button'
@@ -9,20 +9,12 @@ import { loginSchema, type LoginInput } from '@/auth/auth-port.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { notify } from '@/lib/notify.ts'
+import { RETURN_PARAM, returnPathFor } from '@/lib/return-path.ts'
 import { SessionPending } from '@/pages/shell/SessionPending.tsx'
 import { LoginStory } from './LoginStory.tsx'
 
 const YEAR = new Date().getFullYear()
 const fieldClass = 'h-[46px] rounded-field px-3.5 text-base md:text-base'
-
-function returnPath(state: unknown, role: string): string {
-  const from =
-    state && typeof state === 'object' && 'from' in state && typeof state.from === 'string'
-      ? state.from
-      : ''
-  // Yalnız aynı rolün kabuğuna geri dönülür; başka rolün adresi kendi dashboard'una gider.
-  return from.startsWith(`/${role}/`) ? from : `/${role}/dashboard`
-}
 
 const STATUS_MESSAGES = {
   'no-membership':
@@ -33,7 +25,7 @@ const STATUS_MESSAGES = {
 export function LoginPage() {
   const { status, session, signIn, retry } = useAuth()
   useDocumentTitle('Giriş')
-  const location = useLocation()
+  const [searchParams] = useSearchParams()
   const {
     register,
     handleSubmit,
@@ -45,7 +37,8 @@ export function LoginPage() {
   })
 
   // Giriş başarılı olunca yönlendirme oturum durumundan çıkar (yeni rol `/me`'den gelir).
-  if (session) return <Navigate to={returnPath(location.state, session.role)} replace />
+  if (session)
+    return <Navigate to={returnPathFor(searchParams.get(RETURN_PARAM), session.role)} replace />
   if (status === 'loading' && !isSubmitting) return <SessionPending />
 
   const onSubmit = handleSubmit(async (values) => {

@@ -418,6 +418,18 @@ function stateTarget(
   return target
 }
 
+/**
+ * Sürüm tutmadığında core hatası mı, 409 mu döner: yetki ve kapsam reddi (403, 404) sürümden
+ * önce gelir ki kayıt varlığı sızmasın; iş kuralı ve çakışma hataları bayat görüntüden
+ * kaynaklanabileceği için 409 `version_conflict` olur (api-tasarimi.md §5). Programlama hatası
+ * (500) gizlenmez.
+ */
+function staleOrDenied(error: Error, stale: boolean): Error {
+  if (!stale || !(error instanceof AppError)) return error
+  const denied = error.statusCode === 403 || error.statusCode === 404
+  return denied || error.statusCode >= 500 ? error : new ConflictError()
+}
+
 async function applyOperation<R>(
   tx: Database,
   ctx: ServiceContext,
@@ -436,16 +448,19 @@ async function applyOperation<R>(
     collections.map((collection) => [collection, before.get(collection)?.size ?? 0]),
   )
 
+  // Olmayan kayıt hemen 404'tür; sürüm farkı ise core yetki ve kapsam denetiminden sonra
+  // bildirilir: kapsam dışı kullanıcı yanlış sürümle 409 alsaydı kaydın varlığını öğrenirdi.
+  let stale = false
   for (const expected of request.expectedVersions ?? []) {
     const row = before.get(expected.collection)?.get(expected.id)
     if (!row) throw new NotFoundError()
-    if (row.version !== expected.version) throw new ConflictError()
+    if (row.version !== expected.version) stale = true
   }
   if (request.expectedRecordVersion) {
     const { id, version } = request.expectedRecordVersion
     const rows = collections.flatMap((collection) => before.get(collection)?.get(id) ?? [])
     if (rows.length === 0) throw new NotFoundError()
-    if (rows.some((row) => row.version !== version)) throw new ConflictError()
+    if (rows.some((row) => row.version !== version)) stale = true
   }
 
   const operation: LoadedOperation<R> = request.load ? await request.load(tx) : request
@@ -456,8 +471,10 @@ async function applyOperation<R>(
   try {
     result = operation.run(guardedState(target), tools)
   } catch (error) {
-    throw mapOperationError(error)
+    throw staleOrDenied(mapOperationError(error), stale)
   }
+  // Core işlemi bayat görüntü üzerinde kabul etse de istemcinin okuduğu sürüm geçersizdir.
+  if (stale) throw new ConflictError()
 
   // Skaler alan `records`'ta tutulmaz; değişikliği sessizce düşürmek yerine işlem geri alınır.
   const scalarChanges = changedScalars(scalars, target)

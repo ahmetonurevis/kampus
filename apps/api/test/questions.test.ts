@@ -386,6 +386,31 @@ describe('Öğretmenime Sor uçları', () => {
     assert.deepEqual(record?.data.followUps, undefined)
   })
 
+  test('DOM-ILT-091, DOM-ILT-092: kapsam dışı kullanıcı yanlış sürümle de olmayan soruyla aynı 404 yanıtını alır; yetkili kullanıcıya 409', async () => {
+    const a = await institution()
+    const before = await snapshot(a.id)
+    const v = await version(a.id, 'ask1')
+    // Sürüm denetimi yetkiden önce çalışsaydı kapsam dışı kullanıcı 409 alır, kaydın var olduğunu
+    // öğrenirdi; olmayan kimlik ise 404 verir.
+    const outsider = await teacher(a.id, 't3')
+    const missing = await answer(outsider, 'soru-yok', 99)
+    assertError(missing, 404, 'not_found')
+    for (const stale of [99, v + 1, v]) {
+      const response = await answer(outsider, 'ask1', stale)
+      assertError(response, 404, 'not_found')
+      assert.equal(response.json().message, missing.json().message)
+    }
+    const nehir = await student(a.id, 's25')
+    assertError(await withdraw(nehir, 'soru-yok', 99), 404, 'not_found')
+    for (const stale of [99, v + 1, v])
+      assertError(await withdraw(nehir, 'ask1', stale), 404, 'not_found')
+    assert.equal(await snapshot(a.id), before)
+    // Yetkili kullanıcı yanlış sürümde yine 409 alır.
+    assertError(await answer(await teacher(a.id, 't1'), 'ask1', 99), 409, 'version_conflict')
+    assertError(await withdraw(await student(a.id), 'ask1', 99), 409, 'version_conflict')
+    assert.equal(await snapshot(a.id), before)
+  })
+
   test('DOM-ILT-092: başka sınıfın veya dersin öğretmeni ve başka kurumun sorusu 404; yönetici yanıt yazamaz', async () => {
     const a = await institution()
     const b = await institution()

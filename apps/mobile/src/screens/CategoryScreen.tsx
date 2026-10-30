@@ -1,14 +1,15 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { View, useWindowDimensions } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
 import { categoryLabel, categoryPages } from '../model/hub.ts'
-import { Empty, Heading } from '../ui/components.jsx'
-import { Screen } from '../ui/SchoolLayout.jsx'
-import { ModuleCard, cardGrid } from '../ui/ModuleHub.jsx'
+import type { ScreenProps } from '../route-types.ts'
+import { Empty, Heading } from '../ui/components.tsx'
+import { Screen } from '../ui/SchoolLayout.tsx'
+import { ModuleCard, cardGrid } from '../ui/ModuleHub.tsx'
 
 // Seçilen kategorinin modülleri kart olarak listelenir.
-export default function CategoryScreen({ route, navigation }) {
-  const { data, session } = useSchool(),
+export default function CategoryScreen({ route, navigation }: ScreenProps<'Category'>) {
+  const { data, session } = useActiveSchool(),
     { fontScale } = useWindowDimensions()
   const category = route.params.category
   const pages = useMemo(

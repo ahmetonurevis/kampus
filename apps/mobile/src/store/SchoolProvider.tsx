@@ -276,3 +276,17 @@ export function useSchool() {
   if (!value) throw new Error('useSchool yalnızca SchoolProvider içinde kullanılabilir.')
   return value
 }
+// Veri yüklendikten sonra çizilen ekranlar için: yükleme bitmeden çağrılırsa açık hata verir.
+export function useLoadedSchool() {
+  const school = useSchool()
+  if (!school.data) throw new Error('Okul verisi henüz yüklenmedi.')
+  return { ...school, data: school.data }
+}
+export type ActiveSession = AppSession & { role: Role }
+// Giriş yapıldıktan sonra çizilen ekranlar için: veri ve rol dolu gelir.
+export function useActiveSchool() {
+  const school = useLoadedSchool()
+  const { role } = school.session
+  if (!role) throw new Error('Bu ekran için önce bir rol seçilmelidir.')
+  return { ...school, session: { ...school.session, role } satisfies ActiveSession }
+}

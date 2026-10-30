@@ -1,5 +1,5 @@
-import { FormScrollView, KeyboardFrame } from './KeyboardLayout.jsx'
-import React, { useState } from 'react'
+import { FormScrollView, KeyboardFrame } from './KeyboardLayout.tsx'
+import { useState, type ReactNode } from 'react'
 import {
   View,
   Text,
@@ -9,21 +9,36 @@ import {
   FlatList,
   Platform,
   StyleSheet,
+  type KeyboardTypeOptions,
+  type StyleProp,
+  type TextProps,
+  type TextStyle,
+  type ViewStyle,
 } from 'react-native'
+import type { LucideProps } from 'lucide-react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { icons } from './icons.ts'
+import { icons, type IconName } from './icons.ts'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useSchool } from '../store/SchoolProvider.tsx'
-import { palettes, spaces, shape } from './theme.ts'
+import { palettes, spaces, shape, type Palette } from './theme.ts'
 import { initials, dateLabel } from '@kampus/school-core/lib/format.ts'
 
-export const useColors = () => palettes[useSchool().resolvedTheme]
-export function Icon({ name = 'Circle', size = 21, color, ...props }) {
+export const useColors = (): Palette => palettes[useSchool().resolvedTheme]
+
+type IconProps = Omit<LucideProps, 'ref'> & { name?: IconName }
+export function Icon({ name = 'Circle', size = 21, color, ...props }: IconProps) {
   const c = useColors()
+  // Veriden gelen ad kayıtlı değilse varsayılan simge çizilir.
   const Component = icons[name] || icons.Circle
   return <Component size={size} color={color || c.muted} strokeWidth={1.8} {...props} />
 }
-export function T({ children, muted, bold, size = 15, style, ...props }) {
+type TProps = Omit<TextProps, 'style'> & {
+  muted?: boolean
+  bold?: boolean
+  size?: number
+  style?: StyleProp<TextStyle>
+}
+export function T({ children, muted, bold, size = 15, style, ...props }: TProps) {
   const c = useColors()
   return (
     <Text
@@ -42,6 +57,19 @@ export function T({ children, muted, bold, size = 15, style, ...props }) {
     </Text>
   )
 }
+type ButtonProps = {
+  children?: ReactNode
+  onPress?: () => void
+  icon?: IconName
+  primary?: boolean
+  danger?: boolean
+  accent?: boolean
+  textColor?: string
+  disabled?: boolean
+  small?: boolean
+  style?: StyleProp<ViewStyle>
+  label?: string
+}
 export function Button({
   children,
   onPress,
@@ -54,7 +82,7 @@ export function Button({
   small,
   style,
   label,
-}) {
+}: ButtonProps) {
   const c = useColors()
   const foreground =
     textColor || (accent ? c.onAccent : primary ? c.onPrimary : danger ? c.red : c.primary)
@@ -96,6 +124,15 @@ export function Button({
     </Pressable>
   )
 }
+type IconButtonProps = {
+  name: IconName
+  label: string
+  onPress?: () => void
+  disabled?: boolean
+  filled?: boolean
+  selected?: boolean
+  color?: string
+}
 export function IconButton({
   name,
   label,
@@ -104,7 +141,7 @@ export function IconButton({
   filled = false,
   selected = false,
   color,
-}) {
+}: IconButtonProps) {
   const c = useColors()
   return (
     <Pressable
@@ -133,7 +170,14 @@ export function IconButton({
     </Pressable>
   )
 }
-export function Card({ children, onPress, style, label, soft = false }) {
+type CardProps = {
+  children?: ReactNode
+  onPress?: () => void
+  style?: StyleProp<ViewStyle>
+  label?: string
+  soft?: boolean
+}
+export function Card({ children, onPress, style, label, soft = false }: CardProps) {
   const c = useColors()
   const common = [
     {
@@ -159,10 +203,15 @@ export function Card({ children, onPress, style, label, soft = false }) {
     <View style={common}>{children}</View>
   )
 }
-export function Badge({ text }) {
+export type Tone = 'primary' | 'green' | 'amber' | 'red'
+// Rozet rengi metne göre seçilir; her ton için `<ton>Soft` zemin rengi vardır.
+export const toneSoft = (c: Palette, tone: Tone) => c[`${tone}Soft` as const]
+export function Badge({ text }: { text?: string }) {
   const c = useColors()
   if (!text) return null
-  const tone = /Gecik|Süre aşıldı|Teslim süresi geçti|Yüksek risk|Gelmedi|Reddedildi/.test(text)
+  const tone: Tone = /Gecik|Süre aşıldı|Teslim süresi geçti|Yüksek risk|Gelmedi|Reddedildi/.test(
+    text,
+  )
     ? 'red'
     : /Ödendi|Yanıtlandı|Tamamlandı|Teslim edildi|Başarılı|Geldi|Onaylandı|Aktif|Değerlendirildi/.test(
           text,
@@ -175,7 +224,7 @@ export function Badge({ text }) {
     <View
       style={{
         alignSelf: 'flex-start',
-        backgroundColor: c[tone + 'Soft'],
+        backgroundColor: toneSoft(c, tone),
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 6,
@@ -187,13 +236,14 @@ export function Badge({ text }) {
     </View>
   )
 }
-export function Avatar({ name, size = 42 }) {
+const avatarTones = ['primary', 'green', 'amber', 'red'] as const
+export function Avatar({ name, size = 42 }: { name?: string | null; size?: number }) {
   const c = useColors()
   const hash = [...(name || '').normalize('NFC').trim().toLocaleLowerCase('tr')].reduce(
     (h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0,
     0,
   )
-  const tone = ['primary', 'green', 'amber', 'red'][hash % 4]
+  const tone = avatarTones[hash % 4] ?? 'primary'
   return (
     <View
       accessibilityElementsHidden
@@ -202,7 +252,7 @@ export function Avatar({ name, size = 42 }) {
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: c[tone + 'Soft'],
+        backgroundColor: toneSoft(c, tone),
         alignItems: 'center',
         justifyContent: 'center',
       }}
@@ -213,7 +263,8 @@ export function Avatar({ name, size = 42 }) {
     </View>
   )
 }
-export function Heading({ title, subtitle, action }) {
+type HeadingProps = { title: string; subtitle?: string; action?: ReactNode }
+export function Heading({ title, subtitle, action }: HeadingProps) {
   return (
     <View style={{ gap: 6, marginBottom: 2 }}>
       <View style={styles.between}>
@@ -230,11 +281,12 @@ export function Heading({ title, subtitle, action }) {
     </View>
   )
 }
+type EmptyProps = { title?: string; text?: string; action?: ReactNode }
 export function Empty({
   title = 'Kayıt bulunamadı',
   text = 'Filtrelerinizi değiştirebilirsiniz.',
   action,
-}) {
+}: EmptyProps) {
   return (
     <Card style={{ alignItems: 'center', paddingVertical: 30 }}>
       <Icon name="Inbox" size={36} />
@@ -245,6 +297,20 @@ export function Empty({
       {action}
     </Card>
   )
+}
+type FieldProps = {
+  label: string
+  // Form değerleri taslak depodan serbest tipte gelir; metne çevrilerek gösterilir.
+  value: unknown
+  onChange: (value: string) => void
+  placeholder?: string
+  multiline?: boolean
+  keyboard?: KeyboardTypeOptions
+  hint?: string
+  editable?: boolean
+  maxLength?: number
+  compact?: boolean
+  hideLabel?: boolean
 }
 export function Field({
   label,
@@ -258,7 +324,7 @@ export function Field({
   maxLength,
   compact = false,
   hideLabel = false,
-}) {
+}: FieldProps) {
   const c = useColors()
   const [focused, setFocused] = useState(false)
   return (
@@ -303,7 +369,18 @@ export function Field({
     </View>
   )
 }
-export function SearchField({ value, onChange, placeholder = 'Ad, ders veya açıklama', style }) {
+type SearchFieldProps = {
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  style?: StyleProp<ViewStyle>
+}
+export function SearchField({
+  value,
+  onChange,
+  placeholder = 'Ad, ders veya açıklama',
+  style,
+}: SearchFieldProps) {
   const c = useColors()
   return (
     <View
@@ -344,7 +421,15 @@ export function SearchField({ value, onChange, placeholder = 'Ad, ders veya aç�
     </View>
   )
 }
-export function Sheet({ visible, title, onClose, children, footer, compact = false }) {
+type SheetProps = {
+  visible: boolean
+  title: ReactNode
+  onClose: () => void
+  children?: ReactNode
+  footer?: ReactNode
+  compact?: boolean
+}
+export function Sheet({ visible, title, onClose, children, footer, compact = false }: SheetProps) {
   const c = useColors()
   const insets = useSafeAreaInsets()
   const { reduceMotion } = useSchool()
@@ -410,7 +495,16 @@ export function Sheet({ visible, title, onClose, children, footer, compact = fal
     </Modal>
   )
 }
-export function Select({ label, value, options, onChange, required = false }) {
+export type SelectOption = { value: string; label: string }
+type SelectProps = {
+  label: string
+  // Karşılaştırma için serbest tip; yalnızca seçeneklerin değeriyle eşleşirse seçili görünür.
+  value: unknown
+  options: readonly SelectOption[]
+  onChange: (value: string) => void
+  required?: boolean
+}
+export function Select({ label, value, options, onChange, required = false }: SelectProps) {
   const c = useColors()
   const insets = useSafeAreaInsets()
   const { reduceMotion } = useSchool()
@@ -506,7 +600,13 @@ export function Select({ label, value, options, onChange, required = false }) {
     </View>
   )
 }
-export function DateField({ label, value, onChange, time = false }) {
+type DateFieldProps = {
+  label: string
+  value?: string
+  onChange: (value: string) => void
+  time?: boolean
+}
+export function DateField({ label, value, onChange, time = false }: DateFieldProps) {
   const [open, setOpen] = useState(false)
   const date = time
     ? new Date(`2026-01-01T${value || '09:00'}:00`)

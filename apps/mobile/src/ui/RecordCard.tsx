@@ -1,10 +1,11 @@
-import { contentTitle } from '../model/presentation.ts'
-import React from 'react'
 import { View } from 'react-native'
 import { subjects } from '@kampus/school-core/data/curriculum.ts'
-import { Avatar, Badge, Card, Icon, T, styles, useColors } from './components.jsx'
+import { contentTitle } from '../model/presentation.ts'
+import type { Row, RowKind } from '../model/school.ts'
+import { Avatar, Badge, Card, Icon, T, styles, useColors } from './components.tsx'
+import { toIconName, type IconName } from './icons.ts'
 
-const recordIcons = {
+const recordIcons: Partial<Record<RowKind, IconName>> = {
   invoice: 'Wallet',
   contract: 'FileText',
   branch: 'Building2',
@@ -25,7 +26,7 @@ const recordIcons = {
   submission: 'ClipboardCheck',
   report: 'ChartNoAxesCombined',
 }
-export function RecordIcon({ row, size = 42 }) {
+export function RecordIcon({ row, size = 42 }: { row: Row; size?: number }) {
   const c = useColors()
   if (['student', 'teacher', 'prospect'].includes(row.kind))
     return (
@@ -38,7 +39,8 @@ export function RecordIcon({ row, size = 42 }) {
         size={size}
       />
     )
-  const subject = subjects.find((s) => s.id === row.source?.subjectId || s.name === row.subject)
+  const sourceSubjectId = 'subjectId' in row.source ? row.source.subjectId : undefined
+  const subject = subjects.find((s) => s.id === sourceSubjectId || s.name === row.subject)
   return (
     <View
       style={{
@@ -51,14 +53,15 @@ export function RecordIcon({ row, size = 42 }) {
       }}
     >
       <Icon
-        name={subject?.icon || recordIcons[row.kind] || 'FileText'}
+        name={toIconName(subject?.icon || recordIcons[row.kind] || 'FileText')}
         color={c.primary}
         size={21}
       />
     </View>
   )
 }
-export default function RecordCard({ row, onPress, compact = false }) {
+type RecordCardProps = { row: Row; onPress?: () => void; compact?: boolean }
+export default function RecordCard({ row, onPress, compact = false }: RecordCardProps) {
   const c = useColors()
   return (
     <Card

@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { View } from 'react-native'
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
-import { useSchool } from '../store/SchoolProvider.tsx'
-import { context, nameOf, rowsFor } from '../model/school.ts'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { context, nameOf, rowsFor, type Row } from '../model/school.ts'
 import { contentTitle } from '../model/presentation.ts'
+import type { ScreenProps } from '../route-types.ts'
 import { useMinute } from '../ui/use-minute.ts'
 import {
   Badge,
@@ -14,15 +15,15 @@ import {
   Sheet,
   T,
   styles,
-} from '../ui/components.jsx'
-import { EmptyResults, ListRow, Notice, Screen, Tabs, TextAction } from '../ui/SchoolLayout.jsx'
+} from '../ui/components.tsx'
+import { EmptyResults, ListRow, Notice, Screen, Tabs, TextAction } from '../ui/SchoolLayout.tsx'
 
-function shiftDay(day, offset) {
+function shiftDay(day: string, offset: number) {
   return dayKey(new Date(+new Date(`${day}T12:00:00+03:00`) + offset * 86400000))
 }
-export default function Timetable({ navigation }) {
+export default function Timetable({ navigation }: ScreenProps<'Module'>) {
   const now = useMinute() * 60000
-  const { data, session } = useSchool(),
+  const { data, session } = useActiveSchool(),
     scope = context(data, session)
   const [day, setDay] = useState(dayKey()),
     [query, setQuery] = useState(''),
@@ -35,8 +36,12 @@ export default function Timetable({ navigation }) {
   )
   const weekStart = shiftDay(day, -((new Date(`${day}T12:00:00+03:00`).getUTCDay() + 6) % 7))
   const days = Array.from({ length: 7 }, (_, index) => shiftDay(weekStart, index))
-  const course = (lesson) =>
-    lesson.subject || data.subjects.find((s) => s.id === lesson.subjectId)?.name || lesson.title
+  // Eski kayıtlarda ders adı `subject` alanında tutulmuş olabilir.
+  const course = (lesson: Row<'lesson'>['source']) =>
+    ('subject' in lesson && typeof lesson.subject === 'string' ? lesson.subject : '') ||
+    data.subjects.find((s) => s.id === lesson.subjectId)?.name ||
+    lesson.title ||
+    ''
   const lessons = rows.filter(
     ({ source }) =>
       dayKey(source.date) === day &&

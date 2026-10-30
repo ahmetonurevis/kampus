@@ -1,12 +1,29 @@
-import React, { useMemo } from 'react'
-import { Pressable, View, useWindowDimensions } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.tsx'
+import { useMemo } from 'react'
+import { Pressable, View, useWindowDimensions, type ViewStyle } from 'react-native'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
 import { hubCategories } from '../model/hub.ts'
-import { Icon, T, useColors } from './components.jsx'
+import { Icon, T, useColors } from './components.tsx'
+import { toIconName } from './icons.ts'
 import { shape } from './theme.ts'
 
 // Modül kartının ortak görünümü: ikon kutusu, başlık ve isteğe bağlı açıklama.
-export function ModuleCard({ icon, title, caption, accent = false, onPress, stacked = false }) {
+type ModuleCardProps = {
+  // Simge adı çekirdek veriden düz metin gelir.
+  icon: string
+  title: string
+  caption?: string
+  accent?: boolean
+  onPress: () => void
+  stacked?: boolean
+}
+export function ModuleCard({
+  icon,
+  title,
+  caption,
+  accent = false,
+  onPress,
+  stacked = false,
+}: ModuleCardProps) {
   const c = useColors()
   return (
     <Pressable
@@ -36,7 +53,7 @@ export function ModuleCard({ icon, title, caption, accent = false, onPress, stac
           backgroundColor: accent ? c.accentSoft : c.primarySoft,
         }}
       >
-        <Icon name={icon} size={22} color={accent ? c.accentText : c.primary} />
+        <Icon name={toIconName(icon)} size={22} color={accent ? c.accentText : c.primary} />
       </View>
       <View style={{ gap: 2 }}>
         <T bold size={15} numberOfLines={2}>
@@ -51,11 +68,14 @@ export function ModuleCard({ icon, title, caption, accent = false, onPress, stac
     </Pressable>
   )
 }
-export const cardGrid = { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }
+export const cardGrid = { flexDirection: 'row', flexWrap: 'wrap', gap: 12 } satisfies ViewStyle
 
 // Ana ekranın ilk bölümü: kategoriler kart olarak gelir, dokununca kategori ekranı açılır.
-export default function ModuleHub({ navigation }) {
-  const { data, session } = useSchool(),
+type ModuleHubProps = {
+  navigation: { navigate: (screen: 'Category', params: { category: string }) => void }
+}
+export default function ModuleHub({ navigation }: ModuleHubProps) {
+  const { data, session } = useActiveSchool(),
     { fontScale } = useWindowDimensions()
   const categories = useMemo(() => hubCategories(data, session.role), [data, session.role])
   return (

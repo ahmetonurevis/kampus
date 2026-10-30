@@ -1,5 +1,5 @@
 import { usePersistentDraft } from '../store/use-persistent-draft.ts'
-import DraftStatus from '../ui/DraftStatus.jsx'
+import DraftStatus from '../ui/DraftStatus.tsx'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Pressable, useWindowDimensions } from 'react-native'
 import { useSchool } from '../store/SchoolProvider.tsx'
@@ -15,7 +15,7 @@ import {
   Sheet,
   T,
   useColors,
-} from '../ui/components.jsx'
+} from '../ui/components.tsx'
 import {
   EmptyResults,
   Notice,
@@ -23,7 +23,7 @@ import {
   Screen,
   Section,
   TextAction,
-} from '../ui/SchoolLayout.jsx'
+} from '../ui/SchoolLayout.tsx'
 
 export default function Attendance({ route }) {
   const { data, session, commit, busy, notify } = useSchool(),

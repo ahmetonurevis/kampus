@@ -77,7 +77,7 @@ export type OperationDefinition = {
   run: (state: State, values: FormValues, makeId: MakeId) => void
 }
 
-const str = (value: unknown) => (typeof value === 'string' ? value : '')
+export const str = (value: unknown) => (typeof value === 'string' ? value : '')
 const isPickedFile = (value: unknown): value is PickedFile =>
   typeof value === 'object' &&
   value !== null &&
@@ -85,13 +85,13 @@ const isPickedFile = (value: unknown): value is PickedFile =>
   typeof value.uri === 'string' &&
   'name' in value &&
   typeof value.name === 'string'
-const pickedFile = (value: unknown) => (isPickedFile(value) ? value : undefined)
+export const pickedFile = (value: unknown) => (isPickedFile(value) ? value : undefined)
 // Kayıt bulunamazsa işlem anlaşılır bir hatayla durur.
 const found = <T>(item: T | undefined, message: string): T => {
   if (item === undefined) throw new Error(message)
   return item
 }
-const stringList = (value: unknown) =>
+export const stringList = (value: unknown) =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 
 type TextExtra = Partial<Pick<FieldBase, 'required' | 'multiline' | 'keyboard' | 'hint'>> & {

@@ -129,7 +129,9 @@ export function context(state: State, session: Session) {
   const studentId = session.role === 'veli' ? session.childId : 's1'
   const student = state.students.find((s) => s.id === studentId) || state.students[0]
   if (!student) throw new Error('Öğrenci kaydı bulunamadı.')
+  // Ekranlar sınıf adını doğrudan okur; sınıfsız öğrenci tutarsız veridir.
   const classroom = state.classes.find((c) => c.id === student.classId)
+  if (!classroom) throw new Error('Öğrencinin sınıf kaydı bulunamadı.')
   const assignedClasses = new Set<string>(),
     assignedTeachers = new Set<string>()
   for (const assignment of state.assignments) {
@@ -456,7 +458,6 @@ export function rowsFor(
     return state.materials
       .filter((i) => {
         if (c.teacher) return i.teacherId === teacherId
-        if (!c.classroom) throw new Error('Öğrencinin sınıf kaydı bulunamadı.')
         return i.level === c.classroom.level
       })
       .map((i) =>

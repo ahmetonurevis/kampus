@@ -52,7 +52,7 @@
 - **Gerekçe:** Hesaplanabilen değer saklanmaz; saklanan puan anahtar düzeltilince bayatlar.
 - **Kaynak:** Proje kuralı (quiz puanı cevaplardan hesaplanır); eksi puan yokluğu işletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — `gradeQuiz` cevaplardan hesaplar (`packages/school-core/src/lib/domain.js:75-104`), ama sonuç denemeye ve not kaydına kopyalanarak saklanır (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.jsx:43-60`); kısa cevap, eşleştirme, sıralama yok.
+- **Kodda:** çelişiyor — `gradeQuiz` cevaplardan hesaplar (`packages/school-core/src/lib/domain.js:75-104`), ama sonuç denemeye ve not kaydına kopyalanarak saklanır (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`); kısa cevap, eşleştirme, sıralama yok.
 
 ### DOM-BEC-011 · Anahtar düzeltmesi
 
@@ -178,7 +178,7 @@
 - **Gerekçe:** Sınırsız deneme cevapları ezberletir; her denemenin ayrı not üretmesi ortalamayı bozar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.jsx:43-60`).
+- **Kodda:** çelişiyor — deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
 
 ### DOM-BEC-043 · Süreli görev
 
@@ -186,7 +186,7 @@
 - **Gerekçe:** İstemci saati değiştirilebilir; erişilebilirlik uyarlaması herkese açık bir istisna olmamalı.
 - **Kaynak:** İşletme kuralı; proje kuralı (doğrulama sunucuda).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — mobil süre dolunca yanıtsız maddelerle teslim eder (`apps/mobile/src/screens/Quiz.jsx:43,68`); süre istemci sayacıdır.
+- **Kodda:** kısmen — mobil süre dolunca yanıtsız maddelerle teslim eder (`apps/mobile/src/screens/Quiz.tsx:49,75`); süre istemci sayacıdır.
 
 ### DOM-BEC-044 · Geç teslim
 
@@ -202,7 +202,7 @@
 - **Gerekçe:** Erken açılan anahtar aynı grubun diğer kursiyerlerine kopya imkânı verir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — sonuç ekranı açıklamayı deneme biter bitmez gösterir (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.jsx:96`).
+- **Kodda:** çelişiyor — sonuç ekranı açıklamayı deneme biter bitmez gösterir (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.tsx:109`).
 
 ### DOM-BEC-046 · Yazma teslimi metindir
 
@@ -310,11 +310,11 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | DOM-BEC-001 | İngilizce konuları `Reading, Vocabulary, Grammar, Writing`; dinleme ve konuşma becerisi yok (`packages/school-core/src/data/curriculum.js:129`).                   |
 | DOM-BEC-002 | Yalnız dört seçenekli tek doğrulu soru tipi var (`packages/school-core/src/data/question-bank.js:693-712`).                                                        |
-| DOM-BEC-010 | Quiz puanı hesaplanıyor ama denemeye ve not kaydına kopyalanarak saklanıyor (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.jsx:43-60`). |
+| DOM-BEC-010 | Quiz puanı hesaplanıyor ama denemeye ve not kaydına kopyalanarak saklanıyor (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`). |
 | DOM-BEC-020 | Ödev değerlendirmesi tek 0–100 puan + yorum; rubrik ve kriter yok (`apps/web/src/views/Learning.vue:250-269`).                                                     |
 | DOM-BEC-040 | Yeniden teslim önceki teslimin üzerine yazar, sürüm tutulmaz (`apps/web/src/views/Learning.vue:230-234`).                                                          |
 | DOM-BEC-042 | Quiz deneme sınırı yok; her deneme yeni not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`).                                                               |
 | DOM-BEC-044 | Teslimde son tarih denetimi ve `geç` işareti yok (`apps/web/src/views/Learning.vue:222-248`).                                                                      |
-| DOM-BEC-045 | Doğru cevap açıklamaları deneme biter bitmez gösteriliyor (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.jsx:96`).                          |
+| DOM-BEC-045 | Doğru cevap açıklamaları deneme biter bitmez gösteriliyor (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.tsx:109`).                         |
 | DOM-BEC-046 | Ödev içeriği saklanmıyor, yalnız dosya adı tutuluyor (`apps/web/src/views/Learning.vue:232-240`).                                                                  |
 | DOM-BEC-060 | Quiz sonucu öğretmen onayı olmadan otomatik not kaydı üretir (`apps/web/src/views/Learning.vue:411-430`).                                                          |

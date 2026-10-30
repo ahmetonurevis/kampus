@@ -1,13 +1,21 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Platform } from 'react-native'
-import { useSchool, recordError } from '../store/SchoolProvider.tsx'
-import { createDocument, shareFile, saveFile, printFile } from '../lib/files.ts'
-import { Button, Sheet, T } from './components.jsx'
-import { ListRow } from './SchoolLayout.jsx'
+import type { DocumentType } from '@kampus/school-core/lib/document-data.ts'
+import { useLoadedSchool, recordError } from '../store/SchoolProvider.tsx'
+import { createDocument, shareFile, saveFile, printFile, type PdfDocument } from '../lib/files.ts'
+import { Button, Sheet, T } from './components.tsx'
+import { ListRow } from './SchoolLayout.tsx'
 
-export default function DocumentLink({ type, id, studentId, title = 'Çalışma kâğıdı.pdf' }) {
-  const { data, notify } = useSchool(),
-    [document, setDocument] = useState(null),
+type DocumentLinkProps = { type: DocumentType; id: string; studentId?: string; title?: string }
+
+export default function DocumentLink({
+  type,
+  id,
+  studentId,
+  title = 'Çalışma kâğıdı.pdf',
+}: DocumentLinkProps) {
+  const { data, notify } = useLoadedSchool(),
+    [document, setDocument] = useState<PdfDocument | null>(null),
     [busy, setBusy] = useState(false)
   async function prepare() {
     if (busy) return
@@ -21,7 +29,8 @@ export default function DocumentLink({ type, id, studentId, title = 'Çalışma 
       setBusy(false)
     }
   }
-  async function handle(action) {
+  async function handle(action: 'save' | 'print' | 'share') {
+    if (!document) return
     setBusy(true)
     try {
       if (action === 'save') {

@@ -12,9 +12,9 @@ import {
   teacherId,
 } from '../model/school.ts'
 import { homeworkRows, paymentSummary } from '../model/experience.ts'
-import { Badge, Button, Card, T, useColors } from '../ui/components.jsx'
-import { ChildSelector, ListRow, Screen, Section } from '../ui/SchoolLayout.jsx'
-import ModuleHub from '../ui/ModuleHub.jsx'
+import { Badge, Button, Card, T, useColors } from '../ui/components.tsx'
+import { ChildSelector, ListRow, Screen, Section } from '../ui/SchoolLayout.tsx'
+import ModuleHub from '../ui/ModuleHub.tsx'
 import { useMinute } from '../ui/use-minute.ts'
 import { dateLabel, dayKey, money, timeLabel } from '@kampus/school-core/lib/format.ts'
 

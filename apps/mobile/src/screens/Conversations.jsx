@@ -14,7 +14,7 @@ import {
   T,
   styles,
   useColors,
-} from '../ui/components.jsx'
+} from '../ui/components.tsx'
 import {
   EmptyResults,
   ListRow,
@@ -22,10 +22,10 @@ import {
   Pagination,
   Screen,
   TextAction,
-} from '../ui/SchoolLayout.jsx'
-import { KeyboardFrame } from '../ui/KeyboardLayout.jsx'
-import DraftStatus from '../ui/DraftStatus.jsx'
-import OperationForm from '../ui/OperationForm.jsx'
+} from '../ui/SchoolLayout.tsx'
+import { KeyboardFrame } from '../ui/KeyboardLayout.tsx'
+import DraftStatus from '../ui/DraftStatus.tsx'
+import OperationForm from '../ui/OperationForm.tsx'
 
 export default function Conversations({ navigation }) {
   const { data, session } = useSchool(),

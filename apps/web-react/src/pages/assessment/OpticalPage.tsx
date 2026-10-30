@@ -387,11 +387,12 @@ function PreviewResult({
         <div>
           <Button type="button" disabled aria-describedby="optik-kayit-notu">
             Onayla ve sonuçları kaydet
+            <span className="sr-only"> (henüz kullanıma açık değil)</span>
           </Button>
         </div>
         <p id="optik-kayit-notu" className="text-sm text-muted-foreground">
-          Değerlendirmeyi kaydetme işlemi sunucu tarafında henüz kullanılamıyor; ön kontrol dosyanın
-          kaydedilmeye hazır olduğunu gösterir.
+          Değerlendirmeyi kaydetme henüz kullanıma açık değil; ön kontrol dosyanın kaydedilmeye
+          hazır olduğunu gösterir.
         </p>
       </div>
     </div>

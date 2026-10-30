@@ -66,9 +66,13 @@ test.describe('optik değerlendirme', () => {
     ).toBeVisible()
     await expect(page.getByRole('status').filter({ hasText: '1 öğrenci' })).toBeVisible()
     await expect(page.getByRole('cell', { name: 'Deniz Yılmaz' }).first()).toBeVisible()
+    const save = page.getByRole('button', {
+      name: /Onayla ve sonuçları kaydet.*henüz kullanıma açık değil/,
+    })
+    await expect(save).toBeDisabled()
     await expect(
-      page.getByRole('button', { name: 'Onayla ve sonuçları kaydet', exact: true }),
-    ).toBeDisabled()
+      page.getByText(/Değerlendirmeyi kaydetme henüz kullanıma açık değil/),
+    ).toBeVisible()
   })
 
   test('desteklenmeyen dosya türü reddedilir', async ({ loginAs, tenant }) => {

@@ -7,8 +7,8 @@ import { expect, test } from './support/fixtures.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Okul iş akışı ortak sayfası (yemek menüsü, okul takvimi, kulüpler). Yazan testler kendi
-// menüsünü oluşturur: core kuralı kampüs + gün başına tek menüdür, bu yüzden her test ayrı
-// kampüs/gün çifti kullanır ve tohumdaki Kadıköy menülerine (bugün + 6 gün) dokunmaz.
+// kurumunu kurar (`tenant`): core kuralı kampüs + gün başına tek menüdür, ortak seed kurumunda
+// tekrar koşuda çakışırdı.
 
 const MEALS = '/api/v1/collections/mealMenus?pageSize=100'
 const WORKFLOW_MEAL = /\/api\/v1\/workflows\/meal(\/[^/?]+)?(\?|$)/
@@ -52,9 +52,14 @@ async function fillMealForm(page: Page, campus: string, day: string, title: stri
 }
 
 test.describe('okul iş akışları', () => {
-  test('yönetici menü ekler, listede görür ve sürümle düzenler', async ({ loginAs, api }) => {
-    const page = await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici')
+  test('yönetici menü ekler, listede görür ve sürümle düzenler', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici'], collections: ['mealMenus'] })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     const title = `E2E menü ${randomUUID().slice(0, 8)}`
     await page.goto('/yonetici/yemek-menusu')
     await expect(page.getByRole('heading', { name: 'Yemek Menüsü', level: 2 })).toBeVisible()
@@ -95,9 +100,10 @@ test.describe('okul iş akışları', () => {
     expect(updated?.version).toBeGreaterThan(created?.version ?? 0)
   })
 
-  test('onaya çift tıklama tek menü kaydı üretir', async ({ loginAs, api }) => {
-    const page = await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici')
+  test('onaya çift tıklama tek menü kaydı üretir', async ({ loginAs, api, tenant }) => {
+    const school = await tenant({ roles: ['yonetici'], collections: ['mealMenus'] })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     const title = `E2E çift ${randomUUID().slice(0, 8)}`
     const posts: Request[] = []
     page.on('request', (r) => {

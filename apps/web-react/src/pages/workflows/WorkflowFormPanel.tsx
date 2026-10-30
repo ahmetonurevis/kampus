@@ -33,7 +33,9 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
-import { dependentResets, formDefaults, formPreview } from './workflow-state.ts'
+import { ExamImportTools } from './ExamImportTools.tsx'
+import { RenewalSummary } from './RenewalSummary.tsx'
+import { dependentResets, formDefaults, formPreview, renewalSummary } from './workflow-state.ts'
 
 /** Kısa form sağ panelde, uzun form geniş pencerede (Vue: 6 alandan fazlası geniş). */
 const SHORT_FORM_FIELDS = 6
@@ -103,6 +105,7 @@ function WorkflowForm({ action, state, session, version, onClose }: FormProps) {
   })
   const values = useWatch({ control: form.control }) as FormValues
   const fields = definition.fields(values)
+  const quote = renewalSummary(command, values)
   const busy = run.isPending || form.formState.isSubmitting
 
   const onSubmit = form.handleSubmit(async (input) => {
@@ -144,29 +147,48 @@ function WorkflowForm({ action, state, session, version, onClose }: FormProps) {
             {formPreview(fields, values).map((line) => (
               <div key={line.key} className="grid gap-0.5">
                 <dt className="text-muted-foreground">{line.label}</dt>
-                <dd className="font-medium whitespace-pre-line">{line.value}</dd>
+                <dd className="max-h-64 overflow-auto font-medium whitespace-pre-line">
+                  {line.value}
+                </dd>
               </div>
             ))}
           </dl>
         </section>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {fields.map((field) => (
-            <div
-              key={field.key}
-              className={field.type === 'textarea' || field.type === 'multi' ? 'sm:col-span-2' : ''}
-            >
-              <FieldControl
-                field={field}
-                form={form}
-                disabled={busy}
-                error={fieldError(form.formState.errors, field.key)}
-                onChange={(value) => change(field, value)}
-              />
-            </div>
-          ))}
-        </div>
+        <>
+          {command === 'exam-import' ? (
+            <ExamImportTools
+              state={state}
+              session={session}
+              csv={values.csv}
+              disabled={busy}
+              onLoad={(text) => {
+                form.setValue('csv', text, { shouldDirty: true, shouldValidate: true })
+                setReviewing(false)
+              }}
+            />
+          ) : null}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {fields.map((field) => (
+              <div
+                key={field.key}
+                className={
+                  field.type === 'textarea' || field.type === 'multi' ? 'sm:col-span-2' : ''
+                }
+              >
+                <FieldControl
+                  field={field}
+                  form={form}
+                  disabled={busy}
+                  error={fieldError(form.formState.errors, field.key)}
+                  onChange={(value) => change(field, value)}
+                />
+              </div>
+            ))}
+          </div>
+        </>
       )}
+      {quote ? <RenewalSummary quote={quote} /> : null}
       {rootError?.message ? (
         <p role="alert" className="text-sm text-danger">
           {rootError.message}

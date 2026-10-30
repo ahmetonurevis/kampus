@@ -2,20 +2,26 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
 import {
+  csvTemplate,
   workflowCreateActions,
   workflowDetails,
   workflowForm,
   workflowRows,
 } from '@kampus/school-core/lib/workflow-presentation.ts'
+import { WORKFLOW_ROUTES } from '../../api/src/routes/workflows.schemas.ts'
 import { schoolModules } from '@kampus/school-core/modules/school-workflows.ts'
 import type { Role } from '@kampus/school-core/modules/navigation.ts'
 import {
+  apiAction,
   buildWorkflowState,
+  csvFileProblem,
+  csvSummary,
   coreSession,
   dependentResets,
   formDefaults,
   formPreview,
   isWorkflowModuleKey,
+  renewalSummary,
   localDateTime,
   versionMap,
   workflowScopeLabel,
@@ -163,4 +169,80 @@ test('önizleme seçenek adını, onay kutusunu ve boş değeri okunur yazar', (
     lines.map((l) => l.value),
     ['Merkez', 'Seçilmedi', 'Evet', 'Pzt', '2026-11-06 12:00', '—'],
   )
+})
+
+test('csvSummary şablonu okur, bozuk içeriği Türkçe iletiyle bildirir', () => {
+  assert.deepEqual(csvSummary(csvTemplate), { ok: true, rows: 1 })
+  assert.deepEqual(csvSummary('   '), { ok: false, message: 'CSV içeriği boş.' })
+  const header = csvTemplate.split('\n')[0] ?? ''
+  assert.deepEqual(csvSummary('a;b\n1;2'), {
+    ok: false,
+    message: 'CSV başlıkları örnek şablonla aynı olmalıdır.',
+  })
+  assert.deepEqual(csvSummary(`${header}\nexam-7-1;s1;math;12;5`), {
+    ok: false,
+    message: 'CSV 2. satır: sütun sayısı veya sayısal değerler geçersiz.',
+  })
+  assert.deepEqual(csvSummary(`${header}\nexam-7-1;"s1;math;12;5;3;x`), {
+    ok: false,
+    message: 'CSV içinde kapanmamış tırnak var.',
+  })
+})
+
+test('csvFileProblem yalnız 1 MB altı .csv dosyasını kabul eder', () => {
+  assert.equal(csvFileProblem({ name: 'sonuc.CSV', size: 10 }), null)
+  assert.match(csvFileProblem({ name: 'sonuc.xlsx', size: 10 }) ?? '', /CSV dosyası/)
+  assert.match(csvFileProblem({ name: 'sonuc.csv', size: 1024 * 1024 + 1 }) ?? '', /1 MB/)
+})
+
+test('renewalSummary yalnız geçerli yenileme değerlerinde core hesabını döndürür', () => {
+  const values = {
+    studentId: 's3',
+    targetClassId: 'c1',
+    year: 2027,
+    mode: 'renew',
+    total: '30000',
+    scholarship: '10',
+    discount: '500',
+    count: '6',
+    startDate: '2027-01-10',
+  }
+  const quote = renewalSummary('renewal', values)
+  assert.equal(quote?.amount, 2_650_000)
+  assert.equal(quote?.installments.length, 6)
+  assert.equal(renewalSummary('renewal', { ...values, mode: 'graduate' }), null)
+  assert.equal(renewalSummary('meal', values), null)
+  // Burs ve indirim sonrası 100 ₺'nin altı ve şemaya uymayan değer özet üretmez.
+  assert.equal(renewalSummary('renewal', { ...values, discount: '29500' }), null)
+  assert.equal(renewalSummary('renewal', { ...values, total: '' }), null)
+})
+
+test('apiAction: ayrıntı eylemleri API komut tablosundaki kayıt kuralına uyar', () => {
+  let checked = 0
+  let leaks = 0
+  for (const page of pages) {
+    const key = page.key as WorkflowModuleKey
+    for (const role of page.roles) {
+      const session = coreSession({ role, links: LINKS[role] }, role === 'veli' ? 's2' : '')
+      const state = clientState(key, role)
+      // Yöneticide ~1440 ders satırı var; her türün ilk satırları kuralı görmeye yeter.
+      const rows = workflowRows(state, session, page.path).slice(0, 12)
+      for (const row of rows) {
+        for (const raw of workflowDetails(state, session, row).actions) {
+          const action = apiAction(raw)
+          const route = WORKFLOW_ROUTES[action.command as keyof typeof WORKFLOW_ROUTES]
+          if (route?.record === 'none' && raw.recordId !== undefined) leaks++
+          assert.ok(route, `${action.command} API tablosunda yok`)
+          if (route.record === 'none')
+            assert.equal(action.recordId, undefined, `${action.command} kimlik taşımamalı`)
+          if (route.record === 'required')
+            assert.ok(action.recordId, `${action.command} kayıt kimliği ister`)
+          checked++
+        }
+      }
+    }
+  }
+  assert.ok(checked > 30)
+  // Core şu an kimliksiz komutlara da kayıt kimliği verir; düzelince bu doğrulama ve `apiAction` kalkar.
+  assert.ok(leaks > 0)
 })

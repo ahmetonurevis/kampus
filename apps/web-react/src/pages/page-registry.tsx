@@ -62,7 +62,18 @@ const WorkflowPage = lazy(async () => ({
   default: (await import('./workflows/WorkflowPage.tsx')).WorkflowPage,
 }))
 /** Bağlanmış iş akışı sayfaları; kalanlar yer tutucudur (bkz. README geçiş durumu). */
-const WORKFLOW_PATHS = new Set(['yemek-menusu', 'okul-takvimi', 'kulupler'])
+const WORKFLOW_PATHS = new Set([
+  'yemek-menusu',
+  'okul-takvimi',
+  'kulupler',
+  'hedef-plani',
+  'rehberlik',
+  'deneme-sinavlari',
+  'kayit-yenileme',
+  'program-yonetimi',
+  'calisma-plani',
+  'okul-servisi',
+])
 
 const MIGRATED = new Set([
   'yonetici/dashboard',

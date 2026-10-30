@@ -1,13 +1,21 @@
 // Okul iş akışı ekranlarının saf hesapları: hangi koleksiyonlar okunur, okunan kayıtlardan core
 // `State` nasıl kurulur, satır/CSV/form önizlemesi nasıl türetilir. Sunum metinleri ve kapsam
 // kuralları core `workflow-presentation.ts`'tedir; burada ikinci kopya yazılmaz.
+import { ZodError } from 'zod'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import type { Session as CoreSession } from '@kampus/school-core/lib/domain.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
+import {
+  parseResultsCsv,
+  renewalQuote,
+  type RenewalQuote,
+} from '@kampus/school-core/lib/school-workflows.ts'
 import {
   changeFormValue,
   readFormValue,
   type FormValues,
+  type WorkflowAction,
   type WorkflowField,
   type WorkflowRow,
 } from '@kampus/school-core/lib/workflow-presentation.ts'
@@ -25,7 +33,8 @@ export const MODULE_SOURCES = {
   goals: ['studentGoals', 'mockExams', 'mockResults', 'subjects'],
   guidance: ['guidanceCases'],
   exams: ['mockExams', 'mockResults', 'subjects', 'opticalProfiles', 'opticalEvaluations'],
-  renewal: ['renewals', 'branches'],
+  // Yeni dönem taksitleri ayrıntıda `invoices`'tan listelenir (finans modülü kapalıysa boş kalır).
+  renewal: ['renewals', 'branches', 'invoices'],
   planning: ['schedule', 'subjects', 'branches'],
   study: ['studyTasks', 'subjects'],
   calendar: ['schoolEvents', 'eventConsents', 'branches'],
@@ -187,4 +196,65 @@ export function formPreview(fields: readonly WorkflowField[], values: FormValues
     else text = value === undefined || value === null ? '' : String(value)
     return { key: field.key, label: field.label, value: text || '—' }
   })
+}
+
+/** CSV aktarım dosyası sınırı (core şeması: en fazla 1 MB). */
+export const CSV_MAX_BYTES = 1024 * 1024
+
+/** Seçilen dosyanın türü ve boyutu uygun mu; uygun değilse kullanıcıya Türkçe ileti. */
+export function csvFileProblem(file: { name: string; size: number }): string | null {
+  return file.size > CSV_MAX_BYTES || !/\.csv$/i.test(file.name)
+    ? 'En fazla 1 MB boyutunda CSV dosyası seçin.'
+    : null
+}
+
+export type CsvSummary = { ok: true; rows: number } | { ok: false; message: string }
+
+/**
+ * Aktarım içeriğinin ön kontrolü: sunucunun uyguladığı ayrıştırıcıyla (`parseResultsCsv`, aynı
+ * ayraç ve tırnak kuralları) başlık, sütun sayısı ve satır sınırını denetler. Kaydı sunucu yine
+ * doğrular; bu yalnız hatayı göndermeden önce gösterir.
+ */
+export function csvSummary(text: unknown): CsvSummary {
+  if (typeof text !== 'string' || !text.trim()) return { ok: false, message: 'CSV içeriği boş.' }
+  try {
+    return { ok: true, rows: parseResultsCsv(text).length }
+  } catch (error) {
+    if (error instanceof DomainError) return { ok: false, message: error.message }
+    throw error
+  }
+}
+
+/**
+ * Kayıt yenileme formunun ücret özeti (core `renewalQuote`): yalnız "yenile" türünde ve değerler
+ * geçerliyken hesaplanır; geçersiz değerde özet gizlenir, hatayı alan doğrulaması gösterir.
+ */
+export function renewalSummary(command: string, values: FormValues): RenewalQuote | null {
+  if (command !== 'renewal' || values.mode !== 'renew') return null
+  try {
+    return renewalQuote(values)
+  } catch (error) {
+    if (error instanceof DomainError || error instanceof ZodError) return null
+    throw error
+  }
+}
+
+/**
+ * Kayda bağlı ayrıntıdan açılan ama kimliksiz oluşturan komutlar: core `add` varsayılan olarak
+ * kaydın kimliğini verir (`exam-result` denemeden, `transport-assign` güzergâhtan, `achievement`
+ * kulüpten açılır; konu kayıt `initial` ile taşınır). API bu komutlara `:recordId` kabul etmez
+ * (404). Taşıma testi (`workflow-state.test.ts`) listeyi API komut tablosuyla karşılaştırır.
+ * TODO(core-record-id): core `add` bu üç eylemde kimliği açıkça boş verince liste kalkar.
+ */
+const RECORDLESS_COMMANDS: ReadonlySet<string> = new Set([
+  'exam-result',
+  'transport-assign',
+  'achievement',
+])
+
+/** Eylemi API sözleşmesine uydurur: kimliksiz komutta konu kimliği düşer. */
+export function apiAction(action: WorkflowAction): WorkflowAction {
+  return RECORDLESS_COMMANDS.has(action.command) && action.recordId !== undefined
+    ? { ...action, recordId: undefined }
+    : action
 }

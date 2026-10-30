@@ -41,7 +41,7 @@ Bu modüllerin `records`'a sığıp sığmadığını belirleyen ihtiyaçlar (ve
 
 6. **Teslim, deneme ve taslak.**
    - Otomatik görev: `task_attempts` (başlangıç ve son süre sunucu saatiyle, cevaplar, teslim zamanı; DOM-BEC-043). Dinleme hakkı `attempt_media_plays` satırlarıyla sayılır (ADR 0003 karar 6).
-   - Öğretmen puanlı görev: `task_submissions` öğrenci × atama başına tek satır (`unique (institution_id, assignment_id, learner_id)`), `submission_versions` değişmez gönderimler (metin, `files` bağlantıları, `is_late`; sürüm sınırı core'da; DOM-BEC-040, 044, 046). Yazmada otomatik taslak `submission_drafts` (öğrenci × atama başına bir satır, iyimser kilitli, üzerine yazılır); öğretmen yalnız gönderilmiş sürümleri görür ve iki sürümü yan yana açar (IST-047).
+   - Öğretmen puanlı görev: `task_submissions` öğrenci × atama başına tek satır (`unique (institution_id, assignment_id, learner_id)`), `submission_versions` değişmez gönderimler (metin, `files` bağlantıları, gönderim zamanı; geç bayrağı saklanmaz, son tarih ve uzatmadan hesaplanır (karar 5); sürüm sınırı core'da; DOM-BEC-040, 044, 046). Yazmada otomatik taslak `submission_drafts` (öğrenci × atama başına bir satır, iyimser kilitli, üzerine yazılır); öğretmen yalnız gönderilmiş sürümleri görür ve iki sürümü yan yana açar (IST-047).
    - Konuşma: `submission_versions` satırı `speaking_recording` dosyasına bağlıdır; rıza ön koşulu ve saklama ADR 0003'tedir.
    - Rubrik puanı: `rubric_scores` (sürüm, rubrik sürümü, puanlayan, `rater_role`: `first`/`second`/`final`, kriter başına bant ve yorum, genel yorum). Puanlanan sürüm sabitlenir.
 

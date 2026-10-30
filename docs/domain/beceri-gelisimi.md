@@ -48,11 +48,11 @@
 
 ### DOM-BEC-010 · Otomatik puan cevaplardan hesaplanır
 
-- **Kural:** Otomatik puanlanan görevde kursiyerin cevapları ve kullanılan cevap anahtarı sürümü saklanır; puan bunlardan her okumada hesaplanır, ayrı alanda saklanmaz. Kısa cevapta karşılaştırma öncesi büyük/küçük harf, baştaki/sondaki boşluk ve art arda boşluk normalleştirilir; yazım farkı yalnız kabul listesinde varsa doğru sayılır. Yanlış cevap eksi puan getirmez. Çok maddeli görevlerde (eşleştirme, sıralama) her madde ayrı puanlanır.
+- **Kural:** Otomatik puanlanan görevde kursiyerin cevapları ve kullanılan cevap anahtarı sürümü saklanır; puan bunlardan her okumada hesaplanır, ayrı alanda saklanmaz. Kısa cevapta karşılaştırma öncesi büyük/küçük harf, baştaki/sondaki boşluk ve art arda boşluk normalleştirilir; yazım farkı yalnız kabul listesinde varsa doğru sayılır. Karşılaştırma içeriğin diline göre yapılır (İngilizce beceri içeriği `en`, diğerleri `tr`); tipografik kesme işareti ve tırnak varyantları tek karaktere iner. Yanlış cevap eksi puan getirmez. Çok maddeli görevlerde (eşleştirme, sıralama) her madde ayrı puanlanır.
 - **Gerekçe:** Hesaplanabilen değer saklanmaz; saklanan puan anahtar düzeltilince bayatlar.
 - **Kaynak:** Proje kuralı (quiz puanı cevaplardan hesaplanır); eksi puan yokluğu işletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `scoreAttempt`/`scoreItem` (altı soru türü, madde başına puan, eksi puan yok, saklanmaz) ve `normalizeShortAnswer` (NFC, `tr-TR` küçültme, boşluk; noktalama korunur, `TODO(beceri-noktalama)`, `TODO(beceri-ingilizce-buyuk-harf)`); sıralamada madde konumdur (`TODO(beceri-siralama-puani)`). Eski demo hâlâ çelişiyor: `gradeQuiz` (`packages/school-core/src/lib/domain.ts`) sonucu denemeye ve not kaydına kopyalanır (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `scoreAttempt`/`scoreItem` (altı soru türü, madde başına puan, eksi puan yok, saklanmaz) ve `normalizeShortAnswer(değer, dil)` ve `answerLocaleForTags` (NFC, dile göre küçültme `tr-TR`/`en-US`, Unicode boşluk, tipografik kesme işareti ve tırnak tek karakter; diğer noktalama korunur; okul kurumunda İngilizce dersinin beceri etiketsiz içeriği `tr` olur, `TODO(beceri-ders-dili)`); sıralamada madde konumdur (`TODO(beceri-siralama-puani)`). Eski demo hâlâ çelişiyor: `gradeQuiz` (`packages/school-core/src/lib/domain.ts`) sonucu denemeye ve not kaydına kopyalanır (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
 
 ### DOM-BEC-011 · Anahtar düzeltmesi
 

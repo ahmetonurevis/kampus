@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { DomainError } from '../lib/errors.ts'
-import type { AnswerKey, QuestionBody } from '../content/resource.ts'
+import type { AnswerKey, QuestionBody, ResourceTags } from '../content/resource.ts'
 import {
   QUESTION_TYPES,
   enumKeys,
@@ -264,6 +264,8 @@ export type ScoringItem = {
   points: number
   question: QuestionBody
   answerKey: AnswerKey
+  /** Kısa cevap karşılaştırma dili; çağıran açıkça seçer (`answerLocaleForTags`). */
+  locale: AnswerLocale
 }
 
 function responseIssue(question: QuestionBody, response: TaskResponse): string | null {
@@ -333,23 +335,50 @@ export function assertResponsesFit(items: readonly ScoringItem[], answers: Answe
   }
 }
 
+/** Karşılaştırma dili: küçültme kuralını belirler (`tr-TR` veya `en-US`). */
+export type AnswerLocale = 'tr' | 'en'
+
+const LOWERCASE_LOCALE: Record<AnswerLocale, string> = { tr: 'tr-TR', en: 'en-US' }
+
 /**
- * Kısa cevap ve açık boşluk karşılaştırması (DOM-BEC-010): Unicode NFC, Türkçe küçültme
- * (`tr-TR`: `İ` → `i`, `I` → `ı`), baştaki/sondaki boşluk atılır, art arda boşluk tek boşluk olur.
+ * Kaynağın etiketlerinden karşılaştırma dili (DOM-BEC-010): beceri (birincil veya ek) ya da CEFR
+ * seviyesi varsa İngilizce beceri içeriğidir (`en`), yoksa `tr`.
+ */
+export function answerLocaleForTags(
+  tags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill'> & { skills: readonly unknown[] },
+): AnswerLocale {
+  // TODO(beceri-ders-dili): Okul kurumunda İngilizce dersinin beceri etiketsiz içeriği `tr` olur;
+  // "I" anahtarına "i" yazan öğrenci yanlış sayılır. Ders dili alanı gelince dil oradan okunur.
+  const skillTagged =
+    tags.cefrLevel !== null || tags.primarySkill !== null || tags.skills.length > 0
+  return skillTagged ? 'en' : 'tr'
+}
+
+/**
+ * Kısa cevap ve açık boşluk karşılaştırması (DOM-BEC-010): Unicode NFC, içeriğin diline göre
+ * küçültme (`tr`: `tr-TR`, `İ` → `i`, `I` → `ı`; `en`: `en-US`, `I` → `i`), baştaki/sondaki boşluk
+ * atılır, art arda ve Unicode boşluklar (NBSP dahil) tek boşluk olur. Tipografik kesme işaretleri
+ * (`’ ‘ ʼ ′ ´` ve ters tırnak) `'`, tipografik tırnaklar (`“ ” „ ″`) `"` olur: bunlar yazım farkı
+ * değil, klavyenin akıllı noktalama çıktısıdır. Diğer noktalama korunur, sondaki nokta anlamlıdır.
  * Yazım farkı katlanmaz: `ı`/`i`, `ş`/`s` ayrıdır; yazım varyantı yalnız kabul listesinde varsa
  * doğrudur.
  */
-export function normalizeShortAnswer(value: string): string {
-  // TODO(beceri-noktalama): Domain noktalamayı normalleştirme listesine almıyor; en muhafazakâr
-  // yorumla noktalama ve kesme işareti biçimi (' ile ’) korunur, varyant kabul listesine yazılır.
-  // TODO(beceri-ingilizce-buyuk-harf): `tr-TR` küçültmede İngilizce "I" `ı` olur; "I" anahtarına
-  // "i" yazan kursiyer yanlış sayılır. Soruya dil alanı gelene kadar varyant kabul listesine yazılır.
-  return value.normalize('NFC').toLocaleLowerCase('tr-TR').replace(/\s+/gu, ' ').trim()
+export function normalizeShortAnswer(value: string, locale: AnswerLocale): string {
+  return value
+    .normalize('NFC')
+    .toLocaleLowerCase(LOWERCASE_LOCALE[locale])
+    .replace(/[\u2018\u2019\u02BC\u2032\u00B4`]/gu, "'")
+    .replace(/[\u201C\u201D\u201E\u2033]/gu, '"')
+    .replace(/\s+/gu, ' ')
+    .trim()
 }
 
-const accepts = (accepted: readonly string[], value: string) => {
-  const normalized = normalizeShortAnswer(value)
-  return normalized !== '' && accepted.some((answer) => normalizeShortAnswer(answer) === normalized)
+const accepts = (accepted: readonly string[], value: string, locale: AnswerLocale) => {
+  const normalized = normalizeShortAnswer(value, locale)
+  return (
+    normalized !== '' &&
+    accepted.some((answer) => normalizeShortAnswer(answer, locale) === normalized)
+  )
 }
 
 export type ItemScore = {
@@ -405,8 +434,12 @@ export function scoreItem(item: ScoringItem, response: TaskResponse | undefined)
       const values = new Map(
         given?.questionType === 'gap_fill' ? given.gaps.map((g) => [g.gapId, g.value]) : [],
       )
-      const correct = key.gaps.filter((gap) => accepts(gap.accepted, values.get(gap.gapId) ?? ''))
-      const answered = [...values.values()].some((value) => normalizeShortAnswer(value) !== '')
+      const correct = key.gaps.filter((gap) =>
+        accepts(gap.accepted, values.get(gap.gapId) ?? '', item.locale),
+      )
+      const answered = [...values.values()].some(
+        (value) => normalizeShortAnswer(value, item.locale) !== '',
+      )
       return result(key.gaps.length, correct.length, answered)
     }
     case 'ordering': {
@@ -418,7 +451,11 @@ export function scoreItem(item: ScoringItem, response: TaskResponse | undefined)
     }
     case 'short_answer': {
       const value = given?.questionType === 'short_answer' ? given.value : ''
-      return result(1, accepts(key.accepted, value) ? 1 : 0, normalizeShortAnswer(value) !== '')
+      return result(
+        1,
+        accepts(key.accepted, value, item.locale) ? 1 : 0,
+        normalizeShortAnswer(value, item.locale) !== '',
+      )
     }
     default:
       return key satisfies never

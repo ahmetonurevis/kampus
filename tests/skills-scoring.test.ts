@@ -23,6 +23,7 @@ import {
   istanbulLocalDueSchema,
   istanbulLocalToUtc,
   learnerResultLevel,
+  answerLocaleForTags,
   normalizeShortAnswer,
   planAnswerSave,
   planAttemptStart,
@@ -38,6 +39,7 @@ import {
   type AttemptTiming,
   type CompletedAttempt,
   type DeadlineInput,
+  type AnswerLocale,
   type ScoringItem,
 } from '../packages/school-core/src/skills/scoring.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -47,9 +49,11 @@ const item = (
   question: unknown,
   answerKey: unknown,
   points = 1,
+  locale: AnswerLocale = 'tr',
 ): ScoringItem => ({
   questionVersionId,
   points,
+  locale,
   question: questionBodySchema.parse(question) as QuestionBody,
   answerKey: answerKeySchema.parse(answerKey) as AnswerKey,
 })
@@ -255,10 +259,10 @@ describe('otomatik puan (DOM-BEC-010)', () => {
 
 describe('kısa cevap normalleştirmesi (DOM-BEC-010)', () => {
   test('DOM-BEC-010 Türkçe İ/ı tr-TR kuralıyla küçültülür', () => {
-    assert.equal(normalizeShortAnswer('IŞIK'), 'ışık')
-    assert.equal(normalizeShortAnswer('İstanbul'), 'istanbul')
+    assert.equal(normalizeShortAnswer('IŞIK', 'tr'), 'ışık')
+    assert.equal(normalizeShortAnswer('İstanbul', 'tr'), 'istanbul')
     // Ayrışık "İ" (I + U+0307) NFC ile tek harfe birleşir.
-    assert.equal(normalizeShortAnswer('İstanbul'), 'istanbul')
+    assert.equal(normalizeShortAnswer('İstanbul', 'tr'), 'istanbul')
     assert.equal(scoreItem(short, { questionType: 'short_answer', value: 'Işık' }).correctParts, 1)
     assert.equal(
       scoreItem(short, { questionType: 'short_answer', value: 'istanbul boğazı' }).correctParts,
@@ -273,13 +277,61 @@ describe('kısa cevap normalleştirmesi (DOM-BEC-010)', () => {
   })
 
   test('DOM-BEC-010 baştaki, sondaki ve art arda boşluk normalleşir; noktalama korunur', () => {
-    assert.equal(normalizeShortAnswer('  İstanbul \t\n  Boğazı  '), 'istanbul boğazı')
+    assert.equal(normalizeShortAnswer('  İstanbul \t\n  Boğazı  ', 'tr'), 'istanbul boğazı')
     assert.equal(
       scoreItem(short, { questionType: 'short_answer', value: ' İSTANBUL   BOĞAZI ' }).correctParts,
       1,
     )
     assert.equal(scoreItem(short, { questionType: 'short_answer', value: 'ışık.' }).correctParts, 0)
     assert.equal(scoreItem(short, { questionType: 'short_answer', value: '   ' }).answered, false)
+  })
+
+  test('DOM-BEC-010 \'en\': "I" ile "i" eşit, "I\'m" ile "i’m" eşit', () => {
+    assert.equal(normalizeShortAnswer('I', 'en'), normalizeShortAnswer('i', 'en'))
+    assert.equal(normalizeShortAnswer("I'm", 'en'), normalizeShortAnswer('i’m', 'en'))
+  })
+
+  test('DOM-BEC-010 \'tr\': IŞIK ve İstanbul korunur, "I" ile "i" eşit değil', () => {
+    assert.equal(normalizeShortAnswer('IŞIK', 'tr'), 'ışık')
+    assert.equal(normalizeShortAnswer('İstanbul', 'tr'), 'istanbul')
+    assert.notEqual(normalizeShortAnswer('I', 'tr'), normalizeShortAnswer('i', 'tr'))
+  })
+
+  test('DOM-BEC-010 answerLocaleForTags: beceri veya CEFR varsa en, yoksa tr', () => {
+    const base = { cefrLevel: null, primarySkill: null, skills: [] } satisfies Parameters<
+      typeof answerLocaleForTags
+    >[0]
+    assert.equal(answerLocaleForTags(base), 'tr')
+    assert.equal(answerLocaleForTags({ ...base, cefrLevel: 'B1' }), 'en')
+    assert.equal(answerLocaleForTags({ ...base, primarySkill: 'reading' }), 'en')
+    assert.equal(answerLocaleForTags({ ...base, skills: ['listening'] }), 'en')
+  })
+
+  test('DOM-BEC-010 tipografik kesme işareti, tırnak ve Unicode boşluk tek karaktere iner', () => {
+    for (const locale of ['tr', 'en'] as const) {
+      assert.equal(normalizeShortAnswer('don’t', locale), normalizeShortAnswer("don't", locale))
+      for (const mark of ['‘', 'ʼ', '′', '´', '`']) {
+        assert.equal(normalizeShortAnswer(`don${mark}t`, locale), "don't", mark)
+      }
+      assert.equal(normalizeShortAnswer('“yes”', locale), normalizeShortAnswer('"yes"', locale))
+      assert.equal(normalizeShortAnswer('„yes″', locale), '"yes"', locale)
+      assert.equal(normalizeShortAnswer('a  b c　d', locale), 'a b c d')
+      assert.equal(normalizeShortAnswer(' yes ', locale), 'yes')
+      // Diğer noktalama korunur; sondaki nokta anlamlıdır.
+      assert.notEqual(normalizeShortAnswer('yes.', locale), normalizeShortAnswer('yes', locale))
+    }
+  })
+
+  test("DOM-BEC-010 scoreAttempt: aynı cevap 'en' ile doğru, 'tr' ile yanlış", () => {
+    const question = { questionType: 'short_answer', stem: 'Subject pronoun?', maxLength: 10 }
+    const key = { questionType: 'short_answer', accepted: ['I'], explanation }
+    const answers = { 'test-q-pronoun': { questionType: 'short_answer', value: 'i' } } as const
+    const english = item('test-q-pronoun', question, key, 1, 'en')
+    const turkish = item('test-q-pronoun', question, key, 1, 'tr')
+    assert.equal(scoreAttempt([english], answers).percent, 100)
+    assert.equal(scoreAttempt([turkish], answers).percent, 0)
+    const smart = { 'test-q-pronoun': { questionType: 'short_answer', value: 'I' } } as const
+    assert.equal(scoreAttempt([turkish], smart).percent, 100)
   })
 })
 

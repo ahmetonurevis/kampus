@@ -469,6 +469,53 @@ describe('işlem çalıştırıcı', () => {
     }
   })
 
+  test('skaler alanı değiştiren işlem geri alınır: 500 ve değersiz yapılandırılmış log', async () => {
+    const logs: string[] = []
+    const logged = await buildTestApp(db, { logs })
+    try {
+      const ctx = { ...(await institution(['invoices'])), log: logged.log }
+      const before = await snapshot(ctx.institutionId)
+      await assert.rejects(
+        runOperation(ctx, {
+          action: 'invoice.pay',
+          collections: ['invoices'],
+          entity: { type: 'invoices', id: unpaid.id },
+          scalars: { modules: { ...seed.modules }, academicYear: 2026 },
+          run: (state, { now }) => {
+            pay(state, now)
+            state.modules.transport = false
+            state.academicYear = 4321
+          },
+        }),
+        hasStatus(500, 'internal_error'),
+      )
+      assert.deepEqual(await snapshot(ctx.institutionId), before)
+      const line = logs.find((item) => item.includes('operation.scalar_changed'))
+      assert.ok(line, 'skaler değişikliği loglanmadı')
+      const entry = JSON.parse(line)
+      assert.equal(entry.level, 50)
+      assert.deepEqual(entry.fields, ['academicYear', 'modules.transport'])
+      assert.ok(!line.includes('4321'))
+    } finally {
+      await logged.close()
+    }
+  })
+
+  test('skaler alanı okuyup değiştirmeyen işlem yazılır', async () => {
+    const ctx = await institution(['invoices'])
+    const outcome = await runOperation(ctx, {
+      action: 'invoice.pay',
+      collections: ['invoices'],
+      entity: { type: 'invoices', id: unpaid.id },
+      scalars: { modules: { ...seed.modules }, academicYear: 2026 },
+      run: (state, { now }) => {
+        assert.equal(state.academicYear, 2026)
+        return pay(state, now)
+      },
+    })
+    assert.equal(outcome.changes.length, 1)
+  })
+
   test('yüklenmeyen koleksiyona erişim programlama hatasıdır (500)', async () => {
     const ctx = await institution(['transportAssignments'])
     const before = await snapshot(ctx.institutionId)

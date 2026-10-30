@@ -67,7 +67,8 @@ export interface OperationRequest<R> {
   collections: readonly CollectionName[]
   /**
    * Dizi olmayan State alanları (`modules`, `academicYear` …). `records`'ta tutulmaz; çağıran
-   * kurum ayarlarından verir. İşlem bunları değiştirse de yazılmaz.
+   * kurum ayarlarından verir. İşlem bunları değiştirirse değişiklik yazılamayacağı için işlem
+   * geri alınır (500, `operation.scalar_changed` logu).
    */
   scalars?: Partial<Pick<State, ScalarStateKey>>
   /** İstemcinin okuduğu sürümler (gövdedeki `version`); tutmazsa 409, kayıt yoksa 404. */
@@ -186,6 +187,29 @@ function normalize(collection: CollectionName, item: unknown): RecordData {
   return Object.fromEntries(Object.entries(value))
 }
 
+/**
+ * Değişen skaler alanların adları (değer değil). Nesne alanlarında bir alt düzey verilir
+ * (`modules.transport`); log kişisel veri ve değer taşımaz.
+ */
+function changedScalars(before: Record<string, unknown>, after: Record<string, unknown>): string[] {
+  const changed: string[] = []
+  for (const key of Object.keys(before)) {
+    const old = before[key]
+    const now = after[key]
+    if (isDeepStrictEqual(old, now)) continue
+    if (isPlainObject(old) && isPlainObject(now)) {
+      const keys = new Set([...Object.keys(old), ...Object.keys(now)])
+      for (const sub of keys)
+        if (!isDeepStrictEqual(old[sub], now[sub])) changed.push(`${key}.${sub}`)
+    } else changed.push(key)
+  }
+  return changed.sort()
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 function changedFields(before: RecordData, after: RecordData): string[] {
   const keys = new Set([...Object.keys(before), ...Object.keys(after)])
   return [...keys].filter((key) => !isDeepStrictEqual(before[key], after[key]))
@@ -296,6 +320,17 @@ export async function runOperation<R>(
       result = request.run(guardedState(target), tools)
     } catch (error) {
       throw mapOperationError(error)
+    }
+
+    // Skaler alan `records`'ta tutulmaz; değişikliği sessizce düşürmek yerine işlem geri alınır.
+    const scalarChanges = changedScalars(request.scalars ?? {}, target)
+    if (scalarChanges.length > 0) {
+      ctx.log.error({
+        event: 'operation.scalar_changed',
+        action: request.action,
+        fields: scalarChanges,
+      })
+      throw programmingError(`operation changed scalar state: ${scalarChanges.join(', ')}`)
     }
 
     const { writes, fields } = difference(collections, before, target)

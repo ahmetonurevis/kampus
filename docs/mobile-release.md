@@ -65,6 +65,25 @@ Node.js 24, pnpm 11, JDK 21 ve Android SDK 36 kullanılır. `ANDROID_HOME` ve `J
 
 İmzalama anahtarı ve parolası kaynak deposunun dışında `~/.config/kampus/android-release/` içinde, yalnızca kullanıcıya açık izinlerle tutulur. Bu dizini güvenli biçimde yedekleyin; parolayı veya anahtarı repoya eklemeyin. Gelecek güncellemelerde aynı anahtar ve uygulama kimliği kullanılmalı, `app.json` içindeki sürüm/sürüm kodu artırılmalıdır. APK'yı mevcut uygulamanın üzerine kurmak verileri korur.
 
+## API modu (geliştirme)
+
+Varsayılan derleme çevrimdışı demodur. `EXPO_PUBLIC_API_URL` verilince uygulama gerçek API'ye bağlanır; değer derlemede pakete gömülür ve yalnız API kök adresidir (sır yazılmaz). Örnek: `apps/mobile/.env.example`; yerel değer `apps/mobile/.env.local` dosyasına yazılır (git dışı).
+
+```bash
+docker compose up -d && pnpm --filter @kampus/api db:migrate && pnpm --filter @kampus/api db:seed
+pnpm dev:api                                         # apps/api/.env: PORT, CORS_ORIGINS
+EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 pnpm mobile --clear
+EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 pnpm --filter @kampus/mobile export:web --clear
+```
+
+- Mod değiştirirken Metro önbelleği `--clear` ile temizlenir; yoksa önceki moddaki değer pakette kalabilir.
+- Adres yoksa demo, geçerli `http(s)` köküyse API modu açılır. Kullanıcı bilgisi, sorgu veya parça içeren ya da geçersiz portlu adreste demo sessizce açılmaz; "Uygulama yapılandırması geçersiz" ekranı gösterilir.
+- Telefonda giriş Better Auth Expo istemcisiyle yapılır: oturum çerezi yalnız `expo-secure-store`'da (Android Keystore) tutulur, istekler `Cookie` başlığıyla gider. AsyncStorage'a yalnız tema tercihi yazılır; seçili çocuk ve liste durumu bellekte kalır, oturum veya kurum değişince silinir. Web derlemesinde oturum tarayıcının HttpOnly çerezindedir; web kökeni API `CORS_ORIGINS` listesinde olmalıdır.
+- API güvenilir kökenleri: uygulama şeması `kampus://` her ortamda (`TRUSTED_ORIGINS`), Expo Go `exp://` yalnız geliştirme/testte. Üretim API'si `exp://` kökenli girişi 403 ile reddeder; Expo Go ile yalnız geliştirme API'sine bağlanılır. Fiziksel cihazda `127.0.0.1` yerine bilgisayarın ağ adresi kullanılır.
+- API modunda açık ekranlar: öğretmen Sınıflarım, veli Akademik Takip (çocuk seçici + notlar); salt okuma. Avatar menüsünde kurum değiştirme, tema ve çıkış bulunur. Diğer rollerin ana ekranı "hazırlanıyor" bilgisini gösterir; o ekranlar şimdilik demo modundadır.
+- Hatalar Türkçedir: yanlış parola "E-posta veya parola hatalı.", hız sınırında bekleme süresi, bağlantı yokken "Sunucuya ulaşılamadı…", kullanıcı çıkmadan kapanan oturumda "Oturumunuzun süresi doldu. Yeniden giriş yapın.". Teknik ayrıntı yalnız yerel loga yazılır.
+- APK'da API modu henüz doğrulanmadı (Android araç zinciri olmadan yalnız `export:web` ve birim testleri).
+
 ## Güncel teslim ve kaynak haritası
 
 Güncel APK: `apklar/kampus-1.4.0.apk` (65.689.445 bayt). SHA-256:

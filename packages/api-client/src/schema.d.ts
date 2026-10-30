@@ -1653,6 +1653,10 @@ export interface operations {
                 archived?: "include" | "only";
                 /** @description Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır */
                 isActive?: "true" | "false";
+                /** @description Yalnız `schedule`: `true` iptal edilen dersler (`cancelledAt` dolu), `false` iptal edilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                cancelled?: "true" | "false";
+                /** @description Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                graded?: "true" | "false";
                 /** @description Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir */
                 dateField?: "date" | "joinedAt" | "dueDate" | "paidAt" | "createdAt" | "trialAt" | "submittedAt" | "answeredAt" | "followUp" | "deadline" | "reviewedAt" | "endDate" | "consentDeadline";
                 /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
@@ -1782,6 +1786,10 @@ export interface operations {
                 archived?: "include" | "only";
                 /** @description Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır */
                 isActive?: "true" | "false";
+                /** @description Yalnız `schedule`: `true` iptal edilen dersler (`cancelledAt` dolu), `false` iptal edilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                cancelled?: "true" | "false";
+                /** @description Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                graded?: "true" | "false";
                 /** @description Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir */
                 dateField?: "date" | "joinedAt" | "dueDate" | "paidAt" | "createdAt" | "trialAt" | "submittedAt" | "answeredAt" | "followUp" | "deadline" | "reviewedAt" | "endDate" | "consentDeadline";
                 /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */

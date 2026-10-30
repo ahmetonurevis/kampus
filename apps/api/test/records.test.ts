@@ -31,6 +31,13 @@ import {
 } from '../src/services/list-filters.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
 
+const setFilter = (rule: 'truthy' | 'nonNull', set: boolean): RecordFilter => ({
+  kind: 'set',
+  field: 'flag',
+  set,
+  rule,
+})
+
 const LATER = new Date('2026-10-06T10:00:00.000Z')
 
 describe('records deposu', () => {
@@ -483,6 +490,55 @@ describe('records deposu', () => {
       'test-f-j',
       'test-f-k',
     ])
+  })
+
+  test('doluluk süzgeci (truthy, nonNull) SQL ile bellekte aynı sonucu verir', async () => {
+    const values: [string, unknown][] = [
+      ['yok', undefined],
+      ['null', null],
+      ['bos', ''],
+      ['sifir', 0],
+      ['false', false],
+      ['sifir-metin', '0'],
+      ['metin', '2026-10-05T09:00:00.000Z'],
+      ['sayi', 80],
+      ['true', true],
+      ['dizi', []],
+      ['nesne', {}],
+    ]
+    const id = await institutionWith(
+      values.map(([key, value]) =>
+        invoice(`test-set-${key}`, value === undefined ? {} : { flag: value }),
+      ),
+    )
+    const stored = await loadRecords(db, id, ['invoices'])
+    const filled = (rule: 'truthy' | 'nonNull') =>
+      stored.filter((row) => matchesRecordFilter(row.data, setFilter(rule, true))).map((r) => r.id)
+    for (const rule of ['truthy', 'nonNull'] as const) {
+      for (const set of [true, false]) {
+        const filter = setFilter(rule, set)
+        const sqlIds = (await loadRecords(db, id, ['invoices'], { match: [filter] })).map(
+          (row) => row.id,
+        )
+        const memoryIds = stored
+          .filter((row) => matchesRecordFilter(row.data, filter))
+          .map((row) => row.id)
+        assert.deepEqual(sqlIds, memoryIds, `${rule} ${set}`)
+      }
+    }
+    // Çekirdek kuralları: `!x` (boş metin, 0, false boş) ve `x == null` (yalnız null/eksik boş).
+    assert.deepEqual(
+      filled('truthy').map((key) => key.replace('test-set-', '')),
+      values.filter(([, value]) => Boolean(value)).map(([key]) => key),
+    )
+    assert.deepEqual(
+      filled('truthy').map((key) => key.replace('test-set-', '')),
+      ['sifir-metin', 'metin', 'sayi', 'true', 'dizi', 'nesne'],
+    )
+    assert.deepEqual(
+      filled('nonNull').map((key) => key.replace('test-set-', '')),
+      values.filter(([, value]) => value !== undefined && value !== null).map(([key]) => key),
+    )
   })
 
   test('gün aralığı seçilen alanda (paidAt, dueDate) SQL ile bellekte aynı sonucu verir', async () => {

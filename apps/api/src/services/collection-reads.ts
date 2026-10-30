@@ -10,6 +10,7 @@ import {
   type InvoiceStatusLabel,
   type RecordFilter,
   type SearchMatch,
+  type SetMatch,
   type StoredRecord,
 } from '../db/records.ts'
 import { NotFoundError, ValidationError } from '../errors.ts'
@@ -105,6 +106,49 @@ function isInvoiceStatus(value: string): value is InvoiceStatusLabel {
 }
 
 /**
+ * Durum süzgeçleri (`cancelled=true|false`, `graded=true|false`): alanın dolu olup olmadığı.
+ * Her süzgeç tek koleksiyona bağlıdır; başka koleksiyonda 400. Kural core'la aynıdır: iptal
+ * `cancelledAt` doğruluk değeridir (`!lesson.cancelledAt`), notlanma `score` boş olmamasıdır
+ * (`score == null` notlanmamış; `0` puandır).
+ */
+export const STATE_FILTERS = {
+  cancelled: {
+    collection: 'schedule',
+    field: 'cancelledAt',
+    rule: 'truthy',
+    where: 'ders programında',
+  },
+  graded: { collection: 'submissions', field: 'score', rule: 'nonNull', where: 'teslimlerde' },
+} as const satisfies Record<
+  string,
+  { collection: CollectionName; field: string; rule: 'truthy' | 'nonNull'; where: string }
+>
+export type StateFilter = keyof typeof STATE_FILTERS
+export const STATE_FILTER_NAMES = Object.keys(STATE_FILTERS) as [StateFilter, ...StateFilter[]]
+
+function stateFiltersOf(
+  collection: CollectionName,
+  states: CollectionReadQuery['states'],
+): SetMatch[] {
+  const filters: SetMatch[] = []
+  for (const name of STATE_FILTER_NAMES) {
+    const set = states?.[name]
+    if (set === undefined) continue
+    const state = STATE_FILTERS[name]
+    if (state.collection !== collection)
+      throw new ValidationError([
+        {
+          path: [name],
+          code: 'invalid_value',
+          message: `Bu süzgeç yalnız ${state.where} kullanılır.`,
+        },
+      ])
+    filters.push({ kind: 'set', field: state.field, set, rule: state.rule })
+  }
+  return filters
+}
+
+/**
  * Gün aralığı süzgecinin (`dateFrom`/`dateTo`) seçilebilir tarih alanları, koleksiyon başına
  * izin listesi; ilki `dateField` verilmezse kullanılan varsayılandır. Listede olmayan koleksiyonda
  * tek alan `date`'tir (eski davranış). Alan adı sorguya yalnız bu listeden girer.
@@ -191,6 +235,8 @@ export interface CollectionReadQuery {
   filters?: Partial<Record<FilterField, readonly string[]>> | undefined
   /** `isActive` süzgeci; verilmezse etkin ve pasif kayıtlar birlikte döner. */
   isActive?: boolean | undefined
+  /** Durum süzgeçleri (`STATE_FILTERS`): `true` alan dolu, `false` boş olanı getirir. */
+  states?: Partial<Record<StateFilter, boolean>> | undefined
   /** Aralığın tarih alanı (`DATE_FIELDS` izin listesi); verilmezse koleksiyonun varsayılanı. */
   dateField?: string | undefined
   /** Tarih alanının Europe/Istanbul günü aralığı (`YYYY-MM-DD`, iki uç dahil). */
@@ -277,6 +323,7 @@ async function listFilters(
 ): Promise<RecordFilter[] | null> {
   // Alan izin listesinden geçer (aralık yoksa etkisizdir ama geçersiz alan yine 400'dür).
   const dateField = dateFieldOf(collection, query.dateField)
+  const stateFilters = stateFiltersOf(collection, query.states)
   const filters: RecordFilter[] = []
   for (const field of FILTER_FIELDS) {
     const values = query.filters?.[field]
@@ -300,6 +347,7 @@ async function listFilters(
   }
   if (query.isActive !== undefined)
     filters.push({ kind: 'active', field: 'isActive', active: query.isActive })
+  filters.push(...stateFilters)
   const range = dayRange(dateField, query.dateFrom, query.dateTo)
   if (range) filters.push(range)
   const hidden = scope.hiddenFields(collection)
@@ -526,6 +574,7 @@ async function sqlPage(
     !query.q &&
     (query.sort ?? []).length === 0 &&
     query.isActive === undefined &&
+    Object.values(query.states ?? {}).every((value) => value === undefined) &&
     query.dateField === undefined &&
     query.dateFrom === undefined &&
     query.dateTo === undefined &&

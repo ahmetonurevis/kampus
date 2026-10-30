@@ -10,6 +10,7 @@ import {
   type InvoiceStatusLabel,
   type InvoiceStatusMatch,
   type RecordFilter,
+  type SetMatch,
 } from '../db/records.ts'
 
 /**
@@ -102,6 +103,12 @@ export function matchesActive(record: RecordData, { field, active }: ActiveMatch
   return (record[field] === false) !== active
 }
 
+export function matchesSet(record: RecordData, { field, set, rule }: SetMatch): boolean {
+  const value = record[field]
+  const filled = rule === 'truthy' ? Boolean(value) : value !== null && value !== undefined
+  return filled === set
+}
+
 /**
  * Taksitin core durumu (`invoiceStatus`); `today` Europe/Istanbul günüdür (`dayKey(ctx.now)`).
  * Ödenmemiş taksitin vadesi okunamıyorsa durum yoktur (`null`): core böyle bir vadede hata
@@ -160,6 +167,8 @@ export function matchesRecordFilter(record: RecordData, filter: RecordFilter): b
       return filter.matches.some((match) => matchesField(record, match))
     case 'active':
       return matchesActive(record, filter)
+    case 'set':
+      return matchesSet(record, filter)
     case 'dayRange':
       return matchesDayRange(record, filter)
     case 'invoiceStatus':

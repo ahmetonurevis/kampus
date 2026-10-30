@@ -1438,6 +1438,32 @@
             "schema": {
               "type": "string",
               "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "cancelled",
+            "required": false,
+            "description": "Yalnız `schedule`: `true` iptal edilen dersler (`cancelledAt` dolu), `false` iptal edilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "graded",
+            "required": false,
+            "description": "Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
                 "date",
                 "joinedAt",
                 "dueDate",
@@ -2062,6 +2088,32 @@
             "name": "isActive",
             "required": false,
             "description": "Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "cancelled",
+            "required": false,
+            "description": "Yalnız `schedule`: `true` iptal edilen dersler (`cancelledAt` dolu), `false` iptal edilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "graded",
+            "required": false,
+            "description": "Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400"
           },
           {
             "schema": {

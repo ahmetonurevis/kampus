@@ -73,6 +73,19 @@ export interface ActiveMatch {
 }
 
 /**
+ * Doluluk süzgeci (`cancelled`, `graded`): alanın dolu olup olmadığı. `truthy` JS doğruluk
+ * değeridir (core `!lesson.cancelledAt`: boş metin ve `false` boştur); `nonNull` yalnız `null`
+ * ve eksik alanı boş sayar (core `score == null`: `0` puandır, dolu). Kesin koşuldur: bellekteki
+ * `matchesSet` ile aynı sonucu verir. `set: false` boş olanı eşler.
+ */
+export interface SetMatch {
+  kind: 'set'
+  field: string
+  set: boolean
+  rule: 'truthy' | 'nonNull'
+}
+
+/**
  * Gün aralığı süzgeci (`dateFrom`/`dateTo`, Europe/Istanbul günü, iki uç dahil). Değer ya
  * `YYYY-MM-DD` günüdür (günle karşılaştırılır) ya da `toISOString` biçiminde an (aralığın UTC
  * sınırlarıyla karşılaştırılır); başka biçim eşleşmez. Karşılaştırma bayt sırasıyladır
@@ -113,7 +126,8 @@ export const INVOICE_STATUS_LABELS: readonly InvoiceStatus[] = Object.values(
 )
 export type InvoiceStatusLabel = InvoiceStatus
 
-export type RecordFilter = FieldMatch | AnyMatch | ActiveMatch | DayRangeMatch | InvoiceStatusMatch
+export type RecordFilter =
+  FieldMatch | AnyMatch | ActiveMatch | SetMatch | DayRangeMatch | InvoiceStatusMatch
 
 /** Gün ve an biçimleri; SQL (`~`) ve bellek (`RegExp`) aynı metni kullanır. */
 export const DAY_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
@@ -182,6 +196,13 @@ function activeMatch({ field, active }: ActiveMatch): SQL {
     : sql`${value} = 'false'::jsonb`
 }
 
+function setMatch({ field, set, rule }: SetMatch): SQL {
+  const value = sql`coalesce(${records.data} -> ${field}::text, 'null'::jsonb)`
+  const filled =
+    rule === 'truthy' ? sql`(${value} not in ${FALSY_JSON})` : sql`(${value} <> 'null'::jsonb)`
+  return set ? filled : sql`(not ${filled})`
+}
+
 function dayRangeMatch(match: DayRangeMatch): SQL {
   const text = sql`(${records.data} ->> ${match.field}::text)`
   const ordered = sql`(${text} collate "C")`
@@ -233,6 +254,8 @@ export function recordFilter(filter: RecordFilter): SQL {
         : sql`(${sql.join(filter.matches.map(fieldMatch), sql` or `)})`
     case 'active':
       return activeMatch(filter)
+    case 'set':
+      return setMatch(filter)
     case 'dayRange':
       return dayRangeMatch(filter)
     case 'invoiceStatus':

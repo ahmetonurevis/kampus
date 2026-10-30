@@ -75,6 +75,18 @@ const readQueryShape = {
     .describe(
       'Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır',
     ),
+  cancelled: z
+    .enum(['true', 'false'])
+    .optional()
+    .describe(
+      'Yalnız `schedule`: `true` iptal edilen dersler (`cancelledAt` dolu), `false` iptal edilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400',
+    ),
+  graded: z
+    .enum(['true', 'false'])
+    .optional()
+    .describe(
+      'Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400',
+    ),
   dateField: z
     .enum(DATE_FIELD_NAMES)
     .optional()

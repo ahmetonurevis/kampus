@@ -25,6 +25,15 @@ Uygulama notları: Ana ekran bölümleri `Section` bileşeninin `panel` seçene�
 
 API modu: `EXPO_PUBLIC_API_URL` üretimde (`__DEV__` kapalı) yalnız `https` olabilir; `http` adres `invalid` olur ve yapılandırma hatası gösterilir (`api/config.ts`). Geliştirmede `http://127.0.0.1`, `10.0.2.2` ve LAN adresleri çalışır. Giriş ekranına düşüşte (401 dahil) ve kullanıcı kimliği değişince sorgu önbelleği temizlenir (`ApiAuthProvider`, `KampusProvider`).
 
+## Mimari: demo ve API modu
+
+- Mod açılışta `EXPO_PUBLIC_API_URL` ile seçilir (`src/api/config.ts`, `appMode`): boşsa çevrimdışı demo (`store/SchoolProvider.tsx`, AsyncStorage); `api` ise `AppRoot` tembel olarak `src/api/ApiApp.tsx` yükler; `invalid` ise yapılandırma hatası gösterilir. Demo, API geçişi bitince silinir.
+- API oturumu: Better Auth Expo istemcisi `expo-secure-store` ile (`src/api/clients.ts`); `src/api/auth.tsx` oturum durumunu `/me` sorgusundan okur. Sorgu katmanı `@kampus/react-shared/KampusProvider.tsx` ile kurulur (TanStack Query, `packages/api-client`).
+- `KampusProvider` önbelleği `userId` değişince veya giriş ekranına düşüşte (401 dahil) temizler; başka kullanıcının verisi önbellekten sızmaz.
+- Ekranlar kuralları core'dan tüketir: menü ve kategori `school-core/modules/full-navigation.ts` (`src/api/pages.ts`, `model/hub.ts`), iş akışı liste/form/detay `lib/workflow-presentation.ts` (`WorkflowScreen`, `ui/WorkflowFormSheet`), State tipi `school-core/data/seed.ts`. Ekran iş kuralı yazmaz.
+- Hatalar `src/lib/error-log.ts` (`recordError`) ile yapılandırılmış günlüğe yazılır; kullanıcıya Türkçe ayrıntısız mesaj (`lib/error-message.ts`) gider.
+- Üretimde (`__DEV__` kapalı) API adresi yalnız `https` olabilir; `http` adres `invalid` olur.
+
 ## Performans ve kayıt bütünlüğü
 
 - Kategori değişiminde ana ekran yeniden kurulmaz; kapalı menüler ve odakta olmayan ekranlar gereksiz çizilmez.

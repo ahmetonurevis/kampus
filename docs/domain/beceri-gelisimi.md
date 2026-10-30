@@ -48,11 +48,11 @@
 
 ### DOM-BEC-010 · Otomatik puan cevaplardan hesaplanır
 
-- **Kural:** Otomatik puanlanan görevde kursiyerin cevapları ve kullanılan cevap anahtarı sürümü saklanır; puan bunlardan her okumada hesaplanır, ayrı alanda saklanmaz. Kısa cevapta karşılaştırma öncesi büyük/küçük harf, baştaki/sondaki boşluk ve art arda boşluk normalleştirilir; yazım farkı yalnız kabul listesinde varsa doğru sayılır. Yanlış cevap eksi puan getirmez. Çok maddeli görevlerde (eşleştirme, sıralama) her madde ayrı puanlanır.
+- **Kural:** Otomatik puanlanan görevde kursiyerin cevapları ve kullanılan cevap anahtarı sürümü saklanır; puan bunlardan her okumada hesaplanır, ayrı alanda saklanmaz. Kısa cevapta karşılaştırma öncesi büyük/küçük harf, baştaki/sondaki boşluk ve art arda boşluk normalleştirilir; yazım farkı yalnız kabul listesinde varsa doğru sayılır. Karşılaştırma içeriğin diline göre yapılır (İngilizce beceri içeriği `en`, diğerleri `tr`); tipografik kesme işareti ve tırnak varyantları tek karaktere iner. Yanlış cevap eksi puan getirmez. Çok maddeli görevlerde (eşleştirme, sıralama) her madde ayrı puanlanır.
 - **Gerekçe:** Hesaplanabilen değer saklanmaz; saklanan puan anahtar düzeltilince bayatlar.
 - **Kaynak:** Proje kuralı (quiz puanı cevaplardan hesaplanır); eksi puan yokluğu işletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — `gradeQuiz` cevaplardan hesaplar (`packages/school-core/src/lib/domain.js:75-104`), ama sonuç denemeye ve not kaydına kopyalanarak saklanır (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`); kısa cevap, eşleştirme, sıralama yok.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `scoreAttempt`/`scoreItem` (altı soru türü, madde başına puan, eksi puan yok, saklanmaz) ve `normalizeShortAnswer(değer, dil)` ve `answerLocaleForTags` (NFC, dile göre küçültme `tr-TR`/`en-US`, Unicode boşluk, tipografik kesme işareti ve tırnak tek karakter; diğer noktalama korunur; okul kurumunda İngilizce dersinin beceri etiketsiz içeriği `tr` olur, `TODO(beceri-ders-dili)`); sıralamada madde konumdur (`TODO(beceri-siralama-puani)`). Eski demo hâlâ çelişiyor: `gradeQuiz` (`packages/school-core/src/lib/domain.ts`) sonucu denemeye ve not kaydına kopyalanır (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
 
 ### DOM-BEC-011 · Anahtar düzeltmesi
 
@@ -60,7 +60,7 @@
 - **Gerekçe:** Hatalı anahtar düzeltilmeli, ama resmî nota veya kesinleşmiş karara sessizce dokunulmamalı.
 - **Kaynak:** İşletme kuralı (optik değerlendirmedeki anahtar revizyonu kuralıyla aynı ilke).
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — puan anahtardan her okumada hesaplandığı için aynı cevaplar yeni anahtar sürümüyle yeniden okunur (`packages/school-core/src/skills/scoring.ts` `scoreAttempt`); gerekçeli düzeltme işlemi, fark önizlemesi ve bildirim F4a2 (`skills/assignment.ts`) ve API'dedir (ADR 0004 açık soru 2).
 
 ## Öğretmen puanlaması ve rubrikler
 
@@ -94,7 +94,7 @@
 - **Gerekçe:** Otomatik puanlamanın geçerliliği ve hatası kursiyere karşı denetlenemez; çocuk sesi ve yazısının yurt dışı/üçüncü taraf hizmete aktarımı ayrı hukuki dayanak ister.
 - **Kaynak:** ADR 0001 karar 8 (dış SaaS yok); KVKK md. 8–9 (aktarım) — yurt dışı aktarım koşulları **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok (kodda otomatik yazma/konuşma puanı da yok).
+- **Kodda:** kısmen — `packages/school-core/src/skills/scoring.ts` `scoringModeFor`/`assertAutoScored` otomatik puanı yalnız soru, quiz ve alıştırma setine açar; `packages/school-core/src/skills/submission.ts` `wordCountCheck` yalnız uyarı verir, bant önermez.
 
 ### DOM-BEC-024 · İkinci puanlayıcı
 
@@ -162,7 +162,7 @@
 - **Gerekçe:** Teslimin üzerine yazmak öğretmenin neyi okuduğunu belirsizleştirir ve itirazda kanıt bırakmaz.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — tek kayıt var ama yeniden teslim dosya adını ve zamanı üzerine yazar, sürüm tutulmaz (`apps/web/src/views/Learning.vue:222-248`); puanlanınca kilitlenir.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/submission.ts` `planSubmissionVersion` (tek teslim kaydı, değişmez yeni sürüm), `versionAllowance` (sınır 1–5, yeniden teslim isteği sınıra sayılmaz), `assertGradableVersion` (yalnız son sürüm). Eski demo hâlâ çelişiyor: yeniden teslim dosya adını ve zamanı üzerine yazar (`apps/web/src/views/Learning.vue:222-248`).
 
 ### DOM-BEC-041 · Görev türü: değerlendirme veya alıştırma
 
@@ -170,7 +170,7 @@
 - **Gerekçe:** Pratik yapmayı cezalandırmamak ile ölçmeyi güvenilir tutmak ayrı türler gerektirir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — her quiz denemesi not üretir.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `TASK_KINDS`, `attemptRulesSchema` (alıştırma sınırsız) ve `countedAttempt` (alıştırma sayılan sonuç üretmez); türün yayımdan sonra değişmemesi F4a2 (`skills/assignment.ts`). Eski demoda her quiz denemesi not üretir.
 
 ### DOM-BEC-042 · Deneme hakkı
 
@@ -178,7 +178,7 @@
 - **Gerekçe:** Sınırsız deneme cevapları ezberletir; her denemenin ayrı not üretmesi ortalamayı bozar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `attemptRulesSchema` (hak 1–3, "en yüksek" yalnız hak 1'den büyükse), `planAttemptStart` (başlatılan her deneme hak tüketir, `TODO(beceri-deneme-sayimi)`), `countedAttempt`. Eski demo hâlâ çelişiyor: deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
 
 ### DOM-BEC-043 · Süreli görev
 
@@ -186,7 +186,7 @@
 - **Gerekçe:** İstemci saati değiştirilebilir; erişilebilirlik uyarlaması herkese açık bir istisna olmamalı.
 - **Kaynak:** İşletme kuralı; proje kuralı (doğrulama sunucuda).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — mobil süre dolunca yanıtsız maddelerle teslim eder (`apps/mobile/src/screens/Quiz.tsx:49,75`); süre istemci sayacıdır.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `attemptEndsAt` (süre + `extraTimeSchema` ek süresi, teslim kapanışıyla sınırlı), `attemptState`, `planAnswerSave`, `planAttemptSubmit` (bitiş anında süre dolmuştur, kaydedilmiş cevaplarla teslim). Eski mobil süre istemci sayacıdır (`apps/mobile/src/screens/Quiz.tsx:49,75`).
 
 ### DOM-BEC-044 · Geç teslim
 
@@ -194,7 +194,7 @@
 - **Gerekçe:** Gecikme görünür olmalı; mekanik kesinti mazereti ayırt etmez. Mevzuat yalnız proje için sıfır puan öngörür.
 - **Kaynak:** İşletme kuralı; OİKY md. 22/2 (proje teslim etmeyen sıfır).
 - **Kurum türü:** ikisi
-- **Kodda:** yok — teslimde son tarih denetimi ve geç işareti yok (`apps/web/src/views/Learning.vue:222-248`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `deadlineSchema` (geç kabul 0–7 gün, varsayılan kapalı, `TODO(beceri-gec-kabul-varsayilan)`), `istanbulLocalToUtc`, `submissionWindow`, `isLate` (son teslim anı dahil zamanında), `assertSubmissionOpen`; `packages/school-core/src/skills/submission.ts` `versionIsLate`, `submissionStatus` (`teslim edilmedi`). Eski demoda teslimde son tarih denetimi ve geç işareti yok (`apps/web/src/views/Learning.vue:222-248`).
 
 ### DOM-BEC-045 · Cevap ve geri bildirimin açılması
 
@@ -202,7 +202,7 @@
 - **Gerekçe:** Erken açılan anahtar aynı grubun diğer kursiyerlerine kopya imkânı verir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — sonuç ekranı açıklamayı deneme biter bitmez gösterir (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.tsx:109`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `answerKeyReleased` (son tarihsiz değerlendirmede açılmaz, `TODO(beceri-suresiz-anahtar)`), `learnerResultLevel`, `teacherFeedbackReleased`. Eski demo hâlâ çelişiyor: sonuç ekranı açıklamayı deneme biter bitmez gösterir (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.tsx:109`).
 
 ### DOM-BEC-046 · Yazma teslimi metindir
 
@@ -210,7 +210,7 @@
 - **Gerekçe:** Metin teslimi sözcük sayısını, sürüm karşılaştırmasını ve erişilebilir okumayı mümkün kılar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — ödev yalnız dosya adı olarak saklanır, içerik tutulmaz (`apps/web/src/views/Learning.vue:232-240`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/submission.ts` `planSubmissionVersion` (metin teslimi, el yazısında yalnız görüntü/PDF), `wordCountCheck` (sınır dışı uyarıyla kabul) ve `packages/school-core/src/content/resource.ts` `wordCount`. Eski demoda ödev yalnız dosya adı olarak saklanır (`apps/web/src/views/Learning.vue:232-240`).
 
 ## Ses kaydı ve kişisel veri
 

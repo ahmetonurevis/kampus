@@ -3,6 +3,7 @@ import { subjectsForGrade } from '../data/curriculum.ts'
 import type { State } from '../data/seed.ts'
 import { WORKFLOW_COMMANDS, isWorkflowCommand, type WorkflowCommand } from '../modules/commands.ts'
 import type { Role } from '../modules/navigation.ts'
+import { appointmentHoldsTime } from './appointment-status.ts'
 import { toAuditValue, type AuditValue, type RecordAuditEntry } from './audit.ts'
 import { installmentAmounts, type MakeId, type Session } from './domain.ts'
 import { dayKey } from './format.ts'
@@ -560,7 +561,7 @@ function validateLesson(state: State, data: LessonSlot, ignoreId: string | undef
   }
   if (
     state.appointments.some(
-      (a) => a.teacherId === data.teacherId && a.status !== 'Reddedildi' && overlaps(data, a),
+      (a) => a.teacherId === data.teacherId && appointmentHoldsTime(a) && overlaps(data, a),
     )
   )
     throw new DomainError(

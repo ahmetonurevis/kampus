@@ -415,6 +415,8 @@ describe('yazma uçları', () => {
         // Veli talebi ve izin/mazeret bildirimi (routes/requests.ts; DOM-ILT-053, DOM-ILT-080).
         'POST /api/v1/requests',
         'POST /api/v1/absences',
+        // Randevu talebi (routes/appointments.ts; DOM-ILT-100, DOM-ILT-101).
+        'POST /api/v1/appointments',
         // Öğretmenime Sor: soru gönderme (routes/questions.ts; DOM-ILT-090).
         'POST /api/v1/questions',
         // Kurum modül ayarı (routes/modules.ts).

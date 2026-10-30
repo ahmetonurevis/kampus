@@ -108,7 +108,8 @@ export const ASSESSMENT_COMMANDS = {
   evaluate: workflow('optical', [...OPTICAL]),
   plan: workflow('tutoring', [...OPTICAL, 'branches', 'availability', ...CONFLICTS]),
   slot: workflow('tutoring', ['availability', ...CONFLICTS]),
-  'slot-remove': workflow('tutoring', ['availability']),
+  // Randevusu olan saat kaldırılamaz (DOM-ILT-101); randevular okunur, yazılmaz.
+  'slot-remove': workflow('tutoring', ['availability', 'appointments']),
   cancel: workflow('tutoring', ['tutorSessions']),
   attendance: workflow('tutoring', ['tutorSessions']),
 } as const satisfies Record<string, ModuleCommandSpec>
@@ -178,6 +179,10 @@ export const OPERATION_COMMANDS = {
   'request.open': spec('communication', [...SCOPE, 'requests']),
   'request.update': spec('communication', [...SCOPE, 'requests']),
   'absence.notify': spec('academic', [...SCOPE, 'absences']),
+  // Randevu (`lib/appointments.ts`): talep seçilen uygunluk saatini, onay ve talep çakışmayı
+  // okur (DOM-ILT-101). API talepte yalnız seçilen uygunluk saatini yükler.
+  'appointment.book': spec('communication', [...SCOPE, 'availability', ...CONFLICTS]),
+  'appointment.update': spec('communication', [...SCOPE, ...CONFLICTS]),
   // Öğretmenime Sor (`lib/questions.ts`); kazanım denetimi ders listesini okur. API soru açarken
   // soruları hiç, yanıt ve geri çekmede yalnız hedef soruyu yükler.
   'question.ask': spec('learning', [...SCOPE, 'subjects', 'questions']),

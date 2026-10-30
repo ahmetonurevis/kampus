@@ -198,6 +198,21 @@ const announcementRule =
   (c, r) =>
     announcementVisible(viewerOf(c), r, () => legacy(c, r))
 
+// Randevuyu açan kişi (`requestedBy`, lib/appointments.ts); eski kayıtta yoktur.
+const requester = (row: object): object | undefined => {
+  const by = value(row, 'requestedBy')
+  return typeof by === 'object' && by !== null ? by : undefined
+}
+const requesterId = (row: object) => {
+  const by = requester(row)
+  return by ? text(by, 'userId') : undefined
+}
+// Velinin açtığı görüşme; açanı bilinmeyen eski kayıtta türden anlaşılır (DOM-ILT-103).
+const parentMeeting = (row: object) => {
+  const by = requester(row)
+  return by ? text(by, 'role') === 'veli' : text(row, 'type') === 'Veli görüşmesi'
+}
+
 /** Öğrenci kendi, veli çocuğunun kaydını okur (DOM-YTK-024, DOM-YTK-025). */
 const PERSONAL = { ogrenci: ownStudent, veli: ownStudent } as const
 const ADMIN = { yonetici: all } as const
@@ -316,7 +331,18 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
       c.userId !== undefined &&
       text(r, 'parentUserId') === c.userId,
   },
-  appointments: { ...ADMIN, ogretmen: ownTeacher, ...PERSONAL },
+  // Veli görüşmesini öğrenci görmez; veli yalnız kendi açtığını görür, başka velinin görüşmesi
+  // ona görünmez (DOM-ILT-103, DOM-ILT-073). Açanı bilinmeyen eski veli görüşmesi kapalıdır.
+  // TODO(velayet-kapsam): velayeti olmayan ebeveynin kapsamı (DOM-ILT-070…073) yok; bağlantı
+  // çocuk bazındadır. Talepler (`requests`) akışıyla birlikte ele alınacak.
+  appointments: {
+    ...ADMIN,
+    ogretmen: ownTeacher,
+    ogrenci: (c, r) => ownStudent(c, r) && !parentMeeting(r),
+    veli: (c, r) =>
+      ownStudent(c, r) &&
+      (!parentMeeting(r) || (c.userId !== undefined && requesterId(r) === c.userId)),
+  },
   requests: { ...ADMIN_FRONT_OFFICE, ...PERSONAL },
   availability: { ...ADMIN, ogretmen: ownTeacher },
   // Denetim kaydını yalnız yönetici görür (DOM-YTK-053).

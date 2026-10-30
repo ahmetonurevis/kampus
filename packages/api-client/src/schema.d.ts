@@ -1744,6 +1744,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğretmenden randevu talep et
+         * @description Veli bağlı çocuğu, öğrenci kendisi için öğretmenin bir uygunluk saatini (`slotId`) seçerek randevu talep eder; başlangıç ve süre o saatten alınır, talep `Bekliyor` durumunda açılır (core `bookAppointment`, DOM-ILT-100, DOM-ILT-101). Başka velinin çocuğu veya kurumda olmayan öğrenci 403 `student_scope_denied` (DOM-YTK-025), pasif öğrenci 422 `student_inactive`. Olmayan saat, başka öğretmenin, öğrencinin sınıfına ders vermeyen veya pasif öğretmenin saati aynı 422 `appointment_slot_unavailable`; geçmiş saat 422 `appointment_in_past`; role uymayan tür 422 `appointment_type_invalid`. Ders, etüt, etkinlik veya bekleyen/onaylı randevuyla çakışma 409 `appointment_conflict`; aynı saate eşzamanlı iki talepten yalnız biri yazılır. Görüşme notu loglanmaz. Modül `communication`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `ogrenci`, `veli`.
+         */
+        post: operations["bookAppointment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{appointmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Randevuyu onayla, reddet, iptal et veya geri çek
+         * @description Randevunun durumunu değiştirir; her geçiş yapan kişi, an ve gerekçesiyle kaydın `history` listesine eklenir, kayıt silinmez (core `updateAppointment`, DOM-ILT-102). `Bekliyor` talebi yalnız ilgili öğretmen onaylar veya gerekçeyle reddeder (403 `appointment_teacher_only`); talep eden onaydan önce geri çeker (403 `appointment_requester_only`); onaylı ve başlamamış randevuyu öğretmen veya talep eden gerekçeyle iptal eder (403 `appointment_cancel_forbidden`). Red ve iptalde gerekçe yoksa 400 `validation_failed` (`reason`). Onayda saat geçmişse 422 `appointment_in_past`, çakışma 409 `appointment_conflict`; sonuçlanmış randevu 409 `appointment_closed`, yanlış geçiş 422 `appointment_transition_invalid`. Olmayan, başka kurumun veya aktörün göremediği randevu 404; görünürlük sürümden önce denetlenir (DOM-ILT-103). `If-Match` zorunludur (randevunun sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Gerekçe loglanmaz. Roller: `ogretmen`, `ogrenci`, `veli`.
+         */
+        patch: operations["updateAppointment"];
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -13638,6 +13678,223 @@ export interface operations {
         responses: {
             /** @description Default Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    bookAppointment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    slotId: string;
+                    /** @enum {string} */
+                    type?: "Bireysel etüt" | "Veli görüşmesi" | "Akademik danışmanlık";
+                    note: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateAppointment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Randevu kimliği */
+                appointmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "Onaylandı" | "Reddedildi" | "İptal" | "Geri çekildi";
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

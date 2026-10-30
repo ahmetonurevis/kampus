@@ -37,6 +37,7 @@ import { registerModuleRoutes } from './routes/modules.ts'
 import { registerResourceCommandRoutes } from './routes/resource-commands.ts'
 import { registerQuestionRoutes } from './routes/questions.ts'
 import { registerRequestRoutes } from './routes/requests.ts'
+import { registerAppointmentRoutes } from './routes/appointments.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
 
 // Şemada özel mesajı olmayan Zod hataları da Türkçe döner.
@@ -69,11 +70,24 @@ export const REDACTED_PATHS = [
   '*.email',
   '*.phone',
   '*.nationalId',
+  // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
+  // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).
+  'reasonCategory',
   '*.reasonCategory',
+  // kvkk: Ç — randevu görüşme konusu ve red/iptal gerekçesi; gerekçe durum geçmişinde de
+  // durur (DOM-ILT-100, DOM-ILT-102).
+  'note',
+  '*.note',
+  'reason',
+  '*.reason',
+  'history[*].reason',
+  '*.history[*].reason',
   // kvkk: Ç — öğrenci sorusunun ilk yanıtı ve ek yanıtları (DOM-ILT-092). Soru başlığı ve metni
   // (`title`, `text`) başka koleksiyonlarla ortak adlardır; gövde zaten loglanmaz.
+  'answer',
   '*.answer',
+  'followUps',
   '*.followUps',
   '*.cookie',
   '*.authorization',
@@ -214,6 +228,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   // Komut uçlarından sonra: ham gövde süsü (`commandInput`) orada tanımlanır.
   registerCommunicationRoutes(app)
   registerRequestRoutes(app)
+  registerAppointmentRoutes(app)
   registerQuestionRoutes(app)
   registerResourceRoutes(app)
   registerResourceCommandRoutes(app)

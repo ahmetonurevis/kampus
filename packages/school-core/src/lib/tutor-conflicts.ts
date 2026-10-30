@@ -1,4 +1,5 @@
 import type { State } from '../data/seed.ts'
+import { appointmentHoldsTime } from './appointment-status.ts'
 
 // Süre verilmeyen kayıtlar 30 dakikalık sayılır.
 export type Interval = { date: string; duration?: number }
@@ -18,6 +19,18 @@ export type TutorBooking = TutorCandidate & {
   studentIds: readonly string[]
 }
 
+/** Aday sahibinin göremediği kayıtla çakışmada dönen ileti (DOM-ILT-073, DOM-ILT-103). */
+export const HIDDEN_CONFLICT_MESSAGE = 'Bu saat uygun değil.'
+
+export type TutorConflictOptions = {
+  /**
+   * Çakışan randevuyu isteği yapan görebiliyor mu. Verilmezse bütün randevular görünür sayılır.
+   * Göremediği randevuda ayrıntılı ileti yerine genel ileti döner; yoksa başka velinin açtığı
+   * gizli görüşmenin varlığı iletiden öğrenilirdi.
+   */
+  canSeeAppointment?: (appointment: State['appointments'][number]) => boolean
+}
+
 export const intervalsOverlap = (first: Interval, second: Interval) =>
   Date.parse(first.date) < Date.parse(second.date) + (second.duration || 30) * 60000 &&
   Date.parse(second.date) < Date.parse(first.date) + (first.duration || 30) * 60000
@@ -27,6 +40,7 @@ export function tutorConflict(
   candidate: TutorCandidate,
   additional: readonly TutorBooking[] = [],
   ignoreId = '',
+  options: TutorConflictOptions = {},
 ) {
   const students = new Set(candidate.studentIds || [])
   const room = (value: string | null | undefined) => value?.trim().toLocaleLowerCase('tr')
@@ -41,10 +55,15 @@ export function tutorConflict(
       return 'Derslik bu saatte kullanımda.'
   }
   for (const appointment of state.appointments.filter(
-    (a) => a.status !== 'Reddedildi' && intervalsOverlap(candidate, a),
+    (a) => appointmentHoldsTime(a) && intervalsOverlap(candidate, a),
   )) {
-    if (appointment.teacherId === candidate.teacherId) return 'Öğretmenin bu saatte randevusu var.'
-    if (students.has(appointment.studentId)) return 'Öğrencinin bu saatte randevusu var.'
+    const teacherBusy = appointment.teacherId === candidate.teacherId
+    if (!teacherBusy && !students.has(appointment.studentId)) continue
+    if (options.canSeeAppointment && !options.canSeeAppointment(appointment))
+      return HIDDEN_CONFLICT_MESSAGE
+    return teacherBusy
+      ? 'Öğretmenin bu saatte randevusu var.'
+      : 'Öğrencinin bu saatte randevusu var.'
   }
   for (const lesson of [...(state.tutorSessions || []), ...additional]) {
     if (lesson.id === ignoreId || lesson.status === 'İptal' || !intervalsOverlap(candidate, lesson))

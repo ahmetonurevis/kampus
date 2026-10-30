@@ -2,6 +2,17 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Randevu yazma uçları
+
+- `POST /api/v1/appointments` (öğrenci, veli; uygunluk saati `slotId` seçilerek talep; 201 + `Location`; `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`) ve `PATCH /api/v1/appointments/:appointmentId` (öğretmen, öğrenci, veli; `Onaylandı`, `Reddedildi`, `İptal`, `Geri çekildi`; `If-Match` zorunlu). Kurallar core 2.18.0 `lib/appointments.ts` (DOM-ILT-100…104); modül `communication`. Yönetici ve ön büro yazamaz (403 `forbidden`).
+- Talepte uygunluk saatlerinden yalnız seçilen saat yüklenir (`loadScope`); ders, etüt, etkinlik ve randevular çakışma denetimi için bütünüyle yüklenir. Kurum kilidi aynı saate eşzamanlı iki talepten yalnız birini yazar, öteki 409 `appointment_conflict` alır (test:pg).
+- Durum değişikliğinde `If-Match` çalıştırıcının `expectedVersions` denetimiyle karşılaştırılır (önce kapsam ve yetki, sonra sürüm): olmayan veya kapsam dışı randevu yanlış sürümde de 404, görünür ama yetkisiz geçiş (ör. velinin öğrencinin açtığı talebi onaylaması) 403, yetkili kullanıcı 409 `version_conflict` alır. Serviste ayrı sürüm denetimi yoktur.
+- Çakışan randevuyu isteği yapan göremiyorsa 409 `appointment_conflict` iletisi genel kalır ("Bu saat uygun değil.", `issues` yolu `slotId`); başka velinin gizli görüşmesi sızmaz (DOM-ILT-073, DOM-ILT-103).
+- `POST /api/v1/assessment/slot-remove/:id`: bekleyen veya onaylı randevusu olan saat 409 `availability_has_appointments` (`issues` yolu `slotId`); komut randevuları da yükler (DOM-ILT-101).
+- Yeni hata kodları: `appointment_teacher_only`, `appointment_requester_only`, `appointment_cancel_forbidden` (403); `appointment_conflict`, `appointment_closed` (409); `appointment_slot_unavailable`, `appointment_in_past`, `appointment_type_invalid`, `appointment_transition_invalid` (422, `issues` alan yoluyla). Red ve iptalde gerekçe yoksa 400 `validation_failed` (`reason`).
+- Log gizleme listesine `note`, `*.note`, `reason`, `*.reason`, `history[*].reason` ve `*.history[*].reason` eklendi (kvkk: Ç); denetim kaydına yalnız değişen alan adları yazılır. pino `*.x` deseni yalnız ikinci düzeyi yakaladığı için üst düzey `answer`, `followUps` ve `reasonCategory` de listeye alındı. `test/security-defaults.test.ts` uygulamanın gerçek logger yapılandırmasıyla üst düzey, gövde içi ve geçmiş dizisindeki metnin loga düşmediğini doğrular.
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
 ## Öğretmenime Sor yazma uçları
 
 - `POST /api/v1/questions` (öğrenci; kendi sınıfının o dersine atanmış öğretmene soru; 201 + `Location`), `POST /api/v1/questions/:questionId/answers` (atanmış öğretmen; ilk yanıt `answer`/`answeredAt`, sonrakiler `followUps`, en çok 10 yanıt; 201 + `Location`), `PATCH /api/v1/questions/:questionId` (öğrenci; yalnız `{ "withdrawn": true }`, yanıtlanmamış soruyu geri çeker, kayıt silinmez; 200). Kurallar core `lib/questions.ts`'tedir (DOM-ILT-090…092); rol ve kapsam core `requireAuthorized`, modül `learning`. Yazma `runCommand` ile kurum kilidi, `audit_log` (yalnız alan adları) ve kısmi yüklemeyle (`loadScope`: soru açarken hiçbir soru, yanıt ve geri çekmede hedef soru) tek transaction'dadır.

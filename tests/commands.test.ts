@@ -46,6 +46,7 @@ import {
   openRequest,
   updateRequest,
 } from '../packages/school-core/src/lib/requests.ts'
+import { bookAppointment, updateAppointment } from '../packages/school-core/src/lib/appointments.ts'
 import {
   answerQuestion,
   askQuestion,
@@ -524,6 +525,35 @@ test('Talep ve izin/mazeret işlemleri yalnız komut tablosundaki koleksiyonlarl
     id,
     now,
   )
+})
+
+test('Randevu işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır (DOM-ILT-100, DOM-ILT-102)', () => {
+  const state = seed()
+  const parent = {
+    role: 'veli' as const,
+    links: [{ kind: 'child' as const, recordId: 's1' }],
+    userId: 'u-veli',
+  }
+  const teacher = {
+    role: 'ogretmen' as const,
+    links: [{ kind: 'teacher' as const, recordId: 't1' }],
+    userId: 'u-t1',
+  }
+  const booked = bookAppointment(
+    operation(state, 'appointment.book'),
+    parent,
+    { studentId: 's1', slotId: 'slot-t1-0', note: 'Matematik ödevlerini konuşalım.' },
+    id,
+    now,
+  )
+  const approved = updateAppointment(
+    operation(state, 'appointment.update'),
+    teacher,
+    booked.id,
+    { status: 'Onaylandı' },
+    now,
+  )
+  assert.equal(approved.status, 'Onaylandı')
 })
 
 test('Öğretmenime Sor işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır', () => {

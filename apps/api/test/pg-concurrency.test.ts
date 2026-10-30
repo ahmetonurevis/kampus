@@ -15,6 +15,7 @@ import { insertMissingRecords, lockInstitution, writeRecords } from '../src/db/r
 import { institutions } from '../src/db/schema/auth.ts'
 import { records } from '../src/db/schema/records.ts'
 import { AppError } from '../src/errors.ts'
+import { bookAppointmentCommand } from '../src/services/appointments.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { executeWorkflowCommand, recordAttendanceCommand } from '../src/services/commands.ts'
 import { sendMessageCommand } from '../src/services/communication.ts'
@@ -526,5 +527,83 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       waiting,
       (error) => error instanceof AppError && error.code === 'module_disabled',
     )
+  })
+
+  test('DOM-ILT-101: aynı saate eşzamanlı iki randevu talebi: yalnız biri yazılır, öteki 409 appointment_conflict', async () => {
+    const base = await context()
+    const seed = createSeed(FIXED_NOW)
+    const sample = <
+      C extends 'subjects' | 'teachers' | 'classes' | 'students' | 'assignments' | 'availability',
+    >(
+      collection: C,
+      items: readonly { id: string }[],
+    ) => items.map((data) => ({ collection, id: data.id, data: { ...data } }))
+    await insertMissingRecords(
+      db,
+      base.institutionId,
+      [
+        ...sample('subjects', seed.subjects),
+        ...sample('teachers', seed.teachers),
+        ...sample(
+          'classes',
+          seed.classes.filter((item) => item.id === 'c1'),
+        ),
+        ...sample(
+          'students',
+          seed.students.filter((item) => item.classId === 'c1'),
+        ),
+        ...sample(
+          'assignments',
+          seed.assignments.filter((item) => item.classId === 'c1'),
+        ),
+        ...sample(
+          'availability',
+          seed.availability.filter((item) => item.id === 'slot-t1-0'),
+        ),
+      ],
+      FIXED_NOW,
+    )
+    const parentContext = async (studentId: string): Promise<ServiceContext> => {
+      const parent = await createMember(app, base.institutionId, 'veli', [
+        { kind: 'child', recordId: studentId },
+      ])
+      return {
+        ...base,
+        actor: { userId: parent.id, role: 'veli', membershipId: parent.membershipId },
+      }
+    }
+    const [first, second] = await Promise.all([parentContext('s1'), parentContext('s25')])
+    const booking = (studentId: string) => ({
+      studentId,
+      slotId: 'slot-t1-0',
+      note: 'Ödev düzenini konuşmak istiyorum.',
+    })
+    const options = (key: string) => ({
+      idempotency: { key, fingerprint: key },
+      expectedVersion: null,
+    })
+    const outcomes = await Promise.allSettled([
+      bookAppointmentCommand(first, booking('s1'), options('pg-apt-1')),
+      bookAppointmentCommand(second, booking('s25'), options('pg-apt-2')),
+    ])
+    const fulfilled = outcomes.filter((item) => item.status === 'fulfilled')
+    assert.equal(fulfilled.length, 1)
+    assert.equal(fulfilled[0]?.value.statusCode, 201)
+    const rejected = outcomes.filter((item) => item.status === 'rejected')
+    assert.equal(rejected.length, 1)
+    const reason: unknown = rejected[0]?.reason
+    assert.ok(
+      reason instanceof AppError &&
+        reason.statusCode === 409 &&
+        reason.code === 'appointment_conflict',
+      String(reason),
+    )
+    const [row] = await db
+      .select({ n: count() })
+      .from(records)
+      .where(
+        and(eq(records.institutionId, base.institutionId), eq(records.collection, 'appointments')),
+      )
+    assert.equal(row?.n, 1)
   })
 })

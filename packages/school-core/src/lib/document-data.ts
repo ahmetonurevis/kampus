@@ -1,8 +1,8 @@
-// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { subjectById } from '../data/curriculum.ts'
+import type { State } from '../data/seed.ts'
 import { invoiceStatus } from './format.ts'
 
-function studentContext(state, studentId, classId) {
+function studentContext(state: State, studentId: string | undefined, classId?: string) {
   const student = state.students.find((s) => s.id === studentId)
   if (!student) throw new Error('Belge için öğrenci kaydı bulunamadı.')
   const classroom = state.classes.find((c) => c.id === (classId || student.classId))
@@ -12,7 +12,15 @@ function studentContext(state, studentId, classId) {
 }
 
 // The same record resolvers serve every role so PDF amounts and people never diverge.
-export function documentData(state, type, recordId, studentId) {
+export type DocumentType =
+  'receipt' | 'contract' | 'payment-plan' | 'material' | 'homework' | 'submission'
+
+export function documentData(
+  state: State,
+  type: DocumentType,
+  recordId: string,
+  studentId?: string,
+) {
   if (type === 'receipt') {
     const invoice = state.invoices.find((i) => i.id === recordId)
     if (!invoice?.paidAt) throw new Error('Dekont yalnızca tamamlanan ödemeler için oluşturulur.')

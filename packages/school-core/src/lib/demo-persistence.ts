@@ -1,27 +1,52 @@
-// @ts-nocheck — TODO(ts): tiplenecek (C2)
-import { createSeed } from '../data/seed.ts'
+import { createSeed, type State } from '../data/seed.ts'
+
+// Depodan okunan veri güvenilmezdir; alanlar okunurken unknown'dan daraltılır.
+type SnapshotChange =
+  | { kind: 'records'; upsert: unknown[]; remove: unknown[]; order?: unknown[] }
+  | { kind: 'value'; value: unknown }
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+const idOf = (item: unknown) => (isObject(item) ? item.id : undefined)
+const isRecordList = (value: unknown): value is unknown[] =>
+  Array.isArray(value) && value.every((item: unknown) => idOf(item))
+function listOf(value: unknown): readonly unknown[] {
+  if (!Array.isArray(value)) throw new TypeError('Demo kaydı liste değil.')
+  return value
+}
+// Date kurucusu eski sürümde depodaki değeri olduğu gibi alıyordu; aynı dönüşüm korunur.
+// TODO(ts): demo kalıcılığı API geçişinde silinince bu tip iddiası da kalkar.
+const dateFrom = (value: unknown) => new Date(value as string)
 
 // Zengin başlangıç verisini tekrar yazmak yerine yalnızca demo değişikliklerini saklar.
-export function createSnapshotWriter(seed) {
+export function createSnapshotWriter(seed: State) {
+  const seedValues: Record<string, unknown> = seed
   const originals = Object.fromEntries(
-    Object.entries(seed).map(([key, value]) => [key, JSON.stringify(value)]),
+    Object.entries(seedValues).map(([key, value]) => [key, JSON.stringify(value)]),
   )
   const records = Object.fromEntries(
-    Object.entries(seed)
-      .filter(([, value]) => Array.isArray(value) && value.every((item) => item.id))
-      .map(([key, value]) => [key, new Map(value.map((item) => [item.id, JSON.stringify(item)]))]),
+    Object.entries(seedValues)
+      .filter((entry): entry is [string, unknown[]] => isRecordList(entry[1]))
+      .map(([key, value]) => [
+        key,
+        new Map(value.map((item) => [idOf(item), JSON.stringify(item)])),
+      ]),
   )
-  return (state) => {
-    const changes = {}
-    for (const [key, value] of Object.entries(state)) {
+  return (state: State) => {
+    const values: Record<string, unknown> = state
+    const changes: Record<string, SnapshotChange> = {}
+    for (const [key, value] of Object.entries(values)) {
       if (JSON.stringify(value) === originals[key]) continue
-      if (records[key]) {
-        const ids = value.map((item) => item.id)
+      const known = records[key]
+      if (known) {
+        const list = listOf(value)
+        const ids = list.map(idOf)
         const present = new Set(ids)
-        const upsert = value.filter((item) => JSON.stringify(item) !== records[key].get(item.id))
-        const remove = [...records[key].keys()].filter((id) => !present.has(id))
-        changes[key] = { kind: 'records', upsert, remove }
-        if (ids.join('|') !== [...records[key].keys()].join('|')) changes[key].order = ids
+        const upsert = list.filter((item) => JSON.stringify(item) !== known.get(idOf(item)))
+        const remove = [...known.keys()].filter((id) => !present.has(id))
+        const change: SnapshotChange = { kind: 'records', upsert, remove }
+        if (ids.join('|') !== [...known.keys()].join('|')) change.order = ids
+        changes[key] = change
       } else changes[key] = { kind: 'value', value }
     }
     return JSON.stringify({
@@ -32,47 +57,51 @@ export function createSnapshotWriter(seed) {
     })
   }
 }
-export function restoreSnapshot(raw) {
-  const snapshot = typeof raw === 'string' ? JSON.parse(raw) : raw
+export function restoreSnapshot(raw: unknown): State {
+  const parsed: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw
+  const snapshot = isObject(parsed) ? parsed : undefined
   if (
     snapshot?.format !== 'school-delta-v1' ||
     !snapshot.createdAt ||
-    Number.isNaN(+new Date(snapshot.createdAt)) ||
-    !snapshot.changes ||
-    typeof snapshot.changes !== 'object'
+    Number.isNaN(+dateFrom(snapshot.createdAt)) ||
+    !isObject(snapshot.changes)
   )
     throw new Error('Kayıtlı demo biçimi geçersiz.')
-  const state = createSeed(new Date(snapshot.createdAt))
+  const state = createSeed(dateFrom(snapshot.createdAt))
+  const target: Record<string, unknown> = state
   const moduleDefaults = { ...state.modules }
   if (snapshot.version !== state.version) throw new Error('Demo verisi güncellenmeli.')
   for (const [key, change] of Object.entries(snapshot.changes)) {
     if (!Object.hasOwn(state, key) || ['version', 'createdAt'].includes(key))
       throw new Error('Demo kaydı geçersiz alan içeriyor.')
-    if (change.kind === 'value') {
+    const current = target[key]
+    if (isObject(change) && change.kind === 'value') {
       if (
-        Array.isArray(state[key]) !== Array.isArray(change.value) ||
-        typeof state[key] !== typeof change.value ||
+        Array.isArray(current) !== Array.isArray(change.value) ||
+        typeof current !== typeof change.value ||
         change.value == null
       )
         throw new Error('Demo alanının veri türü geçersiz.')
-      state[key] = change.value
+      target[key] = change.value
     } else if (
+      isObject(change) &&
       change.kind === 'records' &&
-      Array.isArray(state[key]) &&
+      Array.isArray(current) &&
       Array.isArray(change.upsert) &&
       Array.isArray(change.remove)
     ) {
-      const entries = new Map(state[key].map((item) => [item.id, item]))
-      for (const id of change.remove) entries.delete(id)
-      for (const item of change.upsert) {
-        if (!item?.id) throw new Error('Demo kaydının kimliği eksik.')
-        entries.set(item.id, item)
+      const list: readonly unknown[] = current
+      const entries = new Map(list.map((item) => [idOf(item), item]))
+      for (const id of listOf(change.remove)) entries.delete(id)
+      for (const item of listOf(change.upsert)) {
+        if (!idOf(item)) throw new Error('Demo kaydının kimliği eksik.')
+        entries.set(idOf(item), item)
       }
-      state[key] = change.order ? change.order.map((id) => entries.get(id)) : [...entries.values()]
-      if (
-        state[key].some((item) => !item) ||
-        new Set(state[key].map((item) => item.id)).size !== entries.size
-      )
+      const next = change.order
+        ? listOf(change.order).map((id) => entries.get(id))
+        : [...entries.values()]
+      target[key] = next
+      if (next.some((item) => !item) || new Set(next.map(idOf)).size !== entries.size)
         throw new Error('Demo kayıt sırası geçersiz.')
     } else throw new Error('Demo değişikliği okunamadı.')
   }

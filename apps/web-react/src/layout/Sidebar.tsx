@@ -70,7 +70,10 @@ export function SidebarContent({ session, onNavigate, onSignOut }: SidebarConten
           <strong className="truncate text-2xs font-medium text-sidebar-strong">
             {session.institution.name}
           </strong>
-          <small className="text-[8px] text-sidebar-foreground">{session.institution.term}</small>
+          {/* TODO(D1b1): dönem `/me`'ye gelene kadar boş kalır; uydurma dönem yazılmaz. */}
+          {session.institution.term ? (
+            <small className="text-[8px] text-sidebar-foreground">{session.institution.term}</small>
+          ) : null}
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import { notify } from '@/lib/notify.ts'
 import { resolveShell } from '@/lib/route-guard.ts'
 import { NotFoundContent, NotFoundPage } from './NotFoundPage.tsx'
 import { PlaceholderPage } from './PlaceholderPage.tsx'
+import { SessionPending } from './SessionPending.tsx'
 
 // Yalnız geliştirmede: liste bileşenleri örnek sayfası. Üretimde koşul sabit `false` olur ve
 // parça derlemeye girmez.
@@ -27,11 +28,16 @@ function ModuleClosedRedirect({ to }: { to: string }) {
 
 /** Korumalı rol kabuğu: karar `resolveShell`'de, burada yalnız çizilir. */
 export function RoleShell() {
-  const { session } = useAuth()
+  const { status, session } = useAuth()
   const { role, page: path } = useParams()
   const location = useLocation()
   const decision = resolveShell(session, role, path)
   const child = useChildSelection(session)
+
+  // Oturum durumu bilinmeden yönlendirme yapılmaz; yenilemede girişe düşülmesin.
+  if (status === 'loading' && decision.kind !== 'not-found-outside') return <SessionPending />
+  // Kurum üyeliği yoksa veya `/me` okunamadıysa giriş sayfası durumu açıklar.
+  if (status === 'no-membership' || status === 'error') return <Navigate to="/giris" replace />
 
   if (ListDemoPage && session && role === session.role && path === DEV_DEMO_PATH)
     return (

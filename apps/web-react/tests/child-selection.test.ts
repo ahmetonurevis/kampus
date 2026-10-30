@@ -1,16 +1,17 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { devSession } from '../src/auth/dev-auth.ts'
+import { toSession } from '../src/auth/session-mapping.ts'
 import { childScrollKey, resolveChild } from '../src/lib/child-selection.ts'
+import { meFixture } from './fixtures/me.ts'
 
-const children = devSession('veli').children
+const children = toSession(meFixture('veli'))?.children ?? []
 
-test('örnek veli iki çocukla gelir; diğer rollerde çocuk yoktur', () => {
+test('veli iki çocuk bağlantısıyla gelir; diğer rollerde çocuk yoktur', () => {
   assert.deepEqual(
-    children.map((child) => child.name),
-    ['Deniz Yılmaz', 'Ece Yılmaz'],
+    children.map((child) => child.id),
+    ['s1', 's2'],
   )
-  assert.deepEqual(devSession('ogretmen').children, [])
+  assert.deepEqual(toSession(meFixture('ogretmen'))?.children, [])
 })
 
 test('kayıtlı seçim yalnız hesabın çocuğuysa korunur', () => {

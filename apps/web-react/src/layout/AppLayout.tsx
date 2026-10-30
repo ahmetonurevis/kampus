@@ -5,6 +5,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { useMediaQuery } from '@/hooks/use-media-query.ts'
 import type { Session, SessionChild } from '@/auth/auth-port.ts'
 import { useAuth } from '@/auth/use-auth.ts'
+import { notify } from '@/lib/notify.ts'
 import { clearViewMemory } from '@/lib/view-memory.ts'
 import { ChildBar } from './ChildBar.tsx'
 import { SidebarContent } from './Sidebar.tsx'
@@ -43,7 +44,7 @@ export function AppLayout({ session, title, child, children }: AppLayoutProps) {
         clearViewMemory()
         return navigate('/giris', { replace: true })
       })
-      .catch((error: unknown) => console.error('[auth] oturum kapatılamadı', error))
+      .catch((error: unknown) => notify.error('Oturum kapatılamadı. Lütfen tekrar deneyin.', error))
   }
 
   const sidebar = (

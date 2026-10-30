@@ -1,16 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Navigate, useLocation } from 'react-router'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { loginSchema, type LoginInput } from '@/auth/auth-port.ts'
-import { DEV_ACCOUNTS, DEV_PASSWORD } from '@/auth/dev-auth.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
-import { isRoleKey, pageHref } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
+import { SessionPending } from '@/pages/shell/SessionPending.tsx'
 import { LoginStory } from './LoginStory.tsx'
 
 const YEAR = new Date().getFullYear()
@@ -25,43 +24,44 @@ function returnPath(state: unknown, role: string): string {
   return from.startsWith(`/${role}/`) ? from : `/${role}/dashboard`
 }
 
+const STATUS_MESSAGES = {
+  'no-membership':
+    'Hesabınız etkin bir kuruma bağlı değil. Kurum yöneticinizle iletişime geçin veya başka bir hesapla giriş yapın.',
+  error: 'Oturum bilgileri alınamadı. Lütfen tekrar deneyin.',
+} as const
+
 export function LoginPage() {
-  const { session, signIn } = useAuth()
+  const { status, session, signIn, retry } = useAuth()
   useDocumentTitle('Giriş')
-  const navigate = useNavigate()
   const location = useLocation()
   const {
     register,
     handleSubmit,
     setError,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   })
 
-  if (session) return <Navigate to={pageHref(session.role, { path: 'dashboard' })} replace />
+  // Giriş başarılı olunca yönlendirme oturum durumundan çıkar (yeni rol `/me`'den gelir).
+  if (session) return <Navigate to={returnPath(location.state, session.role)} replace />
+  if (status === 'loading' && !isSubmitting) return <SessionPending />
 
   const onSubmit = handleSubmit(async (values) => {
     try {
       const result = await signIn(values)
-      if (!result.ok) {
-        setError('password', { message: result.message })
-        return
-      }
-      if (isRoleKey(result.session.role))
-        await navigate(returnPath(location.state, result.session.role), { replace: true })
+      if (result.ok) return
+      // Alan hatası parolanın altında; hız sınırı ve hizmet hataları toast'ta.
+      if (result.field) setError(result.field, { message: result.message })
+      else notify.error(result.message)
     } catch (error) {
       notify.error('Giriş şu an yapılamıyor. Lütfen tekrar deneyin.', error)
     }
   })
 
-  function signInWithDevAccount(email: string) {
-    setValue('email', email)
-    setValue('password', DEV_PASSWORD)
-    void onSubmit()
-  }
+  const statusMessage =
+    status === 'no-membership' || status === 'error' ? STATUS_MESSAGES[status] : null
 
   return (
     <div className="login-page grid min-h-dvh grid-cols-2 bg-background max-[900px]:grid-cols-1">
@@ -78,6 +78,25 @@ export function LoginPage() {
               Kurum hesabınızla giriş yapın. Rolünüze uygun panel otomatik açılır.
             </p>
           </div>
+          {statusMessage ? (
+            <div
+              role="alert"
+              className="flex flex-col gap-3 rounded-2xl border bg-surface px-4 py-3 text-sm"
+            >
+              <p>{statusMessage}</p>
+              {status === 'error' ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="self-start"
+                  onClick={() => void retry()}
+                >
+                  Tekrar dene
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           <form
             noValidate
             onSubmit={(event) => void onSubmit(event)}
@@ -115,36 +134,6 @@ export function LoginPage() {
               <Icon name="ArrowRight" size={18} />
             </Button>
           </form>
-
-          {import.meta.env.DEV ? (
-            <section
-              aria-labelledby="gelistirme-hesaplari"
-              className="flex flex-col gap-3 border-t pt-5"
-            >
-              <h2 id="gelistirme-hesaplari" className="text-sm font-semibold">
-                Geliştirme hesapları
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Yalnız geliştirme sunucusunda görünür; API bağlanınca kaldırılır.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {DEV_ACCOUNTS.map((account) => (
-                  <Button
-                    key={account.role}
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={isSubmitting}
-                    data-dev-role={account.role}
-                    onClick={() => signInWithDevAccount(account.email)}
-                  >
-                    <Icon name={account.icon} size={16} />
-                    {account.label}
-                  </Button>
-                ))}
-              </div>
-            </section>
-          ) : null}
         </div>
         <p className="text-2xs text-muted-foreground">© {YEAR} Kampüs. Öğrenmenin her adımında.</p>
       </main>

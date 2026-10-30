@@ -1,31 +1,24 @@
 // Kategorili menü: kaynak school-core modül kaydı ve tam navigasyon (web ve mobil ortak).
-import { navigation, roles } from '@kampus/school-core/modules/full-navigation.js'
+import {
+  navigation,
+  roles,
+  type NavigationPage,
+} from '@kampus/school-core/modules/full-navigation.ts'
+import type { Role } from '@kampus/school-core/modules/navigation.ts'
 
-export type NavPage = {
-  path: string
-  title: string
-  icon: string
-  module: string | null
-  view: string
-  description: string
-  group: string
-}
-export type RoleInfo = {
-  label: string
-  name: string
-  subtitle: string
-  icon: string
-  description: string
-}
+export type NavPage = NavigationPage
+export type RoleInfo = (typeof roles)[RoleKey]
 export type NavGroup = { key: string; label: string; pages: NavPage[] }
 export type ModuleState = Readonly<Record<string, boolean | undefined>>
 
-export const ROLE_KEYS = ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'] as const
-export type RoleKey = (typeof ROLE_KEYS)[number]
-
-// TODO(C2): school-core TypeScript'e taşınınca bu daraltmalar kaynağın kendi tiplerine bağlanır.
-const pagesByRole = navigation as Record<RoleKey, NavPage[]>
-const roleInfo = roles as Record<RoleKey, RoleInfo>
+export const ROLE_KEYS = [
+  'yonetici',
+  'onburo',
+  'ogretmen',
+  'ogrenci',
+  'veli',
+] as const satisfies readonly Role[]
+export type RoleKey = Role
 
 export const ACCOUNT_GROUP = 'HESABIM'
 export const DEFAULT_GROUP = 'GENEL'
@@ -35,11 +28,11 @@ export function isRoleKey(value: unknown): value is RoleKey {
 }
 
 export function getRole(role: RoleKey): RoleInfo {
-  return roleInfo[role]
+  return roles[role]
 }
 
 export function rolePages(role: RoleKey): readonly NavPage[] {
-  return pagesByRole[role] ?? []
+  return navigation[role]
 }
 
 /** Modülü kapalı sayfalar menüden ve doğrudan erişimden düşer. */

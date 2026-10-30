@@ -1,4 +1,4 @@
-import { initials as coreInitials } from '@kampus/school-core/lib/format.js'
+import { initials as coreInitials } from '@kampus/school-core/lib/format.ts'
 
 // Avatar rengi normalleştirilmiş tam addan türetilir; Vue `Avatar.vue` ile aynı algoritmadır.
 export const AVATAR_TONE_COUNT = 5
@@ -16,5 +16,5 @@ export function avatarTone(name: string): number {
 
 // Baş harfler school-core kuralından gelir (ilk iki kelime).
 export function initials(name: string): string {
-  return String(coreInitials(name))
+  return coreInitials(name)
 }

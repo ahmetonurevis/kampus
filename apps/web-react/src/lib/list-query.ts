@@ -1,5 +1,5 @@
 // Liste arama/filtre/sıralama/sayfa hesapları; Vue `lib/list-query.js` ve DataTable ile aynı davranır.
-import { dayKey } from '@kampus/school-core/lib/format.js'
+import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 export type Row = Readonly<Record<string, unknown>> & { readonly id: string | number }
 export type RangeValue = { min?: string | number | null; max?: string | number | null }
@@ -54,7 +54,7 @@ export function filterRows<T extends Row>(
       const value = row[field.key]
       if (isEmpty(value)) return false
       if (field.type === 'date' && isRange(selected)) {
-        const day = String(dayKey(new Date(value as string | number)))
+        const day = dayKey(value as string | number)
         return (
           (isEmpty(selected.min) || day >= String(selected.min)) &&
           (isEmpty(selected.max) || day <= String(selected.max))

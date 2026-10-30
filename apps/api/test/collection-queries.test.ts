@@ -7,8 +7,10 @@ import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import type { CollectionName } from '../src/db/collections.ts'
-import { insertMissingRecords } from '../src/db/records.ts'
+import { insertMissingRecords, writeRecords } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
+import { READABLE_COLLECTIONS } from '../src/services/collection-access.ts'
+import { readScope, readsWholeCollection } from '../src/services/read-scope.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -167,6 +169,108 @@ describe('koleksiyon sorguları: durum, sayım, bağlı alan', () => {
       assert.deepEqual(await ids(student, invoicesUrl(status('Gecikmiş'))), ['test-inv-late-s11'])
       const teacher = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
       assert.equal((await get(invoicesUrl(status('Gecikmiş')), teacher)).statusCode, 403)
+    })
+
+    test('classId süzgeci ve gruplaması öğrencinin güncel sınıfından; kapsam korunur', async () => {
+      const { id, adminCookie } = await institution()
+      const classOf = (studentId: unknown) =>
+        SEED.students.find((item) => item.id === studentId)?.classId
+      const invoices = [...PAID_SAMPLE.map((row) => row.data), ...EXTRA_INVOICES]
+      const inClasses = (...classIds: string[]) =>
+        invoices
+          .filter((row) => classIds.includes(classOf(row.studentId) ?? ''))
+          .map((row) => String(row.id))
+          .sort()
+      const s1Class = classOf('s1')
+      const s11Class = classOf('s11')
+      assert.ok(s1Class && s11Class && s1Class !== s11Class)
+      const sortedIds = async (cookie: string, query: string) =>
+        (await ids(cookie, invoicesUrl(query))).sort()
+
+      const firstClass = await sortedIds(adminCookie, `classId=${s1Class}`)
+      assert.ok(firstClass.includes('test-inv-late-s1'))
+      assert.deepEqual(firstClass, inClasses(s1Class))
+      assert.deepEqual(
+        await sortedIds(adminCookie, `classId=${s1Class}&classId=${s11Class}`),
+        inClasses(s1Class, s11Class),
+      )
+      assert.deepEqual(await ids(adminCookie, invoicesUrl('classId=test-bos')), [])
+      // Diğer süzgeçlerle birlikte: sınıfın gecikmiş taksitleri.
+      assert.deepEqual(
+        await ids(adminCookie, invoicesUrl(`classId=${s11Class}&${status('Gecikmiş')}`)),
+        ['test-inv-late-s11'],
+      )
+      // Sınıf başına sayım da öğrencinin sınıfıyla.
+      const groups = await get(
+        `/api/v1/collections/invoices/counts?groupBy=classId&sum=amount`,
+        adminCookie,
+      )
+      assert.equal(groups.statusCode, 200, groups.body)
+      for (const group of groups.json().data as { value: string; count: number }[])
+        assert.equal(group.count, inClasses(group.value).length, group.value)
+      assert.ok((groups.json().data as { value: unknown }[]).every((group) => group.value !== null))
+      // Veli sınıf süzgeciyle kendi çocukları dışındaki taksiti görmez.
+      const parent = await memberCookie(id, 'veli', [{ kind: 'child', recordId: 's1' }])
+      const parentIds = await sortedIds(parent, `classId=${s1Class}`)
+      assert.ok(parentIds.length > 0)
+      assert.deepEqual(
+        parentIds,
+        invoices
+          .filter((row) => row.studentId === 's1')
+          .map((row) => String(row.id))
+          .sort(),
+      )
+      assert.deepEqual(await ids(parent, invoicesUrl(`classId=${s11Class}`)), [])
+    })
+
+    test('metin olmayan doğru ödeme değeri süzgeçte, sıralamada ve sayımda Ödendi', async () => {
+      const { id, adminCookie } = await institution()
+      const odd = [
+        { id: 'test-inv-dizi', paidAt: [] },
+        { id: 'test-inv-nesne', paidAt: {} },
+        { id: 'test-inv-dogru', paidAt: true },
+      ].map((item) => ({
+        ...item,
+        studentId: 's1',
+        installment: 10,
+        amount: 50_00,
+        dueDate: '2026-09-01',
+        method: null,
+        reminderAt: null,
+      }))
+      await insertMissingRecords(
+        db,
+        id,
+        odd.map((data) => ({ collection: 'invoices' as const, id: data.id, data })),
+        FIXED_NOW,
+      )
+      const oddIds = odd.map((item) => item.id)
+      const paid = await ids(adminCookie, invoicesUrl(status('Ödendi')))
+      assert.ok(
+        oddIds.every((key) => paid.includes(key)),
+        'SQL adayı ve bellek kararı aynı',
+      )
+      for (const label of ['Gecikmiş', 'Yaklaşan'])
+        assert.ok(
+          (await ids(adminCookie, invoicesUrl(status(label)))).every(
+            (key) => !oddIds.includes(key),
+          ),
+          label,
+        )
+      const response = await get(
+        '/api/v1/collections/invoices/counts?groupBy=status&studentId=s1',
+        adminCookie,
+      )
+      assert.equal(response.statusCode, 200, response.body)
+      const s1Paid = paid.filter((key) =>
+        [...PAID_SAMPLE.map((row) => row.data), ...odd].some(
+          (row) => row.id === key && row.studentId === 's1',
+        ),
+      )
+      assert.deepEqual(response.json().data, [
+        { value: 'Gecikmiş', count: 1 },
+        { value: 'Ödendi', count: s1Paid.length },
+      ])
     })
 
     test('bilinmeyen durum değeri 400; kayıtlar değişmez', async () => {
@@ -594,6 +698,220 @@ describe('koleksiyon sorguları: durum, sayım, bağlı alan', () => {
         .filter((row) => row.studentId === 's1' && row.subjectId === 'turkish')
         .map((row) => String(row.id))
       assert.deepEqual(await ids(branch, listed('grades', q('Deniz'))), turkish)
+    })
+
+    /*
+     * Yönetici ve ön büro ASCII aranan metinde SQL aday süzgecini kullanır (`SearchMatch`).
+     * Aday yalnız daraltır: ayıklanan alan, başka kurum ve arşivlenmiş bağlı kayıt eşleşmez.
+     */
+    test('DOM-YTK-020: SQL aday süzgecinde iç not ve rehberlik notu eşleşme üretmez', async () => {
+      const { id, adminCookie } = await institution()
+      const base = SEED.guidanceCases[0]
+      assert.ok(base)
+      await insertMissingRecords(
+        db,
+        id,
+        [
+          {
+            collection: 'guidanceCases',
+            id: 'test-g-ascii',
+            data: {
+              ...base,
+              id: 'test-g-ascii',
+              sharedNote: 'paylasilan zeytin dali',
+              internalNote: 'test-ic-not-kestane',
+              notes: [{ text: 'test-not-findik', at: '2026-10-05T09:00:00.000Z' }],
+            },
+          },
+        ],
+        FIXED_NOW,
+      )
+      const countsOf = async (cookie: string, text: string) =>
+        (
+          await get(`/api/v1/collections/guidanceCases/counts?groupBy=status&${q(text)}`, cookie)
+        ).json().meta.total
+      for (const text of ['test-ic-not-kestane', 'kestane', 'test-not-findik']) {
+        assert.deepEqual(await ids(adminCookie, listed('guidanceCases', q(text))), [], text)
+        assert.equal(await countsOf(adminCookie, text), 0, text)
+      }
+      assert.deepEqual(await ids(adminCookie, listed('guidanceCases', q('Zeytin Dalı'))), [
+        'test-g-ascii',
+      ])
+      // Rehberlik görevli öğretmen iç notu görür; aynı metinle bulur (metin gerçekten kayıtta).
+      const counselor = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+      assert.deepEqual(await ids(counselor, listed('guidanceCases', q('test-ic-not-kestane'))), [
+        'test-g-ascii',
+      ])
+      assert.equal(await countsOf(counselor, 'kestane'), 1)
+      // Kişisel kapsamlı rollerde de: görevsiz öğretmen ve veli iç notla bulamaz.
+      const teacher = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }])
+      const parent = await memberCookie(id, 'veli', [{ kind: 'child', recordId: 's1' }])
+      for (const cookie of [teacher, parent]) {
+        assert.ok((await ids(cookie, listed('guidanceCases', q('zeytin dali')))).length <= 1)
+        assert.deepEqual(await ids(cookie, listed('guidanceCases', q('kestane'))), [])
+        assert.equal(await countsOf(cookie, 'test-not-findik'), 0)
+      }
+      assert.deepEqual(await ids(parent, listed('guidanceCases', q('zeytin dali'))), [
+        'test-g-ascii',
+      ])
+    })
+
+    test('DOM-YTK-011: SQL aday süzgecinde başka kurum ve arşivlenmiş bağlı kayıt eşleşmez', async () => {
+      const first = await institution()
+      const second = await institution()
+      await writeRecords(
+        db,
+        second.id,
+        [
+          {
+            kind: 'update',
+            collection: 'students',
+            id: 's11',
+            expectedVersion: 1,
+            data: { ...SEED.students.find((item) => item.id === 's11'), name: 'Test Zeytinoglu' },
+          },
+        ],
+        FIXED_NOW,
+      )
+      for (const collection of ['students', 'invoices', 'grades']) {
+        assert.deepEqual(
+          await ids(first.adminCookie, listed(collection, q('zeytinoglu'))),
+          [],
+          collection,
+        )
+        assert.ok((await ids(second.adminCookie, listed(collection, q('zeytinoglu')))).length > 0)
+      }
+      // Arşivlenmiş öğrencinin adı ve numarası taksitlerinde bağlı eşleşme üretmez.
+      assert.deepEqual(
+        await ids(first.adminCookie, listed('invoices', q('2026011'))),
+        invoicesOf('s11'),
+      )
+      await writeRecords(
+        db,
+        first.id,
+        [{ kind: 'archive', collection: 'students', id: 's11', expectedVersion: 1 }],
+        FIXED_NOW,
+      )
+      for (const text of ['2026011', 'Duru Aksoy'])
+        assert.deepEqual(await ids(first.adminCookie, listed('invoices', q(text))), [], text)
+    })
+  })
+
+  describe('SQL sayfalaması (koleksiyonun tamamını okuyan rol)', () => {
+    const JUNK = [
+      {},
+      {
+        id: 'test-x',
+        studentId: 'test-x',
+        studentIds: ['test-x'],
+        classId: 'test-x',
+        branchId: 'test-x',
+        teacherId: 'test-x',
+        clubId: 'test-x',
+        level: 'test-x',
+        grade: -1,
+        audience: 'test-x',
+      },
+    ]
+
+    test('yönetici ve ön büro okuyabildikleri her koleksiyonda her satırı okur (core kuralı `all`)', async () => {
+      const { id, admin, adminMembershipId } = await institution()
+      const frontOffice = await createMember(app, id, 'onburo')
+      const actors = [
+        { userId: admin.id, role: 'yonetici' as const, membershipId: adminMembershipId },
+        { userId: frontOffice.id, role: 'onburo' as const, membershipId: frontOffice.membershipId },
+      ]
+      for (const actor of actors) {
+        const scope = await readScope({
+          db,
+          institutionId: id,
+          actor,
+          now: FIXED_NOW,
+          log: app.log,
+        })
+        let readable = 0
+        for (const collection of READABLE_COLLECTIONS) {
+          assert.equal(readsWholeCollection(scope, collection), scope.access(collection).allowed)
+          if (!scope.access(collection).allowed) continue
+          readable += 1
+          for (const row of JUNK)
+            assert.equal(scope.canRead(collection, row), true, `${actor.role} ${collection}`)
+        }
+        assert.ok(readable >= 10, actor.role)
+      }
+      // Kişisel kapsamlı roller bütün koleksiyonu okumaz.
+      const parent = await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's1' }])
+      const parentScope = await readScope({
+        db,
+        institutionId: id,
+        actor: { userId: parent.id, role: 'veli', membershipId: parent.membershipId },
+        now: FIXED_NOW,
+        log: app.log,
+      })
+      assert.equal(readsWholeCollection(parentScope, 'invoices'), false)
+    })
+
+    test('süzgeçsiz liste SQL sayfasıyla bellek yoluyla aynı sayfa ve toplamı verir; ayıklama korunur', async () => {
+      const { id, adminCookie } = await institution()
+      const frontOffice = await memberCookie(id, 'onburo')
+      // `q` ve `sort=id` bellek yolunu kullanır; süzgeçsiz istek SQL sayfasını.
+      for (const [cookie, collection] of [
+        [adminCookie, 'invoices'],
+        [adminCookie, 'guidanceCases'],
+        [frontOffice, 'students'],
+      ] as const) {
+        const memory = await ids(cookie, `/api/v1/collections/${collection}?pageSize=100&sort=id`)
+        for (const pageSize of [1, 2, 5]) {
+          const pages: string[] = []
+          for (let page = 1; page <= Math.ceil(memory.length / pageSize) + 1; page += 1) {
+            const response = await get(
+              `/api/v1/collections/${collection}?pageSize=${pageSize}&page=${page}`,
+              cookie,
+            )
+            assert.equal(response.statusCode, 200)
+            assert.equal(response.json().meta.total, memory.length, `${collection} ${page}`)
+            pages.push(...response.json().data.map((item: { id: string }) => item.id))
+          }
+          assert.deepEqual([...pages].sort(), [...memory].sort(), `${collection} ${pageSize}`)
+        }
+      }
+      // Ayıklama SQL sayfasında da: ön büro `progress`, yönetici rehberlik iç notunu görmez.
+      const students = (await get('/api/v1/collections/students?pageSize=3', frontOffice)).json()
+      for (const item of students.data) assert.equal('progress' in item.record, false)
+      const cases = (await get('/api/v1/collections/guidanceCases?pageSize=3', adminCookie)).json()
+      assert.ok(cases.data.length > 0)
+      for (const item of cases.data) {
+        assert.equal('internalNote' in item.record, false)
+        assert.equal('notes' in item.record, false)
+      }
+    })
+
+    test('arşiv kipleri SQL sayfasında da geçerli; başka kurum satırı sayılmaz', async () => {
+      const { id, adminCookie } = await institution()
+      await writeRecords(
+        db,
+        id,
+        [{ kind: 'archive', collection: 'branches', id: 'b2', expectedVersion: 1 }],
+        FIXED_NOW,
+      )
+      const page = async (query: string) =>
+        (await get(`/api/v1/collections/branches?${query}`, adminCookie)).json()
+      assert.deepEqual(
+        (await page('')).data.map((item: { id: string }) => item.id),
+        ['b1'],
+      )
+      assert.deepEqual((await page('')).meta.total, 1)
+      assert.deepEqual(
+        (await page('archived=only')).data.map((item: { id: string }) => item.id),
+        ['b2'],
+      )
+      assert.deepEqual((await page('archived=include')).meta.total, 2)
+      const other = await createInstitution(app)
+      const otherCookie = await signInAs(app, other.admin)
+      assert.deepEqual(
+        (await get('/api/v1/collections/branches?archived=include', otherCookie)).json().meta,
+        { page: 1, pageSize: 25, total: 0 },
+      )
     })
   })
 })

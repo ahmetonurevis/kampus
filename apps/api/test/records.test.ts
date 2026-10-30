@@ -17,9 +17,11 @@ import {
   writeRecords,
   type RecordFilter,
   type RecordWrite,
+  type SearchMatch,
 } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
 import { AppError, ConflictError, databaseErrorInfo } from '../src/errors.ts'
+import { matchesSearch, searchKey, SQL_SAFE_NEEDLE } from '../src/services/collection-reads.ts'
 import {
   dayRange,
   invoiceStatusFilter,
@@ -496,6 +498,12 @@ describe('records deposu', () => {
       'test-s-odendi-vadesiz': [{ dueDate: undefined, paidAt: '2026-10-01' }, 'Ödendi'],
       'test-s-bos-odeme': [{ dueDate: '2026-10-01', paidAt: '' }, 'Gecikmiş'],
       'test-s-yanlis-odeme': [{ dueDate: '2026-10-09', paidAt: false }, 'Yaklaşan'],
+      'test-s-sifir-odeme': [{ dueDate: '2026-10-01', paidAt: 0 }, 'Gecikmiş'],
+      // Metin olmayan doğru değerler core'da (`invoice.paidAt ?`) ve SQL'de ödenmiştir.
+      'test-s-dizi-odeme': [{ dueDate: '2026-10-01', paidAt: [] }, 'Ödendi'],
+      'test-s-nesne-odeme': [{ dueDate: '2026-10-01', paidAt: {} }, 'Ödendi'],
+      'test-s-dogru-odeme': [{ dueDate: '2026-10-09', paidAt: true }, 'Ödendi'],
+      'test-s-sayi-odeme': [{ dueDate: '2026-10-01', paidAt: 1 }, 'Ödendi'],
     }
     // Başka biçimli vade SQL'de adaydır; karar core'undur.
     const loose: Record<string, [Record<string, unknown>, string | null]> = {
@@ -516,7 +524,8 @@ describe('records deposu', () => {
       if (row.id in exact)
         assert.equal(
           invoiceStatus(
-            { paidAt: paidAt ? String(paidAt) : null, dueDate: String(dueDate) },
+            // Core'a kayıttaki değerin kendisi verilir: karar onun doğruluk değerlendirmesidir.
+            { paidAt: (paidAt || null) as string | null, dueDate: String(dueDate) },
             today,
           ),
           expected,
@@ -581,5 +590,106 @@ describe('records deposu', () => {
     )
     // Alan adı da parametredir: tırnak veya işleç taşıyan ad yalnız eşleşmez.
     assert.deepEqual(await ids([{ field: "studentId' or '1'='1", values: ['s1'] }]), [])
+  })
+
+  describe('arama aday süzgeci (SQL)', () => {
+    /** Katlamanın zor durumları: Türkçe harfler, aksan, ASCII dışı işaret, kaçış, üstel sayı. */
+    const TEXTS: Record<string, Record<string, unknown>> = {
+      'test-q-turkce': { name: 'İSTANBUL Işık ŞÜKRÜ Öğün Çağla IĞDIR', city: 'ığdır' },
+      'test-q-buyuk': { name: 'MATEMATİK', other: 'matematık' },
+      'test-q-aksan': { name: 'café résumé', composed: 'café Ångström' },
+      // U+20D7 \p{M}'dir ama U+0300–U+036F dışındadır; Kelvin işareti NFD'de K olur.
+      'test-q-isaret': { name: 'a⃗b Kelvin ﬁne ΣΟΦΙΑ Жук' },
+      'test-q-kacis': { name: 'satır\nsonu\tsekme "tırnak" ters\\eğik' },
+      'test-q-sayi': { big: 1e21, small: 1.5e-7, negative: -42, ratio: 0.1, number: 1234567 },
+      'test-q-dizi': { tags: ['Etiket Bir', 'iki'], nested: { inner: 'ic-deger' }, flag: true },
+      'test-q-gizli': { sharedNote: 'acik metin', internalNote: 'ozel-not' },
+      'test-q-bos': {},
+    }
+
+    async function seeded() {
+      return institutionWith(
+        Object.entries(TEXTS).map(([id, data]) => ({
+          collection: 'students' as const,
+          id,
+          data: { id, ...data },
+        })),
+      )
+    }
+
+    /** Kayıtların arama metinlerinden çıkan, SQL'e uygun bütün kısa alt dizgiler. */
+    function needles(): string[] {
+      const found = new Set<string>(['1e+21', '1.5e-7', 'e-7', '-7', 'e+', '-42', '0.1', ' '])
+      for (const data of Object.values(TEXTS))
+        for (const value of Object.values(data)) {
+          const texts =
+            typeof value === 'string'
+              ? [value]
+              : typeof value === 'number'
+                ? [String(value)]
+                : Array.isArray(value)
+                  ? value.filter((item) => typeof item === 'string')
+                  : []
+          for (const text of texts) {
+            const key = searchKey(text)
+            for (let start = 0; start < key.length; start += 1)
+              for (const length of [1, 2, 3, 5, 8])
+                if (start + length <= key.length) found.add(key.slice(start, start + length))
+          }
+        }
+      return [...found].filter((needle) => SQL_SAFE_NEEDLE.test(needle))
+    }
+
+    test('SQL adayı bellekteki searchKey eşleşmesinin üst kümesidir', async () => {
+      const id = await seeded()
+      const stored = await loadRecords(db, id, ['students'])
+      const all = needles()
+      assert.ok(all.length > 150, String(all.length))
+      for (const needle of all) {
+        const search: SearchMatch = { needle, exclude: [], keys: [] }
+        const sqlIds = new Set(
+          (await loadRecords(db, id, ['students'], { search })).map((row) => row.id),
+        )
+        for (const row of stored)
+          if (matchesSearch(row.data, needle))
+            assert.ok(sqlIds.has(row.id), `${JSON.stringify(needle)} ${row.id}`)
+      }
+      // Belirli durumlar bellekte de eşleşir (aday boş geçmez).
+      const memory = (needle: string) =>
+        stored.filter((row) => matchesSearch(row.data, needle)).map((row) => row.id)
+      assert.deepEqual(memory('istanbul isik sukru ogun cagla igdir'), ['test-q-turkce'])
+      assert.deepEqual(memory('ab kelvin'), ['test-q-isaret'])
+      assert.deepEqual(memory('1e+21'), ['test-q-sayi'])
+      assert.deepEqual(memory('e-7'), ['test-q-sayi'])
+    })
+
+    test('ayıklanan alan ve bağlı kimlik: aday yalnız görünen metinden ve verilen kimliklerden', async () => {
+      const id = await seeded()
+      const sqlIds = async (search: SearchMatch) =>
+        (await loadRecords(db, id, ['students'], { search })).map((row) => row.id)
+      assert.deepEqual(await sqlIds({ needle: 'ozel-not', exclude: [], keys: [] }), [
+        'test-q-gizli',
+      ])
+      // İç not çıkarıldığında aday değildir (DOM-YTK-020); görünen alan yine aday üretir.
+      const hidden = ['internalNote', 'notes']
+      assert.deepEqual(await sqlIds({ needle: 'ozel-not', exclude: hidden, keys: [] }), [])
+      assert.deepEqual(await sqlIds({ needle: 'acik metin', exclude: hidden, keys: [] }), [
+        'test-q-gizli',
+      ])
+      // Bağlı ad eşleşen kimlik metinden bağımsız adaydır; boş kimlik listesi koşul eklemez.
+      assert.deepEqual(
+        await sqlIds({
+          needle: 'hicbir-yerde-yok',
+          exclude: [],
+          keys: [
+            { field: 'id', values: ['test-q-bos'] },
+            { field: 'classId', values: [] },
+          ],
+        }),
+        ['test-q-bos'],
+      )
+      // Aranan metin parametredir.
+      assert.deepEqual(await sqlIds({ needle: "' or '1'='1", exclude: [], keys: [] }), [])
+    })
   })
 })

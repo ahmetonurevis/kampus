@@ -2,6 +2,8 @@
 
 Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’una yönlenir.
 
+React web (`apps/web-react`, `pnpm dev:react`) sayfaları API'den okur; taşınmayan sayfalar yer tutucudur. Taşınanlar: `/yonetici/subeler` ve `/yonetici/personel` (yalnız okuma; sunucu sayfalı tablo, URL'de arama/filtre/sıralama/sayfa, sağ panel `?sinif=`, `?kampus-ozet=`, `?ogretmen=`). Aşağıdaki tablolar Vue demosunun sayfa yollarıdır.
+
 ## Yönetici
 
 | Yol                             | Sayfa                     |

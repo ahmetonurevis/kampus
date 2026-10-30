@@ -1,5 +1,5 @@
 {
-  "id": "38b20eb2-1f22-4b13-b42f-ff7cb45417db",
+  "id": "ecd4dfeb-c455-4783-b458-058722ee0d8c",
   "prevId": "bbdb8229-006c-429d-a652-926649e35c42",
   "version": "7",
   "dialect": "postgresql",
@@ -814,6 +814,77 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.institution_settings": {
+      "name": "institution_settings",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "academic_year": {
+          "name": "academic_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "institution_settings_institution_id_institutions_id_fk": {
+          "name": "institution_settings_institution_id_institutions_id_fk",
+          "tableFrom": "institution_settings",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "institution_settings_academic_year_check": {
+          "name": "institution_settings_academic_year_check",
+          "value": "\"institution_settings\".\"academic_year\" between 2000 and 2100"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.membership_links": {
       "name": "membership_links",
       "schema": "",
@@ -945,12 +1016,6 @@
         "data": {
           "name": "data",
           "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },

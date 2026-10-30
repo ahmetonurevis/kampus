@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react'
 import { ScrollView, View } from 'react-native'
 import { useVideoPlayer, VideoView } from 'expo-video'
-import { useSchool } from '../store/SchoolProvider.jsx'
-import { context } from '../model/school.js'
+import { useSchool } from '../store/SchoolProvider.tsx'
+import { context } from '../model/school.ts'
 import { Card, Heading, Icon, T, styles, useColors } from '../ui/components.jsx'
 
 const media = {

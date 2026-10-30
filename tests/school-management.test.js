@@ -10,6 +10,7 @@ import {
   restoreRecord,
 } from '../apps/web/src/lib/school-management.js'
 import { createSnapshotWriter, restoreSnapshot } from '../apps/web/src/lib/demo-persistence.js'
+import { isDomainError } from './support/domain-error.js'
 let count = 0
 const id = (prefix) => `${prefix}-test-${++count}`
 function addTeacher(state) {
@@ -151,4 +152,24 @@ test('Değişiklik temelli kalıcılık: not, silinen program, yeni kayıt, sır
     () => restoreSnapshot({ format: 'school-delta-v1', createdAt: 'geçersiz', changes: {} }),
     /geçersiz/,
   )
+})
+
+test('Yönetim işlemleri DomainError, kod ve tür ile reddeder; kayıt değişmez', () => {
+  const s = createSeed()
+  const snapshot = JSON.stringify(s)
+  const branch = s.branches[0]
+  assert.throws(
+    () => saveBranch(s, { name: branch.name, address: branch.address }, id),
+    isDomainError('branch_name_taken', 'conflict'),
+  )
+  assert.throws(
+    () => saveBranch(s, { name: 'Yeni Kampüs', address: branch.address }, id, 'missing'),
+    isDomainError('branch_not_found', 'not_found'),
+  )
+  assert.throws(() => archiveRecord(s, 'branch', 'b1'), isDomainError('transfer_campus_required'))
+  assert.throws(
+    () => restoreRecord(s, 'branch', 'missing'),
+    isDomainError('archive_not_found', 'not_found'),
+  )
+  assert.equal(JSON.stringify(s), snapshot)
 })

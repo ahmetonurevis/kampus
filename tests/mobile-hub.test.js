@@ -2,19 +2,20 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import { decodeText } from '../packages/school-core/src/lib/text-decoding.ts'
+import { isDomainError } from './support/domain-error.js'
 import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
 import {
   createSnapshotWriter,
   restoreSnapshot,
 } from '../packages/school-core/src/lib/demo-persistence.ts'
 import { navigation as webNavigation } from '../apps/web/src/modules/navigation.js'
-import { navigation, availablePages } from '../apps/mobile/src/model/school.js'
+import { navigation, availablePages } from '../apps/mobile/src/model/school.ts'
 import {
   accountPages,
   categoryPages,
   hubCategories,
   pageTitle,
-} from '../apps/mobile/src/model/hub.js'
+} from '../apps/mobile/src/model/hub.ts'
 
 const roles = ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli']
 const session = (role) => ({ role, childId: 's1', theme: 'light' })
@@ -115,4 +116,11 @@ test('Mobil oturum bilgisiyle çalışan iş akışı kalıcı kayıttan kayıps
   const restored = restoreSnapshot(write(state))
   assert.deepEqual(restored.studentGoals, state.studentGoals)
   assert.equal(restored.modules.goals, true)
+})
+
+test('Desteklenmeyen karakter kodlaması DomainError ile reddedilir', () => {
+  assert.throws(
+    () => decodeText(new Uint8Array(), 'iso-8859-9'),
+    isDomainError('unsupported_encoding'),
+  )
 })

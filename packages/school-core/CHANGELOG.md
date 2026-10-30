@@ -1,5 +1,12 @@
 # Değişiklikler
 
+## Yayımlanmamış
+
+- `lib/errors.ts` eklendi: iş kuralı reddi için `DomainError` (`code`, Türkçe `message`, `kind`: `rule` | `conflict` | `forbidden` | `not_found`, isteğe bağlı `path`). Core'daki 201 iş kuralı `throw new Error('…')` çağrısı mesaj metni değişmeden `DomainError`'a çevrildi; API `kind` değerini HTTP durumuna eşler (422, 409, 403, 404). İç tutarsızlık niteliğindeki `TypeError`/`Error` çağrıları ve demo kalıcılığı hataları düz kalır.
+- Düzeltme: `mayRun` ve `runWorkflow`, komut adı `toString`, `constructor` veya `__proto__` gibi yerleşik özellik olduğunda TypeError fırlatıyor ya da yanıltıcı "modül kapalı" hatası veriyordu; komut tabloları `Object.hasOwn` ile aranır, bilinmeyen komut `unknown_command` (`rule`) olur.
+- Düzeltme: `workflowCreateActions` optik değerlendirme ve otomatik etüt sayfalarında TypeError fırlatıyordu; eylem tablosunda karşılığı olmayan modül boş liste döner.
+- Davranış: mükerrer ödeme `invoice_already_paid` (`conflict`), olmayan ödeme kaydı `invoice_not_found` (`not_found`) olarak döner; API'de sırasıyla 409 ve 404 olur.
+
 ## 1.3.0
 
 - Hedef & gelişim planı modülü (`goals`) eklendi: ders veya genel net hedefi, deneme sonuçlarından hesaplanan ilerleme, onay akışı, zayıf konulardan haftalık adım önerisi ve veli yorumları. Veri `studentGoals` koleksiyonundadır; snapshot sürümü ve eski kayıtlar korunur.

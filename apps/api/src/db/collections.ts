@@ -93,7 +93,7 @@ export const RECORD_COLLECTIONS: readonly CollectionName[] =
  * başına değerleri maskesiz (rehberlik iç notu, sağlık) ve sabit demo kullanıcısıyla (`t1`,
  * `s1`) ekler, 200 kayda kırpar. Sunucuda denetim yalnız `audit_log`'a gerçek aktör ve alan
  * adlarıyla yazılır (veritabani.md §8); işlem çalıştırıcı bu koleksiyonu boş verir ve
- * değişikliklerini yok sayar. Mevcut satırlar `0004_archive_core_audit_records` ile arşivlendi.
+ * değişikliklerini yok sayar. Mevcut satırlar `0005_archive_core_audit_records` ile arşivlendi.
  */
 export type EphemeralCollection = 'audit'
 const EPHEMERAL_SET: ReadonlySet<string> = new Set<EphemeralCollection>(['audit'])

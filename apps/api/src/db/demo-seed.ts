@@ -4,6 +4,7 @@ import type { Auth, InstitutionType, Role } from '../auth.ts'
 import { AppError, MESSAGES } from '../errors.ts'
 import {
   ensureInstitution,
+  ensureInstitutionSettings,
   ensureMember,
   ensureMembershipLinks,
   ensureUser,
@@ -194,7 +195,9 @@ export async function seedDemo(auth: Auth, db: Database, password: string, optio
   for (const institution of DEMO_INSTITUTIONS) {
     const institutionId = institutionIds.get(institution.slug)
     if (!institutionId) continue
-    const rows = stateRecords(demoState(institution.slug, options.now))
+    const state = demoState(institution.slug, options.now)
+    await ensureInstitutionSettings(db, institutionId, { academicYear: state.academicYear })
+    const rows = stateRecords(state)
     insertedRecords[institution.slug] = await insertMissingRecords(
       db,
       institutionId,

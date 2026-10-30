@@ -17,6 +17,7 @@ import {
   restoreSnapshot,
 } from '../packages/school-core/src/lib/demo-persistence.ts'
 import { navigation } from '../apps/web/src/modules/navigation.js'
+import { isDomainError } from './support/domain-error.js'
 
 const now = '2026-10-06T10:00:00.000Z'
 const seed = () => createSeed(new Date(now))
@@ -291,4 +292,19 @@ test('Hedefler snapshot üzerinden kayıpsız döner', () => {
   const restored = restoreSnapshot(write(original))
   assert.deepEqual(restored.studentGoals, original.studentGoals)
   assert.equal(restored.modules.goals, true)
+})
+
+test('Hedef kuralları DomainError, kod ve tür ile reddedilir; kayıt değişmez', () => {
+  const state = seed()
+  run(state, 'goal', scienceGoal, undefined, 'ogrenci')
+  unchangedOnFailure(
+    state,
+    () => run(state, 'goal', scienceGoal, undefined, 'ogrenci'),
+    isDomainError('goal_already_open', 'conflict'),
+  )
+  unchangedOnFailure(
+    state,
+    () => run(state, 'goal', { ...scienceGoal, deadline: '2026-10-05' }, undefined, 'ogrenci'),
+    isDomainError('goal_due_date_past'),
+  )
 })

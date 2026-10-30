@@ -5,10 +5,10 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { StatusBar } from 'expo-status-bar'
-import { SchoolProvider, useSchool, recordError } from './store/SchoolProvider.jsx'
-import { roles, availablePages } from './model/school.js'
-import { moduleNavigationState } from './model/navigation.js'
-import { accountPages, categoryLabel, pageTitle } from './model/hub.js'
+import { SchoolProvider, useSchool, recordError } from './store/SchoolProvider.tsx'
+import { roles, availablePages } from './model/school.ts'
+import { moduleNavigationState } from './model/navigation.ts'
+import { accountPages, categoryLabel, pageTitle } from './model/hub.ts'
 import {
   Avatar,
   Button,

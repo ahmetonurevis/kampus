@@ -100,6 +100,7 @@ import {
   Paperclip,
   Share2,
   FileDown,
+  type LucideIcon,
 } from 'lucide-react-native'
 export const icons = {
   Bus,
@@ -203,4 +204,5 @@ export const icons = {
   Paperclip,
   Share2,
   FileDown,
-}
+} satisfies Record<string, LucideIcon>
+export type IconName = keyof typeof icons

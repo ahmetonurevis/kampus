@@ -48,7 +48,7 @@ describe('veri dönüştüren migration’lar', () => {
   let folder: string
 
   before(async () => {
-    folder = await migrationsUpTo('0002_create_records')
+    folder = await migrationsUpTo('0003_create_institution_settings')
     await migrate(pglite, { migrationsFolder: folder })
   })
   after(async () => {
@@ -56,7 +56,7 @@ describe('veri dönüştüren migration’lar', () => {
     await rm(folder, { recursive: true, force: true })
   })
 
-  test('0003–0004: mevcut sıra korunarak numaralanır; tohum sırayı veri ve sürüme dokunmadan core dizisine eşitler; core denetimi arşivlenir', async () => {
+  test('0004–0005: mevcut sıra korunarak numaralanır; tohum sırayı veri ve sürüme dokunmadan core dizisine eşitler; core denetimi arşivlenir', async () => {
     const app = await buildTestApp(db)
     try {
       const { id } = await createInstitution(app)
@@ -88,7 +88,7 @@ describe('veri dönüştüren migration’lar', () => {
 
       await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
 
-      // 0004: core denetim satırları arşivlenir ve yüklenmez.
+      // 0005: core denetim satırları arşivlenir ve yüklenmez.
       assert.deepEqual(await loadRecords(db, id, ['audit']), [])
       const [legacy] = await loadRecords(db, id, ['audit'], { includeArchived: true })
       assert.equal(legacy?.version, 2)

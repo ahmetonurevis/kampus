@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { ScrollView, View, Pressable } from 'react-native'
 import { usePreventRemove } from '@react-navigation/native'
-import { useSchool } from '../store/SchoolProvider.jsx'
-import { context } from '../model/school.js'
+import { useSchool } from '../store/SchoolProvider.tsx'
+import { context } from '../model/school.ts'
 import { gradeQuiz } from '@kampus/school-core/lib/domain.ts'
 import { Button, Card, Heading, Icon, Sheet, T, styles, useColors } from '../ui/components.jsx'
 

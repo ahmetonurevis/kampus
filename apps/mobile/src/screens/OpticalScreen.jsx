@@ -9,9 +9,9 @@ import {
   runAssessment,
   exampleOpticalFile,
 } from '@kampus/school-core/lib/assessment-automation.ts'
-import { useSchool, recordError } from '../store/SchoolProvider.jsx'
-import { moduleNavigationState } from '../model/navigation.js'
-import { pickTextFile } from '../lib/text-files.js'
+import { useSchool, recordError } from '../store/SchoolProvider.tsx'
+import { moduleNavigationState } from '../model/navigation.ts'
+import { pickTextFile } from '../lib/text-files.ts'
 import {
   Badge,
   Button,

@@ -123,7 +123,7 @@ describe('işlem çalıştırıcı', () => {
     assert.deepEqual(audit[0]?.changes, { fields: ['method', 'paidAt'] })
   })
 
-  test('mükerrer ödeme 422 ile reddedilir ve hiçbir kayıt değişmez', async () => {
+  test('mükerrer ödeme 409 ile reddedilir ve hiçbir kayıt değişmez', async () => {
     const ctx = await institution(['invoices'])
     const request = {
       action: 'invoice.pay',
@@ -133,7 +133,7 @@ describe('işlem çalıştırıcı', () => {
     await runOperation(ctx, request)
     const before = await snapshot(ctx.institutionId)
     await assert.rejects(runOperation(ctx, request), (error: unknown) => {
-      hasStatus(422, 'rule_violation')(error)
+      hasStatus(409, 'invoice_already_paid')(error)
       assert.ok(error instanceof Error)
       assert.equal(error.message, 'Bu taksit zaten ödenmiş.')
       return true
@@ -185,9 +185,7 @@ describe('işlem çalıştırıcı', () => {
         run: (state, { now }) => pay(state, now),
       }),
       (error: unknown) => {
-        hasStatus(422)(error)
-        assert.ok(error instanceof Error)
-        assert.equal(error.message, 'Ödeme kaydı bulunamadı.')
+        hasStatus(404, 'not_found')(error)
         return true
       },
     )

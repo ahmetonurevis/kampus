@@ -110,5 +110,5 @@ export const schoolModules: SchoolModule[] = [
     roles: ['yonetici', 'ogretmen', 'ogrenci', 'veli'],
   },
 ]
-export const workflowPage = (path: string): SchoolModule | undefined =>
+export const workflowPage = (path: string | undefined): SchoolModule | undefined =>
   schoolModules.find((item) => item.path === path)

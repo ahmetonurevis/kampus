@@ -31,16 +31,9 @@ export default [
     ...config,
     files: ['**/*.ts', '**/*.tsx'],
   })),
-  {
-    // TODO(ts): C2 taşıması bitince kaldırılır; tiplenmemiş core dosyaları geçici olarak denetim dışıdır.
-    files: ['packages/school-core/src/**/*.ts'],
-    rules: {
-      '@typescript-eslint/ban-ts-comment': ['error', { 'ts-nocheck': 'allow-with-description' }],
-    },
-  },
   prettier,
   {
-    files: ['apps/mobile/**/*.{js,jsx}'],
+    files: ['apps/mobile/**/*.{js,jsx,ts,tsx}'],
     plugins: { react },
     languageOptions: { parser: tseslint.parser, parserOptions: { ecmaFeatures: { jsx: true } } },
     rules: { 'react/no-missing-key': 'error', 'react/rules-of-hooks': 'error' },

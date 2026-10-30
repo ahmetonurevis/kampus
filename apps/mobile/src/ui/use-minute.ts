@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { AppState } from 'react-native'
 import { useIsFocused } from '@react-navigation/native'
 
-export function useMinute() {
+export function useMinute(): number {
   const minute = () => Math.floor(Date.now() / 60000)
   const [now, setNow] = useState(minute)
   const focused = useIsFocused()

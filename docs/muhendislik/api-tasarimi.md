@@ -24,6 +24,7 @@ Kampüs API'si JSON üzerinden REST'tir; tek istemcisi `packages/api-client`'tı
 
 - CRUD'a sığmayan iş adımı fiil olarak alt yoldur (`/approve`, `/reject`, `/close`); adı kebab-case İngilizce emir kipindedir.
 - Geçiş köprüsü: school-core `runWorkflow` komutları API'ye `POST /workflows/:command` ile taşınabilir. Bir modül kendi kaynak uçlarına geçince köprüdeki komutları kaldırılır.
+- Okuma köprüsü: `GET /collections/:collection` ve `GET /collections/:collection/:id`. Ad school-core State anahtarıdır (camelCase, ör. `studentGoals`); izin listesinde olmayan veya açılmamış (`audit`, `conversations`) ad 404. Rol × koleksiyon erişimi, alan kapsamı (`omit`) ve koleksiyonun modülü tek tabloda, `apps/api/src/services/collection-access.ts`'tedir; kayıt düzeyinde kapsam school-core fonksiyonundan gelir, core'da yoksa o rolde koleksiyon kapalıdır (403). Filtre alanları ve sıralama alanları sorgu şemasında beyaz listedir. Varsayılan sıra deponun sırasıdır. Bir modül kendi kaynak uçlarına geçince köprüdeki koleksiyonları kapanır.
 - `PUT` kullanılmaz; güncelleme `PATCH` ile gönderilen alanları değiştirir. `null` alanı temizler, gönderilmeyen alan dokunulmadan kalır.
 - Kalıcı silme API'de yoktur; yalnız KVKK silme süreciyle yapılır (bkz. [guvenlik-kvkk.md](guvenlik-kvkk.md#10-saklama-ve-silme)).
 
@@ -50,6 +51,7 @@ Başarılı yanıt her zaman `data` taşır; liste ek olarak `meta` taşır:
 ```
 
 - Alan adları camelCase. Her kayıt `id`, `version`, `createdAt`, `updatedAt`, `archivedAt` (yoksa `null`) taşır.
+- Zaman damgasının tek kaynağı kayıt kolonlarıdır (`records.created_at`/`updated_at`/`archived_at`): koleksiyon yanıtında üst düzey `createdAt`, `updatedAt`, `archivedAt` ve `version` kolondan gelir, school-core kaydı `record` alanındadır. Core kayıtlarının kendi `createdAt`/`updatedAt` alanları (örnek veride geçmişe tarihli olabilir) `record` içinde iş alanı olarak kalır; sunucu onları sistem zamanı saymaz, `sort=createdAt` kolona göre sıralar.
 - Yanıt şeması zorunludur; yanıtta olmayan alanın istemciye gitmesi mümkün değildir (iç not, parola özeti, başka rolün alanı).
 
 ## 3. Sayfalama, filtre ve sıralama
@@ -119,6 +121,8 @@ Bütün hata yanıtları aynı şekildedir:
 | 503   | `unavailable`                                                                                         | Bakım veya bağımlılık (veritabanı) erişilemez                                                              |
 
 400 ile 422 ayrımı: Zod şemasını geçemeyen istek 400; şemayı geçip school-core kuralına takılan istek 422.
+
+Modül denetimi: modüle bağlı rota `app.requireModule('<anahtar>')` ön işleyicisini bildirir (anahtar istekten de çözülebilir, ör. koleksiyon adından). Anahtarlar school-core modül kaydındandır (`modules/full-navigation.ts`, `modules/school-workflows.ts`); kurumda saklanmayan modül açıktır, yalnız `false` olan kapalıdır. Sıra: 401 → 404 (bilinmeyen kaynak) → 403 `module_disabled` → 403 `forbidden` (rol/kapsam) → 404 (kayıt). Kapalı modülün okuma uçları da kapanır (DOM-YTK-040).
 
 ## 6. Eşzamanlılık
 

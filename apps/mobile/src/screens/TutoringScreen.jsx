@@ -8,7 +8,7 @@ import {
   runAssessment,
 } from '@kampus/school-core/lib/assessment-automation.ts'
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
-import { recordError, useSchool } from '../store/SchoolProvider.jsx'
+import { recordError, useSchool } from '../store/SchoolProvider.tsx'
 import {
   Badge,
   Button,
@@ -23,7 +23,7 @@ import {
   useColors,
 } from '../ui/components.jsx'
 import { ListRow, Notice, Screen, Section } from '../ui/SchoolLayout.jsx'
-import { useMinute } from '../ui/use-minute.js'
+import { useMinute } from '../ui/use-minute.ts'
 
 const ATTENDANCE = ['Geldi', 'Gelmedi', 'İzinli'].map((value) => ({ value, label: value }))
 const stamp = (value) => `${dateLabel(value)} ${timeLabel(value)}`

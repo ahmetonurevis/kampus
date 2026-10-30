@@ -120,6 +120,7 @@ Bu modüllerin `records`'a sığıp sığmadığını belirleyen ihtiyaçlar (ve
    - a) Değiştirilmemiş kopya doğrudan `Yayında`; düzenlenince yeni sürüm onaya girer **(önerilen; platform içeriği zaten gözden geçirilmiş)**
    - b) Her kopya `Taslak` başlar ve kurum onayından geçer (DOM-KYN-050'nin harfiyen uygulanması)
    - c) Kütüphane öğesi kopyasız doğrudan atanabilir
+   - Uygulama notu (F3a): 1a uygulandı (`content/copy.ts` `planCopy`); değiştirilmemiş kütüphane kopyası kurum yayım koşullarını karşılıyorsa onaysız `Yayında` başlar ve kuruma açılabilir. Koşulları karşılamayan kopya eksikleriyle `Taslak` başlar.
 2. **Anahtar düzeltmesinden sonra puanlar.** DOM-BEC-011 kendiliğinden yeniden hesap, DOM-KYN-033 açık işlem diyor; iki kural çelişiyor.
    - a) Açık işlem: öğretmen önizler ve onaylar; aktarılmış ve karara girmiş sonuçlar kopyasıyla sabit kalır **(önerilen)**
    - b) Kendiliğinden yeniden hesap; yalnız aktarılmış/karara girmiş sonuçlar onay ister
@@ -136,3 +137,4 @@ Bu modüllerin `records`'a sığıp sığmadığını belirleyen ihtiyaçlar (ve
    - a) `simple` + büyük/küçük harf ve Türkçe karakter normalleştirmesi; İngilizce ve Türkçe metin aynı indekste **(önerilen)**
    - b) İçerik diline göre `turkish`/`english` kök bulucu, iki indeks
    - c) `pg_trgm` benzerlik araması
+   - Uygulama notu (F3a): PostgreSQL `tsvector` kolonu yalnız core `searchDocument` çıktısından üretilir (`to_tsvector('simple', …)`); sorgu terimleri `searchQueryTerms`'ten gelir. İki taraf aynı `normalizeSearchText` (NFKD, Türkçe küçültme) fonksiyonundan geçer; SQL'de ikinci normalleştirme yazılmaz.

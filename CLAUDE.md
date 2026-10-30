@@ -17,11 +17,11 @@ Proje çevrimdışı Vue/JS demosundan TypeScript, React ve gerçek API'li platf
 
 ## Mimari
 
-- `packages/school-core`: platformdan bağımsız iş kuralları, Zod şemaları, örnek veri, müfredat, soru bankası, rol/modül kaydı, belge verisi. Web, mobil ve API aynı kuralları çalıştırır.
+- `packages/school-core`: platformdan bağımsız iş kuralları, Zod şemaları, örnek veri, müfredat, soru bankası, rol/modül kaydı, belge verisi, `content/` (içerik havuzu kuralları). Web, mobil ve API aynı kuralları çalıştırır.
 - `apps/api`: Fastify 5 + TypeScript, PostgreSQL 16, Drizzle. İşlemler school-core kurallarıyla doğrulanır ve tek veritabanı işleminde yazılır. Kurum ve rol kapsamı sunucuda uygulanır; istemciye güvenilmez.
 - `packages/api-client` (tipli HTTP istemcisi) ve `packages/react-shared` (ortak React hook'ları) web ile mobil arasında paylaşılır.
 - `apps/web-react`: React 19 + TypeScript + Vite. `apps/mobile`: Expo SDK 57, React Native, React Navigation native stack.
-- Çok kurumlu: her kayıt bir kuruma aittir. Kurum türü `school` (ders + kazanım) veya `language_school` (CEFR A1–C2 + beceri). İngilizce beceri modülleri iki türde de çalışır.
+- Çok kurumlu: her kayıt bir kuruma aittir. Kurum türü `school` (ders + kazanım) veya `language_school` (CEFR Pre-A1, A1–C2 ve A2+/B1+/B2+ artı seviyeleri + beceri). İngilizce beceri modülleri iki türde de çalışır.
 - Para kuruş cinsinden tamsayı; tarihler ISO 8601 UTC, gösterim Europe/Istanbul.
 - Form doğrulaması Zod; kullanıcı hataları Türkçe toast/alan mesajı. Teknik hatalar yapılandırılmış logda tutulur, kullanıcıya teknik ayrıntı gösterilmez.
 - Örnek kurum Akademi Özel Okulları: öğrenci Deniz Yılmaz; veli Ayşe Yılmaz'ın çocukları Deniz ve Ece; öğretmen Selin Kaya. Örnek dil okulu Kampüs Dil Akademisi.

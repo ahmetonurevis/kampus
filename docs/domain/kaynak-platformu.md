@@ -2,7 +2,7 @@
 
 Kurumun kendi ders ve beceri kaynaklarını ürettiği, etiketlediği, onayladığı ve sınıflarına dağıttığı kütüphane. Amaç yayınevi ve üçüncü taraf dijital platform bağımlılığını azaltmaktır; bu yüzden kurallar hem telif riskini hem "kurum özgün içerik" oranını ölçülebilir kılar. İçeriğin öğrenciye görev olarak verilmesi ve puanlanması [beceri-gelisimi.md](beceri-gelisimi.md), not etkisi [akademik-olcme.md](akademik-olcme.md), kim neyi görür sorusu [yetki-ve-kapsam.md](yetki-ve-kapsam.md) içindedir.
 
-Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizzes` ve `homework` koleksiyonlarına dağılmış durumdadır; ortak kaynak kaydı, lisans, onay ve sürüm kavramları yoktur.
+Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizzes` ve `homework` koleksiyonlarına dağılmış durumdadır; ortak kaynak kaydı, lisans, onay ve sürüm kavramları yoktur. Kaynak, sürüm, lisans, onay ve görünürlük kuralları ADR 0004 ile school-core'a geldi (`packages/school-core/src/content/`: `taxonomy.ts`, `resource.ts`, `visibility.ts`, `copy.ts`); ilişkisel tablolar, API ve ekranlar henüz yoktur.
 
 ## İçerik modeli
 
@@ -12,7 +12,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Kurumun kendi kaynak havuzu ancak içerik kişiye değil kuruma bağlıysa birikir.
 - **Kaynak:** 5846 sayılı FSEK md. 18/2 ("memur, hizmetli ve işçilerin işlerini görürken meydana getirdikleri eserler üzerindeki haklar bunları çalıştıran veya tayin edenlerce kullanılır"; RG 13/12/1951-7981, mevzuat.gov.tr konsolide metin). Öğretmen iş sözleşmelerinin bu konuda ne yazdığı **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `materials` ve `videos` kayıtlarında `teacherId` var (`packages/school-core/src/data/seed.js:457-527`); kurum kimliği yok.
+- **Kodda:** kısmen — `materials` ve `videos` kayıtlarında `teacherId` var (`packages/school-core/src/data/seed.js:457-527`); kurum kimliği yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planNewResource`: sahip ve yazar işlemi yapan kişi); kurum kimliği servis ve tablo kolonudur.
 
 ### DOM-KYN-002 · İçerik türleri
 
@@ -26,7 +26,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Tür, hangi alanın denetleneceğini ve öğrenciye nasıl sunulacağını belirler; serbest "Doküman/Video" ayrımı beceri çalışmasına yetmez.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — materyal formu yalnız `Doküman` ve `Video` türlerini tanır (`apps/web/src/views/Learning.vue:56,276-318`); soru bankası satırları kök, cevap, üç çeldirici, konu ve çözümü taşır (`packages/school-core/src/data/question-bank.js:3`).
+- **Kodda:** kısmen — materyal formu yalnız `Doküman` ve `Video` türlerini tanır (`apps/web/src/views/Learning.vue:56,276-318`); soru bankası satırları kök, cevap, üç çeldirici, konu ve çözümü taşır (`packages/school-core/src/data/question-bank.js:3`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`resourceContentSchema`, `wordCount`).
 
 ### DOM-KYN-003 · Ses ve videoda erişilebilirlik
 
@@ -34,7 +34,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** İşitme engelli öğrenci ve sessiz ortam erişimi; dinleme görevinde dökümün erken görünmesi ölçmeyi bozar.
 - **Kaynak:** İşletme kuralı (CLAUDE.md erişilebilirlik zorunluluğu).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — örnek videolar `captions` ve `transcript` taşır (`packages/school-core/src/data/seed.js:457-502`); yüklenen videoda altyazı zorunlu değil (`apps/web/src/views/Learning.vue:286-298`).
+- **Kodda:** kısmen — örnek videolar `captions` ve `transcript` taşır (`packages/school-core/src/data/seed.js:457-502`); yüklenen videoda altyazı zorunlu değil (`apps/web/src/views/Learning.vue:286-298`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`publicationIssues`, `learnerView`: dinleme dökümü varsayılan gizli, `showTranscript` ile açılır).
 
 ### DOM-KYN-004 · Dosya doğrulaması ve depolama
 
@@ -42,7 +42,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Yükleme, kötü amaçlı dosyanın öğrencilere dağıtılması için en kısa yoldur; doğrudan dosya bağlantısı kapsam denetimini atlatır.
 - **Kaynak:** İşletme kuralı; ADR 0001 karar 8.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — yalnız uzantıya bakılır (`apps/web/src/views/Learning.vue:281-285`); dosya içeriği saklanmaz, yalnız ad ve boyut kaydedilir.
+- **Kodda:** çelişiyor — yalnız uzantıya bakılır (`apps/web/src/views/Learning.vue:281-285`); dosya içeriği saklanmaz, yalnız ad ve boyut kaydedilir. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/taxonomy.ts` (`FILE_PURPOSES`, `assertFileAllowed`); içerikten tür tespiti API'de.
 
 ## Etiketler
 
@@ -55,7 +55,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Etiketsiz kaynak aranamaz, öneri motoruna ve eksik kazanım/etüt eşleştirmesine girmez.
 - **Kaynak:** İşletme kuralı; ADR 0001 karar 4.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — materyalde ders ve düzey metni var (`packages/school-core/src/data/seed.js:508-519`); kazanım kodu, CEFR ve beceri yok.
+- **Kodda:** kısmen — materyalde ders ve düzey metni var (`packages/school-core/src/data/seed.js:508-519`); kazanım kodu, CEFR ve beceri yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`publicationIssues`).
 
 ### DOM-KYN-011 · Kazanım kodu resmî programdan seçilir
 
@@ -63,15 +63,15 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Optik analiz, deneme eksikleri ve kaynak önerisi aynı kazanım kimliğiyle eşleşmezse "eksik kazanıma uygun kaynak" önerilemez.
 - **Kaynak:** MEB öğretim programları; 2024 sonrası programlarda "öğrenme çıktısı" kodlaması ve geçiş takvimi **doğrulanmalı**.
 - **Kurum türü:** `school`
-- **Kodda:** çelişiyor — konular serbest metin dizisidir (`packages/school-core/src/data/curriculum.js:9`); soru bankasında konu adı metin olarak tutulur (`packages/school-core/src/data/question-bank.js:3`).
+- **Kodda:** çelişiyor — konular serbest metin dizisidir (`packages/school-core/src/data/curriculum.js:9`); soru bankasında konu adı metin olarak tutulur (`packages/school-core/src/data/question-bank.js:3`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`resourceTagsSchema`: `outcomeId` + `outcomeSource`); katalog ve program sürümü yok.
 
 ### DOM-KYN-012 · CEFR seviyesi ve beceri sözlüğü
 
-- **Kural:** CEFR etiketi `Pre-A1, A1, A2, A2+, B1, B1+, B2, B2+, C1, C2` listesinden seçilir. Beceri etiketi en az biri olmak üzere `okuma`, `dinleme`, `yazma`, `konuşma`; isteğe bağlı `sözlü etkileşim`, `yazılı etkileşim`, `aracılık`, `kelime`, `dil bilgisi`, `sesletim`. Okuma ve dinleme parçasında tek seviye verilir, seviye aralığı verilmez.
+- **Kural:** CEFR etiketi `Pre-A1, A1, A2, A2+, B1, B1+, B2, B2+, C1, C2` listesinden seçilir. Beceri etiketi en az biri olmak üzere `okuma`, `dinleme`, `yazma`, `konuşma`; isteğe bağlı `sözlü etkileşim`, `yazılı etkileşim`, `aracılık`, `kelime`, `dil bilgisi`, `sesletim`. Okuma ve dinleme parçasında tek seviye verilir, seviye aralığı verilmez. İstisna (DOM-KYN-012, dil kullanımı): `dil kullanımı` yalnız soru, quiz ve alıştırma setinde birincil beceri olabilir; okuma parçası, ses ve video dört temel beceriden (`okuma`, `dinleme`, `yazma`, `konuşma`) birini, yazma/konuşma görevi (ödev şablonu) dört temel beceriden birini veya aracılık görevinde `aracılık`ı birincil beceri olarak taşır. Kural iki kurum türünde de uygulanır.
 - **Gerekçe:** Seviye aralıklı parça seviye önerisi hesabını bozar; beceri sözlüğü sabit olmazsa raporlar bölünür.
 - **Kaynak:** CEFR-CV (2020) seviye ve ölçek yapısı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/taxonomy.ts` (`CEFR_LEVELS`, `SKILLS`, `PRIMARY_SKILLS`), `packages/school-core/src/content/resource.ts` (`publicationIssues`: `language_use_primary_not_allowed`, `core_skill_required`).
 
 ### DOM-KYN-013 · Etiketsiz soru değerlendirmeye girmez
 
@@ -79,7 +79,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Kazanım bazlı eksik analizi ve etüt yerleştirmesi soru etiketine dayanır.
 - **Kaynak:** İşletme kuralı; CLAUDE.md "cevap anahtarının her sorusu ders/kazanıma bağlıdır".
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — optik cevap anahtarı soru başına ders/kazanım ister (`packages/school-core/src/lib/assessment-automation.js`); soru bankası ve quiz için zorunlu değil.
+- **Kodda:** kısmen — optik cevap anahtarı soru başına ders/kazanım ister (`packages/school-core/src/lib/assessment-automation.js`); soru bankası ve quiz için zorunlu değil. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`publicationIssues`: soru ve quiz öğeleri).
 
 ## Lisans ve telif
 
@@ -94,15 +94,15 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Telif ihlalinin hukuki ve cezai sonucu kuruma döner; ayrıca "yayınevi bağımlılığı azaldı mı" sorusu bu alanla ölçülür (`DOM-KYN-053`).
 - **Kaynak:** FSEK md. 52 (mali haklara dair sözleşmeler yazılı olur); ticari olmayan lisansların özel okul kullanımına uygun olmadığı işletme yorumudur — **doğrulanmalı**. Koruma süresi FSEK md. 27 — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — materyal yükleme lisans/menşe sormaz (`apps/web/src/views/Learning.vue:276-318`).
+- **Kodda:** yok — materyal yükleme lisans/menşe sormaz (`apps/web/src/views/Learning.vue:276-318`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`resourceLicenseSchema`, `publicationIssues`); açık lisans izin listesi `packages/school-core/src/content/taxonomy.ts`.
 
 ### DOM-KYN-021 · Yayınevi içeriği yalnız yazılı lisansla yüklenir
 
-- **Kural:** Yayınevi kitabının taranmış sayfası, test kitabı sorusu, cevap anahtarı, yayınevi dijital platformundan indirilen ses/video veya etkileşimli içerik yalnız `Lisanslı yayın` kaydıyla yüklenir. Lisans bitiş tarihinde kaynak otomatik yayından kalkar (arşiv), yeni atamaya girmez. Lisans kapsamı "basılı kitap sahibi öğrenciler" ile sınırlıysa paylaşım kapsamı da bu öğrencilerle sınırlanır. Lisanslı içerik kopyalanamaz ve uyarlanamaz (`DOM-KYN-050`).
+- **Kural:** Yayınevi kitabının taranmış sayfası, test kitabı sorusu, cevap anahtarı, yayınevi dijital platformundan indirilen ses/video veya etkileşimli içerik yalnız `Lisanslı yayın` kaydıyla yüklenir. Lisans bitiş tarihinde kaynak otomatik yayından kalkar (arşiv), yeni atamaya girmez. Lisans kapsamı "basılı kitap sahibi öğrenciler" ile sınırlıysa paylaşım kapsamı da bu öğrencilerle sınırlanır. Lisanslı yayın kurum dışına çıkmaz: Kampüs kütüphanesine girmez, başka kuruma paylaşılmaz (`DOM-KYN-043`). Kurum içindeki kopya ve uyarlama `DOM-KYN-050`'ye uyar: lisans uyarlamaya açıkça izin vermiyorsa veya süresi dolmuşsa kopyalanamaz, kopya lisansı aynen miras alır.
 - **Gerekçe:** Ders kitabı alınmış olması, içeriğin dijital ortamda çoğaltılması ve umuma iletimi için izin değildir.
 - **Kaynak:** FSEK md. 22 (çoğaltma), md. 25 (umuma iletim), md. 52; md. 34/1 son cümlesi ("bu serbestlik, hak sahibinin meşru menfaatlerine haklı bir sebep olmadan zarar verir veya eserden normal yararlanma ile çelişir şekilde kullanılamaz"). Eğitim amaçlı piyasaya sürülen yayınlar için md. 34 serbestisine dayanılamayacağı işletme yorumudur — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (bitiş günü), `packages/school-core/src/content/visibility.ts` (kitap sahibi sınırı, `isAssignable`), `packages/school-core/src/content/copy.ts` (uyarlama izni, süresi dolmuş lisansın kopyası); otomatik arşiv işi yok.
 
 ### DOM-KYN-022 · Alıntı sınırı ve biçimi
 
@@ -110,7 +110,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** FSEK alıntıyı "maksadın haklı göstereceği nispet" ile sınırlar; bu belirsiz ölçü platformda denetlenebilir bir eşiğe çevrilmelidir.
 - **Kaynak:** FSEK md. 35/1 (1–4. bentler) ve md. 35/2 ("İktibasın belli olacak şekilde yapılması lazımdır. İlim eserlerinde ... kullanılan eserin ve eser sahibinin adından başka bu kısmın alındığı yer belirtilir"). Sayısal eşik işletme kuralıdır.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): yalnız kaynak gösterimi zorunluluğu `packages/school-core/src/content/resource.ts`; alıntı uzunluk eşiği yok.
 
 ### DOM-KYN-023 · Eğitim serbestilerine dar yorum
 
@@ -126,7 +126,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Kaynak göstermeksizin alıntı ve yanıltıcı kaynak gösterme suçtur.
 - **Kaynak:** FSEK md. 71/1-3 ve 71/1-5 (kaynak göstermeksizin iktibas; yetersiz, yanlış veya aldatıcı kaynak gösterme).
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`attributionSchema`, `assertLineagePreserved`, `learnerView`).
 
 ### DOM-KYN-025 · Telif bildirimi ve yayından kaldırma
 
@@ -134,7 +134,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** İhlal iddiasında yayına devam etmek zararı ve sorumluluğu büyütür.
 - **Kaynak:** İşletme kuralı; FSEK md. 66-68 (tecavüzün ref'i ve men'i) — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planVersionTransition` `report`: bildirimi yalnız kaynağı okuyabilen personel yapar, `staffCanReadVersion`; bildirilen içeriği yalnız yönetici yeniden onaylar; kaldırma `planResourceRemoval`); bildirim kaydı yok.
 
 ### DOM-KYN-026 · Öğrenci eseri kaynak havuzuna alınmaz
 
@@ -150,7 +150,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Bağlantı, telif sorununu içeriği kopyalamaktan daha az doğurur ama üçüncü taraf bağımlılığını azaltmaz; öğrenci verisinin dış servise sızması ayrı bir KVKK aktarımıdır.
 - **Kaynak:** İşletme kuralı; ADR 0001 karar 8 (dış SaaS bağımlılığı eklenmez); KVKK md. 8-9 (aktarım).
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/taxonomy.ts` (`link` türü, `external` gösterge kümesi).
 
 ## Onay, sürüm, yayın
 
@@ -160,7 +160,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğrenciye ulaşan her içerik bir kez gözden geçirilmiş olmalıdır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — yüklenen materyal anında öğrenci kütüphanesine girer (`apps/web/src/views/Learning.vue:300-310`).
+- **Kodda:** yok — yüklenen materyal anında öğrenci kütüphanesine girer (`apps/web/src/views/Learning.vue:300-310`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planVersionTransition`), `packages/school-core/src/content/visibility.ts` (`canReadVersion`).
 
 ### DOM-KYN-031 · Kim onaylar
 
@@ -168,7 +168,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Dört göz ilkesi telif ve içerik hatasını yakalar; ama öğretmenin günlük sınıf içi kâğıdını bekletmek kullanımı öldürür.
 - **Kaynak:** İşletme kuralı. Zümre başkanının görevleri (OİKY/OKY ve zümre öğretmenler kurulu hükümleri) **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — zümre başkanı rolü yok.
+- **Kodda:** yok — zümre başkanı rolü yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`requiresReview`, `canReview`); zümre başkanı yetkisi `ContentActor.reviewer`.
 
 ### DOM-KYN-032 · Yayındaki içerik değişmez, sürüm açılır
 
@@ -176,7 +176,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğrenci bir soruyu cevapladıktan sonra sorunun değişmesi puanı geriye dönük anlamsızlaştırır.
 - **Kaynak:** İşletme kuralı; CLAUDE.md "anahtar revizyonu eski optik analizin kullanımını engeller" ilkesinin kaynak platformuna genellemesi.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planDraftUpdate`, `planNewVersion`).
 
 ### DOM-KYN-033 · Hatalı soru düzeltmesi
 
@@ -194,7 +194,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğretmenin kendi sınıfı dışındaki öğrencilere içerik göndermesi kapsam sızıntısıdır.
 - **Kaynak:** İşletme kuralı; ADR 0001 karar 7 (öğretmen kendi sınıfları/branşı).
 - **Kurum türü:** ikisi
-- **Kodda:** yok — materyalde kapsam alanı yok.
+- **Kodda:** yok — materyalde kapsam alanı yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/visibility.ts` (`shareTargetsSchema`, `planShareChange`).
 
 ### DOM-KYN-041 · Öğrencinin gördüğü kaynak
 
@@ -202,7 +202,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğrenci kütüphanesi kendi düzeyindeki içeriği göstermeli; kapsam sızıntısı sunucuda engellenmelidir.
 - **Kaynak:** İşletme kuralı; ADR 0001 karar 7.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — öğrenci tüm düzeylerin materyallerini görür, düzey yalnız kullanıcının seçtiği filtredir (`apps/web/src/views/Learning.vue:123-133`).
+- **Kodda:** çelişiyor — öğrenci tüm düzeylerin materyallerini görür, düzey yalnız kullanıcının seçtiği filtredir (`apps/web/src/views/Learning.vue:123-133`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/visibility.ts` (`canReadVersion`).
 
 ### DOM-KYN-042 · Zümre içinde okuma, sahiplikte yazma
 
@@ -210,7 +210,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Ortak havuz büyürken içeriğin sahibi belli kalmalıdır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — öğretmen yalnız kendi materyallerini listeler (`apps/web/src/views/Learning.vue:127`); zümre paylaşımı yok.
+- **Kodda:** kısmen — öğretmen yalnız kendi materyallerini listeler (`apps/web/src/views/Learning.vue:127`); zümre paylaşımı yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`canManage`), `packages/school-core/src/content/visibility.ts`.
 
 ### DOM-KYN-043 · Kurumlar arası paylaşım varsayılan olarak yoktur
 
@@ -218,7 +218,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Kiracı sınırı (ADR 0001) içerik için de geçerlidir; yayınevi lisansı kuruma özeldir ve devredilemez.
 - **Kaynak:** ADR 0001 karar 4; FSEK md. 48-52 (lisans/devir) — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — kurum kavramı yok.
+- **Kodda:** yok — kurum kavramı yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/visibility.ts` (`libraryVersionVisible`).
 
 ### DOM-KYN-044 · Platform örnek içeriği
 
@@ -226,17 +226,17 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Platform içeriği tüm kurumlarda ortaktır; bir kurumun düzenlemesi diğerlerini etkilememelidir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — örnek içerik her demo durumuna kopyalanır (`packages/school-core/src/data/seed.js:335,457-527`), ayrı kütüphane yok.
+- **Kodda:** kısmen — örnek içerik her demo durumuna kopyalanır (`packages/school-core/src/data/seed.js:335,457-527`), ayrı kütüphane yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/copy.ts` (`planCopy`), `packages/school-core/src/content/visibility.ts` (`canBrowseLibrary`).
 
 ## Kopyalama, uyarlama, arşiv
 
 ### DOM-KYN-050 · Kopya ve uyarlama soyu
 
-- **Kural:** Kopyalanan veya uyarlanan kaynak yeni bir kaynaktır: yeni sahibi kopyalayan kişidir, `Taslak` olarak başlar, "türetildiği kaynak + sürüm" bağını ve lisans/menşe alanını miras alır, kaynak gösterimleri korunur (`DOM-KYN-024`). `Lisanslı yayın` kaynağı lisans uyarlamaya açıkça izin vermiyorsa kopyalanamaz. Asıl kaynağın yeni sürümü kopyaları değiştirmez; kopya sahibine "asıl kaynak güncellendi" bildirimi gider.
+- **Kural:** Kopyalanan veya uyarlanan kaynak yeni bir kaynaktır: yeni sahibi kopyalayan kişidir, `Taslak` olarak başlar, "türetildiği kaynak + sürüm" bağını ve lisans/menşe alanını miras alır, kaynak gösterimleri korunur (`DOM-KYN-024`). `Lisanslı yayın` kaynağı lisans uyarlamaya açıkça izin vermiyorsa veya lisans süresi dolmuşsa kopyalanamaz; kopyanın lisansı bütün alanlarıyla (bitiş tarihi, kitap sahibi sınırı, uyarlama izni) kaynağınkiyle aynı kalır, kopyalayan değiştiremez. Asıl kaynağın yeni sürümü kopyaları değiştirmez; kopya sahibine "asıl kaynak güncellendi" bildirimi gider.
 - **Gerekçe:** Uyarlama hakkı (işleme) eser sahibine aittir; soy bilgisi telif bildiriminde etkilenen tüm kopyaların bulunmasını sağlar.
 - **Kaynak:** FSEK md. 21 (işleme hakkı), md. 18/2.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/copy.ts` (`planCopy`, `copyLineage`), `packages/school-core/src/content/resource.ts` (`assertLineagePreserved`); "asıl kaynak güncellendi" bildirimi yok.
 
 ### DOM-KYN-051 · Arşiv ve kaldırma
 
@@ -244,7 +244,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Geçmiş not ve teslimlerin bağlamı korunmalı; ihlal içeren içerik ise arşivde de dağıtılmaya devam etmemelidir.
 - **Kaynak:** İşletme kuralı; KVKK md. 7.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`archive` geçişi; kaynak düzeyinde kaldırma `planResourceRemoval`: bütün sürümler, dosyalar, türetilmiş kopyalar ve soruyu içeren quiz'ler).
 
 ### DOM-KYN-052 · Öğretmen ayrılınca sahiplik devri
 
@@ -252,7 +252,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Kurum havuzu kişiye bağlı kalırsa her ayrılışta küçülür; sahipsiz içerik güncellenemez.
 - **Kaynak:** FSEK md. 18/2; 90 gün işletme kuralıdır.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — kadro arşivi kaynakları ele almaz.
+- **Kodda:** yok — kadro arşivi kaynakları ele almaz. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/visibility.ts` (sahip ayrılınca taslak yöneticiye görünür); sahiplik devri yok.
 
 ### DOM-KYN-053 · Bağımlılık göstergesi
 
@@ -260,7 +260,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Ürünün ana hedefi (yayınevi bağımlılığını azaltmak) ölçülmeden yönetilemez.
 - **Kaynak:** İşletme kuralı; ADR 0001 Bağlam.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/taxonomy.ts` (`LICENSE_KINDS` `indicator`); oran hesabı yok.
 
 ## Mevcut kodla farklar
 

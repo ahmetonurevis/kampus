@@ -6,11 +6,11 @@
 
 ### DOM-BEC-001 · Beceri taksonomisi
 
-- **Kural:** Her görevin tek bir birincil becerisi vardır: `okuma`, `dinleme`, `yazma`, `konuşma` veya `aracılık`. İsteğe bağlı ikincil beceriler ve etkinlik kipi (`alımlama`, `üretim`, `etkileşim`, `aracılık`; etkileşim için `sözlü`, `yazılı`, `çevrim içi`) etiketlenir. Aracılık görevi kaynak beceri ile hedef beceriyi birlikte taşır (ör. okuduğunu sözlü aktarma: kaynak `okuma`, hedef `konuşma`). Dilbilgisi ve sözcük bilgisi `dil kullanımı` bileşenidir; dört beceriden birine sayılmaz ve seviye önerisinde ayrı gösterilir.
+- **Kural:** Her görevin tek bir birincil becerisi vardır: `okuma`, `dinleme`, `yazma`, `konuşma` veya `aracılık`. İsteğe bağlı ikincil beceriler ve etkinlik kipi (`alımlama`, `üretim`, `etkileşim`, `aracılık`; etkileşim için `sözlü`, `yazılı`, `çevrim içi`) etiketlenir. Aracılık görevi kaynak beceri ile hedef beceriyi birlikte taşır (ör. okuduğunu sözlü aktarma: kaynak `okuma`, hedef `konuşma`). Dilbilgisi ve sözcük bilgisi `dil kullanımı` bileşenidir; dört beceriden birine sayılmaz ve seviye önerisinde ayrı gösterilir. İstisna (DOM-BEC-001, dil kullanımı; `DOM-KYN-012`): otomatik puanlı soru, quiz ve alıştırma setinin birincil becerisi `dil kullanımı` olabilir; okuma parçası, ses, video ve yazma/konuşma görevi dört temel beceriden birini birincil beceri olarak ister (aracılık görevi `aracılık` taşır).
 - **Gerekçe:** Seviye önerisi beceri bazında hesaplanır; bir görevin iki beceriye birden puan yazması profili bozar. CEFR-CV dört beceriyi etkinlik kipleriyle tanımlar ve aracılığı ayrı kip olarak ekler.
 - **Kaynak:** CEFR (2001) ve CEFR-CV (alımlama, üretim, etkileşim, aracılık; çevrim içi etkileşim ölçekleri).
 - **Kurum türü:** ikisi
-- **Kodda:** yok — İngilizce konuları serbest metin `Reading, Vocabulary, Grammar, Writing` (`packages/school-core/src/data/curriculum.js:129`); dinleme ve konuşma yok.
+- **Kodda:** yok — İngilizce konuları serbest metin `Reading, Vocabulary, Grammar, Writing` (`packages/school-core/src/data/curriculum.js:129`); dinleme ve konuşma yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/taxonomy.ts` (`SKILLS`, `PRIMARY_SKILLS`, `ACTIVITY_MODES`), `packages/school-core/src/content/resource.ts` (`resourceTagsSchema` aracılık kaynağı/hedefi, `publicationIssues` birincil beceri istisnası).
 
 ### DOM-BEC-002 · Görev tipleri kataloğu
 

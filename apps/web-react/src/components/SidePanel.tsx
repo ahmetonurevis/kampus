@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useFocusReturn } from '@/hooks/use-focus-return.ts'
 import {
   Sheet,
   SheetContent,
@@ -26,10 +27,13 @@ export function SidePanel({
   footer,
   children,
 }: SidePanelProps) {
+  const focus = useFocusReturn()
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
+        onOpenAutoFocus={focus.onOpenAutoFocus}
+        onCloseAutoFocus={focus.onCloseAutoFocus}
         {...(description ? {} : { 'aria-describedby': undefined })}
         className="inset-y-3 right-3 h-auto w-[min(560px,calc(100vw-24px))] gap-0 rounded-dialog border sm:max-w-none"
       >

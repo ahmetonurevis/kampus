@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { EmptyState } from '@/components/EmptyState.tsx'
@@ -23,9 +24,14 @@ import {
 import type { FilterField } from '@/lib/list-query.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
-import { CampusSummaryPanel } from './CampusSummaryPanel.tsx'
+import { ArchiveDialog, useRestoreAction, type ArchiveTarget } from './ArchiveDialog.tsx'
 import { ArchiveTabs } from './ArchiveTabs.tsx'
+import { CampusFormPanel, NEW_RECORD } from './CampusFormPanel.tsx'
+import { CampusSummaryPanel } from './CampusSummaryPanel.tsx'
+import { ClassFormModal } from './ClassFormModal.tsx'
 import { ClassSummaryPanel } from './ClassSummaryPanel.tsx'
+import { canManageStructure } from './management-forms.ts'
+import { RecordActions, type RecordActionHandlers } from './RecordActions.tsx'
 import {
   archiveViewFilter,
   campusesInView,
@@ -61,8 +67,10 @@ const ALL = 'all'
 
 /**
  * Kampüsler & Sınıflar (yönetici, Vue `SchoolManagement.vue` `/subeler`): kampüs kartları ve
- * sunucu sayfalı sınıf tablosu; satır ve kartlar sağ panelde özet açar. Yalnız okuma.
- * TODO(D1b2): "Kampüs ekle", "Sınıf ekle", düzenle/arşivle yazma uçlarıyla eklenir.
+ * sunucu sayfalı sınıf tablosu; satır ve kartlar sağ panelde özet açar. Yönetici kampüs ve sınıf
+ * ekler, düzenler, arşivler ve geri alır (ön büro ve diğer roller salt okur): kampüs formu sağ
+ * panelde (`?kampus-form=`), sınıf formu geniş pencerede (`?sinif-form=`) açılır; arşiv onayı
+ * aktarım hedefini sorar.
  * "Aktif kayıtlar / Arşiv" sekmesi (`?durum=arsiv`) sınıf tablosunda sunucu `isActive` filtresidir;
  * kampüs kartları aynı sekmeyle başvuru koleksiyonundan süzülür.
  * Arama sunucuda sınıfın alanlarında ve kampüs adında (`q`), kampüs sütunu kampüs adına göre
@@ -94,6 +102,15 @@ export function CampusesPage({ page }: { page: NavPage }) {
   const classPanel = useDetailPanel('sinif')
   const openClass = classPanel.open
   const campusPanel = useDetailPanel('kampus-ozet')
+  const campusForm = useDetailPanel('kampus-form')
+  const classForm = useDetailPanel('sinif-form')
+  const { session } = useAuth()
+  const canManage = canManageStructure(session?.role)
+  const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null)
+  const restoreCampus = useRestoreAction('branch')
+  const restoreClass = useRestoreAction('class')
+  const openClassForm = classForm.open
+  const openCampusForm = campusForm.open
   const fetchAll = useCoreFetchAll('classes')
   const csv = useCsvExport()
 
@@ -102,6 +119,21 @@ export function CampusesPage({ page }: { page: NavPage }) {
   const setBranch = (value: string) =>
     list.dispatch({ type: 'filter', key: 'branchId', value: value === ALL ? '' : value })
   const setArchive = (value: string) => list.dispatch({ type: 'filter', key: 'archive', value })
+
+  const classActions: RecordActionHandlers = {
+    canManage,
+    onEdit: openClassForm,
+    onArchive: (id) => setArchiveTarget({ kind: 'class', id }),
+    onRestore: (id) => void restoreClass.restore(id, lookups.classes.get(id)?.name ?? 'Sınıf'),
+    restoring: restoreClass.pending,
+  }
+  const campusActions: RecordActionHandlers = {
+    canManage,
+    onEdit: openCampusForm,
+    onArchive: (id) => setArchiveTarget({ kind: 'branch', id }),
+    onRestore: (id) => void restoreCampus.restore(id, lookups.branches.get(id)?.name ?? 'Kampüs'),
+    restoring: restoreCampus.pending,
+  }
 
   const columns = useMemo<DataColumn<ClassRow>[]>(
     () => [
@@ -139,21 +171,32 @@ export function CampusesPage({ page }: { page: NavPage }) {
       {
         key: ACTIONS_KEY,
         label: 'İşlemler',
-        // TODO(D1b2): "Düzenle" ve "Arşivle" yazma uçlarıyla eklenir.
         cell: (row) => (
-          <Button
-            variant="secondary"
-            size="sm"
-            aria-label={`${row.name} özeti`}
-            onClick={() => openClass(row.id)}
-          >
-            <Icon name="Eye" size={15} aria-hidden="true" />
-            Özet
-          </Button>
+          <span className="flex flex-wrap items-center gap-1.5">
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-label={`${row.name} özeti`}
+              onClick={() => openClass(row.id)}
+            >
+              <Icon name="Eye" size={15} aria-hidden="true" />
+              Özet
+            </Button>
+            <RecordActions
+              id={row.id}
+              name={row.name}
+              archived={row.status === 'Arşivde'}
+              canManage={canManage}
+              onEdit={openClassForm}
+              onArchive={(id) => setArchiveTarget({ kind: 'class', id })}
+              onRestore={(id) => void restoreClass.restore(id, row.name)}
+              restoring={restoreClass.pending}
+            />
+          </span>
         ),
       },
     ],
-    [openClass],
+    [openClass, openClassForm, canManage, restoreClass],
   )
 
   function download() {
@@ -172,15 +215,29 @@ export function CampusesPage({ page }: { page: NavPage }) {
         title={page.title}
         description={page.description}
         actions={
-          <Button
-            variant="secondary"
-            onClick={download}
-            disabled={csv.busy || data.pending}
-            aria-busy={csv.busy || undefined}
-          >
-            <Icon name="Download" size={17} aria-hidden="true" />
-            Listeyi indir
-          </Button>
+          <>
+            <Button
+              variant="secondary"
+              onClick={download}
+              disabled={csv.busy || data.pending}
+              aria-busy={csv.busy || undefined}
+            >
+              <Icon name="Download" size={17} aria-hidden="true" />
+              Listeyi indir
+            </Button>
+            {canManage ? (
+              <>
+                <Button variant="secondary" onClick={() => openCampusForm(NEW_RECORD)}>
+                  <Icon name="Plus" size={17} aria-hidden="true" />
+                  Kampüs ekle
+                </Button>
+                <Button onClick={() => openClassForm(NEW_RECORD)}>
+                  <Icon name="Plus" size={17} aria-hidden="true" />
+                  Sınıf ekle
+                </Button>
+              </>
+            ) : null}
+          </>
         }
       />
       <ArchiveTabs
@@ -198,6 +255,7 @@ export function CampusesPage({ page }: { page: NavPage }) {
           archived={archived}
           pending={data.pending}
           onOpen={(id) => campusPanel.open(id)}
+          actions={campusActions}
         />
       )}
       <section
@@ -256,13 +314,31 @@ export function CampusesPage({ page }: { page: NavPage }) {
       <ClassSummaryPanel
         classId={classPanel.selectedId}
         lookups={lookups}
+        actions={classActions}
         onClose={classPanel.close}
       />
       <CampusSummaryPanel
         campusId={campusPanel.selectedId}
         campuses={campuses}
         lookups={lookups}
+        actions={campusActions}
         onClose={campusPanel.close}
+      />
+      {/* Formlar yalnız yönetici içindir ve başvuru verisi (kampüs, öğretmen, atama) yüklenince açılır. */}
+      {canManage && !data.pending ? (
+        <>
+          <CampusFormPanel target={campusForm.selectedId} onClose={campusForm.close} />
+          <ClassFormModal
+            target={classForm.selectedId}
+            lookups={lookups}
+            onClose={classForm.close}
+          />
+        </>
+      ) : null}
+      <ArchiveDialog
+        target={canManage ? archiveTarget : null}
+        lookups={lookups}
+        onClose={() => setArchiveTarget(null)}
       />
     </>
   )
@@ -273,11 +349,13 @@ function CampusCards({
   archived,
   pending,
   onOpen,
+  actions,
 }: {
   campuses: readonly CampusSummary[]
   archived: boolean
   pending: boolean
   onOpen: (id: string) => void
+  actions: RecordActionHandlers
 }) {
   if (pending)
     return (
@@ -321,8 +399,7 @@ function CampusCards({
               </div>
             ))}
           </dl>
-          {/* TODO(D1b2): "Düzenle" ve "Arşivle" yazma uçlarıyla eklenir. */}
-          <div className="catalog-actions mt-4 flex gap-2">
+          <div className="catalog-actions mt-4 flex flex-wrap gap-2">
             <Button
               variant="secondary"
               size="sm"
@@ -332,6 +409,12 @@ function CampusCards({
               <Icon name="Eye" size={15} aria-hidden="true" />
               Özeti aç
             </Button>
+            <RecordActions
+              {...actions}
+              id={campus.id}
+              name={campus.name}
+              archived={campus.status === 'Arşivde'}
+            />
           </div>
         </li>
       ))}

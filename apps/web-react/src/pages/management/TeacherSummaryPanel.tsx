@@ -3,6 +3,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { useCoreItem } from '@/hooks/use-core-collection.ts'
 import { recordStatus, type ManagementLookups } from './management-rows.ts'
+import { RecordActions, type RecordActionHandlers } from './RecordActions.tsx'
 import {
   SummaryHeader,
   SummaryList,
@@ -14,24 +15,27 @@ import {
 type Props = {
   teacherId: string
   lookups: ManagementLookups
+  /** Düzenle, arşivle, geri al (yalnız yönetici). */
+  actions: RecordActionHandlers
   onClose: () => void
 }
 
 /** Öğretmen özeti: iletişim, branş/kampüs, takip oranları, ders verdiği ve danışmanı olduğu sınıflar. */
-export function TeacherSummaryPanel({ teacherId, lookups, onClose }: Props) {
-  // TODO(D1b2): yazma uçları gelince "Düzenle" ve "Arşivle" panel altından açılır.
+export function TeacherSummaryPanel({ teacherId, lookups, actions, onClose }: Props) {
   return (
     <SidePanel
       open={teacherId !== ''}
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Öğretmen özeti"
     >
-      {teacherId ? <TeacherDetail teacherId={teacherId} lookups={lookups} /> : null}
+      {teacherId ? (
+        <TeacherDetail teacherId={teacherId} lookups={lookups} actions={actions} />
+      ) : null}
     </SidePanel>
   )
 }
 
-function TeacherDetail({ teacherId, lookups }: Omit<Props, 'onClose'>) {
+function TeacherDetail({ teacherId, lookups, actions }: Omit<Props, 'onClose'>) {
   const item = useCoreItem('teachers', teacherId)
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
@@ -81,6 +85,17 @@ function TeacherDetail({ teacherId, lookups }: Omit<Props, 'onClose'>) {
           }))}
         />
       </SummarySection>
+      {actions.canManage ? (
+        <div className="mt-6 flex flex-wrap gap-2 border-t pt-4">
+          <RecordActions
+            {...actions}
+            id={record.id}
+            name={record.name}
+            archived={!record.isActive}
+            size="default"
+          />
+        </div>
+      ) : null}
     </>
   )
 }

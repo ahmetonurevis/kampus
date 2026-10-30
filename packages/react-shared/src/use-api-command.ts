@@ -7,10 +7,12 @@ import type { ApiResult, DataOf } from './api-result.ts'
 import {
   createCommandSession,
   invalidateInstitutionQueries,
+  routeCommandErrors,
   runCommand,
   type CommandHeaders,
   type CommandMessages,
   type CommandOutcome,
+  type InlineErrorRoutes,
   type SetFieldError,
 } from './commands.ts'
 import { useNotifyError } from './kampus-context.ts'
@@ -36,7 +38,7 @@ export interface ApiCommandOptions<TVariables, TResult extends ApiResult> {
   onSuccess?: (data: DataOf<TResult>, variables: TVariables) => void | Promise<void>
 }
 
-export interface SubmitOptions<TName extends string> {
+export interface SubmitOptions<TName extends string> extends InlineErrorRoutes {
   /** react-hook-form `form.setError`: sunucu doğrulama maddeleri alanlara yazılır. */
   setError?: (name: TName, error: { type: string; message: string }) => void
 }
@@ -64,7 +66,7 @@ export function useApiCommand<TVariables, TResult extends ApiResult>(
 
   function submit<TName extends string = string>(
     variables: TVariables,
-    { setError }: SubmitOptions<TName> = {},
+    { setError, fieldFor, silent }: SubmitOptions<TName> = {},
   ): Promise<CommandOutcome<DataOf<TResult>>> {
     return runCommand(
       session,
@@ -77,7 +79,10 @@ export function useApiCommand<TVariables, TResult extends ApiResult>(
       },
       variables,
       // Sunucu yolu formun alan adıdır; tanınmayan yol react-hook-form'da yalnız boşta bir hatadır.
-      { setError: setError as SetFieldError | undefined, notifyError },
+      routeCommandErrors(
+        { setError: setError as SetFieldError | undefined, notifyError },
+        { fieldFor, silent },
+      ),
     )
   }
 

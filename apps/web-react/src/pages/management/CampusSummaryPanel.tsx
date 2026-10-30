@@ -2,6 +2,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { useCoreItem } from '@/hooks/use-core-collection.ts'
 import { recordStatus, type CampusSummary, type ManagementLookups } from './management-rows.ts'
+import { RecordActions, type RecordActionHandlers } from './RecordActions.tsx'
 import {
   SummaryHeader,
   SummaryIcon,
@@ -15,24 +16,27 @@ type Props = {
   campusId: string
   campuses: readonly CampusSummary[]
   lookups: ManagementLookups
+  /** Düzenle, arşivle, geri al (yalnız yönetici). */
+  actions: RecordActionHandlers
   onClose: () => void
 }
 
 /** Kampüs özeti: adres, aktif sınıf/öğrenci/öğretmen sayıları ve sınıfların doluluğu. */
-export function CampusSummaryPanel({ campusId, campuses, lookups, onClose }: Props) {
-  // TODO(D1b2): yazma uçları gelince "Kampüsü düzenle" ve "Arşivle" panel altından açılır.
+export function CampusSummaryPanel({ campusId, campuses, lookups, actions, onClose }: Props) {
   return (
     <SidePanel
       open={campusId !== ''}
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Kampüs özeti"
     >
-      {campusId ? <CampusDetail campusId={campusId} campuses={campuses} lookups={lookups} /> : null}
+      {campusId ? (
+        <CampusDetail campusId={campusId} campuses={campuses} lookups={lookups} actions={actions} />
+      ) : null}
     </SidePanel>
   )
 }
 
-function CampusDetail({ campusId, campuses, lookups }: Omit<Props, 'onClose'>) {
+function CampusDetail({ campusId, campuses, lookups, actions }: Omit<Props, 'onClose'>) {
   const item = useCoreItem('branches', campusId)
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
@@ -63,6 +67,17 @@ function CampusDetail({ campusId, campuses, lookups }: Omit<Props, 'onClose'>) {
           }))}
         />
       </SummarySection>
+      {actions.canManage ? (
+        <div className="mt-6 flex flex-wrap gap-2 border-t pt-4">
+          <RecordActions
+            {...actions}
+            id={record.id}
+            name={record.name}
+            archived={!record.isActive}
+            size="default"
+          />
+        </div>
+      ) : null}
     </>
   )
 }

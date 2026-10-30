@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -21,7 +22,12 @@ import {
 } from '@/lib/collection-list.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { ArchiveDialog, useRestoreAction, type ArchiveTarget } from './ArchiveDialog.tsx'
 import { ArchiveTabs } from './ArchiveTabs.tsx'
+import { NEW_RECORD } from './CampusFormPanel.tsx'
+import { canManageStructure } from './management-forms.ts'
+import { RecordActions, type RecordActionHandlers } from './RecordActions.tsx'
+import { TeacherFormPanel } from './TeacherFormPanel.tsx'
 import {
   archiveViewFilter,
   isActiveFilter,
@@ -46,8 +52,9 @@ const filterValue = (value: unknown) => (typeof value === 'string' ? value : '')
 
 /**
  * Eğitim Kadrosu (yönetici, Vue `SchoolManagement.vue` `/personel`): sunucu sayfalı öğretmen
- * tablosu; kampüs ve branş filtresi, ad sıralaması, satırdan öğretmen özeti. Yalnız okuma.
- * TODO(D1b2): "Öğretmen ekle", düzenle/arşivle yazma uçlarıyla eklenir.
+ * tablosu; kampüs ve branş filtresi, ad sıralaması, satırdan öğretmen özeti. Yönetici öğretmen
+ * ekler (`?ogretmen-form=yeni`, sağ panel), düzenler, arşivler (aktarım hedefiyle) ve geri alır;
+ * ön büro ve diğer roller salt okur.
  * "Aktif kayıtlar / Arşiv" sekmesi (`?durum=arsiv`) sunucu `isActive` filtresidir.
  * Arama (`q`) sunucuda öğretmenin alanlarında ve kampüs adında yapılır; kampüs adı satırın
  * `joined.branchName` alanından gelir.
@@ -75,6 +82,12 @@ export function StaffPage({ page }: { page: NavPage }) {
   )
   const panel = useDetailPanel('ogretmen')
   const openTeacher = panel.open
+  const teacherForm = useDetailPanel('ogretmen-form')
+  const openTeacherForm = teacherForm.open
+  const { session } = useAuth()
+  const canManage = canManageStructure(session?.role)
+  const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null)
+  const restoreTeacher = useRestoreAction('teacher')
   const fetchAll = useCoreFetchAll('teachers')
   const csv = useCsvExport()
 
@@ -83,6 +96,15 @@ export function StaffPage({ page }: { page: NavPage }) {
   const setFilter = (key: 'branchId' | 'subjectId', value: string) =>
     list.dispatch({ type: 'filter', key, value: value === ALL ? '' : value })
   const setArchive = (value: string) => list.dispatch({ type: 'filter', key: 'archive', value })
+
+  const actions: RecordActionHandlers = {
+    canManage,
+    onEdit: openTeacherForm,
+    onArchive: (id) => setArchiveTarget({ kind: 'teacher', id }),
+    onRestore: (id) =>
+      void restoreTeacher.restore(id, lookups.teachers.get(id)?.name ?? 'Öğretmen'),
+    restoring: restoreTeacher.pending,
+  }
 
   const columns = useMemo<DataColumn<TeacherRow>[]>(
     () => [
@@ -121,21 +143,32 @@ export function StaffPage({ page }: { page: NavPage }) {
       {
         key: ACTIONS_KEY,
         label: 'İşlemler',
-        // TODO(D1b2): "Düzenle" ve "Arşivle" yazma uçlarıyla eklenir.
         cell: (row) => (
-          <Button
-            variant="secondary"
-            size="sm"
-            aria-label={`${row.name} özeti`}
-            onClick={() => openTeacher(row.id)}
-          >
-            <Icon name="Eye" size={15} aria-hidden="true" />
-            Özet
-          </Button>
+          <span className="flex flex-wrap items-center gap-1.5">
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-label={`${row.name} özeti`}
+              onClick={() => openTeacher(row.id)}
+            >
+              <Icon name="Eye" size={15} aria-hidden="true" />
+              Özet
+            </Button>
+            <RecordActions
+              id={row.id}
+              name={row.name}
+              archived={row.status === 'Arşivde'}
+              canManage={canManage}
+              onEdit={openTeacherForm}
+              onArchive={(id) => setArchiveTarget({ kind: 'teacher', id })}
+              onRestore={(id) => void restoreTeacher.restore(id, row.name)}
+              restoring={restoreTeacher.pending}
+            />
+          </span>
         ),
       },
     ],
-    [openTeacher],
+    [openTeacher, openTeacherForm, canManage, restoreTeacher],
   )
 
   function download() {
@@ -156,15 +189,23 @@ export function StaffPage({ page }: { page: NavPage }) {
         title={page.title}
         description={page.description}
         actions={
-          <Button
-            variant="secondary"
-            onClick={download}
-            disabled={csv.busy || data.pending}
-            aria-busy={csv.busy || undefined}
-          >
-            <Icon name="Download" size={17} aria-hidden="true" />
-            Listeyi indir
-          </Button>
+          <>
+            <Button
+              variant="secondary"
+              onClick={download}
+              disabled={csv.busy || data.pending}
+              aria-busy={csv.busy || undefined}
+            >
+              <Icon name="Download" size={17} aria-hidden="true" />
+              Listeyi indir
+            </Button>
+            {canManage ? (
+              <Button onClick={() => openTeacherForm(NEW_RECORD)}>
+                <Icon name="Plus" size={17} aria-hidden="true" />
+                Öğretmen ekle
+              </Button>
+            ) : null}
+          </>
         }
       />
       <ArchiveTabs
@@ -245,7 +286,25 @@ export function StaffPage({ page }: { page: NavPage }) {
           }
         />
       </section>
-      <TeacherSummaryPanel teacherId={panel.selectedId} lookups={lookups} onClose={panel.close} />
+      <TeacherSummaryPanel
+        teacherId={panel.selectedId}
+        lookups={lookups}
+        actions={actions}
+        onClose={panel.close}
+      />
+      {/* Form yalnız yönetici içindir ve kampüs/branş başvurusu yüklenince açılır. */}
+      {canManage && !data.pending ? (
+        <TeacherFormPanel
+          target={teacherForm.selectedId}
+          lookups={lookups}
+          onClose={teacherForm.close}
+        />
+      ) : null}
+      <ArchiveDialog
+        target={canManage ? archiveTarget : null}
+        lookups={lookups}
+        onClose={() => setArchiveTarget(null)}
+      />
     </>
   )
 }

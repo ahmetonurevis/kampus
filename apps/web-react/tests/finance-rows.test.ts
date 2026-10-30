@@ -3,6 +3,10 @@ import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
+  familyInvoiceCsvRow,
+  familyInvoiceExportQuery,
+  familyInvoiceListQuery,
+  familyTotalsQuery,
   INVOICE_STATUS_OPTIONS,
   invoiceCsvRow,
   invoiceExportQuery,
@@ -10,6 +14,7 @@ import {
   invoiceRow,
   invoiceTotals,
   isInvoiceStatusKey,
+  remainingAmount,
 } from '../src/pages/finance/finance-rows.ts'
 import { initialListState, type ListState } from '../src/lib/list-state.ts'
 
@@ -171,4 +176,44 @@ test('CSV satırı tutarı TL, vadeyi okunur tarih olarak yazar', () => {
     amount: '24.500,00 ₺',
     status: 'Ödendi',
   })
+})
+
+test('DOM-FIN-052 veli sorgusu seçili çocuğa daralır; dekontlar yalnız ödenmişleri ister', () => {
+  const plan = familyInvoiceListQuery(state(), '', { studentId: 's2', paidOnly: false })
+  assert.equal(plan.filters?.studentId, 's2')
+  assert.equal(plan.filters?.status, undefined)
+
+  const receipts = familyInvoiceListQuery(state(), '', { studentId: 's2', paidOnly: true })
+  assert.deepEqual(receipts.filters, { studentId: 's2', status: 'Ödendi' })
+  // CSV aynı kapsamı ve sıralamayı kullanır, sayfa içermez.
+  const exported = familyInvoiceExportQuery(state(), '', { studentId: 's2', paidOnly: true })
+  assert.deepEqual(exported.filters, receipts.filters)
+  assert.equal('page' in exported, false)
+})
+
+test('öğrenci sorgusu çocuk süzgeci eklemez; kapsamı sunucu daraltır', () => {
+  const query = familyInvoiceListQuery(state(), '', { studentId: '', paidOnly: false })
+  assert.equal('studentId' in (query.filters ?? {}), false)
+  assert.deepEqual(familyTotalsQuery(''), { groupBy: 'status', sum: 'amount' })
+  assert.deepEqual(familyTotalsQuery('s1'), {
+    groupBy: 'status',
+    sum: 'amount',
+    filters: { studentId: 's1' },
+  })
+})
+
+test('kalan tutar ödenmemişte taksit tutarı, ödenmişte sıfırdır; CSV okunur biçimdedir', () => {
+  const { invoices } = setup()
+  const [paid, unpaid] = ['inv-s1-0', 'inv-s1-4'].map((id) =>
+    invoiceRow(
+      invoices.find((item) => item.id === id)!,
+      TODAY,
+    ),
+  )
+  assert.equal(remainingAmount(paid!), 0)
+  assert.equal(remainingAmount(unpaid!), unpaid!.amount)
+  const csv = familyInvoiceCsvRow(unpaid!)
+  assert.equal(csv.installment, '5. taksit')
+  assert.equal(csv.remaining, csv.amount)
+  assert.equal(familyInvoiceCsvRow(paid!).remaining, '0,00 ₺')
 })

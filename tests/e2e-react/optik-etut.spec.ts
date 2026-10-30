@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import type { Page } from '@playwright/test'
 
 import { createSeed } from '../../packages/school-core/src/data/seed.ts'
@@ -7,16 +9,116 @@ import {
 } from '../../packages/school-core/src/lib/assessment-automation.ts'
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
+import { expectEveryRow } from './support/ui.ts'
 
 // Optik değerlendirme ve otomatik etüt. Veri yazan testler kendi kurumunu `tenant()` ile kurar.
-// Optik ön kontrol saf işlemdir (core `previewOptical`, istemcide); kaydetme ucu API'de yoktur
-// (TODO(api-optical-evaluate)), bu yüzden test ön kontrolü ve kilitli kaydı doğrular.
+// Optik önizleme ve kayıt sunucudadır (`/assessment/evaluate[/preview]`); dosya tarayıcıda çözülür.
 
 const OPTICAL_DATA = ['mockExams', 'mockResults', 'opticalProfiles', 'opticalEvaluations'] as const
 const HEADER = 'student;booklet;answers'
+const GOOD_ROW = '2026001;A;BBBDABCDABCD'
+const EVALUATIONS = '/api/v1/collections/opticalEvaluations?pageSize=100'
+const PROFILES = '/api/v1/collections/opticalProfiles?pageSize=100'
+
+async function recordsOf(client: ApiClient, path: string): Promise<unknown[]> {
+  const result = await client.get(path)
+  expect(result.status).toBe(200)
+  return (result.body as { data: unknown[] }).data
+}
+
+/** exam-8-1 (matematik, Türkçe, fen) için altı sorudan oluşan geçerli cevap anahtarı. */
+const KEY_8 = [
+  'booklet;question;subjectId;topic;answer',
+  'A;1;math;Denklemler;B',
+  'A;2;math;Oran orantı;C',
+  'A;3;turkish;Sözcükte anlam;A',
+  'A;4;turkish;Paragraf;D',
+  'A;5;science;Hücre;A',
+  'A;6;science;Madde;B',
+].join('\n')
 
 test.describe('optik değerlendirme', () => {
-  test('yönetici dosya yükler; ön kontrol hatası satır numarasıyla çıkar, düzgün dosya önizlenir', async ({
+  test('yönetici dosya yükler, önizler, kaydeder; sonuç kayıtlı listede görünür', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s1'],
+      collections: OPTICAL_DATA,
+    })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
+    await page.goto('/yonetici/optik-degerlendirme')
+    await expect(page.getByRole('heading', { name: 'Optik Değerlendirme', level: 1 })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Okuyucu profilleri' })).toBeVisible()
+
+    await page.getByLabel('Optik cevap dosyası', { exact: true }).setInputFiles({
+      name: 'cevaplar.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(`${HEADER}\n${GOOD_ROW}\n`, 'utf8'),
+    })
+    await expect(page.getByText(/UTF-8 olarak okundu/)).toBeVisible()
+    await page.getByRole('button', { name: 'Sonuçları önizle', exact: true }).click()
+    await expect(
+      page.getByRole('heading', { name: 'Değerlendirme önizlemesi', exact: true }),
+    ).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: '1 öğrenci' })).toBeVisible()
+    await expect(page.getByRole('cell', { name: 'Deniz Yılmaz' }).first()).toBeVisible()
+    // Önizleme yazmaz.
+    expect(await recordsOf(client, EVALUATIONS)).toHaveLength(0)
+
+    await page.getByRole('button', { name: 'Onayla ve sonuçları kaydet', exact: true }).click()
+    await expect(page.getByText(/\d+ sonuç kaydedildi\./).first()).toBeVisible()
+    await expect.poll(async () => (await recordsOf(client, EVALUATIONS)).length).toBe(3)
+
+    const saved = page.getByRole('region', { name: 'Kayıtlı değerlendirmeler' })
+    await expectEveryRow(saved.getByRole('row').filter({ hasText: 'Deniz Yılmaz' }), [
+      'Deniz Yılmaz',
+      'Güncel',
+    ])
+    await expect(
+      page.getByRole('heading', { name: 'Değerlendirme önizlemesi', exact: true }),
+    ).toHaveCount(0)
+  })
+
+  test('hatalı satır alan mesajıyla satır numarasını gösterir ve hiçbir şey kaydetmez', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s1'],
+      collections: OPTICAL_DATA,
+    })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
+    await page.goto('/yonetici/optik-degerlendirme')
+
+    const content = page.getByLabel('Optik dosya içeriği', { exact: true })
+    const preview = page.getByRole('button', { name: 'Sonuçları önizle', exact: true })
+
+    // Eşleşmeyen öğrenci numarası: ileti satır numarasıyla alanın altında.
+    await content.fill(`${HEADER}\n9999999;A;BBBDABCDABCD\n`)
+    await preview.click()
+    await expect(content).toHaveAccessibleDescription(
+      /2\. satırdaki öğrenci tekil eşleşmedi: 9999999/,
+    )
+    await expect(content).toHaveAttribute('aria-invalid', 'true')
+
+    // Cevap sayısı anahtarla uyuşmuyor: yine satır numarası.
+    await content.fill(`${HEADER}\n${GOOD_ROW}\n2026002;A;BBB\n`)
+    await preview.click()
+    await expect(content).toHaveAccessibleDescription(/3\. satır/)
+    await expect(
+      page.getByRole('heading', { name: 'Değerlendirme önizlemesi', exact: true }),
+    ).toHaveCount(0)
+    expect(await recordsOf(client, EVALUATIONS)).toHaveLength(0)
+  })
+
+  test('Windows-1254 dosya bozulmadan okunur; desteklenmeyen tür ve 1 MB üstü dosya reddedilir', async ({
     loginAs,
     tenant,
   }) => {
@@ -27,79 +129,166 @@ test.describe('optik değerlendirme', () => {
     })
     const page = await loginAs(school.user('yonetici'))
     await page.goto('/yonetici/optik-degerlendirme')
-    await expect(page.getByRole('heading', { name: 'Optik Değerlendirme', level: 1 })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Okuyucu profilleri' })).toBeVisible()
-
     const upload = page.getByLabel('Optik cevap dosyası', { exact: true })
     const content = page.getByLabel('Optik dosya içeriği', { exact: true })
-    const preview = page.getByRole('button', { name: 'Sonuçları önizle', exact: true })
 
-    // Eşleşmeyen öğrenci numarası: hata satır numarasıyla, hiçbir sonuç gösterilmeden.
+    // ş, ğ, ı Windows-1254'te tek bayttır (0xFE, 0xF0, 0xFD) ve geçerli UTF-8 değildir.
     await upload.setInputFiles({
-      name: 'cevaplar.csv',
-      mimeType: 'text/csv',
-      buffer: Buffer.from(`${HEADER}\n9999999;A;BBBDABCDABCD\n`, 'utf8'),
-    })
-    await expect(content).toHaveValue(/9999999/)
-    await preview.click()
-    await expect(page.getByRole('alert')).toContainText(
-      '2. satırdaki öğrenci tekil eşleşmedi: 9999999',
-    )
-    await expect(
-      page.getByRole('heading', { name: 'Değerlendirme önizlemesi', exact: true }),
-    ).toHaveCount(0)
-
-    // Cevap sayısı anahtarla uyuşmuyor: yine satır numarası.
-    await content.fill(`${HEADER}\n2026001;A;BBB\n`)
-    await preview.click()
-    await expect(page.getByRole('alert')).toContainText('2. satırda 12 cevap bekleniyor')
-
-    // Düzgün dosya: önizleme açılır, kayıt ucu olmadığı için onay kilitli kalır.
-    await upload.setInputFiles({
-      name: 'cevaplar.txt',
+      name: 'eski.dat',
       mimeType: 'text/plain',
-      buffer: Buffer.from(`${HEADER}\n2026001;A;BBBDABCDABCD\n`, 'utf8'),
+      buffer: Buffer.from([0x41, 0x3b, 0xfe, 0xf0, 0xfd]),
     })
-    await preview.click()
-    await expect(
-      page.getByRole('heading', { name: 'Değerlendirme önizlemesi', exact: true }),
-    ).toBeVisible()
-    await expect(page.getByRole('status').filter({ hasText: '1 öğrenci' })).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'Deniz Yılmaz' }).first()).toBeVisible()
-    const save = page.getByRole('button', {
-      name: /Onayla ve sonuçları kaydet.*henüz kullanıma açık değil/,
+    await expect(content).toHaveValue('A;şğı')
+    await expect(upload).toHaveAccessibleDescription(/Windows-1254 \(Türkçe\) olarak okundu/)
+
+    await upload.setInputFiles({
+      name: 'cevaplar.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4', 'utf8'),
     })
-    await expect(save).toBeDisabled()
-    await expect(
-      page.getByText(/Değerlendirmeyi kaydetme henüz kullanıma açık değil/),
-    ).toBeVisible()
+    await expect(upload).toHaveAccessibleDescription(
+      /En fazla 1 MB boyutunda CSV, DAT veya TXT dosyası seçin\.$/,
+    )
+
+    // 1 MB üstü dosya sunucuya gönderilmeden alan hatasıyla reddedilir.
+    let sent = false
+    page.on('request', (request) => {
+      if (request.url().includes('/assessment/evaluate')) sent = true
+    })
+    await upload.setInputFiles({
+      name: 'buyuk.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.alloc(1024 * 1024 + 1, 'a'),
+    })
+    await expect(upload).toHaveAccessibleDescription(/Dosya en fazla 1 MB olabilir\.$/)
+    expect(sent).toBe(false)
   })
 
-  test('desteklenmeyen dosya türü reddedilir', async ({ loginAs, tenant }) => {
+  test('önizlemeden sonra veri değişirse kayıt reddedilir; yeniden önizleyince kaydedilir', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
     const school = await tenant({
       roles: ['yonetici'],
       students: ['s1'],
       collections: OPTICAL_DATA,
     })
     const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     await page.goto('/yonetici/optik-degerlendirme')
-    await page.getByLabel('Optik cevap dosyası', { exact: true }).setInputFiles({
-      name: 'cevaplar.pdf',
-      mimeType: 'application/pdf',
-      buffer: Buffer.from('%PDF-1.4', 'utf8'),
+    await page.getByLabel('Optik dosya içeriği', { exact: true }).fill(`${HEADER}\n${GOOD_ROW}\n`)
+    await page.getByRole('button', { name: 'Sonuçları önizle', exact: true }).click()
+    const confirm = page.getByRole('button', { name: 'Onayla ve sonuçları kaydet', exact: true })
+    await expect(confirm).toBeVisible()
+
+    // Başka biri cevap anahtarını değiştirir: önizlemedeki netler artık geçerli değildir.
+    const [stored] = await recordsOf(client, PROFILES)
+    const profile = (stored as { record: Record<string, unknown> }).record
+    const flipped = String(profile.keyCsv)
+      .split('\n')
+      .map((line, index) => {
+        const cells = line.split(';')
+        const answer = cells[4]
+        return index === 0 || !answer
+          ? line
+          : [...cells.slice(0, 4), answer === 'A' ? 'B' : 'A'].join(';')
+      })
+      .join('\n')
+    const changed = await client.post(`/api/v1/assessment/profile/${String(profile.id)}`, {
+      examId: profile.examId,
+      title: profile.title,
+      format: profile.format,
+      identifier: profile.identifier,
+      headerLines: profile.headerLines,
+      studentStart: profile.studentStart,
+      studentLength: profile.studentLength,
+      bookletStart: profile.bookletStart,
+      bookletLength: profile.bookletLength,
+      answersStart: profile.answersStart,
+      answersLength: profile.answersLength,
+      keyCsv: flipped,
     })
+    expect(changed.status).toBe(200)
+    const before = (await recordsOf(client, EVALUATIONS)).length
+
+    await confirm.click()
+    const alert = page.getByRole('alert').filter({ hasText: 'Veri değişti' })
+    await expect(alert).toBeVisible()
+    await expect(alert).toContainText('yeniden önizleyip')
+    expect(await recordsOf(client, EVALUATIONS)).toHaveLength(before)
+
+    await alert.getByRole('button', { name: 'Yeniden önizle', exact: true }).click()
+    await expect(page.getByRole('status').filter({ hasText: '1 öğrenci' })).toBeVisible()
+    await page.getByRole('button', { name: 'Onayla ve sonuçları kaydet', exact: true }).click()
+    await expect(page.getByText(/\d+ sonuç kaydedildi\./).first()).toBeVisible()
+    // Aynı sınav/öğrenci/ders güncellenir, çoğalmaz (anahtar değişince eski analiz da eskir).
+    await expect.poll(async () => (await recordsOf(client, EVALUATIONS)).length).toBe(3)
+  })
+
+  test('yönetici profil ekler ve düzenler; hatalı anahtar satır numarasıyla bildirilir', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s1'],
+      collections: OPTICAL_DATA,
+    })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
+    await page.goto('/yonetici/optik-degerlendirme')
+    await page.getByRole('button', { name: 'Profil ekle', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Optik profil ekle' })
+    await dialog.getByLabel('Profil adı').fill('LGS profili')
+    await dialog.getByLabel('Deneme', { exact: true }).selectOption('exam-8-1')
+
+    // Bilinmeyen ders kodu: satır numarası anahtar alanının altında.
+    const key = dialog.getByLabel('Cevap anahtarı (CSV)')
+    await key.fill(KEY_8.replace('A;3;turkish', 'A;3;bilinmeyen'))
+    await dialog.getByRole('button', { name: 'Profili kaydet', exact: true }).click()
+    await expect(key).toHaveAccessibleDescription(/\. satır/)
+    expect(await recordsOf(client, PROFILES)).toHaveLength(1)
+
+    await key.fill(KEY_8)
+    await dialog.getByRole('button', { name: 'Profili kaydet', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    const profiles = page.getByRole('region', { name: 'Okuyucu profilleri' })
+    await expect(profiles.getByRole('cell', { name: 'LGS profili', exact: true })).toBeVisible()
+    await expect.poll(async () => (await recordsOf(client, PROFILES)).length).toBe(2)
+
+    // Düzenleme: ad değişir, sınav değişmez.
+    await profiles.getByRole('button', { name: 'LGS profili profilini düzenle' }).click()
+    const edit = page.getByRole('dialog', { name: 'Optik profili düzenle' })
+    await edit.getByLabel('Profil adı').fill('LGS profili (revize)')
+    await edit.getByRole('button', { name: 'Profili kaydet', exact: true }).click()
+    await expect(edit).toHaveCount(0)
     await expect(
-      page.getByText('En fazla 1 MB boyutunda CSV, DAT veya TXT dosyası seçin.'),
+      profiles.getByRole('cell', { name: 'LGS profili (revize)', exact: true }),
     ).toBeVisible()
-    await expect(page.getByLabel('Optik dosya içeriği', { exact: true })).toHaveValue('')
+  })
+
+  test('öğretmen dosyayı değerlendirir ama profil formunu görmez', async ({ loginAs, tenant }) => {
+    const school = await tenant({
+      roles: ['yonetici', 'ogretmen'],
+      students: ['s1'],
+      collections: OPTICAL_DATA,
+    })
+    const page = await loginAs(school.user('ogretmen'))
+    await page.goto('/ogretmen/optik-degerlendirme')
+    await expect(page.getByRole('heading', { name: 'Okuyucu profilleri' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Cevap dosyasını değerlendir' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Profil ekle' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /profilini düzenle/ })).toHaveCount(0)
   })
 })
 
 // --- Otomatik etüt ---------------------------------------------------------------------------
 // Optik analizi kaydeden API ucu yoktur; etüt planının girdisi olan analiz çekirdek kuralıyla
 // üretilip kurumun veritabanına konur (tenant `records`). Plan, iptal ve yoklama gerçek uçlardan
-// geçer. Ders programı/randevu/etkinlik konmaz: çakışma kaynağı boştur, istemci ve sunucu aynı
-// planı hesaplar.
+// geçer. Ders programı/randevu/etkinlik konmaz: çakışma kaynağı boştur. Plan önizlemesi ve onayı
+// sunucudadır (`/assessment/plan[/preview]`); uygunluk saati `/assessment/slot[-remove]` ile.
 
 const TUTORING_DATA = ['mockExams', 'opticalProfiles', 'availability'] as const
 const SESSIONS = '/api/v1/collections/tutorSessions?pageSize=100'
@@ -181,6 +370,28 @@ async function sessionsOf(client: ApiClient): Promise<SessionRow[]> {
   return (result.body as { data: SessionRow[] }).data
 }
 
+async function slotsOf(client: ApiClient): Promise<{ id: string; record: { duration: number } }[]> {
+  const result = await client.get('/api/v1/collections/availability?pageSize=100')
+  expect(result.status).toBe(200)
+  return (result.body as { data: { id: string; record: { duration: number } }[] }).data
+}
+
+/** Sunucunun şu anki plan önizlemesindeki `expectedPlan` (başka bir istemcinin onayı için). */
+async function expectedPlanOf(client: ApiClient): Promise<string> {
+  const result = await client.post('/api/v1/assessment/plan/preview', {
+    examId: 'exam-7-1',
+    threshold: 100,
+    fromDate: istanbulDay(0),
+    toDate: istanbulDay(14),
+    duration: 30,
+    maxGroupSize: 6,
+    branchId: '',
+    subjectId: '',
+  })
+  expect(result.status).toBe(200)
+  return (result.body as { data: { expectedPlan: string } }).data.expectedPlan
+}
+
 async function openPlanForm(page: Page) {
   await page.goto('/yonetici/otomatik-etut')
   await page.getByRole('button', { name: 'Etüt planla' }).click()
@@ -248,24 +459,153 @@ test.describe('otomatik etüt', () => {
     await expect(confirm).toBeEnabled()
 
     // Önizlemeden sonra başka biri aynı planı onaylar: sunucu planı artık farklı hesaplar.
-    const created = await client.post('/api/v1/tutor-sessions', {
-      examId: 'exam-7-1',
-      threshold: 100,
-      fromDate: istanbulDay(0),
-      toDate: istanbulDay(14),
-      duration: 30,
-      maxGroupSize: 6,
-    })
+    const created = await client.post(
+      '/api/v1/assessment/plan',
+      {
+        examId: 'exam-7-1',
+        threshold: 100,
+        fromDate: istanbulDay(0),
+        toDate: istanbulDay(14),
+        duration: 30,
+        maxGroupSize: 6,
+        branchId: '',
+        subjectId: '',
+        expectedPlan: await expectedPlanOf(client),
+      },
+      { 'idempotency-key': randomUUID() },
+    )
     expect(created.status).toBe(200)
     const before = (await sessionsOf(client)).length
     expect(before).toBeGreaterThan(0)
 
     await confirm.click()
-    await expect(page.getByRole('alert').filter({ hasText: 'Plan değişmiş' })).toBeVisible()
-    await expect(page.getByRole('alert').filter({ hasText: 'Önceki plan' })).toBeVisible()
-    // Güncel plan zaten etütte olanları atlar; onay yeniden istenir ve boş plan onaylanamaz.
+    const alert = page.getByRole('alert').filter({ hasText: 'Plan değişmiş' })
+    await expect(alert).toBeVisible()
+    // Önizlemedeki etütler artık planda yok (zaten etütte); fark listelenir, hiçbir etüt eklenmez.
+    await expect(alert.getByRole('heading', { name: 'Kalkan etütler' })).toBeVisible()
+    expect(await sessionsOf(client)).toHaveLength(before)
+
+    // Yeniden önizleme güncel planı gösterir; yapılacak etüt kalmadığından onaylanamaz.
+    await alert.getByRole('button', { name: 'Planı yeniden önizle', exact: true }).click()
+    await expect(
+      page.getByRole('heading', { name: 'Etüt planı önizlemesi', exact: true }),
+    ).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Zaten etütte olan kazanımlar' })).toBeVisible()
     await expect(confirm).toBeDisabled()
     expect(await sessionsOf(client)).toHaveLength(before)
+  })
+
+  test('yerleşemeyen gruplar nedeniyle gösterilir', async ({ loginAs, tenant }) => {
+    // Uygunluk saati kaydı yok: hiçbir grup yerleşemez ve neden yazılır.
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s1'],
+      collections: ['mockExams', 'opticalProfiles'],
+      records: evaluatedRecords(new Date()),
+    })
+    const page = await loginAs(school.user('yonetici'))
+    await openPlanForm(page)
+    await page.getByRole('button', { name: 'Etüt planını önizle', exact: true }).click()
+    const unresolved = page.getByRole('region', { name: 'Yerleşemeyen gruplar' })
+    await expect(unresolved).toBeVisible()
+    await expectEveryRow(unresolved.locator('tbody td:last-child'), 'uygunluk saati yok')
+    await expect(
+      page.getByRole('button', { name: 'Onayla ve etütleri oluştur', exact: true }),
+    ).toBeDisabled()
+  })
+
+  test('plan formu hatalarını alanda gösterir; yazma yetkisi olmayan rol uygunluk saatini görmez', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici', 'ogrenci'],
+      students: ['s1'],
+      collections: TUTORING_DATA,
+    })
+    const page = await loginAs(school.user('yonetici'))
+    await openPlanForm(page)
+    await page.getByLabel('Başarı eşiği (%)').fill('0')
+    await page.getByRole('button', { name: 'Etüt planını önizle', exact: true }).click()
+    await expect(page.getByLabel('Başarı eşiği (%)')).toHaveAccessibleDescription(/\S/)
+    await expect(
+      page.getByRole('heading', { name: 'Etüt planı önizlemesi', exact: true }),
+    ).toHaveCount(0)
+
+    const student = await loginAs(school.user('ogrenci'))
+    await student.goto('/ogrenci/otomatik-etut')
+    await expect(student.getByRole('heading', { name: 'Otomatik Etüt', level: 1 })).toBeVisible()
+    await expect(student.getByRole('heading', { name: 'Öğretmen uygunluk saatleri' })).toHaveCount(
+      0,
+    )
+    await expect(student.getByRole('form', { name: 'Uygunluk saati ekle' })).toHaveCount(0)
+  })
+
+  test('yönetici uygunluk saati ekler ve onayla kaldırır; geçmiş saat reddedilir', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    // Uygunluk kaydı konmaz: liste boş başlar, yalnız bu testin saatleri görünür.
+    const school = await tenant({ roles: ['yonetici'] })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
+    await page.goto('/yonetici/otomatik-etut')
+    const form = page.getByRole('form', { name: 'Uygunluk saati ekle' })
+    await expect(form).toBeVisible()
+    expect(await slotsOf(client)).toHaveLength(0)
+
+    // Geçmiş saat sunucu kuralıyla reddedilir ve tarih alanında görünür.
+    await form.getByLabel('Başlangıç (tarih ve saat)').fill(`${istanbulDay(-2)}T10:00`)
+    await form.getByRole('button', { name: 'Uygunluk saati ekle', exact: true }).click()
+    await expect(form.getByText('Uygunluk saati gelecekte olmalıdır.')).toBeVisible()
+    expect(await slotsOf(client)).toHaveLength(0)
+
+    await form.getByLabel('Başlangıç (tarih ve saat)').fill(`${istanbulDay(20)}T14:20`)
+    await form.getByLabel('Süre (dakika)').fill('45')
+    await form.getByRole('button', { name: 'Uygunluk saati ekle', exact: true }).click()
+    await expect(page.getByText('Uygunluk saati eklendi.').first()).toBeVisible()
+    await expect.poll(async () => (await slotsOf(client)).length).toBe(1)
+    expect((await slotsOf(client))[0]?.record.duration).toBe(45)
+
+    // Aynı aralıkla çakışan saat eklenmez.
+    await form.getByLabel('Başlangıç (tarih ve saat)').fill(`${istanbulDay(20)}T14:30`)
+    await form.getByRole('button', { name: 'Uygunluk saati ekle', exact: true }).click()
+    await expect(form.getByText(/çakış/i).first()).toBeVisible()
+    expect(await slotsOf(client)).toHaveLength(1)
+
+    await page.getByRole('button', { name: /14:20 uygunluk saatini kaldır$/ }).click()
+    const dialog = page.getByRole('dialog', { name: 'Uygunluk saatini kaldır' })
+    await dialog.getByRole('button', { name: 'Vazgeç', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(await slotsOf(client)).toHaveLength(1)
+
+    await page.getByRole('button', { name: /14:20 uygunluk saatini kaldır$/ }).click()
+    await page
+      .getByRole('dialog', { name: 'Uygunluk saatini kaldır' })
+      .getByRole('button', { name: 'Saati kaldır', exact: true })
+      .click()
+    await expect(page.getByText('Uygunluk saati kaldırıldı.').first()).toBeVisible()
+    await expect.poll(async () => (await slotsOf(client)).length).toBe(0)
+  })
+
+  test('öğretmen yalnız kendi uygunluk saatini ekler', async ({ loginAs, api, tenant }) => {
+    const school = await tenant({ roles: ['ogretmen'] })
+    const page = await loginAs(school.user('ogretmen'))
+    const client = await api(school.user('ogretmen'))
+    await page.goto('/ogretmen/otomatik-etut')
+    const form = page.getByRole('form', { name: 'Uygunluk saati ekle' })
+    await expect(form).toBeVisible()
+    expect(await slotsOf(client)).toHaveLength(0)
+    // Öğretmen seçici görmez: saat kendi adına eklenir.
+    await expect(form.getByLabel('Öğretmen', { exact: true })).toHaveCount(0)
+    await form.getByLabel('Başlangıç (tarih ve saat)').fill(`${istanbulDay(21)}T09:20`)
+    await form.getByRole('button', { name: 'Uygunluk saati ekle', exact: true }).click()
+    await expect(page.getByText('Uygunluk saati eklendi.').first()).toBeVisible()
+    await expect.poll(async () => (await slotsOf(client)).length).toBe(1)
+    await expect(page.getByRole('button', { name: /09:20 uygunluk saatini kaldır$/ })).toHaveCount(
+      1,
+    )
   })
 
   test('yönetici geçmiş etüdün yoklamasını alır; tamamlanan etüt iptal edilemez', async ({

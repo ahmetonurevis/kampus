@@ -17,6 +17,7 @@ Ayrıntı: `docs/muhendislik/veritabani.md`.
 - Normalleştirme (ayrı ADR): kurumda 20.000+ kayıt, veritabanı kısıtı ihtiyacı, SQL raporlama, yükleme p95 > 50 ms veya > 5 MB, özel nitelikli veri.
 - Migration yalnız `drizzle-kit generate --name <ne_yapildigi>`; SQL okunur ve commit edilir. `push` yalnız atılacak yerel veritabanında.
 - Uygulanmış migration değiştirilmez; düzeltme ve geri alma yeni migration'dır. Kırıcı değişiklik genişlet/daralt ile iki adım.
+- Büyük tabloya `check`/yabancı anahtar eklerken `not valid` + ayrı migration'da `validate constraint` (uzun kilit yok).
 - Migration ve onu kullanan kod aynı committe; testler aynı migration'ları PGlite'ta baştan uygular.
 - Benzersizlik `institution_id` içerir; arşivli kayıtları dışlamak için kısmi indeks (`where archived_at is null`). Her yabancı anahtar indekslidir. `data` üzerinde ölçümsüz GIN indeksi yok; yeni indeks `EXPLAIN` ile gerekçelendirilir.
 - Silme = arşiv (`archived_at`); sorgular varsayılan olarak arşivliyi dışlar. Kalıcı `delete` yalnız imha işi, veri sahibi talebi ve süresi dolan teknik kayıtlarda.

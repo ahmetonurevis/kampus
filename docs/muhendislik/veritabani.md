@@ -108,6 +108,7 @@ Taşıma tek migration'la yapılır: tablo oluşturulur, `records`'tan veri kopy
 - Her migration tek transaction'dır ve tek mantıksal değişikliktir. Şemayı kullanan kod aynı committe gelir.
 - Kırıcı değişiklik genişlet/daralt (expand/contract) ile iki adımdır: önce yeni kolon/tablo eklenir ve iki yere yazılır; kod yeniye geçtikten sonra ayrı migration eskiyi kaldırır.
 - `not null` kolon mevcut tabloya varsayılan değerle veya önce dolgu (backfill) migration'ıyla eklenir.
+- Büyük tabloya (`records`, `audit_log` gibi) `check` veya yabancı anahtar eklerken kısıt `not valid` ile eklenir, ayrı bir migration'da `validate constraint` çalıştırılır: ilk adım tabloyu uzun süre kilitlemez, doğrulama yalnız okuma kilidi ister. Küçük veya boş tabloda tek adım yeterlidir; gerekçesi migration yorumuna yazılır.
 - Büyük tabloda indeks `create index concurrently` ile ayrı, transaction dışı migration'da oluşturulur.
 - Veri dönüştüren migration idempotent yazılır ve PGlite testinde örnek veriyle denenir.
 - CI: migration'lar boş veritabanına baştan uygulanır; `drizzle-kit check` ve şemayla migration arasında fark olmadığı doğrulanır.

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, lt, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, gte, lt, notLike, type SQL } from 'drizzle-orm'
 
 import { roleSchema } from '../auth.ts'
 import type { Database } from '../db/client.ts'
@@ -11,8 +11,12 @@ import { dayRange } from './list-filters.ts'
  * görünür alt kümesidir: zaman, işlem, varlık, yapan kişi, alan adları ve gerekçe. Değer, mesaj
  * metni, istek kimliği, IP özeti ve `changes.reason` (teknik hata kodu) dönmez. Okumanın kendisi
  * denetim kaydı üretmez; üretseydi her sayfa görüntüleme yeni kayıt doğurur, liste kendi
- * okumasıyla büyürdü (sonsuz döngü).
+ * okumasıyla büyürdü (sonsuz döngü). Kimlik olayları (`auth.*`: giriş, çıkış, kurum değiştirme,
+ * parola) okul işlemi değil güvenlik kaydıdır; en az veri ilkesiyle bu listede yer almaz.
  */
+
+/** Kimlik olayı eylem öneki; işlem geçmişi yanıtından süzülür. */
+export const AUTH_ACTION_PREFIX = 'auth.'
 
 export interface AuditEventQuery {
   page: number
@@ -53,7 +57,10 @@ function stringFields(changes: { fields?: unknown } | null): string[] {
 
 /** Kurumun denetim kayıtları, en yeniden eskiye; kurum yalnız `institutionId`'den gelir. */
 export async function listAuditEvents(db: Database, institutionId: string, query: AuditEventQuery) {
-  const filters: SQL[] = [eq(auditLog.institutionId, institutionId)]
+  const filters: SQL[] = [
+    eq(auditLog.institutionId, institutionId),
+    notLike(auditLog.action, `${AUTH_ACTION_PREFIX}%`),
+  ]
   const range = dayRange('createdAt', query.dateFrom, query.dateTo)
   if (range?.fromInstant) filters.push(gte(auditLog.createdAt, new Date(range.fromInstant)))
   if (range?.toInstant) filters.push(lt(auditLog.createdAt, new Date(range.toInstant)))

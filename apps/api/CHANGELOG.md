@@ -5,7 +5,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 ## Ayarlar: kurum kullanıcıları ve işlem geçmişi
 
 - `GET /api/v1/institution-members` (yalnız yönetici): kurum üyeleri; ad, e-posta, rol, durum (bağlı kişi kaydından türetilir), bağlı kişi adı ve oluşturulma anı. `q`, `role`, `status`, `sort`, sayfalama. Telefon, parola, oturum ve IP dönmez. Yalnız okuma.
-- `GET /api/v1/audit-events` (yalnız yönetici): kurumun `audit_log` kayıtları en yeniden eskiye; zaman, işlem, varlık, yapan kişi (ad, rol), alan adları ve gerekçe. Tarih (Europe/Istanbul günü), yapan kişi ve varlık türü süzgeçleri. Değer, IP ve istek kimliği dönmez; rehberlik kayıtlarında alan adı ve kimlik de dönmez (DOM-YTK-020). Okuma denetim kaydı üretmez.
+- `GET /api/v1/audit-events` (yalnız yönetici): kurumun `audit_log` kayıtları en yeniden eskiye; zaman, işlem, varlık, yapan kişi (ad, rol), alan adları ve gerekçe. Tarih (Europe/Istanbul günü), yapan kişi ve varlık türü süzgeçleri. Değer, IP ve istek kimliği dönmez; rehberlik kayıtlarında alan adı ve kimlik de dönmez (DOM-YTK-020). Kimlik olayları (`auth.*`) güvenlik kaydı olduğundan listeden süzülür. Okuma denetim kaydı üretmez.
 - Şema değişikliği ve migration yok.
 
 ## Optik değerlendirme ve otomatik etüt köprüsü

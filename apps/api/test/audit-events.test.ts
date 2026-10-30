@@ -139,13 +139,14 @@ describe('GET /api/v1/audit-events (DOM-YTK-053)', () => {
     const { institution, cookie } = await kurum()
     const teacher = await createMember(app, institution.id, 'ogretmen')
     await write(institution, {
-      action: 'auth.login_succeeded',
+      action: 'invoice.pay',
+      entityType: 'invoices',
       actorUserId: teacher.id,
       actorRole: null,
     })
     await write(institution, { action: 'job.cleanup', actorUserId: null, actorRole: null })
     const { data } = (await get('/api/v1/audit-events', cookie)).json<EventList>()
-    assert.equal(data.find((row) => row.action === 'auth.login_succeeded')?.actor?.role, 'ogretmen')
+    assert.equal(data.find((row) => row.action === 'invoice.pay')?.actor?.role, 'ogretmen')
     assert.equal(data.find((row) => row.action === 'job.cleanup')?.actor, null)
   })
 
@@ -255,6 +256,30 @@ describe('GET /api/v1/audit-events (DOM-YTK-053)', () => {
       again.json<EventList>().data.map((row) => row.action),
       ['a.islem'],
     )
+  })
+
+  test('giriş, çıkış, kurum değiştirme ve parola olayları listede yoktur', async () => {
+    const { institution, cookie } = await kurum()
+    for (const action of [
+      'auth.login_succeeded',
+      'auth.logout',
+      'auth.institution_switched',
+      'auth.password_changed',
+    ]) {
+      await write(institution, { action })
+    }
+    await write(institution, { action: 'module.set', entityType: 'module', entityId: 'grades' })
+    const body = (await get('/api/v1/audit-events?pageSize=100', cookie)).json<EventList>()
+    assert.deepEqual(
+      body.data.map((row) => row.action),
+      ['module.set'],
+    )
+    assert.equal(body.meta.total, 1)
+    // Gerçek bir giriş de (başka bir hesapla) yönetici listesinde görünmez.
+    await signInAs(app, institution.admin)
+    const after = (await get('/api/v1/audit-events?pageSize=100', cookie)).json<EventList>()
+    assert.ok(!after.data.some((row) => row.action.startsWith('auth.')))
+    assert.equal(after.meta.total, 1)
   })
 
   test('varlık türü ve yapan kişi süzgeçleri', async () => {

@@ -532,3 +532,182 @@ describe('0010–0012: içerik havuzu tabloları', () => {
     )
   })
 })
+
+describe('0013: beceri görevi tabloları', () => {
+  const skillTables = [
+    'rubrics',
+    'rubric_versions',
+    'task_assignments',
+    'task_assignment_targets',
+    'task_attempts',
+    'task_submissions',
+    'submission_versions',
+    'submission_drafts',
+    'resubmission_requests',
+    'rubric_scores',
+    'second_rating_requests',
+    'score_appeals',
+    'score_transfers',
+  ]
+  let db: Database
+  let close: () => Promise<void>
+
+  before(async () => {
+    ;({ db, close } = await createTestDatabase())
+  })
+  after(async () => {
+    await close()
+  })
+
+  const rows = async <T>(query: ReturnType<typeof sql>) =>
+    ((await db.execute(query)) as unknown as { rows: T[] }).rows
+  const tableList = sql.join(
+    skillTables.map((table) => sql`${table}`),
+    sql`, `,
+  )
+
+  test('her tabloda kurum kolonları zorunlu; zaman kolonları timestamptz', async () => {
+    const columns = await rows<{
+      table_name: string
+      column_name: string
+      data_type: string
+      is_nullable: 'YES' | 'NO'
+    }>(
+      sql`select table_name, column_name, data_type, is_nullable from information_schema.columns
+          where table_schema = 'public' and table_name in (${tableList})`,
+    )
+    for (const table of skillTables) {
+      const own = columns.filter((column) => column.table_name === table)
+      assert.ok(own.length > 0, `${table} yok`)
+      const byName = new Map(own.map((column) => [column.column_name, column]))
+      for (const required of ['institution_id', 'created_at', 'updated_at', 'version'])
+        assert.equal(byName.get(required)?.is_nullable, 'NO', `${table}.${required} zorunlu`)
+      assert.equal(byName.get('archived_at')?.is_nullable, 'YES', `${table}.archived_at`)
+      for (const column of own)
+        assert.notEqual(
+          column.data_type,
+          'timestamp without time zone',
+          `${table}.${column.column_name} timestamptz olmalı`,
+        )
+    }
+  })
+
+  test('her indeks institution_id ile başlar ve <tablo>_…_idx|_key|_pkey adını taşır', async () => {
+    const indexes = await rows<{ tablename: string; indexname: string; indexdef: string }>(
+      sql`select tablename, indexname, indexdef from pg_indexes
+          where schemaname = 'public' and tablename in (${tableList})`,
+    )
+    assert.ok(indexes.length >= skillTables.length * 2)
+    for (const index of indexes) {
+      assert.match(index.indexdef, /\(institution_id[,)]/, `${index.indexname} kurumla başlamalı`)
+      assert.ok(index.indexname.startsWith(`${index.tablename}_`), index.indexname)
+      assert.match(index.indexname, /_(idx|key|pkey)$/, index.indexname)
+    }
+  })
+
+  test('kısıt adları türüne uygun; her yabancı anahtar institution_id ile başlar ve bir indeksin önekidir', async () => {
+    const constraints = await rows<{
+      table_name: string
+      conname: string
+      contype: string
+      columns: string[]
+    }>(
+      sql`select c.conrelid::regclass::text as table_name, c.conname, c.contype::text as contype,
+            coalesce(array(select a.attname::text from unnest(c.conkey) with ordinality k(attnum, n)
+              join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum
+              order by k.n), '{}') as columns
+          from pg_constraint c
+          where c.conrelid::regclass::text in (${tableList}) and c.contype in ('p', 'u', 'f', 'c')`,
+    )
+    const indexColumns = await rows<{ table_name: string; columns: string[] }>(
+      sql`select i.indrelid::regclass::text as table_name,
+            array(select a.attname::text from unnest(i.indkey) with ordinality k(attnum, n)
+              join pg_attribute a on a.attrelid = i.indrelid and a.attnum = k.attnum
+              order by k.n) as columns
+          from pg_index i where i.indrelid::regclass::text in (${tableList})`,
+    )
+    const suffix: Record<string, RegExp> = {
+      p: /_pkey$/,
+      u: /_key$/,
+      f: /(_fkey|_institution_id_institutions_id_fk)$/,
+      c: /_check$/,
+    }
+    let foreignKeys = 0
+    for (const constraint of constraints) {
+      assert.ok(constraint.conname.startsWith(`${constraint.table_name}_`), constraint.conname)
+      assert.match(constraint.conname, suffix[constraint.contype]!, constraint.conname)
+      if (constraint.contype !== 'f') continue
+      foreignKeys += 1
+      assert.equal(constraint.columns[0], 'institution_id', `${constraint.conname} kurumla başlar`)
+      const covered = indexColumns.some(
+        (index) =>
+          index.table_name === constraint.table_name &&
+          constraint.columns.every((column, position) => index.columns[position] === column),
+      )
+      assert.ok(covered, `${constraint.conname} indeksli olmalı`)
+    }
+    assert.ok(foreignKeys >= 30, `yabancı anahtar sayısı ${foreignKeys}`)
+  })
+
+  test('DOM-BEC-040, 060: değişmez dört tabloda satır ve truncate tetikleyicisi kurulu, etkin ve ortak fonksiyonu çağırır', async () => {
+    const triggers = await rows<{
+      table_name: string
+      tgname: string
+      tgtype: number
+      tgenabled: string
+      proname: string
+    }>(
+      sql`select c.relname::text as table_name, t.tgname::text as tgname, t.tgtype::int as tgtype,
+            t.tgenabled::text as tgenabled, p.proname::text as proname
+          from pg_trigger t
+          join pg_class c on c.oid = t.tgrelid
+          join pg_proc p on p.oid = t.tgfoid
+          where not t.tgisinternal and c.relname in (${tableList})
+          order by c.relname, t.tgname`,
+    )
+    // pg_trigger.tgtype bitleri: ROW 1, BEFORE 2, DELETE 8, UPDATE 16, TRUNCATE 32.
+    const ROW_UPDATE_DELETE = 1 | 2 | 8 | 16
+    const STATEMENT_TRUNCATE = 2 | 32
+    const immutableTables = [
+      'resubmission_requests',
+      'rubric_scores',
+      'score_transfers',
+      'submission_versions',
+    ]
+    assert.deepEqual(
+      triggers.map(({ table_name, tgname, tgtype }) => [table_name, tgname, tgtype]),
+      immutableTables.flatMap((table) => [
+        [table, `${table}_immutable_trigger`, ROW_UPDATE_DELETE],
+        [table, `${table}_truncate_trigger`, STATEMENT_TRUNCATE],
+      ]),
+    )
+    for (const trigger of triggers) {
+      assert.equal(trigger.tgenabled, 'O', `${trigger.tgname} etkin olmalı`)
+      assert.equal(trigger.proname, 'kampus_reject_immutable_change')
+    }
+  })
+
+  test('migration ikinci kez uygulanınca hiçbir adım yeniden çalışmaz', async () => {
+    const client = newPGlite()
+    try {
+      const fresh = drizzle({ client, schema })
+      await migrate(fresh, { migrationsFolder: MIGRATIONS_FOLDER })
+      const count = async () =>
+        (
+          (await fresh.execute(
+            sql`select count(*)::int as n from drizzle.__drizzle_migrations`,
+          )) as unknown as { rows: { n: number }[] }
+        ).rows[0]!.n
+      const first = await count()
+      const journal: Journal = JSON.parse(
+        await readFile(path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'),
+      )
+      assert.equal(first, journal.entries.length)
+      assert.equal(journal.entries.at(-1)?.tag, '0013_create_skill_tasks')
+      await migrate(fresh, { migrationsFolder: MIGRATIONS_FOLDER })
+      assert.equal(await count(), first)
+    } finally {
+      await client.close()
+    }
+  })
+})

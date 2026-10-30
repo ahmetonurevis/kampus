@@ -92,6 +92,13 @@
       "when": 1793360387099,
       "tag": "0012_add_content_tag_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793395893262,
+      "tag": "0013_create_skill_tasks",
+      "breakpoints": true
     }
   ]
 }

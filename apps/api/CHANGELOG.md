@@ -2,6 +2,16 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Beceri görevi tabloları ve deposu
+
+- Migration `0013_create_skill_tasks` eklendi (ADR 0004 karar 4–7): `rubrics`, `rubric_versions`, `task_assignments`, `task_assignment_targets`, `task_attempts`, `task_submissions`, `submission_versions`, `submission_drafts`, `resubmission_requests`, `rubric_scores`, `second_rating_requests`, `score_appeals`, `score_transfers`. Bütün yabancı anahtarlar `(institution_id, …)` bileşiktir; başka kurumun satırına bağlanmak veritabanınca reddedilir. Tablolar yeni ve boştur; veri migration'ı yok.
+- Değişmez satırlar (`submission_versions`, `rubric_scores`, `resubmission_requests`, `score_transfers`) `kampus_reject_immutable_change()` tetikleyicisiyle korunur: `update`, `delete` ve `truncate` 55000 ile reddedilir; yalnız imha işi `set local kampus.allow_immutable_purge = 'on'` ile siler. Kullanılmış rubrik sürümü atama ve puan yabancı anahtarlarında `on delete restrict`'tir (DOM-BEC-022).
+- Not aktarımının kaynak denemesi aynı atama ve kursiyere bileşik yabancı anahtarla bağlıdır (`task_attempts_id_assignment_learner_key`). Serbest metinler core sınırlarıyla kısıtlıdır: rubrik başlığı 200, genel yorum 5000, itiraz ve karar gerekçesi 2000 karakter.
+- Kurum kapsamlı depo `src/db/skills.ts` eklendi; okumalar school-core `skills/*` satır tiplerini döndürür. Eşzamanlı ikinci yazma 409 ile reddedilir: `open_rubric_version_exists`, `attempt_in_progress`, `submission_exists`, `version_conflict`, `resubmission_exists`, `rubric_score_exists`, `appeal_exists`, `score_transfer_exists`; taslağın eski revizyonla yazılması `draft_conflict` (IST-047).
+- `schema/columns.ts` ortak kolon yardımcıları (`oneOf`, `keys`, `requiredColumns`) eklendi; `schema/resources.ts` bunları kullanır, şema farkı yoktur.
+- Depo kısıt adına göre hata döndürür: benzersizlik 409 (`rubric_version_exists`, `published_rubric_version_exists`, `assignment_target_exists` eklendi); not aktarımı, rubrik puanı ve itirazda sahiplik uyuşmazlığı 422 (`score_transfer_source_mismatch`, `rubric_version_mismatch`, `appeal_learner_mismatch`), kaynak yoksa 404. Okumalar arşivli deneme, teslim, taslak ve itirazı dışlar.
+- HTTP ucu yok; OpenAPI ve `api-client` değişmedi. Dosyalı ve sesli teslim sürümü (`TODO(F3c2-files)`) henüz saklanmaz: 422 `submission_kind_unavailable`.
+
 ## Randevu yazma uçları
 
 - `POST /api/v1/appointments` (öğrenci, veli; uygunluk saati `slotId` seçilerek talep; 201 + `Location`; `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`) ve `PATCH /api/v1/appointments/:appointmentId` (öğretmen, öğrenci, veli; `Onaylandı`, `Reddedildi`, `İptal`, `Geri çekildi`; `If-Match` zorunlu). Kurallar core 2.18.0 `lib/appointments.ts` (DOM-ILT-100…104); modül `communication`. Yönetici ve ön büro yazamaz (403 `forbidden`).

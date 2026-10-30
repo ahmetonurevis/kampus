@@ -1,4 +1,4 @@
-import { sql, type SQL } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import {
   check,
   customType,
@@ -12,7 +12,6 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
-  type AnyPgColumn,
   type PgTableExtraConfigValue,
 } from 'drizzle-orm/pg-core'
 
@@ -37,6 +36,7 @@ import {
 } from '@kampus/school-core/content/taxonomy.ts'
 
 import { institutions } from './auth.ts'
+import { keys, oneOf, requiredColumns } from './columns.ts'
 
 /**
  * İçerik havuzu (ADR 0004 karar 1, 3; docs/domain/kaynak-platformu.md). Kaynak (`resources`)
@@ -57,24 +57,10 @@ import { institutions } from './auth.ts'
 /** PostgreSQL `tsvector`; değer uygulamada `to_tsvector('simple', …)` ile yazılır, okunmaz. */
 const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' })
 
-/** Sabit sözlük değerleri için `check` ifadesi; değerler kodun kendisidir, kullanıcı girdisi değil. */
-function oneOf(column: AnyPgColumn, values: readonly string[]): SQL {
-  for (const value of values)
-    if (!/^[A-Za-z0-9_+-]+$/.test(value)) throw new Error(`invalid check value: ${value}`)
-  return sql`${column} in (${sql.raw(values.map((value) => `'${value}'`).join(', '))})`
-}
-const keys = (record: Record<string, unknown>) => Object.keys(record)
-
 export const RESOURCE_SHARE_TARGET_KINDS = ['student', 'class'] as const
 export type ResourceShareTargetKind = (typeof RESOURCE_SHARE_TARGET_KINDS)[number]
 
-/** Zorunlu kolonlar (veritabani.md §2). */
-const required = () => ({
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  archivedAt: timestamp('archived_at', { withTimezone: true }),
-  version: integer('version').notNull().default(1),
-})
+const required = requiredColumns
 
 export const resources = pgTable(
   'resources',

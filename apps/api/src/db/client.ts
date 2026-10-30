@@ -11,6 +11,7 @@ import * as institutionSettingsSchema from './schema/institution-settings.ts'
 import * as membershipLinksSchema from './schema/membership-links.ts'
 import * as recordsSchema from './schema/records.ts'
 import * as resourcesSchema from './schema/resources.ts'
+import * as skillsSchema from './schema/skills.ts'
 
 export const schema = {
   ...authSchema,
@@ -20,6 +21,7 @@ export const schema = {
   ...recordsSchema,
   ...idempotencyKeysSchema,
   ...resourcesSchema,
+  ...skillsSchema,
 }
 export type Schema = typeof schema
 

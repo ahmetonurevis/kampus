@@ -99,6 +99,13 @@ const ParentMessagesPage = lazy(async () => ({
   default: (await import('./communication/ParentMessagesPage.tsx')).ParentMessagesPage,
 }))
 
+const RequestsPage = lazy(async () => ({
+  default: (await import('./requests/RequestsPage.tsx')).RequestsPage,
+}))
+const AbsenceNoticesPage = lazy(async () => ({
+  default: (await import('./requests/AbsenceNoticesPage.tsx')).AbsenceNoticesPage,
+}))
+
 // Okul iş akışı modülleri tek ortak sayfayı paylaşır (core sunum tanımı menü yolundan gelir).
 const WorkflowPage = lazy(async () => ({
   default: (await import('./workflows/WorkflowPage.tsx')).WorkflowPage,
@@ -183,6 +190,12 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <MessagesPage page={page} />
     case 'veli/randevu-mesaj':
       return <ParentMessagesPage page={page} />
+    case 'veli/sikayet-talep':
+      return <RequestsPage page={page} audience="parent" />
+    case 'onburo/talepler':
+      return <RequestsPage page={page} audience="front-office" />
+    case 'veli/devamsizlik-bildirimi':
+      return <AbsenceNoticesPage page={page} />
     default:
       return null
   }

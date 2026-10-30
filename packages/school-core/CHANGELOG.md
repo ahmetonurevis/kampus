@@ -5,6 +5,7 @@
 Bekleyen `TODO(core-*)` işleri çekirdeğe taşındı; tüketicilerdeki geçici listeler silindi.
 
 - Menü (`modules/full-navigation.ts`): yönetici (Duyurular, Mesajlar), ön büro (Duyurular) ve öğretmen (Duyurular, Mesajlar) iletişim sayfaları `communication` modülü ve `İLETİŞİM` kategorisiyle çekirdek menüsünde. Hesap grubu varsa ondan önce eklenir. Bu sayfalar `apiOnly: true` taşır (`NavigationPage`): Vue demosu ve mobil çevrimdışı demo menüsü bunları düşürür; yeni web ve mobil API modu kullanır. Öğrenci ve veli iletişim sayfaları temel menüde zaten vardı, değişmedi.
+- `workflowDetails` eylemleri (`add`): kimliksiz oluşturma komutları `exam-result`, `transport-assign` ve `achievement` artık `recordId` taşımaz (önceden açılan kaydın kimliğini veriyordu; API bu komutlara `:recordId` kabul etmez). Konu kayıt `initial` ile taşınmaya devam eder (`examId`, `routeId`, `clubId`). Web'deki `apiAction` düzeltmesi kalktı.
 - Tüketiciler `workspace:2.8.0` sürümüne sabitlendi.
 
 ## 2.7.0

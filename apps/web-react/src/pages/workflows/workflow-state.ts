@@ -15,7 +15,6 @@ import {
   changeFormValue,
   readFormValue,
   type FormValues,
-  type WorkflowAction,
   type WorkflowField,
   type WorkflowRow,
 } from '@kampus/school-core/lib/workflow-presentation.ts'
@@ -244,24 +243,4 @@ export function renewalSummary(command: string, values: FormValues): RenewalQuot
     if (error instanceof DomainError || error instanceof ZodError) return null
     throw error
   }
-}
-
-/**
- * Kayda bağlı ayrıntıdan açılan ama kimliksiz oluşturan komutlar: core `add` varsayılan olarak
- * kaydın kimliğini verir (`exam-result` denemeden, `transport-assign` güzergâhtan, `achievement`
- * kulüpten açılır; konu kayıt `initial` ile taşınır). API bu komutlara `:recordId` kabul etmez
- * (404). Taşıma testi (`workflow-state.test.ts`) listeyi API komut tablosuyla karşılaştırır.
- * TODO(core-record-id): core `add` bu üç eylemde kimliği açıkça boş verince liste kalkar.
- */
-const RECORDLESS_COMMANDS: ReadonlySet<string> = new Set([
-  'exam-result',
-  'transport-assign',
-  'achievement',
-])
-
-/** Eylemi API sözleşmesine uydurur: kimliksiz komutta konu kimliği düşer. */
-export function apiAction(action: WorkflowAction): WorkflowAction {
-  return RECORDLESS_COMMANDS.has(action.command) && action.recordId !== undefined
-    ? { ...action, recordId: undefined }
-    : action
 }

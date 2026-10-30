@@ -12,7 +12,6 @@ import { WORKFLOW_ROUTES } from '../../api/src/routes/workflows.schemas.ts'
 import { schoolModules } from '@kampus/school-core/modules/school-workflows.ts'
 import type { Role } from '@kampus/school-core/modules/navigation.ts'
 import {
-  apiAction,
   buildWorkflowState,
   csvFileProblem,
   csvSummary,
@@ -217,9 +216,8 @@ test('renewalSummary yalnız geçerli yenileme değerlerinde core hesabını dö
   assert.equal(renewalSummary('renewal', { ...values, total: '' }), null)
 })
 
-test('apiAction: ayrıntı eylemleri API komut tablosundaki kayıt kuralına uyar', () => {
+test('ayrıntı eylemleri API komut tablosundaki kayıt kuralına uyar', () => {
   let checked = 0
-  let leaks = 0
   for (const page of pages) {
     const key = page.key as WorkflowModuleKey
     for (const role of page.roles) {
@@ -228,10 +226,8 @@ test('apiAction: ayrıntı eylemleri API komut tablosundaki kayıt kuralına uya
       // Yöneticide ~1440 ders satırı var; her türün ilk satırları kuralı görmeye yeter.
       const rows = workflowRows(state, session, page.path).slice(0, 12)
       for (const row of rows) {
-        for (const raw of workflowDetails(state, session, row).actions) {
-          const action = apiAction(raw)
+        for (const action of workflowDetails(state, session, row).actions) {
           const route = WORKFLOW_ROUTES[action.command as keyof typeof WORKFLOW_ROUTES]
-          if (route?.record === 'none' && raw.recordId !== undefined) leaks++
           assert.ok(route, `${action.command} API tablosunda yok`)
           if (route.record === 'none')
             assert.equal(action.recordId, undefined, `${action.command} kimlik taşımamalı`)
@@ -243,6 +239,4 @@ test('apiAction: ayrıntı eylemleri API komut tablosundaki kayıt kuralına uya
     }
   }
   assert.ok(checked > 30)
-  // Core şu an kimliksiz komutlara da kayıt kimliği verir; düzelince bu doğrulama ve `apiAction` kalkar.
-  assert.ok(leaks > 0)
 })

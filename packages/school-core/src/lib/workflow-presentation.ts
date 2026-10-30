@@ -422,10 +422,12 @@ export function workflowDetails(
   const add = (
     command: string,
     label: string,
-    recordId: string | undefined = record.id,
+    recordId: string | null | undefined = record.id,
     initial?: FormValues,
   ) => {
-    if (mayRun(session, command)) actions.push(action(command, label, recordId, initial))
+    // `null`: kimliksiz oluşturma komutu (API `:recordId` kabul etmez); konu kayıt `initial` taşır.
+    if (mayRun(session, command))
+      actions.push(action(command, label, recordId ?? undefined, initial))
   }
   const section = (title: string, lines: readonly Line[]) =>
     sections.push({ title, lines: lines.filter((line): line is string => Boolean(line)) })
@@ -548,7 +550,7 @@ export function workflowDetails(
             `${labelDate(e.date)} · ${e.title}: ${e.net.toLocaleString('tr-TR')} net${e.complete ? '' : ' (ders sonuçları eksik)'}`,
         ),
       )
-    add('exam-result', 'Sonuç gir', undefined, { examId: record.id })
+    add('exam-result', 'Sonuç gir', null, { examId: record.id })
     if (state.modules.study)
       for (const result of results.filter(
         (r) =>
@@ -674,7 +676,7 @@ export function workflowDetails(
     )
     if (record.status === 'Aktif') {
       add('route', 'Güzergâhı düzenle')
-      add('transport-assign', 'Bu servise öğrenci ata', undefined, { routeId: record.id })
+      add('transport-assign', 'Bu servise öğrenci ata', null, { routeId: record.id })
       add('route-archive', 'Güzergâhı arşivle')
     }
     for (const assignment of assignments)
@@ -722,7 +724,7 @@ export function workflowDetails(
     if (record.status === 'Aktif') {
       add('club-enroll', 'Kulübe kaydol / öğrenci ekle')
       add('club-attendance', 'Kulüp yoklaması al')
-      add('achievement', 'Proje / başarı kaydet', undefined, { clubId: record.id })
+      add('achievement', 'Proje / başarı kaydet', null, { clubId: record.id })
       add('club-archive', 'Kulübü arşivle')
     }
     for (const member of visibleMembers)

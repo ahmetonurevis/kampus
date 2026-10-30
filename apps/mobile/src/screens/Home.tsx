@@ -1,17 +1,26 @@
-import React, { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { ScrollView, View, Pressable } from 'react-native'
 import Svg, { Polyline } from 'react-native-svg'
-import { useSchool } from '../store/SchoolProvider.tsx'
-import { homeSummary, roles, availablePages } from '../model/school.ts'
-import { moduleNavigationState } from '../model/navigation.ts'
-import { useMinute } from '../ui/use-minute.ts'
+import { CommonActions } from '@react-navigation/native'
 import { dateLabel, dayKey, money, timeLabel } from '@kampus/school-core/lib/format.ts'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { homeSummary, roles, availablePages, type Row } from '../model/school.ts'
+import { moduleNavigationState } from '../model/navigation.ts'
+import type { ScreenProps } from '../route-types.ts'
+import { useMinute } from '../ui/use-minute.ts'
 import { Avatar, Button, Card, Icon, T, styles, useColors } from '../ui/components.tsx'
+import type { IconName } from '../ui/icons.ts'
 import RoleHome from './RoleHome.tsx'
 import RecordCard from '../ui/RecordCard.tsx'
 import ModuleHub from '../ui/ModuleHub.tsx'
 
-function Section({ title, action, onPress, children }) {
+type SectionProps = {
+  title: string
+  action: string
+  onPress?: () => void
+  children?: ReactNode
+}
+function Section({ title, action, onPress, children }: SectionProps) {
   const c = useColors()
   return (
     <View style={{ gap: 12 }}>
@@ -36,7 +45,12 @@ function Section({ title, action, onPress, children }) {
     </View>
   )
 }
-function Stat({ stat, icon, narrow = false }) {
+type StatProps = {
+  stat: { label: string; value: string | number }
+  icon?: IconName
+  narrow?: boolean
+}
+function Stat({ stat, icon, narrow = false }: StatProps) {
   const c = useColors()
   return (
     <View
@@ -61,29 +75,37 @@ function Stat({ stat, icon, narrow = false }) {
     </View>
   )
 }
-export default function Home(props) {
-  const { session } = useSchool()
+export default function Home(props: ScreenProps<'Home'>) {
+  const { session } = useActiveSchool()
   return ['ogrenci', 'veli', 'ogretmen'].includes(session.role) ? (
     <RoleHome {...props} />
   ) : (
     <InstitutionHome {...props} />
   )
 }
-function InstitutionHome({ navigation }) {
+function InstitutionHome({ navigation }: ScreenProps<'Home'>) {
   const minute = useMinute()
-  const { data, session, preference } = useSchool(),
+  const { data, session, preference } = useActiveSchool(),
     c = useColors()
   const { scope, stats, lessons, important, trend } = useMemo(
     () => homeSummary(data, session),
     [data, session.role, session.childId, minute],
   )
+  // Özet her rol için dört gösterge üretir.
+  const statAt = (index: number) => {
+    const stat = stats[index]
+    if (!stat) throw new Error('Gösterge bulunamadı.')
+    return stat
+  }
   const isParent = session.role === 'veli',
     isStudent = session.role === 'ogrenci'
   const isManager = session.role === 'yonetici'
   const visiblePages = availablePages(data, session.role)
-  const canOpen = (page) => visiblePages.some((p) => p.path === page)
-  const open = (page) => navigation.reset(moduleNavigationState(navigation.getState(), page))
-  const detail = (row) => navigation.push('Detail', { row })
+  const canOpen = (page: string) => visiblePages.some((p) => p.path === page)
+  // `navigation.reset` kök rota listesine bağlı tiplidir; dispatch aynı eylemi gevşek tipli gönderir.
+  const open = (page: string) =>
+    navigation.dispatch(CommonActions.reset(moduleNavigationState(navigation.getState(), page)))
+  const detail = (row: Row) => navigation.push('Detail', { row })
   const next = lessons.find(
     (r) => +new Date(r.source.date) + r.source.duration * 60000 > Date.now(),
   )
@@ -114,7 +136,7 @@ function InstitutionHome({ navigation }) {
           : [0, 1, 2, 3]
   const importantEnabled =
     data.modules[isManager ? 'finance' : scope.institution ? 'crm' : 'learning']
-  const icons = scope.teacher
+  const icons: IconName[] = scope.teacher
     ? ['School', 'CalendarDays', 'MessagesSquare', 'ClipboardCheck']
     : scope.institution
       ? isManager
@@ -153,8 +175,9 @@ function InstitutionHome({ navigation }) {
       {isParent && (
         <View style={{ gap: 16 }}>
           <View style={styles.wrap}>
-            {data.parents[0].studentIds.map((id) => {
+            {(data.parents[0]?.studentIds ?? []).map((id) => {
               const student = data.students.find((s) => s.id === id)
+              if (!student) throw new Error('Öğrenci kaydı bulunamadı.')
               const selected = scope.student.id === id
               return (
                 <Pressable
@@ -200,7 +223,7 @@ function InstitutionHome({ navigation }) {
                 Genel not ortalaması
               </T>
               <T bold size={27} style={{ color: c.primary }}>
-                {stats[0].value}
+                {statAt(0).value}
                 <T muted size={13}>
                   {' '}
                   / 100
@@ -210,12 +233,12 @@ function InstitutionHome({ navigation }) {
             <View
               accessibilityRole="progressbar"
               accessibilityLabel="Genel not ortalaması"
-              accessibilityValue={{ min: 0, max: 100, now: Number(stats[0].value) }}
+              accessibilityValue={{ min: 0, max: 100, now: Number(statAt(0).value) }}
               style={{ height: 6, borderRadius: 3, backgroundColor: c.surface }}
             >
               <View
                 style={{
-                  width: `${Math.min(100, Math.max(0, Number(stats[0].value)))}%`,
+                  width: `${Math.min(100, Math.max(0, Number(statAt(0).value)))}%`,
                   backgroundColor: c.primary,
                   height: 6,
                   borderRadius: 3,
@@ -257,7 +280,7 @@ function InstitutionHome({ navigation }) {
               }}
             >
               <T size={12} style={{ color: c.heroText }}>
-                {scope.teacher ? `${stats[1].value} ders bugün` : scope.classroom.name}
+                {scope.teacher ? `${statAt(1).value} ders bugün` : scope.classroom.name}
               </T>
             </View>
           </View>
@@ -304,7 +327,7 @@ function InstitutionHome({ navigation }) {
             <Icon name="ChartNoAxesCombined" color={c.heroMuted} />
           </View>
           <T bold size={28} style={{ color: c.heroText, letterSpacing: -0.8 }}>
-            {stats[1].value}
+            {statAt(1).value}
           </T>
           <View
             accessible
@@ -340,7 +363,7 @@ function InstitutionHome({ navigation }) {
             <Icon name="HeartHandshake" color={c.primary} size={26} />
           </View>
           <T muted>
-            Bugün {stats[2].value} görüşme, takip edilecek {stats[0].value} aday öğrenci.
+            Bugün {statAt(2).value} görüşme, takip edilecek {statAt(0).value} aday öğrenci.
           </T>
           <Button
             primary
@@ -356,8 +379,8 @@ function InstitutionHome({ navigation }) {
       <View style={[styles.wrap, { gap: 10 }]}>
         {statIndexes.map((i) => (
           <Stat
-            key={stats[i].label}
-            stat={stats[i]}
+            key={statAt(i).label}
+            stat={statAt(i)}
             icon={icons[i]}
             narrow={isManager && data.modules.finance}
           />
@@ -382,10 +405,10 @@ function InstitutionHome({ navigation }) {
         >
           <Icon name={isParent ? 'Wallet' : 'ListChecks'} size={18} color={c.primary} />
           <T muted size={13} style={{ flexGrow: 1 }}>
-            {stats[3].label}
+            {statAt(3).label}
           </T>
           <T bold size={16}>
-            {stats[3].value}
+            {statAt(3).value}
           </T>
           <Icon name="ChevronRight" size={16} />
         </Card>

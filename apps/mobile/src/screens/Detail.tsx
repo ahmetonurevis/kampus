@@ -1,19 +1,29 @@
-import { ConversationDetail } from './Conversations.tsx'
-import { FormScrollView } from '../ui/KeyboardLayout.tsx'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { View } from 'react-native'
-import { useSchool, recordError } from '../store/SchoolProvider.tsx'
-import { context, rowsFor, nameOf, gradeAverage, absentCount } from '../model/school.ts'
-import { recordActions } from '../model/operations.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
+import type { ArchiveKind } from '@kampus/school-core/lib/school-management.ts'
+import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
+import {
+  context,
+  rowsFor,
+  nameOf,
+  gradeAverage,
+  absentCount,
+  type Row,
+  type RowKind,
+} from '../model/school.ts'
+import { recordActions, str, type OperationRecord } from '../model/operations.ts'
+import type { ScreenProps } from '../route-types.ts'
 import { Button, Badge, Card, Heading, T, Sheet, styles, useColors } from '../ui/components.tsx'
-import { HomeworkDetail, QuestionDetail } from './SchoolDetails.tsx'
-import OperationForm from '../ui/OperationForm.tsx'
+import { FormScrollView } from '../ui/KeyboardLayout.tsx'
+import OperationForm, { type OperationDescriptor } from '../ui/OperationForm.tsx'
 import { useMinute } from '../ui/use-minute.ts'
 import { RecordIcon } from '../ui/RecordCard.tsx'
-import { createDocument, shareFile, saveFile, printFile } from '../lib/files.ts'
+import { createDocument, shareFile, saveFile, printFile, type PdfDocument } from '../lib/files.ts'
+import { ConversationDetail } from './Conversations.tsx'
+import { HomeworkDetail, QuestionDetail } from './SchoolDetails.tsx'
 
-const pages = {
+const pages: Partial<Record<RowKind, string>> = {
   invoice: 'finans',
   contract: 'sozlesmeler',
   branch: 'subeler',
@@ -36,8 +46,16 @@ const pages = {
   absence: 'devamsizlik-bildirimi',
   submission: 'ogretmen-degerlendirmeleri',
 }
-export default function Detail(props) {
-  const { session } = useSchool()
+// Arşiv işlemleri kayıt türünü okur; diğer kayıtlar tür taşımaz.
+const isArchiveKind = (kind: RowKind): kind is ArchiveKind =>
+  kind === 'branch' || kind === 'class' || kind === 'teacher'
+const operationRecord = (row: Row): OperationRecord =>
+  isArchiveKind(row.kind) ? { ...row.source, kind: row.kind } : { ...row.source }
+// Core kayıt tiplerinde `fileUri` yok; telefon dosyayı yüklerken kayda yazar.
+const fileUriOf = (record: object) => ('fileUri' in record ? str(record.fileUri) : '')
+
+export default function Detail(props: ScreenProps<'Detail'>) {
+  const { session } = useActiveSchool()
   if (props.route.params.row.kind === 'conversation') return <ConversationDetail {...props} />
   if (session.role === 'ogrenci' && props.route.params.row.kind === 'homework')
     return <HomeworkDetail {...props} />
@@ -45,26 +63,28 @@ export default function Detail(props) {
     return <QuestionDetail {...props} />
   return <GeneralDetail {...props} />
 }
-function GeneralDetail({ route, navigation }) {
+function GeneralDetail({ route, navigation }: ScreenProps<'Detail'>) {
   useMinute()
-  const { data, session, notify } = useSchool(),
+  const { data, session, notify } = useActiveSchool(),
     scope = context(data, session),
     c = useColors(),
-    [form, setForm] = useState(null),
-    [document, setDocument] = useState(null),
+    [form, setForm] = useState<OperationDescriptor | null>(null),
+    [document, setDocument] = useState<PdfDocument | null>(null),
     [fileBusy, setFileBusy] = useState(false)
   const original = route.params.row
-  const row =
-    rowsFor(data, session, pages[original.kind]).find((r) => r.id === original.id) || original
-  const record = row.source
+  const row: Row =
+    rowsFor(data, session, pages[original.kind] ?? '').find((r) => r.id === original.id) || original
+  // Tür ve kaynak birlikte ayrıştırılır; `kind` kontrolü `record` tipini daraltır.
+  const { kind, source: record } = row
   const actions = recordActions(row, session)
-  async function documentAction(action) {
+  async function documentAction(action: (typeof actions)[number]) {
     setFileBusy(true)
     try {
-      if (row.kind === 'material' && record.fileUri) {
-        await shareFile(record.fileUri)
+      if (kind === 'material' && fileUriOf(record)) {
+        await shareFile(fileUriOf(record))
         return
       }
+      if (!action.document) throw new Error('Belge türü bulunamadı.')
       const result = await createDocument(
         data,
         action.document,
@@ -79,13 +99,13 @@ function GeneralDetail({ route, navigation }) {
       setFileBusy(false)
     }
   }
-  async function handleDocument(action) {
+  async function handleDocument(action: 'save' | 'share' | 'print', file: PdfDocument) {
     setFileBusy(true)
     try {
       if (action === 'save') {
-        if (await saveFile(document)) notify('PDF cihazınıza kaydedildi.')
-      } else if (action === 'print') await printFile(document)
-      else await shareFile(document.uri)
+        if (await saveFile(file)) notify('PDF cihazınıza kaydedildi.')
+      } else if (action === 'print') await printFile(file)
+      else await shareFile(file.uri)
     } catch (error) {
       recordError(error, 'document-action')
       notify('Belge işlemi tamamlanamadı. Yeniden deneyin.', 'error')
@@ -101,9 +121,9 @@ function GeneralDetail({ route, navigation }) {
             <RecordIcon row={row} size={50} />
             <Badge text={row.status} />
           </View>
-          <Heading title={row.title} subtitle={row.subtitle} />
+          <Heading title={row.title ?? ''} subtitle={row.subtitle} />
         </View>
-        {row.kind !== 'conversation' && !!row.body && (
+        {kind !== 'conversation' && !!row.body && (
           <Card soft>
             <T>{row.body}</T>
           </Card>
@@ -117,7 +137,7 @@ function GeneralDetail({ route, navigation }) {
               primary={action.label === 'Yanıtla' || action.label === 'Ödeme yap'}
               onPress={() =>
                 action.operation
-                  ? setForm({ kind: action.operation, record: { ...record, kind: row.kind } })
+                  ? setForm({ kind: action.operation, record: operationRecord(row) })
                   : documentAction(action)
               }
             >
@@ -125,12 +145,12 @@ function GeneralDetail({ route, navigation }) {
             </Button>
           ))}
         </View>
-        {row.kind === 'invoice' && record.reminderAt && (
+        {kind === 'invoice' && record.reminderAt && (
           <T muted>
             Son hatırlatma: {dateLabel(record.reminderAt, { hour: '2-digit', minute: '2-digit' })}
           </T>
         )}
-        {row.kind === 'question' && (
+        {kind === 'question' && (
           <>
             <T muted>
               {nameOf(data, 'students', record.studentId)} ·{' '}
@@ -148,7 +168,7 @@ function GeneralDetail({ route, navigation }) {
             )}
           </>
         )}
-        {row.kind === 'prospect' && (
+        {kind === 'prospect' && (
           <>
             <Card>
               <T bold>İletişim bilgileri</T>
@@ -172,7 +192,7 @@ function GeneralDetail({ route, navigation }) {
             ))}
           </>
         )}
-        {row.kind === 'class' && (
+        {kind === 'class' && (
           <>
             <Button
               onPress={() => navigation.push('Module', { page: 'students', classId: record.id })}
@@ -192,14 +212,14 @@ function GeneralDetail({ route, navigation }) {
             </Card>
           </>
         )}
-        {row.kind === 'branch' && (
+        {kind === 'branch' && (
           <Button
             onPress={() => navigation.push('Module', { page: 'classes', branchId: record.id })}
           >
             Kampüsün sınıfları
           </Button>
         )}
-        {row.kind === 'teacher' && (
+        {kind === 'teacher' && (
           <Card>
             <T>{record.email}</T>
             <T>{record.phone}</T>
@@ -216,7 +236,7 @@ function GeneralDetail({ route, navigation }) {
             </T>
           </Card>
         )}
-        {row.kind === 'student' && (
+        {kind === 'student' && (
           <>
             <Card>
               <T bold size={24}>
@@ -231,7 +251,7 @@ function GeneralDetail({ route, navigation }) {
             </T>
             {data.grades
               .filter((g) => g.studentId === record.id)
-              .sort((a, b) => b.date.localeCompare(a.date))
+              .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
               .slice(0, 12)
               .map((g) => (
                 <Card key={g.id}>
@@ -273,7 +293,7 @@ function GeneralDetail({ route, navigation }) {
             )}
           </>
         )}
-        {row.kind === 'homework' && (
+        {kind === 'homework' && (
           <>
             <T bold size={19}>
               {scope.teacher ? 'Teslimler' : 'Teslimin'}
@@ -283,42 +303,46 @@ function GeneralDetail({ route, navigation }) {
                 (s) =>
                   s.homeworkId === record.id && (scope.teacher || s.studentId === scope.student.id),
               )
-              .map((s) => (
-                <Card key={s.id}>
-                  <T bold>{nameOf(data, 'students', s.studentId)}</T>
-                  <T muted>
-                    {s.fileName} · {dateLabel(s.submittedAt)}
-                  </T>
-                  <Badge text={s.score == null ? 'Değerlendirme bekliyor' : `${s.score} / 100`} />
-                  {!!s.feedback && <T>{s.feedback}</T>}
-                  {scope.teacher && (
-                    <Button onPress={() => setForm({ kind: 'grade', record: s })}>
-                      Değerlendir
-                    </Button>
-                  )}
-                  {!!s.fileUri && (
-                    <Button
-                      onPress={async () => {
-                        try {
-                          await shareFile(s.fileUri)
-                        } catch (error) {
-                          recordError(error, 'submission-file')
-                          notify('Dosya açılamadı.', 'error')
-                        }
-                      }}
-                    >
-                      Teslim dosyasını aç
-                    </Button>
-                  )}
-                </Card>
-              ))}
+              .map((s) => {
+                const fileUri = fileUriOf(s)
+                return (
+                  <Card key={s.id}>
+                    <T bold>{nameOf(data, 'students', s.studentId)}</T>
+                    <T muted>
+                      {s.fileName} · {dateLabel(s.submittedAt)}
+                    </T>
+                    <Badge text={s.score == null ? 'Değerlendirme bekliyor' : `${s.score} / 100`} />
+                    {!!s.feedback && <T>{s.feedback}</T>}
+                    {scope.teacher && (
+                      <Button onPress={() => setForm({ kind: 'grade', record: s })}>
+                        Değerlendir
+                      </Button>
+                    )}
+                    {!!fileUri && (
+                      <Button
+                        onPress={async () => {
+                          try {
+                            await shareFile(fileUri)
+                          } catch (error) {
+                            recordError(error, 'submission-file')
+                            notify('Dosya açılamadı.', 'error')
+                          }
+                        }}
+                      >
+                        Teslim dosyasını aç
+                      </Button>
+                    )}
+                  </Card>
+                )
+              })}
           </>
         )}
-        {row.kind === 'quiz' && (
+        {kind === 'quiz' && (
           <>
             <T bold>Soru bankası</T>
             {record.questionIds.map((id) => {
               const q = data.bank.find((q) => q.id === id)
+              if (!q) throw new Error('Soru bankası kaydı bulunamadı.')
               return (
                 <Card key={id}>
                   <T bold>{q.topic}</T>
@@ -338,13 +362,13 @@ function GeneralDetail({ route, navigation }) {
             })}
           </>
         )}
-        {row.kind === 'material' &&
+        {kind === 'material' &&
           record.content?.map((text, i) => (
             <Card key={i}>
               <T>{text}</T>
             </Card>
           ))}
-        {row.kind === 'lesson' && scope.teacher && (
+        {kind === 'lesson' && scope.teacher && (
           <Button
             onPress={() =>
               navigation.push('Module', {
@@ -369,14 +393,22 @@ function GeneralDetail({ route, navigation }) {
             primary
             icon="Download"
             disabled={fileBusy}
-            onPress={() => handleDocument('save')}
+            onPress={() => handleDocument('save', document)}
           >
             Cihaza kaydet
           </Button>
-          <Button icon="Share2" disabled={fileBusy} onPress={() => handleDocument('share')}>
+          <Button
+            icon="Share2"
+            disabled={fileBusy}
+            onPress={() => handleDocument('share', document)}
+          >
             Paylaş
           </Button>
-          <Button icon="Printer" disabled={fileBusy} onPress={() => handleDocument('print')}>
+          <Button
+            icon="Printer"
+            disabled={fileBusy}
+            onPress={() => handleDocument('print', document)}
+          >
             Yazdır
           </Button>
         </Sheet>

@@ -256,6 +256,17 @@ export class DocumentLayout {
     this.y += 7
   }
 
+  /** Çizgili yazı alanı (çözüm ve not alanları). */
+  writingArea(title: string, rows = 6) {
+    this.ensure(22 + rows * 8)
+    this.section(title)
+    for (let index = 0; index < rows; index++) {
+      this.rule(this.y + 7)
+      this.y += 8
+    }
+    this.y += 6
+  }
+
   signatures(left: string, right: string, compact = false) {
     const size = compact ? 8 : 9
     const labels = [this.wrap(left, 76, size), this.wrap(right, 83, size)]

@@ -50,6 +50,16 @@ export async function loadDocumentState(
       .record
   const records: Records = {}
 
+  if (type === 'material') {
+    // Materyal öğrenciye bağlı değildir: yalnız hazırlayan öğretmen ad için okunur.
+    const material = await read('materials', recordId)
+    const teacher = await optional(read('teachers', material.teacherId))
+    return buildWorkflowState(
+      { materials: [material], teachers: teacher ? [teacher] : [] },
+      { modules: {}, academicYear: null },
+    )
+  }
+
   const main =
     type === 'receipt' ? await read('invoices', recordId) : await read('contracts', recordId)
   records[type === 'receipt' ? 'invoices' : 'contracts'] = [main]

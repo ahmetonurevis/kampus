@@ -11,7 +11,12 @@ import {
   type PdfOp,
   type TextMeasurer,
 } from '../src/lib/pdf/layout.ts'
-import { contractDocument, documentFilename, receiptDocument } from '../src/lib/pdf/templates.ts'
+import {
+  contractDocument,
+  documentFilename,
+  materialDocument,
+  receiptDocument,
+} from '../src/lib/pdf/templates.ts'
 
 /** Sahte ölçer: karakter başına sabit genişlik (jsPDF ve yazı tipi gerekmez). */
 const measurer: TextMeasurer = {
@@ -189,4 +194,21 @@ test('paragraf sayfa sonunda son iki satırı tek başına bırakmaz', () => {
 test('dosya adı kayıt kimliğinden güvenli üretilir', () => {
   assert.equal(documentFilename('receipt', 'inv-12'), 'dekont-inv-12.pdf')
   assert.equal(documentFilename('contract', 'c/../x y'), 'sozlesme-c-..-x-y.pdf')
+  assert.equal(documentFilename('material', 'm-1'), 'materyal-m-1.pdf')
+})
+
+test('çalışma kâğıdı materyal içeriği, yazı alanı ve sayfa numarasıyla üretilir', () => {
+  const seed = createSeed(NOW)
+  const material = seed.materials[0]!
+  const document = materialDocument(measurer, documentData(seed, 'material', material.id), OPTIONS)
+  const all = texts(document.pages[0]!)
+  assert.ok(all.includes('DERS ÇALIŞMA KÂĞIDI'))
+  assert.ok(all.includes('03 / Çözüm ve çalışma alanı'))
+  assert.ok(all.includes(`Belge no: ${material.id}`))
+  assert.ok(all.includes(`1 / ${document.pages.length}`))
+  // Yazı alanı: bölüm ayracına ek olarak beş çizgi.
+  const rules = document.pages.flatMap((page) =>
+    page.ops.filter((op) => op.kind === 'line' && op.y < 276),
+  )
+  assert.ok(rules.length >= 6)
 })

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
@@ -18,7 +19,6 @@ const MOBILE_COLUMNS = ['subject', 'level']
 /**
  * Materyaller (öğrenci, Vue `Learning.vue` `/materyaller`): öğrencinin düzeyindeki materyaller;
  * kapsamı sunucu uygular. Ders filtresi, başlık araması, satırdan içerik özeti. Yalnız okuma.
- * TODO(pdf-material): PDF önizleme ve indirme PDF görevinde eklenir.
  */
 export function StudentMaterialsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -51,15 +51,23 @@ export function StudentMaterialsPage({ page }: { page: NavPage }) {
         key: 'actions',
         label: 'İşlemler',
         cell: (row) => (
-          <Button
-            variant="secondary"
-            size="sm"
-            aria-label={`${row.title} özeti`}
-            onClick={() => openMaterial(row.id)}
-          >
-            <Icon name="Eye" size={15} aria-hidden="true" />
-            Özet
-          </Button>
+          <span className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-label={`${row.title} özeti`}
+              onClick={() => openMaterial(row.id)}
+            >
+              <Icon name="Eye" size={15} aria-hidden="true" />
+              Özet
+            </Button>
+            <PdfButton
+              type="material"
+              recordId={row.id}
+              label="PDF"
+              ariaLabel={`${row.title} PDF olarak görüntüle`}
+            />
+          </span>
         ),
       },
     ],

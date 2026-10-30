@@ -1,4 +1,5 @@
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { useCoreItem } from '@/hooks/use-core-collection.ts'
@@ -8,8 +9,7 @@ import { Facts, SummaryTitle } from './LearningParts.tsx'
 type Props = { materialId: string; onClose: () => void }
 
 /**
- * Materyal özeti: ders, düzey, dosya ve içerik metni.
- * TODO(pdf-material): belge türüne özel PDF önizleme ve indirme PDF görevinde eklenir.
+ * Materyal özeti: ders, düzey, dosya ve içerik metni; çalışma kâğıdı PDF olarak açılır.
  */
 export function MaterialPanel({ materialId, onClose }: Props) {
   return (
@@ -51,6 +51,14 @@ function MaterialDetail({ materialId }: { materialId: string }) {
           ))}
         </div>
       </SummarySection>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <PdfButton
+          type="material"
+          recordId={material.id}
+          label="Çalışma kâğıdını görüntüle"
+          size="default"
+        />
+      </div>
     </>
   )
 }

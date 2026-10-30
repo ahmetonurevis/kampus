@@ -8,6 +8,7 @@ import { documentErrorMessage, loadDocumentState } from '@/lib/pdf/document-stat
 import {
   contractDocument,
   documentFilename,
+  materialDocument,
   receiptDocument,
   type PdfDocumentType,
 } from '@/lib/pdf/templates.ts'
@@ -46,11 +47,18 @@ export function useDocumentPdf(type: PdfDocumentType, recordId: string, enabled:
         const state = await loadDocumentState(client, { type, recordId }, signal)
         const options = { institution }
         const { renderPdf } = await import('@/lib/pdf/render.ts')
-        const { blob, pages } = await renderPdf((measurer) =>
-          type === 'receipt'
-            ? receiptDocument(measurer, documentData(state, 'receipt', recordId), options)
-            : contractDocument(measurer, documentData(state, 'contract', recordId), options),
-        )
+        const { blob, pages } = await renderPdf((measurer) => {
+          switch (type) {
+            case 'receipt':
+              return receiptDocument(measurer, documentData(state, 'receipt', recordId), options)
+            case 'contract':
+              return contractDocument(measurer, documentData(state, 'contract', recordId), options)
+            case 'material':
+              return materialDocument(measurer, documentData(state, 'material', recordId), options)
+            default:
+              return type satisfies never
+          }
+        })
         return { blob, pages, filename: documentFilename(type, recordId) }
       } catch (error) {
         // Pencere kapanınca istek iptal edilir; bu hata değildir.

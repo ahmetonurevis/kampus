@@ -208,3 +208,45 @@ test.describe('PDF: sözleşme', () => {
     await expect(opener).toBeFocused()
   })
 })
+
+test.describe('PDF: ders çalışma kâğıdı', () => {
+  test('öğrenci materyali çalışma kâğıdı olarak açar; satır özeti açılmaz, indirme PDF verir', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    await loginAs('ogrenci')
+    const client = await api('ogrenci')
+    const listed = await client.get('/api/v1/collections/materials?pageSize=1')
+    expect(listed.status).toBe(200)
+    const material = (listed.body as { data: { id: string; record: { title: string } }[] }).data[0]
+    expect(material, 'öğrencinin düzeyinde materyal').toBeTruthy()
+    if (!material) return
+
+    await page.goto('/ogrenci/materyaller')
+    await page.getByLabel('Tabloda ara').fill(material.record.title)
+    const opener = page.getByRole('button', {
+      name: `${material.record.title} PDF olarak görüntüle`,
+    })
+    await opener.click()
+
+    const preview = page.getByRole('dialog', { name: 'Ders çalışma kâğıdı · Önizleme' })
+    await expect(preview.getByRole('img', { name: 'Ders çalışma kâğıdı, sayfa 1' })).toBeVisible()
+    const viewer = preview.getByLabel('PDF sayfa görünümü')
+    await expect(viewer).toContainText(material.record.title)
+    await expect(viewer).toContainText('Çözüm ve çalışma alanı')
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      preview.getByRole('button', { name: 'PDF’yi indir' }).click(),
+    ])
+    expect(download.suggestedFilename()).toBe(`materyal-${material.id}.pdf`)
+    expect((await readPdf(download)).subarray(0, 5).toString('latin1')).toBe('%PDF-')
+
+    await page.keyboard.press('Escape')
+    await expect(preview).toBeHidden()
+    await expect(opener).toBeFocused()
+    // Pencere içi tıklamalar satıra sızmaz: materyal özeti açılmamıştır.
+    await expect(page.getByRole('dialog', { name: 'Materyal özeti' })).toHaveCount(0)
+  })
+})

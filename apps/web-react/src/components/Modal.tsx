@@ -46,6 +46,8 @@ export function Modal({
       <DialogContent
         {...(description ? {} : { 'aria-describedby': undefined })}
         {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
+        // Portal olaylarının React ağacında üst öğeye (ör. satır tıklaması) sızmasını keser.
+        onClick={(event) => event.stopPropagation()}
         className={cn(
           'flex max-h-[calc(100dvh-48px)] flex-col gap-0 overflow-hidden p-0',
           SIZES[size],

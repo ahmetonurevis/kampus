@@ -35,6 +35,25 @@ const FinancePage = lazy(async () => ({
   default: (await import('./finance/FinancePage.tsx')).FinancePage,
 }))
 
+const TeacherHomeworkPage = lazy(async () => ({
+  default: (await import('./learning/TeacherHomeworkPage.tsx')).TeacherHomeworkPage,
+}))
+const TeacherMaterialsPage = lazy(async () => ({
+  default: (await import('./learning/TeacherMaterialsPage.tsx')).TeacherMaterialsPage,
+}))
+const TeacherQuizzesPage = lazy(async () => ({
+  default: (await import('./learning/TeacherQuizzesPage.tsx')).TeacherQuizzesPage,
+}))
+const StudentHomeworkPage = lazy(async () => ({
+  default: (await import('./learning/StudentLearningPages.tsx')).StudentHomeworkPage,
+}))
+const StudentQuizzesPage = lazy(async () => ({
+  default: (await import('./learning/StudentLearningPages.tsx')).StudentQuizzesPage,
+}))
+const StudentMaterialsPage = lazy(async () => ({
+  default: (await import('./learning/StudentMaterialsPage.tsx')).StudentMaterialsPage,
+}))
+
 const MIGRATED = new Set([
   'yonetici/subeler',
   'yonetici/personel',
@@ -48,6 +67,12 @@ const MIGRATED = new Set([
   'ogrenci/ders-programi',
   'veli/akademik-takip',
   'veli/cocuk-secici',
+  'ogretmen/odevler',
+  'ogretmen/materyal-yukle',
+  'ogretmen/quiz-olustur',
+  'ogrenci/odevler',
+  'ogrenci/materyaller',
+  'ogrenci/soru-coz',
 ])
 
 export function isMigratedPage(role: RoleKey, path: string): boolean {
@@ -80,6 +105,18 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <ParentTrackingPage page={page} />
     case 'veli/cocuk-secici':
       return <ChildrenPage page={page} />
+    case 'ogretmen/odevler':
+      return <TeacherHomeworkPage page={page} />
+    case 'ogretmen/materyal-yukle':
+      return <TeacherMaterialsPage page={page} />
+    case 'ogretmen/quiz-olustur':
+      return <TeacherQuizzesPage page={page} />
+    case 'ogrenci/odevler':
+      return <StudentHomeworkPage page={page} />
+    case 'ogrenci/materyaller':
+      return <StudentMaterialsPage page={page} />
+    case 'ogrenci/soru-coz':
+      return <StudentQuizzesPage page={page} />
     default:
       return null
   }

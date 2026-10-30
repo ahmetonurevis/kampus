@@ -1,14 +1,11 @@
 import {
   bookAppointment,
   bookAppointmentSchema,
-  requireVisibleAppointment,
   updateAppointment,
 } from '@kampus/school-core/lib/appointments.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
-import { loadRecordsByIds } from '../db/records.ts'
-import { ConflictError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
@@ -23,9 +20,10 @@ import { runCommand, type CommandResponse } from './operation-runner.ts'
  * etkinlik ve randevular bütünüyle yüklenir. Kurum kilidi aynı saate eşzamanlı iki talepten
  * yalnız birinin yazılmasını sağlar; ikincisi çakışmayı görür (DOM-ILT-101).
  *
- * Durum değişikliğinde sürüm denetimi görünürlükten sonradır: kapsam dışı randevu `If-Match`
- * ne olursa olsun olmayan kayıtla aynı 404'ü alır, sürümü sızmaz (DOM-ILT-103). Bu yüzden
- * çalıştırıcıya `expectedVersions` verilmez; satır sürümü kurum kilidi altında okunur.
+ * Durum değişikliğinde `If-Match` çalıştırıcının `expectedVersions` denetimiyle karşılaştırılır:
+ * sürüm farkı core kapsam ve yetki denetiminden sonra bildirilir. Kapsam dışı randevu yanlış
+ * sürümde de olmayan kayıtla aynı 404'ü, görünür ama yetkisiz geçiş 403'ü, yetkili kullanıcı
+ * 409 `version_conflict` alır (DOM-ILT-102, DOM-ILT-103).
  * Randevu notu ve gerekçe loglanmaz; denetim kaydına yalnız değişen alan adları yazılır.
  */
 
@@ -65,7 +63,8 @@ export function bookAppointmentCommand(
 
 /**
  * Randevunun durumunu değiştirir (DOM-ILT-102): öğretmen onaylar veya reddeder, talep eden geri
- * çeker, ikisi de onaylı randevuyu iptal eder. Sıra: görünürlük (404) → sürüm (409) → kural.
+ * çeker, ikisi de onaylı randevuyu iptal eder. Sıra: olmayan kayıt (404) → görünürlük (404) →
+ * yetki (403) → sürüm (409) → kural.
  */
 export function updateAppointmentCommand(
   ctx: ServiceContext,
@@ -79,20 +78,20 @@ export function updateAppointmentCommand(
     {
       action: 'appointment.update',
       collections: spec.collections,
+      ...(options.expectedVersion === null
+        ? {}
+        : {
+            expectedVersions: [
+              { collection: 'appointments', id: appointmentId, version: options.expectedVersion },
+            ],
+          }),
       entity: appointmentEntity(appointmentId),
       load: async (tx) => {
-        const [{ actor, institutionType, scalars }, rows] = await Promise.all([
-          environment(tx, ctx, spec),
-          loadRecordsByIds(tx, ctx.institutionId, 'appointments', [appointmentId]),
-        ])
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
         const by: Participant = { ...actor, userId: ctx.actor.userId }
-        const version = rows[0]?.version
         return {
           scalars,
           run: (state, { now }) => {
-            requireVisibleAppointment(state, by, appointmentId, { institutionType })
-            if (options.expectedVersion !== null && version !== options.expectedVersion)
-              throw new ConflictError()
             updateAppointment(state, by, appointmentId, input, now, { institutionType })
             return appointmentId
           },

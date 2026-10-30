@@ -372,7 +372,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ayrı yaşayan ebeveynlerin görüşme talepleri ve notları birbirine sızmamalıdır (`DOM-ILT-073`); veli ile öğretmen arasındaki görüşme öğrenciyle paylaşılmak zorunda değildir.
 - **Kaynak:** İşletme kuralı; KVKK md. 4/2 (ölçülülük).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/scope.ts` `appointments` okuma kuralı ve `requireVisibleAppointment`; API okuması `GET /collections/appointments`, `PATCH /appointments/:id` görünürlüğü sürümden önce denetler (kapsam dışı randevu yanlış sürümde de 404). Vue ve telefon demosu öğrencinin bütün randevularını gösterir.
+- **Kodda:** kısmen — core `lib/scope.ts` `appointments` okuma kuralı ve `requireVisibleAppointment`; API okuması `GET /collections/appointments`, `PATCH /appointments/:id` sürümü kapsam ve yetkiden sonra karşılaştırır (kapsam dışı randevu yanlış sürümde de 404, görünür ama yetkisiz geçiş 403). Vue ve telefon demosu öğrencinin bütün randevularını gösterir.
 
 ### DOM-ILT-104 · Kapanan randevu takvimi bırakır
 

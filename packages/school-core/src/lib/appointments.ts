@@ -249,8 +249,8 @@ export function bookAppointment(
 }
 
 /**
- * Aktörün görebildiği randevu; görmediği veya olmayan randevu aynı 404'tür (DOM-ILT-103). API
- * sürüm denetiminden önce bunu çağırır: kapsam dışı kayıt sürümü ne olursa olsun 404 alır.
+ * Aktörün görebildiği randevu; görmediği veya olmayan randevu aynı 404'tür (DOM-ILT-103).
+ * `updateAppointment` ilk iş bunu çağırır; API sürüm farkını ancak bundan sonra bildirir.
  */
 export function requireVisibleAppointment(
   state: State,

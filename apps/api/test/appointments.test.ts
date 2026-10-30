@@ -536,6 +536,39 @@ describe('randevu uçları', () => {
     })
   })
 
+  test('DOM-ILT-102, DOM-ILT-103: yanlış sürümde kapsam dışı 404, görünür ama yetkisiz 403, yetkili 409', async () => {
+    const a = await institution()
+    const parentCookie = await parent(a.id)
+    const otherParent = await parent(a.id)
+    const teacherCookie = await teacher(a.id)
+    // Öğrencinin açtığı talep veliye görünür; velinin açtığı görüşme öteki veliye görünmez.
+    const own = await booked(await student(a.id))
+    const meeting = await booked(parentCookie, { ...BOOKING, slotId: 'slot-t2-1' })
+    const stale = (version: number) => version + 5
+    await unchanged(a.id, meeting.id, async () => {
+      assertError(
+        await patch(otherParent, meeting.id, { status: 'Geri çekildi' }, stale(meeting.version)),
+        404,
+        'not_found',
+      )
+    })
+    await unchanged(a.id, own.id, async () => {
+      assertError(
+        await patch(parentCookie, own.id, { status: 'Onaylandı' }, stale(own.version)),
+        403,
+        'appointment_teacher_only',
+      )
+      assertError(
+        await patch(teacherCookie, own.id, { status: 'Onaylandı' }, stale(own.version)),
+        409,
+        'version_conflict',
+      )
+    })
+    // Doğru sürümle aynı istek geçer; sürüm hatası kaydı değiştirmemiştir.
+    const approved = await patch(teacherCookie, own.id, { status: 'Onaylandı' }, own.version)
+    assert.equal(approved.statusCode, 200, approved.body)
+  })
+
   test('DOM-YTK-040: iletişim modülü kapalıyken randevu uçları 403 module_disabled', async () => {
     const a = await institution({ enabledModules: { communication: false } })
     assertError(await book(await parent(a.id)), 403, 'module_disabled')

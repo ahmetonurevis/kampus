@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import {
   bigint,
   check,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -45,5 +46,18 @@ export const records = pgTable(
     }),
     // Sınır RECORD_MAX_BYTES ile aynıdır; kısıt ifadesi sabit metin olmalı.
     check('records_data_size_check', sql`pg_column_size(${table.data}) <= 262144`),
+    // Koleksiyonun son sırası (`appendPositions`, arşivliler dahil) ve sıralı yükleme: en büyük
+    // sıra geriye tek adımla bulunur, her eklemede koleksiyon taranmaz.
+    index('records_institution_collection_position_idx').on(
+      table.institutionId,
+      table.collection,
+      table.position,
+    ),
+    // Yazışmanın mesajları (ADR 0005): sayfa, özet ve okundu işareti yalnız bir yazışmanın
+    // mesajlarını sırasıyla gezer. Sorgular aynı ifadeyi ve koşulu kullanmalı
+    // (`db/conversation-messages.ts`, `services/communication.ts`).
+    index('records_conversation_messages_idx')
+      .on(table.institutionId, sql`(${table.data} ->> 'conversationId')`, table.position, table.id)
+      .where(sql`${table.collection} = 'conversationMessages' and ${table.archivedAt} is null`),
   ],
 )

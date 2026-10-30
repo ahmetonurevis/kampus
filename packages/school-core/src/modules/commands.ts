@@ -149,9 +149,12 @@ export const OPERATION_COMMANDS = {
   'announcement.revise': spec('communication', [...SCOPE, 'announcements']),
   'announcement.withdraw': spec('communication', [...SCOPE, 'announcements']),
   'announcement.read': spec('communication', [...SCOPE, 'announcements']),
-  'conversation.start': spec('communication', [...SCOPE, 'conversations']),
-  'message.send': spec('communication', [...SCOPE, 'conversations']),
-  'message.read': spec('communication', [...SCOPE, 'conversations']),
+  // Mesajlar ayrı kayıtlardır (ADR 0005). API bu komutlarda koleksiyonları kısmi yükler: yalnız
+  // hedef yazışma, aynı öğrencinin yazışmaları ve yalnız okunmamış karşı taraf mesajları
+  // (`services/communication.ts`); mesaj gönderimi var olan mesajları hiç yüklemez.
+  'conversation.start': spec('communication', [...SCOPE, 'conversations', 'conversationMessages']),
+  'message.send': spec('communication', [...SCOPE, 'conversations', 'conversationMessages']),
+  'message.read': spec('communication', [...SCOPE, 'conversations', 'conversationMessages']),
   'conversation.access': spec('communication', [...SCOPE, 'conversations']),
 } as const satisfies Record<string, CommandSpec>
 export type OperationCommand = keyof typeof OPERATION_COMMANDS

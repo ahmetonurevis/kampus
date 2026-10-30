@@ -64,6 +64,13 @@
       "when": 1793342723005,
       "tag": "0008_add_audit_log_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793344560394,
+      "tag": "0009_split_conversation_messages",
+      "breakpoints": true
     }
   ]
 }

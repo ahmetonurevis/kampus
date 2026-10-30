@@ -18,6 +18,7 @@ import {
 import { dayKey, dateLabel, timeLabel } from '../lib/format.js'
 import { requiredText } from '../lib/domain.js'
 import { tutorConflict } from '@kampus/school-core/lib/tutor-conflicts.ts'
+import { addConversationMessage } from '@kampus/school-core/lib/communication.ts'
 import PageHeading from '../components/PageHeading.vue'
 import DataTable from '../components/DataTable.vue'
 import Badge from '../components/Badge.vue'
@@ -94,6 +95,17 @@ const conversation = computed(() =>
     ? conversations.value.find((c) => c.id === selectedConversation.value) || conversations.value[0]
     : conversations.value.find((c) => c.teacherId === recipientId.value),
 )
+// Mesajlar ayrı koleksiyondadır (ADR 0005); yazışma başına bir kez gruplanır.
+const messagesByConversation = computed(() => {
+  const groups = new Map()
+  for (const m of state.conversationMessages) {
+    const list = groups.get(m.conversationId)
+    if (list) list.push(m)
+    else groups.set(m.conversationId, [m])
+  }
+  return groups
+})
+const messagesOf = (c) => (c && messagesByConversation.value.get(c.id)) || []
 const partner = (c) =>
   isTeacher.value
     ? `${studentById(c.studentId).name}${c.audience === 'parent' ? ' · Velisi' : ''}`
@@ -136,7 +148,7 @@ const scrollMessages = async () => {
   await nextTick()
   if (messagesEl.value) messagesEl.value.scrollTop = messagesEl.value.scrollHeight
 }
-watch(() => conversation.value?.messages.length, scrollMessages)
+watch(() => messagesOf(conversation.value).length, scrollMessages)
 watch([tab, selectedConversation], scrollMessages)
 function sendMessage() {
   const result = action(() => {
@@ -151,11 +163,11 @@ function sendMessage() {
         studentId: currentStudent.value.id,
         teacherId: recipientId.value,
         audience: ownSender.value,
-        messages: [],
       }
       state.conversations.push(conv)
+      conv = state.conversations.at(-1)
     }
-    conv.messages.push({
+    addConversationMessage(state, conv, {
       id: id('msg'),
       text,
       sender: ownSender.value,
@@ -553,7 +565,7 @@ function sendAbsence() {
         >
           <Avatar :name="partner(c)" /><span
             ><strong>{{ partner(c) }}</strong
-            ><small>{{ c.messages.at(-1)?.text }}</small></span
+            ><small>{{ messagesOf(c).at(-1)?.text }}</small></span
           >
         </button>
         <p v-if="!conversations.length" class="empty-inline">
@@ -580,7 +592,7 @@ function sendAbsence() {
         </div>
         <div ref="messagesEl" class="chat-messages">
           <div
-            v-for="m in conversation?.messages || []"
+            v-for="m in messagesOf(conversation)"
             :key="m.id"
             class="message-bubble"
             :class="{ own: m.sender === ownSender }"

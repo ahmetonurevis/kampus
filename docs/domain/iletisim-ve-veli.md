@@ -46,7 +46,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ayrı yaşayan velilerde ortak konuşma kişisel bilgi sızdırır (`DOM-ILT-073`); konuşmanın öğrenciye bağlı olması kardeşler arasında karışıklığı önler.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi (yetişkin kursiyerde veli yoktur, `DOM-YTK-030`)
-- **Kodda:** kısmen — core `startConversation` yazışmayı öğrenci + öğretmen + hedef kitle + veli hesabı (`parentUserId`) başına tekil açar, öğretmen yalnız ders verdiği/rehberi olduğu öğrencinin velisiyle başlatır; API `apps/api/src/routes/communication.ts` `POST /conversations`, veli seçimi `GET /students/:id/parent-accounts`. Veli kimliği (`parentUserId`) olmayan eski veli yazışması hiçbir veliye görünmez ve yeni yazışmayla eşleşmez (kapalı başarısız; migration `0007` öğrencinin tek veli hesabı varsa doldurur); öğretmen ve yönetici kuralları değişmez. Veli hesapları `GET /students/:id/parent-accounts` yalnız veli yazışması başlatabilen öğretmene, `startConversation` ile aynı kapsamda (`parentAccountsDecision`) açılır; yönetici ve ön büro 403, kapsam dışı 404. Mesaj kotası (kullanıcı ve kurum başına dakikada 30) başlatmadaki ilk mesajla paylaşılır. İdare (yönetici, ön büro) ile veli yazışması yok.
+- **Kodda:** kısmen — core `startConversation` yazışmayı öğrenci + öğretmen + hedef kitle + veli hesabı (`parentUserId`) başına tekil açar, öğretmen yalnız ders verdiği/rehberi olduğu öğrencinin velisiyle başlatır; API `apps/api/src/routes/communication.ts` `POST /conversations`, veli seçimi `GET /students/:id/parent-accounts`. Veli kimliği (`parentUserId`) olmayan eski veli yazışması hiçbir veliye görünmez ve yeni yazışmayla eşleşmez (kapalı başarısız; migration `0007` öğrencinin tek veli hesabı varsa doldurur); öğretmen ve yönetici kuralları değişmez. Veli hesapları `GET /students/:id/parent-accounts` yalnız veli yazışması başlatabilen öğretmene, `startConversation` ile aynı kapsamda (`parentAccountsDecision`) açılır; yönetici ve ön büro 403, kapsam dışı 404. Mesaj kotası (kullanıcı ve kurum başına dakikada 30) başlatmadaki ilk mesajla paylaşılır. Mesajlar yazışmadan ayrı, mesaj başına bir kayıttır (`conversationMessages`, ADR 0005). Yazışma listesi son mesaja göre sıralanır (`lastMessageAt`); okunmamış sayısı, son mesaj ve yanıt bekleme yalnız sayfadaki yazışmalar için SQL'de hesaplanır. Başlatma yalnız aynı öğrencinin yazışmalarını yükler. İdare (yönetici, ön büro) ile veli yazışması yok.
 
 ### DOM-ILT-011 · Öğrenci–öğretmen sınırları
 
@@ -62,7 +62,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Veli–kurum yazışması uyuşmazlıkta delildir.
 - **Kaynak:** İşletme kuralı; 5 dakika işletme kuralıdır.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `sendMessage` yalnız ekler; API'de düzenleme/silme ucu yoktur (API `apps/api/src/routes/communication.ts`). 5 dakikalık geri çekme ve ek dosya yok.
+- **Kodda:** kısmen — core `sendMessage` yalnız ekler (`addConversationMessage`, ayrı `conversationMessages` kaydı); API'de düzenleme/silme ucu yoktur (API `apps/api/src/routes/communication.ts`). Gönderim yalnız hedef yazışmayı yükler, var olan mesajları yüklemez; yazışmadaki mesaj sayısının üst sınırı yoktur. `GET /conversations/:id/messages` imleçli sayfayı SQL'de verir (`apps/api/src/db/conversation-messages.ts`). Mesaj koleksiyonu genel koleksiyon okumasına kapalıdır; taraf olmayana 404. 5 dakikalık geri çekme ve ek dosya yok.
 
 ### DOM-ILT-013 · Yanıt süresi iş saatiyle ölçülür
 
@@ -120,7 +120,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Öğretmen "mesaj ulaştı mı" sorusunu tekrar mesajla sormamalı; okunmuş mesaj ise rıza veya tebligat değildir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — mesaj okundu bilgisi core `markMessagesRead` (`readAt`, karşı tarafın mesajları) ve API `apps/api/src/routes/communication.ts` `POST /conversations/:id/read`; yöneticinin okuması okundu üretmez.
+- **Kodda:** kısmen — mesaj okundu bilgisi core `markMessagesRead` (mesaj kaydında `readAt`, karşı tarafın mesajları) ve API `apps/api/src/routes/communication.ts` `POST /conversations/:id/read`; API yalnız o yazışmanın karşı taraf okunmamışlarını yükler. Yöneticinin okuması okundu üretmez.
 
 ## Veli onayı ve izinler
 

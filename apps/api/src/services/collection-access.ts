@@ -12,10 +12,13 @@ import { NotFoundError } from '../errors.ts'
  *   uçla açılır (DOM-YTK-053).
  * - `conversations`: birebir yazışma; core taraflarına açar ama yazışma kendi ucuyla gelir,
  *   yöneticinin okuması gerekçeli ve denetim kayıtlı ayrı işlemdir (DOM-YTK-052).
+ * - `conversationMessages`: yazışmanın mesajları (ADR 0005); yalnız
+ *   `GET /conversations/:id/messages` ile, taraf denetiminden sonra sayfalanarak okunur.
  */
 const CLOSED_COLLECTIONS: ReadonlySet<CollectionName> = new Set<CollectionName>([
   'audit',
   'conversations',
+  'conversationMessages',
 ])
 
 /** Okuma uçlarında görünen koleksiyonlar (OpenAPI açıklaması ve testler için). */

@@ -4,6 +4,12 @@ import { after, before, describe, test } from 'node:test'
 import { and, eq } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
+import {
+  conversationSummary,
+  digestMessages,
+  MESSAGE_MAX_LENGTH,
+  type ConversationMessage,
+} from '@kampus/school-core/lib/communication.ts'
 
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
@@ -148,9 +154,19 @@ describe('iletişim uçları', () => {
     return id
   }
 
+  type StoredMessage = { id: string; text: string; readAt?: string; conversationId: string }
+  /** Yazışma kaydı ve ayrı mesaj kayıtları (ADR 0005), deponun sırasıyla. */
   async function conversation(institutionId: string, id: string) {
     const row = await findRecord(db, institutionId, 'conversations', id)
-    return row?.data as { messages: { id: string; text: string; readAt?: string }[] } | undefined
+    if (!row) return undefined
+    const messages = await loadRecords(db, institutionId, ['conversationMessages'], {
+      match: [{ field: 'conversationId', values: [id] }],
+    })
+    return {
+      ...row.data,
+      version: row.version,
+      messages: messages.map((message) => message.data as StoredMessage),
+    }
   }
 
   async function audits(institutionId: string, action: string) {
@@ -219,7 +235,8 @@ describe('iletişim uçları', () => {
       // DOM-ILT-024: okundu işareti karşı tarafın mesajlarına bir kez yazılır.
       const marked = await send('POST', `/api/v1/conversations/${id}/read`, studentCookie, {})
       assert.equal(marked.statusCode, 200, marked.body)
-      assert.equal(marked.json().data.changes.updated, 1)
+      // Karşı tarafın iki mesajı; her biri ayrı kayıt.
+      assert.equal(marked.json().data.changes.updated, 2)
       const stored = await conversation(a.id, id)
       assert.equal(stored?.messages.filter((m) => m.readAt).length, 2)
       const repeat = await send('POST', `/api/v1/conversations/${id}/read`, studentCookie, {})
@@ -310,14 +327,19 @@ describe('iletişim uçları', () => {
               teacherId: 't2',
               audience: 'parent',
               createdAt: FIXED_NOW.toISOString(),
-              messages: [
-                {
-                  id: 'conv-eski-m0',
-                  text: 'Eski yazışma',
-                  sender: 'teacher',
-                  date: FIXED_NOW.toISOString(),
-                },
-              ],
+              lastMessageAt: FIXED_NOW.toISOString(),
+            },
+          ],
+          conversationMessages: [
+            {
+              id: 'conv-eski-m0',
+              conversationId: 'conv-eski',
+              studentId: 's1',
+              teacherId: 't2',
+              audience: 'parent',
+              text: 'Eski yazışma',
+              sender: 'teacher',
+              date: FIXED_NOW.toISOString(),
             },
           ],
         }),
@@ -421,6 +443,124 @@ describe('iletişim uçları', () => {
       assert.deepEqual(await conversation(a.id, id), before)
     })
 
+    test('ADR 0005: 300+ uzun mesajlı yazışmaya yazılır; gönderim 1 yazışma 0 mesaj yükler; sayfalar tam gezilir; liste özeti core ile aynı', async () => {
+      const a = await institution()
+      const teacherMember = await member(a.id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }])
+      const studentCookie = await student(a.id)
+      const opened = await start(teacherMember.cookie, { studentId: 's1', audience: 'student' })
+      assert.equal(opened.statusCode, 201, opened.body)
+      const id: string = opened.json().data.entity.id
+      // Geçmiş: 305 mesaj × 2000 karakter (~600 KB; gömülü dizide belge sınırı 256 KB idi).
+      const HISTORY = 305
+      const history = Array.from({ length: HISTORY }, (_, i) => ({
+        id: `big-${String(i).padStart(3, '0')}`,
+        conversationId: id,
+        studentId: 's1',
+        teacherId: 't2',
+        audience: 'student',
+        text: `${String(i)} `.padEnd(MESSAGE_MAX_LENGTH, 'x'),
+        sender: i % 3 === 0 ? 'teacher' : 'student',
+        date: new Date(FIXED_NOW.getTime() - (HISTORY - i) * 60_000).toISOString(),
+        ...(i < 100 ? { readAt: FIXED_NOW.toISOString() } : {}),
+      }))
+      await insertMissingRecords(db, a.id, rows({ conversationMessages: history }), FIXED_NOW)
+
+      const logs: string[] = []
+      const logged = await buildTestApp(db, { logs, clock: () => now })
+      try {
+        const post = (cookie: string, text: string) =>
+          logged.inject({
+            method: 'POST',
+            url: `/api/v1/conversations/${id}/messages`,
+            headers: {
+              origin: TEST_ORIGIN,
+              'content-type': 'application/json',
+              cookie,
+              ...key(),
+            },
+            payload: JSON.stringify({ text }),
+          })
+        const long = 'y'.repeat(MESSAGE_MAX_LENGTH)
+        for (const cookie of [teacherMember.cookie, studentCookie]) {
+          const sent = await post(cookie, long)
+          assert.equal(sent.statusCode, 201, sent.body)
+          // Mesaj eklenir; yazışmada yalnız `lastMessageAt` değişebilir.
+          assert.equal(sent.json().data.changes.inserted, 1)
+          assert.ok(sent.json().data.changes.updated <= 1)
+        }
+        const applied = logs
+          .flatMap((line) => line.split('\n'))
+          .filter((line) => line.includes('"operation.applied"'))
+          .map((line) => JSON.parse(line) as { action: string; loaded: Record<string, number> })
+          .filter((entry) => entry.action === 'message.send')
+        assert.equal(applied.length, 2)
+        for (const entry of applied) {
+          assert.equal(entry.loaded.conversations, 1)
+          assert.equal(entry.loaded.conversationMessages, 0)
+        }
+      } finally {
+        await logged.close()
+      }
+
+      const stored = await conversation(a.id, id)
+      const total = HISTORY + 2
+      assert.equal(stored?.messages.length, total)
+      // Sayfalar en yeniden geriye, örtüşmeden ve boşluksuz bütün mesajları verir.
+      const seen: string[] = []
+      let cursor: string | null = null
+      let pages = 0
+      do {
+        const query: string = cursor === null ? '' : `&cursor=${cursor}`
+        const page = await read(
+          studentCookie,
+          `/api/v1/conversations/${id}/messages?limit=100${query}`,
+        )
+        assert.equal(page.statusCode, 200, page.body)
+        const items: { id: string; sentAt: string }[] = page.json().data
+        seen.unshift(...items.map((item) => item.id))
+        cursor = page.json().meta.nextCursor
+        pages += 1
+      } while (cursor !== null)
+      assert.equal(pages, Math.ceil(total / 100))
+      assert.deepEqual(
+        seen,
+        stored?.messages.map((m) => m.id),
+      )
+      assert.equal(new Set(seen).size, total)
+
+      // Liste özeti (SQL) core `digestMessages` ile aynıdır; iki tarafın görünümünde.
+      const messages = (stored?.messages ?? []) as unknown as ConversationMessage[]
+      for (const [cookie, side] of [
+        [teacherMember.cookie, 'teacher'],
+        [studentCookie, 'student'],
+      ] as const) {
+        const list = await read(cookie, '/api/v1/conversations')
+        assert.equal(list.statusCode, 200, list.body)
+        const row = list.json().data.find((item: { id: string }) => item.id === id)
+        const expected = conversationSummary(
+          { id, studentId: 's1', teacherId: 't2', audience: 'student' },
+          digestMessages(messages, side),
+          side,
+          now.toISOString(),
+        )
+        assert.deepEqual(
+          {
+            messageCount: row.messageCount,
+            unreadCount: row.unreadCount,
+            lastMessage: row.lastMessage,
+            awaitingReply: row.awaitingReply,
+          },
+          {
+            messageCount: expected.messageCount,
+            unreadCount: expected.unreadCount,
+            lastMessage: expected.lastMessage,
+            awaitingReply: expected.awaitingReply,
+          },
+          side,
+        )
+      }
+    })
+
     test('Idempotency-Key: anahtarsız 400; aynı anahtarla çift gönderim tek mesaj; denetime metin yazılmaz', async () => {
       const a = await institution()
       const teacherCookie = await teacher(a.id)
@@ -453,7 +593,8 @@ describe('iletişim uçları', () => {
       assert.equal(entries.length, 1)
       assert.equal(entries[0]?.entityId, id)
       const text = JSON.stringify(entries[0]?.changes)
-      assert.ok(text.includes('messages') && !text.includes('sınav'), text)
+      // Yeni mesaj kaydının alan adları; metin değil.
+      assert.ok(text.includes('"text"') && !text.includes('sınav'), text)
     })
 
     test('400: boş veya uzun mesaj kaydı değiştirmez', async () => {

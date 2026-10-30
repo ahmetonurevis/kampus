@@ -169,7 +169,13 @@ describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
           sql`insert into records (institution_id, collection, id, data, position, created_at, updated_at) values (${id}, 'conversations', ${row.id}, ${JSON.stringify(row.data)}::jsonb, 1024, ${FIXED_NOW}, ${FIXED_NOW})`,
         )
 
-      await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+      // Yalnız 0007; 0009 gömülü mesaj dizisini kaldırıp sürümü artırır (ayrı test).
+      const upTo0007 = await migrationsUpTo('0007_backfill_conversation_parent_user')
+      try {
+        await migrate(pglite, { migrationsFolder: upTo0007 })
+      } finally {
+        await rm(upTo0007, { recursive: true, force: true })
+      }
 
       const stored = new Map(
         (await loadRecords(db, id, ['conversations'])).map((row) => [row.id, row]),
@@ -242,5 +248,176 @@ describe('0008: denetim kaydı gerekçe kolonu', () => {
         sql`insert into audit_log (action, reason) values ('conversation.access', ${'x'.repeat(501)})`,
       ),
     )
+  })
+})
+
+describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
+  const client = new PGlite()
+  const pglite = drizzle({ client, schema })
+  const db: Database = pglite
+  let folder: string
+
+  before(async () => {
+    folder = await migrationsUpTo('0008_add_audit_log_reason')
+    await migrate(pglite, { migrationsFolder: folder })
+  })
+  after(async () => {
+    await client.close()
+    await rm(folder, { recursive: true, force: true })
+  })
+
+  test('mesajlar kimlik ve sırayla bölünür, taraf anahtarlarını taşır; dizi kalkar, son mesaj anı yazılır; tekrar etkisiz; taşınamayan öğe veri kaybettirmez', async () => {
+    const app = await buildTestApp(db)
+    try {
+      const { id } = await createInstitution(app)
+      const message = (key: string, sender: string, date: string, extra = {}) => ({
+        id: key,
+        text: `Metin ${key}`,
+        sender,
+        date,
+        ...extra,
+      })
+      const rows = [
+        {
+          id: 'conv-b',
+          position: 2048,
+          archived: false,
+          data: {
+            id: 'conv-b',
+            studentId: 's1',
+            teacherId: 't1',
+            audience: 'parent',
+            parentUserId: 'u-veli',
+            createdAt: '2026-10-01T08:00:00.000Z',
+            messages: [
+              message('b-1', 'parent', '2026-10-02T08:00:00.000Z', { senderUserId: 'u-veli' }),
+              message('b-2', 'teacher', '2026-10-03T08:00:00.000Z', {
+                readAt: '2026-10-03T09:00:00.000Z',
+              }),
+            ],
+          },
+        },
+        {
+          id: 'conv-a',
+          position: 1024,
+          archived: false,
+          data: {
+            id: 'conv-a',
+            studentId: 's2',
+            teacherId: 't1',
+            audience: 'student',
+            messages: [message('a-1', 'student', '2026-10-04T08:00:00.000Z')],
+          },
+        },
+        {
+          id: 'conv-bos',
+          position: 3072,
+          archived: false,
+          data: {
+            id: 'conv-bos',
+            studentId: 's3',
+            teacherId: 't1',
+            audience: 'student',
+            messages: [],
+          },
+        },
+        {
+          id: 'conv-arsiv',
+          position: 4096,
+          archived: true,
+          data: {
+            id: 'conv-arsiv',
+            studentId: 's4',
+            teacherId: 't1',
+            audience: 'student',
+            messages: [message('arsiv-1', 'teacher', '2026-09-01T08:00:00.000Z')],
+          },
+        },
+        {
+          // Kimliksiz öğe taşınamaz: dizi yerinde kalır, hiçbir mesajı kaybolmaz.
+          id: 'conv-bozuk',
+          position: 5120,
+          archived: false,
+          data: {
+            id: 'conv-bozuk',
+            studentId: 's5',
+            teacherId: 't1',
+            audience: 'student',
+            messages: [message('bozuk-1', 'student', '2026-10-05T08:00:00.000Z'), { text: 'x' }],
+          },
+        },
+      ]
+      for (const row of rows)
+        await db.execute(
+          sql`insert into records (institution_id, collection, id, data, position, created_at, updated_at, archived_at) values (${id}, 'conversations', ${row.id}, ${JSON.stringify(row.data)}::jsonb, ${row.position}, ${FIXED_NOW}, ${FIXED_NOW}, ${row.archived ? FIXED_NOW : null})`,
+        )
+
+      await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+
+      const stored = await loadRecords(db, id, ['conversations', 'conversationMessages'], {
+        includeArchived: true,
+      })
+      const conversations = new Map(
+        stored.filter((r) => r.collection === 'conversations').map((r) => [r.id, r]),
+      )
+      const messages = stored.filter((r) => r.collection === 'conversationMessages')
+      // Kurum içinde yazışma sırası (position), sonra dizideki sıra.
+      assert.deepEqual(
+        messages.map((r) => r.id),
+        ['a-1', 'b-1', 'b-2', 'arsiv-1', 'bozuk-1'],
+      )
+      assert.deepEqual(messages.find((r) => r.id === 'b-1')?.data, {
+        id: 'b-1',
+        text: 'Metin b-1',
+        sender: 'parent',
+        senderUserId: 'u-veli',
+        date: '2026-10-02T08:00:00.000Z',
+        conversationId: 'conv-b',
+        studentId: 's1',
+        teacherId: 't1',
+        audience: 'parent',
+        parentUserId: 'u-veli',
+      })
+      assert.equal(messages.find((r) => r.id === 'b-2')?.data.readAt, '2026-10-03T09:00:00.000Z')
+      assert.equal('parentUserId' in (messages.find((r) => r.id === 'a-1')?.data ?? {}), false)
+      assert.notEqual(messages.find((r) => r.id === 'arsiv-1')?.archivedAt, null)
+      assert.equal(messages.find((r) => r.id === 'a-1')?.archivedAt, null)
+
+      const b = conversations.get('conv-b')
+      assert.deepEqual(b?.data, {
+        id: 'conv-b',
+        studentId: 's1',
+        teacherId: 't1',
+        audience: 'parent',
+        parentUserId: 'u-veli',
+        createdAt: '2026-10-01T08:00:00.000Z',
+        lastMessageAt: '2026-10-03T08:00:00.000Z',
+      })
+      assert.equal(b?.version, 2)
+      assert.equal(conversations.get('conv-a')?.data.lastMessageAt, '2026-10-04T08:00:00.000Z')
+      const empty = conversations.get('conv-bos')?.data
+      assert.equal(empty !== undefined && ('messages' in empty || 'lastMessageAt' in empty), false)
+      assert.equal('messages' in (conversations.get('conv-arsiv')?.data ?? {}), false)
+      const broken = conversations.get('conv-bozuk')
+      assert.equal(Array.isArray(broken?.data.messages), true)
+      assert.equal(broken?.version, 1)
+
+      // Tekrar çalıştırmak (dizisi kalmamış kayıtlarda) hiçbir şeyi değiştirmez.
+      const statements = (
+        await readFile(path.join(MIGRATIONS_FOLDER, '0009_split_conversation_messages.sql'), 'utf8')
+      )
+        .split('--> statement-breakpoint')
+        .filter((statement) => !/CREATE INDEX/.test(statement))
+      for (const statement of statements) await db.execute(sql.raw(statement))
+      const again = await loadRecords(db, id, ['conversations', 'conversationMessages'], {
+        includeArchived: true,
+      })
+      assert.deepEqual(
+        again.map((r) => [r.collection, r.id, r.version, r.position]),
+        stored.map((r) => [r.collection, r.id, r.version, r.position]),
+      )
+    } finally {
+      await app.close()
+    }
   })
 })

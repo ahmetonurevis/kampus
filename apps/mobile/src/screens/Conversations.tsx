@@ -3,8 +3,9 @@ import { FlatList, Keyboard, View } from 'react-native'
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { useActiveSchool } from '../store/SchoolProvider.tsx'
 import { usePersistentDraft } from '../store/use-persistent-draft.ts'
-import { context, nameOf, rowsFor, type Row } from '../model/school.ts'
-import { appendMessage, conversationFor } from '../model/messaging.ts'
+import { context, nameOf, rowsFor } from '../model/school.ts'
+import { lastActivityOf } from '@kampus/school-core/lib/communication.ts'
+import { appendMessage, conversationFor, messagesFor } from '../model/messaging.ts'
 import {
   Button,
   Field,
@@ -28,7 +29,7 @@ import DraftStatus from '../ui/DraftStatus.tsx'
 import OperationForm from '../ui/OperationForm.tsx'
 import type { ScreenProps } from '../route-types.ts'
 
-type Message = Row<'conversation'>['source']['messages'][number]
+type Message = ReturnType<typeof messagesFor>[number]
 
 export default function Conversations({ navigation }: ScreenProps<'Module'>) {
   const { data, session } = useActiveSchool(),
@@ -41,7 +42,7 @@ export default function Conversations({ navigation }: ScreenProps<'Module'>) {
   const rows = useMemo(
     () =>
       rowsFor(data, session, 'mesajlar').sort((a, b) =>
-        (b.source.messages.at(-1)?.date || '').localeCompare(a.source.messages.at(-1)?.date || ''),
+        lastActivityOf(b.source).localeCompare(lastActivityOf(a.source)),
       ),
     [data, session.role, session.childId],
   )
@@ -83,14 +84,14 @@ export default function Conversations({ navigation }: ScreenProps<'Module'>) {
         </View>
         <View>
           {filtered.slice(current * 12, current * 12 + 12).map((row) => {
-            const last = row.source.messages.at(-1)
+            const last = row.source.lastMessageAt
             return (
               <ListRow
                 key={row.id}
                 title={row.title}
                 eyebrow={
                   last
-                    ? dateLabel(last.date, {
+                    ? dateLabel(last, {
                         hour: '2-digit',
                         minute: '2-digit',
                       })
@@ -152,11 +153,15 @@ export function ConversationDetail({ route }: ScreenProps<'Detail'>) {
   const { data, session, commit, busy, notify } = useActiveSchool(),
     c = useColors()
   const conversation = conversationFor(data, session, route.params.row.id)
+  const all = useMemo(
+    () => messagesFor(data, session, route.params.row.id),
+    [data, session, route.params.row.id],
+  )
   const draft = usePersistentDraft(
     'message',
     route.params.row.id,
     { text: '' },
-    conversation?.messages.at(-1)?.id || '',
+    all.at(-1)?.id || '',
   )
   const list = useRef<FlatList<Message>>(null),
     [limit, setLimit] = useState(40),
@@ -172,10 +177,7 @@ export function ConversationDetail({ route }: ScreenProps<'Detail'>) {
   }, [])
   const ownSender =
     session.role === 'ogretmen' ? 'teacher' : session.role === 'veli' ? 'parent' : 'student'
-  const messages = useMemo(
-    () => [...(conversation?.messages || [])].reverse().slice(0, limit),
-    [conversation?.messages, limit],
-  )
+  const messages = useMemo(() => [...all].reverse().slice(0, limit), [all, limit])
   if (!conversation)
     return (
       <Screen>
@@ -230,7 +232,7 @@ export function ConversationDetail({ route }: ScreenProps<'Detail'>) {
         windowSize={5}
         ListEmptyComponent={<T muted>İlk mesajını aşağıdan yazabilirsin.</T>}
         ListFooterComponent={
-          conversation.messages.length > limit ? (
+          all.length > limit ? (
             <TextAction onPress={() => setLimit(limit + 40)}>Önceki mesajları göster</TextAction>
           ) : null
         }

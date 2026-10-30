@@ -9,6 +9,7 @@ import { DomainError } from '@kampus/school-core/lib/errors.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
+import { conversationMessagePage } from '../src/db/conversation-messages.ts'
 import { tryLockIdempotencyKey } from '../src/db/idempotency.ts'
 import { insertMissingRecords, lockInstitution, writeRecords } from '../src/db/records.ts'
 import { institutions } from '../src/db/schema/auth.ts'
@@ -16,8 +17,9 @@ import { records } from '../src/db/schema/records.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { executeWorkflowCommand, recordAttendanceCommand } from '../src/services/commands.ts'
+import { sendMessageCommand } from '../src/services/communication.ts'
 import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
-import { buildTestApp, createInstitution, FIXED_NOW } from './support/app.ts'
+import { buildTestApp, createInstitution, createMember, FIXED_NOW } from './support/app.ts'
 import { createPgDatabase, PG_SKIP } from './support/pg.ts'
 
 const DAY = '2026-10-06'
@@ -375,6 +377,63 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     )
     assert.equal(await attendanceCount(ctx.institutionId), students.length)
   })
+  test('aynı yazışmaya eşzamanlı iki mesaj: ikisi de ayrı kayıt olarak yazılır, sıra tekil ve tutarlı (ADR 0005)', async () => {
+    const base = await context()
+    const seed = createSeed(FIXED_NOW)
+    const students = seed.students.filter((item) => item.classId === 'c1')
+    const samples = [
+      ...seed.subjects.map((data) => ({ collection: 'subjects' as const, id: data.id, data })),
+      ...seed.teachers.map((data) => ({ collection: 'teachers' as const, id: data.id, data })),
+      ...seed.classes
+        .filter((item) => item.id === 'c1')
+        .map((data) => ({ collection: 'classes' as const, id: data.id, data })),
+      ...students.map((data) => ({ collection: 'students' as const, id: data.id, data })),
+      ...seed.assignments
+        .filter((item) => item.classId === 'c1')
+        .map((data) => ({ collection: 'assignments' as const, id: data.id, data })),
+      {
+        collection: 'conversations' as const,
+        id: 'conv-pg',
+        data: { id: 'conv-pg', studentId: 's1', teacherId: 't2', audience: 'student' },
+      },
+    ]
+    await insertMissingRecords(db, base.institutionId, samples, FIXED_NOW)
+    const teacher = await createMember(app, base.institutionId, 'ogretmen', [
+      { kind: 'teacher', recordId: 't2' },
+    ])
+    const ctx: ServiceContext = {
+      ...base,
+      actor: { userId: teacher.id, role: 'ogretmen', membershipId: teacher.membershipId },
+    }
+    const options = { idempotency: null, expectedVersion: null }
+    const outcomes = await Promise.allSettled([
+      sendMessageCommand(ctx, 'conv-pg', { text: 'Birinci' }, options),
+      sendMessageCommand(ctx, 'conv-pg', { text: 'İkinci' }, options),
+    ])
+    assert.deepEqual(
+      outcomes.map((item) => (item.status === 'fulfilled' ? item.value.statusCode : item.reason)),
+      [201, 201],
+    )
+    const stored = await db
+      .select({ id: records.id, position: records.position, data: records.data })
+      .from(records)
+      .where(
+        and(
+          eq(records.institutionId, ctx.institutionId),
+          eq(records.collection, 'conversationMessages'),
+        ),
+      )
+      .orderBy(records.position, records.id)
+    assert.deepEqual(stored.map((row) => row.data.text).sort(), ['Birinci', 'İkinci'])
+    // Kurum kilidi gönderimleri sıraya soktuğu için sıralar farklıdır; sayfa aynı sırayı verir.
+    assert.equal(new Set(stored.map((row) => row.position)).size, 2)
+    const page = await conversationMessagePage(db, ctx.institutionId, 'conv-pg', { limit: 10 })
+    assert.deepEqual(
+      (page?.rows ?? []).map((row) => (row as { id: string }).id),
+      stored.map((row) => row.id),
+    )
+  })
+
   test('komut ortamı kurum kilidinden sonra okunur: kilit sahibinin kapattığı modül görülür', async () => {
     const ctx = await context()
     const held = gate()

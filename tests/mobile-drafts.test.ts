@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createDraftRepository, draftKey } from '../apps/mobile/src/model/drafts.ts'
 import { contentTitle } from '../apps/mobile/src/model/presentation.ts'
-import { appendMessage, conversationFor } from '../apps/mobile/src/model/messaging.ts'
+import { appendMessage, conversationFor, messagesFor } from '../apps/mobile/src/model/messaging.ts'
 import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 
@@ -102,12 +102,13 @@ test('Mobil mesaj: öğretmen/veli/öğrenci ve modül kapsamı doğrulanır', (
   )
   assert.throws(() => appendMessage(state, parent, 'conv2', '', () => 'id'))
   appendMessage(state, parent, 'conv2', 'Deniz için görüşme rica ediyorum.', () => 'new-msg')
-  const message = state.conversations.find((c) => c.id === 'conv2')!.messages.at(-1)
+  const message = state.conversationMessages.at(-1)
   assert.equal(message!.sender, 'parent')
-  assert.equal(
-    conversationFor(state, { role: 'ogretmen' }, 'conv2')!.messages.at(-1)!.id,
-    'new-msg',
-  )
+  assert.equal(message!.conversationId, 'conv2')
+  assert.equal(message!.parentUserId, 'p1')
+  assert.equal(messagesFor(state, { role: 'ogretmen' }, 'conv2').at(-1)!.id, 'new-msg')
+  assert.equal(state.conversations.find((c) => c.id === 'conv2')!.lastMessageAt, message!.date)
+  assert.deepEqual(messagesFor(state, parent, 'conv1'), [])
   state.modules.communication = false
   assert.equal(conversationFor(state, parent, 'conv2'), null)
   assert.throws(() => appendMessage(state, parent, 'conv2', 'Kapalı modül', () => 'id'))

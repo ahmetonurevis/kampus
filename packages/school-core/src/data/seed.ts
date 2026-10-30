@@ -663,17 +663,22 @@ function buildSeed(now: Date) {
     'Teşekkürler. Önce soruları çözüp takıldığımız adımları not edeceğiz.',
     'Çok iyi bir yöntem. Görüşmede birlikte değerlendirelim.',
   ]
-  const conversations = [
+  // Yazışma kaydı yalnız taraf bilgisini ve son mesaj anını taşır; mesajlar ayrı kayıtlardır
+  // (`conversationMessages`, ADR 0005). Mesaj, yazışmanın taraf anahtarlarını kopya olarak taşır:
+  // kapsam kuralı ve SQL süzgeci yazışmaya bakmadan karar verir; taraflar değişmez.
+  const conversationParties = [
     { id: 'conv1', studentId: 's1', teacherId: 't1', audience: 'student' },
     { id: 'conv2', studentId: 's1', teacherId: 't1', audience: 'parent', parentUserId: 'p1' },
     { id: 'conv3', studentId: 's2', teacherId: 't1', audience: 'parent', parentUserId: 'p1' },
     { id: 'conv4', studentId: 's1', teacherId: 't3', audience: 'student' },
-  ].map((c) => ({
-    ...c,
-    messages: messageTexts.map((text, i) => ({
-      id: `${c.id}-m${i}`,
+  ]
+  const conversationMessages = conversationParties.flatMap(({ id, ...parties }) =>
+    messageTexts.map((text, i) => ({
+      id: `${id}-m${i}`,
+      conversationId: id,
+      ...parties,
       text:
-        c.teacherId === 't3'
+        parties.teacherId === 't3'
           ? text
               .replace(
                 'Matematikte denklem kurma ve problem çözme adımlarına',
@@ -685,9 +690,13 @@ function buildSeed(now: Date) {
                 'Hücre yapılarını karşılaştırırken',
               )
           : text,
-      sender: i % 2 ? 'teacher' : c.audience,
+      sender: i % 2 ? 'teacher' : parties.audience,
       date: date(-2 + Math.floor(i / 4), 8 + i),
     })),
+  )
+  const conversations = conversationParties.map((c) => ({
+    ...c,
+    lastMessageAt: conversationMessages.filter((m) => m.conversationId === c.id).at(-1)?.date,
   }))
   const appointments = [
     {
@@ -816,6 +825,7 @@ function buildSeed(now: Date) {
     materials,
     announcements,
     conversations,
+    conversationMessages,
     appointments,
     requests,
     schedule,
@@ -893,11 +903,8 @@ type StatePatches = {
   materials: (Item<'materials'> & { fileUri?: string | null })[]
   // İletişim işlemlerinin alanları; örnek veri ve eski kayıtlar taşımaz (lib/communication.ts).
   announcements: (Item<'announcements'> & AnnouncementFields)[]
-  conversations: (Patch<
-    Item<'conversations'>,
-    { messages: (Item<'conversations'>['messages'][number] & ConversationMessageFields)[] }
-  > &
-    ConversationFields)[]
+  conversations: (Patch<Item<'conversations'>, { lastMessageAt?: string }> & ConversationFields)[]
+  conversationMessages: (Item<'conversationMessages'> & ConversationMessageFields)[]
   // Randevu süresi dakikadır; eski kayıtlar taşımaz, çakışma denetimi 30 dakika varsayar.
   appointments: (Item<'appointments'> & { duration?: number })[]
   preferences: Record<string, unknown>

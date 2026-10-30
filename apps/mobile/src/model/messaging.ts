@@ -1,4 +1,5 @@
 import type { State } from '@kampus/school-core/data/seed.ts'
+import { addConversationMessage, messagesOf } from '@kampus/school-core/lib/communication.ts'
 import { requiredText, type MakeId, type Session } from '@kampus/school-core/lib/domain.ts'
 
 export function conversationFor(state: State, session: Session, id: string) {
@@ -13,6 +14,12 @@ export function conversationFor(state: State, session: Session, id: string) {
     ? conversation
     : null
 }
+
+/** Görünen yazışmanın mesajları, eklenme sırasıyla (mesajlar ayrı koleksiyondadır). */
+export function messagesFor(state: State, session: Session, id: string) {
+  return conversationFor(state, session, id) ? messagesOf(state, id) : []
+}
+
 export function appendMessage(
   state: State,
   session: Session,
@@ -22,7 +29,7 @@ export function appendMessage(
 ) {
   const conversation = conversationFor(state, session, conversationId)
   if (!conversation) throw new Error('Bu konuşmaya erişilemiyor.')
-  conversation.messages.push({
+  addConversationMessage(state, conversation, {
     id: makeId('msg'),
     text: requiredText.parse(text),
     sender: session.role === 'ogretmen' ? 'teacher' : conversation.audience,

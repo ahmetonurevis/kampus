@@ -77,7 +77,8 @@ describe('koleksiyon okuma uçları', () => {
       )
     assert.equal(READABLE_COLLECTIONS.includes('audit'), false)
     assert.equal(READABLE_COLLECTIONS.includes('conversations'), false)
-    assert.equal(READABLE_COLLECTIONS.length, RECORD_COLLECTIONS.length - 2)
+    assert.equal(READABLE_COLLECTIONS.includes('conversationMessages'), false)
+    assert.equal(READABLE_COLLECTIONS.length, RECORD_COLLECTIONS.length - 3)
   })
 
   test('sıralama ve arama yardımcıları', () => {
@@ -99,7 +100,14 @@ describe('koleksiyon okuma uçları', () => {
 
   test('bilinmeyen veya açılmamış koleksiyon 404 döner', async () => {
     const { adminCookie } = await institution()
-    for (const name of ['bilinmeyen', 'audit', 'conversations', 'constructor', '__proto__']) {
+    for (const name of [
+      'bilinmeyen',
+      'audit',
+      'conversations',
+      'conversationMessages',
+      'constructor',
+      '__proto__',
+    ]) {
       const list = await get(`/api/v1/collections/${name}`, adminCookie)
       assert.equal(list.statusCode, 404, name)
       assert.equal(list.json().code, 'not_found')

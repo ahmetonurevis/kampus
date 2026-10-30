@@ -324,11 +324,11 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 
 ### DOM-ILT-092 · Yanıtı atanmış öğretmen yazar; verilmiş yanıt değişmez
 
-- **Kural:** Soruyu yalnız sorunun atandığı öğretmen yanıtlar; yönetici, ön büro ve başka öğretmen yanıt yazmaz. Ders öğretmeni değiştiğinde veya öğretmen arşivlendiğinde yanıt bekleyen sorular yeni öğretmene taşınır; yanıtlanmış ve geri çekilmiş sorular eski öğretmende kalır. Verilmiş yanıt düzenlenmez ve silinmez; düzeltme ek yanıtla yapılır, ilk yanıtın zamanı değişmez. Bir soruya en çok 10 yanıt yazılır.
+- **Kural:** Soruyu yalnız sorunun atandığı öğretmen yanıtlar; yönetici, ön büro ve başka öğretmen yanıt yazmaz. Ders öğretmeni değiştiğinde veya öğretmen arşivlendiğinde yanıt bekleyen sorular yeni öğretmene taşınır; yanıtlanmış ve geri çekilmiş sorular eski öğretmende kalır. Verilmiş yanıt düzenlenmez ve silinmez; düzeltme ek yanıtla yapılır, ilk yanıtın zamanı değişmez. Ek yanıtı yalnız öğrencinin sınıfında o derse hâlâ atanmış öğretmen yazar: dersten alınan öğretmen yanıtladığı soruyu okumaya devam eder ama ek yanıt yazamaz; derse yeniden atanırsa yazar. Bir soruya en çok 10 yanıt yazılır.
 - **Gerekçe:** Yanıt öğrenciye verilmiş kayıtlı bilgidir; sonradan değişmesi uyuşmazlıkta kaydı ve yanıt süresi raporunu bozar. Taşınan soruyu eski öğretmenin yanıtlaması, artık o dersi vermeyen kişiye öğrenci verisi açar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — core `answerQuestion` (ilk yanıt `answer`, `answeredAt`, `answeredBy`; sonrakiler `followUps`), yetki `question.answer` (başka öğretmenin sorusu 404); taşıma `lib/school-management.ts` (`isOpenQuestion`). API `POST /api/v1/questions/:questionId/answers` (`If-Match` zorunlu; aynı sürümle eşzamanlı ikinci yanıt 409 `version_conflict`, `test:pg`), kanca `useAnswerQuestion`. Vue demosu yanıtı yerinde düzenletiyordu ("Yanıtı düzenle").
+- **Kodda:** var — core `answerQuestion` (ilk yanıt `answer`, `answeredAt`, `answeredBy`; sonrakiler `followUps`), yetki `question.answer` (başka öğretmenin sorusu 404; ders ataması kalkmış öğretmenin ek yanıtı 403 `question_teacher_reassigned`); taşıma `lib/school-management.ts` (`isOpenQuestion`). API `POST /api/v1/questions/:questionId/answers` (`If-Match` zorunlu; aynı sürümle eşzamanlı ikinci yanıt 409 `version_conflict`, `test:pg`), kanca `useAnswerQuestion`. Vue demosu yanıtı yerinde düzenletiyordu ("Yanıtı düzenle").
 
 ### DOM-ILT-093 · Soru görünürlüğü ve yanıt süresi
 

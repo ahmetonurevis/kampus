@@ -90,7 +90,7 @@ export function registerQuestionRoutes(app: FastifyInstance) {
         operationId: 'answerQuestion',
         tags: ['questions'],
         summary: 'Soruyu yanıtla',
-        description: `Sorunun atandığı öğretmen yanıt yazar (core \`answerQuestion\`, DOM-ILT-092). İlk yanıt \`answer\`, \`answeredAt\`, \`answeredBy\` alanlarına, sonrakiler ek yanıt olarak \`followUps\` listesine eklenir; verilmiş yanıt değişmez. Yanıt süresi saklanmaz (DOM-ILT-013). Başka öğretmenin sorusu ve olmayan soru 404; geri çekilmiş soru 409 \`question_withdrawn\`; en çok 10 yanıt, aşılırsa 422 \`question_answer_limit\`. \`If-Match\` zorunludur (sorunun sürümü): eksikse 400 \`if_match_required\`, tutmazsa 409 \`version_conflict\`. Başarı 201 ve \`Location\` (soru kaydı). Roller: ${rolesOf('question.answer')}.`,
+        description: `Sorunun atandığı öğretmen yanıt yazar (core \`answerQuestion\`, DOM-ILT-092). İlk yanıt \`answer\`, \`answeredAt\`, \`answeredBy\` alanlarına, sonrakiler ek yanıt olarak \`followUps\` listesine eklenir; verilmiş yanıt değişmez. Ek yanıtı yalnız sınıfın o dersine hâlâ atanmış öğretmen yazar; dersten alınan öğretmen 403 \`question_teacher_reassigned\`. Yanıt süresi saklanmaz (DOM-ILT-013). Başka öğretmenin sorusu ve olmayan soru 404; geri çekilmiş soru 409 \`question_withdrawn\`; en çok 10 yanıt, aşılırsa 422 \`question_answer_limit\`. \`If-Match\` zorunludur (sorunun sürümü): eksikse 400 \`if_match_required\`, tutmazsa 409 \`version_conflict\`. Başarı 201 ve \`Location\` (soru kaydı). Roller: ${rolesOf('question.answer')}.`,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: questionParamsSchema,
         body: answerQuestionSchema,

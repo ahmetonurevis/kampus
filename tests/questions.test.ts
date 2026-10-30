@@ -458,6 +458,32 @@ test('DOM-ILT-092: ders öğretmeni değişince açık sorular taşınır; geri 
   )
 })
 
+test('DOM-ILT-092: ders öğretmeni değişince eski öğretmen yanıtlanmış soruya ek yanıt yazamaz; yeni atamayla yazar', () => {
+  const state = seed()
+  const answered = askQuestion(state, student(), ask(), id, now)
+  answerQuestion(state, teacher('t1'), answered.id, { text: 'İlk yanıt.' }, id, later)
+  const selin = state.teachers.find((t) => t.id === 't1')
+  assert.ok(selin)
+  state.teachers.push({ ...structuredClone(selin), id: 't-math-2', name: 'Yeni Matematik' })
+  updateClass(state, 'c1', { subjectTeachers: { math: 't-math-2' } }, id, now)
+  // Yanıtlanmış soru taşınmaz; eski öğretmen soruyu okur ama ek yanıt yazamaz (403).
+  assert.equal(answered.teacherId, 't1')
+  unchangedOnFailure(
+    state,
+    () => answerQuestion(state, teacher('t1'), answered.id, { text: 'Ek yanıt.' }, id, later),
+    isDomainError('question_teacher_reassigned', 'forbidden'),
+  )
+  // Yeni öğretmen başkasının sorusuna yazamaz (404); eski öğretmen derse dönünce yazar.
+  unchangedOnFailure(
+    state,
+    () => answerQuestion(state, teacher('t-math-2'), answered.id, { text: 'Ek yanıt.' }, id, later),
+    isDomainError('question_not_found', 'not_found'),
+  )
+  updateClass(state, 'c1', { subjectTeachers: { math: 't1' } }, id, now)
+  answerQuestion(state, teacher('t1'), answered.id, { text: 'Ek yanıt.' }, id, later)
+  assert.equal(answered.followUps?.length, 1)
+})
+
 test('DOM-ILT-091: geri çekilen soru öğretmen arşivinde devir istemez; açık soru ister', () => {
   const state = seed()
   const selin = state.teachers.find((t) => t.id === 't1')

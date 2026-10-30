@@ -371,6 +371,26 @@ describe('Öğretmenime Sor uçları', () => {
     assert.equal(JSON.stringify(audit).includes(ANSWER.text), false)
   })
 
+  test('DOM-ILT-092: sınıfın dersinden alınan öğretmen yanıtlanmış soruya ek yanıt yazamaz (403)', async () => {
+    // 7-A matematiği Emre Demir'e (t5) geçmiş kurum: yanıtlanmış ask25 Selin'de (t1) kalır.
+    const created = await createInstitution(app, {})
+    const moved = rows({
+      ...SAMPLE,
+      assignments: (SAMPLE.assignments ?? []).map((item) =>
+        item.id === 'assign-c1-math' ? { ...item, teacherId: 't5' } : item,
+      ),
+    })
+    await insertMissingRecords(db, created.id, moved, FIXED_NOW)
+    const before = await snapshot(created.id)
+    const v = await version(created.id, 'ask25')
+    assertError(
+      await answer(await teacher(created.id, 't1'), 'ask25', v),
+      403,
+      'question_teacher_reassigned',
+    )
+    assert.equal(await snapshot(created.id), before)
+  })
+
   test('DOM-ILT-092: aynı Idempotency-Key ile yanıt tekrarı ikinci ek yanıt açmaz', async () => {
     const a = await institution()
     const v = await version(a.id, 'ask1')

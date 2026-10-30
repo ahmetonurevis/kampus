@@ -73,7 +73,12 @@ export type WriteTargets = {
 }
 
 /** Soru yetkisinin dayandığı taraflar (DOM-ILT-090…092). */
-export type QuestionParties = { studentId: string; teacherId: string }
+export type QuestionParties = {
+  studentId: string
+  teacherId: string
+  subjectId: string
+  answeredAt?: string | null
+}
 
 /** Yetki için gereken kaynak; not yetkisi ders atamasının dersini de okur. */
 export type AuthorizationSource = Omit<ScopeSource, 'assignments'> & {
@@ -350,9 +355,18 @@ function decide(
       // ret 404'tür: soru kimliğinin varlığı sızdırılmaz.
       const question = request.target.question
       if (question === undefined) return ALLOWED
-      return teacher && question.teacherId === teacher.id
-        ? ALLOWED
-        : deny('question_not_found', 'Soru bulunamadı.', 'DOM-ILT-092', 'not_found')
+      if (!teacher || question.teacherId !== teacher.id)
+        return deny('question_not_found', 'Soru bulunamadı.', 'DOM-ILT-092', 'not_found')
+      // Ek yanıt yalnız sınıfın o dersine hâlâ atanmış öğretmenindir: yanıtlanmış soru taşınmaz,
+      // sınıftan alınan öğretmen eski sorusunu okur ama öğrenciye yazmayı sürdüremez. Soruyu
+      // okuyabildiği için ret 403'tür.
+      if (question.answeredAt && !teaches(classOf(question.studentId), question.subjectId))
+        return deny(
+          'question_teacher_reassigned',
+          'Bu sınıfın dersine artık girmediğiniz için ek yanıt yazamazsınız.',
+          'DOM-ILT-092',
+        )
+      return ALLOWED
     }
     case 'question.withdraw': {
       // Öğrenci yalnız kendi sorusunu geri çeker (DOM-ILT-091); başkasınınki 404.

@@ -56,6 +56,16 @@ function rows(sample: Sample) {
   )
 }
 
+/** Örnek veriye ek kayıtlar ekler (koleksiyon başına birleştirir). */
+function withRecords(extra: Sample): Sample {
+  const merged: Sample = { ...SAMPLE }
+  for (const [collection, items] of Object.entries(extra)) {
+    const name = collection as CollectionName
+    merged[name] = [...(merged[name] ?? []), ...(items ?? [])]
+  }
+  return merged
+}
+
 const PHONE = '05559990001'
 const EMAIL = 'test-aday@kampus.example'
 const GUARDIAN = 'Test Velisi Gizli'
@@ -361,6 +371,93 @@ describe('aday uçları', () => {
     })
     assertError(foreign, 422, 'sibling_not_found')
     await created(await frontDesk(b.id))
+  })
+
+  test('DOM-KAY-031, DOM-KAY-033, DOM-DIL-030: başka kurumun öğrencisi, öğretmeni, grubu ve dersi kullanılamaz; kural 422 / 404 ve aday değişmez', async () => {
+    // Kimlikler yalnız B kurumundadır; örnek veri kimlikleri (t1, s1…) iki kurumda da bulunduğundan
+    // kurum sınırını kanıtlamaz.
+    const teacher = SEED.teachers[0]
+    const pupil = SEED.students[0]
+    const group = SEED.classes.find((item) => item.id === 'c1')
+    assert.ok(teacher && pupil && group && LESSON)
+    const onlyB = withRecords({
+      teachers: [{ ...teacher, id: 't-b-only', isActive: true }],
+      students: [{ ...pupil, id: 's-b-only', isActive: true }],
+      classes: [{ ...group, id: 'c-b-only' }],
+      schedule: [{ ...LESSON, id: 'lesson-b-only', classId: 'c-b-only' }],
+    })
+    const a = await institution(
+      { type: 'language_school' },
+      withRecords({
+        // A kurumunda ders var, ama grubu yalnız B'dedir (programdan kalmış başka kurum kimliği).
+        schedule: [{ ...LESSON, id: 'lesson-a-foreign-group', classId: 'c-b-only' }],
+      }),
+    )
+    const b = await institution({ type: 'language_school' }, onlyB)
+    const insider = await frontDesk(a.id)
+    const child = await created(insider, {
+      ...PROSPECT,
+      minor: true,
+      interest: 'B1 · Genel İngilizce',
+    })
+    const referral = {
+      ...PROSPECT,
+      minor: true,
+      name: 'Test Referanslı',
+      phone: '05559990004',
+      email: '',
+      source: 'Veli referansı',
+      referrerStudentId: 's-b-only',
+    }
+    await unchanged(a.id, child.id, async () => {
+      const before = (await stored(a.id)).length
+      assertError(await create(insider, referral), 422, 'referrer_not_found')
+      assert.equal((await stored(a.id)).length, before)
+      assertError(
+        await meeting(insider, child.id, { ...MEETING, teacherId: 't-b-only' }, child.version),
+        422,
+        'meeting_teacher_unavailable',
+      )
+      const foreignLesson = await trial(
+        insider,
+        child.id,
+        { lessonId: 'lesson-b-only', guardianConsent: true },
+        child.version,
+      )
+      assertError(foreignLesson, 404, 'not_found')
+      assertError(
+        await trial(
+          insider,
+          child.id,
+          { lessonId: 'lesson-a-foreign-group', guardianConsent: true },
+          child.version,
+        ),
+        422,
+        'trial_group_unavailable',
+      )
+    })
+    // Kontrol: aynı kimlikler kendi kurumlarında geçerlidir (testin boş geçmediğini gösterir).
+    const own = await frontDesk(b.id)
+    const ownChild = await created(own, {
+      ...PROSPECT,
+      minor: true,
+      interest: 'B1 · Genel İngilizce',
+    })
+    assert.equal((await create(own, referral)).statusCode, 201)
+    const planned = await meeting(
+      own,
+      ownChild.id,
+      { ...MEETING, teacherId: 't-b-only' },
+      ownChild.version,
+    )
+    assert.equal(planned.statusCode, 200, planned.body)
+    const ownTrial = await trial(
+      own,
+      ownChild.id,
+      { lessonId: 'lesson-b-only', guardianConsent: true },
+      await versionOf(b.id, ownChild.id),
+    )
+    assert.equal(ownTrial.statusCode, 200, ownTrial.body)
   })
 
   // --- Aşama -------------------------------------------------------------------------------------

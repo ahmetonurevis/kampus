@@ -138,6 +138,35 @@ export function reportCommandError(
   else setError?.(ROOT_FIELD, { type: error.code, message: feedback.message })
 }
 
+/** Formun kendi göstereceği hatalar: toast yerine alan altı ya da form içi bildirim. */
+export interface InlineErrorRoutes {
+  /** Hatanın (kod ya da yol) bağlandığı form alanı; bağlıysa mesaj yalnız o alanın altında görünür. */
+  fieldFor?: ((error: ApiError) => string | undefined) | undefined
+  /** Formun kendi bildirdiği hata (ör. sürüm çakışması uyarısı): toast gösterilmez. */
+  silent?: ((error: ApiError) => boolean) | undefined
+}
+
+/**
+ * Hata tek yerde görünür: alana bağlanan kod yalnız alan altında, formun kendi bildirdiği hata
+ * yalnız formda, diğerleri yalnız toast'ta (ikisi birden gösterilmez).
+ */
+export function routeCommandErrors(
+  { setError, notifyError }: CommandErrorTargets,
+  { fieldFor, silent }: InlineErrorRoutes,
+): CommandErrorTargets {
+  // Bildirim yoksa mesaj zaten `root.server` alanına (formun içine) yazılır.
+  if (!notifyError) return { setError, notifyError }
+  return {
+    setError,
+    notifyError: (message, error) => {
+      const field = fieldFor?.(error)
+      if (field !== undefined && setError) setError(field, { type: error.code, message })
+      else if (silent?.(error)) return
+      else notifyError?.(message, error)
+    },
+  }
+}
+
 /** Etkin kurumun verilen önekli sorgularını geçersiz kılar (yazma sonrası liste ve detay). */
 export async function invalidateInstitutionQueries(
   queryClient: QueryClient,

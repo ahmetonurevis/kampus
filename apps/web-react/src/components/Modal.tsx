@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useFocusReturn } from '@/hooks/use-focus-return.ts'
 import {
   Dialog,
   DialogContent,
@@ -41,11 +42,13 @@ export function Modal({
   onCloseAutoFocus,
   children,
 }: ModalProps) {
+  const focus = useFocusReturn()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        onOpenAutoFocus={focus.onOpenAutoFocus}
+        onCloseAutoFocus={onCloseAutoFocus ?? focus.onCloseAutoFocus}
         {...(description ? {} : { 'aria-describedby': undefined })}
-        {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
         // Portal olaylarının React ağacında üst öğeye (ör. satır tıklaması) sızmasını keser.
         onClick={(event) => event.stopPropagation()}
         className={cn(

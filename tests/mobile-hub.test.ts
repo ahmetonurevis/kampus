@@ -1,9 +1,11 @@
-// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import { decodeText } from '../packages/school-core/src/lib/text-decoding.ts'
+import type { Role } from '../packages/school-core/src/modules/navigation.ts'
+import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import { isDomainError } from './support/domain-error.ts'
+import { resultOf } from './support/result.ts'
 import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
 import {
   createSnapshotWriter,
@@ -18,12 +20,12 @@ import {
   pageTitle,
 } from '../apps/mobile/src/model/hub.ts'
 
-const roles = ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli']
-const session = (role) => ({ role, childId: 's1', theme: 'light' })
+const roles: Role[] = ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli']
+const session = (role: Role): Session => ({ role, childId: 's1' })
 
 test('Mobil ve web aynı birleşik menüyü kullanır; iş akışı modülleri mobilde de bulunur', () => {
   assert.deepEqual(navigation, webNavigation)
-  for (const role of ['yonetici', 'ogretmen', 'ogrenci', 'veli'])
+  for (const role of ['yonetici', 'ogretmen', 'ogrenci', 'veli'] as const)
     assert.ok(navigation[role].some((page) => page.path === 'hedef-plani'))
   for (const role of roles)
     assert.ok(navigation[role].some((page) => page.group === 'OKUL İŞ AKIŞLARI'))
@@ -55,7 +57,7 @@ test('Ana ekran kategorileri kart olarak sunar; her modül tek kategoride, hesap
 
 test('Ayarlar hesap menüsünde; öğrencide ödemeler telefonda yok, veli ödemeleri durur', () => {
   const state = createSeed()
-  for (const role of ['yonetici', 'ogrenci', 'veli'])
+  for (const role of ['yonetici', 'ogrenci', 'veli'] as const)
     assert.ok(
       accountPages(state, role).some((p) => p.path === 'ayarlar'),
       `${role} ayarlar`,
@@ -76,12 +78,18 @@ test('Kapatılan modül kartı ve boşalan kategori ana ekrandan kaybolur', () =
   for (const key of ['transport', 'meals', 'clubs', 'calendar']) state.modules[key] = false
   assert.ok(!hubCategories(state, 'yonetici').some((c) => c.key === 'OKUL YAŞAMI'))
   assert.equal(categoryPages(state, 'yonetici', 'OKUL YAŞAMI').length, 0)
-  assert.equal(pageTitle('veli', { path: 'finans', title: 'Finans' }), 'Ödeme planı')
+  assert.equal(
+    pageTitle(
+      'veli',
+      navigation.veli.find((page) => page.path === 'finans')!,
+    ),
+    'Ödeme planı',
+  )
 })
 
 test('Windows-1254 ve UTF-8 çözücü Türkçe harfleri korur; geçersiz UTF-8 reddedilir', () => {
   const text = 'ĞÜŞİÖÇ ğüşıöç'
-  const codes = { Ğ: 0xd0, Ü: 0xdc, Ş: 0xde, İ: 0xdd, Ö: 0xd6, Ç: 0xc7 }
+  const codes: Record<string, number> = { Ğ: 0xd0, Ü: 0xdc, Ş: 0xde, İ: 0xdd, Ö: 0xd6, Ç: 0xc7 }
   Object.assign(codes, { ğ: 0xf0, ü: 0xfc, ş: 0xfe, ı: 0xfd, ö: 0xf6, ç: 0xe7 })
   const win1254 = Uint8Array.from([...text].map((ch) => codes[ch] ?? ch.charCodeAt(0)))
   assert.equal(decodeText(win1254, 'windows-1254'), text)
@@ -99,19 +107,21 @@ test('Mobil oturum bilgisiyle çalışan iş akışı kalıcı kayıttan kayıps
   const state = createSeed()
   const write = createSnapshotWriter(createSeed(new Date(state.createdAt)))
   let sequence = 0
-  const goal = runWorkflow(
-    state,
-    session('ogrenci'),
-    'goal',
-    {
-      studentId: 's1',
-      subjectId: 'science',
-      title: 'Fen netini yükseltmek',
-      targetNet: 18,
-      deadline: '2099-01-01',
-      motivation: '',
-    },
-    (prefix) => `${prefix}-mobile-${++sequence}`,
+  const goal = resultOf(
+    runWorkflow(
+      state,
+      session('ogrenci'),
+      'goal',
+      {
+        studentId: 's1',
+        subjectId: 'science',
+        title: 'Fen netini yükseltmek',
+        targetNet: 18,
+        deadline: '2099-01-01',
+        motivation: '',
+      },
+      (prefix) => `${prefix}-mobile-${++sequence}`,
+    ),
   )
   assert.equal(goal.status, 'Onay bekliyor')
   const restored = restoreSnapshot(write(state))

@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
@@ -74,8 +73,8 @@ test('Rehberlik görevli öğretmen kurumun bütün dosyalarını iç notlarıyl
     rows.map((r) => r.id),
     state.guidanceCases.map((r) => r.id),
   )
-  assert.equal(rows[0].internalNote, INTERNAL)
-  assert.deepEqual(rows[0].notes, [])
+  assert.equal(rows[0]!.internalNote, INTERNAL)
+  assert.deepEqual(rows[0]!.notes, [])
   assert.deepEqual(scope.hiddenFields('guidanceCases'), [])
 })
 
@@ -90,16 +89,16 @@ test('Yönetici, görevsiz öğretmen, öğrenci ve veli iç notu görmez; ön b
     [parent('s3'), []],
   ]
   for (const [actor, expected] of cases) {
-    const scope = scopeFor(state, actor)
+    const scope = scopeFor(state, actor!)
     assert.equal(scope.counselor, false)
     const rows = scope.read('guidanceCases', state.guidanceCases)
     assert.deepEqual(
       rows.map((r) => r.id),
       expected,
-      actor.role,
+      actor!.role,
     )
     for (const row of rows) {
-      assert.ok(!('internalNote' in row) && !('notes' in row), actor.role)
+      assert.ok(!('internalNote' in row) && !('notes' in row), actor!.role)
       assert.ok(row.plan && row.sharedNote, 'paylaşılan plan görünür')
     }
     assert.deepEqual(scope.hiddenFields('guidanceCases'), ['internalNote', 'notes'])
@@ -150,7 +149,7 @@ test('İç not arama, liste ve ayrıntı çıktısına sızmaz', () => {
   assert.ok(rows.length > 0)
   assert.ok(!JSON.stringify(rows).includes(SECRET_NOTE))
   assert.deepEqual(
-    workflowDetails(state, { role: 'ogretmen' }, rows[0]).sections.map((s) => s.title),
+    workflowDetails(state, { role: 'ogretmen' }, rows[0]!).sections.map((s) => s.title),
     ['Paylaşılan destek planı'],
   )
 })
@@ -159,18 +158,18 @@ test('Denetim kaydı iç not içeriğini değil yalnız alan adını yazar (DOM-
   const state = seed()
   runWorkflow(state, { role: 'ogretmen' }, 'guidance-note', note, id, 'guidance-s1', now)
   const [noteEntry] = state.audit
-  assert.equal(noteEntry.table_name, 'guidanceCases')
-  assert.deepEqual(noteEntry.masked_fields, ['notes'])
+  assert.equal(noteEntry!.table_name, 'guidanceCases')
+  assert.deepEqual(noteEntry!.masked_fields, ['notes'])
   assert.ok(!JSON.stringify(noteEntry).includes(SECRET_NOTE))
   assert.ok(!JSON.stringify(noteEntry).includes(INTERNAL))
-  assert.ok(!('internalNote' in noteEntry.old_value) && !('notes' in noteEntry.new_value))
-  assert.equal(noteEntry.new_value.sharedNote, 'Düzenli çalışıyor.')
+  assert.ok(!('internalNote' in noteEntry!.old_value) && !('notes' in noteEntry!.new_value))
+  assert.equal(noteEntry!.new_value.sharedNote, 'Düzenli çalışıyor.')
   assert.equal(
-    noteEntry.old_value.sharedNote,
+    noteEntry!.old_value.sharedNote,
     'Kısa ve düzenli tekrarlar üzerinde birlikte çalışacağız.',
   )
   // Kayıt kendisi iç notu korur; yalnız denetim çıktısı maskelenir.
-  assert.equal(state.guidanceCases[0].notes.at(-1).text, SECRET_NOTE)
+  assert.equal(state.guidanceCases[0]!.notes.at(-1)!.text, SECRET_NOTE)
   runWorkflow(
     state,
     { role: 'ogretmen' },
@@ -181,8 +180,8 @@ test('Denetim kaydı iç not içeriğini değil yalnız alan adını yazar (DOM-
     now,
   )
   const [openEntry] = state.audit
-  assert.deepEqual(openEntry.masked_fields, ['internalNote', 'notes'])
-  assert.equal(openEntry.old_value, null)
+  assert.deepEqual(openEntry!.masked_fields, ['internalNote', 'notes'])
+  assert.equal(openEntry!.old_value, null)
   assert.ok(!JSON.stringify(openEntry).includes('Açılış iç notu'))
   // Gizli alanı olmayan koleksiyonda denetim kaydı değişmez.
   runWorkflow(
@@ -191,11 +190,11 @@ test('Denetim kaydı iç not içeriğini değil yalnız alan adını yazar (DOM-
     'goal-comment',
     { text: 'Yorum' },
     id,
-    state.studentGoals[0].id,
+    state.studentGoals[0]!.id,
     now,
   )
-  assert.ok(!('masked_fields' in state.audit[0]))
-  assert.equal(state.audit[0].new_value.comments.at(-1).text, 'Yorum')
+  assert.ok(!('masked_fields' in state.audit[0]!))
+  assert.equal(state.audit[0]!.new_value.comments.at(-1).text, 'Yorum')
 })
 
 test('İç notu yalnız rehberlik görevli öğretmen yazar; başarısızlıkta kayıt değişmez', () => {

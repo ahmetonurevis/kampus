@@ -12,7 +12,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Kurumun kendi kaynak havuzu ancak içerik kişiye değil kuruma bağlıysa birikir.
 - **Kaynak:** 5846 sayılı FSEK md. 18/2 ("memur, hizmetli ve işçilerin işlerini görürken meydana getirdikleri eserler üzerindeki haklar bunları çalıştıran veya tayin edenlerce kullanılır"; RG 13/12/1951-7981, mevzuat.gov.tr konsolide metin). Öğretmen iş sözleşmelerinin bu konuda ne yazdığı **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `materials` ve `videos` kayıtlarında `teacherId` var (`packages/school-core/src/data/seed.js:457-527`); kurum kimliği yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planNewResource`: sahip ve yazar işlemi yapan kişi); kurum kimliği servis ve tablo kolonudur.
+- **Kodda:** kısmen — `materials` ve `videos` kayıtlarında `teacherId` var (`packages/school-core/src/data/seed.js:457-527`); kurum kimliği yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planNewResource`: sahip ve yazar işlemi yapan kişi); kurum kimliği servis ve tablo kolonudur. API: `POST /api/v1/resources` (`apps/api/src/services/resource-commands.ts`); kurum kimliği oturumdan gelir, gövdedeki `institutionId` atılır; `resources` tablosu kurum kapsamlı (`apps/api/src/db/schema/resources.ts`).
 
 ### DOM-KYN-002 · İçerik türleri
 
@@ -134,7 +134,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** İhlal iddiasında yayına devam etmek zararı ve sorumluluğu büyütür.
 - **Kaynak:** İşletme kuralı; FSEK md. 66-68 (tecavüzün ref'i ve men'i) — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planVersionTransition` `report`: bildirimi yalnız kaynağı okuyabilen personel yapar, `staffCanReadVersion`; bildirilen içeriği yalnız yönetici yeniden onaylar; kaldırma `planResourceRemoval`); bildirim kaydı yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planVersionTransition` `report`: bildirimi yalnız kaynağı okuyabilen personel yapar, `staffCanReadVersion`; bildirilen içeriği yalnız yönetici yeniden onaylar; kaldırma `planResourceRemoval`); bildirim kaydı yok. API: `POST /api/v1/resources/:id/versions/:versionId/report` yayındaki sürümü incelemeye alır, `POST /api/v1/resources/:id/remove` (yalnız yönetici, gerekçeli) kaldırır; bildirim gerekçesi saklanmaz (`TODO(content-report-log)`).
 
 ### DOM-KYN-026 · Öğrenci eseri kaynak havuzuna alınmaz
 
@@ -160,7 +160,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğrenciye ulaşan her içerik bir kez gözden geçirilmiş olmalıdır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — yüklenen materyal anında öğrenci kütüphanesine girer (`apps/web/src/views/Learning.vue:300-310`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planVersionTransition`), `packages/school-core/src/content/visibility.ts` (`canReadVersion`).
+- **Kodda:** yok — yüklenen materyal anında öğrenci kütüphanesine girer (`apps/web/src/views/Learning.vue:300-310`). Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planVersionTransition`), `packages/school-core/src/content/visibility.ts` (`canReadVersion`). API: `POST /api/v1/resources/:id/versions/:versionId/{submit,publish,withdraw,approve,reject,reopen,archive,report}` (`apps/api/src/services/resource-commands.ts`); eşzamanlı iki onayda biri 409 (`apps/api/test/pg-content.test.ts`).
 
 ### DOM-KYN-031 · Kim onaylar
 
@@ -168,7 +168,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Dört göz ilkesi telif ve içerik hatasını yakalar; ama öğretmenin günlük sınıf içi kâğıdını bekletmek kullanımı öldürür.
 - **Kaynak:** İşletme kuralı. Zümre başkanının görevleri (OİKY/OKY ve zümre öğretmenler kurulu hükümleri) **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — zümre başkanı rolü yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`requiresReview`, `canReview`); zümre başkanı yetkisi `ContentActor.reviewer`.
+- **Kodda:** yok — zümre başkanı rolü yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`requiresReview`, `canReview`); zümre başkanı yetkisi `ContentActor.reviewer`. API: onay ve ret `approve`/`reject` uçlarında; zümre başkanı verisi olmadığından yalnız yönetici onaylar (`TODO(content-reviewer)`).
 
 ### DOM-KYN-032 · Yayındaki içerik değişmez, sürüm açılır
 
@@ -176,7 +176,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğrenci bir soruyu cevapladıktan sonra sorunun değişmesi puanı geriye dönük anlamsızlaştırır.
 - **Kaynak:** İşletme kuralı; CLAUDE.md "anahtar revizyonu eski optik analizin kullanımını engeller" ilkesinin kaynak platformuna genellemesi.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`planDraftUpdate`, `planNewVersion`).
+- **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planDraftUpdate`, `planNewVersion`). API: `PATCH /api/v1/resources/:id/versions/:versionId` (`If-Match` zorunlu; yayındaki sürüm 409 `version_immutable`), `POST /api/v1/resources/:id/versions` (ikinci açık sürüm 409 `open_version_exists`); yeni yayın önceki sürümü aynı işlemde arşivler.
 
 ### DOM-KYN-033 · Hatalı soru düzeltmesi
 
@@ -194,7 +194,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğretmenin kendi sınıfı dışındaki öğrencilere içerik göndermesi kapsam sızıntısıdır.
 - **Kaynak:** İşletme kuralı; ADR 0001 karar 7 (öğretmen kendi sınıfları/branşı).
 - **Kurum türü:** ikisi
-- **Kodda:** yok — materyalde kapsam alanı yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/visibility.ts` (`shareTargetsSchema`, `planShareChange`).
+- **Kodda:** yok — materyalde kapsam alanı yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/visibility.ts` (`shareTargetsSchema`, `planShareChange`). API: `POST /api/v1/resources/:id/share` (öğretmen yalnız ders verdiği sınıf ve öğrencilere, kapsam dışı 403; kurumda olmayan hedef 422); eski hedefler silinmez, arşivlenir.
 
 ### DOM-KYN-041 · Öğrencinin gördüğü kaynak
 
@@ -202,7 +202,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğrenci kütüphanesi kendi düzeyindeki içeriği göstermeli; kapsam sızıntısı sunucuda engellenmelidir.
 - **Kaynak:** İşletme kuralı; ADR 0001 karar 7.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — öğrenci tüm düzeylerin materyallerini görür, düzey yalnız kullanıcının seçtiği filtredir (`apps/web/src/views/Learning.vue:123-133`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/visibility.ts` (`canReadVersion`).
+- **Kodda:** çelişiyor — öğrenci tüm düzeylerin materyallerini görür, düzey yalnız kullanıcının seçtiği filtredir (`apps/web/src/views/Learning.vue:123-133`). Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/visibility.ts` (`canReadVersion`). API: `GET /api/v1/resources` ve ayrıntı (`apps/api/src/services/resources.ts`): öğrenci/veli yalnız güncel yayın sürümünü cevap anahtarsız görür; SQL süzgeci core ile eşit (`apps/api/test/resource-visibility.test.ts`).
 
 ### DOM-KYN-042 · Zümre içinde okuma, sahiplikte yazma
 
@@ -236,7 +236,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Uyarlama hakkı (işleme) eser sahibine aittir; soy bilgisi telif bildiriminde etkilenen tüm kopyaların bulunmasını sağlar.
 - **Kaynak:** FSEK md. 21 (işleme hakkı), md. 18/2.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/copy.ts` (`planCopy`, `copyLineage`), `packages/school-core/src/content/resource.ts` (`assertLineagePreserved`); "asıl kaynak güncellendi" bildirimi yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/copy.ts` (`planCopy`, `copyLineage`), `packages/school-core/src/content/resource.ts` (`assertLineagePreserved`); "asıl kaynak güncellendi" bildirimi yok. API: `POST /api/v1/resources/:id/copy`; kopya `derived_from_version_id` ile soyunu, kaynak lisansını ve kaynak gösterimini taşır (değiştirmek 422 `license_inherited`/`attribution_inherited`).
 
 ### DOM-KYN-051 · Arşiv ve kaldırma
 
@@ -244,7 +244,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Geçmiş not ve teslimlerin bağlamı korunmalı; ihlal içeren içerik ise arşivde de dağıtılmaya devam etmemelidir.
 - **Kaynak:** İşletme kuralı; KVKK md. 7.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`archive` geçişi; kaynak düzeyinde kaldırma `planResourceRemoval`: bütün sürümler, dosyalar, türetilmiş kopyalar ve soruyu içeren quiz'ler).
+- **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`archive` geçişi; kaynak düzeyinde kaldırma `planResourceRemoval`: bütün sürümler, dosyalar, türetilmiş kopyalar ve soruyu içeren quiz'ler). API: sürüm `archive` geçişi ve `POST /api/v1/resources/:id/remove` (içerik ve cevap anahtarı silinir, `resources.archived_at` dolar; yanıtta etkilenen kopya ve quiz sürümleri); dosya tablosu yok.
 
 ### DOM-KYN-052 · Öğretmen ayrılınca sahiplik devri
 
@@ -252,7 +252,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Kurum havuzu kişiye bağlı kalırsa her ayrılışta küçülür; sahipsiz içerik güncellenemez.
 - **Kaynak:** FSEK md. 18/2; 90 gün işletme kuralıdır.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — kadro arşivi kaynakları ele almaz. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/visibility.ts` (sahip ayrılınca taslak yöneticiye görünür); sahiplik devri yok.
+- **Kodda:** yok — kadro arşivi kaynakları ele almaz. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/visibility.ts` (sahip ayrılınca taslak yöneticiye görünür); sahiplik devri yok. API: okuma uçları sahibi ayrılan kaynağın taslağını yöneticiye gösterir (`ownerActiveSql`, `apps/api/src/db/resources.ts`); sahiplik devri ucu yok.
 
 ### DOM-KYN-053 · Bağımlılık göstergesi
 

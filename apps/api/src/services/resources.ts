@@ -106,7 +106,7 @@ function versionSummary(version: StoredResourceVersion) {
   }
 }
 
-function fullVersion(version: StoredResourceVersion) {
+export function fullVersion(version: StoredResourceVersion) {
   return {
     ...versionSummary(version),
     content: version.content,
@@ -135,6 +135,17 @@ function resourceSummary(resource: StoredResource) {
   }
 }
 
+/** Personel görünümündeki kaynak: paylaşım hedefleri, arşiv anı ve satır sürümüyle. */
+export function staffResource(resource: StoredResource) {
+  return {
+    ...resourceSummary(resource),
+    sharedStudentIds: [...resource.sharedStudentIds],
+    sharedClassIds: [...resource.sharedClassIds],
+    archivedAt: resource.archivedAt,
+    rowVersion: resource.rowVersion,
+  }
+}
+
 /** Öğrenci/veli görünümü; karıştırma kişi ve sürüm başına sabittir (yenilemede değişmez). */
 function learnerVersion(ctx: ServiceContext, version: StoredResourceVersion): LearnerResourceView {
   return learnerView(asCoreVersion(version), {
@@ -160,7 +171,9 @@ export async function listResources(ctx: ServiceContext, input: ResourceListInpu
     if (issues.length > 0) throw new ValidationError(issues)
   }
   const { q, ...rest } = input
-  const terms = q === undefined ? [] : searchQueryTerms(q)
+  // Normalleşince terim kalmayan arama (`q=!!!`) boş sonuçtur, 400 değil: kullanıcı yazarken
+  // hata görmez (`ResourceListQuery.terms`).
+  const terms = q === undefined ? null : searchQueryTerms(q)
   const page = await listVisibleResources(
     ctx.db,
     ctx.institutionId,
@@ -268,11 +281,7 @@ export async function getResource(ctx: ServiceContext, resourceId: string) {
   }
   return {
     view: 'staff' as const,
-    resource: {
-      ...resourceSummary(resource),
-      sharedStudentIds: [...resource.sharedStudentIds],
-      sharedClassIds: [...resource.sharedClassIds],
-    },
+    resource: staffResource(resource),
     versions: readable.map(versionSummary),
     head: fullVersion(head),
     publicationIssues: await issuesOf(ctx, institutionType, head),

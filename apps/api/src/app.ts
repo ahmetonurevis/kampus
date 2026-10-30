@@ -34,6 +34,7 @@ import { registerAuditEventRoutes } from './routes/audit-events.ts'
 import { registerInstitutionMemberRoutes } from './routes/institution-members.ts'
 import { registerMembershipRoutes } from './routes/memberships.ts'
 import { registerModuleRoutes } from './routes/modules.ts'
+import { registerResourceCommandRoutes } from './routes/resource-commands.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
 
 // Şemada özel mesajı olmayan Zod hataları da Türkçe döner.
@@ -205,6 +206,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   // Komut uçlarından sonra: ham gövde süsü (`commandInput`) orada tanımlanır.
   registerCommunicationRoutes(app)
   registerResourceRoutes(app)
+  registerResourceCommandRoutes(app)
 
   return app
 }

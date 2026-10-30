@@ -429,7 +429,7 @@ describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
   })
 })
 
-describe('0010–0011: içerik havuzu tabloları', () => {
+describe('0010–0012: içerik havuzu tabloları', () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>
@@ -513,6 +513,22 @@ describe('0010–0011: içerik havuzu tabloları', () => {
       sql`update resource_versions set status = 'published', published_at = null
           where institution_id = ${a.id} and id = ${versions[1]!.id}`,
       'resource_versions_published_check',
+    )
+    // 0012: sözlük kolonları core sabitleriyle sınırlı; türetilmiş lisans türü dahil.
+    for (const [assignment, constraint] of [
+      [sql`activity_mode = 'dance'`, 'resource_versions_activity_mode_check'],
+      [sql`interaction_channel = 'telepathy'`, 'resource_versions_interaction_channel_check'],
+      [sql`license = '{"kind":"stolen"}'::jsonb`, 'resource_versions_license_kind_check'],
+    ] as const)
+      await violates(
+        sql`update resource_versions set ${assignment}
+            where institution_id = ${a.id} and id = ${published.id}`,
+        constraint,
+      )
+    await db.execute(
+      sql`update resource_versions set activity_mode = 'mediation', interaction_channel = 'online',
+            license = null
+          where institution_id = ${a.id} and id = ${versions[1]!.id}`,
     )
   })
 })

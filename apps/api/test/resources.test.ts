@@ -77,9 +77,19 @@ describe('içerik havuzu okuma uçları', () => {
           data: { id: '9-A', grade: 9, level: 'B1', branchId: 'b-1', teacherId: 't-mat' },
         },
         {
+          collection: 'classes',
+          id: '10-B',
+          data: { id: '10-B', grade: 10, level: 'A2', branchId: 'b-1', teacherId: 't-mat' },
+        },
+        {
           collection: 'students',
           id: 's-1',
           data: { id: 's-1', name: 'Deniz Yılmaz', classId: '9-A', isActive: true },
+        },
+        {
+          collection: 'students',
+          id: 's-2',
+          data: { id: 's-2', name: 'Ece Yılmaz', classId: '10-B', isActive: true },
         },
       ],
       FIXED_NOW,
@@ -94,6 +104,11 @@ describe('içerik havuzu okuma uçları', () => {
     const parent = await createMember(app, institution.id, 'veli', [
       { kind: 'child', recordId: 's-1' },
     ])
+    // Ayşe Yılmaz: Deniz (9-A) ve Ece (10-B) velisi.
+    const twoChildParent = await createMember(app, institution.id, 'veli', [
+      { kind: 'child', recordId: 's-1' },
+      { kind: 'child', recordId: 's-2' },
+    ])
     const frontDesk = await createMember(app, institution.id, 'onburo')
     const cookies = {
       admin: await signInAs(app, institution.admin),
@@ -101,6 +116,7 @@ describe('içerik havuzu okuma uçları', () => {
       otherTeacher: await signInAs(app, otherTeacher),
       student: await signInAs(app, student),
       parent: await signInAs(app, parent),
+      twoChildParent: await signInAs(app, twoChildParent),
       frontDesk: await signInAs(app, frontDesk),
     }
     return { institution, teacher, otherTeacher, student, parent, cookies }
@@ -333,5 +349,183 @@ describe('içerik havuzu okuma uçları', () => {
       [match.resource.id],
     )
     assert.equal((await get('/resources?cefrLevel=A2', t.cookies.student)).json().meta.total, 0)
+  })
+
+  const idsOf = (body: { data: { id: string }[] }) => body.data.map((item) => item.id).sort()
+
+  test('DOM-KYN-051: arşivli ve kaldırılan kaynak listede ve aramada yok; yalnız açık durum süzgeciyle gelir', async () => {
+    const t = await tenant()
+    const live = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'institution',
+      versions: [{ status: 'published', input: { title: 'Kesirler canlı' } }],
+    })
+    // Arşivli eski sürüm + yayındaki yeni sürüm: baş sürüm yayındaki, listede kalır.
+    const renewed = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'institution',
+      versions: [
+        { status: 'archived', input: { title: 'Kesirler eski' } },
+        { status: 'published', input: { title: 'Kesirler yeni' } },
+      ],
+    })
+    const archived = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'institution',
+      versions: [{ status: 'archived', input: { title: 'Kesirler arşiv' } }],
+    })
+    const removed = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'institution',
+      versions: [{ status: 'removed', input: { title: 'Kesirler kaldırıldı' } }],
+    })
+    const list = async (query: string, cookie: string) => {
+      const response = await get(`/resources?${query}`, cookie)
+      assert.equal(response.statusCode, 200, query)
+      return response.json()
+    }
+    for (const cookie of [t.cookies.teacher, t.cookies.admin, t.cookies.otherTeacher]) {
+      for (const query of ['', 'q=kesirler']) {
+        const body = await list(query, cookie)
+        assert.deepEqual(idsOf(body), [live.resource.id, renewed.resource.id].sort(), query)
+        assert.equal(body.meta.total, 2)
+      }
+      const old = await list('status=archived&q=kesirler', cookie)
+      assert.deepEqual(idsOf(old), [archived.resource.id])
+    }
+    // Kaldırılan kaynak yalnız sahibine ve yöneticiye açık durum süzgeciyle görünür.
+    for (const cookie of [t.cookies.teacher, t.cookies.admin])
+      assert.deepEqual(idsOf(await list('status=removed', cookie)), [removed.resource.id])
+    assert.equal((await list('status=removed', t.cookies.otherTeacher)).meta.total, 0)
+  })
+
+  test('arama: terim kalmayan q boş sonuç döner (400 değil); özel karakterler sorgu sözdizimine karışmaz', async () => {
+    const t = await tenant()
+    const light = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      versions: [{ input: { title: 'IŞIK ve gölge' } }],
+    })
+    for (const q of ['!!!', '...', '&|:*', ' * ']) {
+      const response = await get(`/resources?q=${encodeURIComponent(q)}`, t.cookies.teacher)
+      assert.equal(response.statusCode, 200, q)
+      assert.deepEqual(response.json().data, [], q)
+      assert.equal(response.json().meta.total, 0, q)
+    }
+    for (const q of [
+      "ışık' OR 1=1 --",
+      'ışık:* | !gölge',
+      '(gölge) & <-> ışık',
+      'ışık\\',
+      '"IŞIK"',
+    ]) {
+      const response = await get(`/resources?q=${encodeURIComponent(q)}`, t.cookies.teacher)
+      assert.equal(response.statusCode, 200, q)
+      const expected = q.includes('OR') ? [] : [light.resource.id]
+      assert.deepEqual(idsOf(response.json()), expected, q)
+    }
+  })
+
+  test('DOM-KYN-041: iki çocuklu veli iki çocuğunun gördüğünü görür; öğrenci yalnız kendi sınıfınınkini', async () => {
+    const t = await tenant()
+    const nine = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'classes',
+      sharedClassIds: ['9-A'],
+      versions: [{ status: 'published', input: { tags: { gradeLevels: [9] } } }],
+    })
+    const ten = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'classes',
+      sharedClassIds: ['10-B'],
+      versions: [{ status: 'published', input: { tags: { gradeLevels: [10] } } }],
+    })
+    // Ece'nin sınıfıyla paylaşılmış ama 9. sınıf düzeyinde: hiçbir çocuğa uymaz.
+    const mismatch = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'classes',
+      sharedClassIds: ['10-B'],
+      versions: [{ status: 'published', input: { tags: { gradeLevels: [9] } } }],
+    })
+    const family = (await get('/resources', t.cookies.twoChildParent)).json()
+    assert.deepEqual(idsOf(family), [nine.resource.id, ten.resource.id].sort())
+    assert.equal(family.meta.total, 2)
+    for (const id of [nine.resource.id, ten.resource.id]) {
+      const detail = await get(`/resources/${id}`, t.cookies.twoChildParent)
+      assert.equal(detail.statusCode, 200)
+      assert.equal(detail.json().data.view, 'learner')
+    }
+    assert.equal(
+      (await get(`/resources/${mismatch.resource.id}`, t.cookies.twoChildParent)).statusCode,
+      404,
+    )
+    assert.deepEqual(idsOf((await get('/resources', t.cookies.parent)).json()), [nine.resource.id])
+    assert.deepEqual(idsOf((await get('/resources', t.cookies.student)).json()), [nine.resource.id])
+    assert.equal((await get(`/resources/${ten.resource.id}`, t.cookies.student)).statusCode, 404)
+  })
+
+  test('DOM-KYN-032/051: personel arşivli sürümü /versions/:id ile okur; öğrenci okuyamaz', async () => {
+    const t = await tenant()
+    const { resource, versions } = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'institution',
+      versions: [
+        { status: 'archived', input: { title: 'Eski baskı', tags: { gradeLevels: [9] } } },
+        { status: 'published', input: { title: 'Yeni baskı', tags: { gradeLevels: [9] } } },
+      ],
+    })
+    const [old, current] = versions as [(typeof versions)[0], (typeof versions)[0]]
+    for (const cookie of [t.cookies.teacher, t.cookies.admin, t.cookies.otherTeacher]) {
+      const response = await get(`/resources/${resource.id}/versions/${old.id}`, cookie)
+      assert.equal(response.statusCode, 200)
+      const body = response.json().data
+      assert.equal(body.view, 'staff')
+      assert.equal(body.version.status, 'archived')
+      assert.equal(body.version.title, 'Eski baskı')
+      assert.equal(body.version.archivedAt, FIXED_NOW.toISOString())
+    }
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      assert.equal(
+        (await get(`/resources/${resource.id}/versions/${old.id}`, cookie)).statusCode,
+        404,
+      )
+      assert.equal(
+        (await get(`/resources/${resource.id}/versions/${current.id}`, cookie)).statusCode,
+        200,
+      )
+    }
+  })
+
+  test('DOM-KYN-021: lisans bitiş günü geçen yayın öğrenci ve veliden düşer; bitiş günü içinde görünür', async () => {
+    const t = await tenant()
+    const license = (expiryDate: string) => ({
+      kind: 'licensed_publication' as const,
+      publisher: 'Örnek Yayınevi',
+      contractNumber: 'SZ-2026-01',
+      coverage: 'Tüm öğrenciler',
+      expiryDate,
+      restrictedToBookOwners: false,
+    })
+    const seed = (expiryDate: string) =>
+      seedResource(db, t.institution.id, {
+        ownerUserId: t.teacher.id,
+        shareScope: 'institution',
+        versions: [
+          {
+            status: 'published',
+            input: { tags: { gradeLevels: [9] }, license: license(expiryDate) },
+          },
+        ],
+      })
+    // FIXED_NOW 2026-10-06 (İstanbul günü): dünkü bitiş geçmiş, bugünkü geçerli.
+    const expired = await seed('2026-10-05')
+    const today = await seed('2026-10-06')
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      assert.deepEqual(idsOf((await get('/resources', cookie)).json()), [today.resource.id])
+      assert.equal((await get(`/resources/${expired.resource.id}`, cookie)).statusCode, 404)
+      assert.equal((await get(`/resources/${today.resource.id}`, cookie)).statusCode, 200)
+    }
+    // Personel süresi dolmuş lisanslı yayını okumaya devam eder (geçmiş görevler, yenileme).
+    const staff = (await get(`/resources/${expired.resource.id}`, t.cookies.teacher)).json().data
+    assert.equal(staff.head.license.expiryDate, '2026-10-05')
   })
 })

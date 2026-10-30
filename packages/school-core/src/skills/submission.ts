@@ -195,7 +195,7 @@ export function versionAllowance(input: {
   settings: SubmissionSettings
   submission: SubmissionRow | null
   versions: readonly VersionRow[]
-  /** Puanı kesinleşmiş sürüm numaraları (rubrik puanı; F4a2 `rubric.ts`). */
+  /** Puanlanmış (en az bir rubrik puanı olan) sürüm numaraları: `rubric.ts` `gradedVersionNumbers`. */
   gradedVersionNumbers: readonly number[]
 }): VersionAllowance {
   const { settings, submission, versions, gradedVersionNumbers } = input

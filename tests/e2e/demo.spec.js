@@ -454,7 +454,7 @@ test('Yönetici öğretmen oluşturur, iletişimini günceller ve arşivler', as
   await page.getByRole('button', { name: 'Arşiv', exact: true }).click()
   await expect(page.locator('tbody')).toContainText('Çağla Öğretmen')
 })
-test('Ders filtreleri, fen öğretmenine soru/mesaj ve gerçek iki video', async ({ page }) => {
+test('Analiz dersi filtresi ve materyal PDF indirme', async ({ page }) => {
   await page.goto('/ogrenci/sinav-analizi')
   await page.getByLabel('Analiz dersi').selectOption('math')
   await expect(page.getByRole('heading', { name: 'Matematik · Konu analizi' })).toBeVisible()
@@ -470,6 +470,8 @@ test('Ders filtreleri, fen öğretmenine soru/mesaj ve gerçek iki video', async
   expect((await readFile(await (await downloadPromise).path())).subarray(0, 4).toString()).toBe(
     '%PDF',
   )
+})
+test('Fen öğretmenine soru ve mesaj gönderme (ders seçimi)', async ({ page }) => {
   await page.goto('/ogrenci/soru-sor')
   await page.getByRole('button', { name: 'Yeni soru sor' }).click()
   await page.getByLabel('Ders ve öğretmen').selectOption('science')
@@ -489,6 +491,8 @@ test('Ders filtreleri, fen öğretmenine soru/mesaj ve gerçek iki video', async
       .find((c) => c.teacherId === 't3' && c.audience === 'student')
       .messages.at(-1).text,
   ).toContain('Fen deneyi')
+})
+test('İki video gerçekten oynatılır', async ({ page }) => {
   await page.goto('/ogrenci/videolar')
   await expect(page.locator('.video-card')).toHaveCount(2)
   for (let i = 0; i < 2; i++) {

@@ -9,3 +9,5 @@ apps/mobile/android
 apps/mobile/ios
 apps/mobile/.expo
 __pycache__
+# drizzle-kit üretir; elle düzenlenmez
+apps/api/drizzle/meta

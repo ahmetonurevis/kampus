@@ -1,0 +1,160 @@
+import { randomUUID } from 'node:crypto'
+import { Writable } from 'node:stream'
+
+import { PGlite } from '@electric-sql/pglite'
+import { drizzle } from 'drizzle-orm/pglite'
+import { migrate } from 'drizzle-orm/pglite/migrator'
+
+import { buildApp, type App, type Clock } from '../../src/app.ts'
+import type { InstitutionType, Role } from '../../src/auth.ts'
+import { loadConfig, type Config } from '../../src/config.ts'
+import { MIGRATIONS_FOLDER, schema, type Database } from '../../src/db/client.ts'
+import {
+  ensureInstitution,
+  ensureMember,
+  ensureMembershipLinks,
+  ensureUser,
+  type MembershipLinkInput,
+} from '../../src/services/identity.ts'
+
+export const TEST_ORIGIN = 'http://localhost:5173'
+export const TEST_PASSWORD = 'Sinama-Parolasi-42!'
+export const FIXED_NOW = new Date('2026-10-06T09:00:00.000Z')
+
+export function testConfig(overrides: Record<string, string> = {}): Config {
+  return loadConfig({
+    NODE_ENV: 'test',
+    LOG_LEVEL: 'silent',
+    DATABASE_URL: 'postgres://test@localhost:5432/test',
+    BETTER_AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
+    BETTER_AUTH_URL: 'http://localhost:3000',
+    CORS_ORIGINS: TEST_ORIGIN,
+    ...overrides,
+  })
+}
+
+/** Dosya başına bellek içi PostgreSQL (PGlite) ve üretim migration'ları. */
+export async function createTestDatabase(): Promise<{ db: Database; close: () => Promise<void> }> {
+  const client = new PGlite()
+  const db = drizzle({ client, schema })
+  await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
+  return { db, close: () => client.close() }
+}
+
+export interface TestAppOptions {
+  config?: Config
+  clock?: Clock
+  /** Log satırlarını yakalar (redaksiyon testleri). */
+  logs?: string[]
+}
+
+export async function buildTestApp(db: Database, options: TestAppOptions = {}): Promise<App> {
+  const logs = options.logs
+  const logStream = logs
+    ? new Writable({
+        write(chunk: Buffer, _encoding, callback) {
+          logs.push(chunk.toString())
+          callback()
+        },
+      })
+    : undefined
+  const config = options.config ?? (logs ? testConfig({ LOG_LEVEL: 'debug' }) : testConfig())
+  const app = await buildApp({
+    config,
+    db,
+    clock: options.clock ?? (() => FIXED_NOW),
+    ...(logStream ? { logStream } : {}),
+  })
+  await app.ready()
+  return app
+}
+
+/** Test kimlikleri benzersiz ve önekli; her test kendi kurumunu kurar. */
+export function uniqueId(prefix: string): string {
+  return `${prefix}-${randomUUID().slice(0, 8)}`
+}
+
+export interface TestUser {
+  id: string
+  email: string
+  password: string
+}
+
+export async function createUser(
+  app: App,
+  overrides: Partial<{ name: string; email: string; password: string }> = {},
+): Promise<TestUser> {
+  const email = overrides.email ?? `${uniqueId('test-user')}@kampus.example`
+  const password = overrides.password ?? TEST_PASSWORD
+  const user = await ensureUser(app.auth, {
+    name: overrides.name ?? 'Test Kullanıcı',
+    email,
+    password,
+  })
+  return { id: user.id, email, password }
+}
+
+export interface TestInstitution {
+  id: string
+  admin: TestUser
+  adminMembershipId: string
+}
+
+export async function createInstitution(
+  app: App,
+  overrides: Partial<{ name: string; type: InstitutionType }> = {},
+): Promise<TestInstitution> {
+  const admin = await createUser(app, { name: 'Test Yönetici' })
+  const slug = uniqueId('test-kurum')
+  const institution = await ensureInstitution(app.auth, app.db, {
+    name: overrides.name ?? `Test Kurumu ${slug}`,
+    slug,
+    type: overrides.type ?? 'school',
+    creatorUserId: admin.id,
+  })
+  const membership = await ensureMember(app.auth, app.db, {
+    institutionId: institution.id,
+    userId: admin.id,
+    role: 'yonetici',
+  })
+  return { id: institution.id, admin, adminMembershipId: membership.id }
+}
+
+export async function createMember(
+  app: App,
+  institutionId: string,
+  role: Role,
+  links: readonly MembershipLinkInput[] = [],
+): Promise<TestUser & { membershipId: string }> {
+  const user = await createUser(app)
+  const membership = await ensureMember(app.auth, app.db, { institutionId, userId: user.id, role })
+  await ensureMembershipLinks(app.db, institutionId, membership.id, links)
+  return { ...user, membershipId: membership.id }
+}
+
+/** Her giriş ayrı istemci IP'si kullanır; Better Auth giriş hız sınırı testler arasında paylaşılmaz. */
+let ipCounter = 0
+export function nextIp(): string {
+  ipCounter += 1
+  return `10.0.${Math.floor(ipCounter / 250) % 250}.${(ipCounter % 250) + 1}`
+}
+
+export function signIn(app: App, email: string, password: string, ip = nextIp()) {
+  return app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/sign-in/email',
+    headers: { origin: TEST_ORIGIN, 'content-type': 'application/json' },
+    remoteAddress: ip,
+    payload: { email, password },
+  })
+}
+
+/** Better Auth girişiyle oturum açar ve `cookie` başlık değerini döndürür. */
+export async function signInAs(
+  app: App,
+  user: { email: string; password: string },
+): Promise<string> {
+  const response = await signIn(app, user.email, user.password)
+  if (response.statusCode !== 200) throw new Error(`Giriş başarısız: ${response.statusCode}`)
+  return response.cookies.map((item) => `${item.name}=${item.value}`).join('; ')
+}

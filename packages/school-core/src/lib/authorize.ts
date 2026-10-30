@@ -1,4 +1,15 @@
 import type { State } from '../data/seed.ts'
+import type { AnnouncementPublisher, AnnouncementTarget } from './communication.ts'
+import {
+  accessDecision,
+  publishDecision,
+  publisherDecision,
+  readDecision,
+  sendDecision,
+  startDecision,
+  type CommunicationDenial,
+  type ConversationParties,
+} from './communication-access.ts'
 import { moduleAvailableFor, type InstitutionType } from '../modules/collection-modules.ts'
 import { OPERATION_COMMANDS, type OperationCommand } from '../modules/commands.ts'
 import type { Session } from './domain.ts'
@@ -32,6 +43,16 @@ export type WriteTargets = {
   'grade.update': { studentId: string; subjectId: string; reason?: string }
   'record.archive': { kind: ArchiveKind }
   'record.restore': { kind: ArchiveKind }
+  // İletişim (DOM-ILT-001…024, DOM-YTK-052); kararlar `lib/communication-access.ts`.
+  'announcement.publish': { target: AnnouncementTarget; category: string }
+  /** Kayıt yoksa `undefined`; varlık işlemin işidir (404). */
+  'announcement.revise': { announcement: { publishedBy?: AnnouncementPublisher } | undefined }
+  'announcement.withdraw': { announcement: { publishedBy?: AnnouncementPublisher } | undefined }
+  'announcement.read': Record<string, never>
+  'conversation.start': ConversationParties
+  'message.send': { conversation: ConversationParties | undefined; userId: string }
+  'message.read': { conversation: ConversationParties | undefined; userId: string }
+  'conversation.access': { reason: string }
 }
 
 /** Yetki için gereken kaynak; not yetkisi ders atamasının dersini de okur. */
@@ -71,6 +92,19 @@ export const WRITE_ACTION_ROLES = {
   // Kampüs, sınıf, kadro yalnız yöneticidedir (yetki matrisi, DOM-YTK-020).
   'record.archive': ['yonetici'],
   'record.restore': ['yonetici'],
+  // Duyuruyu yönetici, idari konuda ön büro, kendi sınıflarına öğretmen yayınlar; öğrenci ve
+  // veli yayınlamaz (DOM-ILT-002). Düzeltme ve geri çekme yayınlayan veya yöneticidedir (DOM-ILT-004).
+  'announcement.publish': ['yonetici', 'onburo', 'ogretmen'],
+  'announcement.revise': ['yonetici', 'onburo', 'ogretmen'],
+  'announcement.withdraw': ['yonetici', 'onburo', 'ogretmen'],
+  // Okundu işareti alıcınındır; görünürlük kapsamdadır (DOM-ILT-003).
+  'announcement.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+  // Birebir yazışma öğretmen, öğrenci ve veli arasındadır (DOM-ILT-010, -011, -012, -024).
+  'conversation.start': ['ogretmen', 'ogrenci', 'veli'],
+  'message.send': ['ogretmen', 'ogrenci', 'veli'],
+  'message.read': ['ogretmen', 'ogrenci', 'veli'],
+  // Yöneticinin yazışmayı okuması gerekçeli ve denetim kayıtlı ayrı işlemdir (DOM-YTK-052).
+  'conversation.access': ['yonetici'],
 } as const satisfies Record<WriteAction, readonly Actor['role'][]>
 
 const ROLE_TABLE: Readonly<Record<WriteAction, readonly string[]>> = WRITE_ACTION_ROLES
@@ -103,6 +137,8 @@ const ALLOWED: WriteDecision = { allowed: true }
 const roleDenied = (rule: string) =>
   deny('permission_denied', 'Bu işlem için yetkiniz bulunmuyor.', rule)
 const hasReason = (reason: string | undefined) => (reason?.trim().length ?? 0) >= 2
+const fromCommunication = (denial: CommunicationDenial | null): WriteDecision =>
+  denial ? deny(denial.code, denial.message, denial.rule, denial.kind ?? 'forbidden') : ALLOWED
 const reasonRequired = (rule: string) =>
   deny('correction_reason_required', 'Düzeltme için gerekçe yazın.', rule, 'rule')
 
@@ -212,6 +248,27 @@ function decide(
     case 'record.archive':
     case 'record.restore':
       return ALLOWED
+    case 'announcement.publish':
+      return fromCommunication(
+        publishDecision(scope, request.target.target, request.target.category),
+      )
+    case 'announcement.revise':
+    case 'announcement.withdraw':
+      return fromCommunication(publisherDecision(scope, request.target.announcement))
+    case 'announcement.read':
+      return ALLOWED
+    case 'conversation.start':
+      return fromCommunication(startDecision(scope, source, request.target))
+    case 'message.send':
+      return fromCommunication(
+        sendDecision(scope, source, request.target.userId, request.target.conversation),
+      )
+    case 'message.read':
+      return fromCommunication(
+        readDecision(scope, request.target.userId, request.target.conversation),
+      )
+    case 'conversation.access':
+      return fromCommunication(accessDecision(request.target.reason))
     default:
       return request satisfies never
   }

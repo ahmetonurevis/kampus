@@ -16,6 +16,11 @@ import type {
 } from '../lib/school-workflows.ts'
 import type { OpticalEvaluation, TutorSession } from '../lib/assessment-automation.ts'
 import type { OfficialGradeFields } from '../lib/grades.ts'
+import type {
+  AnnouncementFields,
+  ConversationFields,
+  ConversationMessageFields,
+} from '../lib/communication.ts'
 export const topics = subjects.map((s) => s.name)
 
 // Örnek veri kendi içinde tutarlıdır; aranan kayıt yoksa üretici hatalıdır ve hemen durur.
@@ -884,6 +889,13 @@ type StatePatches = {
     note?: string
   })[]
   materials: (Item<'materials'> & { fileUri?: string | null })[]
+  // İletişim işlemlerinin alanları; örnek veri ve eski kayıtlar taşımaz (lib/communication.ts).
+  announcements: (Item<'announcements'> & AnnouncementFields)[]
+  conversations: (Patch<
+    Item<'conversations'>,
+    { messages: (Item<'conversations'>['messages'][number] & ConversationMessageFields)[] }
+  > &
+    ConversationFields)[]
   // Randevu süresi dakikadır; eski kayıtlar taşımaz, çakışma denetimi 30 dakika varsayar.
   appointments: (Item<'appointments'> & { duration?: number })[]
   preferences: Record<string, unknown>

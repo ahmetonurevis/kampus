@@ -144,6 +144,15 @@ export const OPERATION_COMMANDS = {
     ...CONFLICTS,
   ]),
   'record.restore': spec(null, [...SCOPE, 'branches']),
+  // İletişim (`lib/communication.ts`); alıcı çözümü kampüs listesini de okur.
+  'announcement.publish': spec('communication', [...SCOPE, 'branches', 'announcements']),
+  'announcement.revise': spec('communication', [...SCOPE, 'announcements']),
+  'announcement.withdraw': spec('communication', [...SCOPE, 'announcements']),
+  'announcement.read': spec('communication', [...SCOPE, 'announcements']),
+  'conversation.start': spec('communication', [...SCOPE, 'conversations']),
+  'message.send': spec('communication', [...SCOPE, 'conversations']),
+  'message.read': spec('communication', [...SCOPE, 'conversations']),
+  'conversation.access': spec('communication', [...SCOPE, 'conversations']),
 } as const satisfies Record<string, CommandSpec>
 export type OperationCommand = keyof typeof OPERATION_COMMANDS
 

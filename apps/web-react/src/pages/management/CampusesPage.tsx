@@ -57,8 +57,12 @@ const ALL = 'all'
 /**
  * Kampüsler & Sınıflar (yönetici, Vue `SchoolManagement.vue` `/subeler`): kampüs kartları ve
  * sunucu sayfalı sınıf tablosu; satır ve kartlar sağ panelde özet açar. Yalnız okuma.
- * TODO(D1b2): "Kampüs ekle", "Sınıf ekle", düzenle/arşivle ve "Kayıt durumu" sekmeleri yazma
- * uçları ve arşiv filtresi (`isActive`) gelince eklenir.
+ * TODO(D1b2): "Kampüs ekle", "Sınıf ekle", düzenle/arşivle yazma uçlarıyla eklenir.
+ * TODO(api-archive-filter): Vue'daki "Aktif kayıtlar / Arşiv" sekmesi koleksiyon listesinde
+ * `isActive` filtresi gelince eklenir.
+ * TODO(api-aggregate): Vue'daki "Ortalama" sütunu not verisinden hesaplanır; toplu uç gelince.
+ * TODO(api-search-joined): arama yalnız sınıfın kendi alanlarında çalışır; kampüs adıyla sınıf
+ * aranamaz (Vue'da aranabilir) — ilişkili ad araması API'de gelince eklenir.
  */
 export function CampusesPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)

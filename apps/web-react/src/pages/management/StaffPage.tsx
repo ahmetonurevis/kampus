@@ -39,7 +39,9 @@ const filterValue = (value: unknown) => (typeof value === 'string' ? value : '')
 /**
  * Eğitim Kadrosu (yönetici, Vue `SchoolManagement.vue` `/personel`): sunucu sayfalı öğretmen
  * tablosu; kampüs ve branş filtresi, ad sıralaması, satırdan öğretmen özeti. Yalnız okuma.
- * TODO(D1b2): "Öğretmen ekle", düzenle/arşivle ve "Kayıt durumu" sekmeleri yazma uçlarıyla.
+ * TODO(D1b2): "Öğretmen ekle", düzenle/arşivle yazma uçlarıyla eklenir.
+ * TODO(api-archive-filter): Vue'daki "Aktif kayıtlar / Arşiv" sekmesi `isActive` filtresiyle.
+ * TODO(api-search-joined): kampüs/branş adıyla arama (Vue'da var) ilişkili ad araması gelince.
  * TODO(api-aggregate): Vue'daki "Performans" sütunu soru/SLA verisinden hesaplanır; toplu uç
  * veya kaynak ucu gelince eklenir.
  */

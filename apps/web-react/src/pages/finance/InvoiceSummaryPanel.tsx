@@ -68,13 +68,20 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
           </div>
         ))}
       </dl>
-      {row.paidAt ? (
-        <div className="detail-actions flex flex-wrap gap-2">
+      <div className="detail-actions flex flex-wrap gap-2">
+        {row.paidAt ? (
           <PdfButton type="receipt" recordId={row.id} label="Dekontu görüntüle" size="default" />
-        </div>
-      ) : actions ? (
-        <div className="detail-actions flex flex-wrap gap-2">{actions(row)}</div>
-      ) : null}
+        ) : (
+          actions?.(row)
+        )}
+        <PdfButton
+          type="payment-plan"
+          recordId={row.studentId}
+          label="Taksit taahhütnamesi"
+          variant="outline"
+          size="default"
+        />
+      </div>
     </>
   )
 }

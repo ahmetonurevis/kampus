@@ -6,7 +6,7 @@ import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
 import { COLORS, date, DocumentLayout, type PdfDocument, type TextMeasurer } from './layout.ts'
 
 /** Web'de PDF olarak üretilen belge türleri. */
-export type PdfDocumentType = 'receipt' | 'contract' | 'material'
+export type PdfDocumentType = 'receipt' | 'contract' | 'material' | 'payment-plan'
 
 export type TemplateOptions = {
   institution: string
@@ -20,12 +20,14 @@ export const DOCUMENT_TITLES = {
   receipt: 'Tahsilat dekontu',
   contract: 'Eğitim sözleşmesi',
   material: 'Ders çalışma kâğıdı',
+  'payment-plan': 'Taksit taahhütnamesi',
 } as const satisfies Record<PdfDocumentType, string>
 
 const FILE_PREFIXES = {
   receipt: 'dekont',
   contract: 'sozlesme',
   material: 'materyal',
+  'payment-plan': 'taksit-plani',
 } as const satisfies Record<PdfDocumentType, string>
 
 /** İndirilen dosya adı: kayıt kimliği güvenli karakterlere indirilir, `.pdf` ile biter. */
@@ -34,7 +36,9 @@ export function documentFilename(type: PdfDocumentType, recordId: string): strin
   return `${FILE_PREFIXES[type]}-${safe}.pdf`
 }
 
-function studentFields(data: DocumentDataMap['receipt'] | DocumentDataMap['contract']): Fields {
+function studentFields(
+  data: DocumentDataMap['receipt'] | DocumentDataMap['contract'] | DocumentDataMap['payment-plan'],
+): Fields {
   return [
     ['Öğrenci', data.student.name],
     [
@@ -166,6 +170,51 @@ export function contractDocument(
     'Ödeme durumu, belgenin oluşturulduğu andaki kayıtları gösterir. Tamamlanan her tahsilat için ayrı bir dekont alınabilir.',
     9,
     COLORS.muted,
+  )
+  return doc.finish()
+}
+
+/** Taksit taahhütnamesi: öğrencinin güncel ödeme planı, tahsilat özeti ve imza alanı. */
+export function paymentPlanDocument(
+  measurer: TextMeasurer,
+  data: DocumentDataMap['payment-plan'],
+  options: TemplateOptions,
+): PdfDocument {
+  const doc = new DocumentLayout(measurer, {
+    label: 'TAKSİT TAAHHÜTNAMESİ',
+    badge: 'TAAHHÜT',
+    institution: options.institution,
+    generatedAt: options.generatedAt ?? new Date(),
+    reference: data.reference,
+    footerNote: 'Ödeme planı özetidir; kurumun imzalı sözleşmesi veya resmî makbuz yerine geçmez.',
+  })
+  doc.heading('Taksit taahhütnamesi', 'Öğrenciye ait güncel ödeme planı ve tahsilat özeti')
+  doc.fields(studentFields(data))
+  doc.metrics([
+    ['TOPLAM BEDEL', money(data.total)],
+    ['TAHSİL EDİLEN', money(data.paid)],
+    ['KALAN BAKİYE', money(data.total - data.paid)],
+  ])
+  doc.section('Taksit takvimi')
+  doc.table(
+    INSTALLMENT_COLUMNS,
+    data.invoices.map((item) => [
+      `${item.installment}. taksit`,
+      date(item.dueDate),
+      money(item.amount),
+      item.status,
+    ]),
+    true,
+  )
+  doc.paragraph(
+    'Bu plan, belgenin oluşturulduğu andaki tahsilat durumunu gösterir. Tamamlanan her tahsilat için ayrı bir dekont alınabilir.',
+    8,
+    COLORS.muted,
+  )
+  doc.signatures(
+    `Veli · ${data.parent?.name || 'Ad soyad'}`,
+    'Okul muhasebesi · Kontrol / Tarih',
+    true,
   )
   return doc.finish()
 }

@@ -60,34 +60,58 @@ export async function loadDocumentState(
     )
   }
 
+  if (type === 'payment-plan') {
+    // Taahhütname öğrenciye bağlıdır: kayıt kimliği öğrenci kimliğidir (core `documentData`).
+    const student = await read('students', recordId)
+    Object.assign(records, await studentRecords(read, student, student.classId))
+    records.invoices = await studentInvoices(client, student.id, signal)
+    return buildWorkflowState(records, { modules: {}, academicYear: null })
+  }
+
   const main =
     type === 'receipt' ? await read('invoices', recordId) : await read('contracts', recordId)
   records[type === 'receipt' ? 'invoices' : 'contracts'] = [main]
 
   const student = await read('students', main.studentId)
-  records.students = [student]
   // Sözleşme kendi sınıfını taşır; yoksa (taksitte hiç yok) öğrencinin güncel sınıfı.
   const classId = 'classId' in main && main.classId ? main.classId : student.classId
+  Object.assign(records, await studentRecords(read, student, classId))
+
+  if (type === 'contract') {
+    // Ek 1 ödeme planı: öğrencinin taksitleri (core hangilerinin sözleşmeye ait olduğunu seçer).
+    records.invoices = await studentInvoices(client, student.id, signal)
+  }
+  return buildWorkflowState(records, { modules: {}, academicYear: null })
+}
+
+/** Öğrencinin tüm taksitleri; hangilerinin belgeye girdiğini core seçer. */
+async function studentInvoices(client: KampusClient, studentId: string, signal?: AbortSignal) {
+  const rows = await fetchAllCollectionPages<State['invoices'][number]>(
+    client,
+    'invoices',
+    { filters: { studentId } },
+    signal,
+  )
+  return rows.map((row) => row.record)
+}
+
+/** Öğrenci belgesinin yardımcı kayıtları: sınıf, veli ve kampüs (okunamayan boş kalır). */
+async function studentRecords(
+  read: Read,
+  student: State['students'][number],
+  classId: string,
+): Promise<Records> {
   const [classroom, parent] = await Promise.all([
     optional(read('classes', classId)),
     student.parentId ? optional(read('parents', student.parentId)) : undefined,
   ])
-  records.classes = classroom ? [classroom] : []
-  records.parents = parent ? [parent] : []
   const branch = classroom ? await optional(read('branches', classroom.branchId)) : undefined
-  records.branches = branch ? [branch] : []
-
-  if (type === 'contract') {
-    // Ek 1 ödeme planı: öğrencinin taksitleri (core hangilerinin sözleşmeye ait olduğunu seçer).
-    const rows = await fetchAllCollectionPages<State['invoices'][number]>(
-      client,
-      'invoices',
-      { filters: { studentId: student.id } },
-      signal,
-    )
-    records.invoices = rows.map((row) => row.record)
+  return {
+    students: [student],
+    classes: classroom ? [classroom] : [],
+    parents: parent ? [parent] : [],
+    branches: branch ? [branch] : [],
   }
-  return buildWorkflowState(records, { modules: {}, academicYear: null })
 }
 
 /** Kullanıcıya gösterilen ileti: core'un Türkçe kullanıcı hatası aynen, teknik hata genel ileti. */

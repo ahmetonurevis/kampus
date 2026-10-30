@@ -9,6 +9,7 @@ import {
   contractDocument,
   documentFilename,
   materialDocument,
+  paymentPlanDocument,
   receiptDocument,
   type PdfDocumentType,
 } from '@/lib/pdf/templates.ts'
@@ -55,6 +56,12 @@ export function useDocumentPdf(type: PdfDocumentType, recordId: string, enabled:
               return contractDocument(measurer, documentData(state, 'contract', recordId), options)
             case 'material':
               return materialDocument(measurer, documentData(state, 'material', recordId), options)
+            case 'payment-plan':
+              return paymentPlanDocument(
+                measurer,
+                documentData(state, 'payment-plan', recordId),
+                options,
+              )
             default:
               return type satisfies never
           }

@@ -750,6 +750,83 @@ describe('aday uçları', () => {
     assert.equal((await loadRecords(db, a.id, ['attendance'])).length, 0)
   })
 
+  test('DOM-DIL-030, DOM-KAY-034: deneme dersi dolu, kullanılmış ya da kampüs dışı grup derste 409/422; aday değişmez', async () => {
+    const group = SEED.classes.find((item) => item.id === 'c1')
+    assert.ok(LESSON && group)
+    const pastDate = '2026-10-05T09:10:00.000Z'
+    const a = await institution(
+      { type: 'language_school' },
+      withRecords({
+        classes: [{ ...group, id: 'test-c-b2', branchId: 'b2' }],
+        schedule: [
+          { ...LESSON, id: 'test-lesson-past', date: pastDate },
+          { ...LESSON, id: 'test-lesson-b2', classId: 'test-c-b2' },
+        ],
+        prospects: [
+          {
+            ...PR1,
+            id: 'test-pr-used',
+            trialLesson: {
+              lessonId: 'test-lesson-past',
+              classId: 'c1',
+              date: pastDate,
+              duration: LESSON.duration,
+              guardianConsentAt: pastDate,
+              scheduledAt: pastDate,
+              by: { role: 'onburo', userId: 'test-user' },
+            },
+          },
+        ],
+      }),
+    )
+    const cookie = await frontDesk(a.id)
+    const body = { lessonId: LESSON.id, guardianConsent: true }
+    const people = []
+    for (const [index, name] of ['Test Bir', 'Test İki', 'Test Üç'].entries())
+      people.push(
+        await created(cookie, {
+          ...PROSPECT,
+          name,
+          phone: `0555999020${String(index)}`,
+          email: '',
+          minor: true,
+          interest: 'B1 · Genel İngilizce',
+        }),
+      )
+    const [first, second, third] = people
+    assert.ok(first && second && third)
+    // Gerçekleşmiş deneme dersi olan aday ikinci kez planlayamaz.
+    await unchanged(a.id, 'test-pr-used', async () => {
+      assertError(
+        await trial(cookie, 'test-pr-used', body, await versionOf(a.id, 'test-pr-used')),
+        409,
+        'trial_already_used',
+      )
+    })
+    // Adayın kampüsü (b1) dışındaki grubun dersi.
+    await unchanged(a.id, first.id, async () => {
+      assertError(
+        await trial(cookie, first.id, { ...body, lessonId: 'test-lesson-b2' }, first.version),
+        422,
+        'trial_group_unavailable',
+      )
+    })
+    // Bir derse en fazla iki deneme katılımcısı: üçüncü aday 409, yazılmaz.
+    for (const person of [first, second]) {
+      const planned = await trial(cookie, person.id, body, person.version)
+      assert.equal(planned.statusCode, 200, planned.body)
+    }
+    await unchanged(a.id, third.id, async () => {
+      const full = await trial(cookie, third.id, body, third.version)
+      assertError(full, 409, 'trial_lesson_full')
+      assert.deepEqual(full.json().issues[0].path, ['lessonId'])
+    })
+    const filled = (await stored(a.id)).filter(
+      (row) => (row.data.trialLesson as { lessonId?: string } | undefined)?.lessonId === LESSON.id,
+    )
+    assert.equal(filled.length, 2)
+  })
+
   // --- Log ---------------------------------------------------------------------------------------
 
   test('DOM-KAY-002, DOM-KAY-032: telefon, e-posta, veli adı, not metni ve mükerrer adayın kimliği loga düşmez', async () => {

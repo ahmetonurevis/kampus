@@ -21,8 +21,10 @@ import {
   resourceVersionInputSchema,
   searchDocument,
   searchQueryTerms,
+  seededRandom,
   wordCount,
   type ItemVersionRef,
+  type QuestionBody,
   type ResourceAction,
   type ResourceVersion,
   type ResourceVersionInput,
@@ -1176,7 +1178,7 @@ describe('Dosya, görünüm ve arama', () => {
         attributions: [{ work: 'English 7', author: 'Örnek', source: 's. 4' }],
       }),
     )
-    const view = learnerView(version)
+    const view = learnerView(version, { random: seededRandom('test') })
     assert.equal('answerKey' in view, false)
     assert.equal('license' in view, false)
     assert.equal(view.licenseKind, 'licensed_publication')
@@ -1184,24 +1186,134 @@ describe('Dosya, görünüm ve arama', () => {
     assert.equal(view.attributions.length, 1, 'kaynak gösterimi korunur')
   })
 
-  test('sıralama öğeleri yazarın sırasından bağımsız ve sabit karışır', () => {
-    const items = ['i1', 'i2', 'i3', 'i4', 'i5'].map((id) => ({ id, text: id }))
-    const ordering = (list: typeof items) =>
+  describe('öğrenci görünümünde karıştırma (rastgelelik dışarıdan)', () => {
+    const question = (body: QuestionBody, answerKey: ResourceVersionInput['answerKey']) =>
       build({
-        ...multipleChoice({ answerKey: null }),
-        content: {
-          type: 'question',
-          question: { questionType: 'ordering', stem: 'Sırala', items: list },
-        },
+        ...multipleChoice(),
+        content: { type: 'question', question: body },
+        answerKey,
       }).version
-    const forward = learnerView(ordering(items)).content
-    const reversed = learnerView(ordering([...items].reverse())).content
-    assert.deepEqual(forward, reversed, 'girilen sıra sızmaz')
-    assert.ok(forward.type === 'question' && forward.question.questionType === 'ordering')
-    assert.deepEqual(forward.question.items.map((i) => i.id).sort(), ['i1', 'i2', 'i3', 'i4', 'i5'])
+    const ordering = (ids: string[], order: string[]) =>
+      question(
+        { questionType: 'ordering', stem: 'Sırala', items: ids.map((id) => ({ id, text: id })) },
+        { questionType: 'ordering', order, explanation: 'Doğru sıra.' },
+      )
+    const shown = (version: ResourceVersion, random: () => number) => {
+      const content = learnerView(version, { random }).content
+      assert.ok(content.type === 'question')
+      return content.question
+    }
+    const orderOf = (version: ResourceVersion, random: () => number) => {
+      const q = shown(version, random)
+      assert.ok(q.questionType === 'ordering')
+      return q.items.map((i) => i.id).join()
+    }
+
+    test('iki öğeli sıralama hiçbir tohumda doğru sırada görünmez', () => {
+      for (let i = 0; i < 200; i += 1) {
+        assert.equal(orderOf(ordering(['a', 'b'], ['a', 'b']), seededRandom(`s${i}`)), 'b,a')
+        // Yazar ters sırada girse de gösterilen sıra doğru sıra olmaz.
+        assert.equal(orderOf(ordering(['b', 'a'], ['a', 'b']), seededRandom(`s${i}`)), 'b,a')
+      }
+    })
+
+    test('karışım doğru sırayla aynı çıkarsa döndürülür', () => {
+      // 0.999… Fisher–Yates'te her adımda yerinde bırakır: kimlik sırası (a,b,c) doğru sıradır.
+      const stay = () => 0.999_999
+      assert.equal(orderOf(ordering(['c', 'a', 'b'], ['a', 'b', 'c']), stay), 'b,c,a')
+      assert.equal(orderOf(ordering(['c', 'a', 'b'], ['c', 'b', 'a']), stay), 'a,b,c')
+    })
+
+    test('girilen sıra sızmaz; aynı tohum aynı sırayı verir', () => {
+      const ids = ['i1', 'i2', 'i3', 'i4', 'i5']
+      const forward = orderOf(ordering(ids, ids), seededRandom('deneme-1'))
+      const reversed = orderOf(ordering([...ids].reverse(), ids), seededRandom('deneme-1'))
+      assert.equal(forward, reversed)
+      assert.equal(orderOf(ordering(ids, ids), seededRandom('deneme-1')), forward)
+      assert.deepEqual(forward.split(',').sort(), ids)
+      const seen = new Set(
+        Array.from({ length: 30 }, (_, i) => orderOf(ordering(ids, ids), seededRandom(`t${i}`))),
+      )
+      assert.ok(seen.size > 10, 'tohum değişince sıra değişir')
+    })
+
+    test('çoktan seçmeli seçenekleri ve kapalı boşluk listesi karışır', () => {
+      const mc = build(multipleChoice()).version
+      const positions = new Set<number>()
+      for (let i = 0; i < 100; i += 1) {
+        const q = shown(mc, seededRandom(`m${i}`))
+        assert.ok(q.questionType === 'multiple_choice')
+        assert.deepEqual(q.options.map((o) => o.id).sort(), ['a', 'b', 'c', 'd'])
+        positions.add(q.options.findIndex((o) => o.id === 'b'))
+      }
+      assert.deepEqual([...positions].sort(), [0, 1, 2, 3], 'doğru seçenek her konuma düşer')
+
+      const gap = question(
+        {
+          questionType: 'gap_fill',
+          stem: 'I {{g1}} to school and {{g2}} home.',
+          gaps: [
+            { id: 'g1', options: ['go', 'goes', 'going', 'gone'] },
+            { id: 'g2', options: [] },
+          ],
+        },
+        {
+          questionType: 'gap_fill',
+          gaps: [
+            { gapId: 'g1', accepted: ['go'] },
+            { gapId: 'g2', accepted: ['walk'] },
+          ],
+          explanation: 'Geniş zaman.',
+        },
+      )
+      const firsts = new Set<string>()
+      for (let i = 0; i < 100; i += 1) {
+        const q = shown(gap, seededRandom(`g${i}`))
+        assert.ok(q.questionType === 'gap_fill')
+        assert.deepEqual([...(q.gaps[0]?.options ?? [])].sort(), ['go', 'goes', 'going', 'gone'])
+        assert.deepEqual(q.gaps[1]?.options, [], 'açık boşluk açık kalır')
+        firsts.add(q.gaps[0]?.options[0] ?? '')
+      }
+      assert.equal(firsts.size, 4)
+    })
+
+    test('eşleştirmede seçenekler hiçbir zaman öncül sırasıyla hizalı görünmez', () => {
+      const matching = question(
+        {
+          questionType: 'matching',
+          stem: 'Eşleştir',
+          prompts: [
+            { id: 'p1', text: 'dog' },
+            { id: 'p2', text: 'cat' },
+          ],
+          choices: [
+            { id: 'c1', text: 'köpek' },
+            { id: 'c2', text: 'kedi' },
+          ],
+        },
+        {
+          questionType: 'matching',
+          pairs: [
+            { promptId: 'p1', choiceId: 'c1' },
+            { promptId: 'p2', choiceId: 'c2' },
+          ],
+          explanation: 'Hayvanlar.',
+        },
+      )
+      for (let i = 0; i < 100; i += 1) {
+        const q = shown(matching, seededRandom(`e${i}`))
+        assert.ok(q.questionType === 'matching')
+        assert.deepEqual(
+          q.prompts.map((p) => p.id),
+          ['p1', 'p2'],
+        )
+        assert.equal(q.choices.map((c) => c.id).join(), 'c2,c1')
+      }
+    })
   })
 
   test('DOM-KYN-003, DOM-BEC-005: dinleme dökümü varsayılan gizli, açık seçenekle gösterilir', () => {
+    const random = seededRandom('test')
     const vtt = 'WEBVTT\n\n00:00.000 --> 00:02.000\nMerhaba'
     const listening = build(
       languagePassage({
@@ -1209,12 +1321,12 @@ describe('Dosya, görünüm ve arama', () => {
         tags: { cefrLevel: 'B1', primarySkill: 'listening' },
       }),
     ).version
-    const hidden = learnerView(listening).content
+    const hidden = learnerView(listening, { random }).content
     assert.ok(hidden.type === 'audio')
     assert.equal(hidden.transcript, null)
     assert.equal(hidden.captionsVtt, null)
-    assert.doesNotMatch(JSON.stringify(learnerView(listening)), /Döküm metni|Merhaba/)
-    const shown = learnerView(listening, { showTranscript: true }).content
+    assert.doesNotMatch(JSON.stringify(learnerView(listening, { random })), /Döküm metni|Merhaba/)
+    const shown = learnerView(listening, { random, showTranscript: true }).content
     assert.ok(shown.type === 'audio')
     assert.equal(shown.transcript, 'Döküm metni')
     assert.equal(shown.captionsVtt, vtt)
@@ -1230,7 +1342,7 @@ describe('Dosya, görünüm ve arama', () => {
         },
       }),
     ).version
-    const mediated = learnerView(mediation).content
+    const mediated = learnerView(mediation, { random }).content
     assert.ok(mediated.type === 'video')
     assert.equal(mediated.transcript, null)
 
@@ -1238,7 +1350,7 @@ describe('Dosya, görünüm ve arama', () => {
     const lesson = build(
       schoolText({ content: { type: 'video', fileId: 'f', transcript: 'Ders dökümü' } }),
     ).version
-    const visible = learnerView(lesson).content
+    const visible = learnerView(lesson, { random }).content
     assert.ok(visible.type === 'video')
     assert.equal(visible.transcript, 'Ders dökümü')
   })

@@ -1408,7 +1408,10 @@ export type LearnerResourceView = Pick<
   licenseKind: ResourceLicense['kind'] | null
 }
 
-/** FNV-1a; karıştırma sırası sürüm kimliğine göre sabit olsun diye (rastgelelik saf değildir). */
+/** `[0, 1)` aralığında sayı üreten kaynak (`Math.random` imzası). Core rastgelelik üretmez. */
+export type RandomSource = () => number
+
+/** FNV-1a; tohum metnini 32 bit başlangıç durumuna çevirir. */
 function hash(value: string): number {
   let h = 0x811c9dc5
   for (let i = 0; i < value.length; i += 1) {
@@ -1417,12 +1420,106 @@ function hash(value: string): number {
   }
   return h
 }
-const scramble = <T extends { id: string }>(list: readonly T[], seed: string): T[] =>
-  [...list].sort(
-    (a, b) => hash(`${seed}:${a.id}`) - hash(`${seed}:${b.id}`) || (a.id < b.id ? -1 : 1),
-  )
+
+/**
+ * Tohumlu deterministik üreteç (mulberry32). Servis tohumu deneme veya atama kimliğinden verir;
+ * böylece sayfa yenilenince aynı öğrenci aynı sırayı görür, testler sabit sonuç alır.
+ */
+export function seededRandom(seed: string): RandomSource {
+  let state = hash(seed)
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296
+  }
+}
+
+/**
+ * Listeyi karıştırır. Önce anahtara göre dizilir: yazarın girdiği sıra sonuca hiç sızmaz. Ardından
+ * Fisher–Yates. `reveal` verilirse (doğru cevabı ele veren sıra) ve karışım ona eşit çıkarsa bir
+ * adım döndürülür; ayrık öğelerde döndürülmüş dizi hiçbir konumda eskisiyle eşleşmez, iki öğeli
+ * sıralama da böylece hiçbir zaman doğru sırada görünmez.
+ */
+function shuffled<T>(
+  list: readonly T[],
+  key: (item: T) => string,
+  random: RandomSource,
+  reveal?: readonly string[],
+): T[] {
+  // Anahtarlar tekildir (şema kimlikleri ve boşluk seçeneklerini tekilleştirir); eşitlik yoktur.
+  const result = [...list].sort((a, b) => (key(a) < key(b) ? -1 : 1))
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.min(i, Math.floor(random() * (i + 1)))
+    const a = result[i]
+    const b = result[j]
+    if (a !== undefined && b !== undefined) {
+      result[i] = b
+      result[j] = a
+    }
+  }
+  if (
+    reveal !== undefined &&
+    result.length > 1 &&
+    reveal.every((value, index) => result[index] !== undefined && key(result[index]) === value)
+  ) {
+    const first = result.shift()
+    if (first !== undefined) result.push(first)
+  }
+  return result
+}
+
+const byId = (item: { id: string }) => item.id
+const byText = (value: string) => value
+
+/**
+ * Soru gövdesini öğrenciye göstermek için karıştırır. Sıralama öğeleri doğru sırada, eşleştirme
+ * seçenekleri öncül sırasıyla hizalı görünmez; bu iki türde eşitlik cevabı ele verir. Çoktan
+ * seçmeli seçenekler ve kapalı boşluk listesi tekdüze karışır: özgün sırayı yasaklamak doğru
+ * seçeneğin özgün konumunda görünme olasılığını düşürür, bu da ayrı bir ipucudur.
+ */
+function shuffleQuestion(
+  question: QuestionBody,
+  key: AnswerKey | null,
+  random: RandomSource,
+): QuestionBody {
+  switch (question.questionType) {
+    case 'multiple_choice':
+      return { ...question, options: shuffled(question.options, byId, random) }
+    case 'gap_fill':
+      return {
+        ...question,
+        gaps: question.gaps.map((gap) => ({
+          ...gap,
+          options: shuffled(gap.options, byText, random),
+        })),
+      }
+    case 'ordering': {
+      const order = key?.questionType === 'ordering' ? key.order : question.items.map(byId)
+      return { ...question, items: shuffled(question.items, byId, random, order) }
+    }
+    case 'matching': {
+      const pairs = key?.questionType === 'matching' ? key.pairs : []
+      const aligned = question.prompts.map(
+        (prompt) => pairs.find((pair) => pair.promptId === prompt.id)?.choiceId ?? '',
+      )
+      return { ...question, choices: shuffled(question.choices, byId, random, aligned) }
+    }
+    case 'true_false':
+    case 'short_answer':
+      return question
+    default:
+      return question satisfies never
+  }
+}
 
 export type LearnerViewOptions = {
+  /**
+   * Seçenek ve öğe karıştırmasının rastgelelik kaynağı (zorunlu: core saf kalır). Servis
+   * `seededRandom(denemeKimliği)` verir.
+   */
+  random: RandomSource
   /**
    * Dinleme görevinin dökümü ve altyazısı varsayılan olarak gizlidir (DOM-KYN-003, DOM-BEC-005).
    * Servis görev kapanınca veya öğretmenin erişilebilirlik uyarlamasında `true` verir.
@@ -1436,14 +1533,14 @@ const isListeningTask = (tags: ResourceTags) =>
 
 /**
  * Öğrenci/veli görünümü: `answerKey` (doğru cevap ve çözüm açıklaması) ve lisans ayrıntısı
- * ayıklanır, kaynak gösterimi korunur (DOM-KYN-024). Sıralama öğeleri ve eşleştirme seçenekleri
- * yazarın girdiği (çoğunlukla doğru) sırayı sızdırmasın diye sürüme göre sabit karıştırılır.
- * Dinleme görevinde döküm ve altyazı `showTranscript` verilmedikçe gizlenir; dinleme dışındaki ses
- * ve videoda döküm erişilebilirlik içindir, hep görünür (DOM-KYN-003).
+ * ayıklanır, kaynak gösterimi korunur (DOM-KYN-024). Soru seçenekleri ve öğeleri `random` ile
+ * karıştırılır (`shuffleQuestion`). Dinleme görevinde döküm ve altyazı `showTranscript`
+ * verilmedikçe gizlenir; dinleme dışındaki ses ve videoda döküm erişilebilirlik içindir, hep
+ * görünür (DOM-KYN-003).
  */
 export function learnerView(
   version: ResourceVersion,
-  options: LearnerViewOptions = {},
+  options: LearnerViewOptions,
 ): LearnerResourceView {
   let content: ResourceContent = version.content
   if (
@@ -1454,17 +1551,9 @@ export function learnerView(
     content = { ...content, transcript: null, captionsVtt: null }
   }
   if (content.type === 'question') {
-    const question = content.question
-    if (question.questionType === 'ordering') {
-      content = {
-        ...content,
-        question: { ...question, items: scramble(question.items, version.id) },
-      }
-    } else if (question.questionType === 'matching') {
-      content = {
-        ...content,
-        question: { ...question, choices: scramble(question.choices, version.id) },
-      }
+    content = {
+      ...content,
+      question: shuffleQuestion(content.question, version.answerKey, options.random),
     }
   }
   return {

@@ -1,7 +1,7 @@
-// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
+import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import {
   previewOptical,
   runAssessment,
@@ -21,13 +21,13 @@ import { csvObjects } from '../packages/school-core/src/lib/delimited-input.ts'
 import { isDomainError } from './support/domain-error.ts'
 const now = '2026-10-06T10:00:00.000Z',
   seed = () => createSeed(new Date(now))
-const admin = { role: 'yonetici', childId: 's1' },
-  teacher = { role: 'ogretmen', childId: 's1' }
+const admin: Session = { role: 'yonetici', childId: 's1' },
+  teacher: Session = { role: 'ogretmen', childId: 's1' }
 let serial = 0
-const id = (prefix) => `${prefix}-auto-test-${++serial}`
+const id = (prefix: string) => `${prefix}-auto-test-${++serial}`
 const responses = (value = 'BBBDABCDABCD', student = '2026001', booklet = 'A') =>
   `student;booklet;answers\n${student};${booklet};${value}`
-const evaluate = (state, text = responses(), session = admin) =>
+const evaluate = (state: State, text = responses(), session: Session = admin) =>
   runAssessment(state, session, 'evaluate', { profileId: 'optical-exam-7-1', text }, id, '', now)
 const input = {
   examId: 'exam-7-1',
@@ -39,12 +39,21 @@ const input = {
   branchId: '',
   subjectId: '',
 }
-function failsUnchanged(state, callback, pattern) {
+function failsUnchanged(
+  state: State,
+  callback: () => unknown,
+  pattern?: RegExp | ((error: unknown) => boolean),
+) {
   const previous = JSON.stringify(state)
-  assert.throws(callback, pattern)
+  if (pattern) assert.throws(callback, pattern)
+  else assert.throws(callback)
   assert.equal(JSON.stringify(state), previous)
 }
-const keyCsv = (profile, transform = (q) => q) =>
+type KeyQuestion = State['opticalProfiles'][number]['keys'][number]['questions'][number]
+const keyCsv = (
+  profile: State['opticalProfiles'][number],
+  transform: (question: KeyQuestion) => KeyQuestion = (q) => q,
+) =>
   [
     'booklet;question;subjectId;topic;answer',
     ...profile.keys.flatMap((k) =>
@@ -60,9 +69,9 @@ test('Optik CSV soru bazında değerlendirir; önizleme veri değiştirmez, kita
     before = JSON.stringify(state)
   const rows = previewOptical(state, admin, { profileId: 'optical-exam-7-1', text: responses() })
   assert.equal(JSON.stringify(state), before)
-  assert.deepEqual([rows[0].correct, rows[0].wrong, rows[0].blank, rows[0].net], [2, 2, 0, 1.5])
-  assert.equal(rows[0].topicScores[0].percent, 50)
-  assert.equal(rows[0].questionResults[0].outcome, 'wrong')
+  assert.deepEqual([rows[0]!.correct, rows[0]!.wrong, rows[0]!.blank, rows[0]!.net], [2, 2, 0, 1.5])
+  assert.equal(rows[0]!.topicScores[0]!.percent, 50)
+  assert.equal(rows[0]!.questionResults[0]!.outcome, 'wrong')
   const alternate = previewOptical(state, admin, {
     profileId: 'optical-exam-7-1',
     text: responses('DCBADC BADCBA'.replace(' ', ''), '2026001', 'B'),
@@ -78,23 +87,23 @@ test('Boş, çoklu işaret ve iptal soru ayrı değerlendirilir; iptal sorular k
     'profile',
     {
       ...profile,
-      keyCsv: keyCsv(profile, (q) =>
+      keyCsv: keyCsv(profile!, (q) =>
         q.subjectId === 'math' && q.answer === 'A' ? { ...q, answer: '-' } : q,
       ),
     },
     id,
-    profile.id,
+    profile!.id,
     now,
   )
   const row = previewOptical(state, admin, {
-    profileId: profile.id,
+    profileId: profile!.id,
     text: responses('-* DABCDABCD'),
   })[0]
   assert.deepEqual(
-    [row.correct, row.wrong, row.blank, row.multiple, row.cancelled, row.net],
+    [row!.correct, row!.wrong, row!.blank, row!.multiple, row!.cancelled, row!.net],
     [1, 1, 1, 1, 1, 0.75],
   )
-  assert.deepEqual(row.topicScores, [{ topic: 'Denklemler', total: 3, correct: 1, percent: 33 }])
+  assert.deepEqual(row!.topicScores, [{ topic: 'Denklemler', total: 3, correct: 1, percent: 33 }])
 })
 test('Alan konumlarıyla DAT/TXT okuma başlıkları atlar; boş cevap alanları korunur', () => {
   const state = seed(),
@@ -110,11 +119,11 @@ test('Alan konumlarıyla DAT/TXT okuma başlıkları atlar; boş cevap alanları
     answersStart: 13,
     answersLength: 12,
   }
-  runAssessment(state, admin, 'profile', data, id, profile.id, now)
+  runAssessment(state, admin, 'profile', data, id, profile!.id, now)
   const text = 'Başlık\r\n  2026001 A BBBDABCDABCD'
-  const rows = previewOptical(state, admin, { profileId: profile.id, text })
-  assert.equal(rows[0].net, 1.5)
-  assert.ok(exampleOpticalFile(state, state.opticalProfiles[0]).startsWith('Örnek optik dosyası'))
+  const rows = previewOptical(state, admin, { profileId: profile!.id, text })
+  assert.equal(rows[0]!.net, 1.5)
+  assert.ok(exampleOpticalFile(state, state.opticalProfiles[0]!).startsWith('Örnek optik dosyası'))
   failsUnchanged(
     state,
     () =>
@@ -122,7 +131,7 @@ test('Alan konumlarıyla DAT/TXT okuma başlıkları atlar; boş cevap alanları
         state,
         admin,
         'evaluate',
-        { profileId: profile.id, text: 'Başlık\n2026001' },
+        { profileId: profile!.id, text: 'Başlık\n2026001' },
         id,
         '',
         now,
@@ -131,7 +140,8 @@ test('Alan konumlarıyla DAT/TXT okuma başlıkları atlar; boş cevap alanları
   )
   failsUnchanged(
     state,
-    () => runAssessment(state, admin, 'profile', { ...data, bookletStart: 4 }, id, profile.id, now),
+    () =>
+      runAssessment(state, admin, 'profile', { ...data, bookletStart: 4 }, id, profile!.id, now),
     /çakışmamalı/,
   )
 })
@@ -147,10 +157,10 @@ test('Optik aktarım hatalı kimlik, tekrar, kitapçık, cevap ve kapsam durumla
     responses() + '\nunknown;A;ABCDABCDABCD',
   ])
     failsUnchanged(state, () => evaluate(state, text))
-  state.students[1].number = '2026001'
+  state.students[1]!.number = '2026001'
   failsUnchanged(state, () => evaluate(state), /tekil/)
-  state.students[1].number = '2026002'
-  state.students[0].isActive = false
+  state.students[1]!.number = '2026002'
+  state.students[0]!.isActive = false
   failsUnchanged(state, () => evaluate(state), /pasif/)
 })
 test('Öğretmen yalnızca kendi sınıf ve branş sonuçlarını yazar; örnek dosya kapsamına uygundur', () => {
@@ -163,7 +173,7 @@ test('Öğretmen yalnızca kendi sınıf ve branş sonuçlarını yazar; örnek 
   evaluate(state, responses(), teacher)
   assert.equal(state.opticalEvaluations.length, 1)
   assert.deepEqual(
-    state.mockResults.find((r) => r.id === oldTurkish.id),
+    state.mockResults.find((r) => r.id === oldTurkish!.id),
     oldTurkish,
   )
   failsUnchanged(
@@ -173,14 +183,14 @@ test('Öğretmen yalnızca kendi sınıf ve branş sonuçlarını yazar; örnek 
   )
   assert.equal(
     previewOptical(state, teacher, {
-      profileId: state.opticalProfiles[0].id,
-      text: exampleOpticalFile(state, state.opticalProfiles[0], teacher),
+      profileId: state.opticalProfiles[0]!.id,
+      text: exampleOpticalFile(state, state.opticalProfiles[0]!, teacher),
     }).length,
     3,
   )
   failsUnchanged(
     state,
-    () => prepareProfile(state, teacher, state.opticalProfiles[0], state.opticalProfiles[0].id),
+    () => prepareProfile(state, teacher, state.opticalProfiles[0], state.opticalProfiles[0]!.id),
     /yönetici/,
   )
   failsUnchanged(
@@ -194,7 +204,7 @@ test('Tekrar değerlendirme sonucu çoğaltmaz; anahtar ve manuel sonuç değiş
   evaluate(state)
   evaluate(state, responses('ABCDABCDABCD'))
   assert.equal(state.opticalEvaluations.length, 3)
-  assert.equal(currentEvaluations(state, 'exam-7-1', admin)[0].correct, 4)
+  assert.equal(currentEvaluations(state, 'exam-7-1', admin)[0]!.correct, 4)
   const profile = state.opticalProfiles[0]
   runAssessment(
     state,
@@ -202,10 +212,10 @@ test('Tekrar değerlendirme sonucu çoğaltmaz; anahtar ve manuel sonuç değiş
     'profile',
     {
       ...profile,
-      keyCsv: keyCsv(profile, (q) => ({ ...q, answer: q.answer === 'A' ? 'B' : q.answer })),
+      keyCsv: keyCsv(profile!, (q) => ({ ...q, answer: q.answer === 'A' ? 'B' : q.answer })),
     },
     id,
-    profile.id,
+    profile!.id,
     now,
   )
   assert.equal(currentEvaluations(state, 'exam-7-1', admin).length, 0)
@@ -238,11 +248,11 @@ test('Hatalı cevap anahtarı yeni profil veya kısmi anahtar oluşturmaz', () =
     profile = state.opticalProfiles[0]
   for (const keyCsv of [
     'booklet;question;subjectId;topic;answer\nA;1;math;Kazanım;Z',
-    profile.keyCsv.replace('A;1;math', 'A;2;math'),
-    profile.keyCsv.replace('B;12;math;Denklemler;A', 'B;12;math;Farklı kazanım;A'),
+    profile!.keyCsv.replace('A;1;math', 'A;2;math'),
+    profile!.keyCsv.replace('B;12;math;Denklemler;A', 'B;12;math;Farklı kazanım;A'),
   ])
     failsUnchanged(state, () =>
-      runAssessment(state, admin, 'profile', { ...profile, keyCsv }, id, profile.id, now),
+      runAssessment(state, admin, 'profile', { ...profile, keyCsv }, id, profile!.id, now),
     )
 })
 test('Etütler kazanım/kampüs/düzey bazında gruplanır, kapasiteye göre bölünür ve tekrar oluşturulmaz', () => {
@@ -270,9 +280,9 @@ test('Etütler kazanım/kampüs/düzey bazında gruplanır, kapasiteye göre bö
   )
   assert.equal(state.tutorSessions.length, 2)
   const parentGroup = tutoringSessions(state, { role: 'veli', childId: 's1' })[0]
-  assert.deepEqual(parentGroup.studentIds, ['s1'])
+  assert.deepEqual(parentGroup!.studentIds, ['s1'])
   assert.deepEqual(
-    parentGroup.scores.map((score) => score.studentId),
+    parentGroup!.scores.map((score) => score.studentId),
     ['s1'],
   )
   const repeated = planTutoring(state, admin, input, now)
@@ -293,11 +303,11 @@ test('Etüt başarı eşiği yuvarlanmamış oranı kullanır; eşiğe eşit ora
         'booklet;question;subjectId;topic;answer\nA;1;math;Denklemler;A\nA;2;math;Denklemler;B\nA;3;math;Denklemler;C\nA;4;turkish;Sözcükte anlam;A\nA;5;science;Hücre;A',
     },
     id,
-    profile.id,
+    profile!.id,
     now,
   )
   evaluate(state, responses('ABDAA'))
-  assert.equal(currentEvaluations(state, input.examId, admin)[0].topicScores[0].percent, 67)
+  assert.equal(currentEvaluations(state, input.examId, admin)[0]!.topicScores[0]!.percent, 67)
   assert.equal(planTutoring(state, admin, { ...input, threshold: 67 }, now).sessions.length, 1)
   assert.equal(planTutoring(state, admin, { ...input, threshold: 66 }, now).sessions.length, 0)
   // İki sorudan biri doğruysa oran tam %50'dir.
@@ -311,7 +321,7 @@ test('Etüt başarı eşiği yuvarlanmamış oranı kullanır; eşiğe eşit ora
         'booklet;question;subjectId;topic;answer\nA;1;math;Denklemler;A\nA;2;math;Denklemler;B\nA;3;turkish;Sözcükte anlam;A\nA;4;science;Hücre;A',
     },
     id,
-    profile.id,
+    profile!.id,
     now,
   )
   evaluate(state, responses('BBAA'))
@@ -332,6 +342,7 @@ test('Etüt planlayıcı öğretmen/öğrenci/derslik/randevu ve etkinlik çakı
     date: '2026-10-07T13:15:00Z',
     status: 'Bekliyor',
   }
+  // @ts-expect-error — yalnız çakışma alanları dolu kısmi randevu kaydı
   state.appointments.push(appointment)
   assert.equal(planTutoring(state, admin, input, now).sessions.length, 0)
   state.appointments.pop()
@@ -347,6 +358,7 @@ test('Etüt planlayıcı öğretmen/öğrenci/derslik/randevu ve etkinlik çakı
   assert.equal(planTutoring(state, admin, input, now).sessions.length, 0)
   state.schedule.pop()
   for (const classroom of state.classes.filter((c) => c.branchId === 'b1'))
+    // @ts-expect-error — yalnız çakışma alanları dolu kısmi ders kaydı
     state.schedule.push({
       id: `block-${classroom.id}`,
       classId: classroom.id,
@@ -357,6 +369,7 @@ test('Etüt planlayıcı öğretmen/öğrenci/derslik/randevu ve etkinlik çakı
     })
   assert.equal(planTutoring(state, admin, input, now).sessions.length, 0)
   state.schedule = state.schedule.filter((s) => !s.id.startsWith('block-'))
+  // @ts-expect-error — yalnız çakışma alanları dolu kısmi etkinlik kaydı
   state.schoolEvents.push({
     id: 'event-block',
     branchId: 'b1',
@@ -375,7 +388,7 @@ test('Yerleşmeyen etüt grupları açıklanır; son onay güncel verileri ve es
   state.availability = []
   const blocked = planTutoring(state, admin, input, now)
   assert.equal(blocked.unresolved.length, 1)
-  assert.match(blocked.unresolved[0].reason, /uygunluk/)
+  assert.match(blocked.unresolved[0]!.reason, /uygunluk/)
   failsUnchanged(
     state,
     () =>
@@ -412,13 +425,21 @@ test('Etüt iptali ve yoklaması geçmişi korur; öğretmen ve veli kapsamları
   failsUnchanged(
     state,
     () =>
-      runAssessment(state, teacher, 'attendance', { marks: { s1: 'Geldi' } }, id, entry.id, now),
+      runAssessment(state, teacher, 'attendance', { marks: { s1: 'Geldi' } }, id, entry!.id, now),
     /Gelecek/,
   )
   failsUnchanged(
     state,
     () =>
-      runAssessment(state, teacher, 'attendance', { marks: {} }, id, entry.id, '2026-10-20T10:00Z'),
+      runAssessment(
+        state,
+        teacher,
+        'attendance',
+        { marks: {} },
+        id,
+        entry!.id,
+        '2026-10-20T10:00Z',
+      ),
     /tüm/,
   )
   runAssessment(
@@ -427,7 +448,7 @@ test('Etüt iptali ve yoklaması geçmişi korur; öğretmen ve veli kapsamları
     'attendance',
     { marks: { s1: 'Geldi' } },
     id,
-    entry.id,
+    entry!.id,
     '2026-10-20T10:00Z',
   )
   runAssessment(
@@ -436,14 +457,14 @@ test('Etüt iptali ve yoklaması geçmişi korur; öğretmen ve veli kapsamları
     'attendance',
     { marks: { s1: 'İzinli' } },
     id,
-    entry.id,
+    entry!.id,
     '2026-10-20T10:00Z',
   )
-  assert.equal(entry.attendance.s1, 'İzinli')
+  assert.equal(entry!.attendance.s1, 'İzinli')
   assert.equal(state.tutorSessions.length, 1)
   failsUnchanged(
     state,
-    () => runAssessment(state, teacher, 'cancel', { reason: 'İzin' }, id, entry.id, now),
+    () => runAssessment(state, teacher, 'cancel', { reason: 'İzin' }, id, entry!.id, now),
     /Tamamlanmış/,
   )
 })
@@ -452,8 +473,8 @@ test('Etüt iptali rezervasyonu kaldırır; yeniden plan, uygunluk UTC kaydı ve
   evaluate(state)
   runAssessment(state, admin, 'plan', input, id, '', now)
   const entry = state.tutorSessions[0]
-  runAssessment(state, teacher, 'cancel', { reason: 'Öğretmen izinli.' }, id, entry.id, now)
-  assert.equal(entry.status, 'İptal')
+  runAssessment(state, teacher, 'cancel', { reason: 'Öğretmen izinli.' }, id, entry!.id, now)
+  assert.equal(entry!.status, 'İptal')
   assert.equal(planTutoring(state, admin, input, now).sessions.length, 1)
   const slot = runAssessment(
     state,
@@ -488,9 +509,9 @@ test('Yeni ders ve arşiv işlemleri planlanmış etütlerle çakışamaz; kayı
         'lesson',
         {
           classId: 'c1',
-          teacherId: entry.teacherId,
+          teacherId: entry!.teacherId,
           subjectId: 'math',
-          date: entry.date,
+          date: entry!.date,
           duration: 30,
           room: 'yeni derslik',
         },
@@ -502,7 +523,7 @@ test('Yeni ders ve arşiv işlemleri planlanmış etütlerle çakışamaz; kayı
   )
   failsUnchanged(
     state,
-    () => archiveRecord(state, 'teacher', entry.teacherId, 't17', now),
+    () => archiveRecord(state, 'teacher', entry!.teacherId, 't17', now),
     /gelecek etüt/,
   )
   failsUnchanged(
@@ -510,9 +531,9 @@ test('Yeni ders ve arşiv işlemleri planlanmış etütlerle çakışamaz; kayı
     () =>
       saveTeacher(
         state,
-        { ...state.teachers.find((t) => t.id === entry.teacherId), branchId: 'b2' },
+        { ...state.teachers.find((t) => t.id === entry!.teacherId), branchId: 'b2' },
         id,
-        entry.teacherId,
+        entry!.teacherId,
         now,
       ),
     /ileri tarihli etüt/,
@@ -524,12 +545,16 @@ test('Yeni ders ve arşiv işlemleri planlanmış etütlerle çakışamaz; kayı
       classId: 'c1',
       teacherId: 't17',
       subjectId: 'math',
-      date: entry.date,
+      date: entry!.date,
       duration: 30,
       room: '102',
     },
   ]
-  failsUnchanged(state, () => archiveRecord(state, 'teacher', 't17', entry.teacherId, now), /etüdü/)
+  failsUnchanged(
+    state,
+    () => archiveRecord(state, 'teacher', 't17', entry!.teacherId, now),
+    /etüdü/,
+  )
   failsUnchanged(
     state,
     () =>
@@ -539,10 +564,10 @@ test('Yeni ders ve arşiv işlemleri planlanmış etütlerle çakışamaz; kayı
         'event',
         {
           title: 'Sınıf etkinliği',
-          branchId: entry.branchId,
+          branchId: entry!.branchId,
           classId: 'c1',
-          date: entry.date,
-          endDate: new Date(Date.parse(entry.date) + 3600000).toISOString(),
+          date: entry!.date,
+          endDate: new Date(Date.parse(entry!.date) + 3600000).toISOString(),
           location: 'Bahçe',
           description: 'Sınıf ortak etkinliği',
           requiresConsent: false,
@@ -554,6 +579,7 @@ test('Yeni ders ve arşiv işlemleri planlanmış etütlerle çakışamaz; kayı
       ),
     /etüdü/,
   )
+  // @ts-expect-error — yalnız ilgili alanları dolu kısmi yenileme kaydı
   state.renewals.push({
     id: 'graduate-blocked',
     studentId: 's1',
@@ -568,7 +594,7 @@ test('Yeni ders ve arşiv işlemleri planlanmış etütlerle çakışamaz; kayı
   )
   failsUnchanged(
     state,
-    () => archiveRecord(state, 'class', entry.roomClassId, 'c9', now),
+    () => archiveRecord(state, 'class', entry!.roomClassId, 'c9', now),
     /gelecek etüt/,
   )
   const restored = restoreSnapshot(createSnapshotWriter(seed())(state))

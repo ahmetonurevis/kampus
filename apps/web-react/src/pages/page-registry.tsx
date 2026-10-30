@@ -15,6 +15,9 @@ const CampusesPage = lazy(async () => ({
 const StaffPage = lazy(async () => ({
   default: (await import('./management/StaffPage.tsx')).StaffPage,
 }))
+const ContentPoolPage = lazy(async () => ({
+  default: (await import('./content/ContentPoolPage.tsx')).ContentPoolPage,
+}))
 const TeacherClassesPage = lazy(async () => ({
   default: (await import('./academic/TeacherClassesPage.tsx')).TeacherClassesPage,
 }))
@@ -123,6 +126,9 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <CampusesPage page={page} />
     case 'yonetici/personel':
       return <StaffPage page={page} />
+    case 'yonetici/icerik-havuzu':
+    case 'ogretmen/icerik-havuzu':
+      return <ContentPoolPage page={page} />
     case 'yonetici/ayarlar':
       return <SettingsPage page={page} />
     case 'ogrenci/ayarlar':

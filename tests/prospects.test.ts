@@ -176,12 +176,21 @@ test('DOM-YTK-040: CRM modülü kapalıyken aday işlemleri reddedilir', () => {
   )
 })
 
-test('DOM-YTK-012, DOM-DIL-030: deneme dersi okulda bulunmaz gibi davranır', () => {
+test('DOM-YTK-012, DOM-DIL-030: deneme dersi okulda her rol için bulunmaz gibi davranır (404)', () => {
   const state = seed()
+  const lessonId = futureLesson(state).id
+  // Kurum türü rolden önce denetlenir: yetkisiz rol de 403 değil 404 alır.
+  for (const role of Object.keys(people) as Role[])
+    unchangedOnFailure(
+      state,
+      () => scheduleTrialLesson(state, people[role], 'pr1', { lessonId }, now),
+      fails('trial_lesson_unavailable', 'not_found'),
+    )
+  // Dil okulunda yetkisiz rol 403 alır.
   unchangedOnFailure(
     state,
-    () => scheduleTrialLesson(state, front, 'pr1', { lessonId: futureLesson(state).id }, now),
-    fails('trial_lesson_unavailable', 'not_found'),
+    () => scheduleTrialLesson(state, people.veli, 'pr1', { lessonId }, now, language),
+    fails('permission_denied', 'forbidden'),
   )
 })
 

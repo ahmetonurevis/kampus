@@ -16,6 +16,7 @@
   - `changeProspectStage` gövdesine isteğe bağlı `siblingOfId`: vazgeçen aday, iletişimi paylaşan açık adayla çakışıyorsa iletişimi gerçekten paylaşan açık veya kayıtlı kardeşi seçilerek yeniden açılır (DOM-KAY-031); kardeş geçersizse 422 `sibling_not_found`, yeniden açma dışında seçilirse 422 `sibling_reopen_only` (Vazgeçti gövdesinde 400). Tanınmayan eski aşama 409 `prospect_stage_unknown` (önce 422).
   - `scheduleProspectMeeting` çakışmasında yalnız açık adayların görüşmesi sayılır; kayda alınmış (seed `pr18`) veya vazgeçmiş adayın kalan ileri tarihli görüşmesi saati tutmaz (DOM-KAY-033).
   - `scheduleTrialLesson`: `trial_already_used` dersin güncel kaydından okunur; iptal edilen veya programdan kalkan derse bağlı deneme yeniden planlanabilir. Katılımcı sınırı ve kapasitede yalnız açık adayların denemesi sayılır (kayda alınan aday kursiyer olarak bir kez sayılır); kapasite tam 18'de kabul edilir (DOM-KAY-034, DOM-DIL-030, DOM-DIL-040).
+  - `authorize`: `prospect.trial` okulda (`school`) her rol için 404 `trial_lesson_unavailable` döner; kurum türü rol denetiminden önce gelir (önce yetkisiz rol 403 alıyordu; DOM-YTK-012).
 - Tüketiciler `workspace:2.19.0` sürümüne sabitlendi.
 
 ## 2.17.0

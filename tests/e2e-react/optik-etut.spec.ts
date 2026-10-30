@@ -218,7 +218,14 @@ test.describe('optik değerlendirme', () => {
     await expect(alert).toContainText('yeniden önizleyip')
     expect(await recordsOf(client, EVALUATIONS)).toHaveLength(before)
 
+    // Yeni önizleme gelene kadar eski (bayat) önizleme onaylanamaz: yük altında düğme eski özetle
+    // yeniden görünüp ikinci bir 409'a yol açıyordu. Yanıt geciktirilerek durum belirlenimli olur.
+    await page.route('**/api/v1/assessment/evaluate/preview', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      await route.continue()
+    })
     await alert.getByRole('button', { name: 'Yeniden önizle', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Onayla ve sonuçları kaydet' })).toHaveCount(0)
     await expect(page.getByRole('status').filter({ hasText: '1 öğrenci' })).toBeVisible()
     await page.getByRole('button', { name: 'Onayla ve sonuçları kaydet', exact: true }).click()
     await expect(page.getByText(/\d+ sonuç kaydedildi\./).first()).toBeVisible()

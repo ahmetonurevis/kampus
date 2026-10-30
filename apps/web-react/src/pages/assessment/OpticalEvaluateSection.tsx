@@ -141,6 +141,9 @@ export function OpticalEvaluateSection({ profiles, subjects, loading, onDownload
     }
     if (outcome.status !== 'failed') return
     if (outcome.error.code === EVALUATION_STALE_CODE) {
+      // Bayat önizleme atılır: "Yeniden önizle" `stale`'i hemen kapatır ve eski özet yeni yanıt
+      // gelene kadar onaylanabilir görünürdü; onay eski özetle ikinci kez 409 alırdı.
+      setChecked(null)
       setStale(true)
       return
     }

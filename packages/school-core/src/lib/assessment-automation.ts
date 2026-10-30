@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { State } from '../data/seed.ts'
+import { toAuditValue, type RecordAuditEntry } from './audit.ts'
 import type { MakeId, Session } from './domain.ts'
 import { dayKey } from './format.ts'
 import { csvObjects } from './delimited-input.ts'
@@ -944,7 +945,7 @@ export function runAssessment(
     result = entry
     collection = 'tutorSessions'
   } else throw new DomainError('unknown_command', 'İşlem bulunamadı.')
-  state.audit.unshift({
+  const entry: RecordAuditEntry = {
     id: makeId('audit'),
     actor: session.role,
     user_id:
@@ -954,9 +955,10 @@ export function runAssessment(
     record_id: result.id || recordId || command,
     date: now,
     changed_at: now,
-    old_value: oldValue,
-    new_value: structuredClone(result),
-  })
+    old_value: toAuditValue(oldValue),
+    new_value: toAuditValue(result),
+  }
+  state.audit.unshift(entry)
   state.audit = state.audit.slice(0, 200)
   return result
 }

@@ -146,6 +146,7 @@ export function workflowRows(
   state: State,
   session: Session,
   page: string | undefined,
+  now = new Date().toISOString(),
 ): WorkflowRow[] {
   const definition = workflowPage(page)
   if (!definition || !definition.roles.includes(session.role) || !state.modules[definition.key])
@@ -327,7 +328,7 @@ export function workflowRows(
           m.title,
           `${labelDate(m.date)} · ${name(state, 'branches', m.branchId)}`,
           `Alerjenler: ${m.allergens}\n${m.description}`,
-          dayKey(m.date) === dayKey() ? 'Bugün' : 'Menü',
+          dayKey(m.date) === dayKey(now) ? 'Bugün' : 'Menü',
           'meal',
         ),
       )
@@ -776,10 +777,14 @@ export function workflowForm(
   command: string,
   recordId?: string,
   overrides: FormValues = {},
+  now = new Date().toISOString(),
 ): WorkflowForm {
+  // Varsayılan tarihler işlem anından türetilir; testler `now` ile sabitler.
+  const daysLater = (days: number) =>
+    new Date(Date.parse(now) + days * 86400000).toISOString().slice(0, 10)
   const scope = workflowScope(state, session),
-    today = dayKey(),
-    future = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+    today = dayKey(now),
+    future = daysLater(7)
   const studentOptions = options(
       scope.students,
       (s) => `${s.name} · ${name(state, 'classes', s.classId)}`,
@@ -811,7 +816,7 @@ export function workflowForm(
         subjectId: session.role === 'ogretmen' ? teacherSubjectId : '',
         title: '',
         targetNet: '',
-        deadline: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+        deadline: daysLater(30),
         motivation: '',
       },
       fields: (values) => {
@@ -853,7 +858,7 @@ export function workflowForm(
       initial: {
         title: '',
         topic: '',
-        dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+        dueDate: daysLater(7),
       },
       fields: () => [
         field('title', 'Adım başlığı'),

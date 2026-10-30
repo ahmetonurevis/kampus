@@ -45,7 +45,7 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 - **Gerekçe:** Dönem puanı formülü türlere göre ayrı ortalama alır; türsüz not listesinden resmî puan hesaplanamaz.
 - **Kaynak:** OİKY md. 22, 23/4, 27/2; OKY md. 44/1, 48/4, 51/1.
 - **Kurum türü:** `school`
-- **Kodda:** çelişiyor — örnek notların türü serbest başlıktır (`packages/school-core/src/data/seed.js:219-226`), dönem ve sıra yoktur; quiz denemesi doğrudan not olur (`apps/web/src/views/Learning.vue:423-432`).
+- **Kodda:** kısmen — `packages/school-core/src/lib/grades.ts` (`recordGrade`, `updateGrade`) tür, dönem, sıra, tarih, puan ve giren öğretmeni yazar; düzeltme eski puanı gerekçesiyle `corrections` geçmişinde saklar; notlu quiz tek kayıt olarak ilk tamamlanan denemeden aktarılır. Çelişen kısım: `K`/`G` özel durumları yok; örnek notların türü serbest başlıktır (`packages/school-core/src/data/seed.ts`), dönem ve sıra yoktur; Vue demosunda quiz denemesi doğrudan not olur (`apps/web/src/views/Learning.vue`).
 
 ## Ortaokul ölçme (OİKY)
 

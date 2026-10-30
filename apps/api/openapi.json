@@ -91,6 +91,10 @@
             "description": "Kaydın öğrencisinin adı",
             "type": "string"
           },
+          "studentNumber": {
+            "description": "Kaydın öğrencisinin okul numarası; aktör öğrencinin kaydını okuyabiliyorsa ve numara kayıtlıysa gelir",
+            "type": "string"
+          },
           "className": {
             "description": "Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı",
             "type": "string"
@@ -148,7 +152,7 @@
             "description": "school-core kaydı; rolün göremediği alanlar çıkarılmıştır. İçindeki `createdAt`/`updatedAt` core iş alanıdır, sistem zamanı üst alanlardır"
           },
           "joined": {
-            "description": "Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)",
+            "description": "Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`studentNumber`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)",
             "$ref": "#/components/schemas/CollectionItemJoinedInput"
           }
         },
@@ -851,6 +855,10 @@
             "description": "Kaydın öğrencisinin adı",
             "type": "string"
           },
+          "studentNumber": {
+            "description": "Kaydın öğrencisinin okul numarası; aktör öğrencinin kaydını okuyabiliyorsa ve numara kayıtlıysa gelir",
+            "type": "string"
+          },
           "className": {
             "description": "Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı",
             "type": "string"
@@ -909,7 +917,7 @@
             "description": "school-core kaydı; rolün göremediği alanlar çıkarılmıştır. İçindeki `createdAt`/`updatedAt` core iş alanıdır, sistem zamanı üst alanlardır"
           },
           "joined": {
-            "description": "Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)",
+            "description": "Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`studentNumber`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)",
             "$ref": "#/components/schemas/CollectionItemJoined"
           }
         },

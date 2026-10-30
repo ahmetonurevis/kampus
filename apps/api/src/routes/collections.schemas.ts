@@ -162,6 +162,12 @@ export const collectionItemSchema = z
     joined: z
       .object({
         studentName: z.string().optional().describe('Kaydın öğrencisinin adı'),
+        studentNumber: z
+          .string()
+          .optional()
+          .describe(
+            'Kaydın öğrencisinin okul numarası; aktör öğrencinin kaydını okuyabiliyorsa ve numara kayıtlıysa gelir',
+          ),
         className: z
           .string()
           .optional()
@@ -171,7 +177,7 @@ export const collectionItemSchema = z
       .meta({ id: 'CollectionItemJoined' })
       .optional()
       .describe(
-        'Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)',
+        'Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`studentNumber`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)',
       ),
   })
   .meta({ id: 'CollectionItem' })

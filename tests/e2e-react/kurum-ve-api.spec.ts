@@ -28,8 +28,17 @@ test.describe('API yardımcıları ve kurum değiştirme', () => {
   }) => {
     // Kurum etkin oturumda saklanır: paylaşılan önbellek oturumu değil, kendi oturumumuz.
     await loginAs('yonetici', { fresh: true })
-    await page.goto('/yonetici/dashboard')
+    // Genel Bakış açılışta 11 eşzamanlı istek atar; tarayıcının 6 bağlantı sınırında kurum değişimi
+    // isteği bunların arkasında bekler (yükte 8 sn'yi aşıyordu). Testin konusu panel değil kurum
+    // değişimi olduğundan hafif bir sayfadan başlanır.
+    await page.goto('/yonetici/ayarlar')
     await switchInstitutionThroughMenu(page, 'Murat Yılmaz', institutions.kampusDil)
+
+    // Kurum değişimi ekranda bitene kadar beklenir: değişim sürerken menü maddeleri devre dışıdır
+    // ve eski kurum işaretli görünür. Menü yalnız yan çubuk yeni kurumu gösterince açılır.
+    await expect(page.getByRole('complementary', { name: 'Ana gezinme' })).toContainText(
+      institutions.kampusDil,
+    )
 
     // Değişiklik sunucuda kalıcıdır: aynı çerezle /me yeni kurumu verir.
     await expect

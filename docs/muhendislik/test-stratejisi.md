@@ -127,9 +127,13 @@ Genel güvenlik ağı: `onRoute` kancasıyla toplanan bütün rotalar tek testte
 - Erişilebilirlik taraması her ana sayfada (bkz. [erisilebilirlik-performans.md](erisilebilirlik-performans.md)).
 - İş kuralının bütün dalları e2e'de denenmez; bunlar birim testindedir.
 
+### Vue demosu e2e portu
+
+`pnpm test:e2e` Vue dev sunucusunu `E2E_VUE_PORT` (varsayılan 5173) portunda `--strictPort` ile kendisi açar ve **mevcut bir sunucuyu yeniden kullanmaz** (`reuseExistingServer: false`). Gerekçe: paralel worktree'lerde bir koşu başka worktree'nin sunucusuna bağlanıp yanlış kodu sınayabiliyordu; port doluysa koşu açık hatayla durur. Paralel koşuda her ajan kendi portunu verir: `E2E_VUE_PORT=5183 pnpm test:e2e`. Elle çalışan `pnpm dev` aynı porttaysa önce kapatılır.
+
 ### React web + API düzeni (`tests/e2e-react/`)
 
-Vue demosunun e2e'sinden (`tests/e2e/`, `pnpm test:e2e`) ayrıdır; komut `pnpm test:e2e:react` (`playwright.react.config.ts`). Yerelde `docker compose up -d` (PostgreSQL 16, 5433) gerekir; CI'da `e2e-react` işi aynı bilgilerle PostgreSQL 16 servisi açar.
+Vue demosunun e2e'sinden (`tests/e2e/`, `pnpm test:e2e`, `playwright.config.ts`) ayrıdır; komut `pnpm test:e2e:react` (`playwright.react.config.ts`). Yerelde `docker compose up -d` (PostgreSQL 16, 5433) gerekir; CI'da `e2e-react` işi aynı bilgilerle PostgreSQL 16 servisi açar.
 
 - **Global kurulum** (`support/global-setup.ts`): `kampus_e2e` veritabanı düşürülüp sıfırdan oluşturulur (yalnız `kampus_e2e` önekli adlar; `kampus` ve diğer veritabanlarına dokunulmaz) → `db:migrate` → `db:seed` → API `NODE_ENV=test`, port 3020 → web-react derlenir ve `vite preview` 4180'de açılır (`/api` vekil hedefi `KAMPUS_API_URL` ile 3020) → beş rol için oturum önbelleği yazılır. Bitince API ve önizleme kapanır. Gizli anahtar her koşuda rastgele üretilir, yalnız alt sürecin ortamına verilir. Günlükler `artifacts/e2e-react/*.log`.
 - **Ortam değişkenleri**: `E2E_API_PORT`, `E2E_WEB_PORT`, `E2E_DB_NAME` (`kampus_e2e…` önekli), `E2E_ADMIN_DATABASE_URL`, `E2E_SKIP_BUILD=1` (derleme güncelse atla).

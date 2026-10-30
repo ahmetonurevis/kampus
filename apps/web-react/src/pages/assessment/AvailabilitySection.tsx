@@ -103,22 +103,29 @@ export function AvailabilitySection({ session, actor }: Props) {
       id="uygunluk-saatleri"
       title="Öğretmen uygunluk saatleri"
       description="Otomatik etüt planı yalnız bu saatlere etüt yerleştirir."
+      flush
     >
-      {data.error ? <QueryError error={data.error} onRetry={data.retry} /> : null}
-      {teachers.length ? (
-        <SlotForm key={teachers[0]?.id} teachers={teachers} admin={session.role === 'yonetici'} />
+      {data.error || teachers.length ? (
+        <div className="grid gap-4 px-6 pt-2 pb-6 max-[650px]:px-4">
+          {data.error ? <QueryError error={data.error} onRetry={data.retry} /> : null}
+          {teachers.length ? (
+            <SlotForm
+              key={teachers[0]?.id}
+              teachers={teachers}
+              admin={session.role === 'yonetici'}
+            />
+          ) : null}
+        </div>
       ) : null}
-      <div className="mt-6 overflow-hidden rounded-md border">
-        <DataTable
-          listKey="uygunluk-saatleri"
-          rows={rows}
-          columns={columns}
-          mobileColumns={MOBILE_COLUMNS}
-          searchKeys={['teacher', 'when']}
-          caption="Öğretmen uygunluk saatleri"
-          empty="Henüz uygunluk saati yok."
-        />
-      </div>
+      <DataTable
+        listKey="uygunluk-saatleri"
+        rows={rows}
+        columns={columns}
+        mobileColumns={MOBILE_COLUMNS}
+        searchKeys={['teacher', 'when']}
+        caption="Öğretmen uygunluk saatleri"
+        empty="Henüz uygunluk saati yok."
+      />
       {removing ? (
         <RemoveDialog
           row={removing}

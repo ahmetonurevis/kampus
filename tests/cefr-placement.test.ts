@@ -471,6 +471,12 @@ describe('yerleştirme kararı (DOM-DIL-010, 011, 012)', () => {
     assert.equal(speaking?.level, 'B1+')
     assert.equal(general?.evidenceSnapshot, plan.snapshot)
     assert.equal(plan.snapshot.evidence.length, 5)
+    // Karar kopyası önerinin bağlamını ve her becerinin gösterim dayanağını taşır.
+    assert.equal(plan.snapshot.schemaVersion, 2)
+    assert.equal(plan.snapshot.context, 'placement')
+    const shown = plan.snapshot.skills.filter((s) => s.status === 'suggested')
+    assert.ok(shown.length > 0)
+    assert.ok(shown.every((s) => s.demonstratedBy === 'placement'))
     assert.equal(plan.differsFromSuggestion, true)
     const coordinator = decide({ decider: { userId: 'test-u-coord', role: 'yonetici' } })
     assert.equal(coordinator.decisions[0]?.decidedByUserId, 'test-u-coord')

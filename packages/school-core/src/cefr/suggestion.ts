@@ -312,6 +312,8 @@ export type SkillSuggestion =
       level: CefrLevel
       /** Gösterilmiş en yüksek seviye; artı uygulanmışsa `level`'ın bir altı. */
       demonstratedLevel: CefrLevel
+      /** `demonstratedLevel`'ın dayanağı: genel eşik veya tespit eşiği (DOM-DIL-010). */
+      demonstratedBy: SuggestionContextKind
       plus: boolean
       /** Önerinin dayandığı kanıtlar (DOM-BEC-034). */
       evidenceIds: string[]
@@ -486,6 +488,7 @@ export function suggestSkillLevel(
     skill,
     level: plus ? step.plus : demonstrated.level,
     demonstratedLevel: demonstrated.level,
+    demonstratedBy: demonstrated.demonstratedBy === 'placement' ? 'placement' : 'general',
     plus,
     evidenceIds: [...base, ...(plus ? nextSuccesses : [])].map((e) => e.id),
     levels,
@@ -582,9 +585,14 @@ export function suggestCefrLevels(input: {
  * `level_decisions.evidence_snapshot` biçimi (ADR 0004 karar 5, 8; DOM-BEC-030). Kararın
  * parçasıdır, sonradan değişmez; yalnız gerekçe olarak gösterilir. Kişisel veri olarak kanıt
  * kimliği, görev adı ve puan yüzdesi taşır.
+ *
+ * Sürüm 2: önerinin bağlamı (`context`) ve beceri başına gösterilmenin dayanağı (`demonstratedBy`)
+ * eklendi; denetimde tespit eşiğiyle çıkan öneri genel eşikle çıkandan ayrılır. Sürüm 1 hiç
+ * kalıcı yazılmadı (tablo F5b'de), bu yüzden okunmaz.
  */
 export const evidenceSnapshotSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
+  context: z.enum(enumKeys(SUGGESTION_CONTEXTS)),
   computedAt: instant,
   overall: z.discriminatedUnion('status', [
     z.object({ status: z.literal('suggested'), level: cefrLevel }),
@@ -596,6 +604,8 @@ export const evidenceSnapshotSchema = z.object({
         skill: primarySkill,
         status: z.enum(['suggested', 'insufficient']),
         level: cefrLevel.nullable(),
+        /** Önerilen becerinin dayanağı; yetersiz kanıtta `null`. */
+        demonstratedBy: z.enum(enumKeys(SUGGESTION_CONTEXTS)).nullable(),
         plus: z.boolean(),
         missingEvidence: z.number().int().min(0),
         evidenceIds: z.array(identifier),
@@ -625,7 +635,8 @@ export type EvidenceSnapshot = z.output<typeof evidenceSnapshotSchema>
 /** Önerinin karar anındaki kopyası; şemadan geçirilir, böylece yazılan biçim sabittir. */
 export function evidenceSnapshotOf(suggestion: CefrSuggestion): EvidenceSnapshot {
   return evidenceSnapshotSchema.parse({
-    schemaVersion: 1,
+    schemaVersion: 2,
+    context: suggestion.context,
     computedAt: suggestion.computedAt,
     overall: suggestion.overall,
     skills: PRIMARY_SKILLS.map((skill) => {
@@ -634,6 +645,7 @@ export function evidenceSnapshotOf(suggestion: CefrSuggestion): EvidenceSnapshot
         skill,
         status: s.status,
         level: s.status === 'suggested' ? s.level : null,
+        demonstratedBy: s.status === 'suggested' ? s.demonstratedBy : null,
         plus: s.status === 'suggested' && s.plus,
         missingEvidence: s.status === 'suggested' ? 0 : s.missingEvidence,
         evidenceIds: s.evidenceIds,

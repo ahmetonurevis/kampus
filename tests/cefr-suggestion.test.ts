@@ -408,7 +408,8 @@ describe('hesap ve karar kopyası (DOM-BEC-030)', () => {
   test('DOM-BEC-030 evidence_snapshot şemaya uyar ve yalnız kullanılan kanıtı taşır', () => {
     const result = suggest([...batch('writing', 'B1', 3, 3), candidate({ kind: 'practice' })])
     const snapshot = evidenceSnapshotOf(result)
-    assert.equal(snapshot.schemaVersion, 1)
+    assert.equal(snapshot.schemaVersion, 2)
+    assert.equal(snapshot.context, 'general')
     assert.equal(snapshot.evidence.length, 3)
     assert.deepEqual(
       snapshot.skills.find((s) => s.skill === 'writing'),
@@ -419,6 +420,7 @@ describe('hesap ve karar kopyası (DOM-BEC-030)', () => {
         plus: false,
         missingEvidence: 0,
         evidenceIds: result.skills.writing.evidenceIds,
+        demonstratedBy: 'general',
       },
     )
     assert.deepEqual(evidenceSnapshotSchema.parse(structuredClone(snapshot)), snapshot)
@@ -426,7 +428,22 @@ describe('hesap ve karar kopyası (DOM-BEC-030)', () => {
 
   test('DOM-BEC-030 bozuk kopya reddedilir', () => {
     const snapshot = evidenceSnapshotOf(suggest([]))
-    assert.throws(() => evidenceSnapshotSchema.parse({ ...snapshot, schemaVersion: 2 }), ZodError)
+    // Sürüm 1 hiç kalıcı yazılmadı; okunmaz.
+    assert.throws(() => evidenceSnapshotSchema.parse({ ...snapshot, schemaVersion: 1 }), ZodError)
+    const { context: _context, ...withoutContext } = snapshot
+    assert.throws(() => evidenceSnapshotSchema.parse(withoutContext), ZodError)
+    assert.throws(
+      () => evidenceSnapshotSchema.parse({ ...snapshot, context: 'bilinmeyen' }),
+      ZodError,
+    )
+    assert.throws(
+      () =>
+        evidenceSnapshotSchema.parse({
+          ...snapshot,
+          skills: snapshot.skills.map(({ demonstratedBy: _d, ...rest }) => rest),
+        }),
+      ZodError,
+    )
     assert.throws(
       () =>
         evidenceSnapshotSchema.parse({

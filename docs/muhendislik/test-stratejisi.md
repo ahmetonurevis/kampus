@@ -127,6 +127,16 @@ Genel güvenlik ağı: `onRoute` kancasıyla toplanan bütün rotalar tek testte
 - Erişilebilirlik taraması her ana sayfada (bkz. [erisilebilirlik-performans.md](erisilebilirlik-performans.md)).
 - İş kuralının bütün dalları e2e'de denenmez; bunlar birim testindedir.
 
+### React web + API düzeni (`tests/e2e-react/`)
+
+Vue demosunun e2e'sinden (`tests/e2e/`, `pnpm test:e2e`) ayrıdır; komut `pnpm test:e2e:react` (`playwright.react.config.ts`). Yerelde `docker compose up -d` (PostgreSQL 16, 5433) gerekir; CI'da `e2e-react` işi aynı bilgilerle PostgreSQL 16 servisi açar.
+
+- **Global kurulum** (`support/global-setup.ts`): `kampus_e2e` veritabanı düşürülüp sıfırdan oluşturulur (yalnız `kampus_e2e` önekli adlar; `kampus` ve diğer veritabanlarına dokunulmaz) → `db:migrate` → `db:seed` → API `NODE_ENV=test`, port 3020 → web-react derlenir ve `vite preview` 4180'de açılır (`/api` vekil hedefi `KAMPUS_API_URL` ile 3020) → beş rol için oturum önbelleği yazılır. Bitince API ve önizleme kapanır. Gizli anahtar her koşuda rastgele üretilir, yalnız alt sürecin ortamına verilir. Günlükler `artifacts/e2e-react/*.log`.
+- **Ortam değişkenleri**: `E2E_API_PORT`, `E2E_WEB_PORT`, `E2E_DB_NAME` (`kampus_e2e…` önekli), `E2E_ADMIN_DATABASE_URL`, `E2E_SKIP_BUILD=1` (derleme güncelse atla).
+- **Hız sınırı**: giriş ucu IP başına dakikada 5. Test API'si `TRUST_PROXY=1` ile açılır ve her bağlam/API istemcisi kendi sahte `X-Forwarded-For` değerini taşır (`support/api.ts`); testler birbirinin kovasını tüketmez. Üretim yapılandırması değişmez.
+- **Yardımcılar** (`support/fixtures.ts`): `loginAs(rol | { email }, { fresh? })` testin kendi bağlamına oturum çerezini koyar; `api(rol | null, { fresh? })` doğrudan API istemcisi verir (`get/post/patch/put/delete`, `{ status, ok, body }`); `ui.ts` içinde `switchInstitutionThroughMenu`, `signOutThroughMenu`, `expectNoHorizontalOverflow`.
+- **Temiz durum stratejisi**: (1) Salt okunur testler rol başına paylaşılan önbellek oturumunu kullanır; bu oturum ve seed kurumları (Akademi, Kampüs Dil) **hiçbir test tarafından değiştirilmez**. (2) Oturumu değiştiren testler (çıkış, kurum değiştirme, parola) `fresh: true` ile kendi oturumunu açar; paylaşılan oturumu bozmaz. (3) Sunucuda veri yazan testler (W dalgası) seed kurumlarına yazmaz: her test dosyası `beforeAll`'da kendi kurumunu ve rol başına üyeleri benzersiz önekli slug/e-postayla kurar (API'nin `services/identity.ts` ve `demo-seed.ts` işlevleriyle, ``kampus_e2e`veritabanına doğrudan bağlanan`support/tenant.ts`yardımcısı W dalgasında eklenir), testler o kurumun hesaplarıyla`fresh`giriş yapar. Kurulum UI'dan değil bu yardımcıdan ve`api()`istemcisinden yapılır; doğrulama API sorgusuyla. (4) Veritabanı koşular arasında sıfırlanır, koşu içinde temizlenmez; test kendi kurumunun verisini silmeye çalışmaz. (5)`fullyParallel` açıktır; sıra varsayılmaz.
+
 ## 7. Kararsız (flaky) test politikası
 
 - Tanım: kod değişmeden bazen geçen bazen düşen test.

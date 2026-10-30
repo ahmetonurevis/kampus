@@ -44,9 +44,10 @@ pnpm format:check
 pnpm test
 pnpm exec playwright install chromium
 pnpm test:e2e
+pnpm test:e2e:react        # React web + API (PostgreSQL 16 gerekir: docker compose up -d)
 ```
 
-Vue demosu için zorunlu ortam değişkeni yoktur. Statik barındırmada tüm uygulama yolları `index.html` dosyasına yönlendirilmelidir. Canlı demo `https://demo.onurevis.com` adresindedir. CI dosyası PR'larda format, lint, tip denetimi, unit test, API ve istemci paketi testleri, OpenAPI belgesi ile üretilen istemci tipleri denetimi, build ve tarayıcı testlerini çalıştırır.
+Vue demosu için zorunlu ortam değişkeni yoktur. Statik barındırmada tüm uygulama yolları `index.html` dosyasına yönlendirilmelidir. Canlı demo `https://demo.onurevis.com` adresindedir. CI dosyası PR'larda format, lint, tip denetimi, unit test, API ve istemci paketi testleri, OpenAPI belgesi ile üretilen istemci tipleri denetimi, build ve tarayıcı testlerini çalıştırır; ayrı `e2e-react` işi PostgreSQL 16 ile React web + API uçtan uca testlerini koşar.
 
 ## API (`apps/api`)
 

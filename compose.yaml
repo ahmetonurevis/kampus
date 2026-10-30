@@ -1,0 +1,23 @@
+# Yerel geliştirme veritabanı: `docker compose up -d`, kapatmak için `docker compose down`.
+# Host portu 5433 (Homebrew PostgreSQL'in 5432'siyle çakışmaz). Parola yalnız yerel geliştirme içindir.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kampus
+      POSTGRES_PASSWORD: kampus-yerel
+      POSTGRES_DB: kampus
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - '127.0.0.1:5433:5432'
+    volumes:
+      - kampus-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kampus -d kampus']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  kampus-postgres:

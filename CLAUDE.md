@@ -64,7 +64,7 @@ Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokun
 
 ## Komutlar ve teslimler
 
-`pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm mobile`, `pnpm build:apk`. API komutları `apps/api/package.json` içindedir.
+`pnpm dev`, `pnpm dev:api`, `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm mobile`, `pnpm build:apk`. API: `docker compose up -d` (PostgreSQL 16, port 5433), `pnpm --filter @kampus/api <test|db:migrate|db:seed|db:generate|auth:schema|openapi|openapi:check>`; ortam `apps/api/.env.example`.
 
 Android teslim bilgileri `docs/mobile-release.md`, sayfa rehberi `docs/sayfalar.md`, yatırımcı sunumu `sunumlar/` (üretim: `sunumlar/OKU.md`). Mevcut statik yayın (`pnpm run deploy`, `demo.onurevis.com`) backend'siz demoya aittir; API yayını ayrı ADR ile planlanır. Geçici build/cache/rapor klasörleri, eski APK'lar ve yinelenen sunum kopyaları tutulmaz; ortam dosyaları, lockfile ve imzalama bilgileri temizliğe dahil edilmez.
 

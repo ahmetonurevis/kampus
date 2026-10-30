@@ -3,6 +3,7 @@ packages:
   - packages/*
 allowBuilds:
   core-js: false
+  esbuild: true
 minimumReleaseAgeExclude:
   - '@eslint-react/ast@5.21.0'
   - '@eslint-react/core@5.21.0'

@@ -44,7 +44,32 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-Zorunlu ortam değişkeni yoktur. Statik barındırmada tüm uygulama yolları `index.html` dosyasına yönlendirilmelidir. Canlı demo `https://demo.onurevis.com` adresindedir. CI dosyası PR'larda format, lint, tip denetimi, unit test, build ve tarayıcı testlerini çalıştırır.
+Vue demosu için zorunlu ortam değişkeni yoktur. Statik barındırmada tüm uygulama yolları `index.html` dosyasına yönlendirilmelidir. Canlı demo `https://demo.onurevis.com` adresindedir. CI dosyası PR'larda format, lint, tip denetimi, unit test, API testleri ve OpenAPI belgesi denetimi, build ve tarayıcı testlerini çalıştırır.
+
+## API (`apps/api`)
+
+Platform geçişinin ([ADR 0001](docs/adr/0001-platform-mimarisi.md), [ADR 0002](docs/adr/0002-hazir-paketler-ve-tasarim-dili.md)) sunucusu: Fastify 5 + TypeScript, PostgreSQL 16, Drizzle, kimlik için Better Auth. Vue demosu API'yi kullanmaz; React web ve mobil API'ye bağlanınca kullanacak.
+
+```bash
+docker compose up -d                       # PostgreSQL 16, 127.0.0.1:5433
+cp apps/api/.env.example apps/api/.env     # BETTER_AUTH_SECRET'ı değiştirin
+pnpm --filter @kampus/api db:migrate
+pnpm --filter @kampus/api db:seed          # idempotent demo kurumları ve kullanıcıları
+pnpm dev:api                               # http://127.0.0.1:3000
+docker compose down
+```
+
+| Uç                                      | Erişim                                     |
+| --------------------------------------- | ------------------------------------------ |
+| `GET /api/v1/health`                    | Açık; veritabanı yanıt vermezse 503        |
+| `/api/v1/auth/*`                        | Better Auth (giriş, çıkış, kurum değişimi) |
+| `GET /api/v1/me`                        | Oturum; kullanıcı, etkin kurum, üyelikler  |
+| `GET /api/v1/memberships`               | Yönetici, ön büro; sayfalı üye listesi     |
+| `GET /api/v1/openapi.json`, `/api/docs` | Yalnız üretim dışında                      |
+
+- Kurum kimliği yalnız oturumun etkin kurumundan gelir; her istekte üyelik doğrulanır. Başarı `{ data, meta? }`, hata `{ code, message, issues?, requestId }`.
+- Demo kullanıcıları (`@kampus.example`, parola `.env`'deki `DEMO_PASSWORD`, boşsa `Demo-Giris-2026!`; üretimde varsayılan parola yok): Akademi Özel Okulları'nda `murat.yilmaz` (yönetici, iki kurumda), `busra.aydin`, `selin.kaya`, `deniz.yilmaz`, `ayse.yilmaz`; Kampüs Dil Akademisi'nde `gizem.tunc`, `ozan.er`, `lale.sezer`, `hakan.sezer`.
+- Diğer komutlar: `test` (PGlite, Docker gerektirmez), `typecheck`, `openapi` / `openapi:check` (`apps/api/openapi.json`), `db:generate` (drizzle-kit migration), `auth:schema` (Better Auth şeması).
 
 ## Özel okul yapısı
 
@@ -117,6 +142,8 @@ Finansta kampüs/sınıf/yöntem/vade/tahsilat tarihi/tutar; CRM'de program/kamp
 
 ## Mimari ve kapsam
 
+Platform geçişi (ADR 0001): `apps/api` iskeleti, Better Auth kimliği ve kurum kapsamı hazır; `records` deposu, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır. Aşağıdaki bölüm Vue demosunu anlatır.
+
 Görsel düzen düz renkler üzerine kuruludur: saf beyaz (`#FFFFFF`) zemin, koyu safir mavi (`#1E3A8A`) menü/ana işlem rengi, turuncu (`#F97316`) aksan, ince kenarlıklar ve yuvarlak köşeler. Açık ve koyu temada renk geçişleri kullanılmaz. Slogan bandı ve veriye dayanmayan mini grafikler kaldırılmıştır. Öğrenci, veli ve öğretmen panellerinde ders programı ile bekleyen işler üst bölümdedir; grafikler kayıtlı veriyi gösterir. Büyük para tutarları tek satırda, uzun ders adları doğal satırlarla gösterilir.
 
 Sidebar ve navbar kenarlardan 12 px ayrılmış, yuvarlak köşeli yüzeylerdir. Aktif menü öğesi metne göre genişleyen kısa turuncu pill ile vurgulanır; kategoriler ince ayraçlarla ayrılır. Navbar solda sayfa yolunu, sağda rol/tema/bildirim/avatar kapsülünü gösterir. Telefonlarda üst bar iki satıra geçer; yatay telefonda menüye daha çok yer bırakılır. Bildirim listesi ekran yüksekliğine göre kaydırılabilir.
@@ -167,7 +194,7 @@ ssh abbara-server 'bash /var/www/kampus-demo/deploy/<surum>/activate.sh <surum>'
 
 ## Doğrulama
 
-`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test` ve `pnpm build` temel kontrollerdir. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
+`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test`, `pnpm --filter @kampus/api test` ve `pnpm build` temel kontrollerdir. 30 Ekim 2026 API iskeleti: 49 API testi (PGlite) ve 80 birim testi geçti; PostgreSQL 16 üzerinde migrate, iki kez seed, sağlık ve giriş duman testi başarılı. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
 
 6 Ekim 2026 optik/etüt teslim kontrolü: lint, format ve web derlemesi başarılı; 65 birim testi ve 58 tarayıcı senaryosu geçti. Yayın öncesinde tüm 58 tarayıcı senaryosu tekrar geçti. Canlı adres üzerinde 14 senaryo; beş rolün masaüstü/dar ekran sayfaları, optik/etüt işlemleri, video ve PDF akışlarını doğruladı. Sağlık yanıtı sürümle eşleşti; HTTPS yönlendirmesi, video aralık isteği ve PDF worker MIME türü kontrol edildi.
 

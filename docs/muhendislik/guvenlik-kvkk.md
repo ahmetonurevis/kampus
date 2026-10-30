@@ -11,6 +11,7 @@ Kimlik doğrulama ve oturum **Better Auth** iledir (ADR 0002 karar 3; ADR 0001 k
 - Yöntem: `emailAndPassword` (Better Auth'un varsayılan scrypt özeti). Özel `password.hash`/`verify`, elle JWT, elle yenileme belirteci veya elle oturum tablosu yazılmaz.
 - Açık kayıt kapalıdır (`disableSignUp: true`). Hesapları kurum yöneticisi davetle (`organization` daveti) veya sunucu API'siyle açar; öğrenci ilk girişte parolasını değiştirir.
 - Uçlar Better Auth'a aittir ve `basePath: '/api/v1/auth'` altında Fastify'a bağlanır. Bu uçların istek/yanıt biçimi Better Auth'undur; bizim yanıt zarfımız bu önek dışında geçerlidir. İstemci bu uçları yalnız Better Auth istemcisiyle çağırır (`better-auth/react`, mobilde `@better-auth/expo/client`).
+- HTTP'ye açık Better Auth uçları izin listesindedir (`OPEN_AUTH_PATHS`, `apps/api/src/auth.ts`): giriş, çıkış, oturum, parola değişimi/sıfırlama, oturum listesi/iptali ve kurum listesi/etkin kurum/kendi üyeliği. Listede olmayan her yol Better Auth'a iletilmeden 404 döner; sürüm yükseltmesiyle gelen yeni uç kendiliğinden kapalıdır. Test (`apps/api/test/auth-surface.test.ts`) Better Auth uç kaydını dolaşarak bunu doğrular. Üye/davet listeleri, başkasının rolü (`get-active-member-role`) ve sosyal giriş olmadığından Expo yetkilendirme vekili kapalıdır.
 - Giriş hatası kullanıcıya tek mesajla gösterilir: "E-posta veya parola hatalı." Parola sıfırlama isteği hesabın var olup olmadığını belli etmez (test edilir).
 - Parola sıfırlama: `sendResetPassword` (nodemailer, Türkçe şablon), `resetPasswordTokenExpiresIn: 1800` (30 dk), `revokeSessionsOnPasswordReset: true`. Parola değişiminde diğer oturumlar kapatılır (`revokeOtherSessions`).
 - E-postası olmayan öğrenci girişi (ör. `username` eklentisi) ve yönetici/finans rollerinde `twoFactor` (TOTP) eklentisi açık sorudur; eklenirse aynı yapılandırma dosyasında.
@@ -33,7 +34,8 @@ Kimlik doğrulama ve oturum **Better Auth** iledir (ADR 0002 karar 3; ADR 0001 k
 - Oturumu süresi dolan istemci 401 alır ve giriş ekranına yönlenir; istemcide yenileme mantığı yazılmaz.
 - Hassas işlemler (iade, rol/üyelik değişikliği, kişisel veri dışa aktarma, veri sahibi silme talebi) taze oturum ister: oturum `freshAge`'den eskiyse 403 `reauthentication_required`, istemci parolayı yeniden sorar.
 - Çıkış oturumu siler; "Bütün cihazlardan çık" `revokeSessions` kullanır. Yönetici, kullanıcının oturumlarını kapatabilir.
-- `BETTER_AUTH_SECRET` en az 32 bayt rastgele değerdir; ortamdan gelir ve ortamlar arası paylaşılmaz.
+- `BETTER_AUTH_SECRET` en az 32 bayt rastgele değerdir; ortamdan gelir ve ortamlar arası paylaşılmaz. Üretimde `CHANGE_ME` önekli veya depoda geçen bilinen değerler reddedilir.
+- `Secure` çerez üretimde ve `BETTER_AUTH_URL` https olduğunda her zaman açıktır. `NODE_ENV` zorunludur (varsayılanı yok); Expo Go kökenleri (`exp://`) ve `/api/docs` yalnız açıkça `development`/`test` ortamında açılır.
 
 ## 4. Hız sınırlama
 
@@ -48,7 +50,7 @@ Kimlik doğrulama ve oturum **Better Auth** iledir (ADR 0002 karar 3; ADR 0001 k
 
 - Uygulama uçları: `@fastify/rate-limit`, 429 + `Retry-After` + `rate_limited`. Kimlikli istekte anahtar kullanıcı kimliği, kimliksizde IP. Genel sınır kullanıcı başına 300/dk; içe/dışa aktarma kullanıcı başına 10/dk.
 - Hesap kalıcı kilitlenmez (kötü niyetli kişi veliyi kilitleyemesin).
-- v1 tek sunucu örneğinde bellek içi sayaç; birden çok örnekte Better Auth `storage: 'database'` ve paylaşılan depo kullanılır (dağıtım ADR'si). Ters vekil arkasında gerçek IP başlığı (`advanced.ipAddress`, Fastify `trustProxy`) yalnız vekil adresine güvenilerek ayarlanır.
+- v1 tek sunucu örneğinde bellek içi sayaç; birden çok örnekte Better Auth `storage: 'database'` ve paylaşılan depo kullanılır (dağıtım ADR'si). Ters vekil arkasında gerçek IP (`advanced.ipAddress`, Fastify `trustProxy`) yalnız vekile güvenilerek ayarlanır: `TRUST_PROXY` vekil sayısı (hop) veya vekil IP/CIDR listesidir, varsayılan güvenmemektir; bütün vekillere güvenen `true` reddedilir, çünkü istemcinin yazdığı `X-Forwarded-For` hız sınırını atlatır.
 
 ## 5. CORS, CSRF, CSP ve güvenlik başlıkları
 

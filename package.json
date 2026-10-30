@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter @kampus/web dev",
+    "dev:api": "pnpm --filter @kampus/api dev",
     "build": "pnpm --filter @kampus/web build",
     "preview": "pnpm --filter @kampus/web preview",
     "deploy": "bash scripts/deploy.sh",

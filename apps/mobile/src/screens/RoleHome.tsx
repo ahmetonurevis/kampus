@@ -1,7 +1,8 @@
-import { contentTitle } from '../model/presentation.ts'
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { View } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.tsx'
+import { dateLabel, dayKey, money, timeLabel } from '@kampus/school-core/lib/format.ts'
+import { contentTitle } from '../model/presentation.ts'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
 import {
   availablePages,
   context,
@@ -10,23 +11,25 @@ import {
   nameOf,
   absentCount,
   teacherId,
+  type Row,
 } from '../model/school.ts'
 import { homeworkRows, paymentSummary } from '../model/experience.ts'
 import { Badge, Button, Card, T, useColors } from '../ui/components.tsx'
 import { ChildSelector, ListRow, Screen, Section } from '../ui/SchoolLayout.tsx'
 import ModuleHub from '../ui/ModuleHub.tsx'
 import { useMinute } from '../ui/use-minute.ts'
-import { dateLabel, dayKey, money, timeLabel } from '@kampus/school-core/lib/format.ts'
+import type { ModuleParams, ScreenProps } from '../route-types.ts'
 
-export default function RoleHome({ navigation }) {
-  const { data, session } = useSchool(),
+export default function RoleHome({ navigation }: ScreenProps<'Home'>) {
+  const { data, session } = useActiveSchool(),
     c = useColors(),
     now = useMinute()
   const scope = context(data, session),
     role = session.role
   const allowed = new Set(availablePages(data, role).map((p) => p.path))
-  const go = (page, params = {}) => navigation.navigate('Module', { page, ...params })
-  const detail = (row) => navigation.navigate('Detail', { row })
+  const go = (page: string, params: Omit<ModuleParams, 'page'> = {}) =>
+    navigation.navigate('Module', { page, ...params })
+  const detail = (row: Row) => navigation.navigate('Detail', { row })
   const lessons = useMemo(
     () => rowsFor(data, session, 'ders-programi'),
     [data, session.role, session.childId],
@@ -51,10 +54,11 @@ export default function RoleHome({ navigation }) {
     return data.submissions.filter((s) => s.score == null && ownHomework.has(s.homeworkId))
   }, [data.homework, data.submissions])
   const announcement = rowsFor(data, session, 'duyurular')[0]
-  const timeRange = (lesson) =>
+  const timeRange = (lesson: Row<'lesson'>['source']) =>
     `${timeLabel(lesson.date)}–${timeLabel(new Date(+new Date(lesson.date) + lesson.duration * 60000))}`
   const date = dateLabel(new Date(), { weekday: 'long' })
   const person = roles[role].name
+  const childName = scope.student.name.split(' ')[0] ?? ''
   return (
     <Screen>
       <View style={{ gap: 6 }}>
@@ -79,7 +83,7 @@ export default function RoleHome({ navigation }) {
           <ChildSelector />
           <Section
             panel
-            title={`${scope.student.name.split(' ')[0]}'${/[aeıioöuü]$/i.test(scope.student.name.split(' ')[0]) ? 'n' : ''}in gündemi`}
+            title={`${childName}'${/[aeıioöuü]$/i.test(childName) ? 'n' : ''}in gündemi`}
           >
             <View>
               {allowed.has('akademik-takip') && (
@@ -155,7 +159,7 @@ export default function RoleHome({ navigation }) {
                       <ListRow
                         key={row.id}
                         title={`${timeRange(row.source)} · ${nameOf(data, 'classes', row.source.classId)}`}
-                        subtitle={contentTitle(row.title, row.source.subject)}
+                        subtitle={contentTitle(row.title, row.subject)}
                         onPress={() => detail(row)}
                       />
                     ))

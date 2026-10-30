@@ -8,11 +8,13 @@ import {
   firstName,
   hasTrendData,
   invoiceStatusSlices,
+  monthlyPoints,
+  monthRangeStart,
+  monthSlices,
   outstandingAmount,
   overallAverage,
   subjectAverageRows,
   trendSummary,
-  upcomingByDueDate,
   weeklyPoints,
   weekSlices,
 } from '../src/pages/dashboard/dashboard-model.ts'
@@ -161,18 +163,33 @@ describe('not ortalamaları', () => {
   })
 })
 
-describe('yaklaşan ödevler', () => {
-  test('teslim tarihi geçmemişler en yakın önce ve sınırlı', () => {
-    const now = new Date('2026-10-30T09:00:00.000Z')
-    const rows = [
-      { id: 'a', dueDate: '2026-11-03T09:00:00.000Z' },
-      { id: 'b', dueDate: '2026-10-29T09:00:00.000Z' },
-      { id: 'c', dueDate: '2026-10-31T09:00:00.000Z' },
-      { id: 'd', dueDate: '2026-11-05T09:00:00.000Z' },
-    ]
+describe('aylık seri', () => {
+  test('bugünün ayı dahil altı ay, yıl sınırını aşar ve eskiden yeniye sıralanır', () => {
+    const slices = monthSlices('2026-02-10')
     assert.deepEqual(
-      upcomingByDueDate(rows, now, 2).map((row) => row.id),
-      ['c', 'a'],
+      slices.map((slice) => slice.key),
+      ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02'],
+    )
+    assert.equal(monthRangeStart(slices), '2025-09-01')
+  })
+
+  test('sunucunun YYYY-MM gruplarından değer; grubu olmayan ay sıfır', () => {
+    const slices = monthSlices('2026-10-30', 3)
+    const grouped = counts(
+      [
+        { value: '2026-08', count: 2, sum: 5000 },
+        { value: '2026-10', count: 1, sum: 2500 },
+        { value: null, count: 4, sum: 100 },
+      ],
+      7600,
+    )
+    assert.deepEqual(
+      monthlyPoints(slices, grouped, 'sum').map((point) => point.value),
+      [5000, 0, 2500],
+    )
+    assert.deepEqual(
+      monthlyPoints(slices, grouped).map((point) => point.value),
+      [2, 0, 1],
     )
   })
 })

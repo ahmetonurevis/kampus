@@ -1,27 +1,22 @@
 import { Avatar } from '@/components/Avatar.tsx'
-import { useCoreItem } from '@/hooks/use-core-collection.ts'
 
 type StudentNameProps = {
-  studentId: string
+  /** Liste satırının `joined.studentName` değeri; kapsam dışı öğrencide gelmez. */
+  name: string | undefined
   /** Adın altındaki kısa bilgi (taksit, vade, sınıf). */
   detail?: string
 }
 
 /**
- * Kısa listede öğrenci adı ve avatarı. Liste kaydı adı taşımadığından ad tek kayıt ucundan
- * okunur (önbellekte paylaşılır); büyük `students` koleksiyonu ad eşlemesi için çekilmez.
- * TODO(api-joined-fields): liste yanıtı bağlı adları (`studentName`) verince istek kalkar.
+ * Kısa listede öğrenci adı ve avatarı. Ad liste yanıtının bağlı alanından (`joined`) gelir;
+ * ayrı öğrenci isteği yapılmaz. Ad gelmediyse "—" gösterilir.
  */
-export function StudentName({ studentId, detail }: StudentNameProps) {
-  const student = useCoreItem('students', studentId)
-  const name = student.data?.record.name
+export function StudentName({ name, detail }: StudentNameProps) {
   return (
     <span className="flex min-w-0 items-center gap-3">
       <Avatar name={name ?? ''} size="small" />
       <span className="grid min-w-0">
-        <strong className="font-medium [overflow-wrap:anywhere]">
-          {name ?? (student.isPending ? 'Yükleniyor…' : 'Öğrenci bulunamadı')}
-        </strong>
+        <strong className="font-medium [overflow-wrap:anywhere]">{name ?? '—'}</strong>
         {detail ? <small className="text-sm text-muted-foreground">{detail}</small> : null}
       </span>
     </span>

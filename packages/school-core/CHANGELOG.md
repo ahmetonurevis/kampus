@@ -1,5 +1,18 @@
 # Değişiklikler
 
+## 2.17.0
+
+Öğretmenime Sor (`questions`) yazma işlemleri eklendi (D15a; `docs/domain/iletisim-ve-veli.md` DOM-ILT-090…093). Okuma kapsamı değişmedi. 2.16.0 başka açık dalda kullanıldığı için bu dal 2.17.0'dır.
+
+- `lib/questions.ts`: `askQuestion` (öğrenci; kendi sınıfının o dersine atanmış öğretmene, öğretmen ders atamasından çözülür; kapsam dışı ders/öğretmen 403 `question_scope_denied`, pasif öğrenci 422 `student_inactive`, öğretmeni pasif ders 422 `question_teacher_unavailable`, ortak derste öğretmen seçilmezse 422 `question_teacher_required`, dersin listesinde olmayan kazanım 422 `question_topic_unknown`, dosya 422 `question_files_unsupported`). Gövde katıdır: `studentId` ve bilinmeyen alan reddedilir; başlık 2–120, metin 10–2000 karakter.
+- `answerQuestion` (yalnız sorunun atandığı öğretmen; başkasının sorusu `not_found`): ilk yanıt `answer`, `answeredAt`, `answeredBy`'a yazılır, sonrakiler `followUps`'a eklenir; verilmiş yanıt değişmez. Ek yanıtı yalnız sınıfın o dersine hâlâ atanmış öğretmen yazar; dersten alınan öğretmen yanıtladığı soruyu okur ama ek yanıt yazamaz (403 `question_teacher_reassigned`). Geri çekilmiş soru 409 `question_withdrawn`, en çok 10 yanıt (422 `question_answer_limit`).
+- `withdrawQuestion` (öğrenci, kendi yanıtsız sorusu; gövde `{ withdrawn: true }`): kayıt silinmez, `withdrawnAt`/`withdrawnBy` yazılır; yanıtlanmış soru 409 `question_answered`, ikinci geri çekme 409 `question_withdrawn`.
+- Türetilen değerler: `questionStatus` (`pending`, `answered`, `withdrawn`), `isOpenQuestion`, `questionResponse` (iş saatiyle bir iş günü hedefi; saklanmaz, DOM-ILT-013). Form uyarısı `QUESTION_SENSITIVE_NOTICE` (DOM-ILT-014).
+- `lib/school-management.ts`: sınıf düzenlemesi ve sınıf/öğretmen arşivi yalnız yanıt bekleyen (geri çekilmemiş) soruları taşır ve devir ister; önceden geri çekme yoktu.
+- `lib/authorize.ts`: `question.ask` (`['ogrenci']`), `question.answer` (`['ogretmen']`), `question.withdraw` (`['ogrenci']`). `modules/commands.ts` `OPERATION_COMMANDS`: üçü de `learning` modülüne bağlı.
+- State tipi: `questions` kaydına `topic`, `askedBy`, `answeredBy`, `followUps`, `withdrawnAt`, `withdrawnBy`, `updatedAt` eklendi (isteğe bağlı; eski kayıtlar taşımaz).
+- Tüketiciler `workspace:2.17.0` sürümüne sabitlendi.
+
 ## 2.16.0
 
 Dil okulu kur ilerlemesinin saf kuralları eklendi ve seviye tespiti önerisine kendi eşiği verildi (ADR 0004 karar 5, 8, 11; `docs/domain/dil-okulu.md` DOM-DIL-010, 013, 060, 061, 062, 070). Modüller State'e koleksiyon eklemez; devam oranı, koşullar ve izinli sonuçlar saklanmaz. Tablo, uç ve ekran F5b ve sonrasındadır.

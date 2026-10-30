@@ -415,6 +415,8 @@ describe('yazma uçları', () => {
         // Veli talebi ve izin/mazeret bildirimi (routes/requests.ts; DOM-ILT-053, DOM-ILT-080).
         'POST /api/v1/requests',
         'POST /api/v1/absences',
+        // Öğretmenime Sor: soru gönderme (routes/questions.ts; DOM-ILT-090).
+        'POST /api/v1/questions',
         // Kurum modül ayarı (routes/modules.ts).
         'PATCH /api/v1/modules/{moduleKey}',
         // Kampüs, öğretmen ve sınıf oluşturma (yeniden denemede ikinci kayıt açılmaz).

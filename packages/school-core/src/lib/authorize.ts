@@ -65,6 +65,19 @@ export type WriteTargets = {
   'request.open': { studentId: string }
   'request.update': Record<string, never>
   'absence.notify': { studentId: string }
+  // Öğretmenime Sor (`lib/questions.ts`): öğrenci oturumdan, ders ve öğretmen gövdeden gelir; kayıt
+  // yoksa `undefined` (varlık işlemin işidir, 404).
+  'question.ask': { studentId: string | undefined; subjectId: string; teacherId?: string }
+  'question.answer': { question: QuestionParties | undefined }
+  'question.withdraw': { question: QuestionParties | undefined }
+}
+
+/** Soru yetkisinin dayandığı taraflar (DOM-ILT-090…092). */
+export type QuestionParties = {
+  studentId: string
+  teacherId: string
+  subjectId: string
+  answeredAt?: string | null
 }
 
 /** Yetki için gereken kaynak; not yetkisi ders atamasının dersini de okur. */
@@ -129,6 +142,12 @@ export const WRITE_ACTION_ROLES = {
   'request.update': ['yonetici', 'onburo'],
   // İzin ve mazereti veli bildirir (DOM-ILT-053); ön büro yoklama ve mazeret görmez (DOM-YTK-021).
   'absence.notify': ['veli'],
+  // Öğretmenime Sor: soruyu öğrenci kendi sınıfının ders öğretmenine gönderir ve yanıtsızken geri
+  // çeker; yanıtı yalnız sorunun atandığı öğretmen yazar. Veli çocuğunun sorusunu salt okur;
+  // yönetici ve ön büro soru yazmaz (DOM-ILT-090…093).
+  'question.ask': ['ogrenci'],
+  'question.answer': ['ogretmen'],
+  'question.withdraw': ['ogrenci'],
 } as const satisfies Record<WriteAction, readonly Actor['role'][]>
 
 const ROLE_TABLE: Readonly<Record<WriteAction, readonly string[]>> = WRITE_ACTION_ROLES
@@ -305,6 +324,58 @@ function decide(
         : deny('student_scope_denied', 'Bu öğrenci için işlem yetkiniz bulunmuyor.', 'DOM-YTK-025')
     case 'request.update':
       return ALLOWED
+    case 'question.ask': {
+      // Öğrenci yalnız kendisi için ve kendi sınıfının o dersine atanmış öğretmene sorar
+      // (DOM-ILT-090, DOM-ILT-011). Ders veya öğretmen kapsam dışıysa ret aynı iletiyle döner;
+      // dersin ya da öğretmenin kurumda var olup olmadığı belli edilmez.
+      const { studentId, subjectId, teacherId } = request.target
+      if (studentId === undefined || !scope.studentIds.has(studentId))
+        return deny(
+          'student_scope_denied',
+          'Bu öğrenci için işlem yetkiniz bulunmuyor.',
+          'DOM-ILT-090',
+        )
+      const classId = classOf(studentId)
+      const assigned = source.assignments.some(
+        (a) =>
+          a.classId === classId &&
+          a.subjectId === subjectId &&
+          (teacherId === undefined || a.teacherId === teacherId),
+      )
+      return assigned
+        ? ALLOWED
+        : deny(
+            'question_scope_denied',
+            'Yalnız kendi sınıfınızın bu dersine giren öğretmene soru gönderebilirsiniz.',
+            'DOM-ILT-090',
+          )
+    }
+    case 'question.answer': {
+      // Yanıt sorunun atandığı öğretmenindir (DOM-ILT-092). Başka öğretmen soruyu okuyamadığı için
+      // ret 404'tür: soru kimliğinin varlığı sızdırılmaz.
+      const question = request.target.question
+      if (question === undefined) return ALLOWED
+      if (!teacher || question.teacherId !== teacher.id)
+        return deny('question_not_found', 'Soru bulunamadı.', 'DOM-ILT-092', 'not_found')
+      // Ek yanıt yalnız sınıfın o dersine hâlâ atanmış öğretmenindir: yanıtlanmış soru taşınmaz,
+      // sınıftan alınan öğretmen eski sorusunu okur ama öğrenciye yazmayı sürdüremez. Soruyu
+      // okuyabildiği için ret 403'tür.
+      if (question.answeredAt && !teaches(classOf(question.studentId), question.subjectId))
+        return deny(
+          'question_teacher_reassigned',
+          'Bu sınıfın dersine artık girmediğiniz için ek yanıt yazamazsınız.',
+          'DOM-ILT-092',
+        )
+      return ALLOWED
+    }
+    case 'question.withdraw': {
+      // Öğrenci yalnız kendi sorusunu geri çeker (DOM-ILT-091); başkasınınki 404.
+      const question = request.target.question
+      if (question === undefined) return ALLOWED
+      return scope.studentIds.has(question.studentId)
+        ? ALLOWED
+        : deny('question_not_found', 'Soru bulunamadı.', 'DOM-ILT-091', 'not_found')
+    }
     default:
       return request satisfies never
   }

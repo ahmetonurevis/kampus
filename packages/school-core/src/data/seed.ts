@@ -15,6 +15,7 @@ import type {
   Renewal,
 } from '../lib/school-workflows.ts'
 import type { OpticalEvaluation, TutorSession } from '../lib/assessment-automation.ts'
+import type { OfficialGradeFields } from '../lib/grades.ts'
 export const topics = subjects.map((s) => s.name)
 
 // Örnek veri kendi içinde tutarlıdır; aranan kayıt yoksa üretici hatalıdır ve hemen durur.
@@ -843,6 +844,8 @@ export type State = Omit<SeedState, keyof StatePatches> & StatePatches
 type StatePatches = {
   // Arayüzden kaydedilen öğrenciye okul numarası verilmez.
   students: (Patch<Item<'students'>, { number?: string }> & { academicYear?: number })[]
+  // Not girişinin alanları; örnek veri ve eski kayıtlar bunları taşımaz (lib/grades.ts).
+  grades: (Item<'grades'> & Partial<OfficialGradeFields>)[]
   invoices: (Item<'invoices'> & Timestamps & { contractId?: string; academicYear?: number })[]
   contracts: (Item<'contracts'> & {
     classId?: string

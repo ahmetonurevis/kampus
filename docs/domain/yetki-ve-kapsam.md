@@ -43,7 +43,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** İstemci değiştirilebilir; her uç kendi yetkisini denetlemezse tek unutulan uç veri sızdırır.
 - **Kaynak:** ADR 0001 karar 7; CLAUDE.md "kurum ve rol kapsamı sunucuda uygulanır; istemciye güvenilmez".
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — iş akışı komutlarında rol listesi var (`packages/school-core/src/lib/school-workflows.ts`, `mayRun`). Tahsilat, yoklama, not girişi/düzeltmesi ve kampüs/sınıf/kadro arşivi için yazma yetkisi `packages/school-core/src/lib/authorize.ts` (`authorize`, `requireAuthorized`) tek tablodadır; işlemler (`payInvoice`, `recordAttendance`, `archiveRecord`) yetkiyi kendileri denetlemez, çağıran önce `requireAuthorized` çalıştırır. `enrollProspect` için yazma kuralı yok; web'de URL'deki rol oturum rolünü değiştirir (`apps/web/src/router.js:83`).
+- **Kodda:** kısmen — iş akışı komutlarında rol listesi var (`packages/school-core/src/lib/school-workflows.ts`, `mayRun`). Tahsilat, yoklama, not girişi/düzeltmesi ve kampüs/sınıf/kadro arşivi için yazma yetkisi `packages/school-core/src/lib/authorize.ts` (`authorize`, `requireAuthorized`) tek tablodadır; işlemler (`payInvoice`, `recordAttendance`, `archiveRecord`) yetkiyi kendileri denetlemez, çağıran önce `requireAuthorized` çalıştırır (not işlemleri kendi içinde çağırır). `enrollProspect` için yazma kuralı yok; web'de URL'deki rol oturum rolünü değiştirir (`apps/web/src/router.js:83`).
 
 ### DOM-YTK-002 · Kapsam kullanıcının üyeliğinden türetilir
 

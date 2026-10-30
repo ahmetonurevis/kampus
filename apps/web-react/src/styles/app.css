@@ -1,0 +1,183 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import './tokens.css';
+
+@custom-variant dark (&:is([data-theme='dark'] *));
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    font-synthesis: none;
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+  /* Görünür odak halkası bütün etkileşimli öğelerde ortaktır. */
+  :focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+  h1,
+  h2,
+  h3 {
+    margin: 0;
+    font-weight: 600;
+  }
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+@layer components {
+  /* Cam yüzeyler: yalnız içeriğin üstünde yüzen gezinme/kontrol katmanında kullanılır. */
+  .glass {
+    background-color: var(--glass-bar);
+    border: 1px solid var(--topbar-border);
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      var(--elevation-bar);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
+  .glass-menu {
+    background-color: var(--glass-menu);
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      var(--elevation-float);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
+  .glass-dialog {
+    background-color: var(--glass-dialog);
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      var(--elevation-dialog);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
+  .glass-sidebar {
+    background-color: var(--glass-sidebar);
+    box-shadow:
+      inset 0 1px 0 var(--glass-sidebar-highlight),
+      var(--elevation-float);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
+
+  .skip-link {
+    position: fixed;
+    left: 16px;
+    top: -80px;
+    z-index: 500;
+    padding: 12px 18px;
+    border-radius: var(--radius-control);
+    background: var(--primary);
+    color: var(--on-primary);
+  }
+  .skip-link:focus {
+    top: 12px;
+  }
+}
+
+/*
+ * Aynı anda en fazla 3 bulanık katman: pencere veya yan panel açıkken arkadaki topbar ve sidebar
+ * bulanıklığı kapanır, opak zemine düşer. Açık pencerenin kendisi (role=dialog) etkilenmez.
+ */
+:root:has(:is([role='dialog'], [role='alertdialog'])[data-state='open'])
+  .glass:not([role='dialog'], [role='alertdialog']) {
+  background-color: var(--surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root:has(:is([role='dialog'], [role='alertdialog'])[data-state='open'])
+  .glass-sidebar:not([role='dialog'], [role='alertdialog']) {
+  background-color: var(--sidebar);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Saydamlık azaltıldığında, yüksek kontrastta ve desteksiz tarayıcıda yüzey opak olur. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass-bar: var(--surface);
+    --glass-menu: var(--surface);
+    --glass-dialog: var(--surface);
+    --glass-sidebar: var(--sidebar);
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root,
+  :root[data-theme='dark'] {
+    --glass-bar: var(--surface);
+    --glass-menu: var(--surface);
+    --glass-dialog: var(--surface);
+    --glass-sidebar: var(--sidebar);
+  }
+  .glass,
+  .glass-menu,
+  .glass-dialog,
+  .glass-sidebar {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  :root,
+  :root[data-theme='dark'] {
+    --muted: var(--text);
+    --border: var(--muted);
+  }
+}
+/* Zorunlu renk kipinde sistem renkleri kullanılır; bulanıklık ve yarı saydam zemin kaldırılır. */
+@media (forced-colors: active) {
+  :root,
+  :root[data-theme='dark'] {
+    --glass-bar: Canvas;
+    --glass-menu: Canvas;
+    --glass-dialog: Canvas;
+    --glass-sidebar: Canvas;
+  }
+  .glass,
+  .glass-menu,
+  .glass-dialog,
+  .glass-sidebar {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 1px solid CanvasText;
+  }
+  :focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

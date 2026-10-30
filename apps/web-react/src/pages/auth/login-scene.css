@@ -1,0 +1,320 @@
+/*
+ * Giriş sahnesi: Vue `LoginStory.vue` stillerinin taşıması. Renkler `--scene-*` tokenlarından gelir.
+ * İşaretçi eğimi `--pointer-x/y` ile; azaltılmış hareket ve görünmeyen sekmede sahne durur.
+ */
+.login-story {
+  --pointer-x: 0;
+  --pointer-y: 0;
+  isolation: isolate;
+}
+.story-header {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.depth-stage {
+  position: relative;
+  width: 100%;
+  max-width: 470px;
+  height: 290px;
+  margin: 20px auto 0;
+  perspective: 1000px;
+}
+.scene-world {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(calc(var(--pointer-y) * -8deg)) rotateY(calc(var(--pointer-x) * 12deg));
+  transition: transform 450ms cubic-bezier(0.2, 0.65, 0.3, 1);
+}
+.scene-center {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: academy-levitate 7s ease-in-out infinite;
+}
+.academy-tile {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 140px;
+  height: 150px;
+  border-radius: 24px;
+  transform-style: preserve-3d;
+}
+.tile-underlay {
+  background: var(--scene-surface);
+  border: 1px solid var(--scene-border);
+  box-shadow:
+    0 12px 0 var(--scene-edge),
+    0 30px 45px var(--scene-shadow);
+  transform: translate(-40%, -36%) rotateX(16deg) rotateY(-19deg) rotateZ(-13deg) translateZ(-12px);
+}
+.tile-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--sapphire-800);
+  border: 1px solid var(--white);
+  background: var(--scene-tile);
+  box-shadow:
+    inset 2px 2px 3px var(--scene-gloss),
+    inset -2px -2px 4px var(--scene-inset),
+    1px 3px 0 var(--scene-step-1),
+    2px 6px 0 var(--scene-step-2),
+    3px 9px 0 var(--scene-step-3),
+    3px 15px 22px var(--scene-shadow);
+  transform: translate(-50%, -50%) rotateX(16deg) rotateY(-19deg) rotateZ(-9deg) translateZ(32px);
+}
+.tile-main > svg {
+  filter: drop-shadow(0 4px 0 var(--scene-inset));
+  transform: translateZ(10px);
+}
+.tile-caption {
+  /* Mobilde sahne %66 ölçeklendiğinde de marka adı okunaklı kalır. */
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  color: var(--sapphire-900);
+  transform: translateZ(8px);
+}
+.scene-panels {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: academy-sway 9s ease-in-out -3s infinite;
+}
+.scene-card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--scene-border);
+  background: var(--scene-surface);
+  box-shadow:
+    inset 0 1px 0 var(--scene-gloss-soft),
+    0 5px 0 var(--scene-edge),
+    0 22px 35px var(--scene-shadow);
+}
+.scene-card strong {
+  display: block;
+  color: var(--white);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.scene-card small {
+  display: block;
+  color: var(--sidebar-text);
+  font-size: 7px;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.scene-card-icon {
+  width: 37px;
+  height: 39px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 1px var(--scene-gloss-soft);
+}
+.scene-card-growth {
+  left: 0;
+  top: 18px;
+  transform: translateZ(120px) rotateY(8deg) rotateZ(-8deg);
+}
+.scene-card-growth .scene-card-icon {
+  color: var(--sidebar-text);
+  background: var(--sidebar);
+}
+.scene-card-success {
+  right: 0;
+  bottom: 18px;
+  transform: translateZ(140px) rotateY(-10deg) rotateZ(7deg);
+}
+.scene-card-success .scene-card-icon {
+  color: var(--accent);
+  background: var(--sidebar);
+}
+.scene-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 20px;
+  margin-top: 8px;
+}
+.scene-chart i {
+  width: 12px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--accent);
+  opacity: 0.75;
+}
+.scene-chart i:nth-child(2) {
+  height: 8px;
+}
+.scene-chart i:nth-child(3) {
+  height: 7px;
+}
+.scene-chart i:nth-child(4) {
+  height: 12px;
+}
+.scene-chart i:nth-child(5) {
+  height: 14px;
+}
+.scene-chart i:nth-child(6) {
+  height: 17px;
+}
+.scene-chart i:nth-child(7) {
+  height: 20px;
+}
+.scene-subject {
+  position: absolute;
+  width: 49px;
+  height: 51px;
+  border-radius: 17px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--scene-rim);
+  box-shadow:
+    inset 1px 1px 1px var(--scene-rim),
+    2px 4px 0 var(--scene-edge),
+    0 12px 24px var(--scene-shadow);
+}
+.subject-science {
+  right: 37px;
+  top: 7px;
+  background: var(--scene-tile);
+  color: var(--sapphire-800);
+  transform: translateZ(18px) rotateY(-20deg) rotateZ(16deg);
+}
+.subject-book {
+  left: 43px;
+  bottom: 14px;
+  background: var(--accent);
+  color: var(--on-accent);
+  transform: translateZ(50px) rotateY(25deg) rotateZ(-14deg);
+}
+@keyframes academy-levitate {
+  0%,
+  100% {
+    transform: translateY(5px) rotateZ(-1deg);
+  }
+  50% {
+    transform: translateY(-9px) rotateZ(2deg);
+  }
+}
+@keyframes academy-sway {
+  0%,
+  100% {
+    transform: translateY(-5px) rotateX(1deg);
+  }
+  50% {
+    transform: translateY(7px) rotateX(-1deg);
+  }
+}
+.is-still .scene-center,
+.is-still .scene-panels {
+  animation-play-state: paused;
+}
+.is-reduced .scene-world {
+  transition: none;
+}
+@media (max-width: 1200px) {
+  .depth-stage {
+    max-width: 380px;
+    height: 265px;
+  }
+  .scene-card {
+    padding: 12px;
+    gap: 9px;
+  }
+  .scene-card strong {
+    font-size: 8px;
+  }
+  .scene-card small {
+    font-size: 6px;
+  }
+  .scene-card-growth {
+    left: -4px;
+  }
+  .scene-card-success {
+    right: -4px;
+  }
+}
+@media (min-width: 651px) and (max-width: 900px) {
+  .depth-stage {
+    transform: scale(0.9);
+    transform-origin: center;
+  }
+  .scene-card {
+    padding: 10px;
+    gap: 7px;
+  }
+  .scene-card-icon {
+    width: 30px;
+    height: 32px;
+  }
+  .scene-card small {
+    max-width: 110px;
+  }
+}
+@media (max-width: 650px) {
+  .login-story-content {
+    padding-top: 24px;
+  }
+  .login-story h2 {
+    font-size: 32px;
+    max-width: 290px;
+  }
+  .login-story-content > p {
+    max-width: 300px;
+  }
+  .depth-stage {
+    height: 175px;
+    max-width: 310px;
+    margin: 0 auto -5px;
+    perspective: 900px;
+  }
+  .scene-world {
+    transform: scale(0.66) rotateX(calc(var(--pointer-y) * -8deg))
+      rotateY(calc(var(--pointer-x) * 12deg));
+  }
+  .scene-card-growth {
+    left: -58px;
+    top: -5px;
+  }
+  .scene-card-success {
+    right: -60px;
+    bottom: -15px;
+  }
+  .scene-card small {
+    max-width: none;
+  }
+  .subject-science {
+    right: -10px;
+    top: -28px;
+  }
+  .subject-book {
+    left: -6px;
+    bottom: -30px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-center,
+  .scene-panels {
+    animation: none;
+  }
+  .scene-world {
+    transition: none;
+  }
+}

@@ -33,8 +33,10 @@ pnpm dev
 
 **http://127.0.0.1:5173** adresini açın. Giriş ekranından veya üst bardan rol seçin.
 
+Yeni React web uygulaması (`apps/web-react`, geçiş sürüyor) `pnpm dev:react` ile **http://127.0.0.1:5174** adresinde açılır. API bağlanana kadar yalnız geliştirme sunucusunda, giriş ekranındaki "Geliştirme hesapları" düğmeleriyle beş rolün kabuğu gezilebilir; oturum bellekte tutulur ve sayfa yenilenince kapanır.
+
 ```bash
-pnpm build                 # apps/web/dist
+pnpm build                 # apps/web/dist ve apps/web-react/dist
 pnpm preview               # http://127.0.0.1:4173
 pnpm lint
 pnpm typecheck             # TypeScript paketlerinde tip denetimi
@@ -150,7 +152,12 @@ Finansta kampüs/sınıf/yöntem/vade/tahsilat tarihi/tutar; CRM'de program/kamp
 
 ## Mimari ve kapsam
 
-Platform geçişi (ADR 0001): `apps/api` iskeleti, Better Auth kimliği ve kurum kapsamı, `packages/api-client` ve `packages/react-shared` hazır; `records` deposu, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır. Aşağıdaki bölüm Vue demosunu anlatır.
+Platform geçişi (ADR 0001, 0002) durumu:
+
+- `packages/school-core` TypeScript'e taşındı.
+- `apps/api` iskeleti, Better Auth kimliği ve kurum kapsamı, `packages/api-client` ve `packages/react-shared` hazır; `records` deposu, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır.
+- `apps/web-react` iskeleti hazır: Vue ile aynı tokenlar ve ölçülü cam (yalnız sidebar, navbar, menü, diyalog ve toast), beş rolün korumalı kabuğu, kategorili sidebar, avatar menüsündeki hesap sayfaları, kapalı modül yönlendirmesi, 404/hata sınırı, giriş formu ve 3B giriş sahnesi. Ekranlar henüz yer tutucudur; oturum geliştirme sahtesidir (Better Auth istemcisi bekleniyor). Ekran kontrolü: `node scripts/ekran-kontrol.ts` (`.claude/skills/ekran-kontrol/SKILL.md`).
+- Statik yayın (`pnpm run deploy`) yalnız Vue derlemesini (`apps/web/dist`) yayımlar. Aşağıdaki bölüm Vue demosunu anlatır.
 
 Görsel düzen düz renkler üzerine kuruludur: saf beyaz (`#FFFFFF`) zemin, koyu safir mavi (`#1E3A8A`) menü/ana işlem rengi, turuncu (`#F97316`) aksan, ince kenarlıklar ve yuvarlak köşeler. Açık ve koyu temada renk geçişleri kullanılmaz. Slogan bandı ve veriye dayanmayan mini grafikler kaldırılmıştır. Öğrenci, veli ve öğretmen panellerinde ders programı ile bekleyen işler üst bölümdedir; grafikler kayıtlı veriyi gösterir. Büyük para tutarları tek satırda, uzun ders adları doğal satırlarla gösterilir.
 

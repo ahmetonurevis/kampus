@@ -6141,8 +6141,11 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description Ödeme yöntemi (ör. `Kredi kartı`, `Nakit`, `Havale/EFT`) */
-                    method: string;
+                    /**
+                     * @description Ödeme yöntemi: `Banka havalesi`, `Nakit`, `Kredi kartı`
+                     * @enum {string}
+                     */
+                    method: "Banka havalesi" | "Nakit" | "Kredi kartı";
                 };
             };
         };

@@ -23,6 +23,7 @@ import {
   type CommandSteps,
 } from '../src/commands.ts'
 import { institutionKey } from '../src/query-keys.ts'
+import type { PayInvoiceInput } from '../src/use-invoice-commands.ts'
 
 // Sunucunun kabul ettiği anahtar biçimi (apps/api `IDEMPOTENCY_KEY_PATTERN`).
 const KEY_PATTERN = /^[A-Za-z0-9_-]{8,128}$/
@@ -221,7 +222,7 @@ function payClient(replies: (() => Response | Error)[]) {
       return result
     },
   })
-  const execute = (input: { invoiceId: string; method: string }, header: CommandHeaders) =>
+  const execute = (input: PayInvoiceInput, header: CommandHeaders) =>
     runRequest(() =>
       client.POST('/api/v1/invoices/{invoiceId}/pay', {
         params: { path: { invoiceId: input.invoiceId }, header },
@@ -269,7 +270,7 @@ function steps<TVariables, TData>(
 }
 
 describe('runCommand', () => {
-  const payment = { invoiceId: 'i1', method: 'Nakit' }
+  const payment: PayInvoiceInput = { invoiceId: 'i1', method: 'Nakit' }
 
   test('ağ hatasından sonra yeniden gönderim aynı Idempotency-Key ile gider', async () => {
     const { sent, execute } = payClient([() => new TypeError('fetch failed'), ok, ok])

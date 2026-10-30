@@ -9406,9 +9406,12 @@
                 "properties": {
                   "method": {
                     "type": "string",
-                    "minLength": 2,
-                    "maxLength": 60,
-                    "description": "Ödeme yöntemi (ör. `Kredi kartı`, `Nakit`, `Havale/EFT`)"
+                    "enum": [
+                      "Banka havalesi",
+                      "Nakit",
+                      "Kredi kartı"
+                    ],
+                    "description": "Ödeme yöntemi: `Banka havalesi`, `Nakit`, `Kredi kartı`"
                   }
                 },
                 "required": [

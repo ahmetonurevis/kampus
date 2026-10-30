@@ -17,6 +17,11 @@ const flag = z
   .default('false')
   .transform((value) => value === 'true' || value === '1')
 
+/** `.env` içindeki boş değer (`DEMO_PASSWORD=`) tanımsız sayılır. */
+function optional<T extends z.ZodType>(schema: T) {
+  return z.preprocess((value) => (value === '' ? undefined : value), schema.optional())
+}
+
 const databaseUrl = z.url({ protocol: /^postgres(ql)?$/ })
 
 export const configSchema = z
@@ -32,13 +37,13 @@ export const configSchema = z
     DATABASE_URL: databaseUrl,
     BETTER_AUTH_SECRET: z.string().min(32),
     /** API'nin dışarıdan görünen kök adresi; üretimde zorunlu. */
-    BETTER_AUTH_URL: z.url().optional(),
+    BETTER_AUTH_URL: optional(z.url()),
     /** İzinli web kökenleri (tam eşleşme). CORS ve Better Auth `trustedOrigins` aynı listeyi kullanır. */
     CORS_ORIGINS: csv.pipe(z.array(z.url())),
     /** Mobil uygulama şeması gibi tarayıcı dışı güvenilen kökenler. */
     TRUSTED_ORIGINS: csv.default(['kampus://']),
     /** Yalnız `db:seed`: demo kullanıcılarının parolası. Üretimde verilmezse tohum çalışmaz. */
-    DEMO_PASSWORD: z.string().min(12).optional(),
+    DEMO_PASSWORD: optional(z.string().min(12)),
   })
   .superRefine((config, ctx) => {
     if (config.NODE_ENV === 'production' && !config.BETTER_AUTH_URL)

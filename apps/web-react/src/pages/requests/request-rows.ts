@@ -24,6 +24,19 @@ export const ABSENCE_LIST = {
   defaultSort: ['-createdAt'],
 } satisfies CollectionListConfig
 
+/** Yanıtı yazanın velinin göreceği adı; yanıtı yalnız ön büro ve yönetici yazar. */
+const REPLY_AUTHORS: Readonly<Record<string, string>> = { onburo: 'Ön büro', yonetici: 'Yönetici' }
+
+/** Kurumun talebe yazdığı yanıt; veli kendi çocuğunun talebinde görür, düzenlenmez ve silinmez. */
+export type ReplyRow = {
+  id: string
+  text: string
+  /** ISO an. */
+  at: string
+  /** Yanıtı yazanın rolü (Türkçe); kişi adı gösterilmez. */
+  by: string
+}
+
 export type RequestRow = {
   id: string
   studentId: string
@@ -35,6 +48,7 @@ export type RequestRow = {
   assignedTo: string
   /** ISO tarih; ekranda `dateLabel` ile gösterilir. */
   date: string
+  replies: ReplyRow[]
 }
 
 export function requestRow(item: CoreRow<'requests'>): RequestRow {
@@ -49,6 +63,12 @@ export function requestRow(item: CoreRow<'requests'>): RequestRow {
     status: record.status,
     assignedTo: record.assignedTo,
     date: record.date,
+    replies: (record.replies ?? []).map((reply) => ({
+      id: reply.id,
+      text: reply.text,
+      at: reply.at,
+      by: REPLY_AUTHORS[reply.by.role] ?? 'Kurum',
+    })),
   }
 }
 

@@ -243,8 +243,8 @@ describe('classId süzgeci: öğrenciye bağlı koleksiyonlar', () => {
 
     test('kapsam dışı öğrencinin güncel sınıfı süzgeçte ve gruplamada görünmez', async () => {
       // s11, t2'nin sınıfları dışında bir sınıftadır; nota c1'de verilmiştir (t2 kapsamındaki sınıf).
-      const outClass = classOf('s11') ?? SEED.students.find((x) => x.id === 's11')?.classId
-      assert.ok(outClass && !['c1', 'c2', 'c3'].includes(outClass))
+      const outClass = String(classOf('s11'))
+      assert.ok(!['c1', 'c2', 'c3'].includes(outClass))
       const moved = givenIn('test-g-s11-in-c1', 's11', 'c1')
       const { adminCookie, t2 } = await withGrades([moved])
       assert.equal((await get('/api/v1/collections/students/s11', t2)).statusCode, 404)

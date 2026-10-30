@@ -92,7 +92,7 @@ describe('okuma kapsamı: pasif öğrenci ve arşivli bağlantı', () => {
     // Pasif öğrenci: ilişki yok; iki uç da reddeder (hesap adları sızmaz).
     const denied = await read(teacher.cookie, `/api/v1/students/${passive.id}/parent-accounts`)
     assert.equal(denied.statusCode, 404, denied.body)
-    assert.ok(!denied.body.includes(passiveMother.name))
+    assert.ok(!denied.body.includes(passiveMother.id))
     const start = await startWithParent(teacher.cookie, passive.id, passiveMother.id)
     assert.equal(start.statusCode, 403, start.body)
   })

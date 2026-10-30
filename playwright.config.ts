@@ -1,7 +1,19 @@
+// Vue demosu uçtan uca testleri (tests/e2e). React web + API için `playwright.react.config.ts`.
+// Dev sunucusu `E2E_VUE_PORT` (varsayılan 5173) portunda `--strictPort` ile açılır; paralel
+// worktree'lerde her koşu kendi portunu verir. Mevcut sunucu asla yeniden kullanılmaz: başka bir
+// worktree'nin sunucusuna bağlanıp yanlış kodu sınamak yerine port doluysa koşu hata verir.
 import { defineConfig } from '@playwright/test'
-const ci = !!process.env.CI
-const port = 5173
+
+function vuePort(): number {
+  const value = Number(process.env.E2E_VUE_PORT ?? 5173)
+  if (!Number.isInteger(value) || value < 1 || value > 65535)
+    throw new Error('E2E_VUE_PORT geçerli bir port değil.')
+  return value
+}
+
+const port = vuePort()
 const origin = `http://127.0.0.1:${port}`
+
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 45000,
@@ -16,11 +28,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: {
-    // CI'da derlenmiş uygulama (önceden `pnpm build`), yerelde dev sunucusu.
-    command: ci
-      ? `pnpm --filter @kampus/web exec vite preview --host 127.0.0.1 --port ${port} --strictPort`
-      : 'pnpm dev',
+    command: `pnpm dev --port ${port} --strictPort`,
     url: origin,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 })

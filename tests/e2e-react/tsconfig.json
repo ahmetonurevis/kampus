@@ -4,5 +4,5 @@
     "lib": ["es2023", "dom", "dom.iterable"],
     "types": ["node"]
   },
-  "include": ["./**/*.ts", "../../playwright.react.config.ts"]
+  "include": ["./**/*.ts", "../../playwright.react.config.ts", "../../playwright.config.ts"]
 }

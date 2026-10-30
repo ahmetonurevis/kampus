@@ -20,7 +20,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Mükerrer aday, mükerrer arama ve yanlış dönüşüm oranı üretir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var (core) — `packages/school-core/src/lib/prospects.ts` (`findProspectDuplicate`, `createProspect`, yeniden açmada `changeProspectStage`; kardeş ayrıntısı `DOM-KAY-031`). Çevrimdışı demo `apps/web/src/views/Crm.vue:139-158` mükerrer denetimi yapmaz; API ucu D16b'dedir.
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`findProspectDuplicate`, `createProspect`, yeniden açmada `changeProspectStage`; kardeş ayrıntısı `DOM-KAY-031`); API `POST /api/v1/prospects` ve `PATCH /api/v1/prospects/:prospectId` (`apps/api/src/routes/prospects.ts`, `services/prospects.ts`) tekilliği kurumun bütün adaylarıyla kurum kilidi altında denetler (eşzamanlı iki istekten biri yazılır, `test:pg`). Çevrimdışı demo `apps/web/src/views/Crm.vue:139-158` mükerrer denetimi yapmaz.
 
 ### DOM-KAY-003 · Aday iletişim verisi ve aydınlatma
 
@@ -28,7 +28,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Aydınlatma yükümlülüğü veri toplanırken yerine getirilir; ispat yükü veri sorumlusundadır.
 - **Kaynak:** KVKK md. 10.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — aydınlatma sürümü ve anı (`privacyNotice`), 18 yaş altında veli adı ve en az veri `packages/school-core/src/lib/prospects.ts` (`createProspect`, `DOM-KAY-009`). Aydınlatma metninin kendisi ve sürüm kaydı (metin deposu) yok.
+- **Kodda:** kısmen — aydınlatma sürümü ve anı (`privacyNotice`), 18 yaş altında veli adı ve en az veri `packages/school-core/src/lib/prospects.ts` (`createProspect`, `DOM-KAY-009`); API `POST /api/v1/prospects`, telefon/e-posta/veli adı log `redact` listesinde. Aydınlatma metninin kendisi ve sürüm kaydı (metin deposu) yok.
 
 ### DOM-KAY-004 · Pazarlama iletisi onayı
 
@@ -44,7 +44,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Dönüşüm raporu kayıtla tutarlı olmalı; kayıp nedeni satış stratejisinin girdisidir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var (core) — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/domain.ts`) yazar; yalnız açık aday kayda alınır (`DOM-KAY-035`). Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/domain.ts`) yazar; yalnız açık aday kayda alınır (`DOM-KAY-035`). API `PATCH /api/v1/prospects/:prospectId` (`If-Match` zorunlu). Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
 
 ### DOM-KAY-006 · Tanışma görüşmesi / deneme dersi çakışması
 
@@ -52,7 +52,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Ön büro kapasitesi sınırlıdır; yalnız başlangıç saati karşılaştırması 10:00–10:45 ile 10:30'u çakıştırmaz.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi (dil okulunda deneme dersi için bkz. `DOM-DIL-030`)
-- **Kodda:** var (core) — `packages/school-core/src/lib/prospects.ts` (`scheduleProspectMeeting`, süre ve oda/öğretmen çakışması, `tutorConflict`; ayrıntı `DOM-KAY-033`). Çevrimdışı demo çelişiyor: `apps/web/src/views/Crm.vue:198-203` yalnız aynı kampüs ve birebir aynı başlangıç zamanını engeller.
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleProspectMeeting`, süre ve oda/öğretmen çakışması, `tutorConflict`; ayrıntı `DOM-KAY-033`); API `POST /api/v1/prospects/:prospectId/meetings`. Çevrimdışı demo çelişiyor: `apps/web/src/views/Crm.vue:198-203` yalnız aynı kampüs ve birebir aynı başlangıç zamanını engeller.
 
 ### DOM-KAY-007 · Kaynak (lead source) zorunlu
 
@@ -76,7 +76,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Aday satış hunisindedir; amaçla sınırlı ve ölçülü veri dışında veri işlemek gereksiz risk doğurur. Veli kuralı yaş bilinmeden uygulanamayacağı için bilinmeyen yaş en korumalı biçimde yorumlanır.
 - **Kaynak:** KVKK md. 4/2-ç (amaçla bağlantılı, sınırlı ve ölçülü işleme), md. 10 (aydınlatma); 6563 sayılı Kanun md. 6 — **doğrulanmalı** (bkz. `DOM-KAY-004`).
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`createProspectSchema`, `createProspect`).
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`createProspectSchema`, `createProspect`); API `POST /api/v1/prospects` (gövde katı: kimlik no, doğum tarihi, adres 400; `Idempotency-Key` zorunlu).
 
 ## Kesin kayıt
 
@@ -188,7 +188,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Geri alınabilen aşama dönüşüm raporunu bozar; vazgeçen adayın tuttuğu görüşme saati ve deneme yeri başkasına açılmalıdır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`nextProspectStages`, `changeProspectStage`). Yanlış ileri geçişi düzelten işlem yoktur; gerekirse yönetici onaylı ayrı işlem olarak gelir (`TODO(crm-stage-back)`).
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`nextProspectStages`, `changeProspectStage`); API `PATCH /api/v1/prospects/:prospectId` (`apps/api/src/routes/prospects.ts`). Yanlış ileri geçişi düzelten işlem yoktur; gerekirse yönetici onaylı ayrı işlem olarak gelir (`TODO(crm-stage-back)`).
 
 ### DOM-KAY-031 · İletişimi paylaşan aday (kardeş)
 
@@ -196,7 +196,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** `DOM-KAY-002` kardeşe izin verir ama yazım farkıyla aynı kişinin ikinci kez açılmasını da engellemelidir; açık onay en muhafazakâr yoldur.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`findProspectDuplicate`, `createProspect`, yeniden açmada `changeProspectStage` `siblingOfId`).
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`findProspectDuplicate`, `createProspect`, yeniden açmada `changeProspectStage` `siblingOfId`); API `POST /api/v1/prospects` ve `PATCH /api/v1/prospects/:prospectId`, ret eşleşen adayın kimliğini yanıta ve loga koymaz.
 
 ### DOM-KAY-032 · Aday notu eklenir, değişmez
 
@@ -204,7 +204,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Temas geçmişi satış ve şikâyet incelemesinin kanıtıdır; kapalı adaya temas eklemek imha süresini (`DOM-KAY-008`) sessizce uzatır.
 - **Kaynak:** İşletme kuralı; KVKK md. 6 (özel nitelikli veri).
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`addProspectNote`, `PROSPECT_NOTE_NOTICE`).
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`addProspectNote`, `PROSPECT_NOTE_NOTICE`); API `POST /api/v1/prospects/:prospectId/notes` (yazar adı oturumdan, `If-Match` zorunlu, not metni loglanmaz).
 
 ### DOM-KAY-033 · Tanışma görüşmesi planlama
 
@@ -212,7 +212,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** `DOM-KAY-006`'nın "görevli/oda" çakışması; bilinmeyen kaynak çakışıyor sayılır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleProspectMeeting`), çakışma `packages/school-core/src/lib/tutor-conflicts.ts`. Ön büro görevlisinin (kullanıcı) kendi çakışması yoktur (`TODO(crm-meeting-host)`).
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleProspectMeeting`), çakışma `packages/school-core/src/lib/tutor-conflicts.ts`; API `POST /api/v1/prospects/:prospectId/meetings` (aynı odaya eşzamanlı iki görüşmeden biri yazılır, `test:pg`). Ön büro görevlisinin (kullanıcı) kendi çakışması yoktur (`TODO(crm-meeting-host)`).
 
 ### DOM-KAY-034 · Deneme dersi planlama
 
@@ -220,7 +220,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** `DOM-DIL-030`'un kapasite ve veli onayı şartlarının en korumalı uygulanışı; seviye ve yaş bandı uygunluğu henüz veriyle denetlenemez.
 - **Kaynak:** İşletme kuralı; ÖÖKY md. 48/2.
 - **Kurum türü:** `language_school`
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleTrialLesson`). Seviye ve yaş bandı uygunluğu (`DOM-DIL-041`) ön büro seçimine bırakılır (`TODO(crm-trial-level)`); öğretmenin deneme sonucu (`DOM-DIL-031`) yoktur (`TODO(crm-trial-result)`).
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleTrialLesson`); API `POST /api/v1/prospects/:prospectId/trial-lessons` (okul kurumunda her rol için 404). Seviye ve yaş bandı uygunluğu (`DOM-DIL-041`) ön büro seçimine bırakılır (`TODO(crm-trial-level)`); öğretmenin deneme sonucu (`DOM-DIL-031`) yoktur (`TODO(crm-trial-result)`).
 
 ### DOM-KAY-035 · Kesin kayıt yetkisi ve açık aday şartı
 
@@ -228,11 +228,11 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Kesin kayıt borç ve sözleşme doğurur; vazgeçen adayın doğrudan kaydı yeniden açılıştaki tekillik denetimini (`DOM-KAY-002`) atlatır.
 - **Kaynak:** İşletme kuralı; yetki matrisi (`docs/domain/yetki-ve-kapsam.md`).
 - **Kurum türü:** ikisi
-- **Kodda:** var (core) — `packages/school-core/src/lib/domain.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). `enrollProspect` yetkiyi kendisi denetlemez (`payInvoice` gibi); API ucu D16b'de önce `requireAuthorized` çağırır. Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`).
+- **Kodda:** var (core) — `packages/school-core/src/lib/domain.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). `enrollProspect` yetkiyi kendisi denetlemez (`payInvoice` gibi); API ucu henüz yok (`TODO(api-prospect-enroll)`, D16c); uç önce `requireAuthorized` çağıracak. Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`).
 
-## API uygulama notları (D16b)
+## API uygulama notları
 
-Aday uçları yazılırken core işlemlerinin varsaydığı koşullar sunucuda sağlanır:
+Aday uçları (`apps/api/src/routes/prospects.ts`) core işlemlerinin varsaydığı koşulları sunucuda sağlar; kesin kayıt maddesi D16c'de uygulanacak:
 
 - `loadScope` aday komutlarında kurumun bütün adaylarını kurum kilidi altında yükler. Tekillik (`DOM-KAY-002`, `-031`), kardeş doğrulaması, görüşme çakışması ve deneme katılımcı/kapasite sayımı bütün adaylara bakar; kısmi yükleme veya kilitsiz okuma eşzamanlı iki isteğin aynı denetimi geçmesine yol açar. State yalnız etkin kurumun kayıtlarını taşır; kardeş "aynı kurumda" şartı buna dayanır.
 - Not yazarının gösterilen adı (`authorName`) oturum kullanıcısından alınır; gövdeden okunmaz.

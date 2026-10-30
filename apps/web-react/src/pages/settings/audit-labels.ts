@@ -8,6 +8,7 @@ export const ENTITY_LABELS: Readonly<Record<string, string>> = {
   grades: 'Not',
   attendance: 'Yoklama',
   absences: 'Devamsızlık',
+  requests: 'Talep',
   announcements: 'Duyuru',
   conversations: 'Yazışma',
   classes: 'Sınıf',
@@ -58,6 +59,9 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   'message.send': 'Mesaj gönderildi',
   'message.read': 'Mesaj okundu',
   'workflow.guidance': 'Rehberlik kaydı değişti',
+  'request.open': 'Talep açıldı',
+  'request.update': 'Talep güncellendi',
+  'absence.notify': 'İzin/mazeret bildirildi',
 }
 
 const WORKFLOW_LABELS: Readonly<Record<string, string>> = {

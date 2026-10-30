@@ -1,29 +1,29 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSeed } from '../packages/school-core/src/data/seed.js'
+import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import {
   runWorkflow,
   examNet,
   renewalQuote,
   examProgress,
   workflowScope,
-} from '../packages/school-core/src/lib/school-workflows.js'
+} from '../packages/school-core/src/lib/school-workflows.ts'
 import {
   workflowRows,
   workflowDetails,
   workflowForm,
   csvTemplate,
   changeFormValue,
-} from '../packages/school-core/src/lib/workflow-presentation.js'
-import { schoolModules } from '../packages/school-core/src/modules/school-workflows.js'
+} from '../packages/school-core/src/lib/workflow-presentation.ts'
+import { schoolModules } from '../packages/school-core/src/modules/school-workflows.ts'
 import { navigation } from '../apps/web/src/modules/navigation.js'
 import {
   createSnapshotWriter,
   restoreSnapshot,
-} from '../packages/school-core/src/lib/demo-persistence.js'
-import { archiveRecord } from '../packages/school-core/src/lib/school-management.js'
-import { workflowSchemas } from '../packages/school-core/src/lib/school-workflows.js'
-import { documentData } from '../packages/school-core/src/lib/document-data.js'
+} from '../packages/school-core/src/lib/demo-persistence.ts'
+import { archiveRecord } from '../packages/school-core/src/lib/school-management.ts'
+import { workflowSchemas } from '../packages/school-core/src/lib/school-workflows.ts'
+import { documentData } from '../packages/school-core/src/lib/document-data.ts'
 const now = '2026-10-06T10:00:00.000Z'
 const seed = () => createSeed(new Date(now))
 let sequence = 0

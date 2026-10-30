@@ -1,10 +1,34 @@
-export const intervalsOverlap = (first, second) =>
+import type { State } from '../data/seed.ts'
+
+// Süre verilmeyen kayıtlar 30 dakikalık sayılır.
+export type Interval = { date: string; duration?: number }
+// Ders, randevu, etüt veya etkinlikle çakışması denetlenen aday kayıt.
+export type TutorCandidate = Interval & {
+  // Sınıf düzenleme ve öğretmen devri, atanmamış öğretmen/kampüsü de denetime sokar.
+  teacherId: string | undefined
+  branchId: string | undefined
+  room: string
+  studentIds?: readonly string[]
+}
+// Henüz kaydedilmemiş (plan önizlemesindeki) etütler de aynı biçimle denetlenir.
+export type TutorBooking = TutorCandidate & {
+  id?: string
+  status?: string
+  studentIds: readonly string[]
+}
+
+export const intervalsOverlap = (first: Interval, second: Interval) =>
   Date.parse(first.date) < Date.parse(second.date) + (second.duration || 30) * 60000 &&
   Date.parse(second.date) < Date.parse(first.date) + (first.duration || 30) * 60000
 
-export function tutorConflict(state, candidate, additional = [], ignoreId = '') {
+export function tutorConflict(
+  state: State,
+  candidate: TutorCandidate,
+  additional: readonly TutorBooking[] = [],
+  ignoreId = '',
+) {
   const students = new Set(candidate.studentIds || [])
-  const room = (value) => value?.trim().toLocaleLowerCase('tr')
+  const room = (value: string | null | undefined) => value?.trim().toLocaleLowerCase('tr')
   for (const lesson of state.schedule.filter(
     (l) => !l.cancelledAt && intervalsOverlap(candidate, l),
   )) {

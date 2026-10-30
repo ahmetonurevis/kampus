@@ -11,7 +11,7 @@ import { pickFile, fileSelectionMessage } from '../lib/files.js'
 import { Badge, Button, Card, Field, T, useColors } from '../ui/components.jsx'
 import { DetailPair, Notice, Screen, Section, TextAction } from '../ui/SchoolLayout.jsx'
 import DocumentLink from '../ui/DocumentLink.jsx'
-import { dateLabel } from '@kampus/school-core/lib/format.js'
+import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { useMinute } from '../ui/use-minute.js'
 
 export function HomeworkDetail({ route, navigation }) {

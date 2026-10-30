@@ -2,8 +2,8 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { AccessibilityInfo, useColorScheme } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { randomUUID } from 'expo-crypto'
-import { createSeed } from '@kampus/school-core/data/seed.js'
-import { createSnapshotWriter, restoreSnapshot } from '@kampus/school-core/lib/demo-persistence.js'
+import { createSeed } from '@kampus/school-core/data/seed.ts'
+import { createSnapshotWriter, restoreSnapshot } from '@kampus/school-core/lib/demo-persistence.ts'
 import { prepareReferenceData, resolveTheme } from '../model/experience.js'
 import { clone, roles } from '../model/school.js'
 

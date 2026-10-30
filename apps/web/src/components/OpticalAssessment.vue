@@ -10,7 +10,7 @@ import {
   currentEvaluations,
   runAssessment,
   exampleOpticalFile,
-} from '@kampus/school-core/lib/assessment-automation.js'
+} from '@kampus/school-core/lib/assessment-automation.ts'
 import { dateLabel } from '../lib/format.js'
 import { exportCsv, saveTextFile } from '../lib/download.js'
 import { useFormErrors } from '../lib/use-form-errors.js'

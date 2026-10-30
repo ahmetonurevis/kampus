@@ -1,7 +1,8 @@
-import { subjectById } from './curriculum.js'
+import { subjectById } from './curriculum.ts'
 
 // Her satır: soru, doğru cevap, üç çeldirici, konu, çözüm açıklaması.
-const entries = {
+type QuestionRow = [string, string, string, string, string, string, string]
+const entries: Record<string, QuestionRow[]> = {
   turkish: [
     [
       '“Yüreği ağzına gelmek” deyimi hangi duyguyu anlatır?',
@@ -693,9 +694,10 @@ const entries = {
 const questions = Object.entries(entries).flatMap(([subjectId, rows]) =>
   rows.map((row, i) => {
     const subject = subjectById(subjectId)
+    if (!subject) throw new Error(`Soru bankasında tanımsız ders: ${subjectId}`)
     const answer = i % 4
-    const options = row.slice(1, 5)
-    const correct = options.shift()
+    const [text, correct, first, second, third, topic, explanation] = row
+    const options = [first, second, third]
     options.splice(answer, 0, correct)
     return {
       id: `q-${subjectId}-${i}`,
@@ -703,18 +705,18 @@ const questions = Object.entries(entries).flatMap(([subjectId, rows]) =>
       subject: subject.name,
       minGrade: subject.min,
       maxGrade: subject.max,
-      text: row[0],
+      text,
       options,
       answer,
-      topic: row[5],
-      explanation: row[6],
+      topic,
+      explanation,
     }
   }),
 )
 for (let grade = 5; grade <= 12; grade++) {
   const a = grade + 2,
     b = grade - 2
-  const tasks = [
+  const tasks: [string, number, string, string][] = [
     [
       `${a} kutunun her birinde ${b} kalem var. Toplam kaç kalem vardır?`,
       a * b,

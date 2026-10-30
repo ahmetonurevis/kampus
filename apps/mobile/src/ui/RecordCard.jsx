@@ -1,7 +1,7 @@
 import { contentTitle } from '../model/presentation.js'
 import React from 'react'
 import { View } from 'react-native'
-import { subjects } from '@kampus/school-core/data/curriculum.js'
+import { subjects } from '@kampus/school-core/data/curriculum.ts'
 import { Avatar, Badge, Card, Icon, T, styles, useColors } from './components.jsx'
 
 const recordIcons = {

@@ -1,14 +1,20 @@
-import { navigation as baseNavigation } from './navigation.js'
-import { schoolModules } from './school-workflows.js'
+import { navigation as baseNavigation, type Role } from './navigation.ts'
+import { schoolModules } from './school-workflows.ts'
 
-export { roles } from './navigation.js'
+export { roles } from './navigation.ts'
 
 const SCHOOL_LIFE_MODULES = ['transport', 'meals', 'clubs', 'calendar']
 
 // Temel sayfalara okul iş akışı modüllerini ekler; web ve mobil aynı menüyü paylaşır.
-export const navigation = Object.fromEntries(
-  Object.entries(baseNavigation).map(([role, pages]) => [role, [...pages]]),
-)
+export type NavigationPage = (typeof baseNavigation)[Role][number]
+// Temel listeler kopyalanır; anahtar sırası temel menüdekiyle aynıdır.
+export const navigation: Record<Role, NavigationPage[]> = {
+  yonetici: [...baseNavigation.yonetici],
+  onburo: [...baseNavigation.onburo],
+  ogretmen: [...baseNavigation.ogretmen],
+  ogrenci: [...baseNavigation.ogrenci],
+  veli: [...baseNavigation.veli],
+}
 
 for (const module of schoolModules) {
   for (const role of module.roles) {

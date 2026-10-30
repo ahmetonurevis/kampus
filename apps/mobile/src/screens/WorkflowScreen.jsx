@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { View } from 'react-native'
-import { workflowPage } from '@kampus/school-core/modules/school-workflows.js'
+import { workflowPage } from '@kampus/school-core/modules/school-workflows.ts'
 import {
   workflowRows,
   workflowDetails,
   workflowCreateActions,
-} from '@kampus/school-core/lib/workflow-presentation.js'
-import { dateLabel } from '@kampus/school-core/lib/format.js'
+} from '@kampus/school-core/lib/workflow-presentation.ts'
+import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { useSchool } from '../store/SchoolProvider.jsx'
 import { Badge, Button, Empty, Heading, SearchField, Sheet, T } from '../ui/components.jsx'
 import { ListRow, Notice, Pagination, Screen, Section, Tabs } from '../ui/SchoolLayout.jsx'

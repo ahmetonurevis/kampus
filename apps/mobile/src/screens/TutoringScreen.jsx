@@ -6,8 +6,8 @@ import {
   planTutoring,
   tutoringSessions,
   runAssessment,
-} from '@kampus/school-core/lib/assessment-automation.js'
-import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.js'
+} from '@kampus/school-core/lib/assessment-automation.ts'
+import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { recordError, useSchool } from '../store/SchoolProvider.jsx'
 import {
   Badge,

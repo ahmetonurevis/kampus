@@ -1,7 +1,9 @@
 import { z } from 'zod'
-import { requiredText } from './domain.js'
-import { subjectsForGrade, subjectById } from '../data/curriculum.js'
-import { tutorConflict } from './tutor-conflicts.js'
+import { subjectsForGrade, subjectById } from '../data/curriculum.ts'
+import type { State } from '../data/seed.ts'
+import { requiredText, type MakeId } from './domain.ts'
+import { tutorConflict, type Interval } from './tutor-conflicts.ts'
+
 export const branchSchema = z.object({ name: requiredText.max(80), address: requiredText.max(240) })
 export const teacherSchema = z.object({
   name: requiredText.max(80),
@@ -23,9 +25,20 @@ export const classSchema = z.object({
   capacity: z.coerce.number().int().min(1).max(40),
   room: requiredText.max(30),
 })
-const same = (a, b) => a.toLocaleLowerCase('tr') === b.toLocaleLowerCase('tr')
-const active = (items, id) => items.find((item) => item.id === id && item.isActive)
-export function saveBranch(state, input, makeId, recordId = null) {
+export type ArchiveKind = 'branch' | 'class' | 'teacher'
+// Ders ve randevular aynı listede denetlenir; randevunun sınıfı ve dersliği yoktur.
+type Booked = Interval & { teacherId: string; classId?: string; room?: string }
+const same = (a: string, b: string) => a.toLocaleLowerCase('tr') === b.toLocaleLowerCase('tr')
+const active = <T extends { id: string; isActive: boolean }>(
+  items: readonly T[],
+  id: string | null | undefined,
+) => items.find((item) => item.id === id && item.isActive)
+export function saveBranch(
+  state: State,
+  input: unknown,
+  makeId: MakeId,
+  recordId: string | null = null,
+) {
   const data = branchSchema.parse(input)
   if (state.branches.some((b) => b.id !== recordId && b.isActive && same(b.name, data.name)))
     throw new Error('Bu isimde aktif bir kampüs zaten var.')
@@ -41,7 +54,13 @@ export function saveBranch(state, input, makeId, recordId = null) {
       deletedAt: null,
     })
 }
-export function saveTeacher(state, input, makeId, recordId = null, now = new Date().toISOString()) {
+export function saveTeacher(
+  state: State,
+  input: unknown,
+  makeId: MakeId,
+  recordId: string | null = null,
+  now = new Date().toISOString(),
+) {
   const data = teacherSchema.parse(input)
   if (!active(state.branches, data.branchId)) throw new Error('Aktif bir kampüs seçin.')
   const subject = subjectById(data.subjectId)
@@ -83,7 +102,13 @@ export function saveTeacher(state, input, makeId, recordId = null, now = new Dat
       deletedAt: null,
     })
 }
-export function saveClass(state, input, subjectTeachers, makeId, recordId = null) {
+export function saveClass(
+  state: State,
+  input: unknown,
+  subjectTeachers: Readonly<Record<string, string>>,
+  makeId: MakeId,
+  recordId: string | null = null,
+) {
   const data = classSchema.parse(input)
   if (!active(state.branches, data.branchId)) throw new Error('Aktif bir kampüs seçin.')
   if (!active(state.teachers, data.teacherId)) throw new Error('Aktif bir sınıf danışmanı seçin.')
@@ -158,11 +183,12 @@ export function saveClass(state, input, subjectTeachers, makeId, recordId = null
       },
     )
     if (reason) throw new Error(reason)
+    const busy: Booked[] = [
+      ...state.schedule.filter((l) => !l.cancelledAt),
+      ...state.appointments.filter((a) => a.status !== 'Reddedildi'),
+    ]
     if (
-      [
-        ...state.schedule.filter((l) => !l.cancelledAt),
-        ...state.appointments.filter((a) => a.status !== 'Reddedildi'),
-      ].some(
+      busy.some(
         (other) =>
           other.classId !== recordId && other.teacherId === teacher && overlaps(lesson, other),
       )
@@ -214,7 +240,7 @@ export function saveClass(state, input, subjectTeachers, makeId, recordId = null
       assignments.find((a) => a.subjectId === task.subjectId)?.teacherId || data.teacherId
   return classId
 }
-function overlaps(a, b) {
+function overlaps(a: Interval, b: Interval) {
   const startA = +new Date(a.date),
     startB = +new Date(b.date)
   return (
@@ -222,15 +248,19 @@ function overlaps(a, b) {
   )
 }
 export function archiveRecord(
-  state,
-  kind,
-  recordId,
+  state: State,
+  kind: ArchiveKind,
+  recordId: string,
   replacementId = '',
   now = new Date().toISOString(),
 ) {
   const collection = { branch: 'branches', class: 'classes', teacher: 'teachers' }[kind]
   if (!collection) throw new Error('Kayıt türü geçersiz.')
-  const record = active(state[collection], recordId)
+  // Tür başına ayrı değişken, aşağıdaki türe özgü alanların tipini korur; yalnız biri doludur.
+  const classRecord = kind === 'class' ? active(state.classes, recordId) : undefined
+  const teacherRecord = kind === 'teacher' ? active(state.teachers, recordId) : undefined
+  const record =
+    kind === 'branch' ? active(state.branches, recordId) : (classRecord ?? teacherRecord)
   if (!record) throw new Error('Aktif kayıt bulunamadı.')
   if (recordId === replacementId) throw new Error('Farklı bir aktarım hedefi seçin.')
   if (
@@ -296,14 +326,14 @@ export function archiveRecord(
       for (const relatedRecord of related) relatedRecord.branchId = replacementId
     }
   }
-  if (kind === 'class') {
+  if (kind === 'class' && classRecord) {
     const students = state.students.filter((s) => s.isActive && s.classId === recordId)
     const renewals = (state.renewals || []).filter(
       (r) => r.status === 'Planlandı' && r.targetClassId === recordId,
     )
     if (students.length || renewals.length) {
       const destination = active(state.classes, replacementId)
-      if (!destination || destination.grade !== record.grade)
+      if (!destination || destination.grade !== classRecord.grade)
         throw new Error('Öğrenciler için aynı düzeyde aktif bir sınıf seçin.')
       if (
         students.length +
@@ -339,7 +369,7 @@ export function archiveRecord(
         const contract = state.contracts.find((c) => c.id === renewal.contractId)
         if (contract) contract.classId = replacementId
       }
-      if (destination.branchId !== record.branchId) {
+      if (destination.branchId !== classRecord.branchId) {
         const moved = new Set(students.map((s) => s.id))
         state.transportAssignments = (state.transportAssignments || []).filter(
           (a) => !moved.has(a.studentId),
@@ -361,7 +391,7 @@ export function archiveRecord(
       (l) => l.cancelledAt || l.classId !== recordId || l.date < now,
     )
   }
-  if (kind === 'teacher') {
+  if (kind === 'teacher' && teacherRecord) {
     const assignments = state.assignments.filter(
       (a) => a.teacherId === recordId && active(state.classes, a.classId),
     )
@@ -387,7 +417,7 @@ export function archiveRecord(
       workflowRecords.length
     ) {
       const replacement = active(state.teachers, replacementId)
-      if (!replacement || replacement.subjectId !== record.subjectId)
+      if (!replacement || replacement.subjectId !== teacherRecord.subjectId)
         throw new Error('Aynı branştan aktif bir öğretmen seçerek görevleri devredin.')
       if (
         (state.clubs || []).some(
@@ -396,7 +426,7 @@ export function archiveRecord(
         )
       )
         throw new Error('Aktif kulüp sorumluluğu için aynı kampüsten öğretmen seçin.')
-      const incoming = [...future, ...appointments]
+      const incoming: Booked[] = [...future, ...appointments]
       const existing = [
         ...state.schedule.filter((l) => !l.cancelledAt),
         ...state.appointments.filter((a) => a.status !== 'Reddedildi'),
@@ -438,31 +468,38 @@ export function archiveRecord(
   record.isActive = false
   record.deletedAt = now
 }
-export function restoreRecord(state, kind, recordId) {
-  const collection = { branch: 'branches', class: 'classes', teacher: 'teachers' }[kind]
-  const record = state[collection]?.find((r) => r.id === recordId)
+export function restoreRecord(state: State, kind: ArchiveKind, recordId: string) {
+  const classRecord = kind === 'class' ? state.classes.find((r) => r.id === recordId) : undefined
+  const teacherRecord =
+    kind === 'teacher' ? state.teachers.find((r) => r.id === recordId) : undefined
+  const member = classRecord ?? teacherRecord
+  const record = kind === 'branch' ? state.branches.find((r) => r.id === recordId) : member
   if (!record || record.isActive) throw new Error('Arşiv kaydı bulunamadı.')
   if (kind === 'branch' && state.branches.some((b) => b.isActive && same(b.name, record.name)))
     throw new Error('Aynı isimde aktif kampüs var.')
-  if (kind !== 'branch' && !active(state.branches, record.branchId))
+  if (kind !== 'branch' && !active(state.branches, member?.branchId))
     throw new Error('Önce bağlı kampüsü arşivden çıkarın.')
-  if (kind === 'class') {
+  if (kind === 'class' && classRecord) {
     if (
       state.classes.some(
         (c) =>
           c.isActive &&
-          c.branchId === record.branchId &&
-          (same(c.name, record.name) || same(c.room, record.room)),
+          c.branchId === classRecord.branchId &&
+          (same(c.name, classRecord.name) || same(c.room, classRecord.room)),
       )
     )
       throw new Error('Bu sınıf adı veya derslik başka bir sınıfta kullanılıyor.')
     if (
-      !active(state.teachers, record.teacherId) ||
+      !active(state.teachers, classRecord.teacherId) ||
       state.assignments.some((a) => a.classId === recordId && !active(state.teachers, a.teacherId))
     )
       throw new Error('Önce bu sınıfa atanmış öğretmenleri arşivden çıkarın.')
   }
-  if (kind === 'teacher' && state.teachers.some((t) => t.isActive && same(t.email, record.email)))
+  if (
+    kind === 'teacher' &&
+    teacherRecord &&
+    state.teachers.some((t) => t.isActive && same(t.email, teacherRecord.email))
+  )
     throw new Error('Bu e-posta adresi başka bir öğretmende kullanılıyor.')
   record.isActive = true
   record.deletedAt = null

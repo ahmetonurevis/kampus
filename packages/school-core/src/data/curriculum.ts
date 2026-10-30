@@ -192,7 +192,9 @@ export const subjects = [
       'Dürüstlük, adalet, saygı ve yardımlaşma ortak ahlaki değerlerdendir. Empati, bir başkasının duygu ve düşüncelerini anlamaya çalışmaktır. Farklı inanç ve düşüncelere saygı göstermek birlikte yaşama kültürünü güçlendirir. Sorumluluk, üstlenilen görevleri zamanında yerine getirmektir.',
   },
 ]
-export const subjectById = (id) => subjects.find((subject) => subject.id === id)
-export const subjectsForGrade = (grade) =>
+export type Subject = (typeof subjects)[number]
+export const subjectById = (id: string): Subject | undefined =>
+  subjects.find((subject) => subject.id === id)
+export const subjectsForGrade = (grade: number): Subject[] =>
   subjects.filter((subject) => grade >= subject.min && grade <= subject.max)
 export const schoolLevels = Array.from({ length: 8 }, (_, i) => `${i + 5}. Sınıf`)

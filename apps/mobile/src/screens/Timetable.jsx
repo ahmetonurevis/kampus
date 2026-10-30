@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { View } from 'react-native'
-import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.js'
+import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { useSchool } from '../store/SchoolProvider.jsx'
 import { context, nameOf, rowsFor } from '../model/school.js'
 import { contentTitle } from '../model/presentation.js'

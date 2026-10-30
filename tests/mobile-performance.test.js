@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSeed } from '../packages/school-core/src/data/seed.js'
-import { dateLabel, dayKey, money, timeLabel } from '../packages/school-core/src/lib/format.js'
+import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { dateLabel, dayKey, money, timeLabel } from '../packages/school-core/src/lib/format.ts'
 import { moduleNavigationState } from '../apps/mobile/src/model/navigation.js'
 import { absentCount, gradeAverage, homeSummary, rowsFor } from '../apps/mobile/src/model/school.js'
 

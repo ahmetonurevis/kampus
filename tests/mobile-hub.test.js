@@ -1,12 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSeed } from '../packages/school-core/src/data/seed.js'
-import { decodeText } from '../packages/school-core/src/lib/text-decoding.js'
-import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.js'
+import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { decodeText } from '../packages/school-core/src/lib/text-decoding.ts'
+import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
 import {
   createSnapshotWriter,
   restoreSnapshot,
-} from '../packages/school-core/src/lib/demo-persistence.js'
+} from '../packages/school-core/src/lib/demo-persistence.ts'
 import { navigation as webNavigation } from '../apps/web/src/modules/navigation.js'
 import { navigation, availablePages } from '../apps/mobile/src/model/school.js'
 import {

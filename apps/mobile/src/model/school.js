@@ -8,9 +8,9 @@ import {
   slaLabel,
   slaStatus,
   timeLabel,
-} from '@kampus/school-core/lib/format.js'
-import { navigation, roles } from '@kampus/school-core/modules/full-navigation.js'
-import { subjectsForGrade } from '@kampus/school-core/data/curriculum.js'
+} from '@kampus/school-core/lib/format.ts'
+import { navigation, roles } from '@kampus/school-core/modules/full-navigation.ts'
+import { subjectsForGrade } from '@kampus/school-core/data/curriculum.ts'
 
 export { navigation, roles }
 export const teacherId = 't1'

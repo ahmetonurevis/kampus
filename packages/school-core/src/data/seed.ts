@@ -1,9 +1,27 @@
-import { questionBank } from './question-bank.js'
-import { subjects, subjectsForGrade, subjectById } from './curriculum.js'
-import { gradeQuiz } from '../lib/domain.js'
-import { createSchoolWorkflows } from './school-workflows.js'
-import { createAssessmentAutomation } from './assessment-automation.js'
+import { questionBank } from './question-bank.ts'
+import { subjects, subjectsForGrade, subjectById } from './curriculum.ts'
+import { gradeQuiz } from '../lib/domain.ts'
+import { createSchoolWorkflows } from './school-workflows.ts'
+import { createAssessmentAutomation } from './assessment-automation.ts'
+import type {
+  AuditEntry,
+  ClubAttendanceRecord,
+  EnrollmentRecord,
+  EventConsent,
+  GoalComment,
+  GoalStep,
+  GuidanceNote,
+  LessonSubstitution,
+  Renewal,
+} from '../lib/school-workflows.ts'
+import type { OpticalEvaluation, TutorSession } from '../lib/assessment-automation.ts'
 export const topics = subjects.map((s) => s.name)
+
+// Örnek veri kendi içinde tutarlıdır; aranan kayıt yoksa üretici hatalıdır ve hemen durur.
+function required<T>(value: T | undefined, what: string): T {
+  if (value === undefined) throw new Error(`Örnek veri tutarsız: ${what} bulunamadı.`)
+  return value
+}
 export const studentNames = [
   'Deniz Yılmaz',
   'Ece Yılmaz',
@@ -61,14 +79,14 @@ export const studentNames = [
   'Serkan Şen',
 ]
 
-export function createSeed(now = new Date()) {
-  const date = (days, hour = 9) => {
+function buildSeed(now: Date) {
+  const date = (days: number, hour = 9) => {
     const d = new Date(now)
     d.setUTCDate(d.getUTCDate() + days)
     d.setUTCHours(hour, 0, 0, 0)
     return d.toISOString()
   }
-  const month = (offset, day = 10) =>
+  const month = (offset: number, day = 10) =>
     new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, day, 9)).toISOString()
   const branches = [
     {
@@ -89,7 +107,7 @@ export function createSeed(now = new Date()) {
       address: 'Atatürk Mah. Ataşehir Bulvarı No: 36, İstanbul',
       color: '#d4a475',
     },
-  ].map((b) => ({ ...b, isActive: true, deletedAt: null }))
+  ].map((b) => ({ ...b, isActive: true, deletedAt: null as string | null }))
   const teacherNames = [
     'Selin Kaya',
     'Ahmet Yıldırım',
@@ -113,7 +131,7 @@ export function createSeed(now = new Date()) {
       id: `t${b * subjects.length + i + 1}`,
       name:
         b === 0
-          ? teacherNames[i]
+          ? required(teacherNames[i], 'öğretmen adı')
           : `${['Aylin', 'Cem', 'Sevgi', 'Barış', 'Banu', 'Erdem', 'Sibel', 'Hakan', 'Nur', 'Deniz', 'Özge', 'Alper', 'Gizem', 'Koray', 'Pelin', 'Suat'][i]} ${b === 1 ? ['Özer', 'Akın', 'Uslu', 'Çetin'][i % 4] : ['Güler', 'Kurt', 'Toprak', 'Erdem'][i % 4]}`,
       subjectId: subject.id,
       subject: subject.name,
@@ -123,7 +141,7 @@ export function createSeed(now = new Date()) {
       attendanceRate: 100 - (i % 4) * 3,
       homeworkRate: 98 - (i % 5) * 4,
       isActive: true,
-      deletedAt: null,
+      deletedAt: null as string | null,
     })),
   )
   const gradeOrder = [7, 5, 6, 8, 9, 10, 11, 12]
@@ -135,13 +153,16 @@ export function createSeed(now = new Date()) {
       section: ['A', 'B', 'C'][b],
       level: `${grade}. Sınıf`,
       branchId: branch.id,
-      teacherId: teachers.find(
-        (t) => t.branchId === branch.id && t.subjectId === (grade <= 8 ? 'math' : 'literature'),
+      teacherId: required(
+        teachers.find(
+          (t) => t.branchId === branch.id && t.subjectId === (grade <= 8 ? 'math' : 'literature'),
+        ),
+        'sınıf öğretmeni',
       ).id,
       capacity: 24,
       room: `${b + 1}${String(i + 1).padStart(2, '0')}`,
       isActive: true,
-      deletedAt: null,
+      deletedAt: null as string | null,
     })),
   )
   const assignments = classes.flatMap((c) =>
@@ -149,7 +170,10 @@ export function createSeed(now = new Date()) {
       id: `assign-${c.id}-${subject.id}`,
       classId: c.id,
       subjectId: subject.id,
-      teacherId: teachers.find((t) => t.branchId === c.branchId && t.subjectId === subject.id).id,
+      teacherId: required(
+        teachers.find((t) => t.branchId === c.branchId && t.subjectId === subject.id),
+        'branş öğretmeni',
+      ).id,
     })),
   )
   const names = [...studentNames]
@@ -193,7 +217,7 @@ export function createSeed(now = new Date()) {
   const students = names.map((name, i) => ({
     id: `s${i + 1}`,
     name,
-    classId: classes[i % classes.length].id,
+    classId: required(classes[i % classes.length], 'sınıf').id,
     parentId: i < 2 ? 'p1' : `p${i + 1}`,
     email: `ogrenci${i + 1}@kampus.example`,
     phone: `0555010${String(i + 1).padStart(4, '0')}`,
@@ -210,7 +234,7 @@ export function createSeed(now = new Date()) {
       studentIds: [s.id],
     })),
   ]
-  const academicMonths = []
+  const academicMonths: string[] = []
   for (let offset = 0; academicMonths.length < 4; offset--) {
     const candidate = new Date(month(offset, 5))
     if (![6, 7].includes(candidate.getUTCMonth()) && candidate <= now)
@@ -218,7 +242,12 @@ export function createSeed(now = new Date()) {
   }
   const grades = students.flatMap((student, i) =>
     Array.from({ length: 4 }, (_, m) =>
-      subjectsForGrade(classes.find((c) => c.id === student.classId).grade).map((subject, t) => ({
+      subjectsForGrade(
+        required(
+          classes.find((c) => c.id === student.classId),
+          'öğrenci sınıfı',
+        ).grade,
+      ).map((subject, t) => ({
         id: `g-${student.id}-${m}-${t}`,
         studentId: student.id,
         subjectId: subject.id,
@@ -236,7 +265,7 @@ export function createSeed(now = new Date()) {
       })),
     ).flat(),
   )
-  const schoolDays = []
+  const schoolDays: string[] = []
   for (let n = 1; schoolDays.length < 32; n += 3) {
     const d = new Date(date(-n))
     if (![0, 6].includes(d.getUTCDay()) && ![6, 7].includes(d.getUTCMonth()))
@@ -268,7 +297,7 @@ export function createSeed(now = new Date()) {
         dueDate: month(n - 3),
         paidAt: paid ? month(n - 3, 8) : null,
         method: paid ? ['Banka havalesi', 'Kredi kartı', 'Nakit'][i % 3] : null,
-        reminderAt: null,
+        reminderAt: null as string | null,
       }
     }),
   )
@@ -305,8 +334,8 @@ export function createSeed(now = new Date()) {
     name,
     phone: `0555020${String(i + 1).padStart(4, '0')}`,
     email: `aday${i + 1}@kampus.example`,
-    branchId: branches[i % 3].id,
-    interest: `${gradeOrder[i % 8]}. Sınıf · ${gradeOrder[i % 8] < 9 ? 'Ortaokul' : 'Anadolu Lisesi'}`,
+    branchId: required(branches[i % 3], 'kampüs').id,
+    interest: `${gradeOrder[i % 8]}. Sınıf · ${required(gradeOrder[i % 8], 'düzey') < 9 ? 'Ortaokul' : 'Anadolu Lisesi'}`,
     source: ['Web sitesi', 'Veli referansı', 'Kampüs ziyareti', 'Telefon', 'Bursluluk sınavı'][
       i % 5
     ],
@@ -336,8 +365,11 @@ export function createSeed(now = new Date()) {
   const quizzes = assignments
     .filter((a) => !['music', 'art', 'pe', 'religion', 'informatics'].includes(a.subjectId))
     .map((a, i) => {
-      const c = classes.find((c) => c.id === a.classId)
-      const subject = subjectById(a.subjectId)
+      const c = required(
+        classes.find((c) => c.id === a.classId),
+        'sınav sınıfı',
+      )
+      const subject = required(subjectById(a.subjectId), 'sınav dersi')
       return {
         title: `${subject.name} · ${c.name} kazanım testi`,
         ...a,
@@ -359,7 +391,10 @@ export function createSeed(now = new Date()) {
       .map((quiz, n) => {
         const answers = Object.fromEntries(
           quiz.questionIds.map((qid, j) => {
-            const q = bank.find((q) => q.id === qid)
+            const q = required(
+              bank.find((q) => q.id === qid),
+              'sınav sorusu',
+            )
             return [qid, j % 5 === i % 5 ? (q.answer + 1) % 4 : q.answer]
           }),
         )
@@ -374,7 +409,10 @@ export function createSeed(now = new Date()) {
       }),
   )
   for (const attempt of quizAttempts) {
-    const quiz = quizzes.find((q) => q.id === attempt.quizId)
+    const quiz = required(
+      quizzes.find((q) => q.id === attempt.quizId),
+      'sınav',
+    )
     grades.push({
       id: `g-${attempt.id}`,
       studentId: attempt.studentId,
@@ -387,7 +425,7 @@ export function createSeed(now = new Date()) {
     })
   }
   const homework = assignments.map((a, i) => {
-    const subject = subjectById(a.subjectId)
+    const subject = required(subjectById(a.subjectId), 'ödev dersi')
     return {
       ...a,
       id: `hw${i + 1}`,
@@ -399,7 +437,7 @@ export function createSeed(now = new Date()) {
     }
   })
   homework.push({
-    ...homework[0],
+    ...required(homework[0], 'ödev'),
     id: 'hw-review',
     title: 'Matematik · Denklem çalışma kâğıdı',
     dueDate: date(-7),
@@ -433,11 +471,15 @@ export function createSeed(now = new Date()) {
       'Denklemin iki tarafına aynı işlemi doğru uygulamışsın. Sonucunu yerine koyarak kontrol etmen çok iyi.',
   })
   const questions = Array.from({ length: 36 }, (_, i) => {
-    const s = students[i % 6 === 0 ? 0 : i]
-    const a = assignments.filter((a) => a.classId === s.classId)[i % 6]
-    const q = bank.find(
-      (q) =>
-        q.subjectId === a.subjectId && q.minGrade <= classes.find((c) => c.id === s.classId).grade,
+    const s = required(students[i % 6 === 0 ? 0 : i], 'soru soran öğrenci')
+    const a = required(assignments.filter((a) => a.classId === s.classId)[i % 6], 'soru dersi')
+    const grade = required(
+      classes.find((c) => c.id === s.classId),
+      'soru sınıfı',
+    ).grade
+    const q = required(
+      bank.find((q) => q.subjectId === a.subjectId && q.minGrade <= grade),
+      'soru bankası sorusu',
     )
     return {
       id: `ask${i + 1}`,
@@ -513,7 +555,10 @@ export function createSeed(now = new Date()) {
       subjectId: subject.id,
       subject: subject.name,
       level: `${grade}. Sınıf`,
-      teacherId: teachers.find((t) => t.branchId === 'b1' && t.subjectId === subject.id).id,
+      teacherId: required(
+        teachers.find((t) => t.branchId === 'b1' && t.subjectId === subject.id),
+        'materyal öğretmeni',
+      ).id,
       size: 'PDF',
       createdAt: date(-i),
       type: 'Doküman',
@@ -725,7 +770,7 @@ export function createSeed(now = new Date()) {
           subjectId: assignment.subjectId,
           date: lessonDate.toISOString(),
           duration: 40,
-          title: subjectById(assignment.subjectId).name,
+          title: required(subjectById(assignment.subjectId), 'ders').name,
           room: c.room,
         })
       }
@@ -783,4 +828,76 @@ export function createSeed(now = new Date()) {
   const { workflowModules, ...records } = extensions
   const expanded = { ...state, ...records, modules: { ...state.modules, ...workflowModules } }
   return { ...expanded, ...createAssessmentAutomation(expanded) }
+}
+
+// State tipi örnek veri üreticisinden türetilir. Örnek veride boş başlayan koleksiyonlar ile
+// işlemlerin sonradan eklediği isteğe bağlı alanlar burada tamamlanır.
+type SeedState = ReturnType<typeof buildSeed>
+type Patch<T, P> = Omit<T, keyof P> & P
+type Item<K extends keyof SeedState> = SeedState[K] extends readonly (infer T)[] ? T : never
+type Timestamps = { createdAt?: string; updatedAt?: string }
+export type State = Omit<SeedState, keyof StatePatches> & StatePatches
+type StatePatches = {
+  // Arayüzden kaydedilen öğrenciye okul numarası verilmez.
+  students: (Patch<Item<'students'>, { number?: string }> & { academicYear?: number })[]
+  invoices: (Item<'invoices'> & Timestamps & { contractId?: string; academicYear?: number })[]
+  contracts: (Item<'contracts'> & {
+    classId?: string
+    academicYear?: number
+    invoiceIds?: string[]
+  })[]
+  schedule: (Item<'schedule'> &
+    Timestamps & {
+      cancelledAt?: string
+      originalTeacherId?: string
+      substitutions?: LessonSubstitution[]
+    })[]
+  absences: {
+    id: string
+    studentId: string
+    startDate: string
+    endDate: string
+    category: string
+    reason: string
+    status: string
+    date: string
+  }[]
+  preferences: Record<string, unknown>
+  // Okul iş akışı modülleri kayıttan eklenir; anahtar kümesi derleme anında sabit değildir.
+  modules: Record<string, boolean>
+  audit: AuditEntry[]
+  guidanceCases: Patch<Item<'guidanceCases'>, { notes: GuidanceNote[]; updatedAt?: string }>[]
+  mockExams: (Item<'mockExams'> & { updatedAt?: string })[]
+  mockResults: (Item<'mockResults'> & {
+    source?: string
+    evaluationId?: string | null
+    updatedAt?: string
+  })[]
+  studentGoals: Patch<
+    Item<'studentGoals'>,
+    {
+      reviewedAt?: string
+      closedAt?: string
+      steps: GoalStep[]
+      comments: GoalComment[]
+    }
+  >[]
+  renewals: Renewal[]
+  enrollmentHistory: EnrollmentRecord[]
+  studyTasks: (Item<'studyTasks'> & Timestamps & { completedAt?: string; reviewedAt?: string })[]
+  schoolEvents: (Item<'schoolEvents'> & { teacherId?: string | null; updatedAt?: string })[]
+  eventConsents: EventConsent[]
+  transportRoutes: (Item<'transportRoutes'> & { updatedAt?: string })[]
+  transportAssignments: (Item<'transportAssignments'> & { updatedAt?: string })[]
+  mealMenus: (Item<'mealMenus'> & { updatedAt?: string })[]
+  clubs: (Item<'clubs'> & { updatedAt?: string })[]
+  clubMemberships: (Item<'clubMemberships'> & { updatedAt?: string })[]
+  clubAttendance: ClubAttendanceRecord[]
+  socialAchievements: (Item<'socialAchievements'> & { updatedAt?: string })[]
+  opticalEvaluations: OpticalEvaluation[]
+  tutorSessions: TutorSession[]
+}
+
+export function createSeed(now = new Date()): State {
+  return buildSeed(now)
 }

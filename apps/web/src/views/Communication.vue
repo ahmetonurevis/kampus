@@ -17,7 +17,7 @@ import {
 } from '../stores/demo.js'
 import { dayKey, dateLabel, timeLabel } from '../lib/format.js'
 import { requiredText } from '../lib/domain.js'
-import { tutorConflict } from '@kampus/school-core/lib/tutor-conflicts.js'
+import { tutorConflict } from '@kampus/school-core/lib/tutor-conflicts.ts'
 import PageHeading from '../components/PageHeading.vue'
 import DataTable from '../components/DataTable.vue'
 import Badge from '../components/Badge.vue'

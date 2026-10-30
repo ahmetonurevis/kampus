@@ -1,5 +1,6 @@
-import { workflowPage } from '../modules/school-workflows.js'
-import { currentEvaluations } from './assessment-automation.js'
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
+import { workflowPage } from '../modules/school-workflows.ts'
+import { currentEvaluations } from './assessment-automation.ts'
 import {
   workflowScope,
   mayRun,
@@ -7,9 +8,9 @@ import {
   examProgress,
   eventStudents,
   goalProgress,
-} from './school-workflows.js'
-import { dateLabel, money, timeLabel, dayKey } from './format.js'
-import { subjectsForGrade } from '../data/curriculum.js'
+} from './school-workflows.ts'
+import { dateLabel, money, timeLabel, dayKey } from './format.ts'
+import { subjectsForGrade } from '../data/curriculum.ts'
 
 const name = (state, collection, id) => state[collection].find((r) => r.id === id)?.name || '—'
 const subject = (state, id) => name(state, 'subjects', id)

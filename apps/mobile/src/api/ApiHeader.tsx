@@ -17,6 +17,7 @@ function routeTitle(session: MobileSession, name: string, params: unknown): stri
     const category: unknown = Reflect.get(params, 'category')
     if (typeof category === 'string') return categoryLabel(category)
   }
+  if (name === 'ApiConversation') return 'Yazışma'
   return apiPages(session).find((page) => page.screen === name)?.title ?? 'Kampüs'
 }
 

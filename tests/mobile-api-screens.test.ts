@@ -11,21 +11,66 @@ describe('API modu sayfaları', () => {
   test('öğretmen Sınıflarım, veli Akademik Takip ekranını görür', () => {
     assert.deepEqual(
       apiPages({ role: 'ogretmen', modules: open }).map((page) => [page.title, page.screen]),
-      [['Sınıflarım', 'TeacherClasses']],
+      [
+        ['Sınıflarım', 'TeacherClasses'],
+        ['Duyurular', 'Announcements'],
+        ['Mesajlar', 'Messages'],
+      ],
     )
     assert.deepEqual(
       apiPages({ role: 'veli', modules: open }).map((page) => [page.title, page.screen]),
-      [['Akademik Takip', 'ParentGrades']],
+      [
+        ['Akademik Takip', 'ParentGrades'],
+        ['Mesajlar', 'Messages'],
+        ['Duyurular', 'Announcements'],
+      ],
     )
   })
 
-  test('taşınmamış rolde sayfa yoktur', () => {
-    assert.deepEqual(apiPages({ role: 'yonetici', modules: open }), [])
-    assert.deepEqual(apiPages({ role: 'ogrenci', modules: open }), [])
+  test('duyurular beş rolde de vardır; yönetici ve ön büroda yalnız bu sayfa', () => {
+    for (const role of ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'] as const)
+      assert.ok(
+        apiPages({ role, modules: open }).some((page) => page.screen === 'Announcements'),
+        role,
+      )
+    assert.deepEqual(
+      apiPages({ role: 'yonetici', modules: open }).map((page) => page.screen),
+      ['Announcements'],
+    )
+  })
+
+  test('mesaj ekranı yalnız öğretmen, öğrenci ve veli menüsündedir', () => {
+    for (const role of ['ogretmen', 'ogrenci', 'veli'] as const)
+      assert.ok(
+        apiPages({ role, modules: open }).some((page) => page.screen === 'Messages'),
+        role,
+      )
+    for (const role of ['yonetici', 'onburo'] as const) {
+      assert.ok(!apiPages({ role, modules: open }).some((page) => page.screen === 'Messages'), role)
+      assert.equal(canOpenScreen({ role, modules: open }, 'Messages'), false)
+    }
+  })
+
+  test('iletişim modülü kapanınca duyuru sayfası ve kategorisi gizlenir', () => {
+    const modules = { academic: true, communication: false }
+    assert.deepEqual(
+      apiPages({ role: 'ogrenci', modules }).map((page) => page.screen),
+      [],
+    )
+    assert.equal(canOpenScreen({ role: 'ogrenci', modules }, 'Announcements'), false)
+    assert.equal(canOpenScreen({ role: 'ogrenci', modules }, 'Messages'), false)
+    assert.equal(canOpenScreen({ role: 'veli', modules }, 'Messages'), false)
+    assert.deepEqual(apiCategories(apiPages({ role: 'yonetici', modules })), [])
+    assert.deepEqual(apiCategories(apiPages({ role: 'yonetici', modules: open })), [
+      { key: 'İLETİŞİM', label: 'İletişim', icon: 'MessagesSquare', count: 1 },
+    ])
   })
 
   test('modül kapanınca menü ve doğrudan erişim kapanır', () => {
-    assert.deepEqual(apiPages({ role: 'ogretmen', modules: closed }), [])
+    assert.deepEqual(
+      apiPages({ role: 'ogretmen', modules: closed }).map((page) => page.screen),
+      ['Announcements', 'Messages'],
+    )
     assert.equal(canOpenScreen({ role: 'ogretmen', modules: open }, 'TeacherClasses'), true)
     assert.equal(canOpenScreen({ role: 'ogretmen', modules: closed }, 'TeacherClasses'), false)
     // Başka rolün ekranı açılmaz.
@@ -35,6 +80,7 @@ describe('API modu sayfaları', () => {
   test('kategori kartları yalnız açık sayfası olan kategorilerdir', () => {
     assert.deepEqual(apiCategories(apiPages({ role: 'veli', modules: open })), [
       { key: 'AKADEMİK', label: 'Akademik', icon: 'GraduationCap', count: 1 },
+      { key: 'İLETİŞİM', label: 'İletişim', icon: 'MessagesSquare', count: 2 },
     ])
     assert.deepEqual(apiCategories([]), [])
   })

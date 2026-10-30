@@ -162,4 +162,15 @@ Aşağıdaki tablolar Vue demosunun sayfa yollarıdır.
 
 Toplam: **99 menü sayfası + 2 kayıt detayı = 101 panel sayfası**, ayrıca giriş ve 404 ekranı. Okul iş akışları ve okul yaşamı kategorilerinde on iki bağımsız web modülü bulunur.
 
+## Mobil (API modu)
+
+`EXPO_PUBLIC_API_URL` ile açılan telefon uygulaması yalnız API'ye taşınmış ekranları gösterir; menü yine kategori kartlarıdır (hamburger ve alt navigasyon yok). Kapalı modülün kartı ve boş kalan kategori ana ekrandan gizlenir; kapalı modüle doğrudan gidilirse "Modül kullanıma kapalı" görünür. Demo modu bu tablodan bağımsızdır.
+
+| Rol                     | Kategori | Ekran                                     | Notlar                                                                                                                                                                                                                                                        |
+| ----------------------- | -------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Öğretmen                | Akademik | Sınıflarım                                | Salt okuma; sunucu kapsamı                                                                                                                                                                                                                                    |
+| Veli                    | Akademik | Akademik Takip                            | Çocuk seçici + notlar, salt okuma                                                                                                                                                                                                                             |
+| Beş rol                 | İletişim | Duyurular                                 | Liste, arama, sayfalama; açınca okundu işareti; "Güncellendi" ve "Geri çekildi" rozeti (geri çekilenin metni gösterilmez). Yayın, düzeltme ve geri çekme yalnız web'dedir                                                                                     |
+| Öğretmen, öğrenci, veli | İletişim | Mesajlar (veli menüsünde `randevu-mesaj`) | Yazışma listesi (okunmamış, "Yanıt bekliyor"), yazışma akışı (imleçli eski mesajlar, açınca okundu), yeni yazışma penceresi, DOM-ILT-014 sabit notu, iyimser güncelleme yok. Yönetici ve ön büro mesaj görmez (gerekçeli erişim web'dedir). Randevu henüz yok |
+
 Kullanım rehberleri: [Okul iş akışları](okul-is-akislari.md), [Optik değerlendirme ve etüt](optik-degerlendirme-etut.md).

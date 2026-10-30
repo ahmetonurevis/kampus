@@ -15,7 +15,7 @@ Ayrıntı: `docs/muhendislik/kod-yazim.md` §8, paket listesi ADR 0002.
 - Listede olmayan paket şu ölçütlerin hepsini karşılar:
   - Bakım: son 6 ayda sürüm, birden çok bakımcı veya kurumsal destek, arşivlenmemiş.
   - TypeScript tipleri pakette (veya iyi bakılan `@types`); Node 24, React 19, Expo SDK 57 ile uyumlu, ESM.
-  - Lisans: MIT, Apache-2.0, BSD-2/3-Clause (ISC, 0BSD eşdeğer). GPL/AGPL/LGPL/SSPL/BUSL/NC/lisanssız yasak.
+  - Lisans: MIT, Apache-2.0, BSD-2/3-Clause (ISC, 0BSD eşdeğer); yalnız yazı tipi paketlerinde OFL-1.1. GPL/AGPL/LGPL/SSPL/BUSL/NC/lisanssız yasak.
   - Erişilebilirlik (arayüz paketi): WAI-ARIA deseni, klavye ve ekran okuyucu desteği belgeli.
   - Boyut: ağaç sarsılabilir; web ilk yüklemesine ≤ 30 KB gzip, fazlası rota parçasına veya `import()`'a.
   - `minimumReleaseAge` beklemesine uyar; istisna yalnız `minimumReleaseAgeExclude`'a tam sürüm ve gerekçeyle.

@@ -846,7 +846,8 @@ type StatePatches = {
     academicYear?: number
     invoiceIds?: string[]
   })[]
-  schedule: (Item<'schedule'> &
+  // İş akışıyla eklenen dersin adı ders listesinden okunur; listede yoksa boş kalır.
+  schedule: (Patch<Item<'schedule'>, { title?: string }> &
     Timestamps & {
       cancelledAt?: string
       originalTeacherId?: string

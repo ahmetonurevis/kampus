@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createDraftRepository, draftKey } from '../apps/mobile/src/model/drafts.js'
 import { contentTitle } from '../apps/mobile/src/model/presentation.js'
 import { appendMessage, conversationFor } from '../apps/mobile/src/model/messaging.js'
-import { createSeed } from '../packages/school-core/src/data/seed.js'
+import { createSeed } from '../packages/school-core/src/data/seed.ts'
 
 function memoryStorage() {
   const records = new Map()

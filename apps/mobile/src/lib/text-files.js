@@ -1,7 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import { Platform } from 'react-native'
-import { decodeText } from '@kampus/school-core/lib/text-decoding.js'
+import { decodeText } from '@kampus/school-core/lib/text-decoding.ts'
 
 export const MAX_TEXT_FILE_BYTES = 1024 * 1024
 

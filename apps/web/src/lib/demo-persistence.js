@@ -1,1 +1,1 @@
-export * from '@kampus/school-core/lib/demo-persistence.js'
+export * from '@kampus/school-core/lib/demo-persistence.ts'

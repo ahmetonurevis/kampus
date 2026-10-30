@@ -1,8 +1,10 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { z } from 'zod'
-import { installmentAmounts } from './domain.js'
-import { dayKey } from './format.js'
-import { subjectsForGrade } from '../data/curriculum.js'
-import { tutorConflict } from './tutor-conflicts.js'
+import { installmentAmounts } from './domain.ts'
+import { dayKey } from './format.ts'
+import { subjectsForGrade } from '../data/curriculum.ts'
+import { tutorConflict } from './tutor-conflicts.ts'
+import type { Role } from '../modules/navigation.ts'
 
 z.config(z.locales.tr())
 const text = z.string().trim().min(2, 'En az iki karakter girin.').max(2000)
@@ -208,6 +210,58 @@ export const workflowSchemas = {
     description: text,
     date: day,
   }),
+}
+type WorkflowSchemas = typeof workflowSchemas
+export type WorkflowInput<C extends keyof WorkflowSchemas> = z.output<WorkflowSchemas[C]>
+type Stamp = { id: string; createdAt: string; updatedAt: string }
+// Kayıt tipleri State'e bağlı değildir; State bunları örnek veride boş başlayan koleksiyonlar için kullanır.
+export type GuidanceNote = Pick<WorkflowInput<'guidance-note'>, 'text'> & {
+  id: string
+  date: string
+  actor: Role
+}
+export type GoalStep = Pick<WorkflowInput<'goal-step'>, 'title' | 'topic'> & {
+  id: string
+  dueDate: string
+  done: boolean
+  doneAt?: string
+  source: string
+}
+export type GoalComment = WorkflowInput<'goal-comment'> & { id: string; date: string; actor: Role }
+export type LessonSubstitution = Pick<WorkflowInput<'substitute'>, 'reason'> & {
+  fromTeacherId: string
+  toTeacherId: string
+  date: string
+}
+export type RenewalQuote = ReturnType<typeof renewalQuote>
+export type Renewal = WorkflowInput<'renewal'> &
+  RenewalQuote &
+  Stamp & { fromClassId: string; contractId: string; status: string; activatedAt?: string }
+export type EnrollmentRecord = Stamp & {
+  studentId: string
+  classId: string
+  year: number
+  endedAt: string
+}
+export type EventConsent = WorkflowInput<'consent'> &
+  Stamp & { eventId: string; studentId: string; parentId: string }
+export type ClubAttendanceRecord = Stamp & {
+  clubId: string
+  studentId: string
+  date: string
+  status: WorkflowInput<'club-attendance'>['marks'][string]
+}
+export type AuditEntry = {
+  id: string
+  actor: Role
+  user_id: string
+  action: string
+  table_name: string | undefined
+  record_id: string
+  date: string
+  changed_at: string
+  old_value: unknown
+  new_value: unknown
 }
 const commandModules = {
   goal: 'goals',

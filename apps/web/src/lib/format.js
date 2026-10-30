@@ -1,1 +1,1 @@
-export * from '@kampus/school-core/lib/format.js'
+export * from '@kampus/school-core/lib/format.ts'

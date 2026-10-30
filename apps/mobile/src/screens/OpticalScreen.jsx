@@ -8,7 +8,7 @@ import {
   currentEvaluations,
   runAssessment,
   exampleOpticalFile,
-} from '@kampus/school-core/lib/assessment-automation.js'
+} from '@kampus/school-core/lib/assessment-automation.ts'
 import { useSchool, recordError } from '../store/SchoolProvider.jsx'
 import { moduleNavigationState } from '../model/navigation.js'
 import { pickTextFile } from '../lib/text-files.js'

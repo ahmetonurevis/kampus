@@ -1,4 +1,4 @@
-import { requiredText } from '@kampus/school-core/lib/domain.js'
+import { requiredText } from '@kampus/school-core/lib/domain.ts'
 
 export function conversationFor(state, session, id) {
   if (!state.modules.communication) return null

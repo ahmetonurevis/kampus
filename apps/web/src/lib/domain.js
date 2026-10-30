@@ -1,1 +1,1 @@
-export * from '@kampus/school-core/lib/domain.js'
+export * from '@kampus/school-core/lib/domain.ts'

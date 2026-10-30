@@ -1,33 +1,38 @@
 ---
 name: dogrula
-description: Kampüs'te bir değişikliği bitmiş saymadan önceki doğrulama merdiveni — hangi komutun ne zaman koşulacağı, e2e ve CI hatalarının nasıl ayıklanacağı, mobilin Android araç zinciri olmadan nasıl doğrulanacağı. Kod değiştirdikten sonra, commit öncesi ve CI kırmızıyken kullan.
+description: Kampüs'te bir değişikliği bitmiş saymadan önceki doğrulama merdiveni — hangi komutun ne zaman koşulacağı (format, lint, typecheck, birim, API/PGlite, web-react, kapsam, e2e), e2e ve CI hatalarının ayıklanması, mobilin Android araç zinciri olmadan doğrulanması. Kod değiştirdikten sonra, commit öncesi ve CI kırmızıyken kullan.
 ---
 
 # Doğrulama merdiveni
 
-Değişikliğin büyüklüğüne göre alttan başla; bir basamak geçmeden üstüne çıkma.
+Değişikliğin büyüklüğüne göre alttan başla; bir basamak geçmeden üstüne çıkma. Henüz birleşmemiş paketlerin komut adları kural ve belgedeki gibidir (paket birleşince doğrulanır).
 
 1. **Hızlı** (her değişiklikte):
    - `pnpm format:check` (hata varsa `pnpm exec prettier --write <dosyalar>`)
    - `pnpm lint`
-   - `pnpm typecheck` (script tanımlandıktan sonra)
-   - İlgili birim testi: `node --test tests/<dosya>.test.<js|ts>`
-2. **Paket** (core, API veya uygulama değiştiyse): `pnpm test` (tümü, ~10 sn), `pnpm build`, API varsa `pnpm --filter @kampus/api test`.
-3. **Arayüz** (ekran veya akış değiştiyse): ilgili e2e — `pnpm test:e2e tests/e2e/<dosya>.spec.<js|ts>` ya da `-g "<test adı>"`.
-4. **Tam** (görev bitmeden): `pnpm test:e2e` tamamı (~4,5 dk). Çıktı uzun: `--reporter=line 2>&1 | tail -40` kullan ya da `dogrulayici` ajanına ver.
+   - `pnpm typecheck` (`pnpm -r --if-present typecheck`, sıfır hata)
+   - İlgili birim testi: `node --test tests/<dosya>.test.ts`
+2. **Paket** (core, API, web-react veya uygulama değiştiyse):
+   - `pnpm test` (birim), `pnpm build`
+   - API: `pnpm --filter @kampus/api test` (`app.inject` + bellek içi PGlite). `apps/api/src/db/**` veya `drizzle/**` değiştiyse Docker'da PostgreSQL 16 ile `test:pg` takımı.
+   - Kapsam (yeni kural eklerken veya eşik değişince): `node --test --experimental-test-coverage --test-coverage-lines=<n> --test-coverage-branches=<n>`; eşikler school-core 90/85, api 85/80, api-client 90/85, react-shared 80/70 (`test-stratejisi.md` §2). Eşik yalnız yükselir.
+3. **Arayüz** (ekran veya akış değiştiyse): ilgili e2e — `pnpm test:e2e tests/e2e/<dosya>.spec.ts` ya da `-g "<test adı>"`. Yeni web `pnpm dev:react` ile 5174 portunda açılır; eski Vue `pnpm dev` 5173'tür. Paralel ajanda görevde verilen portu kullan.
+4. **Tam** (görev bitmeden, yalnız görev istiyorsa): `pnpm test:e2e` tamamı (~4,5 dk), `--reporter=line 2>&1 | tail -40` ya da `dogrulayici` ajanı.
 
 ## E2E hata ayıklama
 
-- Port 5173 eski bir `vite` tarafından tutuluyorsa Playwright onu kullanır (CI dışında); takılırsa `lsof -ti:5173 | xargs kill`.
+- CI'da e2e derlenmiş uygulamayla `vite preview` üzerinde koşar (önce `pnpm build`); yerelde dev sunucusu. Yerelde geçip CI'da kırılan testi `pnpm build` + `vite preview` ile yeniden dene.
+- Port eski bir `vite` tarafından tutuluyorsa Playwright onu kullanır (CI dışında); takılırsa `lsof -ti:<port> | xargs kill`.
 - Tek test: `pnpm test:e2e <spec> -g "<ad>" --trace on --reporter=line`; ardından `test-results/<test>/error-context.md` ve `test-failed-1.png` dosyalarını Read ile oku.
 - CI: `gh run list --limit 3`, sonra `gh run view <id> --log-failed | grep -E '✘|Error|Timeout|›'`.
-- Süre aşımı gerçek hata değildir: önce testin yerel süresine bak. Soğuk Vite optimizer'ı CI'da ilk sayfayı 30 sn'ye kadar geciktirebilir.
+- CI'da test başına 45 sn sınır var; süre aşımı çoğunlukla soğuk Vite optimizer'ıdır ama `test.slow()`/süre artırma düzeltme değildir, testi böl.
+- Kararsız testte yeniden deneme yok (e2e'de yalnız CI'da 1); `test.fixme` karantinası `.claude/rules/testler.md`'de.
 
 ## Mobil (Android araç zinciri yokken)
 
-- `pnpm lint`, `node --test tests/mobile*.test.*` ve `pnpm --filter @kampus/mobile export:web` (~2 dk; Metro paketlemesi derleme ve içe aktarma hatalarını yakalar).
-- `pnpm build:apk` Java ve Android SDK ister; yoksa raporda "APK doğrulanmadı" diye açıkça yaz.
+- `pnpm lint`, `node --test tests/mobile*.test.*` ve `pnpm --filter @kampus/mobile export:web` (~2 dk; Metro derleme ve içe aktarma hatalarını yakalar).
+- `pnpm build:apk` Java ve Android SDK ister; yoksa raporda "APK doğrulanmadı" yaz.
 
 ## Rapor
 
-Sonucu sayılarla yaz: "lint temiz, 80/80 birim, build ok, e2e 60/60 (4,5 dk)". Kırmızıyı gizleme; atlanan basamağı nedeniyle belirt.
+Sonucu sayılarla yaz: "lint temiz, typecheck 0 hata, 80/80 birim, API 120/120, kapsam %91/%86, build ok, e2e 60/60 (4,5 dk)". Kırmızıyı gizleme; atlanan basamağı nedeniyle belirt.

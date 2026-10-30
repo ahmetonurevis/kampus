@@ -15,7 +15,7 @@ import {
   TextAction,
 } from '../ui/SchoolLayout.jsx'
 import { useMinute } from '../ui/use-minute.js'
-import { dateLabel, money } from '@kampus/school-core/lib/format.js'
+import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 
 export default function SchoolList({ kind, navigation }) {
   const { data, session } = useSchool(),

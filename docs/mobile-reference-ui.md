@@ -15,7 +15,7 @@ Dört tasarım görseli, gerçek React Native bileşenleriyle uygulandı. Expo 5
 | Menü, üst bar ve gezinme                | `apps/mobile/src/AppRoot.jsx`                                             | Kategorili düz menü, tek sayfa başlığı, rol değişince ana ekran; çocuk değişince mevcut ödeme ekranında kalma |
 | Tema ve kalıcılık                       | `apps/mobile/src/store/SchoolProvider.jsx`, `apps/mobile/src/ui/theme.js` | Açık/koyu/sistem tercihi, cihazda kalıcılık, depolama başarısızsa başarı göstermeme                           |
 | Belge işlemi                            | `apps/mobile/src/ui/DocumentLink.jsx`, `apps/mobile/src/lib/files.js`     | Ödev belgesini gerçek PDF olarak oluşturma, Android kaydetme/paylaşma/yazdırma                                |
-| Ortak yoklama kuralı                    | `packages/school-core/src/lib/domain.js`                                  | `excused` desteği, geçersiz/ileri tarihi reddetme; aynı gün kaydını güncelleme                                |
+| Ortak yoklama kuralı                    | `packages/school-core/src/lib/domain.ts`                                  | `excused` desteği, geçersiz/ileri tarihi reddetme; aynı gün kaydını güncelleme                                |
 
 `Home.jsx`, `ModuleScreen.jsx` ve `Detail.jsx` yeni akışlara yönlendirir; kapsam dışındaki mevcut ekranlar kullanılmaya devam eder. Yönetici ve ön büro için yeni işlevsiz ekran üretilmedi. Ortak paket 1.0.2'ye yükseltildi; web tarafındaki yoklama etiketleri de “Mazeretli” durumunu tanır. Canlı web yayınına çıkılmadı.
 

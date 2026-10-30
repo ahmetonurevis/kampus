@@ -18,13 +18,13 @@ import {
   absentCount,
 } from '../model/school.js'
 import { createActions } from '../model/operations.js'
-import { dateLabel, average } from '@kampus/school-core/lib/format.js'
+import { dateLabel, average } from '@kampus/school-core/lib/format.ts'
 import Attendance from './Attendance.jsx'
 import SchoolList from './SchoolLists.jsx'
 import WorkflowScreen from './WorkflowScreen.jsx'
 import OpticalScreen from './OpticalScreen.jsx'
 import TutoringScreen from './TutoringScreen.jsx'
-import { workflowPage } from '@kampus/school-core/modules/school-workflows.js'
+import { workflowPage } from '@kampus/school-core/modules/school-workflows.ts'
 import { ThemePreference } from '../ui/SchoolLayout.jsx'
 import {
   Avatar,

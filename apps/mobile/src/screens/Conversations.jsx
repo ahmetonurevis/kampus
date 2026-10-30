@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { FlatList, Keyboard, View } from 'react-native'
-import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.js'
+import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { useSchool } from '../store/SchoolProvider.jsx'
 import { usePersistentDraft } from '../store/use-persistent-draft.js'
 import { context, nameOf, rowsFor } from '../model/school.js'

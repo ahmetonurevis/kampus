@@ -15,10 +15,16 @@ const dayFormatter = new Intl.DateTimeFormat('en-CA', {
   month: '2-digit',
   day: '2-digit',
 })
-const dateFormatters = new Map()
-export const money = (cents) => moneyFormatter.format((cents || 0) / 100) + ' ₺'
-export const number = (value) => numberFormatter.format(value || 0)
-export function dateLabel(value, options = {}) {
+type DateInput = string | number | Date
+
+const dateFormatters = new Map<string, Intl.DateTimeFormat>()
+export const money = (cents: number | null | undefined) =>
+  moneyFormatter.format((cents || 0) / 100) + ' ₺'
+export const number = (value: number | null | undefined) => numberFormatter.format(value || 0)
+export function dateLabel(
+  value: DateInput | null | undefined,
+  options: Intl.DateTimeFormatOptions = {},
+) {
   if (!value) return '—'
   const key = JSON.stringify(Object.entries(options).sort(([a], [b]) => a.localeCompare(b)))
   let formatter = dateFormatters.get(key)
@@ -29,26 +35,33 @@ export function dateLabel(value, options = {}) {
       timeZone: 'Europe/Istanbul',
       ...options,
     })
-    if (dateFormatters.size >= 32) dateFormatters.delete(dateFormatters.keys().next().value)
+    // Önbellek sınırı aşılınca en eski biçimleyici atılır.
+    const oldest = dateFormatters.keys().next().value
+    if (dateFormatters.size >= 32 && oldest !== undefined) dateFormatters.delete(oldest)
     dateFormatters.set(key, formatter)
   }
   return formatter.format(new Date(value))
 }
-export const timeLabel = (value) => timeFormatter.format(new Date(value))
-export const dayKey = (value = new Date()) => dayFormatter.format(new Date(value))
-export const initials = (name) =>
+export const timeLabel = (value: DateInput) => timeFormatter.format(new Date(value))
+export const dayKey = (value: DateInput = new Date()) => dayFormatter.format(new Date(value))
+export const initials = (name: string | null | undefined) =>
   (name || '')
     .split(' ')
     .map((s) => s[0])
     .slice(0, 2)
     .join('')
-export const sum = (list, key) => list.reduce((total, item) => total + item[key], 0)
-export const average = (values) =>
+export const sum = <K extends PropertyKey>(list: readonly Record<K, number>[], key: K) =>
+  list.reduce((total, item) => total + item[key], 0)
+export const average = (values: readonly number[]) =>
   values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0
-export function invoiceStatus(invoice, today = dayKey()) {
+export function invoiceStatus(
+  invoice: { paidAt?: string | null; dueDate: DateInput },
+  today = dayKey(),
+) {
   return invoice.paidAt ? 'Ödendi' : dayKey(invoice.dueDate) < today ? 'Gecikmiş' : 'Yaklaşan'
 }
-export function slaStatus(question, now = Date.now()) {
+type SlaQuestion = { createdAt: DateInput; answeredAt?: string | null }
+export function slaStatus(question: SlaQuestion, now = Date.now()) {
   const hours = (new Date(question.createdAt).getTime() + 86400000 - now) / 3600000
   return question.answeredAt
     ? 'Yanıtlandı'
@@ -58,13 +71,17 @@ export function slaStatus(question, now = Date.now()) {
         ? 'Süre azalıyor'
         : 'Bekliyor'
 }
-export function slaLabel(question, now = Date.now()) {
+export function slaLabel(question: SlaQuestion, now = Date.now()) {
   if (question.answeredAt) return 'Yanıtlandı'
   const minutes = Math.ceil((new Date(question.createdAt).getTime() + 86400000 - now) / 60000)
   const abs = Math.abs(minutes)
   return `${Math.floor(abs / 60)} sa ${abs % 60} dk ${minutes < 0 ? 'aşıldı' : 'kaldı'}`
 }
-export function homeworkStatus(homework, submissions, studentId) {
+export function homeworkStatus(
+  homework: { id: string; dueDate: DateInput },
+  submissions: readonly { homeworkId: string; studentId: string; score?: number | null }[],
+  studentId: string,
+) {
   const submission = submissions.find(
     (s) => s.homeworkId === homework.id && s.studentId === studentId,
   )

@@ -4,7 +4,7 @@ import {
   runWorkflow,
   workflowSchemas,
   renewalQuote,
-} from '@kampus/school-core/lib/school-workflows.js'
+} from '@kampus/school-core/lib/school-workflows.ts'
 import {
   workflowForm,
   readFormValue,
@@ -12,8 +12,8 @@ import {
   normalizeWorkflowInput,
   csvTemplate,
   workflowCsvReferences,
-} from '@kampus/school-core/lib/workflow-presentation.js'
-import { money } from '@kampus/school-core/lib/format.js'
+} from '@kampus/school-core/lib/workflow-presentation.ts'
+import { money } from '@kampus/school-core/lib/format.ts'
 import { useSchool, recordError } from '../store/SchoolProvider.jsx'
 import { pickTextFile } from '../lib/text-files.js'
 import { Button, Card, Sheet, T, useColors } from './components.jsx'

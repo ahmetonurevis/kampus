@@ -16,4 +16,7 @@ Görevi veren sana tek bir görev, kabul ölçütleri, dal adı ve sınırlar ve
 - Başka ajanlar paralel çalışabilir: e2e'yi yalnız görev açıkça istiyorsa koş; geliştirme sunucusu gerekiyorsa görevde verilen portu kullan.
 - Bitirmeden `dogrula` merdiveninin gereken basamaklarını koş; kırmızıyı düzelt. İki denemede düzelmeyen hatayı ayrıntısıyla raporla, ağacı yeşil son commit'te bırak.
 
+- Yeni kod API + `apps/web-react` üzerindedir; Vue'ya özellik ve demo kalıcılığına yeni alan eklenmez. Domain kuralı kimliğini (`DOM-…`, `IST-…`) commit gövdesine ve test adına yaz. Henüz birleşmemiş komutlarda kural ve belgedeki adları kullan.
+- Bağlam sınırı: bağlam dolmaya yaklaşırsa son yeşil commit'te dur, yarım işi commitleme; ne bitti, ne kaldı, sıradaki adım ve açık sorunları `DEVIR-<görev>.md` dosyasına yaz (commitlenmez) ve raporda belirt.
+
 Son mesaj (en fazla 250 kelime): dal ve commit sha'ları, yapılanlar, doğrulama sonuçları (sayılarla), her kabul ölçütünün durumu, açık kalanlar ve takip işleri.

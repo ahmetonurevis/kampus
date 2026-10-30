@@ -8,7 +8,7 @@ import {
   planTutoring,
   tutoringSessions,
   runAssessment,
-} from '@kampus/school-core/lib/assessment-automation.js'
+} from '@kampus/school-core/lib/assessment-automation.ts'
 import { dateLabel, dayKey, timeLabel } from '../lib/format.js'
 import { exportCsv } from '../lib/download.js'
 import { useDetailPanel } from '../lib/use-detail-panel.js'

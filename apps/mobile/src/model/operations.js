@@ -4,16 +4,16 @@ import {
   prospectSchema,
   enrollProspect,
   payInvoice,
-} from '@kampus/school-core/lib/domain.js'
+} from '@kampus/school-core/lib/domain.ts'
 import {
   saveBranch,
   saveTeacher,
   saveClass,
   archiveRecord,
   restoreRecord,
-} from '@kampus/school-core/lib/school-management.js'
-import { dayKey, dateLabel, timeLabel } from '@kampus/school-core/lib/format.js'
-import { subjects, subjectsForGrade } from '@kampus/school-core/data/curriculum.js'
+} from '@kampus/school-core/lib/school-management.ts'
+import { dayKey, dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
+import { subjects, subjectsForGrade } from '@kampus/school-core/data/curriculum.ts'
 import { context, nameOf, teacherId } from './school.js'
 
 const text = (key, label, extra = {}) => ({ key, label, type: 'text', required: true, ...extra })

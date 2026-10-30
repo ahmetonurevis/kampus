@@ -5,6 +5,7 @@ import {
   defaultTerm,
   gradeTypeOptions,
   markCounts,
+  scoreValue,
   teachingClassIds,
   teachingSubjectIds,
 } from '../src/pages/academic/academic-write.ts'
@@ -62,4 +63,14 @@ test('katılım puanı yalnız ortaokulda (8. sınıfa kadar) sunulur', () => {
   assert.deepEqual(types(7), ['sinav', 'performans', 'proje', 'katilim'])
   assert.deepEqual(types(9), ['sinav', 'performans', 'proje'])
   assert.equal(gradeTypeOptions(5)[0]?.label, 'sınav')
+})
+
+test('boş puan alanı 0 sayılmaz', () => {
+  assert.equal(scoreValue(''), undefined)
+  assert.equal(scoreValue('  '), undefined)
+  assert.equal(scoreValue(Number.NaN), undefined)
+  assert.equal(scoreValue('0'), 0)
+  assert.equal(scoreValue('88'), 88)
+  assert.equal(scoreValue(72), 72)
+  assert.equal(scoreValue(undefined), undefined)
 })

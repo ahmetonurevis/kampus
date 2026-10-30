@@ -56,6 +56,8 @@ export const ATTENDANCE_MESSAGES = {
 
 export const GRADE_MESSAGES = {
   version_conflict: GRADE_CHANGED_MESSAGE,
+  // Görülemeyen not (başka branş, başka kurum) API'de genel `not_found` olarak döner (404).
+  not_found: GRADE_NOT_FOUND_MESSAGE,
   grade_not_found: GRADE_NOT_FOUND_MESSAGE,
   grade_assignment_forbidden: 'Yalnızca ders verdiğiniz sınıf ve ders için not girebilirsiniz.',
   grade_duplicate: 'Bu öğrenciye aynı gün aynı türde not zaten girilmiş.',

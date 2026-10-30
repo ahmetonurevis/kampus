@@ -222,7 +222,7 @@ describe('not komutları', () => {
     assert.equal(refreshed, 1)
     assert.match(GRADE_CHANGED_MESSAGE, /Kayıt değişti/)
     const messages: string[] = []
-    const missing = fakeClient(() => failure(404, 'grade_not_found', 'Not kaydı bulunamadı.'))
+    const missing = fakeClient(() => failure(404, 'not_found', 'Kayıt bulunamadı.'))
     await runCommand(
       createCommandSession(),
       {

@@ -94,3 +94,13 @@ export function gradeTypeOptions(
     }),
   )
 }
+
+/**
+ * Puan alanının ham değeri: boş alan `undefined` olur (core "Puanı girin" der). Aksi halde
+ * `z.coerce.number()` boş metni sessizce 0 yapardı.
+ */
+export function scoreValue(raw: unknown): number | undefined {
+  if (typeof raw === 'number') return Number.isNaN(raw) ? undefined : raw
+  if (typeof raw !== 'string' || raw.trim() === '') return undefined
+  return Number(raw)
+}

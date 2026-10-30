@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import type { z } from 'zod'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { gradeRecordSchema } from '@kampus/school-core/lib/grades.ts'
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { notify } from '@/lib/notify.ts'
 import type { AcademicLookups } from './academic-rows.ts'
-import { defaultTerm, gradeTypeOptions, teachingSubjectIds } from './academic-write.ts'
+import { defaultTerm, gradeTypeOptions, scoreValue, teachingSubjectIds } from './academic-write.ts'
 import type { TeacherScope } from './use-teacher-scope.ts'
 
 type GradeFormInput = z.input<typeof gradeRecordSchema>
@@ -123,14 +123,22 @@ function GradeEntryForm({ lookups, scope, onClose }: Omit<Props, 'open'>) {
       </FormField>
       <FormField id="not-ders" label="Ders" error={errors.subjectId}>
         {(control) => (
-          <NativeSelect {...control} {...form.register('subjectId')} disabled={busy || !classId}>
-            <NativeSelectOption value="">Ders seçin</NativeSelectOption>
-            {subjects.map((item) => (
-              <NativeSelectOption key={item.id} value={item.id}>
-                {item.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+          // Seçenekler sınıfa göre değişir: değer denetimli tutulur ki sınıf seçilince atanan
+          // tek ders, seçenekler çizildikten sonra seçili görünsün.
+          <Controller
+            control={form.control}
+            name="subjectId"
+            render={({ field }) => (
+              <NativeSelect {...control} {...field} disabled={busy || !classId}>
+                <NativeSelectOption value="">Ders seçin</NativeSelectOption>
+                {subjects.map((item) => (
+                  <NativeSelectOption key={item.id} value={item.id}>
+                    {item.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            )}
+          />
         )}
       </FormField>
       <FormField id="not-tur" label="Değerlendirme türü" error={errors.assessmentType}>
@@ -146,21 +154,27 @@ function GradeEntryForm({ lookups, scope, onClose }: Omit<Props, 'open'>) {
       </FormField>
       <FormField id="not-ogrenci" label="Öğrenci" error={errors.studentId}>
         {(control) => (
-          <NativeSelect {...control} {...form.register('studentId')} disabled={busy || !classId}>
-            <NativeSelectOption value="">Öğrenci seçin</NativeSelectOption>
-            {students.map((item) => (
-              <NativeSelectOption key={item.id} value={item.id}>
-                {item.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+          <Controller
+            control={form.control}
+            name="studentId"
+            render={({ field }) => (
+              <NativeSelect {...control} {...field} disabled={busy || !classId}>
+                <NativeSelectOption value="">Öğrenci seçin</NativeSelectOption>
+                {students.map((item) => (
+                  <NativeSelectOption key={item.id} value={item.id}>
+                    {item.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            )}
+          />
         )}
       </FormField>
       <FormField id="not-puan" label="Puan (0-100)" error={errors.score}>
         {(control) => (
           <Input
             {...control}
-            {...form.register('score')}
+            {...form.register('score', { setValueAs: scoreValue })}
             type="number"
             inputMode="numeric"
             min={0}

@@ -21,6 +21,7 @@ import {
   SummarySection,
 } from '../management/SummaryParts.tsx'
 import { scoreText, scoreTone, type AcademicLookups } from './academic-rows.ts'
+import { scoreValue } from './academic-write.ts'
 
 type GradeRecord = CoreRecord<'grades'>
 type CorrectionInput = z.input<typeof gradeUpdateSchema>
@@ -152,7 +153,7 @@ function CorrectionForm({ gradeId, score, version, onNotFound }: CorrectionProps
         {(control) => (
           <Input
             {...control}
-            {...form.register('score')}
+            {...form.register('score', { setValueAs: scoreValue })}
             type="number"
             inputMode="numeric"
             min={0}

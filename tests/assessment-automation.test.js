@@ -581,3 +581,24 @@ test('CSV ayrıştırıcı hataları DomainError olarak kod ile döner', () => {
   assert.throws(() => csvObjects('a;b\n1', ['a', 'b']), isDomainError('csv_invalid_column_count'))
   assert.throws(() => csvObjects('a;b\n"1;2', ['a', 'b']), isDomainError('csv_unclosed_quote'))
 })
+
+test('Optik ve etüt işlemleri DomainError, kod ve tür ile reddeder; kayıt değişmez', () => {
+  const state = seed()
+  failsUnchanged(
+    state,
+    () => evaluate(state, responses('BBBDABCDABCD', 'yok')),
+    isDomainError('optical_student_unmatched'),
+  )
+  failsUnchanged(
+    state,
+    () => runAssessment(state, admin, 'bilinmeyen', {}, id, '', now),
+    isDomainError('unknown_command'),
+  )
+  failsUnchanged(
+    state,
+    () => evaluate(state, responses(), { role: 'ogrenci', childId: 's1' }),
+    isDomainError('permission_denied', 'forbidden'),
+  )
+  state.modules.exams = false
+  failsUnchanged(state, () => evaluate(state), isDomainError('module_disabled', 'forbidden'))
+})

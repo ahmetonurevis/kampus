@@ -10,7 +10,9 @@ import {
   planDraftUpdate,
   planNewResource,
   planNewVersion,
+  planResourceRemoval,
   planVersionTransition,
+  RESOURCE_ACTIONS,
   publicationIssues,
   requiresReview,
   resourceContentSchema,
@@ -22,6 +24,7 @@ import {
   wordCount,
   type ItemVersionRef,
   type ResourceAction,
+  type ResourceVersion,
   type ResourceVersionInput,
 } from '../packages/school-core/src/content/resource.ts'
 import {
@@ -725,11 +728,6 @@ describe('Sürüm durum geçişleri', () => {
       () => transition('submit', author, published),
       isDomainError('resource_transition_invalid', 'conflict'),
     )
-    const removed = build(schoolText(), { version: { status: 'removed' } })
-    assert.throws(
-      () => transition('remove', admin, removed, { reason: 'Telif ihlali' }),
-      isDomainError('resource_transition_invalid', 'conflict'),
-    )
   })
 
   test('arşivi sahip, zümre başkanı ve yönetici yapar', () => {
@@ -837,16 +835,106 @@ describe('Sürüm durum geçişleri', () => {
     )
   })
 
-  test('kaldırmayı yalnız yönetici gerekçeyle yapar; içerik silinir', () => {
-    const published = build(schoolText(), { version: { status: 'published' } })
-    assert.throws(
-      () => transition('remove', author, published, { reason: 'Telif ihlali bildirimi' }),
-      isDomainError('resource_action_forbidden', 'forbidden'),
+  test('DOM-KYN-051: kaldırma kaynak düzeyindedir; bütün sürümler, dosyalar ve kopyalar döner', () => {
+    const audio = (
+      id: string,
+      versionNumber: number,
+      status: ResourceVersion['status'],
+      fileId: string,
+    ) => ({
+      ...build(schoolText({ content: { type: 'audio', fileId, transcript: 'Döküm' } })).version,
+      id,
+      versionNumber,
+      status,
+    })
+    const { resource } = build(
+      schoolText({ content: { type: 'audio', fileId: 'f1', transcript: 'Döküm' } }),
+      { resource: { currentVersionId: 'test-r1-v2' } },
     )
-    const removed = transition('remove', admin, published, { reason: 'Telif ihlali bildirimi' })
-    assert.equal(removed.status, 'removed')
-    assert.equal(removed.clearContent, true)
-    assert.equal(removed.versionChanges.removalReason, 'Telif ihlali bildirimi')
+    const versions = [
+      audio('test-r1-v1', 1, 'archived', 'f1'),
+      audio('test-r1-v2', 2, 'published', 'f2'),
+      audio('test-r1-v3', 3, 'draft', 'f2'),
+      { ...audio('test-r9-v1', 1, 'published', 'f9'), resourceId: 'test-r9' },
+    ]
+    const before = structuredClone(versions)
+    const plan = planResourceRemoval({
+      actor: admin,
+      resource,
+      versions,
+      copies: [
+        { id: 'test-copy-a', derivedFromVersionId: 'test-r1-v1' },
+        { id: 'test-copy-b', derivedFromVersionId: 'test-r1-v2' },
+        { id: 'test-copy-x', derivedFromVersionId: 'test-r9-v1' },
+      ],
+      containers: [
+        {
+          id: 'test-quiz-v1',
+          content: {
+            type: 'quiz',
+            items: [{ questionVersionId: 'test-r1-v1', points: 1 }],
+            timeLimitMinutes: null,
+            shuffleItems: false,
+          },
+        },
+        {
+          id: 'test-quiz-v2',
+          content: {
+            type: 'exercise_set',
+            items: [{ questionVersionId: 'test-q-other', points: 1 }],
+            timeLimitMinutes: null,
+            shuffleItems: false,
+          },
+        },
+        { id: 'test-text-v1', content: { type: 'text', body: 'x', fileId: null } },
+      ],
+      reason: '  Telif ihlali bildirimi  ',
+      now,
+    })
+    assert.deepEqual(
+      plan.versionIds,
+      ['test-r1-v1', 'test-r1-v2', 'test-r1-v3'],
+      'arşivliler dahil',
+    )
+    assert.deepEqual(plan.versionChanges, {
+      status: 'removed',
+      removedAt: now,
+      removalReason: 'Telif ihlali bildirimi',
+    })
+    assert.deepEqual(plan.fileIds, ['f1', 'f2'])
+    assert.deepEqual(plan.affectedCopyIds, ['test-copy-a', 'test-copy-b'])
+    assert.deepEqual(plan.affectedContainerVersionIds, ['test-quiz-v1'])
+    assert.equal(plan.clearContent, true)
+    assert.deepEqual(versions, before, 'saf: girdi değişmez')
+
+    const removal = (patch: Partial<Parameters<typeof planResourceRemoval>[0]>) =>
+      planResourceRemoval({
+        actor: admin,
+        resource,
+        versions,
+        reason: 'Telif ihlali',
+        now,
+        ...patch,
+      })
+    assert.deepEqual(removal({}).affectedCopyIds, [], 'kopya listesi verilmezse boş')
+    for (const actor of [author, head, frontDesk, student]) {
+      assert.throws(
+        () => removal({ actor }),
+        isDomainError('resource_action_forbidden', 'forbidden'),
+        actor.role,
+      )
+    }
+    assert.throws(() => removal({ reason: 'kısa' }), isDomainError('reason_required'))
+    assert.throws(
+      () => removal({ versions: versions.slice(3) }),
+      isDomainError('resource_version_not_found', 'not_found'),
+    )
+    assert.throws(
+      () => removal({ versions: versions.map((v) => ({ ...v, status: 'removed' as const })) }),
+      isDomainError('resource_removed', 'conflict'),
+      'mükerrer kaldırma',
+    )
+    assert.equal('remove' in RESOURCE_ACTIONS, false, 'tek sürüm kaldırılamaz')
   })
 
   test('öğrenci ve ön büro içerik işlemi yapamaz; başka kaynağın sürümü bulunamaz', () => {

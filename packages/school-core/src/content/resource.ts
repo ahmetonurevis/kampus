@@ -876,13 +876,13 @@ export const RESOURCE_ACTIONS = {
   reopen: { label: 'Taslağa döndür' },
   archive: { label: 'Arşivle' },
   report: { label: 'Telif bildirimi' },
-  remove: { label: 'Kaldır' },
 } as const
 export type ResourceAction = keyof typeof RESOURCE_ACTIONS
 
 /**
- * İzinli geçişler (DOM-KYN-025, 030, 031, 051). `publish` onaysız yayın istisnasıdır;
- * `report` telif bildirimiyle yayındaki sürümü incelemeye alır.
+ * İzinli sürüm geçişleri (DOM-KYN-025, 030, 031, 051). `publish` onaysız yayın istisnasıdır;
+ * `report` telif bildirimiyle yayındaki sürümü incelemeye alır. Kaldırma sürüm değil kaynak
+ * düzeyindedir ve `planResourceRemoval` ile yapılır.
  */
 const TRANSITIONS = {
   submit: { from: ['draft'], to: 'in_review' },
@@ -893,7 +893,6 @@ const TRANSITIONS = {
   reopen: { from: ['rejected'], to: 'draft' },
   archive: { from: ['draft', 'rejected', 'published'], to: 'archived' },
   report: { from: ['published'], to: 'in_review' },
-  remove: { from: ['draft', 'in_review', 'published', 'rejected', 'archived'], to: 'removed' },
 } as const satisfies Record<ResourceAction, { from: readonly ResourceStatus[]; to: ResourceStatus }>
 
 export type TransitionInput = {
@@ -903,7 +902,7 @@ export type TransitionInput = {
   resource: ResourceRecord
   version: ResourceVersion
   now: Date | string
-  /** Ret, telif bildirimi ve kaldırmada zorunlu. */
+  /** Ret ve telif bildiriminde zorunlu. */
   reason?: string | undefined
   itemVersions?: PublicationContext['itemVersions']
 }
@@ -916,14 +915,12 @@ export type VersionTransition = {
   resourceChanges: Partial<Pick<ResourceRecord, 'currentVersionId'>>
   /** Yayımla birlikte arşive alınacak önceki yayın sürümü (DOM-KYN-032). */
   supersededVersionId: string | null
-  /** Kaldırmada dosya ve içerik silinir; başlık, menşe ve gerekçe kalır (DOM-KYN-051). */
-  clearContent: boolean
 }
 
-const REASON_ACTIONS: readonly ResourceAction[] = ['reject', 'report', 'remove']
+const REASON_ACTIONS: readonly ResourceAction[] = ['reject', 'report']
 
 /**
- * Sürüm durum geçişini planlar (DOM-KYN-030…032, 051). Sırayla: geçiş izinli mi, aktör yetkili
+ * Sürüm durum geçişini planlar (DOM-KYN-030…032). Sırayla: geçiş izinli mi, aktör yetkili
  * mi, gerekçe, yayım koşulları. Başarısızlıkta hiçbir şey döndürmez, `DomainError` fırlatır.
  */
 export function planVersionTransition(input: TransitionInput): VersionTransition {
@@ -1016,10 +1013,6 @@ export function planVersionTransition(input: TransitionInput): VersionTransition
     case 'report':
       versionChanges.submittedAt = at
       break
-    case 'remove':
-      versionChanges.removedAt = at
-      versionChanges.removalReason = reason
-      break
     default:
       action satisfies never
   }
@@ -1032,7 +1025,6 @@ export function planVersionTransition(input: TransitionInput): VersionTransition
     versionChanges,
     resourceChanges: toPublished ? { currentVersionId: version.id } : {},
     supersededVersionId,
-    clearContent: action === 'remove',
   }
 }
 
@@ -1071,11 +1063,89 @@ function assertActionAllowed(input: TransitionInput): void {
       return
     case 'report':
       return
-    case 'remove':
-      if (actor.role !== 'yonetici') forbidden('İçeriği yalnız yönetici kaldırır.')
-      return
     default:
       action satisfies never
+  }
+}
+
+// --- Kaldırma -----------------------------------------------------------------------------
+
+export type ResourceRemovalInput = {
+  actor: ContentActor
+  resource: ResourceRecord
+  /** Kaynağın bütün sürümleri (arşivliler dahil); başka kaynağın sürümü yok sayılır. */
+  versions: readonly ResourceVersion[]
+  /** Servisin bildiği kopyalar (`derived_from_version_id` dolu kaynaklar); süzme burada yapılır. */
+  copies?: readonly Pick<ResourceRecord, 'id' | 'derivedFromVersionId'>[] | undefined
+  /** Bu kaynağın soru sürümlerini içerebilecek quiz ve alıştırma seti sürümleri. */
+  containers?: readonly Pick<ResourceVersion, 'id' | 'content'>[] | undefined
+  reason: string
+  now: Date | string
+}
+
+export type ResourceRemovalPlan = {
+  /** `removed` yapılacak bütün sürümler; içerik ve cevap anahtarı kolonları temizlenir. */
+  versionIds: string[]
+  versionChanges: Pick<ResourceVersionMeta, 'status' | 'removedAt' | 'removalReason'>
+  /** Silinecek dosyalar (ADR 0003 karar 13: kaynak kaldırılınca materyal dosyası silinir). */
+  fileIds: string[]
+  /** Kaldırılan sürümlerden türetilmiş kopyalar; yönetici bunları ayrıca inceler (DOM-KYN-050). */
+  affectedCopyIds: string[]
+  /** Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri; geçmiş görevde "kaldırıldı" görünür. */
+  affectedContainerVersionIds: string[]
+  /** Başlık, menşe, gerekçe ve tarih kalır; içerik ve dosyalar silinir (DOM-KYN-051). */
+  clearContent: true
+}
+
+/**
+ * Kaynağı kaldırmayı planlar (DOM-KYN-025, 051; ADR 0003 karar 13). Kaldırma sürüm değil kaynak
+ * düzeyindedir: arşivdeki eski sürüm de ihlali taşıdığından bütün sürümler birlikte kaldırılır.
+ * Yalnız yönetici, gerekçeyle. Saf fonksiyondur; yazma, dosya silme ve denetim kaydı servistedir.
+ */
+export function planResourceRemoval(input: ResourceRemovalInput): ResourceRemovalPlan {
+  const { actor, resource } = input
+  if (actor.role !== 'yonetici') {
+    throw new DomainError('resource_action_forbidden', 'İçeriği yalnız yönetici kaldırır.', {
+      kind: 'forbidden',
+    })
+  }
+  const own = input.versions.filter((v) => v.resourceId === resource.id)
+  if (own.length === 0) {
+    throw new DomainError('resource_version_not_found', 'Sürüm bulunamadı.', { kind: 'not_found' })
+  }
+  if (own.some((v) => v.status === 'removed')) {
+    throw new DomainError('resource_removed', 'Bu içerik zaten kaldırıldı.', { kind: 'conflict' })
+  }
+  const parsed = transitionReasonSchema.safeParse(input.reason)
+  if (!parsed.success) {
+    throw new DomainError('reason_required', 'Gerekçeyi yazın.', { path: ['reason'] })
+  }
+  const versionIds = [...own].sort((a, b) => a.versionNumber - b.versionNumber).map((v) => v.id)
+  const removedIds = new Set(versionIds)
+  const fileIds = distinct(own.flatMap((v) => contentFileRefs(v.content).map((ref) => ref.fileId)))
+  const affectedCopyIds = (input.copies ?? [])
+    .filter(
+      (copy) => copy.derivedFromVersionId !== null && removedIds.has(copy.derivedFromVersionId),
+    )
+    .map((copy) => copy.id)
+  const affectedContainerVersionIds = (input.containers ?? [])
+    .filter(
+      ({ content }) =>
+        (content.type === 'quiz' || content.type === 'exercise_set') &&
+        content.items.some((item) => removedIds.has(item.questionVersionId)),
+    )
+    .map((container) => container.id)
+  return {
+    versionIds,
+    versionChanges: {
+      status: 'removed',
+      removedAt: new Date(input.now).toISOString(),
+      removalReason: parsed.data,
+    },
+    fileIds,
+    affectedCopyIds,
+    affectedContainerVersionIds,
+    clearContent: true,
   }
 }
 

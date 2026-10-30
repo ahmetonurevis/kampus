@@ -244,7 +244,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Geçmiş not ve teslimlerin bağlamı korunmalı; ihlal içeren içerik ise arşivde de dağıtılmaya devam etmemelidir.
 - **Kaynak:** İşletme kuralı; KVKK md. 7.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`archive`, `remove` geçişleri).
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`archive` geçişi; kaynak düzeyinde kaldırma `planResourceRemoval`: bütün sürümler, dosyalar, türetilmiş kopyalar ve soruyu içeren quiz'ler).
 
 ### DOM-KYN-052 · Öğretmen ayrılınca sahiplik devri
 

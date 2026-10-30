@@ -18,6 +18,9 @@ const EnrollmentReportsPage = lazy(async () => ({
 const RiskListPage = lazy(async () => ({
   default: (await import('./management/RiskListPage.tsx')).RiskListPage,
 }))
+const SlaReportPage = lazy(async () => ({
+  default: (await import('./management/SlaReportPage.tsx')).SlaReportPage,
+}))
 const StaffPage = lazy(async () => ({
   default: (await import('./management/StaffPage.tsx')).StaffPage,
 }))
@@ -143,6 +146,8 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <EnrollmentReportsPage page={page} />
     case 'yonetici/risk-listesi':
       return <RiskListPage page={page} />
+    case 'yonetici/sla-raporu':
+      return <SlaReportPage page={page} />
     case 'yonetici/ayarlar':
       return <SettingsPage page={page} />
     case 'ogrenci/ayarlar':

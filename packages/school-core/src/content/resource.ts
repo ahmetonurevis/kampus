@@ -1337,18 +1337,35 @@ const scramble = <T extends { id: string }>(list: readonly T[], seed: string): T
     (a, b) => hash(`${seed}:${a.id}`) - hash(`${seed}:${b.id}`) || (a.id < b.id ? -1 : 1),
   )
 
+export type LearnerViewOptions = {
+  /**
+   * Dinleme görevinin dökümü ve altyazısı varsayılan olarak gizlidir (DOM-KYN-003, DOM-BEC-005).
+   * Servis görev kapanınca veya öğretmenin erişilebilirlik uyarlamasında `true` verir.
+   */
+  showTranscript?: boolean | undefined
+}
+
+/** Dinleme becerisini ölçen içerik mi: birincil beceri dinleme veya dinlemeden aracılık. */
+const isListeningTask = (tags: ResourceTags) =>
+  tags.primarySkill === 'listening' || tags.mediation?.sourceSkill === 'listening'
+
 /**
  * Öğrenci/veli görünümü: `answerKey` (doğru cevap ve çözüm açıklaması) ve lisans ayrıntısı
  * ayıklanır, kaynak gösterimi korunur (DOM-KYN-024). Sıralama öğeleri ve eşleştirme seçenekleri
  * yazarın girdiği (çoğunlukla doğru) sırayı sızdırmasın diye sürüme göre sabit karıştırılır.
- * Dinleme görevi sürerken döküm ve altyazı gizlenir (`hideTranscript`; DOM-KYN-003, DOM-BEC-005).
+ * Dinleme görevinde döküm ve altyazı `showTranscript` verilmedikçe gizlenir; dinleme dışındaki ses
+ * ve videoda döküm erişilebilirlik içindir, hep görünür (DOM-KYN-003).
  */
 export function learnerView(
   version: ResourceVersion,
-  options: { hideTranscript?: boolean } = {},
+  options: LearnerViewOptions = {},
 ): LearnerResourceView {
   let content: ResourceContent = version.content
-  if ((content.type === 'audio' || content.type === 'video') && options.hideTranscript) {
+  if (
+    (content.type === 'audio' || content.type === 'video') &&
+    isListeningTask(version.tags) &&
+    options.showTranscript !== true
+  ) {
     content = { ...content, transcript: null, captionsVtt: null }
   }
   if (content.type === 'question') {

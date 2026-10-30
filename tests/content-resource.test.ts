@@ -1113,16 +1113,46 @@ describe('Dosya, görünüm ve arama', () => {
     assert.deepEqual(forward.question.items.map((i) => i.id).sort(), ['i1', 'i2', 'i3', 'i4', 'i5'])
   })
 
-  test('dinleme görevi sürerken döküm gizlenir', () => {
-    const { version } = build(
-      schoolText({ content: { type: 'audio', fileId: 'f', transcript: 'Döküm metni' } }),
-    )
-    const hidden = learnerView(version, { hideTranscript: true }).content
+  test('DOM-KYN-003, DOM-BEC-005: dinleme dökümü varsayılan gizli, açık seçenekle gösterilir', () => {
+    const vtt = 'WEBVTT\n\n00:00.000 --> 00:02.000\nMerhaba'
+    const listening = build(
+      languagePassage({
+        content: { type: 'audio', fileId: 'f', transcript: 'Döküm metni', captionsVtt: vtt },
+        tags: { cefrLevel: 'B1', primarySkill: 'listening' },
+      }),
+    ).version
+    const hidden = learnerView(listening).content
     assert.ok(hidden.type === 'audio')
     assert.equal(hidden.transcript, null)
-    const shown = learnerView(version).content
+    assert.equal(hidden.captionsVtt, null)
+    assert.doesNotMatch(JSON.stringify(learnerView(listening)), /Döküm metni|Merhaba/)
+    const shown = learnerView(listening, { showTranscript: true }).content
     assert.ok(shown.type === 'audio')
     assert.equal(shown.transcript, 'Döküm metni')
+    assert.equal(shown.captionsVtt, vtt)
+
+    // Dinleme kaynağından aracılık görevi de dinlemedir.
+    const mediation = build(
+      languagePassage({
+        content: { type: 'video', fileId: 'f', transcript: 'Döküm metni' },
+        tags: {
+          cefrLevel: 'B1',
+          primarySkill: 'mediation',
+          mediation: { sourceSkill: 'listening', targetSkill: 'speaking' },
+        },
+      }),
+    ).version
+    const mediated = learnerView(mediation).content
+    assert.ok(mediated.type === 'video')
+    assert.equal(mediated.transcript, null)
+
+    // Dinleme görevi olmayan ses ve videoda döküm erişilebilirlik içindir, hep görünür.
+    const lesson = build(
+      schoolText({ content: { type: 'video', fileId: 'f', transcript: 'Ders dökümü' } }),
+    ).version
+    const visible = learnerView(lesson).content
+    assert.ok(visible.type === 'video')
+    assert.equal(visible.transcript, 'Ders dökümü')
   })
 
   test('arama normalleştirmesi Türkçe ve İngilizce harfleri aynı terime indirir', () => {

@@ -34,7 +34,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** İşitme engelli öğrenci ve sessiz ortam erişimi; dinleme görevinde dökümün erken görünmesi ölçmeyi bozar.
 - **Kaynak:** İşletme kuralı (CLAUDE.md erişilebilirlik zorunluluğu).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — örnek videolar `captions` ve `transcript` taşır (`packages/school-core/src/data/seed.js:457-502`); yüklenen videoda altyazı zorunlu değil (`apps/web/src/views/Learning.vue:286-298`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`publicationIssues`, `learnerView` `hideTranscript`).
+- **Kodda:** kısmen — örnek videolar `captions` ve `transcript` taşır (`packages/school-core/src/data/seed.js:457-502`); yüklenen videoda altyazı zorunlu değil (`apps/web/src/views/Learning.vue:286-298`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`publicationIssues`, `learnerView`: dinleme dökümü varsayılan gizli, `showTranscript` ile açılır).
 
 ### DOM-KYN-004 · Dosya doğrulaması ve depolama
 

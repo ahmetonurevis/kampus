@@ -54,11 +54,30 @@ export const sum = <K extends PropertyKey>(list: readonly Record<K, number>[], k
   list.reduce((total, item) => total + item[key], 0)
 export const average = (values: readonly number[]) =>
   values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0
+/** Taksit durumu anahtarı → Türkçe etiket (URL/süzgeç anahtarı ASCII, gösterim Türkçe). */
+export const INVOICE_STATUS_LABELS = {
+  odendi: 'Ödendi',
+  gecikmis: 'Gecikmiş',
+  yaklasan: 'Yaklaşan',
+} as const
+export type InvoiceStatusKey = keyof typeof INVOICE_STATUS_LABELS
+export type InvoiceStatus = (typeof INVOICE_STATUS_LABELS)[InvoiceStatusKey]
+export const INVOICE_STATUS_KEYS = Object.keys(INVOICE_STATUS_LABELS) as InvoiceStatusKey[]
+/**
+ * Taksit durumu anahtarı. Gün Europe/Istanbul takvimine göre `now`dan alınır; vade günü geçmemişse
+ * "yaklaşan"dır. `now` ISO anı, `Date` ya da `YYYY-MM-DD` gün anahtarı olabilir (eski çağıranlar gün verir).
+ */
+export function invoiceStatusKey(
+  invoice: { paidAt?: string | null; dueDate: DateInput },
+  now: DateInput = new Date(),
+): InvoiceStatusKey {
+  return invoice.paidAt ? 'odendi' : dayKey(invoice.dueDate) < dayKey(now) ? 'gecikmis' : 'yaklasan'
+}
 export function invoiceStatus(
   invoice: { paidAt?: string | null; dueDate: DateInput },
-  today = dayKey(),
-) {
-  return invoice.paidAt ? 'Ödendi' : dayKey(invoice.dueDate) < today ? 'Gecikmiş' : 'Yaklaşan'
+  now: DateInput = new Date(),
+): InvoiceStatus {
+  return INVOICE_STATUS_LABELS[invoiceStatusKey(invoice, now)]
 }
 type SlaQuestion = { createdAt: DateInput; answeredAt?: string | null }
 export function slaStatus(question: SlaQuestion, now = Date.now()) {

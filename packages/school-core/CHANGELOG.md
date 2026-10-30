@@ -1,5 +1,12 @@
 # Değişiklikler
 
+## 2.2.0
+
+- `lib/domain.ts`: `PAYMENT_METHODS` (`Banka havalesi`, `Nakit`, `Kredi kartı`; saklanan değer Türkçe etikettir), `PaymentMethod`, `PAYMENT_METHOD_LABELS` ve `paymentInputSchema` (`{ method }`, API gövde şeması ve web/mobil form şeması) eklendi. `payInvoice` yöntemi doğrular; geçersiz yöntem `invalid_payment_method` (`rule`, `path: ['method']`) `DomainError`'u olur ve taksit değişmez. Çevrimdışı demonun yazdığı `Demo Sanal POS` ve `Kredi kartı (demo)` değerleri demo kalıcılığı silinene kadar `payInvoice` tarafından kabul edilir; `paymentInputSchema` bunları kabul etmez. Daha önce her dize kabul edildiği için API gövdesi şemayı kullanana kadar davranış gevşektir.
+- `lib/format.ts`: `INVOICE_STATUS_LABELS` (`odendi`/`gecikmis`/`yaklasan` → `Ödendi`/`Gecikmiş`/`Yaklaşan`), `INVOICE_STATUS_KEYS`, `InvoiceStatus`, `InvoiceStatusKey` ve `invoiceStatusKey(invoice, now)` eklendi. `invoiceStatus(invoice, now)` ikinci parametreyi `now` olarak alır (ISO an, `Date` veya `YYYY-MM-DD`; varsayılan gerçek saat). Eski çağıranların verdiği gün anahtarı aynı sonucu verir; gün Europe/Istanbul takvimine göre alınır.
+- `lib/grades.ts`: `subjectAverages(grades)` ve `SubjectAverage` eklendi. Notları `subjectId` ile gruplar, core `average` ile (tam sayıya yuvarlanmış) ortalar, ders adına göre Türkçe sıralar; ders adı kaydın `subject` alanındandır.
+- Tüketiciler `workspace:2.2.0` sürümüne sabitlendi.
+
 ## 2.1.0
 
 - **Kırıcı:** tahsilat kaydı (`invoice.pay`, taksiti "ödendi" işaretler) yalnız `yonetici` ve `onburo` rollerindedir; veli `permission_denied` alır (DOM-FIN-052). Velinin bağlı çocuğu için çevrim içi ödemesi ayrı `invoice.payOnline` eylemidir (`finance` modülü); ödeme sağlayıcısı onayı gerektirir (`PROVIDER_CONFIRMATION_ACTIONS`, `requiresProviderConfirmation`) ve sağlayıcı seçilene kadar hiçbir işlem çağırmaz (`TODO(payment-provider)`). API henüz `authorize` kullanmadığı için sürüm küçük düzeyde artar.

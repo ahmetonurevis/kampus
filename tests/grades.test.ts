@@ -7,6 +7,7 @@ import {
   gradeRecordSchema,
   gradeUpdateSchema,
   recordGrade,
+  subjectAverages,
   updateGrade,
 } from '../packages/school-core/src/lib/grades.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -370,4 +371,42 @@ test('Not şemaları form/API gövdesi olarak kullanılabilir', () => {
   assert.deepEqual(issue.error?.issues[0]?.path, ['score'])
   assert.equal(issue.error?.issues[0]?.message, 'Puanı girin.')
   assert.equal(gradeUpdateSchema.safeParse({ score: 70, reason: 'Gerekçe' }).success, true)
+})
+
+test('subjectAverages: boş liste boş döner', () => {
+  assert.deepEqual(subjectAverages([]), [])
+})
+test('subjectAverages: tek not kendi puanıdır', () => {
+  assert.deepEqual(subjectAverages([{ subjectId: 'math', subject: 'Matematik', score: 85 }]), [
+    { subjectId: 'math', name: 'Matematik', average: 85, count: 1 },
+  ])
+})
+test('subjectAverages: karışık dersler ders adına göre (tr) sıralı, ortalama yuvarlanır', () => {
+  const grades = [
+    { subjectId: 'turkish', subject: 'Türkçe', score: 90 },
+    { subjectId: 'math', subject: 'Matematik', score: 70 },
+    { subjectId: 'english', subject: 'İngilizce', score: 100 },
+    { subjectId: 'math', subject: 'Matematik', score: 85 },
+    { subjectId: 'math', subject: 'Matematik', score: 80 },
+    { subjectId: 'turkish', subject: 'Türkçe', score: 75 },
+  ]
+  const before = JSON.stringify(grades)
+  assert.deepEqual(subjectAverages(grades), [
+    { subjectId: 'english', name: 'İngilizce', average: 100, count: 1 },
+    // (70 + 85 + 80) / 3 = 78,33 → 78
+    { subjectId: 'math', name: 'Matematik', average: 78, count: 3 },
+    // (90 + 75) / 2 = 82,5 → 83
+    { subjectId: 'turkish', name: 'Türkçe', average: 83, count: 2 },
+  ])
+  assert.equal(JSON.stringify(grades), before)
+})
+test('subjectAverages: örnek veri notlarını ders bazında toplar', () => {
+  const state = seed()
+  const own = state.grades.filter((g) => g.studentId === 's1')
+  const rows = subjectAverages(own)
+  assert.ok(rows.length > 0)
+  assert.equal(
+    rows.reduce((total, row) => total + row.count, 0),
+    own.length,
+  )
 })

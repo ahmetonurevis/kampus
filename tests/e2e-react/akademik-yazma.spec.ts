@@ -137,7 +137,9 @@ test.describe('öğretmen: yoklama alma', () => {
     await expect(page.getByText(/1 gelmedi · 1 geç geldi/)).toBeVisible()
 
     await saveButton(page).click()
-    await expect(page.getByRole('status').filter({ hasText: 'Yoklama kaydedildi.' })).toBeVisible()
+    await expect(
+      page.locator('main').getByRole('status').filter({ hasText: 'Yoklama kaydedildi.' }),
+    ).toBeVisible()
     await expect(
       page.getByText('Bu sınıfın bugünkü yoklaması kayıtlı; gönderim kaydı günceller.'),
     ).toBeVisible()
@@ -151,7 +153,9 @@ test.describe('öğretmen: yoklama alma', () => {
     // İkinci gönderim: kayıt yinelenmez, güncellenir; ekran "güncellendi" der.
     await mark(page, first!.name, 'Mazeretli').click()
     await saveButton(page).click()
-    await expect(page.getByRole('status').filter({ hasText: 'Yoklama güncellendi.' })).toBeVisible()
+    await expect(
+      page.locator('main').getByRole('status').filter({ hasText: 'Yoklama güncellendi.' }),
+    ).toBeVisible()
     const updated = await attendanceOf(client, 'c3')
     expect(updated.size).toBe(students.length)
     expect(updated.get(first!.id)).toBe('excused')
@@ -176,7 +180,9 @@ test.describe('öğretmen: yoklama alma', () => {
     await attendanceSelect(page).selectOption({ label: '5-A' })
     await mark(page, students[0]!.name, 'Gelmedi').click()
     await saveButton(page).dblclick()
-    await expect(page.getByRole('status').filter({ hasText: 'Yoklama kaydedildi.' })).toBeVisible()
+    await expect(
+      page.locator('main').getByRole('status').filter({ hasText: 'Yoklama kaydedildi.' }),
+    ).toBeVisible()
     expect(posts).toHaveLength(1)
     expect(posts[0]?.headers()['idempotency-key']).toMatch(/^[0-9a-f-]{36}$/)
     expect(posts[0]?.headers()['if-match']).toMatch(/^"\d+"$/)
@@ -190,7 +196,9 @@ test.describe('öğretmen: yoklama alma', () => {
       form.requestSubmit()
       form.requestSubmit()
     })
-    await expect(page.getByRole('status').filter({ hasText: 'Yoklama güncellendi.' })).toBeVisible()
+    await expect(
+      page.locator('main').getByRole('status').filter({ hasText: 'Yoklama güncellendi.' }),
+    ).toBeVisible()
     expect(posts).toHaveLength(2)
   })
 
@@ -225,7 +233,9 @@ test.describe('öğretmen: yoklama alma', () => {
 
     await saveButton(page).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('status').filter({ hasText: 'Yoklama kaydedildi.' })).toBeVisible()
+    await expect(
+      page.locator('main').getByRole('status').filter({ hasText: 'Yoklama kaydedildi.' }),
+    ).toBeVisible()
     expect((await attendanceOf(client, 'c4')).get(students[0]!.id)).toBe('excused')
   })
 

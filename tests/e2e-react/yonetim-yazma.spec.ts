@@ -96,7 +96,7 @@ function recordPosts(page: Page, path: RegExp): Request[] {
   return requests
 }
 
-// Sonner toast'ı rol taşımaz; metniyle aranır. Olumsuz denetimler yalnız hata metnine bakar.
+// Toast metni notify ile role="alert"/"status" taşır; yine de metniyle aranır. Olumsuz denetimler yalnız hata metnine bakar.
 const toast = (page: Page, text: string | RegExp) =>
   page.locator('[data-sonner-toast]').filter({ hasText: text })
 

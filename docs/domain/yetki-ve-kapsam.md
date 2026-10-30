@@ -51,7 +51,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Veli çocuk seçicisindeki kimliği değiştirerek başka çocuğu görememelidir.
 - **Kaynak:** ADR 0001 karar 6-7.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — kapsam sabit kimliklerle hesaplanır: öğrenci her zaman `s1`, öğretmen `t1`, veli bağı `p1` (`packages/school-core/src/lib/school-workflows.js:287-301`); veli çocuğu istemcideki `childId`'den gelir (`apps/web/src/stores/demo.js:52-55`, `apps/web/src/App.vue:100`).
+- **Kodda:** kısmen — kapsam `Actor = { role, links }` bağlantılarından hesaplanır (`packages/school-core/src/lib/scope.ts`, `scopeFor`); seçili çocuk bağlı çocuklardan biri değilse kapsam boştur. Çevrimdışı demo bağlantısız oturumu sabit `t1`/`s1`/`p1` kimliklerine eşler (`sessionActor`); API henüz koleksiyon okumalarında kullanmıyor.
 
 ### DOM-YTK-003 · Birden çok üyelik, tek etkin rol
 
@@ -85,7 +85,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Dil okulunda "7-A şubesi" veya "LGS netleri" anlamsız veri ve yanlış yetki alanı üretir.
 - **Kaynak:** ADR 0001 karar 4.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — kurum türü yok, tüm modüller tek listede (`packages/school-core/src/modules/school-workflows.js:1-101`).
+- **Kodda:** kısmen — modül → kurum türü tablosu `MODULE_INSTITUTION_TYPES` ve koleksiyon → modül eşlemesi `COLLECTION_MODULES` (`packages/school-core/src/modules/collection-modules.ts`); `scopeFor(..., { institutionType })` uymayan modülün koleksiyonunu bulunmaz sayar. Kurum kaydı ve API kullanımı yok.
 
 ## Roller ve kapsamlar
 
@@ -260,7 +260,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 | Kural                 | Fark                                                                                                                                                                                                                  |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | DOM-YTK-001           | Temel işlemlerde (`packages/school-core/src/lib/domain.js`) rol denetimi yok; URL'deki rol oturum rolünü değiştiriyor (`apps/web/src/router.js:83`).                                                                  |
-| DOM-YTK-002           | Kapsam sabit `s1`/`t1`/`p1` kimlikleriyle hesaplanıyor; veli çocuğu istemciden geliyor (`packages/school-core/src/lib/school-workflows.js:287-301`, `apps/web/src/stores/demo.js:52-55`).                             |
+| DOM-YTK-002           | Core kapsamı bağlantılardan hesaplıyor (`lib/scope.ts`); demo sabit `s1`/`t1`/`p1` bağlantısı kullanıyor, API koleksiyon okumaları henüz kullanmıyor.                                                                 |
 | DOM-YTK-010, 011, 012 | Kurum ve kurum türü kavramı yok; tüm modüller tek kurumda.                                                                                                                                                            |
 | DOM-YTK-021           | Ön büro yöneticiyle aynı "kurum" kapsamında; rehberlik iç notu ve deneme sonuçları görünüyor (`packages/school-core/src/lib/school-workflows.js:293`, `packages/school-core/src/lib/workflow-presentation.js:88-92`). |
 | DOM-YTK-025           | Çocuk listesi her zaman ilk velinin listesi (`apps/web/src/App.vue:100`); çocuk başına velayet/ödeyici ayrımı yok.                                                                                                    |

@@ -6,6 +6,14 @@ import { installmentAmounts, type MakeId, type Session } from './domain.ts'
 import { dayKey } from './format.ts'
 import { tutorConflict, type Interval } from './tutor-conflicts.ts'
 import { DomainError } from './errors.ts'
+import {
+  DEMO_PARENT_ID,
+  DEMO_STUDENT_ID,
+  linkedRecordId,
+  scopeFor,
+  sessionActor,
+  sessionTeacherId,
+} from './scope.ts'
 
 z.config(z.locales.tr())
 const text = z.string().trim().min(2, 'En az iki karakter girin.').max(2000)
@@ -350,29 +358,32 @@ export function mayRun(session: Session, command: string) {
   if (!Object.hasOwn(commandRoles, command)) return false
   return !!commandRoles[command]?.includes(session.role)
 }
+/**
+ * İş akışı ekranlarının kapsamı: `scopeFor` sonucunun demo ve form ihtiyaçlarına göre biçimi.
+ * Veli kapsamı seçili çocukla daraltılır; seçim bağlı çocuklardan biri değilse boştur
+ * (DOM-YTK-002). `student` öğrencinin kendisi veya velinin seçili çocuğudur.
+ */
 export function workflowScope(state: State, session: Session) {
-  const studentId = session.role === 'veli' ? session.childId : 's1'
+  const actor = sessionActor(state, session)
+  const scope = scopeFor(state, actor)
+  const studentId =
+    session.role === 'veli'
+      ? session.childId
+      : (linkedRecordId(actor, 'student') ?? DEMO_STUDENT_ID)
   const student = state.students.find((s) => s.id === studentId)
-  const classIds = new Set(
-    state.assignments.filter((a) => a.teacherId === 't1').map((a) => a.classId),
-  )
-  const institution = ['yonetici', 'onburo'].includes(session.role)
-  const permitted = state.students.filter(
-    (s) =>
-      institution ||
-      (session.role === 'ogretmen'
-        ? classIds.has(s.classId)
-        : s.id === studentId &&
-          (session.role !== 'veli' ||
-            state.parents.find((p) => p.id === 'p1')?.studentIds.includes(s.id))),
-  )
-  const students = permitted.filter((s) => s.isActive)
+  const studentIds: ReadonlySet<string> =
+    session.role === 'veli'
+      ? new Set(studentId !== undefined && scope.studentIds.has(studentId) ? [studentId] : [])
+      : scope.studentIds
+  const permitted = state.students.filter((s) => studentIds.has(s.id))
   return {
     student,
-    students,
-    studentIds: new Set(permitted.map((s) => s.id)),
-    classIds,
-    institution,
+    students: permitted.filter((s) => s.isActive),
+    studentIds,
+    classIds: scope.classIds,
+    institution: session.role === 'yonetici' || session.role === 'onburo',
+    teacher: scope.teacher,
+    scope,
   }
 }
 function requireRecord<T extends { id: string }>(list: readonly T[], id: string | undefined) {
@@ -500,7 +511,8 @@ function goalRecord(state: State, session: Session, recordId: string | undefined
   if (
     session.role === 'ogretmen' &&
     goal.subjectId &&
-    goal.subjectId !== state.teachers.find((t) => t.id === 't1')?.subjectId
+    goal.subjectId !==
+      state.teachers.find((t) => t.id === sessionTeacherId(state, session))?.subjectId
   )
     throw new DomainError('goal_branch_mismatch', 'Bu hedef başka bir branşa ait.', {
       kind: 'forbidden',
@@ -610,7 +622,10 @@ function validateExamResult(state: State, session: Session, input: unknown) {
     throw new DomainError('exam_level_mismatch', 'Öğrencinin sınıf düzeyi sınavla aynı olmalıdır.')
   if (!exam.subjectIds.includes(data.subjectId))
     throw new DomainError('exam_subject_out_of_scope', 'Ders bu denemenin kapsamında değil.')
-  if (session.role === 'ogretmen' && active(state.teachers, 't1').subjectId !== data.subjectId)
+  if (
+    session.role === 'ogretmen' &&
+    active(state.teachers, sessionTeacherId(state, session)).subjectId !== data.subjectId
+  )
     throw new DomainError(
       'exam_branch_forbidden',
       'Yalnızca kendi branşınızın sonuçlarını girebilirsiniz.',
@@ -689,7 +704,7 @@ export function eventStudents(state: State, event: { classId?: string | null; br
 }
 function ownedClub(state: State, session: Session, recordId: string | undefined) {
   const club = active(state.clubs, recordId)
-  if (session.role === 'ogretmen' && club.teacherId !== 't1')
+  if (session.role === 'ogretmen' && club.teacherId !== sessionTeacherId(state, session))
     throw new DomainError('club_own_only', 'Yalnızca sorumlu olduğunuz kulübü yönetebilirsiniz.', {
       kind: 'forbidden',
     })
@@ -713,7 +728,8 @@ function executeWorkflow(
     throw new DomainError('permission_denied', 'Bu işlem için rolünüzün yetkisi yok.', {
       kind: 'forbidden',
     })
-  if (session.role === 'ogretmen') active(state.teachers, 't1')
+  const teacherId = sessionTeacherId(state, session)
+  if (session.role === 'ogretmen') active(state.teachers, teacherId)
   // Şeması olan her komut, dalın ilk adımı olarak girdisini kendi şemasıyla doğrular.
   if (command === 'goal') {
     const data = workflowSchemas.goal.parse(input)
@@ -730,7 +746,7 @@ function executeWorkflow(
       )
     if (
       session.role === 'ogretmen' &&
-      data.subjectId !== state.teachers.find((t) => t.id === 't1')?.subjectId
+      data.subjectId !== state.teachers.find((t) => t.id === teacherId)?.subjectId
     )
       throw new DomainError(
         'goal_own_subject_only',
@@ -860,7 +876,7 @@ function executeWorkflow(
     const data = workflowSchemas.guidance.parse(input)
     scopedStudent(state, session, data.studentId)
     active(state.teachers, data.teacherId)
-    if (session.role === 'ogretmen' && data.teacherId !== 't1')
+    if (session.role === 'ogretmen' && data.teacherId !== teacherId)
       throw new DomainError(
         'guidance_own_only',
         'Kendi sorumluluğunuzda takip dosyası açabilirsiniz.',
@@ -879,7 +895,7 @@ function executeWorkflow(
     const data = workflowSchemas['guidance-note'].parse(input)
     const entry = requireRecord(state.guidanceCases, recordId)
     scopedStudent(state, session, entry.studentId)
-    if (session.role === 'ogretmen' && entry.teacherId !== 't1')
+    if (session.role === 'ogretmen' && entry.teacherId !== teacherId)
       throw new DomainError('guidance_not_owner', 'Bu takip dosyasının sorumlusu değilsiniz.', {
         kind: 'forbidden',
       })
@@ -1206,7 +1222,7 @@ function executeWorkflow(
     )?.teacherId
     if (!teacher || !state.teachers.some((t) => t.id === teacher && t.isActive))
       throw new DomainError('lesson_no_teacher', 'Bu ders için aktif öğretmen ataması bulunmuyor.')
-    if (session.role === 'ogretmen' && teacher !== 't1')
+    if (session.role === 'ogretmen' && teacher !== teacherId)
       throw new DomainError(
         'homework_own_lesson_only',
         'Yalnızca kendi dersiniz için görev verebilirsiniz.',
@@ -1244,7 +1260,7 @@ function executeWorkflow(
     const data = workflowSchemas['study-review'].parse(input)
     const entry = requireRecord(state.studyTasks, recordId)
     scopedStudent(state, session, entry.studentId)
-    if (session.role === 'ogretmen' && entry.teacherId !== 't1')
+    if (session.role === 'ogretmen' && entry.teacherId !== teacherId)
       throw new DomainError('homework_not_owner', 'Bu çalışma görevinin öğretmeni değilsiniz.', {
         kind: 'forbidden',
       })
@@ -1282,7 +1298,7 @@ function executeWorkflow(
       { ...state, schedule: [], appointments: [], schoolEvents: [] },
       {
         ...data,
-        teacherId: session.role === 'ogretmen' ? 't1' : null,
+        teacherId: session.role === 'ogretmen' ? teacherId : null,
         room: data.location,
         duration: (Date.parse(data.endDate) - Date.parse(data.date)) / 60000,
         studentIds: eventStudents(state, data).map((student) => student.id),
@@ -1295,7 +1311,7 @@ function executeWorkflow(
       {
         ...data,
         consentDeadline: atDay(data.consentDeadline),
-        teacherId: session.role === 'ogretmen' ? 't1' : null,
+        teacherId: session.role === 'ogretmen' ? teacherId : null,
         status: 'Planlandı',
       },
       now,
@@ -1339,7 +1355,7 @@ function executeWorkflow(
   }
   if (command === 'event-cancel') {
     const event = requireRecord(state.schoolEvents, recordId)
-    if (session.role === 'ogretmen' && event.teacherId !== 't1')
+    if (session.role === 'ogretmen' && event.teacherId !== teacherId)
       throw new DomainError(
         'event_cancel_own_only',
         'Yalnızca oluşturduğunuz etkinliği iptal edebilirsiniz.',
@@ -1444,7 +1460,10 @@ function executeWorkflow(
     const data = workflowSchemas.club.parse(input)
     active(state.branches, data.branchId)
     const teacher = active(state.teachers, data.teacherId)
-    if (teacher.branchId !== data.branchId || (session.role === 'ogretmen' && teacher.id !== 't1'))
+    if (
+      teacher.branchId !== data.branchId ||
+      (session.role === 'ogretmen' && teacher.id !== teacherId)
+    )
       throw new DomainError(
         'club_teacher_invalid',
         'Kulüp sorumlusu kampüse uygun olmalıdır; öğretmen kendi adına kulüp açabilir.',
@@ -1627,13 +1646,14 @@ export function runWorkflow(
   state.audit.unshift({
     id: makeId('audit'),
     actor: session.role,
+    // TODO(core-audit-user): kişi kimliği oturumdan gelince veli ve idari roller de kişiye bağlanır.
     user_id:
       session.role === 'ogretmen'
-        ? 't1'
+        ? (sessionTeacherId(state, session) ?? '')
         : session.role === 'ogrenci'
-          ? 's1'
+          ? (linkedRecordId(sessionActor(state, session), 'student') ?? '')
           : session.role === 'veli'
-            ? 'p1'
+            ? DEMO_PARENT_ID
             : `demo-${session.role}`,
     action: command,
     table_name: collection,

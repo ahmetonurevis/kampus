@@ -4,7 +4,9 @@ import type { FilterField } from '../src/lib/list-query.ts'
 import { initialListState, listReducer } from '../src/lib/list-state.ts'
 import {
   activeFields,
+  emptyListView,
   filterSelectionLabel,
+  listNarrowed,
   listView,
   mobileColumnSplit,
   orderRows,
@@ -154,4 +156,42 @@ test('hazır filtre yalnız aynı etkin değerlerde seçili görünür', () => {
   )
   assert.equal(presetActive({ status: 'Ödendi' }, {}), false)
   assert.equal(presetActive({}, { status: 'Ödendi' }), false)
+})
+
+test('daraltma: arama, filtre değeri veya dış filtre varsa etkin; boş değerler sayılmaz', () => {
+  const idle = initialListState(8)
+  assert.equal(listNarrowed(idle), false)
+  assert.equal(listNarrowed({ ...idle, filters: { status: '', class: null } }), false)
+  assert.equal(listNarrowed({ ...idle, filters: { amount: { min: '', max: '' } } }), false)
+  assert.equal(listNarrowed({ ...idle, query: 'deniz' }), true)
+  assert.equal(listNarrowed({ ...idle, filters: { status: 'Ödendi' } }), true)
+  assert.equal(listNarrowed({ ...idle, filters: { amount: { min: '5', max: '' } } }), true)
+  assert.equal(listNarrowed(idle, true), true)
+})
+
+test('boş liste: daraltma yoksa "kayıt yok" metni ve temizleme düğmesi yok', () => {
+  const idle = initialListState(8)
+  const none = emptyListView(idle, false, {})
+  assert.equal(none.showClear, false)
+  assert.equal(none.text, 'Henüz kayıt yok.')
+  const custom = emptyListView(idle, false, { empty: 'Henüz etüt yok.' })
+  assert.equal(custom.text, 'Henüz etüt yok.')
+  assert.equal(custom.showClear, false)
+})
+
+test('boş liste: arama veya filtre etkinse sonuç yok metni ve temizleme düğmesi var', () => {
+  const idle = initialListState(8)
+  for (const [state, external] of [
+    [{ ...idle, query: 'zzz' }, false],
+    [{ ...idle, filters: { status: 'Ödendi' } }, false],
+    [idle, true],
+  ] as const) {
+    const view = emptyListView(state, external, { empty: 'Henüz etüt yok.' })
+    assert.equal(view.showClear, true)
+    assert.equal(view.text, 'Aramanızla eşleşen kayıt bulunamadı.')
+  }
+  const own = emptyListView({ ...idle, query: 'x' }, false, {
+    emptyFiltered: 'Aramanızla eşleşen duyuru bulunamadı.',
+  })
+  assert.equal(own.text, 'Aramanızla eşleşen duyuru bulunamadı.')
 })

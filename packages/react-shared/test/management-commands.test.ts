@@ -5,7 +5,12 @@ import { createKampusClient } from '@kampus/api-client/client.ts'
 import { ApiError } from '@kampus/api-client/errors.ts'
 
 import { runRequest } from '../src/api-result.ts'
-import { commandFeedback, commandHeaders } from '../src/commands.ts'
+import {
+  commandFeedback,
+  commandHeaders,
+  IF_MATCH_MISSING_CODE,
+  IF_MATCH_MISSING_MESSAGE,
+} from '../src/commands.ts'
 import {
   archiveRecordRequest,
   MANAGEMENT_MESSAGES,
@@ -111,6 +116,36 @@ describe('kampüs, öğretmen ve sınıf kaydetme', () => {
       ['PATCH /api/v1/branches/b1', 'PATCH /api/v1/teachers/t1', 'PATCH /api/v1/classes/c1'],
     )
     for (const item of sent) assert.equal(item.headers.get('if-match'), '"4"')
+  })
+})
+
+describe('sürümsüz düzenleme', () => {
+  test('DOM-YTK-001: okunan sürüm yoksa kampüs, öğretmen ve sınıf PATCH isteği atılmaz', async () => {
+    const { client, sent } = fakeClient()
+    const headers = commandHeaders('key-12345')
+    const missing = (error: unknown) =>
+      error instanceof ApiError &&
+      error.code === IF_MATCH_MISSING_CODE &&
+      error.message === IF_MATCH_MISSING_MESSAGE
+    await assert.rejects(
+      runRequest(() =>
+        saveBranchRequest(client, { recordId: 'b1', version: 4, body: branch }, headers),
+      ),
+      missing,
+    )
+    await assert.rejects(
+      runRequest(() =>
+        saveTeacherRequest(client, { recordId: 't1', version: 4, body: teacher }, headers),
+      ),
+      missing,
+    )
+    await assert.rejects(
+      runRequest(() =>
+        saveClassRequest(client, { recordId: 'c1', version: 4, body: schoolClass }, headers),
+      ),
+      missing,
+    )
+    assert.equal(sent.length, 0)
   })
 })
 

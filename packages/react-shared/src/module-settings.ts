@@ -2,7 +2,7 @@ import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { components } from '@kampus/api-client/schema.d.ts'
 import { moduleInfo, type ModuleInfo } from '@kampus/school-core/modules/module-catalog.ts'
 
-import type { CommandHeaders, CommandMessages } from './commands.ts'
+import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 
 /**
  * Kurum modül ayarının (`GET /modules`, `PATCH /modules/:moduleKey`, DOM-YTK-040/042) saf
@@ -39,8 +39,8 @@ export function moduleToggleRequest(
   headers: CommandHeaders,
 ) {
   return client.PATCH('/api/v1/modules/{moduleKey}', {
-    // `if-match` zorunludur; `commandHeaders` sürüm verildiğinde ekler.
-    params: { path: { moduleKey }, header: { ...headers, 'if-match': headers['if-match'] ?? '' } },
+    // `if-match` zorunludur; sürüm yoksa istek atılmaz (`requireIfMatch`).
+    params: { path: { moduleKey }, header: { ...headers, 'if-match': requireIfMatch(headers) } },
     body: { enabled },
   })
 }

@@ -29,7 +29,7 @@ type ModalProps = {
 }
 
 /**
- * Ortak pencere (Vue `Modal.vue`): Radix odak tuzağı, Esc ve iç içe pencereler; kapatma
+ * Ortak pencere (Vue `Modal.vue`): cam yalnız başlık ve çerçevede, form/içerik gövdesi opak; Radix odak tuzağı, Esc ve iç içe pencereler; kapatma
  * düğmesi "Pencereyi kapat". Odak kapanınca açan öğeye döner.
  */
 export function Modal({
@@ -62,8 +62,10 @@ export function Modal({
             <DialogDescription className="text-sm">{description}</DialogDescription>
           ) : null}
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">{children}</div>
-        {footer ? <DialogFooter className="border-t px-6 py-4">{footer}</DialogFooter> : null}
+        <div className="min-h-0 flex-1 overflow-y-auto bg-surface p-6">{children}</div>
+        {footer ? (
+          <DialogFooter className="border-t bg-surface px-6 py-4">{footer}</DialogFooter>
+        ) : null}
       </DialogContent>
     </Dialog>
   )

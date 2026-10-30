@@ -3,16 +3,23 @@ import type { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { runAssessment } from '@kampus/school-core/lib/assessment-automation.ts'
-import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
+import { requireAuthorized, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
 import {
   payInvoice,
   recordAttendance,
   type attendanceInputSchema,
+  type MakeId,
   type Session,
 } from '@kampus/school-core/lib/domain.ts'
 import {
   archiveRecord,
+  createClass,
   restoreRecord,
+  saveBranch,
+  saveTeacher,
+  updateBranch,
+  updateClass,
+  updateTeacher,
   type ArchiveKind,
 } from '@kampus/school-core/lib/school-management.ts'
 import { recordGrade, updateGrade } from '@kampus/school-core/lib/grades.ts'
@@ -43,7 +50,8 @@ import {
 
 /**
  * Yazma uçlarının servisi: school-core işlemlerini (`runWorkflow`, `runAssessment`,
- * `payInvoice`, `recordAttendance`, `archiveRecord`, `restoreRecord`) işlem çalıştırıcıyla
+ * `payInvoice`, `recordAttendance`, `archiveRecord`, `restoreRecord`, kampüs/öğretmen/sınıf
+ * kaydı) işlem çalıştırıcıyla
  * yürütür. Yetki ve kapsam core'un kuralıdır: oturum core'a üyelik bağlantılarıyla
  * (`links`) verilir ve core kişiye göre kapsamı (`scopeFor`) kendisi hesaplar. Yetkiyi kendisi
  * denetlemeyen temel işlemlerden (ödeme, yoklama, arşiv) önce core `requireAuthorized` çalışır
@@ -388,6 +396,83 @@ async function archiveOrRestore(
       },
     },
     options,
+  )
+}
+
+const SAVE_ACTION = {
+  branch: 'branch.save',
+  teacher: 'teacher.save',
+  class: 'class.save',
+} as const satisfies Record<ArchiveKind, WriteAction>
+
+/** Core kaydetme işlemi: `recordId` yoksa oluşturur, varsa kısmi gövdeyle düzenler. */
+function saveRecord(
+  state: State,
+  kind: ArchiveKind,
+  recordId: string | null,
+  input: unknown,
+  makeId: MakeId,
+  now: string,
+): string {
+  switch (kind) {
+    case 'branch':
+      return recordId === null
+        ? saveBranch(state, input, makeId)
+        : updateBranch(state, recordId, input, makeId)
+    case 'teacher':
+      return recordId === null
+        ? saveTeacher(state, input, makeId, null, now)
+        : updateTeacher(state, recordId, input, makeId, now)
+    case 'class':
+      return recordId === null
+        ? createClass(state, input, makeId, now)
+        : updateClass(state, recordId, input, makeId, now)
+    default:
+      return kind satisfies never
+  }
+}
+
+/**
+ * Kampüs/öğretmen/sınıf kaydı (core `saveBranch`, `saveTeacher`, `createClass`; düzenlemede
+ * `updateBranch`, `updateTeacher`, `updateClass`). Yetki core `branch.save`/`teacher.save`/
+ * `class.save`: yalnız yönetici (DOM-YTK-001). Kontenjan, branş, derslik ve program çakışması
+ * kuralları core'dadır. Oluşturma 201 döner; düzenlemede `If-Match` kaydın okunan sürümüdür
+ * (rota zorunlu tutar). Öğretmen kaydı hesap açmaz: hesap ve `membership_links` kurum üyeleri
+ * ucunun işidir.
+ */
+export async function saveRecordCommand(
+  ctx: ServiceContext,
+  kind: ArchiveKind,
+  recordId: string | null,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  const collection = ARCHIVE_TARGET[kind]
+  const action = SAVE_ACTION[kind]
+  const spec = OPERATION_COMMANDS[action]
+  return execute(
+    ctx,
+    {
+      action: `${collection}.${recordId === null ? 'create' : 'update'}`,
+      collections: spec.collections,
+      ...(recordId !== null && options.expectedVersion !== null
+        ? { expectedVersions: [{ collection, id: recordId, version: options.expectedVersion }] }
+        : {}),
+      // Yeni kaydın kimliği işlem çalışınca belli olur.
+      entity: recordId === null ? auditEntity(collection) : { type: collection, id: recordId },
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        return {
+          scalars,
+          run: (state, { now, makeId }): Entity => {
+            requireAuthorized(actor, action, {}, state, { now, institutionType })
+            return { collection, id: saveRecord(state, kind, recordId, input, makeId, now) }
+          },
+        }
+      },
+    },
+    options,
+    recordId === null ? 201 : 200,
   )
 }
 

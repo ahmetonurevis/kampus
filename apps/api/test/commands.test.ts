@@ -414,6 +414,10 @@ describe('yazma uçları', () => {
         'POST /api/v1/conversations/{conversationId}/messages',
         // Kurum modül ayarı (routes/modules.ts).
         'PATCH /api/v1/modules/{moduleKey}',
+        // Kampüs, öğretmen ve sınıf oluşturma (yeniden denemede ikinci kayıt açılmaz).
+        'POST /api/v1/branches',
+        'POST /api/v1/teachers',
+        'POST /api/v1/classes',
       ]
       assert.deepEqual(required.sort(), expected.sort())
     })

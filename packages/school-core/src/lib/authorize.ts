@@ -47,6 +47,10 @@ export type WriteTargets = {
   'grade.update': { studentId: string; subjectId: string; classId?: string; reason?: string }
   'record.archive': { kind: ArchiveKind }
   'record.restore': { kind: ArchiveKind }
+  // Oluşturma ve düzenleme aynı eylemdir; kural ve çakışmalar işlemdedir (`lib/school-management.ts`).
+  'branch.save': Record<string, never>
+  'teacher.save': Record<string, never>
+  'class.save': Record<string, never>
   // İletişim (DOM-ILT-001…024, DOM-YTK-052); kararlar `lib/communication-access.ts`.
   'announcement.publish': { target: AnnouncementTarget; category: string }
   /** Kayıt yoksa `undefined`; varlık işlemin işidir (404). */
@@ -96,6 +100,11 @@ export const WRITE_ACTION_ROLES = {
   // Kampüs, sınıf, kadro yalnız yöneticidedir (yetki matrisi, DOM-YTK-020).
   'record.archive': ['yonetici'],
   'record.restore': ['yonetici'],
+  // Kampüs, sınıf ve kadro kaydı da yalnız yöneticinindir: ön büro sınıf ve kontenjanı yalnız
+  // okur, öğretmen kendi sınıflarını okur (yetki matrisi "Kampüs, sınıf, kadro", DOM-YTK-001).
+  'branch.save': ['yonetici'],
+  'teacher.save': ['yonetici'],
+  'class.save': ['yonetici'],
   // Duyuruyu yönetici, idari konuda ön büro, kendi sınıflarına öğretmen yayınlar; öğrenci ve
   // veli yayınlamaz (DOM-ILT-002). Düzeltme ve geri çekme yayınlayan veya yöneticidedir (DOM-ILT-004).
   'announcement.publish': ['yonetici', 'onburo', 'ogretmen'],
@@ -252,6 +261,9 @@ function decide(
     }
     case 'record.archive':
     case 'record.restore':
+    case 'branch.save':
+    case 'teacher.save':
+    case 'class.save':
       return ALLOWED
     case 'announcement.publish':
       return fromCommunication(

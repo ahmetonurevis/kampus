@@ -53,16 +53,22 @@ export function requireMarkedHeaders<T extends { schema: unknown }>(transformed:
 }
 
 /**
- * Komut uçlarının başlıkları. Nesne gevşektir: Fastify doğrulanan başlık nesnesini istekte
+ * Komut uçlarının başlıkları. `ifMatch: 'required'`: düzenleme uçlarında (`PATCH`) sürüm
+ * zorunludur; eksikse Zod değil 400 `if_match_required` döner (`commands.ts` `requireIfMatch`).
+ * Nesne gevşektir: Fastify doğrulanan başlık nesnesini istekte
  * kullandığı için bilinmeyen başlıklar (çerez, köken) atılmamalıdır. `ifMatch: false`: işlemin
  * önceden var olan konusu yoktur (oluşturma); başlık şemada yer almaz ve gönderilirse 400
  * `if_match_not_supported` döner (`command-support.ts`), sessizce yok sayılmaz.
  */
 export function commandHeadersSchema(
   idempotency: 'required' | 'optional',
-  { ifMatch = true }: { ifMatch?: boolean } = {},
+  { ifMatch = true }: { ifMatch?: boolean | 'required' } = {},
 ) {
   const key = z.string().regex(IDEMPOTENCY_KEY_PATTERN, 'İstek anahtarı geçersiz.').optional()
+  const version = z
+    .string()
+    .regex(/^(W\/)?"?\d{1,9}"?$/, 'Sürüm geçersiz.')
+    .optional()
   return z.looseObject({
     'idempotency-key': (idempotency === 'required'
       ? key.meta({ [REQUIRED_HEADER_MARK]: true })
@@ -72,17 +78,21 @@ export function commandHeadersSchema(
         ? 'Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır.'
         : 'İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır.',
     ),
-    ...(ifMatch
+    ...(ifMatch === 'required'
       ? {
-          'if-match': z
-            .string()
-            .regex(/^(W\/)?"?\d{1,9}"?$/, 'Sürüm geçersiz.')
-            .optional()
+          'if-match': version
+            .meta({ [REQUIRED_HEADER_MARK]: true })
             .describe(
-              'İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`.',
+              'Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`.',
             ),
         }
-      : {}),
+      : ifMatch
+        ? {
+            'if-match': version.describe(
+              'İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`.',
+            ),
+          }
+        : {}),
   })
 }
 

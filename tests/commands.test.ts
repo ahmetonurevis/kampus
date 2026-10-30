@@ -21,7 +21,16 @@ import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts
 import { runAssessment } from '../packages/school-core/src/lib/assessment-automation.ts'
 import { payInvoice, recordAttendance } from '../packages/school-core/src/lib/domain.ts'
 import { recordGrade, updateGrade } from '../packages/school-core/src/lib/grades.ts'
-import { archiveRecord, restoreRecord } from '../packages/school-core/src/lib/school-management.ts'
+import {
+  archiveRecord,
+  createClass,
+  restoreRecord,
+  saveBranch,
+  saveTeacher,
+  updateBranch,
+  updateClass,
+  updateTeacher,
+} from '../packages/school-core/src/lib/school-management.ts'
 import {
   markAnnouncementRead,
   markMessagesRead,
@@ -348,6 +357,48 @@ test('Temel yazma işlemleri yetkiyle birlikte yalnız tablodaki koleksiyonlarla
   const restore = operation(state, 'record.restore')
   requireAuthorized(director, 'record.restore', { kind: 'class' }, restore)
   restoreRecord(restore, 'class', 'c1')
+  const branch = operation(state, 'branch.save')
+  requireAuthorized(director, 'branch.save', {}, branch)
+  const branchId = saveBranch(branch, { name: 'Tablo Kampüsü', address: 'Adres' }, id)
+  updateBranch(operation(state, 'branch.save'), branchId, { address: 'Yeni adres' }, id)
+  const teacherSave = operation(state, 'teacher.save')
+  requireAuthorized(director, 'teacher.save', {}, teacherSave)
+  const teacherId = saveTeacher(
+    teacherSave,
+    {
+      name: 'Tablo Öğretmeni',
+      email: 'tablo@kampus.example',
+      phone: '05559990003',
+      subjectId: 'math',
+      branchId: 'b1',
+    },
+    id,
+    null,
+    now,
+  )
+  updateTeacher(operation(state, 'teacher.save'), teacherId, { branchId: branchId }, id, now)
+  const classSave = operation(state, 'class.save')
+  requireAuthorized(director, 'class.save', {}, classSave)
+  const subjectTeachers = Object.fromEntries(
+    state.assignments.filter((a) => a.classId === 'c1').map((a) => [a.subjectId, a.teacherId]),
+  )
+  const classId = createClass(
+    classSave,
+    {
+      grade: 7,
+      section: 'T',
+      branchId: 'b1',
+      teacherId: 't1',
+      capacity: 20,
+      room: 'T1',
+      subjectTeachers,
+    },
+    id,
+    now,
+  )
+  // Var olan sınıfın düzenlemesi program, etüt ve açık işleri de okur.
+  updateClass(operation(state, 'class.save'), 'c1', { room: 'T2' }, id, now)
+  updateClass(operation(state, 'class.save'), classId, { capacity: 22 }, id, now)
 })
 
 test('İletişim işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır', () => {

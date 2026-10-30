@@ -23,6 +23,8 @@ Uygulama notları: Ana ekran bölümleri `Section` bileşeninin `panel` seçene�
 
 1.4.0 uygulama notları: Okul iş akışı modülleri (rehberlik, deneme, hedef planı, kayıt yenileme, program, çalışma planı, takvim, servis, yemek, kulüp) `WorkflowScreen` ile çalışır; liste/detay/form tanımları `school-core/lib/workflow-presentation.js` içindedir, form `ui/WorkflowFormSheet` ve alan çizici `ui/WorkflowFields` ile kontrol adımlı ve zod doğrulamalı sunulur. Optik değerlendirme ve otomatik etüt kendi ekranlarını kullanır; CSV/DAT/TXT dosyaları `lib/text-files.ts` ile seçilir, UTF-8 ve Windows-1254 `school-core/lib/text-decoding.js` ile çözülür. `commit` isteğe bağlı `onError` alır; açık pencerede hata form içinde gösterilir.
 
+API modu: `EXPO_PUBLIC_API_URL` üretimde (`__DEV__` kapalı) yalnız `https` olabilir; `http` adres `invalid` olur ve yapılandırma hatası gösterilir (`api/config.ts`). Geliştirmede `http://127.0.0.1`, `10.0.2.2` ve LAN adresleri çalışır. Giriş ekranına düşüşte (401 dahil) ve kullanıcı kimliği değişince sorgu önbelleği temizlenir (`ApiAuthProvider`, `KampusProvider`).
+
 ## Performans ve kayıt bütünlüğü
 
 - Kategori değişiminde ana ekran yeniden kurulmaz; kapalı menüler ve odakta olmayan ekranlar gereksiz çizilmez.

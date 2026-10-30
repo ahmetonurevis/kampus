@@ -7,7 +7,9 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { SignInResult } from '@kampus/react-shared/sign-in-errors.ts'
+import { clearSessionData } from '@kampus/react-shared/query-client.ts'
 import { useMe } from '@kampus/react-shared/use-active-institution.ts'
 import { useSession } from '@kampus/react-shared/use-session.ts'
 import { recordError } from '../store/SchoolProvider.tsx'
@@ -42,6 +44,7 @@ export function ApiAuthProvider({
   authClient: ApiAuthClient
   children: ReactNode
 }) {
+  const queryClient = useQueryClient()
   const { status } = useSession()
   const me = useMe()
   const state = apiAuthState(status, { data: me.data, error: me.error })
@@ -54,10 +57,15 @@ export function ApiAuthProvider({
     if (state.status === 'loading') return
     // Dış sistemle (oturum deposu) eşitleme: kapanış ancak durum değişince bilinir.
     if (sessionExpired(previous.current, state.status, intentional.current)) setExpired(true)
+    // Giriş ekranına her düşüşte (401 dahil) önceki kullanıcının verisi silinir: Better Auth
+    // durumu `authenticated` kalsa bile sonraki girişe sızmaz.
+    if (previous.current === 'signed-in' && state.status === 'signed-out') {
+      void clearSessionData(queryClient)
+    }
     if (state.status === 'signed-in') setExpired(false)
     if (state.status === 'signed-out') intentional.current = false
     previous.current = state.status
-  }, [state.status])
+  }, [state.status, queryClient])
 
   const { refetch } = me
   const value = useMemo<ApiAuthValue>(

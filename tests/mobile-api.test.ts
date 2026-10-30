@@ -265,8 +265,8 @@ describe('kurum değişimi', () => {
     queryClient.setQueryData(institutionKey('test-inst-a', 'students'), ['ogrenci'])
     queryClient.setQueryData(ME_QUERY_KEY, me())
     const action = cacheActionFor(
-      { authenticated: true, institutionId: 'test-inst-a' },
-      { authenticated: true, institutionId: 'test-inst-b' },
+      { authenticated: true, userId: 'test-user-a', institutionId: 'test-inst-a' },
+      { authenticated: true, userId: 'test-user-a', institutionId: 'test-inst-b' },
     )
     assert.equal(action, 'clear-institution')
     await clearInstitutionCache(queryClient)
@@ -282,11 +282,23 @@ describe('kurum değişimi', () => {
   test('oturum kapanınca önbelleğin tamamı silinir', () => {
     assert.equal(
       cacheActionFor(
-        { authenticated: true, institutionId: 'test-inst-a' },
-        { authenticated: false, institutionId: null },
+        { authenticated: true, userId: 'test-user-a', institutionId: 'test-inst-a' },
+        { authenticated: false, userId: null, institutionId: null },
       ),
       'clear-all',
     )
+  })
+
+  test('/me 401 sonrası Better Auth hâlâ açıkken aynı kurumda B girişi önbelleği boşaltır', async () => {
+    const queryClient = createKampusQueryClient()
+    queryClient.setQueryData(institutionKey('test-inst-a', 'classes'), ['A sınıfı'])
+    const action = cacheActionFor(
+      { authenticated: true, userId: 'test-user-a', institutionId: 'test-inst-a' },
+      { authenticated: true, userId: 'test-user-b', institutionId: 'test-inst-a' },
+    )
+    assert.equal(action, 'clear-all')
+    queryClient.clear()
+    assert.equal(queryClient.getQueryData(institutionKey('test-inst-a', 'classes')), undefined)
   })
 })
 

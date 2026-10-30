@@ -9,26 +9,35 @@ import { useActiveInstitutionId, useMe } from './use-active-institution.ts'
 import { useSession } from './use-session.ts'
 
 /**
- * Oturum kapanınca bütün önbelleği, etkin kurum değişince kuruma bağlı sorguları siler.
+ * Oturum kapanınca ya da kullanıcı değişince bütün önbelleği, etkin kurum değişince kuruma bağlı sorguları siler.
  * Kurum başka sekmede/oturum yenilemesiyle de değişebildiği için `switchInstitution`'dan
  * bağımsız, durumu izleyerek çalışır.
  */
 function CacheGuard() {
   const queryClient = useQueryClient()
-  const { status } = useSession()
+  const { status, user } = useSession()
+  const userId = user?.id ?? null
   const me = useMe()
   const institutionId = useActiveInstitutionId()
   const settled = !me.isLoading && status !== 'loading'
-  const previous = useRef<CacheSnapshot>({ authenticated: false, institutionId: null })
+  const previous = useRef<CacheSnapshot>({
+    authenticated: false,
+    userId: null,
+    institutionId: null,
+  })
 
   useEffect(() => {
     if (!settled) return
-    const next: CacheSnapshot = { authenticated: status === 'authenticated', institutionId }
+    const next: CacheSnapshot = {
+      authenticated: status === 'authenticated',
+      userId,
+      institutionId,
+    }
     const action = cacheActionFor(previous.current, next)
     previous.current = next
     if (action === 'clear-all') queryClient.clear()
     else if (action === 'clear-institution') void clearInstitutionCache(queryClient)
-  }, [settled, status, institutionId, queryClient])
+  }, [settled, status, userId, institutionId, queryClient])
 
   return null
 }

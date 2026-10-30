@@ -15,6 +15,7 @@ import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { isSearchActive, sortableColumns } from '@/lib/collection-list.ts'
+import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import {
   financeLookups,
@@ -29,6 +30,7 @@ import {
   type InvoiceRow,
 } from './finance-rows.ts'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
+import { PaymentPanel } from './PaymentPanel.tsx'
 
 const INVOICE_URL_FILTERS = { status: 'durum' }
 const SORTABLE = sortableColumns(INVOICE_LIST)
@@ -92,6 +94,8 @@ export function FinancePage({ page }: { page: NavPage }) {
 
   const panel = useDetailPanel('detay')
   const openInvoice = panel.open
+  const payment = useDetailPanel('tahsilat')
+  const openPayment = payment.open
   const fetchAll = useCoreFetchAll('invoices')
   const csv = useCsvExport()
 
@@ -142,12 +146,28 @@ export function FinancePage({ page }: { page: NavPage }) {
         cell: (row) => <strong className="font-semibold">{money(row.amount)}</strong>,
       },
       { key: 'status', label: 'Durum', cell: (row) => <StatusBadge text={row.status} /> },
+      {
+        key: ACTIONS_KEY,
+        label: 'İşlemler',
+        // TODO(pdf-receipt): ödenmiş taksitte "Dekont" düğmesi PDF görevinde eklenir.
+        cell: (row) =>
+          row.paidAt ? null : (
+            <Button
+              size="sm"
+              aria-label={`${row.studentName} ${row.installment}. taksiti tahsil et`}
+              onClick={() => openPayment(row.id)}
+            >
+              Tahsil et
+            </Button>
+          ),
+      },
     ],
-    [openInvoice],
+    [openInvoice, openPayment],
   )
 
   function download() {
-    void csv.download(CSV_NAME, columns, async () => {
+    const csvColumns = columns.filter((column) => column.key !== ACTIONS_KEY)
+    void csv.download(CSV_NAME, csvColumns, async () => {
       if (plan.kind === 'empty') return []
       const rows = (await fetchAll(plan.query)).map((item) => invoiceRow(item, lookups, today))
       const filtered = plan.kind === 'all' ? rows.filter((row) => row.status === plan.status) : rows
@@ -231,7 +251,18 @@ export function FinancePage({ page }: { page: NavPage }) {
           }
         />
       </section>
-      <InvoiceSummaryPanel invoiceId={panel.selectedId} lookups={lookups} onClose={panel.close} />
+      <InvoiceSummaryPanel
+        invoiceId={panel.selectedId}
+        lookups={lookups}
+        onClose={panel.close}
+        actions={(row) => (
+          <Button onClick={() => openPayment(row.id)}>
+            <Icon name="Wallet" size={17} aria-hidden="true" />
+            Tahsil et
+          </Button>
+        )}
+      />
+      <PaymentPanel invoiceId={payment.selectedId} lookups={lookups} onClose={payment.close} />
     </>
   )
 }

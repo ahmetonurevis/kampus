@@ -36,9 +36,9 @@ export interface ApiCommandOptions<TVariables, TResult extends ApiResult> {
   onSuccess?: (data: DataOf<TResult>, variables: TVariables) => void | Promise<void>
 }
 
-export interface SubmitOptions {
+export interface SubmitOptions<TName extends string> {
   /** react-hook-form `form.setError`: sunucu doğrulama maddeleri alanlara yazılır. */
-  setError?: SetFieldError
+  setError?: (name: TName, error: { type: string; message: string }) => void
 }
 
 /**
@@ -62,9 +62,9 @@ export function useApiCommand<TVariables, TResult extends ApiResult>(
     onSuccess: (data, { variables }) => options.onSuccess?.(data, variables),
   })
 
-  function submit(
+  function submit<TName extends string = string>(
     variables: TVariables,
-    { setError }: SubmitOptions = {},
+    { setError }: SubmitOptions<TName> = {},
   ): Promise<CommandOutcome<DataOf<TResult>>> {
     return runCommand(
       session,
@@ -76,7 +76,8 @@ export function useApiCommand<TVariables, TResult extends ApiResult>(
         messages: options.messages,
       },
       variables,
-      { setError, notifyError },
+      // Sunucu yolu formun alan adıdır; tanınmayan yol react-hook-form'da yalnız boşta bir hatadır.
+      { setError: setError as SetFieldError | undefined, notifyError },
     )
   }
 

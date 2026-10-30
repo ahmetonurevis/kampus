@@ -2,9 +2,11 @@ import { use, useMemo } from 'react'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
+import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
@@ -21,7 +23,7 @@ import {
 import type { UrlFilters } from '@/lib/list-url.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { TableSection } from '../academic/AcademicParts.tsx'
-import { PendingWriteNotice } from './PendingWriteNotice.tsx'
+import { RequestFormPanel, NEW_REQUEST } from './RequestFormPanel.tsx'
 import { RequestPanel } from './RequestPanel.tsx'
 import {
   REQUEST_CATEGORIES,
@@ -44,8 +46,8 @@ type Audience = 'parent' | 'front-office'
  * liste; arama, durum ve tür filtresi (adreste), sıralama, satırdan sağ panelde ayrıntı, CSV.
  * Velide liste seçili çocuğun (`?cocuk=`) talepleriyle sınırlanır; kapsamı ayrıca sunucu velinin
  * bağlı çocuklarına daraltır. Ön büro kurumun bütün taleplerini görür.
- * TODO(api-request-write): talep açma (veli) ile durum/ilgili birim güncelleme ve yanıt (ön büro)
- * komut uçları API'de ve core'da yok; uçlar gelene kadar ekran yalnız okur ve bunu söyler.
+ * Veli "Yeni talep" ile sağ panelde talep açar (`?talep-form=yeni`); ön büro talep panelinde durum,
+ * ilgili birim ve yanıtı yazar (`RequestUpdateForm`).
  * SLA veya süre alanı core `requests` kaydında tanımlı değildir; gösterilmez.
  */
 export function RequestsPage({ page, audience }: { page: NavPage; audience: Audience }) {
@@ -57,6 +59,7 @@ export function RequestsPage({ page, audience }: { page: NavPage; audience: Audi
   const category = filterValue(list.state.filters.category)
   const search = useDebouncedValue(list.state.query)
   const panel = useDetailPanel('talep')
+  const form = useDetailPanel('talep-form')
   const openRecord = panel.open
   const fetchAll = useCoreFetchAll('requests')
   const csv = useCsvExport()
@@ -125,12 +128,18 @@ export function RequestsPage({ page, audience }: { page: NavPage; audience: Audi
   const tableName = parent ? 'Taleplerim' : 'Şikayet ve talepler'
   return (
     <>
-      <PageHeading title={page.title} description={page.description} />
-      <PendingWriteNotice>
-        {parent
-          ? 'Web üzerinden yeni talep gönderme hazırlanıyor. Şimdilik ön büroya ilettiğiniz talepleri ve durumlarını buradan izleyebilirsiniz.'
-          : 'Talebin durumunu değiştirme ve yanıt yazma hazırlanıyor. Şimdilik talepler yalnız okunabilir.'}
-      </PendingWriteNotice>
+      <PageHeading
+        title={page.title}
+        description={page.description}
+        actions={
+          parent ? (
+            <Button onClick={() => form.open(NEW_REQUEST)}>
+              <Icon name="Plus" size={17} aria-hidden="true" />
+              Yeni talep
+            </Button>
+          ) : undefined
+        }
+      />
       <TableSection
         title={tableName}
         subtitle={`${total} kayıt`}
@@ -192,7 +201,10 @@ export function RequestsPage({ page, audience }: { page: NavPage; audience: Audi
           }
         />
       </TableSection>
-      <RequestPanel recordId={panel.selectedId} onClose={panel.close} />
+      <RequestPanel recordId={panel.selectedId} onClose={panel.close} canUpdate={!parent} />
+      {parent ? (
+        <RequestFormPanel open={form.selectedId === NEW_REQUEST} onClose={form.close} />
+      ) : null}
     </>
   )
 }

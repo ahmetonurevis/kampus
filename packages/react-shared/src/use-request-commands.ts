@@ -8,6 +8,8 @@ import { useApiCommand } from './use-api-command.ts'
 // Veli talebi ve izin/mazeret bildirimi yazma komutları (`POST /requests`,
 // `PATCH /requests/:id`, `POST /absences`; core `request.open` `request.update`
 // `absence.notify`, DOM-ILT-053, DOM-ILT-080). Okuma genel koleksiyon kancalarındadır.
+// Üç komut da `exclusive`: yollu `issues` (geç mazeret `endDate`, örtüşme `startDate`, çözülmüş talep
+// `status`) yalnız form alanında görünür, toast çıkmaz; yolsuz hata tek toast olur.
 
 type JsonBody<TOperation extends keyof operations> = NonNullable<
   operations[TOperation]['requestBody']
@@ -79,6 +81,7 @@ export function useOpenRequest(options: CommandOptions = {}) {
     request: openRequestRequest,
     invalidates: requests,
     messages: REQUEST_MESSAGES,
+    exclusive: true,
     ...(options.onSuccess ? { onSuccess: options.onSuccess } : {}),
   })
 }
@@ -90,6 +93,7 @@ export function useUpdateRequest(options: CommandOptions = {}) {
     version: (input: UpdateRequestInput) => input.version,
     invalidates: requests,
     messages: REQUEST_MESSAGES,
+    exclusive: true,
     ...(options.onSuccess ? { onSuccess: options.onSuccess } : {}),
   })
 }
@@ -100,6 +104,7 @@ export function useNotifyAbsence(options: CommandOptions = {}) {
     request: notifyAbsenceRequest,
     invalidates: absences,
     messages: REQUEST_MESSAGES,
+    exclusive: true,
     ...(options.onSuccess ? { onSuccess: options.onSuccess } : {}),
   })
 }

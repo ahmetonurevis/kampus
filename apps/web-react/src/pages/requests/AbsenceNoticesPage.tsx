@@ -1,9 +1,11 @@
 import { use, useMemo } from 'react'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
+import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { Button } from '@/components/ui/button'
 import { useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
@@ -18,8 +20,8 @@ import {
 } from '@/lib/collection-list.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { TableSection } from '../academic/AcademicParts.tsx'
+import { AbsenceFormPanel, NEW_NOTICE } from './AbsenceFormPanel.tsx'
 import { AbsencePanel } from './AbsencePanel.tsx'
-import { PendingWriteNotice } from './PendingWriteNotice.tsx'
 import { ABSENCE_LIST, absenceCsvRow, absenceRow, type AbsenceRow } from './request-rows.ts'
 
 const SORTABLE = sortableColumns(ABSENCE_LIST)
@@ -32,8 +34,8 @@ const TABLE_NAME = 'Bildirim geçmişi'
  * koleksiyonu okuyamaz (DOM-ILT-053).
  * Tür sütunu gerekçe kategorisidir; yeni bildirim serbest açıklama taşımaz, Açıklama sütunu
  * yalnız eski kayıtların metnini gösterir (DOM-ILT-053, KVKK md. 6).
- * TODO(api-absence-write): bildirim formu (tarih aralığı, gerekçe kategorisi) `POST /absences`
- * ve react-shared `useNotifyAbsence` üzerine buraya eklenir.
+ * "İzin veya mazeret bildir" sağ panelde açılır (`?bildirim-form=yeni`): çocuk, tarih aralığı ve
+ * gerekçe kategorisi; serbest açıklama yoktur.
  */
 export function AbsenceNoticesPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -41,6 +43,7 @@ export function AbsenceNoticesPage({ page }: { page: NavPage }) {
   const list = useListState('izin-bildirimleri')
   const search = useDebouncedValue(list.state.query)
   const panel = useDetailPanel('bildirim')
+  const form = useDetailPanel('bildirim-form')
   const openRecord = panel.open
   const fetchAll = useCoreFetchAll('absences')
   const csv = useCsvExport()
@@ -92,11 +95,16 @@ export function AbsenceNoticesPage({ page }: { page: NavPage }) {
   const total = records.data?.total ?? 0
   return (
     <>
-      <PageHeading title={page.title} description={page.description} />
-      <PendingWriteNotice>
-        Web üzerinden yeni izin ve mazeret bildirimi hazırlanıyor. Şimdilik kuruma ilettiğiniz
-        bildirimleri ve durumlarını buradan izleyebilirsiniz.
-      </PendingWriteNotice>
+      <PageHeading
+        title={page.title}
+        description={page.description}
+        actions={
+          <Button onClick={() => form.open(NEW_NOTICE)}>
+            <Icon name="Plus" size={17} aria-hidden="true" />
+            Yeni bildirim
+          </Button>
+        }
+      />
       <TableSection
         title={TABLE_NAME}
         subtitle={`${total} kayıt`}
@@ -123,6 +131,7 @@ export function AbsenceNoticesPage({ page }: { page: NavPage }) {
         />
       </TableSection>
       <AbsencePanel recordId={panel.selectedId} onClose={panel.close} />
+      <AbsenceFormPanel open={form.selectedId === NEW_NOTICE} onClose={form.close} />
     </>
   )
 }

@@ -38,6 +38,7 @@ type ReadQueryInput = Partial<Record<FilterField, string | string[]>> & {
   q?: string | undefined
   archived?: CollectionReadQuery['archived']
   isActive?: 'true' | 'false' | undefined
+  dateField?: string | undefined
   dateFrom?: string | undefined
   dateTo?: string | undefined
 }
@@ -54,6 +55,7 @@ function readQueryOf(query: ReadQueryInput): CollectionReadQuery {
     archived: query.archived,
     filters,
     isActive: query.isActive === undefined ? undefined : query.isActive === 'true',
+    dateField: query.dateField,
     dateFrom: query.dateFrom,
     dateTo: query.dateTo,
   }

@@ -1653,9 +1653,11 @@ export interface operations {
                 archived?: "include" | "only";
                 /** @description Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır */
                 isActive?: "true" | "false";
-                /** @description `date` alanının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                /** @description Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir */
+                dateField?: "date" | "joinedAt" | "dueDate" | "paidAt" | "createdAt" | "trialAt" | "submittedAt" | "answeredAt" | "followUp" | "deadline" | "reviewedAt" | "endDate" | "consentDeadline";
+                /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
                 dateFrom?: string;
-                /** @description `date` alanının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
                 dateTo?: string;
                 /** @description `studentId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 studentId?: string | string[];
@@ -1780,9 +1782,11 @@ export interface operations {
                 archived?: "include" | "only";
                 /** @description Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır */
                 isActive?: "true" | "false";
-                /** @description `date` alanının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                /** @description Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir */
+                dateField?: "date" | "joinedAt" | "dueDate" | "paidAt" | "createdAt" | "trialAt" | "submittedAt" | "answeredAt" | "followUp" | "deadline" | "reviewedAt" | "endDate" | "consentDeadline";
+                /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
                 dateFrom?: string;
-                /** @description `date` alanının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
                 dateTo?: string;
                 /** @description `studentId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 studentId?: string | string[];

@@ -104,8 +104,52 @@ function isInvoiceStatus(value: string): value is InvoiceStatusLabel {
   return INVOICE_STATUS_LABELS.some((label) => label === value)
 }
 
-/** Gün aralığı süzgecinin alanı (`dateFrom`/`dateTo`). */
-export const DATE_FILTER_FIELD = 'date'
+/**
+ * Gün aralığı süzgecinin (`dateFrom`/`dateTo`) seçilebilir tarih alanları, koleksiyon başına
+ * izin listesi; ilki `dateField` verilmezse kullanılan varsayılandır. Listede olmayan koleksiyonda
+ * tek alan `date`'tir (eski davranış). Alan adı sorguya yalnız bu listeden girer.
+ */
+const DATE_FIELDS: Partial<Record<CollectionName, readonly string[]>> = {
+  students: ['joinedAt'],
+  invoices: ['dueDate', 'paidAt'],
+  prospects: ['createdAt', 'trialAt'],
+  quizzes: ['createdAt'],
+  homework: ['dueDate', 'createdAt'],
+  submissions: ['submittedAt'],
+  questions: ['createdAt', 'answeredAt'],
+  materials: ['createdAt'],
+  guidanceCases: ['followUp', 'createdAt'],
+  mockExams: ['date', 'createdAt'],
+  mockResults: ['createdAt'],
+  studentGoals: ['deadline', 'reviewedAt', 'createdAt'],
+  studyTasks: ['dueDate', 'createdAt'],
+  schoolEvents: ['date', 'endDate', 'consentDeadline', 'createdAt'],
+}
+const DEFAULT_DATE_FIELD = 'date'
+
+/** Sorgu şemasındaki `dateField` değerleri: bütün koleksiyonlarda geçen alanların birleşimi. */
+export const DATE_FIELD_NAMES = [
+  ...new Set([DEFAULT_DATE_FIELD, ...Object.values(DATE_FIELDS).flat()]),
+] as [string, ...string[]]
+
+export function dateFieldsOf(collection: CollectionName): readonly string[] {
+  return DATE_FIELDS[collection] ?? [DEFAULT_DATE_FIELD]
+}
+
+/** İstenen alanın koleksiyonda izinli olduğunu denetler; verilmezse koleksiyonun varsayılanı. */
+function dateFieldOf(collection: CollectionName, requested: string | undefined): string {
+  const allowed = dateFieldsOf(collection)
+  if (requested === undefined) return allowed[0] ?? DEFAULT_DATE_FIELD
+  if (!allowed.includes(requested))
+    throw new ValidationError([
+      {
+        path: ['dateField'],
+        code: 'invalid_value',
+        message: `Bu listede tarih aralığı ${allowed.join(', ')} alanlarından biriyle süzülür.`,
+      },
+    ])
+  return requested
+}
 
 /**
  * Sıralama alanları. `createdAt`/`updatedAt` kayıt kolonudur; bağlı alanlar (`JOINED_FIELDS`)
@@ -147,7 +191,9 @@ export interface CollectionReadQuery {
   filters?: Partial<Record<FilterField, readonly string[]>> | undefined
   /** `isActive` süzgeci; verilmezse etkin ve pasif kayıtlar birlikte döner. */
   isActive?: boolean | undefined
-  /** `date` alanının Europe/Istanbul günü aralığı (`YYYY-MM-DD`, iki uç dahil). */
+  /** Aralığın tarih alanı (`DATE_FIELDS` izin listesi); verilmezse koleksiyonun varsayılanı. */
+  dateField?: string | undefined
+  /** Tarih alanının Europe/Istanbul günü aralığı (`YYYY-MM-DD`, iki uç dahil). */
   dateFrom?: string | undefined
   dateTo?: string | undefined
 }
@@ -229,6 +275,8 @@ async function listFilters(
   collection: CollectionName,
   query: CollectionReadQuery,
 ): Promise<RecordFilter[] | null> {
+  // Alan izin listesinden geçer (aralık yoksa etkisizdir ama geçersiz alan yine 400'dür).
+  const dateField = dateFieldOf(collection, query.dateField)
   const filters: RecordFilter[] = []
   for (const field of FILTER_FIELDS) {
     const values = query.filters?.[field]
@@ -252,7 +300,7 @@ async function listFilters(
   }
   if (query.isActive !== undefined)
     filters.push({ kind: 'active', field: 'isActive', active: query.isActive })
-  const range = dayRange(DATE_FILTER_FIELD, query.dateFrom, query.dateTo)
+  const range = dayRange(dateField, query.dateFrom, query.dateTo)
   if (range) filters.push(range)
   const hidden = scope.hiddenFields(collection)
   const fieldOf = (filter: RecordFilter): string[] => {
@@ -478,6 +526,7 @@ async function sqlPage(
     !query.q &&
     (query.sort ?? []).length === 0 &&
     query.isActive === undefined &&
+    query.dateField === undefined &&
     query.dateFrom === undefined &&
     query.dateTo === undefined &&
     Object.values(query.filters ?? {}).every((values) => !values || values.length === 0)

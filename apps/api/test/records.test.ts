@@ -485,6 +485,53 @@ describe('records deposu', () => {
     ])
   })
 
+  test('gün aralığı seçilen alanda (paidAt, dueDate) SQL ile bellekte aynı sonucu verir', async () => {
+    const shapes = [
+      '2026-10-05T20:59:59.999Z',
+      '2026-10-05T21:00:00.000Z',
+      '2026-10-06',
+      '2026-10-06T20:59:59.999Z',
+      '2026-10-06T21:00:00.000Z',
+      'bozuk',
+      20261006,
+      null,
+      ['2026-10-06'],
+    ]
+    // Her alan kendi sütununda bütün biçimleri, diğer alan tarih olmayan bir değerle taşır.
+    const items = (['paidAt', 'dueDate'] as const).flatMap((field) =>
+      shapes.map((value, index) =>
+        invoice(`test-${field}-${index}`, {
+          dueDate: 'yok',
+          paidAt: 'yok',
+          [field]: value,
+        }),
+      ),
+    )
+    const id = await institutionWith(items)
+    const stored = await loadRecords(db, id, ['invoices'])
+    for (const field of ['paidAt', 'dueDate']) {
+      for (const [from, to] of [
+        ['2026-10-06', '2026-10-06'],
+        ['2026-10-06', undefined],
+        [undefined, '2026-10-05'],
+      ] as const) {
+        const filter = dayRange(field, from, to) ?? assert.fail()
+        const sqlIds = (await loadRecords(db, id, ['invoices'], { match: [filter] })).map(
+          (row) => row.id,
+        )
+        const memoryIds = stored
+          .filter((row) => matchesRecordFilter(row.data, filter))
+          .map((row) => row.id)
+        assert.deepEqual(sqlIds, memoryIds, `${field} ${from} ${to}`)
+        // Süzgeç yalnız kendi alanına bakar: diğer alanın değeri eşleşme üretmez.
+        assert.ok(
+          sqlIds.every((key) => key.startsWith(`test-${field}-`)),
+          `${field} ${from} ${to}`,
+        )
+      }
+    }
+  })
+
   test('taksit durumu süzgeci SQL ile core invoiceStatus aynı sonucu verir; sınır günleri dahil', async () => {
     // FIXED_NOW 2026-10-06T09:00Z: Europe/Istanbul günü 2026-10-06, gün 2026-10-05T21:00Z'de başlar.
     const exact: Record<string, [Record<string, unknown>, string]> = {

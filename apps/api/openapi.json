@@ -1437,13 +1437,37 @@
           {
             "schema": {
               "type": "string",
+              "enum": [
+                "date",
+                "joinedAt",
+                "dueDate",
+                "paidAt",
+                "createdAt",
+                "trialAt",
+                "submittedAt",
+                "answeredAt",
+                "followUp",
+                "deadline",
+                "reviewedAt",
+                "endDate",
+                "consentDeadline"
+              ]
+            },
+            "in": "query",
+            "name": "dateField",
+            "required": false,
+            "description": "Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir"
+          },
+          {
+            "schema": {
+              "type": "string",
               "format": "date",
               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
             },
             "in": "query",
             "name": "dateFrom",
             "required": false,
-            "description": "`date` alanının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
+            "description": "Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
           },
           {
             "schema": {
@@ -1454,7 +1478,7 @@
             "in": "query",
             "name": "dateTo",
             "required": false,
-            "description": "`date` alanının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
+            "description": "Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
           },
           {
             "schema": {
@@ -2042,13 +2066,37 @@
           {
             "schema": {
               "type": "string",
+              "enum": [
+                "date",
+                "joinedAt",
+                "dueDate",
+                "paidAt",
+                "createdAt",
+                "trialAt",
+                "submittedAt",
+                "answeredAt",
+                "followUp",
+                "deadline",
+                "reviewedAt",
+                "endDate",
+                "consentDeadline"
+              ]
+            },
+            "in": "query",
+            "name": "dateField",
+            "required": false,
+            "description": "Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir"
+          },
+          {
+            "schema": {
+              "type": "string",
               "format": "date",
               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
             },
             "in": "query",
             "name": "dateFrom",
             "required": false,
-            "description": "`date` alanının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
+            "description": "Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
           },
           {
             "schema": {
@@ -2059,7 +2107,7 @@
             "in": "query",
             "name": "dateTo",
             "required": false,
-            "description": "`date` alanının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
+            "description": "Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
           },
           {
             "schema": {

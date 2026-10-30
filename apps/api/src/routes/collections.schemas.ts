@@ -4,6 +4,7 @@ import { INVOICE_STATUS_LABELS } from '../db/records.ts'
 import { READABLE_COLLECTIONS } from '../services/collection-access.ts'
 import {
   ARCHIVED_MODES,
+  DATE_FIELD_NAMES,
   FILTER_FIELDS,
   GROUP_FIELDS,
   SORT_FIELDS,
@@ -50,7 +51,7 @@ const dayValue = (edge: string) =>
     .date()
     .optional()
     .describe(
-      `\`date\` alanının Europe/Istanbul günü için ${edge} (\`YYYY-MM-DD\`, dahil). Gün (\`YYYY-MM-DD\`) veya an (ISO UTC) değerli kayıtlar eşlenir`,
+      `Tarih alanının (\`dateField\`; varsayılan koleksiyonun ilk alanı, çoğunlukla \`date\`) Europe/Istanbul günü için ${edge} (\`YYYY-MM-DD\`, dahil). Gün (\`YYYY-MM-DD\`) veya an (ISO UTC) değerli kayıtlar eşlenir`,
     )
 
 /** Liste ve sayım uçlarının ortak süzgeçleri. */
@@ -73,6 +74,12 @@ const readQueryShape = {
     .optional()
     .describe(
       'Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır',
+    ),
+  dateField: z
+    .enum(DATE_FIELD_NAMES)
+    .optional()
+    .describe(
+      'Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir',
     ),
   dateFrom: dayValue('başlangıç'),
   dateTo: dayValue('bitiş'),

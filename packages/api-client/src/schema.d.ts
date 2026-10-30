@@ -2272,6 +2272,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rubrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rubrik kütüphanesi
+         * @description Kurumun rubrikleri, sayfalı (IST-048): rubrik kurumundur, bütün içerik personeli görür ve yayındaki sürümü görevlerde kullanır. Satır en yüksek numaralı sürümü (`head`) ve yayındaki sürümün kimliğini taşır. Süzgeçler baş sürüme uygulanır; son güncellenen önce. Bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.
+         */
+        get: operations["listRubrics"];
+        put?: never;
+        /**
+         * Rubrik oluştur
+         * @description Yeni rubrik ve ilk taslak sürüm (DOM-BEC-020, 022): sahibi oluşturan kişi. Gövde core `rubricVersionInputSchema`: analitik rubrikte becerinin en az iki niteliksel yönü, bütüncülde tek `overall` kriteri; her kriterde 0–5 altı bant, kurum cümlesi ve tanımlayıcı. Dil okulunda bant kazanıma bağlanamaz (422 `rubric_alignment_invalid`). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.
+         */
+        post: operations["createRubric"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rubrics/{rubricId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rubrik ayrıntısı
+         * @description Rubrik ve bütün sürümleri (arşivli dahil; DOM-BEC-022): kriterler, bantlar, tanımlayıcı eşlemesi ve sürüm başına kullanım (atama ve puan sayısı). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.
+         */
+        get: operations["getRubric"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rubrics/{rubricId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yeni rubrik sürümü aç
+         * @description Gövdedeki içerikle yeni taslak sürüm açar (DOM-BEC-022); numara bir artar, yayındaki sürüm ve eski puanlar değişmez. Açık taslak varken 409 `open_rubric_version_exists`. Başarı 201. Yalnız rubriğin sahibi ve yönetici (core `canManageRubric`; diğer öğretmen 403). Sıra: kapsam (404) → yetki (403) → sürüm (409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.
+         */
+        post: operations["createRubricVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rubrics/{rubricId}/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rubrik taslağını düzenle
+         * @description Taslak sürümün alanlarını değiştirir (DOM-BEC-020, 022); verilmeyen alan aynen kalır, `criteria` bütün olarak değişir ve birleşmiş içerik core şemasıyla yeniden doğrulanır (400). Yayımlanmış, arşivli veya kullanılmış (atamaya ya da puana bağlı) sürüm 409 `rubric_version_immutable`. `If-Match` zorunlu: sürümün `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Yalnız rubriğin sahibi ve yönetici (core `canManageRubric`; diğer öğretmen 403). Sıra: kapsam (404) → yetki (403) → sürüm (409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.
+         */
+        patch: operations["updateRubricDraft"];
+        trace?: never;
+    };
+    "/api/v1/rubrics/{rubricId}/versions/{versionId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rubrik sürümünü yayımla
+         * @description Taslağı yayımlar (DOM-BEC-022): rubriğin önceki yayındaki sürümü aynı işlemde arşivlenir; o sürümle verilmiş puanlar onunla hesaplanmaya, sabitlendiği atamalar onunla puanlanmaya devam eder. Taslak olmayan sürüm 409 `rubric_version_immutable`; eşzamanlı ikinci yayım 409. `If-Match` zorunlu: sürümün `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Yalnız rubriğin sahibi ve yönetici (core `canManageRubric`; diğer öğretmen 403). Sıra: kapsam (404) → yetki (403) → sürüm (409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.
+         */
+        post: operations["publishRubricVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rubrics/{rubricId}/versions/{versionId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rubrik sürümünü arşivle
+         * @description Yayındaki sürümü arşivler (DOM-BEC-022): yeni görevde kullanılamaz, sabitlendiği atamalarda puanlanmaya devam eder; kullanılmış sürüm silinmez, yalnız arşivlenir. Arşiv geri alınmaz; yeni sürüm açılır. Yayında olmayan sürüm 409 `rubric_version_not_published`. `If-Match` zorunlu: sürümün `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Yalnız rubriğin sahibi ve yönetici (core `canManageRubric`; diğer öğretmen 403). Sıra: kapsam (404) → yetki (403) → sürüm (409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.
+         */
+        post: operations["archiveRubricVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3178,6 +3302,105 @@ export interface components {
             /** @description `false`: saat dolu ("Dolu"); neden hiçbir durumda bildirilmez (DOM-ILT-073) */
             available: boolean;
         };
+        RubricInput: {
+            /** Format: uuid */
+            id: string;
+            ownerUserId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Kişi rubriği düzenleyebilir mi (core `canManageRubric`: sahip veya yönetici) */
+            canManage: boolean;
+        };
+        RubricVersionSummaryInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            rubricId: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "published" | "archived";
+            title: string;
+            /** @enum {string} */
+            kind: "analytic" | "holistic";
+            /** @enum {string} */
+            skill: "writing" | "speaking" | "mediation";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            archivedAt: string | null;
+            /** @description Sürüm satırının iyimser kilit sürümü (düzenleme, yayım ve arşivde `If-Match`) */
+            rowVersion: number;
+        };
+        RubricVersionInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            rubricId: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "published" | "archived";
+            title: string;
+            /** @enum {string} */
+            kind: "analytic" | "holistic";
+            /** @enum {string} */
+            skill: "writing" | "speaking" | "mediation";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            archivedAt: string | null;
+            /** @description Sürüm satırının iyimser kilit sürümü (düzenleme, yayım ve arşivde `If-Match`) */
+            rowVersion: number;
+            criteria: {
+                id: string;
+                /** @description CEFR-CV niteliksel yönü; bütüncül rubrikte `overall` */
+                aspect: string;
+                weight: number;
+                bands: {
+                    band: number;
+                    /** @description Kurumun kendi cümlesi (DOM-BEC-004) */
+                    description: string;
+                    alignment: {
+                        /** @constant */
+                        kind: "cefr";
+                        scale: string;
+                        /** @enum {string} */
+                        level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                        index: number;
+                    } | {
+                        /** @constant */
+                        kind: "outcome";
+                        outcomeId: string;
+                        /** @enum {string} */
+                        outcomeSource: "platform" | "institution";
+                    };
+                }[];
+            }[];
+            /** @description Sürümün sabitlendiği atama ve verilmiş puan sayısı; kullanılmış sürüm değişmez (DOM-BEC-022) */
+            usage: {
+                assignmentCount: number;
+                scoreCount: number;
+            };
+        };
+        RubricListItemInput: {
+            rubric: components["schemas"]["RubricInput"];
+            /** @description En yüksek numaralı sürüm */
+            head: components["schemas"]["RubricVersionSummaryInput"];
+            /** @description Yayındaki sürüm; yeni atamada yalnız bu kullanılır (DOM-BEC-022) */
+            publishedVersionId: string | null;
+        };
+        RubricDetailInput: {
+            rubric: components["schemas"]["RubricInput"];
+            /** @description Bütün sürümler, numaraya göre artan */
+            versions: components["schemas"]["RubricVersionInput"][];
+        };
+        RubricWriteResultInput: {
+            rubric: components["schemas"]["RubricInput"];
+            version: components["schemas"]["RubricVersionInput"];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -4079,6 +4302,105 @@ export interface components {
             subjectNames: string[];
             /** @description `false`: saat dolu ("Dolu"); neden hiçbir durumda bildirilmez (DOM-ILT-073) */
             available: boolean;
+        };
+        Rubric: {
+            /** Format: uuid */
+            id: string;
+            ownerUserId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Kişi rubriği düzenleyebilir mi (core `canManageRubric`: sahip veya yönetici) */
+            canManage: boolean;
+        };
+        RubricVersionSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            rubricId: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "published" | "archived";
+            title: string;
+            /** @enum {string} */
+            kind: "analytic" | "holistic";
+            /** @enum {string} */
+            skill: "writing" | "speaking" | "mediation";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            archivedAt: string | null;
+            /** @description Sürüm satırının iyimser kilit sürümü (düzenleme, yayım ve arşivde `If-Match`) */
+            rowVersion: number;
+        };
+        RubricVersion: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            rubricId: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "published" | "archived";
+            title: string;
+            /** @enum {string} */
+            kind: "analytic" | "holistic";
+            /** @enum {string} */
+            skill: "writing" | "speaking" | "mediation";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            archivedAt: string | null;
+            /** @description Sürüm satırının iyimser kilit sürümü (düzenleme, yayım ve arşivde `If-Match`) */
+            rowVersion: number;
+            criteria: {
+                id: string;
+                /** @description CEFR-CV niteliksel yönü; bütüncül rubrikte `overall` */
+                aspect: string;
+                weight: number;
+                bands: {
+                    band: number;
+                    /** @description Kurumun kendi cümlesi (DOM-BEC-004) */
+                    description: string;
+                    alignment: {
+                        /** @constant */
+                        kind: "cefr";
+                        scale: string;
+                        /** @enum {string} */
+                        level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                        index: number;
+                    } | {
+                        /** @constant */
+                        kind: "outcome";
+                        outcomeId: string;
+                        /** @enum {string} */
+                        outcomeSource: "platform" | "institution";
+                    };
+                }[];
+            }[];
+            /** @description Sürümün sabitlendiği atama ve verilmiş puan sayısı; kullanılmış sürüm değişmez (DOM-BEC-022) */
+            usage: {
+                assignmentCount: number;
+                scoreCount: number;
+            };
+        };
+        RubricListItem: {
+            rubric: components["schemas"]["Rubric"];
+            /** @description En yüksek numaralı sürüm */
+            head: components["schemas"]["RubricVersionSummary"];
+            /** @description Yayındaki sürüm; yeni atamada yalnız bu kullanılır (DOM-BEC-022) */
+            publishedVersionId: string | null;
+        };
+        RubricDetail: {
+            rubric: components["schemas"]["Rubric"];
+            /** @description Bütün sürümler, numaraya göre artan */
+            versions: components["schemas"]["RubricVersion"][];
+        };
+        RubricWriteResult: {
+            rubric: components["schemas"]["Rubric"];
+            version: components["schemas"]["RubricVersion"];
         };
     };
     responses: never;
@@ -17359,6 +17681,798 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listRubrics: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Baş sürümün becerisi */
+                skill?: "writing" | "speaking" | "mediation";
+                /** @description Baş sürümün türü: analitik veya bütüncül */
+                kind?: "analytic" | "holistic";
+                /** @description Baş sürümün durumu */
+                status?: "draft" | "published" | "archived";
+                /** @description Rubrik sahibi (ör. "Benim rubriklerim") */
+                ownerUserId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RubricListItem"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createRubric: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    /** @enum {string} */
+                    kind: "analytic" | "holistic";
+                    /** @enum {string} */
+                    skill: "writing" | "speaking" | "mediation";
+                    criteria: {
+                        id: string;
+                        /** @enum {string} */
+                        aspect: "overall" | "task_fulfilment" | "coherence_cohesion" | "vocabulary" | "grammatical_accuracy" | "range" | "accuracy" | "fluency" | "interaction" | "coherence" | "phonological_control" | "meaning_transfer" | "audience_fit" | "language";
+                        /** @default 1 */
+                        weight?: number;
+                        bands: {
+                            band: number;
+                            description: string;
+                            alignment: {
+                                /** @enum {string} */
+                                kind: "cefr";
+                                scale: string;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                index: number;
+                            } | {
+                                /** @enum {string} */
+                                kind: "outcome";
+                                outcomeId: string;
+                                /** @enum {string} */
+                                outcomeSource: "platform" | "institution";
+                            };
+                        }[];
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RubricWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getRubric: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Rubrik kimliği */
+                rubricId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RubricDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createRubricVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Rubrik kimliği */
+                rubricId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    /** @enum {string} */
+                    kind: "analytic" | "holistic";
+                    /** @enum {string} */
+                    skill: "writing" | "speaking" | "mediation";
+                    criteria: {
+                        id: string;
+                        /** @enum {string} */
+                        aspect: "overall" | "task_fulfilment" | "coherence_cohesion" | "vocabulary" | "grammatical_accuracy" | "range" | "accuracy" | "fluency" | "interaction" | "coherence" | "phonological_control" | "meaning_transfer" | "audience_fit" | "language";
+                        /** @default 1 */
+                        weight?: number;
+                        bands: {
+                            band: number;
+                            description: string;
+                            alignment: {
+                                /** @enum {string} */
+                                kind: "cefr";
+                                scale: string;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                index: number;
+                            } | {
+                                /** @enum {string} */
+                                kind: "outcome";
+                                outcomeId: string;
+                                /** @enum {string} */
+                                outcomeSource: "platform" | "institution";
+                            };
+                        }[];
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RubricWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateRubricDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Rubrik kimliği */
+                rubricId: string;
+                /** @description Rubrik sürümü kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    /** @enum {string} */
+                    kind?: "analytic" | "holistic";
+                    /** @enum {string} */
+                    skill?: "writing" | "speaking" | "mediation";
+                    /** @description Kriterler bütün olarak değişir */
+                    criteria?: {
+                        id: string;
+                        /** @enum {string} */
+                        aspect: "overall" | "task_fulfilment" | "coherence_cohesion" | "vocabulary" | "grammatical_accuracy" | "range" | "accuracy" | "fluency" | "interaction" | "coherence" | "phonological_control" | "meaning_transfer" | "audience_fit" | "language";
+                        /** @default 1 */
+                        weight?: number;
+                        bands: {
+                            band: number;
+                            description: string;
+                            alignment: {
+                                /** @enum {string} */
+                                kind: "cefr";
+                                scale: string;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                index: number;
+                            } | {
+                                /** @enum {string} */
+                                kind: "outcome";
+                                outcomeId: string;
+                                /** @enum {string} */
+                                outcomeSource: "platform" | "institution";
+                            };
+                        }[];
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RubricWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publishRubricVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Rubrik kimliği */
+                rubricId: string;
+                /** @description Rubrik sürümü kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RubricWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveRubricVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Rubrik kimliği */
+                rubricId: string;
+                /** @description Rubrik sürümü kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RubricWriteResult"];
                     };
                 };
             };

@@ -11,6 +11,7 @@ import { useAuth } from '@/auth/use-auth.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { isRoleKey, pageHref } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
+import { LoginStory } from './LoginStory.tsx'
 
 const YEAR = new Date().getFullYear()
 const fieldClass = 'h-[46px] rounded-field px-3.5 text-base md:text-base'
@@ -64,36 +65,7 @@ export function LoginPage() {
 
   return (
     <div className="login-page grid min-h-dvh grid-cols-2 bg-background max-[900px]:grid-cols-1">
-      <section
-        aria-label="Kampüs"
-        className="login-story relative flex flex-col justify-between gap-10 overflow-hidden bg-sidebar p-[55px] text-on-sapphire max-[900px]:p-8 [&_:is(a,button):focus-visible]:outline-brand"
-      >
-        <span className="flex items-center gap-3 text-[27px] font-semibold tracking-[-1.2px]">
-          <span className="grid size-[41px] place-items-center rounded-xl bg-on-sapphire text-sapphire">
-            <Icon name="GraduationCap" size={27} />
-          </span>
-          <span>
-            kampüs<span className="text-brand">.</span>
-          </span>
-        </span>
-        <div className="flex max-w-[560px] flex-col gap-6">
-          <p className="text-2xs font-semibold tracking-[1.5px]">AKADEMİ ÖZEL OKULLARI</p>
-          <h2 className="text-[clamp(36px,3.6vw,54px)] leading-[1.08] font-medium tracking-[-1.5px]">
-            Okulun her günü,
-            <br />
-            <span className="text-brand">tek bir yerde.</span>
-          </h2>
-          <p className="text-md leading-[1.75] text-sidebar-strong">
-            Ders programı, öğrenci takibi ve veli iletişimi.
-            <br />
-            Okulunuzun günlük işleri için ortak çalışma alanı.
-          </p>
-        </div>
-        <div className="flex justify-between gap-4 text-2xs text-sidebar-strong">
-          <span>Akademi Özel Okulları</span>
-          <span>Özel Okul Yönetim Platformu</span>
-        </div>
-      </section>
+      <LoginStory />
 
       <main
         id="main"

@@ -266,7 +266,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ergin olmayan çocuk velayet altındadır; velayet boşanmada çocuğun bırakıldığı tarafa aittir. Velayeti olmayan ebeveynin kişisel ilişki hakkı okulun ona kendiliğinden bilgi açmasını gerektirmez; MEB e-Okul uygulaması da erişimi velayet sahibine ve onun onayına bağlar.
 - **Kaynak:** TMK md. 335/1, 336/2-3, 337/1 (velayet), md. 182 ve 323 (kişisel ilişki); mevzuat.gov.tr konsolide metin. e-Okul uygulaması ve Kamu Denetçiliği Kurumu'nun velayeti olmayan babanın e-Okul erişim başvurusunu reddettiği karar yalnız haber kaynağından görüldü (memurlar.net, 13/7/2026) — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — veli kaydı yalnız ad ve çocuk listesi taşır (`packages/school-core/src/data/seed.js:205-212`).
+- **Kodda:** yok — veli kaydı yalnız ad ve çocuk listesi taşır (`packages/school-core/src/data/seed.js:205-212`). React randevu ekranı (W20) velayet durumunu ayırmaz: veli, bağlı olduğu her çocuk için randevu talep eder (`?cocuk=`), kapsamı sunucu `parentId` bağından uygular (`TODO(velayet-kapsam)`).
 
 ### DOM-ILT-071 · Velayet değişikliği belgeyle ve kayıtla işlenir
 
@@ -290,7 +290,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ayrı yaşayan ebeveynler arasında adres ve iletişim bilgisi sızıntısı fiziksel risk doğurabilir.
 - **Kaynak:** İşletme kuralı; KVKK md. 4/2 (ölçülülük), md. 12/1.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — öğrenci başına tek veli olduğu için ayrım yok.
+- **Kodda:** yok — öğrenci başına tek veli olduğu için ayrım yok; randevuda görüşmeyi yalnız açan veli görür (`DOM-ILT-103`, React ekranı `?randevu=` ile başka velinin görüşmesini açamaz, 404). Yazışma ve randevu dışındaki yüzeylerde ayrım yok.
 
 ## Talep ve şikayet
 
@@ -348,7 +348,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Randevu öğretmenin zamanını ayırır; görüşme yalnız öğrenciyle ders ilişkisi olan öğretmenle anlamlıdır. Talebi kimin açtığı, geri çekme yetkisini ve ayrı veliler arasındaki görünürlüğü belirler.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/appointments.ts` `bookAppointment`, yetki `appointment.book`; API `POST /appointments` (`apps/api/src/routes/appointments.ts`, `Idempotency-Key` zorunlu), react-shared `useBookAppointment`. React web ekranı yok (W20). Rehber öğretmenle (`guidanceCounselor`) ders ataması olmadan randevu açılmaz (`TODO(randevu-rehberlik)`). Vue demosu türü rol sınırı olmadan seçtirir ve pasif öğrenciyi denetlemez (`apps/web/src/views/Communication.vue:182-212`).
+- **Kodda:** kısmen — core `lib/appointments.ts` `bookAppointment`, yetki `appointment.book`; API `POST /appointments` (`apps/api/src/routes/appointments.ts`, `Idempotency-Key` zorunlu), react-shared `useBookAppointment`. React web ekranı W20'de: öğrenci `randevu-talep`, veli Randevular sekmesi (çocuk `?cocuk=`) ve sağ panelde talep formu `?randevu-form=yeni` (`apps/web-react/src/pages/communication/BookAppointmentPanel.tsx`; web yalnız seçeneği sınırlar, karar sunucudadır; e2e `tests/e2e-react/randevular.spec.ts`). Rehber öğretmenle (`guidanceCounselor`) ders ataması olmadan randevu açılmaz (`TODO(randevu-rehberlik)`). Vue demosu türü rol sınırı olmadan seçtirir ve pasif öğrenciyi denetlemez (`apps/web/src/views/Communication.vue:182-212`).
 
 ### DOM-ILT-101 · Randevu saati uygunluk saatine bağlıdır ve çakışmaz
 
@@ -364,7 +364,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Görüşmenin neden yapılmadığı uyuşmazlıkta kayıttan okunabilmeli; karar öğretmenin zamanına dair olduğu için yalnız o öğretmene aittir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/appointments.ts` `updateAppointment`, yetki `appointment.update`; API `PATCH /appointments/:id` (`If-Match` zorunlu), react-shared `useUpdateAppointment` (sürüm bilinmiyorsa istek atmaz). Yöneticinin randevuyu iptal etmesi yok (`TODO(randevu-yonetici-iptal)`). Açanı bilinmeyen eski talep (`requestedBy` yok) geri çekilemez ve talep eden adına iptal edilemez (`TODO(randevu-eski-kayit)`). Vue demosu red gerekçesi istemez, iptal ve geri çekme yoktur.
+- **Kodda:** kısmen — core `lib/appointments.ts` `updateAppointment`, yetki `appointment.update`; API `PATCH /appointments/:id` (`If-Match` zorunlu), react-shared `useUpdateAppointment` (sürüm bilinmiyorsa istek atmaz). Yöneticinin randevuyu iptal etmesi yok (`TODO(randevu-yonetici-iptal)`). Açanı bilinmeyen eski talep (`requestedBy` yok) geri çekilemez ve talep eden adına iptal edilemez (`TODO(randevu-eski-kayit)`; React ekranı bu kayıtlarda düğme göstermez). React web ekranı W20'de (`AppointmentActions.tsx`): öğretmen onaylar, gerekçeyle reddeder veya iptal eder, talep eden geri çeker veya gerekçeyle iptal eder; sürüm çakışmasında (409) yazılan gerekçe korunur ve randevu yeniden okunur. Vue demosu red gerekçesi istemez, iptal ve geri çekme yoktur.
 
 ### DOM-ILT-103 · Veli görüşmesini yalnız açan veli görür
 
@@ -372,7 +372,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ayrı yaşayan ebeveynlerin görüşme talepleri ve notları birbirine sızmamalıdır (`DOM-ILT-073`); veli ile öğretmen arasındaki görüşme öğrenciyle paylaşılmak zorunda değildir.
 - **Kaynak:** İşletme kuralı; KVKK md. 4/2 (ölçülülük).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/scope.ts` `appointments` okuma kuralı ve `requireVisibleAppointment`; API okuması `GET /collections/appointments`, `PATCH /appointments/:id` sürümü kapsam ve yetkiden sonra karşılaştırır (kapsam dışı randevu yanlış sürümde de 404, görünür ama yetkisiz geçiş 403). Velayeti olmayan ebeveynin kapsamı (`DOM-ILT-070…073`) yok; talepler akışıyla birlikte ele alınacak (`TODO(velayet-kapsam)`). Vue ve telefon demosu öğrencinin bütün randevularını gösterir.
+- **Kodda:** kısmen — core `lib/scope.ts` `appointments` okuma kuralı ve `requireVisibleAppointment`; API okuması `GET /collections/appointments`, `PATCH /appointments/:id` sürümü kapsam ve yetkiden sonra karşılaştırır (kapsam dışı randevu yanlış sürümde de 404, görünür ama yetkisiz geçiş 403). Velayeti olmayan ebeveynin kapsamı (`DOM-ILT-070…073`) yok; talepler akışıyla birlikte ele alınacak (`TODO(velayet-kapsam)`). React ekranı veliye seçili çocuğun öğrenci tarafından açılmış randevularını ve yalnız kendi açtığı görüşmeleri gösterir; başka velinin görüşmesi listede ve `?randevu=` adresinde yoktur (404, "Kayıt bulunamadı"). Vue ve telefon demosu öğrencinin bütün randevularını gösterir.
 
 ### DOM-ILT-104 · Kapanan randevu takvimi bırakır
 
@@ -380,7 +380,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Gerçekleşmeyecek görüşme takvimi işgal etmemeli; programda görünen her randevu yapılacak bir görüşmedir.
 - **Kaynak:** İşletme kuralı; CLAUDE.md "İptal dersleri günlük programlarda görünmez".
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `appointmentHoldsTime`, `scheduledAppointments` (`lib/appointment-status.ts`); `tutorConflict` ve sınıf/öğretmen/program çakışmaları bunu kullanır. React W20 ekranı günlük/haftalık programda `scheduledAppointments` kullanmalı (`TODO(randevu-w20)`). Vue ve telefon demosu yalnız `Reddedildi` durumunu dışlar.
+- **Kodda:** kısmen — core `appointmentHoldsTime`, `scheduledAppointments` (`lib/appointment-status.ts`); `tutorConflict` ve sınıf/öğretmen/program çakışmaları bunu kullanır. React W20 ekranı "Yaklaşan randevular" bölümünde yalnız `scheduledAppointments` kullanır; bekleyen talep, red, geri çekme ve iptal programda görünmez (`TODO(randevu-w20)` kapandı). Vue ve telefon demosu yalnız `Reddedildi` durumunu dışlar.
 
 ### DOM-ILT-105 · Veli ve öğrenci yalnız alınabilir saatleri görür
 
@@ -388,7 +388,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Talep bir uygunluk saati seçilerek açılır (`DOM-ILT-101`); veli ve öğrenci seçemeyeceği saati görmemeli, dolu saatin nedeni ise başka velinin gizli görüşmesini veya başka öğrencinin randevusunu ele verebilir (`DOM-ILT-073`, `DOM-ILT-103`).
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/appointments.ts` `bookableSlots` (talep ile aynı `checkSlot` denetimi), `bookableSlotsQuerySchema`; yetki `appointment.slots` (öğrenci, veli; kapsam dışı öğrenci core'da `student_not_found`, API'de olmayan kayıtla aynı 404 `not_found`). API `GET /api/v1/appointments/slots?studentId=…&from=…&to=…` (`apps/api/src/routes/appointments.ts`, salt okunur, alan beyaz listesi `BookableSlot`), react-shared `useBookableSlots` (`packages/react-shared/src/use-bookable-slots.ts`; randevu yazıldıktan sonra geçersiz kılınır). Kapalı `communication` modülünde uç, diğer modül kapıları gibi 403 `module_disabled` verir. React ekranı W20b'dedir. Uygunluk saati eklemek `tutoring` modülüne bağlıdır (`TODO(randevu-modul)`).
+- **Kodda:** kısmen — core `lib/appointments.ts` `bookableSlots` (talep ile aynı `checkSlot` denetimi), `bookableSlotsQuerySchema`; yetki `appointment.slots` (öğrenci, veli; kapsam dışı öğrenci core'da `student_not_found`, API'de olmayan kayıtla aynı 404 `not_found`). API `GET /api/v1/appointments/slots?studentId=…&from=…&to=…` (`apps/api/src/routes/appointments.ts`, salt okunur, alan beyaz listesi `BookableSlot`), react-shared `useBookableSlots` (`packages/react-shared/src/use-bookable-slots.ts`; randevu yazıldıktan sonra geçersiz kılınır). Kapalı `communication` modülünde uç, diğer modül kapıları gibi 403 `module_disabled` verir. React ekranı W20'de: `SlotPicker` saatleri öğretmen ve güne göre gruplar, `available: false` saati "Dolu" yazar ve seçtirmez, nedeni göstermez; liste her açılışta tazelenir (`staleTime` 0). Uygunluk saati eklemek `tutoring` modülüne bağlıdır (`TODO(randevu-modul)`).
 
 ## Mevcut kodla farklar
 

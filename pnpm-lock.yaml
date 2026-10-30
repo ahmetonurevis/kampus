@@ -365,7 +365,7 @@ importers:
         specifier: workspace:0.1.0
         version: link:../api-client
       '@kampus/school-core':
-        specifier: workspace:2.2.0
+        specifier: workspace:2.5.0
         version: link:../school-core
     devDependencies:
       '@tanstack/react-query':

@@ -456,6 +456,8 @@ function buildSeed(now: Date) {
     homework
       .filter((h) => h.classId === s.classId)
       .filter((_, n) => (i + n) % 3 !== 0)
+      // Deniz'in hw-review teslimi aşağıda elle (sub-deniz) tanımlanır; yinelenmesin.
+      .filter((h) => !(s.id === 's1' && h.id === 'hw-review'))
       .map((h, n) => ({
         id: `sub-${s.id}-${h.id}`,
         homeworkId: h.id,

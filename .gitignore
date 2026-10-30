@@ -15,3 +15,8 @@ apps/mobile/android/
 apps/mobile/ios/
 **/*.keystore
 **/*.jks
+
+# Claude Code kişisel dosyaları
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/

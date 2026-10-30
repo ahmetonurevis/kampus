@@ -4,8 +4,9 @@ import type { State } from '../data/seed.ts'
 export type Interval = { date: string; duration?: number }
 // Ders, randevu, etüt veya etkinlikle çakışması denetlenen aday kayıt.
 export type TutorCandidate = Interval & {
-  // Sınıf düzenleme ve öğretmen devri, atanmamış öğretmen/kampüsü de denetime sokar.
-  teacherId: string | undefined
+  // Sınıf düzenleme ve öğretmen devri, atanmamış öğretmen/kampüsü de denetime sokar;
+  // öğretmensiz okul etkinliği adayı null taşır.
+  teacherId: string | null | undefined
   branchId: string | undefined
   room: string
   studentIds?: readonly string[]

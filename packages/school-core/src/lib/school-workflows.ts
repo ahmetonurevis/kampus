@@ -1,15 +1,15 @@
-// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { z } from 'zod'
-import { installmentAmounts } from './domain.ts'
-import { dayKey } from './format.ts'
 import { subjectsForGrade } from '../data/curriculum.ts'
-import { tutorConflict } from './tutor-conflicts.ts'
+import type { State } from '../data/seed.ts'
 import type { Role } from '../modules/navigation.ts'
+import { installmentAmounts, type MakeId, type Session } from './domain.ts'
+import { dayKey } from './format.ts'
+import { tutorConflict, type Interval } from './tutor-conflicts.ts'
 
 z.config(z.locales.tr())
 const text = z.string().trim().min(2, 'En az iki karakter girin.').max(2000)
 const identifier = z.string().min(1, 'Bir kayıt seçin.')
-const integer = (min, max) => z.coerce.number().int().min(min).max(max)
+const integer = (min: number, max: number) => z.coerce.number().int().min(min).max(max)
 const day = z
   .string()
   .refine(
@@ -234,9 +234,15 @@ export type LessonSubstitution = Pick<WorkflowInput<'substitute'>, 'reason'> & {
   date: string
 }
 export type RenewalQuote = ReturnType<typeof renewalQuote>
-export type Renewal = WorkflowInput<'renewal'> &
-  RenewalQuote &
-  Stamp & { fromClassId: string; contractId: string; status: string; activatedAt?: string }
+type RenewalKey = 'studentId' | 'targetClassId' | 'year' | 'mode'
+// Mezuniyet kaydı ücret ve sözleşme üretmez; ücret, taksit ve sözleşme alanları yalnız yenilemede bulunur.
+export type Renewal = Stamp &
+  Pick<WorkflowInput<'renewal'>, RenewalKey> &
+  Pick<RenewalQuote, 'amount'> &
+  Partial<
+    Omit<WorkflowInput<'renewal'>, RenewalKey> &
+      Omit<RenewalQuote, 'amount'> & { contractId: string }
+  > & { fromClassId: string; status: string; activatedAt?: string }
 export type EnrollmentRecord = Stamp & {
   studentId: string
   classId: string
@@ -298,8 +304,11 @@ const commandModules = {
   'club-attendance': 'clubs',
   achievement: 'clubs',
   'club-archive': 'clubs',
-}
-const commandRoles = {
+} satisfies Record<string, string>
+export type WorkflowCommand = keyof typeof commandModules
+// Komut çalışma anında serbest metin olarak gelir; bilinmeyen komut tablo dışında kalır.
+const moduleOf: Partial<Record<string, string>> = commandModules
+const commandRoles: Partial<Record<string, readonly Role[]>> = {
   goal: ['yonetici', 'ogretmen', 'ogrenci'],
   'goal-review': ['yonetici', 'ogretmen'],
   'goal-step': ['yonetici', 'ogretmen', 'ogrenci'],
@@ -335,10 +344,10 @@ const commandRoles = {
   achievement: ['yonetici', 'ogretmen'],
   'club-archive': ['yonetici', 'ogretmen'],
 }
-export function mayRun(session, command) {
+export function mayRun(session: Session, command: string) {
   return !!commandRoles[command]?.includes(session.role)
 }
-export function workflowScope(state, session) {
+export function workflowScope(state: State, session: Session) {
   const studentId = session.role === 'veli' ? session.childId : 's1'
   const student = state.students.find((s) => s.id === studentId)
   const classIds = new Set(
@@ -363,40 +372,47 @@ export function workflowScope(state, session) {
     institution,
   }
 }
-function requireRecord(state, collection, id) {
-  const value = state[collection].find((r) => r.id === id)
+function requireRecord<T extends { id: string }>(list: readonly T[], id: string | undefined) {
+  const value = list.find((r) => r.id === id)
   if (!value) throw new Error('İlgili kayıt bulunamadı. Listeyi yenileyin.')
   return value
 }
-function active(state, collection, id) {
-  const record = requireRecord(state, collection, id)
+function active<
+  T extends { id: string; isActive?: boolean; deletedAt?: string | null; status?: string },
+>(list: readonly T[], id: string | undefined) {
+  const record = requireRecord(list, id)
   if (record.isActive === false || record.deletedAt || record.status === 'Arşiv')
     throw new Error('Pasif veya arşivlenmiş kayıt kullanılamaz.')
   return record
 }
-function scopedStudent(state, session, id) {
-  const student = active(state, 'students', id)
-  if (!workflowScope(state, session).studentIds.has(id))
+function scopedStudent(state: State, session: Session, id: string | undefined) {
+  const student = active(state.students, id)
+  // Bulunan öğrencinin kimliği aranan kimlikle aynıdır.
+  if (!workflowScope(state, session).studentIds.has(student.id))
     throw new Error('Bu öğrenci için işlem yetkiniz bulunmuyor.')
   return student
 }
-function gradeOf(state, student) {
-  return requireRecord(state, 'classes', student.classId).grade
+function gradeOf(state: State, student: { classId: string }) {
+  return requireRecord(state.classes, student.classId).grade
 }
-function stamped(makeId, prefix, data, now) {
+function stamped<T extends object>(makeId: MakeId, prefix: string, data: T, now: string) {
   return { id: makeId(prefix), ...data, createdAt: now, updatedAt: now }
 }
-function atDay(value) {
+function atDay(value: string) {
   return `${value}T09:00:00.000Z`
 }
-export function examNet(result, exam) {
+type Goal = State['studentGoals'][number]
+export function examNet(
+  result: { correct: number; wrong: number },
+  exam: { wrongPenalty: number },
+) {
   return (
     Math.round(
       (result.correct - (exam.wrongPenalty ? result.wrong / exam.wrongPenalty : 0)) * 100,
     ) / 100
   )
 }
-export function examProgress(state, studentId) {
+export function examProgress(state: State, studentId: string) {
   return state.mockExams
     .filter((e) => state.mockResults.some((r) => r.examId === e.id && r.studentId === studentId))
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -412,10 +428,10 @@ export function examProgress(state, studentId) {
       }
     })
 }
-const round2 = (value) => Math.round(value * 100) / 100
-const OPEN_GOAL_STATUSES = ['Onay bekliyor', 'Aktif']
+const round2 = (value: number) => Math.round(value * 100) / 100
+const OPEN_GOAL_STATUSES: readonly string[] = ['Onay bekliyor', 'Aktif']
 // Hedefin ders/genel net serisi: yalnızca ilgili öğrencinin deneme sonuçlarından türetilir.
-export function goalSeries(state, studentId, subjectId) {
+export function goalSeries(state: State, studentId: string, subjectId?: string) {
   return examProgress(state, studentId).flatMap((exam) => {
     const point = { examId: exam.id, title: exam.title, date: exam.date }
     if (!subjectId) return exam.complete ? [{ ...point, net: exam.net }] : []
@@ -424,9 +440,10 @@ export function goalSeries(state, studentId, subjectId) {
     return [{ ...point, net: round2(results.reduce((sum, r) => sum + examNet(r, exam), 0)) }]
   })
 }
-export function goalProgress(state, goal) {
+export function goalProgress(state: State, goal: Goal) {
   const series = goalSeries(state, goal.studentId, goal.subjectId)
-  const current = series.length ? series[series.length - 1].net : null
+  const last = series[series.length - 1]
+  const current = last ? last.net : null
   const achieved = current !== null && current >= goal.targetNet
   const span = goal.targetNet - goal.baselineNet
   const percent = achieved
@@ -444,9 +461,9 @@ export function goalProgress(state, goal) {
   }
 }
 // Zayıf konulardan haftalık adım önerileri üretir; mevcut adımlarda olan konular tekrarlanmaz.
-export function suggestGoalSteps(state, goal, now = new Date().toISOString()) {
+export function suggestGoalSteps(state: State, goal: Goal, now = new Date().toISOString()) {
   const known = new Set(goal.steps.map((s) => s.topic.toLocaleLowerCase('tr-TR')).filter(Boolean))
-  const picked = []
+  const picked: { topic: string; subjectName: string }[] = []
   for (const result of state.mockResults) {
     if (result.studentId !== goal.studentId) continue
     if (goal.subjectId && result.subjectId !== goal.subjectId) continue
@@ -469,8 +486,8 @@ export function suggestGoalSteps(state, goal, now = new Date().toISOString()) {
     }
   })
 }
-function goalRecord(state, session, recordId) {
-  const goal = requireRecord(state, 'studentGoals', recordId)
+function goalRecord(state: State, session: Session, recordId: string | undefined) {
+  const goal = requireRecord(state.studentGoals, recordId)
   scopedStudent(state, session, goal.studentId)
   if (
     session.role === 'ogretmen' &&
@@ -480,13 +497,13 @@ function goalRecord(state, session, recordId) {
     throw new Error('Bu hedef başka bir branşa ait.')
   return goal
 }
-function openGoalRecord(state, session, recordId) {
+function openGoalRecord(state: State, session: Session, recordId: string | undefined) {
   const goal = goalRecord(state, session, recordId)
   if (!OPEN_GOAL_STATUSES.includes(goal.status))
     throw new Error('Reddedilmiş veya kapatılmış hedef üzerinde işlem yapılamaz.')
   return goal
 }
-export function renewalQuote(input) {
+export function renewalQuote(input: unknown) {
   const data = workflowSchemas.renewal.parse(input)
   const gross = Math.round(data.total * 100)
   const scholarshipAmount = Math.round((gross * data.scholarship) / 100)
@@ -502,16 +519,20 @@ export function renewalQuote(input) {
     installments: installmentAmounts(amount, data.count),
   }
 }
-function overlaps(a, b) {
+function overlaps(a: Interval, b: Interval) {
   return (
     Date.parse(a.date) < Date.parse(b.date) + (b.duration || 30) * 60000 &&
     Date.parse(b.date) < Date.parse(a.date) + (a.duration || 30) * 60000
   )
 }
-function validateLesson(state, data, ignoreId) {
-  const classroom = active(state, 'classes', data.classId)
-  active(state, 'branches', classroom.branchId)
-  const teacher = active(state, 'teachers', data.teacherId)
+type LessonSlot = Pick<
+  WorkflowInput<'lesson'>,
+  'classId' | 'teacherId' | 'subjectId' | 'date' | 'duration' | 'room'
+>
+function validateLesson(state: State, data: LessonSlot, ignoreId: string | undefined) {
+  const classroom = active(state.classes, data.classId)
+  active(state.branches, classroom.branchId)
+  const teacher = active(state.teachers, data.teacherId)
   const tutorReason = tutorConflict(
     { ...state, schedule: [], appointments: [], schoolEvents: [] },
     {
@@ -531,7 +552,7 @@ function validateLesson(state, data, ignoreId) {
     throw new Error('Öğretmenin branşı ve kampüsü seçilen derse uygun olmalıdır.')
   for (const lesson of state.schedule) {
     if (lesson.id === ignoreId || lesson.cancelledAt || !overlaps(data, lesson)) continue
-    const otherClass = requireRecord(state, 'classes', lesson.classId)
+    const otherClass = requireRecord(state.classes, lesson.classId)
     if (lesson.teacherId === data.teacherId)
       throw new Error('Öğretmenin bu saatte başka dersi var.')
     if (lesson.classId === data.classId) throw new Error('Sınıfın bu saatte başka dersi var.')
@@ -548,21 +569,26 @@ function validateLesson(state, data, ignoreId) {
   )
     throw new Error('Öğretmenin bu saatte görüşme randevusu var.')
 }
-function validateExamResult(state, session, input) {
+function validateExamResult(state: State, session: Session, input: unknown) {
   const data = workflowSchemas['exam-result'].parse(input)
   const student = scopedStudent(state, session, data.studentId),
-    exam = requireRecord(state, 'mockExams', data.examId)
+    exam = requireRecord(state.mockExams, data.examId)
   if (gradeOf(state, student) !== exam.grade)
     throw new Error('Öğrencinin sınıf düzeyi sınavla aynı olmalıdır.')
   if (!exam.subjectIds.includes(data.subjectId))
     throw new Error('Ders bu denemenin kapsamında değil.')
-  if (session.role === 'ogretmen' && active(state, 'teachers', 't1').subjectId !== data.subjectId)
+  if (session.role === 'ogretmen' && active(state.teachers, 't1').subjectId !== data.subjectId)
     throw new Error('Yalnızca kendi branşınızın sonuçlarını girebilirsiniz.')
   if (data.correct + data.wrong + data.blank < 1 || data.correct + data.wrong + data.blank > 200)
     throw new Error('Ders soru toplamı 1–200 arasında olmalıdır.')
   return data
 }
-function upsertResult(state, data, makeId, now) {
+function upsertResult(
+  state: State,
+  data: WorkflowInput<'exam-result'>,
+  makeId: MakeId,
+  now: string,
+) {
   const previous = state.mockResults.find(
     (r) =>
       r.examId === data.examId && r.studentId === data.studentId && r.subjectId === data.subjectId,
@@ -572,11 +598,13 @@ function upsertResult(state, data, makeId, now) {
   else state.mockResults.push(stamped(makeId, 'result', data, now))
 }
 // CSV Excel'den UTF-8 olarak kaydedilebilir; tırnaklı hücre ve satır sonları desteklenir.
-export function parseResultsCsv(raw) {
-  const source = raw.replace(/^\uFEFF/, ''),
-    separator = source.split(/\r?\n/, 1)[0].includes(';') ? ';' : ','
-  const rows = [],
-    row = []
+export function parseResultsCsv(raw: string) {
+  const source = raw.replace(/^\uFEFF/, '')
+  // split en az bir öğe döndürür; varsayılan değer yalnız tip içindir.
+  const [firstLine = ''] = source.split(/\r?\n/, 1)
+  const separator = firstLine.includes(';') ? ';' : ','
+  const rows: string[][] = [],
+    row: string[] = []
   let cell = '',
     quoted = false
   for (let i = 0; i <= source.length; i++) {
@@ -597,7 +625,8 @@ export function parseResultsCsv(raw) {
   }
   if (quoted) throw new Error('CSV içinde kapanmamış tırnak var.')
   const header = ['examId', 'studentId', 'subjectId', 'correct', 'wrong', 'blank', 'weakTopics']
-  if (!rows.length || rows[0].join('|') !== header.join('|'))
+  const [headerRow] = rows
+  if (!headerRow || headerRow.join('|') !== header.join('|'))
     throw new Error('CSV başlıkları örnek şablonla aynı olmalıdır.')
   if (rows.length < 2 || rows.length > 1001)
     throw new Error('Bir aktarımda 1–1000 sonuç satırı olmalıdır.')
@@ -607,7 +636,7 @@ export function parseResultsCsv(raw) {
     return Object.fromEntries(header.map((key, i) => [key, values[i]]))
   })
 }
-export function eventStudents(state, event) {
+export function eventStudents(state: State, event: { classId?: string | null; branchId: string }) {
   return state.students.filter(
     (s) =>
       s.isActive &&
@@ -615,27 +644,28 @@ export function eventStudents(state, event) {
       state.classes.find((c) => c.id === s.classId)?.branchId === event.branchId,
   )
 }
-function ownedClub(state, session, recordId) {
-  const club = active(state, 'clubs', recordId)
+function ownedClub(state: State, session: Session, recordId: string | undefined) {
+  const club = active(state.clubs, recordId)
   if (session.role === 'ogretmen' && club.teacherId !== 't1')
     throw new Error('Yalnızca sorumlu olduğunuz kulübü yönetebilirsiniz.')
   return club
 }
 function executeWorkflow(
-  state,
-  session,
-  command,
-  input,
-  makeId,
-  recordId,
-  now = new Date().toISOString(),
+  state: State,
+  session: Session,
+  command: string,
+  input: unknown,
+  makeId: MakeId,
+  recordId: string | undefined,
+  now: string,
 ) {
-  const module = commandModules[command]
+  const module = moduleOf[command]
   if (!module || !state.modules[module]) throw new Error('Bu modül kullanıma kapalı.')
   if (!mayRun(session, command)) throw new Error('Bu işlem için rolünüzün yetkisi yok.')
-  if (session.role === 'ogretmen') active(state, 'teachers', 't1')
-  const data = workflowSchemas[command] ? workflowSchemas[command].parse(input) : {}
+  if (session.role === 'ogretmen') active(state.teachers, 't1')
+  // Şeması olan her komut, dalın ilk adımı olarak girdisini kendi şemasıyla doğrular.
   if (command === 'goal') {
+    const data = workflowSchemas.goal.parse(input)
     const student = scopedStudent(state, session, data.studentId)
     if (data.deadline < dayKey(now)) throw new Error('Hedef son tarihi geçmişte olamaz.')
     if (
@@ -658,7 +688,8 @@ function executeWorkflow(
     )
       throw new Error('Bu kapsam için açık bir hedef zaten var. Önce mevcut hedefi kapatın.')
     const series = goalSeries(state, data.studentId, data.subjectId)
-    const baselineNet = series.length ? series[series.length - 1].net : 0
+    const last = series[series.length - 1]
+    const baselineNet = last ? last.net : 0
     if (data.targetNet <= baselineNet)
       throw new Error(`Hedef net, mevcut net değerinin (${baselineNet}) üzerinde olmalıdır.`)
     const entry = stamped(
@@ -679,6 +710,7 @@ function executeWorkflow(
     return entry
   }
   if (command === 'goal-review') {
+    const data = workflowSchemas['goal-review'].parse(input)
     const entry = goalRecord(state, session, recordId)
     if (entry.status !== 'Onay bekliyor')
       throw new Error('Yalnızca onay bekleyen hedef değerlendirilir.')
@@ -686,6 +718,7 @@ function executeWorkflow(
     return entry
   }
   if (command === 'goal-step') {
+    const data = workflowSchemas['goal-step'].parse(input)
     const entry = openGoalRecord(state, session, recordId)
     if (data.dueDate < dayKey(now)) throw new Error('Adım son tarihi geçmişte olamaz.')
     if (data.dueDate > entry.deadline.slice(0, 10))
@@ -703,6 +736,7 @@ function executeWorkflow(
     return entry
   }
   if (command === 'goal-step-done') {
+    const data = workflowSchemas['goal-step-done'].parse(input)
     const entry = openGoalRecord(state, session, recordId)
     if (entry.status !== 'Aktif')
       throw new Error('Adımlar hedef onaylandıktan sonra tamamlanabilir.')
@@ -714,6 +748,7 @@ function executeWorkflow(
     return entry
   }
   if (command === 'goal-suggest') {
+    workflowSchemas['goal-suggest'].parse(input)
     const entry = openGoalRecord(state, session, recordId)
     const suggestions = suggestGoalSteps(state, entry, now)
     if (!suggestions.length)
@@ -728,19 +763,22 @@ function executeWorkflow(
     return entry
   }
   if (command === 'goal-comment') {
+    const data = workflowSchemas['goal-comment'].parse(input)
     const entry = goalRecord(state, session, recordId)
     entry.comments.push({ id: makeId('comment'), text: data.text, date: now, actor: session.role })
     entry.updatedAt = now
     return entry
   }
   if (command === 'goal-close') {
+    workflowSchemas['goal-close'].parse(input)
     const entry = openGoalRecord(state, session, recordId)
     Object.assign(entry, { status: 'Kapatıldı', closedAt: now, updatedAt: now })
     return entry
   }
   if (command === 'guidance') {
+    const data = workflowSchemas.guidance.parse(input)
     scopedStudent(state, session, data.studentId)
-    active(state, 'teachers', data.teacherId)
+    active(state.teachers, data.teacherId)
     if (session.role === 'ogretmen' && data.teacherId !== 't1')
       throw new Error('Kendi sorumluluğunuzda takip dosyası açabilirsiniz.')
     const entry = stamped(
@@ -753,7 +791,8 @@ function executeWorkflow(
     return entry
   }
   if (command === 'guidance-note') {
-    const entry = requireRecord(state, 'guidanceCases', recordId)
+    const data = workflowSchemas['guidance-note'].parse(input)
+    const entry = requireRecord(state.guidanceCases, recordId)
     scopedStudent(state, session, entry.studentId)
     if (session.role === 'ogretmen' && entry.teacherId !== 't1')
       throw new Error('Bu takip dosyasının sorumlusu değilsiniz.')
@@ -767,6 +806,7 @@ function executeWorkflow(
     return entry
   }
   if (command === 'exam') {
+    const data = workflowSchemas.exam.parse(input)
     const allowed = subjectsForGrade(data.grade).map((s) => s.id)
     if (
       new Set(data.subjectIds).size !== data.subjectIds.length ||
@@ -787,11 +827,14 @@ function executeWorkflow(
     return entry
   }
   if (command === 'exam-result') {
+    // Doğrulama sırası korunur: şema hatası kapsam ve kayıt denetimlerinden önce gelir.
+    workflowSchemas['exam-result'].parse(input)
     const result = validateExamResult(state, session, input)
     upsertResult(state, result, makeId, now)
     return result
   }
   if (command === 'exam-import') {
+    const data = workflowSchemas['exam-import'].parse(input)
     const results = parseResultsCsv(data.csv).map((row) => validateExamResult(state, session, row))
     const keys = results.map((r) => `${r.examId}/${r.studentId}/${r.subjectId}`)
     if (new Set(keys).size !== keys.length)
@@ -800,8 +843,9 @@ function executeWorkflow(
     return results.length
   }
   if (command === 'renewal') {
+    const data = workflowSchemas.renewal.parse(input)
     const student = scopedStudent(state, session, data.studentId),
-      oldClass = active(state, 'classes', student.classId)
+      oldClass = active(state.classes, student.classId)
     if (data.year <= state.academicYear)
       throw new Error('Yenileme için mevcut dönemden sonraki bir yıl seçin.')
     if (state.renewals.some((r) => r.studentId === student.id && r.year === data.year))
@@ -828,8 +872,8 @@ function executeWorkflow(
       state.renewals.unshift(entry)
       return entry
     }
-    const target = active(state, 'classes', data.targetClassId)
-    active(state, 'branches', target.branchId)
+    const target = active(state.classes, data.targetClassId)
+    active(state.branches, target.branchId)
     if (target.grade !== oldClass.grade + 1)
       throw new Error('Yeni sınıf öğrencinin bir üst sınıf düzeyinde olmalıdır.')
     const occupants = new Set(
@@ -898,8 +942,8 @@ function executeWorkflow(
     return entry
   }
   if (command === 'renewal-activate') {
-    const entry = requireRecord(state, 'renewals', recordId),
-      student = active(state, 'students', entry.studentId)
+    const entry = requireRecord(state.renewals, recordId),
+      student = active(state.students, entry.studentId)
     if (entry.status !== 'Planlandı') throw new Error('Bu dönem geçişi zaten uygulanmış.')
     if (student.classId !== entry.fromClassId)
       throw new Error('Öğrencinin sınıfı değişmiş. Dönem geçişi uygulanamadı.')
@@ -915,8 +959,8 @@ function executeWorkflow(
         'Öğrencinin ileri tarihli etütlerini iptal ettikten sonra dönem geçişini uygulayın.',
       )
     if (entry.mode === 'renew') {
-      const target = active(state, 'classes', entry.targetClassId)
-      active(state, 'branches', target.branchId)
+      const target = active(state.classes, entry.targetClassId)
+      active(state.branches, target.branchId)
       if (
         state.students.filter((s) => s.isActive && s.classId === target.id).length >=
         target.capacity
@@ -940,7 +984,7 @@ function executeWorkflow(
     else {
       student.classId = entry.targetClassId
       student.academicYear = entry.year
-      const target = requireRecord(state, 'classes', entry.targetClassId)
+      const target = requireRecord(state.classes, entry.targetClassId)
       for (const task of state.studyTasks.filter(
         (t) => t.studentId === student.id && t.status !== 'Tamamlandı',
       ))
@@ -980,20 +1024,23 @@ function executeWorkflow(
     return entry
   }
   if (command === 'lesson') {
+    const data = workflowSchemas.lesson.parse(input)
     validateLesson(state, data, recordId)
-    const entry = recordId
-      ? requireRecord(state, 'schedule', recordId)
-      : stamped(makeId, 'lesson', {}, now)
-    if (entry.cancelledAt) throw new Error('İptal edilmiş ders düzenlenemez.')
-    Object.assign(entry, data, {
-      title: state.subjects.find((s) => s.id === data.subjectId)?.name,
-      updatedAt: now,
-    })
-    if (!recordId) state.schedule.push(entry)
+    const title = () => state.subjects.find((s) => s.id === data.subjectId)?.name
+    if (recordId) {
+      const entry = requireRecord(state.schedule, recordId)
+      if (entry.cancelledAt) throw new Error('İptal edilmiş ders düzenlenemez.')
+      Object.assign(entry, data, { title: title(), updatedAt: now })
+      return entry
+    }
+    // Yeni ders, damga alanlarından sonra girdi ve ders adıyla aynı alan sırasında oluşturulur.
+    const entry = { ...stamped(makeId, 'lesson', {}, now), ...data, title: title(), updatedAt: now }
+    state.schedule.push(entry)
     return entry
   }
   if (command === 'substitute') {
-    const lesson = requireRecord(state, 'schedule', recordId)
+    const data = workflowSchemas.substitute.parse(input)
+    const lesson = requireRecord(state.schedule, recordId)
     if (lesson.cancelledAt) throw new Error('İptal edilmiş ders için görevlendirme yapılamaz.')
     if (lesson.teacherId === data.teacherId) throw new Error('Farklı bir öğretmen seçin.')
     validateLesson(state, { ...lesson, teacherId: data.teacherId }, lesson.id)
@@ -1009,12 +1056,13 @@ function executeWorkflow(
     return lesson
   }
   if (command === 'lesson-cancel') {
-    const entry = requireRecord(state, 'schedule', recordId)
+    const entry = requireRecord(state.schedule, recordId)
     if (entry.cancelledAt) throw new Error('Ders zaten iptal edilmiş.')
     entry.cancelledAt = now
     return entry
   }
   if (command === 'study-task') {
+    const data = workflowSchemas['study-task'].parse(input)
     if (data.dueDate < dayKey(now))
       throw new Error('Yeni çalışma görevinin son tarihi geçmişte olamaz.')
     const student = scopedStudent(state, session, data.studentId)
@@ -1041,28 +1089,33 @@ function executeWorkflow(
     state.studyTasks.unshift(entry)
     return entry
   }
-  if (command === 'study-complete' || command === 'study-review') {
-    const entry = requireRecord(state, 'studyTasks', recordId)
+  if (command === 'study-complete') {
+    const data = workflowSchemas['study-complete'].parse(input)
+    const entry = requireRecord(state.studyTasks, recordId)
     scopedStudent(state, session, entry.studentId)
-    if (command === 'study-complete') {
-      if (!['Onaylandı', 'Tekrar çalışılacak'].includes(entry.status))
-        throw new Error('Yalnızca onaylanmış veya tekrar verilen görev teslim edilebilir.')
-      Object.assign(entry, data, { status: 'Değerlendirme bekliyor', completedAt: now })
-    } else {
-      if (session.role === 'ogretmen' && entry.teacherId !== 't1')
-        throw new Error('Bu çalışma görevinin öğretmeni değilsiniz.')
-      if (
-        (entry.status === 'Onay bekliyor' && data.status !== 'Onaylandı') ||
-        (entry.status !== 'Onay bekliyor' && entry.status !== 'Değerlendirme bekliyor')
-      )
-        throw new Error('Görevin durumuna uygun değerlendirme seçin.')
-      Object.assign(entry, data, { reviewedAt: now })
-    }
+    if (!['Onaylandı', 'Tekrar çalışılacak'].includes(entry.status))
+      throw new Error('Yalnızca onaylanmış veya tekrar verilen görev teslim edilebilir.')
+    Object.assign(entry, data, { status: 'Değerlendirme bekliyor', completedAt: now })
+    return entry
+  }
+  if (command === 'study-review') {
+    const data = workflowSchemas['study-review'].parse(input)
+    const entry = requireRecord(state.studyTasks, recordId)
+    scopedStudent(state, session, entry.studentId)
+    if (session.role === 'ogretmen' && entry.teacherId !== 't1')
+      throw new Error('Bu çalışma görevinin öğretmeni değilsiniz.')
+    if (
+      (entry.status === 'Onay bekliyor' && data.status !== 'Onaylandı') ||
+      (entry.status !== 'Onay bekliyor' && entry.status !== 'Değerlendirme bekliyor')
+    )
+      throw new Error('Görevin durumuna uygun değerlendirme seçin.')
+    Object.assign(entry, data, { reviewedAt: now })
     return entry
   }
   if (command === 'event') {
-    active(state, 'branches', data.branchId)
-    const classroom = data.classId ? active(state, 'classes', data.classId) : null
+    const data = workflowSchemas.event.parse(input)
+    active(state.branches, data.branchId)
+    const classroom = data.classId ? active(state.classes, data.classId) : null
     if (classroom && classroom.branchId !== data.branchId)
       throw new Error('Sınıf ve kampüs aynı olmalıdır.')
     if (
@@ -1100,7 +1153,8 @@ function executeWorkflow(
     return entry
   }
   if (command === 'consent') {
-    const event = requireRecord(state, 'schoolEvents', recordId),
+    const data = workflowSchemas.consent.parse(input)
+    const event = requireRecord(state.schoolEvents, recordId),
       student = scopedStudent(state, session, session.childId)
     if (
       !event.requiresConsent ||
@@ -1129,14 +1183,15 @@ function executeWorkflow(
     return event
   }
   if (command === 'event-cancel') {
-    const event = requireRecord(state, 'schoolEvents', recordId)
+    const event = requireRecord(state.schoolEvents, recordId)
     if (session.role === 'ogretmen' && event.teacherId !== 't1')
       throw new Error('Yalnızca oluşturduğunuz etkinliği iptal edebilirsiniz.')
     event.status = 'İptal'
     return event
   }
   if (command === 'route') {
-    active(state, 'branches', data.branchId)
+    const data = workflowSchemas.route.parse(input)
+    active(state.branches, data.branchId)
     if (
       state.transportRoutes.some(
         (r) =>
@@ -1147,7 +1202,7 @@ function executeWorkflow(
     )
       throw new Error('Bu plaka başka aktif güzergâhta kullanılıyor.')
     if (recordId) {
-      const entry = active(state, 'transportRoutes', recordId),
+      const entry = active(state.transportRoutes, recordId),
         assignments = state.transportAssignments.filter((a) => a.routeId === recordId)
       if (
         assignments.length > data.capacity ||
@@ -1170,7 +1225,7 @@ function executeWorkflow(
     return entry
   }
   if (command === 'route-archive') {
-    const entry = active(state, 'transportRoutes', recordId)
+    const entry = active(state.transportRoutes, recordId)
     if (state.transportAssignments.some((a) => a.routeId === entry.id))
       throw new Error(
         'Önce bu güzergâhtaki öğrencileri başka servise taşıyın veya atamalarını kaldırın.',
@@ -1179,8 +1234,9 @@ function executeWorkflow(
     return entry
   }
   if (command === 'transport-assign') {
+    const data = workflowSchemas['transport-assign'].parse(input)
     const student = scopedStudent(state, session, data.studentId),
-      route = active(state, 'transportRoutes', data.routeId)
+      route = active(state.transportRoutes, data.routeId)
     if (state.classes.find((c) => c.id === student.classId)?.branchId !== route.branchId)
       throw new Error('Servis ve öğrenci aynı kampüste olmalıdır.')
     if (!route.stops.includes(data.stop)) throw new Error('Seçilen durak bu güzergâhta bulunmuyor.')
@@ -1195,19 +1251,20 @@ function executeWorkflow(
     return route
   }
   if (command === 'transport-remove') {
-    requireRecord(state, 'transportAssignments', recordId)
+    requireRecord(state.transportAssignments, recordId)
     state.transportAssignments = state.transportAssignments.filter((a) => a.id !== recordId)
     return true
   }
   if (command === 'meal') {
-    active(state, 'branches', data.branchId)
+    const data = workflowSchemas.meal.parse(input)
+    active(state.branches, data.branchId)
     const previous = state.mealMenus.find(
       (m) => m.branchId === data.branchId && m.date.slice(0, 10) === data.date,
     )
     if (previous && previous.id !== recordId)
       throw new Error('Bu kampüs ve gün için menü zaten var. Mevcut menüyü düzenleyin.')
     if (recordId) {
-      const entry = requireRecord(state, 'mealMenus', recordId)
+      const entry = requireRecord(state.mealMenus, recordId)
       Object.assign(entry, data, { date: atDay(data.date), updatedAt: now })
       return entry
     }
@@ -1216,8 +1273,9 @@ function executeWorkflow(
     return entry
   }
   if (command === 'club') {
-    active(state, 'branches', data.branchId)
-    const teacher = active(state, 'teachers', data.teacherId)
+    const data = workflowSchemas.club.parse(input)
+    active(state.branches, data.branchId)
+    const teacher = active(state.teachers, data.teacherId)
     if (teacher.branchId !== data.branchId || (session.role === 'ogretmen' && teacher.id !== 't1'))
       throw new Error(
         'Kulüp sorumlusu kampüse uygun olmalıdır; öğretmen kendi adına kulüp açabilir.',
@@ -1227,7 +1285,8 @@ function executeWorkflow(
     return entry
   }
   if (command === 'club-enroll') {
-    const club = active(state, 'clubs', recordId),
+    const data = workflowSchemas['club-enroll'].parse(input)
+    const club = active(state.clubs, recordId),
       student = scopedStudent(state, session, data.studentId)
     if (session.role === 'ogretmen') ownedClub(state, session, recordId)
     if (state.classes.find((c) => c.id === student.classId)?.branchId !== club.branchId)
@@ -1249,7 +1308,7 @@ function executeWorkflow(
     return club
   }
   if (command === 'club-leave') {
-    const member = requireRecord(state, 'clubMemberships', recordId)
+    const member = requireRecord(state.clubMemberships, recordId)
     scopedStudent(state, session, member.studentId)
     if (session.role === 'ogretmen') ownedClub(state, session, member.clubId)
     if (member.status !== 'Aktif') throw new Error('Üyelik zaten sonlandırılmış.')
@@ -1257,23 +1316,29 @@ function executeWorkflow(
     return member
   }
   if (command === 'club-attendance') {
+    const data = workflowSchemas['club-attendance'].parse(input)
     const club = ownedClub(state, session, recordId),
       members = state.clubMemberships.filter((m) => m.clubId === club.id && m.status === 'Aktif')
     if (data.date > dayKey(now)) throw new Error('Gelecek tarih için kulüp yoklaması alınamaz.')
+    // Durumu seçilmiş üyeler üye sırasıyla; eksik üye varsa liste kısalır.
+    const marked = members.flatMap((member) => {
+      const status = data.marks[member.studentId]
+      return status ? [{ studentId: member.studentId, status }] : []
+    })
     if (
       !members.length ||
-      members.some((m) => !data.marks[m.studentId]) ||
+      marked.length !== members.length ||
       Object.keys(data.marks).some((id) => !members.some((m) => m.studentId === id))
     )
       throw new Error('Tüm aktif üyelerin yoklama durumunu seçin.')
-    for (const member of members) {
+    for (const member of marked) {
       const entry = state.clubAttendance.find(
         (a) =>
           a.clubId === club.id &&
           a.studentId === member.studentId &&
           a.date.slice(0, 10) === data.date,
       )
-      if (entry) Object.assign(entry, { status: data.marks[member.studentId], updatedAt: now })
+      if (entry) Object.assign(entry, { status: member.status, updatedAt: now })
       else
         state.clubAttendance.push(
           stamped(
@@ -1283,7 +1348,7 @@ function executeWorkflow(
               clubId: club.id,
               studentId: member.studentId,
               date: atDay(data.date),
-              status: data.marks[member.studentId],
+              status: member.status,
             },
             now,
           ),
@@ -1292,6 +1357,7 @@ function executeWorkflow(
     return club
   }
   if (command === 'achievement') {
+    const data = workflowSchemas.achievement.parse(input)
     scopedStudent(state, session, data.studentId)
     ownedClub(state, session, data.clubId)
     if (
@@ -1317,16 +1383,22 @@ function executeWorkflow(
   throw new Error('İşlem bulunamadı.')
 }
 
+type AuditedCollection = {
+  [K in keyof State]: State[K] extends readonly { id: string }[] ? K : never
+}[keyof State]
+const clone = (value: unknown): unknown => JSON.parse(JSON.stringify(value))
+const findById = (list: readonly { id: string }[], id: string) => list.find((r) => r.id === id)
+
 export function runWorkflow(
-  state,
-  session,
-  command,
-  input,
-  makeId,
-  recordId,
+  state: State,
+  session: Session,
+  command: string,
+  input: unknown,
+  makeId: MakeId,
+  recordId?: string,
   now = new Date().toISOString(),
 ) {
-  const collections = {
+  const collections: Partial<Record<string, AuditedCollection>> = {
     goal: 'studentGoals',
     'goal-review': 'studentGoals',
     'goal-step': 'studentGoals',
@@ -1363,9 +1435,10 @@ export function runWorkflow(
     'club-archive': 'clubs',
   }
   const collection = collections[command]
-  const previous = recordId && collection ? state[collection].find((r) => r.id === recordId) : null
-  const oldValue = previous ? JSON.parse(JSON.stringify(previous)) : null
+  const previous = recordId && collection ? findById(state[collection], recordId) : null
+  const oldValue = previous ? clone(previous) : null
   const result = executeWorkflow(state, session, command, input, makeId, recordId, now)
+  const resultId = typeof result === 'object' && 'id' in result ? result.id : undefined
   state.audit.unshift({
     id: makeId('audit'),
     actor: session.role,
@@ -1379,11 +1452,11 @@ export function runWorkflow(
             : `demo-${session.role}`,
     action: command,
     table_name: collection,
-    record_id: recordId || result?.id || command,
+    record_id: recordId || resultId || command,
     date: now,
     changed_at: now,
     old_value: oldValue,
-    new_value: typeof result === 'object' ? JSON.parse(JSON.stringify(result)) : { result },
+    new_value: typeof result === 'object' ? clone(result) : { result },
   })
   state.audit = state.audit.slice(0, 200)
   return result

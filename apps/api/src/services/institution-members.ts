@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm'
+import type { FastifyBaseLogger } from 'fastify'
 
 import { roleSchema, type Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
@@ -76,6 +77,7 @@ export async function listInstitutionMembers(
   db: Database,
   institutionId: string,
   query: MemberListQuery,
+  log: FastifyBaseLogger,
 ) {
   const filters: SQL[] = [eq(memberships.institutionId, institutionId)]
   if (query.role) filters.push(eq(memberships.role, query.role))
@@ -118,15 +120,26 @@ export async function listInstitutionMembers(
     institutionId,
     rows.map((row) => row.id),
   )
+  const items = rows.flatMap(({ passive, ...row }) => {
+    // Rol Better Auth'ta serbest metindir. Tanınmayan değer tek satırı etkiler: satır loglanıp
+    // atlanır, yöneticinin bütün listesi düşmez (kimlik doğrulama aynı durumda 403 verir).
+    const role = roleSchema.safeParse(row.role)
+    if (!role.success) {
+      log.warn({ event: 'institution_members.role_unrecognized', membershipId: row.id })
+      return []
+    }
+    return [
+      {
+        ...row,
+        role: role.data,
+        status: passive ? ('passive' as const) : ('active' as const),
+        links: links.get(row.id) ?? [],
+        createdAt: row.createdAt.toISOString(),
+      },
+    ]
+  })
   return {
-    items: rows.map(({ passive, ...row }) => ({
-      ...row,
-      // Rol Better Auth'ta serbest metindir; tanınmayan değer veri hatasıdır (500).
-      role: roleSchema.parse(row.role),
-      status: passive ? ('passive' as const) : ('active' as const),
-      links: links.get(row.id) ?? [],
-      createdAt: row.createdAt.toISOString(),
-    })),
+    items,
     total: totals?.total ?? 0,
   }
 }

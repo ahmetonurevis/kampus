@@ -31,14 +31,12 @@ export function registerInstitutionMemberRoutes(app: FastifyInstance) {
     async (request) => {
       const ctx = contextOf(request)
       const { page, pageSize, q, role, status, sort } = request.query
-      const result = await listInstitutionMembers(ctx.db, ctx.institutionId, {
-        page,
-        pageSize,
-        q,
-        role,
-        status,
-        sort,
-      })
+      const result = await listInstitutionMembers(
+        ctx.db,
+        ctx.institutionId,
+        { page, pageSize, q, role, status, sort },
+        ctx.log,
+      )
       return { data: result.items, meta: { page, pageSize, total: result.total } }
     },
   )

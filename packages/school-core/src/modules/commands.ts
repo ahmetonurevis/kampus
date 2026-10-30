@@ -183,6 +183,15 @@ export const OPERATION_COMMANDS = {
   // okur (DOM-ILT-101). API talepte yalnız seçilen uygunluk saatini yükler.
   'appointment.book': spec('communication', [...SCOPE, 'availability', ...CONFLICTS]),
   'appointment.update': spec('communication', [...SCOPE, ...CONFLICTS]),
+  // Alınabilir saat listesi (DOM-ILT-105): yazmaz; her saati talepteki çakışma denetiminden
+  // geçirir, öğretmenin kampüs ve ders adını okur.
+  'appointment.slots': spec('communication', [
+    ...SCOPE,
+    'availability',
+    'branches',
+    'subjects',
+    ...CONFLICTS,
+  ]),
   // Öğretmenime Sor (`lib/questions.ts`); kazanım denetimi ders listesini okur. API soru açarken
   // soruları hiç, yanıt ve geri çekmede yalnız hedef soruyu yükler.
   'question.ask': spec('learning', [...SCOPE, 'subjects', 'questions']),

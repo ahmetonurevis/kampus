@@ -46,7 +46,11 @@ import {
   openRequest,
   updateRequest,
 } from '../packages/school-core/src/lib/requests.ts'
-import { bookAppointment, updateAppointment } from '../packages/school-core/src/lib/appointments.ts'
+import {
+  bookableSlots,
+  bookAppointment,
+  updateAppointment,
+} from '../packages/school-core/src/lib/appointments.ts'
 import {
   answerQuestion,
   askQuestion,
@@ -554,6 +558,14 @@ test('Randevu işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır 
     now,
   )
   assert.equal(approved.status, 'Onaylandı')
+  // DOM-ILT-105: saat listesi kampüs ve ders adını da okur.
+  const slots = bookableSlots(
+    operation(state, 'appointment.slots'),
+    parent,
+    { studentId: 's1' },
+    now,
+  )
+  assert.ok(slots.some((slot) => slot.campusName && slot.subjectNames.length > 0))
 })
 
 test('Öğretmenime Sor işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır', () => {

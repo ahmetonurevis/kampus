@@ -69,6 +69,8 @@ export type WriteTargets = {
   // aktörün o kayıttaki rolü (öğretmen, talep eden) işlemde denetlenir.
   'appointment.book': { studentId: string }
   'appointment.update': Record<string, never>
+  /** Saat listesi (DOM-ILT-105): yazma değil okuma; hedef öğrenci istemciden gelir. */
+  'appointment.slots': { studentId: string }
   // Öğretmenime Sor (`lib/questions.ts`): öğrenci oturumdan, ders ve öğretmen gövdeden gelir; kayıt
   // yoksa `undefined` (varlık işlemin işidir, 404).
   'question.ask': { studentId: string | undefined; subjectId: string; teacherId?: string }
@@ -151,6 +153,10 @@ export const WRITE_ACTION_ROLES = {
   // TODO(randevu-yonetici-iptal): yöneticinin onaylı randevuyu iptal etmesi kural olarak yok.
   'appointment.book': ['ogrenci', 'veli'],
   'appointment.update': ['ogretmen', 'ogrenci', 'veli'],
+  // Alınabilir saat listesi yalnız talep açan rollerindir (DOM-ILT-105): `available` bir öğrencinin
+  // gözünden hesaplanır ve yalnız talep ekranında anlamlıdır. Öğretmen ve yönetici uygunluk
+  // saatlerini ham koleksiyondan (`availability`) zaten okur; ön büro randevu görmez (DOM-ILT-103).
+  'appointment.slots': ['ogrenci', 'veli'],
   // Öğretmenime Sor: soruyu öğrenci kendi sınıfının ders öğretmenine gönderir ve yanıtsızken geri
   // çeker; yanıtı yalnız sorunun atandığı öğretmen yazar. Veli çocuğunun sorusunu salt okur;
   // yönetici ve ön büro soru yazmaz (DOM-ILT-090…093).
@@ -332,6 +338,12 @@ function decide(
       return scope.studentIds.has(request.target.studentId)
         ? ALLOWED
         : deny('student_scope_denied', 'Bu öğrenci için işlem yetkiniz bulunmuyor.', 'DOM-YTK-025')
+    case 'appointment.slots':
+      // Okumadır: başka velinin çocuğu veya kurumda olmayan öğrenci olmayan kayıtla aynı 404'tür,
+      // öğrencinin varlığı sızdırılmaz (DOM-ILT-105). Talepteki 403'ten farkı budur.
+      return scope.studentIds.has(request.target.studentId)
+        ? ALLOWED
+        : deny('student_not_found', 'Öğrenci bulunamadı.', 'DOM-ILT-105', 'not_found')
     case 'request.update':
     case 'appointment.update':
       return ALLOWED

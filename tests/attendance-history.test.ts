@@ -179,6 +179,10 @@ test('Yoklama girdi şeması durumları, günü ve gerekçe sınırını uygular
     { ...valid, date: '2026-10-06T09:00:00Z' },
     { ...valid, marks: { s1: 'gelmedi' } },
     { ...valid, reason: 'x'.repeat(501) },
-  ])
-    assert.equal(attendanceInputSchema.safeParse(invalid).success, false)
+  ]) {
+    const result = attendanceInputSchema.safeParse(invalid)
+    assert.equal(result.success, false)
+    // Biçim ve takvim denetimi aynı değer için ikinci hata eklemez.
+    assert.equal(result.error?.issues.length, 1, JSON.stringify(invalid))
+  }
 })

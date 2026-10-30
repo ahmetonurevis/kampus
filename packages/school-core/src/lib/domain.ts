@@ -90,14 +90,20 @@ export function payInvoice(
   invoice.method = input.data.method
   return invoice
 }
-/** Takvim günü (`YYYY-MM-DD`); geçersiz gün (ör. 2026-02-30) reddedilir. */
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+/**
+ * Takvim günü (`YYYY-MM-DD`); geçersiz gün (ör. 2026-02-30) reddedilir. Biçim `regex` ile
+ * denetlenir (OpenAPI `pattern`); takvim denetimi yalnız biçimi doğru değerde hata ekler, böylece
+ * tek hata döner.
+ */
 export const daySchema = z
   .string()
+  .regex(DAY_PATTERN, 'Geçerli bir tarih seçin.')
   .refine(
     (v) =>
-      /^\d{4}-\d{2}-\d{2}$/.test(v) &&
-      Number.isFinite(Date.parse(`${v}T09:00:00Z`)) &&
-      new Date(`${v}T09:00:00Z`).toISOString().slice(0, 10) === v,
+      !DAY_PATTERN.test(v) ||
+      (Number.isFinite(Date.parse(`${v}T09:00:00Z`)) &&
+        new Date(`${v}T09:00:00Z`).toISOString().slice(0, 10) === v),
     'Geçerli bir tarih seçin.',
   )
 

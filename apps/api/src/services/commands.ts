@@ -1,9 +1,15 @@
 import { eq } from 'drizzle-orm'
+import type { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { runAssessment } from '@kampus/school-core/lib/assessment-automation.ts'
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
-import { payInvoice, recordAttendance, type Session } from '@kampus/school-core/lib/domain.ts'
+import {
+  payInvoice,
+  recordAttendance,
+  type attendanceInputSchema,
+  type Session,
+} from '@kampus/school-core/lib/domain.ts'
 import {
   archiveRecord,
   restoreRecord,
@@ -258,29 +264,17 @@ export async function payInvoiceCommand(
   )
 }
 
-export const ATTENDANCE_STATUSES = ['present', 'absent', 'late', 'excused'] as const
-export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number]
-
-export interface AttendanceInput {
-  /** Yoklama günü (`YYYY-MM-DD`). */
-  date: string
-  marks: Readonly<Record<string, AttendanceStatus>>
-  /** Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); öğretmenin aynı gün yoklamasında gerekmez. */
-  reason?: string | undefined
-}
-
 /**
  * Sınıfın günlük yoklaması (`recordAttendance`): aynı öğrenci ve gün için tek kayıt güncellenir,
  * yinelenmez. Yetki core `attendance.record`'dur: öğretmen ders verdiği sınıfta aynı gün,
- * yönetici yalnız gerekçeyle (DOM-YTK-022, DOM-AKD-035). Gerekçe bugün yalnız yetki kararına
- * girer; denetim kaydına içerik yazılmaz.
- * TODO(core-attendance-history): core düzeltme geçmişini (eski/yeni değer, gerekçe) saklayınca
- * gerekçe işleme de verilir.
+ * yönetici yalnız gerekçeyle (DOM-YTK-022, DOM-AKD-035). Durumu değişen öğrencinin eski durumu,
+ * gerekçe, düzelten kullanıcı ve zaman kaydın `corrections` geçmişine yazılır; denetim kaydına
+ * içerik değil alan adı düşer. Girdi rotada core `attendanceInputSchema` ile çözümlenmiştir.
  */
 export async function recordAttendanceCommand(
   ctx: ServiceContext,
   classId: string,
-  input: AttendanceInput,
+  input: z.output<typeof attendanceInputSchema>,
   options: CommandOptions,
 ): Promise<CommandResponse> {
   return execute(
@@ -312,7 +306,10 @@ export async function recordAttendanceCommand(
             })
             if (!state.classes.some((item) => item.id === classId)) throw new NotFoundError()
             // Gelecek gün uygulamanın saatine göre denetlenir (`ctx.now`), gerçek saate göre değil.
-            recordAttendance(state, classId, date, input.marks, now)
+            recordAttendance(state, classId, date, input.marks, now, {
+              reason: input.reason,
+              by: ctx.actor.userId,
+            })
             return { collection: 'classes', id: classId }
           },
         }

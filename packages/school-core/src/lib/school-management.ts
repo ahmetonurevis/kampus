@@ -285,6 +285,9 @@ export function saveClass(
     lesson.room = data.room
   }
   // Yalnız yanıt bekleyen sorular taşınır; geri çekilmiş soru eski öğretmende kalır (DOM-ILT-092).
+  // TODO(soru-ortak-ders): ders atamaları tek öğretmenli varsayılır (`subjectTeachers` ders başına
+  // bir öğretmen); ortak derste soru ilk eşleşen atamaya taşınır, öğrencinin seçtiği öğretmen
+  // korunmaz. Ortak ders kuralı netleşince taşıma sorunun öğretmeni hâlâ atanmışsa ona dokunmamalı.
   for (const question of state.questions.filter(
     (q) =>
       isOpenQuestion(q) &&

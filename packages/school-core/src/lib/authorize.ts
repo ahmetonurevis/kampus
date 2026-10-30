@@ -1,9 +1,6 @@
 import type { State } from '../data/seed.ts'
-import {
-  collectionStatus,
-  type InstitutionType,
-  type ModuleKey,
-} from '../modules/collection-modules.ts'
+import { moduleAvailableFor, type InstitutionType } from '../modules/collection-modules.ts'
+import { OPERATION_COMMANDS, type OperationCommand } from '../modules/commands.ts'
 import type { Session } from './domain.ts'
 import { DomainError, type DomainErrorKind } from './errors.ts'
 import { dayKey } from './format.ts'
@@ -20,16 +17,9 @@ import { scopeFor, sessionActor, type Actor, type ScopeSource } from './scope.ts
  * önce `requireAuthorized` çalıştırır. Çevrimdışı demo aktörü `sessionActor` ile verir.
  */
 
-export const WRITE_ACTIONS = [
-  'invoice.pay',
-  'invoice.payOnline',
-  'attendance.record',
-  'grade.record',
-  'grade.update',
-  'record.archive',
-  'record.restore',
-] as const
-export type WriteAction = (typeof WRITE_ACTIONS)[number]
+/** Eylem adları komut tablosunun temel işlemleridir (`modules/commands.ts`). */
+export type WriteAction = OperationCommand
+export const WRITE_ACTIONS = Object.keys(OPERATION_COMMANDS) as readonly WriteAction[]
 
 /** Eylem başına yetkinin dayandığı hedef bilgisi; kimlikler istemciden gelse de kapsamla denetlenir. */
 export type WriteTargets = {
@@ -63,20 +53,6 @@ export type WriteDenial = {
   rule: string
 }
 export type WriteDecision = { allowed: true } | WriteDenial
-
-/**
- * Eylemin modülü; `null` modülden bağımsız (her zaman açık) eylemdir. Kampüs/sınıf/kadro çekirdek
- * kayıtlardır, kapatılamaz (DOM-YTK-040).
- */
-export const WRITE_ACTION_MODULES = {
-  'invoice.pay': 'finance',
-  'invoice.payOnline': 'finance',
-  'attendance.record': 'academic',
-  'grade.record': 'academic',
-  'grade.update': 'academic',
-  'record.archive': null,
-  'record.restore': null,
-} as const satisfies Record<WriteAction, ModuleKey | null>
 
 /** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları aşağıda). */
 export const WRITE_ACTION_ROLES = {
@@ -135,14 +111,13 @@ function moduleDecision(
   source: AuthorizationSource,
   institutionType: InstitutionType,
 ): WriteDecision {
-  const module = WRITE_ACTION_MODULES[action]
+  // Eylemin modülü komut tablosundadır; `null` çekirdek kayıttır, kapatılamaz (DOM-YTK-040).
+  const module = OPERATION_COMMANDS[action].module
   if (module === null) return ALLOWED
-  // Modülün sahibi olduğu bir koleksiyon üzerinden durum okunur; tek karar yeri koleksiyon tablosudur.
-  const collection = module === 'finance' ? 'invoices' : 'grades'
-  const status = collectionStatus(collection, source.modules, institutionType)
-  if (status === 'unavailable')
+  if (!moduleAvailableFor(module, institutionType))
     return deny('collection_not_found', 'İlgili kayıt bulunamadı.', 'DOM-YTK-012', 'not_found')
-  if (status !== 'enabled')
+  // Haritada olmayan modül kapalı sayılır (varsayılan ret).
+  if (source.modules[module] !== true)
     return deny('module_disabled', 'Bu modül kullanıma kapalı.', 'DOM-YTK-040')
   return ALLOWED
 }

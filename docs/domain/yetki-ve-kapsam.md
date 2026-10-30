@@ -195,7 +195,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Yalnız menüyü gizlemek, kapatılan işlevi URL veya API ile kullanılabilir bırakır.
 - **Kaynak:** CLAUDE.md "Modül kapatıldığında menü, doğrudan route erişimi ve ilgili API uçları kapanır".
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — menü (`apps/web/src/App.vue:43`), route (`apps/web/src/router.js:80-82`) ve iş akışı komutları (`packages/school-core/src/lib/school-workflows.js:579-580`) kapanır; temel modüllerin (`crm`, `finance`, `academic`, `learning`, `communication`) işlemleri (`packages/school-core/src/lib/domain.js`) modül denetimi yapmaz; modül durumu kurum başına değil (`packages/school-core/src/data/seed.js:779`).
+- **Kodda:** kısmen — menü (`apps/web/src/App.vue:43`) ve route (`apps/web/src/router.js:80-82`) kapanır. Komut → modül ve komut → koleksiyon tablosu `packages/school-core/src/modules/commands.ts` (`WORKFLOW_COMMANDS`, `ASSESSMENT_COMMANDS`, `OPERATION_COMMANDS`, `commandSpec`) tek yerdedir; iş akışı komutları (`runWorkflow`) ve temel yazma eylemleri (`authorize`) modülü buradan okur. Temel işlemlerin kendisi (`packages/school-core/src/lib/domain.ts`) modül denetimi yapmaz, çağıran `requireAuthorized` çalıştırır; modül durumu kurum başına değil (`packages/school-core/src/data/seed.ts`).
 
 ### DOM-YTK-041 · Kapalı modül yan kanallarda görünmez
 

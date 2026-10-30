@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { subjectsForGrade } from '../data/curriculum.ts'
 import type { State } from '../data/seed.ts'
+import { WORKFLOW_COMMANDS, isWorkflowCommand, type WorkflowCommand } from '../modules/commands.ts'
 import type { Role } from '../modules/navigation.ts'
 import { installmentAmounts, type MakeId, type Session } from './domain.ts'
 import { dayKey } from './format.ts'
@@ -280,45 +281,7 @@ export type AuditEntry = {
   /** Değeri denetim kaydına yazılmayan, değişen gizli alanların adları (DOM-ILT-041). */
   masked_fields?: string[]
 }
-const commandModules = {
-  goal: 'goals',
-  'goal-review': 'goals',
-  'goal-step': 'goals',
-  'goal-step-done': 'goals',
-  'goal-suggest': 'goals',
-  'goal-comment': 'goals',
-  'goal-close': 'goals',
-  guidance: 'guidance',
-  'guidance-note': 'guidance',
-  exam: 'exams',
-  'exam-result': 'exams',
-  'exam-import': 'exams',
-  renewal: 'renewal',
-  'renewal-activate': 'renewal',
-  lesson: 'planning',
-  substitute: 'planning',
-  'lesson-cancel': 'planning',
-  'study-task': 'study',
-  'study-complete': 'study',
-  'study-review': 'study',
-  event: 'calendar',
-  consent: 'calendar',
-  'event-cancel': 'calendar',
-  route: 'transport',
-  'route-archive': 'transport',
-  'transport-assign': 'transport',
-  'transport-remove': 'transport',
-  meal: 'meals',
-  club: 'clubs',
-  'club-enroll': 'clubs',
-  'club-leave': 'clubs',
-  'club-attendance': 'clubs',
-  achievement: 'clubs',
-  'club-archive': 'clubs',
-} satisfies Record<string, string>
-export type WorkflowCommand = keyof typeof commandModules
-// Komut çalışma anında serbest metin olarak gelir; bilinmeyen komut tablo dışında kalır.
-const moduleOf: Partial<Record<string, string>> = commandModules
+export type { WorkflowCommand }
 const commandRoles: Partial<Record<string, readonly Role[]>> = {
   goal: ['yonetici', 'ogretmen', 'ogrenci'],
   'goal-review': ['yonetici', 'ogretmen'],
@@ -722,10 +685,11 @@ function executeWorkflow(
   recordId: string | undefined,
   now: string,
 ) {
-  if (!Object.hasOwn(moduleOf, command))
-    throw new DomainError('unknown_command', 'İşlem bulunamadı.')
-  const module = moduleOf[command]
-  if (!module || !state.modules[module])
+  // Komut → modül tek yerdedir (`modules/commands.ts`); komut çalışma anında serbest metin gelir,
+  // bilinmeyen komut tablo dışında kalır.
+  if (!isWorkflowCommand(command)) throw new DomainError('unknown_command', 'İşlem bulunamadı.')
+  const module = WORKFLOW_COMMANDS[command].module
+  if (!state.modules[module])
     throw new DomainError('module_disabled', 'Bu modül kullanıma kapalı.', { kind: 'forbidden' })
   if (!mayRun(session, command))
     throw new DomainError('permission_denied', 'Bu işlem için rolünüzün yetkisi yok.', {

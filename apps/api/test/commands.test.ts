@@ -407,6 +407,8 @@ describe('yazma uçları', () => {
         'POST /api/v1/announcements',
         'POST /api/v1/conversations',
         'POST /api/v1/conversations/{conversationId}/messages',
+        // Kurum modül ayarı (routes/modules.ts).
+        'PATCH /api/v1/modules/{moduleKey}',
       ]
       assert.deepEqual(required.sort(), expected.sort())
     })

@@ -29,6 +29,7 @@ import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 import { registerHealthRoutes } from './routes/health.ts'
 import { registerMeRoutes } from './routes/me.ts'
 import { registerMembershipRoutes } from './routes/memberships.ts'
+import { registerModuleRoutes } from './routes/modules.ts'
 
 // Şemada özel mesajı olmayan Zod hataları da Türkçe döner.
 z.config(z.locales.tr())
@@ -189,6 +190,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerHealthRoutes(app)
   registerMeRoutes(app)
   registerMembershipRoutes(app)
+  registerModuleRoutes(app)
   registerCollectionRoutes(app)
   registerCommandRoutes(app)
   // Komut uçlarından sonra: ham gövde süsü (`commandInput`) orada tanımlanır.

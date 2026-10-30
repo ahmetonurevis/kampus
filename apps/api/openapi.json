@@ -695,6 +695,75 @@
           "createdAt"
         ]
       },
+      "ModuleSettingsInput": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kurum ayar sürümü (`If-Match` için)"
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "Modül anahtarı"
+                },
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Modül açık mı"
+                }
+              },
+              "required": [
+                "key",
+                "enabled"
+              ]
+            },
+            "description": "Kurum türünde bulunan modüller; türde olmayan modül listelenmez"
+          }
+        },
+        "required": [
+          "version",
+          "modules"
+        ]
+      },
+      "ModuleChangeInput": {
+        "type": "object",
+        "properties": {
+          "moduleKey": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "enabledModules": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Güncel etkin modül haritası (`/me` `enabledModules` ile aynı)"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Yeni kurum ayar sürümü"
+          }
+        },
+        "required": [
+          "moduleKey",
+          "enabled",
+          "enabledModules",
+          "version"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -1404,6 +1473,78 @@
           "createdAt"
         ],
         "additionalProperties": false
+      },
+      "ModuleSettings": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kurum ayar sürümü (`If-Match` için)"
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "Modül anahtarı"
+                },
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Modül açık mı"
+                }
+              },
+              "required": [
+                "key",
+                "enabled"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Kurum türünde bulunan modüller; türde olmayan modül listelenmez"
+          }
+        },
+        "required": [
+          "version",
+          "modules"
+        ],
+        "additionalProperties": false
+      },
+      "ModuleChange": {
+        "type": "object",
+        "properties": {
+          "moduleKey": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "enabledModules": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Güncel etkin modül haritası (`/me` `enabledModules` ile aynı)"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Yeni kurum ayar sürümü"
+          }
+        },
+        "required": [
+          "moduleKey",
+          "enabled",
+          "enabledModules",
+          "version"
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -1628,6 +1769,260 @@
             }
           },
           "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules": {
+      "get": {
+        "operationId": "getModuleSettings",
+        "summary": "Kurum modül ayarları",
+        "tags": [
+          "modules"
+        ],
+        "description": "Etkin kurumun türünde bulunan modülleri ve açık/kapalı durumlarını ayar sürümüyle döndürür. Yalnız yönetici.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ModuleSettings"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/{moduleKey}": {
+      "patch": {
+        "operationId": "setModuleEnabled",
+        "summary": "Modülü aç veya kapat",
+        "tags": [
+          "modules"
+        ],
+        "description": "Etkin kurumun modülünü açar veya kapatır. Kapatma veri silmez ve arşivlemez; kayıtlar (gelecek etüt rezervasyonları dahil) modül yeniden açılınca aynen döner. `If-Match` ve `Idempotency-Key` zorunludur. Kurum türünde olmayan modül 422 `module_unavailable_for_type`; durum değişmiyorsa 409 `module_unchanged`. Yalnız yönetici.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Modül açık mı olacak"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "in": "path",
+            "name": "moduleKey",
+            "required": true,
+            "description": "Modül anahtarı (ör. `meals`, `finance`)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu. `GET /modules` yanıtındaki kurum ayar sürümü (ör. `\"3\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ModuleChange"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
             "description": "Default Response",
             "content": {
               "application/json": {

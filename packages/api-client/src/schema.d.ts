@@ -64,6 +64,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kurum modül ayarları
+         * @description Etkin kurumun türünde bulunan modülleri ve açık/kapalı durumlarını ayar sürümüyle döndürür. Yalnız yönetici.
+         */
+        get: operations["getModuleSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/modules/{moduleKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Modülü aç veya kapat
+         * @description Etkin kurumun modülünü açar veya kapatır. Kapatma veri silmez ve arşivlemez; kayıtlar (gelecek etüt rezervasyonları dahil) modül yeniden açılınca aynen döner. `If-Match` ve `Idempotency-Key` zorunludur. Kurum türünde olmayan modül 422 `module_unavailable_for_type`; durum değişmiyorsa 409 `module_unchanged`. Yalnız yönetici.
+         */
+        patch: operations["setModuleEnabled"];
+        trace?: never;
+    };
     "/api/v1/collections/{collection}": {
         parameters: {
             query?: never;
@@ -1524,6 +1564,27 @@ export interface components {
              */
             createdAt: string;
         };
+        ModuleSettingsInput: {
+            /** @description Kurum ayar sürümü (`If-Match` için) */
+            version: number;
+            /** @description Kurum türünde bulunan modüller; türde olmayan modül listelenmez */
+            modules: {
+                /** @description Modül anahtarı */
+                key: string;
+                /** @description Modül açık mı */
+                enabled: boolean;
+            }[];
+        };
+        ModuleChangeInput: {
+            moduleKey: string;
+            enabled: boolean;
+            /** @description Güncel etkin modül haritası (`/me` `enabledModules` ile aynı) */
+            enabledModules: {
+                [key: string]: boolean;
+            };
+            /** @description Yeni kurum ayar sürümü */
+            version: number;
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -1732,6 +1793,27 @@ export interface components {
              */
             createdAt: string;
         };
+        ModuleSettings: {
+            /** @description Kurum ayar sürümü (`If-Match` için) */
+            version: number;
+            /** @description Kurum türünde bulunan modüller; türde olmayan modül listelenmez */
+            modules: {
+                /** @description Modül anahtarı */
+                key: string;
+                /** @description Modül açık mı */
+                enabled: boolean;
+            }[];
+        };
+        ModuleChange: {
+            moduleKey: string;
+            enabled: boolean;
+            /** @description Güncel etkin modül haritası (`/me` `enabledModules` ile aynı) */
+            enabledModules: {
+                [key: string]: boolean;
+            };
+            /** @description Yeni kurum ayar sürümü */
+            version: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -1887,6 +1969,191 @@ export interface operations {
             };
             /** @description Default Response */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getModuleSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ModuleSettings"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setModuleEnabled: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar. */
+                "idempotency-key": string;
+                /** @description Zorunlu. `GET /modules` yanıtındaki kurum ayar sürümü (ör. `"3"`). Tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Modül anahtarı (ör. `meals`, `finance`) */
+                moduleKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Modül açık mı olacak */
+                    enabled: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ModuleChange"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

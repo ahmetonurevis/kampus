@@ -36,14 +36,14 @@ export function Pagination({
         className,
       )}
     >
-      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
         <span role="status" aria-live="polite" aria-atomic="true" className="result-count">
           <strong className="font-medium text-foreground">
             {first}–{Math.min(page * pageSize, total)}
           </strong>{' '}
           <span>/ {total} kayıt</span>
         </span>
-        <label className="flex items-center gap-2">
+        <label className="flex items-center gap-2 whitespace-nowrap">
           Sayfa başına
           <NativeSelect
             size="sm"

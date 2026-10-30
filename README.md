@@ -61,15 +61,18 @@ pnpm dev:api                               # http://127.0.0.1:3000
 docker compose down
 ```
 
-| Uç                                      | Erişim                                     |
-| --------------------------------------- | ------------------------------------------ |
-| `GET /api/v1/health`                    | Açık; veritabanı yanıt vermezse 503        |
-| `/api/v1/auth/*`                        | Better Auth (giriş, çıkış, kurum değişimi) |
-| `GET /api/v1/me`                        | Oturum; kullanıcı, etkin kurum, üyelikler  |
-| `GET /api/v1/memberships`               | Yönetici, ön büro; sayfalı üye listesi     |
-| `GET /api/v1/openapi.json`, `/api/docs` | Yalnız üretim dışında                      |
+| Uç                                        | Erişim                                     |
+| ----------------------------------------- | ------------------------------------------ |
+| `GET /api/v1/health`                      | Açık; veritabanı yanıt vermezse 503        |
+| `/api/v1/auth/*`                          | Better Auth (giriş, çıkış, kurum değişimi) |
+| `GET /api/v1/me`                          | Oturum; kullanıcı, etkin kurum, üyelikler  |
+| `GET /api/v1/memberships`                 | Yönetici, ön büro; sayfalı üye listesi     |
+| `GET /api/v1/collections/:collection`     | Rol kapsamlı koleksiyon listesi (aşağıda)  |
+| `GET /api/v1/collections/:collection/:id` | Rol kapsamlı tekil kayıt                   |
+| `GET /api/v1/openapi.json`, `/api/docs`   | Yalnız üretim dışında                      |
 
 - Kurum kimliği yalnız oturumun etkin kurumundan gelir; her istekte üyelik doğrulanır. Başarı `{ data, meta? }`, hata `{ code, message, issues?, requestId }`.
+- Koleksiyon uçları geçiş köprüsüdür: ad school-core State anahtarıdır (`students`, `studentGoals`), arama `q`, eşitlik filtreleri, `sort`, `archived`, `page`/`pageSize` (≤ 100). Rol × koleksiyon erişimi `apps/api/src/services/collection-access.ts`'tedir: core kişiye göre kapsam fonksiyonu verene kadar öğretmen, öğrenci ve veli yalnız kişisel veri taşımayan başvuru verisini (`subjects`, `mealMenus`) okur; yönetici rehberlik iç notunu görmez; ön büro akademik veriyi görmez. Kapalı modülün koleksiyonu 403 `module_disabled`.
 - Demo kullanıcıları (`@kampus.example`, parola `.env`'deki `DEMO_PASSWORD`, boşsa `Demo-Giris-2026!`; üretimde varsayılan parola yok): Akademi Özel Okulları'nda `murat.yilmaz` (yönetici, iki kurumda), `busra.aydin`, `selin.kaya`, `deniz.yilmaz`, `ayse.yilmaz`; Kampüs Dil Akademisi'nde `gizem.tunc`, `ozan.er`, `lale.sezer`, `hakan.sezer`.
 - Diğer komutlar: `test` (PGlite, Docker gerektirmez), `typecheck`, `openapi` / `openapi:check` (`apps/api/openapi.json`), `db:generate` (drizzle-kit migration), `auth:schema` (Better Auth şeması).
 
@@ -155,7 +158,7 @@ Finansta kampüs/sınıf/yöntem/vade/tahsilat tarihi/tutar; CRM'de program/kamp
 Platform geçişi (ADR 0001, 0002) durumu:
 
 - `packages/school-core` TypeScript'e taşındı.
-- `apps/api` iskeleti, Better Auth kimliği, kurum kapsamı, `records` deposu, school-core işlem çalıştırıcısı ve iki örnek kurumun kayıt tohumu hazır; `packages/api-client` ve `packages/react-shared` hazır. Koleksiyon ve iş akışı uçları, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır.
+- `apps/api` iskeleti, Better Auth kimliği, kurum kapsamı, `records` deposu, school-core işlem çalıştırıcısı ve iki örnek kurumun kayıt tohumu hazır; `packages/api-client` ve `packages/react-shared` hazır. Kurum ayarları (`institution_settings`, `/me` akademik yılı), modül kapatma (`requireModule`) ve rol kapsamlı koleksiyon okuma uçları hazır. Yazma/iş akışı uçları, core'da kişiye göre kapsam fonksiyonları, React web ve mobilin API'ye bağlanması sıradaki adımlardır.
 - `apps/web-react` iskeleti hazır: Vue ile aynı tokenlar ve ölçülü cam (yalnız sidebar, navbar, menü, diyalog ve toast), beş rolün korumalı kabuğu, kategorili sidebar, avatar menüsündeki hesap sayfaları, kapalı modül yönlendirmesi, 404/hata sınırı, giriş formu, 3B giriş sahnesi ve ortak liste bileşenleri (DataTable, ListFilters, CollectionList, CSV). Ekranlar henüz yer tutucudur; oturum geliştirme sahtesidir. Ekran kontrolü: `node scripts/ekran-kontrol.ts` (`.claude/skills/ekran-kontrol/SKILL.md`).
 - Statik yayın (`pnpm run deploy`) yalnız Vue derlemesini (`apps/web/dist`) yayımlar. Aşağıdaki bölüm Vue demosunu anlatır.
 

@@ -67,7 +67,7 @@ create table records (
 Kurallar:
 
 - `collection` school-core state anahtarıdır, aynen yazılır (`students`, `studentGoals`). Yeni koleksiyon önce school-core'da tanımlanır; API bilinmeyen koleksiyonu reddeder.
-- `data` yazılmadan önce school-core Zod şemasıyla doğrulanır. `data` içinde `institutionId`, `version`, `createdAt`, `updatedAt`, `archivedAt` tutulmaz; bunlar kolondur ve okurken kayda eklenir.
+- `data` yazılmadan önce school-core Zod şemasıyla doğrulanır. `data` içinde `institutionId`, `version`, `createdAt`, `updatedAt`, `archivedAt` tutulmaz; bunlar kolondur ve okurken kayda eklenir. Geçiş notu: core kayıtları bugün kendi `createdAt`/`updatedAt` alanlarını taşır ve işlem çalıştırıcısı bunları olduğu gibi yazar; sistem zamanı yalnız kolondur, API yanıtında kolon değerleri üst düzeyde, core kaydı `record` içinde döner (api-tasarimi.md §2).
 - Kayıt bütün olarak değiştirilir; rota veya serviste `jsonb_set` ile parça güncelleme yapılmaz.
 - Yazma sürüm kontrollüdür; etkilenen satır 0 ise 409:
 

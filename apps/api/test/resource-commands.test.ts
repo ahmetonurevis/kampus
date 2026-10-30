@@ -455,6 +455,10 @@ describe('içerik havuzu yazma uçları', () => {
     const missing = await act(t.cookies.teacher, incomplete, 'submit')
     assert.equal(missing.statusCode, 422)
     assert.equal(missing.json().code, 'subject_required')
+    // İçerik yayım sorunu da core yolunu `issues` olarak taşır (DOM-KYN-010).
+    assert.deepEqual(missing.json().issues, [
+      { path: ['tags', 'subjectId'], code: 'subject_required', message: 'Dersi seçin.' },
+    ])
 
     assert.equal(
       (await ok(await act(t.cookies.teacher, data, 'submit'))).version.status,

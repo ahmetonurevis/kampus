@@ -2,6 +2,12 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Core iş kuralı hatalarında alan yolu (`issues`)
+
+- `mapOperationError`: `DomainError.path` varsa 422 (kind `rule`), 409 (`conflict`) ve 403 (`forbidden`, modül kapalı hariç) gövdesine 400 Zod yanıtıyla aynı `issues: [{ path, code, message }]` eklenir; `code` hatanın kodu, `message` core'un Türkçe iletisidir. `path` core'un sabit alan yoludur (kullanıcı girdisi değil). Yolsuz `DomainError`'da gövde eskisi gibidir (`issues` yok); 404 genel `not_found` kalır.
+- Örnek: sınıf kaydında `subject_teacher_required` → `issues[0].path = ["subjectTeachers", "<dersId>"]`; içerik yayım sorunu `subject_required` → `["tags", "subjectId"]`. Web formları iş kuralı hatasını alan altında gösterebilir (`fieldFor` ile açık tercih; bağlanmazsa yalnız toast).
+- `ErrorResponse.issues` açıklaması güncellendi; OpenAPI ve `api-client` şeması yeniden üretildi (biçim değişmedi). Yeni uç ve migration yok.
+
 ## İçerik havuzu yazma uçları
 
 - `POST /api/v1/resources` (201 + `Location`), `PATCH /api/v1/resources/:resourceId/versions/:versionId` (kısmi; `If-Match` zorunlu), `POST /api/v1/resources/:resourceId/versions` (yeni sürüm), `POST /api/v1/resources/:resourceId/versions/:versionId/{submit,publish,withdraw,approve,reject,reopen,archive,report}`, `POST /api/v1/resources/:resourceId/{remove,share,copy}`. Roller yönetici ve öğretmen (kaldırma yalnız yönetici), modül `learning`. Kurallar core `content/*` plan fonksiyonlarıdır; yazma `runCommand` ile kurum kilidi, isteğe bağlı `Idempotency-Key`, `audit_log` ve geri okumayla tek transaction'dadır.

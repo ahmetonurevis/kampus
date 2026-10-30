@@ -167,7 +167,7 @@ describe('hata geri bildirimi', () => {
     assert.equal(feedback.refresh, true)
   })
 
-  test('core alan yolu (subjectTeachers.<ders>) alan adına çevrilir', () => {
+  test('DOM-YTK-001: 422 core alan yolu kendiliğinden alana yazılmaz (fieldFor açık tercihtir)', () => {
     const feedback = commandFeedback(
       new ApiError({
         status: 422,
@@ -183,6 +183,7 @@ describe('hata geri bildirimi', () => {
       }),
       MANAGEMENT_MESSAGES,
     )
-    assert.equal(feedback.fieldIssues[0]?.name, 'subjectTeachers.math')
+    assert.deepEqual(feedback.fieldIssues, [])
+    assert.equal(feedback.message, 'Matematik dersi için uygun branş öğretmeni seçin.')
   })
 })

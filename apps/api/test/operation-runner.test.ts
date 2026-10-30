@@ -867,6 +867,34 @@ describe('core hata eşlemesi', () => {
     ])
   })
 
+  test('DOM-YTK-001 path taşıyan DomainError 422/409/403 gövdesinde issues olur; path yoksa alan çıkmaz; 404 genel kalır', () => {
+    const path = ['subjectTeachers', 'math']
+    const message = 'Matematik dersi için uygun branş öğretmeni seçin.'
+    const issues = [{ path, code: 'subject_teacher_required', message }]
+    for (const [kind, status] of [
+      ['rule', 422],
+      ['conflict', 409],
+      ['forbidden', 403],
+    ] as const) {
+      const error = mapOperationError(
+        new DomainError('subject_teacher_required', message, { kind, path }),
+      )
+      assert.ok(error instanceof AppError)
+      assert.equal(error.statusCode, status)
+      assert.deepEqual(error.issues, issues)
+      const plain = mapOperationError(
+        new DomainError('subject_teacher_required', message, { kind }),
+      )
+      assert.ok(plain instanceof AppError)
+      assert.equal(plain.issues, undefined)
+    }
+    const missing = mapOperationError(
+      new DomainError('class_not_found', 'Sınıf yok.', { kind: 'not_found', path: ['classId'] }),
+    )
+    assert.ok(missing instanceof AppError)
+    assert.deepEqual([missing.statusCode, missing.issues], [404, undefined])
+  })
+
   test('core module_disabled API modül mesajıyla 403 olur', () => {
     const error = mapOperationError(
       new DomainError('module_disabled', 'Bu modül kullanıma kapalı.', { kind: 'forbidden' }),

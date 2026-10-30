@@ -14,14 +14,11 @@ import { isMigratedPage } from '../src/lib/page-coverage.ts'
  * Ayrıntı ve öncelik: docs/sayfalar.md "React'te henüz yer tutucu".
  */
 const KNOWN_PLACEHOLDERS: readonly string[] = [
-  'yonetici/kayit-raporlari',
   'yonetici/sla-raporu',
-  'yonetici/risk-listesi',
   'onburo/adaylar',
   'onburo/deneme-dersi-takvimi',
   'onburo/kayit-islemleri',
   'ogretmen/sorular',
-  'ogretmen/sinif-analizi',
   'ogretmen/randevular',
   'ogrenci/videolar',
   'ogrenci/soru-sor',

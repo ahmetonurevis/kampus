@@ -1335,7 +1335,7 @@ export interface paths {
         put?: never;
         /**
          * Etüt planını önizle
-         * @description Etüt planını güncel veriyle hesaplar (core `planTutoring`) ve **hiçbir şey yazmaz** (transaction geri alınır; kayıt, sürüm ve denetim kaydı değişmez). Yanıt: önerilen etütler (`sessions`, kapasite ile), yerleşemeyen gruplar ve nedenleri (`unresolved`: öğretmen, derslik, uygunluk, kapasite ve çakışma uyarıları), zaten karşılanan kazanımlar (`covered`) ve onayda geri gönderilecek `expectedPlan`. Onay (`POST /assessment/plan`) planı yeniden hesaplar; fark varsa 409 `tutoring_plan_stale`. Roller core `runAssessment` ile aynıdır: `yonetici`, `ogretmen`.
+         * @description Etüt planını güncel veriyle hesaplar (core `planTutoring`) ve **hiçbir şey yazmaz** (salt okunur transaction, kurum kilidi yok; kayıt, sürüm ve denetim kaydı değişmez). Yanıt: önerilen etütler (`sessions`, kapasite ile), yerleşemeyen gruplar ve nedenleri (`unresolved`: öğretmen, derslik, uygunluk, kapasite ve çakışma uyarıları), zaten karşılanan kazanımlar (`covered`) ve onayda geri gönderilecek `expectedPlan`. Onay (`POST /assessment/plan`) planı yeniden hesaplar; fark varsa 409 `tutoring_plan_stale`. Roller core `runAssessment` ile aynıdır: `yonetici`, `ogretmen`.
          */
         post: operations["previewAssessmentPlan"];
         delete?: never;

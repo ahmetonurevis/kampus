@@ -25,7 +25,7 @@ import {
   execute,
   type CommandOptions,
 } from './commands.ts'
-import { runOperation } from './operation-runner.ts'
+import { runReadOnly } from './operation-runner.ts'
 import type { CommandResponse } from './operation-runner.ts'
 
 /**
@@ -280,46 +280,24 @@ function assertEvaluationCurrent(
     )
 }
 
-/** Önizleme transaction'ı sonuçla birlikte geri alınır; yazma hiçbir koşulda kalıcı olmaz. */
-class PreviewRollback extends Error {
-  constructor() {
-    super('preview rollback')
-    this.name = 'PreviewRollback'
-  }
-}
-
 /**
- * Saf önizleme: çalıştırıcının yükleme ve kapsam hattı aynıdır, sonuç `after` kancasında
- * transaction'ı geri alarak çıkarılır. Core işlemi State'i bozsa bile (olmaması gerekir) hiçbir
- * satır, denetim kaydı veya sürüm kalıcı olmaz.
+ * Saf önizleme: çalıştırıcının yükleme ve kapsam hattı aynıdır ama işlem salt okunurdur ve kurum
+ * kilidi alınmaz (`runReadOnly`): hiçbir satır, denetim kaydı veya sürüm yazılmaz, kurumun yazan
+ * işlemleri önizlemeyi beklemez.
  */
-async function preview<T>(
+function preview<T>(
   ctx: ServiceContext,
   command: 'plan' | 'evaluate',
   compute: (state: State, session: Session, now: string) => T,
 ): Promise<T> {
   const spec = ASSESSMENT_COMMANDS[command]
-  let outcome: { value: T } | undefined
-  try {
-    await runOperation<T>(ctx, {
-      action: `assessment.${command}.preview`,
-      collections: spec.collections,
-      entity: { type: 'workflow', id: command },
-      load: async (tx) => {
-        const { session, scalars } = await environment(tx, ctx, spec)
-        return { scalars, run: (state, { now }) => compute(state, session, now) }
-      },
-      after: (_tx, result) => {
-        outcome = { value: result }
-        return Promise.reject(new PreviewRollback())
-      },
-    })
-  } catch (error) {
-    if (error instanceof PreviewRollback && outcome !== undefined) return outcome.value
-    throw error
-  }
-  throw new AppError(500, 'internal_error', 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.', {
-    cause: new Error('preview did not complete'),
+  return runReadOnly<T>(ctx, {
+    action: `assessment.${command}.preview`,
+    collections: spec.collections,
+    load: async (tx) => {
+      const { session, scalars } = await environment(tx, ctx, spec)
+      return { scalars, run: (state, { now }) => compute(state, session, now) }
+    },
   })
 }
 

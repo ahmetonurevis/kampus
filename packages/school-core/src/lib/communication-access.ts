@@ -82,24 +82,41 @@ export function publishDecision(
 /** Duyuruyu okuyan: rol, öğretmen kaydı ve kapsamdaki öğrenciler (`scopeFor` bağlamı). */
 export type AnnouncementViewer = {
   role: Role | undefined
+  userId?: string | undefined
   teacherId: string | undefined
   studentIds: ReadonlySet<string>
 }
 export function viewerOf(
   scope: Pick<Scope, 'actor' | 'teacher' | 'studentIds'>,
 ): AnnouncementViewer {
-  return { role: scope.actor.role, teacherId: scope.teacher?.id, studentIds: scope.studentIds }
+  return {
+    role: scope.actor.role,
+    userId: scope.actor.userId,
+    teacherId: scope.teacher?.id,
+    studentIds: scope.studentIds,
+  }
 }
 
-/** Duyuruyu yayınlayan bu aktör mü (öğretmen kaydıyla; ön büro rol olarak, kişi kimliği yok). */
+/**
+ * Duyuruyu yayınlayan bu aktör mü (DOM-ILT-004): öğretmen kendi kaydıyla, ön büro kişi
+ * kimliğiyle (`publishedBy.userId`); ön büro rolü tek başına yayıncı sayılmaz. Kimliği bilinmeyen
+ * aktör yayıncı değildir.
+ */
 export function isPublisher(
-  viewer: Pick<AnnouncementViewer, 'role' | 'teacherId'>,
-  publishedBy: Pick<AnnouncementPublisher, 'role' | 'teacherId'> | undefined,
+  viewer: Pick<AnnouncementViewer, 'role' | 'teacherId'> & { userId?: string | undefined },
+  publishedBy:
+    | (Pick<AnnouncementPublisher, 'role' | 'teacherId'> & { userId?: string | undefined })
+    | undefined,
 ): boolean {
   if (!publishedBy) return false
   if (viewer.role === 'ogretmen')
     return viewer.teacherId !== undefined && publishedBy.teacherId === viewer.teacherId
-  return viewer.role === 'onburo' && publishedBy.role === 'onburo'
+  return (
+    viewer.role === 'onburo' &&
+    publishedBy.role === 'onburo' &&
+    viewer.userId !== undefined &&
+    publishedBy.userId === viewer.userId
+  )
 }
 
 /** Okundu anahtarı: öğrenci ve öğretmen kendisi, veli çocuğu üzerinden (aile düzeyi). */
@@ -159,13 +176,20 @@ function recipientsOf(row: object): AnnouncementRecipients | undefined {
     teacherIds: strings(field(value, 'teacherIds')),
   }
 }
-function publisherOf(row: object): Pick<AnnouncementPublisher, 'role' | 'teacherId'> | undefined {
+function publisherOf(
+  row: object,
+): (Pick<AnnouncementPublisher, 'role' | 'teacherId'> & { userId?: string }) | undefined {
   const value = field(row, 'publishedBy')
   if (typeof value !== 'object' || value === null) return undefined
   const role = textOf(value, 'role')
   const teacherId = textOf(value, 'teacherId')
+  const userId = textOf(value, 'userId')
   if (role === undefined) return undefined
-  return { role: role as Role, ...(teacherId === undefined ? {} : { teacherId }) }
+  return {
+    role: role as Role,
+    ...(teacherId === undefined ? {} : { teacherId }),
+    ...(userId === undefined ? {} : { userId }),
+  }
 }
 
 /** Okundu sayısını ve geçmişi gören: yönetici veya yayınlayan (DOM-ILT-003, -004). */

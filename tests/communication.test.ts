@@ -28,7 +28,7 @@ import {
   readerKey,
   viewerOf,
 } from '../packages/school-core/src/lib/communication-access.ts'
-import { scopeFor, visibleRecords } from '../packages/school-core/src/lib/scope.ts'
+import { scopeFor, visibleRecords, type Actor } from '../packages/school-core/src/lib/scope.ts'
 import type { Role } from '../packages/school-core/src/modules/navigation.ts'
 import { isDomainError } from './support/domain-error.ts'
 
@@ -367,6 +367,58 @@ test('DOM-ILT-004: düzeltme önceki içeriği geçmişte tutar; yalnız yayınl
   )
   reviseAnnouncement(state, people.onburo, front.id, { title: 'Servis saatleri' }, later)
   assert.equal(front.title, 'Servis saatleri')
+})
+
+test('DOM-ILT-004: ön büro yayıncısı kişiyle eşlenir; başka ön büro kullanıcısı değiştiremez, geçmişi ve gerekçeyi görmez', () => {
+  const state = seed()
+  const other: Participant = { role: 'onburo', links: [], userId: 'u-front-2' }
+  // Kişi kimliği olmayan aktör (eski istemci) yayıncı sayılmaz.
+  const noUser: Actor = { role: 'onburo', links: [] }
+  const front = publishAnnouncement(
+    state,
+    people.onburo,
+    announcement({ category: 'İdari', target: { roles: ['veli'] } }),
+    id,
+    now,
+  )
+  assert.equal(front.publishedBy?.userId, 'u-front')
+  assert.equal(
+    isPublisher({ role: 'onburo', userId: 'u-front', teacherId: undefined }, front.publishedBy),
+    true,
+  )
+  unchangedOnFailure(
+    state,
+    'announcements',
+    () => reviseAnnouncement(state, other, front.id, { title: 'Servis saatleri' }, later),
+    isDomainError('announcement_publisher_only', 'forbidden'),
+  )
+  unchangedOnFailure(
+    state,
+    'announcements',
+    () => withdrawAnnouncement(state, other, front.id, { reason: 'Yanlış duyuru' }, later),
+    isDomainError('announcement_publisher_only', 'forbidden'),
+  )
+  reviseAnnouncement(state, people.onburo, front.id, { title: 'Servis saatleri' }, later)
+  markAnnouncementRead(state, people.veli, front.id, later)
+  const viewOf = (by: Actor) =>
+    visibleRecords(state, by, 'announcements').find((a) => a.id === front.id) as Record<
+      string,
+      unknown
+    >
+  // Yayınlayan okundu sayısını ve geçmişi görür; diğer ön büro kullanıcısı görmez.
+  assert.equal(viewOf(people.onburo).readCount, 2)
+  assert.ok(Array.isArray(viewOf(people.onburo).revisions))
+  for (const by of [other, noUser]) {
+    const view = viewOf(by)
+    assert.ok(view)
+    assert.ok(!('readCount' in view) && !('revisions' in view))
+  }
+  withdrawAnnouncement(state, people.yonetici, front.id, { reason: 'Hatalı bilgi içeriyor' }, later)
+  const hidden = viewOf(other)
+  assert.equal(hidden.withdrawnAt, later)
+  for (const key of ['text', 'withdrawReason', 'withdrawnBy', 'revisions'])
+    assert.ok(!(key in hidden), key)
+  assert.equal(viewOf(people.onburo).withdrawReason, 'Hatalı bilgi içeriyor')
 })
 
 test('DOM-ILT-004: geri çekilen duyuru alıcılara "Geri çekildi" olarak görünür; metni yalnız yayınlayan ve yöneticide', () => {

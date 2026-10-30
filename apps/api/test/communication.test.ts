@@ -675,6 +675,60 @@ describe('iletişim uçları', () => {
       )
     })
 
+    test('DOM-ILT-004: ön büro yayıncısı kişiyle eşlenir; ikinci ön büro kullanıcısı değiştiremez ve ayrıntı görmez', async () => {
+      const a = await institution()
+      const first = await member(a.id, 'onburo')
+      const second = await member(a.id, 'onburo')
+      const body = {
+        title: 'Servis saatleri',
+        text: 'Servis 07.30’da.',
+        category: 'İdari',
+        target: { roles: ['veli'] },
+      }
+      const created = (await publish(first.cookie, body)).json().data
+      const id: string = created.entity.id
+      const mother = await parent(a.id)
+      assert.equal(
+        (await send('POST', `/api/v1/announcements/${id}/read`, mother.cookie, {})).statusCode,
+        200,
+      )
+      const url = `/api/v1/announcements/${id}`
+      assertError(
+        await send('PATCH', url, second.cookie, { title: 'Başka başlık' }),
+        403,
+        'announcement_publisher_only',
+      )
+      assertError(
+        await send('POST', `${url}/withdraw`, second.cookie, { reason: 'Yanlış duyuru' }),
+        403,
+        'announcement_publisher_only',
+      )
+      const own = (await visible(first.cookie)).find((row) => row.id === id)
+      assert.equal(own?.readCount, 1)
+      const other = (await visible(second.cookie)).find((row) => row.id === id)
+      assert.ok(other)
+      assert.ok(!('readCount' in other) && !('revisions' in other))
+      assert.equal(
+        (await send('PATCH', url, first.cookie, { title: 'Servis saatleri (yeni)' })).statusCode,
+        200,
+      )
+      assert.equal(
+        (await send('POST', `${url}/withdraw`, first.cookie, { reason: 'Saat değişti' }))
+          .statusCode,
+        200,
+      )
+      const hidden = (await visible(second.cookie)).find((row) => row.id === id)
+      assert.equal(hidden?.withdrawnAt, FIXED_NOW.toISOString())
+      for (const field of ['text', 'withdrawReason', 'withdrawnBy', 'revisions'])
+        assert.ok(!(hidden && field in hidden), field)
+      const full = (await visible(first.cookie)).find((row) => row.id === id)
+      assert.equal(full?.withdrawReason, 'Saat değişti')
+      assert.equal(
+        (await findRecord(db, a.id, 'announcements', id))?.data.withdrawReason,
+        'Saat değişti',
+      )
+    })
+
     test('DOM-ILT-004: geri çekilen duyuru alıcıya "Geri çekildi" olarak görünür, metni yalnız yayınlayan ve yöneticide', async () => {
       const a = await institution()
       const teacherCookie = await teacher(a.id)

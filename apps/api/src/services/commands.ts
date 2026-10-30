@@ -103,7 +103,7 @@ export async function environment(
     scalars.academicYear = academicYear
   return {
     session,
-    actor: { role: ctx.actor.role, links },
+    actor: { role: ctx.actor.role, links, userId: ctx.actor.userId },
     institutionType: institution?.type ?? 'school',
     scalars,
   }

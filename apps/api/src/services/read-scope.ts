@@ -105,7 +105,7 @@ async function buildScope(ctx: ServiceContext): Promise<ScopeState> {
     clubs: parseRows(ctx, 'clubs', data('clubs'), clubSource),
     modules: institution?.modules ?? {},
   }
-  const actor: Actor = { role: ctx.actor.role, links }
+  const actor: Actor = { role: ctx.actor.role, links, userId: ctx.actor.userId }
   return {
     scope: scopeFor(source, actor, { institutionType: institution?.type ?? 'school' }),
     source,

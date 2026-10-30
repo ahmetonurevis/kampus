@@ -1054,3 +1054,10 @@ test('Tarih-saat alanı İstanbul yerel değerinden ISO UTC değerine çevrilir;
   const normalized = normalizeWorkflowInput(lesson, { ...lesson.initial, date: '2026-11-02T10:30' })
   assert.equal(normalized.date, '2026-11-02T07:30:00.000Z')
 })
+
+test('Oluşturma eylemi tablosunda karşılığı olmayan modüller boş liste döner', () => {
+  const state = seed()
+  for (const path of ['optik-degerlendirme', 'otomatik-etut'])
+    for (const role of ['yonetici', 'ogretmen', 'ogrenci', 'veli'])
+      assert.deepEqual(workflowCreateActions(state, session(role), path), [], `${role} ${path}`)
+})

@@ -14,5 +14,11 @@ export function useAuth() {
     () => authStateFrom(status, { data: me.data, error: me.error }),
     [status, me.data, me.error],
   )
-  return { ...state, signIn: auth.signIn, signOut: auth.signOut, retry: me.refetch }
+  return {
+    ...state,
+    signIn: auth.signIn,
+    signOut: auth.signOut,
+    isSigningOut: auth.isSigningOut,
+    retry: me.refetch,
+  }
 }

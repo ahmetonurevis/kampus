@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'reac
 import { authClient, refreshAuthSession } from '@/lib/kampus-clients.ts'
 import { notify } from '@/lib/notify.ts'
 import { clearViewMemory } from '@/lib/view-memory.ts'
-import { AuthContext } from './auth-context.ts'
+import { AuthContext, type AuthContextValue } from './auth-context.ts'
 import type { AuthPort } from './auth-port.ts'
 import { sessionExpired, type SettledStatus } from './auth-state.ts'
 import { createBetterAuthPort } from './better-auth-port.ts'
@@ -44,9 +44,10 @@ export function AuthProvider({
 }) {
   // Kullanıcının kendi çıkışı süre dolması sayılmaz.
   const intentionalRef = useRef(false)
-  const value = useMemo<AuthPort>(
+  const value = useMemo<AuthContextValue>(
     () => ({
       signIn: auth.signIn,
+      isSigningOut: () => intentionalRef.current,
       async signOut() {
         intentionalRef.current = true
         try {

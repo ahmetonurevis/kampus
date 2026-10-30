@@ -29,7 +29,7 @@ function ModuleClosedRedirect({ to }: { to: string }) {
 
 /** Korumalı rol kabuğu: karar `resolveShell`'de, burada yalnız çizilir. */
 export function RoleShell() {
-  const { status, session } = useAuth()
+  const { status, session, isSigningOut } = useAuth()
   const { role, page: path } = useParams()
   const location = useLocation()
   const decision = resolveShell(session, role, path)
@@ -59,7 +59,7 @@ export function RoleShell() {
     case 'not-found-outside':
       return <NotFoundPage />
     case 'login':
-      return <Navigate to={loginHref(location.pathname, location.search)} replace />
+      return <Navigate to={loginHref(location.pathname, location.search, isSigningOut())} replace />
     case 'redirect':
       return <Navigate to={decision.to} replace />
     case 'module-closed':

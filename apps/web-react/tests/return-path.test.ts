@@ -47,3 +47,8 @@ test('giriş adresi dönüş yolunu sorgu parametresinde taşır', () => {
   assert.equal(loginHref('/giris'), '/giris')
   assert.equal(loginHref('//evil.example'), '/giris')
 })
+
+test('bilinçli çıkışta giriş adresi dönüş parametresi taşımaz', () => {
+  assert.equal(loginHref('/ogretmen/dashboard', '', true), '/giris')
+  assert.equal(loginHref('/ogretmen/dashboard', '', false), '/giris?donus=%2Fogretmen%2Fdashboard')
+})

@@ -1,19 +1,23 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSeed } from '../apps/web/src/data/seed.js'
-import { subjectsForGrade } from '../apps/web/src/data/curriculum.js'
+import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { subjectsForGrade } from '../packages/school-core/src/data/curriculum.ts'
 import {
   saveBranch,
   saveClass,
   saveTeacher,
   archiveRecord,
   restoreRecord,
-} from '../apps/web/src/lib/school-management.js'
-import { createSnapshotWriter, restoreSnapshot } from '../apps/web/src/lib/demo-persistence.js'
+} from '../packages/school-core/src/lib/school-management.ts'
+import {
+  createSnapshotWriter,
+  restoreSnapshot,
+} from '../packages/school-core/src/lib/demo-persistence.ts'
+import type { State } from '../packages/school-core/src/data/seed.ts'
 import { isDomainError } from './support/domain-error.ts'
 let count = 0
-const id = (prefix) => `${prefix}-test-${++count}`
-function addTeacher(state) {
+const id = (prefix: string) => `${prefix}-test-${++count}`
+function addTeacher(state: State) {
   saveTeacher(
     state,
     {
@@ -87,9 +91,9 @@ test('Öğretmen devri tüm aktif işleri aktarır; geçmişi korur, uygun olmay
   const snapshot = JSON.stringify(s)
   assert.throws(() => archiveRecord(s, 'teacher', 't1', 't3'), /aynı branştan/i)
   assert.equal(JSON.stringify(s), snapshot)
-  archiveRecord(s, 'teacher', 't1', replacement.id)
+  archiveRecord(s, 'teacher', 't1', replacement!.id)
   assert.equal(s.teachers[0]!.isActive, false)
-  assert.equal(s.assignments.filter((a) => a.teacherId === replacement.id).length, 8)
+  assert.equal(s.assignments.filter((a) => a.teacherId === replacement!.id).length, 8)
   assert.ok(s.questions.filter((q) => q.teacherId === 't1').every((q) => q.answeredAt))
   for (const qid of answered) assert.equal(s.questions.find((q) => q.id === qid)!.teacherId, 't1')
   assert.equal(JSON.stringify(s.invoices), oldInvoices)
@@ -128,9 +132,9 @@ test('Öğretmen devri program çakışmasında atomik biçimde reddedilir', () 
   const s = createSeed(),
     teacher = addTeacher(s)
   const future = s.schedule.find((l) => l.teacherId === 't1' && +new Date(l.date) > Date.now())
-  s.schedule.push({ ...future, id: 'conflict', teacherId: teacher.id, classId: 'c9' })
+  s.schedule.push({ ...future!, id: 'conflict', teacherId: teacher!.id, classId: 'c9' })
   const snapshot = JSON.stringify(s)
-  assert.throws(() => archiveRecord(s, 'teacher', 't1', teacher.id), /çakışma/)
+  assert.throws(() => archiveRecord(s, 'teacher', 't1', teacher!.id), /çakışma/)
   assert.equal(JSON.stringify(s), snapshot)
 })
 test('Değişiklik temelli kalıcılık: not, silinen program, yeni kayıt, sıra ve tercihler kayıpsız döner', () => {
@@ -140,9 +144,10 @@ test('Değişiklik temelli kalıcılık: not, silinen program, yeni kayıt, sır
   assert.ok(write(initial).length < 200)
   state.grades[0]!.score = 91
   state.schedule.splice(0, 1)
-  state.questions.unshift({ ...state.questions[0], id: 'new-question', text: 'Yeni soru' })
+  state.questions.unshift({ ...state.questions[0]!, id: 'new-question', text: 'Yeni soru' })
   state.preferences = { s1: { sms: false } }
   state.videoProgress[0]!.progress = 75
+  // @ts-expect-error — kalıcılık yalnız değişen kaydı izler; bilinçli kısmi denetim kaydı
   state.audit.push({ id: 'audit1', action: 'Güncelleme' })
   const persisted = write(state)
   assert.ok(persisted.length < 100000)

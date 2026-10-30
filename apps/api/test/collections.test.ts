@@ -304,6 +304,130 @@ describe('koleksiyon okuma uçları', () => {
     }
   })
 
+  test('isActive süzgeci: kampüs/sınıf arşivi (isActive: false) ayrı listelenir; alanı olmayan etkindir', async () => {
+    const { id, adminCookie } = await institution()
+    const c2 = SAMPLE.classes?.find((item) => item.id === 'c2')
+    assert.ok(c2)
+    await writeRecords(
+      db,
+      id,
+      [
+        {
+          kind: 'update',
+          collection: 'classes',
+          id: 'c2',
+          data: { ...c2, isActive: false, deletedAt: LATER.toISOString() },
+          expectedVersion: 1,
+        },
+        {
+          kind: 'insert',
+          collection: 'classes',
+          id: 'test-c-alansiz',
+          data: { id: 'test-c-alansiz' },
+        },
+      ],
+      LATER,
+    )
+    const ids = async (query: string) => {
+      const response = await get(`/api/v1/collections/classes?${query}`, adminCookie)
+      assert.equal(response.statusCode, 200, query)
+      return response.json().data.map((item: { id: string }) => item.id)
+    }
+    assert.deepEqual(await ids('isActive=false'), ['c2'])
+    assert.deepEqual(await ids('isActive=true'), ['c1', 'c3', 'test-c-alansiz'])
+    assert.deepEqual(await ids(''), ['c1', 'c2', 'c3', 'test-c-alansiz'])
+    assert.deepEqual(await ids('isActive=true&q=5-A'), [])
+    for (const query of ['isActive=yes', 'isActive=1', 'isActive=true&isActive=false']) {
+      const response = await get(`/api/v1/collections/classes?${query}`, adminCookie)
+      assert.equal(response.statusCode, 400, query)
+    }
+  })
+
+  test('dateFrom/dateTo: yoklama Europe/Istanbul gününe göre süzülür, iki uç dahil', async () => {
+    const { id, adminCookie } = await institution()
+    const mark = (key: string, date: string) => ({
+      collection: 'attendance' as const,
+      id: key,
+      data: { id: key, studentId: 's1', classId: 'c1', date, status: 'present' },
+    })
+    await insertMissingRecords(
+      db,
+      id,
+      [
+        mark('test-att-a', '2026-10-05T20:59:59.999Z'),
+        mark('test-att-b', '2026-10-05T21:00:00.000Z'),
+        mark('test-att-c', '2026-10-06T09:00:00.000Z'),
+        mark('test-att-d', '2026-10-06T21:00:00.000Z'),
+      ],
+      FIXED_NOW,
+    )
+    const ids = async (query: string) => {
+      const response = await get(
+        `/api/v1/collections/attendance?pageSize=100&${query}`,
+        adminCookie,
+      )
+      assert.equal(response.statusCode, 200, query)
+      return response.json().data.map((item: { id: string }) => item.id)
+    }
+    assert.deepEqual(await ids('dateFrom=2026-10-06&dateTo=2026-10-06'), [
+      'test-att-b',
+      'test-att-c',
+    ])
+    assert.deepEqual(await ids('dateFrom=2026-10-06'), ['test-att-b', 'test-att-c', 'test-att-d'])
+    // Örnek veri yoklamaları geçmiş günlerdedir; bitiş süzgeci onları ve 5 Ekim'i alır.
+    const before = await ids('dateTo=2026-10-05&classId=c1')
+    assert.ok(before.includes('test-att-a'))
+    assert.equal(before.includes('test-att-b'), false)
+    assert.equal(
+      before.length,
+      (SAMPLE.attendance ?? []).filter((row) => row.classId === 'c1').length + 1,
+    )
+    for (const query of [
+      'dateFrom=2026-10-07&dateTo=2026-10-06',
+      'dateFrom=2026-02-30',
+      'dateTo=6.10.2026',
+    ]) {
+      const response = await get(`/api/v1/collections/attendance?${query}`, adminCookie)
+      assert.equal(response.statusCode, 400, query)
+      assert.equal(response.json().code, 'validation_failed')
+    }
+  })
+
+  test('grades classId süzgeci öğrencinin sınıfından çözülür; kapsam korunur', async () => {
+    const { id, adminCookie } = await institution()
+    const classOf = (studentId: unknown) =>
+      SEED.students.find((item) => item.id === studentId)?.classId
+    const ofClass =
+      (...classIds: string[]) =>
+      (row: Record<string, unknown>) =>
+        classIds.includes(classOf(row.studentId) ?? '')
+
+    assert.deepEqual(
+      (await list(adminCookie, 'grades', '&classId=c1')).ids,
+      sampleIds('grades', ofClass('c1')),
+    )
+    assert.deepEqual(
+      (await list(adminCookie, 'grades', '&classId=c1&classId=c2')).ids,
+      sampleIds('grades', ofClass('c1', 'c2')),
+    )
+    assert.deepEqual((await list(adminCookie, 'grades', '&classId=test-bos')).ids, [])
+    // Branş öğretmeni t2 (Türkçe) yalnız kendi dersini görür; sınıf süzgeci kapsamı genişletmez.
+    const teacher = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }])
+    const s11Class = classOf('s11') ?? ''
+    assert.deepEqual(
+      (await list(teacher, 'grades', '&classId=c2')).ids,
+      sampleIds('grades', (row) => ofClass('c2')(row) && row.subjectId === 'turkish'),
+    )
+    assert.deepEqual((await list(teacher, 'grades', `&classId=${s11Class}`)).ids, [])
+    const parent = await memberCookie(id, 'veli', [{ kind: 'child', recordId: 's1' }])
+    assert.deepEqual((await list(parent, 'grades', '&classId=c2')).ids, [])
+    // Kaydında sınıf olan koleksiyonda süzgeç kaydın alanıdır.
+    assert.deepEqual(
+      (await list(adminCookie, 'attendance', '&classId=c2')).ids,
+      sampleIds('attendance', (row) => row.classId === 'c2'),
+    )
+  })
+
   test('arşivli kayıt varsayılan olarak dönmez; archived=include/only ile döner', async () => {
     const { id, adminCookie } = await institution()
     await writeRecords(

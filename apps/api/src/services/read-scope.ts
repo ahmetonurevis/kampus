@@ -81,7 +81,12 @@ function parseRows<T>(
   return parsed
 }
 
-async function buildScope(ctx: ServiceContext): Promise<Scope> {
+interface ScopeState {
+  scope: Scope
+  source: ScopeSource
+}
+
+async function buildScope(ctx: ServiceContext): Promise<ScopeState> {
   const [institution, links, rows] = await Promise.all([
     getInstitutionModules(ctx.db, ctx.institutionId),
     listMembershipLinks(ctx.db, ctx.institutionId, ctx.actor.membershipId),
@@ -101,22 +106,48 @@ async function buildScope(ctx: ServiceContext): Promise<Scope> {
     modules: institution?.modules ?? {},
   }
   const actor: Actor = { role: ctx.actor.role, links }
-  return scopeFor(source, actor, { institutionType: institution?.type ?? 'school' })
+  return {
+    scope: scopeFor(source, actor, { institutionType: institution?.type ?? 'school' }),
+    source,
+  }
 }
 
 // Servis bağlamı istek başına bir kez kurulur; kapsam aynı istekte yeniden hesaplanmaz.
-const scopes = new WeakMap<ServiceContext, Promise<Scope>>()
+const states = new WeakMap<
+  ServiceContext,
+  { scope: Promise<Scope>; source: Promise<ScopeSource> }
+>()
+
+function scopeState(ctx: ServiceContext) {
+  let state = states.get(ctx)
+  if (!state) {
+    const built = buildScope(ctx)
+    state = { scope: built.then((item) => item.scope), source: built.then((item) => item.source) }
+    states.set(ctx, state)
+    // Başarısız yükleme önbellekte kalmaz.
+    built.catch(() => states.delete(ctx))
+    state.source.catch(() => {})
+  }
+  return state
+}
 
 /** İsteğin okuma kapsamı; aynı bağlamda ikinci çağrı önbellekten döner. */
 export function readScope(ctx: ServiceContext): Promise<Scope> {
-  let scope = scopes.get(ctx)
-  if (!scope) {
-    scope = buildScope(ctx)
-    scopes.set(ctx, scope)
-    // Başarısız yükleme önbellekte kalmaz.
-    scope.catch(() => scopes.delete(ctx))
-  }
-  return scope
+  return scopeState(ctx).scope
+}
+
+/**
+ * Sınıfların (arşivlenmemiş) öğrencileri, kapsam kaynağından (ek sorgu yok). Kurumun bütün
+ * öğrencileri arasından seçilir: sonuç yalnız aday süzgecidir, her satır yine core `canRead`
+ * ile süzülür. Sınıf öğrencinin güncel sınıfıdır (`students.classId`).
+ */
+export async function studentsOfClasses(
+  ctx: ServiceContext,
+  classIds: readonly string[],
+): Promise<string[]> {
+  const source = await scopeState(ctx).source
+  const wanted = new Set(classIds)
+  return source.students.filter((student) => wanted.has(student.classId)).map((s) => s.id)
 }
 
 /**

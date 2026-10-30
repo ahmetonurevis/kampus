@@ -54,7 +54,7 @@ export function registerCollectionRoutes(app: FastifyInstance) {
       },
     },
     async (request) => {
-      const { page, pageSize, q, sort, archived } = request.query
+      const { page, pageSize, q, sort, archived, isActive, dateFrom, dateTo } = request.query
       const filters: Partial<Record<FilterField, readonly string[]>> = {}
       for (const field of FILTER_FIELDS) {
         const value = request.query[field]
@@ -67,6 +67,9 @@ export function registerCollectionRoutes(app: FastifyInstance) {
         sort: parseSort(sort),
         archived,
         filters,
+        isActive: isActive === undefined ? undefined : isActive === 'true',
+        dateFrom,
+        dateTo,
       })
       return { data: result.items, meta: { page, pageSize, total: result.total } }
     },

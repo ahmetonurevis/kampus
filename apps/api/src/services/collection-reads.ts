@@ -1,9 +1,12 @@
-import type { RecordData } from '../db/collections.ts'
-import { findRecord, loadRecords, type FieldMatch, type StoredRecord } from '../db/records.ts'
+import type { Scope } from '@kampus/school-core/lib/scope.ts'
+
+import type { CollectionName, RecordData } from '../db/collections.ts'
+import { findRecord, loadRecords, type RecordFilter, type StoredRecord } from '../db/records.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { moduleOfCollection, readableCollection } from './collection-access.ts'
-import { assertReadable, readScope, scopePrefilter } from './read-scope.ts'
+import { dayRange, matchesRecordFilter } from './list-filters.ts'
+import { assertReadable, readScope, scopePrefilter, studentsOfClasses } from './read-scope.ts'
 
 /**
  * Koleksiyon okuma servisi (geçiş köprüsü: modüller kendi kaynak uçlarına geçene kadar). Kayıtlar
@@ -39,6 +42,23 @@ export const FILTER_FIELDS = [
   'grade',
 ] as const
 export type FilterField = (typeof FILTER_FIELDS)[number]
+
+/**
+ * Kaydında `classId` olmayan, öğrenciye bağlı koleksiyonlar: `classId` süzgeci öğrencinin
+ * güncel sınıfından (`students.classId`, kapsam kaynağı) öğrenci kimliklerine çevrilir; istemci
+ * sınıfın öğrencilerini tek tek göndermez. Diğer koleksiyonlarda `classId` kaydın alanıdır.
+ */
+const CLASS_VIA_STUDENT: ReadonlySet<CollectionName> = new Set<CollectionName>([
+  'grades',
+  'absences',
+  'submissions',
+  'quizAttempts',
+  'mockResults',
+  'studentGoals',
+])
+
+/** Gün aralığı süzgecinin alanı (`dateFrom`/`dateTo`). */
+export const DATE_FILTER_FIELD = 'date'
 
 /** Sıralama alanları. `createdAt`/`updatedAt` kayıt kolonudur; diğerleri veri alanıdır. */
 export const SORT_FIELDS = [
@@ -76,6 +96,11 @@ export interface CollectionListQuery {
   sort?: readonly SortKey[] | undefined
   archived?: ArchivedMode | undefined
   filters?: Partial<Record<FilterField, readonly string[]>> | undefined
+  /** `isActive` süzgeci; verilmezse etkin ve pasif kayıtlar birlikte döner. */
+  isActive?: boolean | undefined
+  /** `date` alanının Europe/Istanbul günü aralığı (`YYYY-MM-DD`, iki uç dahil). */
+  dateFrom?: string | undefined
+  dateTo?: string | undefined
 }
 
 /** Yanıt kaydı: üst alanlar kolondan, `record` school-core kaydının role göre görünen alanları. */
@@ -137,16 +162,32 @@ function matchesSearch(record: RecordData, needle: string): boolean {
   )
 }
 
-function primitiveText(value: unknown): string | null {
-  if (typeof value === 'string') return value
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  return null
-}
-
-function matchesFilter(record: RecordData, { field, values }: FieldMatch) {
-  const value = record[field]
-  const candidates = Array.isArray(value) ? value.map(primitiveText) : [primitiveText(value)]
-  return candidates.some((text) => text !== null && values.includes(text))
+/**
+ * Sorgunun süzgeçleri; `null` sonucun boş olduğunu bildirir (öğrencisiz sınıf, ayıklanan alan).
+ * Rolün göremediği (ayıklanan) alana göre süzülemez: alan o rol için yoktur.
+ */
+async function listFilters(
+  ctx: ServiceContext,
+  scope: Scope,
+  collection: CollectionName,
+  query: CollectionListQuery,
+): Promise<RecordFilter[] | null> {
+  const filters: RecordFilter[] = []
+  for (const field of FILTER_FIELDS) {
+    const values = query.filters?.[field]
+    if (!values || values.length === 0) continue
+    if (field === 'classId' && CLASS_VIA_STUDENT.has(collection)) {
+      const students = await studentsOfClasses(ctx, values)
+      if (students.length === 0) return null
+      filters.push({ field: 'studentId', values: students })
+    } else filters.push({ field, values })
+  }
+  if (query.isActive !== undefined)
+    filters.push({ kind: 'active', field: 'isActive', active: query.isActive })
+  const range = dayRange(DATE_FILTER_FIELD, query.dateFrom, query.dateTo)
+  if (range) filters.push(range)
+  const hidden = scope.hiddenFields(collection)
+  return filters.some((filter) => hidden.includes(filter.field)) ? null : filters
 }
 
 function sortValue(item: VisibleRow, field: SortField): unknown {
@@ -199,14 +240,12 @@ export async function listCollection(
   const collection = readableCollection(name)
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, collection)
-  const filters: FieldMatch[] = FILTER_FIELDS.flatMap((field) => {
-    const values = query.filters?.[field]
-    return values && values.length > 0 ? [{ field, values }] : []
-  })
+  const filters = await listFilters(ctx, scope, collection, query)
+  if (filters === null) return { items: [], total: 0 }
   const needle = query.q ? searchKey(query.q) : null
   const narrowed = filters.length > 0 || needle !== null
   const matches = (record: RecordData) =>
-    filters.every((filter) => matchesFilter(record, filter)) &&
+    filters.every((filter) => matchesRecordFilter(record, filter)) &&
     (needle === null || matchesSearch(record, needle))
   const prefilter = scopePrefilter(scope, collection)
   const rows = await loadRecords(ctx.db, ctx.institutionId, [collection], {

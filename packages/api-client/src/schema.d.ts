@@ -1565,9 +1565,15 @@ export interface operations {
                 sort?: string;
                 /** @description Arşivliler varsayılan olarak dönmez; `include` ekler, `only` yalnız onları verir */
                 archived?: "include" | "only";
+                /** @description Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır */
+                isActive?: "true" | "false";
+                /** @description `date` alanının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                dateFrom?: string;
+                /** @description `date` alanının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                dateTo?: string;
                 /** @description `studentId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 studentId?: string | string[];
-                /** @description `classId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                /** @description `classId` eşitlik filtresi; çoklu değer parametre tekrarıyla. Kaydında sınıf olmayan öğrenci koleksiyonlarında (`grades`, `absences`, `submissions`, `quizAttempts`, `mockResults`, `studentGoals`) öğrencinin güncel sınıfıdır */
                 classId?: string | string[];
                 /** @description `teacherId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 teacherId?: string | string[];

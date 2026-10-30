@@ -4,11 +4,15 @@ import { useCallback } from 'react'
 import type { ApiError } from '@kampus/api-client/errors.ts'
 
 import {
+  collectionCountsKey,
   collectionItemKey,
   collectionQueryKey,
   fetchAllCollectionPages,
+  fetchCollectionCounts,
   fetchCollectionItem,
   fetchCollectionPage,
+  type CollectionCounts,
+  type CollectionCountsQuery,
   type CollectionPage,
   type CollectionQuery,
   type CollectionRow,
@@ -56,6 +60,25 @@ export function useCollectionAll<TRecord>(
     queryKey: institutionKey(institutionId, ...collectionQueryKey(collection, query), 'all'),
     queryFn: ({ signal }) => fetchAllCollectionPages<TRecord>(client, collection, query, signal),
     enabled: institutionId !== null && (options.enabled ?? true),
+  })
+}
+
+/**
+ * Toplu sayım ve toplam (`GET /collections/:c/counts`): liste süzgeçleriyle aynı kapsamda grup
+ * başına sayı ve toplam. Toplam kartları ve sayımlar için; satırlar çekilmez.
+ */
+export function useCollectionCounts(
+  collection: string,
+  query: CollectionCountsQuery,
+  options: CollectionOptions = {},
+): UseQueryResult<CollectionCounts, ApiError> {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQuery<CollectionCounts, ApiError>({
+    queryKey: institutionKey(institutionId, ...collectionCountsKey(collection, query)),
+    queryFn: ({ signal }) => fetchCollectionCounts(client, collection, query, signal),
+    enabled: institutionId !== null && (options.enabled ?? true),
+    placeholderData: keepPreviousData,
   })
 }
 

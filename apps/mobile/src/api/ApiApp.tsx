@@ -17,9 +17,12 @@ import { createApiClients } from './clients.ts'
 import ApiCategory from './screens/ApiCategory.tsx'
 import ApiHome from './screens/ApiHome.tsx'
 import ApiLogin from './screens/ApiLogin.tsx'
+import ParentGrades from './screens/ParentGrades.tsx'
+import TeacherClasses from './screens/TeacherClasses.tsx'
 import { sessionScopeKey, type MobileSession } from './session-state.ts'
 import { ToastProvider, useNotify } from './toast.tsx'
 import { useApiAppearance } from './use-api-appearance.ts'
+import { ViewMemoryProvider } from './view-memory.tsx'
 
 const Stack = createNativeStackNavigator<ApiStackParamList>()
 
@@ -62,6 +65,8 @@ function SignedIn({ session }: { session: MobileSession }) {
           <Stack.Group navigationKey={sessionScopeKey(session)}>
             <Stack.Screen name="ApiHome" component={ApiHome} />
             <Stack.Screen name="ApiCategory" component={ApiCategory} />
+            <Stack.Screen name="TeacherClasses" component={TeacherClasses} />
+            <Stack.Screen name="ParentGrades" component={ParentGrades} />
           </Stack.Group>
         </Stack.Navigator>
       </NavigationContainer>
@@ -115,7 +120,12 @@ function Gate() {
         </StatusScreen>
       )
     case 'signed-in':
-      return <SignedIn session={state.session} />
+      return (
+        // Oturum veya kurum değişince bellekteki görünüm durumu (seçili çocuk, liste) silinir.
+        <ViewMemoryProvider key={sessionScopeKey(state.session)}>
+          <SignedIn session={state.session} />
+        </ViewMemoryProvider>
+      )
     default:
       return state satisfies never
   }

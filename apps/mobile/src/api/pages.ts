@@ -11,7 +11,10 @@ import { isModuleOpen, type MemberRole, type MobileSession } from './session-sta
 export type ApiScreen = 'TeacherClasses' | 'ParentGrades'
 
 /** Rol + sayfa yolu → API'li ekran. Demo ekranlarının API karşılıkları buraya eklenir. */
-const MIGRATED: Partial<Record<MemberRole, Partial<Record<string, ApiScreen>>>> = {}
+const MIGRATED: Partial<Record<MemberRole, Partial<Record<string, ApiScreen>>>> = {
+  ogretmen: { siniflarim: 'TeacherClasses' },
+  veli: { 'akademik-takip': 'ParentGrades' },
+}
 
 export type ApiPage = {
   path: string

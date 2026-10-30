@@ -1,10 +1,10 @@
-// @ts-nocheck — TODO(ts): tiplenecek (C2)
 // CSV alanları tırnak içinde ayraç, çift tırnak ve satır sonu içerebilir.
-export function delimitedRows(raw) {
+export function delimitedRows(raw: string) {
   const source = raw.replace(/^\uFEFF/, '')
-  const separator = source.split(/\r?\n/, 1)[0].includes(';') ? ';' : ','
-  const rows = [],
-    row = []
+  const [firstLine = ''] = source.split(/\r?\n/, 1)
+  const separator = firstLine.includes(';') ? ';' : ','
+  const rows: string[][] = [],
+    row: string[] = []
   let cell = '',
     quoted = false,
     closed = false
@@ -37,7 +37,11 @@ export function delimitedRows(raw) {
   return rows
 }
 
-export function csvObjects(raw, header, maximumRows = 1000) {
+export function csvObjects<const H extends readonly string[]>(
+  raw: string,
+  header: H,
+  maximumRows = 1000,
+): Record<H[number], string>[] {
   const rows = delimitedRows(raw)
   if (rows[0]?.map((v) => v.trim()).join('|') !== header.join('|'))
     throw new Error(`CSV başlıkları ${header.join(';')} olmalıdır.`)
@@ -46,6 +50,11 @@ export function csvObjects(raw, header, maximumRows = 1000) {
   return rows.slice(1).map((values, index) => {
     if (values.length !== header.length)
       throw new Error(`CSV ${index + 2}. satırda sütun sayısı geçersiz.`)
-    return Object.fromEntries(header.map((key, i) => [key, values[i]]))
+    // Dosya sınırı: başlık ve sütun sayısı doğrulandığı için her başlık anahtarı dolu bir dizedir;
+    // Object.fromEntries anahtar birleşimini koruyamadığından tip burada daraltılır.
+    return Object.fromEntries(header.map((key, i) => [key, values[i] ?? ''])) as Record<
+      H[number],
+      string
+    >
   })
 }

@@ -232,7 +232,7 @@ Veli ekranlarında seçili çocuk adreste `?cocuk=<öğrenci kimliği>` taşın�
 - **Derin bağlantı:** kart ilgili listeyi filtresi adreste açar (`dashboardHref(rol, yol, { durum: 'gecikmis' }, çocuk)`); velide `?cocuk=` taşınır.
 - **Durumlar:** her kart kendi yükleniyor/boş/hata durumunu gösterir (`ListCard` hatada `QueryError`). Kart modülü kapalıysa çizilmez (`session.modules` ve `module_disabled` yanıtı); dashboard kendine yönlendirilmez.
 - **Kapsam:** sorgular rolün kapsamına sunucuda daraltılır; ekran rolün görmemesi gereken koleksiyonu hiç istemez (öğrenci `invoices` okumaz). Velide çocuğa bağlı sorgular `studentId` (veya çocuğun `classId`'si) taşır; çocuk değişince anahtar değişir.
-- **Mini grafik** yalnız gerçek kayıtlardan türer; seri boşsa çizilmez ve metin gösterilir. Grafiğin yanında görünür metin özeti (`trendSummary`) bulunur, SVG `aria-hidden`'dır. `recharts` grafik bileşeninde `lazy(() => import(…))` ile ayrı parçadır; dashboard parçası onu ilk yüklemede getirmez.
+- **Mini grafik** yalnız gerçek kayıtlardan türer; seri boşsa çizilmez ve metin gösterilir. Grafiğin yanında görünür metin özeti (`trendSummary`) bulunur, SVG `aria-hidden`'dır. `recharts` grafik bileşeninde `lazy(() => import(…))` ile ayrı parçadır; dashboard parçası onu ilk yüklemede getirmez. Renkler `tokens.css` `--chart-bar/-grid/-axis` değişkenlerinden `app.css` `.trend-bars` kurallarıyla gelir (açık/koyu tema, zorlanmış renk); örnek `AbsenceTrend.tsx` + `TrendBars.tsx`.
 
 ### API'li yazma kalıbı (react-shared + web-react)
 

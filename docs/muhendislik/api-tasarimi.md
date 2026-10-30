@@ -120,6 +120,8 @@ Bütün hata yanıtları aynı şekildedir:
 
 400 ile 422 ayrımı: Zod şemasını geçemeyen istek 400; şemayı geçip school-core kuralına takılan istek 422.
 
+Modül denetimi: modüle bağlı rota `app.requireModule('<anahtar>')` ön işleyicisini bildirir (anahtar istekten de çözülebilir, ör. koleksiyon adından). Anahtarlar school-core modül kaydındandır (`modules/full-navigation.ts`, `modules/school-workflows.ts`); kurumda saklanmayan modül açıktır, yalnız `false` olan kapalıdır. Sıra: 401 → 404 (bilinmeyen kaynak) → 403 `module_disabled` → 403 `forbidden` (rol/kapsam) → 404 (kayıt). Kapalı modülün okuma uçları da kapanır (DOM-YTK-040).
+
 ## 6. Eşzamanlılık
 
 - Güncelleme ve komut gövdesi okunan kaydın `version` değerini taşır. Sunucu yazarken `WHERE version = $beklenen` uygular; eşleşmezse 409 `version_conflict`. İstemci kaydı yeniden yükler ve kullanıcıya "Kayıt başka biri tarafından değiştirildi." gösterir.

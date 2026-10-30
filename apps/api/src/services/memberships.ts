@@ -5,7 +5,7 @@ import type { Database } from '../db/client.ts'
 import { institutions, memberships, users } from '../db/schema/auth.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
 import { membershipLinks, type MembershipLinkKind } from '../db/schema/membership-links.ts'
-import { effectiveModules } from './modules.ts'
+import { effectiveModules, toModuleMap } from './modules.ts'
 
 /**
  * Üyelik okuma fonksiyonları. Kurum kapsamlı olanların ilk parametresi `institutionId`'dir;
@@ -59,15 +59,6 @@ export async function getInstitution(db: Database, institutionId: string) {
     academicYear: row.academicYear ?? null,
     enabledModules: effectiveModules(toModuleMap(row.enabledModules)),
   }
-}
-
-function toModuleMap(value: unknown): Record<string, boolean> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
-  return Object.fromEntries(
-    Object.entries(value).filter(
-      (entry): entry is [string, boolean] => typeof entry[1] === 'boolean',
-    ),
-  )
 }
 
 export async function listMembershipLinks(

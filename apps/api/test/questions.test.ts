@@ -538,23 +538,87 @@ describe('Öğretmenime Sor uçları', () => {
     assertError(await ask(nehirParent), 403, 'forbidden')
   })
 
-  test('DOM-ILT-014: soru ve yanıt metni loga yazılmaz', async () => {
+  test('DOM-ILT-014: soru ve yanıt metni başarı, 400, 403, 404, 409, 422 ve geri çekme yollarında loga yazılmaz', async () => {
     const logs: string[] = []
     const logged = await buildTestApp(db, { logs, clock: () => FIXED_NOW })
     try {
       const a = await institution({}, logged)
       const cookie = await student(a.id, 's1', logged)
-      const created = await ask(cookie, QUESTION, key(), logged)
-      assert.equal(created.statusCode, 201, created.body)
-      const id: string = created.json().data.entity.id
       const selin = await teacher(a.id, 't1', logged)
-      const v = created.json().data.records[0].version as number
-      assert.equal((await answer(selin, id, v, ANSWER, {}, logged)).statusCode, 201)
-      await ask(cookie, { ...QUESTION, text: 'gizli-ks' }, key(), logged)
+      const outsider = await teacher(a.id, 't3', logged)
+      // Her yol kendi gizli metnini taşır; hiçbiri log satırlarının hiçbir derinliğinde geçmemeli.
+      const secret = (name: string) => `gizli-${name}-metin`
+      const statuses: number[] = []
+      const run = async (response: Promise<{ statusCode: number }>) => {
+        statuses.push((await response).statusCode)
+      }
+      const asked = await ask(cookie, QUESTION, key(), logged)
+      assert.equal(asked.statusCode, 201, asked.body)
+      const id: string = asked.json().data.entity.id
+      const v = asked.json().data.records[0].version as number
+      const replay = key()
+      await run(ask(cookie, { ...QUESTION, text: secret('tekrar-soru') }, replay, logged))
+      await run(ask(cookie, { ...QUESTION, text: secret('tekrar-soru') }, replay, logged))
+      await run(ask(cookie, { ...QUESTION, title: secret('kisa'), text: 'kısa' }, key(), logged))
+      await run(
+        ask(
+          cookie,
+          { ...QUESTION, subjectId: 'literature', text: secret('kapsam') },
+          key(),
+          logged,
+        ),
+      )
+      await run(
+        ask(cookie, { ...QUESTION, topic: 'Paragraf', text: secret('kural') }, key(), logged),
+      )
+      await run(answer(outsider, id, v, { text: secret('kapsam-yanit') }, {}, logged))
+      await run(answer(selin, id, v + 5, { text: secret('surum-yanit') }, {}, logged))
+      await run(answer(selin, id, v, { text: '' }, {}, logged))
+      await run(answer(selin, id, v, ANSWER, {}, logged))
+      await run(answer(selin, id, v + 1, { text: secret('ek-yanit') }, {}, logged))
+      // Geri çekme: yanıtsız soru 200, yanıtlanmış soru 409; metin gövdeye girmese de kayıt
+      // yanıtında soru metni döner, loga düşmemeli.
+      const withdrawable = await ask(
+        cookie,
+        { ...QUESTION, text: secret('geri-cekilen') },
+        key(),
+        logged,
+      )
+      const wId: string = withdrawable.json().data.entity.id
+      const wVersion = withdrawable.json().data.records[0].version as number
+      await run(
+        send('PATCH', `/api/v1/questions/${wId}`, cookie, WITHDRAW, ifMatch(wVersion), logged),
+      )
+      await run(send('PATCH', `/api/v1/questions/${id}`, cookie, WITHDRAW, ifMatch(v + 2), logged))
+      await run(
+        send(
+          'PATCH',
+          `/api/v1/questions/${id}`,
+          cookie,
+          { withdrawn: true, text: secret('degisiklik') },
+          ifMatch(v + 2),
+          logged,
+        ),
+      )
+      assert.deepEqual(statuses, [201, 201, 400, 403, 422, 404, 409, 400, 201, 201, 200, 409, 400])
       const text = logs.join('')
       assert.ok(text.includes('question.ask'), 'işlem logu yok')
-      for (const secret of [QUESTION.text, QUESTION.title, ANSWER.text, 'gizli-ks'])
-        assert.equal(text.includes(secret), false, `logda serbest metin: ${secret.slice(0, 8)}…`)
+      assert.ok(text.includes('request.validation_failed'), 'doğrulama hatası logu yok')
+      for (const value of [
+        QUESTION.text,
+        QUESTION.title,
+        ANSWER.text,
+        secret('tekrar-soru'),
+        secret('kisa'),
+        secret('kapsam'),
+        secret('kural'),
+        secret('kapsam-yanit'),
+        secret('surum-yanit'),
+        secret('ek-yanit'),
+        secret('geri-cekilen'),
+        secret('degisiklik'),
+      ])
+        assert.equal(text.includes(value), false, `logda serbest metin: ${value.slice(0, 12)}…`)
     } finally {
       await logged.close()
     }

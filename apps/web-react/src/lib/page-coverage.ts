@@ -43,6 +43,7 @@ export const MIGRATED = new Set([
   'ogretmen/quiz-olustur',
   'ogrenci/odevler',
   'ogrenci/materyaller',
+  'ogrenci/videolar',
   'ogrenci/soru-coz',
   'ogrenci/mesajlar',
   'ogretmen/mesajlar',

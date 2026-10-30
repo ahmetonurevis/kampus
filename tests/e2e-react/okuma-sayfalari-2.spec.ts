@@ -15,6 +15,7 @@ import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 const COLLECTIONS = '/api/v1/collections'
 const SLA_URL = '/yonetici/sla-raporu'
 const SLA_TABLE = 'Öğretmen SLA raporu'
+const VIDEOS_URL = '/ogrenci/videolar'
 const MODULE_CLOSED = 'Bu modül kurum ayarlarından kapatılmış.'
 const HOUR = 3_600_000
 
@@ -307,6 +308,153 @@ test.describe('yönetici: SLA Raporu', () => {
   })
 })
 
+test.describe('öğrenci: Ders Videoları', () => {
+  test('kapsamdaki videolar kartlarla açılır; izleme ilerlemesi kayıttan gelir', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const student = await api('ogrenci')
+    const videos = await listAll(student, 'videos')
+    const progress = await listAll(student, 'videoProgress')
+    const teachers = await listAll(student, 'teachers')
+    expect(videos.length).toBeGreaterThan(0)
+    const first = videos.find((video) => video.id === 'v1')
+    expect(first).toBeDefined()
+    const watched = Number(progress.find((entry) => entry.videoId === 'v1')?.progress)
+    expect(watched).toBeGreaterThan(0)
+
+    await loginAs('ogrenci')
+    await page.goto(VIDEOS_URL)
+    await expect(page.getByRole('heading', { name: 'Ders Videoları', level: 1 })).toBeVisible()
+    const cards = page.getByRole('button', { name: /videosunu aç$/ })
+    await expect(cards).toHaveCount(videos.length)
+
+    const card = page.getByRole('button', { name: `${String(first?.title)} videosunu aç` })
+    await expect(card).toContainText(`%${watched} izlendi · Devam et`)
+    await expect(card).toContainText('Devam et')
+    const teacher = teachers.find((item) => item.id === first?.teacherId)
+    await expect(card).toContainText(String(teacher?.name ?? '—'))
+    await expect(
+      card.getByRole('progressbar', { name: `${String(first?.title)} izleme ilerlemesi` }),
+    ).toHaveAttribute('aria-valuenow', String(watched))
+    // İzlenmemiş videoda ilerleme çubuğu boş, eylem "Dersi izle"dir.
+    const untouched = page.getByRole('button', { name: /Hücreyi keşfedelim.*videosunu aç/ })
+    await expect(untouched).toContainText('Henüz izlenmedi')
+    await expect(untouched).toContainText('Dersi izle')
+  })
+
+  test('arama ve ders filtresi videoları daraltır; eşleşme yoksa boş sonuç, temizleyince liste döner', async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs('ogrenci')
+    await page.goto(VIDEOS_URL)
+    const cards = page.getByRole('button', { name: /videosunu aç$/ })
+    await expect(cards).toHaveCount(2)
+
+    await page.getByLabel('Video ara').fill('Denklem')
+    await expect(cards).toHaveCount(1)
+    await expect(cards.first()).toContainText('Denklemleri adım adım çözelim')
+
+    await page.getByLabel('Video ara').fill('zzzz-yok')
+    await expect(cards).toHaveCount(0)
+    await expect(page.getByText('Uygun kayıt bulunamadı.')).toBeVisible()
+    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
+    await expect(cards).toHaveCount(2)
+
+    await page.getByRole('button', { name: 'Filtreler' }).click()
+    await page.getByLabel('Ders', { exact: true }).selectOption({ label: 'Fen Bilimleri' })
+    await expect(cards).toHaveCount(1)
+    await expect(cards.first()).toContainText('Hücreyi keşfedelim')
+  })
+
+  test('video penceresi adreste açılır: oynatıcı, altyazı ve ilerleme; geri düğmesi kapatır', async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs('ogrenci')
+    await page.goto(VIDEOS_URL)
+    await page.getByRole('button', { name: 'Denklemleri adım adım çözelim videosunu aç' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Denklemleri adım adım çözelim' })
+    await expect(dialog).toBeVisible()
+    await expect(page).toHaveURL(/[?&]video=v1/)
+    const player = dialog.locator('video')
+    await expect(player).toHaveAttribute('controls', '')
+    await expect(player.locator('source')).toHaveAttribute('src', '/videos/denklemler.mp4')
+    await expect(player.locator('track')).toHaveAttribute('src', '/videos/denklemler.vtt')
+    await expect(dialog.getByText('%35 izlendi')).toBeVisible()
+    await dialog.getByText('Ders notları ve metin dökümü').click()
+    await expect(dialog.getByText('2x + 6 = 18. Önce her iki taraftan 6 çıkarırız')).toBeVisible()
+    // Oynatıcı dosyaları gerçekten sunulur.
+    for (const path of ['/videos/denklemler.mp4', '/videos/denklemler.vtt']) {
+      expect((await page.request.get(path)).status(), path).toBe(200)
+    }
+
+    await page.goBack()
+    await expect(dialog).toHaveCount(0)
+    await expect(page).not.toHaveURL(/video=/)
+    await page.goForward()
+    await expect(dialog).toBeVisible()
+  })
+
+  test('kapsam dışı video adresi kayıt bulunamadı der', async ({ page, loginAs }) => {
+    await loginAs('ogrenci')
+    await page.goto(`${VIDEOS_URL}?video=v-yok`)
+    await expect(page.getByRole('dialog').getByText('Kayıt bulunamadı')).toBeVisible()
+  })
+
+  test('düzeyine video yoksa boş durum gösterilir', async ({ page, loginAs, tenant }) => {
+    const school = await tenant({ roles: ['ogrenci'], students: ['s1'] })
+    await loginAs(school.user('ogrenci'))
+    await page.goto(VIDEOS_URL)
+    await expect(page.getByRole('heading', { name: 'Ders Videoları', level: 1 })).toBeVisible()
+    await expect(page.getByText('Henüz kayıt yok.')).toBeVisible()
+    await expect(page.getByRole('button', { name: /videosunu aç$/ })).toHaveCount(0)
+  })
+
+  test('rol kapsamı: öğrenci yalnız kendi ilerlemesini okur, diğer roller sayfayı açamaz', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const mine = await listAll(await api('ogrenci'), 'videoProgress')
+    const all = await listAll(await api('yonetici'), 'videoProgress')
+    expect(mine.length).toBeGreaterThan(0)
+    expect(mine.length).toBeLessThan(all.length)
+    expect(new Set(mine.map((entry) => entry.studentId))).toEqual(new Set(['s1']))
+    expect((await (await api('onburo')).get(`${COLLECTIONS}/videos`)).status).toBe(403)
+
+    for (const [role, home] of [
+      ['yonetici', /\/yonetici\/dashboard$/],
+      ['onburo', /\/onburo\/dashboard$/],
+      ['ogretmen', /\/ogretmen\/dashboard$/],
+    ] as const) {
+      await loginAs(role)
+      await page.goto(VIDEOS_URL)
+      await expect(page).toHaveURL(home)
+    }
+  })
+
+  test('öğrenme modülü kapanınca sayfa ve video uçları kapanır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici', 'ogrenci'], students: ['s1'] })
+    const admin = await api(school.user('yonetici'))
+    await closeModule(admin, 'learning')
+    await loginAs(school.user('ogrenci'))
+    await page.goto(VIDEOS_URL)
+    await expect(page.getByText(MODULE_CLOSED)).toBeVisible()
+    await expect(page).toHaveURL(/\/ogrenci\/dashboard/)
+    const student = await api(school.user('ogrenci'))
+    expect((await student.get(`${COLLECTIONS}/videos`)).status).toBe(403)
+    expect((await student.get(`${COLLECTIONS}/videoProgress`)).status).toBe(403)
+  })
+})
+
 test.describe('390 px genişlik', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
@@ -315,6 +463,16 @@ test.describe('390 px genişlik', () => {
     await page.goto(SLA_URL)
     await expect(page.getByLabel('SLA özeti', { exact: true })).toBeVisible()
     await expect(page.getByText('Selin Kaya').first()).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+  })
+
+  test('ders videoları ve oynatıcı penceresi yatay taşmaz', async ({ page, loginAs }) => {
+    await loginAs('ogrenci')
+    await page.goto(VIDEOS_URL)
+    await expect(page.getByRole('button', { name: /videosunu aç$/ }).first()).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    await page.getByRole('button', { name: 'Denklemleri adım adım çözelim videosunu aç' }).click()
+    await expect(page.getByRole('dialog', { name: 'Denklemleri adım adım çözelim' })).toBeVisible()
     await expectNoHorizontalOverflow(page)
   })
 })

@@ -97,6 +97,9 @@ const StudentHomeworkPage = lazy(async () => ({
 const StudentQuizzesPage = lazy(async () => ({
   default: (await import('./learning/StudentLearningPages.tsx')).StudentQuizzesPage,
 }))
+const StudentVideosPage = lazy(async () => ({
+  default: (await import('./learning/StudentVideosPage.tsx')).StudentVideosPage,
+}))
 const StudentMaterialsPage = lazy(async () => ({
   default: (await import('./learning/StudentMaterialsPage.tsx')).StudentMaterialsPage,
 }))
@@ -200,6 +203,8 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <TeacherQuizzesPage page={page} />
     case 'ogrenci/odevler':
       return <StudentHomeworkPage page={page} />
+    case 'ogrenci/videolar':
+      return <StudentVideosPage page={page} />
     case 'ogrenci/materyaller':
       return <StudentMaterialsPage page={page} />
     case 'ogrenci/soru-coz':

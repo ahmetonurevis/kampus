@@ -19,7 +19,6 @@ const KNOWN_PLACEHOLDERS: readonly string[] = [
   'onburo/kayit-islemleri',
   'ogretmen/sorular',
   'ogretmen/randevular',
-  'ogrenci/videolar',
   'ogrenci/soru-sor',
   'ogrenci/randevu-talep',
 ]

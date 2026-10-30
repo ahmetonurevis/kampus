@@ -17,8 +17,9 @@ import {
   type AcademicLookups,
   type AttendanceStatus,
 } from './academic-rows.ts'
-import { attendanceMarks, markCounts, teachingClassIds } from './academic-write.ts'
+import { attendanceMarks, markCounts } from './academic-write.ts'
 import { useAcademicLookups } from './use-academic-lookups.ts'
+import { useTeacherScope } from './use-teacher-scope.ts'
 
 /** Seçili işaretin rengi: durum yalnız renkle değil, `aria-checked` ve kalın yazıyla da bellidir. */
 const SELECTED_TONE = {
@@ -38,22 +39,21 @@ const SELECTED_TONE = {
 export function AttendanceTaking() {
   const headingId = useId()
   const data = useAcademicLookups()
-  const assignments = useCoreAll('assignments')
+  const scope = useTeacherScope(data.lookups)
   const [classId, setClassId] = useState('')
 
-  // Öğretmenin `teachers` okuması yalnız kendi kaydını döndürür.
-  const teacherId = [...data.lookups.teachers.keys()][0] ?? ''
-  const classes = useMemo(() => {
-    const teaching = teachingClassIds(assignments.data?.map((row) => row.record) ?? [], teacherId)
-    return data.sources.classes
-      .filter((row) => teaching.has(row.id))
-      .sort((left, right) =>
-        left.record.name.localeCompare(right.record.name, 'tr', { numeric: true }),
-      )
-  }, [assignments.data, data.sources.classes, teacherId])
+  const classes = useMemo(
+    () =>
+      data.sources.classes
+        .filter((row) => scope.classIds.has(row.id))
+        .sort((left, right) =>
+          left.record.name.localeCompare(right.record.name, 'tr', { numeric: true }),
+        ),
+    [scope.classIds, data.sources.classes],
+  )
 
   const selected = classes.find((row) => row.id === classId)
-  const error = data.error ?? assignments.error
+  const error = data.error ?? scope.error
   return (
     <section
       aria-labelledby={headingId}
@@ -73,7 +73,7 @@ export function AttendanceTaking() {
           <NativeSelect
             value={classId}
             onChange={(event) => setClassId(event.target.value)}
-            disabled={data.pending || assignments.isPending}
+            disabled={data.pending || scope.pending}
             className="min-h-9 text-sm"
           >
             <NativeSelectOption value="">Sınıf seçin</NativeSelectOption>
@@ -90,7 +90,7 @@ export function AttendanceTaking() {
           error={error}
           onRetry={() => {
             data.retry()
-            void assignments.refetch()
+            scope.retry()
           }}
         />
       ) : null}
@@ -104,7 +104,7 @@ export function AttendanceTaking() {
         />
       ) : (
         <p className="border-t px-6 py-5 text-sm text-muted-foreground max-[650px]:px-4">
-          {classes.length === 0 && !data.pending && !assignments.isPending
+          {classes.length === 0 && !data.pending && !scope.pending
             ? 'Ders verdiğiniz sınıf bulunmuyor.'
             : 'Öğrenci listesi için bir sınıf seçin.'}
         </p>

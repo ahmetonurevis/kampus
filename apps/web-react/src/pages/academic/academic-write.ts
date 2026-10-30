@@ -32,6 +32,23 @@ export function teachingSubjectIds(
   ]
 }
 
+/** Öğretmen yalnız ders verdiği sınıfın kendi dersindeki notunu düzeltir (DOM-AKD-054). */
+export function canCorrectGrade(
+  assignments: readonly Assignment[],
+  teacherId: string,
+  classId: string | undefined,
+  subjectId: string,
+): boolean {
+  return (
+    teacherId !== '' &&
+    classId !== undefined &&
+    assignments.some(
+      (item) =>
+        item.teacherId === teacherId && item.classId === classId && item.subjectId === subjectId,
+    )
+  )
+}
+
 /**
  * Yoklama işaretleri: kayıtlı gün varsa onun durumu, yoksa herkes "geldi". Kullanıcının
  * değişiklikleri (`edits`) üstüne biner; hiçbiri state'te kopyalanmaz.

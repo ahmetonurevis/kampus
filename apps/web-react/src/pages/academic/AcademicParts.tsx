@@ -11,6 +11,8 @@ type TableSectionProps = {
   onDownload?: () => void
   downloadBusy?: boolean
   downloadDisabled?: boolean
+  /** Ana işlem düğmesi (ör. "Not gir"); indirme düğmesinden önce gelir. */
+  action?: ReactNode
   children: ReactNode
 }
 
@@ -21,6 +23,7 @@ export function TableSection({
   onDownload,
   downloadBusy,
   downloadDisabled,
+  action,
   children,
 }: TableSectionProps) {
   const headingId = useId()
@@ -36,17 +39,20 @@ export function TableSection({
           </h2>
           <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
-        {onDownload ? (
-          <Button
-            variant="secondary"
-            onClick={onDownload}
-            disabled={downloadBusy || downloadDisabled}
-            aria-busy={downloadBusy || undefined}
-          >
-            <Icon name="Download" size={17} aria-hidden="true" />
-            Listeyi indir
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {action}
+          {onDownload ? (
+            <Button
+              variant="secondary"
+              onClick={onDownload}
+              disabled={downloadBusy || downloadDisabled}
+              aria-busy={downloadBusy || undefined}
+            >
+              <Icon name="Download" size={17} aria-hidden="true" />
+              Listeyi indir
+            </Button>
+          ) : null}
+        </div>
       </header>
       {children}
     </section>

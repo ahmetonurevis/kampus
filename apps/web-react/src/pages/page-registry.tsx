@@ -23,6 +23,15 @@ const TeacherMaterialsPage = lazy(async () => ({
 const TeacherQuizzesPage = lazy(async () => ({
   default: (await import('./learning/TeacherQuizzesPage.tsx')).TeacherQuizzesPage,
 }))
+const StudentHomeworkPage = lazy(async () => ({
+  default: (await import('./learning/StudentLearningPages.tsx')).StudentHomeworkPage,
+}))
+const StudentQuizzesPage = lazy(async () => ({
+  default: (await import('./learning/StudentLearningPages.tsx')).StudentQuizzesPage,
+}))
+const StudentMaterialsPage = lazy(async () => ({
+  default: (await import('./learning/StudentMaterialsPage.tsx')).StudentMaterialsPage,
+}))
 
 const MIGRATED = new Set([
   'yonetici/subeler',
@@ -32,6 +41,9 @@ const MIGRATED = new Set([
   'ogretmen/odevler',
   'ogretmen/materyal-yukle',
   'ogretmen/quiz-olustur',
+  'ogrenci/odevler',
+  'ogrenci/materyaller',
+  'ogrenci/soru-coz',
 ])
 
 export function isMigratedPage(role: RoleKey, path: string): boolean {
@@ -54,6 +66,12 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <TeacherMaterialsPage page={page} />
     case 'ogretmen/quiz-olustur':
       return <TeacherQuizzesPage page={page} />
+    case 'ogrenci/odevler':
+      return <StudentHomeworkPage page={page} />
+    case 'ogrenci/materyaller':
+      return <StudentMaterialsPage page={page} />
+    case 'ogrenci/soru-coz':
+      return <StudentQuizzesPage page={page} />
     default:
       return null
   }

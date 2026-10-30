@@ -32,16 +32,18 @@ export function ParentMessagesPage({ page }: { page: NavPage }) {
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
-      <LineTabs label="Randevu ve mesajlar" value={tab} options={TABS} onChange={select} />
-      {tab === 'mesajlar' ? (
-        <MessagesPage page={page} heading={false} />
-      ) : (
-        <EmptyState
-          icon="CalendarCheck2"
-          title="Randevular taşınıyor"
-          description="Randevu talebi ve listesi yeni web uygulamasına aktarılıyor. Hazır olduğunda burada görünecek."
-        />
-      )}
+      <div className="grid gap-4">
+        <LineTabs label="Randevu ve mesajlar" value={tab} options={TABS} onChange={select} />
+        {tab === 'mesajlar' ? (
+          <MessagesPage page={page} heading={false} />
+        ) : (
+          <EmptyState
+            icon="CalendarCheck2"
+            title="Randevular taşınıyor"
+            description="Randevu talebi ve listesi yeni web uygulamasına aktarılıyor. Hazır olduğunda burada görünecek."
+          />
+        )}
+      </div>
     </>
   )
 }

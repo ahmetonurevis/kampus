@@ -113,116 +113,119 @@ export function MessagesPage({ page, heading = true }: { page: NavPage; heading?
             ) : null
           }
         />
-      ) : canStartConversation(role) ? (
-        <div className="flex justify-end">
-          <Button onClick={() => setStarting(true)}>
-            <Icon name="Plus" size={16} />
-            Yeni yazışma
-          </Button>
-        </div>
       ) : null}
+      <div className="grid gap-4">
+        {!heading && canStartConversation(role) ? (
+          <div className="flex justify-end">
+            <Button onClick={() => setStarting(true)}>
+              <Icon name="Plus" size={16} />
+              Yeni yazışma
+            </Button>
+          </div>
+        ) : null}
 
-      {isAdmin ? (
-        <div className="max-w-md">
-          <FormField id="yazisma-ogrenci-sec" label="Öğrenci">
-            {(control) => (
-              <NativeSelect
-                {...control}
-                value={studentId}
-                onChange={(event) => chooseStudent(event.target.value)}
-              >
-                <NativeSelectOption value="">Öğrenci seçin</NativeSelectOption>
-                {studentOptions.map((option) => (
-                  <NativeSelectOption key={option.value} value={option.value}>
-                    {option.label}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            )}
-          </FormField>
-        </div>
-      ) : null}
+        {isAdmin ? (
+          <div className="max-w-md">
+            <FormField id="yazisma-ogrenci-sec" label="Öğrenci">
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  value={studentId}
+                  onChange={(event) => chooseStudent(event.target.value)}
+                >
+                  <NativeSelectOption value="">Öğrenci seçin</NativeSelectOption>
+                  {studentOptions.map((option) => (
+                    <NativeSelectOption key={option.value} value={option.value}>
+                      {option.label}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              )}
+            </FormField>
+          </div>
+        ) : null}
 
-      {waitingForStudent ? (
-        <EmptyState
-          icon="MessagesSquare"
-          title="Öğrenci seçin"
-          description="Yazışmaların üst verisini görmek için yukarıdan bir öğrenci seçin. Yazışma içeriği gerekçeyle açılır."
-        />
-      ) : listError ? (
-        <div role="alert" className="rounded-card border bg-surface p-8 text-center">
-          <QueryError
-            error={listError}
-            onRetry={() => {
-              for (const query of [conversations, students, teachers])
-                if (query.error) void query.refetch()
-            }}
+        {waitingForStudent ? (
+          <EmptyState
+            icon="MessagesSquare"
+            title="Öğrenci seçin"
+            description="Yazışmaların üst verisini görmek için yukarıdan bir öğrenci seçin. Yazışma içeriği gerekçeyle açılır."
           />
-        </div>
-      ) : conversations.isPending ? (
-        <p role="status" className="p-8 text-center text-base text-muted-foreground">
-          Yazışmalar yükleniyor…
-        </p>
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon="MessagesSquare"
-          title="Henüz yazışma yok"
-          description={
-            canStartConversation(role)
-              ? 'Yeni yazışma düğmesiyle ilk mesajı başlatabilirsiniz.'
-              : 'Bu öğrenci için yazışma bulunmuyor.'
-          }
-        />
-      ) : (
-        <div
-          className={
-            narrow
-              ? 'grid gap-3'
-              : 'grid h-[calc(100dvh-18rem)] min-h-[520px] grid-cols-[minmax(280px,360px)_minmax(0,1fr)] gap-4'
-          }
-        >
-          {showList ? (
-            <nav
-              aria-label="Yazışma listesi"
-              className="min-h-0 overflow-y-auto rounded-card border bg-surface p-2"
-            >
-              <ConversationList
-                items={items}
-                role={role}
-                names={names}
-                selectedId={panel.selectedId}
-                accessIds={accessIds}
-                onSelect={panel.open}
-              />
-            </nav>
-          ) : null}
-          {showThread ? (
-            <div className="flex min-h-0 flex-col">
-              <ConversationThread
-                key={selected.id}
-                conversation={selected}
-                label={conversationLabel(selected, role, names)}
-                role={role}
-                accessExpiresAt={grants[selected.id]?.expiresAt}
-                now={grantNow(selected.id)}
-                onAccessOpened={(expiresAt) =>
-                  setGrants((current) => ({
-                    ...current,
-                    [selected.id]: { expiresAt, openedAt: Date.now() },
-                  }))
-                }
-                {...(narrow ? { onBack: panel.close } : {})}
-              />
-            </div>
-          ) : narrow ? null : (
-            <div className="grid place-content-center rounded-card border bg-surface p-8 text-center text-sm text-muted-foreground">
-              {panel.selectedId
-                ? 'Bu yazışma bulunamadı. Listeden başka bir yazışma seçin.'
-                : 'Okumak için soldan bir yazışma seçin.'}
-            </div>
-          )}
-        </div>
-      )}
+        ) : listError ? (
+          <div role="alert" className="rounded-card border bg-surface p-8 text-center">
+            <QueryError
+              error={listError}
+              onRetry={() => {
+                for (const query of [conversations, students, teachers])
+                  if (query.error) void query.refetch()
+              }}
+            />
+          </div>
+        ) : conversations.isPending ? (
+          <p role="status" className="p-8 text-center text-base text-muted-foreground">
+            Yazışmalar yükleniyor…
+          </p>
+        ) : items.length === 0 ? (
+          <EmptyState
+            icon="MessagesSquare"
+            title="Henüz yazışma yok"
+            description={
+              canStartConversation(role)
+                ? 'Yeni yazışma düğmesiyle ilk mesajı başlatabilirsiniz.'
+                : 'Bu öğrenci için yazışma bulunmuyor.'
+            }
+          />
+        ) : (
+          <div
+            className={
+              narrow
+                ? 'grid gap-3'
+                : 'grid h-[calc(100dvh-18rem)] min-h-[520px] grid-cols-[minmax(280px,360px)_minmax(0,1fr)] gap-4'
+            }
+          >
+            {showList ? (
+              <nav
+                aria-label="Yazışma listesi"
+                className="min-h-0 overflow-y-auto rounded-card border bg-surface p-2"
+              >
+                <ConversationList
+                  items={items}
+                  role={role}
+                  names={names}
+                  selectedId={panel.selectedId}
+                  accessIds={accessIds}
+                  onSelect={panel.open}
+                />
+              </nav>
+            ) : null}
+            {showThread ? (
+              <div className="flex min-h-0 flex-col">
+                <ConversationThread
+                  key={selected.id}
+                  conversation={selected}
+                  label={conversationLabel(selected, role, names)}
+                  role={role}
+                  accessExpiresAt={grants[selected.id]?.expiresAt}
+                  now={grantNow(selected.id)}
+                  onAccessOpened={(expiresAt) =>
+                    setGrants((current) => ({
+                      ...current,
+                      [selected.id]: { expiresAt, openedAt: Date.now() },
+                    }))
+                  }
+                  {...(narrow ? { onBack: panel.close } : {})}
+                />
+              </div>
+            ) : narrow ? null : (
+              <div className="grid place-content-center rounded-card border bg-surface p-8 text-center text-sm text-muted-foreground">
+                {panel.selectedId
+                  ? 'Bu yazışma bulunamadı. Listeden başka bir yazışma seçin.'
+                  : 'Okumak için soldan bir yazışma seçin.'}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <NewConversationPanel
         open={starting}

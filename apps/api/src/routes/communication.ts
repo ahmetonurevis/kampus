@@ -1,4 +1,9 @@
-import type { FastifyInstance, FastifyRequest, preValidationAsyncHookHandler } from 'fastify'
+import type {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  preValidationAsyncHookHandler,
+} from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
 import { WRITE_ACTION_ROLES, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
@@ -13,6 +18,7 @@ import {
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Role } from '../auth.ts'
+import { AppError, MESSAGES } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import {
   listConversationMessages,
@@ -56,13 +62,35 @@ const response = { 200: commandResponseSchema, ...commandErrors }
 const created = { 201: commandResponseSchema, ...commandErrors }
 const startResponse = { 200: commandResponseSchema, 201: commandResponseSchema, ...commandErrors }
 
-/** Mesaj gönderiminde kullanıcı başına hız sınırı (dakikada); genel sınır 300'dür. */
+/** Mesaj kotası (kullanıcı ve kurum başına dakikada); genel IP sınırı 300'dür. */
 export const MESSAGE_RATE_LIMIT = 30
 
 const conversationRoles: readonly Role[] = ['ogretmen', 'ogrenci', 'veli', 'yonetici']
 
 export function registerCommunicationRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
+
+  // Mesaj kotası kullanıcı ve kurum başınadır; mesaj gönderme ve başlatmadaki ilk mesaj aynı
+  // sayacı kullanır (tek sınırlayıcı örneği). Kimlik `preValidation`'da çözülür, sayım ondan
+  // sonra yapılır. Genel IP sınırı (`app.ts`) ayrıca işler.
+  const checkMessageLimit = app.createRateLimit({
+    max: MESSAGE_RATE_LIMIT,
+    timeWindow: '1 minute',
+    keyGenerator: (request: FastifyRequest) =>
+      request.auth ? `message:${request.auth.institutionId}:${request.auth.userId}` : request.ip,
+  })
+  async function limitMessages(request: FastifyRequest, reply: FastifyReply) {
+    const limit = await checkMessageLimit(request)
+    if (limit.isAllowed || !limit.isExceeded) return
+    reply.header('retry-after', limit.ttlInSeconds)
+    throw new AppError(429, 'rate_limited', MESSAGES.rate_limited)
+  }
+  /** Başlatma gövdesinde `text` varsa istek bir mesaj sayılır; metinsiz başlatma saymaz. */
+  async function limitFirstMessage(request: FastifyRequest, reply: FastifyReply) {
+    const body = request.body
+    const text = typeof body === 'object' && body !== null && 'text' in body ? body.text : undefined
+    if (text !== undefined && text !== null) await limitMessages(request, reply)
+  }
 
   /** Komut ön işleyicileri: kimlik → modül → rol (core tablosu) → `If-Match` → ham gövde. */
   function guard(action: WriteAction, { subject = true } = {}): preValidationAsyncHookHandler[] {
@@ -249,11 +277,12 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
     '/api/v1/conversations',
     {
       preValidation: guard('conversation.start', { subject: false }),
+      preHandler: limitFirstMessage,
       schema: {
         operationId: 'startConversation',
         tags: ['communication'],
         summary: 'Yazışma başlat',
-        description: `Öğrenci + öğretmen + hedef kitle + veli hesabı için tek yazışma açar; varsa yenisi açılmaz, \`text\` var olan yazışmaya eklenir (core \`startConversation\`, DOM-ILT-010, -011). Yeni yazışma 201, var olan 200. Öğretmen \`studentId\` + \`audience\` verir; veli yazışmasında öğrencinin tek veli hesabı kendiliğinden seçilir, birden çoksa \`parentUserId\` zorunludur (422 \`parent_choice_required\`; hesaplar \`GET /students/{id}/parent-accounts\`). Öğrenci ve veli \`studentId\` + \`teacherId\` verir. İlişki yoksa 403 \`conversation_party_forbidden\`. \`Idempotency-Key\` zorunludur. Roller: ${rolesOf('conversation.start')}.`,
+        description: `Öğrenci + öğretmen + hedef kitle + veli hesabı için tek yazışma açar; varsa yenisi açılmaz, \`text\` var olan yazışmaya eklenir (core \`startConversation\`, DOM-ILT-010, -011). Yeni yazışma 201, var olan 200. Öğretmen \`studentId\` + \`audience\` verir; veli yazışmasında öğrencinin tek veli hesabı kendiliğinden seçilir, birden çoksa \`parentUserId\` zorunludur (422 \`parent_choice_required\`; hesaplar \`GET /students/{id}/parent-accounts\`). Öğrenci ve veli \`studentId\` + \`teacherId\` verir. İlişki yoksa 403 \`conversation_party_forbidden\`. \`text\` varsa istek bir mesaj sayılır ve mesaj gönderme ile aynı kotayı kullanır (kullanıcı ve kurum başına dakikada ${String(MESSAGE_RATE_LIMIT)}, aşılırsa 429); metinsiz başlatma saymaz. \`Idempotency-Key\` zorunludur. Roller: ${rolesOf('conversation.start')}.`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         body: startConversationSchema,
         response: startResponse,
@@ -274,21 +303,12 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
     '/api/v1/conversations/:conversationId/messages',
     {
       preValidation: guard('message.send', { subject: false }),
-      config: {
-        // Kullanıcı başına sınır: kimlik `preValidation`'da çözülür, sınır ondan sonra sayar.
-        rateLimit: {
-          max: MESSAGE_RATE_LIMIT,
-          timeWindow: '1 minute',
-          hook: 'preHandler',
-          keyGenerator: (request: FastifyRequest) =>
-            request.auth ? `message:${request.auth.userId}` : request.ip,
-        },
-      },
+      preHandler: limitMessages,
       schema: {
         operationId: 'sendConversationMessage',
         tags: ['communication'],
         summary: 'Mesaj gönder',
-        description: `Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core \`sendMessage\`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 \`conversation_relationship_ended\`). En fazla 2000 karakter. \`Idempotency-Key\` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı başına dakikada ${String(MESSAGE_RATE_LIMIT)} istek, aşılırsa 429. Başarı 201. Roller: ${rolesOf('message.send')}.`,
+        description: `Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core \`sendMessage\`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 \`conversation_relationship_ended\`). En fazla 2000 karakter. \`Idempotency-Key\` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı ve kurum başına dakikada ${String(MESSAGE_RATE_LIMIT)} mesaj (\`POST /conversations\` gövdesindeki \`text\` ile aynı kota), aşılırsa 429 ve \`Retry-After\`. Başarı 201. Roller: ${rolesOf('message.send')}.`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: conversationParamsSchema,
         body: sendMessageSchema,

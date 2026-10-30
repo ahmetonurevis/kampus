@@ -12,7 +12,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { MESSAGE_RATE_LIMIT } from '../src/routes/communication.ts'
-import type { MembershipLinkInput } from '../src/services/identity.ts'
+import { ensureMember, type MembershipLinkInput } from '../src/services/identity.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -602,6 +602,50 @@ describe('iletişim uçları', () => {
       assert.ok(limited.headers['retry-after'])
       // Sınır kullanıcı başınadır: başka kullanıcı etkilenmez.
       assertError(await message(await student(a.id, 's25'), 'conv-yok', 'Merhaba'), 404)
+    })
+
+    test('429: başlatma ucundaki ilk mesaj aynı kullanıcı kotasını kullanır; metinsiz başlatma saymaz', async () => {
+      const a = await institution()
+      const cookie = await student(a.id)
+      // 8-B öğretmeni s1'e ders vermez: istek 403 döner ama kota yine sayar.
+      const forbidden = { studentId: 's1', teacherId: 't18' }
+      for (let i = 0; i < 5; i += 1)
+        assertError(await start(cookie, forbidden), 403, 'conversation_party_forbidden')
+      for (let i = 0; i < MESSAGE_RATE_LIMIT / 2; i += 1)
+        assertError(await message(cookie, 'conv-yok', 'Merhaba'), 404)
+      for (let i = 0; i < MESSAGE_RATE_LIMIT / 2; i += 1)
+        assertError(await start(cookie, { ...forbidden, text: 'Merhaba' }), 403)
+      // Kota iki uç arasında paylaşılır: otuz mesajdan sonra her iki uç da 429 verir.
+      const limited = await start(cookie, { ...forbidden, text: 'Merhaba' })
+      assertError(limited, 429, 'rate_limited')
+      assert.ok(limited.headers['retry-after'])
+      assertError(await message(cookie, 'conv-yok', 'Merhaba'), 429, 'rate_limited')
+      // Aşılan kotada başlatma kaydı da yazmaz.
+      assert.equal((await loadRecords(db, a.id, ['conversations'])).length, 0)
+      // Başka kullanıcı etkilenmez.
+      assertError(
+        await start(await student(a.id, 's25'), { ...forbidden, studentId: 's25', text: 'Selam' }),
+        403,
+      )
+    })
+
+    test('429: kota kurum başınadır; aynı kullanıcı kurum değiştirince yeni kota alır', async () => {
+      const a = await institution()
+      const b = await institution()
+      const user = await createMember(app, a.id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
+      await ensureMember(app.auth, db, { institutionId: b.id, userId: user.id, role: 'ogrenci' })
+      const cookie = await signInAs(app, user)
+      for (let i = 0; i < MESSAGE_RATE_LIMIT; i += 1)
+        assertError(await message(cookie, 'conv-yok', 'Merhaba'), 404)
+      assertError(await message(cookie, 'conv-yok', 'Merhaba'), 429, 'rate_limited')
+      const switched = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/organization/set-active',
+        headers: { cookie, origin: TEST_ORIGIN },
+        payload: { organizationId: b.id },
+      })
+      assert.equal(switched.statusCode, 200, switched.body)
+      assertError(await message(cookie, 'conv-yok', 'Merhaba'), 404)
     })
 
     test('modül kapalıyken 403 module_disabled; kayıt yazılmaz', async () => {

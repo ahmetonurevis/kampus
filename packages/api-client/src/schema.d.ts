@@ -1219,7 +1219,7 @@ export interface paths {
         put?: never;
         /**
          * Yazışma başlat
-         * @description Öğrenci + öğretmen + hedef kitle + veli hesabı için tek yazışma açar; varsa yenisi açılmaz, `text` var olan yazışmaya eklenir (core `startConversation`, DOM-ILT-010, -011). Yeni yazışma 201, var olan 200. Öğretmen `studentId` + `audience` verir; veli yazışmasında öğrencinin tek veli hesabı kendiliğinden seçilir, birden çoksa `parentUserId` zorunludur (422 `parent_choice_required`; hesaplar `GET /students/{id}/parent-accounts`). Öğrenci ve veli `studentId` + `teacherId` verir. İlişki yoksa 403 `conversation_party_forbidden`. `Idempotency-Key` zorunludur. Roller: `ogretmen`, `ogrenci`, `veli`.
+         * @description Öğrenci + öğretmen + hedef kitle + veli hesabı için tek yazışma açar; varsa yenisi açılmaz, `text` var olan yazışmaya eklenir (core `startConversation`, DOM-ILT-010, -011). Yeni yazışma 201, var olan 200. Öğretmen `studentId` + `audience` verir; veli yazışmasında öğrencinin tek veli hesabı kendiliğinden seçilir, birden çoksa `parentUserId` zorunludur (422 `parent_choice_required`; hesaplar `GET /students/{id}/parent-accounts`). Öğrenci ve veli `studentId` + `teacherId` verir. İlişki yoksa 403 `conversation_party_forbidden`. `text` varsa istek bir mesaj sayılır ve mesaj gönderme ile aynı kotayı kullanır (kullanıcı ve kurum başına dakikada 30, aşılırsa 429); metinsiz başlatma saymaz. `Idempotency-Key` zorunludur. Roller: `ogretmen`, `ogrenci`, `veli`.
          */
         post: operations["startConversation"];
         delete?: never;
@@ -1243,7 +1243,7 @@ export interface paths {
         put?: never;
         /**
          * Mesaj gönder
-         * @description Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core `sendMessage`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 `conversation_relationship_ended`). En fazla 2000 karakter. `Idempotency-Key` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı başına dakikada 30 istek, aşılırsa 429. Başarı 201. Roller: `ogretmen`, `ogrenci`, `veli`.
+         * @description Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core `sendMessage`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 `conversation_relationship_ended`). En fazla 2000 karakter. `Idempotency-Key` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı ve kurum başına dakikada 30 mesaj (`POST /conversations` gövdesindeki `text` ile aynı kota), aşılırsa 429 ve `Retry-After`. Başarı 201. Roller: `ogretmen`, `ogrenci`, `veli`.
          */
         post: operations["sendConversationMessage"];
         delete?: never;

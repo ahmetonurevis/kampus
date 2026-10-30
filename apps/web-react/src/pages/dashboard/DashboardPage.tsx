@@ -6,6 +6,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage, RoleKey } from '@/lib/navigation.ts'
 import { AdminDashboard } from './AdminDashboard.tsx'
 import { FrontDeskDashboard } from './FrontDeskDashboard.tsx'
+import { TeacherDashboard } from './TeacherDashboard.tsx'
 import { firstName } from './dashboard-model.ts'
 
 const DESCRIPTIONS = {
@@ -37,6 +38,8 @@ export function DashboardPage({ page }: { page: NavPage }) {
         <AdminDashboard session={session} now={now} />
       ) : session.role === 'onburo' ? (
         <FrontDeskDashboard session={session} now={now} />
+      ) : session.role === 'ogretmen' ? (
+        <TeacherDashboard session={session} now={now} />
       ) : null}
     </>
   )

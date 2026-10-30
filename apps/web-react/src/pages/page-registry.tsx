@@ -60,6 +60,7 @@ const StudentMaterialsPage = lazy(async () => ({
 const MIGRATED = new Set([
   'yonetici/dashboard',
   'onburo/dashboard',
+  'ogretmen/dashboard',
   'yonetici/subeler',
   'yonetici/personel',
   'yonetici/finans',

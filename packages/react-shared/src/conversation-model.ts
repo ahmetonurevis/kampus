@@ -2,13 +2,12 @@
 // satırı yalnız kimlik taşır (öğrenci, öğretmen, veli hesabı); karşı tarafın adı başvuru
 // koleksiyonlarından kurulur. Ad bulunamazsa genel etiket gösterilir, kimlik gösterilmez.
 import { z } from 'zod'
-import type {
-  ConversationSummary,
-  StartConversationInput,
-} from '@kampus/react-shared/use-communication.ts'
 import { sendMessageSchema } from '@kampus/school-core/lib/communication.ts'
 import { timeLabel, dateLabel } from '@kampus/school-core/lib/format.ts'
-import type { RoleKey } from '@/lib/navigation.ts'
+import type { Role } from '@kampus/school-core/modules/navigation.ts'
+
+import type { AlertBadge } from './status-badge.ts'
+import type { ConversationSummary, StartConversationInput } from './use-communication.ts'
 
 /** Ad çözümlemesi için başvuru kayıtları (hepsi okuyanın kapsamıyla sunucuda daraltılmıştır). */
 export type PartyNames = {
@@ -32,7 +31,7 @@ export type ConversationLabel = {
  */
 export function conversationLabel(
   conversation: Pick<ConversationSummary, 'studentId' | 'teacherId' | 'audience'>,
-  role: RoleKey,
+  role: Role,
   names: PartyNames,
 ): ConversationLabel {
   const student = names.students.get(conversation.studentId) ?? 'Öğrenci'
@@ -75,14 +74,22 @@ export function unreadLabel(count: number): string {
 }
 
 /** Yanıt bekleme rozeti: süre aşıldıysa kırmızı, yoksa sakin sarı (DOM-ILT-013). */
-export function awaitingLabel(awaiting: ConversationSummary['awaitingReply']): {
-  text: string
-  tone: 'amber' | 'red'
-} | null {
+export function awaitingLabel(awaiting: ConversationSummary['awaitingReply']): AlertBadge | null {
   if (!awaiting) return null
   return awaiting.overdue
     ? { text: 'Yanıt süresi aştı', tone: 'red' }
     : { text: 'Yanıt bekliyor', tone: 'amber' }
+}
+
+/**
+ * Listedeki yanıt bekleme rozeti yalnız öğretmendedir; öğrenci ve veli kendi yazdıklarına yanıt
+ * beklemez, yönetici içerik görmez.
+ */
+export function awaitingBadge(
+  awaiting: ConversationSummary['awaitingReply'],
+  role: Role,
+): AlertBadge | null {
+  return role === 'ogretmen' ? awaitingLabel(awaiting) : null
 }
 
 /** Kalan erişim süresi `dd:ss` (dakika:saniye); bitmişse `00:00`. */
@@ -94,19 +101,19 @@ export function remainingLabel(remainingMs: number): string {
 }
 
 /** Yazışma başlatabilen roller (yönetici ve ön büro başlatmaz; core `WRITE_ACTION_ROLES`). */
-export const STARTER_ROLES: readonly RoleKey[] = ['ogretmen', 'ogrenci', 'veli']
+export const STARTER_ROLES: readonly Role[] = ['ogretmen', 'ogrenci', 'veli']
 
-export function canStartConversation(role: RoleKey): boolean {
+export function canStartConversation(role: Role): boolean {
   return STARTER_ROLES.includes(role)
 }
 
 /** Yazışma listesini okuyabilen roller (ön büro taraf olamaz). */
-export function canListConversations(role: RoleKey): boolean {
+export function canListConversations(role: Role): boolean {
   return role !== 'onburo'
 }
 
 /** Yöneticide içerik kapalıdır; gerekçeli erişim gerekir (DOM-YTK-052). */
-export function contentLocked(role: RoleKey, accessActive: boolean): boolean {
+export function contentLocked(role: Role, accessActive: boolean): boolean {
   return role === 'yonetici' && !accessActive
 }
 
@@ -161,7 +168,7 @@ export function deliveryLabel(message: { fromMe: boolean; readAt: string | null 
  * seçer. Alan şekli API gövdesinden ayrıdır (`newConversationBody` çevirir); ilk mesaj zorunludur,
  * boş yazışma açılmaz.
  */
-export function newConversationSchema(role: RoleKey) {
+export function newConversationSchema(role: Role) {
   return z
     .object({
       studentId: z.string().min(1, 'Öğrenci seçin.'),
@@ -184,7 +191,7 @@ export type NewConversationValues = z.output<ReturnType<typeof newConversationSc
 
 /** Form değerlerini `POST /conversations` gövdesine çevirir; rolün kullanmadığı alan gönderilmez. */
 export function newConversationBody(
-  role: RoleKey,
+  role: Role,
   values: NewConversationValues,
 ): StartConversationInput {
   const base = { studentId: values.studentId, text: values.text }

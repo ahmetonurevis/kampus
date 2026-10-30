@@ -7,13 +7,13 @@ import { ListRow, Screen } from '../../ui/SchoolLayout.tsx'
 import { useApiSession } from '../auth.tsx'
 import {
   awaitingBadge,
-  canUseMessages,
   conversationLabel,
   messagePreview,
   messageStamp,
   unreadLabel,
-  type StatusBadge,
-} from '../communication.ts'
+} from '@kampus/react-shared/conversation-model.ts'
+import type { StatusBadge } from '@kampus/react-shared/status-badge.ts'
+import { canUseMessages } from '../communication.ts'
 import { canOpenScreen } from '../pages.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { BadgeRow } from './communication-parts.tsx'

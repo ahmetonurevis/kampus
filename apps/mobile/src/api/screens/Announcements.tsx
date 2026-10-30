@@ -10,7 +10,7 @@ import {
   WITHDRAWN_NOTICE,
   type AnnouncementRecord,
   type AnnouncementView,
-} from '../communication.ts'
+} from '@kampus/react-shared/announcement-model.ts'
 import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
 import { canOpenScreen } from '../pages.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'

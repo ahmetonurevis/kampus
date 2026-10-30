@@ -20,7 +20,7 @@ import {
   newConversationSchema,
   parentCounterpart,
   type NewConversationValues,
-} from './conversation-model.ts'
+} from '@kampus/react-shared/conversation-model.ts'
 
 const FORM_ID = 'yeni-yazisma-formu'
 const NONE: readonly never[] = []

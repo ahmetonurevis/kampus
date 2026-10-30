@@ -18,7 +18,7 @@ import {
   messageStamp,
   senderLabel,
   type ConversationLabel,
-} from './conversation-model.ts'
+} from '@kampus/react-shared/conversation-model.ts'
 import { MessageComposer } from './MessageComposer.tsx'
 
 type Props = {

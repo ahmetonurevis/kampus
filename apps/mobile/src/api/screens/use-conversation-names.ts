@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { useCollectionAll } from '@kampus/react-shared/use-collection.ts'
-import type { PartyNames } from '../communication.ts'
+import type { PartyNames } from '@kampus/react-shared/conversation-model.ts'
 import type { MemberRole } from '../session-state.ts'
 
 type StudentRecord = State['students'][number]

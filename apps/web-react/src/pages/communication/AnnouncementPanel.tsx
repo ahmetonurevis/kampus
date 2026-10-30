@@ -29,7 +29,7 @@ import {
   STATUS_UNREAD,
   type AnnouncementRow,
   type Viewer,
-} from './announcement-model.ts'
+} from '@kampus/react-shared/announcement-model.ts'
 
 const reviseSchema = publishAnnouncementSchema.pick({ title: true, text: true, category: true })
 type ReviseInput = z.input<typeof reviseSchema>

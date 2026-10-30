@@ -15,7 +15,11 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useMediaQuery } from '@/hooks/use-media-query.ts'
 import { useNow } from '@/hooks/use-now.ts'
 import type { NavPage } from '@/lib/navigation.ts'
-import { canStartConversation, conversationLabel, type PartyNames } from './conversation-model.ts'
+import {
+  canStartConversation,
+  conversationLabel,
+  type PartyNames,
+} from '@kampus/react-shared/conversation-model.ts'
 import { ConversationList } from './ConversationList.tsx'
 import { ConversationThread } from './ConversationThread.tsx'
 import { NewConversationPanel } from './NewConversationPanel.tsx'

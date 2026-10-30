@@ -15,15 +15,13 @@ import { KeyboardFrame } from '../../ui/KeyboardLayout.tsx'
 import { Notice, Screen, TextAction } from '../../ui/SchoolLayout.tsx'
 import { useApiSession } from '../auth.tsx'
 import {
-  canUseMessages,
   conversationLabel,
   deliveryLabel,
   messageStamp,
-  readMarkKey,
   senderLabel,
-  validateMessageText,
   type ConversationLabel,
-} from '../communication.ts'
+} from '@kampus/react-shared/conversation-model.ts'
+import { canUseMessages, readMarkKey, validateMessageText } from '../communication.ts'
 import { canOpenScreen } from '../pages.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { useConversationNames } from './use-conversation-names.ts'

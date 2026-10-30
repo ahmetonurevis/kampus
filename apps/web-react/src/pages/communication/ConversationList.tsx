@@ -4,13 +4,13 @@ import { Icon } from '@/components/Icon.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { cn } from '@/lib/utils'
 import {
-  awaitingLabel,
+  awaitingBadge,
   conversationLabel,
   messagePreview,
   messageStamp,
   unreadLabel,
   type PartyNames,
-} from './conversation-model.ts'
+} from '@kampus/react-shared/conversation-model.ts'
 import type { RoleKey } from '@/lib/navigation.ts'
 
 type Props = {
@@ -34,7 +34,7 @@ export function ConversationList({ items, role, names, selectedId, accessIds, on
       {items.map((conversation) => {
         const label = conversationLabel(conversation, role, names)
         const selected = conversation.id === selectedId
-        const awaiting = role === 'ogretmen' ? awaitingLabel(conversation.awaitingReply) : null
+        const awaiting = awaitingBadge(conversation.awaitingReply, role)
         const last = conversation.lastMessage
         return (
           <li key={conversation.id}>

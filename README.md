@@ -44,7 +44,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-Vue demosu için zorunlu ortam değişkeni yoktur. Statik barındırmada tüm uygulama yolları `index.html` dosyasına yönlendirilmelidir. Canlı demo `https://demo.onurevis.com` adresindedir. CI dosyası PR'larda format, lint, tip denetimi, unit test, API testleri ve OpenAPI belgesi denetimi, build ve tarayıcı testlerini çalıştırır.
+Vue demosu için zorunlu ortam değişkeni yoktur. Statik barındırmada tüm uygulama yolları `index.html` dosyasına yönlendirilmelidir. Canlı demo `https://demo.onurevis.com` adresindedir. CI dosyası PR'larda format, lint, tip denetimi, unit test, API ve istemci paketi testleri, OpenAPI belgesi ile üretilen istemci tipleri denetimi, build ve tarayıcı testlerini çalıştırır.
 
 ## API (`apps/api`)
 
@@ -70,6 +70,14 @@ docker compose down
 - Kurum kimliği yalnız oturumun etkin kurumundan gelir; her istekte üyelik doğrulanır. Başarı `{ data, meta? }`, hata `{ code, message, issues?, requestId }`.
 - Demo kullanıcıları (`@kampus.example`, parola `.env`'deki `DEMO_PASSWORD`, boşsa `Demo-Giris-2026!`; üretimde varsayılan parola yok): Akademi Özel Okulları'nda `murat.yilmaz` (yönetici, iki kurumda), `busra.aydin`, `selin.kaya`, `deniz.yilmaz`, `ayse.yilmaz`; Kampüs Dil Akademisi'nde `gizem.tunc`, `ozan.er`, `lale.sezer`, `hakan.sezer`.
 - Diğer komutlar: `test` (PGlite, Docker gerektirmez), `typecheck`, `openapi` / `openapi:check` (`apps/api/openapi.json`), `db:generate` (drizzle-kit migration), `auth:schema` (Better Auth şeması).
+
+## İstemci paketleri (`packages/api-client`, `packages/react-shared`)
+
+React web ve mobilin API'ye bağlanacağı ortak katman; henüz hiçbir uygulamaya bağlı değildir.
+
+- **`@kampus/api-client`** (çatıdan bağımsız): `src/schema.d.ts` `apps/api/openapi.json`'dan `openapi-typescript` ile üretilir, elle düzenlenmez (`pnpm --filter @kampus/api-client generate`; güncellik `generate:check`, CI'da çalışır). `createKampusClient({ baseUrl, credentials, fetch?, clientVersion?, getHeaders? })` bir `openapi-fetch` istemcisi döndürür (`client.GET('/api/v1/me')`; uç başına elle fonksiyon yok). Sunucu hata zarfı ve ağ hatası `ApiError` (`status`, `code`, `message`, `issues`, `requestId`) olarak fırlatılır; `applyApiErrorToForm` doğrulama maddelerini react-hook-form `setError`'a aktarır. CSRF için özel başlık yoktur: API tarayıcının gönderdiği `Origin`/`Sec-Fetch-Site`'ı denetler. `auth.ts` Better Auth istemcisinin ortak seçeneklerini (`basePath` `/api/v1/auth`, organization eklentisi) verir; `createAuthClient` web (`better-auth/react`) ve mobilde (`@better-auth/expo/client` eklentisiyle) tüketicide kurulur. `baseUrl` API kökü, `/api/v1` öneki olmadan.
+- **`@kampus/react-shared`** (React 19; DOM ve React Native'e bağlı değil): `KampusProvider` (API ve Better Auth istemcisi + TanStack Query), `createKampusQueryClient` (4xx'te yeniden deneme yok, 401'de `onUnauthenticated`), `institutionKey`/`sessionKey` (sorgu anahtarı etkin kurumla başlar), `useSession`, `useActiveInstitution` (`/me`, `switchInstitution`), `useApiQuery`, `useApiMutation` (`fieldIssues`/`applyToForm`). Kurum değişince kuruma bağlı sorgular, oturum kapanınca tüm önbellek silinir.
+- Komutlar: `pnpm --filter @kampus/api-client test|typecheck|generate|generate:check`, `pnpm --filter @kampus/react-shared test|typecheck`.
 
 ## Özel okul yapısı
 
@@ -142,7 +150,7 @@ Finansta kampüs/sınıf/yöntem/vade/tahsilat tarihi/tutar; CRM'de program/kamp
 
 ## Mimari ve kapsam
 
-Platform geçişi (ADR 0001): `apps/api` iskeleti, Better Auth kimliği ve kurum kapsamı hazır; `records` deposu, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır. Aşağıdaki bölüm Vue demosunu anlatır.
+Platform geçişi (ADR 0001): `apps/api` iskeleti, Better Auth kimliği ve kurum kapsamı, `packages/api-client` ve `packages/react-shared` hazır; `records` deposu, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır. Aşağıdaki bölüm Vue demosunu anlatır.
 
 Görsel düzen düz renkler üzerine kuruludur: saf beyaz (`#FFFFFF`) zemin, koyu safir mavi (`#1E3A8A`) menü/ana işlem rengi, turuncu (`#F97316`) aksan, ince kenarlıklar ve yuvarlak köşeler. Açık ve koyu temada renk geçişleri kullanılmaz. Slogan bandı ve veriye dayanmayan mini grafikler kaldırılmıştır. Öğrenci, veli ve öğretmen panellerinde ders programı ile bekleyen işler üst bölümdedir; grafikler kayıtlı veriyi gösterir. Büyük para tutarları tek satırda, uzun ders adları doğal satırlarla gösterilir.
 
@@ -194,7 +202,7 @@ ssh abbara-server 'bash /var/www/kampus-demo/deploy/<surum>/activate.sh <surum>'
 
 ## Doğrulama
 
-`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test`, `pnpm --filter @kampus/api test` ve `pnpm build` temel kontrollerdir. 30 Ekim 2026 API iskeleti: 49 API testi (PGlite) ve 80 birim testi geçti; PostgreSQL 16 üzerinde migrate, iki kez seed, sağlık ve giriş duman testi başarılı. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
+`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test`, `pnpm --filter @kampus/api test`, `pnpm --filter @kampus/api-client test`, `pnpm --filter @kampus/react-shared test` ve `pnpm build` temel kontrollerdir. 30 Ekim 2026 API iskeleti: 49 API testi (PGlite) ve 80 birim testi geçti; istemci paketlerinde 23 api-client ve 21 react-shared testi geçti; PostgreSQL 16 üzerinde migrate, iki kez seed, sağlık ve giriş duman testi başarılı. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
 
 6 Ekim 2026 optik/etüt teslim kontrolü: lint, format ve web derlemesi başarılı; 65 birim testi ve 58 tarayıcı senaryosu geçti. Yayın öncesinde tüm 58 tarayıcı senaryosu tekrar geçti. Canlı adres üzerinde 14 senaryo; beş rolün masaüstü/dar ekran sayfaları, optik/etüt işlemleri, video ve PDF akışlarını doğruladı. Sağlık yanıtı sürümle eşleşti; HTTPS yönlendirmesi, video aralık isteği ve PDF worker MIME türü kontrol edildi.
 

@@ -11,7 +11,8 @@
     "generate:check": "node scripts/generate.ts --check",
     "check": "pnpm run generate:check",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test 'test/**/*.test.ts'"
+    "test": "node --test 'test/**/*.test.ts'",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=85 'test/**/*.test.ts'"
   },
   "dependencies": {
     "better-auth": "1.7.10",

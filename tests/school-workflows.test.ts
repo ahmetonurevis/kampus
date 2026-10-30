@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
+import type { Role } from '../packages/school-core/src/modules/navigation.ts'
+import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import {
   runWorkflow,
   examNet,
@@ -25,14 +27,36 @@ import {
 import { archiveRecord } from '../packages/school-core/src/lib/school-management.ts'
 import { workflowSchemas } from '../packages/school-core/src/lib/school-workflows.ts'
 import { documentData } from '../packages/school-core/src/lib/document-data.ts'
-import { isDomainError } from './support/domain-error.js'
+import { resultOf } from './support/result.ts'
+import { isDomainError } from './support/domain-error.ts'
+// Sözleşme belgesi verisi (ödeme planı alanlarıyla) birleşim tipinden daraltılır.
+function contractDoc(state: State, recordId: string) {
+  const data = documentData(state, 'contract', recordId)
+  if (!('invoices' in data)) throw new Error('Sözleşme verisi bekleniyordu.')
+  return data
+}
 const now = '2026-10-06T10:00:00.000Z'
 const seed = () => createSeed(new Date(now))
 let sequence = 0
-const id = (prefix) => `${prefix}-workflow-test-${++sequence}`
-const session = (role, childId = 's1') => ({ role, childId })
-const run = (state, command, input = {}, recordId, role = 'yonetici', childId = 's1') =>
-  runWorkflow(state, session(role, childId), command, input, id, recordId, now)
+const id = (prefix: string) => `${prefix}-workflow-test-${++sequence}`
+const session = (role: Role, childId = 's1'): Session => ({ role, childId })
+// İş akışı sonucu birleşim tipidir; testler kayıt alanlarını okuyabilsin diye ortak kayıt şekline daraltılır.
+type WorkflowRow = {
+  id: string
+  status: string
+  targetClassId: string
+  contractId: string
+  cancelledAt?: string
+  [field: string]: unknown
+}
+const run = (
+  state: State,
+  command: string,
+  input: unknown = {},
+  recordId?: string,
+  role: Role = 'yonetici',
+  childId = 's1',
+) => runWorkflow(state, session(role, childId), command, input, id, recordId, now) as WorkflowRow
 const renewal = {
   studentId: 's1',
   targetClassId: 'c4',
@@ -44,9 +68,14 @@ const renewal = {
   count: 7,
   startDate: '2027-01-31',
 }
-function unchangedOnFailure(state, callback, pattern) {
+function unchangedOnFailure(
+  state: State,
+  callback: () => unknown,
+  pattern?: RegExp | ((error: unknown) => boolean),
+) {
   const before = JSON.stringify(state)
-  assert.throws(callback, pattern)
+  if (pattern) assert.throws(callback, pattern)
+  else assert.throws(callback)
   assert.equal(JSON.stringify(state), before)
 }
 
@@ -74,25 +103,25 @@ test('CSV 2000 karakteri aşan toplu sonuçları kabul eder; geçersiz takvim g�
 
 test('Öğretmen ve sınıf aktarımı açık takip/çalışma dosyalarını devreder; geçmiş kulüp kayıtları korunur', () => {
   const state = seed()
-  state.teachers.push({ ...state.teachers[0], id: 'backup', email: 'backup@example.test' })
+  state.teachers.push({ ...state.teachers[0]!, id: 'backup', email: 'backup@example.test' })
   archiveRecord(state, 'teacher', 't1', 'backup', now)
-  assert.equal(state.guidanceCases.find((g) => g.studentId === 's1').teacherId, 'backup')
-  assert.equal(state.studyTasks.find((t) => t.studentId === 's1').teacherId, 'backup')
-  assert.equal(state.clubs.find((c) => c.id === 'club-science').teacherId, 'backup')
+  assert.equal(state.guidanceCases.find((g) => g.studentId === 's1')!.teacherId, 'backup')
+  assert.equal(state.studyTasks.find((t) => t.studentId === 's1')!.teacherId, 'backup')
+  assert.equal(state.clubs.find((c) => c.id === 'club-science')!.teacherId, 'backup')
   const target = state.classes.find((c) => c.grade === 7 && c.branchId !== 'b1')
-  target.capacity = 40
+  target!.capacity = 40
   const history = JSON.stringify(state.socialAchievements)
-  archiveRecord(state, 'class', 'c1', target.id, now)
-  assert.equal(state.students[0].classId, target.id)
+  archiveRecord(state, 'class', 'c1', target!.id, now)
+  assert.equal(state.students[0]!.classId, target!.id)
   assert.equal(
     state.transportAssignments.some((a) => a.studentId === 's1'),
     false,
   )
-  assert.equal(state.clubMemberships.find((m) => m.studentId === 's1').status, 'Ayrıldı')
+  assert.equal(state.clubMemberships.find((m) => m.studentId === 's1')!.status, 'Ayrıldı')
   assert.equal(JSON.stringify(state.socialAchievements), history)
   assert.equal(
-    state.studyTasks.find((t) => t.studentId === 's1').teacherId,
-    state.assignments.find((a) => a.classId === target.id && a.subjectId === 'math').teacherId,
+    state.studyTasks.find((t) => t.studentId === 's1')!.teacherId,
+    state.assignments.find((a) => a.classId === target!.id && a.subjectId === 'math')!.teacherId,
   )
 })
 
@@ -100,21 +129,21 @@ test('Yenileme hedef sınıfı arşivlenirse sözleşme yeni hedefi izler; kamp�
   const state = seed(),
     entry = run(state, 'renewal', renewal)
   const target = state.classes.find((c) => c.grade === 8 && c.id !== 'c4')
-  target.capacity = 40
-  archiveRecord(state, 'class', 'c4', target.id, now)
-  assert.equal(entry.targetClassId, target.id)
-  assert.equal(documentData(state, 'contract', entry.contractId).classroom.id, target.id)
+  target!.capacity = 40
+  archiveRecord(state, 'class', 'c4', target!.id, now)
+  assert.equal(entry.targetClassId, target!.id)
+  assert.equal(contractDoc(state, entry.contractId).classroom!.id, target!.id)
   run(state, 'renewal-activate', {}, entry.id)
-  assert.equal(state.students[0].classId, target.id)
+  assert.equal(state.students[0]!.classId, target!.id)
   assert.equal(
-    state.studyTasks.find((t) => t.studentId === 's1').teacherId,
-    state.assignments.find((a) => a.classId === target.id && a.subjectId === 'math').teacherId,
+    state.studyTasks.find((t) => t.studentId === 's1')!.teacherId,
+    state.assignments.find((a) => a.classId === target!.id && a.subjectId === 'math')!.teacherId,
   )
 
-  const campus = { ...state.branches[0], id: 'new-campus', name: 'Yeni kampüs' }
+  const campus = { ...state.branches[0]!, id: 'new-campus', name: 'Yeni kampüs' }
   state.branches.push(campus)
   const menu = state.mealMenus.find((m) => m.date > now)
-  state.mealMenus.push({ ...menu, id: 'conflicting-menu', branchId: campus.id })
+  state.mealMenus.push({ ...menu!, id: 'conflicting-menu', branchId: campus.id })
   unchangedOnFailure(
     state,
     () => archiveRecord(state, 'branch', 'b1', campus.id, now),
@@ -122,10 +151,10 @@ test('Yenileme hedef sınıfı arşivlenirse sözleşme yeni hedefi izler; kamp�
   )
   state.mealMenus = state.mealMenus.filter((m) => m.id !== 'conflicting-menu')
   archiveRecord(state, 'branch', 'b1', campus.id, now)
-  assert.equal(state.clubs[0].branchId, campus.id)
-  assert.equal(state.transportRoutes[0].branchId, campus.id)
-  assert.equal(state.schoolEvents[0].branchId, campus.id)
-  assert.equal(menu.branchId, campus.id)
+  assert.equal(state.clubs[0]!.branchId, campus.id)
+  assert.equal(state.transportRoutes[0]!.branchId, campus.id)
+  assert.equal(state.schoolEvents[0]!.branchId, campus.id)
+  assert.equal(menu!.branchId, campus.id)
 })
 
 test('Dokuz bağımsız modül ilgili rollerde görünür; kapalı modül işlem ve veri erişimini kapatır', () => {
@@ -134,7 +163,7 @@ test('Dokuz bağımsız modül ilgili rollerde görünür; kapalı modül işlem
     for (const role of module.roles)
       assert.ok(navigation[role].some((p) => p.path === module.path && p.module === module.key))
     state.modules[module.key] = false
-    assert.deepEqual(workflowRows(state, session(module.roles[0]), module.path), [])
+    assert.deepEqual(workflowRows(state, session(module.roles[0]!), module.path), [])
   }
   unchangedOnFailure(state, () => run(state, 'guidance', { studentId: 's1' }), /kapalı/)
   assert.ok(!navigation.onburo.some((p) => p.path === 'rehberlik'))
@@ -142,9 +171,11 @@ test('Dokuz bağımsız modül ilgili rollerde görünür; kapalı modül işlem
 test('Rehberlik iç notları veli/öğrencide gizlidir; öğretmen sınıfı ve sorumlusu doğrulanır', () => {
   const state = seed(),
     row = workflowRows(state, session('veli'), 'rehberlik')[0]
-  assert.equal(row.source.internalNote, undefined)
-  assert.equal(row.source.notes, undefined)
-  assert.ok(!JSON.stringify(workflowDetails(state, session('veli'), row)).includes('İlk görüşmede'))
+  assert.equal(resultOf(row!.source).internalNote, undefined)
+  assert.equal(resultOf(row!.source).notes, undefined)
+  assert.ok(
+    !JSON.stringify(workflowDetails(state, session('veli'), row!)).includes('İlk görüşmede'),
+  )
   unchangedOnFailure(
     state,
     () =>
@@ -175,8 +206,11 @@ test('Rehberlik iç notları veli/öğrencide gizlidir; öğretmen sınıfı ve 
     'guidance-s1',
     'ogretmen',
   )
-  assert.equal(state.guidanceCases[0].status, 'Tamamlandı')
-  assert.equal(workflowRows(state, session('veli', 's2'), 'rehberlik')[0].source.studentId, 's2')
+  assert.equal(state.guidanceCases[0]!.status, 'Tamamlandı')
+  assert.equal(
+    resultOf(workflowRows(state, session('veli', 's2'), 'rehberlik')[0]!.source).studentId,
+    's2',
+  )
 })
 test('Deneme neti negatif değeri korur; CSV tüm satırları doğrular, yinelenen sonucu çoğaltmaz', () => {
   const state = seed(),
@@ -188,7 +222,7 @@ test('Deneme neti negatif değeri korur; CSV tüm satırları doğrular, yinelen
   assert.equal(
     state.mockResults.find(
       (r) => r.examId === 'exam-7-1' && r.studentId === 's1' && r.subjectId === 'math',
-    ).correct,
+    )!.correct,
     12,
   )
   const invalid = csvTemplate + '\nexam-7-1;s2;math;15;2;3;Denklemler'
@@ -231,13 +265,13 @@ test('Kayıt yenileme kuruş kaybetmez; eski sözleşme yeni taksitleri içermez
     quote.installments.reduce((sum, v) => sum + v, 0),
     quote.amount,
   )
-  assert.equal(state.students[0].classId, 'c1')
-  const contract = documentData(state, 'contract', entry.contractId)
+  assert.equal(state.students[0]!.classId, 'c1')
+  const contract = contractDoc(state, entry.contractId)
   assert.equal(contract.total, quote.amount)
   assert.equal(contract.invoices.length, 7)
-  assert.equal(contract.classroom.id, 'c4')
-  assert.equal(contract.invoices[1].dueDate.slice(0, 10), '2027-02-28')
-  assert.equal(documentData(state, 'contract', 'contract-s1').invoices.length, 8)
+  assert.equal(contract.classroom!.id, 'c4')
+  assert.equal(contract.invoices[1]!.dueDate.slice(0, 10), '2027-02-28')
+  assert.equal(contractDoc(state, 'contract-s1').invoices.length, 8)
   unchangedOnFailure(state, () => run(state, 'renewal', renewal), /zaten/)
   unchangedOnFailure(
     state,
@@ -245,7 +279,7 @@ test('Kayıt yenileme kuruş kaybetmez; eski sözleşme yeni taksitleri içermez
     /üst sınıf/,
   )
   run(state, 'renewal-activate', {}, entry.id)
-  assert.equal(state.students[0].classId, 'c4')
+  assert.equal(state.students[0]!.classId, 'c4')
   assert.equal(JSON.stringify(state.grades), oldGrades)
   assert.equal(JSON.stringify(state.attendance), oldAttendance)
   assert.deepEqual(
@@ -267,21 +301,23 @@ test('Yenileme geçersiz tarih, fazla indirim ve dolu sınıfta hiçbir kayıt o
     { discount: 0.001 },
   ])
     unchangedOnFailure(state, () => run(state, 'renewal', { ...renewal, ...changes }))
-  state.classes.find((c) => c.id === 'c4').capacity = 1
+  state.classes.find((c) => c.id === 'c4')!.capacity = 1
   unchangedOnFailure(state, () => run(state, 'renewal', renewal), /kontenjan/)
 })
 test('Mezuniyet finans kaydı eklemeden geçmişi ve veli görünümünü korur', () => {
   const state = seed(),
-    student = state.students.find((s) => state.classes.find((c) => c.id === s.classId).grade === 12)
+    student = state.students.find(
+      (s) => state.classes.find((c) => c.id === s.classId)!.grade === 12,
+    )
   const count = state.invoices.length,
     entry = run(state, 'renewal', {
       ...renewal,
-      studentId: student.id,
+      studentId: student!.id,
       mode: 'graduate',
       targetClassId: '',
     })
   run(state, 'renewal-activate', {}, entry.id)
-  assert.equal(student.isActive, false)
+  assert.equal(student!.isActive, false)
   assert.equal(state.invoices.length, count)
   assert.equal(entry.status, 'Mezun')
 })
@@ -289,23 +325,23 @@ test('Program öğretmen, sınıf, derslik ve görüşme çakışmasını atomik
   const state = seed(),
     lesson = state.schedule.find((l) => l.classId === 'c1' && l.subjectId === 'math'),
     input = {
-      classId: lesson.classId,
-      teacherId: lesson.teacherId,
-      subjectId: lesson.subjectId,
-      date: lesson.date,
-      duration: lesson.duration,
-      room: lesson.room,
+      classId: lesson!.classId,
+      teacherId: lesson!.teacherId,
+      subjectId: lesson!.subjectId,
+      date: lesson!.date,
+      duration: lesson!.duration,
+      room: lesson!.room,
     }
   unchangedOnFailure(state, () => run(state, 'lesson', input), /bu saatte/)
   const replacement = {
-    ...state.teachers[0],
+    ...state.teachers[0]!,
     id: 'teacher-backup',
     name: 'Yedek Matematik Öğretmeni',
   }
   state.teachers.push(replacement)
   const assignments = JSON.stringify(state.assignments)
-  run(state, 'substitute', { teacherId: replacement.id, reason: 'Öğretmen izinli.' }, lesson.id)
-  assert.equal(lesson.teacherId, replacement.id)
+  run(state, 'substitute', { teacherId: replacement.id, reason: 'Öğretmen izinli.' }, lesson!.id)
+  assert.equal(lesson!.teacherId, replacement.id)
   assert.equal(JSON.stringify(state.assignments), assignments)
   const entry = run(state, 'lesson', { ...input, date: '2026-10-18T06:00:00Z', teacherId: 't1' })
   run(state, 'lesson-cancel', {}, entry.id)
@@ -315,7 +351,7 @@ test('Program öğretmen, sınıf, derslik ve görüşme çakışmasını atomik
   )
   unchangedOnFailure(
     state,
-    () => run(state, 'lesson', { ...input, date: appointment.date }),
+    () => run(state, 'lesson', { ...input, date: appointment!.date }),
     /randevusu/,
   )
 })
@@ -364,13 +400,13 @@ test('Veli onayı seçili çocuk ve süreyi doğrular; tekrar onay aynı kaydı 
   run(state, 'consent', { decision: 'Onaylandı', note: 'Katılabilir.' }, 'event-science', 'veli')
   run(state, 'consent', { decision: 'Reddedildi', note: 'Katılamayacak.' }, 'event-science', 'veli')
   assert.equal(state.eventConsents.length, 1)
-  assert.equal(state.eventConsents[0].decision, 'Reddedildi')
+  assert.equal(state.eventConsents[0]!.decision, 'Reddedildi')
   unchangedOnFailure(
     state,
     () => run(state, 'consent', { decision: 'Onaylandı' }, 'event-science', 'veli', 's3'),
     /yetkiniz/,
   )
-  state.schoolEvents[0].consentDeadline = '2026-10-05T09:00:00.000Z'
+  state.schoolEvents[0]!.consentDeadline = '2026-10-05T09:00:00.000Z'
   unchangedOnFailure(
     state,
     () => run(state, 'consent', { decision: 'Onaylandı' }, 'event-science', 'veli'),
@@ -410,7 +446,7 @@ test('Servis ataması çoğalmaz; kapasite, durak ve kampüs denetlenir; dolu g�
     /aynı kampüs/,
   )
   unchangedOnFailure(state, () => run(state, 'route-archive', {}, 'route-b1'), /Önce/)
-  state.transportRoutes[0].capacity = 2
+  state.transportRoutes[0]!.capacity = 2
   unchangedOnFailure(
     state,
     () => run(state, 'transport-assign', { ...input, studentId: 's3' }),

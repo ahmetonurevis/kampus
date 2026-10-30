@@ -64,7 +64,7 @@ Bu bölüm öneri listesidir; uygulanmadı. Mevcut taban (`chore/ts-arac-zinciri
   - `apps/api`: `"types": ["node"]`, `"lib": ["es2023"]`.
   - `apps/web-react`: `"lib": ["es2023", "dom", "dom.iterable"]`, `"jsx": "react-jsx"`, `"types": ["vite/client"]`, shadcn için `paths: { "@/*": ["./src/*"] }` (Vite `resolve.alias` ile aynı).
   - `apps/mobile`: `expo/tsconfig.base`'i genişletir, tabandaki katı seçenekler tekrar eklenir.
-- Testler için `tsconfig.test.json` (`types: ["node"]`) ve testlerin typecheck'e dahil edilmesi.
+- Birim testler `tests/tsconfig.json` (`types: ["node"]`, `allowJs` yalnız Vue demosunun JS içe aktarmaları için) ile `pnpm typecheck`e dahildir; `tests/e2e-react/tsconfig.json` ayrıdır.
 
 ### Prettier
 

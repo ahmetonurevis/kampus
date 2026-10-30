@@ -1,5 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import type { Role } from '../packages/school-core/src/modules/navigation.ts'
+import type { Session } from '../packages/school-core/src/lib/domain.ts'
+import type { State } from '../packages/school-core/src/data/seed.ts'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import { gradeQuiz } from '../packages/school-core/src/lib/domain.ts'
 import {
@@ -7,13 +10,25 @@ import {
   restoreSnapshot,
 } from '../packages/school-core/src/lib/demo-persistence.ts'
 import { availablePages, rowsFor, navigation, clone } from '../apps/mobile/src/model/school.ts'
-import { operation, normalizeFields } from '../apps/mobile/src/model/operations.ts'
+import {
+  operation,
+  normalizeFields,
+  type FormValues,
+  type OperationKind,
+  type OperationRecord,
+} from '../apps/mobile/src/model/operations.ts'
 import { workflowPage } from '../packages/school-core/src/modules/school-workflows.ts'
 import { workflowRows } from '../packages/school-core/src/lib/workflow-presentation.ts'
-const session = (role) => ({ role, childId: 's1', theme: 'light' })
+const session = (role: Role): Session => ({ role, childId: 's1' })
 let sequence = 0
-const id = (prefix) => `${prefix}-mobile-test-${++sequence}`
-function perform(state, role, kind, values, record) {
+const id = (prefix: string) => `${prefix}-mobile-test-${++sequence}`
+function perform(
+  state: State,
+  role: Role,
+  kind: OperationKind,
+  values: FormValues,
+  record: OperationRecord | null = null,
+) {
   const form = operation(state, session(role), kind, record)
   const input = { ...form.initial, ...values }
   normalizeFields(form.fields(input), input)
@@ -36,8 +51,8 @@ test('Mobil: beş rolün listeleri doludur, çocuk ve öğretmen kapsamları bir
       'seviye-takibi',
       'devamsizlik-bildirimi',
     ])
-  for (const [role, pages] of Object.entries(navigation))
-    for (const page of pages) {
+  for (const role of Object.keys(navigation) as Role[])
+    for (const page of navigation[role]) {
       // İş akışı sayfaları yetkisiz rolde veya boş örnek veride de hatasız açılır;
       // optik ve etüt ekranları kendi veri kaynaklarını (profil, uygunluk, etüt) kullanır.
       if (workflowPage(page.path)) {
@@ -64,7 +79,7 @@ test('Mobil: veli ödemesi tekrarlanmaz, başka çocuğun taksitine uygulanmaz v
   const state = createSeed(),
     invoice = state.invoices.find((i) => i.studentId === 's1' && !i.paidAt)
   const next = perform(state, 'veli', 'collect', { method: 'Kredi kartı (demo)' }, invoice)
-  assert.ok(next.invoices.find((i) => i.id === invoice.id).paidAt)
+  assert.ok(next.invoices.find((i) => i.id === invoice!.id)!.paidAt)
   assert.throws(() => perform(next, 'veli', 'collect', {}, invoice), /zaten ödenmiş/)
   assert.throws(
     () =>
@@ -80,8 +95,8 @@ test('Mobil: veli ödemesi tekrarlanmaz, başka çocuğun taksitine uygulanmaz v
   assert.throws(() => operation(state, session('ogrenci'), 'collect', invoice), /rol/)
   const restored = restoreSnapshot(createSnapshotWriter(state)(next))
   assert.equal(
-    restored.invoices.find((i) => i.id === invoice.id).paidAt,
-    next.invoices.find((i) => i.id === invoice.id).paidAt,
+    restored.invoices.find((i) => i.id === invoice!.id)!.paidAt,
+    next.invoices.find((i) => i.id === invoice!.id)!.paidAt,
   )
 })
 test('Mobil: soru/yanıt, yeni kayıt, ödev teslimi ve not aynı veri modeline yazılır', () => {
@@ -100,7 +115,7 @@ test('Mobil: soru/yanıt, yeni kayıt, ödev teslimi ve not aynı veri modeline 
     question,
   )
   assert.equal(
-    rowsFor(state, session('ogrenci'), 'soru-sor').find((i) => i.id === question.id).status,
+    rowsFor(state, session('ogrenci'), 'soru-sor').find((i) => i.id === question!.id)!.status,
     'Yanıtlandı',
   )
   state = perform(state, 'onburo', 'registration', {
@@ -113,7 +128,7 @@ test('Mobil: soru/yanıt, yeni kayıt, ödev teslimi ve not aynı veri modeline 
   const newStudent = state.students.at(-1)
   assert.equal(
     state.invoices
-      .filter((i) => i.studentId === newStudent.id)
+      .filter((i) => i.studentId === newStudent!.id)
       .reduce((sum, i) => sum + i.amount, 0),
     24000100,
   )
@@ -138,7 +153,7 @@ test('Mobil: soru/yanıt, yeni kayıt, ödev teslimi ve not aynı veri modeline 
     { score: '92', feedback: 'Çözüm adımların doğru.' },
     submission,
   )
-  assert.equal(state.submissions.find((i) => i.id === submission.id).score, 92)
+  assert.equal(state.submissions.find((i) => i.id === submission!.id)!.score, 92)
   assert.throws(
     () =>
       perform(
@@ -161,22 +176,22 @@ test('Mobil: randevu saati tekrar ayrılamaz ve süresi dolan quiz boş yanıtla
   )
   state = perform(state, 'veli', 'appointment', {
     teacherId: 't1',
-    slotId: slot.id,
+    slotId: slot!.id,
     note: 'Dönem gelişimini konuşmak istiyorum.',
   })
   assert.throws(
     () =>
       operation(state, session('veli'), 'appointment').run(
         state,
-        { teacherId: 't1', slotId: slot.id, note: 'Tekrar randevu' },
+        { teacherId: 't1', slotId: slot!.id, note: 'Tekrar randevu' },
         id,
       ),
     /başka randevu/,
   )
   const quiz = state.quizzes[0]
-  assert.throws(() => gradeQuiz(quiz, state.bank, {}), /tüm soruları/)
-  assert.equal(gradeQuiz(quiz, state.bank, {}, true).score, 0)
-  assert.equal(gradeQuiz(quiz, state.bank, {}, true).total, quiz.questionIds.length)
+  assert.throws(() => gradeQuiz(quiz!, state.bank, {}), /tüm soruları/)
+  assert.equal(gradeQuiz(quiz!, state.bank, {}, true).score, 0)
+  assert.equal(gradeQuiz(quiz!, state.bank, {}, true).total, quiz!.questionIds.length)
 })
 
 test('Mobil: referans ödevi ve yanıtı güncellemede korunur; dosyasız veya değerlendirilmiş teslim reddedilir', async () => {
@@ -185,7 +200,7 @@ test('Mobil: referans ödevi ve yanıtı güncellemede korunur; dosyasız veya d
     state = clone(seed)
   assert.equal(prepareReferenceData(state), true)
   const homework = state.homework.find((h) => h.id === 'hw-mobile-equations')
-  assert.equal(homework.title, 'Denklemler çalışma kâğıdı')
+  assert.equal(homework!.title, 'Denklemler çalışma kâğıdı')
   assert.throws(() => perform(state, 'ogrenci', 'submit', {}, homework), /dosya/)
   let next = perform(
     state,
@@ -202,7 +217,7 @@ test('Mobil: referans ödevi ve yanıtı güncellemede korunur; dosyasız veya d
     homework,
   )
   assert.equal(
-    next.submissions.filter((s) => s.homeworkId === homework.id && s.studentId === 's1').length,
+    next.submissions.filter((s) => s.homeworkId === homework!.id && s.studentId === 's1').length,
     1,
   )
   const question = next.questions.find((q) => q.id === 'ask-mobile-equations')
@@ -217,15 +232,15 @@ test('Mobil: referans ödevi ve yanıtı güncellemede korunur; dosyasız veya d
   const restored = restoreSnapshot(createSnapshotWriter(seed)(next))
   assert.equal(prepareReferenceData(restored), false)
   assert.equal(
-    restored.questions.find((q) => q.id === question.id).answer,
+    restored.questions.find((q) => q.id === question!.id)!.answer,
     'Eşitliği korumak için iki tarafa aynı işlemi uygularız.',
   )
   const submission = restored.submissions.find(
-    (s) => s.homeworkId === homework.id && s.studentId === 's1',
+    (s) => s.homeworkId === homework!.id && s.studentId === 's1',
   )
-  assert.equal(submission.fileName, 'duzeltme.pdf')
-  assert.equal(submission.fileUri, 'file:///local/duzeltme.pdf')
-  submission.score = 80
+  assert.equal(submission!.fileName, 'duzeltme.pdf')
+  assert.equal((submission as { fileUri?: string }).fileUri, 'file:///local/duzeltme.pdf')
+  submission!.score = 80
   assert.throws(
     () =>
       perform(
@@ -252,7 +267,7 @@ test('Mobil: mazeretli yoklama mevcut günü günceller; devamsızlık sayılmaz
   recordAttendance(state, 'c1', date, marks)
   const before = absentCount(state, 's1')
   marks.s1 = 'excused'
-  marks[students[1].id] = 'late'
+  marks[students[1]!.id] = 'late'
   recordAttendance(state, 'c1', date, marks)
   const restored = restoreSnapshot(createSnapshotWriter(seed)(state))
   assert.equal(absentCount(restored, 's1'), before - 1)
@@ -262,13 +277,14 @@ test('Mobil: mazeretli yoklama mevcut günü günceller; devamsızlık sayılmaz
     1,
   )
   assert.equal(
-    restored.attendance.find((a) => a.studentId === 's1' && dayKey(a.date) === dayKey(date)).status,
+    restored.attendance.find((a) => a.studentId === 's1' && dayKey(a.date) === dayKey(date))!
+      .status,
     'excused',
   )
   assert.equal(
     restored.attendance.find(
-      (a) => a.studentId === students[1].id && dayKey(a.date) === dayKey(date),
-    ).status,
+      (a) => a.studentId === students[1]!.id && dayKey(a.date) === dayKey(date),
+    )!.status,
     'late',
   )
   const original = JSON.stringify(restored.attendance)

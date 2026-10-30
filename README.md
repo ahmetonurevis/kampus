@@ -39,7 +39,7 @@ Yeni React web uygulaması (`apps/web-react`, geçiş sürüyor) `pnpm dev:react
 pnpm build                 # apps/web/dist ve apps/web-react/dist
 pnpm preview               # http://127.0.0.1:4173
 pnpm lint
-pnpm typecheck             # TypeScript paketlerinde tip denetimi
+pnpm typecheck             # TypeScript paketleri, kök birim testleri (tests/tsconfig.json) ve e2e-react tip denetimi
 pnpm format:check
 pnpm test
 pnpm exec playwright install chromium

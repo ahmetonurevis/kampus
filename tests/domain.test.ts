@@ -9,7 +9,7 @@ import {
   recordAttendance,
 } from '../apps/web/src/lib/domain.js'
 import { dayKey } from '../apps/web/src/lib/format.js'
-import { isDomainError } from './support/domain-error.js'
+import { isDomainError } from './support/domain-error.ts'
 
 test('Zengin veri kümesinin kimlikleri ve ilişkileri tutarlı', () => {
   const s = createSeed()
@@ -23,7 +23,7 @@ test('Zengin veri kümesinin kimlikleri ve ilişkileri tutarlı', () => {
   for (const attempt of s.quizAttempts)
     assert.equal(
       gradeQuiz(
-        s.quizzes.find((q) => q.id === attempt.quizId),
+        s.quizzes.find((q) => q.id === attempt.quizId)!,
         s.bank,
         attempt.answers,
       ).score,
@@ -34,17 +34,17 @@ test('Zengin veri kümesinin kimlikleri ve ilişkileri tutarlı', () => {
     assert.ok(s.classes.some((c) => c.id === student.classId))
     assert.equal(s.invoices.filter((i) => i.studentId === student.id).length, 8)
     assert.ok(
-      new Set(s.grades.filter((g) => g.studentId === student.id).map((g) => g.date.slice(0, 7)))
+      new Set(s.grades.filter((g) => g.studentId === student.id).map((g) => g.date!.slice(0, 7)))
         .size >= 4,
     )
     assert.ok(s.attendance.filter((a) => a.studentId === student.id).length >= 20)
   }
   for (const cls of s.classes) assert.ok(s.teachers.some((t) => t.id === cls.teacherId))
   for (const q of s.questions) {
-    const cls = s.students.find((student) => student.id === q.studentId).classId
+    const cls = s.students.find((student) => student.id === q.studentId)!.classId
     assert.equal(
       q.teacherId,
-      s.assignments.find((a) => a.classId === cls && a.subjectId === q.subjectId).teacherId,
+      s.assignments.find((a) => a.classId === cls && a.subjectId === q.subjectId)!.teacherId,
     )
   }
   for (const quiz of s.quizzes)
@@ -68,9 +68,9 @@ test('Taksit dağılımı kuruş kaybetmez ve tutarları dengeler', () => {
 test('Ödeme bir defa yapılabilir; mükerrer işlem veri değiştirmez', () => {
   const s = createSeed(),
     invoice = s.invoices.find((i) => !i.paidAt)
-  payInvoice(s, invoice.id, 'Demo Sanal POS', '2026-09-26T12:00:00.000Z')
+  payInvoice(s, invoice!.id, 'Demo Sanal POS', '2026-09-26T12:00:00.000Z')
   const snapshot = JSON.stringify(invoice)
-  assert.throws(() => payInvoice(s, invoice.id, 'Nakit'), /zaten ödenmiş/)
+  assert.throws(() => payInvoice(s, invoice!.id, 'Nakit'), /zaten ödenmiş/)
   assert.equal(JSON.stringify(invoice), snapshot)
   assert.throws(() => payInvoice(s, 'missing', 'Nakit'), /bulunamadı/)
 })
@@ -83,16 +83,16 @@ test('Kesin kayıt tüm ilişkileri ve sözleşme toplamını birlikte oluşturu
     (p) => `${p}-test-${n++}`,
   )
   assert.equal(s.students.length, 241)
-  assert.equal(s.prospects[0].studentId, result.student.id)
-  assert.equal(s.prospects[0].stage, 'Kayıt oldu')
+  assert.equal(s.prospects[0]!.studentId, result.student.id)
+  assert.equal(s.prospects[0]!.stage, 'Kayıt oldu')
   const invoices = s.invoices.filter((i) => i.studentId === result.student.id)
   assert.equal(invoices.length, 6)
   assert.equal(
     invoices.reduce((a, b) => a + b.amount, 0),
     result.contract.amount,
   )
-  assert.equal(invoices[1].dueDate.slice(0, 10), '2026-02-28')
-  assert.equal(invoices[2].dueDate.slice(0, 10), '2026-03-31')
+  assert.equal(invoices[1]!.dueDate.slice(0, 10), '2026-02-28')
+  assert.equal(invoices[2]!.dueDate.slice(0, 10), '2026-03-31')
   assert.throws(
     () =>
       enrollProspect(
@@ -105,7 +105,7 @@ test('Kesin kayıt tüm ilişkileri ve sözleşme toplamını birlikte oluşturu
 })
 test('Dolu sınıfa veya geçersiz tarihle kayıt kısmi veri oluşturmaz', () => {
   const s = createSeed()
-  s.classes[0].capacity = 4
+  s.classes[0]!.capacity = 4
   const snapshot = JSON.stringify(s)
   assert.throws(
     () =>
@@ -117,7 +117,7 @@ test('Dolu sınıfa veya geçersiz tarihle kayıt kısmi veri oluşturmaz', () =
     /kontenjanı dolu/,
   )
   assert.equal(JSON.stringify(s), snapshot)
-  s.classes[0].capacity = 24
+  s.classes[0]!.capacity = 24
   const snapshot2 = JSON.stringify(s)
   assert.throws(
     () =>
@@ -142,7 +142,7 @@ test('Yoklama aynı gün tekrar kaydedilince mevcut kaydı günceller', () => {
   recordAttendance(s, 'c1', date, marks)
   assert.equal(s.attendance.length, before + students.length)
   assert.equal(
-    s.attendance.find((a) => a.studentId === 's1' && dayKey(a.date) === dayKey(date)).status,
+    s.attendance.find((a) => a.studentId === 's1' && dayKey(a.date) === dayKey(date))!.status,
     'absent',
   )
 })
@@ -163,15 +163,15 @@ test('Quiz skoru cevaplardan ve konu dağılımından hesaplanır', () => {
   const s = createSeed(),
     quiz = s.quizzes[0]
   const answers = Object.fromEntries(
-    quiz.questionIds.map((id) => [id, s.bank.find((q) => q.id === id).answer]),
+    quiz!.questionIds.map((id) => [id, s.bank.find((q) => q.id === id)!.answer]),
   )
-  assert.equal(gradeQuiz(quiz, s.bank, answers).score, 100)
-  assert.ok(gradeQuiz(quiz, s.bank, answers).topicScores.every((t) => t.score === 100))
-  const first = quiz.questionIds[0]
-  answers[first] = (answers[first] + 1) % 4
-  assert.equal(gradeQuiz(quiz, s.bank, answers).score, 90)
-  delete answers[first]
-  assert.throws(() => gradeQuiz(quiz, s.bank, answers), /tüm soruları/)
+  assert.equal(gradeQuiz(quiz!, s.bank, answers).score, 100)
+  assert.ok(gradeQuiz(quiz!, s.bank, answers).topicScores.every((t) => t.score === 100))
+  const first = quiz!.questionIds[0]
+  answers[first!] = (answers[first!]! + 1) % 4
+  assert.equal(gradeQuiz(quiz!, s.bank, answers).score, 90)
+  delete answers[first!]
+  assert.throws(() => gradeQuiz(quiz!, s.bank, answers), /tüm soruları/)
 })
 
 test('Domain işlemleri DomainError, kod ve tür ile reddeder', () => {
@@ -182,9 +182,9 @@ test('Domain işlemleri DomainError, kod ve tür ile reddeder', () => {
     isDomainError('invoice_not_found', 'not_found'),
   )
   const invoice = s.invoices.find((i) => !i.paidAt)
-  payInvoice(s, invoice.id, 'Nakit', '2026-09-26T12:00:00.000Z')
+  payInvoice(s, invoice!.id, 'Nakit', '2026-09-26T12:00:00.000Z')
   assert.throws(
-    () => payInvoice(s, invoice.id, 'Nakit'),
+    () => payInvoice(s, invoice!.id, 'Nakit'),
     isDomainError('invoice_already_paid', 'conflict'),
   )
 })

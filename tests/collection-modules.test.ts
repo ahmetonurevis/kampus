@@ -41,7 +41,7 @@ test('Her State koleksiyonu bir modüle bağlıdır ya da açıkça her zaman a�
   }
   // Program yönetimi (`planning`) akademik modülün `schedule` koleksiyonunu düzenler; kendi
   // koleksiyonu yoktur. Diğer her modülün en az bir koleksiyonu vardır.
-  const used = new Set(Object.values(COLLECTION_MODULES))
+  const used = new Set<string>(Object.values(COLLECTION_MODULES))
   for (const key of MODULE_KEYS) assert.equal(used.has(key), key !== 'planning', key)
   assert.equal(collectionModule('guidanceCases'), 'guidance')
   assert.equal(collectionModule('students'), ALWAYS_ON)

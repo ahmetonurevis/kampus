@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
-import type { Tenant, TenantOptions } from './support/tenant.ts'
+import type { Tenant, TenantOptions, TenantUser } from './support/tenant.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Öğretmenime Sor (öğrenci `soru-sor`) ve Soru Kuyruğu (öğretmen `sorular`): okuma ve yazma
@@ -21,7 +21,18 @@ const REASSIGNED = 'Bu derse artık girmediğiniz için ek yanıt yazamazsınız
 /** Sunucunun 403 iletisi; ekranda toast olarak görünmemelidir (not formun yerine geçer). */
 const REASSIGNED_SERVER = 'Bu sınıfın dersine artık girmediğiniz için ek yanıt yazamazsınız.'
 
+const MINE = 'Benim ek yanıtım: yüksekliği çizerken cetvel kullanın.'
+const OTHER = 'Başka oturumdan eklenen ek yanıt.'
+const QUESTION_CHANGED = 'Soru bu arada güncellendi. Güncel hâlini yükleyip yeniden deneyin.'
+
 type Make = (options: TenantOptions) => Promise<Tenant>
+
+interface Fixtures {
+  page: Page
+  loginAs: (principal: TenantUser) => Promise<Page>
+  api: (principal: TenantUser) => Promise<ApiClient>
+  tenant: Make
+}
 
 /** Beş rollü kendi kurumu; ders öğretmeni t1, yedek matematik öğretmeni ek kayıttır. */
 const questionTenant = (tenant: Make) =>
@@ -131,6 +142,10 @@ test.describe('soru gönderme ve yanıtlama', () => {
     const subjects = form.getByLabel('Ders').locator('option')
     await expect(subjects).toContainText(['Ders seçin', 'Matematik'])
     await expect(subjects.filter({ hasText: 'Müzik' })).toHaveCount(1)
+    // 7-A'ya atanmamış dersler listede yoktur.
+    await expect(
+      subjects.filter({ hasText: /Fizik|Kimya|Biyoloji|Tarih|Coğrafya|Edebiyat/ }),
+    ).toHaveCount(0)
     await form.getByRole('button', { name: 'Soruyu gönder' }).click()
     await expect(form.getByText('Bir ders seçin.')).toBeVisible()
     await expect(form.getByText('Konu başlığını yazın.')).toBeVisible()
@@ -341,7 +356,7 @@ test.describe('soru gönderme ve yanıtlama', () => {
     expect((await questionById(teacher, id)).record.followUps ?? []).toHaveLength(0)
   })
 
-  test('başka biri soruyu değiştirdiyse Türkçe uyarı çıkar, yazılan yanıt korunur', async ({
+  test('form açıkken öğrenci soruyu geri çekerse gönderim reddedilir, Türkçe uyarı çıkar ve yanıt kaydedilmez (DOM-ILT-091)', async ({
     page,
     loginAs,
     api,
@@ -366,11 +381,96 @@ test.describe('soru gönderme ve yanıtlama', () => {
     expect(withdrawn.status()).toBe(200)
 
     await form.getByRole('button', { name: 'Yanıtı gönder' }).click()
-    await expect(
-      toast(page, 'Soru bu arada güncellendi. Güncel hâlini yükleyip yeniden deneyin.'),
-    ).toBeVisible()
+    await expect(toast(page, QUESTION_CHANGED)).toBeVisible()
     await expect(panel.getByText('Öğrenci bu soruyu geri çekti; yanıt yazılamaz.')).toBeVisible()
     expect((await questionById(student, id)).record.answer).toBe('')
+  })
+
+  /**
+   * Öğretmen ek yanıt formunu açar; başka bir oturum aynı soruya ek yanıt ekleyip sürümü artırır.
+   * Öğretmenin sorgusu 30 sn eskidikten sonra odak dönüşüyle arkadan tazelenir (W16b deseni).
+   */
+  async function openStaleQuestion({ page, loginAs, api, tenant }: Fixtures, typeBefore: boolean) {
+    const school = await questionTenant(tenant)
+    const student = await api(school.user('ogrenci'))
+    const teacher = await api(school.user('ogretmen'))
+    const id = await ask(student, 'E2E çakışan soru')
+    await answer(teacher, id, ANSWER)
+
+    await page.clock.install()
+    await loginAs(school.user('ogretmen'))
+    await page.goto(`/ogretmen/sorular?soru=${id}`)
+    const panel = page.getByRole('dialog', { name: 'Soru ayrıntısı' })
+    const form = panel.getByRole('form', { name: 'Ek yanıt yaz' })
+    await expect(form).toBeVisible()
+    if (typeBefore) await form.getByLabel('Ek yanıt').fill(MINE)
+
+    // Başka oturum (ör. ikinci sekme) aynı soruya ek yanıt ekler; sürüm artar.
+    await answer(teacher, id, OTHER)
+    const refetched = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/collections/questions/${id}`) &&
+        response.request().method() === 'GET',
+    )
+    await page.clock.fastForward(60_000)
+    await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')))
+    await refetched
+    await expect(panel.getByText(OTHER)).toBeVisible()
+    return { panel, form, teacher, id }
+  }
+
+  test('kirli form eski sürümle gider: 409 uyarısı çıkar, yazılan ek yanıt korunur ve yenileme sonrası ikinci gönderim geçer (DOM-ILT-092)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const { panel, form, teacher, id } = await openStaleQuestion(
+      { page, loginAs, api, tenant },
+      true,
+    )
+    // Form kirli olduğu için sessizce yeni sürüme geçmedi; yazılan metin yerinde.
+    await expect(form.getByLabel('Ek yanıt')).toHaveValue(MINE)
+    await form.getByRole('button', { name: 'Ek yanıtı gönder' }).click()
+    await expect(toast(page, QUESTION_CHANGED)).toBeVisible()
+    // Hiçbir şey ezilmedi: yalnız diğer oturumun ek yanıtı kayıtlıdır.
+    const conflicted = (await questionById(teacher, id)).record
+    expect(conflicted.followUps?.map((entry) => entry.text)).toEqual([OTHER])
+    // Metin korundu; form güncel soruyla tazelendi, ikinci gönderim yeni sürümle geçer.
+    await expect(form.getByLabel('Ek yanıt')).toHaveValue(MINE)
+    await form.getByRole('button', { name: 'Ek yanıtı gönder' }).click()
+    await expect(toast(page, 'Ek yanıtınız gönderildi.')).toBeVisible()
+    await expect(panel.getByText(MINE)).toBeVisible()
+    await expect
+      .poll(async () =>
+        (await questionById(teacher, id)).record.followUps?.map((entry) => entry.text),
+      )
+      .toEqual([OTHER, MINE])
+  })
+
+  test('temiz form arkadan gelen yeni sürüme sessizce geçer ve gönderim 409 almadan başarılı olur (DOM-ILT-092)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const { panel, form, teacher, id } = await openStaleQuestion(
+      { page, loginAs, api, tenant },
+      false,
+    )
+    // Form kirli değildi: uyarı çıkmadı, form yeni kayda geçti ve boştur.
+    await expect(toast(page, QUESTION_CHANGED)).toHaveCount(0)
+    await expect(form.getByLabel('Ek yanıt')).toHaveValue('')
+    await form.getByLabel('Ek yanıt').fill(MINE)
+    await form.getByRole('button', { name: 'Ek yanıtı gönder' }).click()
+    await expect(toast(page, 'Ek yanıtınız gönderildi.')).toBeVisible()
+    await expect(toast(page, QUESTION_CHANGED)).toHaveCount(0)
+    await expect(panel.getByText(MINE)).toBeVisible()
+    await expect
+      .poll(async () =>
+        (await questionById(teacher, id)).record.followUps?.map((entry) => entry.text),
+      )
+      .toEqual([OTHER, MINE])
   })
 })
 
@@ -536,6 +636,37 @@ test.describe('rol kapsamı', () => {
     expect((await questionById(admin, foreignTeacher?.id ?? '')).version).toBe(
       foreignTeacher?.version,
     )
+  })
+})
+
+test.describe('kapsam dışı soru adresi', () => {
+  test('öğrenci başka öğrencinin sorusunu adresle açamaz: "bulunamadı" görür, içerik sızmaz (DOM-ILT-093)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici', 'ogretmen', 'ogrenci', 'veli'],
+      collections: ['questions'],
+    })
+    const admin = await api(school.user('yonetici'))
+    const all = (
+      (await admin.get('/api/v1/collections/questions?pageSize=100')).body as {
+        data: (QuestionItem & { record: { studentId: string; text: string } })[]
+      }
+    ).data
+    const others = all.find((item) => item.record.studentId === 's2')
+    expect(others, 's2 sorusu').toBeDefined()
+
+    await loginAs(school.user('ogrenci'))
+    await page.goto(`/ogrenci/soru-sor?soru=${others?.id}`)
+    const panel = page.getByRole('dialog', { name: 'Soru ayrıntısı' })
+    await expect(panel.getByText(/Kayıt bulunamadı/)).toBeVisible()
+    await expect(panel.getByText(others?.record.title ?? '')).toHaveCount(0)
+    await expect(panel.getByText(others?.record.text ?? '')).toHaveCount(0)
+    await expect(panel.getByRole('button', { name: 'Soruyu geri çek' })).toHaveCount(0)
+    await expect(page.getByText(others?.record.text ?? '')).toHaveCount(0)
   })
 })
 

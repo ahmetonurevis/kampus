@@ -180,7 +180,8 @@ export function AnnouncementsPage({ page }: { page: NavPage }) {
             searchKeys={SEARCH_KEYS}
             excludeFilters={NO_FILTER_COLUMNS}
             filters={[{ key: 'status', label: 'Durum', options: STATUS_OPTIONS }]}
-            empty="Aramanızla eşleşen duyuru bulunamadı."
+            empty="Henüz duyuru yok."
+            emptyFiltered="Aramanızla eşleşen duyuru bulunamadı."
             onRowClick={(row) => openAnnouncement(row.id)}
           />
         </TableGate>

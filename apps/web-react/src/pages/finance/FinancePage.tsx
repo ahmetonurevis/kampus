@@ -44,7 +44,7 @@ const TOTALS_QUERY = { groupBy: 'status', sum: 'amount' } as const
  * taksitleri sunucu sayfalı; öğrenci adı/numarası/sınıf araması, ödeme durumu filtresi,
  * öğrenci/vade/tutar/taksit sıralaması sunucuda uygulanır. Toplam kartları kurum geneli
  * `counts?groupBy=status&sum=amount` yanıtından gelir (liste araması ve durumundan bağımsız).
- * Öğrenci ve sınıf adları satırın `joined` alanından gelir; ayrı öğrenci/sınıf listesi çekilmez.
+ * Öğrenci adı, okul numarası ve sınıf adı satırın `joined` alanından gelir; ayrı öğrenci/sınıf listesi çekilmez.
  */
 export function FinancePage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -94,6 +94,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           </span>
         ),
       },
+      { key: 'studentNumber', label: 'Okul no' },
       {
         key: 'installment',
         label: 'Taksit',

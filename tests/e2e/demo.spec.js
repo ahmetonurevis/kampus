@@ -486,10 +486,10 @@ test('Fen öğretmenine soru ve mesaj gönderme (ders seçimi)', async ({ page }
   await page.getByLabel('Branş öğretmeni', { exact: true }).selectOption('t3')
   await page.getByLabel('Mesajınız', { exact: true }).fill('Fen deneyi için teşekkürler hocam.')
   await page.getByRole('button', { name: 'Mesajı gönder' }).click()
+  const saved = await stored(page)
+  const science = saved.conversations.find((c) => c.teacherId === 't3' && c.audience === 'student')
   expect(
-    (await stored(page)).conversations
-      .find((c) => c.teacherId === 't3' && c.audience === 'student')
-      .messages.at(-1).text,
+    saved.conversationMessages.filter((m) => m.conversationId === science.id).at(-1).text,
   ).toContain('Fen deneyi')
 })
 test('İki video gerçekten oynatılır', async ({ page }) => {

@@ -37,6 +37,7 @@ const COLLECTION_FLAGS = {
   materials: true,
   announcements: true,
   conversations: true,
+  conversationMessages: true,
   appointments: true,
   requests: true,
   schedule: true,

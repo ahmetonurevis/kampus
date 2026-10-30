@@ -30,7 +30,7 @@ function setup() {
       archivedAt: null,
       record,
       joined: {
-        ...(student ? { studentName: student.name } : {}),
+        ...(student ? { studentName: student.name, studentNumber: student.number } : {}),
         ...(schoolClass ? { className: schoolClass.name } : {}),
       },
     }
@@ -49,6 +49,7 @@ test('taksit satırı öğrenci adı ve sınıfı `joined` alanından, core duru
   assert.equal(rows.length, 8)
   const first = rows[0]!
   assert.equal(first.studentName, 'Deniz Yılmaz')
+  assert.equal(first.studentNumber, '2026001')
   assert.equal(first.className, '7-A')
   assert.equal(first.version, 3)
   // Seed: ilk üç taksit ödenmiş, dördüncünün vadesi bu ayın 10'u (geçmiş), sonrakiler ileride.
@@ -66,6 +67,7 @@ test('bağlı ad gelmeyen (kapsam dışı) taksit kırılmaz, "—" gösterir', 
   const item = { id, version, createdAt, updatedAt, archivedAt, record }
   const row = invoiceRow(item, TODAY)
   assert.equal(row.studentName, '—')
+  assert.equal(row.studentNumber, '—')
   assert.equal(row.className, '—')
 })
 
@@ -96,6 +98,11 @@ test('sorgu: kullanıcı sıralaması önce gelir; öğrenci adı sunucuda sıra
   ])
   assert.deepEqual(invoiceListQuery(state({ sortKey: 'studentName' }), '').sort, [
     'studentName',
+    'dueDate',
+    'id',
+  ])
+  assert.deepEqual(invoiceListQuery(state({ sortKey: 'studentNumber' }), '').sort, [
+    'studentNumber',
     'dueDate',
     'id',
   ])
@@ -158,6 +165,7 @@ test('CSV satırı tutarı TL, vadeyi okunur tarih olarak yazar', () => {
   const row = invoiceRow(invoices[0]!, TODAY)
   assert.deepEqual(invoiceCsvRow(row), {
     studentName: 'Deniz Yılmaz',
+    studentNumber: '2026001',
     installment: 1,
     dueDate: '10 Tem 2026',
     amount: '24.500,00 ₺',

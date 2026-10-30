@@ -696,6 +696,123 @@ describe('işlem çalıştırıcı', () => {
     assert.deepEqual(await loadRecords(db, ctx.institutionId, ['students']), studentsBefore)
   })
 
+  describe('kısmi yükleme (loadScope)', () => {
+    const others = seed.invoices.filter((invoice) => invoice.id !== unpaid.id)
+    const fresh = (id: string) => ({ ...unpaid, id, amount: 1 })
+
+    test('yalnız verilen kimlik yüklenir; yüklenmeyen kayıtlar arşivlenmez, değişmez', async () => {
+      const ctx = await institution(['invoices', 'students'])
+      const before = await loadRecords(db, ctx.institutionId, ['invoices'])
+      let seen = -1
+      const outcome = await runOperation(ctx, {
+        action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
+        collections: ['invoices', 'students'],
+        loadScope: { invoices: { ids: [unpaid.id] }, students: { ids: [] } },
+        run: (state, { now }) => {
+          seen = state.invoices.length
+          pay(state, now)
+          state.invoices.push(fresh('test-inv-partial'))
+        },
+      })
+      assert.equal(seen, 1)
+      assert.deepEqual(outcome.loaded, { invoices: 1, students: 0 })
+      assert.deepEqual(outcome.changes.map((change) => change.kind).sort(), ['insert', 'update'])
+      const after = await loadRecords(db, ctx.institutionId, ['invoices'])
+      assert.equal(after.length, before.length + 1)
+      // Yüklenmeyen kayıtlar aynen kalır: sürüm, sıra, veri, arşiv yok.
+      const untouched = new Map(after.map((row) => [row.id, row]))
+      for (const row of before.filter((item) => item.id !== unpaid.id))
+        assert.deepEqual(untouched.get(row.id), row)
+      // Yeni kayıt koleksiyonun sonuna eklenir.
+      assert.equal(after.at(-1)?.id, 'test-inv-partial')
+      assert.equal(
+        (await loadRecords(db, ctx.institutionId, ['students'])).length,
+        seed.students.length,
+      )
+    })
+
+    test('süzgeçli yükleme yalnız eşleşenleri verir; yüklenen ve listeden çıkarılan kayıt arşivlenir', async () => {
+      const ctx = await institution(['invoices'])
+      const own = seed.invoices.filter((invoice) => invoice.studentId === unpaid.studentId)
+      const before = await loadRecords(db, ctx.institutionId, ['invoices'])
+      const outcome = await runOperation(ctx, {
+        action: 'invoice.drop',
+        entity: { type: 'invoices', id: unpaid.id },
+        collections: ['invoices'],
+        loadScope: { invoices: { match: [{ field: 'studentId', values: [unpaid.studentId] }] } },
+        run: (state) => {
+          assert.ok(state.invoices.every((item) => item.studentId === unpaid.studentId))
+          state.invoices = state.invoices.filter((item) => item.id !== unpaid.id)
+        },
+      })
+      assert.equal(outcome.loaded.invoices, own.length)
+      assert.deepEqual(outcome.changes, [
+        { kind: 'archive', collection: 'invoices', id: unpaid.id, version: 2 },
+      ])
+      const after = await loadRecords(db, ctx.institutionId, ['invoices'])
+      assert.deepEqual(
+        after,
+        before.filter((row) => row.id !== unpaid.id),
+      )
+    })
+
+    test('kısmi yükte sıra değiştirmek 500; yüklenmeyen kimlikle ekleme 409; hiçbir kayıt değişmez', async () => {
+      const ctx = await institution(['invoices'])
+      const before = await snapshot(ctx.institutionId)
+      const [first, second] = seed.invoices
+      assert.ok(first && second && others[0])
+      await assert.rejects(
+        runOperation(ctx, {
+          action: 'invoice.reorder',
+          entity: { type: 'invoices', id: first.id },
+          collections: ['invoices'],
+          loadScope: { invoices: { ids: [first.id, second.id] } },
+          run: (state) => {
+            state.invoices.reverse()
+          },
+        }),
+        hasStatus(500, 'internal_error'),
+      )
+      await assert.rejects(
+        runOperation(ctx, {
+          action: 'invoice.prepend',
+          entity: { type: 'invoices', id: first.id },
+          collections: ['invoices'],
+          loadScope: { invoices: { ids: [first.id] } },
+          run: (state) => {
+            state.invoices.unshift(fresh('test-inv-head'))
+          },
+        }),
+        hasStatus(500, 'internal_error'),
+      )
+      // Görülmeyen canlı kayıtla aynı kimlik: eşzamanlı ekleme gibi 409, üzerine yazılmaz.
+      await assert.rejects(
+        runOperation(ctx, {
+          action: 'invoice.insert',
+          entity: { type: 'invoices', id: first.id },
+          collections: ['invoices'],
+          loadScope: { invoices: { ids: [] } },
+          run: (state) => {
+            state.invoices.push(fresh(first.id))
+          },
+        }),
+        hasStatus(409, 'version_conflict'),
+      )
+      await assert.rejects(
+        runOperation(ctx, {
+          action: 'invoice.pay',
+          entity: { type: 'invoices', id: first.id },
+          collections: ['invoices'],
+          loadScope: { students: { ids: [] } },
+          run: () => undefined,
+        }),
+        hasStatus(500, 'internal_error'),
+      )
+      assert.deepEqual(await snapshot(ctx.institutionId), before)
+    })
+  })
+
   test('değişiklik yoksa yazma ve denetim kaydı yoktur', async () => {
     const ctx = await institution(['invoices'])
     const before = await snapshot(ctx.institutionId)

@@ -7,6 +7,7 @@ type SnapshotChange =
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
+const textOf = (value: unknown) => (typeof value === 'string' ? value : undefined)
 const idOf = (item: unknown) => (isObject(item) ? item.id : undefined)
 const isRecordList = (value: unknown): value is unknown[] =>
   Array.isArray(value) && value.every((item: unknown) => idOf(item))
@@ -106,5 +107,53 @@ export function restoreSnapshot(raw: unknown): State {
     } else throw new Error('Demo değişikliği okunamadı.')
   }
   state.modules = { ...moduleDefaults, ...state.modules }
+  splitLegacyMessages(state)
   return state
+}
+
+/**
+ * Eski snapshot'ta (2.7.0 öncesi) mesajlar yazışma kaydının `messages` dizisindeydi; değişen
+ * yazışma bütün mesajlarıyla saklanırdı. Yükleme bu diziyi yeni koleksiyona taşır (ADR 0005):
+ * o yazışmanın örnek veriden gelen mesajları dizinin kendisiyle değiştirilir (dizi örnek
+ * mesajları da içerir), sıra ve kimlik korunur, `messages` alanı kaldırılır. Snapshot sürümü
+ * değişmez; dönüşüm her yüklemede aynı sonucu verir ve sonraki yazmada yeni şekil saklanır.
+ */
+function splitLegacyMessages(state: State): void {
+  type Message = State['conversationMessages'][number]
+  const moved = new Map<string, Message[]>()
+  for (const conversation of state.conversations) {
+    const record: Record<string, unknown> = conversation
+    const legacy = record.messages
+    if (!Array.isArray(legacy)) continue
+    delete record.messages
+    const messages = legacy.filter(isObject).map((item): Message => {
+      const readAt = textOf(item.readAt)
+      const senderUserId = textOf(item.senderUserId)
+      return {
+        id: textOf(item.id) ?? '',
+        conversationId: conversation.id,
+        studentId: conversation.studentId,
+        teacherId: conversation.teacherId,
+        audience: conversation.audience,
+        ...(conversation.parentUserId === undefined
+          ? {}
+          : { parentUserId: conversation.parentUserId }),
+        text: textOf(item.text) ?? '',
+        sender: textOf(item.sender) ?? '',
+        ...(senderUserId === undefined ? {} : { senderUserId }),
+        date: textOf(item.date) ?? '',
+        ...(readAt === undefined ? {} : { readAt }),
+      }
+    })
+    moved.set(conversation.id, messages)
+    const last = messages.at(-1)?.date
+    if (last) conversation.lastMessageAt = last
+  }
+  if (moved.size === 0) return
+  const kept = state.conversationMessages.filter((message) => !moved.has(message.conversationId))
+  const replaced = new Set([...moved.values()].flat().map((message) => message.id))
+  state.conversationMessages = [
+    ...kept.filter((message) => !replaced.has(message.id)),
+    ...[...moved.values()].flat(),
+  ]
 }

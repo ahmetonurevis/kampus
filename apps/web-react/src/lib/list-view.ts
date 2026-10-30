@@ -139,6 +139,34 @@ export function filterSelectionLabel(
   return option?.label ?? String(value ?? '')
 }
 
+/**
+ * Liste daraltılmış mı: arama metni, değeri dolu bir filtre ya da dış filtre (sekme, çocuk,
+ * hazır filtre) etkinse. "Aramayı ve filtreleri temizle" yalnız bu durumda anlamlıdır.
+ */
+export function listNarrowed(
+  state: Pick<ListState, 'query' | 'filters'>,
+  externalActive = false,
+): boolean {
+  return externalActive || state.query !== '' || Object.values(state.filters).some(hasFilter)
+}
+
+export const EMPTY_LIST_TEXT = 'Henüz kayıt yok.'
+export const EMPTY_FILTERED_TEXT = 'Aramanızla eşleşen kayıt bulunamadı.'
+
+/**
+ * Boş sonuç durumu: daraltma yoksa liste gerçekten boştur ("Henüz kayıt yok", düğme yok);
+ * daraltma varsa "sonuç bulunamadı" metni ve temizleme düğmesi.
+ */
+export function emptyListView(
+  state: Pick<ListState, 'query' | 'filters'>,
+  externalActive: boolean,
+  copy: { empty?: string; emptyFiltered?: string },
+): { showClear: boolean; text: string } {
+  if (!listNarrowed(state, externalActive))
+    return { showClear: false, text: copy.empty ?? EMPTY_LIST_TEXT }
+  return { showClear: true, text: copy.emptyFiltered ?? EMPTY_FILTERED_TEXT }
+}
+
 /** Hazır filtre seçili mi: değerler birebir aynıysa (anahtar sırası önemsiz). */
 export function presetActive(values: FilterValues, preset: FilterValues): boolean {
   const keys = (object: FilterValues) => Object.keys(object).filter((key) => hasFilter(object[key]))

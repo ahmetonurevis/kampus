@@ -90,7 +90,7 @@ test('Yönetici kurum geneli okur; birebir yazışma dışındaki her koleksiyon
   assert.equal(scope.classIds.size, state.classes.length)
   assert.equal(scope.teacher, undefined)
   for (const name of COLLECTION_NAMES) {
-    const expected = name !== 'conversations'
+    const expected = name !== 'conversations' && name !== 'conversationMessages'
     assert.equal(scope.access(name).allowed, expected, name)
     assert.equal(
       scope.read(name, rowsOf(state, name)).length,
@@ -100,6 +100,50 @@ test('Yönetici kurum geneli okur; birebir yazışma dışındaki her koleksiyon
   }
   assert.deepEqual(scope.access('conversations'), { allowed: false, reason: 'role_denied' })
   assert.equal(scope.redact('students', state.students[0]!).progress, state.students[0]!.progress)
+})
+
+test('Yazışma mesajı ayrı kayıttır: yalnız yazışmanın tarafı okur; kişi kimlikleri ayıklanır (DOM-YTK-052, DOM-ILT-010)', () => {
+  const state = seed()
+  const messages = state.conversationMessages
+  const conversationsOf = (rows: readonly { conversationId: string }[]) =>
+    [...new Set(rows.map((m) => m.conversationId))].sort()
+  // Öğretmen kendi yazışmalarını, öğrenci kendi öğrenci yazışmalarını görür.
+  assert.deepEqual(
+    conversationsOf(scopeFor(state, teacher('t1')).read('conversationMessages', messages)),
+    ['conv1', 'conv2', 'conv3'],
+  )
+  assert.deepEqual(
+    conversationsOf(scopeFor(state, student('s1')).read('conversationMessages', messages)),
+    ['conv1', 'conv4'],
+  )
+  // Veli yalnız kendi kullanıcı kimliğiyle açılmış veli yazışmasını görür.
+  const mother: Actor = { ...parent('s1', 's2'), userId: 'p1' }
+  assert.deepEqual(
+    conversationsOf(scopeFor(state, mother).read('conversationMessages', messages)),
+    ['conv2', 'conv3'],
+  )
+  const other: Actor = { ...parent('s1', 's2'), userId: 'u-baska-veli' }
+  assert.deepEqual(scopeFor(state, other).read('conversationMessages', messages), [])
+  assert.deepEqual(scopeFor(state, parent('s1')).read('conversationMessages', messages), [])
+  // Yönetici ve ön büro taraf değildir; okuma gerekçeli ayrı işlemdir.
+  for (const actor of [admin, frontOffice])
+    assert.deepEqual(scopeFor(state, actor).access('conversationMessages'), {
+      allowed: false,
+      reason: 'role_denied',
+    })
+  const own = scopeFor(state, mother).read('conversationMessages', messages)
+  assert.ok(own.length > 0)
+  assert.ok(own.every((m) => !('parentUserId' in m) && !('senderUserId' in m)))
+  assert.deepEqual(scopeFor(state, teacher('t1')).hiddenFields('conversationMessages'), [
+    'senderUserId',
+    'parentUserId',
+  ])
+  // Modül kapalıysa mesajlar da kapalıdır.
+  state.modules.communication = false
+  assert.deepEqual(scopeFor(state, teacher('t1')).access('conversationMessages'), {
+    allowed: false,
+    reason: 'module_disabled',
+  })
 })
 
 test('Ön büro idari koleksiyonları okur; akademik veri ve ilerleme kapalıdır (DOM-YTK-021)', () => {

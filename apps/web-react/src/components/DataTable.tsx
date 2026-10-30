@@ -12,6 +12,8 @@ import { useMediaQuery } from '@/hooks/use-media-query.ts'
 import { pageCount, type FilterField, type Row } from '@/lib/list-query.ts'
 import {
   ACTIONS_KEY,
+  emptyListView,
+  listNarrowed,
   mobileColumnSplit,
   tableFields,
   tableSearchKeys,
@@ -39,7 +41,10 @@ type TableOptions<T extends Row> = {
   /** Dar ekran kartında temel bilgi olarak gösterilecek sütunlar (yoksa ilk üçü). */
   mobileColumns?: readonly string[]
   search?: boolean
+  /** Liste gerçekten boşken metin (arama/filtre yokken); varsayılan "Henüz kayıt yok.". */
   empty?: string
+  /** Arama veya filtre sonucu boşken metin. */
+  emptyFiltered?: string
   externalActive?: boolean
   externalLabel?: string
   /** Araç çubuğundaki dış filtre kontrolleri (dar ekranda filtre paneline taşınır). */
@@ -202,7 +207,8 @@ function TableView<T extends Row>({
   columns,
   mobileColumns = NO_KEYS,
   search = true,
-  empty = 'Aramanızla eşleşen kayıt bulunamadı.',
+  empty,
+  emptyFiltered,
   fields,
   filterRows,
   externalActive = false,
@@ -219,7 +225,8 @@ function TableView<T extends Row>({
 }: TableViewProps<T>) {
   const mobile = useMediaQuery(MOBILE)
   const { state, dispatch, attachScrollRegion, onScroll } = list
-  const hasQuery = externalActive || state.query !== ''
+  const hasQuery = listNarrowed(state, externalActive)
+  const emptyView = emptyListView(state, externalActive, { empty, emptyFiltered })
   const canSort = (key: string) =>
     key !== ACTIONS_KEY && (sortable === 'all' || sortable.includes(key))
 
@@ -270,10 +277,12 @@ function TableView<T extends Row>({
   ) : (
     <div className="empty-cell flex flex-col items-center gap-2.5 p-[45px] text-center text-muted-foreground">
       <Icon name="Search" size={28} aria-hidden="true" />
-      <p className="text-base">{empty}</p>
-      <Button variant="secondary" size="sm" onClick={reset}>
-        Aramayı ve filtreleri temizle
-      </Button>
+      <p className="text-base">{emptyView.text}</p>
+      {emptyView.showClear ? (
+        <Button variant="secondary" size="sm" onClick={reset}>
+          Aramayı ve filtreleri temizle
+        </Button>
+      ) : null}
     </div>
   )
   const showRows = !error && visible.length > 0

@@ -1,5 +1,5 @@
 // Finans & Tahsilat listesinin satır ve sorgu hesapları (Vue `Finance.vue`). Saf işlevlerdir:
-// API satırları girer (öğrenci ve sınıf adı satırın `joined` alanındandır); tablo/CSV satırı ve
+// API satırları girer (öğrenci adı, okul numarası ve sınıf adı satırın `joined` alanındandır); tablo/CSV satırı ve
 // sunucu sorgusu çıkar.
 import {
   dateLabel,
@@ -30,12 +30,14 @@ export function isInvoiceStatusKey(value: unknown): value is InvoiceStatusKey {
 }
 
 /**
- * Sunucunun taksitte sıralayabildiği sütunlar. Öğrenci adı bağlı alandır (`studentName`); durum
+ * Sunucunun taksitte sıralayabildiği sütunlar. Öğrenci adı ve okul numarası bağlı alandır
+ * (`studentName`, `studentNumber`); durum
  * türetilmiş olduğundan sütun olarak sıralanmaz.
  */
 export const INVOICE_LIST = {
   sortFields: {
     studentName: 'studentName',
+    studentNumber: 'studentNumber',
     installment: 'installment',
     dueDate: 'dueDate',
     amount: 'amount',
@@ -50,6 +52,8 @@ export type InvoiceRow = {
   studentId: string
   /** Kapsam dışı öğrencide "—". */
   studentName: string
+  /** Okul numarası; kapsam dışında veya saklanmamışsa "—". */
+  studentNumber: string
   className: string
   installment: number
   dueDate: string
@@ -68,6 +72,7 @@ export function invoiceRow(item: CoreRow<'invoices'>, today: string): InvoiceRow
     version: item.version,
     studentId: invoice.studentId,
     studentName: item.joined?.studentName ?? '—',
+    studentNumber: item.joined?.studentNumber ?? '—',
     className: item.joined?.className ?? '—',
     installment: invoice.installment,
     dueDate: invoice.dueDate,
@@ -127,6 +132,7 @@ export function invoiceTotals(counts: CollectionCounts): InvoiceTotals {
 export function invoiceCsvRow(row: InvoiceRow) {
   return {
     studentName: row.studentName,
+    studentNumber: row.studentNumber,
     installment: row.installment,
     dueDate: dateLabel(row.dueDate, { year: 'numeric' }),
     amount: money(row.amount),

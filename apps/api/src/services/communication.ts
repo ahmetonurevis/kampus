@@ -7,19 +7,25 @@ import {
   parentAccountsDecision,
 } from '@kampus/school-core/lib/communication-access.ts'
 import {
+  CONVERSATION_AUDIENCES,
   conversationSummary,
   CONVERSATION_ACCESS_MINUTES,
+  lastActivityOf,
   markAnnouncementRead,
   markMessagesRead,
-  messagePage,
+  messageView,
   openConversationAccess,
   publishAnnouncement,
   reviseAnnouncement,
   sendMessage,
   senderSide,
   startConversation,
+  startConversationSchema,
   withdrawAnnouncement,
+  type ConversationMessage,
   type ConversationSummary,
+  type MessageDigest,
+  type MessageSender,
   type MessageView,
   type Participant,
 } from '@kampus/school-core/lib/communication.ts'
@@ -29,6 +35,11 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
+import {
+  conversationMessageDigests,
+  conversationMessagePage,
+  type MessageDigestRow,
+} from '../db/conversation-messages.ts'
 import { findRecord, loadRecords, type FieldMatch } from '../db/records.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { memberships, users } from '../db/schema/auth.ts'
@@ -41,6 +52,7 @@ import {
   runCommand,
   runOperation,
   type CommandResponse,
+  type LoadScope,
   type OperationTools,
 } from './operation-runner.ts'
 import { assertReadable, readScope, readSource } from './read-scope.ts'
@@ -50,8 +62,13 @@ import { assertReadable, readScope, readSource } from './read-scope.ts'
  * Kurallar ve kapsam core'dadır (`lib/communication.ts`, `lib/communication-access.ts`); burada
  * kayıt yükleme, işlem çalıştırma ve yöneticinin gerekçeli erişim kaydı (`audit_log`) vardır.
  *
- * Yazışma kişisel veridir: mesaj metni loglanmaz, denetim kaydına yalnız değişen alan adı
- * (`messages`) yazılır (işlem çalıştırıcı). Yazışma genel koleksiyon okumasına kapalıdır
+ * Mesajlar yazışmadan ayrı, mesaj başına bir kayıttır (`conversationMessages`, ADR 0005).
+ * Komutlar işlem çalıştırıcıya yalnız gereken kayıtları yükletir (`loadScope`): gönderim hedef
+ * yazışmayı yükler, mesaj yüklemez; okundu işareti yalnız o yazışmanın okunmamışlarını yükler.
+ * Liste özeti ve mesaj sayfası SQL'dedir (`db/conversation-messages.ts`).
+ *
+ * Yazışma kişisel veridir: mesaj metni loglanmaz, denetim kaydına yalnız değişen alan adları
+ * yazılır (işlem çalıştırıcı). Yazışma ve mesajları genel koleksiyon okumasına kapalıdır
  * (`collection-access.ts`); taraf olmayana 404 döner, varlık sızdırılmaz (DOM-YTK-052).
  */
 
@@ -80,7 +97,7 @@ const conversationRow = z.looseObject({
   audience: z.string(),
   parentUserId: z.string().optional(),
   createdAt: z.string().optional(),
-  messages: z.array(messageRow),
+  lastMessageAt: z.string().optional(),
 })
 
 function toConversation(data: unknown): Conversation | null {
@@ -89,9 +106,22 @@ function toConversation(data: unknown): Conversation | null {
   return parsed.success ? (parsed.data as Conversation) : null
 }
 
-/** Son etkinlik anı: son mesaj, yoksa açılış anı. */
-const lastActivity = (conversation: Conversation) =>
-  conversation.messages.at(-1)?.date ?? conversation.createdAt ?? ''
+/** Mesaj kaydı; biçim dışı satır `null` (çağıran loglar). */
+function toMessage(data: unknown): ConversationMessage | null {
+  const parsed = messageRow.safeParse(data)
+  return parsed.success ? (parsed.data as ConversationMessage) : null
+}
+
+/** SQL özetinin core karşılığı (`digestMessages` ile aynı değerler). */
+function toDigest(row: MessageDigestRow | undefined): MessageDigest {
+  if (!row) return { messageCount: 0, lastMessage: null, unreadCount: 0, firstUnanswered: null }
+  return {
+    messageCount: row.messageCount,
+    lastMessage: toMessage(row.lastMessage),
+    unreadCount: row.unreadCount,
+    firstUnanswered: row.firstUnansweredAt === null ? null : { date: row.firstUnansweredAt },
+  }
+}
 
 export type ConversationListItem = ConversationSummary & { parentUserId: string | null }
 
@@ -112,7 +142,8 @@ function partyPrefilter(scope: Scope): FieldMatch[] {
  * Yazışma listesi. Taraf (öğretmen, öğrenci, veli) yalnız tarafı olduğu yazışmaları son
  * etkinliğe göre azalan görür; satırda son mesaj, okunmamış sayısı ve öğretmende yanıt bekleme
  * durumu vardır (DOM-ILT-010, -013, -024). Yönetici yalnız `studentId` ile ve yalnız üst veriyi
- * görür (son mesaj yok); içeriği gerekçeli erişimle açar (DOM-YTK-052).
+ * görür (son mesaj yok); içeriği gerekçeli erişimle açar (DOM-YTK-052). Sıralama yazışmanın
+ * `lastMessageAt` alanıyladır; özet yalnız sayfadaki yazışmalar için SQL'de hesaplanır.
  */
 export async function listConversations(
   ctx: ServiceContext,
@@ -147,14 +178,23 @@ export async function listConversations(
       visible.push(conversation)
   }
   if (skipped > 0) ctx.log.warn({ event: 'conversation.row_invalid', skipped })
-  visible.sort((a, b) => lastActivity(b).localeCompare(lastActivity(a)) || a.id.localeCompare(b.id))
+  visible.sort(
+    (a, b) => lastActivityOf(b).localeCompare(lastActivityOf(a)) || a.id.localeCompare(b.id),
+  )
   const start = (query.page - 1) * query.pageSize
+  const page = visible.slice(start, start + query.pageSize)
   const side = admin ? null : senderSide(ctx.actor.role)
+  const digests = await conversationMessageDigests(
+    ctx.db,
+    ctx.institutionId,
+    page.map((conversation) => conversation.id),
+    side,
+  )
   const now = ctx.now.toISOString()
   return {
     total: visible.length,
-    items: visible.slice(start, start + query.pageSize).map((conversation) => ({
-      ...conversationSummary(conversation, side, now),
+    items: page.map((conversation) => ({
+      ...conversationSummary(conversation, toDigest(digests.get(conversation.id)), side, now),
       parentUserId: conversation.parentUserId ?? null,
     })),
   }
@@ -185,8 +225,9 @@ async function activeAccess(ctx: ServiceContext, conversationId: string) {
 }
 
 /**
- * Yazışmanın mesajları, en yeniden geriye imleçli sayfa (core `messagePage`). Taraf olmayan ve
- * gerekçeli erişimi olmayan yöneticiye 404 (DOM-YTK-052); yöneticinin okuması okundu üretmez.
+ * Yazışmanın mesajları, en yeniden geriye imleçli sayfa (core `messagePage` sözleşmesi, SQL'de
+ * `limit + 1` ile). Taraf olmayan ve gerekçeli erişimi olmayan yöneticiye 404 (DOM-YTK-052);
+ * yöneticinin okuması okundu üretmez. İmleç bu yazışmanın mesajı değilse 400.
  */
 export async function listConversationMessages(
   ctx: ServiceContext,
@@ -204,12 +245,24 @@ export async function listConversationMessages(
   } else if (conversation.audience !== 'student' || !(await activeAccess(ctx, conversationId)))
     // Yönetici yalnız öğrenci–öğretmen yazışmasını gerekçeyle okur (DOM-ILT-011).
     throw new NotFoundError()
-  const page = messagePage(conversation, admin ? null : senderSide(ctx.actor.role), query)
+  const page = await conversationMessagePage(ctx.db, ctx.institutionId, conversationId, query)
   if (!page)
     throw new ValidationError([
       { path: ['querystring', 'cursor'], code: 'invalid_value', message: 'Sayfa imleci geçersiz.' },
     ])
-  return page
+  const side = admin ? null : senderSide(ctx.actor.role)
+  const messages: ConversationMessage[] = []
+  for (const data of page.rows) {
+    const message = toMessage(data)
+    if (message) messages.push(message)
+  }
+  if (messages.length < page.rows.length)
+    ctx.log.warn({ event: 'message.row_invalid', skipped: page.rows.length - messages.length })
+  const oldest = messages[0]
+  return {
+    items: messages.map((message) => messageView(message, side)),
+    nextCursor: page.more && oldest ? oldest.id : null,
+  }
 }
 
 /**
@@ -270,6 +323,11 @@ interface CommunicationRun {
   subject: Entity | null
   /** Öğretmenin veli yazışması açarken öğrencinin veli hesapları (core `parentUserIds`). */
   parentsOf?: string | undefined
+  /**
+   * Kısmi yükleme (işlem çalıştırıcı `loadScope`): yazışma komutları kurumun bütün yazışma ve
+   * mesajlarını kurum kilidi altında yüklemez.
+   */
+  loadScope?: Partial<Record<CollectionName, LoadScope>>
   run: (
     state: State,
     by: Participant,
@@ -294,6 +352,7 @@ function executeCommunication(
     {
       action: command.action,
       collections: spec.collections,
+      ...(command.loadScope ? { loadScope: command.loadScope } : {}),
       ...(command.subject && options.expectedVersion !== null
         ? { expectedVersions: [{ ...command.subject, version: options.expectedVersion }] }
         : {}),
@@ -323,6 +382,12 @@ function executeCommunication(
 
 const announcementEntity = (id: string): Entity => ({ collection: 'announcements', id })
 const conversationEntity = (id: string): Entity => ({ collection: 'conversations', id })
+
+/** Mesaj gönderen taraflar; okundu işareti yalnız karşı tarafın mesajlarını yükler. */
+const SENDERS: readonly MessageSender[] = ['teacher', ...CONVERSATION_AUDIENCES]
+
+/** Tek yazışma, hiç mesaj: gönderim ve açılış mesajı yalnız ekler (ADR 0005). */
+const NO_MESSAGES: LoadScope = { ids: [] }
 
 /** Duyuru yayını (DOM-ILT-001, -002): alıcı listesi yayında çözülür. 201. */
 export function publishAnnouncementCommand(
@@ -419,11 +484,20 @@ export function startConversationCommand(
     typeof input === 'object' && input !== null && 'studentId' in input
       ? input.studentId
       : undefined
+  // Tekillik yalnız aynı öğrencinin yazışmalarına bakar (core `startConversation`); geçersiz
+  // gövde core'da 400 olur, o durumda hiçbir yazışma yüklenmez.
+  const parsed = startConversationSchema.safeParse(input)
   return executeCommunication(
     ctx,
     {
       action: 'conversation.start',
       subject: null,
+      loadScope: {
+        conversations: parsed.success
+          ? { match: [{ field: 'studentId', values: [parsed.data.studentId] }] }
+          : { ids: [] },
+        conversationMessages: NO_MESSAGES,
+      },
       parentsOf:
         ctx.actor.role === 'ogretmen' && typeof studentId === 'string'
           ? studentId.trim()
@@ -455,6 +529,7 @@ export function sendMessageCommand(
     {
       action: 'message.send',
       subject: null,
+      loadScope: { conversations: { ids: [conversationId] }, conversationMessages: NO_MESSAGES },
       run: (state, by, { now, makeId }, { institutionType }) => {
         sendMessage(state, by, conversationId, input, makeId, now, { institutionType })
         return { entity: conversationEntity(conversationId), statusCode: 201 }
@@ -475,6 +550,20 @@ export function readMessagesCommand(
     {
       action: 'message.read',
       subject: null,
+      loadScope: {
+        conversations: { ids: [conversationId] },
+        conversationMessages: {
+          match: [
+            // Kesin eşitlik: mesaj indeksiyle yalnız bu yazışmanın mesajları taranır.
+            { kind: 'equals', field: 'conversationId', values: [conversationId] },
+            { kind: 'set', field: 'readAt', set: false, rule: 'truthy' },
+            {
+              field: 'sender',
+              values: SENDERS.filter((sender) => sender !== senderSide(ctx.actor.role)),
+            },
+          ],
+        },
+      },
       run: (state, by, { now }, { institutionType }) => {
         markMessagesRead(state, by, conversationId, now, { institutionType })
         return { entity: conversationEntity(conversationId), statusCode: 200 }
@@ -498,6 +587,7 @@ export async function openConversationAccessCommand(
   const { result } = await runOperation(ctx, {
     action: 'conversation.access',
     collections: spec.collections,
+    loadScope: { conversations: { ids: [conversationId] } },
     entity: { type: 'conversations', id: conversationId },
     load: async (tx) => {
       const { actor, institutionType, scalars } = await environment(tx, ctx, spec)

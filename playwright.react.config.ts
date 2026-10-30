@@ -1,0 +1,31 @@
+// React web + API uçtan uca testleri (tests/e2e-react). Vue demosunun yapılandırması
+// `playwright.config.js` ayrıdır. Sunucular `webServer` ile değil global kurulumla başlar çünkü
+// veritabanı sıfırlanıp seed edildikten sonra API ayağa kalkmalıdır (tests/e2e-react/support).
+import { defineConfig } from '@playwright/test'
+
+import { e2e } from './tests/e2e-react/support/env.ts'
+
+const ci = !!process.env.CI
+
+export default defineConfig({
+  testDir: './tests/e2e-react',
+  testMatch: '**/*.spec.ts',
+  outputDir: 'test-results/e2e-react',
+  globalSetup: './tests/e2e-react/support/global-setup.ts',
+  timeout: 45_000,
+  expect: { timeout: 8000 },
+  fullyParallel: true,
+  workers: 2,
+  forbidOnly: ci,
+  // Yeniden deneme yalnız CI'da ve en fazla 1 (.claude/rules/testler.md).
+  retries: ci ? 1 : 0,
+  reporter: ci
+    ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report/e2e-react' }]]
+    : [['list']],
+  use: {
+    baseURL: e2e.webOrigin,
+    viewport: { width: 1440, height: 1000 },
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+  },
+})

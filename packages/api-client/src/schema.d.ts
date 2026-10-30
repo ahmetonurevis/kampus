@@ -855,7 +855,7 @@ export interface paths {
         put?: never;
         /**
          * Taksiti öde
-         * @description Taksiti ödenmiş işaretler (core `payInvoice`). `Idempotency-Key` zorunludur; ödenmiş taksit 409 `invoice_already_paid`. Roller: `yonetici`, `onburo`.
+         * @description Taksiti ödenmiş işaretler (core `payInvoice`); yetki core `authorize('invoice.pay')` (DOM-FIN-052). `Idempotency-Key` zorunludur; ödenmiş taksit 409 `invoice_already_paid`. Roller: `yonetici`, `onburo`.
          */
         post: operations["payInvoice"];
         delete?: never;
@@ -875,7 +875,7 @@ export interface paths {
         put?: never;
         /**
          * Sınıf yoklaması al
-         * @description Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. `If-Match` sınıf kaydının sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`; `ogretmen` yalnız core kapsamındaki sınıfta.
+         * @description Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. Yetki core `authorize('attendance.record')`: `ogretmen` yalnız ders verdiği sınıfta ve aynı gün (başka sınıf 403 `attendance_class_forbidden`, geçmiş gün 403 `attendance_correction_admin_only`); `yonetici` yalnız `reason` ile (yoksa 422 `correction_reason_required`). `If-Match` sınıf kaydının sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`, `ogretmen`.
          */
         post: operations["recordClassAttendance"];
         delete?: never;
@@ -896,7 +896,7 @@ export interface paths {
         post?: never;
         /**
          * Kampüs arşivle
-         * @description Kampüs kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Rol: `yonetici`.
+         * @description Kampüs kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Yetki core `authorize('record.archive')`; roller: `yonetici`.
          */
         delete: operations["archiveBranch"];
         options?: never;
@@ -915,7 +915,7 @@ export interface paths {
         put?: never;
         /**
          * Kampüs arşivden geri al
-         * @description Kampüs kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Rol: `yonetici`.
+         * @description Kampüs kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Yetki core `authorize('record.restore')`; roller: `yonetici`.
          */
         post: operations["restoreBranch"];
         delete?: never;
@@ -936,7 +936,7 @@ export interface paths {
         post?: never;
         /**
          * Sınıf arşivle
-         * @description Sınıf kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Rol: `yonetici`.
+         * @description Sınıf kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Yetki core `authorize('record.archive')`; roller: `yonetici`.
          */
         delete: operations["archiveClass"];
         options?: never;
@@ -955,7 +955,7 @@ export interface paths {
         put?: never;
         /**
          * Sınıf arşivden geri al
-         * @description Sınıf kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Rol: `yonetici`.
+         * @description Sınıf kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Yetki core `authorize('record.restore')`; roller: `yonetici`.
          */
         post: operations["restoreClass"];
         delete?: never;
@@ -976,7 +976,7 @@ export interface paths {
         post?: never;
         /**
          * Öğretmen arşivle
-         * @description Öğretmen kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Rol: `yonetici`.
+         * @description Öğretmen kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Yetki core `authorize('record.archive')`; roller: `yonetici`.
          */
         delete: operations["archiveTeacher"];
         options?: never;
@@ -995,7 +995,7 @@ export interface paths {
         put?: never;
         /**
          * Öğretmen arşivden geri al
-         * @description Öğretmen kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Rol: `yonetici`.
+         * @description Öğretmen kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Yetki core `authorize('record.restore')`; roller: `yonetici`.
          */
         post: operations["restoreTeacher"];
         delete?: never;
@@ -6038,6 +6038,8 @@ export interface operations {
                     marks: {
                         [key: string]: "present" | "absent" | "late" | "excused";
                     };
+                    /** @description Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); yöneticide zorunlu, yoksa 422 `correction_reason_required` */
+                    reason?: string;
                 };
             };
         };

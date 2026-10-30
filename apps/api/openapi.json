@@ -8659,7 +8659,7 @@
         "tags": [
           "invoices"
         ],
-        "description": "Taksiti ödenmiş işaretler (core `payInvoice`). `Idempotency-Key` zorunludur; ödenmiş taksit 409 `invoice_already_paid`. Roller: `yonetici`, `onburo`.",
+        "description": "Taksiti ödenmiş işaretler (core `payInvoice`); yetki core `authorize('invoice.pay')` (DOM-FIN-052). `Idempotency-Key` zorunludur; ödenmiş taksit 409 `invoice_already_paid`. Roller: `yonetici`, `onburo`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8824,7 +8824,7 @@
         "tags": [
           "attendance"
         ],
-        "description": "Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. `If-Match` sınıf kaydının sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`; `ogretmen` yalnız core kapsamındaki sınıfta.",
+        "description": "Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. Yetki core `authorize('attendance.record')`: `ogretmen` yalnız ders verdiği sınıfta ve aynı gün (başka sınıf 403 `attendance_class_forbidden`, geçmiş gün 403 `attendance_correction_admin_only`); `yonetici` yalnız `reason` ile (yoksa 422 `correction_reason_required`). `If-Match` sınıf kaydının sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`, `ogretmen`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8854,6 +8854,11 @@
                       ]
                     },
                     "description": "Öğrenci kimliği → durum; sınıfın bütün aktif öğrencileri bulunmalı"
+                  },
+                  "reason": {
+                    "description": "Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); yöneticide zorunlu, yoksa 422 `correction_reason_required`",
+                    "type": "string",
+                    "maxLength": 500
                   }
                 },
                 "required": [
@@ -9007,7 +9012,7 @@
         "tags": [
           "school-management"
         ],
-        "description": "Kampüs kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Rol: `yonetici`.",
+        "description": "Kampüs kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Yetki core `authorize('record.archive')`; roller: `yonetici`.",
         "parameters": [
           {
             "schema": {
@@ -9162,7 +9167,7 @@
         "tags": [
           "school-management"
         ],
-        "description": "Kampüs kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Rol: `yonetici`.",
+        "description": "Kampüs kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Yetki core `authorize('record.restore')`; roller: `yonetici`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -9319,7 +9324,7 @@
         "tags": [
           "school-management"
         ],
-        "description": "Sınıf kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Rol: `yonetici`.",
+        "description": "Sınıf kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Yetki core `authorize('record.archive')`; roller: `yonetici`.",
         "parameters": [
           {
             "schema": {
@@ -9474,7 +9479,7 @@
         "tags": [
           "school-management"
         ],
-        "description": "Sınıf kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Rol: `yonetici`.",
+        "description": "Sınıf kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Yetki core `authorize('record.restore')`; roller: `yonetici`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -9631,7 +9636,7 @@
         "tags": [
           "school-management"
         ],
-        "description": "Öğretmen kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Rol: `yonetici`.",
+        "description": "Öğretmen kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Yetki core `authorize('record.archive')`; roller: `yonetici`.",
         "parameters": [
           {
             "schema": {
@@ -9786,7 +9791,7 @@
         "tags": [
           "school-management"
         ],
-        "description": "Öğretmen kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Rol: `yonetici`.",
+        "description": "Öğretmen kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Yetki core `authorize('record.restore')`; roller: `yonetici`.",
         "requestBody": {
           "required": true,
           "content": {

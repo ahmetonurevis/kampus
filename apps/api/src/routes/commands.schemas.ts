@@ -121,6 +121,14 @@ export const attendanceBodySchema = z.object({
   marks: z
     .record(z.string().min(1).max(200), z.enum(['present', 'absent', 'late', 'excused']))
     .describe('Öğrenci kimliği → durum; sınıfın bütün aktif öğrencileri bulunmalı'),
+  // kvkk: K — serbest metin; loglanmaz, denetim kaydına yazılmaz.
+  reason: z
+    .string()
+    .max(500, 'En fazla 500 karakter girebilirsiniz.')
+    .optional()
+    .describe(
+      'Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); yöneticide zorunlu, yoksa 422 `correction_reason_required`',
+    ),
 })
 
 export const branchParamsSchema = z.object({ branchId: recordId('Kampüs kimliği') })

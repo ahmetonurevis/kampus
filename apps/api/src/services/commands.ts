@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { runAssessment } from '@kampus/school-core/lib/assessment-automation.ts'
+import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import { payInvoice, recordAttendance, type Session } from '@kampus/school-core/lib/domain.ts'
 import {
   archiveRecord,
@@ -9,12 +10,14 @@ import {
   type ArchiveKind,
 } from '@kampus/school-core/lib/school-management.ts'
 import { runWorkflow, type WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
-import { SCOPE_SOURCE_COLLECTIONS, scopeFor } from '@kampus/school-core/lib/scope.ts'
+import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '@kampus/school-core/lib/scope.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
+import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import { isRecordCollection, type CollectionName, type ScalarStateKey } from '../db/collections.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
-import { ForbiddenError, NotFoundError } from '../errors.ts'
+import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { listMembershipLinks } from './memberships.ts'
@@ -30,8 +33,10 @@ import {
  * Yazma uçlarının servisi: school-core işlemlerini (`runWorkflow`, `runAssessment`,
  * `payInvoice`, `recordAttendance`, `archiveRecord`, `restoreRecord`) işlem çalıştırıcıyla
  * yürütür. Yetki ve kapsam core'un kuralıdır: oturum core'a üyelik bağlantılarıyla
- * (`links`) verilir ve core kişiye göre kapsamı (`scopeFor`) kendisi hesaplar. Core'da rol
- * denetimi olmayan işlemlerin (ödeme, yoklama, arşiv) rol listesi uçtadır (`routes/commands.ts`).
+ * (`links`) verilir ve core kişiye göre kapsamı (`scopeFor`) kendisi hesaplar. Yetkiyi kendisi
+ * denetlemeyen temel işlemlerden (ödeme, yoklama, arşiv) önce core `requireAuthorized` çalışır
+ * (DOM-YTK-001); eylemin yükleyeceği koleksiyonlar core komut tablosundandır
+ * (`OPERATION_COMMANDS`).
  *
  * Koleksiyon listeleri işlem dosyalarının okuduğu State anahtarlarıdır: işlem dosyası +
  * yardımcıları (`tutor-conflicts.ts`) + core kapsam kaynakları (`SCOPE_SOURCE_COLLECTIONS`,
@@ -86,30 +91,6 @@ const ASSESSMENT_COLLECTIONS: readonly CollectionName[] = [
   'subjects',
 ]
 
-const ARCHIVE_COLLECTIONS: readonly CollectionName[] = [
-  ...TUTOR_CONFLICT_COLLECTIONS,
-  'assignments',
-  'availability',
-  'branches',
-  'clubMemberships',
-  'clubs',
-  'contracts',
-  'guidanceCases',
-  'homework',
-  'mealMenus',
-  'prospects',
-  'questions',
-  'quizzes',
-  'renewals',
-  'studyTasks',
-  'submissions',
-  'teachers',
-  'transportAssignments',
-  'transportRoutes',
-]
-
-const ATTENDANCE_COLLECTIONS: readonly CollectionName[] = [...SCOPE_COLLECTIONS, 'attendance']
-
 /** Uç seçenekleri: istek anahtarı, `If-Match` sürümü ve velinin seçili çocuğu. */
 export interface CommandOptions {
   idempotency: IdempotencyRequest | null
@@ -119,6 +100,9 @@ export interface CommandOptions {
 
 interface Environment {
   session: Session
+  /** Core yetki aktörü (`requireAuthorized`): oturum rolü ve üyelik bağlantıları. */
+  actor: Actor
+  institutionType: InstitutionType
   scalars: Partial<Pick<State, ScalarStateKey>>
 }
 
@@ -149,7 +133,12 @@ async function environment(
   }
   const academicYear = settings[0]?.academicYear
   if (academicYear !== undefined) scalars.academicYear = academicYear
-  return { session, scalars }
+  return {
+    session,
+    actor: { role: ctx.actor.role, links },
+    institutionType: institution?.type ?? 'school',
+    scalars,
+  }
 }
 
 type Entity = { collection: CollectionName; id: string } | null
@@ -258,7 +247,12 @@ export async function executeTutoringCommand(
   )
 }
 
-/** Taksit ödemesi (DOM-FIN: aynı ödeme iki kez işlenmez; core `invoice_already_paid` 409). */
+/**
+ * Taksit ödemesi (tahsilat kaydı). Yetki core `invoice.pay`'dir: yalnız yönetici ve ön büro
+ * (DOM-FIN-052). Aynı ödeme iki kez işlenmez (core `invoice_already_paid` 409).
+ * TODO(payment-provider): velinin çevrim içi ödemesi (`invoice.payOnline`) ödeme sağlayıcısı
+ * seçilince ayrı uçla bağlanır; o zamana kadar uç yoktur.
+ */
 export async function payInvoiceCommand(
   ctx: ServiceContext,
   invoiceId: string,
@@ -269,7 +263,7 @@ export async function payInvoiceCommand(
     ctx,
     {
       action: 'invoice.pay',
-      collections: ['invoices'],
+      collections: OPERATION_COMMANDS['invoice.pay'].collections,
       ...(options.expectedVersion !== null
         ? {
             expectedVersions: [
@@ -278,9 +272,18 @@ export async function payInvoiceCommand(
           }
         : {}),
       entity: { type: 'invoices', id: invoiceId },
-      run: (state, { now }) => {
-        payInvoice(state, invoiceId, method, now)
-        return { collection: 'invoices', id: invoiceId }
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx)
+        return {
+          scalars,
+          run: (state, { now }) => {
+            // Olmayan taksitte hedef boştur: yetki reddi kayıt aramasından önce döner.
+            const studentId = state.invoices.find((item) => item.id === invoiceId)?.studentId ?? ''
+            requireAuthorized(actor, 'invoice.pay', { studentId }, state, { now, institutionType })
+            payInvoice(state, invoiceId, method, now)
+            return { collection: 'invoices', id: invoiceId }
+          },
+        }
       },
     },
     options,
@@ -290,25 +293,33 @@ export async function payInvoiceCommand(
 export const ATTENDANCE_STATUSES = ['present', 'absent', 'late', 'excused'] as const
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number]
 
+export interface AttendanceInput {
+  /** Yoklama günü (`YYYY-MM-DD`). */
+  date: string
+  marks: Readonly<Record<string, AttendanceStatus>>
+  /** Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); öğretmenin aynı gün yoklamasında gerekmez. */
+  reason?: string | undefined
+}
+
 /**
  * Sınıfın günlük yoklaması (`recordAttendance`): aynı öğrenci ve gün için tek kayıt güncellenir,
- * yinelenmez. Core'da rol/kapsam denetimi yoktur: öğretmen yalnız core kapsamındaki
- * (`scopeFor(...).classIds`) sınıfta yoklama alır.
- * TODO(core-attendance-scope): core ders saati bazında yoklama yetkisini (DOM-YTK-022) verince
- * buradaki sınıf denetimi kalkar.
+ * yinelenmez. Yetki core `attendance.record`'dur: öğretmen ders verdiği sınıfta aynı gün,
+ * yönetici yalnız gerekçeyle (DOM-YTK-022, DOM-AKD-035). Gerekçe bugün yalnız yetki kararına
+ * girer; denetim kaydına içerik yazılmaz.
+ * TODO(core-attendance-history): core düzeltme geçmişini (eski/yeni değer, gerekçe) saklayınca
+ * gerekçe işleme de verilir.
  */
 export async function recordAttendanceCommand(
   ctx: ServiceContext,
   classId: string,
-  date: string,
-  marks: Readonly<Record<string, AttendanceStatus>>,
+  input: AttendanceInput,
   options: CommandOptions,
 ): Promise<CommandResponse> {
   return execute(
     ctx,
     {
       action: 'attendance.record',
-      collections: ATTENDANCE_COLLECTIONS,
+      collections: OPERATION_COMMANDS['attendance.record'].collections,
       // İşlemin konusu sınıftır: `If-Match` sınıf kaydının okunan sürümüyle karşılaştırılır.
       ...(options.expectedVersion !== null
         ? {
@@ -319,17 +330,19 @@ export async function recordAttendanceCommand(
         : {}),
       entity: { type: 'classes', id: classId },
       load: async (tx) => {
-        const { session, scalars } = await environment(tx, ctx)
+        const { actor, institutionType, scalars } = await environment(tx, ctx)
         return {
           scalars,
-          run: (state) => {
-            if (!state.classes.some((item) => item.id === classId)) throw new NotFoundError()
-            if (session.role === 'ogretmen') {
-              const scope = scopeFor(state, { role: session.role, links: session.links ?? [] })
-              if (!scope.classIds.has(classId)) throw new ForbiddenError()
-            }
+          run: (state, { now }) => {
             // Gün Europe/Istanbul günüdür; 09:00Z o günün öğlesidir (istemcilerle aynı biçim).
-            recordAttendance(state, classId, `${date}T09:00:00.000Z`, marks)
+            const date = `${input.date}T09:00:00.000Z`
+            const reason = input.reason === undefined ? {} : { reason: input.reason }
+            requireAuthorized(actor, 'attendance.record', { classId, date, ...reason }, state, {
+              now,
+              institutionType,
+            })
+            if (!state.classes.some((item) => item.id === classId)) throw new NotFoundError()
+            recordAttendance(state, classId, date, input.marks)
             return { collection: 'classes', id: classId }
           },
         }
@@ -379,18 +392,27 @@ async function archiveOrRestore(
   run: (state: State, now: string) => void,
 ): Promise<CommandResponse> {
   const collection = ARCHIVE_TARGET[kind]
+  const action = verb === 'archive' ? 'record.archive' : 'record.restore'
   return execute(
     ctx,
     {
       action: `${collection}.${verb}`,
-      collections: ARCHIVE_COLLECTIONS,
+      collections: OPERATION_COMMANDS[action].collections,
       ...(options.expectedVersion !== null
         ? { expectedVersions: [{ collection, id: recordId, version: options.expectedVersion }] }
         : {}),
       entity: { type: collection, id: recordId },
-      run: (state, { now }) => {
-        run(state, now)
-        return { collection, id: recordId }
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx)
+        return {
+          scalars,
+          run: (state, { now }) => {
+            // Kampüs, sınıf ve kadro yönetimi yalnız yöneticidedir (core `record.*`, DOM-YTK-020).
+            requireAuthorized(actor, action, { kind }, state, { now, institutionType })
+            run(state, now)
+            return { collection, id: recordId }
+          },
+        }
       },
     },
     options,

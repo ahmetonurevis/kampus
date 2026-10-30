@@ -312,7 +312,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Randevu öğretmenin zamanını ayırır; görüşme yalnız öğrenciyle ders ilişkisi olan öğretmenle anlamlıdır. Talebi kimin açtığı, geri çekme yetkisini ve ayrı veliler arasındaki görünürlüğü belirler.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/appointments.ts` `bookAppointment`, yetki `appointment.book`. Rehber öğretmenle (`guidanceCounselor`) ders ataması olmadan randevu açılmaz (`TODO(randevu-rehberlik)`). Vue demosu türü rol sınırı olmadan seçtirir ve pasif öğrenciyi denetlemez (`apps/web/src/views/Communication.vue:182-212`).
+- **Kodda:** kısmen — core `lib/appointments.ts` `bookAppointment`, yetki `appointment.book`; API `POST /appointments` (`apps/api/src/routes/appointments.ts`, `Idempotency-Key` zorunlu), react-shared `useBookAppointment`. React web ekranı yok (W20). Rehber öğretmenle (`guidanceCounselor`) ders ataması olmadan randevu açılmaz (`TODO(randevu-rehberlik)`). Vue demosu türü rol sınırı olmadan seçtirir ve pasif öğrenciyi denetlemez (`apps/web/src/views/Communication.vue:182-212`).
 
 ### DOM-ILT-101 · Randevu saati uygunluk saatine bağlıdır ve çakışmaz
 
@@ -320,7 +320,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Öğretmen yalnız ayırdığı zamanda görüşür; çakışan iki görüşme veya derse denk gelen randevu yerine getirilemez.
 - **Kaynak:** İşletme kuralı; CLAUDE.md "Etütler öğretmen uygunluk saatlerini kullanır".
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `bookAppointment` (`lib/tutor-conflicts.ts` `tutorConflict` ile tam denetim). Vue demosu talepte ders ve etkinlik çakışmasını denetlemez (`apps/web/src/views/Communication.vue:122-137`).
+- **Kodda:** kısmen — core `bookAppointment` (`lib/tutor-conflicts.ts` `tutorConflict` ile tam denetim); API talepte yalnız seçilen uygunluk saatini yükler, kurum kilidi eşzamanlı iki talepten yalnız birini yazar (`apps/api/test/pg-concurrency.test.ts`). Vue demosu talepte ders ve etkinlik çakışmasını denetlemez (`apps/web/src/views/Communication.vue:122-137`).
 
 ### DOM-ILT-102 · Onay, red, iptal ve geri çekme
 
@@ -328,7 +328,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Görüşmenin neden yapılmadığı uyuşmazlıkta kayıttan okunabilmeli; karar öğretmenin zamanına dair olduğu için yalnız o öğretmene aittir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/appointments.ts` `updateAppointment`, yetki `appointment.update`. Yöneticinin randevuyu iptal etmesi yok (`TODO(randevu-yonetici-iptal)`). Açanı bilinmeyen eski talep (`requestedBy` yok) geri çekilemez ve talep eden adına iptal edilemez (`TODO(randevu-eski-kayit)`). Vue demosu red gerekçesi istemez, iptal ve geri çekme yoktur.
+- **Kodda:** kısmen — core `lib/appointments.ts` `updateAppointment`, yetki `appointment.update`; API `PATCH /appointments/:id` (`If-Match` zorunlu), react-shared `useUpdateAppointment` (sürüm bilinmiyorsa istek atmaz). Yöneticinin randevuyu iptal etmesi yok (`TODO(randevu-yonetici-iptal)`). Açanı bilinmeyen eski talep (`requestedBy` yok) geri çekilemez ve talep eden adına iptal edilemez (`TODO(randevu-eski-kayit)`). Vue demosu red gerekçesi istemez, iptal ve geri çekme yoktur.
 
 ### DOM-ILT-103 · Veli görüşmesini yalnız açan veli görür
 
@@ -336,7 +336,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ayrı yaşayan ebeveynlerin görüşme talepleri ve notları birbirine sızmamalıdır (`DOM-ILT-073`); veli ile öğretmen arasındaki görüşme öğrenciyle paylaşılmak zorunda değildir.
 - **Kaynak:** İşletme kuralı; KVKK md. 4/2 (ölçülülük).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/scope.ts` `appointments` okuma kuralı. Vue ve telefon demosu öğrencinin bütün randevularını gösterir.
+- **Kodda:** kısmen — core `lib/scope.ts` `appointments` okuma kuralı ve `requireVisibleAppointment`; API okuması `GET /collections/appointments`, `PATCH /appointments/:id` görünürlüğü sürümden önce denetler (kapsam dışı randevu yanlış sürümde de 404). Vue ve telefon demosu öğrencinin bütün randevularını gösterir.
 
 ### DOM-ILT-104 · Kapanan randevu takvimi bırakır
 

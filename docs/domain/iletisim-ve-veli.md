@@ -312,7 +312,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Öğrenci–öğretmen sınırı (`DOM-ILT-011`) soru kanalında da geçerlidir; öğrencinin istediği öğretmene ulaşabilmesi kayıtsız birebir kanal açar ve SLA raporunu bozar. Pasif öğrencinin yazma yetkisi yoktur (`DOM-YTK-025`).
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — core `askQuestion` (`packages/school-core/src/lib/questions.ts`), yetki `question.ask` (`lib/authorize.ts`; kapsam dışı ders veya öğretmen tek iletiyle 403 `question_scope_denied`, varlık sızdırılmaz). Gövde katıdır, öğrenci kimliği gövdeden alınmaz. Rehber öğretmene soru kanalı yoktur; rehberlik randevu ve yazışmayla yürür.
+- **Kodda:** var — core `askQuestion` (`packages/school-core/src/lib/questions.ts`), yetki `question.ask` (`lib/authorize.ts`; kapsam dışı ders veya öğretmen tek iletiyle 403 `question_scope_denied`, varlık sızdırılmaz). Gövde katıdır, öğrenci kimliği gövdeden alınmaz. Rehber öğretmene soru kanalı yoktur; rehberlik randevu ve yazışmayla yürür. API `POST /api/v1/questions` (`Idempotency-Key` zorunlu; `apps/api/src/routes/questions.ts`), kanca `useAskQuestion` (`packages/react-shared/src/use-question-commands.ts`); ekran W19.
 
 ### DOM-ILT-091 · Gönderilen soru değişmez; yanıtsız soru geri çekilir
 
@@ -320,7 +320,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Öğrenci–öğretmen yazışması kurumda saklanır (`DOM-ILT-011`, `DOM-ILT-012`); geri çekme öğrencinin yanlış gönderimini kapatır ama kaydı ortadan kaldırmaz.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — core `withdrawQuestion` (`withdrawnAt`, `withdrawnBy`; yanıtlanmış soru 409 `question_answered`, ikinci geri çekme 409 `question_withdrawn`), yetki `question.withdraw` (yalnız kendi sorusu; başkasınınki 404). Durum saklanmaz, `questionStatus` ile türetilir. Geri çekme için süre sınırı yoktur.
+- **Kodda:** var — core `withdrawQuestion` (`withdrawnAt`, `withdrawnBy`; yanıtlanmış soru 409 `question_answered`, ikinci geri çekme 409 `question_withdrawn`), yetki `question.withdraw` (yalnız kendi sorusu; başkasınınki 404). Durum saklanmaz, `questionStatus` ile türetilir. Geri çekme için süre sınırı yoktur. API `PATCH /api/v1/questions/:questionId` (gövde yalnız `{ "withdrawn": true }`, `If-Match` zorunlu), kanca `useWithdrawQuestion`; yönetici SLA Raporu geri çekilen soruyu saymaz (`apps/web-react/src/pages/management/sla-rows.ts`).
 
 ### DOM-ILT-092 · Yanıtı atanmış öğretmen yazar; verilmiş yanıt değişmez
 
@@ -328,7 +328,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Yanıt öğrenciye verilmiş kayıtlı bilgidir; sonradan değişmesi uyuşmazlıkta kaydı ve yanıt süresi raporunu bozar. Taşınan soruyu eski öğretmenin yanıtlaması, artık o dersi vermeyen kişiye öğrenci verisi açar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — core `answerQuestion` (ilk yanıt `answer`, `answeredAt`, `answeredBy`; sonrakiler `followUps`), yetki `question.answer` (başka öğretmenin sorusu 404); taşıma `lib/school-management.ts` (`isOpenQuestion`). Vue demosu yanıtı yerinde düzenletiyordu ("Yanıtı düzenle").
+- **Kodda:** var — core `answerQuestion` (ilk yanıt `answer`, `answeredAt`, `answeredBy`; sonrakiler `followUps`), yetki `question.answer` (başka öğretmenin sorusu 404); taşıma `lib/school-management.ts` (`isOpenQuestion`). API `POST /api/v1/questions/:questionId/answers` (`If-Match` zorunlu; aynı sürümle eşzamanlı ikinci yanıt 409 `version_conflict`, `test:pg`), kanca `useAnswerQuestion`. Vue demosu yanıtı yerinde düzenletiyordu ("Yanıtı düzenle").
 
 ### DOM-ILT-093 · Soru görünürlüğü ve yanıt süresi
 
@@ -351,4 +351,4 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 | DOM-ILT-041          | Core denetim kaydı iç notu maskeliyor; bildirim, PDF ve CSV yan kanalları ayrıca denetlenmedi.                                                                                                                                                                                                                                                                      |
 | DOM-ILT-053          | Core ve API'de bildirim süre içinde geçmiş tarihi kabul ediyor, yoklama bağlantısı hesaplanıyor, gerekçe yalnız kategori; özür belgesi ve idare onayı yok. Vue demosunda geçmiş tarih engelli, serbest açıklama alınıyor ve talep kaydı açılıyor (`apps/web/src/views/Communication.vue:312-345`).                                                                  |
 | DOM-ILT-070, 073     | Velayet durumu ve çoklu veli yok; öğrenci başına tek `parentId` (`packages/school-core/src/data/seed.js:197,205-212`).                                                                                                                                                                                                                                              |
-| DOM-ILT-090…093      | Kural core'dadır (`lib/questions.ts`); Vue demosu yanıtı yerinde düzenletiyor, geri çekme yok, öğretmeni pasif ders dışında sınır denetimi yok, dosya adını saklıyor (`apps/web/src/views/Learning.vue:318-360`). React ekranı yok (W19). Velinin soru görünürlüğü açık karardır.                                                                                   |
+| DOM-ILT-090…093      | Kural core'dadır (`lib/questions.ts`), API uçları ve react-shared kancaları hazırdır; Vue demosu yanıtı yerinde düzenletiyor, geri çekme yok, öğretmeni pasif ders dışında sınır denetimi yok, dosya adını saklıyor (`apps/web/src/views/Learning.vue:318-360`). React ekranı yok (W19). Velinin soru görünürlüğü açık karardır.                                    |

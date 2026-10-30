@@ -48,6 +48,7 @@ type Teacher = State['teachers'][number]
 type Classroom = State['classes'][number]
 type Assignment = State['assignments'][number]
 type Club = State['clubs'][number]
+type MockExam = State['mockExams'][number]
 
 /** Kapsamı hesaplamak için gereken koleksiyonlar; API bunları kurumdan bir kez yükler. */
 export const SCOPE_SOURCE_COLLECTIONS = [
@@ -56,6 +57,7 @@ export const SCOPE_SOURCE_COLLECTIONS = [
   'classes',
   'assignments',
   'clubs',
+  'mockExams',
 ] as const satisfies readonly CollectionName[]
 export type ScopeSource = {
   students: readonly Pick<Student, 'id' | 'classId'>[]
@@ -64,6 +66,8 @@ export type ScopeSource = {
   classes: readonly Pick<Classroom, 'id' | 'grade' | 'level' | 'branchId' | 'teacherId'>[]
   assignments: readonly Pick<Assignment, 'classId' | 'teacherId'>[]
   clubs: readonly Pick<Club, 'id' | 'teacherId'>[]
+  /** Optik profilinin hangi düzeyin denemesine ait olduğunu bulmak için (deneme → düzey). */
+  mockExams: readonly Pick<MockExam, 'id' | 'grade'>[]
   /** Modül anahtarı → açık mı; haritada olmayan modül kapalıdır. */
   modules: Readonly<Record<string, boolean>>
 }
@@ -128,6 +132,7 @@ type Context = {
   clubIds: ReadonlySet<string>
   classTeacherIds: ReadonlySet<string>
   studentClass: ReadonlyMap<string, string>
+  examGrade: ReadonlyMap<string, number>
 }
 type Rule = (context: Context, row: object) => boolean
 
@@ -153,6 +158,12 @@ const ownLevel: Rule = (c, r) => member(c.levels, text(r, 'level'))
 const ownGrade: Rule = (c, r) => {
   const grade = value(r, 'grade')
   return typeof grade === 'number' && c.grades.has(grade)
+}
+// Deneme düzeyi kapsamdaysa görünür (`mockExams` kuralıyla aynı sonuç); denemesi bulunamayan
+// kayıt kapalı başarısızdır.
+const ownExam: Rule = (c, r) => {
+  const grade = c.examGrade.get(text(r, 'examId') ?? '')
+  return grade !== undefined && c.grades.has(grade)
 }
 const ownClub: Rule = (c, r) => member(c.clubIds, text(r, 'clubId'))
 // Sınıfa özel kayıt kendi sınıfında, sınıfsız kayıt kendi kampüsünde görünür.
@@ -338,8 +349,10 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
   clubMemberships: { ...ADMIN, ogretmen: ownClub, ...PERSONAL },
   clubAttendance: { ...ADMIN, ogretmen: ownClub, ...PERSONAL },
   socialAchievements: { ...ADMIN, ogretmen: ownClub, ...PERSONAL },
-  // Öğrenci ve veli profili yalnız revizyon eşlemesi için okur (cevap anahtarı alanları gizli).
-  opticalProfiles: { ...ADMIN, ogretmen: all, ogrenci: all, veli: all },
+  // Öğrenci ve veli profili yalnız görebildiği denemenin (düzeyi kendi düzeyi) revizyon eşlemesi
+  // için okur; cevap anahtarı alanları gizlidir. Başka düzeyin profili başlık/yerleşim/revizyon
+  // olarak da sayılamaz.
+  opticalProfiles: { ...ADMIN, ogretmen: all, ogrenci: ownExam, veli: ownExam },
   opticalEvaluations: {
     ...ADMIN,
     ogretmen: (c, r) => ownStudent(c, r) && text(r, 'subjectId') === c.teacher?.subjectId,
@@ -499,6 +512,7 @@ function buildContext(source: ScopeSource, actor: Actor, role: Role | undefined)
     clubIds,
     classTeacherIds,
     studentClass,
+    examGrade: new Map(source.mockExams.map((e) => [e.id, e.grade])),
   }
 }
 

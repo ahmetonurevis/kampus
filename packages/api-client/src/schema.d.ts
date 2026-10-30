@@ -93,7 +93,7 @@ export interface paths {
         };
         /**
          * İşlem geçmişi
-         * @description Etkin kurumun denetim kayıtlarını en yeniden eskiye sayfalı döndürür: zaman, işlem, varlık, yapan kişi, değişen alan adları ve gerekçe. Değer, mesaj metni, IP ve kullanıcı ajanı dönmez. Rehberlik kayıtlarında alan adı ve kimlik de dönmez (DOM-YTK-020). Tarih süzgeci Europe/Istanbul günüdür. Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.
+         * @description Etkin kurumun denetim kayıtlarını en yeniden eskiye sayfalı döndürür: zaman, işlem, varlık, yapan kişi, değişen alan adları ve gerekçe. Değer, mesaj metni, IP ve kullanıcı ajanı dönmez. Rehberlik kayıtlarında alan adı ve kimlik de dönmez (DOM-YTK-020). Tarih süzgeci Europe/Istanbul günüdür; `createdBefore` sayfalı dışa aktarmayı sabitleyen üst zaman sınırıdır. Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.
          */
         get: operations["listAuditEvents"];
         put?: never;
@@ -2644,6 +2644,8 @@ export interface operations {
                 dateFrom?: string;
                 /** @description Europe/Istanbul günü olarak bitiş (`YYYY-MM-DD`, dahil) */
                 dateTo?: string;
+                /** @description Üst zaman sınırı (ISO 8601 UTC, hariç): yalnız bu andan önce yazılmış kayıtlar. Sayfalı dışa aktarma ilk istekte sabitler; böylece sürerken yazılan yeni kayıtlar sayfaları kaydırıp mükerrer satır üretmez. `dateTo` ile birlikte kullanılırsa ikisi de uygulanır */
+                createdBefore?: string;
                 /** @description Yapan kişinin kullanıcı kimliği (`institution-members` listesindeki `userId`) */
                 actorUserId?: string;
                 /** @description Varlık türü (ör. `invoices`, `module`); eşitlik */

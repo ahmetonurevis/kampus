@@ -121,3 +121,58 @@ test('Kapsamdan okunan State ile deneme ayrıntısı öğrencinin kendi analizin
   assert.ok(text.includes('Deniz Yılmaz'))
   assert.equal(text.includes(full.students.find((s) => s.id === 's25')!.name), false)
 })
+
+// Başka düzeyin denemesine ait profil başlığı, yerleşimi ve revizyonu da öğrenci/veliye kapalıdır.
+function withForeignProfiles(): State {
+  const state = evaluated()
+  const base = state.opticalProfiles[0]!
+  for (const examId of ['exam-5-1', 'exam-8-1'])
+    state.opticalProfiles.push({
+      ...base,
+      id: `optical-${examId}`,
+      examId,
+      title: `Profil ${examId}`,
+    })
+  return state
+}
+
+test('Öğrenci ve veli yalnız kendi düzeyindeki denemenin profilini görür; liste tam okunmaz', () => {
+  const state = withForeignProfiles()
+  for (const key of ['ogrenci', 'veli']) {
+    const scope = scopeFor(state, actors[key]!)
+    assert.equal(scope.readsWhole('opticalProfiles'), false, `${key} süzgeçsiz tam okuma yapmaz`)
+    const rows = scope.read('opticalProfiles', state.opticalProfiles)
+    assert.deepEqual(
+      rows.map((row) => row.examId),
+      ['exam-7-1'],
+      key,
+    )
+    for (const foreign of state.opticalProfiles.filter((p) => p.examId !== 'exam-7-1'))
+      assert.equal(scope.canRead('opticalProfiles', foreign), false, `${key} ${foreign.examId}`)
+  }
+  // 5. sınıf öğrencisi kendi düzeyinin profilini görür, 7. sınıfınkini görmez.
+  const fifth = scopeFor(state, actors.yabanciOgrenci!)
+  assert.deepEqual(
+    fifth.read('opticalProfiles', state.opticalProfiles).map((row) => row.examId),
+    ['exam-5-1'],
+  )
+  // Yönetici ve öğretmen kuralı değişmedi: tamamını okur.
+  for (const actor of [
+    { role: 'yonetici', links: [] },
+    { role: 'ogretmen', links: [{ kind: 'teacher', recordId: 't1' }] },
+  ] as Actor[]) {
+    const scope = scopeFor(state, actor)
+    assert.equal(scope.read('opticalProfiles', state.opticalProfiles).length, 3, actor.role)
+  }
+  assert.equal(scopeFor(state, { role: 'yonetici', links: [] }).readsWhole('opticalProfiles'), true)
+})
+
+test('Denemesi bulunamayan optik profil öğrenci ve veliye görünmez', () => {
+  const state = withForeignProfiles()
+  state.mockExams = state.mockExams.filter((exam) => exam.id !== 'exam-7-1')
+  for (const key of ['ogrenci', 'veli'])
+    assert.deepEqual(
+      scopeFor(state, actors[key]!).read('opticalProfiles', state.opticalProfiles),
+      [],
+    )
+})

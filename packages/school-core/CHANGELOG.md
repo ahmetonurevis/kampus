@@ -1,5 +1,14 @@
 # Değişiklikler
 
+## 2.8.1
+
+R6 inceleme düzeltmeleri.
+
+- **Güvenlik:** öğrenci ve veli `opticalProfiles`'ı yalnız görebildiği denemeler için okur (`READ_RULES.opticalProfiles`, yeni `ownExam`: denemenin düzeyi aktörün kapsamındaki düzeylerden biri, `mockExams` kuralıyla aynı sonuç). Önceden kural koşulsuzdu: öğrenci başka düzeyin denemesinin profilini (`examId`, başlık, okuyucu yerleşimi, `revision`) liste ve `counts?groupBy=examId` ile alabiliyordu; cevap anahtarı (`keyCsv`, `keys`) zaten gizliydi. `Scope.readsWhole('opticalProfiles')` bu iki rolde artık `false`. Denemesi bulunamayan profil kapalı başarısızdır. Öğretmen ve yönetici kuralı değişmedi.
+- Kapsam kaynağı (`ScopeSource`) `mockExams` (`id`, `grade`) taşır; `SCOPE_SOURCE_COLLECTIONS` ve komut tablosundaki kapsam listesi (`modules/commands.ts`) genişledi. State zaten bu alanı taşıdığından web ve mobil demo davranışı aynıdır; API kapsam kaynağını kurumdan yükler.
+- Belge: öğrenci ve veli kendi analizinde soru başına doğru cevabı görmeye devam eder (davranış değişmedi); kural `docs/optik-degerlendirme-etut.md` ve `docs/domain/akademik-olcme.md` (DOM-AKD-063) içinde açık yazıldı.
+- Tüketiciler `workspace:2.8.1` sürümüne sabitlendi.
+
 ## 2.8.0
 
 Bekleyen `TODO(core-*)` işleri çekirdeğe taşındı; tüketicilerdeki geçici listeler silindi.

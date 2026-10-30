@@ -66,6 +66,10 @@ const clubSource = z.object({ id: z.string(), teacherId: z.string() }) satisfies
   ScopeSource['clubs'][number]
 >
 
+const mockExamSource = z.object({ id: z.string(), grade: z.number() }) satisfies z.ZodType<
+  ScopeSource['mockExams'][number]
+>
+
 type SourceCollection = (typeof SCOPE_SOURCE_COLLECTIONS)[number]
 
 function parseRows<T>(
@@ -108,6 +112,7 @@ async function buildScope(ctx: ServiceContext): Promise<ScopeState> {
     classes: parseRows(ctx, 'classes', data('classes'), classSource),
     assignments: parseRows(ctx, 'assignments', data('assignments'), assignmentSource),
     clubs: parseRows(ctx, 'clubs', data('clubs'), clubSource),
+    mockExams: parseRows(ctx, 'mockExams', data('mockExams'), mockExamSource),
     modules: institution?.modules ?? {},
   }
   const actor: Actor = { role: ctx.actor.role, links, userId: ctx.actor.userId }

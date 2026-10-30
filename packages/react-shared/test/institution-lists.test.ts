@@ -8,6 +8,7 @@ import { CollectionTooLargeError } from '../src/collections.ts'
 import {
   auditListKey,
   auditListParams,
+  fetchAllAuditEvents,
   fetchAllPages,
   fetchAuditPage,
   fetchMemberPage,
@@ -179,5 +180,37 @@ describe('fetchAllPages', () => {
       (error) =>
         error instanceof CollectionTooLargeError && error.message.includes('tamamı indirilemedi'),
     )
+  })
+})
+
+describe('fetchAllAuditEvents', () => {
+  test('üst zaman sınırı ilk istekten önce bir kez sabitlenir ve bütün sayfalarda aynı gider', async () => {
+    const { client, urls } = pagedClient(230, 100)
+    // Her çağrıda ilerleyen saat: sınır sayfa başına yeniden hesaplansaydı değerler farklı olurdu.
+    let tick = 0
+    const now = () => new Date(Date.UTC(2026, 9, 6, 10, 0, tick++))
+    const rows = await fetchAllAuditEvents(client, { entityType: 'invoices' }, undefined, now)
+    assert.equal(rows.length, 230)
+    assert.equal(urls.length, 3)
+    const bounds = urls.map((url) => url.searchParams.get('createdBefore'))
+    assert.deepEqual(bounds, Array(3).fill('2026-10-06T10:00:00.000Z'))
+    assert.equal(tick, 1)
+    assert.ok(urls.every((url) => url.searchParams.get('entityType') === 'invoices'))
+  })
+
+  test('çağıranın verdiği sınır korunur', async () => {
+    const { client, urls } = pagedClient(150, 100)
+    await fetchAllAuditEvents(client, { createdBefore: '2026-10-01T00:00:00.000Z' })
+    assert.deepEqual(
+      urls.map((url) => url.searchParams.get('createdBefore')),
+      Array(2).fill('2026-10-01T00:00:00.000Z'),
+    )
+  })
+
+  test('sınır sorgu parametresi olarak yalnız doluysa gider', () => {
+    assert.deepEqual(auditListParams({ createdBefore: '2026-10-01T00:00:00.000Z' }), {
+      createdBefore: '2026-10-01T00:00:00.000Z',
+    })
+    assert.deepEqual(auditListParams({ createdBefore: '' }), {})
   })
 })

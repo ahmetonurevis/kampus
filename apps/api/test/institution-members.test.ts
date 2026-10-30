@@ -8,6 +8,7 @@ import { ROLES, type Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { memberships } from '../src/db/schema/auth.ts'
 import { membershipLinks } from '../src/db/schema/membership-links.ts'
 import { foldSearch } from '../src/services/institution-members.ts'
 import {
@@ -158,6 +159,38 @@ describe('GET /api/v1/institution-members (DOM-YTK-020)', () => {
     const teacher = body.data.find((row) => row.userId === byRole.ogretmen?.userId)
     assert.deepEqual(teacher?.links, [{ kind: 'teacher', name: 'Selin Kaya' }])
     assert.match(parent.createdAt, /^\d{4}-\d{2}-\d{2}T.*Z$/)
+  })
+
+  test('tanınmayan rollü üyelik listeyi 500e düşürmez: satır loglanıp atlanır', async () => {
+    const logs: string[] = []
+    const logged = await buildTestApp(db, { logs })
+    try {
+      const { institution, byRole } = await kurum()
+      const stray = await createMember(logged, institution.id, 'onburo')
+      // Better Auth rolü serbest metin tutar; sütun varsayılanı 'member'dır (tanınmayan değer).
+      await db
+        .update(memberships)
+        .set({ role: 'member' })
+        .where(eq(memberships.id, stray.membershipId))
+      const cookie = await signInAs(logged, institution.admin)
+      const response = await logged.inject({
+        method: 'GET',
+        url: '/api/v1/institution-members?pageSize=100',
+        headers: { origin: TEST_ORIGIN, cookie },
+      })
+      assert.equal(response.statusCode, 200, response.body)
+      const ids = response.json<MemberList>().data.map((row) => row.id)
+      assert.equal(ids.length, 6)
+      assert.equal(ids.includes(stray.membershipId), false)
+      assert.ok(ids.includes(byRole.veli?.membershipId ?? 'yok'))
+      const warning = logs.find((line) => line.includes('institution_members.role_unrecognized'))
+      assert.ok(warning)
+      assert.ok(warning.includes(stray.membershipId))
+      // Kişisel veri loga düşmez.
+      assert.ok(!warning.includes(stray.email))
+    } finally {
+      await logged.close()
+    }
   })
 
   test('yanıtta telefon, parola, oturum ve IP alanı bulunmaz; yalnız şemadaki anahtarlar döner', async () => {

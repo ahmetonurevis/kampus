@@ -10,6 +10,12 @@ export const auditEventListQuerySchema = pageQuerySchema
   .extend({
     dateFrom: dayValue('başlangıç'),
     dateTo: dayValue('bitiş'),
+    createdBefore: z.iso
+      .datetime()
+      .optional()
+      .describe(
+        'Üst zaman sınırı (ISO 8601 UTC, hariç): yalnız bu andan önce yazılmış kayıtlar. Sayfalı dışa aktarma ilk istekte sabitler; böylece sürerken yazılan yeni kayıtlar sayfaları kaydırıp mükerrer satır üretmez. `dateTo` ile birlikte kullanılırsa ikisi de uygulanır',
+      ),
     actorUserId: z
       .string()
       .min(1)

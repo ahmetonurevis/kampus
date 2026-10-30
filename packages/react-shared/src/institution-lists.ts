@@ -40,6 +40,8 @@ export interface AuditQuery {
   /** `YYYY-MM-DD`, Europe/Istanbul günü, dahil. */
   dateFrom?: string
   dateTo?: string
+  /** ISO 8601 UTC üst sınır (hariç); sayfalı dışa aktarma bunu ilk istekte sabitler. */
+  createdBefore?: string
   actorUserId?: string
   entityType?: string
 }
@@ -75,6 +77,7 @@ export function auditListParams(query: AuditQuery): AuditParams {
   putPaging(params, query)
   if (query.dateFrom) params.dateFrom = query.dateFrom
   if (query.dateTo) params.dateTo = query.dateTo
+  if (query.createdBefore) params.createdBefore = query.createdBefore
   if (query.actorUserId) params.actorUserId = query.actorUserId
   if (query.entityType) params.entityType = query.entityType
   return params as AuditParams
@@ -151,4 +154,25 @@ export async function fetchAllPages<TQuery extends { page?: number; pageSize?: n
     rows.push(...result.rows)
     if (rows.length >= result.total || result.rows.length === 0) return rows
   }
+}
+
+/**
+ * Bütün işlem geçmişi (CSV). Liste en yeniden eskiye ve offset'le sayfalandığından, dışa aktarma
+ * sürerken yazılan yeni denetim kaydı sayfaları kaydırıp aynı satırı iki kez getirirdi. Üst zaman
+ * sınırı (`createdBefore`) ilk istekten önce bir kez sabitlenir ve bütün sayfalarda aynı gider;
+ * dışa aktarma başlangıç anındaki kayıtları verir. Çağıran kendi sınırını verirse o korunur.
+ * Sınır istemci saatindendir: sunucudan geri kalan saatte son birkaç saniyenin kayıtları çıkmayabilir.
+ */
+export function fetchAllAuditEvents(
+  client: KampusClient,
+  query: Omit<AuditQuery, 'page' | 'pageSize'>,
+  signal?: AbortSignal,
+  now: () => Date = () => new Date(),
+): Promise<AuditEvent[]> {
+  const createdBefore = query.createdBefore ?? now().toISOString()
+  return fetchAllPages<AuditQuery, AuditEvent>(
+    (pageQuery, pageSignal) => fetchAuditPage(client, pageQuery, pageSignal),
+    { ...query, createdBefore },
+    signal,
+  )
 }

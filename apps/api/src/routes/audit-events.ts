@@ -20,19 +20,21 @@ export function registerAuditEventRoutes(app: FastifyInstance) {
         tags: ['institution'],
         summary: 'İşlem geçmişi',
         description:
-          'Etkin kurumun denetim kayıtlarını en yeniden eskiye sayfalı döndürür: zaman, işlem, varlık, yapan kişi, değişen alan adları ve gerekçe. Değer, mesaj metni, IP ve kullanıcı ajanı dönmez. Rehberlik kayıtlarında alan adı ve kimlik de dönmez (DOM-YTK-020). Tarih süzgeci Europe/Istanbul günüdür. Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.',
+          'Etkin kurumun denetim kayıtlarını en yeniden eskiye sayfalı döndürür: zaman, işlem, varlık, yapan kişi, değişen alan adları ve gerekçe. Değer, mesaj metni, IP ve kullanıcı ajanı dönmez. Rehberlik kayıtlarında alan adı ve kimlik de dönmez (DOM-YTK-020). Tarih süzgeci Europe/Istanbul günüdür; `createdBefore` sayfalı dışa aktarmayı sabitleyen üst zaman sınırıdır. Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.',
         querystring: auditEventListQuerySchema,
         response: { 200: auditEventListResponseSchema, ...authenticatedErrors },
       },
     },
     async (request) => {
       const ctx = contextOf(request)
-      const { page, pageSize, dateFrom, dateTo, actorUserId, entityType } = request.query
+      const { page, pageSize, dateFrom, dateTo, createdBefore, actorUserId, entityType } =
+        request.query
       const result = await listAuditEvents(ctx.db, ctx.institutionId, {
         page,
         pageSize,
         dateFrom,
         dateTo,
+        createdBefore,
         actorUserId,
         entityType,
       })

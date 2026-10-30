@@ -386,6 +386,7 @@ describe('işlem çalıştırıcı', () => {
         'classes',
         'assignments',
         'clubs',
+        'mockExams',
       ] as const
       const ctx = { ...(await institution(guidance)), log: logged.log }
       // Eski sürümden kalmış core denetim satırı: yüklenmez, dokunulmaz.

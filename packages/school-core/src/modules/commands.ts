@@ -25,7 +25,7 @@ export type CommandSpec = {
 }
 
 /** Kapsam (`scopeFor`) ve yetki (`authorize`) kaynağı; `lib/scope.ts` SCOPE_SOURCE_COLLECTIONS. */
-const SCOPE = ['students', 'teachers', 'classes', 'assignments', 'clubs'] as const
+const SCOPE = ['students', 'teachers', 'classes', 'assignments', 'clubs', 'mockExams'] as const
 /** Oturum aktörü ve iş akışı kapsamı veliyi de okur (`sessionActor`). */
 const SESSION = [...SCOPE, 'parents'] as const
 // Ders/etkinlik/etüt çakışma denetimi (`lib/tutor-conflicts.ts`).

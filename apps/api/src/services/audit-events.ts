@@ -23,6 +23,7 @@ export interface AuditEventQuery {
   pageSize: number
   dateFrom?: string | undefined
   dateTo?: string | undefined
+  createdBefore?: string | undefined
   actorUserId?: string | undefined
   entityType?: string | undefined
 }
@@ -64,6 +65,7 @@ export async function listAuditEvents(db: Database, institutionId: string, query
   const range = dayRange('createdAt', query.dateFrom, query.dateTo)
   if (range?.fromInstant) filters.push(gte(auditLog.createdAt, new Date(range.fromInstant)))
   if (range?.toInstant) filters.push(lt(auditLog.createdAt, new Date(range.toInstant)))
+  if (query.createdBefore) filters.push(lt(auditLog.createdAt, new Date(query.createdBefore)))
   if (query.actorUserId) filters.push(eq(auditLog.actorUserId, query.actorUserId))
   if (query.entityType) filters.push(eq(auditLog.entityType, query.entityType))
   const where = and(...filters)

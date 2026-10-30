@@ -306,7 +306,7 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 
 ### DOM-AKD-063 · Deneme sonucu giriş kapsamı
 
-- **Kural:** Deneme sonucunu yönetici her ders için, öğretmen yalnız kendi branşı ve kendi sınıflarındaki öğrenciler için girer. Öğrencinin sınıf düzeyi denemenin düzeyiyle aynı olmalıdır; ders denemenin kapsamında olmalıdır. Öğrenci ve veli yalnız kendi sonuçlarını görür. Sınıf ortalaması gibi karşılaştırmalı göstergeler başka öğrencinin kimliğini açık etmez.
+- **Kural:** Deneme sonucunu yönetici her ders için, öğretmen yalnız kendi branşı ve kendi sınıflarındaki öğrenciler için girer. Öğrencinin sınıf düzeyi denemenin düzeyiyle aynı olmalıdır; ders denemenin kapsamında olmalıdır. Öğrenci ve veli yalnız kendi sonuçlarını görür. Sınıf ortalaması gibi karşılaştırmalı göstergeler başka öğrencinin kimliğini açık etmez. Öğrenci ve veli kendi (bağlı çocuğunun) optik analizinde soru başına doğru cevabı görür: deneme sonrası öğrenciye kendi kitapçığının doğru cevaplarını göstermek olağan sonuç bildirimidir (bilinçli karar). Cevap anahtarının kendisi (profilin `keyCsv`/`keys` alanları, bütün kitapçık ve sorular) ve başka öğrencinin analizi kapalıdır. Profil satırı (başlık, okuyucu yerleşimi, revizyon) öğrenci ve veliye yalnız görebildiği, düzeyi kendi düzeyi olan denemeler için açılır; başka düzeyin denemesine ait profil liste, arama ve sayımda da görünmez.
 - **Gerekçe:** Deneme sonucu kişisel veridir; branş dışı giriş ölçme güvenliğini bozar.
 - **Kaynak:** İşletme kuralı; KVKK md. 12.
 - **Kurum türü:** `school`

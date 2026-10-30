@@ -38,6 +38,7 @@ import { registerResourceCommandRoutes } from './routes/resource-commands.ts'
 import { registerQuestionRoutes } from './routes/questions.ts'
 import { registerRequestRoutes } from './routes/requests.ts'
 import { registerAppointmentRoutes } from './routes/appointments.ts'
+import { registerProspectRoutes } from './routes/prospects.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
 
 // Şemada özel mesajı olmayan Zod hataları da Türkçe döner.
@@ -68,7 +69,11 @@ export const REDACTED_PATHS = [
   '*.idToken',
   'email',
   '*.email',
+  // kvkk: K — aday veya velisinin telefonu ve 18 yaş altı adayın veli adı (DOM-KAY-003, -009).
+  'phone',
   '*.phone',
+  'guardianName',
+  '*.guardianName',
   '*.nationalId',
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
   // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
@@ -89,6 +94,10 @@ export const REDACTED_PATHS = [
   '*.answer',
   'followUps',
   '*.followUps',
+  // kvkk: K — aday kartı notları (ön büro görüşme notu, DOM-KAY-032). Not metni (`text`) başka
+  // koleksiyonlarla ortak addır; aday kaydı loglanırsa `notes` dizisi bütünüyle gizlenir.
+  'notes',
+  '*.notes',
   '*.cookie',
   '*.authorization',
 ]
@@ -229,6 +238,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerCommunicationRoutes(app)
   registerRequestRoutes(app)
   registerAppointmentRoutes(app)
+  registerProspectRoutes(app)
   registerQuestionRoutes(app)
   registerResourceRoutes(app)
   registerResourceCommandRoutes(app)

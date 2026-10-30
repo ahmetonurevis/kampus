@@ -19,6 +19,7 @@ import { bookAppointmentCommand } from '../src/services/appointments.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { executeWorkflowCommand, recordAttendanceCommand } from '../src/services/commands.ts'
 import { sendMessageCommand } from '../src/services/communication.ts'
+import { createProspectCommand, scheduleProspectMeetingCommand } from '../src/services/prospects.ts'
 import { answerQuestionCommand } from '../src/services/questions.ts'
 import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, createMember, FIXED_NOW } from './support/app.ts'
@@ -605,5 +606,121 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
         and(eq(records.institutionId, base.institutionId), eq(records.collection, 'appointments')),
       )
     assert.equal(row?.n, 1)
+  })
+
+  /** Ön büro bağlamı ve seed kampüsleri; adaylar testin kendi kurumundadır. */
+  async function frontDeskContext(): Promise<ServiceContext> {
+    const base = await context()
+    const seed = createSeed(FIXED_NOW)
+    await insertMissingRecords(
+      db,
+      base.institutionId,
+      seed.branches.map((data) => ({
+        collection: 'branches' as const,
+        id: data.id,
+        data: { ...data },
+      })),
+      FIXED_NOW,
+    )
+    const desk = await createMember(app, base.institutionId, 'onburo')
+    return { ...base, actor: { userId: desk.id, role: 'onburo', membershipId: desk.membershipId } }
+  }
+  const prospectCount = async (institutionId: string) => {
+    const [row] = await db
+      .select({ n: count() })
+      .from(records)
+      .where(and(eq(records.institutionId, institutionId), eq(records.collection, 'prospects')))
+    return row?.n
+  }
+  const keyed = (key: string) => ({
+    idempotency: { key, fingerprint: key },
+    expectedVersion: null,
+  })
+
+  test('DOM-KAY-002: aynı adayı eşzamanlı iki istek açar: yalnız biri yazılır, öteki 409 prospect_duplicate', async () => {
+    const ctx = await frontDeskContext()
+    const prospect = {
+      name: 'Test Eşzamanlı Aday',
+      phone: '05559990101',
+      branchId: 'b1',
+      interest: '7. Sınıf · Ortaokul',
+      source: 'Web sitesi',
+      guardianName: 'Test Veli',
+      privacyNoticeVersion: 'aydinlatma-2026-1',
+    }
+    const outcomes = await Promise.allSettled([
+      createProspectCommand(ctx, prospect, keyed('pg-prospect-0001')),
+      createProspectCommand(
+        ctx,
+        { ...prospect, name: 'test eşzamanlı ADAY' },
+        keyed('pg-prospect-0002'),
+      ),
+    ])
+    const fulfilled = outcomes.filter((item) => item.status === 'fulfilled')
+    assert.deepEqual(
+      fulfilled.map((item) => item.value.statusCode),
+      [201],
+    )
+    const rejected = outcomes.filter((item) => item.status === 'rejected')
+    assert.equal(rejected.length, 1)
+    const reason: unknown = rejected[0]?.reason
+    assert.ok(
+      reason instanceof AppError &&
+        reason.statusCode === 409 &&
+        reason.code === 'prospect_duplicate',
+      String(reason),
+    )
+    // Ret eşleşen adayın kimliğini taşımaz.
+    const createdId = JSON.stringify(fulfilled[0]?.value.body).match(/"id":"(pr-[^"]+)"/)?.[1]
+    assert.ok(createdId)
+    assert.equal(JSON.stringify(reason.issues ?? []).includes(createdId), false)
+    assert.equal(reason.message.includes(createdId), false)
+    assert.equal(await prospectCount(ctx.institutionId), 1)
+  })
+
+  test('DOM-KAY-033: iki adaya aynı odada eşzamanlı görüşme: yalnız biri yazılır, öteki 409 meeting_conflict', async () => {
+    const ctx = await frontDeskContext()
+    const open = (id: string, phone: string) => ({
+      collection: 'prospects' as const,
+      id,
+      data: {
+        id,
+        name: `Test Aday ${id}`,
+        phone,
+        email: '',
+        branchId: 'b1',
+        interest: '7. Sınıf',
+        source: 'Telefon',
+        stage: 'Yeni aday',
+        studentId: null,
+        createdAt: FIXED_NOW.toISOString(),
+        trialAt: null,
+        notes: [],
+      },
+    })
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [open('test-pr-a', '05559990201'), open('test-pr-b', '05559990202')],
+      FIXED_NOW,
+    )
+    const meeting = { date: '2026-10-10T10:00:00.000Z', duration: 45, room: 'Görüşme odası' }
+    const versioned = { idempotency: null, expectedVersion: 1 }
+    const outcomes = await Promise.allSettled([
+      scheduleProspectMeetingCommand(ctx, 'test-pr-a', meeting, versioned),
+      scheduleProspectMeetingCommand(ctx, 'test-pr-b', meeting, versioned),
+    ])
+    assert.equal(outcomes.filter((item) => item.status === 'fulfilled').length, 1)
+    const rejected = outcomes.filter((item) => item.status === 'rejected')
+    const reason: unknown = rejected[0]?.reason
+    assert.ok(
+      reason instanceof AppError && reason.statusCode === 409 && reason.code === 'meeting_conflict',
+      String(reason),
+    )
+    const planned = await db
+      .select({ id: records.id, data: records.data })
+      .from(records)
+      .where(and(eq(records.institutionId, ctx.institutionId), eq(records.collection, 'prospects')))
+    assert.equal(planned.filter((row) => row.data.trialAt !== null).length, 1)
   })
 })

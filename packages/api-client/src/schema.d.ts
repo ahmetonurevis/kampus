@@ -875,7 +875,7 @@ export interface paths {
         put?: never;
         /**
          * Taksiti öde
-         * @description Taksiti ödenmiş işaretler (core `payInvoice`). `Idempotency-Key` zorunludur; ödenmiş taksit 409 `invoice_already_paid`. Roller: `yonetici`, `onburo`.
+         * @description Taksiti ödenmiş işaretler (core `payInvoice`); yetki core `authorize('invoice.pay')` (DOM-FIN-052). `Idempotency-Key` zorunludur; ödenmiş taksit 409 `invoice_already_paid`. Roller: `yonetici`, `onburo`.
          */
         post: operations["payInvoice"];
         delete?: never;
@@ -895,13 +895,53 @@ export interface paths {
         put?: never;
         /**
          * Sınıf yoklaması al
-         * @description Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. `If-Match` sınıf kaydının sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`; `ogretmen` yalnız core kapsamındaki sınıfta.
+         * @description Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. Yetki core `authorize('attendance.record')`: `ogretmen` yalnız ders verdiği sınıfta ve aynı gün (başka sınıf 403 `attendance_class_forbidden`, geçmiş gün 403 `attendance_correction_admin_only`); `yonetici` yalnız `reason` ile (yoksa 422 `correction_reason_required`). `If-Match` sınıf kaydının sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`, `ogretmen`.
          */
         post: operations["recordClassAttendance"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/grades": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resmî not gir
+         * @description Resmî not kaydı ekler (core `recordGrade`, DOM-AKD-004); dönem ortalaması saklanmaz. Yetki core `authorize('grade.record')`: yalnız öğrencinin sınıfında o dersin atanmış öğretmeni (başka ders veya sınıf 403 `grade_assignment_forbidden`). Dil okulunda 422 `official_grades_school_only`; aynı gün aynı türde ikinci not 409 `grade_duplicate`; gelecek tarih 422. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `ogretmen`.
+         */
+        post: operations["recordGrade"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/grades/{gradeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Notu gerekçeyle düzelt
+         * @description Not puanını gerekçeyle düzeltir; eski puan `corrections` geçmişinde kalır (core `updateGrade`, DOM-AKD-051). Yetki core `authorize('grade.update')`: atanmış ders öğretmeni veya `reason` ile yönetici; görülemeyen not 404. Aynı puan 409 `grade_unchanged`, quizden aktarılan not 422. `If-Match` notun sürümüdür; tutmazsa 409 `version_conflict`. Denetim kaydına değer değil alan adı yazılır. Roller: `yonetici`, `ogretmen`.
+         */
+        patch: operations["updateGrade"];
         trace?: never;
     };
     "/api/v1/branches/{branchId}": {
@@ -916,7 +956,7 @@ export interface paths {
         post?: never;
         /**
          * Kampüs arşivle
-         * @description Kampüs kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Rol: `yonetici`.
+         * @description Kampüs kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Yetki core `authorize('record.archive')`; roller: `yonetici`.
          */
         delete: operations["archiveBranch"];
         options?: never;
@@ -935,7 +975,7 @@ export interface paths {
         put?: never;
         /**
          * Kampüs arşivden geri al
-         * @description Kampüs kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Rol: `yonetici`.
+         * @description Kampüs kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Yetki core `authorize('record.restore')`; roller: `yonetici`.
          */
         post: operations["restoreBranch"];
         delete?: never;
@@ -956,7 +996,7 @@ export interface paths {
         post?: never;
         /**
          * Sınıf arşivle
-         * @description Sınıf kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Rol: `yonetici`.
+         * @description Sınıf kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Yetki core `authorize('record.archive')`; roller: `yonetici`.
          */
         delete: operations["archiveClass"];
         options?: never;
@@ -975,7 +1015,7 @@ export interface paths {
         put?: never;
         /**
          * Sınıf arşivden geri al
-         * @description Sınıf kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Rol: `yonetici`.
+         * @description Sınıf kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Yetki core `authorize('record.restore')`; roller: `yonetici`.
          */
         post: operations["restoreClass"];
         delete?: never;
@@ -996,7 +1036,7 @@ export interface paths {
         post?: never;
         /**
          * Öğretmen arşivle
-         * @description Öğretmen kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Rol: `yonetici`.
+         * @description Öğretmen kaydını arşivler (core `archiveRecord`); bağlı kayıtlar `replacementId`'ye aktarılır, geçmiş finans/not/yoklama korunur. Yetki core `authorize('record.archive')`; roller: `yonetici`.
          */
         delete: operations["archiveTeacher"];
         options?: never;
@@ -1015,7 +1055,7 @@ export interface paths {
         put?: never;
         /**
          * Öğretmen arşivden geri al
-         * @description Öğretmen kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Rol: `yonetici`.
+         * @description Öğretmen kaydını arşivden geri alır (core `restoreRecord`); aktarılan görevler otomatik geri taşınmaz. Yetki core `authorize('record.restore')`; roller: `yonetici`.
          */
         post: operations["restoreTeacher"];
         delete?: never;
@@ -6216,6 +6256,229 @@ export interface operations {
                     marks: {
                         [key: string]: "present" | "absent" | "late" | "excused";
                     };
+                    /** @description Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); yöneticide zorunlu, yoksa 422 `correction_reason_required` */
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordGrade: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    subjectId: string;
+                    term: number;
+                    /** @enum {string} */
+                    assessmentType: "sinav" | "performans" | "proje" | "katilim";
+                    date: string;
+                    score?: number;
+                    quizId?: string;
+                    /** @default  */
+                    topic?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateGrade: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Not kimliği */
+                gradeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    score: number;
+                    reason: string;
                 };
             };
         };

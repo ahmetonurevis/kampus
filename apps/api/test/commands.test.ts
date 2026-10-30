@@ -5,9 +5,9 @@ import { and, asc, eq } from 'drizzle-orm'
 
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
 import { runAssessment } from '@kampus/school-core/lib/assessment-automation.ts'
-import { DomainError } from '@kampus/school-core/lib/errors.ts'
-import { runWorkflow, type WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
+import type { WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
 import { MODULE_KEYS, moduleAvailableFor } from '@kampus/school-core/modules/collection-modules.ts'
+import { WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
@@ -16,7 +16,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
-import { WORKFLOW_MODULES, WORKFLOW_ROUTES } from '../src/routes/workflows.schemas.ts'
+import { WORKFLOW_ROUTES } from '../src/routes/workflows.schemas.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
   buildTestApp,
@@ -124,6 +124,9 @@ const OUTSIDE_TEACHER = SEED.teachers.find(
     !SEED.clubs.some((item) => item.teacherId === teacher.id),
 )
 if (!OUTSIDE_TEACHER) throw new Error('örnek veride kapsam dışı öğretmen yok')
+
+/** Yönetici yoklaması düzeltmedir ve gerekçe ister (DOM-AKD-035, core `attendance.record`). */
+const REASON = 'Öğretmen raporlu'
 
 const marksFor = (classId: string, status = 'present') =>
   Object.fromEntries(classStudents(classId).map((student) => [student.id, status]))
@@ -399,6 +402,7 @@ describe('yazma uçları', () => {
           .filter(([, route]) => route.idempotency === 'required')
           .map(([command]) => `POST /api/v1/workflows/${command}`),
         'POST /api/v1/invoices/{invoiceId}/pay',
+        'POST /api/v1/grades',
       ]
       assert.deepEqual(required.sort(), expected.sort())
     })
@@ -420,7 +424,7 @@ describe('yazma uçları', () => {
   // --- Kurum türü modül kısıtı (DOM-YTK-012) -----------------------------------------------
 
   describe('DOM-YTK-012: kurum türünde olmayan modülün yazma uçları bulunmaz (404)', () => {
-    const commands = Object.keys(WORKFLOW_MODULES) as WorkflowCommand[]
+    const commands = Object.keys(WORKFLOW_COMMANDS) as WorkflowCommand[]
 
     /** Kurumun bütün kayıtları ve denetim satırları: reddedilen istek hiçbirini değiştirmez. */
     async function snapshot(institutionId: string) {
@@ -436,22 +440,20 @@ describe('yazma uçları', () => {
       return { stored, audit: audit.length }
     }
 
-    test('komut → modül tablosu core ile aynıdır: yalnız o modül kapanınca core reddeder', () => {
-      const allOn = Object.fromEntries(MODULE_KEYS.map((key) => [key, true]))
-      const run = (command: WorkflowCommand, modules: Record<string, boolean>) => {
-        const state = createSeed(FIXED_NOW)
-        state.modules = { ...state.modules, ...modules }
-        try {
-          runWorkflow(state, { role: 'yonetici' }, command, {}, (p) => `${p}-t`, 'test-yok')
-          return null
-        } catch (error) {
-          return error instanceof DomainError ? error.code : 'other'
+    test('rota tablosu core komut tablosunu izler: her komut core modülü kapanınca 403 module_disabled', async () => {
+      assert.deepEqual(Object.keys(WORKFLOW_ROUTES).sort(), [...commands].sort())
+      const modules = [...new Set(commands.map((command) => WORKFLOW_COMMANDS[command].module))]
+      let serial = 0
+      for (const module of modules) {
+        const a = await institution({ enabledModules: { ...SEED.modules, [module]: false } })
+        const before = await snapshot(a.id)
+        for (const command of commands.filter((c) => WORKFLOW_COMMANDS[c].module === module)) {
+          const route = WORKFLOW_ROUTES[command]
+          const url = `/api/v1/workflows/${command}${route.record === 'required' ? '/goal-s1-math' : ''}`
+          const headers = { 'idempotency-key': `test-mod-${String(++serial).padStart(4, '0')}` }
+          assertError(await post(url, a.adminCookie, {}, headers), 403, 'module_disabled')
         }
-      }
-      for (const command of commands) {
-        const module = WORKFLOW_MODULES[command]
-        assert.equal(run(command, { ...allOn, [module]: false }), 'module_disabled', command)
-        assert.notEqual(run(command, allOn), 'module_disabled', command)
+        assert.deepEqual(await snapshot(a.id), before, module)
       }
     })
 
@@ -462,7 +464,7 @@ describe('yazma uçları', () => {
       })
       const before = await snapshot(a.id)
       const unavailable = commands.filter(
-        (command) => !moduleAvailableFor(WORKFLOW_MODULES[command], 'language_school'),
+        (command) => !moduleAvailableFor(WORKFLOW_COMMANDS[command].module, 'language_school'),
       )
       assert.ok(unavailable.includes('goal') && unavailable.includes('renewal'))
       let serial = 0
@@ -537,7 +539,7 @@ describe('yazma uçları', () => {
     test('yoklamada If-Match sınıf sürümüdür: tutmazsa 409 version_conflict, kayıt yazılmaz', async () => {
       const a = await institution()
       const url = '/api/v1/classes/c1/attendance'
-      const body = { date: DAY, marks: marksFor('c1') }
+      const body = { date: DAY, marks: marksFor('c1'), reason: REASON }
       assertError(
         await post(url, a.adminCookie, body, { 'if-match': '"99"' }),
         409,
@@ -600,7 +602,7 @@ describe('yazma uçları', () => {
     const url = `/api/v1/invoices/${UNPAID.id}/pay`
     const key = (n: number) => ({ 'idempotency-key': `test-pay-${String(n).padStart(4, '0')}` })
 
-    test('ön büro taksiti öder; tekrar aynı yanıtı Idempotent-Replayed ile döner', async () => {
+    test('DOM-FIN-052: ön büro taksiti öder; tekrar aynı yanıtı Idempotent-Replayed ile döner', async () => {
       const a = await institution()
       const desk = await member(a.id, 'onburo')
       const first = await post(url, desk, { method: 'Kredi kartı' }, key(1))
@@ -644,7 +646,7 @@ describe('yazma uçları', () => {
       assert.equal(await version(a.id, 'invoices', UNPAID.id), 1)
     })
 
-    test('rol yetkisi: öğretmen, veli ve öğrenci 403 (API varsayılanı yonetici/onburo)', async () => {
+    test('DOM-FIN-052: tahsilat kaydı yalnız yönetici ve ön büroda; öğretmen, veli ve öğrenci 403', async () => {
       const a = await institution()
       for (const [role, links] of [
         ['ogretmen', [{ kind: 'teacher', recordId: 't1' }]],
@@ -707,11 +709,15 @@ describe('yazma uçları', () => {
 
     test('yönetici yoklama alır; aynı gün ikinci yoklama kaydı günceller, yinelemez', async () => {
       const a = await institution()
-      const first = await post(url, a.adminCookie, { date: DAY, marks: marksFor('c1') })
+      const first = await post(url, a.adminCookie, {
+        date: DAY,
+        marks: marksFor('c1'),
+        reason: REASON,
+      })
       assert.equal(first.statusCode, 200, first.body)
       assert.equal(first.json().data.changes.inserted, students.length)
       const marks = { ...marksFor('c1'), [students[0]?.id ?? '']: 'late' }
-      const second = await post(url, a.adminCookie, { date: DAY, marks })
+      const second = await post(url, a.adminCookie, { date: DAY, marks, reason: REASON })
       assert.equal(second.statusCode, 200, second.body)
       assert.deepEqual(second.json().data.changes, {
         inserted: 0,
@@ -730,7 +736,11 @@ describe('yazma uçları', () => {
       const outside = await member(a.id, 'ogretmen', [
         { kind: 'teacher', recordId: OUTSIDE_TEACHER.id },
       ])
-      assertError(await post(url, outside, { date: DAY, marks: marksFor('c1') }), 403, 'forbidden')
+      assertError(
+        await post(url, outside, { date: DAY, marks: marksFor('c1') }),
+        403,
+        'attendance_class_forbidden',
+      )
       assert.equal(await count(a.id, 'attendance'), 0)
       const response = await post(url, own, { date: DAY, marks: marksFor('c1') })
       assert.equal(response.statusCode, 200, response.body)
@@ -741,22 +751,34 @@ describe('yazma uçları', () => {
       const a = await institution()
       const partial = Object.fromEntries(Object.entries(marksFor('c1')).slice(1))
       assertError(
-        await post(url, a.adminCookie, { date: DAY, marks: partial }),
+        await post(url, a.adminCookie, { date: DAY, marks: partial, reason: REASON }),
         422,
         'attendance_incomplete',
       )
       assertError(
-        await post(url, a.adminCookie, { date: '2099-01-05', marks: marksFor('c1') }),
+        await post(url, a.adminCookie, {
+          date: '2099-01-05',
+          marks: marksFor('c1'),
+          reason: REASON,
+        }),
         422,
         'attendance_future_date',
       )
       assertError(
-        await post(url, a.adminCookie, { date: '2026-02-30', marks: marksFor('c1') }),
+        await post(url, a.adminCookie, {
+          date: '2026-02-30',
+          marks: marksFor('c1'),
+          reason: REASON,
+        }),
         400,
         'validation_failed',
       )
       assertError(
-        await post(url, a.adminCookie, { date: DAY, marks: marksFor('c1', 'geldi') }),
+        await post(url, a.adminCookie, {
+          date: DAY,
+          marks: marksFor('c1', 'geldi'),
+          reason: REASON,
+        }),
         400,
         'validation_failed',
       )
@@ -791,6 +813,7 @@ describe('yazma uçları', () => {
         await post('/api/v1/classes/test-c-yok/attendance', a.adminCookie, {
           date: DAY,
           marks: {},
+          reason: REASON,
         }),
         404,
         'not_found',
@@ -799,11 +822,112 @@ describe('yazma uçları', () => {
         await post(`/api/v1/classes/${foreign.id}/attendance`, a.adminCookie, {
           date: DAY,
           marks: {},
+          reason: REASON,
         }),
         404,
         'not_found',
       )
       assert.equal(await count(b.id, 'attendance'), 0)
+    })
+  })
+
+  // --- Core yazma yetkisi (DOM-YTK-001) ----------------------------------------------------
+
+  describe('DOM-YTK-001: temel yazma yetkisi core `authorize` tablosundandır', () => {
+    const url = '/api/v1/classes/c1/attendance'
+
+    test('DOM-AKD-035: yönetici yoklaması gerekçesiz 422 correction_reason_required, gerekçeyle 200', async () => {
+      const a = await institution()
+      for (const reason of [undefined, ' ', 'a'])
+        assertError(
+          await post(url, a.adminCookie, { date: DAY, marks: marksFor('c1'), reason }),
+          422,
+          'correction_reason_required',
+        )
+      assert.equal(await count(a.id, 'attendance'), 0)
+      const ok = await post(url, a.adminCookie, {
+        date: DAY,
+        marks: marksFor('c1'),
+        reason: REASON,
+      })
+      assert.equal(ok.statusCode, 200, ok.body)
+      assert.equal(await count(a.id, 'attendance'), classStudents('c1').length)
+    })
+
+    test('gelecek gün uygulamanın saatine göredir: sabit saatte ertesi gün 422, kayıt yazılmaz', async () => {
+      // Uygulamanın saati FIXED_NOW'dır; ertesi gün gerçek saate göre geçmiş olsa da gelecektir.
+      const a = await institution()
+      assertError(
+        await post(url, a.adminCookie, {
+          date: '2026-10-07',
+          marks: marksFor('c1'),
+          reason: REASON,
+        }),
+        422,
+        'attendance_future_date',
+      )
+      assert.equal(await count(a.id, 'attendance'), 0)
+    })
+
+    test('DOM-YTK-022: öğretmen yalnız ders verdiği sınıfta ve aynı gün yoklama girer', async () => {
+      const a = await institution()
+      const own = await member(a.id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+      assertError(
+        await post(url, own, { date: '2026-10-05', marks: marksFor('c1'), reason: REASON }),
+        403,
+        'attendance_correction_admin_only',
+      )
+      assert.equal(await count(a.id, 'attendance'), 0)
+      const today = await post(url, own, { date: DAY, marks: marksFor('c1') })
+      assert.equal(today.statusCode, 200, today.body)
+      // Geçmiş günü yönetici gerekçeyle düzeltir.
+      const corrected = await post(url, a.adminCookie, {
+        date: '2026-10-05',
+        marks: marksFor('c1', 'excused'),
+        reason: REASON,
+      })
+      assert.equal(corrected.statusCode, 200, corrected.body)
+    })
+
+    test('öğrenci ödeme, yoklama, arşiv ve geri almada 403; kayıt değişmez', async () => {
+      const a = await institution()
+      const student = await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
+      const key = { 'idempotency-key': 'test-ogrenci-0001' }
+      assertError(
+        await post(`/api/v1/invoices/${UNPAID.id}/pay`, student, { method: 'Nakit' }, key),
+        403,
+      )
+      assertError(
+        await post(url, student, { date: DAY, marks: marksFor('c1'), reason: REASON }),
+        403,
+      )
+      assertError(await send('DELETE', '/api/v1/classes/c3?replacementId=c2', student), 403)
+      assertError(await post('/api/v1/classes/c3/restore', student), 403)
+      assert.equal(await version(a.id, 'invoices', UNPAID.id), 1)
+      assert.equal(await version(a.id, 'classes', 'c3'), 1)
+      assert.equal(await count(a.id, 'attendance'), 0)
+    })
+
+    test('DOM-YTK-020: arşiv ve geri alma yalnız yöneticide; veli ve öğretmen 403', async () => {
+      const a = await institution()
+      const archived = await send(
+        'DELETE',
+        `/api/v1/classes/c3?replacementId=${SAME_LEVEL.id}`,
+        a.adminCookie,
+      )
+      assert.equal(archived.statusCode, 200, archived.body)
+      const archivedVersion = await version(a.id, 'classes', 'c3')
+      for (const [role, links] of [
+        ['onburo', []],
+        ['ogretmen', [{ kind: 'teacher', recordId: 't1' }]],
+        ['veli', [{ kind: 'child', recordId: 's1' }]],
+      ] as const) {
+        const cookie = await member(a.id, role, [...links])
+        assertError(await post('/api/v1/classes/c3/restore', cookie), 403)
+        assertError(await send('DELETE', '/api/v1/classes/c2?replacementId=c1', cookie), 403)
+      }
+      assert.equal(await version(a.id, 'classes', 'c3'), archivedVersion)
+      assert.equal(await version(a.id, 'classes', 'c2'), 1)
     })
   })
 

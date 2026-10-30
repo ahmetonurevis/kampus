@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import type { WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
-import type { ModuleKey } from '@kampus/school-core/modules/collection-modules.ts'
+import { WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Role } from '../auth.ts'
 
@@ -15,7 +15,8 @@ import type { Role } from '../auth.ts'
  * `record`: komutun `:recordId` alıp almadığı (`optional`: kimliksiz oluşturur, kimlikle
  * günceller). `idempotency: 'required'`: taksit/sözleşme oluşturan (yenileme) ve toplu içe
  * aktaran komutlar (api.md). Rol ve kapsam core'un kuralıdır (`mayRun`, `scopeFor`); rota her
- * rolü kabul eder, core reddi 403'tür.
+ * rolü kabul eder, core reddi 403'tür. Komutun modülü ve yükleyeceği koleksiyonlar core komut
+ * tablosundandır (`WORKFLOW_COMMANDS`, `modules/commands.ts`).
  */
 export interface WorkflowRoute {
   record: 'none' | 'required' | 'optional'
@@ -76,50 +77,6 @@ export const WORKFLOW_ROUTES = {
   'club-archive': onRecord('Kulübü arşivle'),
 } as const satisfies Record<WorkflowCommand, WorkflowRoute>
 
-/**
- * Komutun modülü: rota `requireModule` ile okuma uçlarıyla aynı sırayı uygular (kurum türünde
- * olmayan modül 404, kapalı modül 403 `module_disabled`; DOM-YTK-012, DOM-YTK-040). Core
- * komut → modül tablosunu dışa aktarmadığı için burada tutulur; test her komutun core'da yalnız
- * bu modül kapanınca `module_disabled` verdiğini doğrular (tablo core'dan sapamaz).
- * TODO(core-command-modules): core tabloyu dışa aktarınca buradan okunur.
- */
-export const WORKFLOW_MODULES = {
-  goal: 'goals',
-  'goal-review': 'goals',
-  'goal-step': 'goals',
-  'goal-step-done': 'goals',
-  'goal-suggest': 'goals',
-  'goal-comment': 'goals',
-  'goal-close': 'goals',
-  guidance: 'guidance',
-  'guidance-note': 'guidance',
-  exam: 'exams',
-  'exam-result': 'exams',
-  'exam-import': 'exams',
-  renewal: 'renewal',
-  'renewal-activate': 'renewal',
-  lesson: 'planning',
-  substitute: 'planning',
-  'lesson-cancel': 'planning',
-  'study-task': 'study',
-  'study-complete': 'study',
-  'study-review': 'study',
-  event: 'calendar',
-  consent: 'calendar',
-  'event-cancel': 'calendar',
-  route: 'transport',
-  'route-archive': 'transport',
-  'transport-assign': 'transport',
-  'transport-remove': 'transport',
-  meal: 'meals',
-  club: 'clubs',
-  'club-enroll': 'clubs',
-  'club-leave': 'clubs',
-  'club-attendance': 'clubs',
-  achievement: 'clubs',
-  'club-archive': 'clubs',
-} as const satisfies Record<WorkflowCommand, ModuleKey>
-
 export const workflowRecordParamsSchema = z.object({
   recordId: z.string().min(1).max(200).describe('Komutun konusu olan kayıt (ör. hedef kimliği)'),
 })
@@ -140,5 +97,5 @@ export const emptyCommandBodySchema = z.object({}).describe('Gövdesiz komut')
 
 /** OpenAPI açıklaması: rol kuralı core'dadır. */
 export function workflowDescription(command: WorkflowCommand, roles: readonly Role[]): string {
-  return `school-core \`runWorkflow('${command}')\`. Gövde core \`workflowSchemas\` şemasıdır. Core'un izin verdiği roller: ${roles.map((role) => `\`${role}\``).join(', ')}; kayıt kapsamı core \`scopeFor\` ile üyelik bağlantılarından hesaplanır. Modül: \`${WORKFLOW_MODULES[command]}\`; kurum türünde olmayan modül 404, kapalı modül 403 \`module_disabled\`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.`
+  return `school-core \`runWorkflow('${command}')\`. Gövde core \`workflowSchemas\` şemasıdır. Core'un izin verdiği roller: ${roles.map((role) => `\`${role}\``).join(', ')}; kayıt kapsamı core \`scopeFor\` ile üyelik bağlantılarından hesaplanır. Modül: \`${WORKFLOW_COMMANDS[command].module}\`; kurum türünde olmayan modül 404, kapalı modül 403 \`module_disabled\`, yetkisiz rol veya kapsam dışı kayıt 403, yok veya başka kurumun kaydı 404, iş kuralı 422, çakışma 409.`
 }

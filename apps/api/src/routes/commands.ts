@@ -8,12 +8,15 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
 import { automationSchemas } from '@kampus/school-core/lib/assessment-automation.ts'
+import { WRITE_ACTION_ROLES, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
+import { gradeRecordSchema, gradeUpdateSchema } from '@kampus/school-core/lib/grades.ts'
 import type { ArchiveKind } from '@kampus/school-core/lib/school-management.ts'
 import {
   mayRun,
   workflowSchemas,
   type WorkflowCommand,
 } from '@kampus/school-core/lib/school-workflows.ts'
+import { OPERATION_COMMANDS, WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import { ROLES, type Role } from '../auth.ts'
 import { contextOf } from '../plugins/authenticate.ts'
@@ -22,8 +25,10 @@ import {
   executeTutoringCommand,
   executeWorkflowCommand,
   payInvoiceCommand,
+  recordGradeCommand,
   recordAttendanceCommand,
   restoreCommand,
+  updateGradeCommand,
   type CommandOptions,
   type TutoringCommand,
 } from '../services/commands.ts'
@@ -36,6 +41,7 @@ import {
   commandErrors,
   commandHeadersSchema,
   commandResponseSchema,
+  gradeParamsSchema,
   invoiceParamsSchema,
   payInvoiceBodySchema,
   teacherParamsSchema,
@@ -45,7 +51,6 @@ import {
 } from './commands.schemas.ts'
 import {
   emptyCommandBodySchema,
-  WORKFLOW_MODULES,
   WORKFLOW_ROUTES,
   workflowDescription,
   workflowQuerySchema,
@@ -68,6 +73,7 @@ declare module 'fastify' {
 }
 
 const response = { 200: commandResponseSchema, ...commandErrors }
+const created = { 201: commandResponseSchema, ...commandErrors }
 
 function captureInput(): preValidationAsyncHookHandler {
   return async function (request) {
@@ -160,7 +166,7 @@ export function registerCommandRoutes(app: FastifyInstance) {
 
     // Rol kuralı core'dadır (`mayRun`): rota her rolü kabul eder, core reddi 403'tür. Modül
     // rotada denetlenir (okuma uçlarıyla aynı 404/403); core da kapalı modülü ayrıca reddeder.
-    const module = WORKFLOW_MODULES[name]
+    const module = WORKFLOW_COMMANDS[name].module
     if (route.record !== 'required')
       typed.post(
         `/api/v1/workflows/${name}`,
@@ -190,18 +196,29 @@ export function registerCommandRoutes(app: FastifyInstance) {
       )
   }
 
+  /**
+   * Temel yazma işlemi (core `authorize` eylemi): modül core komut tablosundan, rol ön denetimi
+   * core yetki tablosundan (`WRITE_ACTION_ROLES`) gelir. Rol reddi gövde ve sürüm denetiminden
+   * önce 403 olur; kapsam ve gerekçe kuralları serviste core `requireAuthorized`'dadır.
+   */
+  const operationGuard = (action: WriteAction, opts?: { subject?: boolean }) =>
+    guard(WRITE_ACTION_ROLES[action], OPERATION_COMMANDS[action].module, opts)
+  const rolesOf = (action: WriteAction) =>
+    WRITE_ACTION_ROLES[action].map((role) => `\`${role}\``).join(', ')
+
   // --- Ödeme --------------------------------------------------------------------------------
-  // Core `payInvoice` rol denetlemez: tahsilat yönetici ve ön büronundur (yetki matrisi).
+  // Tahsilat kaydı yalnız yönetici ve ön büronundur (core `invoice.pay`, DOM-FIN-052). Velinin
+  // çevrim içi ödemesi (`invoice.payOnline`) ödeme sağlayıcısını bekler; uç yoktur.
+  // TODO(payment-provider): sağlayıcı seçilince `invoice.payOnline` ucu eklenir.
   typed.post(
     '/api/v1/invoices/:invoiceId/pay',
     {
-      preValidation: guard(['yonetici', 'onburo'], 'finance'),
+      preValidation: operationGuard('invoice.pay'),
       schema: {
         operationId: 'payInvoice',
         tags: ['invoices'],
         summary: 'Taksiti öde',
-        description:
-          'Taksiti ödenmiş işaretler (core `payInvoice`). `Idempotency-Key` zorunludur; ödenmiş taksit 409 `invoice_already_paid`. Roller: `yonetici`, `onburo`.',
+        description: `Taksiti ödenmiş işaretler (core \`payInvoice\`); yetki core \`authorize('invoice.pay')\` (DOM-FIN-052). \`Idempotency-Key\` zorunludur; ödenmiş taksit 409 \`invoice_already_paid\`. Roller: ${rolesOf('invoice.pay')}.`,
         headers: commandHeadersSchema('required'),
         params: invoiceParamsSchema,
         body: payInvoiceBodySchema,
@@ -221,17 +238,16 @@ export function registerCommandRoutes(app: FastifyInstance) {
   )
 
   // --- Yoklama ------------------------------------------------------------------------------
-  // Core `recordAttendance` rol denetlemez: yönetici ve (core kapsamındaki sınıfta) öğretmen.
+  // Yetki core `attendance.record`: öğretmen ders verdiği sınıfta aynı gün, yönetici gerekçeyle.
   typed.post(
     '/api/v1/classes/:classId/attendance',
     {
-      preValidation: guard(['yonetici', 'ogretmen'], 'academic'),
+      preValidation: operationGuard('attendance.record'),
       schema: {
         operationId: 'recordClassAttendance',
         tags: ['attendance'],
         summary: 'Sınıf yoklaması al',
-        description:
-          'Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. `If-Match` sınıf kaydının sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`; `ogretmen` yalnız core kapsamındaki sınıfta.',
+        description: `Sınıfın günlük yoklamasını yazar (core \`recordAttendance\`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. Yetki core \`authorize('attendance.record')\`: \`ogretmen\` yalnız ders verdiği sınıfta ve aynı gün (başka sınıf 403 \`attendance_class_forbidden\`, geçmiş gün 403 \`attendance_correction_admin_only\`); \`yonetici\` yalnız \`reason\` ile (yoksa 422 \`correction_reason_required\`). \`If-Match\` sınıf kaydının sürümüdür; tutmazsa 409 \`version_conflict\`. Roller: ${rolesOf('attendance.record')}.`,
         headers: commandHeadersSchema('optional'),
         params: classParamsSchema,
         body: attendanceBodySchema,
@@ -244,8 +260,68 @@ export function registerCommandRoutes(app: FastifyInstance) {
         await recordAttendanceCommand(
           contextOf(request),
           request.params.classId,
-          request.body.date,
-          request.body.marks,
+          request.body,
+          options(request, 'optional'),
+        ),
+      ),
+  )
+
+  // --- Resmî not ----------------------------------------------------------------------------
+  // Yetki core `grade.record`/`grade.update` (DOM-AKD-054): not girişi yalnız atandığı sınıf ve
+  // dersin öğretmeninde; yönetici yeni not girmez, yalnız gerekçeyle düzeltir (DOM-AKD-051).
+  typed.post(
+    '/api/v1/grades',
+    {
+      preValidation: operationGuard('grade.record', { subject: false }),
+      schema: {
+        operationId: 'recordGrade',
+        tags: ['grades'],
+        summary: 'Resmî not gir',
+        description: `Resmî not kaydı ekler (core \`recordGrade\`, DOM-AKD-004); dönem ortalaması saklanmaz. Yetki core \`authorize('grade.record')\`: yalnız öğrencinin sınıfında o dersin atanmış öğretmeni (başka ders veya sınıf 403 \`grade_assignment_forbidden\`). Dil okulunda 422 \`official_grades_school_only\`; aynı gün aynı türde ikinci not 409 \`grade_duplicate\`; gelecek tarih 422. \`Idempotency-Key\` zorunludur. Başarı 201 ve \`Location\`. Roller: ${rolesOf('grade.record')}.`,
+        headers: commandHeadersSchema('required', { ifMatch: false }),
+        body: gradeRecordSchema,
+        response: created,
+      },
+    },
+    async (request, reply) => {
+      const body = sendCommand(
+        reply,
+        await recordGradeCommand(
+          contextOf(request),
+          request.commandInput,
+          options(request, 'required'),
+        ),
+      )
+      // Tekrarlanan yanıt da aynı konumu verir: kimlik saklanan gövdededir.
+      const entity = body.data.entity
+      if (entity)
+        reply.header('location', `/api/v1/collections/grades/${encodeURIComponent(entity.id)}`)
+      return body
+    },
+  )
+
+  typed.patch(
+    '/api/v1/grades/:gradeId',
+    {
+      preValidation: operationGuard('grade.update'),
+      schema: {
+        operationId: 'updateGrade',
+        tags: ['grades'],
+        summary: 'Notu gerekçeyle düzelt',
+        description: `Not puanını gerekçeyle düzeltir; eski puan \`corrections\` geçmişinde kalır (core \`updateGrade\`, DOM-AKD-051). Yetki core \`authorize('grade.update')\`: atanmış ders öğretmeni veya \`reason\` ile yönetici; görülemeyen not 404. Aynı puan 409 \`grade_unchanged\`, quizden aktarılan not 422. \`If-Match\` notun sürümüdür; tutmazsa 409 \`version_conflict\`. Denetim kaydına değer değil alan adı yazılır. Roller: ${rolesOf('grade.update')}.`,
+        headers: commandHeadersSchema('optional'),
+        params: gradeParamsSchema,
+        body: gradeUpdateSchema,
+        response,
+      },
+    },
+    async (request, reply) =>
+      sendCommand(
+        reply,
+        await updateGradeCommand(
+          contextOf(request),
+          request.params.gradeId,
+          request.commandInput,
           options(request, 'optional'),
         ),
       ),
@@ -282,16 +358,16 @@ export function registerCommandRoutes(app: FastifyInstance) {
   for (const target of archiveTargets) {
     const recordIdOf = (request: FastifyRequest): string =>
       z.object({ [target.param]: z.string() }).parse(request.params)[target.param] ?? ''
-    // Core arşiv işlemleri rol denetlemez: kampüs/sınıf/kadro yönetimi yöneticinindir.
+    // Kampüs/sınıf/kadro yönetimi yöneticinindir (core `record.archive`, `record.restore`).
     typed.delete(
       `/api/v1/${target.path}/:${target.param}`,
       {
-        preValidation: guard(['yonetici'], null),
+        preValidation: operationGuard('record.archive'),
         schema: {
           operationId: `archive${target.name}`,
           tags: ['school-management'],
           summary: `${target.label} arşivle`,
-          description: `${target.label} kaydını arşivler (core \`archiveRecord\`); bağlı kayıtlar \`replacementId\`'ye aktarılır, geçmiş finans/not/yoklama korunur. Rol: \`yonetici\`.`,
+          description: `${target.label} kaydını arşivler (core \`archiveRecord\`); bağlı kayıtlar \`replacementId\`'ye aktarılır, geçmiş finans/not/yoklama korunur. Yetki core \`authorize('record.archive')\`; roller: ${rolesOf('record.archive')}.`,
           headers: commandHeadersSchema('optional'),
           params: target.params,
           querystring: archiveQuerySchema,
@@ -313,12 +389,12 @@ export function registerCommandRoutes(app: FastifyInstance) {
     typed.post(
       `/api/v1/${target.path}/:${target.param}/restore`,
       {
-        preValidation: guard(['yonetici'], null),
+        preValidation: operationGuard('record.restore'),
         schema: {
           operationId: `restore${target.name}`,
           tags: ['school-management'],
           summary: `${target.label} arşivden geri al`,
-          description: `${target.label} kaydını arşivden geri alır (core \`restoreRecord\`); aktarılan görevler otomatik geri taşınmaz. Rol: \`yonetici\`.`,
+          description: `${target.label} kaydını arşivden geri alır (core \`restoreRecord\`); aktarılan görevler otomatik geri taşınmaz. Yetki core \`authorize('record.restore')\`; roller: ${rolesOf('record.restore')}.`,
           headers: commandHeadersSchema('optional'),
           params: target.params,
           body: emptyCommandBodySchema.optional(),

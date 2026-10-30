@@ -5,11 +5,13 @@ import type { OperationResponse } from './operation-runner.ts'
 export function commandBody(
   entity: { collection: string; id: string } | null,
   changes: readonly WrittenRecord[],
+  /** Oluşturma uçlarında 201 (api-tasarimi.md §1); idempotent tekrar aynı durumu döndürür. */
+  statusCode = 200,
 ): OperationResponse {
   const count = (kind: WrittenRecord['kind']) =>
     changes.filter((change) => change.kind === kind).length
   return {
-    statusCode: 200,
+    statusCode,
     body: {
       data: {
         entity,

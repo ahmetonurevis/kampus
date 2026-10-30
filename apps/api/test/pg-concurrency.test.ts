@@ -358,13 +358,14 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     )
     const marks = Object.fromEntries(students.map((item) => [item.id, 'present' as const]))
     const options = { idempotency: null, expectedVersion: null }
+    // Yönetici yoklaması gerekçe ister (DOM-AKD-035).
+    const reason = 'Eşzamanlılık denemesi'
     const outcomes = await Promise.allSettled([
-      recordAttendanceCommand(ctx, 'c1', DAY, marks, options),
+      recordAttendanceCommand(ctx, 'c1', { date: DAY, marks, reason }, options),
       recordAttendanceCommand(
         ctx,
         'c1',
-        DAY,
-        { ...marks, [students[0]?.id ?? '']: 'late' },
+        { date: DAY, marks: { ...marks, [students[0]?.id ?? '']: 'late' }, reason },
         options,
       ),
     ])

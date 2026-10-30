@@ -2,19 +2,28 @@ import { eq } from 'drizzle-orm'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { runAssessment } from '@kampus/school-core/lib/assessment-automation.ts'
+import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import { payInvoice, recordAttendance, type Session } from '@kampus/school-core/lib/domain.ts'
 import {
   archiveRecord,
   restoreRecord,
   type ArchiveKind,
 } from '@kampus/school-core/lib/school-management.ts'
+import { recordGrade, updateGrade } from '@kampus/school-core/lib/grades.ts'
 import { runWorkflow, type WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
-import { SCOPE_SOURCE_COLLECTIONS, scopeFor } from '@kampus/school-core/lib/scope.ts'
+import type { Actor } from '@kampus/school-core/lib/scope.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
+import {
+  ASSESSMENT_COMMANDS,
+  OPERATION_COMMANDS,
+  WORKFLOW_COMMANDS,
+  type CommandSpec,
+} from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import { isRecordCollection, type CollectionName, type ScalarStateKey } from '../db/collections.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
-import { ForbiddenError, NotFoundError } from '../errors.ts'
+import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { listMembershipLinks } from './memberships.ts'
@@ -30,85 +39,16 @@ import {
  * Yazma uçlarının servisi: school-core işlemlerini (`runWorkflow`, `runAssessment`,
  * `payInvoice`, `recordAttendance`, `archiveRecord`, `restoreRecord`) işlem çalıştırıcıyla
  * yürütür. Yetki ve kapsam core'un kuralıdır: oturum core'a üyelik bağlantılarıyla
- * (`links`) verilir ve core kişiye göre kapsamı (`scopeFor`) kendisi hesaplar. Core'da rol
- * denetimi olmayan işlemlerin (ödeme, yoklama, arşiv) rol listesi uçtadır (`routes/commands.ts`).
+ * (`links`) verilir ve core kişiye göre kapsamı (`scopeFor`) kendisi hesaplar. Yetkiyi kendisi
+ * denetlemeyen temel işlemlerden (ödeme, yoklama, arşiv) önce core `requireAuthorized` çalışır
+ * (DOM-YTK-001); eylemin yükleyeceği koleksiyonlar core komut tablosundandır
+ * (`OPERATION_COMMANDS`).
  *
- * Koleksiyon listeleri işlem dosyalarının okuduğu State anahtarlarıdır: işlem dosyası +
- * yardımcıları (`tutor-conflicts.ts`) + core kapsam kaynakları (`SCOPE_SOURCE_COLLECTIONS`,
- * velinin demo yolu için `parents`). Eksik koleksiyon sessizce boş görünmez; işlem çalıştırıcı
- * 500 ile durur ve testler bunu yakalar.
- * TODO(core-command-collections): core işlem başına okuduğu koleksiyonları dışa aktarınca
- * buradaki listeler oradan okunur.
+ * Komutun modülü, yükleyeceği koleksiyonlar ve skaler State alanları core komut tablosundandır
+ * (`modules/commands.ts`: `WORKFLOW_COMMANDS`, `ASSESSMENT_COMMANDS`, `OPERATION_COMMANDS`);
+ * API kendi kopyasını tutmaz. Core denetim listesi (`audit`) tabloda yoktur; işlem çalıştırıcı
+ * onu her zaman boş verir. Eksik koleksiyon sessizce boş görünmez; işlem çalıştırıcı 500 ile durur.
  */
-
-const SCOPE_COLLECTIONS: readonly CollectionName[] = [...SCOPE_SOURCE_COLLECTIONS, 'parents']
-const TUTOR_CONFLICT_COLLECTIONS: readonly CollectionName[] = [
-  'appointments',
-  'classes',
-  'schedule',
-  'schoolEvents',
-  'students',
-  'tutorSessions',
-]
-
-const WORKFLOW_COLLECTIONS: readonly CollectionName[] = [
-  ...SCOPE_COLLECTIONS,
-  ...TUTOR_CONFLICT_COLLECTIONS,
-  'branches',
-  'clubAttendance',
-  'clubMemberships',
-  'contracts',
-  'enrollmentHistory',
-  'eventConsents',
-  'guidanceCases',
-  'invoices',
-  'mealMenus',
-  'mockExams',
-  'mockResults',
-  'renewals',
-  'socialAchievements',
-  'studentGoals',
-  'studyTasks',
-  'subjects',
-  'transportAssignments',
-  'transportRoutes',
-]
-
-const ASSESSMENT_COLLECTIONS: readonly CollectionName[] = [
-  ...SCOPE_COLLECTIONS,
-  ...TUTOR_CONFLICT_COLLECTIONS,
-  'availability',
-  'branches',
-  'mockExams',
-  'mockResults',
-  'opticalEvaluations',
-  'opticalProfiles',
-  'subjects',
-]
-
-const ARCHIVE_COLLECTIONS: readonly CollectionName[] = [
-  ...TUTOR_CONFLICT_COLLECTIONS,
-  'assignments',
-  'availability',
-  'branches',
-  'clubMemberships',
-  'clubs',
-  'contracts',
-  'guidanceCases',
-  'homework',
-  'mealMenus',
-  'prospects',
-  'questions',
-  'quizzes',
-  'renewals',
-  'studyTasks',
-  'submissions',
-  'teachers',
-  'transportAssignments',
-  'transportRoutes',
-]
-
-const ATTENDANCE_COLLECTIONS: readonly CollectionName[] = [...SCOPE_COLLECTIONS, 'attendance']
 
 /** Uç seçenekleri: istek anahtarı, `If-Match` sürümü ve velinin seçili çocuğu. */
 export interface CommandOptions {
@@ -119,6 +59,9 @@ export interface CommandOptions {
 
 interface Environment {
   session: Session
+  /** Core yetki aktörü (`requireAuthorized`): oturum rolü ve üyelik bağlantıları. */
+  actor: Actor
+  institutionType: InstitutionType
   scalars: Partial<Pick<State, ScalarStateKey>>
 }
 
@@ -131,6 +74,7 @@ interface Environment {
 async function environment(
   tx: Database,
   ctx: ServiceContext,
+  spec: CommandSpec,
   childId?: string,
 ): Promise<Environment> {
   const [links, institution, settings] = await Promise.all([
@@ -144,12 +88,18 @@ async function environment(
   ])
   const session: Session = { role: ctx.actor.role, links }
   if (childId !== undefined) session.childId = childId
-  const scalars: Partial<Pick<State, ScalarStateKey>> = {
-    modules: institution?.modules ?? {},
-  }
+  // Yalnız komutun okuduğu skalerler verilir (core `scalars`); okunmayan alan görünümde yoktur.
+  const scalars: Partial<Pick<State, ScalarStateKey>> = {}
+  if (spec.scalars.includes('modules')) scalars.modules = institution?.modules ?? {}
   const academicYear = settings[0]?.academicYear
-  if (academicYear !== undefined) scalars.academicYear = academicYear
-  return { session, scalars }
+  if (spec.scalars.includes('academicYear') && academicYear !== undefined)
+    scalars.academicYear = academicYear
+  return {
+    session,
+    actor: { role: ctx.actor.role, links },
+    institutionType: institution?.type ?? 'school',
+    scalars,
+  }
 }
 
 type Entity = { collection: CollectionName; id: string } | null
@@ -158,11 +108,12 @@ function execute(
   ctx: ServiceContext,
   request: OperationRequest<Entity>,
   options: CommandOptions,
+  statusCode = 200,
 ): Promise<CommandResponse> {
   return runCommand(
     ctx,
     request,
-    (outcome) => commandBody(outcome.result, outcome.changes),
+    (outcome) => commandBody(outcome.result, outcome.changes, statusCode),
     options.idempotency,
   )
 }
@@ -200,13 +151,18 @@ export async function executeWorkflowCommand(
     ctx,
     {
       action: `workflow.${command}`,
-      collections: WORKFLOW_COLLECTIONS,
+      collections: WORKFLOW_COMMANDS[command].collections,
       ...(recordId !== undefined && options.expectedVersion !== null
         ? { expectedRecordVersion: { id: recordId, version: options.expectedVersion } }
         : {}),
       entity: auditEntity(recordId ?? command),
       load: async (tx) => {
-        const { session, scalars } = await environment(tx, ctx, workflow.childId)
+        const { session, scalars } = await environment(
+          tx,
+          ctx,
+          WORKFLOW_COMMANDS[command],
+          workflow.childId,
+        )
         return {
           scalars,
           run: (state, { now, makeId }) => {
@@ -234,7 +190,7 @@ export async function executeTutoringCommand(
     ctx,
     {
       action: `tutoring.${command}`,
-      collections: ASSESSMENT_COLLECTIONS,
+      collections: ASSESSMENT_COMMANDS[command].collections,
       ...(recordId !== undefined && options.expectedVersion !== null
         ? {
             expectedVersions: [
@@ -244,7 +200,7 @@ export async function executeTutoringCommand(
         : {}),
       entity: auditEntity(recordId ?? command),
       load: async (tx) => {
-        const { session, scalars } = await environment(tx, ctx)
+        const { session, scalars } = await environment(tx, ctx, ASSESSMENT_COMMANDS[command])
         return {
           scalars,
           run: (state, { now, makeId }) => {
@@ -258,7 +214,12 @@ export async function executeTutoringCommand(
   )
 }
 
-/** Taksit ödemesi (DOM-FIN: aynı ödeme iki kez işlenmez; core `invoice_already_paid` 409). */
+/**
+ * Taksit ödemesi (tahsilat kaydı). Yetki core `invoice.pay`'dir: yalnız yönetici ve ön büro
+ * (DOM-FIN-052). Aynı ödeme iki kez işlenmez (core `invoice_already_paid` 409).
+ * TODO(payment-provider): velinin çevrim içi ödemesi (`invoice.payOnline`) ödeme sağlayıcısı
+ * seçilince ayrı uçla bağlanır; o zamana kadar uç yoktur.
+ */
 export async function payInvoiceCommand(
   ctx: ServiceContext,
   invoiceId: string,
@@ -269,7 +230,7 @@ export async function payInvoiceCommand(
     ctx,
     {
       action: 'invoice.pay',
-      collections: ['invoices'],
+      collections: OPERATION_COMMANDS['invoice.pay'].collections,
       ...(options.expectedVersion !== null
         ? {
             expectedVersions: [
@@ -278,9 +239,19 @@ export async function payInvoiceCommand(
           }
         : {}),
       entity: { type: 'invoices', id: invoiceId },
-      run: (state, { now }) => {
-        payInvoice(state, invoiceId, method, now)
-        return { collection: 'invoices', id: invoiceId }
+      load: async (tx) => {
+        const spec = OPERATION_COMMANDS['invoice.pay']
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        return {
+          scalars,
+          run: (state, { now }) => {
+            // Olmayan taksitte hedef boştur: yetki reddi kayıt aramasından önce döner.
+            const studentId = state.invoices.find((item) => item.id === invoiceId)?.studentId ?? ''
+            requireAuthorized(actor, 'invoice.pay', { studentId }, state, { now, institutionType })
+            payInvoice(state, invoiceId, method, now)
+            return { collection: 'invoices', id: invoiceId }
+          },
+        }
       },
     },
     options,
@@ -290,25 +261,33 @@ export async function payInvoiceCommand(
 export const ATTENDANCE_STATUSES = ['present', 'absent', 'late', 'excused'] as const
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number]
 
+export interface AttendanceInput {
+  /** Yoklama günü (`YYYY-MM-DD`). */
+  date: string
+  marks: Readonly<Record<string, AttendanceStatus>>
+  /** Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); öğretmenin aynı gün yoklamasında gerekmez. */
+  reason?: string | undefined
+}
+
 /**
  * Sınıfın günlük yoklaması (`recordAttendance`): aynı öğrenci ve gün için tek kayıt güncellenir,
- * yinelenmez. Core'da rol/kapsam denetimi yoktur: öğretmen yalnız core kapsamındaki
- * (`scopeFor(...).classIds`) sınıfta yoklama alır.
- * TODO(core-attendance-scope): core ders saati bazında yoklama yetkisini (DOM-YTK-022) verince
- * buradaki sınıf denetimi kalkar.
+ * yinelenmez. Yetki core `attendance.record`'dur: öğretmen ders verdiği sınıfta aynı gün,
+ * yönetici yalnız gerekçeyle (DOM-YTK-022, DOM-AKD-035). Gerekçe bugün yalnız yetki kararına
+ * girer; denetim kaydına içerik yazılmaz.
+ * TODO(core-attendance-history): core düzeltme geçmişini (eski/yeni değer, gerekçe) saklayınca
+ * gerekçe işleme de verilir.
  */
 export async function recordAttendanceCommand(
   ctx: ServiceContext,
   classId: string,
-  date: string,
-  marks: Readonly<Record<string, AttendanceStatus>>,
+  input: AttendanceInput,
   options: CommandOptions,
 ): Promise<CommandResponse> {
   return execute(
     ctx,
     {
       action: 'attendance.record',
-      collections: ATTENDANCE_COLLECTIONS,
+      collections: OPERATION_COMMANDS['attendance.record'].collections,
       // İşlemin konusu sınıftır: `If-Match` sınıf kaydının okunan sürümüyle karşılaştırılır.
       ...(options.expectedVersion !== null
         ? {
@@ -319,17 +298,21 @@ export async function recordAttendanceCommand(
         : {}),
       entity: { type: 'classes', id: classId },
       load: async (tx) => {
-        const { session, scalars } = await environment(tx, ctx)
+        const spec = OPERATION_COMMANDS['attendance.record']
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
         return {
           scalars,
-          run: (state) => {
-            if (!state.classes.some((item) => item.id === classId)) throw new NotFoundError()
-            if (session.role === 'ogretmen') {
-              const scope = scopeFor(state, { role: session.role, links: session.links ?? [] })
-              if (!scope.classIds.has(classId)) throw new ForbiddenError()
-            }
+          run: (state, { now }) => {
             // Gün Europe/Istanbul günüdür; 09:00Z o günün öğlesidir (istemcilerle aynı biçim).
-            recordAttendance(state, classId, `${date}T09:00:00.000Z`, marks)
+            const date = `${input.date}T09:00:00.000Z`
+            const reason = input.reason === undefined ? {} : { reason: input.reason }
+            requireAuthorized(actor, 'attendance.record', { classId, date, ...reason }, state, {
+              now,
+              institutionType,
+            })
+            if (!state.classes.some((item) => item.id === classId)) throw new NotFoundError()
+            // Gelecek gün uygulamanın saatine göre denetlenir (`ctx.now`), gerçek saate göre değil.
+            recordAttendance(state, classId, date, input.marks, now)
             return { collection: 'classes', id: classId }
           },
         }
@@ -379,18 +362,106 @@ async function archiveOrRestore(
   run: (state: State, now: string) => void,
 ): Promise<CommandResponse> {
   const collection = ARCHIVE_TARGET[kind]
+  const action = verb === 'archive' ? 'record.archive' : 'record.restore'
   return execute(
     ctx,
     {
       action: `${collection}.${verb}`,
-      collections: ARCHIVE_COLLECTIONS,
+      collections: OPERATION_COMMANDS[action].collections,
       ...(options.expectedVersion !== null
         ? { expectedVersions: [{ collection, id: recordId, version: options.expectedVersion }] }
         : {}),
       entity: { type: collection, id: recordId },
-      run: (state, { now }) => {
-        run(state, now)
-        return { collection, id: recordId }
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(
+          tx,
+          ctx,
+          OPERATION_COMMANDS[action],
+        )
+        return {
+          scalars,
+          run: (state, { now }) => {
+            // Kampüs, sınıf ve kadro yönetimi yalnız yöneticidedir (core `record.*`, DOM-YTK-020).
+            requireAuthorized(actor, action, { kind }, state, { now, institutionType })
+            run(state, now)
+            return { collection, id: recordId }
+          },
+        }
+      },
+    },
+    options,
+  )
+}
+
+/**
+ * Resmî not girişi (core `recordGrade`, DOM-AKD-004). Yetki core'dadır (`grade.record`): yalnız
+ * öğrencinin sınıfında o dersin atanmış öğretmeni (DOM-AKD-054); dil okulunda resmî not yoktur
+ * (422 `official_grades_school_only`). Aynı gün aynı türde ikinci not 409 `grade_duplicate`;
+ * ağ tekrarına karşı `Idempotency-Key` zorunludur. Başarı 201.
+ */
+export async function recordGradeCommand(
+  ctx: ServiceContext,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  const spec = OPERATION_COMMANDS['grade.record']
+  return execute(
+    ctx,
+    {
+      action: 'grade.record',
+      collections: spec.collections,
+      // Yeni notun kimliği işlem çalışınca belli olur.
+      entity: auditEntity('grades'),
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        return {
+          scalars,
+          run: (state, { now, makeId }) => {
+            const grade = recordGrade(state, actor, input, makeId, now, { institutionType })
+            return { collection: 'grades', id: grade.id }
+          },
+        }
+      },
+    },
+    options,
+    201,
+  )
+}
+
+/**
+ * Not puanını gerekçeyle düzeltir (core `updateGrade`, DOM-AKD-051): eski puan düzeltme
+ * geçmişinde kalır. Yetki core'dadır (`grade.update`): atanmış ders öğretmeni veya gerekçeyle
+ * yönetici; aktörün göremediği not 404. `If-Match` notun okunan sürümüdür.
+ */
+export async function updateGradeCommand(
+  ctx: ServiceContext,
+  gradeId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  const spec = OPERATION_COMMANDS['grade.update']
+  return execute(
+    ctx,
+    {
+      action: 'grade.update',
+      collections: spec.collections,
+      ...(options.expectedVersion !== null
+        ? {
+            expectedVersions: [
+              { collection: 'grades', id: gradeId, version: options.expectedVersion },
+            ],
+          }
+        : {}),
+      entity: { type: 'grades', id: gradeId },
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        return {
+          scalars,
+          run: (state, { now }) => {
+            updateGrade(state, actor, gradeId, input, now, { institutionType })
+            return { collection: 'grades', id: gradeId }
+          },
+        }
       },
     },
     options,

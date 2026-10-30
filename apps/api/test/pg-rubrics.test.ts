@@ -9,7 +9,14 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { applyRubricPublish, insertRubricVersion, loadRubricVersions } from '../src/db/skills.ts'
 import { AppError } from '../src/errors.ts'
-import { buildTestApp, createInstitution, FIXED_NOW } from './support/app.ts'
+import {
+  buildTestApp,
+  createInstitution,
+  createMember,
+  FIXED_NOW,
+  signInAs,
+  TEST_ORIGIN,
+} from './support/app.ts'
 import { createPgDatabase, PG_SKIP } from './support/pg.ts'
 import { sampleRubricData, seedSkillChain } from './support/skills-sample.ts'
 
@@ -127,6 +134,46 @@ describe('PostgreSQL 16: eşzamanlı rubrik yayımı', { skip: PG_SKIP }, () => 
       [
         [chain.rubricVersionId, 'archived', 2],
         [draftId, 'published', 2],
+      ],
+    )
+  })
+  test('DOM-BEC-022: uçtan eşzamanlı iki yayım ve iki yeni sürüm: biri başarılı, diğeri 409; tek yayındaki sürüm ve tek açık taslak kalır', async () => {
+    const institution = await createInstitution(app)
+    const teacher = await createMember(app, institution.id, 'ogretmen')
+    const cookie = await signInAs(app, teacher)
+    const send = (url: string, payload: unknown, headers: Record<string, string> = {}) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1${url}`,
+        headers: { origin: TEST_ORIGIN, cookie, 'content-type': 'application/json', ...headers },
+        payload: JSON.stringify(payload),
+      })
+    const created = await send('/rubrics', sampleRubricData())
+    assert.equal(created.statusCode, 201, created.body)
+    const { rubric, version } = created.json().data
+    const publish = () =>
+      send(`/rubrics/${rubric.id}/versions/${version.id}/publish`, {}, { 'if-match': '"1"' })
+    const published = await Promise.all([publish(), publish()])
+    assert.deepEqual(published.map((r) => r.statusCode).sort(), [200, 409])
+    const loser = published.find((r) => r.statusCode === 409)
+    assert.ok(
+      ['version_conflict', 'rubric_version_immutable'].includes(loser?.json().code),
+      loser?.body,
+    )
+
+    const open = () => send(`/rubrics/${rubric.id}/versions`, sampleRubricData())
+    const opened = await Promise.all([open(), open()])
+    assert.deepEqual(opened.map((r) => r.statusCode).sort(), [201, 409])
+    assert.equal(
+      opened.find((r) => r.statusCode === 409)?.json().code,
+      'open_rubric_version_exists',
+    )
+    const versions = await loadRubricVersions(db, institution.id, rubric.id)
+    assert.deepEqual(
+      versions.map((v) => [v.versionNumber, v.status]),
+      [
+        [1, 'published'],
+        [2, 'draft'],
       ],
     )
   })

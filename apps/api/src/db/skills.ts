@@ -1,4 +1,5 @@
-import { and, asc, count, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, getTableColumns, inArray, isNull, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 
 import type { AssignmentTarget, FixedAssignment } from '@kampus/school-core/skills/assignment.ts'
 import type {
@@ -231,6 +232,95 @@ export async function findRubricVersion(
     .from(rubricVersions)
     .where(and(eq(rubricVersions.institutionId, institutionId), eq(rubricVersions.id, versionId)))
   return row === undefined ? null : toRubricVersion(row)
+}
+
+/** Rubrik listesinin süzgeçleri; hepsi baş sürüme (en yüksek numara) uygulanır. */
+export interface RubricListQuery {
+  page: number
+  pageSize: number
+  skill?: RubricVersionRow['skill'] | undefined
+  kind?: RubricVersionRow['kind'] | undefined
+  status?: RubricVersionRow['status'] | undefined
+  ownerUserId?: string | undefined
+}
+
+export interface RubricListRow {
+  rubric: RubricRecord & { createdAt: string }
+  /** En yüksek numaralı sürüm (taslak, yayında veya arşiv). */
+  head: StoredRubricVersion
+  /** Rubriğin yayındaki sürümü; yoksa `null` (atamada yalnız bu kullanılır, DOM-BEC-022). */
+  publishedVersionId: string | null
+}
+
+/**
+ * Kurumun rubrik kütüphanesi (IST-048): rubrik başına baş sürüm, son güncellenen önce. Baş sürüm
+ * `rubric_versions_rubric_number_key` indeksiyle rubrik başına tek erişimdir; sayım aynı
+ * koşulla ayrı sorgudur. Arşivli rubrik satırı listede yoktur.
+ */
+export async function listRubrics(
+  db: Database,
+  institutionId: string,
+  query: RubricListQuery,
+): Promise<{ rows: RubricListRow[]; total: number }> {
+  const v = rubricVersions
+  const head = alias(rubricVersions, 'head')
+  const filters = [
+    eq(rubrics.institutionId, institutionId),
+    isNull(rubrics.archivedAt),
+    eq(v.institutionId, institutionId),
+    eq(v.rubricId, rubrics.id),
+    // Ham `sql` içinde takma ad tablo yalnız adıyla yazılır; kaynak tablo açıkça verilir.
+    sql`${v.versionNumber} = (select max(${head.versionNumber}) from ${rubricVersions} as ${sql.identifier('head')}
+      where ${head.institutionId} = ${rubrics.institutionId} and ${head.rubricId} = ${rubrics.id})`,
+    ...(query.skill ? [eq(v.skill, query.skill)] : []),
+    ...(query.kind ? [eq(v.kind, query.kind)] : []),
+    ...(query.status ? [eq(v.status, query.status)] : []),
+    ...(query.ownerUserId ? [eq(rubrics.ownerUserId, query.ownerUserId)] : []),
+  ]
+  const where = and(...filters)
+  const [rows, [totals]] = await Promise.all([
+    db
+      .select({
+        id: rubrics.id,
+        ownerUserId: rubrics.ownerUserId,
+        createdAt: rubrics.createdAt,
+        head: getTableColumns(rubricVersions),
+      })
+      .from(rubrics)
+      .innerJoin(v, eq(v.institutionId, rubrics.institutionId))
+      .where(where)
+      .orderBy(desc(v.updatedAt), asc(rubrics.id))
+      .limit(query.pageSize)
+      .offset((query.page - 1) * query.pageSize),
+    db
+      .select({ total: count() })
+      .from(rubrics)
+      .innerJoin(v, eq(v.institutionId, rubrics.institutionId))
+      .where(where),
+  ])
+  const rubricIds = rows.map((row) => row.id)
+  const published =
+    rubricIds.length === 0
+      ? []
+      : await db
+          .select({ rubricId: v.rubricId, id: v.id })
+          .from(v)
+          .where(
+            and(
+              eq(v.institutionId, institutionId),
+              inArray(v.rubricId, rubricIds),
+              eq(v.status, 'published'),
+            ),
+          )
+  const publishedBy = new Map(published.map((row) => [row.rubricId, row.id]))
+  return {
+    rows: rows.map((row) => ({
+      rubric: { id: row.id, ownerUserId: row.ownerUserId, createdAt: iso(row.createdAt) },
+      head: toRubricVersion(row.head),
+      publishedVersionId: publishedBy.get(row.id) ?? null,
+    })),
+    total: totals?.total ?? 0,
+  }
 }
 
 /** Rubrik satırı ve oluşturulma anı; başka kurumun veya arşivli rubrik `null`. */

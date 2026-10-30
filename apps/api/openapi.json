@@ -3823,6 +3823,438 @@
           "available"
         ]
       },
+      "RubricInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "canManage": {
+            "type": "boolean",
+            "description": "Kişi rubriği düzenleyebilir mi (core `canManageRubric`: sahip veya yönetici)"
+          }
+        },
+        "required": [
+          "id",
+          "ownerUserId",
+          "createdAt",
+          "canManage"
+        ]
+      },
+      "RubricVersionSummaryInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "rubricId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "analytic",
+              "holistic"
+            ]
+          },
+          "skill": {
+            "type": "string",
+            "enum": [
+              "writing",
+              "speaking",
+              "mediation"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Sürüm satırının iyimser kilit sürümü (düzenleme, yayım ve arşivde `If-Match`)"
+          }
+        },
+        "required": [
+          "id",
+          "rubricId",
+          "versionNumber",
+          "status",
+          "title",
+          "kind",
+          "skill",
+          "createdAt",
+          "updatedAt",
+          "publishedAt",
+          "archivedAt",
+          "rowVersion"
+        ]
+      },
+      "RubricVersionInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "rubricId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "analytic",
+              "holistic"
+            ]
+          },
+          "skill": {
+            "type": "string",
+            "enum": [
+              "writing",
+              "speaking",
+              "mediation"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Sürüm satırının iyimser kilit sürümü (düzenleme, yayım ve arşivde `If-Match`)"
+          },
+          "criteria": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "aspect": {
+                  "type": "string",
+                  "description": "CEFR-CV niteliksel yönü; bütüncül rubrikte `overall`"
+                },
+                "weight": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "bands": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "band": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 5
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "Kurumun kendi cümlesi (DOM-BEC-004)"
+                      },
+                      "alignment": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "cefr"
+                              },
+                              "scale": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "level": {
+                                "type": "string",
+                                "enum": [
+                                  "Pre-A1",
+                                  "A1",
+                                  "A2",
+                                  "A2+",
+                                  "B1",
+                                  "B1+",
+                                  "B2",
+                                  "B2+",
+                                  "C1",
+                                  "C2"
+                                ]
+                              },
+                              "index": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 200
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "scale",
+                              "level",
+                              "index"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "outcome"
+                              },
+                              "outcomeId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "outcomeSource": {
+                                "type": "string",
+                                "enum": [
+                                  "platform",
+                                  "institution"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "outcomeId",
+                              "outcomeSource"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "band",
+                      "description",
+                      "alignment"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "aspect",
+                "weight",
+                "bands"
+              ]
+            }
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "assignmentCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scoreCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "assignmentCount",
+              "scoreCount"
+            ],
+            "description": "Sürümün sabitlendiği atama ve verilmiş puan sayısı; kullanılmış sürüm değişmez (DOM-BEC-022)"
+          }
+        },
+        "required": [
+          "id",
+          "rubricId",
+          "versionNumber",
+          "status",
+          "title",
+          "kind",
+          "skill",
+          "createdAt",
+          "updatedAt",
+          "publishedAt",
+          "archivedAt",
+          "rowVersion",
+          "criteria",
+          "usage"
+        ]
+      },
+      "RubricListItemInput": {
+        "type": "object",
+        "properties": {
+          "rubric": {
+            "$ref": "#/components/schemas/RubricInput"
+          },
+          "head": {
+            "description": "En yüksek numaralı sürüm",
+            "$ref": "#/components/schemas/RubricVersionSummaryInput"
+          },
+          "publishedVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yayındaki sürüm; yeni atamada yalnız bu kullanılır (DOM-BEC-022)"
+          }
+        },
+        "required": [
+          "rubric",
+          "head",
+          "publishedVersionId"
+        ]
+      },
+      "RubricDetailInput": {
+        "type": "object",
+        "properties": {
+          "rubric": {
+            "$ref": "#/components/schemas/RubricInput"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RubricVersionInput"
+            },
+            "description": "Bütün sürümler, numaraya göre artan"
+          }
+        },
+        "required": [
+          "rubric",
+          "versions"
+        ]
+      },
+      "RubricWriteResultInput": {
+        "type": "object",
+        "properties": {
+          "rubric": {
+            "$ref": "#/components/schemas/RubricInput"
+          },
+          "version": {
+            "$ref": "#/components/schemas/RubricVersionInput"
+          }
+        },
+        "required": [
+          "rubric",
+          "version"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -7747,6 +8179,449 @@
           "duration",
           "subjectNames",
           "available"
+        ],
+        "additionalProperties": false
+      },
+      "Rubric": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "canManage": {
+            "type": "boolean",
+            "description": "Kişi rubriği düzenleyebilir mi (core `canManageRubric`: sahip veya yönetici)"
+          }
+        },
+        "required": [
+          "id",
+          "ownerUserId",
+          "createdAt",
+          "canManage"
+        ],
+        "additionalProperties": false
+      },
+      "RubricVersionSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "rubricId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "analytic",
+              "holistic"
+            ]
+          },
+          "skill": {
+            "type": "string",
+            "enum": [
+              "writing",
+              "speaking",
+              "mediation"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Sürüm satırının iyimser kilit sürümü (düzenleme, yayım ve arşivde `If-Match`)"
+          }
+        },
+        "required": [
+          "id",
+          "rubricId",
+          "versionNumber",
+          "status",
+          "title",
+          "kind",
+          "skill",
+          "createdAt",
+          "updatedAt",
+          "publishedAt",
+          "archivedAt",
+          "rowVersion"
+        ],
+        "additionalProperties": false
+      },
+      "RubricVersion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "rubricId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "analytic",
+              "holistic"
+            ]
+          },
+          "skill": {
+            "type": "string",
+            "enum": [
+              "writing",
+              "speaking",
+              "mediation"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Sürüm satırının iyimser kilit sürümü (düzenleme, yayım ve arşivde `If-Match`)"
+          },
+          "criteria": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "aspect": {
+                  "type": "string",
+                  "description": "CEFR-CV niteliksel yönü; bütüncül rubrikte `overall`"
+                },
+                "weight": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "bands": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "band": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 5
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "Kurumun kendi cümlesi (DOM-BEC-004)"
+                      },
+                      "alignment": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "cefr"
+                              },
+                              "scale": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "level": {
+                                "type": "string",
+                                "enum": [
+                                  "Pre-A1",
+                                  "A1",
+                                  "A2",
+                                  "A2+",
+                                  "B1",
+                                  "B1+",
+                                  "B2",
+                                  "B2+",
+                                  "C1",
+                                  "C2"
+                                ]
+                              },
+                              "index": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 200
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "scale",
+                              "level",
+                              "index"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "outcome"
+                              },
+                              "outcomeId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "outcomeSource": {
+                                "type": "string",
+                                "enum": [
+                                  "platform",
+                                  "institution"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "outcomeId",
+                              "outcomeSource"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "band",
+                      "description",
+                      "alignment"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "aspect",
+                "weight",
+                "bands"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "assignmentCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scoreCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "assignmentCount",
+              "scoreCount"
+            ],
+            "additionalProperties": false,
+            "description": "Sürümün sabitlendiği atama ve verilmiş puan sayısı; kullanılmış sürüm değişmez (DOM-BEC-022)"
+          }
+        },
+        "required": [
+          "id",
+          "rubricId",
+          "versionNumber",
+          "status",
+          "title",
+          "kind",
+          "skill",
+          "createdAt",
+          "updatedAt",
+          "publishedAt",
+          "archivedAt",
+          "rowVersion",
+          "criteria",
+          "usage"
+        ],
+        "additionalProperties": false
+      },
+      "RubricListItem": {
+        "type": "object",
+        "properties": {
+          "rubric": {
+            "$ref": "#/components/schemas/Rubric"
+          },
+          "head": {
+            "description": "En yüksek numaralı sürüm",
+            "$ref": "#/components/schemas/RubricVersionSummary"
+          },
+          "publishedVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yayındaki sürüm; yeni atamada yalnız bu kullanılır (DOM-BEC-022)"
+          }
+        },
+        "required": [
+          "rubric",
+          "head",
+          "publishedVersionId"
+        ],
+        "additionalProperties": false
+      },
+      "RubricDetail": {
+        "type": "object",
+        "properties": {
+          "rubric": {
+            "$ref": "#/components/schemas/Rubric"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RubricVersion"
+            },
+            "description": "Bütün sürümler, numaraya göre artan"
+          }
+        },
+        "required": [
+          "rubric",
+          "versions"
+        ],
+        "additionalProperties": false
+      },
+      "RubricWriteResult": {
+        "type": "object",
+        "properties": {
+          "rubric": {
+            "$ref": "#/components/schemas/Rubric"
+          },
+          "version": {
+            "$ref": "#/components/schemas/RubricVersion"
+          }
+        },
+        "required": [
+          "rubric",
+          "version"
         ],
         "additionalProperties": false
       }
@@ -30792,6 +31667,1569 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/ResourceWriteResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rubrics": {
+      "get": {
+        "operationId": "listRubrics",
+        "summary": "Rubrik kütüphanesi",
+        "tags": [
+          "rubrics"
+        ],
+        "description": "Kurumun rubrikleri, sayfalı (IST-048): rubrik kurumundur, bütün içerik personeli görür ve yayındaki sürümü görevlerde kullanır. Satır en yüksek numaralı sürümü (`head`) ve yayındaki sürümün kimliğini taşır. Süzgeçler baş sürüme uygulanır; son güncellenen önce. Bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "writing",
+                "speaking",
+                "mediation"
+              ]
+            },
+            "in": "query",
+            "name": "skill",
+            "required": false,
+            "description": "Baş sürümün becerisi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "analytic",
+                "holistic"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Baş sürümün türü: analitik veya bütüncül"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "archived"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Baş sürümün durumu"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "ownerUserId",
+            "required": false,
+            "description": "Rubrik sahibi (ör. \"Benim rubriklerim\")"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RubricListItem"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createRubric",
+        "summary": "Rubrik oluştur",
+        "tags": [
+          "rubrics"
+        ],
+        "description": "Yeni rubrik ve ilk taslak sürüm (DOM-BEC-020, 022): sahibi oluşturan kişi. Gövde core `rubricVersionInputSchema`: analitik rubrikte becerinin en az iki niteliksel yönü, bütüncülde tek `overall` kriteri; her kriterde 0–5 altı bant, kurum cümlesi ve tanımlayıcı. Dil okulunda bant kazanıma bağlanamaz (422 `rubric_alignment_invalid`). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 200
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "analytic",
+                      "holistic"
+                    ]
+                  },
+                  "skill": {
+                    "type": "string",
+                    "enum": [
+                      "writing",
+                      "speaking",
+                      "mediation"
+                    ]
+                  },
+                  "criteria": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        },
+                        "aspect": {
+                          "type": "string",
+                          "enum": [
+                            "overall",
+                            "task_fulfilment",
+                            "coherence_cohesion",
+                            "vocabulary",
+                            "grammatical_accuracy",
+                            "range",
+                            "accuracy",
+                            "fluency",
+                            "interaction",
+                            "coherence",
+                            "phonological_control",
+                            "meaning_transfer",
+                            "audience_fit",
+                            "language"
+                          ]
+                        },
+                        "weight": {
+                          "default": 1,
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10
+                        },
+                        "bands": {
+                          "minItems": 6,
+                          "maxItems": 6,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "band": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 5
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 1000
+                              },
+                              "alignment": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "cefr"
+                                        ]
+                                      },
+                                      "scale": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "level": {
+                                        "type": "string",
+                                        "enum": [
+                                          "Pre-A1",
+                                          "A1",
+                                          "A2",
+                                          "A2+",
+                                          "B1",
+                                          "B1+",
+                                          "B2",
+                                          "B2+",
+                                          "C1",
+                                          "C2"
+                                        ]
+                                      },
+                                      "index": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 200
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "scale",
+                                      "level",
+                                      "index"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "outcome"
+                                        ]
+                                      },
+                                      "outcomeId": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "outcomeSource": {
+                                        "type": "string",
+                                        "enum": [
+                                          "platform",
+                                          "institution"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "outcomeId",
+                                      "outcomeSource"
+                                    ]
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "band",
+                              "description",
+                              "alignment"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "aspect",
+                        "bands"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "title",
+                  "kind",
+                  "skill",
+                  "criteria"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RubricWriteResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rubrics/{rubricId}": {
+      "get": {
+        "operationId": "getRubric",
+        "summary": "Rubrik ayrıntısı",
+        "tags": [
+          "rubrics"
+        ],
+        "description": "Rubrik ve bütün sürümleri (arşivli dahil; DOM-BEC-022): kriterler, bantlar, tanımlayıcı eşlemesi ve sürüm başına kullanım (atama ve puan sayısı). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "rubricId",
+            "required": true,
+            "description": "Rubrik kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RubricDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rubrics/{rubricId}/versions": {
+      "post": {
+        "operationId": "createRubricVersion",
+        "summary": "Yeni rubrik sürümü aç",
+        "tags": [
+          "rubrics"
+        ],
+        "description": "Gövdedeki içerikle yeni taslak sürüm açar (DOM-BEC-022); numara bir artar, yayındaki sürüm ve eski puanlar değişmez. Açık taslak varken 409 `open_rubric_version_exists`. Başarı 201. Yalnız rubriğin sahibi ve yönetici (core `canManageRubric`; diğer öğretmen 403). Sıra: kapsam (404) → yetki (403) → sürüm (409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 200
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "analytic",
+                      "holistic"
+                    ]
+                  },
+                  "skill": {
+                    "type": "string",
+                    "enum": [
+                      "writing",
+                      "speaking",
+                      "mediation"
+                    ]
+                  },
+                  "criteria": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        },
+                        "aspect": {
+                          "type": "string",
+                          "enum": [
+                            "overall",
+                            "task_fulfilment",
+                            "coherence_cohesion",
+                            "vocabulary",
+                            "grammatical_accuracy",
+                            "range",
+                            "accuracy",
+                            "fluency",
+                            "interaction",
+                            "coherence",
+                            "phonological_control",
+                            "meaning_transfer",
+                            "audience_fit",
+                            "language"
+                          ]
+                        },
+                        "weight": {
+                          "default": 1,
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10
+                        },
+                        "bands": {
+                          "minItems": 6,
+                          "maxItems": 6,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "band": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 5
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 1000
+                              },
+                              "alignment": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "cefr"
+                                        ]
+                                      },
+                                      "scale": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "level": {
+                                        "type": "string",
+                                        "enum": [
+                                          "Pre-A1",
+                                          "A1",
+                                          "A2",
+                                          "A2+",
+                                          "B1",
+                                          "B1+",
+                                          "B2",
+                                          "B2+",
+                                          "C1",
+                                          "C2"
+                                        ]
+                                      },
+                                      "index": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 200
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "scale",
+                                      "level",
+                                      "index"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "outcome"
+                                        ]
+                                      },
+                                      "outcomeId": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "outcomeSource": {
+                                        "type": "string",
+                                        "enum": [
+                                          "platform",
+                                          "institution"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "outcomeId",
+                                      "outcomeSource"
+                                    ]
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "band",
+                              "description",
+                              "alignment"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "aspect",
+                        "bands"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "title",
+                  "kind",
+                  "skill",
+                  "criteria"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "rubricId",
+            "required": true,
+            "description": "Rubrik kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RubricWriteResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rubrics/{rubricId}/versions/{versionId}": {
+      "patch": {
+        "operationId": "updateRubricDraft",
+        "summary": "Rubrik taslağını düzenle",
+        "tags": [
+          "rubrics"
+        ],
+        "description": "Taslak sürümün alanlarını değiştirir (DOM-BEC-020, 022); verilmeyen alan aynen kalır, `criteria` bütün olarak değişir ve birleşmiş içerik core şemasıyla yeniden doğrulanır (400). Yayımlanmış, arşivli veya kullanılmış (atamaya ya da puana bağlı) sürüm 409 `rubric_version_immutable`. `If-Match` zorunlu: sürümün `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Yalnız rubriğin sahibi ve yönetici (core `canManageRubric`; diğer öğretmen 403). Sıra: kapsam (404) → yetki (403) → sürüm (409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 200
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "analytic",
+                      "holistic"
+                    ]
+                  },
+                  "skill": {
+                    "type": "string",
+                    "enum": [
+                      "writing",
+                      "speaking",
+                      "mediation"
+                    ]
+                  },
+                  "criteria": {
+                    "description": "Kriterler bütün olarak değişir",
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        },
+                        "aspect": {
+                          "type": "string",
+                          "enum": [
+                            "overall",
+                            "task_fulfilment",
+                            "coherence_cohesion",
+                            "vocabulary",
+                            "grammatical_accuracy",
+                            "range",
+                            "accuracy",
+                            "fluency",
+                            "interaction",
+                            "coherence",
+                            "phonological_control",
+                            "meaning_transfer",
+                            "audience_fit",
+                            "language"
+                          ]
+                        },
+                        "weight": {
+                          "default": 1,
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10
+                        },
+                        "bands": {
+                          "minItems": 6,
+                          "maxItems": 6,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "band": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 5
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 1000
+                              },
+                              "alignment": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "cefr"
+                                        ]
+                                      },
+                                      "scale": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "level": {
+                                        "type": "string",
+                                        "enum": [
+                                          "Pre-A1",
+                                          "A1",
+                                          "A2",
+                                          "A2+",
+                                          "B1",
+                                          "B1+",
+                                          "B2",
+                                          "B2+",
+                                          "C1",
+                                          "C2"
+                                        ]
+                                      },
+                                      "index": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 200
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "scale",
+                                      "level",
+                                      "index"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "outcome"
+                                        ]
+                                      },
+                                      "outcomeId": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "outcomeSource": {
+                                        "type": "string",
+                                        "enum": [
+                                          "platform",
+                                          "institution"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "outcomeId",
+                                      "outcomeSource"
+                                    ]
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "band",
+                              "description",
+                              "alignment"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "aspect",
+                        "bands"
+                      ]
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "rubricId",
+            "required": true,
+            "description": "Rubrik kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "description": "Rubrik sürümü kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RubricWriteResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rubrics/{rubricId}/versions/{versionId}/publish": {
+      "post": {
+        "operationId": "publishRubricVersion",
+        "summary": "Rubrik sürümünü yayımla",
+        "tags": [
+          "rubrics"
+        ],
+        "description": "Taslağı yayımlar (DOM-BEC-022): rubriğin önceki yayındaki sürümü aynı işlemde arşivlenir; o sürümle verilmiş puanlar onunla hesaplanmaya, sabitlendiği atamalar onunla puanlanmaya devam eder. Taslak olmayan sürüm 409 `rubric_version_immutable`; eşzamanlı ikinci yayım 409. `If-Match` zorunlu: sürümün `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Yalnız rubriğin sahibi ve yönetici (core `canManageRubric`; diğer öğretmen 403). Sıra: kapsam (404) → yetki (403) → sürüm (409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "rubricId",
+            "required": true,
+            "description": "Rubrik kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "description": "Rubrik sürümü kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RubricWriteResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rubrics/{rubricId}/versions/{versionId}/archive": {
+      "post": {
+        "operationId": "archiveRubricVersion",
+        "summary": "Rubrik sürümünü arşivle",
+        "tags": [
+          "rubrics"
+        ],
+        "description": "Yayındaki sürümü arşivler (DOM-BEC-022): yeni görevde kullanılamaz, sabitlendiği atamalarda puanlanmaya devam eder; kullanılmış sürüm silinmez, yalnız arşivlenir. Arşiv geri alınmaz; yeni sürüm açılır. Yayında olmayan sürüm 409 `rubric_version_not_published`. `If-Match` zorunlu: sürümün `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Yalnız rubriğin sahibi ve yönetici (core `canManageRubric`; diğer öğretmen 403). Sıra: kapsam (404) → yetki (403) → sürüm (409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "rubricId",
+            "required": true,
+            "description": "Rubrik kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "description": "Rubrik sürümü kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RubricWriteResult"
                     }
                   },
                   "required": [

@@ -890,6 +890,1269 @@
           "awaitingReply"
         ]
       },
+      "DashboardStatusTotalInput": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Kuruş"
+          }
+        },
+        "required": [
+          "count",
+          "amount"
+        ]
+      },
+      "DashboardInvoiceSummaryInput": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Taksit sayısı"
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Ödeme planı toplamı (kuruş)"
+          },
+          "overdue": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Kuruş"
+              }
+            },
+            "required": [
+              "count",
+              "amount"
+            ],
+            "description": "Gecikmiş",
+            "$ref": "#/components/schemas/DashboardStatusTotalInput"
+          },
+          "upcoming": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Kuruş"
+              }
+            },
+            "required": [
+              "count",
+              "amount"
+            ],
+            "description": "Yaklaşan",
+            "$ref": "#/components/schemas/DashboardStatusTotalInput"
+          },
+          "paid": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Kuruş"
+              }
+            },
+            "required": [
+              "count",
+              "amount"
+            ],
+            "description": "Ödendi",
+            "$ref": "#/components/schemas/DashboardStatusTotalInput"
+          }
+        },
+        "required": [
+          "total",
+          "amount",
+          "overdue",
+          "upcoming",
+          "paid"
+        ]
+      },
+      "DashboardAttendanceCountsInput": {
+        "type": "object",
+        "properties": {
+          "present": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "absent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "late": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "excused": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "present",
+          "absent",
+          "late",
+          "excused",
+          "total"
+        ]
+      },
+      "DashboardInvoiceRowInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "studentName": {
+            "description": "Bağlı öğrenci adı; kapsam dışında yok",
+            "type": "string"
+          },
+          "installment": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Kuruş"
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+          },
+          "paidAt": {
+            "type": "string",
+            "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "DashboardAdminInput": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "yonetici"
+          },
+          "today": {
+            "type": "string",
+            "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+          },
+          "students": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "archived": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "active",
+              "archived"
+            ]
+          },
+          "classes": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "campusCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Aktif sınıfı olan kampüs sayısı"
+              }
+            },
+            "required": [
+              "active",
+              "campusCount"
+            ]
+          },
+          "teachers": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "active"
+            ]
+          },
+          "finance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "invoices": {
+                    "description": "Taksit durumu dağılımı (core `invoiceStatus`, isteğin Istanbul günü)",
+                    "$ref": "#/components/schemas/DashboardInvoiceSummaryInput"
+                  },
+                  "collectedToday": {
+                    "type": "object",
+                    "properties": {
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "amount": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "Kuruş"
+                      }
+                    },
+                    "required": [
+                      "count",
+                      "amount"
+                    ],
+                    "description": "Bugün (`paidAt` günü) ödenen taksitler",
+                    "$ref": "#/components/schemas/DashboardStatusTotalInput"
+                  },
+                  "monthlyCollection": {
+                    "type": "object",
+                    "properties": {
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Son 6 ayda ödenen taksit"
+                      },
+                      "amount": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "Kuruş"
+                      },
+                      "months": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "month": {
+                              "type": "string",
+                              "description": "`YYYY-MM`"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "amount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kuruş"
+                            }
+                          },
+                          "required": [
+                            "month",
+                            "count",
+                            "amount"
+                          ]
+                        },
+                        "description": "Eskiden yeniye 6 ay (`paidAt:month`); kaydı olmayan ay sıfır"
+                      }
+                    },
+                    "required": [
+                      "count",
+                      "amount",
+                      "months"
+                    ]
+                  }
+                },
+                "required": [
+                  "invoices",
+                  "collectedToday",
+                  "monthlyCollection"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`finance` modülü kapalıysa `null`"
+          },
+          "attendanceToday": {
+            "anyOf": [
+              {
+                "description": "Yoklama durum sayıları; `total` bütün kayıtlar",
+                "$ref": "#/components/schemas/DashboardAttendanceCountsInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bugünkü yoklama; `academic` modülü kapalıysa `null`"
+          },
+          "recentStudents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "string"
+                },
+                "className": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            },
+            "description": "En son eklenen 5 aktif öğrenci"
+          },
+          "campuses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "students": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "capacity": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "students",
+                "capacity"
+              ]
+            },
+            "description": "Aktif kampüs başına aktif öğrenci ve aktif sınıf kontenjanı"
+          }
+        },
+        "required": [
+          "role",
+          "today",
+          "students",
+          "classes",
+          "teachers",
+          "finance",
+          "attendanceToday",
+          "recentStudents",
+          "campuses"
+        ]
+      },
+      "DashboardFrontDeskInput": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "onburo"
+          },
+          "today": {
+            "type": "string",
+            "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+          },
+          "finance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "invoices": {
+                    "description": "Taksit durumu dağılımı (core `invoiceStatus`, isteğin Istanbul günü)",
+                    "$ref": "#/components/schemas/DashboardInvoiceSummaryInput"
+                  },
+                  "collectedToday": {
+                    "description": "Taksit sayısı ve tutarı (kuruş)",
+                    "$ref": "#/components/schemas/DashboardStatusTotalInput"
+                  },
+                  "overdue": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/DashboardInvoiceRowInput"
+                    },
+                    "description": "Vadesi en eski 5 gecikmiş taksit"
+                  },
+                  "upcoming": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/DashboardInvoiceRowInput"
+                    },
+                    "description": "Vadesi en yakın 5 yaklaşan taksit"
+                  },
+                  "recentPayments": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/DashboardInvoiceRowInput"
+                    },
+                    "description": "En son kaydedilen 5 ödeme"
+                  }
+                },
+                "required": [
+                  "invoices",
+                  "collectedToday",
+                  "overdue",
+                  "upcoming",
+                  "recentPayments"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`finance` modülü kapalıysa `null`"
+          },
+          "prospects": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "stages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "stage": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "stage",
+                        "count"
+                      ]
+                    },
+                    "description": "Aşama başına aday; aşamasız `null` sonda"
+                  }
+                },
+                "required": [
+                  "total",
+                  "stages"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`crm` modülü kapalıysa `null`"
+          }
+        },
+        "required": [
+          "role",
+          "today",
+          "finance",
+          "prospects"
+        ]
+      },
+      "DashboardTeacherInput": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "ogretmen"
+          },
+          "today": {
+            "type": "string",
+            "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+          },
+          "students": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "active"
+            ]
+          },
+          "classes": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "active"
+            ]
+          },
+          "academic": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "attendanceToday": {
+                    "description": "Yoklama durum sayıları; `total` bütün kayıtlar",
+                    "$ref": "#/components/schemas/DashboardAttendanceCountsInput"
+                  },
+                  "lessons": {
+                    "type": "object",
+                    "properties": {
+                      "total": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Bugünkü iptal edilmemiş ders"
+                      },
+                      "cancelled": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Bugün iptal edilen ders"
+                      },
+                      "items": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string",
+                              "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "subject": {
+                              "type": "string"
+                            },
+                            "room": {
+                              "type": "string"
+                            },
+                            "duration": {
+                              "type": "number"
+                            },
+                            "className": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "total",
+                      "cancelled",
+                      "items"
+                    ]
+                  },
+                  "recentAbsences": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "className": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "date",
+                        "status"
+                      ]
+                    },
+                    "description": "Son 5 gelmedi/geç geldi kaydı"
+                  }
+                },
+                "required": [
+                  "attendanceToday",
+                  "lessons",
+                  "recentAbsences"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`academic` modülü kapalıysa `null`"
+          },
+          "learning": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "ungraded": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Notlanmamış teslim"
+                  },
+                  "homework": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "dueDate": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "className": {
+                          "type": "string"
+                        },
+                        "delivered": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "expected": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Ödevin sınıfındaki aktif öğrenci"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "dueDate",
+                        "delivered",
+                        "expected"
+                      ]
+                    },
+                    "description": "Son teslim günü bugün veya sonrası olan en yakın 5 ödev"
+                  }
+                },
+                "required": [
+                  "ungraded",
+                  "homework"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`learning` modülü kapalıysa `null`"
+          }
+        },
+        "required": [
+          "role",
+          "today",
+          "students",
+          "classes",
+          "academic",
+          "learning"
+        ]
+      },
+      "DashboardStudentInput": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "ogrenci"
+          },
+          "today": {
+            "type": "string",
+            "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+          },
+          "student": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "academic": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "grades": {
+                    "type": "object",
+                    "properties": {
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "scoreSum": {
+                        "type": "number"
+                      },
+                      "subjects": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "subjectId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "scoreSum": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "subjectId",
+                            "count",
+                            "scoreSum"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "count",
+                      "scoreSum",
+                      "subjects"
+                    ]
+                  },
+                  "attendance": {
+                    "description": "Yoklama durum sayıları; `total` bütün kayıtlar",
+                    "$ref": "#/components/schemas/DashboardAttendanceCountsInput"
+                  },
+                  "weeklyAbsences": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+                        },
+                        "to": {
+                          "type": "string",
+                          "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+                        },
+                        "absent": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "absent"
+                      ]
+                    },
+                    "description": "Son 8 hafta (pazartesi–pazar), eskiden yeniye"
+                  },
+                  "recentGrades": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "score": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "date"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "grades",
+                  "attendance",
+                  "weeklyAbsences",
+                  "recentGrades"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`academic` modülü kapalıysa `null`"
+          },
+          "learning": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "submitted": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "assigned": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Sınıfa verilen ödev"
+                  },
+                  "homework": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "dueDate": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "submission": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "score": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "score"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Teslim yoksa `null`; `score` `null` ise notlanmamış"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "dueDate",
+                        "submission"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "submitted",
+                  "assigned",
+                  "homework"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`learning` modülü kapalıysa `null`"
+          }
+        },
+        "required": [
+          "role",
+          "today",
+          "student",
+          "academic",
+          "learning"
+        ]
+      },
+      "DashboardParentInput": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "veli"
+          },
+          "today": {
+            "type": "string",
+            "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+          },
+          "student": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "academic": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "grades": {
+                    "type": "object",
+                    "properties": {
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "scoreSum": {
+                        "type": "number"
+                      },
+                      "subjects": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "subjectId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "scoreSum": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "subjectId",
+                            "count",
+                            "scoreSum"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "count",
+                      "scoreSum",
+                      "subjects"
+                    ]
+                  },
+                  "attendance": {
+                    "description": "Yoklama durum sayıları; `total` bütün kayıtlar",
+                    "$ref": "#/components/schemas/DashboardAttendanceCountsInput"
+                  },
+                  "weeklyAbsences": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+                        },
+                        "to": {
+                          "type": "string",
+                          "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+                        },
+                        "absent": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "absent"
+                      ]
+                    },
+                    "description": "Son 8 hafta (pazartesi–pazar), eskiden yeniye"
+                  },
+                  "recentGrades": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "score": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "date"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "grades",
+                  "attendance",
+                  "weeklyAbsences",
+                  "recentGrades"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`academic` modülü kapalıysa `null`"
+          },
+          "learning": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "submitted": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "assigned": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Sınıfa verilen ödev"
+                  },
+                  "homework": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "dueDate": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "submission": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "score": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "score"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Teslim yoksa `null`; `score` `null` ise notlanmamış"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "dueDate",
+                        "submission"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "submitted",
+                  "assigned",
+                  "homework"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`learning` modülü kapalıysa `null`"
+          },
+          "balance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "outstanding": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Gecikmiş + yaklaşan taksit toplamı"
+                  },
+                  "overdueCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "outstanding",
+                  "overdueCount"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Seçili çocuğun bakiyesi; `finance` modülü kapalıysa `null`"
+          }
+        },
+        "required": [
+          "role",
+          "today",
+          "student",
+          "academic",
+          "learning",
+          "balance"
+        ]
+      },
+      "DashboardInput": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DashboardAdminInput"
+          },
+          {
+            "$ref": "#/components/schemas/DashboardFrontDeskInput"
+          },
+          {
+            "$ref": "#/components/schemas/DashboardTeacherInput"
+          },
+          {
+            "description": "Öğrenci özeti; ödeme bilgisi yoktur",
+            "$ref": "#/components/schemas/DashboardStudentInput"
+          },
+          {
+            "$ref": "#/components/schemas/DashboardParentInput"
+          }
+        ]
+      },
       "HealthInput": {
         "type": "object",
         "properties": {
@@ -2315,6 +3578,1320 @@
           "awaitingReply"
         ],
         "additionalProperties": false
+      },
+      "DashboardStatusTotal": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Kuruş"
+          }
+        },
+        "required": [
+          "count",
+          "amount"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardInvoiceSummary": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Taksit sayısı"
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Ödeme planı toplamı (kuruş)"
+          },
+          "overdue": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Kuruş"
+              }
+            },
+            "required": [
+              "count",
+              "amount"
+            ],
+            "additionalProperties": false,
+            "description": "Gecikmiş",
+            "$ref": "#/components/schemas/DashboardStatusTotal"
+          },
+          "upcoming": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Kuruş"
+              }
+            },
+            "required": [
+              "count",
+              "amount"
+            ],
+            "additionalProperties": false,
+            "description": "Yaklaşan",
+            "$ref": "#/components/schemas/DashboardStatusTotal"
+          },
+          "paid": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Kuruş"
+              }
+            },
+            "required": [
+              "count",
+              "amount"
+            ],
+            "additionalProperties": false,
+            "description": "Ödendi",
+            "$ref": "#/components/schemas/DashboardStatusTotal"
+          }
+        },
+        "required": [
+          "total",
+          "amount",
+          "overdue",
+          "upcoming",
+          "paid"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardAttendanceCounts": {
+        "type": "object",
+        "properties": {
+          "present": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "absent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "late": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "excused": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "present",
+          "absent",
+          "late",
+          "excused",
+          "total"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardInvoiceRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "studentName": {
+            "description": "Bağlı öğrenci adı; kapsam dışında yok",
+            "type": "string"
+          },
+          "installment": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Kuruş"
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+          },
+          "paidAt": {
+            "type": "string",
+            "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardAdmin": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "yonetici"
+          },
+          "today": {
+            "type": "string",
+            "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+          },
+          "students": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "archived": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "active",
+              "archived"
+            ],
+            "additionalProperties": false
+          },
+          "classes": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "campusCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Aktif sınıfı olan kampüs sayısı"
+              }
+            },
+            "required": [
+              "active",
+              "campusCount"
+            ],
+            "additionalProperties": false
+          },
+          "teachers": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "active"
+            ],
+            "additionalProperties": false
+          },
+          "finance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "invoices": {
+                    "description": "Taksit durumu dağılımı (core `invoiceStatus`, isteğin Istanbul günü)",
+                    "$ref": "#/components/schemas/DashboardInvoiceSummary"
+                  },
+                  "collectedToday": {
+                    "type": "object",
+                    "properties": {
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "amount": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "Kuruş"
+                      }
+                    },
+                    "required": [
+                      "count",
+                      "amount"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Bugün (`paidAt` günü) ödenen taksitler",
+                    "$ref": "#/components/schemas/DashboardStatusTotal"
+                  },
+                  "monthlyCollection": {
+                    "type": "object",
+                    "properties": {
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Son 6 ayda ödenen taksit"
+                      },
+                      "amount": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "Kuruş"
+                      },
+                      "months": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "month": {
+                              "type": "string",
+                              "description": "`YYYY-MM`"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "amount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kuruş"
+                            }
+                          },
+                          "required": [
+                            "month",
+                            "count",
+                            "amount"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Eskiden yeniye 6 ay (`paidAt:month`); kaydı olmayan ay sıfır"
+                      }
+                    },
+                    "required": [
+                      "count",
+                      "amount",
+                      "months"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "invoices",
+                  "collectedToday",
+                  "monthlyCollection"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`finance` modülü kapalıysa `null`"
+          },
+          "attendanceToday": {
+            "anyOf": [
+              {
+                "description": "Yoklama durum sayıları; `total` bütün kayıtlar",
+                "$ref": "#/components/schemas/DashboardAttendanceCounts"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bugünkü yoklama; `academic` modülü kapalıysa `null`"
+          },
+          "recentStudents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "string"
+                },
+                "className": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "description": "En son eklenen 5 aktif öğrenci"
+          },
+          "campuses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "students": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "capacity": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "students",
+                "capacity"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Aktif kampüs başına aktif öğrenci ve aktif sınıf kontenjanı"
+          }
+        },
+        "required": [
+          "role",
+          "today",
+          "students",
+          "classes",
+          "teachers",
+          "finance",
+          "attendanceToday",
+          "recentStudents",
+          "campuses"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardFrontDesk": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "onburo"
+          },
+          "today": {
+            "type": "string",
+            "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+          },
+          "finance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "invoices": {
+                    "description": "Taksit durumu dağılımı (core `invoiceStatus`, isteğin Istanbul günü)",
+                    "$ref": "#/components/schemas/DashboardInvoiceSummary"
+                  },
+                  "collectedToday": {
+                    "description": "Taksit sayısı ve tutarı (kuruş)",
+                    "$ref": "#/components/schemas/DashboardStatusTotal"
+                  },
+                  "overdue": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/DashboardInvoiceRow"
+                    },
+                    "description": "Vadesi en eski 5 gecikmiş taksit"
+                  },
+                  "upcoming": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/DashboardInvoiceRow"
+                    },
+                    "description": "Vadesi en yakın 5 yaklaşan taksit"
+                  },
+                  "recentPayments": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/DashboardInvoiceRow"
+                    },
+                    "description": "En son kaydedilen 5 ödeme"
+                  }
+                },
+                "required": [
+                  "invoices",
+                  "collectedToday",
+                  "overdue",
+                  "upcoming",
+                  "recentPayments"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`finance` modülü kapalıysa `null`"
+          },
+          "prospects": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "stages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "stage": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "stage",
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Aşama başına aday; aşamasız `null` sonda"
+                  }
+                },
+                "required": [
+                  "total",
+                  "stages"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`crm` modülü kapalıysa `null`"
+          }
+        },
+        "required": [
+          "role",
+          "today",
+          "finance",
+          "prospects"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardTeacher": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "ogretmen"
+          },
+          "today": {
+            "type": "string",
+            "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+          },
+          "students": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "active"
+            ],
+            "additionalProperties": false
+          },
+          "classes": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "active"
+            ],
+            "additionalProperties": false
+          },
+          "academic": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "attendanceToday": {
+                    "description": "Yoklama durum sayıları; `total` bütün kayıtlar",
+                    "$ref": "#/components/schemas/DashboardAttendanceCounts"
+                  },
+                  "lessons": {
+                    "type": "object",
+                    "properties": {
+                      "total": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Bugünkü iptal edilmemiş ders"
+                      },
+                      "cancelled": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Bugün iptal edilen ders"
+                      },
+                      "items": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string",
+                              "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "subject": {
+                              "type": "string"
+                            },
+                            "room": {
+                              "type": "string"
+                            },
+                            "duration": {
+                              "type": "number"
+                            },
+                            "className": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "total",
+                      "cancelled",
+                      "items"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "recentAbsences": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "className": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "date",
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Son 5 gelmedi/geç geldi kaydı"
+                  }
+                },
+                "required": [
+                  "attendanceToday",
+                  "lessons",
+                  "recentAbsences"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`academic` modülü kapalıysa `null`"
+          },
+          "learning": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "ungraded": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Notlanmamış teslim"
+                  },
+                  "homework": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "dueDate": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "className": {
+                          "type": "string"
+                        },
+                        "delivered": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "expected": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Ödevin sınıfındaki aktif öğrenci"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "dueDate",
+                        "delivered",
+                        "expected"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Son teslim günü bugün veya sonrası olan en yakın 5 ödev"
+                  }
+                },
+                "required": [
+                  "ungraded",
+                  "homework"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`learning` modülü kapalıysa `null`"
+          }
+        },
+        "required": [
+          "role",
+          "today",
+          "students",
+          "classes",
+          "academic",
+          "learning"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardStudent": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "ogrenci"
+          },
+          "today": {
+            "type": "string",
+            "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+          },
+          "student": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "academic": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "grades": {
+                    "type": "object",
+                    "properties": {
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "scoreSum": {
+                        "type": "number"
+                      },
+                      "subjects": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "subjectId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "scoreSum": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "subjectId",
+                            "count",
+                            "scoreSum"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "count",
+                      "scoreSum",
+                      "subjects"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "attendance": {
+                    "description": "Yoklama durum sayıları; `total` bütün kayıtlar",
+                    "$ref": "#/components/schemas/DashboardAttendanceCounts"
+                  },
+                  "weeklyAbsences": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+                        },
+                        "to": {
+                          "type": "string",
+                          "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+                        },
+                        "absent": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "absent"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Son 8 hafta (pazartesi–pazar), eskiden yeniye"
+                  },
+                  "recentGrades": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "score": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "date"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "grades",
+                  "attendance",
+                  "weeklyAbsences",
+                  "recentGrades"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`academic` modülü kapalıysa `null`"
+          },
+          "learning": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "submitted": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "assigned": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Sınıfa verilen ödev"
+                  },
+                  "homework": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "dueDate": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "submission": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "score": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "score"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Teslim yoksa `null`; `score` `null` ise notlanmamış"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "dueDate",
+                        "submission"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "submitted",
+                  "assigned",
+                  "homework"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`learning` modülü kapalıysa `null`"
+          }
+        },
+        "required": [
+          "role",
+          "today",
+          "student",
+          "academic",
+          "learning"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardParent": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "veli"
+          },
+          "today": {
+            "type": "string",
+            "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+          },
+          "student": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "academic": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "grades": {
+                    "type": "object",
+                    "properties": {
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "scoreSum": {
+                        "type": "number"
+                      },
+                      "subjects": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "subjectId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "scoreSum": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "subjectId",
+                            "count",
+                            "scoreSum"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "count",
+                      "scoreSum",
+                      "subjects"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "attendance": {
+                    "description": "Yoklama durum sayıları; `total` bütün kayıtlar",
+                    "$ref": "#/components/schemas/DashboardAttendanceCounts"
+                  },
+                  "weeklyAbsences": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+                        },
+                        "to": {
+                          "type": "string",
+                          "description": "Europe/Istanbul günü (`YYYY-MM-DD`)"
+                        },
+                        "absent": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "absent"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Son 8 hafta (pazartesi–pazar), eskiden yeniye"
+                  },
+                  "recentGrades": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "score": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "date"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "grades",
+                  "attendance",
+                  "weeklyAbsences",
+                  "recentGrades"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`academic` modülü kapalıysa `null`"
+          },
+          "learning": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "submitted": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "assigned": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Sınıfa verilen ödev"
+                  },
+                  "homework": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "dueDate": {
+                          "type": "string",
+                          "description": "Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri"
+                        },
+                        "submission": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "score": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "score"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Teslim yoksa `null`; `score` `null` ise notlanmamış"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "dueDate",
+                        "submission"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "submitted",
+                  "assigned",
+                  "homework"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`learning` modülü kapalıysa `null`"
+          },
+          "balance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "outstanding": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Gecikmiş + yaklaşan taksit toplamı"
+                  },
+                  "overdueCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "outstanding",
+                  "overdueCount"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Seçili çocuğun bakiyesi; `finance` modülü kapalıysa `null`"
+          }
+        },
+        "required": [
+          "role",
+          "today",
+          "student",
+          "academic",
+          "learning",
+          "balance"
+        ],
+        "additionalProperties": false
+      },
+      "Dashboard": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DashboardAdmin"
+          },
+          {
+            "$ref": "#/components/schemas/DashboardFrontDesk"
+          },
+          {
+            "$ref": "#/components/schemas/DashboardTeacher"
+          },
+          {
+            "description": "Öğrenci özeti; ödeme bilgisi yoktur",
+            "$ref": "#/components/schemas/DashboardStudent"
+          },
+          {
+            "$ref": "#/components/schemas/DashboardParent"
+          }
+        ]
       },
       "Health": {
         "type": "object",
@@ -5125,6 +7702,110 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/CollectionItem"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "operationId": "getDashboard",
+        "summary": "Genel Bakış özeti",
+        "tags": [
+          "dashboard"
+        ],
+        "description": "Etkin rolün Genel Bakış kartları, kısa listeleri ve mini grafik verisi tek yanıtta; yanıt `role` alanıyla ayrılır. Değerler koleksiyon okuma uçlarının (`/collections/:c`, `/collections/:c/counts`) aynı kapsam ve süzgeçleriyle hesaplanır. Okuduğu koleksiyon aktöre kapalı olan bölüm (kapalı modül, kurum türünde olmayan modül, rolün okuyamadığı koleksiyon) `null` döner. Etkin kurum yoksa 403 `no_active_institution`; velide kapsam dışı `studentId` 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Yalnız öğrenci ve velide: özeti gösterilecek öğrenci. Velide seçili çocuk (verilmezse kapsamdaki ilk çocuk); kapsam dışı öğrenci 404. Diğer rollerde 400"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Dashboard"
                     }
                   },
                   "required": [

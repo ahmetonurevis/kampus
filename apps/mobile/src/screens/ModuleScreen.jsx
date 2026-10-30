@@ -1,6 +1,6 @@
 import Timetable from './Timetable.tsx'
 import VideoLibrary from './VideoLibrary.tsx'
-import Conversations from './Conversations.jsx'
+import Conversations from './Conversations.tsx'
 import { FormScrollView } from '../ui/KeyboardLayout.tsx'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Switch } from 'react-native'

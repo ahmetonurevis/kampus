@@ -1,4 +1,5 @@
 import { DomainError } from '../lib/errors.ts'
+import { dayKey } from '../lib/format.ts'
 
 /**
  * İçerik havuzu sözlüğü (docs/domain/kaynak-platformu.md, beceri-gelisimi.md; ADR 0004 karar 9).
@@ -208,6 +209,18 @@ export const OPEN_LICENSES = {
   'CC-BY-SA-3.0': { label: 'CC BY-SA 3.0' },
 } as const
 export type OpenLicense = keyof typeof OPEN_LICENSES
+
+/**
+ * Lisanslı yayının bitiş günü geçti mi (DOM-KYN-021). Bitiş günü dahil geçerlidir; gün
+ * Europe/Istanbul'a göre sayılır. Bitiş tarihi olmayan lisans türleri süresizdir.
+ */
+export function licenseExpired(
+  license: { kind: LicenseKind; expiryDate?: string } | null,
+  now: Date | string,
+): boolean {
+  if (license?.kind !== 'licensed_publication' || license.expiryDate === undefined) return false
+  return license.expiryDate < dayKey(now)
+}
 
 // --- Paylaşım kapsamı ---------------------------------------------------------------------
 

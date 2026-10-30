@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
-import type { Tenant, TenantOptions } from './support/tenant.ts'
+import type { Tenant, TenantOptions, TenantUser } from './support/tenant.ts'
 import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Şikayet & Talep (veli), Şikayet & Talepler (ön büro) ve İzin & Mazeret (veli): okuma ve yazma.
@@ -342,6 +342,13 @@ const requestById = async (client: ApiClient, id: string) => {
   return row as RequestRow
 }
 
+interface Fixtures {
+  page: Page
+  loginAs: (principal: TenantUser) => Promise<Page>
+  api: (principal: TenantUser) => Promise<ApiClient>
+  tenant: (options: TenantOptions) => Promise<Tenant>
+}
+
 /** Kendi kurumu: veli (Deniz s1, Ece s2), ön büro ve yönetici; seed talepleri req1/req2. */
 const writeTenant = (tenant: (options: TenantOptions) => Promise<Tenant>) =>
   tenant({ roles: ['yonetici', 'onburo', 'veli'], collections: ['requests'] })
@@ -484,6 +491,86 @@ test.describe('talep yazma', () => {
       .toBe(1)
   })
 
+  /**
+   * Ön büro A formu açıkken B birimi değiştirir; A'nın sorgusu 30 sn eskidikten sonra odak dönüşüyle
+   * sessizce tazelenir (`If-Match` sürümü sorgudan taze gelir, form eski değeri tutar). B'nin değişikliği
+   * 409 olmadan geri alınmamalıdır.
+   */
+  async function openStaleRequest({ page, loginAs, api, tenant }: Fixtures, typeReply: boolean) {
+    const school = await writeTenant(tenant)
+    const other = await api(school.user('onburo'))
+    const before = await requestById(other, 'req2')
+    expect(before.record.assignedTo).toBe('Akademik koordinatör')
+
+    await page.clock.install()
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/talepler?talep=req2')
+    const panel = page.getByRole('dialog', { name: 'Talep ayrıntısı' })
+    const update = panel.getByRole('form', { name: 'Talebi güncelle' })
+    await expect(update.getByLabel('İlgili birim')).toHaveValue('Akademik koordinatör')
+    if (typeReply) await update.getByLabel('Yanıt').fill('Yalnız yanıt yazıyorum.')
+
+    // B: ilgili birimi değiştirir.
+    const changed = await other.context.patch('/api/v1/requests/req2', {
+      data: { assignedTo: 'Finans birimi' },
+      headers: { ...commandHeaders(), 'if-match': `"${before.version}"` },
+    })
+    expect(changed.status()).toBe(200)
+
+    // A sekmeye döner: sorgu bayat sayılır ve arkadan tazelenir.
+    const refetched = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/collections/requests/req2') &&
+        response.request().method() === 'GET',
+    )
+    await page.clock.fastForward(60_000)
+    await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')))
+    await refetched
+    await expect(panel.locator('dd', { hasText: 'Finans birimi' })).toBeVisible()
+    return { panel, update, other }
+  }
+
+  test('sorgu arkadan tazelense de kirlenmemiş form yeni kayda geçer ve B’nin değişikliği korunur', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const { update, other } = await openStaleRequest({ page, loginAs, api, tenant }, false)
+    await expect(update.getByLabel('İlgili birim')).toHaveValue('Finans birimi')
+    await update.getByLabel('Yanıt').fill('Finans birimine yönlendirildi.')
+    await update.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(toast(page, 'Talep güncellendi.')).toBeVisible()
+    const row = await requestById(other, 'req2')
+    expect(row.record.assignedTo).toBe('Finans birimi')
+    expect(row.record.replies).toHaveLength(1)
+  })
+
+  test('DOM-ILT-080: kirli form eski sürümle gider, sunucu 409 verir ve B’nin birim değişikliği geri alınmaz', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const { update, other } = await openStaleRequest({ page, loginAs, api, tenant }, true)
+    // Form eski değeri tutar; sessizce yeni değere geçmez.
+    await expect(update.getByLabel('İlgili birim')).toHaveValue('Akademik koordinatör')
+    await update.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(toast(page, 'Talep başka biri tarafından güncellendi')).toBeVisible()
+    // Hiçbir şey ezilmedi: birim B'nin değeri, yanıt yazılmadı.
+    const row = await requestById(other, 'req2')
+    expect(row.record.assignedTo).toBe('Finans birimi')
+    expect(row.record.replies ?? []).toHaveLength(0)
+    // Form güncel kayda döndü, yazılan yanıt korundu; yeniden gönderim yeni sürümle geçer.
+    await expect(update.getByLabel('İlgili birim')).toHaveValue('Finans birimi')
+    await expect(update.getByLabel('Yanıt')).toHaveValue('Yalnız yanıt yazıyorum.')
+    await update.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(toast(page, 'Talep güncellendi.')).toBeVisible()
+    const after = await requestById(other, 'req2')
+    expect(after.record.assignedTo).toBe('Finans birimi')
+    expect(after.record.replies).toHaveLength(1)
+  })
+
   test('yetkisiz roller formu görmez ve uçlar kapalıdır', async ({
     page,
     loginAs,
@@ -545,10 +632,15 @@ test.describe('izin ve mazeret yazma', () => {
     await expect(form.getByLabel('Öğrenci')).toHaveValue('s1')
     await expect(form.getByLabel('Gerekçe').locator('option')).toHaveText([
       'Seçin',
-      'Sağlık',
-      'Aile',
-      'Resmî işlem',
+      'Sağlık nedeniyle',
+      'Ailevi neden',
+      'Resmi işlem',
       'Diğer',
+    ])
+    // Öğrenci seçimi yalnız velinin kendi çocuklarını listeler (Ayşe Yılmaz: Deniz ve Ece).
+    await expect(form.getByLabel('Öğrenci').locator('option')).toHaveText([
+      'Deniz Yılmaz',
+      'Ece Yılmaz',
     ])
     // KVKK: serbest açıklama alanı yoktur.
     await expect(form.locator('textarea')).toHaveCount(0)

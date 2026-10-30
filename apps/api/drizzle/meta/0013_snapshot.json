@@ -1,5 +1,5 @@
 {
-  "id": "88546cba-b729-4906-8324-758c8f4f96d3",
+  "id": "99e41319-3538-4a6d-8759-0d6ff4a10d19",
   "prevId": "81f3ce68-88df-42f3-bedb-b0b59f665eee",
   "version": "7",
   "dialect": "postgresql",
@@ -2613,6 +2613,10 @@
           "name": "rubric_scores_criteria_check",
           "value": "jsonb_typeof(\"rubric_scores\".\"criteria\") = 'array' and jsonb_array_length(\"rubric_scores\".\"criteria\") between 1 and 10"
         },
+        "rubric_scores_overall_comment_check": {
+          "name": "rubric_scores_overall_comment_check",
+          "value": "char_length(\"rubric_scores\".\"overall_comment\") <= 5000"
+        },
         "rubric_scores_version_check": {
           "name": "rubric_scores_version_check",
           "value": "\"rubric_scores\".\"version\" = 1 and \"rubric_scores\".\"archived_at\" is null"
@@ -2842,6 +2846,10 @@
         "rubric_versions_number_check": {
           "name": "rubric_versions_number_check",
           "value": "\"rubric_versions\".\"version_number\" >= 1"
+        },
+        "rubric_versions_title_check": {
+          "name": "rubric_versions_title_check",
+          "value": "char_length(\"rubric_versions\".\"title\") <= 200"
         },
         "rubric_versions_criteria_check": {
           "name": "rubric_versions_criteria_check",
@@ -3130,6 +3138,10 @@
         "score_appeals_reason_check": {
           "name": "score_appeals_reason_check",
           "value": "char_length(\"score_appeals\".\"reason\") <= 2000"
+        },
+        "score_appeals_decision_reason_check": {
+          "name": "score_appeals_decision_reason_check",
+          "value": "\"score_appeals\".\"decision_reason\" is null or char_length(\"score_appeals\".\"decision_reason\") <= 2000"
         }
       },
       "isRLSEnabled": false
@@ -3274,6 +3286,18 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last"
+            },
+            {
+              "expression": "assignment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
             }
           ],
           "isUnique": false,
@@ -3340,11 +3364,15 @@
           "tableTo": "task_attempts",
           "columnsFrom": [
             "institution_id",
-            "source_attempt_id"
+            "source_attempt_id",
+            "assignment_id",
+            "learner_id"
           ],
           "columnsTo": [
             "institution_id",
-            "id"
+            "id",
+            "assignment_id",
+            "learner_id"
           ],
           "onDelete": "restrict",
           "onUpdate": "no action"
@@ -4452,7 +4480,18 @@
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "task_attempts_id_assignment_learner_key": {
+          "name": "task_attempts_id_assignment_learner_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "id",
+            "assignment_id",
+            "learner_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "task_attempts_number_check": {

@@ -7,6 +7,7 @@ import { and, eq, sql, type SQL } from 'drizzle-orm'
 import type { Database } from '../src/db/client.ts'
 import {
   resubmissionRequests,
+  rubrics,
   rubricScores,
   rubricVersions,
   scoreAppeals,
@@ -15,6 +16,7 @@ import {
   submissionDrafts,
   submissionVersions,
   taskAssignments,
+  taskAssignmentTargets,
   taskAttempts,
   taskSubmissions,
 } from '../src/db/schema/skills.ts'
@@ -164,6 +166,162 @@ describe('0013: beceri görevi tabloları', () => {
     assert.equal(stored?.version, 1)
   })
 
+  test('ADR 0004 karar 1: başka kurumun rubriğine, atamasına, teslimine, teslim sürümüne, denemesine ve puanına bağlanan rubrik sürümü, hedef, taslak, sürüm, yeniden teslim, ikinci puan, puan, itiraz ve aktarım reddedilir', async () => {
+    const { institutionId: aId, owner: aOwner, chain: a } = await chain()
+    const { institutionId: bId, owner: bOwner, chain: b } = await chain()
+    const scoreRow = (institutionId: string, rater: string, columns: Record<string, unknown>) => ({
+      institutionId,
+      id: randomUUID(),
+      raterUserId: rater,
+      raterRole: 'first' as const,
+      criteria: [{ criterionId: 'task', band: 3, comment: null }],
+      overallComment: 'İyi.',
+      scoredAt: FIXED_NOW,
+      ...at,
+      submissionVersionId: '',
+      rubricVersionId: '',
+      ...columns,
+    })
+    const aScore = scoreRow(aId, aOwner, {
+      submissionVersionId: a.submissionVersionId,
+      rubricVersionId: a.rubricVersionId,
+    })
+    const bScore = scoreRow(bId, bOwner, {
+      submissionVersionId: b.submissionVersionId,
+      rubricVersionId: b.rubricVersionId,
+    })
+    await db.insert(rubricScores).values([aScore, bScore])
+    const aAttemptId = randomUUID()
+    await db.insert(taskAttempts).values({
+      institutionId: aId,
+      id: aAttemptId,
+      assignmentId: a.assignmentId,
+      learnerId: LEARNER,
+      attemptNumber: 1,
+      startedAt: FIXED_NOW,
+      ...at,
+    })
+
+    await violates(
+      db.insert(rubricVersions).values({
+        institutionId: bId,
+        id: randomUUID(),
+        rubricId: a.rubricId,
+        versionNumber: 9,
+        status: 'draft',
+        ...sampleRubricData(),
+        ...at,
+      }),
+      'rubric_versions_rubric_fkey',
+      '23503',
+    )
+    await violates(
+      db.insert(taskAssignmentTargets).values({
+        institutionId: bId,
+        assignmentId: a.assignmentId,
+        targetKind: 'student',
+        targetId: LEARNER,
+        ...at,
+      }),
+      'task_assignment_targets_assignment_fkey',
+    )
+    await violates(
+      db.insert(submissionDrafts).values({
+        institutionId: bId,
+        assignmentId: a.assignmentId,
+        learnerId: LEARNER,
+        savedAt: FIXED_NOW,
+        ...at,
+      }),
+      'submission_drafts_assignment_fkey',
+    )
+    await violates(
+      db.insert(submissionVersions).values({
+        institutionId: bId,
+        id: randomUUID(),
+        submissionId: a.submissionId,
+        versionNumber: 2,
+        submittedAt: FIXED_NOW,
+        body: 'Metin',
+        ...at,
+      }),
+      'submission_versions_submission_fkey',
+    )
+    await violates(
+      db.insert(resubmissionRequests).values({
+        institutionId: bId,
+        submissionId: a.submissionId,
+        versionNumber: 1,
+        dueAt: LATER,
+        requestedByUserId: bOwner,
+        requestedAt: FIXED_NOW,
+        ...at,
+      }),
+      'resubmission_requests_version_fkey',
+    )
+    await violates(
+      db.insert(secondRatingRequests).values({
+        institutionId: bId,
+        submissionId: a.submissionId,
+        source: 'sample',
+        requestedAt: FIXED_NOW,
+        ...at,
+      }),
+      'second_rating_requests_submission_fkey',
+    )
+    await violates(
+      db.insert(rubricScores).values(
+        scoreRow(bId, bOwner, {
+          submissionVersionId: b.submissionVersionId,
+          rubricVersionId: a.rubricVersionId,
+          raterRole: 'final',
+        }),
+      ),
+      'rubric_scores_rubric_version_fkey',
+    )
+    await violates(
+      db.insert(scoreAppeals).values({
+        institutionId: bId,
+        id: randomUUID(),
+        submissionVersionId: a.submissionVersionId,
+        learnerId: LEARNER,
+        filedByUserId: bOwner,
+        reason: 'Dilbilgisi puanı yanlış hesaplandı.',
+        filedAt: FIXED_NOW,
+        ...at,
+      }),
+      'score_appeals_submission_version_fkey',
+    )
+    const transfer = (columns: Record<string, unknown>) =>
+      db.insert(scoreTransfers).values({
+        institutionId: bId,
+        id: randomUUID(),
+        assignmentId: b.assignmentId,
+        learnerId: LEARNER,
+        gradeType: 'performans',
+        score: 85,
+        sourceRubricScoreId: bScore.id,
+        gradeRecordId: 'test-grade-1',
+        transferredByUserId: bOwner,
+        transferredAt: LATER,
+        ...at,
+        ...columns,
+      })
+    await violates(transfer({ assignmentId: a.assignmentId }), 'score_transfers_assignment_fkey')
+    await violates(
+      transfer({ sourceRubricScoreId: aScore.id }),
+      'score_transfers_source_rubric_score_fkey',
+    )
+    await violates(
+      transfer({ sourceRubricScoreId: null, sourceAttemptId: aAttemptId }),
+      'score_transfers_source_attempt_fkey',
+    )
+    // B'nin kendi kaynağıyla aktarım geçer; A'nın satırları değişmedi.
+    await transfer({})
+    const [aRubric] = await db.select().from(rubrics).where(eq(rubrics.institutionId, aId))
+    assert.equal(aRubric?.version, 1)
+  })
+
   test('DOM-BEC-040: kursiyer × atama başına tek teslim; sürüm numarası teslimde tekil; teslim sürümü değişmez ve arşivlenmez', async () => {
     const { institutionId, chain: c } = await chain()
     await violates(
@@ -266,6 +424,7 @@ describe('0013: beceri görevi tabloları', () => {
       'rubric_versions_published_check',
     )
     await violates(version({ skill: 'reading' }), 'rubric_versions_skill_check')
+    await violates(version({ title: 'x'.repeat(201) }), 'rubric_versions_title_check')
     await violates(version({ criteria: [] }), 'rubric_versions_criteria_check')
     await version({})
     await violates(version({ versionNumber: 3 }), 'rubric_versions_draft_key')
@@ -308,6 +467,21 @@ describe('0013: beceri görevi tabloları', () => {
     await score('final')
     await score('final')
     await violates(score('coordinator'), 'rubric_scores_rater_role_check')
+    await violates(
+      db.insert(rubricScores).values({
+        institutionId,
+        id: randomUUID(),
+        submissionVersionId: c.submissionVersionId,
+        rubricVersionId: c.rubricVersionId,
+        raterUserId: owner,
+        raterRole: 'final',
+        criteria: [{ criterionId: 'task', band: 3, comment: null }],
+        overallComment: 'x'.repeat(5001),
+        scoredAt: FIXED_NOW,
+        ...at,
+      }),
+      'rubric_scores_overall_comment_check',
+    )
     await rejectsImmutable(
       db
         .update(rubricScores)
@@ -497,6 +671,16 @@ describe('0013: beceri görevi tabloları', () => {
       }),
       'score_appeals_outcome_check',
     )
+    await violates(appeal({ reason: 'x'.repeat(2001) }), 'score_appeals_reason_check')
+    await violates(
+      appeal({
+        outcome: 'rejected',
+        decidedAt: LATER,
+        decidedByUserId: owner,
+        decisionReason: 'x'.repeat(2001),
+      }),
+      'score_appeals_decision_reason_check',
+    )
     await appeal({})
     await violates(appeal({}), 'score_appeals_submission_version_key', '23505')
   })
@@ -530,6 +714,46 @@ describe('0013: beceri görevi tabloları', () => {
         ...columns,
       })
     await violates(transfer({ sourceAttemptId: null }), 'score_transfers_source_check')
+    // Sahiplik: kaynak deneme aynı atamanın ve aynı kursiyerin denemesidir.
+    const otherLearnerAttempt = randomUUID()
+    const otherAssignment = randomUUID()
+    const otherAssignmentAttempt = randomUUID()
+    await db.insert(taskAssignments).values({
+      institutionId,
+      id: otherAssignment,
+      ...teacherAssignment(c.resourceId, c.resourceVersionId, c.rubricVersionId),
+      assignedByUserId: owner,
+      ...at,
+    })
+    await db.insert(taskAttempts).values([
+      {
+        institutionId,
+        id: otherLearnerAttempt,
+        assignmentId: c.assignmentId,
+        learnerId: 'test-s-diger',
+        attemptNumber: 1,
+        startedAt: FIXED_NOW,
+        ...at,
+      },
+      {
+        institutionId,
+        id: otherAssignmentAttempt,
+        assignmentId: otherAssignment,
+        learnerId: LEARNER,
+        attemptNumber: 1,
+        startedAt: FIXED_NOW,
+        ...at,
+      },
+    ])
+    await violates(
+      transfer({ sourceAttemptId: otherLearnerAttempt }),
+      'score_transfers_source_attempt_fkey',
+      '23503',
+    )
+    await violates(
+      transfer({ sourceAttemptId: otherAssignmentAttempt }),
+      'score_transfers_source_attempt_fkey',
+    )
     await violates(transfer({ gradeType: 'katilim' }), 'score_transfers_grade_type_check')
     await violates(transfer({ score: 101 }), 'score_transfers_score_check')
     await transfer({})

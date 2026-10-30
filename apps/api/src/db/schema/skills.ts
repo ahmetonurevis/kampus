@@ -17,7 +17,11 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import { GRADE_TYPES, type GradeType } from '@kampus/school-core/lib/grades.ts'
-import { TARGET_KINDS, type TargetKind } from '@kampus/school-core/skills/assignment.ts'
+import {
+  TARGET_KINDS,
+  type FixedAssignment,
+  type TargetKind,
+} from '@kampus/school-core/skills/assignment.ts'
 import {
   APPEAL_OUTCOMES,
   RATER_ROLES,
@@ -41,7 +45,10 @@ import {
   type CountPolicy,
   type TaskKind,
 } from '@kampus/school-core/skills/scoring.ts'
-import type { SubmissionSettings } from '@kampus/school-core/skills/submission.ts'
+import {
+  submissionSettingsSchema,
+  type SubmissionSettings,
+} from '@kampus/school-core/skills/submission.ts'
 
 import { institutions } from './auth.ts'
 import { keys, oneOf, requiredColumns } from './columns.ts'
@@ -72,6 +79,28 @@ import { resources, resourceVersions } from './resources.ts'
  */
 
 const required = requiredColumns
+
+/** Teslim türleri core `submissionSettingsSchema` seçeneklerinden türetilir (`text`, `file`, `audio`). */
+const SUBMISSION_KINDS = submissionSettingsSchema.options.map(
+  (option) => option.shape.submissionKind.value,
+)
+
+/**
+ * TODO(core-scoring-modes): core'da puanlama kipi sabiti yok; değerler `scoringModeFor` dönüş
+ * tipindedir (`FixedAssignment['scoringMode']`). Sabit eklenince buradan türetilir.
+ */
+const SCORING_MODES = [
+  'auto',
+  'teacher',
+] as const satisfies readonly FixedAssignment['scoringMode'][]
+
+/**
+ * Serbest metin sınırları core şemalarıyla aynıdır (`skills/rubric.ts`: başlık 200, genel yorum
+ * 5000, itiraz ve karar gerekçesi 2000). Core bunları dışa aktarmadığı için burada sayıdır.
+ */
+const RUBRIC_TITLE_MAX = 200
+const OVERALL_COMMENT_MAX = 5000
+const REASON_MAX = 2000
 
 /**
  * Değişmez satır ilk sürümüyle ve arşivsiz eklenir. Kısıt yalnız eklemede anlamlıdır; sonraki her
@@ -135,6 +164,10 @@ export const rubricVersions = pgTable(
     check('rubric_versions_skill_check', oneOf(table.skill, RUBRIC_SKILLS)),
     check('rubric_versions_number_check', sql`${table.versionNumber} >= 1`),
     check(
+      'rubric_versions_title_check',
+      sql`char_length(${table.title}) <= ${sql.raw(String(RUBRIC_TITLE_MAX))}`,
+    ),
+    check(
       'rubric_versions_criteria_check',
       sql`jsonb_typeof(${table.criteria}) = 'array' and jsonb_array_length(${table.criteria}) between 1 and 10`,
     ),
@@ -180,7 +213,7 @@ export const taskAssignments = pgTable(
     /** Puanlamanın okunduğu sürüm; başta `resource_version_id`'dir (karar 4). */
     scoringVersionId: uuid('scoring_version_id').notNull(),
     rubricVersionId: uuid('rubric_version_id'),
-    scoringMode: text('scoring_mode').$type<'auto' | 'teacher'>().notNull(),
+    scoringMode: text('scoring_mode').$type<FixedAssignment['scoringMode']>().notNull(),
     kind: text('kind').$type<TaskKind>().notNull(),
     maxAttempts: integer('max_attempts'),
     countPolicy: text('count_policy').$type<CountPolicy>(),
@@ -226,7 +259,7 @@ export const taskAssignments = pgTable(
       foreignColumns: [rubricVersions.institutionId, rubricVersions.id],
     }).onDelete('restrict'),
     check('task_assignments_kind_check', oneOf(table.kind, keys(TASK_KINDS))),
-    check('task_assignments_scoring_mode_check', oneOf(table.scoringMode, ['auto', 'teacher'])),
+    check('task_assignments_scoring_mode_check', oneOf(table.scoringMode, SCORING_MODES)),
     // `attemptRulesSchema`: alıştırmada hak ve politika yok; değerlendirmede hak 1–3, "en yüksek"
     // yalnız hak 1'den büyükse; öğretmen puanlı değerlendirmede hak 1 ve ilk deneme.
     check(
@@ -276,7 +309,7 @@ export const taskAssignments = pgTable(
     ),
     check(
       'task_assignments_submission_kind_check',
-      sql`${table.submissionKind} is null or ${oneOf(table.submissionKind, ['text', 'file', 'audio'])}`,
+      sql`${table.submissionKind} is null or ${oneOf(table.submissionKind, SUBMISSION_KINDS)}`,
     ),
     // Yabancı anahtar indeksleri; kaynak indeksi aynı içeriğin açık atamalarını da bulur (IST-034).
     index('task_assignments_resource_idx').on(table.institutionId, table.resourceId),
@@ -369,6 +402,15 @@ export const taskAttempts = pgTable(
       table.assignmentId,
       table.learnerId,
       table.attemptNumber,
+    ),
+    // Birincil anahtarı genişletir; tek amacı not aktarımının sahiplik yabancı anahtarıdır
+    // (`score_transfers_source_attempt_fkey`: deneme aynı atama ve kursiyerindir). Kısıttır, indeks
+    // değil: drizzle-kit yabancı anahtarları indekslerden önce oluşturur.
+    unique('task_attempts_id_assignment_learner_key').on(
+      table.institutionId,
+      table.id,
+      table.assignmentId,
+      table.learnerId,
     ),
   ],
 )
@@ -561,6 +603,10 @@ export const rubricScores = pgTable(
       'rubric_scores_criteria_check',
       sql`jsonb_typeof(${table.criteria}) = 'array' and jsonb_array_length(${table.criteria}) between 1 and 10`,
     ),
+    check(
+      'rubric_scores_overall_comment_check',
+      sql`char_length(${table.overallComment}) <= ${sql.raw(String(OVERALL_COMMENT_MAX))}`,
+    ),
     check('rubric_scores_version_check', firstVersion(table)),
     // Teslim sürümünün puanları; yabancı anahtar indeksi.
     index('rubric_scores_submission_version_idx').on(
@@ -660,7 +706,14 @@ export const scoreAppeals = pgTable(
         and (${table.outcome} is null) = (${table.decisionReason} is null)
         and (${table.decidedAt} is null or ${table.decidedAt} >= ${table.filedAt})`,
     ),
-    check('score_appeals_reason_check', sql`char_length(${table.reason}) <= 2000`),
+    check(
+      'score_appeals_reason_check',
+      sql`char_length(${table.reason}) <= ${sql.raw(String(REASON_MAX))}`,
+    ),
+    check(
+      'score_appeals_decision_reason_check',
+      sql`${table.decisionReason} is null or char_length(${table.decisionReason}) <= ${sql.raw(String(REASON_MAX))}`,
+    ),
     // Sürüm başına tek itiraz (`planAppeal`); yabancı anahtar indeksi.
     uniqueIndex('score_appeals_submission_version_key').on(
       table.institutionId,
@@ -711,10 +764,18 @@ export const scoreTransfers = pgTable(
       columns: [table.institutionId, table.assignmentId],
       foreignColumns: [taskAssignments.institutionId, taskAssignments.id],
     }),
+    // Kaynak deneme aynı atamanın ve kursiyerin denemesidir (sahiplik). Kaynak boşken (rubrik
+    // puanından aktarım) MATCH SIMPLE gereği denetlenmez. Rubrik puanı kaynağının sahipliğini
+    // depo denetler (`insertScoreTransfer`): puan satırında atama ve kursiyer kolonu yoktur.
     foreignKey({
       name: 'score_transfers_source_attempt_fkey',
-      columns: [table.institutionId, table.sourceAttemptId],
-      foreignColumns: [taskAttempts.institutionId, taskAttempts.id],
+      columns: [table.institutionId, table.sourceAttemptId, table.assignmentId, table.learnerId],
+      foreignColumns: [
+        taskAttempts.institutionId,
+        taskAttempts.id,
+        taskAttempts.assignmentId,
+        taskAttempts.learnerId,
+      ],
     }).onDelete('restrict'),
     foreignKey({
       name: 'score_transfers_source_rubric_score_fkey',
@@ -735,7 +796,7 @@ export const scoreTransfers = pgTable(
       table.learnerId,
     ),
     index('score_transfers_source_attempt_idx')
-      .on(table.institutionId, table.sourceAttemptId)
+      .on(table.institutionId, table.sourceAttemptId, table.assignmentId, table.learnerId)
       .where(sql`${table.sourceAttemptId} is not null`),
     index('score_transfers_source_rubric_score_idx')
       .on(table.institutionId, table.sourceRubricScoreId)

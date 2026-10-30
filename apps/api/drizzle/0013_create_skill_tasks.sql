@@ -37,6 +37,7 @@ CREATE TABLE "rubric_scores" (
 	CONSTRAINT "rubric_scores_pkey" PRIMARY KEY("institution_id","id"),
 	CONSTRAINT "rubric_scores_rater_role_check" CHECK ("rubric_scores"."rater_role" in ('first', 'second', 'final')),
 	CONSTRAINT "rubric_scores_criteria_check" CHECK (jsonb_typeof("rubric_scores"."criteria") = 'array' and jsonb_array_length("rubric_scores"."criteria") between 1 and 10),
+	CONSTRAINT "rubric_scores_overall_comment_check" CHECK (char_length("rubric_scores"."overall_comment") <= 5000),
 	CONSTRAINT "rubric_scores_version_check" CHECK ("rubric_scores"."version" = 1 and "rubric_scores"."archived_at" is null)
 );
 --> statement-breakpoint
@@ -60,6 +61,7 @@ CREATE TABLE "rubric_versions" (
 	CONSTRAINT "rubric_versions_kind_check" CHECK ("rubric_versions"."kind" in ('analytic', 'holistic')),
 	CONSTRAINT "rubric_versions_skill_check" CHECK ("rubric_versions"."skill" in ('writing', 'speaking', 'mediation')),
 	CONSTRAINT "rubric_versions_number_check" CHECK ("rubric_versions"."version_number" >= 1),
+	CONSTRAINT "rubric_versions_title_check" CHECK (char_length("rubric_versions"."title") <= 200),
 	CONSTRAINT "rubric_versions_criteria_check" CHECK (jsonb_typeof("rubric_versions"."criteria") = 'array' and jsonb_array_length("rubric_versions"."criteria") between 1 and 10),
 	CONSTRAINT "rubric_versions_published_check" CHECK (("rubric_versions"."status" = 'draft') = ("rubric_versions"."published_at" is null)
         and ("rubric_versions"."status" <> 'published' or "rubric_versions"."archived_at" is null)
@@ -99,7 +101,8 @@ CREATE TABLE "score_appeals" (
         and ("score_appeals"."outcome" is null) = ("score_appeals"."decided_by_user_id" is null)
         and ("score_appeals"."outcome" is null) = ("score_appeals"."decision_reason" is null)
         and ("score_appeals"."decided_at" is null or "score_appeals"."decided_at" >= "score_appeals"."filed_at")),
-	CONSTRAINT "score_appeals_reason_check" CHECK (char_length("score_appeals"."reason") <= 2000)
+	CONSTRAINT "score_appeals_reason_check" CHECK (char_length("score_appeals"."reason") <= 2000),
+	CONSTRAINT "score_appeals_decision_reason_check" CHECK ("score_appeals"."decision_reason" is null or char_length("score_appeals"."decision_reason") <= 2000)
 );
 --> statement-breakpoint
 CREATE TABLE "score_transfers" (
@@ -250,6 +253,7 @@ CREATE TABLE "task_attempts" (
 	"archived_at" timestamp with time zone,
 	"version" integer DEFAULT 1 NOT NULL,
 	CONSTRAINT "task_attempts_pkey" PRIMARY KEY("institution_id","id"),
+	CONSTRAINT "task_attempts_id_assignment_learner_key" UNIQUE("institution_id","id","assignment_id","learner_id"),
 	CONSTRAINT "task_attempts_number_check" CHECK ("task_attempts"."attempt_number" >= 1),
 	CONSTRAINT "task_attempts_submitted_check" CHECK ("task_attempts"."submitted_at" is null or "task_attempts"."submitted_at" >= "task_attempts"."started_at"),
 	CONSTRAINT "task_attempts_answers_check" CHECK (jsonb_typeof("task_attempts"."answers") = 'object')
@@ -279,7 +283,7 @@ ALTER TABLE "score_appeals" ADD CONSTRAINT "score_appeals_institution_id_institu
 ALTER TABLE "score_appeals" ADD CONSTRAINT "score_appeals_submission_version_fkey" FOREIGN KEY ("institution_id","submission_version_id") REFERENCES "public"."submission_versions"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "score_transfers" ADD CONSTRAINT "score_transfers_institution_id_institutions_id_fk" FOREIGN KEY ("institution_id") REFERENCES "public"."institutions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "score_transfers" ADD CONSTRAINT "score_transfers_assignment_fkey" FOREIGN KEY ("institution_id","assignment_id") REFERENCES "public"."task_assignments"("institution_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "score_transfers" ADD CONSTRAINT "score_transfers_source_attempt_fkey" FOREIGN KEY ("institution_id","source_attempt_id") REFERENCES "public"."task_attempts"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "score_transfers" ADD CONSTRAINT "score_transfers_source_attempt_fkey" FOREIGN KEY ("institution_id","source_attempt_id","assignment_id","learner_id") REFERENCES "public"."task_attempts"("institution_id","id","assignment_id","learner_id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "score_transfers" ADD CONSTRAINT "score_transfers_source_rubric_score_fkey" FOREIGN KEY ("institution_id","source_rubric_score_id") REFERENCES "public"."rubric_scores"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "second_rating_requests" ADD CONSTRAINT "second_rating_requests_institution_id_institutions_id_fk" FOREIGN KEY ("institution_id") REFERENCES "public"."institutions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "second_rating_requests" ADD CONSTRAINT "second_rating_requests_submission_fkey" FOREIGN KEY ("institution_id","submission_id") REFERENCES "public"."task_submissions"("institution_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -307,7 +311,7 @@ CREATE UNIQUE INDEX "rubric_versions_published_key" ON "rubric_versions" USING b
 CREATE INDEX "rubrics_owner_idx" ON "rubrics" USING btree ("institution_id","owner_user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "score_appeals_submission_version_key" ON "score_appeals" USING btree ("institution_id","submission_version_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "score_transfers_assignment_learner_key" ON "score_transfers" USING btree ("institution_id","assignment_id","learner_id");--> statement-breakpoint
-CREATE INDEX "score_transfers_source_attempt_idx" ON "score_transfers" USING btree ("institution_id","source_attempt_id") WHERE "score_transfers"."source_attempt_id" is not null;--> statement-breakpoint
+CREATE INDEX "score_transfers_source_attempt_idx" ON "score_transfers" USING btree ("institution_id","source_attempt_id","assignment_id","learner_id") WHERE "score_transfers"."source_attempt_id" is not null;--> statement-breakpoint
 CREATE INDEX "score_transfers_source_rubric_score_idx" ON "score_transfers" USING btree ("institution_id","source_rubric_score_id") WHERE "score_transfers"."source_rubric_score_id" is not null;--> statement-breakpoint
 CREATE INDEX "task_assignment_targets_target_idx" ON "task_assignment_targets" USING btree ("institution_id","target_kind","target_id") WHERE "task_assignment_targets"."archived_at" is null;--> statement-breakpoint
 CREATE INDEX "task_assignments_resource_idx" ON "task_assignments" USING btree ("institution_id","resource_id");--> statement-breakpoint

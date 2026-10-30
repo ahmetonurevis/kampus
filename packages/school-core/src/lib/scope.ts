@@ -9,6 +9,12 @@ import {
 } from '../modules/collection-modules.ts'
 import { roles, type Role } from '../modules/navigation.ts'
 import { schoolModules } from '../modules/school-workflows.ts'
+import {
+  ANNOUNCEMENT_HIDDEN_FIELDS,
+  announcementVisible,
+  narrowAnnouncement,
+  type AnnouncementViewer,
+} from './communication-access.ts'
 import type { Session } from './domain.ts'
 import { DomainError } from './errors.ts'
 
@@ -151,6 +157,16 @@ const gradeReader: Rule = (c, r) => {
   return givenInOwnClass || subjectOrHomeroom(c, r)
 }
 
+const viewerOf = (c: Context): AnnouncementViewer => ({
+  role: c.role,
+  teacherId: c.teacher?.id,
+  studentIds: c.studentIds,
+})
+const announcementRule =
+  (legacy: Rule): Rule =>
+  (c, r) =>
+    announcementVisible(viewerOf(c), r, () => legacy(c, r))
+
 /** Öğrenci kendi, veli çocuğunun kaydını okur (DOM-YTK-024, DOM-YTK-025). */
 const PERSONAL = { ogrenci: ownStudent, veli: ownStudent } as const
 const ADMIN = { yonetici: all } as const
@@ -233,11 +249,16 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
   videos: { ...ADMIN, ogretmen: all, ogrenci: ownLevel, veli: ownLevel },
   videoProgress: { ...ADMIN, ogretmen: ownStudent, ...PERSONAL },
   materials: { ...ADMIN, ogretmen: all, ogrenci: ownLevel, veli: ownLevel },
+  // Yayında çözülen alıcı listesi varsa yalnız alıcılar ve yayınlayan görür; geri çekilen
+  // duyuru alıcılara "Geri çekildi" olarak görünür, metnini yalnız yayınlayan ve yönetici alır;
+  // listesi olmayan eski kayıt sınıfa özel veya genel kalır
+  // (DOM-ILT-001, DOM-ILT-004; lib/communication-access.ts).
   announcements: {
-    ...ADMIN_FRONT_OFFICE,
-    ogretmen: classOrEveryone,
-    ogrenci: classOrEveryone,
-    veli: classOrEveryone,
+    yonetici: announcementRule(all),
+    onburo: announcementRule(all),
+    ogretmen: announcementRule(classOrEveryone),
+    ogrenci: announcementRule(classOrEveryone),
+    veli: announcementRule(classOrEveryone),
   },
   // Birebir yazışma yalnız taraflarındır; yöneticinin okuması gerekçeli ayrı işlemdir (DOM-YTK-052).
   conversations: {
@@ -322,6 +343,8 @@ const HIDDEN_FIELDS: Partial<Record<CollectionName, (context: Context) => readon
   // ve veli görmez (DOM-ILT-040, DOM-YTK-020).
   // TODO(IST-020): yöneticinin adli/idari soruşturma gerekçesiyle, denetim kaydına düşen erişimi.
   guidanceCases: (c) => (c.counselor ? NONE : GUIDANCE_INTERNAL),
+  // Okundu ayrıntısı ve alıcı listesi ham dönmez; sayı olarak eklenir (DOM-ILT-003).
+  announcements: () => ANNOUNCEMENT_HIDDEN_FIELDS,
 }
 const HIDDEN: Readonly<Record<string, ((context: Context) => readonly string[]) | undefined>> =
   HIDDEN_FIELDS
@@ -463,6 +486,7 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
       Object.entries(row).filter(([key]) => !hidden.includes(key)),
     )
     if (collection === 'tutorSessions') copy = narrowTutorSession(context, copy)
+    if (collection === 'announcements') copy = narrowAnnouncement(viewerOf(context), row, copy)
     // Kopya yalnız gizli alanları eksik, diğer alanları aynı kayıttır.
     return copy as Redacted<T>
   }

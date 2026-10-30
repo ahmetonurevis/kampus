@@ -403,6 +403,10 @@ describe('yazma uçları', () => {
           .map(([command]) => `POST /api/v1/workflows/${command}`),
         'POST /api/v1/invoices/{invoiceId}/pay',
         'POST /api/v1/grades',
+        // İletişim (routes/communication.ts): oluşturma ve mesaj gönderimi.
+        'POST /api/v1/announcements',
+        'POST /api/v1/conversations',
+        'POST /api/v1/conversations/{conversationId}/messages',
       ]
       assert.deepEqual(required.sort(), expected.sort())
     })

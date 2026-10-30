@@ -105,6 +105,11 @@ interface OperationBase<R> {
    */
   entity: AuditEntity | ((result: R) => AuditEntity)
   makeId?: MakeId
+  /**
+   * İşlemden sonra aynı transaction'da çalışan ek yazma (ör. State değiştirmeyen işlemin kendi
+   * denetim kaydı, `conversation.access`). Hata işlemi bütünüyle geri alır.
+   */
+  after?: (tx: Database, result: R) => Promise<void>
 }
 
 /**
@@ -392,6 +397,7 @@ async function applyOperation<R>(
       createdAt: ctx.now,
     })
   }
+  if (request.after) await request.after(tx, result)
   ctx.log.info({
     event: 'operation.applied',
     action: request.action,

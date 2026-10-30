@@ -24,6 +24,7 @@ import {
 import {
   isConversationParty,
   isPublisher,
+  parentAccountsDecision,
   publishDecision,
   readerKey,
   viewerOf,
@@ -732,6 +733,30 @@ test('DOM-ILT-010: öğretmen kapsam dışı öğrencinin velisiyle yazışma a�
     () => startConversation(state, people.ogretmen, { studentId: 's1' }, id, now),
     isDomainError('conversation_audience_required'),
   )
+})
+
+test('DOM-ILT-010: veli hesapları yalnız veli yazışması başlatabilen öğretmene, yazışma kuralıyla aynı kapsamda açılır', () => {
+  const state = seed()
+  const outside = onlyClass(state, 'c12')
+  const decide = (by: Participant, studentId: string) =>
+    parentAccountsDecision(scopeFor(state, by), state, studentId)
+  // Kendi öğrencisi: açık. Kapsam dışı öğrenci ve var olmayan öğrenci: kapalı.
+  assert.equal(decide(people.ogretmen, 's1'), null)
+  assert.equal(decide(people.ogretmen, outside)?.code, 'conversation_party_forbidden')
+  assert.equal(decide(people.ogretmen, 's-yok')?.code, 'conversation_party_forbidden')
+  // Rehberlik görevli öğretmen, yazışma açabildiği her öğrencinin veli hesaplarını görür.
+  assert.equal(decide(teacher('t1'), outside), null)
+  assert.equal(
+    startConversation(state, teacher('t1'), { studentId: outside, audience: 'parent' }, id, now, {
+      parentUserIds: ['u-p'],
+    }).created,
+    true,
+  )
+  // Yazışma başlatamayan roller veli hesaplarını görmez: yönetici, ön büro, öğrenci, veli.
+  for (const role of ['yonetici', 'onburo', 'ogrenci', 'veli'] as const)
+    assert.equal(decide(people[role], 's1')?.code, 'conversation_party_forbidden', role)
+  // Kayıtlı öğretmen kaydı bulunmayan (pasif) öğretmen de göremez.
+  assert.equal(decide(teacher('t-yok'), 's1')?.code, 'conversation_party_forbidden')
 })
 
 test('DOM-ILT-010: veli hesabı seçimi öğrencinin veli hesaplarıyla sınırlıdır', () => {

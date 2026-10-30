@@ -136,6 +136,11 @@ export function readScope(ctx: ServiceContext): Promise<Scope> {
   return scopeState(ctx).scope
 }
 
+/** Kapsamın kurduğu kaynak (öğrenci, öğretmen, sınıf, atama); ek sorgu yok. */
+export function readSource(ctx: ServiceContext): Promise<ScopeSource> {
+  return scopeState(ctx).source
+}
+
 /**
  * Sınıfların (arşivlenmemiş) öğrencileri, kapsam kaynağından (ek sorgu yok). Kurumun bütün
  * öğrencileri arasından seçilir: sonuç yalnız aday süzgecidir, her satır yine core `canRead`

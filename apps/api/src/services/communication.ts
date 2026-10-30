@@ -2,7 +2,10 @@ import { and, asc, desc, eq, gt } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
-import { isConversationParty } from '@kampus/school-core/lib/communication-access.ts'
+import {
+  isConversationParty,
+  parentAccountsDecision,
+} from '@kampus/school-core/lib/communication-access.ts'
 import {
   conversationSummary,
   CONVERSATION_ACCESS_MINUTES,
@@ -40,7 +43,7 @@ import {
   type CommandResponse,
   type OperationTools,
 } from './operation-runner.ts'
-import { assertReadable, readScope } from './read-scope.ts'
+import { assertReadable, readScope, readSource } from './read-scope.ts'
 
 /**
  * İletişim modülünün servisi (docs/domain/iletisim-ve-veli.md): duyuru ve birebir yazışma.
@@ -209,15 +212,16 @@ export async function listConversationMessages(
 
 /**
  * Öğrencinin platformdaki veli hesapları (`membership_links` kind `child`): öğretmenin veli
- * yazışmasında veli seçimi için (DOM-ILT-010). Öğretmen yalnız kapsamındaki öğrenci için okur;
- * kapsam dışı öğrenci 404. Ad dışında kişisel veri dönmez.
+ * yazışmasında veli seçimi için (DOM-ILT-010). Kapsam `startConversation` kuralıyla birebir
+ * aynıdır (core `parentAccountsDecision`): öğretmen o öğrenci için veli yazışması açabiliyorsa
+ * görür, aksi halde (kapsam dışı, var olmayan, başka kurum) 404. Ad dışında kişisel veri dönmez.
  */
 export async function listStudentParentAccounts(
   ctx: ServiceContext,
   studentId: string,
 ): Promise<{ userId: string; name: string }[]> {
-  const scope = await readScope(ctx)
-  if (!scope.studentIds.has(studentId)) throw new NotFoundError()
+  const [scope, source] = await Promise.all([readScope(ctx), readSource(ctx)])
+  if (parentAccountsDecision(scope, source, studentId)) throw new NotFoundError()
   return parentAccounts(ctx.db, ctx.institutionId, studentId)
 }
 

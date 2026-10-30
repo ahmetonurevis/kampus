@@ -364,13 +364,13 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
   typed.get(
     '/api/v1/students/:studentId/parent-accounts',
     {
-      preHandler: readGuard(['ogretmen', 'yonetici', 'onburo']),
+      preHandler: readGuard(['ogretmen']),
       schema: {
         operationId: 'listStudentParentAccounts',
         tags: ['communication'],
         summary: 'Öğrencinin veli hesapları',
         description:
-          'Öğrenciye bağlı platform veli hesapları (kullanıcı kimliği ve ad); öğretmenin veli yazışması başlatırken `parentUserId` seçimi için (DOM-ILT-010). Öğretmen yalnız kapsamındaki (ders verdiği, rehberi olduğu) öğrenci için okur; kapsam dışı veya başka kurumun öğrencisi 404.',
+          'Öğrenciye bağlı platform veli hesapları (kullanıcı kimliği ve ad); öğretmenin veli yazışması başlatırken `parentUserId` seçimi için (DOM-ILT-010). Yalnız veliyle yazışma başlatabilen öğretmen okur (yönetici, ön büro, öğrenci ve veli 403); kapsam `POST /conversations` ile birebir aynıdır: ders verdiği, sınıf rehberi olduğu öğrenci ya da rehberlik görevlisi olarak her öğrenci. Kapsam dışı, var olmayan veya başka kurumun öğrencisi 404.',
         params: studentParamsSchema,
         response: { 200: parentAccountsResponseSchema, ...readErrors },
       },

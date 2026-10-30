@@ -359,6 +359,25 @@ export function startDecision(
 }
 
 /**
+ * Öğrencinin veli hesaplarını görme (DOM-ILT-010): veli yazışması başlatabilen aktörün kararıyla
+ * birebir aynıdır. Öğretmen hangi öğrenci için veli yazışması açabiliyorsa (ders verdiği, sınıf
+ * rehberi olduğu ya da rehberlik görevlisi olduğu) o öğrencinin veli hesaplarını görür; yönetici,
+ * ön büro, öğrenci ve veli yazışma başlatamadığı için görmez. Ret çağıranda 404 olur.
+ */
+export function parentAccountsDecision(
+  scope: PartyScope,
+  source: Source,
+  studentId: string,
+): CommunicationDenial | null {
+  if (scope.actor.role !== 'ogretmen' || !scope.teacher) return partyDenied
+  return startDecision(scope, source, {
+    studentId,
+    teacherId: scope.teacher.id,
+    audience: 'parent',
+  })
+}
+
+/**
  * Mesaj gönderme: yalnız taraf (taraf olmayana yazışma yoktur, 404). Öğretmenin ders ilişkisi
  * bittiyse yazışma okunur ama yeni mesaj gönderilmez (atama bitince yetki biter).
  */

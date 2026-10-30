@@ -367,7 +367,46 @@ describe('iletişim uçları', () => {
       )
       assertError(await read(teacherCookie, '/api/v1/students/s12/parent-accounts'), 404)
       assertError(await read(await student(a.id), '/api/v1/students/s1/parent-accounts'), 403)
+      // Yazışma başlatamayan roller veli hesaplarını görmez (DOM-ILT-010).
+      assertError(await read(a.adminCookie, '/api/v1/students/s1/parent-accounts'), 403)
+      assertError(
+        await read((await member(a.id, 'onburo')).cookie, '/api/v1/students/s1/parent-accounts'),
+        403,
+      )
+      assertError(
+        await read((await parent(a.id)).cookie, '/api/v1/students/s1/parent-accounts'),
+        403,
+      )
+      // Var olmayan öğrenci kapsam dışıyla aynı 404'tür.
+      assertError(await read(teacherCookie, '/api/v1/students/s-yok/parent-accounts'), 404)
       assert.equal((await loadRecords(db, a.id, ['conversations'])).length, 0)
+    })
+
+    test('DOM-ILT-010: rehberlik görevli öğretmen yazışma açabildiği her öğrencinin veli hesaplarını görür', async () => {
+      const a = await institution()
+      const counselor = await teacher(a.id, 't1')
+      const mother = await parent(a.id, 's12')
+      const accounts = await read(counselor, '/api/v1/students/s12/parent-accounts')
+      assert.equal(accounts.statusCode, 200, accounts.body)
+      assert.deepEqual(
+        accounts.json().data.map((item: { userId: string }) => item.userId),
+        [mother.id],
+      )
+      // Hesap görünürlüğü yazışma başlatma kuralıyla aynıdır: aynı öğrenci için yazışma açılır.
+      const opened = await start(counselor, {
+        studentId: 's12',
+        audience: 'parent',
+        text: 'Merhaba, rehberlik görüşmesi.',
+      })
+      assert.equal(opened.statusCode, 201, opened.body)
+      // Rehber olmayan öğretmen için aynı öğrenci iki uçta da kapalıdır.
+      const other = await teacher(a.id)
+      assertError(await read(other, '/api/v1/students/s12/parent-accounts'), 404)
+      assertError(
+        await start(other, { studentId: 's12', audience: 'parent', text: 'Merhaba' }),
+        403,
+        'conversation_party_forbidden',
+      )
     })
 
     test('DOM-ILT-012: mesaj değişmez; düzenleme ve silme ucu yok, kayıt aynı kalır', async () => {

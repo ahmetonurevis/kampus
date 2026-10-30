@@ -26,6 +26,8 @@ const PdfPages = lazy<ComponentType<PdfPagesProps>>(() =>
 type Props = {
   type: PdfDocumentType
   recordId: string
+  /** Belgeyi alan öğrenci (ödev çalışma kâğıdı); belge türü gerektirmezse boş. */
+  studentId?: string
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Pencere kapanınca odağın döneceği yer (açan düğme). */
@@ -37,9 +39,16 @@ type Props = {
  * hazırlanır. İndirme ve yazdırma önizlenen aynı PDF Blob'unu kullanır. Pencere kapanınca geçici
  * adres bırakılır ve odak Radix'le açan düğmeye döner.
  */
-export function PdfPreview({ type, recordId, open, onOpenChange, onCloseAutoFocus }: Props) {
+export function PdfPreview({
+  type,
+  recordId,
+  studentId,
+  open,
+  onOpenChange,
+  onCloseAutoFocus,
+}: Props) {
   const title = DOCUMENT_TITLES[type]
-  const pdf = useDocumentPdf(type, recordId, open)
+  const pdf = useDocumentPdf(type, recordId, open, studentId)
   return (
     <Modal
       open={open}

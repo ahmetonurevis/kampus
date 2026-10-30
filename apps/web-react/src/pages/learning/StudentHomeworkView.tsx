@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
@@ -191,6 +192,15 @@ function HomeworkDetail({ homeworkId, studentId, classNameOf }: Omit<PanelProps,
       />
       <SummarySection title="Ödev açıklaması">
         <p className="text-sm [overflow-wrap:anywhere]">{row.description}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <PdfButton
+            type="homework"
+            recordId={row.id}
+            studentId={studentId}
+            label="Çalışma kâğıdını görüntüle"
+            size="default"
+          />
+        </div>
       </SummarySection>
       {submission?.feedback ? (
         <SummarySection title="Öğretmen geri bildirimi">

@@ -34,6 +34,8 @@ type Records = Partial<Record<CollectionName, unknown[]>>
 export type DocumentRequest = {
   type: PdfDocumentType
   recordId: string
+  /** Ödev çalışma kâğıdında belgeyi alan öğrenci; yoksa öğrenci alanları boş bırakılır (öğretmen). */
+  studentId?: string
 }
 
 /**
@@ -42,7 +44,7 @@ export type DocumentRequest = {
  */
 export async function loadDocumentState(
   client: KampusClient,
-  { type, recordId }: DocumentRequest,
+  { type, recordId, studentId }: DocumentRequest,
   signal?: AbortSignal,
 ): Promise<State> {
   const read: Read = async (collection, id) =>
@@ -58,6 +60,22 @@ export async function loadDocumentState(
       { materials: [material], teachers: teacher ? [teacher] : [] },
       { modules: {}, academicYear: null },
     )
+  }
+
+  if (type === 'homework') {
+    // Ödev sınıfa bağlıdır; öğrenci verilmişse (öğrenci, veli) adı ve numarası belgeye yazılır.
+    const homework = await read('homework', recordId)
+    const teacher = await optional(read('teachers', homework.teacherId))
+    records.homework = [homework]
+    records.teachers = teacher ? [teacher] : []
+    if (studentId) {
+      const student = await read('students', studentId)
+      Object.assign(records, await studentRecords(read, student, student.classId))
+    } else {
+      const classroom = await optional(read('classes', homework.classId))
+      records.classes = classroom ? [classroom] : []
+    }
+    return buildWorkflowState(records, { modules: {}, academicYear: null })
   }
 
   if (type === 'payment-plan') {

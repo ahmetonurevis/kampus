@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 
 import type { Download, Page } from '@playwright/test'
 
+import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 
 // PDF belgeleri 2: taksit taahhütnamesi, ödev çalışma kâğıdı ve ödev değerlendirme formu.
@@ -84,4 +85,102 @@ test.describe('PDF: taksit taahhütnamesi', () => {
       await expect(page.getByRole('main')).toBeVisible()
       await expect(page.getByRole('button', { name: /taahhüt/i })).toHaveCount(0)
     })
+})
+
+type Row<T> = { id: string; record: T }
+
+async function listAll<T>(client: ApiClient, path: string): Promise<Row<T>[]> {
+  const response = await client.get(path)
+  expect(response.status).toBe(200)
+  return (response.body as { data: Row<T>[] }).data
+}
+
+/** Çalışma kâğıdı önizlemesini açar ve ortak kontrolleri yapar; sayfa görünümünü döndürür. */
+async function openWorksheet(page: Page, opener: ReturnType<Page['getByRole']>) {
+  await opener.click()
+  const preview = page.getByRole('dialog', { name: 'Ödev çalışma kâğıdı · Önizleme' })
+  await expect(preview.getByRole('img', { name: 'Ödev çalışma kâğıdı, sayfa 1' })).toBeVisible()
+  const viewer = preview.getByLabel('PDF sayfa görünümü')
+  await expect(viewer).toContainText('ÖDEV ÇALIŞMA KÂĞIDI')
+  await expect(viewer).toContainText('Görev ve yönerge')
+  await expect(viewer).toContainText('Çalışmam')
+  return { preview, viewer }
+}
+
+test.describe('PDF: ödev çalışma kâğıdı', () => {
+  test('öğretmen ödev panelinden açar; öğrenci alanları boştur, indirme PDF verir', async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs('ogretmen')
+    await page.goto('/ogretmen/odevler?odev=hw2')
+    const panel = page.getByRole('dialog', { name: 'Ödev teslim durumu' })
+    const opener = panel.getByRole('button', { name: 'Çalışma kâğıdını görüntüle' })
+    const { preview, viewer } = await openWorksheet(page, opener)
+    await expect(viewer).toContainText('Belge no: hw2')
+    await expect(viewer).toContainText('......')
+
+    const download = await expectPdfDownload(
+      page,
+      preview.getByRole('button', { name: 'PDF’yi indir' }),
+    )
+    expect(download.suggestedFilename()).toBe('odev-hw2.pdf')
+    await page.keyboard.press('Escape')
+    await expect(preview).toBeHidden()
+    await expect(opener).toBeFocused()
+  })
+
+  test('öğrenci kendi adıyla açar', async ({ page, loginAs, api }) => {
+    const student = await api('ogrenci')
+    const [homework] = await listAll<{ title: string }>(student, '/api/v1/collections/homework')
+    expect(homework, 'öğrencinin sınıfında ödev').toBeTruthy()
+    if (!homework) return
+    await loginAs('ogrenci')
+    await page.goto(`/ogrenci/odevler?odev=${homework.id}`)
+    const panel = page.getByRole('dialog', { name: 'Ödev ayrıntısı' })
+    const { preview, viewer } = await openWorksheet(
+      page,
+      panel.getByRole('button', { name: 'Çalışma kâğıdını görüntüle' }),
+    )
+    await expect(viewer).toContainText('Deniz Yılmaz')
+    await expect(viewer).toContainText(homework.record.title)
+    const download = await expectPdfDownload(
+      page,
+      preview.getByRole('button', { name: 'PDF’yi indir' }),
+    )
+    expect(download.suggestedFilename()).toBe(`odev-${homework.id}.pdf`)
+  })
+
+  test('veli yalnız seçili çocuğunun adıyla açar', async ({ page, loginAs, api }) => {
+    const parent = await api('veli')
+    const children = await listAll<{ name: string; classId: string }>(
+      parent,
+      '/api/v1/collections/students',
+    )
+    const ece = children.find((row) => row.record.name === 'Ece Yılmaz')
+    expect(ece, 'veli çocuğu Ece').toBeTruthy()
+    if (!ece) return
+    const [homework] = await listAll<{ title: string }>(
+      parent,
+      `/api/v1/collections/homework?classId=${ece.record.classId}`,
+    )
+    expect(homework, 'Ece sınıfında ödev').toBeTruthy()
+    if (!homework) return
+    await loginAs('veli')
+    await page.goto(`/veli/akademik-takip?sekme=odevler&cocuk=${ece.id}&odev=${homework.id}`)
+    const panel = page.getByRole('dialog', { name: 'Ödev ayrıntısı' })
+    const { viewer } = await openWorksheet(
+      page,
+      panel.getByRole('button', { name: 'Çalışma kâğıdını görüntüle' }),
+    )
+    await expect(viewer).toContainText('Ece Yılmaz')
+    await expect(viewer).not.toContainText('Deniz Yılmaz')
+  })
+
+  test('ödev ekranı olmayan rollerde çalışma kâğıdı düğmesi yoktur', async ({ page, loginAs }) => {
+    await loginAs('yonetici')
+    await page.goto('/yonetici/finans')
+    await expect(page.getByRole('main')).toBeVisible()
+    await expect(page.getByRole('button', { name: /Çalışma kâğıdını/ })).toHaveCount(0)
+  })
 })

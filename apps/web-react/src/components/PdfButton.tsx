@@ -7,6 +7,8 @@ import type { PdfDocumentType } from '@/lib/pdf/templates.ts'
 type Props = {
   type: PdfDocumentType
   recordId: string
+  /** Belgeyi alan öğrenci (ödev çalışma kâğıdında öğrenci ve veli); öğretmende boş. */
+  studentId?: string
   /** Görünen metin ("Dekontu görüntüle"). */
   label: string
   /** Aynı metinli düğmeleri ayırt eden erişilebilir ad (ör. satırda öğrenci adı). */
@@ -22,6 +24,7 @@ type Props = {
 export function PdfButton({
   type,
   recordId,
+  studentId,
   label,
   ariaLabel,
   variant = 'secondary',
@@ -51,6 +54,7 @@ export function PdfButton({
         <PdfPreview
           type={type}
           recordId={recordId}
+          {...(studentId ? { studentId } : {})}
           open={open}
           onOpenChange={setOpen}
           onCloseAutoFocus={(event) => {

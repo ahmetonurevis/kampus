@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import type { Session } from '@/auth/auth-port.ts'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
@@ -56,6 +56,11 @@ export function useChildSelection(session: Session | null) {
     const top = readView(childScrollKey(pathname, childId))
     window.scrollTo({ top: typeof top === 'number' ? top : 0 })
   }, [childId, pathname])
+
+  // Görünüm belleği: menü bağlantılarıyla (adresi `?cocuk=`suz) gelinirse son seçim korunur.
+  useEffect(() => {
+    if (isParent && childId) writeView(CHILD_VIEW_KEY, childId)
+  }, [isParent, childId])
 
   return {
     options,

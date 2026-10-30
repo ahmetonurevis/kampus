@@ -2,17 +2,21 @@
 import type { ReactNode } from 'react'
 import { Icon } from '@/components/Icon.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 export function SummaryHeader({
   icon,
   title,
   subtitle,
   status,
+  tone,
 }: {
   icon: ReactNode
   title: string
   subtitle: string
   status: string
+  /** Verilmezse "Aktif" yeşil, diğerleri gri. */
+  tone?: BadgeTone
 }) {
   return (
     <div className="detail-person mb-5 flex items-center gap-3.5">
@@ -21,7 +25,7 @@ export function SummaryHeader({
         <h3 className="text-lg font-semibold [overflow-wrap:anywhere]">{title}</h3>
         <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{subtitle}</p>
       </div>
-      <StatusBadge text={status} tone={status === 'Aktif' ? 'green' : 'gray'} />
+      <StatusBadge text={status} tone={tone ?? (status === 'Aktif' ? 'green' : 'gray')} />
     </div>
   )
 }

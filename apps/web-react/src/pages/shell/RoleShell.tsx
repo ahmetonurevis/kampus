@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
+import { useChildSelection } from '@/hooks/use-child-selection.ts'
 import { AppLayout } from '@/layout/AppLayout.tsx'
+import { ViewScopeContext } from '@/layout/view-scope.ts'
 import { notify } from '@/lib/notify.ts'
 import { resolveShell } from '@/lib/route-guard.ts'
 import { NotFoundContent, NotFoundPage } from './NotFoundPage.tsx'
@@ -22,6 +24,7 @@ export function RoleShell() {
   const { role, page: path } = useParams()
   const location = useLocation()
   const decision = resolveShell(session, role, path)
+  const child = useChildSelection(session)
 
   switch (decision.kind) {
     case 'not-found-outside':
@@ -39,12 +42,19 @@ export function RoleShell() {
         <AppLayout
           session={session}
           title={decision.kind === 'page' ? decision.page.title : 'Sayfa bulunamadı'}
+          child={child.options.length ? child : undefined}
         >
-          {decision.kind === 'page' ? (
-            <PlaceholderPage key={decision.page.path} page={decision.page} />
-          ) : (
-            <NotFoundContent />
-          )}
+          {/* Vue gibi: çocuk değişince sayfa yeniden kurulur; her çocuğun kendi görünüm belleği var. */}
+          <ViewScopeContext value={child.childId}>
+            {decision.kind === 'page' ? (
+              <PlaceholderPage
+                key={`${decision.page.path}:${child.childId}`}
+                page={decision.page}
+              />
+            ) : (
+              <NotFoundContent />
+            )}
+          </ViewScopeContext>
         </AppLayout>
       )
     default:

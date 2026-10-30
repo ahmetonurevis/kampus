@@ -3,21 +3,34 @@ import { useNavigate } from 'react-router'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Icon } from '@/components/Icon.tsx'
 import { useMediaQuery } from '@/hooks/use-media-query.ts'
-import type { Session } from '@/auth/auth-port.ts'
+import type { Session, SessionChild } from '@/auth/auth-port.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { clearViewMemory } from '@/lib/view-memory.ts'
+import { ChildBar } from './ChildBar.tsx'
 import { SidebarContent } from './Sidebar.tsx'
 import { Topbar } from './Topbar.tsx'
 
 const YEAR = new Date().getFullYear()
 
-type AppLayoutProps = { session: Session; title: string; children: ReactNode }
+type ChildSelection = {
+  options: readonly SessionChild[]
+  childId: string
+  selectChild: (childId: string) => void
+}
+
+type AppLayoutProps = {
+  session: Session
+  title: string
+  /** Veli hesabında çocuk seçici çubuğu. */
+  child?: ChildSelection
+  children: ReactNode
+}
 
 /**
  * Uygulama kabuğu. Cam yalnız yüzen katmanlarda: sidebar, topbar ve açık menü/diyalog
  * (aynı anda en fazla 3 bulanık katman). İçerik yüzeyleri opaktır.
  */
-export function AppLayout({ session, title, children }: AppLayoutProps) {
+export function AppLayout({ session, title, child, children }: AppLayoutProps) {
   const { signOut } = useAuth()
   const navigate = useNavigate()
   const narrow = useMediaQuery('(max-width: 860px)')
@@ -88,6 +101,9 @@ export function AppLayout({ session, title, children }: AppLayoutProps) {
           tabIndex={-1}
           className="main-content mx-auto w-full max-w-content flex-1 scroll-mt-24 p-8 outline-none max-[650px]:px-4 max-[650px]:py-6"
         >
+          {child ? (
+            <ChildBar options={child.options} value={child.childId} onChange={child.selectChild} />
+          ) : null}
           {children}
         </main>
         <footer className="app-footer flex flex-wrap justify-between gap-2 border-t px-[31px] py-[21px] text-2xs text-muted-foreground">

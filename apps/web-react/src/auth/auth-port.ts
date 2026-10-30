@@ -26,8 +26,11 @@ export const sessionSchema = z.object({
   }),
   /** Kurumda açık modüller; kapalı modül menüden, route'tan ve API'den düşer. */
   modules: z.record(z.string(), z.boolean()),
+  /** Veli hesabının çocukları (diğer rollerde boş); görüntülenen öğrenci bunlardan seçilir. */
+  children: z.array(z.object({ id: z.string(), name: z.string() })),
 })
 export type Session = z.infer<typeof sessionSchema>
+export type SessionChild = Session['children'][number]
 
 export type SignInResult = { ok: true; session: Session } | { ok: false; message: string }
 

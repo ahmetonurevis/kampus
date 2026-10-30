@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState, type UIEvent } from 'react'
+import { use, useCallback, useEffect, useReducer, useRef, useState, type UIEvent } from 'react'
 import { useLocation, useNavigationType, useSearchParams } from 'react-router'
 import { listReducer, restoreListState, type ScrollPosition } from '@/lib/list-state.ts'
 import {
@@ -8,6 +8,7 @@ import {
   listSync,
 } from '@/lib/list-url.ts'
 import { readView, writeView } from '@/lib/view-memory.ts'
+import { ViewScopeContext } from '@/layout/view-scope.ts'
 
 type Options = {
   pageSize?: number
@@ -32,7 +33,8 @@ export function useListState(
   const [params, setParams] = useSearchParams()
   const location = useLocation()
   const navigationType = useNavigationType()
-  const memoryKey = `list:${location.pathname}:${key}`
+  const scope = use(ViewScopeContext)
+  const memoryKey = `list:${location.pathname}:${scope}:${key}`
   const remembered = () => restoreListState(readView(memoryKey), pageSize)
   // İlk yüklemede (yenileme, paylaşılan bağlantı) URL bellekten önce gelir.
   const [state, dispatch] = useReducer(listReducer, undefined, () =>

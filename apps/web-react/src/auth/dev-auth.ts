@@ -26,6 +26,14 @@ export function devSession(role: RoleKey, modules?: Record<string, boolean>): Se
       term: '2026–2027 Eğitim Dönemi',
     },
     modules: modules ?? Object.fromEntries(moduleKeys().map((key) => [key, true])),
+    // Örnek veli Ayşe Yılmaz'ın çocukları (school-core örnek verisi s1, s2).
+    children:
+      role === 'veli'
+        ? [
+            { id: 's1', name: 'Deniz Yılmaz' },
+            { id: 's2', name: 'Ece Yılmaz' },
+          ]
+        : [],
   }
 }
 

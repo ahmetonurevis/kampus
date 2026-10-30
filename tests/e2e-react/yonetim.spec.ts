@@ -79,6 +79,21 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await expect(page).not.toHaveURL(/[?&]q=/)
   })
 
+  test('boş sonuçta tek temizleme düğmesi çıkar; süzgeç yokken hiç çıkmaz', async ({ page }) => {
+    await page.goto(CLASSES_URL)
+    const clear = page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' })
+    await expect(bodyRows(page, CLASS_TABLE)).toHaveCount(8)
+    await expect(clear).toHaveCount(0)
+
+    await page.getByLabel('Tabloda ara').fill('yok-boyle-bir-sinif')
+    await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
+    await expect(clear).toHaveCount(1)
+
+    await clear.click()
+    await expect(bodyRows(page, CLASS_TABLE)).toHaveCount(8)
+    await expect(clear).toHaveCount(0)
+  })
+
   test('arama kampüs adıyla sınıf bulur; kampüs sütunu kampüs adına göre sıralanır', async ({
     page,
   }) => {

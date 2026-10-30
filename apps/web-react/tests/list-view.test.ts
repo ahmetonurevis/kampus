@@ -195,3 +195,12 @@ test('boş liste: arama veya filtre etkinse sonuç yok metni ve temizleme düğm
   })
   assert.equal(own.text, 'Aramanızla eşleşen duyuru bulunamadı.')
 })
+
+test('boş liste: araç çubuğunda temizleme düğmesi varsa boş durum ikinci düğme çizmez', () => {
+  const idle = initialListState(8)
+  const state = { ...idle, query: 'zzz' }
+  assert.equal(emptyListView(state, false, {}, true).showClear, false)
+  assert.equal(emptyListView(state, false, {}, true).text, 'Aramanızla eşleşen kayıt bulunamadı.')
+  assert.equal(emptyListView(state, false, {}, false).showClear, true)
+  assert.equal(emptyListView(idle, false, {}, true).showClear, false)
+})

@@ -130,11 +130,7 @@ test.describe('ayarlar: kullanıcılar ve işlem geçmişi', () => {
     await expect(rows).toHaveCount(1)
     await page.getByLabel('Varlık türü filtresi').selectOption('invoices')
     await expect(page.getByText('Bu süzgeçlere uyan işlem kaydı yok.')).toBeVisible()
-    // Boş sonuç durumunda iki temizle düğmesi bulunur (araç çubuğu ve boş durum); araç çubuğunu kullan.
-    await page
-      .locator('.toolbar-filters')
-      .getByRole('button', { name: 'Aramayı ve filtreleri temizle' })
-      .click()
+    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).click()
     await expect(rows).toHaveCount(1)
     await page.getByLabel('Başlangıç günü').fill('2099-01-01')
     await expect(page.getByText('Bu süzgeçlere uyan işlem kaydı yok.')).toBeVisible()

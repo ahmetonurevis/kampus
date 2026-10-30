@@ -226,7 +226,9 @@ function TableView<T extends Row>({
   const mobile = useMediaQuery(MOBILE)
   const { state, dispatch, attachScrollRegion, onScroll } = list
   const hasQuery = listNarrowed(state, externalActive)
-  const emptyView = emptyListView(state, externalActive, { empty, emptyFiltered })
+  // Araç çubuğu temizleme düğmesi: masaüstünde çubuk varsa, mobilde arama alanı varsa çizilir.
+  const toolbarClear = hasQuery && (mobile ? Boolean(search) : Boolean(search || toolbar))
+  const emptyView = emptyListView(state, externalActive, { empty, emptyFiltered }, toolbarClear)
   const canSort = (key: string) =>
     key !== ACTIONS_KEY && (sortable === 'all' || sortable.includes(key))
 

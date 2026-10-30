@@ -3,7 +3,6 @@ import { EmptyState } from '@/components/EmptyState.tsx'
 import { ListFilters } from '@/components/ListFilters.tsx'
 import { Pagination } from '@/components/Pagination.tsx'
 import { SearchField } from '@/components/SearchField.tsx'
-import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { useListView } from '@/hooks/use-list-view.ts'
@@ -153,13 +152,6 @@ export function CollectionList<T extends Row>({
             title={hasQuery ? 'Uygun kayıt bulunamadı.' : 'Henüz kayıt yok.'}
             description={
               hasQuery ? 'Aramayı veya filtreleri değiştirerek yeniden deneyin.' : undefined
-            }
-            action={
-              hasQuery ? (
-                <Button variant="secondary" onClick={reset}>
-                  Aramayı ve filtreleri temizle
-                </Button>
-              ) : undefined
             }
           />
         </div>

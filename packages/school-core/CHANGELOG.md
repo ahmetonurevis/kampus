@@ -1,5 +1,12 @@
 # Değişiklikler
 
+## 2.15.0
+
+CEFR seviye önerisinin saf kuralları eklendi (ADR 0004 karar 5, 8, 11; `docs/domain/beceri-gelisimi.md` DOM-BEC-030…034). Modüller State'e koleksiyon eklemez; öneri saklanmaz, her okumada `now`'a göre hesaplanır. Mevcut davranış değişmedi; tablo, uç ve ekran F5b ve sonrasındadır. 2.13.0 başka açık dalda kullanıldığı için bu dal 2.15.0'dır.
+
+- `cefr/suggestion.ts`: kanıt seçimi `selectEvidence` (değerlendirme türündeki, birincil becerisi ve hedef seviyesi olan, puanlanmış, itirazı sürmeyen sonuç; alıştırma, uzaktan ön tespit, puanlanmamış, itirazı süren ve ileri tarihli sonuç nedeniyle dışarıda; görev kanıtı 120, seviye tespiti 90 gün geçerli, pencere sonucun anından başlar ve bitiş anı hariçtir; gün Europe/Istanbul; aynı görevin ikinci sonucu `duplicate_evidence`; DOM-BEC-031). Başarı `resultSuccessful`: otomatik görevde yuvarlanmamış doğru oranı ≥ %70, rubrikte düz ve ağırlıklı bant ortalaması ≥ 3 ve hiçbir kriter ≤ 1. Beceri önerisi `suggestSkillLevel` (seviye başına en az 3 kanıt, 2 farklı gün, 2/3 başarı, okuma ve dinlemede en az 10 madde; gösterilmiş en yüksek seviye; A2/B1/B2'de bir sonraki ana seviyede gösterilmeden 2 başarılı kanıt artı seviye verir, artı hedefli kanıt buna sayılmaz; gösterilmiş seviye yoksa `insufficient` ve en az ek kanıt ile madde eksiği, seviye tahmini yok; `plusStepOf`; DOM-BEC-032). Genel öneri `overallSuggestion` (dört becerinin hepsinde öneri varsa ikinci en düşük; aracılık ve dil kullanımı ayrı; DOM-BEC-033) ve ikisini birleştiren `suggestCefrLevels`. Karar anının kopyası `evidenceSnapshotSchema`/`evidenceSnapshotOf` (`level_decisions.evidence_snapshot`, sürüm 1; DOM-BEC-030). `LEVEL_DECISION_KINDS` ve `LevelDecisionRow` (`placement`, `progression`, `correction`; genel karar `skill: null`). Gösterim modeli `cefrProfileView`: "Tahmini seviye" ve dayandığı kanıtlar insan kararlarından ayrı; beceri başına en yeni karar ve geçmiş; okulda "Kurum içi beceri profili" ve seviye kararı yok (DOM-BEC-034, DOM-BEC-060, DOM-YTK-012). `canViewCefrProfile`: öğrenci kendisi, veli bağlı çocuğu, öğretmen ve yönetici (sınıf kapsamı serviste), ön büro göremez.
+- Tüketiciler `workspace:2.15.0` sürümüne sabitlendi.
+
 ## 2.14.0
 
 Beceri görevlerinin rubrik ve atama kuralları eklendi (ADR 0004 karar 4–7, 11; `docs/domain/beceri-gelisimi.md` DOM-BEC-020…025). Modüller State'e koleksiyon eklemez; rubrik toplamı, 100'lük puan ve son puan seçimi saklanmaz. Mevcut davranış değişmedi; tablo, uç ve ekran F4b ve sonrasındadır. 2.13.0 başka açık dalda kullanıldığı için bu dal 2.14.0'dır.

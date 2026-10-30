@@ -14,6 +14,16 @@ export const PG_SKIP = TEST_PG_URL === null ? 'TEST_PG_URL verilmedi' : false
 export async function createPgDatabase(): Promise<{ db: Database; close: () => Promise<void> }> {
   if (TEST_PG_URL === null) throw new Error('TEST_PG_URL verilmedi')
   const { db, close } = connectPostgres(TEST_PG_URL)
-  await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
+  // `node --test` dosyaları paralel çalıştırır; boş veritabanında iki dosya aynı anda migrate
+  // ederse biri benzersizlik hatası alır. Öteki bitirince yeniden deneme uygulanmış sürümü görür.
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
+      break
+    } catch (error) {
+      if (attempt >= 5) throw error
+      await new Promise((resolve) => setTimeout(resolve, 200 * attempt))
+    }
+  }
   return { db, close }
 }

@@ -142,7 +142,7 @@ Finansta kampüs/sınıf/yöntem/vade/tahsilat tarihi/tutar; CRM'de program/kamp
 
 ## Mimari ve kapsam
 
-Platform geçişi (ADR 0001): `apps/api` iskeleti, Better Auth kimliği ve kurum kapsamı hazır; `records` deposu, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır. Aşağıdaki bölüm Vue demosunu anlatır.
+Platform geçişi (ADR 0001): `apps/api` iskeleti, Better Auth kimliği ve kurum kapsamı hazır; mobilde TypeScript altyapısı (`apps/mobile/tsconfig.json`, `typecheck`) ve UI dışı katman (`model`, `lib`, `store`) taşındı, ekranlar sıradadır; `records` deposu, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır. Aşağıdaki bölüm Vue demosunu anlatır.
 
 Görsel düzen düz renkler üzerine kuruludur: saf beyaz (`#FFFFFF`) zemin, koyu safir mavi (`#1E3A8A`) menü/ana işlem rengi, turuncu (`#F97316`) aksan, ince kenarlıklar ve yuvarlak köşeler. Açık ve koyu temada renk geçişleri kullanılmaz. Slogan bandı ve veriye dayanmayan mini grafikler kaldırılmıştır. Öğrenci, veli ve öğretmen panellerinde ders programı ile bekleyen işler üst bölümdedir; grafikler kayıtlı veriyi gösterir. Büyük para tutarları tek satırda, uzun ders adları doğal satırlarla gösterilir.
 

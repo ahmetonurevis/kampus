@@ -43,6 +43,11 @@ export const sessionSchema = z.object({
    * uydurma ad gösterilmez.
    */
   children: z.array(z.object({ id: z.string(), name: z.string().optional() })),
+  /**
+   * Üyeliğin kayıt bağlantıları (öğrenci kendi kaydı, veli çocukları, öğretmen kaydı). Core
+   * sunum işlevleri (`workflowScope`) aktörü bunlardan kurar; kapsamı yine sunucu uygular.
+   */
+  links: z.array(z.object({ kind: z.enum(['student', 'child', 'teacher']), recordId: z.string() })),
   /** Kullanıcının bütün kurum üyelikleri; birden çoksa avatar menüsünde kurum değiştirilir. */
   memberships: z.array(
     z.object({

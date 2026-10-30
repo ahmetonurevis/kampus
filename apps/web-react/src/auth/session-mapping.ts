@@ -56,6 +56,7 @@ export function toSession(me: Me): Session | null {
             .filter((link) => link.kind === 'child')
             .map((link) => ({ id: link.recordId }))
         : [],
+    links: membership.links,
     memberships: me.memberships,
   }
 }

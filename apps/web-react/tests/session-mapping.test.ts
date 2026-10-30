@@ -49,6 +49,14 @@ test('veli bağlantıları çocuk listesi olur; ad gelene kadar seçici yükleni
   assert.deepEqual(toSession(meFixture('ogretmen'))?.children, [])
 })
 
+test('üyelik bağlantıları core sunumu için oturumda taşınır', () => {
+  assert.deepEqual(
+    toSession(meFixture('veli'))?.links.map((link) => link.kind),
+    ['child', 'child'],
+  )
+  assert.equal(toSession(meFixture('ogretmen'))?.links[0]?.kind, 'teacher')
+})
+
 test('etkin kurum veya üyelik yoksa oturum eşlenmez', () => {
   assert.equal(toSession(meFixture('veli', { activeInstitution: null })), null)
   assert.equal(toSession(meFixture('veli', { activeMembership: null })), null)

@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../apps/web/src/data/seed.js'
@@ -9,7 +10,7 @@ import {
   recordAttendance,
 } from '../apps/web/src/lib/domain.js'
 import { dayKey } from '../apps/web/src/lib/format.js'
-import { isDomainError } from './support/domain-error.js'
+import { isDomainError } from './support/domain-error.ts'
 
 test('Zengin veri kümesinin kimlikleri ve ilişkileri tutarlı', () => {
   const s = createSeed()

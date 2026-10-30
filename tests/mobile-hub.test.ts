@@ -1,8 +1,9 @@
+// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import { decodeText } from '../packages/school-core/src/lib/text-decoding.ts'
-import { isDomainError } from './support/domain-error.js'
+import { isDomainError } from './support/domain-error.ts'
 import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
 import {
   createSnapshotWriter,

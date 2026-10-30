@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../apps/web/src/data/seed.js'
@@ -10,7 +11,7 @@ import {
   restoreRecord,
 } from '../apps/web/src/lib/school-management.js'
 import { createSnapshotWriter, restoreSnapshot } from '../apps/web/src/lib/demo-persistence.js'
-import { isDomainError } from './support/domain-error.js'
+import { isDomainError } from './support/domain-error.ts'
 let count = 0
 const id = (prefix) => `${prefix}-test-${++count}`
 function addTeacher(state) {

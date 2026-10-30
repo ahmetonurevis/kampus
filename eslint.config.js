@@ -56,4 +56,11 @@ export default [
       'react-x/no-use-context': 'off',
     },
   },
+  {
+    // Geçici: test tipleri dosya dosya tamamlanırken `@ts-nocheck` açıklamayla serbesttir.
+    files: ['tests/*.test.ts'],
+    rules: {
+      '@typescript-eslint/ban-ts-comment': ['error', { 'ts-nocheck': 'allow-with-description' }],
+    },
+  },
 ]

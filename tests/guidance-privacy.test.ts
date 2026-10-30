@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
@@ -7,7 +8,7 @@ import {
   workflowDetails,
   workflowRows,
 } from '../packages/school-core/src/lib/workflow-presentation.ts'
-import { isDomainError } from './support/domain-error.js'
+import { isDomainError } from './support/domain-error.ts'
 
 // Rehberlik gizliliği: DOM-ILT-040, DOM-ILT-041, DOM-YTK-020, DOM-YTK-021, DOM-YTK-026.
 const now = '2026-10-06T10:00:00.000Z'

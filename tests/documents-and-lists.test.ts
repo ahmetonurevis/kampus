@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
@@ -6,7 +7,7 @@ import { createSeed } from '../apps/web/src/data/seed.js'
 import { documentData } from '../apps/web/src/lib/document-data.js'
 import { renderDocument } from '../apps/web/src/lib/pdf-layout.js'
 import { filterRows, pageNumbers } from '../apps/web/src/lib/list-query.js'
-import { isDomainError } from './support/domain-error.js'
+import { isDomainError } from './support/domain-error.ts'
 const { jsPDF } = createRequire(new URL('../apps/web/package.json', import.meta.url))('jspdf')
 const font = readFileSync(
   new URL('../apps/web/public/fonts/NotoSans-Regular.ttf', import.meta.url),

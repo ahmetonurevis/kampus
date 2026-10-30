@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
@@ -25,7 +26,7 @@ import {
 import { archiveRecord } from '../packages/school-core/src/lib/school-management.ts'
 import { workflowSchemas } from '../packages/school-core/src/lib/school-workflows.ts'
 import { documentData } from '../packages/school-core/src/lib/document-data.ts'
-import { isDomainError } from './support/domain-error.js'
+import { isDomainError } from './support/domain-error.ts'
 const now = '2026-10-06T10:00:00.000Z'
 const seed = () => createSeed(new Date(now))
 let sequence = 0

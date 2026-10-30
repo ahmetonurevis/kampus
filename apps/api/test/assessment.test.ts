@@ -623,6 +623,47 @@ describe('optik değerlendirme ve etüt uçları', () => {
       assert.deepEqual(await snapshot(a.id), before)
     })
 
+    test('büyük expectedPlan gövde sınırına takılmaz: JSON kaçışlı 1 MiB üstü gövde 409 ile reddedilir', async () => {
+      const a = await evaluated()
+      const before = await snapshot(a.id)
+      // 600 bin tırnak kaçışla 1,2 MB'lık gövde olur; alan 1 MB sınırının altındadır.
+      const expectedPlan = '"'.repeat(600_000)
+      const response = await post(`${BASE}/plan`, a.adminCookie, { ...PLAN, expectedPlan }, key())
+      assertError(response, 409, 'tutoring_plan_stale')
+      assert.deepEqual(await snapshot(a.id), before)
+    })
+
+    test('1 MB üstü expectedPlan 413 ve hiçbir kayıt değişmez; boş expectedPlan 400', async () => {
+      const a = await evaluated()
+      const before = await snapshot(a.id)
+      const big = await post(
+        `${BASE}/plan`,
+        a.adminCookie,
+        { ...PLAN, expectedPlan: 'x'.repeat(1024 * 1024 + 1) },
+        key(),
+      )
+      assertError(big, 413, 'payload_too_large')
+      assert.deepEqual(big.json().issues[0].path, ['expectedPlan'])
+      // Sınırda tam 1 MB alan kabul edilir (bayatlık denetimine ulaşır).
+      assertError(
+        await post(
+          `${BASE}/plan`,
+          a.adminCookie,
+          { ...PLAN, expectedPlan: 'x'.repeat(1024 * 1024) },
+          key(),
+        ),
+        409,
+        'tutoring_plan_stale',
+      )
+      // Boş metin bayatlık denetimini atlayamaz.
+      assertError(
+        await post(`${BASE}/plan`, a.adminCookie, { ...PLAN, expectedPlan: '' }, key()),
+        400,
+        'validation_failed',
+      )
+      assert.deepEqual(await snapshot(a.id), before)
+    })
+
     test('If-Match oluşturma komutunda 400 if_match_not_supported', async () => {
       const a = await evaluated()
       assertError(

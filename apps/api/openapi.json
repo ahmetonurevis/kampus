@@ -13952,6 +13952,7 @@
                   "expectedPlan": {
                     "description": "Önizlemedeki `expectedPlan` metni. Güncel plan farklıysa hiçbir şey yazılmaz: 409 `tutoring_plan_stale` ve `issues` içinde fark döner",
                     "type": "string",
+                    "minLength": 1,
                     "maxLength": 1048576
                   }
                 },

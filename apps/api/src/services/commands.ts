@@ -342,7 +342,8 @@ export async function recordAttendanceCommand(
               institutionType,
             })
             if (!state.classes.some((item) => item.id === classId)) throw new NotFoundError()
-            recordAttendance(state, classId, date, input.marks)
+            // Gelecek gün uygulamanın saatine göre denetlenir (`ctx.now`), gerçek saate göre değil.
+            recordAttendance(state, classId, date, input.marks, now)
             return { collection: 'classes', id: classId }
           },
         }

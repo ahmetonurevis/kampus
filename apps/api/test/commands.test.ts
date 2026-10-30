@@ -834,6 +834,21 @@ describe('yazma uçları', () => {
       assert.equal(await count(a.id, 'attendance'), classStudents('c1').length)
     })
 
+    test('gelecek gün uygulamanın saatine göredir: sabit saatte ertesi gün 422, kayıt yazılmaz', async () => {
+      // Uygulamanın saati FIXED_NOW'dır; ertesi gün gerçek saate göre geçmiş olsa da gelecektir.
+      const a = await institution()
+      assertError(
+        await post(url, a.adminCookie, {
+          date: '2026-10-07',
+          marks: marksFor('c1'),
+          reason: REASON,
+        }),
+        422,
+        'attendance_future_date',
+      )
+      assert.equal(await count(a.id, 'attendance'), 0)
+    })
+
     test('DOM-YTK-022: öğretmen yalnız ders verdiği sınıfta ve aynı gün yoklama girer', async () => {
       const a = await institution()
       const own = await member(a.id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])

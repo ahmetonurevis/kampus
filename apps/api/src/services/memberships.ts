@@ -3,7 +3,9 @@ import { and, asc, count, eq, type SQL } from 'drizzle-orm'
 import { roleSchema, type Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
 import { institutions, memberships, users } from '../db/schema/auth.ts'
+import { institutionSettings } from '../db/schema/institution-settings.ts'
 import { membershipLinks, type MembershipLinkKind } from '../db/schema/membership-links.ts'
+import { effectiveModules, toModuleMap } from './modules.ts'
 
 /**
  * Üyelik okuma fonksiyonları. Kurum kapsamlı olanların ilk parametresi `institutionId`'dir;
@@ -36,6 +38,7 @@ export async function findMembership(
   return row ?? null
 }
 
+/** Kurum ve ayarları: etkin modül haritası ve akademik yıl (ayar satırı yoksa `null`). */
 export async function getInstitution(db: Database, institutionId: string) {
   const [row] = await db
     .select({
@@ -44,21 +47,18 @@ export async function getInstitution(db: Database, institutionId: string) {
       slug: institutions.slug,
       type: institutions.type,
       enabledModules: institutions.enabledModules,
+      academicYear: institutionSettings.academicYear,
     })
     .from(institutions)
+    .leftJoin(institutionSettings, eq(institutionSettings.institutionId, institutions.id))
     .where(eq(institutions.id, institutionId))
     .limit(1)
   if (!row) return null
-  return { ...row, enabledModules: toModuleMap(row.enabledModules) }
-}
-
-function toModuleMap(value: unknown): Record<string, boolean> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
-  return Object.fromEntries(
-    Object.entries(value).filter(
-      (entry): entry is [string, boolean] => typeof entry[1] === 'boolean',
-    ),
-  )
+  return {
+    ...row,
+    academicYear: row.academicYear ?? null,
+    enabledModules: effectiveModules(toModuleMap(row.enabledModules)),
+  }
 }
 
 export async function listMembershipLinks(

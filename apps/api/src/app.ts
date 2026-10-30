@@ -20,7 +20,9 @@ import { registerAuthenticate } from './plugins/authenticate.ts'
 import { registerBetterAuth } from './plugins/better-auth.ts'
 import { registerCsrfGuard } from './plugins/csrf.ts'
 import { registerErrorHandler } from './plugins/error-handler.ts'
+import { registerModuleGuard } from './plugins/modules.ts'
 import { genRequestId, registerRequestContext } from './plugins/request-context.ts'
+import { registerCollectionRoutes } from './routes/collections.ts'
 import { registerHealthRoutes } from './routes/health.ts'
 import { registerMeRoutes } from './routes/me.ts'
 import { registerMembershipRoutes } from './routes/memberships.ts'
@@ -178,10 +180,12 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
 
   registerCsrfGuard(app, [...config.CORS_ORIGINS, new URL(base).origin])
   registerAuthenticate(app)
+  registerModuleGuard(app)
   await registerBetterAuth(app, auth, base)
   registerHealthRoutes(app)
   registerMeRoutes(app)
   registerMembershipRoutes(app)
+  registerCollectionRoutes(app)
 
   return app
 }

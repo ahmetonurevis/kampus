@@ -12,12 +12,14 @@ import { auditLog } from '../src/db/schema/audit-log.ts'
 import { memberships, sessions } from '../src/db/schema/auth.ts'
 import { contextOf } from '../src/plugins/authenticate.ts'
 import { ensureMember } from '../src/services/identity.ts'
+import { MODULE_KEYS } from '../src/services/modules.ts'
 import {
   buildTestApp,
   createInstitution,
   createMember,
   createTestDatabase,
   createUser,
+  FIXED_NOW,
   nextIp,
   signInAs,
   TEST_ORIGIN,
@@ -68,6 +70,23 @@ describe('kimlik ve kurum kapsamı', () => {
     }
   })
 
+  test('/me etkin modül haritasını core modül kaydından, akademik yılı kurum ayarından verir', async () => {
+    const institution = await createInstitution(app, {
+      enabledModules: { guidance: false, finance: false, bilinmeyen: false },
+      academicYear: null,
+    })
+    const cookie = await signInAs(app, institution.admin)
+
+    const { data } = (await get('/api/v1/me', cookie)).json()
+
+    assert.deepEqual(Object.keys(data.activeInstitution.enabledModules), [...MODULE_KEYS])
+    assert.equal(data.activeInstitution.enabledModules.guidance, false)
+    assert.equal(data.activeInstitution.enabledModules.finance, false)
+    assert.equal(data.activeInstitution.enabledModules.goals, true)
+    assert.equal('bilinmeyen' in data.activeInstitution.enabledModules, false)
+    assert.equal(data.activeInstitution.academicYear, null)
+  })
+
   test('bozuk veya bilinmeyen oturum çerezi 401 döner', async () => {
     const response = await get('/api/v1/me', 'kampus.session_token=bozuk.imza')
     assert.equal(response.statusCode, 401)
@@ -88,6 +107,7 @@ describe('kimlik ve kurum kapsamı', () => {
     assert.equal(data.user.email, parent.email)
     assert.equal(data.activeInstitution.id, institution.id)
     assert.equal(data.activeInstitution.type, 'language_school')
+    assert.equal(data.activeInstitution.academicYear, FIXED_NOW.getUTCFullYear())
     assert.deepEqual(data.activeMembership, {
       id: parent.membershipId,
       role: 'veli',

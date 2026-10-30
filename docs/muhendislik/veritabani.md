@@ -31,7 +31,7 @@ ADR 0002 gereği kimlik ve kiracı çekirdeği Better Auth'undur; ADR 0001'deki 
 - Şema `pnpm --filter @kampus/api auth:schema` (Better Auth CLI `auth` paketi, Drizzle bağdaştırıcısı; sürüm `better-auth` paketiyle aynı ve sabit) ile `src/db/schema/auth.ts`'e üretilir, sonra drizzle-kit ile migration'a dönüştürülür. Üretilen dosya elle düzenlenmez; Better Auth sürümü veya eklentisi değişince komut yeniden koşulur ve fark ayrı migration olur.
 - Adlar mümkün olduğunca bizim kuralımıza eşlenir: Drizzle bağdaştırıcısında `usePlural: true`, kolonlar snake_case; `organization` modeli `institutions`, `member` modeli `memberships` adını `modelName` ile alır. Eşlenemeyen ad veya kolon bu bölüme istisna olarak yazılır. Mevcut istisnalar (CLI desteklemiyor): zaman kolonları saat dilimsiz `timestamp` (bağlantı oturumu UTC'ye sabitlenir), indeks adları camelCase (`sessions_userId_idx`), benzersizlik `<tablo>_<kolon>_unique`, `memberships.role` serbest metin (rol sunucuda `roleSchema` ile doğrulanır). Kurum + kullanıcı başına tek üyelik ayrı migration'daki `memberships_institution_id_user_id_key` indeksiyle güvencededir.
 - Better Auth tablolarına (`users`, `sessions`, `accounts`, `verifications`, `institutions`, `memberships`, `invitations`) `version` ve `archived_at` eklenmez; yaşam döngüleri Better Auth API'siyle yönetilir, doğrudan `update`/`delete` yazılmaz.
-- Kurumun ek alanları (`type`: `school`/`language_school`, açık modüller) `organization` eklentisinin `additionalFields`'ı ile; sık değişen veya büyüyen ayarlar 1:1 `institution_settings` tablosunda (zorunlu kolonlarla).
+- Kurumun ek alanları (`type`: `school`/`language_school`, açık modüller `enabled_modules`) `organization` eklentisinin `additionalFields`'ı ile; sık değişen veya büyüyen ayarlar 1:1 `institution_settings` tablosunda (zorunlu kolonlarla). Bugün orada `academic_year` var: core `academicYear`, eğitim-öğretim yılının başlangıç yılı; core'da "dönem" bu yıldır.
 - Üyeliğin school-core bağlantısı (öğrenci kimliği, veliye bağlı çocuklar, öğretmen kimliği) `membership_links` tablosundadır: `(institution_id, membership_id, kind, record_id)`, `kind in ('student', 'child', 'teacher')`. Kapsam fonksiyonları bu tablodan beslenir.
 - Kimlik kolonu `text`'tir (Better Auth kimlikleri); bizim tablolarımızdaki `institution_id` ve `user_id` aynı tiptedir.
 
@@ -67,7 +67,7 @@ create table records (
 Kurallar:
 
 - `collection` school-core state anahtarıdır, aynen yazılır (`students`, `studentGoals`). Yeni koleksiyon önce school-core'da tanımlanır; API bilinmeyen koleksiyonu reddeder.
-- `data` yazılmadan önce school-core Zod şemasıyla doğrulanır. `data` içinde `institutionId`, `version`, `createdAt`, `updatedAt`, `archivedAt` tutulmaz; bunlar kolondur ve okurken kayda eklenir.
+- `data` yazılmadan önce school-core Zod şemasıyla doğrulanır. `data` içinde `institutionId`, `version`, `createdAt`, `updatedAt`, `archivedAt` tutulmaz; bunlar kolondur ve okurken kayda eklenir. Geçiş notu: core kayıtları bugün kendi `createdAt`/`updatedAt` alanlarını taşır ve işlem çalıştırıcısı bunları olduğu gibi yazar; sistem zamanı yalnız kolondur, API yanıtında kolon değerleri üst düzeyde, core kaydı `record` içinde döner (api-tasarimi.md §2).
 - Kayıt bütün olarak değiştirilir; rota veya serviste `jsonb_set` ile parça güncelleme yapılmaz.
 - Yazma sürüm kontrollüdür; etkilenen satır 0 ise 409:
 
@@ -83,7 +83,7 @@ update records
 - Dosya ve medya `data`'ya gömülmez (base64 yok); depolama arayüzünde tutulur, kayıt yalnız anahtar ve meta veri taşır. Belge başına sınır 256 KB.
 - Geçiş notu: bazı eski kayıtlarda `deletedAt`/`isActive` alanları var. API'ye taşımada arşiv durumu `archived_at` kolonuna aktarılır; jsonb'deki eski alanlar school-core uyumu bitene kadar okunur, yenisi yazılmaz.
 - Kayıt anahtarı `data.id`'dir; kimliksiz `videoProgress` için `<studentId>:<videoId>` (`apps/api/src/db/collections.ts`). Kurum satırı silinince kayıtlar kendiliğinden silinmez (cascade yok).
-- Depo `apps/api/src/db/records.ts`, işlem çalıştırıcı `apps/api/src/services/operation-runner.ts`: koleksiyonları yükler, core işlemini `now` ile çalıştırır, farkı (ekleme, değişiklik, listeden çıkarma) tek transaction'da yazar. Core'un listeden çıkardığı kayıt `archived_at` ile arşivlenir ve çalıştırıcıya bir daha yüklenmez; core'un kendi `deletedAt`/`isActive` alanları uyum bitene kadar `data`'da kalır (pasif öğretmen/öğrenci core kurallarınca görülmeye devam eder). Dizi olmayan State alanları (`modules`, `academicYear`) `records`'ta tutulmaz, çağıran verir.
+- Depo `apps/api/src/db/records.ts`, işlem çalıştırıcı `apps/api/src/services/operation-runner.ts`: koleksiyonları yükler, core işlemini `now` ile çalıştırır, farkı (ekleme, değişiklik, listeden çıkarma) tek transaction'da yazar. Core'un listeden çıkardığı kayıt `archived_at` ile arşivlenir ve çalıştırıcıya bir daha yüklenmez; core'un kendi `deletedAt`/`isActive` alanları uyum bitene kadar `data`'da kalır (pasif öğretmen/öğrenci core kurallarınca görülmeye devam eder). Dizi olmayan State alanları `records`'ta tutulmaz, çağıran kurum ayarından verir: `modules` `institutions.enabled_modules`'tan (saklanmayan modül açık), `academicYear` `institution_settings.academic_year`'dan.
 
 ## 4. Normalleştirme ölçütü
 

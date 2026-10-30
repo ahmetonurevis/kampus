@@ -32,7 +32,16 @@ export const meSchema = z
         type: institutionTypeSchema,
         enabledModules: z
           .record(z.string(), z.boolean())
-          .describe('Modül anahtarı → açık mı; listede olmayan modül varsayılanındadır'),
+          .describe(
+            'Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir; kapalı modülün API uçları 403 `module_disabled` döner',
+          ),
+        academicYear: z
+          .number()
+          .int()
+          .nullable()
+          .describe(
+            'Etkin eğitim-öğretim yılının (dönemin) başlangıç yılı: 2026 → 2026–2027. Kurum ayarı yoksa `null`',
+          ),
       })
       .nullable()
       .describe('Oturumun etkin kurumu; üyelik yoksa `null`'),

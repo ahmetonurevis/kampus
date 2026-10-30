@@ -92,6 +92,11 @@ describe('demo tohumu', () => {
     const me = (await app.inject({ method: 'GET', url: '/api/v1/me', headers: { cookie } })).json()
     assert.equal(me.data.activeInstitution.name, 'Akademi Özel Okulları')
     assert.equal(me.data.activeInstitution.type, 'school')
+    // Akademik yıl ilk tohumun örnek verisinden gelir; ikinci tohum ayarı ezmez.
+    assert.equal(
+      me.data.activeInstitution.academicYear,
+      demoState('akademi', FIXED_NOW).academicYear,
+    )
     assert.deepEqual(
       me.data.activeMembership.links.map((link: { recordId: string }) => link.recordId),
       ['s1', 's2'],

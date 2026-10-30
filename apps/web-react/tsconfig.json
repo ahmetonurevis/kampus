@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "types": ["node", "vite/client"],
+    "paths": { "@/*": ["./src/*"] },
+    // TODO(C2): school-core JavaScript'ten TypeScript'e taşınınca allowJs/checkJs kaldırılır.
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src", "tests", "vite.config.ts"]
+}

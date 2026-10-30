@@ -43,6 +43,13 @@
       "when": 1793325420961,
       "tag": "0005_archive_core_audit_records",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793327148994,
+      "tag": "0006_create_idempotency_keys",
+      "breakpoints": true
     }
   ]
 }

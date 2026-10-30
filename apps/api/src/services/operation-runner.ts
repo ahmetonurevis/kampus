@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import type { MakeId } from '@kampus/school-core/lib/domain.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
 
 import {
   isEphemeralCollection,
@@ -15,6 +16,12 @@ import {
   type RecordData,
   type ScalarStateKey,
 } from '../db/collections.ts'
+import type { Database } from '../db/client.ts'
+import {
+  findIdempotentResponse,
+  saveIdempotentResponse,
+  tryLockIdempotencyKey,
+} from '../db/idempotency.ts'
 import { planPositions } from '../db/positions.ts'
 import {
   loadRecords,
@@ -57,6 +64,11 @@ export interface ExpectedVersion {
   version: number
 }
 
+export interface AuditEntity {
+  type: string
+  id: string
+}
+
 export interface OperationRequest<R> {
   /** Denetim kaydı eylemi, ör. `invoice.pay`. */
   action: string
@@ -74,10 +86,16 @@ export interface OperationRequest<R> {
   /** İstemcinin okuduğu sürümler (gövdedeki `version`); tutmazsa 409, kayıt yoksa 404. */
   expectedVersions?: readonly ExpectedVersion[]
   /**
+   * `If-Match` ile gelen, koleksiyonu istemcinin bilmediği kaydın sürümü (iş akışı komutunun
+   * `:recordId`'si). Kimlik yüklenen koleksiyonlarda aranır; yoksa 404, bulunan satırlardan
+   * birinin sürümü tutmazsa 409.
+   */
+  expectedRecordVersion?: { id: string; version: number }
+  /**
    * Denetim kaydının varlığı (işlemin konusu, ör. `{ type: 'prospects', id }`). Zorunlu: ilk
    * değişen kayıt çoğu zaman yan kayıttır (taksit, katılım) ve denetimi yanlış varlığa bağlar.
    */
-  entity: { type: string; id: string }
+  entity: AuditEntity | ((result: R) => AuditEntity)
   makeId?: MakeId
   run: (state: State, tools: OperationTools) => R
 }
@@ -129,17 +147,11 @@ function issuePath(path: readonly PropertyKey[]): (string | number)[] {
   return path.map((part) => (typeof part === 'number' ? part : String(part)))
 }
 
-const DOMAIN_ERROR_KINDS = ['rule', 'conflict', 'forbidden', 'not_found'] as const
-type DomainErrorKind = (typeof DOMAIN_ERROR_KINDS)[number]
-
-function isDomainErrorKind(value: unknown): value is DomainErrorKind {
-  return DOMAIN_ERROR_KINDS.some((kind) => kind === value)
-}
-
 /**
- * school-core hatasını HTTP hatasına çevirir (kod-yazim.md hata tablosu).
- * TODO(C2-DomainError): core `DomainError`'ı dışa aktarınca yapısal denetim `instanceof` olur ve
- * düz `Error` eşlemesi kalkar (düz `Error` o zaman 500'dür).
+ * school-core hatasını HTTP hatasına çevirir (api-tasarimi.md §5): `DomainError` türüne göre
+ * 422/409/403/404, Zod 400. Düz `Error` ve alt sınıfları kullanıcı hatası sayılmaz (api.md):
+ * 500 `internal_error` olur; iç mesaj yanıta gitmez, logda da yalnız hata adı ve yığın kalır
+ * (`loggableError`).
  */
 export function mapOperationError(error: unknown): Error {
   if (error instanceof AppError) return error
@@ -151,29 +163,24 @@ export function mapOperationError(error: unknown): Error {
     }))
     return new ValidationError(issues)
   }
-  if (error instanceof Error && error.name === 'DomainError') {
-    const code: unknown = Reflect.get(error, 'code')
-    const kind: unknown = Reflect.get(error, 'kind')
-    if (typeof code === 'string' && isDomainErrorKind(kind)) {
-      switch (kind) {
-        case 'rule':
-          return new RuleViolationError(code, error.message, { cause: error })
-        case 'conflict':
-          return new AppError(409, code, error.message, { cause: error })
-        case 'forbidden':
-          return new AppError(403, code, error.message, { cause: error })
-        case 'not_found':
-          return new NotFoundError()
-        default:
-          return kind satisfies never
-      }
+  if (error instanceof DomainError) {
+    switch (error.kind) {
+      case 'rule':
+        return new RuleViolationError(error.code, error.message, { cause: error })
+      case 'conflict':
+        return new AppError(409, error.code, error.message, { cause: error })
+      case 'forbidden':
+        // Modül kapalıysa mesaj API'nin tek modül mesajıdır (`requireModule` ile aynı).
+        return error.code === 'module_disabled'
+          ? new AppError(403, 'module_disabled', MESSAGES.module_disabled, { cause: error })
+          : new AppError(403, error.code, error.message, { cause: error })
+      case 'not_found':
+        return new NotFoundError()
+      default:
+        return error.kind satisfies never
     }
   }
-  // Geçici: core bugün iş kuralı reddini düz `Error` + Türkçe mesajla fırlatıyor. Yalnız tam
-  // `Error` örneği kural reddi sayılır; TypeError gibi alt sınıflar programlama hatasıdır.
-  if (error instanceof Error && Object.getPrototypeOf(error) === Error.prototype)
-    return new RuleViolationError('rule_violation', error.message, { cause: error })
-  if (error instanceof Error) return error
+  if (error instanceof Error) return programmingError('operation failed', error)
   return programmingError('non-error thrown', error)
 }
 
@@ -290,86 +297,170 @@ function auditChanges(fields: ReadonlySet<string>, changes: readonly WrittenReco
   return restored.length > 0 ? { fields: sorted, restored } : { fields: sorted }
 }
 
-export async function runOperation<R>(
+async function applyOperation<R>(
+  tx: Database,
   ctx: ServiceContext,
   request: OperationRequest<R>,
+  collections: readonly CollectionName[],
+  tools: OperationTools,
 ): Promise<OperationResult<R>> {
+  // Yüklemeden önce: aynı kurumun eşzamanlı işlemi bu görüntüyü bayatlatamaz.
+  await lockInstitution(tx, ctx.institutionId)
+  const loaded = await loadRecords(tx, ctx.institutionId, collections)
+  const before = new Map<CollectionName, Map<string, StoredRecord>>(
+    collections.map((collection) => [collection, new Map()]),
+  )
+  for (const row of loaded) before.get(row.collection)?.set(row.id, row)
+
+  for (const expected of request.expectedVersions ?? []) {
+    const row = before.get(expected.collection)?.get(expected.id)
+    if (!row) throw new NotFoundError()
+    if (row.version !== expected.version) throw new ConflictError()
+  }
+  if (request.expectedRecordVersion) {
+    const { id, version } = request.expectedRecordVersion
+    const rows = collections.flatMap((collection) => before.get(collection)?.get(id) ?? [])
+    if (rows.length === 0) throw new NotFoundError()
+    if (rows.some((row) => row.version !== version)) throw new ConflictError()
+  }
+
+  // Core State'i yerinde değiştirir; yüklenen satırlar fark için dokunulmadan kalır.
+  const target: Record<string, unknown> = structuredClone(request.scalars ?? {})
+  // Core denetimi yalnız bu işlem içinde yaşar: boş başlar, farka girmez (collections.ts).
+  target.audit = []
+  for (const collection of collections)
+    target[collection] = [...(before.get(collection)?.values() ?? [])].map((row) =>
+      structuredClone(row.data),
+    )
+
+  let result: R
+  try {
+    result = request.run(guardedState(target), tools)
+  } catch (error) {
+    throw mapOperationError(error)
+  }
+
+  // Skaler alan `records`'ta tutulmaz; değişikliği sessizce düşürmek yerine işlem geri alınır.
+  const scalarChanges = changedScalars(request.scalars ?? {}, target)
+  if (scalarChanges.length > 0) {
+    ctx.log.error({
+      event: 'operation.scalar_changed',
+      action: request.action,
+      fields: scalarChanges,
+    })
+    throw programmingError(`operation changed scalar state: ${scalarChanges.join(', ')}`)
+  }
+
+  const { writes, fields } = difference(collections, before, target)
+  const changes = await writeRecords(tx, ctx.institutionId, writes, ctx.now)
+  const first = changes[0]
+  if (first) {
+    // Yeni kaydın kimliği işlem çalışınca belli olur (ör. oluşturulan hedef).
+    const entity = typeof request.entity === 'function' ? request.entity(result) : request.entity
+    await tx.insert(auditLog).values({
+      institutionId: ctx.institutionId,
+      actorUserId: ctx.actor.userId,
+      actorRole: ctx.actor.role,
+      action: request.action,
+      entityType: entity.type,
+      entityId: entity.id,
+      changes: auditChanges(fields, changes),
+      createdAt: ctx.now,
+    })
+  }
+  ctx.log.info({
+    event: 'operation.applied',
+    action: request.action,
+    inserted: changes.filter((change) => change.kind === 'insert').length,
+    updated: changes.filter((change) => change.kind === 'update').length,
+    archived: changes.filter((change) => change.kind === 'archive').length,
+    moved: changes.filter((change) => change.kind === 'move').length,
+    restored: changes.filter((change) => change.kind === 'restore').length,
+  })
+  return { result, changes }
+}
+
+function prepare<R>(ctx: ServiceContext, request: OperationRequest<R>) {
   const collections = [...new Set(request.collections)].filter(
     (collection) => !isEphemeralCollection(collection),
   )
   for (const key of Object.keys(request.scalars ?? {}))
     if (!isScalarStateKey(key)) throw programmingError(`unknown scalar state key: ${key}`)
-  const now = ctx.now.toISOString()
-  const tools: OperationTools = { now, makeId: request.makeId ?? defaultMakeId }
+  const tools: OperationTools = {
+    now: ctx.now.toISOString(),
+    makeId: request.makeId ?? defaultMakeId,
+  }
+  return { collections, tools }
+}
 
+export async function runOperation<R>(
+  ctx: ServiceContext,
+  request: OperationRequest<R>,
+): Promise<OperationResult<R>> {
+  const { collections, tools } = prepare(ctx, request)
   // Kilit beklerken veya yüklerken oluşan kilitlenme de 409 `conflict` olur.
-  const work = ctx.db.transaction(async (tx) => {
-    // Yüklemeden önce: aynı kurumun eşzamanlı işlemi bu görüntüyü bayatlatamaz.
-    await lockInstitution(tx, ctx.institutionId)
-    const loaded = await loadRecords(tx, ctx.institutionId, collections)
-    const before = new Map<CollectionName, Map<string, StoredRecord>>(
-      collections.map((collection) => [collection, new Map()]),
+  const work = ctx.db.transaction((tx) => applyOperation(tx, ctx, request, collections, tools))
+  return withDatabaseErrors(work)
+}
+
+/** İstemcinin `Idempotency-Key`'i ve isteğin özeti (`requestFingerprint`). */
+export interface IdempotencyRequest {
+  key: string
+  fingerprint: string
+}
+
+/** Uçun döndüreceği başarılı yanıt; idempotent istekte aynen saklanır ve tekrarlanır. */
+export interface OperationResponse {
+  statusCode: number
+  body: unknown
+}
+
+export interface CommandResponse extends OperationResponse {
+  /** Yanıt saklanan ilk yanıtın tekrarı mı (`Idempotent-Replayed: true`). */
+  replayed: boolean
+}
+
+/**
+ * İşlemi çalıştırır ve uç yanıtını üretir. Anahtar verilirse (api-tasarimi.md §7) anahtar
+ * kilidi, kurum kilidi, saklanan yanıt araması, işlem ve yanıtın saklanması tek
+ * transaction'dadır: aynı anahtar + aynı özet ilk yanıtı tekrarlar, farklı özet 422
+ * `idempotency_key_reused`, aynı anahtarla süren istek 409 `idempotency_in_progress`. Hata
+ * yanıtı saklanmaz (transaction geri alınır); aynı anahtarla düzeltilmiş istek gönderilebilir.
+ */
+export async function runCommand<R>(
+  ctx: ServiceContext,
+  request: OperationRequest<R>,
+  respond: (outcome: OperationResult<R>) => OperationResponse,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  if (idempotency === null) return { ...respond(await runOperation(ctx, request)), replayed: false }
+  const { key, fingerprint } = idempotency
+  const { collections, tools } = prepare(ctx, request)
+  const work = ctx.db.transaction(async (tx): Promise<CommandResponse> => {
+    const { institutionId } = ctx
+    const { userId } = ctx.actor
+    if (!(await tryLockIdempotencyKey(tx, institutionId, userId, key)))
+      throw new AppError(409, 'idempotency_in_progress', MESSAGES.idempotency_in_progress)
+    // Kurum kilidi aramadan önce: aynı anahtarlı önceki istek bu noktada ya tamamlanmış ya da
+    // hiç yazmamıştır.
+    await lockInstitution(tx, institutionId)
+    const stored = await findIdempotentResponse(tx, institutionId, userId, key, ctx.now)
+    if (stored) {
+      if (stored.requestHash !== fingerprint)
+        throw new AppError(422, 'idempotency_key_reused', MESSAGES.idempotency_key_reused)
+      ctx.log.info({ event: 'operation.replayed', action: request.action })
+      return { statusCode: stored.statusCode, body: stored.body, replayed: true }
+    }
+    const response = respond(await applyOperation(tx, ctx, request, collections, tools))
+    await saveIdempotentResponse(
+      tx,
+      institutionId,
+      userId,
+      key,
+      { requestHash: fingerprint, ...response },
+      ctx.now,
     )
-    for (const row of loaded) before.get(row.collection)?.set(row.id, row)
-
-    for (const expected of request.expectedVersions ?? []) {
-      const row = before.get(expected.collection)?.get(expected.id)
-      if (!row) throw new NotFoundError()
-      if (row.version !== expected.version) throw new ConflictError()
-    }
-
-    // Core State'i yerinde değiştirir; yüklenen satırlar fark için dokunulmadan kalır.
-    const target: Record<string, unknown> = structuredClone(request.scalars ?? {})
-    // Core denetimi yalnız bu işlem içinde yaşar: boş başlar, farka girmez (collections.ts).
-    target.audit = []
-    for (const collection of collections)
-      target[collection] = [...(before.get(collection)?.values() ?? [])].map((row) =>
-        structuredClone(row.data),
-      )
-
-    let result: R
-    try {
-      result = request.run(guardedState(target), tools)
-    } catch (error) {
-      throw mapOperationError(error)
-    }
-
-    // Skaler alan `records`'ta tutulmaz; değişikliği sessizce düşürmek yerine işlem geri alınır.
-    const scalarChanges = changedScalars(request.scalars ?? {}, target)
-    if (scalarChanges.length > 0) {
-      ctx.log.error({
-        event: 'operation.scalar_changed',
-        action: request.action,
-        fields: scalarChanges,
-      })
-      throw programmingError(`operation changed scalar state: ${scalarChanges.join(', ')}`)
-    }
-
-    const { writes, fields } = difference(collections, before, target)
-    const changes = await writeRecords(tx, ctx.institutionId, writes, ctx.now)
-    const first = changes[0]
-    if (first) {
-      await tx.insert(auditLog).values({
-        institutionId: ctx.institutionId,
-        actorUserId: ctx.actor.userId,
-        actorRole: ctx.actor.role,
-        action: request.action,
-        entityType: request.entity.type,
-        entityId: request.entity.id,
-        changes: auditChanges(fields, changes),
-        createdAt: ctx.now,
-      })
-    }
-    ctx.log.info({
-      event: 'operation.applied',
-      action: request.action,
-      inserted: changes.filter((change) => change.kind === 'insert').length,
-      updated: changes.filter((change) => change.kind === 'update').length,
-      archived: changes.filter((change) => change.kind === 'archive').length,
-      moved: changes.filter((change) => change.kind === 'move').length,
-      restored: changes.filter((change) => change.kind === 'restore').length,
-    })
-    return { result, changes }
+    return { ...response, replayed: false }
   })
   return withDatabaseErrors(work)
 }

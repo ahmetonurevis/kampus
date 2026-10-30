@@ -4,15 +4,18 @@ import { setTimeout as delay } from 'node:timers/promises'
 
 import { and, count, eq, sql } from 'drizzle-orm'
 
-import type { State } from '@kampus/school-core/data/seed.ts'
+import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
-import { lockInstitution, writeRecords } from '../src/db/records.ts'
+import { tryLockIdempotencyKey } from '../src/db/idempotency.ts'
+import { insertMissingRecords, lockInstitution, writeRecords } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
-import { runOperation, type OperationTools } from '../src/services/operation-runner.ts'
+import { recordAttendanceCommand } from '../src/services/commands.ts'
+import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, FIXED_NOW } from './support/app.ts'
 import { createPgDatabase, PG_SKIP } from './support/pg.ts'
 
@@ -25,7 +28,10 @@ const STUDENT = 'test-s-pg'
  */
 function markOnce(state: State, { makeId }: OperationTools) {
   if (state.attendance.some((item) => item.studentId === STUDENT && item.date === DAY))
-    throw new Error('Bu öğrencinin bugünkü yoklaması zaten alınmış.')
+    throw new DomainError(
+      'attendance_already_taken',
+      'Bu öğrencinin bugünkü yoklaması zaten alınmış.',
+    )
   state.attendance.push({
     id: makeId('att'),
     studentId: STUDENT,
@@ -267,6 +273,54 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     assert.equal(victim.reason.code, 'conflict')
   })
 
+  test('aynı Idempotency-Key ile süren istek varken ikincisi 409 idempotency_in_progress', async () => {
+    const ctx = await context()
+    const idem = { key: 'test-key-pg-0001', fingerprint: 'f' }
+    const held = gate()
+    const release = gate()
+    const holder = db.transaction(async (tx) => {
+      assert.equal(
+        await tryLockIdempotencyKey(tx, ctx.institutionId, ctx.actor.userId, idem.key),
+        true,
+      )
+      held.open()
+      await release.opened
+    })
+    await held.opened
+    try {
+      await assert.rejects(
+        runCommand(ctx, request, () => ({ statusCode: 200, body: {} }), idem),
+        (error: unknown) =>
+          error instanceof AppError &&
+          error.statusCode === 409 &&
+          error.code === 'idempotency_in_progress',
+      )
+    } finally {
+      release.open()
+      await holder
+    }
+    assert.equal(await attendanceCount(ctx.institutionId), 0)
+  })
+
+  test('aynı Idempotency-Key ile eşzamanlı iki istek: biri yazar, öteki süren istek veya tekrar', async () => {
+    const ctx = await context()
+    const idem = { key: 'test-key-pg-0002', fingerprint: 'f' }
+    const respond = () => ({ statusCode: 200, body: { data: 'ok' } })
+    const outcomes = await Promise.allSettled([
+      runCommand(ctx, request, respond, idem),
+      runCommand(ctx, request, respond, idem),
+    ])
+    const fulfilled = outcomes.filter((item) => item.status === 'fulfilled')
+    assert.ok(fulfilled.length >= 1)
+    for (const item of outcomes)
+      if (item.status === 'rejected')
+        assert.ok(
+          item.reason instanceof AppError && item.reason.code === 'idempotency_in_progress',
+          String(item.reason),
+        )
+    assert.equal(await attendanceCount(ctx.institutionId), 1)
+  })
+
   test('farklı kurumların işlemleri birbirini beklemez', async () => {
     const [a, b] = await Promise.all([context(), context()])
     const held = gate()
@@ -284,5 +338,39 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       await holder
     }
     assert.equal(await attendanceCount(b.institutionId), 1)
+  })
+
+  test('aynı sınıfın yoklaması iki kez aynı anda: öğrenci başına tek kayıt (DOM yoklama yinelenmez)', async () => {
+    const ctx = await context()
+    const seed = createSeed(FIXED_NOW)
+    const classroom = seed.classes.find((item) => item.id === 'c1')
+    assert.ok(classroom)
+    const students = seed.students.filter((item) => item.classId === 'c1' && item.isActive)
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        { collection: 'classes', id: classroom.id, data: classroom },
+        ...students.map((data) => ({ collection: 'students' as const, id: data.id, data })),
+      ],
+      FIXED_NOW,
+    )
+    const marks = Object.fromEntries(students.map((item) => [item.id, 'present' as const]))
+    const options = { idempotency: null, expectedVersion: null }
+    const outcomes = await Promise.allSettled([
+      recordAttendanceCommand(ctx, 'c1', DAY, marks, options),
+      recordAttendanceCommand(
+        ctx,
+        'c1',
+        DAY,
+        { ...marks, [students[0]?.id ?? '']: 'late' },
+        options,
+      ),
+    ])
+    assert.deepEqual(
+      outcomes.map((item) => item.status),
+      ['fulfilled', 'fulfilled'],
+    )
+    assert.equal(await attendanceCount(ctx.institutionId), students.length)
   })
 })

@@ -6,16 +6,10 @@ import { AppError, MESSAGES, NotFoundError } from '../errors.ts'
 import { getInstitutionModules, isModuleKey } from '../services/modules.ts'
 import { contextOf } from './authenticate.ts'
 
-/**
- * Kapalı modül yanıtı (api-tasarimi.md §5: modül kapalı → 403 `module_disabled`; DOM-YTK-040).
- * TODO(D1a-errors): mesaj `errors.ts` `MESSAGES`'a taşınınca buradaki sabit kalkar; o dosya
- * inceleme düzeltmeleri dalında değişiyor.
- */
-export const MODULE_DISABLED_MESSAGE = 'Bu modül kurumunuzda kapalı.'
-
+/** Kapalı modül yanıtı (api-tasarimi.md §5: modül kapalı → 403 `module_disabled`; DOM-YTK-040). */
 export class ModuleDisabledError extends AppError {
   constructor() {
-    super(403, 'module_disabled', MODULE_DISABLED_MESSAGE)
+    super(403, 'module_disabled', MESSAGES.module_disabled)
     this.name = 'ModuleDisabledError'
   }
 }

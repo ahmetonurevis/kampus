@@ -1,6 +1,16 @@
 import { z } from 'zod'
 
-import { RESOURCE_STATUSES } from '@kampus/school-core/content/resource.ts'
+import {
+  answerKeySchema,
+  attributionSchema as coreAttributionSchema,
+  RESOURCE_STATUSES,
+  resourceContentSchema,
+  resourceLicenseSchema,
+  resourceTagsSchema,
+  resourceVersionInputSchema,
+  transitionReasonSchema,
+} from '@kampus/school-core/content/resource.ts'
+import { shareTargetsSchema } from '@kampus/school-core/content/visibility.ts'
 import {
   ACTIVITY_MODES,
   CEFR_LEVELS,
@@ -177,6 +187,22 @@ const resourceSummaryShape = {
   updatedAt: instant,
 }
 
+const staffResourceSchema = z
+  .object({
+    ...resourceSummaryShape,
+    sharedStudentIds: z.array(z.string()),
+    sharedClassIds: z.array(z.string()),
+    archivedAt: instant
+      .nullable()
+      .describe('Bütün sürümleri arşivlenince veya kaynak kaldırılınca dolar (DOM-KYN-051)'),
+    rowVersion: z
+      .number()
+      .int()
+      .min(1)
+      .describe('Kaynak satırının iyimser kilit sürümü (paylaşım ve kaldırmada `If-Match`)'),
+  })
+  .meta({ id: 'StaffResource' })
+
 const staffListItemSchema = z
   .object({
     view: z.literal('staff'),
@@ -209,11 +235,7 @@ export const resourceDetailResponseSchema = dataResponse(
     z
       .object({
         view: z.literal('staff'),
-        resource: z.object({
-          ...resourceSummaryShape,
-          sharedStudentIds: z.array(z.string()),
-          sharedClassIds: z.array(z.string()),
-        }),
+        resource: staffResourceSchema,
         versions: z
           .array(versionSummarySchema)
           .describe('Okunabilir sürümler, numaraya göre artan'),
@@ -240,4 +262,67 @@ export const resourceVersionResponseSchema = dataResponse(
     z.object({ view: z.literal('staff'), version: staffVersionSchema }),
     z.object({ view: z.literal('learner'), version: learnerVersionSchema }),
   ]),
+)
+
+// --- Yazma uçları -------------------------------------------------------------------------
+
+/** Yeni kaynak: core `resourceVersionInputSchema` (taslak eksik kaydedilebilir). */
+export const resourceCreateBodySchema = resourceVersionInputSchema
+
+/**
+ * Taslak düzenleme: verilen alanlar sürümdeki değerin yerine geçer, verilmeyenler aynen kalır.
+ * Alan şemaları core'undur; birleşmiş taslak core `planDraftUpdate` ile yeniden doğrulanır.
+ */
+export const draftPatchBodySchema = z
+  .strictObject({
+    title: resourceVersionInputSchema.shape.title.optional(),
+    content: resourceContentSchema.optional().describe('Tür başına içerik; tür değiştirilemez'),
+    answerKey: answerKeySchema.nullable().optional(),
+    tags: resourceTagsSchema.optional().describe('Etiketler bütün olarak değişir'),
+    license: resourceLicenseSchema.nullable().optional(),
+    attributions: z.array(coreAttributionSchema).max(30).optional(),
+  })
+  .refine((patch) => Object.keys(patch).length > 0, 'En az bir alanı değiştirin.')
+
+/** Gövdesiz komutlar: istemci `{}` gönderir; bilinmeyen alan 400. */
+export const emptyBodySchema = z.strictObject({})
+
+export const transitionBodySchema = z.strictObject({
+  reason: z.string().max(1000).optional().describe('Kullanılmaz; yalnız ret ve telif bildiriminde'),
+})
+
+/** Ret, telif bildirimi ve kaldırma gerekçesi; boş gerekçe 422 `reason_required` (core). */
+export const reasonBodySchema = z.strictObject({
+  // kvkk: K — serbest metin; loglanmaz, denetim kaydına yazılmaz.
+  reason: z
+    .string()
+    .max(transitionReasonSchema.maxLength ?? 1000)
+    .describe('Gerekçe (5–1000 karakter, kırpılır)'),
+})
+
+export const resourceShareBodySchema = shareTargetsSchema
+
+export const resourceWriteResponseSchema = dataResponse(
+  z
+    .object({ resource: staffResourceSchema, version: staffVersionSchema })
+    .meta({ id: 'ResourceWriteResult' }),
+)
+
+export const shareResponseSchema = dataResponse(
+  z.object({ resource: staffResourceSchema }).meta({ id: 'ResourceShareResult' }),
+)
+
+export const removalResponseSchema = dataResponse(
+  z
+    .object({
+      resource: staffResourceSchema,
+      versionIds: z.array(id).describe('Kaldırılan sürümler'),
+      affectedCopyIds: z
+        .array(id)
+        .describe('Bu sürümlerden türetilmiş kopyalar; yönetici ayrıca inceler (DOM-KYN-050)'),
+      affectedContainerVersionIds: z
+        .array(id)
+        .describe('Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri'),
+    })
+    .meta({ id: 'ResourceRemovalResult' }),
 )

@@ -1,0 +1,711 @@
+import { randomUUID } from 'node:crypto'
+
+import { planCopy } from '@kampus/school-core/content/copy.ts'
+import {
+  contentFileRefs,
+  planDraftUpdate,
+  planNewResource,
+  planNewVersion,
+  planResourceRemoval,
+  planVersionTransition,
+  versionData,
+  type ContentActor,
+  type Lineage,
+  type ResourceAction,
+  type ResourceContent,
+  type ResourceVersion,
+  type ResourceVersionData,
+} from '@kampus/school-core/content/resource.ts'
+import {
+  canReadVersion,
+  planShareChange,
+  type ShareTargetsInput,
+} from '@kampus/school-core/content/visibility.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
+
+import type { Database } from '../db/client.ts'
+import {
+  asCoreVersion,
+  findResource,
+  listContainerVersions,
+  listCopies,
+  listResourceVersions,
+  loadItemVersionRefs,
+  loadVersionPairs,
+  type StoredResource,
+  type StoredResourceVersion,
+} from '../db/resources.ts'
+import {
+  insertNewResource,
+  insertNewVersion,
+  removeResourceRows,
+  replaceShares,
+  updateDraft,
+  updateResourceRow,
+  updateVersionMeta,
+} from '../db/resource-writes.ts'
+import { auditLog } from '../db/schema/audit-log.ts'
+import { ConflictError, ForbiddenError, NotFoundError, RuleViolationError } from '../errors.ts'
+import type { ServiceContext } from '../plugins/authenticate.ts'
+import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
+import { readScope, readSource } from './read-scope.ts'
+import { contentReader, fullVersion, staffResource } from './resources.ts'
+
+/**
+ * İçerik havuzu yazma uçlarının servisi (ADR 0004 karar 3; docs/domain/kaynak-platformu.md). Her
+ * işlem `runCommand` ile tek transaction'dadır: kurum kilidi, isteğe bağlı `Idempotency-Key`,
+ * tablolardan yükleme (`load`), core planı (`run`, saf), yazma ve `audit_log` (`after`). Kural
+ * core `content/*`'tadır; burada yalnız yükleme, sürüm denetimi ve yazma vardır.
+ *
+ * Kişinin içerik görünümü (`contentReader`) ve öğretim kapsamı transaction'dan önce okunur: PGlite
+ * tek bağlantılıdır ve kapsam okuması `ctx.db`'yi kullanır.
+ */
+
+interface Staff {
+  actor: ContentActor
+  institutionType: InstitutionType
+}
+
+async function staffOf(ctx: ServiceContext): Promise<Staff> {
+  const reader = await contentReader(ctx)
+  if (reader.viewer.kind !== 'staff') throw new ForbiddenError()
+  return { actor: reader.viewer.actor, institutionType: reader.institutionType }
+}
+
+/** Yazma sonucu: güncel kaynak (personel görünümü) ve işlemin sürümü. */
+interface WriteOutcome {
+  resourceId: string
+  versionId: string | null
+  /** Denetim kaydındaki değişen alan adları (değer yok). */
+  fields: string[]
+  extra?: Record<string, unknown>
+}
+
+interface CommandSpec<P> {
+  action: string
+  resourceId: string
+  status: 200 | 201
+  /** Kurum kilidinden sonra okur ve core planını döndüren saf adımı kurar. */
+  load: (tx: Database) => Promise<() => P>
+  write: (tx: Database, plan: P) => Promise<WriteOutcome>
+}
+
+function command<P>(
+  ctx: ServiceContext,
+  spec: CommandSpec<P>,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const out: { body?: unknown } = {}
+  return runCommand<P>(
+    ctx,
+    {
+      action: spec.action,
+      collections: [],
+      entity: { type: 'resource', id: spec.resourceId },
+      load: async (tx) => {
+        const run = await spec.load(tx)
+        return { run: () => run() }
+      },
+      after: async (tx, plan) => {
+        const outcome = await spec.write(tx, plan)
+        await tx.insert(auditLog).values({
+          institutionId: ctx.institutionId,
+          actorUserId: ctx.actor.userId,
+          actorRole: ctx.actor.role,
+          action: spec.action,
+          entityType: 'resource',
+          entityId: outcome.resourceId,
+          changes: { fields: outcome.fields },
+          createdAt: ctx.now,
+        })
+        out.body = { data: await readBack(tx, ctx, outcome) }
+      },
+    },
+    () => {
+      if (out.body === undefined) throw new Error('resource command was not written')
+      return { statusCode: spec.status, body: out.body }
+    },
+    idempotency,
+  )
+}
+
+async function readBack(tx: Database, ctx: ServiceContext, outcome: WriteOutcome) {
+  const resource = await findResource(tx, ctx.institutionId, outcome.resourceId)
+  if (!resource) throw new Error('resource disappeared after write')
+  const [version] =
+    outcome.versionId === null
+      ? []
+      : await listResourceVersions(tx, ctx.institutionId, outcome.resourceId, [outcome.versionId])
+  return {
+    resource: staffResource(resource),
+    ...(outcome.versionId === null ? {} : { version: version ? fullVersion(version) : null }),
+    ...outcome.extra,
+  }
+}
+
+// --- Yükleme ------------------------------------------------------------------------------
+
+interface Target {
+  resource: StoredResource
+  versions: StoredResourceVersion[]
+}
+
+const readable = (
+  staff: Staff,
+  resource: StoredResource,
+  version: StoredResourceVersion,
+  now: Date,
+) =>
+  canReadVersion(
+    { kind: 'staff', actor: staff.actor },
+    { institutionType: staff.institutionType, resource, version: asCoreVersion(version), now },
+  )
+
+/** Kaynak ve bütün sürümleri; kişinin okuyabildiği sürümü yoksa kaynak yok sayılır (404). */
+async function loadTarget(
+  tx: Database,
+  ctx: ServiceContext,
+  staff: Staff,
+  resourceId: string,
+): Promise<Target> {
+  const resource = await findResource(tx, ctx.institutionId, resourceId)
+  if (!resource) throw new NotFoundError()
+  const versions = await listResourceVersions(tx, ctx.institutionId, resourceId)
+  if (!versions.some((version) => readable(staff, resource, version, ctx.now)))
+    throw new NotFoundError()
+  return { resource, versions }
+}
+
+/** Okunabilir tek sürüm; yoksa 404 (varlığı sızmaz). */
+function readableVersion(
+  ctx: ServiceContext,
+  staff: Staff,
+  target: Target,
+  versionId: string,
+): StoredResourceVersion {
+  const version = target.versions.find((item) => item.id === versionId)
+  if (!version || !readable(staff, target.resource, version, ctx.now)) throw new NotFoundError()
+  return version
+}
+
+/** `If-Match` ile gelen satır sürümü tutmazsa 409 `version_conflict`. */
+function assertExpected(version: number, expected: number | null) {
+  if (expected !== null && version !== expected) throw new ConflictError()
+}
+
+/**
+ * Dosyalı içerik henüz kaydedilemez: dosya tablosu yok (ADR 0003, sonraki dilim). İçerikteki
+ * dosya kimliği doğrulanamayacağı için 422 döner.
+ */
+function assertNoFiles(content: ResourceContent) {
+  if (contentFileRefs(content).length > 0)
+    throw new RuleViolationError(
+      'resource_files_unsupported',
+      'Dosya ekleri henüz kaydedilemiyor; içeriği dosyasız kaydedin.',
+      {
+        issues: [
+          {
+            path: ['content'],
+            code: 'resource_files_unsupported',
+            message: 'Dosya ekleri henüz kaydedilemiyor.',
+          },
+        ],
+      },
+    )
+}
+
+/**
+ * Quiz ve alıştırma setinin soruları kurumda bulunmalı ve kişi onları okuyabilmeli (DOM-KYN-013);
+ * yoksa 422 `quiz_item_missing`. Sorunun türü, durumu ve etiketi yayımda (`publicationIssues`)
+ * denetlenir.
+ */
+async function assertItemsReadable(
+  tx: Database,
+  ctx: ServiceContext,
+  staff: Staff,
+  content: ResourceContent,
+) {
+  if (content.type !== 'quiz' && content.type !== 'exercise_set') return
+  const pairs = await loadVersionPairs(
+    tx,
+    ctx.institutionId,
+    content.items.map((item) => item.questionVersionId),
+  )
+  const issues = content.items.flatMap((item, index) => {
+    const pair = pairs.get(item.questionVersionId)
+    return pair && readable(staff, pair.resource, pair.version, ctx.now)
+      ? []
+      : [
+          {
+            path: ['content', 'items', index, 'questionVersionId'],
+            code: 'quiz_item_missing',
+            message: 'Seçilen soru bulunamadı.',
+          },
+        ]
+  })
+  if (issues.length > 0)
+    throw new RuleViolationError('quiz_item_missing', 'Seçilen soru bulunamadı.', { issues })
+}
+
+async function itemRefs(tx: Database, ctx: ServiceContext, version: StoredResourceVersion) {
+  const content = version.content
+  const ids =
+    content && (content.type === 'quiz' || content.type === 'exercise_set')
+      ? content.items.map((item) => item.questionVersionId)
+      : []
+  return loadItemVersionRefs(tx, ctx.institutionId, ids)
+}
+
+/** Kopyada miras alınan menşe: türetildiği sürümün lisansı ve kaynak gösterimleri (DOM-KYN-050). */
+async function lineageOf(
+  tx: Database,
+  ctx: ServiceContext,
+  resource: StoredResource,
+): Promise<Lineage | undefined> {
+  // TODO(F3b-library): kütüphane kopyasının menşesi `platform_resource_versions` gelince okunur.
+  if (resource.derivedFromVersionId === null) return undefined
+  const pairs = await loadVersionPairs(tx, ctx.institutionId, [resource.derivedFromVersionId])
+  const source = pairs.get(resource.derivedFromVersionId)
+  return source
+    ? { license: source.version.license, attributions: source.version.attributions }
+    : undefined
+}
+
+// --- Oluşturma, taslak, yeni sürüm --------------------------------------------------------
+
+/** Yeni kaynak ve ilk taslak (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `Yalnız ben`. */
+export async function createResource(
+  ctx: ServiceContext,
+  input: ResourceVersionData,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const staff = await staffOf(ctx)
+  const ids = { resourceId: randomUUID(), versionId: randomUUID() }
+  return command(
+    ctx,
+    {
+      action: 'resource.create',
+      resourceId: ids.resourceId,
+      status: 201,
+      load: async (tx) => {
+        assertNoFiles(input.content)
+        await assertItemsReadable(tx, ctx, staff, input.content)
+        return () => planNewResource({ actor: staff.actor, input, ids, now: ctx.now })
+      },
+      write: async (tx, plan) => {
+        await insertNewResource(tx, ctx.institutionId, plan.resource, plan.version, ctx.now)
+        return {
+          resourceId: ids.resourceId,
+          versionId: ids.versionId,
+          fields: ['title', 'content'],
+        }
+      },
+    },
+    idempotency,
+  )
+}
+
+/** Taslak alanları; verilmeyen alan sürümdeki değeriyle kalır (`tags` bütün olarak değişir). */
+export type DraftPatch = Partial<
+  Pick<ResourceVersionData, 'title' | 'content' | 'answerKey' | 'tags' | 'license' | 'attributions'>
+>
+
+/**
+ * Taslağı düzenler (DOM-KYN-030, 032): yalnız yazar, yalnız taslak/reddedilmiş ve hiç
+ * yayımlanmamış sürümde; reddedilen sürüm taslağa döner. Kopyada miras menşe korunur (DOM-KYN-050).
+ * `If-Match` sürüm satırının `rowVersion`'ıdır.
+ */
+export async function updateDraftVersion(
+  ctx: ServiceContext,
+  input: { resourceId: string; versionId: string; patch: DraftPatch; expectedVersion: number },
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const staff = await staffOf(ctx)
+  return command(
+    ctx,
+    {
+      action: 'resource.draft_update',
+      resourceId: input.resourceId,
+      status: 200,
+      load: async (tx) => {
+        const target = await loadTarget(tx, ctx, staff, input.resourceId)
+        const version = readableVersion(ctx, staff, target, input.versionId)
+        assertExpected(version.rowVersion, input.expectedVersion)
+        // Kaldırılan sürüm `version_immutable` ile reddedilir; içerik yer tutucusu yazılmaz.
+        const merged: ResourceVersionData = {
+          ...versionData(asCoreVersion(version)),
+          ...input.patch,
+        }
+        if (input.patch.content) {
+          assertNoFiles(input.patch.content)
+          await assertItemsReadable(tx, ctx, staff, input.patch.content)
+        }
+        const lineage = await lineageOf(tx, ctx, target.resource)
+        return () => ({
+          version,
+          ...planDraftUpdate({
+            actor: staff.actor,
+            resource: target.resource,
+            version: asCoreVersion(version),
+            input: merged,
+            lineage,
+          }),
+        })
+      },
+      write: async (tx, plan) => {
+        const next: ResourceVersion = {
+          ...asCoreVersion(plan.version),
+          ...plan.data,
+          status: plan.status,
+        }
+        await updateDraft(tx, ctx.institutionId, next, plan.version.rowVersion, ctx.now)
+        return {
+          resourceId: input.resourceId,
+          versionId: input.versionId,
+          fields: [
+            ...Object.keys(input.patch),
+            ...(plan.version.status === 'draft' ? [] : ['status']),
+          ],
+        }
+      },
+    },
+    idempotency,
+  )
+}
+
+/** Yayındaki (yoksa son) sürümden yeni taslak açar (DOM-KYN-032); açık sürüm varken 409. */
+export async function openNewVersion(
+  ctx: ServiceContext,
+  resourceId: string,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const staff = await staffOf(ctx)
+  const versionId = randomUUID()
+  return command(
+    ctx,
+    {
+      action: 'resource.version_create',
+      resourceId,
+      status: 201,
+      load: async (tx) => {
+        const target = await loadTarget(tx, ctx, staff, resourceId)
+        return () =>
+          planNewVersion({
+            actor: staff.actor,
+            institutionType: staff.institutionType,
+            resource: target.resource,
+            versions: target.versions.map(asCoreVersion),
+            versionId,
+            now: ctx.now,
+          })
+      },
+      write: async (tx, version) => {
+        await insertNewVersion(tx, ctx.institutionId, version, ctx.now)
+        // Bütün sürümleri arşivli kaynak yeni sürümle yeniden açılır (R8: `resources.archived_at`).
+        await updateResourceRow(
+          tx,
+          ctx.institutionId,
+          resourceId,
+          null,
+          { archivedAt: null },
+          ctx.now,
+        )
+        return { resourceId, versionId, fields: ['versionNumber'] }
+      },
+    },
+    idempotency,
+  )
+}
+
+// --- Durum geçişleri ----------------------------------------------------------------------
+
+/**
+ * Sürüm durum geçişi (DOM-KYN-025, 030, 031, 032). Yayımda önceki yayın sürümü aynı transaction'da
+ * arşivlenir ve kaynağın güncel sürümü değişir. Kaynağın bütün sürümleri arşivlenince kaynak da
+ * arşivlenir (`resources.archived_at`).
+ */
+export async function transitionVersion(
+  ctx: ServiceContext,
+  input: {
+    resourceId: string
+    versionId: string
+    action: ResourceAction
+    reason?: string | undefined
+    expectedVersion: number | null
+  },
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const staff = await staffOf(ctx)
+  return command(
+    ctx,
+    {
+      action: `resource.${input.action}`,
+      resourceId: input.resourceId,
+      status: 200,
+      load: async (tx) => {
+        const target = await loadTarget(tx, ctx, staff, input.resourceId)
+        const version = readableVersion(ctx, staff, target, input.versionId)
+        assertExpected(version.rowVersion, input.expectedVersion)
+        const itemVersions = await itemRefs(tx, ctx, version)
+        return () => ({
+          target,
+          version,
+          transition: planVersionTransition({
+            action: input.action,
+            actor: staff.actor,
+            institutionType: staff.institutionType,
+            resource: target.resource,
+            version: asCoreVersion(version),
+            now: ctx.now,
+            reason: input.reason,
+            itemVersions,
+          }),
+        })
+      },
+      write: async (tx, { target, version, transition }) => {
+        await updateVersionMeta(
+          tx,
+          ctx.institutionId,
+          version.id,
+          version.rowVersion,
+          transition.versionChanges,
+          ctx.now,
+        )
+        const superseded = target.versions.find(
+          (item) => item.id === transition.supersededVersionId,
+        )
+        if (superseded)
+          await updateVersionMeta(
+            tx,
+            ctx.institutionId,
+            superseded.id,
+            superseded.rowVersion,
+            { status: 'archived', archivedAt: ctx.now.toISOString() },
+            ctx.now,
+          )
+        const statuses = target.versions.map((item) =>
+          item.id === version.id
+            ? transition.status
+            : item.id === superseded?.id
+              ? 'archived'
+              : item.status,
+        )
+        const allArchived = statuses.every((status) => status === 'archived')
+        const resourceChanges = {
+          ...transition.resourceChanges,
+          ...(allArchived ? { archivedAt: ctx.now } : {}),
+        }
+        if (Object.keys(resourceChanges).length > 0)
+          await updateResourceRow(
+            tx,
+            ctx.institutionId,
+            input.resourceId,
+            null,
+            resourceChanges,
+            ctx.now,
+          )
+        return {
+          resourceId: input.resourceId,
+          versionId: version.id,
+          fields: [...Object.keys(transition.versionChanges), ...Object.keys(resourceChanges)],
+        }
+      },
+    },
+    idempotency,
+  )
+}
+
+// --- Kaldırma, paylaşım, kopya ------------------------------------------------------------
+
+/**
+ * Kaynağı kaldırır (DOM-KYN-025, 051): yalnız yönetici, gerekçeyle. Bütün sürümlerin içeriği ve
+ * cevap anahtarı silinir; başlık, menşe, gerekçe ve tarih kalır. Kaynak arşivlenir. Yanıt
+ * etkilenen kopyaları ve soruyu içeren quiz sürümlerini listeler.
+ */
+export async function removeResource(
+  ctx: ServiceContext,
+  input: { resourceId: string; reason: string; expectedVersion: number | null },
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const staff = await staffOf(ctx)
+  return command(
+    ctx,
+    {
+      action: 'resource.remove',
+      resourceId: input.resourceId,
+      status: 200,
+      load: async (tx) => {
+        const target = await loadTarget(tx, ctx, staff, input.resourceId)
+        assertExpected(target.resource.rowVersion, input.expectedVersion)
+        const versionIds = target.versions.map((version) => version.id)
+        const [copies, containers] = await Promise.all([
+          listCopies(tx, ctx.institutionId, versionIds),
+          listContainerVersions(tx, ctx.institutionId, versionIds),
+        ])
+        return () => ({
+          target,
+          plan: planResourceRemoval({
+            actor: staff.actor,
+            resource: target.resource,
+            versions: target.versions.map(asCoreVersion),
+            copies,
+            containers,
+            reason: input.reason,
+            now: ctx.now,
+          }),
+        })
+      },
+      write: async (tx, { target, plan }) => {
+        await removeResourceRows(
+          tx,
+          ctx.institutionId,
+          input.resourceId,
+          target.versions,
+          plan.versionChanges,
+          ctx.now,
+        )
+        return {
+          resourceId: input.resourceId,
+          versionId: null,
+          fields: ['status', 'content', 'answerKey', 'removedAt', 'removalReason', 'archivedAt'],
+          extra: {
+            versionIds: plan.versionIds,
+            affectedCopyIds: plan.affectedCopyIds,
+            affectedContainerVersionIds: plan.affectedContainerVersionIds,
+          },
+        }
+      },
+    },
+    idempotency,
+  )
+}
+
+/**
+ * Paylaşım kapsamını ve hedeflerini değiştirir (DOM-KYN-021, 031, 040). Öğretmen yalnız ders
+ * verdiği sınıf ve öğrencilerle paylaşır; yöneticinin seçtiği kimlikler kurumda bulunmalıdır.
+ */
+export async function shareResource(
+  ctx: ServiceContext,
+  input: { resourceId: string; targets: ShareTargetsInput; expectedVersion: number | null },
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const staff = await staffOf(ctx)
+  const [scope, source] = await Promise.all([readScope(ctx), readSource(ctx)])
+  const known = {
+    studentIds: new Set(source.students.map((student) => student.id)),
+    classIds: new Set(source.classes.map((item) => item.id)),
+  }
+  return command(
+    ctx,
+    {
+      action: 'resource.share',
+      resourceId: input.resourceId,
+      status: 200,
+      load: async (tx) => {
+        const target = await loadTarget(tx, ctx, staff, input.resourceId)
+        assertExpected(target.resource.rowVersion, input.expectedVersion)
+        const current = target.versions.find((v) => v.id === target.resource.currentVersionId)
+        return () => {
+          const plan = planShareChange({
+            actor: staff.actor,
+            institutionType: staff.institutionType,
+            resource: target.resource,
+            currentVersion: current ? asCoreVersion(current) : null,
+            targets: input.targets,
+            teaching: { studentIds: scope.studentIds, classIds: scope.classIds },
+          })
+          const issues = [
+            ...plan.sharedStudentIds
+              .map((id, index) => ({ id, index, field: 'studentIds', set: known.studentIds }))
+              .concat(
+                plan.sharedClassIds.map((id, index) => ({
+                  id,
+                  index,
+                  field: 'classIds',
+                  set: known.classIds,
+                })),
+              )
+              .filter(({ id, set }) => !set.has(id))
+              .map(({ index, field }) => ({
+                path: [field, index],
+                code: 'share_target_not_found',
+                message: 'Seçilen kayıt bulunamadı.',
+              })),
+          ]
+          if (issues.length > 0)
+            throw new RuleViolationError('share_target_not_found', 'Seçilen kayıt bulunamadı.', {
+              issues,
+            })
+          return plan
+        }
+      },
+      write: async (tx, plan) => {
+        await updateResourceRow(
+          tx,
+          ctx.institutionId,
+          input.resourceId,
+          null,
+          { shareScope: plan.shareScope },
+          ctx.now,
+        )
+        await replaceShares(tx, ctx.institutionId, input.resourceId, plan, ctx.now)
+        return {
+          resourceId: input.resourceId,
+          versionId: null,
+          fields: ['shareScope', 'sharedStudentIds', 'sharedClassIds'],
+        }
+      },
+    },
+    idempotency,
+  )
+}
+
+/**
+ * Yayındaki güncel sürümü yeni kaynağa kopyalar (DOM-KYN-050): sahibi kopyalayan, kapsam `Yalnız
+ * ben`, `Taslak`; türetildiği sürüm bağı, lisans ve kaynak gösterimleri miras alınır.
+ */
+export async function copyResource(
+  ctx: ServiceContext,
+  resourceId: string,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const staff = await staffOf(ctx)
+  const ids = { resourceId: randomUUID(), versionId: randomUUID() }
+  return command(
+    ctx,
+    {
+      action: 'resource.copy',
+      resourceId: ids.resourceId,
+      status: 201,
+      load: async (tx) => {
+        const target = await loadTarget(tx, ctx, staff, resourceId)
+        // Güncel yayın sürümü yoksa son sürüm core'a verilir: görülemiyorsa 404, değilse 409.
+        const source =
+          target.versions.find((v) => v.id === target.resource.currentVersionId) ??
+          target.versions.at(-1)
+        if (!source) throw new NotFoundError()
+        return () =>
+          planCopy({
+            actor: staff.actor,
+            institutionType: staff.institutionType,
+            source: {
+              origin: 'institution',
+              resource: target.resource,
+              version: asCoreVersion(source),
+            },
+            ids,
+            now: ctx.now,
+          })
+      },
+      write: async (tx, plan) => {
+        await insertNewResource(tx, ctx.institutionId, plan.resource, plan.version, ctx.now)
+        return {
+          resourceId: ids.resourceId,
+          versionId: ids.versionId,
+          fields: ['derivedFromVersionId', 'license', 'attributions'],
+        }
+      },
+    },
+    idempotency,
+  )
+}

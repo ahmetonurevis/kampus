@@ -26,6 +26,7 @@ import {
   type ResourceStatus,
   type ResourceTags,
   type ResourceVersion,
+  type ResourceVersionMeta,
 } from '@kampus/school-core/content/resource.ts'
 import type { ContentLearner, ContentViewer } from '@kampus/school-core/content/visibility.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
@@ -77,6 +78,13 @@ export type StoredResourceVersion = Omit<ResourceVersion, 'content'> & {
   updatedAt: string
   rowVersion: number
 }
+
+/**
+ * Soru sürümü kimliği core'da serbest kimliktir (`identifier`); kolon `uuid`'dir. Uuid olmayan
+ * kimlik hiçbir satıra karşılık gelmez, sorguya girmez (girse PostgreSQL 22P02 verirdi).
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const uuidsOnly = (ids: readonly string[]) => [...new Set(ids.filter((id) => UUID.test(id)))]
 
 const iso = (value: Date) => value.toISOString()
 const isoOrNull = (value: Date | null) => (value === null ? null : value.toISOString())
@@ -163,17 +171,14 @@ function toStoredVersion(
 
 // --- Yazma --------------------------------------------------------------------------------
 
-function versionValues(institutionId: string, version: ResourceVersion, now: Date) {
-  // Kaldırılan sürümde yalnız başlık aranır (içerik silinmiştir, DOM-KYN-051).
-  const document =
-    version.status === 'removed' ? normalizeSearchText(version.title) : searchDocument(version)
+/**
+ * Sürümün içerik ve etiket kolonları (taslak düzenlemede yazılanlar). Kaldırılan sürümde içerik ve
+ * anahtar boştur, yalnız başlık aranır (DOM-KYN-051).
+ */
+export function versionContentValues(version: ResourceVersion) {
+  const removed = version.status === 'removed'
+  const document = removed ? normalizeSearchText(version.title) : searchDocument(version)
   return {
-    institutionId,
-    id: version.id,
-    resourceId: version.resourceId,
-    versionNumber: version.versionNumber,
-    status: version.status,
-    authorUserId: version.authorUserId,
     title: version.title,
     content: version.status === 'removed' ? null : version.content,
     answerKey: version.status === 'removed' ? null : version.answerKey,
@@ -190,6 +195,33 @@ function versionValues(institutionId: string, version: ResourceVersion, now: Dat
     durationMinutes: version.tags.durationMinutes,
     difficulty: version.tags.difficulty,
     searchVector: sql`to_tsvector('simple', ${document})`,
+  }
+}
+
+/** Sürüm satırının durum kolonları; core `ResourceVersionMeta` alanlarının kolon karşılığı. */
+export function versionMetaValues(meta: Partial<ResourceVersionMeta>) {
+  const values: Partial<typeof resourceVersions.$inferInsert> = {}
+  if (meta.status !== undefined) values.status = meta.status
+  if (meta.submittedAt !== undefined) values.submittedAt = dateOrNull(meta.submittedAt)
+  if (meta.reviewedByUserId !== undefined) values.reviewedByUserId = meta.reviewedByUserId
+  if (meta.reviewedAt !== undefined) values.reviewedAt = dateOrNull(meta.reviewedAt)
+  if (meta.rejectionReason !== undefined) values.rejectionReason = meta.rejectionReason
+  if (meta.publishedAt !== undefined) values.publishedAt = dateOrNull(meta.publishedAt)
+  if (meta.archivedAt !== undefined) values.archivedAt = dateOrNull(meta.archivedAt)
+  if (meta.removedAt !== undefined) values.removedAt = dateOrNull(meta.removedAt)
+  if (meta.removalReason !== undefined) values.removalReason = meta.removalReason
+  return values
+}
+
+function versionValues(institutionId: string, version: ResourceVersion, now: Date) {
+  return {
+    institutionId,
+    id: version.id,
+    resourceId: version.resourceId,
+    versionNumber: version.versionNumber,
+    status: version.status,
+    authorUserId: version.authorUserId,
+    ...versionContentValues(version),
     submittedAt: dateOrNull(version.submittedAt),
     reviewedByUserId: version.reviewedByUserId,
     reviewedAt: dateOrNull(version.reviewedAt),
@@ -245,14 +277,25 @@ export async function insertResourceVersion(
  * anahtarları döngüsel olduğundan kaynak önce güncel sürümsüz yazılır, sürümlerden sonra
  * `current_version_id` bağlanır.
  */
-export async function insertResourceWithVersions(
+export function insertResourceWithVersions(
   db: Database,
   institutionId: string,
   record: Omit<ResourceRecord, 'ownerActive'>,
   versions: readonly ResourceVersion[],
   now: Date,
 ): Promise<void> {
-  await db.transaction(async (tx) => {
+  return db.transaction((tx) => insertResourceRows(tx, institutionId, record, versions, now))
+}
+
+/** `insertResourceWithVersions`'ın gövdesi; çağıranın transaction'ında çalışır (yazma uçları). */
+export async function insertResourceRows(
+  tx: Database,
+  institutionId: string,
+  record: Omit<ResourceRecord, 'ownerActive'>,
+  versions: readonly ResourceVersion[],
+  now: Date,
+): Promise<void> {
+  {
     await tx.insert(resources).values({
       institutionId,
       id: record.id,
@@ -283,7 +326,7 @@ export async function insertResourceWithVersions(
         .set({ currentVersionId: record.currentVersionId })
         .where(and(eq(resources.institutionId, institutionId), eq(resources.id, record.id)))
     }
-  })
+  }
 }
 
 // --- Görünürlük SQL'i ---------------------------------------------------------------------
@@ -737,7 +780,8 @@ export async function loadItemVersionRefs(
     string,
     Pick<ResourceVersion, 'id' | 'status' | 'tags'> & { contentType: ResourceRecord['contentType'] }
   >()
-  if (versionIds.length === 0) return map
+  const ids = uuidsOnly(versionIds)
+  if (ids.length === 0) return map
   const rows = await db
     .select({ version: getTableColumns(resourceVersions), contentType: resources.contentType })
     .from(resourceVersions)
@@ -749,10 +793,7 @@ export async function loadItemVersionRefs(
       ),
     )
     .where(
-      and(
-        eq(resourceVersions.institutionId, institutionId),
-        inArray(resourceVersions.id, [...new Set(versionIds)]),
-      ),
+      and(eq(resourceVersions.institutionId, institutionId), inArray(resourceVersions.id, ids)),
     )
   const outcomes = await loadOutcomes(
     db,
@@ -769,4 +810,102 @@ export async function loadItemVersionRefs(
     })
   }
   return map
+}
+
+// --- Yazma uçlarının okumaları ------------------------------------------------------------
+
+/**
+ * Sürüm kimliğine göre sürüm ve kaynağı (sahibin etkinliği ve paylaşım hedefleriyle). Quiz
+ * sorularının okunabilirliği ve kopyanın menşesi için; başka kurumun kimliği sonuçta yoktur.
+ */
+export async function loadVersionPairs(
+  db: Database,
+  institutionId: string,
+  versionIds: readonly string[],
+): Promise<Map<string, { resource: StoredResource; version: StoredResourceVersion }>> {
+  const map = new Map<string, { resource: StoredResource; version: StoredResourceVersion }>()
+  const ids = uuidsOnly(versionIds)
+  if (ids.length === 0) return map
+  const rows = await db
+    .select({
+      resource: getTableColumns(resources),
+      version: getTableColumns(resourceVersions),
+      ownerActive: ownerActiveSql(resources),
+    })
+    .from(resourceVersions)
+    .innerJoin(
+      resources,
+      and(
+        eq(resources.institutionId, resourceVersions.institutionId),
+        eq(resources.id, resourceVersions.resourceId),
+      ),
+    )
+    .where(
+      and(eq(resourceVersions.institutionId, institutionId), inArray(resourceVersions.id, ids)),
+    )
+  const [shares, outcomes] = await Promise.all([
+    loadShares(
+      db,
+      institutionId,
+      rows.map((row) => row.resource.id),
+    ),
+    loadOutcomes(
+      db,
+      institutionId,
+      rows.map((row) => row.version.id),
+    ),
+  ])
+  for (const row of rows)
+    map.set(row.version.id, {
+      resource: toStoredResource(row.resource, row.ownerActive, shares.get(row.resource.id) ?? []),
+      version: toStoredVersion(row.version, outcomes.get(row.version.id) ?? []),
+    })
+  return map
+}
+
+/** Verilen sürümlerden türetilmiş kopyalar (DOM-KYN-050, 051). */
+export async function listCopies(
+  db: Database,
+  institutionId: string,
+  versionIds: readonly string[],
+): Promise<{ id: string; derivedFromVersionId: string | null }[]> {
+  if (versionIds.length === 0) return []
+  return db
+    .select({ id: resources.id, derivedFromVersionId: resources.derivedFromVersionId })
+    .from(resources)
+    .where(
+      and(
+        eq(resources.institutionId, institutionId),
+        inArray(resources.derivedFromVersionId, [...versionIds]),
+      ),
+    )
+    .orderBy(asc(resources.id))
+}
+
+/** Verilen soru sürümlerini içeren quiz ve alıştırma seti sürümleri (DOM-KYN-051). */
+export async function listContainerVersions(
+  db: Database,
+  institutionId: string,
+  itemVersionIds: readonly string[],
+): Promise<{ id: string; content: ResourceContent }[]> {
+  if (itemVersionIds.length === 0) return []
+  const rows = await db
+    .selectDistinct({ id: resourceVersions.id, content: resourceVersions.content })
+    .from(resourceVersionItems)
+    .innerJoin(
+      resourceVersions,
+      and(
+        eq(resourceVersions.institutionId, resourceVersionItems.institutionId),
+        eq(resourceVersions.id, resourceVersionItems.versionId),
+      ),
+    )
+    .where(
+      and(
+        eq(resourceVersionItems.institutionId, institutionId),
+        inArray(resourceVersionItems.itemVersionId, [...itemVersionIds]),
+        isNull(resourceVersionItems.archivedAt),
+      ),
+    )
+    .orderBy(asc(resourceVersions.id))
+  return rows.flatMap((row) => (row.content === null ? [] : [{ id: row.id, content: row.content }]))
 }

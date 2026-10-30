@@ -1625,7 +1625,11 @@ export interface paths {
          */
         get: operations["listResources"];
         put?: never;
-        post?: never;
+        /**
+         * Kaynak oluştur
+         * @description Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`; dosyalı içerik henüz 422 `resource_files_unsupported`. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["createResource"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1666,6 +1670,250 @@ export interface paths {
         get: operations["getResourceVersion"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Taslağı düzenle
+         * @description Taslak veya reddedilmiş sürümün alanlarını değiştirir (DOM-KYN-030, 032); verilmeyen alan aynen kalır, `tags` bütün olarak değişir. Yalnız yazar (403). Yayımlanmış, incelemedeki veya arşivli sürüm 409 `version_immutable`; içerik türü değişmez (422 `content_type_immutable`). Kopyada miras lisans ve kaynak gösterimi değişmez (422 `license_inherited`, `attribution_inherited`; DOM-KYN-050). Reddedilen sürüm taslağa döner. `If-Match` zorunlu: sürümün `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        patch: operations["updateResourceDraft"];
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yeni sürüm aç
+         * @description Yayındaki (yoksa son) sürümün içeriğinden yeni taslak sürüm açar (DOM-KYN-032); numara bir artar. Sahip, zümre başkanı veya yönetici (403). Açık sürüm varken 409 `open_version_exists`, kaldırılmış kaynakta 409 `resource_removed`. Arşivlenmiş kaynak yeniden açılır. Başarı 201. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["createResourceVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/versions/{versionId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sürüm: Onaya gönder
+         * @description Taslağı onaya gönderir (DOM-KYN-030); yalnız yazar. Yayım koşulları eksikse 422 (ilk eksiğin kodu, ör. `subject_required`). İzinsiz geçiş 409 `resource_transition_invalid`. `If-Match` isteğe bağlı: sürümün `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["submitResourceVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/versions/{versionId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sürüm: Yayımla
+         * @description Onaysız yayın (DOM-KYN-031): yalnız `Kurum özgün` ve kapsamı yazarın kendi öğrencileri/sınıfları olan taslak; diğerleri 403 `review_required`. Önceki yayın sürümü arşivlenir. İzinsiz geçiş 409 `resource_transition_invalid`. `If-Match` isteğe bağlı: sürümün `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["publishResourceVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/versions/{versionId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sürüm: Onaydan geri çek
+         * @description İncelemedeki sürümü taslağa döndürür; yalnız yazar. Önceden yayımlanmış sürüm 409 `version_immutable`. İzinsiz geçiş 409 `resource_transition_invalid`. `If-Match` isteğe bağlı: sürümün `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["withdrawResourceVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/versions/{versionId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sürüm: Onayla
+         * @description İncelemedeki sürümü yayımlar (DOM-KYN-031); yazar ve sahip onaylayamaz (403). Önceki yayın sürümü aynı işlemde arşivlenir. Telif bildirimi incelenen içeriği yalnız yönetici yeniden yayına alır. İzinsiz geçiş 409 `resource_transition_invalid`. `If-Match` isteğe bağlı: sürümün `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["approveResourceVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/versions/{versionId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sürüm: Reddet
+         * @description İncelemedeki sürümü gerekçeyle reddeder (`reason` zorunlu, yoksa 422 `reason_required`). İzinsiz geçiş 409 `resource_transition_invalid`. `If-Match` isteğe bağlı: sürümün `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["rejectResourceVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/versions/{versionId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sürüm: Taslağa döndür
+         * @description Reddedilen sürümü taslağa döndürür; yalnız yazar. İzinsiz geçiş 409 `resource_transition_invalid`. `If-Match` isteğe bağlı: sürümün `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["reopenResourceVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/versions/{versionId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sürüm: Arşivle
+         * @description Taslak, reddedilmiş veya yayındaki sürümü arşivler (DOM-KYN-042, 051); sahip, zümre başkanı veya yönetici. Kaynağın bütün sürümleri arşivlenince kaynak da arşivlenir ve listeden düşer. İzinsiz geçiş 409 `resource_transition_invalid`. `If-Match` isteğe bağlı: sürümün `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["archiveResourceVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/versions/{versionId}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sürüm: Telif bildirimi
+         * @description Telif bildirimi (DOM-KYN-025): yayındaki sürüm `İncelemede`ye alınır, öğrenci ve veliden düşer. `reason` zorunlu. Gerekçe saklanmaz (`TODO(content-report-log)`). İzinsiz geçiş 409 `resource_transition_invalid`. `If-Match` isteğe bağlı: sürümün `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["reportResourceVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kaynağı kaldır
+         * @description Telif ihlali veya kişisel veri nedeniyle kaynağı kaldırır (DOM-KYN-025, 051): bütün sürümlerin içeriği ve cevap anahtarı silinir; başlık, menşe, gerekçe ve tarih kalır; kaynak arşivlenir. Yalnız yönetici (öğretmen 403); `reason` zorunlu (422 `reason_required`); ikinci kez 409 `resource_removed`. Yanıt bu sürümlerden türetilmiş kopyaları ve soruyu içeren quiz sürümlerini listeler. `If-Match` isteğe bağlı: kaynağın `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["removeResource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Paylaşımı değiştir
+         * @description Paylaşım kapsamı ve hedefleri (DOM-KYN-021, 031, 040): `private`, `students` (`studentIds`), `classes` (`classIds`), `department`, `institution`. Sahip, zümre başkanı veya yönetici (403). Öğretmen yalnız ders verdiği sınıf ve öğrencilerle paylaşır (403 `share_target_out_of_scope`); kurumda olmayan kimlik 422 `share_target_not_found`. Kitap sahibiyle sınırlı lisans sınıf/kurum kapsamına açılmaz (422 `license_restricts_share`); onaysız yayın zümre/kuruma açılırken 409 `share_scope_review_required`. `If-Match` isteğe bağlı: kaynağın `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["shareResource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kaynağı kopyala
+         * @description Yayındaki güncel sürümü yeni kaynağa kopyalar (DOM-KYN-050): sahibi kopyalayan, kapsam `private`, durum `Taslak`; `derivedFromVersionId`, lisans ve kaynak gösterimleri miras alınır ve sonraki taslaklarda değiştirilemez. Yayında sürüm yoksa 409 `copy_source_not_published`; uyarlamaya izin vermeyen lisans 403 `license_forbids_copy`; süresi dolan lisans 409 `license_expired`. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         */
+        post: operations["copyResource"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2461,6 +2709,29 @@ export interface components {
             attributions: components["schemas"]["ResourceAttributionInput"][];
             licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
         };
+        StaffResourceInput: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            ownerUserId: string;
+            /** @enum {string} */
+            shareScope: "private" | "students" | "classes" | "department" | "institution";
+            /** @description Güncel yayındaki sürüm; hiç yayımlanmadıysa `null` */
+            currentVersionId: string | null;
+            /** @description Kopyalandığı sürüm */
+            derivedFromVersionId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            sharedStudentIds: string[];
+            sharedClassIds: string[];
+            /** @description Bütün sürümleri arşivlenince veya kaynak kaldırılınca dolar (DOM-KYN-051) */
+            archivedAt: string | null;
+            /** @description Kaynak satırının iyimser kilit sürümü (paylaşım ve kaldırmada `If-Match`) */
+            rowVersion: number;
+        };
         StaffResourceListItemInput: {
             /** @constant */
             view: "staff";
@@ -2500,25 +2771,7 @@ export interface components {
         StaffResourceDetailInput: {
             /** @constant */
             view: "staff";
-            resource: {
-                /** Format: uuid */
-                id: string;
-                /** @enum {string} */
-                contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
-                ownerUserId: string;
-                /** @enum {string} */
-                shareScope: "private" | "students" | "classes" | "department" | "institution";
-                /** @description Güncel yayındaki sürüm; hiç yayımlanmadıysa `null` */
-                currentVersionId: string | null;
-                /** @description Kopyalandığı sürüm */
-                derivedFromVersionId: string | null;
-                /** Format: date-time */
-                createdAt: string;
-                /** Format: date-time */
-                updatedAt: string;
-                sharedStudentIds: string[];
-                sharedClassIds: string[];
-            };
+            resource: components["schemas"]["StaffResourceInput"];
             /** @description Okunabilir sürümler, numaraya göre artan */
             versions: components["schemas"]["ResourceVersionSummaryInput"][];
             head: components["schemas"]["ResourceVersionInput"];
@@ -2539,6 +2792,22 @@ export interface components {
                 contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
             };
             version: components["schemas"]["LearnerResourceVersionInput"];
+        };
+        ResourceWriteResultInput: {
+            resource: components["schemas"]["StaffResourceInput"];
+            version: components["schemas"]["ResourceVersionInput"];
+        };
+        ResourceShareResultInput: {
+            resource: components["schemas"]["StaffResourceInput"];
+        };
+        ResourceRemovalResultInput: {
+            resource: components["schemas"]["StaffResourceInput"];
+            /** @description Kaldırılan sürümler */
+            versionIds: string[];
+            /** @description Bu sürümlerden türetilmiş kopyalar; yönetici ayrıca inceler (DOM-KYN-050) */
+            affectedCopyIds: string[];
+            /** @description Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri */
+            affectedContainerVersionIds: string[];
         };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
@@ -3325,6 +3594,29 @@ export interface components {
             attributions: components["schemas"]["ResourceAttribution"][];
             licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
         };
+        StaffResource: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            ownerUserId: string;
+            /** @enum {string} */
+            shareScope: "private" | "students" | "classes" | "department" | "institution";
+            /** @description Güncel yayındaki sürüm; hiç yayımlanmadıysa `null` */
+            currentVersionId: string | null;
+            /** @description Kopyalandığı sürüm */
+            derivedFromVersionId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            sharedStudentIds: string[];
+            sharedClassIds: string[];
+            /** @description Bütün sürümleri arşivlenince veya kaynak kaldırılınca dolar (DOM-KYN-051) */
+            archivedAt: string | null;
+            /** @description Kaynak satırının iyimser kilit sürümü (paylaşım ve kaldırmada `If-Match`) */
+            rowVersion: number;
+        };
         StaffResourceListItem: {
             /** @constant */
             view: "staff";
@@ -3364,25 +3656,7 @@ export interface components {
         StaffResourceDetail: {
             /** @constant */
             view: "staff";
-            resource: {
-                /** Format: uuid */
-                id: string;
-                /** @enum {string} */
-                contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
-                ownerUserId: string;
-                /** @enum {string} */
-                shareScope: "private" | "students" | "classes" | "department" | "institution";
-                /** @description Güncel yayındaki sürüm; hiç yayımlanmadıysa `null` */
-                currentVersionId: string | null;
-                /** @description Kopyalandığı sürüm */
-                derivedFromVersionId: string | null;
-                /** Format: date-time */
-                createdAt: string;
-                /** Format: date-time */
-                updatedAt: string;
-                sharedStudentIds: string[];
-                sharedClassIds: string[];
-            };
+            resource: components["schemas"]["StaffResource"];
             /** @description Okunabilir sürümler, numaraya göre artan */
             versions: components["schemas"]["ResourceVersionSummary"][];
             head: components["schemas"]["ResourceVersion"];
@@ -3403,6 +3677,22 @@ export interface components {
                 contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
             };
             version: components["schemas"]["LearnerResourceVersion"];
+        };
+        ResourceWriteResult: {
+            resource: components["schemas"]["StaffResource"];
+            version: components["schemas"]["ResourceVersion"];
+        };
+        ResourceShareResult: {
+            resource: components["schemas"]["StaffResource"];
+        };
+        ResourceRemovalResult: {
+            resource: components["schemas"]["StaffResource"];
+            /** @description Kaldırılan sürümler */
+            versionIds: string[];
+            /** @description Bu sürümlerden türetilmiş kopyalar; yönetici ayrıca inceler (DOM-KYN-050) */
+            affectedCopyIds: string[];
+            /** @description Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri */
+            affectedContainerVersionIds: string[];
         };
     };
     responses: never;
@@ -12351,6 +12641,374 @@ export interface operations {
             };
         };
     };
+    createResource: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    content: {
+                        /** @enum {string} */
+                        type: "text";
+                        /** @default null */
+                        body?: string | null;
+                        /** @default null */
+                        fileId?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "worksheet";
+                        /** @default null */
+                        body?: string | null;
+                        /** @default null */
+                        fileId?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "reading_passage";
+                        body: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "audio";
+                        fileId: string;
+                        /** @default null */
+                        transcript?: string | null;
+                        /** @default null */
+                        captionsVtt?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "video";
+                        fileId: string;
+                        /** @default null */
+                        transcript?: string | null;
+                        /** @default null */
+                        captionsVtt?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "file";
+                        fileId: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "link";
+                        /** Format: uri */
+                        url: string;
+                        /** @default null */
+                        provider?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "book_reference";
+                        publisher: string;
+                        bookTitle: string;
+                        /** @default null */
+                        edition?: string | null;
+                        /** @default null */
+                        isbn?: string | null;
+                        pages: string;
+                        /** @default null */
+                        note?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "question";
+                        question: {
+                            /** @enum {string} */
+                            questionType: "multiple_choice";
+                            stem: string;
+                            options: {
+                                id: string;
+                                text: string;
+                            }[];
+                            /** @default null */
+                            imageFileId?: string | null;
+                        } | {
+                            /** @enum {string} */
+                            questionType: "true_false";
+                            stem: string;
+                            /** @default false */
+                            allowNotGiven?: boolean;
+                            /** @default null */
+                            imageFileId?: string | null;
+                        } | {
+                            /** @enum {string} */
+                            questionType: "matching";
+                            stem: string;
+                            prompts: {
+                                id: string;
+                                text: string;
+                            }[];
+                            choices: {
+                                id: string;
+                                text: string;
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "gap_fill";
+                            stem: string;
+                            gaps: {
+                                id: string;
+                                /** @default [] */
+                                options?: string[];
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "ordering";
+                            stem: string;
+                            items: {
+                                id: string;
+                                text: string;
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "short_answer";
+                            stem: string;
+                            /** @default 100 */
+                            maxLength?: number;
+                            /** @default null */
+                            imageFileId?: string | null;
+                        };
+                    } | {
+                        /** @enum {string} */
+                        type: "quiz";
+                        items: {
+                            questionVersionId: string;
+                            /** @default 1 */
+                            points?: number;
+                        }[];
+                        /** @default null */
+                        timeLimitMinutes?: number | null;
+                        /** @default false */
+                        shuffleItems?: boolean;
+                    } | {
+                        /** @enum {string} */
+                        type: "exercise_set";
+                        items: {
+                            questionVersionId: string;
+                            /** @default 1 */
+                            points?: number;
+                        }[];
+                        /** @default null */
+                        timeLimitMinutes?: number | null;
+                        /** @default false */
+                        shuffleItems?: boolean;
+                    } | {
+                        /** @enum {string} */
+                        type: "homework_template";
+                        instructions: string;
+                        submissionKinds: ("file" | "text" | "audio")[];
+                        /** @default null */
+                        criteria?: string | null;
+                        /** @default null */
+                        rubricId?: string | null;
+                    };
+                    answerKey?: ({
+                        /** @enum {string} */
+                        questionType: "multiple_choice";
+                        correctOptionId: string;
+                        explanation: string;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "true_false";
+                        /** @enum {string} */
+                        answer: "true" | "false" | "not_given";
+                        explanation: string;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "matching";
+                        pairs: {
+                            promptId: string;
+                            choiceId: string;
+                        }[];
+                        explanation: string;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "gap_fill";
+                        gaps: {
+                            gapId: string;
+                            accepted: string[];
+                        }[];
+                        explanation: string;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "ordering";
+                        order: string[];
+                        explanation: string;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "short_answer";
+                        accepted: string[];
+                        explanation: string;
+                    }) | null;
+                    /** @default {} */
+                    tags?: {
+                        /** @default null */
+                        subjectId?: string | null;
+                        /** @default [] */
+                        gradeLevels?: number[];
+                        /** @default null */
+                        cefrLevel?: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                        /** @default null */
+                        primarySkill?: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                        /** @default [] */
+                        skills?: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
+                        /** @default null */
+                        activityMode?: ("reception" | "production" | "interaction" | "mediation") | null;
+                        /** @default null */
+                        interactionChannel?: ("spoken" | "written" | "online") | null;
+                        /** @default null */
+                        mediation?: {
+                            /** @enum {string} */
+                            sourceSkill: "reading" | "listening" | "writing" | "speaking";
+                            /** @enum {string} */
+                            targetSkill: "reading" | "listening" | "writing" | "speaking";
+                        } | null;
+                        /** @default null */
+                        durationMinutes?: number | null;
+                        /** @default null */
+                        difficulty?: ("easy" | "medium" | "hard") | null;
+                        /** @default [] */
+                        outcomes?: {
+                            outcomeId: string;
+                            /** @enum {string} */
+                            outcomeSource: "platform" | "institution";
+                        }[];
+                    };
+                    /** @default null */
+                    license?: ({
+                        /** @enum {string} */
+                        kind: "institution_original";
+                    } | {
+                        /** @enum {string} */
+                        kind: "contains_quotation";
+                    } | {
+                        /** @enum {string} */
+                        kind: "platform_derived";
+                        platformVersionId: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "open_license";
+                        /** @enum {string} */
+                        license: "CC0-1.0" | "CC-BY-4.0" | "CC-BY-SA-4.0" | "CC-BY-3.0" | "CC-BY-SA-3.0";
+                    } | {
+                        /** @enum {string} */
+                        kind: "public_domain";
+                        basisNote: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "licensed_publication";
+                        publisher: string;
+                        contractNumber: string;
+                        coverage: string;
+                        expiryDate: string;
+                        /** @default false */
+                        allowsAdaptation?: boolean;
+                        /** @default false */
+                        restrictedToBookOwners?: boolean;
+                    } | {
+                        /** @enum {string} */
+                        kind: "external_reference";
+                    }) | null;
+                    /** @default [] */
+                    attributions?: {
+                        work: string;
+                        author: string;
+                        source: string;
+                        /** @default null */
+                        year?: number | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getResource: {
         parameters: {
             query?: never;
@@ -12492,6 +13150,1698 @@ export interface operations {
             };
             /** @description Default Response */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateResourceDraft: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+                /** @description Sürüm kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    /** @description Tür başına içerik; tür değiştirilemez */
+                    content?: {
+                        /** @enum {string} */
+                        type: "text";
+                        /** @default null */
+                        body?: string | null;
+                        /** @default null */
+                        fileId?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "worksheet";
+                        /** @default null */
+                        body?: string | null;
+                        /** @default null */
+                        fileId?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "reading_passage";
+                        body: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "audio";
+                        fileId: string;
+                        /** @default null */
+                        transcript?: string | null;
+                        /** @default null */
+                        captionsVtt?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "video";
+                        fileId: string;
+                        /** @default null */
+                        transcript?: string | null;
+                        /** @default null */
+                        captionsVtt?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "file";
+                        fileId: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "link";
+                        /** Format: uri */
+                        url: string;
+                        /** @default null */
+                        provider?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "book_reference";
+                        publisher: string;
+                        bookTitle: string;
+                        /** @default null */
+                        edition?: string | null;
+                        /** @default null */
+                        isbn?: string | null;
+                        pages: string;
+                        /** @default null */
+                        note?: string | null;
+                    } | {
+                        /** @enum {string} */
+                        type: "question";
+                        question: {
+                            /** @enum {string} */
+                            questionType: "multiple_choice";
+                            stem: string;
+                            options: {
+                                id: string;
+                                text: string;
+                            }[];
+                            /** @default null */
+                            imageFileId?: string | null;
+                        } | {
+                            /** @enum {string} */
+                            questionType: "true_false";
+                            stem: string;
+                            /** @default false */
+                            allowNotGiven?: boolean;
+                            /** @default null */
+                            imageFileId?: string | null;
+                        } | {
+                            /** @enum {string} */
+                            questionType: "matching";
+                            stem: string;
+                            prompts: {
+                                id: string;
+                                text: string;
+                            }[];
+                            choices: {
+                                id: string;
+                                text: string;
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "gap_fill";
+                            stem: string;
+                            gaps: {
+                                id: string;
+                                /** @default [] */
+                                options?: string[];
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "ordering";
+                            stem: string;
+                            items: {
+                                id: string;
+                                text: string;
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "short_answer";
+                            stem: string;
+                            /** @default 100 */
+                            maxLength?: number;
+                            /** @default null */
+                            imageFileId?: string | null;
+                        };
+                    } | {
+                        /** @enum {string} */
+                        type: "quiz";
+                        items: {
+                            questionVersionId: string;
+                            /** @default 1 */
+                            points?: number;
+                        }[];
+                        /** @default null */
+                        timeLimitMinutes?: number | null;
+                        /** @default false */
+                        shuffleItems?: boolean;
+                    } | {
+                        /** @enum {string} */
+                        type: "exercise_set";
+                        items: {
+                            questionVersionId: string;
+                            /** @default 1 */
+                            points?: number;
+                        }[];
+                        /** @default null */
+                        timeLimitMinutes?: number | null;
+                        /** @default false */
+                        shuffleItems?: boolean;
+                    } | {
+                        /** @enum {string} */
+                        type: "homework_template";
+                        instructions: string;
+                        submissionKinds: ("file" | "text" | "audio")[];
+                        /** @default null */
+                        criteria?: string | null;
+                        /** @default null */
+                        rubricId?: string | null;
+                    };
+                    answerKey?: ({
+                        /** @enum {string} */
+                        questionType: "multiple_choice";
+                        correctOptionId: string;
+                        explanation: string;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "true_false";
+                        /** @enum {string} */
+                        answer: "true" | "false" | "not_given";
+                        explanation: string;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "matching";
+                        pairs: {
+                            promptId: string;
+                            choiceId: string;
+                        }[];
+                        explanation: string;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "gap_fill";
+                        gaps: {
+                            gapId: string;
+                            accepted: string[];
+                        }[];
+                        explanation: string;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "ordering";
+                        order: string[];
+                        explanation: string;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "short_answer";
+                        accepted: string[];
+                        explanation: string;
+                    }) | null;
+                    /** @description Etiketler bütün olarak değişir */
+                    tags?: {
+                        /** @default null */
+                        subjectId?: string | null;
+                        /** @default [] */
+                        gradeLevels?: number[];
+                        /** @default null */
+                        cefrLevel?: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                        /** @default null */
+                        primarySkill?: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                        /** @default [] */
+                        skills?: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
+                        /** @default null */
+                        activityMode?: ("reception" | "production" | "interaction" | "mediation") | null;
+                        /** @default null */
+                        interactionChannel?: ("spoken" | "written" | "online") | null;
+                        /** @default null */
+                        mediation?: {
+                            /** @enum {string} */
+                            sourceSkill: "reading" | "listening" | "writing" | "speaking";
+                            /** @enum {string} */
+                            targetSkill: "reading" | "listening" | "writing" | "speaking";
+                        } | null;
+                        /** @default null */
+                        durationMinutes?: number | null;
+                        /** @default null */
+                        difficulty?: ("easy" | "medium" | "hard") | null;
+                        /** @default [] */
+                        outcomes?: {
+                            outcomeId: string;
+                            /** @enum {string} */
+                            outcomeSource: "platform" | "institution";
+                        }[];
+                    };
+                    license?: ({
+                        /** @enum {string} */
+                        kind: "institution_original";
+                    } | {
+                        /** @enum {string} */
+                        kind: "contains_quotation";
+                    } | {
+                        /** @enum {string} */
+                        kind: "platform_derived";
+                        platformVersionId: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "open_license";
+                        /** @enum {string} */
+                        license: "CC0-1.0" | "CC-BY-4.0" | "CC-BY-SA-4.0" | "CC-BY-3.0" | "CC-BY-SA-3.0";
+                    } | {
+                        /** @enum {string} */
+                        kind: "public_domain";
+                        basisNote: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "licensed_publication";
+                        publisher: string;
+                        contractNumber: string;
+                        coverage: string;
+                        expiryDate: string;
+                        /** @default false */
+                        allowsAdaptation?: boolean;
+                        /** @default false */
+                        restrictedToBookOwners?: boolean;
+                    } | {
+                        /** @enum {string} */
+                        kind: "external_reference";
+                    }) | null;
+                    attributions?: {
+                        work: string;
+                        author: string;
+                        source: string;
+                        /** @default null */
+                        year?: number | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createResourceVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitResourceVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+                /** @description Sürüm kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kullanılmaz; yalnız ret ve telif bildiriminde */
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publishResourceVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+                /** @description Sürüm kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kullanılmaz; yalnız ret ve telif bildiriminde */
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    withdrawResourceVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+                /** @description Sürüm kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kullanılmaz; yalnız ret ve telif bildiriminde */
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveResourceVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+                /** @description Sürüm kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kullanılmaz; yalnız ret ve telif bildiriminde */
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectResourceVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+                /** @description Sürüm kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gerekçe (5–1000 karakter, kırpılır) */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenResourceVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+                /** @description Sürüm kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kullanılmaz; yalnız ret ve telif bildiriminde */
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveResourceVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+                /** @description Sürüm kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kullanılmaz; yalnız ret ve telif bildiriminde */
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reportResourceVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+                /** @description Sürüm kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gerekçe (5–1000 karakter, kırpılır) */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeResource: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gerekçe (5–1000 karakter, kırpılır) */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceRemovalResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    shareResource: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    scope: "private" | "students" | "classes" | "department" | "institution";
+                    /** @default [] */
+                    studentIds?: string[];
+                    /** @default [] */
+                    classIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceShareResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    copyResource: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResourceWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

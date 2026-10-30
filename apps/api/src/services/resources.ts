@@ -106,7 +106,7 @@ function versionSummary(version: StoredResourceVersion) {
   }
 }
 
-function fullVersion(version: StoredResourceVersion) {
+export function fullVersion(version: StoredResourceVersion) {
   return {
     ...versionSummary(version),
     content: version.content,
@@ -132,6 +132,17 @@ function resourceSummary(resource: StoredResource) {
     derivedFromVersionId: resource.derivedFromVersionId,
     createdAt: resource.createdAt,
     updatedAt: resource.updatedAt,
+  }
+}
+
+/** Personel görünümündeki kaynak: paylaşım hedefleri, arşiv anı ve satır sürümüyle. */
+export function staffResource(resource: StoredResource) {
+  return {
+    ...resourceSummary(resource),
+    sharedStudentIds: [...resource.sharedStudentIds],
+    sharedClassIds: [...resource.sharedClassIds],
+    archivedAt: resource.archivedAt,
+    rowVersion: resource.rowVersion,
   }
 }
 
@@ -270,11 +281,7 @@ export async function getResource(ctx: ServiceContext, resourceId: string) {
   }
   return {
     view: 'staff' as const,
-    resource: {
-      ...resourceSummary(resource),
-      sharedStudentIds: [...resource.sharedStudentIds],
-      sharedClassIds: [...resource.sharedClassIds],
-    },
+    resource: staffResource(resource),
     versions: readable.map(versionSummary),
     head: fullVersion(head),
     publicationIssues: await issuesOf(ctx, institutionType, head),

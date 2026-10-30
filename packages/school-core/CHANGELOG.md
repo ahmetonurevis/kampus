@@ -1,5 +1,12 @@
 # Değişiklikler
 
+## 2.12.0
+
+Beceri görevlerinin saf kuralları eklendi (ADR 0004 karar 2, 5, 6, 11; `docs/domain/beceri-gelisimi.md`). Yeni modüller State'e koleksiyon eklemez: girdi servisin yüklediği satırlardır, fonksiyonlar `now` alır. Puan, geç bayrağı ve sayılan deneme saklanmaz, her okumada hesaplanır. Mevcut davranış değişmedi; tablo, uç ve ekran F4b ve sonrasındadır.
+
+- `skills/scoring.ts`: görev türü (`TASK_KINDS`: değerlendirme/alıştırma), deneme ayarı `attemptRulesSchema` (hak varsayılan 1, 1–3; "en yüksek" politikası yalnız hak 1'den büyükse; DOM-BEC-041, 042), son teslim `deadlineSchema` (UTC `dueAt`, geç kabul 0–7 gün, varsayılan kapalı) ve Europe/Istanbul yerel saatinden UTC'ye çeviri `istanbulLocalToUtc`/`istanbulLocalDueSchema`; `submissionWindow`, `isLate` (son teslim anı dahil zamanında), `isClosed`, `assertSubmissionOpen` (DOM-BEC-044). Cevap şeması `responseSchema`/`answersSchema`, cevap denetimi `assertResponsesFit`; altı soru türünün otomatik puanı `scoreItem`/`scoreAttempt` (çok maddeli soruda madde başına puan, eksi puan yok, yanıtsız madde yanlış; DOM-BEC-010, 011). Kısa cevap `normalizeShortAnswer` ile NFC, `tr-TR` küçültme ve boşluk normalleştirmesinden geçer; noktalama ve yazım farkı katlanmaz. `scoringModeFor`/`assertAutoScored` yazma, konuşma ve aracılığı otomatik puanlamaz (DOM-BEC-023). Deneme akışı `planAttemptStart` (hak, süren deneme, kapanış), `planAnswerSave`, `planAttemptSubmit` ve `attemptState`/`attemptEndsAt`: süre sunucu saatiyle, bireysel ek süreyle (`extraTimeSchema`, gerekçeli) ve teslim kapanışıyla sınırlıdır; bitiş anında süre dolmuştur ve deneme kaydedilmiş cevaplarla teslim edilir (DOM-BEC-043). `countedAttempt` sayılan denemeyi seçer, alıştırmada `null` döner. Açılma kuralı `answerKeyReleased`, `learnerResultLevel` ve `teacherFeedbackReleased` (DOM-BEC-045).
+- Tüketiciler `workspace:2.12.0` sürümüne sabitlendi.
+
 ## 2.10.0
 
 Kampüs, öğretmen ve sınıf kaydı API'ye hazırlandı (D12). Yetki yalnız yöneticidedir (yetki matrisi "Kampüs, sınıf, kadro"; ön büro sınıf ve kontenjanı yalnız okur, DOM-YTK-001). Mevcut kontenjan, branş, derslik ve program çakışması kuralları aynen korundu.

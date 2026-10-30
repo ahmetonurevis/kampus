@@ -32,7 +32,8 @@
       "expo-video",
       "expo-asset",
       "@react-native-community/datetimepicker",
-      "./plugins/with-release-signing.cjs"
+      "./plugins/with-release-signing.cjs",
+      "expo-secure-store"
     ],
     "scheme": "kampus",
     "description": "Akademi Özel Okulları: beş rol için çevrimdışı okul yönetimi."

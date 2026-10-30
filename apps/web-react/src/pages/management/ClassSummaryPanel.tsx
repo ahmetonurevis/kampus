@@ -3,6 +3,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import { recordStatus, type ManagementLookups } from './management-rows.ts'
+import { RecordActions, type RecordActionHandlers } from './RecordActions.tsx'
 import {
   SummaryHeader,
   SummaryIcon,
@@ -21,6 +22,8 @@ const STUDENT_COLUMNS: DataColumn<StudentRow>[] = [
 type Props = {
   classId: string
   lookups: ManagementLookups
+  /** Düzenle, arşivle, geri al (yalnız yönetici). */
+  actions: RecordActionHandlers
   onClose: () => void
 }
 
@@ -28,20 +31,19 @@ type Props = {
  * Sınıf özeti (Vue "Sınıf özeti" çekmecesi): kayıt tek kayıt ucundan okunur (bağlantıyla
  * gelinen ve listede görünmeyen sınıf da açılır); atama ve öğrenciler başvuru eşlemelerinden.
  */
-export function ClassSummaryPanel({ classId, lookups, onClose }: Props) {
-  // TODO(D1b2): yazma uçları gelince "Sınıfı düzenle" geniş formu panel altından açılır.
+export function ClassSummaryPanel({ classId, lookups, actions, onClose }: Props) {
   return (
     <SidePanel
       open={classId !== ''}
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Sınıf özeti"
     >
-      {classId ? <ClassSummary classId={classId} lookups={lookups} /> : null}
+      {classId ? <ClassSummary classId={classId} lookups={lookups} actions={actions} /> : null}
     </SidePanel>
   )
 }
 
-function ClassSummary({ classId, lookups }: Omit<Props, 'onClose'>) {
+function ClassSummary({ classId, lookups, actions }: Omit<Props, 'onClose'>) {
   const item = useCoreItem('classes', classId)
   // Sınıfın aktif öğrencileri okul numarası sırasıyla; panel açılınca yalnız o sınıf çekilir.
   const studentList = useCoreAll('students', {
@@ -100,6 +102,17 @@ function ClassSummary({ classId, lookups }: Omit<Props, 'onClose'>) {
           />
         </div>
       </SummarySection>
+      {actions.canManage ? (
+        <div className="mt-6 flex flex-wrap gap-2 border-t pt-4">
+          <RecordActions
+            {...actions}
+            id={record.id}
+            name={record.name}
+            archived={!record.isActive}
+            size="default"
+          />
+        </div>
+      ) : null}
     </>
   )
 }

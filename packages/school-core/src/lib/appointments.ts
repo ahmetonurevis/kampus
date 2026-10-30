@@ -205,6 +205,9 @@ export function bookAppointment(
     throw new DomainError('appointment_type_invalid', 'Bu görüşme türünü seçemezsiniz.', {
       path: ['type'],
     })
+  // TODO(randevu-modul): `tutoring` kapalı, `communication` açıkken uygunluk saati eklenemez ve
+  // kaldırılamaz (saat komutları `tutoring`'dir) ama var olan saatlerden talep açılabilir.
+  // Ürün kararı gerekir (DOM-ILT-101 notu).
   // Saat yoksa, başka öğretmenin ya da öğrenciye ders vermeyen öğretmenin saatiyse aynı yanıt:
   // öğrenci ve veli uygunluk listesini yalnız kendi öğretmenleri için görür.
   const slot = state.availability.find((s) => s.id === data.slotId)

@@ -333,6 +333,8 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
   },
   // Veli görüşmesini öğrenci görmez; veli yalnız kendi açtığını görür, başka velinin görüşmesi
   // ona görünmez (DOM-ILT-103, DOM-ILT-073). Açanı bilinmeyen eski veli görüşmesi kapalıdır.
+  // TODO(velayet-kapsam): velayeti olmayan ebeveynin kapsamı (DOM-ILT-070…073) yok; bağlantı
+  // çocuk bazındadır. Talepler (`requests`) akışıyla birlikte ele alınacak.
   appointments: {
     ...ADMIN,
     ogretmen: ownTeacher,

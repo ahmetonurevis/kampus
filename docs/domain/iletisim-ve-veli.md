@@ -356,7 +356,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Öğretmen yalnız ayırdığı zamanda görüşür; çakışan iki görüşme veya derse denk gelen randevu yerine getirilemez.
 - **Kaynak:** İşletme kuralı; CLAUDE.md "Etütler öğretmen uygunluk saatlerini kullanır".
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `bookAppointment` (`lib/tutor-conflicts.ts` `tutorConflict` ile tam denetim; görünmeyen randevu `canSeeAppointment` ile `HIDDEN_CONFLICT_MESSAGE` döner, talepte ve onayda); saat kaldırma `lib/assessment-automation.ts` `slot-remove` (409 `availability_has_appointments`; saati bilinmeyen eski randevu aynı öğretmenin aralığındaysa sayılır); API talepte yalnız seçilen uygunluk saatini yükler, kurum kilidi eşzamanlı iki talepten yalnız birini yazar (`apps/api/test/pg-concurrency.test.ts`). Vue demosu talepte ders ve etkinlik çakışmasını denetlemez (`apps/web/src/views/Communication.vue:122-137`).
+- **Kodda:** kısmen — core `bookAppointment` (`lib/tutor-conflicts.ts` `tutorConflict` ile tam denetim; görünmeyen randevu `canSeeAppointment` ile `HIDDEN_CONFLICT_MESSAGE` döner, talepte ve onayda); saat kaldırma `lib/assessment-automation.ts` `slot-remove` (409 `availability_has_appointments`; saati bilinmeyen eski randevu aynı öğretmenin aralığındaysa sayılır); `tutoring` modülü kapalı, `communication` açıkken uygunluk saati eklenemez ve kaldırılamaz ama var olan saatlerden talep açılır: ürün kararı bekliyor (`TODO(randevu-modul)`); API talepte yalnız seçilen uygunluk saatini yükler, kurum kilidi eşzamanlı iki talepten yalnız birini yazar (`apps/api/test/pg-concurrency.test.ts`). Vue demosu talepte ders ve etkinlik çakışmasını denetlemez (`apps/web/src/views/Communication.vue:122-137`).
 
 ### DOM-ILT-102 · Onay, red, iptal ve geri çekme
 
@@ -372,7 +372,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ayrı yaşayan ebeveynlerin görüşme talepleri ve notları birbirine sızmamalıdır (`DOM-ILT-073`); veli ile öğretmen arasındaki görüşme öğrenciyle paylaşılmak zorunda değildir.
 - **Kaynak:** İşletme kuralı; KVKK md. 4/2 (ölçülülük).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/scope.ts` `appointments` okuma kuralı ve `requireVisibleAppointment`; API okuması `GET /collections/appointments`, `PATCH /appointments/:id` sürümü kapsam ve yetkiden sonra karşılaştırır (kapsam dışı randevu yanlış sürümde de 404, görünür ama yetkisiz geçiş 403). Vue ve telefon demosu öğrencinin bütün randevularını gösterir.
+- **Kodda:** kısmen — core `lib/scope.ts` `appointments` okuma kuralı ve `requireVisibleAppointment`; API okuması `GET /collections/appointments`, `PATCH /appointments/:id` sürümü kapsam ve yetkiden sonra karşılaştırır (kapsam dışı randevu yanlış sürümde de 404, görünür ama yetkisiz geçiş 403). Velayeti olmayan ebeveynin kapsamı (`DOM-ILT-070…073`) yok; talepler akışıyla birlikte ele alınacak (`TODO(velayet-kapsam)`). Vue ve telefon demosu öğrencinin bütün randevularını gösterir.
 
 ### DOM-ILT-104 · Kapanan randevu takvimi bırakır
 
@@ -380,7 +380,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Gerçekleşmeyecek görüşme takvimi işgal etmemeli; programda görünen her randevu yapılacak bir görüşmedir.
 - **Kaynak:** İşletme kuralı; CLAUDE.md "İptal dersleri günlük programlarda görünmez".
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `appointmentHoldsTime`, `scheduledAppointments` (`lib/appointment-status.ts`); `tutorConflict` ve sınıf/öğretmen/program çakışmaları bunu kullanır. Vue ve telefon demosu yalnız `Reddedildi` durumunu dışlar.
+- **Kodda:** kısmen — core `appointmentHoldsTime`, `scheduledAppointments` (`lib/appointment-status.ts`); `tutorConflict` ve sınıf/öğretmen/program çakışmaları bunu kullanır. React W20 ekranı günlük/haftalık programda `scheduledAppointments` kullanmalı (`TODO(randevu-w20)`). Vue ve telefon demosu yalnız `Reddedildi` durumunu dışlar.
 
 ## Mevcut kodla farklar
 

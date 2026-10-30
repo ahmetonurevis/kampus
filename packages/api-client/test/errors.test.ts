@@ -7,6 +7,7 @@ import {
   apiErrorFromResponse,
   issuesToFieldIssues,
   ROOT_FIELD,
+  toApiError,
 } from '../src/errors.ts'
 
 describe('issuesToFieldIssues', () => {
@@ -87,5 +88,22 @@ describe('apiErrorFromResponse', () => {
 
     assert.equal(error.code, 'unexpected_response')
     assert.equal(error.requestId, 'hdr')
+  })
+})
+
+describe('toApiError', () => {
+  test('ApiError olduğu gibi döner', () => {
+    const error = new ApiError({ status: 404, code: 'not_found', message: 'Yok' })
+
+    assert.equal(toApiError(error), error)
+  })
+
+  test('başka hatayı unexpected_error yapar ve nedeni saklar', () => {
+    const cause = new RangeError('x')
+    const error = toApiError(cause)
+
+    assert.equal(error.code, 'unexpected_error')
+    assert.equal(error.status, 0)
+    assert.equal(error.cause, cause)
   })
 })

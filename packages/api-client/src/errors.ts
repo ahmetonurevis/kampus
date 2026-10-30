@@ -139,3 +139,14 @@ export function applyApiErrorToForm<TName extends string>(
   }
   return true
 }
+
+const UNKNOWN_CODE = 'unexpected_error'
+
+/**
+ * Herhangi bir fırlatılan değeri `ApiError`'a çevirir; sorgu/mutasyon katmanı hata türünü tek
+ * tutsun diye. `ApiError` olduğu gibi döner; diğerleri `unexpected_error` olur, nedeni korunur.
+ */
+export function toApiError(error: unknown): ApiError {
+  if (isApiError(error)) return error
+  return new ApiError({ status: 0, code: UNKNOWN_CODE, message: UNEXPECTED_MESSAGE, cause: error })
+}

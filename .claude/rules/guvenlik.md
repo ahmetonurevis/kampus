@@ -10,6 +10,7 @@ Ayrıntı: `docs/muhendislik/guvenlik-kvkk.md`. Kimlik ve oturum Better Auth'tad
 
 - Parola özeti, oturum, belirteç, çerez ve kimlik uçlarındaki hız sınırı için kod yazılmaz; Better Auth yapılandırılır. `jose`/`jsonwebtoken`/`bcrypt`/`argon2` eklenmez, özel `password.hash` yazılmaz.
 - Better Auth: `emailAndPassword`, `disableSignUp: true` (hesabı kurum açar), `minPasswordLength: 12`, `maxPasswordLength: 128`, `revokeSessionsOnPasswordReset: true`, sıfırlama belirteci 30 dk. Yaygın parola ve e-posta/kurum adı türevleri `hooks.before` ile reddedilir; parola dış servise gönderilmez.
+- Better Auth uç yüzeyi izin listesidir (`OPEN_AUTH_PATHS`, `apps/api/src/auth.ts`); listede olmayan `/api/v1/auth/*` yolu 404. Eklenti eklemek veya sürüm yükseltmek `test/auth-surface.test.ts`'i yeşil tutmalı; yeni uç açmak gerekçeli commit ister. Yönlendirme yapan uçlar (ör. `expo-authorization-proxy`) sosyal giriş yokken kapalıdır.
 - Oturum veritabanında: `expiresIn` 14 gün, `updateAge` 1 gün, `freshAge` 15 dk, `cookieCache` kapalı. Hassas işlem (iade, rol/üyelik, dışa aktarma, silme talebi) taze oturum ister → 403 `reauthentication_required`.
 - Giriş hatası tek mesaj: "E-posta veya parola hatalı."; sıfırlama yanıtı hesabın varlığını belli etmez.
 - Kurum kimliği yalnız oturumun etkin kurumundan (`session.activeOrganizationId`) gelir; gövde/sorgu/yol/başlıktaki kurum kimliği okunmaz. Her istekte üyelik doğrulanır. Başka kurumun kaydı 404.

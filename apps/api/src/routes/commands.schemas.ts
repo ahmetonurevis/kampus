@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { attendanceInputSchema } from '@kampus/school-core/lib/domain.ts'
+
 import { errorResponseSchema } from '../errors.ts'
 import { authenticatedErrors } from './common.schemas.ts'
 
@@ -125,15 +127,6 @@ export const commandErrors = {
 
 const recordId = (description: string) => z.string().min(1).max(200).describe(description)
 
-/** Gün (`YYYY-MM-DD`, Europe/Istanbul günü). */
-const daySchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Geçerli bir tarih seçin.')
-  .refine(
-    (value) => new Date(`${value}T09:00:00.000Z`).toISOString().slice(0, 10) === value,
-    'Geçerli bir tarih seçin.',
-  )
-
 export const invoiceParamsSchema = z.object({ invoiceId: recordId('Taksit kimliği') })
 
 /**
@@ -152,23 +145,19 @@ export const payInvoiceBodySchema = z.object({
 export const classParamsSchema = z.object({ classId: recordId('Sınıf kimliği') })
 
 /**
- * Yoklama gövdesi. Durumlar core `recordAttendance`'ın kabul ettikleridir; core listeyi dışa
- * aktarmadığı için burada tekrarlanır.
- * TODO(core-attendance-schema): core yoklama girdisi şemasını verince gövde o olur.
+ * Yoklama gövdesi: core `attendanceInputSchema` (durumlar, gün, gerekçe sınırı core'dadır); burada
+ * yalnız OpenAPI açıklamaları eklenir.
  */
-export const attendanceBodySchema = z.object({
-  date: daySchema.describe('Yoklama günü (`YYYY-MM-DD`); gelecek gün 422'),
-  marks: z
-    .record(z.string().min(1).max(200), z.enum(['present', 'absent', 'late', 'excused']))
-    .describe('Öğrenci kimliği → durum; sınıfın bütün aktif öğrencileri bulunmalı'),
-  // kvkk: K — serbest metin; loglanmaz, denetim kaydına yazılmaz.
-  reason: z
-    .string()
-    .max(500, 'En fazla 500 karakter girebilirsiniz.')
-    .optional()
-    .describe(
-      'Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); yöneticide zorunlu, yoksa 422 `correction_reason_required`',
-    ),
+const attendanceFields = attendanceInputSchema.shape
+export const attendanceBodySchema = attendanceInputSchema.extend({
+  date: attendanceFields.date.describe('Yoklama günü (`YYYY-MM-DD`); gelecek gün 422'),
+  marks: attendanceFields.marks.describe(
+    'Öğrenci kimliği → durum; sınıfın bütün aktif öğrencileri bulunmalı',
+  ),
+  // kvkk: K — serbest metin; loglanmaz, denetim kaydına yazılmaz (yalnız alan adı).
+  reason: attendanceFields.reason.describe(
+    'Düzeltme gerekçesi (DOM-AKD-035); kırpılır, en çok 500 karakter. Yöneticide zorunlu, yoksa 422 `correction_reason_required`; öğretmende isteğe bağlı. Durumu değişen öğrencinin düzeltme geçmişine yazılır',
+  ),
 })
 
 export const gradeParamsSchema = z.object({ gradeId: recordId('Not kimliği') })

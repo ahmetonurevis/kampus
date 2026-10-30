@@ -63,7 +63,14 @@ export type ScopeOptions = { institutionType?: InstitutionType }
 
 /** Kapsam sonucu alan ayıklamasıyla silinebilen alanlar (tip yalnız bu alanları isteğe bağlı yapar). */
 export type HiddenField =
-  'internalNote' | 'notes' | 'progress' | 'email' | 'phone' | 'attendanceRate' | 'homeworkRate'
+  | 'internalNote'
+  | 'notes'
+  | 'progress'
+  | 'email'
+  | 'phone'
+  | 'attendanceRate'
+  | 'homeworkRate'
+  | 'corrections'
 export type Redacted<T> = Omit<T, HiddenField> & Partial<Pick<T, Extract<keyof T, HiddenField>>>
 
 export type ReadDenial =
@@ -139,6 +146,16 @@ const subjectOrHomeroom: Rule = (c, r) => {
     (text(r, 'subjectId') === c.teacher?.subjectId || member(c.homeroomIds, classId))
   )
 }
+// Not, verildiği sınıfı (`classId`) taşır: o sınıfın branş veya rehber öğretmeni öğrenci sınıf
+// değiştirdikten sonra da notu görür (düzeltme yetkisi `authorize('grade.update')`). Sınıfı
+// saklanmamış eski notta yalnız öğrencinin güncel sınıfı geçerlidir.
+const gradeReader: Rule = (c, r) => {
+  const classId = text(r, 'classId')
+  const givenInOwnClass =
+    member(c.classIds, classId) &&
+    (text(r, 'subjectId') === c.teacher?.subjectId || member(c.homeroomIds, classId))
+  return givenInOwnClass || subjectOrHomeroom(c, r)
+}
 
 const viewerOf = (c: Context): AnnouncementViewer => ({
   role: c.role,
@@ -196,8 +213,9 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
     veli: (c, r) => texts(r, 'studentIds').some((id) => c.studentIds.has(id)),
   },
   assignments: { ...ADMIN, ogretmen: ownClass, ogrenci: ownClass, veli: ownClass },
-  // Branş öğretmeni kendi dersini, sınıf rehber öğretmeni şubesinin bütün notlarını okur.
-  grades: { ...ADMIN, ogretmen: subjectOrHomeroom, ...PERSONAL },
+  // Branş öğretmeni kendi dersini, sınıf rehber öğretmeni şubesinin bütün notlarını okur; notun
+  // verildiği sınıf da kapsam verir (`gradeReader`).
+  grades: { ...ADMIN, ogretmen: gradeReader, ...PERSONAL },
   attendance: { ...ADMIN, ogretmen: ownClass, ...PERSONAL },
   absences: { ...ADMIN, ogretmen: ownStudent, ...PERSONAL },
   schedule: {
@@ -305,15 +323,21 @@ const RULES: Readonly<Record<string, Partial<Record<Role, Rule>>>> = READ_RULES
 const NONE: readonly string[] = []
 const GUIDANCE_INTERNAL: readonly string[] = ['internalNote', 'notes']
 const TEACHER_PRIVATE: readonly string[] = ['email', 'phone', 'attendanceRate', 'homeworkRate']
+const CORRECTION_HISTORY: readonly string[] = ['corrections']
+const personal = (c: Context) => c.role === 'ogrenci' || c.role === 'veli'
 /**
  * Alan ayıklama: rol satırı görse de bu alanları hiç almaz (yanıt, arama, sıralama dahil).
  * Ön büro öğrencinin akademik ilerlemesini görmez (DOM-YTK-021); öğrenci ve veli öğretmenin
  * iletişim ve performans alanlarını görmez; rehberlik iç notu yalnız rehberlik görevli
- * öğretmene döner (DOM-ILT-040, DOM-ILT-041).
+ * öğretmene döner (DOM-ILT-040, DOM-ILT-041). Not ve yoklamanın düzeltme geçmişi (gerekçe,
+ * düzelten kişi) öğrenci ve veliye dönmez; onlar yalnız güncel değeri görür (DOM-AKD-035,
+ * DOM-AKD-051).
  */
 const HIDDEN_FIELDS: Partial<Record<CollectionName, (context: Context) => readonly string[]>> = {
   students: (c) => (c.role === 'onburo' ? ['progress'] : NONE),
-  teachers: (c) => (c.role === 'ogrenci' || c.role === 'veli' ? TEACHER_PRIVATE : NONE),
+  teachers: (c) => (personal(c) ? TEACHER_PRIVATE : NONE),
+  grades: (c) => (personal(c) ? CORRECTION_HISTORY : NONE),
+  attendance: (c) => (personal(c) ? CORRECTION_HISTORY : NONE),
   // İç not yalnız rehberlik görevli öğretmene döner; yönetici, ön büro, görevsiz öğretmen, öğrenci
   // ve veli görmez (DOM-ILT-040, DOM-YTK-020).
   // TODO(IST-020): yöneticinin adli/idari soruşturma gerekçesiyle, denetim kaydına düşen erişimi.

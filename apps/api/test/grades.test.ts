@@ -73,6 +73,20 @@ const GRADE = {
   topic: 'Rasyonel sayılar',
 }
 const REASON = 'Okuma hatası düzeltildi'
+/** Doğrudan eklenen not (öğretmen t1, 7-A matematik). */
+const BASE_GRADE = {
+  studentId: 's1',
+  subjectId: 'math',
+  subject: 'Matematik',
+  title: 'Matematik · 1. dönem 1. sınav',
+  topic: '',
+  score: 70,
+  date: '2026-10-01T09:00:00.000Z',
+  assessmentType: 'sinav',
+  term: 1,
+  sequence: 1,
+  teacherId: 't1',
+}
 
 describe('resmî not uçları', () => {
   let db: Database
@@ -132,6 +146,9 @@ describe('resmî not uçları', () => {
     headers: Record<string, string> = {},
   ) => send('PATCH', `/api/v1/grades/${gradeId}`, cookie, body, headers)
 
+  const read = (cookie: string, url: string) =>
+    app.inject({ method: 'GET', url, headers: { origin: TEST_ORIGIN, cookie } })
+
   function assertError(
     response: Awaited<ReturnType<typeof send>>,
     statusCode: number,
@@ -177,6 +194,8 @@ describe('resmî not uçları', () => {
       assert.equal(stored?.data.term, 1)
       assert.equal(stored?.data.sequence, 1)
       assert.equal(stored?.data.teacherId, MATH_TEACHER?.teacherId)
+      // Notun verildiği sınıf saklanır; düzeltme yetkisi ona bağlıdır.
+      assert.equal(stored?.data.classId, 'c1')
       assert.equal((await grades(other.id)).length, 0)
     })
 
@@ -356,6 +375,86 @@ describe('resmî not uçları', () => {
       assert.equal(stored?.data.score, 85)
       const closed = await institution({ enabledModules: { ...SEED.modules, academic: false } })
       assertError(await correct(closed.adminCookie, foreign, body), 403, 'module_disabled')
+    })
+  })
+  describe('düzeltme geçmişinin görünürlüğü ve sınıf değiştiren öğrenci', () => {
+    test('veli ve öğrenci not okumasında corrections yok; öğretmen ve yönetici görür', async () => {
+      const a = await institution()
+      const cookie = await teacher(a.id)
+      const id = await created(cookie)
+      assert.equal((await correct(cookie, id, { score: 91, reason: REASON })).statusCode, 200)
+      const personal = [
+        await member(a.id, 'veli', [{ kind: 'child', recordId: 's1' }]),
+        await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's1' }]),
+      ]
+      for (const reader of personal) {
+        const single = await read(reader, `/api/v1/collections/grades/${id}`)
+        assert.equal(single.statusCode, 200, single.body)
+        const record = single.json().data.record
+        assert.equal(record.score, 91, 'güncel puan döner')
+        assert.equal('corrections' in record, false)
+        const list = await read(reader, '/api/v1/collections/grades?pageSize=100')
+        assert.equal(list.statusCode, 200, list.body)
+        for (const item of list.json().data) assert.equal('corrections' in item.record, false)
+        assert.equal(list.body.includes(REASON), false)
+        // Gerekçe metniyle arama da sonuç vermez (gizli alan aranmaz).
+        const search = await read(
+          reader,
+          `/api/v1/collections/grades?q=${encodeURIComponent(REASON)}`,
+        )
+        assert.equal(search.json().meta.total, 0)
+      }
+      for (const reader of [cookie, a.adminCookie]) {
+        const single = await read(reader, `/api/v1/collections/grades/${id}`)
+        assert.equal(single.json().data.record.corrections?.[0]?.reason, REASON)
+      }
+    })
+
+    /** s1 sonradan 7-B'ye (c9; matematik ve rehberlik t17) geçmiş kurum: biri c1'de verilmiş, biri sınıfsız eski not. */
+    async function movedInstitution() {
+      const created = await createInstitution(app)
+      const moved = SEED.students.map((item) =>
+        item.id === 's1' ? { ...item, classId: 'c9' } : item,
+      )
+      const sample = {
+        ...SAMPLE,
+        classes: SEED.classes.filter((item) => [...CLASS_IDS, 'c9'].includes(item.id)),
+        students: moved.filter((item) => STUDENT_IDS.has(item.id)),
+        assignments: SEED.assignments.filter((item) => [...CLASS_IDS, 'c9'].includes(item.classId)),
+        grades: [
+          { ...BASE_GRADE, id: 'test-g-moved', classId: 'c1' },
+          { ...BASE_GRADE, id: 'test-g-legacy', date: '2026-10-02T09:00:00.000Z' },
+        ],
+      }
+      await insertMissingRecords(db, created.id, rows(sample), FIXED_NOW)
+      return { ...created, adminCookie: await signInAs(app, created.admin) }
+    }
+
+    test('sınıf değiştiren öğrencinin notunu eski öğretmen düzeltir; yeni sınıfın öğretmeni 403', async () => {
+      const a = await movedInstitution()
+      const body = { score: 64, reason: REASON }
+      assertError(
+        await correct(await teacher(a.id, 't17'), 'test-g-moved', body),
+        403,
+        'grade_assignment_forbidden',
+      )
+      assert.equal((await findRecord(db, a.id, 'grades', 'test-g-moved'))?.version, 1)
+      const old = await correct(await teacher(a.id), 'test-g-moved', body)
+      assert.equal(old.statusCode, 200, old.body)
+      const ok = await correct(a.adminCookie, 'test-g-moved', { score: 66, reason: REASON })
+      assert.equal(ok.statusCode, 200, ok.body)
+      const stored = await findRecord(db, a.id, 'grades', 'test-g-moved')
+      assert.equal(stored?.data.score, 66)
+      assert.equal(stored?.data.classId, 'c1')
+    })
+
+    test('sınıfı saklanmamış eski notta yetki öğrencinin güncel sınıfına düşer', async () => {
+      const a = await movedInstitution()
+      const body = { score: 64, reason: REASON }
+      assertError(await correct(await teacher(a.id), 'test-g-legacy', body), 404, 'not_found')
+      const ok = await correct(await teacher(a.id, 't17'), 'test-g-legacy', body)
+      assert.equal(ok.statusCode, 200, ok.body)
+      assert.equal((await findRecord(db, a.id, 'grades', 'test-g-legacy'))?.data.score, 64)
     })
   })
 })

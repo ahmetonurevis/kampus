@@ -360,6 +360,70 @@ test('Not düzeltmesi: doğrulama hatası, aynı puan ve kapsam dışı kayıt n
   )
 })
 
+// 7-B (c9, ikinci kampüs) matematiğini ve rehberliğini t17 yapar; t1 7-A'nın (c1) öğretmenidir.
+const newTeacher: Actor = { role: 'ogretmen', links: [{ kind: 'teacher', recordId: 't17' }] }
+function moveToNewClass(state: State) {
+  const student = state.students.find((s) => s.id === 's1')!
+  student.classId = 'c9'
+}
+
+test('Not, verildiği sınıfı saklar; sınıf değiştiren öğrencinin notunu eski öğretmen düzeltir', () => {
+  const state = seed()
+  const grade = recordGrade(state, teacher, valid, id, now)
+  assert.equal(grade.classId, 'c1')
+  moveToNewClass(state)
+  const later = '2026-10-07T08:00:00.000Z'
+  updateGrade(state, teacher, grade.id, { score: 81, reason: 'Toplama hatası' }, later)
+  assert.equal(grade.score, 81)
+  assert.equal(grade.classId, 'c1', 'düzeltme notun sınıfını değiştirmez')
+  // Yönetici her durumda gerekçeyle düzeltir.
+  updateGrade(state, actors.yonetici, grade.id, { score: 84, reason: 'İtiraz komisyonu' }, later)
+  assert.deepEqual(
+    grade.corrections?.map((c) => [c.previousScore, c.score, c.actor]),
+    [
+      [78, 81, 'ogretmen'],
+      [81, 84, 'yonetici'],
+    ],
+  )
+})
+
+test('Yeni sınıfın öğretmeni öğrencinin eski sınıfta aldığı notu düzeltemez', () => {
+  const state = seed()
+  const grade = recordGrade(state, teacher, valid, id, now)
+  moveToNewClass(state)
+  // t17 öğrencinin yeni sınıfında matematik ve rehber öğretmenidir: notu görür, düzeltemez.
+  unchangedOnFailure(
+    state,
+    () => updateGrade(state, newTeacher, grade.id, { score: 10, reason: 'Gerekçe' }, now),
+    isDomainError('grade_assignment_forbidden', 'forbidden'),
+  )
+  // Ders vermediği başka sınıfın öğretmeni notu hiç görmez.
+  const outsider: Actor = { role: 'ogretmen', links: [{ kind: 'teacher', recordId: 't33' }] }
+  unchangedOnFailure(
+    state,
+    () => updateGrade(state, outsider, grade.id, { score: 10, reason: 'Gerekçe' }, now),
+    isDomainError('grade_not_found', 'not_found'),
+  )
+})
+
+test('Sınıfı saklanmamış eski notta yetki öğrencinin güncel sınıfına düşer', () => {
+  const state = seed()
+  // Örnek veri notları `classId` taşımaz (sınıf saklanmadan önceki kayıtlar).
+  const legacy = state.grades.find((g) => g.studentId === 's1' && g.subjectId === 'math')!
+  assert.equal(legacy.classId, undefined)
+  moveToNewClass(state)
+  // Yedek yol: güncel sınıf (c9) esas alınır; eski öğretmen görmez, yeni öğretmen düzeltir.
+  unchangedOnFailure(
+    state,
+    () => updateGrade(state, teacher, legacy.id, { score: 10, reason: 'Gerekçe' }, now),
+    isDomainError('grade_not_found', 'not_found'),
+  )
+  const score = legacy.score === 50 ? 51 : 50
+  updateGrade(state, newTeacher, legacy.id, { score, reason: 'Okuma hatası' }, now)
+  assert.equal(legacy.score, score)
+  assert.equal(legacy.classId, undefined, 'yedek yol eski kayda sınıf yazmaz')
+})
+
 test('Not şemaları form/API gövdesi olarak kullanılabilir', () => {
   assert.equal(gradeRecordSchema.safeParse(valid).success, true)
   const parsed = gradeRecordSchema.parse({ ...valid, term: '2', score: '0' })

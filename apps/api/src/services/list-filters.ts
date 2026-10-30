@@ -110,7 +110,10 @@ export function matchesActive(record: RecordData, { field, active }: ActiveMatch
 export function invoiceStatusOf(record: RecordData, today: string): InvoiceStatusLabel | null {
   const paidAt = record.paidAt
   const dueDate = record.dueDate
-  const paid = typeof paidAt === 'string' ? paidAt : paidAt ? String(paidAt) : null
+  // Core ödemeyi doğruluk değeriyle değerlendirir (`invoiceStatusKey`); SQL de `FALSY_JSON`
+  // dışındaki her değeri ödenmiş sayar. `String([])` gibi boş metne düşen doğru değerler
+  // ödenmemiş sayılmasın diye metin olmayan değer JSON biçimiyle verilir.
+  const paid = !paidAt ? null : typeof paidAt === 'string' ? paidAt : JSON.stringify(paidAt)
   if (!paid) {
     if (typeof dueDate !== 'string' && typeof dueDate !== 'number') return null
     if (Number.isNaN(new Date(dueDate).getTime())) return null

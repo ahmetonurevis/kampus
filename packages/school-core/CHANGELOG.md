@@ -7,7 +7,15 @@
 - `lib/authorize.ts`: `announcement.publish`, `announcement.revise`, `announcement.withdraw`, `announcement.read`, `conversation.start`, `message.send`, `message.read`, `conversation.access` eylemleri; `modules/commands.ts` aynı eylemleri `communication` modülüyle ekler.
 - Davranış (`lib/scope.ts`): alıcı listesi olan duyuruyu yalnız alıcılar, yayınlayan, yönetici ve ön büro görür; geri çekileni yalnız yayınlayan ve yönetici. `reads` ve `recipients` hiçbir role ham dönmez: yönetici ve yayınlayan `readCount`/`recipientCount`, diğer okuyucular `myReadAt` alır; düzeltme geçmişi ve geri çekme gerekçesi yalnız yetkiliye döner. Alıcı listesi olmayan eski kayıt eski kuralla (sınıfa özel veya genel) görünür.
 - State: `announcements` ve `conversations` isteğe bağlı yeni alanlar taşır (`AnnouncementFields`, `ConversationFields`, `ConversationMessageFields`); örnek veri değişmedi.
-- Tüketiciler `workspace:2.4.0` sürümüne sabitlendi. (2.3.0 başka dalda.)
+- Tüketiciler `workspace:2.4.0` sürümüne sabitlendi.
+
+## 2.3.0
+
+- Davranış: yoklama düzeltmesi geçmişi korur (DOM-AKD-035). `recordAttendance(state, classId, date, marks, now, { reason, by })` var olan öğrenci/gün kaydının durumu değişince eski değeri ezmez, kayda `corrections[]` (`AttendanceCorrection`: `previousStatus`, `status`, `reason`, `by`, `at`) ekler. `at` için `now` kullanılır. Durumu değişmeyen öğrenciye ve ilk kez alınan yoklamaya geçmiş yazılmaz. Öğretmenin aynı gün güncellemesi de geçmişe yazılır, gerekçe isteğe bağlıdır. Yöneticide gerekçe zorunluluğu yetki kuralıdır (`authorize('attendance.record')`, `correction_reason_required`). Gerekçe kırpılır, en çok 500 karakterdir (aşan gerekçe `ZodError`). Doğrulama hatasında hiçbir kayıt ve geçmiş değişmez. Seçenek vermeyen eski çağıranlar (Vue, mobil) aynı sonucu alır; `by` boş kalır.
+- `lib/domain.ts`: `ATTENDANCE_STATUSES`, `AttendanceStatus`, `attendanceInputSchema` (`{ date: YYYY-MM-DD, marks, reason? }`, API gövde şeması ve form şeması), `AttendanceInput`, `AttendanceCorrection`, `AttendanceOptions` ve ortak `daySchema` dışa verildi. `lib/grades.ts` gün alanında `daySchema`'yı kullanır; davranış aynıdır.
+- Davranış: düzeltme geçmişi öğrenci ve veliden ayıklanır. `scopeFor` `HIDDEN_FIELDS` öğrenci ve velide `grades.corrections` ve `attendance.corrections` alanlarını kaldırır (`HiddenField` birleşimine `corrections` eklendi). Öğretmen ve yönetici kendi kapsamında görür; saklanan kayıt değişmez.
+- Davranış: not düzeltme yetkisi notun verildiği sınıfa bağlıdır. `recordGrade` öğrencinin o anki sınıfını `classId` olarak saklar (`OfficialGradeFields.classId`). `authorize('grade.update')` hedefi `classId` alır: öğretmen notun sınıfında o dersin atanmış öğretmeniyse düzeltir. Öğrencinin yeni sınıfının öğretmeni eski notu görür ama düzeltemez (`grade_assignment_forbidden`). `classId` taşımayan eski notta öğrencinin güncel sınıfı kullanılır. Yönetici her durumda gerekçeyle düzeltir. Not okuma kuralı notun verildiği sınıfın branş/rehber öğretmenine de kapsam verir.
+- Tüketiciler `workspace:2.3.0` sürümüne sabitlendi.
 
 ## 2.2.0
 

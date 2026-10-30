@@ -39,8 +39,12 @@ export type WriteTargets = {
   /** `reason`: yönetici düzeltmesinin gerekçesi (DOM-AKD-035). */
   'attendance.record': { classId: string; date: string; reason?: string }
   'grade.record': { studentId: string; subjectId: string }
-  /** `reason`: not düzeltmesinin gerekçesi (DOM-AKD-051). */
-  'grade.update': { studentId: string; subjectId: string; reason?: string }
+  /**
+   * `reason`: not düzeltmesinin gerekçesi (DOM-AKD-051). `classId`: notun verildiği sınıf; yetki
+   * öğrencinin güncel sınıfına değil buna göre verilir. Sınıfı saklanmamış eski notta öğrencinin
+   * güncel sınıfı kullanılır.
+   */
+  'grade.update': { studentId: string; subjectId: string; classId?: string; reason?: string }
   'record.archive': { kind: ArchiveKind }
   'record.restore': { kind: ArchiveKind }
   // İletişim (DOM-ILT-001…024, DOM-YTK-052); kararlar `lib/communication-access.ts`.
@@ -233,11 +237,12 @@ function decide(
     case 'grade.record':
     case 'grade.update': {
       const { studentId, subjectId } = request.target
+      const update = request.action === 'grade.update' ? request.target : undefined
       if (actor.role === 'yonetici')
-        return hasReason(request.action === 'grade.update' ? request.target.reason : undefined)
-          ? ALLOWED
-          : reasonRequired('DOM-AKD-051')
-      return teaches(classOf(studentId), subjectId)
+        return hasReason(update?.reason) ? ALLOWED : reasonRequired('DOM-AKD-051')
+      // Yeni not öğrencinin güncel sınıfında girilir; düzeltme notun verildiği sınıfın ders
+      // öğretmenindedir. Sınıf değiştiren öğrencinin eski notunu yeni sınıfın öğretmeni düzeltemez.
+      return teaches(update?.classId ?? classOf(studentId), subjectId)
         ? ALLOWED
         : deny(
             'grade_assignment_forbidden',

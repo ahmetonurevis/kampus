@@ -4,7 +4,7 @@ import { after, before, describe, test } from 'node:test'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
-import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
+import { insertMissingRecords, loadRecords, lockInstitution } from '../src/db/records.ts'
 import { evaluationText, PLAN, sampleRows } from './support/assessment-sample.ts'
 import { buildTestApp, createInstitution, FIXED_NOW, signInAs, TEST_ORIGIN } from './support/app.ts'
 import { createPgDatabase, PG_SKIP } from './support/pg.ts'
@@ -95,5 +95,54 @@ describe('PostgreSQL 16: eşzamanlı etüt planı onayı', { skip: PG_SKIP }, ()
       assert.ok([200, 409].includes(item.statusCode), `${item.statusCode} ${item.body}`)
     const stored = await loadRecords(db, institution.id, ['tutorSessions'])
     assert.equal(stored.length, ok[0]?.json().data.changes.inserted)
+  })
+  test('önizlemeler kurum kilidini almaz: kilit tutulurken tamamlanır, yazma bekler', async () => {
+    const institution = await createInstitution(app)
+    await insertMissingRecords(db, institution.id, sampleRows(), FIXED_NOW)
+    const cookie = await signInAs(app, institution.admin)
+    await post('/api/v1/assessment/evaluate', cookie, {
+      profileId: 'optical-exam-7-1',
+      text: evaluationText(),
+    })
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let locked = () => {}
+    const acquired = new Promise<void>((resolve) => {
+      locked = resolve
+    })
+    // Kurum kilidini tutan işlem: yazan her işlem bunu beklemek zorundadır.
+    const holder = db.transaction(async (tx) => {
+      await lockInstitution(tx, institution.id)
+      locked()
+      await held
+    })
+    await acquired
+    try {
+      const timeout = Symbol('timeout')
+      const race = <T>(work: Promise<T>) =>
+        Promise.race([work, new Promise<symbol>((r) => setTimeout(() => r(timeout), 3000))])
+      const plan = await race(post('/api/v1/assessment/plan/preview', cookie, PLAN))
+      assert.notEqual(plan, timeout, 'plan önizlemesi kurum kilidini bekledi')
+      assert.equal((plan as { statusCode: number }).statusCode, 200)
+      const evaluation = await race(
+        post('/api/v1/assessment/evaluate/preview', cookie, {
+          profileId: 'optical-exam-7-1',
+          text: evaluationText(),
+        }),
+      )
+      assert.notEqual(evaluation, timeout, 'optik önizlemesi kurum kilidini bekledi')
+      assert.equal((evaluation as { statusCode: number }).statusCode, 200)
+      // Karşılaştırma: aynı kilit yazan işlemi bekletir.
+      const write = post('/api/v1/assessment/plan', cookie, PLAN)
+      assert.equal(await race(write), timeout, 'yazma kilit tutulurken tamamlandı')
+      release()
+      await holder
+      assert.equal((await write).statusCode, 200)
+    } finally {
+      release()
+      await holder
+    }
   })
 })

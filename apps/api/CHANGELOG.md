@@ -8,6 +8,13 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 - `GET /api/v1/audit-events` (yalnız yönetici): kurumun `audit_log` kayıtları en yeniden eskiye; zaman, işlem, varlık, yapan kişi (ad, rol), alan adları ve gerekçe. Tarih (Europe/Istanbul günü), yapan kişi ve varlık türü süzgeçleri. Değer, IP ve istek kimliği dönmez; rehberlik kayıtlarında alan adı ve kimlik de dönmez (DOM-YTK-020). Kimlik olayları (`auth.*`) güvenlik kaydı olduğundan listeden süzülür. Okuma denetim kaydı üretmez.
 - Şema değişikliği ve migration yok.
 
+## Optik ve etüt güvenlik incelemesi düzeltmeleri
+
+- `POST /assessment/plan`: `expectedPlan` artık dosya alanı gibi ölçülür; 1 MB üstü 413 `payload_too_large` (`issues[0].path = ["expectedPlan"]`) ve gövde tavanı 4 MiB'dir. Daha önce JSON kaçışlı büyük plan genel 1 MiB sınırına takılıp onayda hep 413 veriyordu. Boş `expectedPlan` (`""`) artık 400; alan verilirse en az 1 karakter olmalıdır (bayatlık denetimini atlatıyordu). OpenAPI yeniden üretildi.
+- Önizlemeler (`plan/preview`, `evaluate/preview`) kurum danışma kilidini almaz: `runReadOnly` (`REPEATABLE READ READ ONLY` transaction, yazma yok) ile çalışır; `PreviewRollback` ile geri alma kalktı. Ardışık büyük önizlemeler kurumun yazan işlemlerini sıraya sokmaz. Davranış (yanıt, "hiçbir şey yazmaz") değişmedi.
+- Testler: öğretmenin kendi branşında plan önizleme/onayı, Deneme Sınavları kapalıyken optik/plan uçları 403 `module_disabled`, başka kurumun sınavıyla plan 404, `test:pg` kilit tutulurken önizlemenin tamamlanması.
+- `docs/muhendislik/veritabani.md`: migration 0009 indeksleri ve transaction dışı indeks çalıştırıcı kararı notu (şema/migration değişikliği yok).
+
 ## Optik değerlendirme ve otomatik etüt köprüsü
 
 - `POST /api/v1/assessment/<komut>[/:recordId]`: core `ASSESSMENT_COMMANDS`'ın yedi komutu (`profile`, `evaluate`, `plan`, `slot`, `slot-remove`, `cancel`, `attendance`) `runAssessment` ile tek transaction'da. Rol, kapsam ve modül (`optical`, `tutoring`) core'dadır; `evaluate` ve `plan` `Idempotency-Key` ister, kayıtlı komutlarda `If-Match` kaydın sürümüdür. Yanıt `CommandResult`; denetim eylemi `assessment.<komut>`.

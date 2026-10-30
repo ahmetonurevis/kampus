@@ -81,6 +81,7 @@ export const assessmentRecordParamsSchema = z.object({
 /** Önizlemede gösterilen planın özeti; onayda `expectedPlan` olarak geri gönderilir. */
 const expectedPlan = z
   .string()
+  .min(1, 'Önizleme planı boş olamaz.')
   .max(MAX_FILE_BYTES)
   .optional()
   .describe(
@@ -108,6 +109,7 @@ export const ASSESSMENT_BODIES = {
 export const FILE_FIELDS = {
   profile: ['keyCsv'],
   evaluate: ['text'],
+  plan: ['expectedPlan'],
 } as const satisfies Partial<Record<AssessmentCommand, readonly string[]>>
 
 export const previewEvaluateBodySchema = automationSchemas.evaluate

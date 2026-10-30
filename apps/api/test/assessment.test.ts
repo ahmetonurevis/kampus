@@ -206,6 +206,31 @@ describe('optik değerlendirme ve etüt uçları', () => {
       )
     })
 
+    test('Deneme Sınavları kapalıyken yeni değerlendirme, profil ve plan 403 module_disabled; kayıt değişmez', async () => {
+      // Belge: yeni değerlendirme ve etüt planlama için Deneme Sınavları açık olmalıdır.
+      const a = await institution({ enabledModules: { ...SEED.modules, exams: false } })
+      const before = await snapshot(a.id)
+      const profile = SEED.opticalProfiles[0]
+      assert.ok(profile)
+      for (const [url, body] of [
+        [`${BASE}/evaluate`, evaluate],
+        [`${BASE}/evaluate/preview`, evaluate],
+        [`${BASE}/plan`, PLAN],
+        [`${BASE}/plan/preview`, PLAN],
+        [`${BASE}/profile/${profile.id}`, profileBody()],
+      ] as const)
+        assertError(await post(url, a.adminCookie, body, key()), 403, 'module_disabled')
+      assert.deepEqual(await snapshot(a.id), before)
+      // Mevcut etüt takibi (uygunluk saati) Deneme Sınavları'na bağlı değildir.
+      const slot = await post(
+        `${BASE}/slot`,
+        a.adminCookie,
+        { teacherId: 't1', date: '2026-10-11T10:00:00.000Z', duration: 30 },
+        key(),
+      )
+      assert.equal(slot.statusCode, 200, slot.body)
+    })
+
     test('modül kapalıysa 403 module_disabled; dil okulunda 404', async () => {
       const noOptical = await institution({ enabledModules: { ...SEED.modules, optical: false } })
       assertError(
@@ -621,6 +646,108 @@ describe('optik değerlendirme ve etüt uçları', () => {
         'validation_failed',
       )
       assert.deepEqual(await snapshot(a.id), before)
+    })
+
+    test('büyük expectedPlan gövde sınırına takılmaz: JSON kaçışlı 1 MiB üstü gövde 409 ile reddedilir', async () => {
+      const a = await evaluated()
+      const before = await snapshot(a.id)
+      // 600 bin tırnak kaçışla 1,2 MB'lık gövde olur; alan 1 MB sınırının altındadır.
+      const expectedPlan = '"'.repeat(600_000)
+      const response = await post(`${BASE}/plan`, a.adminCookie, { ...PLAN, expectedPlan }, key())
+      assertError(response, 409, 'tutoring_plan_stale')
+      assert.deepEqual(await snapshot(a.id), before)
+    })
+
+    test('1 MB üstü expectedPlan 413 ve hiçbir kayıt değişmez; boş expectedPlan 400', async () => {
+      const a = await evaluated()
+      const before = await snapshot(a.id)
+      const big = await post(
+        `${BASE}/plan`,
+        a.adminCookie,
+        { ...PLAN, expectedPlan: 'x'.repeat(1024 * 1024 + 1) },
+        key(),
+      )
+      assertError(big, 413, 'payload_too_large')
+      assert.deepEqual(big.json().issues[0].path, ['expectedPlan'])
+      // Sınırda tam 1 MB alan kabul edilir (bayatlık denetimine ulaşır).
+      assertError(
+        await post(
+          `${BASE}/plan`,
+          a.adminCookie,
+          { ...PLAN, expectedPlan: 'x'.repeat(1024 * 1024) },
+          key(),
+        ),
+        409,
+        'tutoring_plan_stale',
+      )
+      // Boş metin bayatlık denetimini atlayamaz.
+      assertError(
+        await post(`${BASE}/plan`, a.adminCookie, { ...PLAN, expectedPlan: '' }, key()),
+        400,
+        'validation_failed',
+      )
+      assert.deepEqual(await snapshot(a.id), before)
+    })
+
+    test('öğretmen yalnız kendi branşının planını önizler ve onaylar', async () => {
+      const a = await evaluated()
+      const admin = (await post(`${BASE}/plan/preview`, a.adminCookie, PLAN)).json().data
+      assert.ok(admin.sessions.length > 0)
+      assert.ok(admin.sessions.every((item: { subjectId: string }) => item.subjectId === 'math'))
+      // Başka branşın (Türkçe) öğretmeni matematik gruplarını görmez; onayı da bir şey yazmaz.
+      const turkish = await member(a.id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }])
+      const empty = await post(`${BASE}/plan/preview`, turkish, PLAN)
+      assert.equal(empty.statusCode, 200, empty.body)
+      assert.equal(empty.json().data.sessions.length, 0)
+      assert.equal(empty.json().data.unresolved.length, 0)
+      const math = await member(a.id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+      const before = await snapshot(a.id)
+      assertError(
+        await post(
+          `${BASE}/plan`,
+          turkish,
+          { ...PLAN, expectedPlan: empty.json().data.expectedPlan },
+          key(),
+        ),
+        422,
+        'tutoring_nothing_to_create',
+      )
+      assert.deepEqual(await snapshot(a.id), before)
+      // Matematik öğretmeni kendi kapsamındaki planı önizler ve onaylar.
+      const preview = await post(`${BASE}/plan/preview`, math, PLAN)
+      assert.equal(preview.statusCode, 200, preview.body)
+      assert.equal(preview.json().data.expectedPlan, admin.expectedPlan)
+      assert.deepEqual(await snapshot(a.id), before)
+      const created = await post(
+        `${BASE}/plan`,
+        math,
+        { ...PLAN, expectedPlan: preview.json().data.expectedPlan },
+        key(),
+      )
+      assert.equal(created.statusCode, 200, created.body)
+      const stored = await loadRecords(db, a.id, ['tutorSessions'])
+      assert.equal(stored.length, preview.json().data.sessions.length)
+      assert.ok(stored.every((row) => row.data.subjectId === 'math'))
+    })
+
+    test('başka kurumun sınavıyla plan 404 ve iki kurumda da hiçbir şey yazılmaz', async () => {
+      const a = await evaluated()
+      const b = await institution()
+      const exam = SEED.mockExams.find((item) => item.id === PLAN.examId)
+      assert.ok(exam)
+      await insertMissingRecords(
+        db,
+        b.id,
+        [{ collection: 'mockExams', id: 'test-sinav-b', data: { ...exam, id: 'test-sinav-b' } }],
+        FIXED_NOW,
+      )
+      const beforeA = await snapshot(a.id)
+      const beforeB = await snapshot(b.id)
+      const foreign = { ...PLAN, examId: 'test-sinav-b' }
+      assertError(await post(`${BASE}/plan/preview`, a.adminCookie, foreign), 404, 'not_found')
+      assertError(await post(`${BASE}/plan`, a.adminCookie, foreign, key()), 404, 'not_found')
+      assert.deepEqual(await snapshot(a.id), beforeA)
+      assert.deepEqual(await snapshot(b.id), beforeB)
     })
 
     test('If-Match oluşturma komutunda 400 if_match_not_supported', async () => {

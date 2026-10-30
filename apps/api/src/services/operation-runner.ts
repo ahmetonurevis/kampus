@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
 
+import { sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
@@ -377,6 +378,27 @@ function auditChanges(fields: ReadonlySet<string>, changes: readonly WrittenReco
   return restored.length > 0 ? { fields: sorted, restored } : { fields: sorted }
 }
 
+/**
+ * Çekirdek işleminin çalışacağı State: skalerler ve koleksiyon dizileri yüklenen satırların
+ * kopyasıdır. Core State'i yerinde değiştirir; yüklenen satırlar fark için dokunulmadan kalır.
+ */
+function stateTarget(
+  scalars: NonNullable<LoadedOperation<unknown>['scalars']>,
+  collections: readonly CollectionName[],
+  before: ReadonlyMap<CollectionName, ReadonlyMap<string, StoredRecord>>,
+): Record<string, unknown> {
+  for (const key of Object.keys(scalars))
+    if (!isScalarStateKey(key)) throw programmingError(`unknown scalar state key: ${key}`)
+  const target: Record<string, unknown> = structuredClone(scalars)
+  // Core denetimi yalnız bu işlem içinde yaşar: boş başlar, farka girmez (collections.ts).
+  target.audit = []
+  for (const collection of collections)
+    target[collection] = [...(before.get(collection)?.values() ?? [])].map((row) =>
+      structuredClone(row.data),
+    )
+  return target
+}
+
 async function applyOperation<R>(
   tx: Database,
   ctx: ServiceContext,
@@ -409,17 +431,7 @@ async function applyOperation<R>(
 
   const operation: LoadedOperation<R> = request.load ? await request.load(tx) : request
   const scalars = operation.scalars ?? {}
-  for (const key of Object.keys(scalars))
-    if (!isScalarStateKey(key)) throw programmingError(`unknown scalar state key: ${key}`)
-
-  // Core State'i yerinde değiştirir; yüklenen satırlar fark için dokunulmadan kalır.
-  const target: Record<string, unknown> = structuredClone(scalars)
-  // Core denetimi yalnız bu işlem içinde yaşar: boş başlar, farka girmez (collections.ts).
-  target.audit = []
-  for (const collection of collections)
-    target[collection] = [...(before.get(collection)?.values() ?? [])].map((row) =>
-      structuredClone(row.data),
-    )
+  const target = stateTarget(scalars, collections, before)
 
   let result: R
   try {
@@ -501,7 +513,10 @@ async function loadOperationRecords(
   return { rows, partial }
 }
 
-function prepare<R>(ctx: ServiceContext, request: OperationRequest<R>) {
+function prepare(
+  ctx: ServiceContext,
+  request: { collections: readonly CollectionName[]; makeId?: MakeId },
+) {
   const collections = [...new Set(request.collections)].filter(
     (collection) => !isEphemeralCollection(collection),
   )
@@ -510,6 +525,46 @@ function prepare<R>(ctx: ServiceContext, request: OperationRequest<R>) {
     makeId: request.makeId ?? defaultMakeId,
   }
   return { collections, tools }
+}
+
+/** Yalnız okuyan işlem isteği: yazma, sürüm, denetim kaydı ve `after` yoktur. */
+export interface ReadOnlyOperationRequest<R> {
+  /** Günlük eylem adı; yalnız log için. */
+  action: string
+  collections: readonly CollectionName[]
+  loadScope?: OperationBase<R>['loadScope']
+  load: (tx: Database) => Promise<LoadedOperation<R>>
+}
+
+/**
+ * Saf önizleme için salt okunur çalıştırma. Kurum kilidi alınmaz: önizleme hiçbir şey yazmadığı
+ * için kurumun yazan işlemlerini sıraya sokmamalı, ardışık büyük önizlemeler de yazmaları
+ * bekletmemelidir. Transaction `REPEATABLE READ READ ONLY`'dir: ortam ve koleksiyonlar tek
+ * görüntüden okunur (yazan işlemin yarım durumu görülmez) ve yazma girişimi veritabanında
+ * reddedilir. Core işlemi State kopyası üzerinde çalışır; sonuç hiçbir yere yazılmaz.
+ */
+export async function runReadOnly<R>(
+  ctx: ServiceContext,
+  request: ReadOnlyOperationRequest<R>,
+): Promise<R> {
+  const { collections, tools } = prepare(ctx, request)
+  const work = ctx.db.transaction(async (tx) => {
+    // İlk ifade olmalı: görüntü ilk sorguda sabitlenir.
+    await tx.execute(sql`set transaction isolation level repeatable read read only`)
+    const { rows } = await loadOperationRecords(tx, ctx, collections, request.loadScope)
+    const before = new Map<CollectionName, Map<string, StoredRecord>>(
+      collections.map((collection) => [collection, new Map()]),
+    )
+    for (const row of rows) before.get(row.collection)?.set(row.id, row)
+    const operation = await request.load(tx)
+    const target = stateTarget(operation.scalars ?? {}, collections, before)
+    try {
+      return operation.run(guardedState(target), tools)
+    } catch (error) {
+      throw mapOperationError(error)
+    }
+  })
+  return withDatabaseErrors(work)
 }
 
 export async function runOperation<R>(

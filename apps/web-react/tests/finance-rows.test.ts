@@ -62,7 +62,8 @@ test('taksit satırı öğrenci adı ve sınıfı `joined` alanından, core duru
 
 test('bağlı ad gelmeyen (kapsam dışı) taksit kırılmaz, "—" gösterir', () => {
   const { invoices } = setup()
-  const { joined: _joined, ...item } = invoices[0]!
+  const { id, version, createdAt, updatedAt, archivedAt, record } = invoices[0]!
+  const item = { id, version, createdAt, updatedAt, archivedAt, record }
   const row = invoiceRow(item, TODAY)
   assert.equal(row.studentName, '—')
   assert.equal(row.className, '—')

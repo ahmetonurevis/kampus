@@ -35,7 +35,7 @@
   }
   /* Görünür odak halkası bütün etkileşimli öğelerde ortaktır. */
   :focus-visible {
-    outline: 3px solid var(--primary);
+    outline: 3px solid var(--focus-ring);
     outline-offset: 3px;
   }
   h1,
@@ -98,6 +98,23 @@
   .skip-link:focus {
     top: 12px;
   }
+}
+
+/*
+ * Aynı anda en fazla 3 bulanık katman: pencere veya yan panel açıkken arkadaki topbar ve sidebar
+ * bulanıklığı kapanır, opak zemine düşer. Açık pencerenin kendisi (role=dialog) etkilenmez.
+ */
+:root:has(:is([role='dialog'], [role='alertdialog'])[data-state='open'])
+  .glass:not([role='dialog'], [role='alertdialog']) {
+  background-color: var(--surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root:has(:is([role='dialog'], [role='alertdialog'])[data-state='open'])
+  .glass-sidebar:not([role='dialog'], [role='alertdialog']) {
+  background-color: var(--sidebar);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Saydamlık azaltıldığında, yüksek kontrastta ve desteksiz tarayıcıda yüzey opak olur. */

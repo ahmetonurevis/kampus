@@ -88,8 +88,14 @@ export function moduleKeys(): string[] {
 export type GroupState = Readonly<Record<string, boolean>>
 
 /** Grup açık mı: kayıtlı tercih yoksa yalnız GENEL açıktır (Vue ile aynı). */
-export function isGroupExpanded(expanded: GroupState, role: RoleKey, group: string): boolean {
-  return expanded[`${role}:${group}`] ?? group === DEFAULT_GROUP
+/** Kayıtlı tercih yoksa GENEL ve etkin sayfayı içeren grup açık başlar. */
+export function isGroupExpanded(
+  expanded: GroupState,
+  role: RoleKey,
+  group: string,
+  containsActivePage = false,
+): boolean {
+  return expanded[`${role}:${group}`] ?? (group === DEFAULT_GROUP || containsActivePage)
 }
 
 export function setGroupExpanded(

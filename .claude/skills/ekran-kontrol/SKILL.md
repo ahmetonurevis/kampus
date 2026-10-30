@@ -34,6 +34,6 @@ node scripts/ekran-kontrol.ts --routes /giris --azaltilmis-hareket --out artifac
    - Görünüm Vue ile aynı temada: safir sidebar, 12 px iç boşluklu yüzeyler, kısa turuncu aktif pill, 11/10 px menü yazıları.
    - Cam yalnız yüzen katmanda (sidebar, navbar, menü, diyalog, toast); tablo, form ve kartlar opak.
    - Metin kontrastı her iki temada okunaklı; odak halkası sabit katmanın altında kalmıyor.
-   - Dar ekranda hamburger "Menüyü aç", breadcrumb yalnız başlık; dokunma hedefleri en az 44 px.
+   - Dar ekranda hamburger "Menüyü aç", breadcrumb yalnız başlık; web dokunma hedefleri en az 24×24 px (WCAG 2.2; 44/48 dp yalnız mobil uygulama içindir).
 3. Vue ile karşılaştırma gerekiyorsa aynı route'u Vue'dan da çek ve iki PNG'yi yan yana oku.
 4. Raporda görüntü sayısını ve sorun sayısını yaz ("12 görüntü, 0 sorunlu").

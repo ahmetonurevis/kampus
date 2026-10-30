@@ -83,3 +83,9 @@ test('varsayılan olarak yalnız GENEL grubu açıktır ve tercih rol bazındad�
   assert.equal(isGroupExpanded(expanded, 'veli', 'YÖNETİM'), false)
   assert.equal(setGroupExpanded(expanded, 'yonetici', 'YÖNETİM', true), expanded)
 })
+
+test('etkin sayfanın grubu tercih yoksa açık, kapatma tercihi ise önceliklidir', () => {
+  assert.equal(isGroupExpanded({}, 'yonetici', 'FİNANS', true), true)
+  const closed = setGroupExpanded({}, 'yonetici', 'FİNANS', false)
+  assert.equal(isGroupExpanded(closed, 'yonetici', 'FİNANS', true), false)
+})

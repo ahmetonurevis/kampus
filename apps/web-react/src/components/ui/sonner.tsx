@@ -28,10 +28,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       style={
         {
-          '--normal-bg': 'var(--popover)',
-          '--normal-text': 'var(--popover-foreground)',
+          // Cam zemin; azaltılmış saydamlık/yüksek kontrastta token opak yüzeye düşer.
+          '--normal-bg': 'var(--glass-menu)',
+          '--normal-text': 'var(--text)',
           '--normal-border': 'var(--border)',
-          '--border-radius': 'var(--radius)',
+          '--border-radius': 'var(--radius-field)',
         } as React.CSSProperties
       }
       {...props}

@@ -51,6 +51,12 @@
   --blue: #315aa0;
   --blue-soft: #edf3fc;
   --status-ok: #69ba9d;
+  /* Dolu tehlike düğmesi: beyaz yazıyla iki temada da AA (≥ 6:1). */
+  --danger-solid: #a93d38;
+  --danger-solid-hover: #8f322e;
+  --on-danger: var(--white);
+  /* Odak halkası: çevresindeki zeminle en az 3:1 (açık ≈ 10:1, koyu ≈ 9:1). */
+  --focus-ring: var(--primary);
   --sidebar: var(--sapphire-800);
   --sidebar-text: #dbe7ff;
   --sidebar-strong: #f0f1f8;
@@ -171,7 +177,7 @@
   --color-destructive-soft: var(--red-soft);
   --color-border: var(--border);
   --color-input: var(--border);
-  --color-ring: var(--primary);
+  --color-ring: var(--focus-ring);
   --color-surface: var(--surface);
   --color-surface-soft: var(--surface-soft);
   --color-summary: var(--summary-surface);
@@ -186,6 +192,10 @@
   --color-success-soft: var(--green-soft);
   --color-danger: var(--red);
   --color-danger-soft: var(--red-soft);
+  --color-danger-solid: var(--danger-solid);
+  --color-danger-solid-hover: var(--danger-solid-hover);
+  --color-on-danger: var(--on-danger);
+  --color-focus: var(--focus-ring);
   --color-warning: var(--amber);
   --color-warning-soft: var(--amber-soft);
   --color-info: var(--blue);

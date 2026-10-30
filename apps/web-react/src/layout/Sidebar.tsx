@@ -5,7 +5,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { Session } from '@/auth/auth-port.ts'
 import {
-  DEFAULT_GROUP,
+  isGroupExpanded,
   pageHref,
   setGroupExpanded,
   sidebarGroups,
@@ -76,11 +76,12 @@ export function SidebarContent({ session, onNavigate, onSignOut }: SidebarConten
 
       <nav aria-label="Menü" className="side-nav min-h-0 flex-1 overflow-y-auto px-3.5">
         {groups.map((group) => {
-          const stored = expanded[`${session.role}:${group.key}`]
-          // Kayıtlı tercih yoksa GENEL ve etkin sayfanın grubu açık başlar.
-          const open =
-            stored ??
-            (group.key === DEFAULT_GROUP || group.pages.some((page) => page.path === activePath))
+          const open = isGroupExpanded(
+            expanded,
+            session.role,
+            group.key,
+            group.pages.some((page) => page.path === activePath),
+          )
           return (
             <Collapsible
               key={`${session.role}:${group.key}`}

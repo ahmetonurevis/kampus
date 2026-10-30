@@ -15,11 +15,14 @@ import { z } from 'zod'
 import { createAuth, type Auth } from './auth.ts'
 import { publicUrl, type Config } from './config.ts'
 import type { Database } from './db/client.ts'
+import { registerAuthenticate } from './plugins/authenticate.ts'
 import { registerBetterAuth } from './plugins/better-auth.ts'
 import { registerCsrfGuard } from './plugins/csrf.ts'
 import { registerErrorHandler } from './plugins/error-handler.ts'
 import { genRequestId, registerRequestContext } from './plugins/request-context.ts'
 import { registerHealthRoutes } from './routes/health.ts'
+import { registerMeRoutes } from './routes/me.ts'
+import { registerMembershipRoutes } from './routes/memberships.ts'
 
 // Şemada özel mesajı olmayan Zod hataları da Türkçe döner.
 z.config(z.locales.tr())
@@ -161,8 +164,11 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   }
 
   registerCsrfGuard(app, [...config.CORS_ORIGINS, new URL(base).origin])
-  registerBetterAuth(app, auth, base)
+  registerAuthenticate(app)
+  await registerBetterAuth(app, auth, base)
   registerHealthRoutes(app)
+  registerMeRoutes(app)
+  registerMembershipRoutes(app)
 
   return app
 }

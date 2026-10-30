@@ -14,6 +14,8 @@ import {
   createTestDatabase,
   nextIp,
   signIn,
+  signInAs,
+  TEST_ORIGIN,
 } from './support/app.ts'
 
 describe('Better Auth e-posta/parola girişi', () => {
@@ -86,11 +88,64 @@ describe('Better Auth e-posta/parola girişi', () => {
     )
   })
 
+  test('loglar parola, e-posta, çerez ve tam IP içermez', async () => {
+    const logs: string[] = []
+    const logged = await buildTestApp(db, { logs })
+    try {
+      const institution = await createInstitution(logged)
+      const ip = '203.0.113.77'
+      const response = await signIn(logged, institution.admin.email, institution.admin.password, ip)
+      const token = response.cookies.find((item) => item.name === 'kampus.session_token')?.value
+      assert.ok(token)
+      await logged.inject({
+        method: 'GET',
+        url: '/api/v1/memberships?pageSize=500',
+        headers: { cookie: `kampus.session_token=${token}` },
+        remoteAddress: ip,
+      })
+      const text = logs.join('')
+      assert.ok(text.includes('"reqId"'), 'istek logu yok')
+      assert.ok(text.includes('203.0.113.0'), 'maskeli IP yok')
+      for (const secret of [institution.admin.password, institution.admin.email, token, ip])
+        assert.equal(text.includes(secret), false, `logda gizli değer: ${secret.slice(0, 4)}…`)
+    } finally {
+      await logged.close()
+    }
+  })
+
+  test('parola değişiminde yaygın parola ve kurum adı türevi reddedilir', async () => {
+    const institution = await createInstitution(app, { name: 'Deneme Koleji' })
+    const user = institution.admin
+    const cookie = await signInAs(app, user)
+    const ip = nextIp()
+    const change = (newPassword: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/change-password',
+        headers: { cookie, origin: TEST_ORIGIN, 'content-type': 'application/json' },
+        remoteAddress: ip,
+        payload: { currentPassword: user.password, newPassword },
+      })
+
+    for (const weak of ['password12345', 'Koleji-Deneme-2026']) {
+      const response = await change(weak)
+      assert.equal(response.statusCode, 400, weak)
+      assert.equal(response.json().code, 'PASSWORD_TOO_COMMON')
+      assert.match(response.json().message, /yaygın/)
+    }
+    const accepted = await change('Yeni-Guclu-Parola-7381')
+    assert.equal(accepted.statusCode, 200)
+    const actions = (await db.select().from(auditLog).where(eq(auditLog.actorUserId, user.id))).map(
+      (row) => row.action,
+    )
+    assert.ok(actions.includes('auth.password_changed'))
+  })
+
   test('herkese açık kayıt kapalıdır', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/sign-up/email',
-      headers: { origin: 'http://localhost:5173' },
+      headers: { origin: TEST_ORIGIN },
       payload: { name: 'Yabancı', email: 'yabanci@kampus.example', password: 'Uzun-Bir-Parola-99' },
     })
     assert.ok(response.statusCode >= 400 && response.statusCode < 500)

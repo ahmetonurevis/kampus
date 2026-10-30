@@ -65,11 +65,12 @@ function toFetchRequest(request: FastifyRequest, base: string): Request {
   // IP'yi Fastify belirler (TRUST_PROXY); istemcinin gönderdiği aynı adlı başlık silinmiştir.
   headers.set(FORWARDED_IP_HEADER, request.ip)
   headers.set(FORWARDED_REQUEST_ID_HEADER, request.id)
-  const hasBody = request.method !== 'GET' && request.method !== 'HEAD' && request.body != null
+  // Gövde ham metin olarak iletilir (aşağıdaki ayrıştırıcı); yeniden serileştirilmez.
+  const body = typeof request.body === 'string' && request.body.length > 0 ? request.body : null
   return new Request(new URL(request.url, base), {
     method: request.method,
     headers,
-    ...(hasBody ? { body: JSON.stringify(request.body) } : {}),
+    ...(body !== null && request.method !== 'GET' ? { body } : {}),
   })
 }
 
@@ -108,7 +109,19 @@ async function relayResponse(reply: FastifyReply, response: Response) {
 }
 
 /** Better Auth uçlarını (`/api/v1/auth/*`) Fastify'ye bağlar. Hız sınırını Better Auth uygular. */
-export function registerBetterAuth(app: FastifyInstance, auth: Auth, base: string) {
+export async function registerBetterAuth(app: FastifyInstance, auth: Auth, base: string) {
+  await app.register(async (scope) => {
+    // Kimlik uçlarında JSON gövde ham metin kalır; boş gövdeli POST (ör. çıkış) da kabul edilir.
+    // Better Auth gövdeyi kendisi ayrıştırır ve doğrular.
+    scope.removeContentTypeParser('application/json')
+    scope.addContentTypeParser('application/json', { parseAs: 'string' }, (_request, body, done) =>
+      done(null, body),
+    )
+    registerAuthRoute(scope, auth, base)
+  })
+}
+
+function registerAuthRoute(app: FastifyInstance, auth: Auth, base: string) {
   app.route({
     method: ['GET', 'POST'],
     url: `${AUTH_BASE_PATH}/*`,

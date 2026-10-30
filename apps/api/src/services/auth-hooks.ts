@@ -77,6 +77,18 @@ export function authBeforeHook(ctx: HookContext) {
   })
 }
 
+type HookEndpointContext = Parameters<Parameters<typeof createAuthMiddleware>[0]>[0]
+
+/**
+ * Sonra-kancasında uç bağlamındaki `session` görünmez; yeni oturum (çerez yenilendiyse) ya da
+ * istek çerezindeki oturum okunur.
+ */
+async function hookSession(context: HookEndpointContext) {
+  const created = context.context.newSession
+  if (created) return created
+  return getSessionFromCtx(context).catch(() => null)
+}
+
 /** Giriş başarısı/başarısızlığı, kurum değişimi ve parola değişimi. Parola ve belirteç yazılmaz. */
 export function authAfterHook(ctx: HookContext) {
   return createAuthMiddleware(async (context) => {
@@ -110,8 +122,9 @@ export function authAfterHook(ctx: HookContext) {
         return
       }
       case '/organization/set-active': {
-        const session = context.context.session
-        if (failed || !session) return
+        if (failed) return
+        const session = await hookSession(context)
+        if (!session) return
         const returned: unknown = context.context.returned
         await recordAudit(ctx, {
           action: 'auth.institution_switched',
@@ -123,8 +136,9 @@ export function authAfterHook(ctx: HookContext) {
         return
       }
       case '/change-password': {
-        const session = context.context.session
-        if (failed || !session) return
+        if (failed) return
+        const session = await hookSession(context)
+        if (!session) return
         await recordAudit(ctx, {
           action: 'auth.password_changed',
           actorUserId: session.user.id,

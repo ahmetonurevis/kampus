@@ -46,6 +46,8 @@ export interface TestAppOptions {
   clock?: Clock
   /** Log satırlarını yakalar (redaksiyon testleri). */
   logs?: string[]
+  /** `ready` öncesi yalnız teste özgü rota eklemek için. */
+  extend?: (app: App) => void
 }
 
 export async function buildTestApp(db: Database, options: TestAppOptions = {}): Promise<App> {
@@ -65,6 +67,7 @@ export async function buildTestApp(db: Database, options: TestAppOptions = {}): 
     clock: options.clock ?? (() => FIXED_NOW),
     ...(logStream ? { logStream } : {}),
   })
+  options.extend?.(app)
   await app.ready()
   return app
 }

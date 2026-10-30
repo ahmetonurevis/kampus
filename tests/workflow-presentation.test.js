@@ -278,14 +278,21 @@ test('Hedef formu role göre kapsam ve ipucu verir', () => {
   )
 })
 
-test('Rehberlik iç notu yalnız kurum ve öğretmende görünür; görüşme formu kaydın değerleriyle açılır', () => {
+test('Rehberlik iç notu yalnız rehberlik görevli öğretmende görünür; görüşme formu kaydın değerleriyle açılır', () => {
   const state = seed()
+  const teacherRow = find(workflowRows(state, session('ogretmen'), 'rehberlik'), 'guidance-s1')
+  assert.equal(teacherRow.source.internalNote, state.guidanceCases[0].internalNote)
+  const teacherDetails = workflowDetails(state, session('ogretmen'), teacherRow)
+  assert.deepEqual(titles(teacherDetails), ['Paylaşılan destek planı', 'Kurum içi görüşme notları'])
+  assert.deepEqual(commands(teacherDetails), ['guidance-note'])
+  // Yönetici paylaşılan planı görür; iç not ve görüşme kaydı varsayılan olarak kapalıdır.
   const adminRow = find(workflowRows(state, session('yonetici'), 'rehberlik'), 'guidance-s1')
-  assert.equal(adminRow.source.internalNote, state.guidanceCases[0].internalNote)
+  assert.ok(!('internalNote' in adminRow.source))
+  assert.ok(!('notes' in adminRow.source))
   assert.match(adminRow.body, /\nTakip: /)
   const adminDetails = workflowDetails(state, session('yonetici'), adminRow)
-  assert.deepEqual(titles(adminDetails), ['Paylaşılan destek planı', 'Kurum içi görüşme notları'])
-  assert.deepEqual(commands(adminDetails), ['guidance-note'])
+  assert.deepEqual(titles(adminDetails), ['Paylaşılan destek planı'])
+  assert.deepEqual(commands(adminDetails), [])
   for (const role of ['veli', 'ogrenci']) {
     const rows = workflowRows(state, session(role), 'rehberlik')
     assert.deepEqual(
@@ -308,13 +315,14 @@ test('Rehberlik iç notu yalnız kurum ve öğretmende görünür; görüşme fo
       status: 'Takipte',
     },
     'guidance-s1',
+    'ogretmen',
   )
   const notes = section(
     workflowDetails(state, session('ogretmen'), { kind: 'guidance', id: 'guidance-s1' }),
     'Kurum içi görüşme notları',
   )
   assert.ok(notes.at(-1).endsWith('Veliyle görüşüldü.'))
-  const form = workflowForm(state, session('yonetici'), 'guidance-note', 'guidance-s1')
+  const form = workflowForm(state, session('ogretmen'), 'guidance-note', 'guidance-s1')
   assert.deepEqual(form.initial, {
     text: '',
     sharedNote: 'Düzenli çalışıyor.',
@@ -327,7 +335,10 @@ test('Rehberlik iç notu yalnız kurum ve öğretmende görünür; görüşme fo
     teacherChoices.map((o) => o.value),
     ['t1'],
   )
-  assert.ok(workflowForm(state, session('yonetici'), 'guidance').fields()[1].options.length > 1)
+  assert.ok(open.fields().some((f) => f.key === 'internalNote'))
+  const adminForm = workflowForm(state, session('yonetici'), 'guidance')
+  assert.ok(adminForm.fields()[1].options.length > 1)
+  assert.ok(!adminForm.fields().some((f) => f.key === 'internalNote'))
 })
 
 test('Deneme listesi yeni tarihten eskiye sıralanır; net hesabı, öneri ve gelişim ayrıntıları döner', () => {

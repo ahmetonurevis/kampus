@@ -142,6 +142,9 @@ function buildSeed(now: Date) {
       homeworkRate: 98 - (i % 5) * 4,
       isActive: true,
       deletedAt: null as string | null,
+      // kvkk: K — rehberlik görevi (DOM-YTK-026): iç notları okur ve yazar. Demo öğretmeni Selin
+      // Kaya aynı zamanda rehberlik görevlisidir.
+      guidanceCounselor: b === 0 && i === 0,
     })),
   )
   const gradeOrder = [7, 5, 6, 8, 9, 10, 11, 12]

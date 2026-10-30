@@ -64,6 +64,7 @@ export const commandResultSchema = z
   .meta({ id: 'CommandResult' })
 
 export const commandResponseSchema = z.object({ data: commandResultSchema })
+export type CommandResponseBody = z.infer<typeof commandResponseSchema>
 
 /** Komut uçlarının hata yanıtları (422 iş kuralı, 409 sürüm/çakışma, 404 kayıt). */
 export const commandErrors = {
@@ -72,3 +73,69 @@ export const commandErrors = {
   409: errorResponseSchema,
   422: errorResponseSchema,
 } as const
+
+const recordId = (description: string) => z.string().min(1).max(200).describe(description)
+
+/** Gün (`YYYY-MM-DD`, Europe/Istanbul günü). */
+const daySchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Geçerli bir tarih seçin.')
+  .refine(
+    (value) => new Date(`${value}T09:00:00.000Z`).toISOString().slice(0, 10) === value,
+    'Geçerli bir tarih seçin.',
+  )
+
+export const invoiceParamsSchema = z.object({ invoiceId: recordId('Taksit kimliği') })
+
+/**
+ * Ödeme gövdesi. Core `payInvoice` yöntem için şema vermez; alan burada sınırlanır.
+ * TODO(core-payment-schema): core ödeme girdisi şemasını verince gövde o olur.
+ */
+export const payInvoiceBodySchema = z.object({
+  method: z
+    .string()
+    .trim()
+    .min(2, 'Ödeme yöntemini seçin.')
+    .max(60)
+    .describe('Ödeme yöntemi (ör. `Kredi kartı`, `Nakit`, `Havale/EFT`)'),
+})
+
+export const classParamsSchema = z.object({ classId: recordId('Sınıf kimliği') })
+
+/**
+ * Yoklama gövdesi. Durumlar core `recordAttendance`'ın kabul ettikleridir; core listeyi dışa
+ * aktarmadığı için burada tekrarlanır.
+ * TODO(core-attendance-schema): core yoklama girdisi şemasını verince gövde o olur.
+ */
+export const attendanceBodySchema = z.object({
+  date: daySchema.describe('Yoklama günü (`YYYY-MM-DD`); gelecek gün 422'),
+  marks: z
+    .record(z.string().min(1).max(200), z.enum(['present', 'absent', 'late', 'excused']))
+    .describe('Öğrenci kimliği → durum; sınıfın bütün aktif öğrencileri bulunmalı'),
+})
+
+export const branchParamsSchema = z.object({ branchId: recordId('Kampüs kimliği') })
+export const teacherParamsSchema = z.object({ teacherId: recordId('Öğretmen kimliği') })
+
+export const archiveQuerySchema = z.strictObject({
+  replacementId: z
+    .string()
+    .min(1)
+    .max(200)
+    .optional()
+    .describe(
+      'Bağlı kayıtların aktarılacağı kayıt (kampüs, sınıf veya öğretmen); core gerektiriyorsa zorunlu',
+    ),
+})
+
+export const tutorSessionParamsSchema = z.object({ sessionId: recordId('Etüt kimliği') })
+
+export const tutorCancelBodySchema = z.object({
+  reason: z.string().trim().min(2, 'İptal nedenini girin.').max(500),
+})
+
+export const tutorAttendanceBodySchema = z.object({
+  marks: z
+    .record(z.string().min(1).max(200), z.enum(['Geldi', 'Gelmedi', 'İzinli']))
+    .describe('Etüt öğrencisi → durum; bütün etüt öğrencileri ve yalnız onlar'),
+})

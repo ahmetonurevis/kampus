@@ -4,16 +4,17 @@ import { setTimeout as delay } from 'node:timers/promises'
 
 import { and, count, eq, sql } from 'drizzle-orm'
 
-import type { State } from '@kampus/school-core/data/seed.ts'
+import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { tryLockIdempotencyKey } from '../src/db/idempotency.ts'
-import { lockInstitution, writeRecords } from '../src/db/records.ts'
+import { insertMissingRecords, lockInstitution, writeRecords } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
+import { recordAttendanceCommand } from '../src/services/commands.ts'
 import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, FIXED_NOW } from './support/app.ts'
 import { createPgDatabase, PG_SKIP } from './support/pg.ts'
@@ -337,5 +338,39 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       await holder
     }
     assert.equal(await attendanceCount(b.institutionId), 1)
+  })
+
+  test('aynı sınıfın yoklaması iki kez aynı anda: öğrenci başına tek kayıt (DOM yoklama yinelenmez)', async () => {
+    const ctx = await context()
+    const seed = createSeed(FIXED_NOW)
+    const classroom = seed.classes.find((item) => item.id === 'c1')
+    assert.ok(classroom)
+    const students = seed.students.filter((item) => item.classId === 'c1' && item.isActive)
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        { collection: 'classes', id: classroom.id, data: classroom },
+        ...students.map((data) => ({ collection: 'students' as const, id: data.id, data })),
+      ],
+      FIXED_NOW,
+    )
+    const marks = Object.fromEntries(students.map((item) => [item.id, 'present' as const]))
+    const options = { idempotency: null, expectedVersion: null }
+    const outcomes = await Promise.allSettled([
+      recordAttendanceCommand(ctx, 'c1', DAY, marks, options),
+      recordAttendanceCommand(
+        ctx,
+        'c1',
+        DAY,
+        { ...marks, [students[0]?.id ?? '']: 'late' },
+        options,
+      ),
+    ])
+    assert.deepEqual(
+      outcomes.map((item) => item.status),
+      ['fulfilled', 'fulfilled'],
+    )
+    assert.equal(await attendanceCount(ctx.institutionId), students.length)
   })
 })

@@ -64,6 +64,11 @@ export interface ExpectedVersion {
   version: number
 }
 
+export interface AuditEntity {
+  type: string
+  id: string
+}
+
 export interface OperationRequest<R> {
   /** Denetim kaydı eylemi, ör. `invoice.pay`. */
   action: string
@@ -81,18 +86,16 @@ export interface OperationRequest<R> {
   /** İstemcinin okuduğu sürümler (gövdedeki `version`); tutmazsa 409, kayıt yoksa 404. */
   expectedVersions?: readonly ExpectedVersion[]
   /**
-   * Konusu işlem çalışmadan bilinmeyen sürüm beklentisi; işlemden sonra, yazmadan önce aynı
-   * yüklenmiş satırlarla denetlenir (`expectedVersions` ile aynı 404/409 kuralı).
+   * `If-Match` ile gelen, koleksiyonu istemcinin bilmediği kaydın sürümü (iş akışı komutunun
+   * `:recordId`'si). Kimlik yüklenen koleksiyonlarda aranır; yoksa 404, bulunan satırlardan
+   * birinin sürümü tutmazsa 409.
    */
-  expectedVersionsAfterRun?: (
-    result: R,
-    state: Readonly<Record<string, unknown>>,
-  ) => readonly ExpectedVersion[]
+  expectedRecordVersion?: { id: string; version: number }
   /**
    * Denetim kaydının varlığı (işlemin konusu, ör. `{ type: 'prospects', id }`). Zorunlu: ilk
    * değişen kayıt çoğu zaman yan kayıttır (taksit, katılım) ve denetimi yanlış varlığa bağlar.
    */
-  entity: { type: string; id: string }
+  entity: AuditEntity | ((result: R) => AuditEntity)
   makeId?: MakeId
   run: (state: State, tools: OperationTools) => R
 }
@@ -314,6 +317,12 @@ async function applyOperation<R>(
     if (!row) throw new NotFoundError()
     if (row.version !== expected.version) throw new ConflictError()
   }
+  if (request.expectedRecordVersion) {
+    const { id, version } = request.expectedRecordVersion
+    const rows = collections.flatMap((collection) => before.get(collection)?.get(id) ?? [])
+    if (rows.length === 0) throw new NotFoundError()
+    if (rows.some((row) => row.version !== version)) throw new ConflictError()
+  }
 
   // Core State'i yerinde değiştirir; yüklenen satırlar fark için dokunulmadan kalır.
   const target: Record<string, unknown> = structuredClone(request.scalars ?? {})
@@ -331,14 +340,6 @@ async function applyOperation<R>(
     throw mapOperationError(error)
   }
 
-  // İşlemin konusu ancak çalıştıktan sonra belli olan sürüm beklentisi (ör. iş akışı komutunun
-  // kaydı, core denetim girdisindeki koleksiyondan). Yazmadan önce, aynı kilit altında denetlenir.
-  for (const expected of request.expectedVersionsAfterRun?.(result, target) ?? []) {
-    const row = before.get(expected.collection)?.get(expected.id)
-    if (!row) throw new NotFoundError()
-    if (row.version !== expected.version) throw new ConflictError()
-  }
-
   // Skaler alan `records`'ta tutulmaz; değişikliği sessizce düşürmek yerine işlem geri alınır.
   const scalarChanges = changedScalars(request.scalars ?? {}, target)
   if (scalarChanges.length > 0) {
@@ -354,13 +355,15 @@ async function applyOperation<R>(
   const changes = await writeRecords(tx, ctx.institutionId, writes, ctx.now)
   const first = changes[0]
   if (first) {
+    // Yeni kaydın kimliği işlem çalışınca belli olur (ör. oluşturulan hedef).
+    const entity = typeof request.entity === 'function' ? request.entity(result) : request.entity
     await tx.insert(auditLog).values({
       institutionId: ctx.institutionId,
       actorUserId: ctx.actor.userId,
       actorRole: ctx.actor.role,
       action: request.action,
-      entityType: request.entity.type,
-      entityId: request.entity.id,
+      entityType: entity.type,
+      entityId: entity.id,
       changes: auditChanges(fields, changes),
       createdAt: ctx.now,
     })

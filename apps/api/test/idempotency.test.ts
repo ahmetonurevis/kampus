@@ -17,7 +17,8 @@ import { auditLog } from '../src/db/schema/audit-log.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { AppError } from '../src/errors.ts'
 import { contextOf, type ServiceContext } from '../src/plugins/authenticate.ts'
-import { commandBody, idempotencyOf, sendCommand } from '../src/routes/command-support.ts'
+import { idempotencyOf, sendCommand } from '../src/routes/command-support.ts'
+import { commandBody } from '../src/services/command-result.ts'
 import {
   commandErrors,
   commandHeadersSchema,

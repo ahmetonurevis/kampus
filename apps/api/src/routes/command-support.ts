@@ -1,14 +1,13 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 
-import type { WrittenRecord } from '../db/records.ts'
 import { AppError, MESSAGES, ValidationError } from '../errors.ts'
 import { requestFingerprint } from '../services/idempotency.ts'
-import type {
-  CommandResponse,
-  IdempotencyRequest,
-  OperationResponse,
-} from '../services/operation-runner.ts'
-import { IDEMPOTENCY_KEY_PATTERN } from './commands.schemas.ts'
+import type { CommandResponse, IdempotencyRequest } from '../services/operation-runner.ts'
+import {
+  commandResponseSchema,
+  IDEMPOTENCY_KEY_PATTERN,
+  type CommandResponseBody,
+} from './commands.schemas.ts'
 
 /** Komut uçlarının HTTP yardımcıları: başlık okuma ve tek yanıt biçimi (`CommandResult`). */
 
@@ -63,36 +62,12 @@ export function ifMatchVersion(request: FastifyRequest): number | null {
   return version
 }
 
-/** Değişiklik özeti ve yazılan kayıtlar: `{ data: CommandResult }`. */
-export function commandBody(
-  entity: { collection: string; id: string } | null,
-  changes: readonly WrittenRecord[],
-): OperationResponse {
-  const count = (kind: WrittenRecord['kind']) =>
-    changes.filter((change) => change.kind === kind).length
-  return {
-    statusCode: 200,
-    body: {
-      data: {
-        entity,
-        changes: {
-          inserted: count('insert'),
-          updated: count('update'),
-          archived: count('archive'),
-          restored: count('restore'),
-        },
-        records: changes.map((change) => ({
-          collection: change.collection,
-          id: change.id,
-          version: change.version,
-          change: change.kind,
-        })),
-      },
-    },
-  }
-}
-
-export function sendCommand(reply: FastifyReply, response: CommandResponse) {
+/**
+ * Komut yanıtını yazar ve gövdeyi döndürür. Tekrarlanan yanıt veritabanından geldiği için
+ * gövde yanıt şemasıyla yeniden okunur; biçim dışı saklı yanıt 500 olur, istemciye gitmez.
+ */
+export function sendCommand(reply: FastifyReply, response: CommandResponse): CommandResponseBody {
   if (response.replayed) reply.header('idempotent-replayed', 'true')
-  return reply.status(response.statusCode).send(response.body)
+  reply.status(response.statusCode)
+  return commandResponseSchema.parse(response.body)
 }

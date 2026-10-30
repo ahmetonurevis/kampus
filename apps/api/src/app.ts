@@ -23,6 +23,7 @@ import { registerErrorHandler } from './plugins/error-handler.ts'
 import { registerModuleGuard } from './plugins/modules.ts'
 import { genRequestId, registerRequestContext } from './plugins/request-context.ts'
 import { registerCollectionRoutes } from './routes/collections.ts'
+import { registerCommandRoutes } from './routes/commands.ts'
 import { registerHealthRoutes } from './routes/health.ts'
 import { registerMeRoutes } from './routes/me.ts'
 import { registerMembershipRoutes } from './routes/memberships.ts'
@@ -186,6 +187,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerMeRoutes(app)
   registerMembershipRoutes(app)
   registerCollectionRoutes(app)
+  registerCommandRoutes(app)
 
   return app
 }

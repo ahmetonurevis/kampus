@@ -12,6 +12,8 @@
 - `scheduleTrialLesson` (yalnız dil okulu; okulda 404 `trial_lesson_unavailable`): adayın kampüsündeki açık grubun gelecek, iptal edilmemiş dersi; derse en fazla 2 deneme katılımcısı (409 `trial_lesson_full`), aktif kursiyer + deneme katılımcısı `min(kapasite, 18)`'i aşamaz (409 `trial_capacity_full`); 18 yaş altında veli adı/iletişimi (422 `trial_guardian_contact_required`) ve veli onayı (422 `trial_guardian_consent_required`); gerçekleşmiş deneme dersi tekrar planlanmaz (409 `trial_already_used`). Adayın görüşmesi ile deneme dersi örtüşemez (409 `prospect_schedule_conflict`). Yoklamaya yazılmaz.
 - `lib/authorize.ts`: `prospect.create`, `prospect.stage`, `prospect.note`, `prospect.meeting`, `prospect.trial` (`['yonetici', 'onburo']`). `modules/commands.ts` `OPERATION_COMMANDS`: beşi de `crm` modülüne bağlı.
 - State tipi: `prospects` kaydına `minor`, `guardianName`, `referrerStudentId`, `siblingOfId`, `privacyNotice`, `marketingConsent`, `lostReason`, `lostAt`, `meeting`, `trialLesson`, `createdBy`, `updatedAt`, notlara `by` eklendi (isteğe bağlı; eski kayıtlar taşımaz).
+- İnceleme düzeltmeleri (D16a2):
+  - `changeProspectStage` gövdesine isteğe bağlı `siblingOfId`: vazgeçen aday, iletişimi paylaşan açık adayla çakışıyorsa iletişimi gerçekten paylaşan açık veya kayıtlı kardeşi seçilerek yeniden açılır (DOM-KAY-031); kardeş geçersizse 422 `sibling_not_found`, yeniden açma dışında seçilirse 422 `sibling_reopen_only` (Vazgeçti gövdesinde 400). Tanınmayan eski aşama 409 `prospect_stage_unknown` (önce 422).
 - Tüketiciler `workspace:2.19.0` sürümüne sabitlendi.
 
 ## 2.17.0

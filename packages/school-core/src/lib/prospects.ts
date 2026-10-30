@@ -238,10 +238,19 @@ export const changeProspectStageSchema = z
   .strictObject({
     stage: z.enum(PROSPECT_STAGES, 'Aşamayı seçin.'),
     lostReason: z.enum(PROSPECT_LOST_REASONS, 'Vazgeçme nedenini seçin.').optional(),
+    /**
+     * Vazgeçen aday yeniden açılırken iletişimi paylaşan kardeş aday (açık veya kayıtlı;
+     * DOM-KAY-031). Yalnız `Vazgeçti` adayın yeniden açılışında geçerlidir.
+     */
+    siblingOfId: identifier('Kardeş adayı seçin.').optional(),
   })
   .refine((data) => data.stage === 'Vazgeçti' || data.lostReason === undefined, {
     message: 'Vazgeçme nedeni yalnız "Vazgeçti" aşamasında seçilir.',
     path: ['lostReason'],
+  })
+  .refine((data) => data.stage !== 'Vazgeçti' || data.siblingOfId === undefined, {
+    message: 'Kardeş aday yalnız adayı yeniden açarken seçilir.',
+    path: ['siblingOfId'],
   })
 export type ChangeProspectStageInput = z.input<typeof changeProspectStageSchema>
 
@@ -344,6 +353,27 @@ function rejectDuplicate(duplicate: ProspectDuplicate | null, siblingAcknowledge
       'prospect_contact_shared',
       'Bu telefon veya e-posta başka bir açık adayda kayıtlı; kardeş adaysa kardeşini seçin.',
       { kind: 'conflict', path: ['siblingOfId'] },
+    )
+}
+
+/**
+ * Yeniden açılan adayın kardeşi (DOM-KAY-031): aynı kurumun (State yalnız etkin kurumun
+ * adaylarını taşır) başka adayıdır, vazgeçmemiştir (açık veya kayıtlı) ve telefon ya da e-postayı
+ * gerçekten paylaşır.
+ */
+function requireSibling(state: State, prospect: ProspectRecord, siblingOfId: string) {
+  const sibling = state.prospects.find((p) => p.id === siblingOfId)
+  const email = normalizedEmail(prospect.email)
+  const valid =
+    sibling !== undefined &&
+    sibling.id !== prospect.id &&
+    (isOpen(sibling.stage) || sibling.stage === 'Kayıt oldu') &&
+    (sibling.phone === prospect.phone || (email !== '' && normalizedEmail(sibling.email) === email))
+  if (!valid)
+    throw new DomainError(
+      'sibling_not_found',
+      'Kardeş aday aynı iletişim bilgisini taşıyan açık veya kayıtlı bir aday olmalıdır.',
+      { path: ['siblingOfId'] },
     )
 }
 
@@ -508,7 +538,9 @@ export function changeProspectStage(
       { path: ['stage'] },
     )
   if (!isStage(prospect.stage))
-    throw new DomainError('prospect_stage_unknown', 'Adayın kayıtlı aşaması tanınmıyor.')
+    throw new DomainError('prospect_stage_unknown', 'Adayın kayıtlı aşaması tanınmıyor.', {
+      kind: 'conflict',
+    })
   if (!nextProspectStages(prospect.stage).includes(data.stage))
     throw new DomainError(
       'prospect_stage_backward',
@@ -517,10 +549,17 @@ export function changeProspectStage(
         : 'Aday önceki bir aşamaya geri alınamaz.',
       { path: ['stage'] },
     )
+  if (data.siblingOfId !== undefined && prospect.stage !== 'Vazgeçti')
+    throw new DomainError(
+      'sibling_reopen_only',
+      'Kardeş aday yalnız vazgeçen adayı yeniden açarken seçilir.',
+      { path: ['siblingOfId'] },
+    )
+  if (data.siblingOfId !== undefined) requireSibling(state, prospect, data.siblingOfId)
   if (prospect.stage === 'Vazgeçti')
     rejectDuplicate(
       findProspectDuplicate(state.prospects, prospect, prospect.id),
-      prospect.siblingOfId !== undefined,
+      prospect.siblingOfId !== undefined || data.siblingOfId !== undefined,
     )
   if (data.stage === 'Vazgeçti') {
     if (data.lostReason === undefined)
@@ -541,6 +580,7 @@ export function changeProspectStage(
   } else {
     delete prospect.lostReason
     delete prospect.lostAt
+    if (data.siblingOfId !== undefined) prospect.siblingOfId = data.siblingOfId
   }
   prospect.stage = data.stage
   prospect.updatedAt = now

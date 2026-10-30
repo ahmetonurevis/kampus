@@ -192,11 +192,11 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 ### DOM-KAY-031 · İletişimi paylaşan aday (kardeş)
 
-- **Kural:** Aynı telefon veya e-postayı taşıyan açık aday varken: ad da aynıysa (boşluk ve büyük/küçük harf farkı gözetilmeden) yeni aday açılmaz; ad farklıysa yeni aday yalnız ön büro iletişimi paylaşan açık adayı kardeş olarak açıkça seçerse açılır. Kardeş seçimi aynı adın mükerrerliğini kaldırmaz. Ret iletisi telefon, e-posta veya diğer adayın adını içermez.
+- **Kural:** Aynı telefon veya e-postayı taşıyan açık aday varken: ad da aynıysa (boşluk ve büyük/küçük harf farkı gözetilmeden) yeni aday açılmaz; ad farklıysa yeni aday yalnız ön büro iletişimi paylaşan açık adayı kardeş olarak açıkça seçerse açılır. Kardeş seçimi aynı adın mükerrerliğini kaldırmaz. Vazgeçen aday yeniden açılırken iletişimi başka açık adayla paylaşıyorsa ön büro aynı kurumda iletişimi gerçekten paylaşan açık veya kayıtlı bir adayı kardeş seçer; seçilmezse yeniden açılmaz, seçilen kardeş adaya yazılır. Ret iletisi telefon, e-posta veya diğer adayın adını içermez.
 - **Gerekçe:** `DOM-KAY-002` kardeşe izin verir ama yazım farkıyla aynı kişinin ikinci kez açılmasını da engellemelidir; açık onay en muhafazakâr yoldur.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`findProspectDuplicate`, `createProspect`).
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`findProspectDuplicate`, `createProspect`, yeniden açmada `changeProspectStage` `siblingOfId`).
 
 ### DOM-KAY-032 · Aday notu eklenir, değişmez
 

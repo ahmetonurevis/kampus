@@ -725,18 +725,64 @@ test('DOM-KAY-002, DOM-KAY-030: yeniden açılan aday açık bir mükerrerle ça
     () => changeProspectStage(state, front, 'pr5', { stage: 'İletişime geçildi' }, now),
     fails('prospect_duplicate', 'conflict'),
   )
-  // İletişimi paylaşan farklı adlı açık aday: kardeş olarak açılmamışsa yeniden açılmaz.
-  const other = seed()
-  const lost = prospectOf(other, 'pr5')
-  createProspect(other, front, input({ name: 'Başka Ad', phone: lost.phone }), id, now)
+})
+
+test('DOM-KAY-031, DOM-KAY-030: vazgeçen aday iletişimi paylaşan kardeşi seçilerek yeniden açılır', () => {
+  // Ali vazgeçer, aynı telefonla kardeşi Ayşe açılır; Ali yeniden açılırken Ayşe'yi kardeş seçer.
+  const state = seed()
+  const ali = createProspect(state, front, input({ name: 'Ali Deneme' }), id, now)
+  changeProspectStage(state, front, ali.id, { stage: 'Vazgeçti', lostReason: 'price' }, now)
+  const ayse = createProspect(state, front, input({ name: 'Ayşe Deneme' }), id, now)
+  assert.equal(ayse.siblingOfId, undefined)
+  const reopen =
+    (body: Record<string, unknown> = {}) =>
+    () =>
+      changeProspectStage(state, front, ali.id, { stage: 'İletişime geçildi', ...body }, now)
+  unchangedOnFailure(state, reopen(), fails('prospect_contact_shared', 'conflict', ['siblingOfId']))
+  // Kardeş gerçek, başka ve vazgeçmemiş bir aday olmalı; iletişimi paylaşmalı.
+  const invalid = fails('sibling_not_found', 'rule', ['siblingOfId'])
+  for (const siblingOfId of ['pr-yok', ali.id, 'pr1', 'pr5', 'pr15'])
+    unchangedOnFailure(state, reopen({ siblingOfId }), invalid)
   unchangedOnFailure(
-    other,
-    () => changeProspectStage(other, front, 'pr5', { stage: 'İletişime geçildi' }, now),
-    fails('prospect_contact_shared', 'conflict'),
+    state,
+    () =>
+      changeProspectStage(state, front, ali.id, { stage: 'Vazgeçti', siblingOfId: ayse.id }, now),
+    zodError,
   )
-  lost.siblingOfId = 'pr-kardes'
-  changeProspectStage(other, front, 'pr5', { stage: 'İletişime geçildi' }, now)
-  assert.equal(lost.stage, 'İletişime geçildi')
+  unchangedOnFailure(
+    state,
+    () =>
+      changeProspectStage(
+        state,
+        front,
+        ayse.id,
+        { stage: 'Teklif verildi', siblingOfId: ali.id },
+        now,
+      ),
+    fails('sibling_reopen_only', 'rule', ['siblingOfId']),
+  )
+  const reopened = reopen({ siblingOfId: ayse.id })()
+  assert.equal(reopened.stage, 'İletişime geçildi')
+  assert.equal(reopened.siblingOfId, ayse.id)
+  // Kayıtlı kardeş de seçilebilir; e-posta paylaşımı da iletişim sayılır.
+  const other = seed()
+  const enrolled = prospectOf(other, 'pr15')
+  const lost = createProspect(
+    other,
+    front,
+    input({ name: 'Mert Deneme', email: enrolled.email.toUpperCase() }),
+    id,
+    now,
+  )
+  changeProspectStage(other, front, lost.id, { stage: 'Vazgeçti', lostReason: 'transport' }, now)
+  changeProspectStage(
+    other,
+    front,
+    lost.id,
+    { stage: 'İletişime geçildi', siblingOfId: enrolled.id },
+    now,
+  )
+  assert.equal(lost.siblingOfId, enrolled.id)
 })
 
 test('Tanınmayan eski aşama değiştirilemez; dil okulu görüşme aşamasını kendi adıyla gösterir', () => {
@@ -745,7 +791,7 @@ test('Tanınmayan eski aşama değiştirilemez; dil okulu görüşme aşamasın�
   unchangedOnFailure(
     state,
     () => changeProspectStage(state, front, 'pr1', { stage: 'Teklif verildi' }, now),
-    fails('prospect_stage_unknown'),
+    fails('prospect_stage_unknown', 'conflict'),
   )
   assert.equal(
     prospectStageLabel('Görüşme planlandı', 'language_school'),

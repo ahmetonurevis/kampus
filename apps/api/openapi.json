@@ -9005,6 +9005,357 @@
         }
       }
     },
+    "/api/v1/grades": {
+      "post": {
+        "operationId": "recordGrade",
+        "summary": "Resmî not gir",
+        "tags": [
+          "grades"
+        ],
+        "description": "Resmî not kaydı ekler (core `recordGrade`, DOM-AKD-004); dönem ortalaması saklanmaz. Yetki core `authorize('grade.record')`: yalnız öğrencinin sınıfında o dersin atanmış öğretmeni (başka ders veya sınıf 403 `grade_assignment_forbidden`). Dil okulunda 422 `official_grades_school_only`; aynı gün aynı türde ikinci not 409 `grade_duplicate`; gelecek tarih 422. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `ogretmen`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "subjectId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "term": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2
+                  },
+                  "assessmentType": {
+                    "type": "string",
+                    "enum": [
+                      "sinav",
+                      "performans",
+                      "proje",
+                      "katilim"
+                    ]
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "quizId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "topic": {
+                    "default": "",
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "subjectId",
+                  "term",
+                  "assessmentType",
+                  "date"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/grades/{gradeId}": {
+      "patch": {
+        "operationId": "updateGrade",
+        "summary": "Notu gerekçeyle düzelt",
+        "tags": [
+          "grades"
+        ],
+        "description": "Not puanını gerekçeyle düzeltir; eski puan `corrections` geçmişinde kalır (core `updateGrade`, DOM-AKD-051). Yetki core `authorize('grade.update')`: atanmış ders öğretmeni veya `reason` ile yönetici; görülemeyen not 404. Aynı puan 409 `grade_unchanged`, quizden aktarılan not 422. `If-Match` notun sürümüdür; tutmazsa 409 `version_conflict`. Denetim kaydına değer değil alan adı yazılır. Roller: `yonetici`, `ogretmen`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "score",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "gradeId",
+            "required": true,
+            "description": "Not kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/branches/{branchId}": {
       "delete": {
         "operationId": "archiveBranch",

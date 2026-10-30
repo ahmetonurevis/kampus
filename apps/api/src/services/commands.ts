@@ -9,6 +9,7 @@ import {
   restoreRecord,
   type ArchiveKind,
 } from '@kampus/school-core/lib/school-management.ts'
+import { recordGrade, updateGrade } from '@kampus/school-core/lib/grades.ts'
 import { runWorkflow, type WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
 import type { Actor } from '@kampus/school-core/lib/scope.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
@@ -107,11 +108,12 @@ function execute(
   ctx: ServiceContext,
   request: OperationRequest<Entity>,
   options: CommandOptions,
+  statusCode = 200,
 ): Promise<CommandResponse> {
   return runCommand(
     ctx,
     request,
-    (outcome) => commandBody(outcome.result, outcome.changes),
+    (outcome) => commandBody(outcome.result, outcome.changes, statusCode),
     options.idempotency,
   )
 }
@@ -383,6 +385,81 @@ async function archiveOrRestore(
             requireAuthorized(actor, action, { kind }, state, { now, institutionType })
             run(state, now)
             return { collection, id: recordId }
+          },
+        }
+      },
+    },
+    options,
+  )
+}
+
+/**
+ * Resmî not girişi (core `recordGrade`, DOM-AKD-004). Yetki core'dadır (`grade.record`): yalnız
+ * öğrencinin sınıfında o dersin atanmış öğretmeni (DOM-AKD-054); dil okulunda resmî not yoktur
+ * (422 `official_grades_school_only`). Aynı gün aynı türde ikinci not 409 `grade_duplicate`;
+ * ağ tekrarına karşı `Idempotency-Key` zorunludur. Başarı 201.
+ */
+export async function recordGradeCommand(
+  ctx: ServiceContext,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  const spec = OPERATION_COMMANDS['grade.record']
+  return execute(
+    ctx,
+    {
+      action: 'grade.record',
+      collections: spec.collections,
+      // Yeni notun kimliği işlem çalışınca belli olur.
+      entity: auditEntity('grades'),
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        return {
+          scalars,
+          run: (state, { now, makeId }) => {
+            const grade = recordGrade(state, actor, input, makeId, now, { institutionType })
+            return { collection: 'grades', id: grade.id }
+          },
+        }
+      },
+    },
+    options,
+    201,
+  )
+}
+
+/**
+ * Not puanını gerekçeyle düzeltir (core `updateGrade`, DOM-AKD-051): eski puan düzeltme
+ * geçmişinde kalır. Yetki core'dadır (`grade.update`): atanmış ders öğretmeni veya gerekçeyle
+ * yönetici; aktörün göremediği not 404. `If-Match` notun okunan sürümüdür.
+ */
+export async function updateGradeCommand(
+  ctx: ServiceContext,
+  gradeId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  const spec = OPERATION_COMMANDS['grade.update']
+  return execute(
+    ctx,
+    {
+      action: 'grade.update',
+      collections: spec.collections,
+      ...(options.expectedVersion !== null
+        ? {
+            expectedVersions: [
+              { collection: 'grades', id: gradeId, version: options.expectedVersion },
+            ],
+          }
+        : {}),
+      entity: { type: 'grades', id: gradeId },
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        return {
+          scalars,
+          run: (state, { now }) => {
+            updateGrade(state, actor, gradeId, input, now, { institutionType })
+            return { collection: 'grades', id: gradeId }
           },
         }
       },

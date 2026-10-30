@@ -9,6 +9,7 @@ import { z } from 'zod'
 
 import { automationSchemas } from '@kampus/school-core/lib/assessment-automation.ts'
 import { WRITE_ACTION_ROLES, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
+import { gradeRecordSchema, gradeUpdateSchema } from '@kampus/school-core/lib/grades.ts'
 import type { ArchiveKind } from '@kampus/school-core/lib/school-management.ts'
 import {
   mayRun,
@@ -24,8 +25,10 @@ import {
   executeTutoringCommand,
   executeWorkflowCommand,
   payInvoiceCommand,
+  recordGradeCommand,
   recordAttendanceCommand,
   restoreCommand,
+  updateGradeCommand,
   type CommandOptions,
   type TutoringCommand,
 } from '../services/commands.ts'
@@ -38,6 +41,7 @@ import {
   commandErrors,
   commandHeadersSchema,
   commandResponseSchema,
+  gradeParamsSchema,
   invoiceParamsSchema,
   payInvoiceBodySchema,
   teacherParamsSchema,
@@ -69,6 +73,7 @@ declare module 'fastify' {
 }
 
 const response = { 200: commandResponseSchema, ...commandErrors }
+const created = { 201: commandResponseSchema, ...commandErrors }
 
 function captureInput(): preValidationAsyncHookHandler {
   return async function (request) {
@@ -256,6 +261,67 @@ export function registerCommandRoutes(app: FastifyInstance) {
           contextOf(request),
           request.params.classId,
           request.body,
+          options(request, 'optional'),
+        ),
+      ),
+  )
+
+  // --- Resmî not ----------------------------------------------------------------------------
+  // Yetki core `grade.record`/`grade.update` (DOM-AKD-054): not girişi yalnız atandığı sınıf ve
+  // dersin öğretmeninde; yönetici yeni not girmez, yalnız gerekçeyle düzeltir (DOM-AKD-051).
+  typed.post(
+    '/api/v1/grades',
+    {
+      preValidation: operationGuard('grade.record', { subject: false }),
+      schema: {
+        operationId: 'recordGrade',
+        tags: ['grades'],
+        summary: 'Resmî not gir',
+        description: `Resmî not kaydı ekler (core \`recordGrade\`, DOM-AKD-004); dönem ortalaması saklanmaz. Yetki core \`authorize('grade.record')\`: yalnız öğrencinin sınıfında o dersin atanmış öğretmeni (başka ders veya sınıf 403 \`grade_assignment_forbidden\`). Dil okulunda 422 \`official_grades_school_only\`; aynı gün aynı türde ikinci not 409 \`grade_duplicate\`; gelecek tarih 422. \`Idempotency-Key\` zorunludur. Başarı 201 ve \`Location\`. Roller: ${rolesOf('grade.record')}.`,
+        headers: commandHeadersSchema('required', { ifMatch: false }),
+        body: gradeRecordSchema,
+        response: created,
+      },
+    },
+    async (request, reply) => {
+      const body = sendCommand(
+        reply,
+        await recordGradeCommand(
+          contextOf(request),
+          request.commandInput,
+          options(request, 'required'),
+        ),
+      )
+      // Tekrarlanan yanıt da aynı konumu verir: kimlik saklanan gövdededir.
+      const entity = body.data.entity
+      if (entity)
+        reply.header('location', `/api/v1/collections/grades/${encodeURIComponent(entity.id)}`)
+      return body
+    },
+  )
+
+  typed.patch(
+    '/api/v1/grades/:gradeId',
+    {
+      preValidation: operationGuard('grade.update'),
+      schema: {
+        operationId: 'updateGrade',
+        tags: ['grades'],
+        summary: 'Notu gerekçeyle düzelt',
+        description: `Not puanını gerekçeyle düzeltir; eski puan \`corrections\` geçmişinde kalır (core \`updateGrade\`, DOM-AKD-051). Yetki core \`authorize('grade.update')\`: atanmış ders öğretmeni veya \`reason\` ile yönetici; görülemeyen not 404. Aynı puan 409 \`grade_unchanged\`, quizden aktarılan not 422. \`If-Match\` notun sürümüdür; tutmazsa 409 \`version_conflict\`. Denetim kaydına değer değil alan adı yazılır. Roller: ${rolesOf('grade.update')}.`,
+        headers: commandHeadersSchema('optional'),
+        params: gradeParamsSchema,
+        body: gradeUpdateSchema,
+        response,
+      },
+    },
+    async (request, reply) =>
+      sendCommand(
+        reply,
+        await updateGradeCommand(
+          contextOf(request),
+          request.params.gradeId,
+          request.commandInput,
           options(request, 'optional'),
         ),
       ),

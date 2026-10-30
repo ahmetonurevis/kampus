@@ -131,6 +131,8 @@ export const attendanceBodySchema = z.object({
     ),
 })
 
+export const gradeParamsSchema = z.object({ gradeId: recordId('Not kimliği') })
+
 export const branchParamsSchema = z.object({ branchId: recordId('Kampüs kimliği') })
 export const teacherParamsSchema = z.object({ teacherId: recordId('Öğretmen kimliği') })
 

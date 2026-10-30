@@ -169,6 +169,58 @@ describe('koleksiyon sorguları: durum, sayım, bağlı alan', () => {
       assert.equal((await get(invoicesUrl(status('Gecikmiş')), teacher)).statusCode, 403)
     })
 
+    test('classId süzgeci ve gruplaması öğrencinin güncel sınıfından; kapsam korunur', async () => {
+      const { id, adminCookie } = await institution()
+      const classOf = (studentId: unknown) =>
+        SEED.students.find((item) => item.id === studentId)?.classId
+      const invoices = [...PAID_SAMPLE.map((row) => row.data), ...EXTRA_INVOICES]
+      const inClasses = (...classIds: string[]) =>
+        invoices
+          .filter((row) => classIds.includes(classOf(row.studentId) ?? ''))
+          .map((row) => String(row.id))
+          .sort()
+      const s1Class = classOf('s1')
+      const s11Class = classOf('s11')
+      assert.ok(s1Class && s11Class && s1Class !== s11Class)
+      const sortedIds = async (cookie: string, query: string) =>
+        (await ids(cookie, invoicesUrl(query))).sort()
+
+      const firstClass = await sortedIds(adminCookie, `classId=${s1Class}`)
+      assert.ok(firstClass.includes('test-inv-late-s1'))
+      assert.deepEqual(firstClass, inClasses(s1Class))
+      assert.deepEqual(
+        await sortedIds(adminCookie, `classId=${s1Class}&classId=${s11Class}`),
+        inClasses(s1Class, s11Class),
+      )
+      assert.deepEqual(await ids(adminCookie, invoicesUrl('classId=test-bos')), [])
+      // Diğer süzgeçlerle birlikte: sınıfın gecikmiş taksitleri.
+      assert.deepEqual(
+        await ids(adminCookie, invoicesUrl(`classId=${s11Class}&${status('Gecikmiş')}`)),
+        ['test-inv-late-s11'],
+      )
+      // Sınıf başına sayım da öğrencinin sınıfıyla.
+      const groups = await get(
+        `/api/v1/collections/invoices/counts?groupBy=classId&sum=amount`,
+        adminCookie,
+      )
+      assert.equal(groups.statusCode, 200, groups.body)
+      for (const group of groups.json().data as { value: string; count: number }[])
+        assert.equal(group.count, inClasses(group.value).length, group.value)
+      assert.ok((groups.json().data as { value: unknown }[]).every((group) => group.value !== null))
+      // Veli sınıf süzgeciyle kendi çocukları dışındaki taksiti görmez.
+      const parent = await memberCookie(id, 'veli', [{ kind: 'child', recordId: 's1' }])
+      const parentIds = await sortedIds(parent, `classId=${s1Class}`)
+      assert.ok(parentIds.length > 0)
+      assert.deepEqual(
+        parentIds,
+        invoices
+          .filter((row) => row.studentId === 's1')
+          .map((row) => String(row.id))
+          .sort(),
+      )
+      assert.deepEqual(await ids(parent, invoicesUrl(`classId=${s11Class}`)), [])
+    })
+
     test('bilinmeyen durum değeri 400; kayıtlar değişmez', async () => {
       const { id, adminCookie } = await institution()
       const before = await rowsOf(id)

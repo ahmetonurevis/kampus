@@ -82,6 +82,7 @@ export type FilterField = (typeof FILTER_FIELDS)[number]
  */
 const CLASS_VIA_STUDENT: ReadonlySet<CollectionName> = new Set<CollectionName>([
   'grades',
+  'invoices',
   'absences',
   'submissions',
   'quizAttempts',

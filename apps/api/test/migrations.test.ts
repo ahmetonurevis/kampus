@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
 
-import { PGlite } from '@electric-sql/pglite'
 import { asc, eq, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
@@ -14,7 +13,15 @@ import { stateRecords, demoState } from '../src/db/demo-seed.ts'
 import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
-import { buildTestApp, createInstitution, createMember, FIXED_NOW } from './support/app.ts'
+import {
+  buildTestApp,
+  createInstitution,
+  createMember,
+  createTestDatabase,
+  FIXED_NOW,
+  newPGlite,
+} from './support/app.ts'
+import { seedResource } from './support/resources-sample.ts'
 
 interface Journal {
   entries: { tag: string }[]
@@ -43,7 +50,7 @@ async function migrationsUpTo(lastTag: string): Promise<string> {
 }
 
 describe('veri dönüştüren migration’lar', () => {
-  const client = new PGlite()
+  const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
   let folder: string
@@ -132,7 +139,7 @@ describe('veri dönüştüren migration’lar', () => {
 })
 
 describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
-  const client = new PGlite()
+  const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
   let folder: string
@@ -196,7 +203,7 @@ describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
 })
 
 describe('0008: denetim kaydı gerekçe kolonu', () => {
-  const client = new PGlite()
+  const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
   let folder: string
@@ -252,7 +259,7 @@ describe('0008: denetim kaydı gerekçe kolonu', () => {
 })
 
 describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
-  const client = new PGlite()
+  const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
   let folder: string
@@ -419,5 +426,93 @@ describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
     } finally {
       await app.close()
     }
+  })
+})
+
+describe('0010–0011: içerik havuzu tabloları', () => {
+  let db: Database
+  let close: () => Promise<void>
+  let app: Awaited<ReturnType<typeof buildTestApp>>
+
+  before(async () => {
+    ;({ db, close } = await createTestDatabase())
+    app = await buildTestApp(db)
+  })
+  after(async () => {
+    await app.close()
+    await close()
+  })
+
+  /** Sürücüden bağımsız `execute` sonucu: PGlite ve node-postgres ikisi de `rows` döndürür. */
+  const rows = async <T>(query: ReturnType<typeof sql>) =>
+    ((await db.execute(query)) as unknown as { rows: T[] }).rows
+
+  test('arama indeksi kurumla başlayan bileşik GIN; her indeks institution_id ile başlar; btree_gin kurulu', async () => {
+    const extensions = await rows<{ extname: string }>(
+      sql`select extname from pg_extension where extname = 'btree_gin'`,
+    )
+    assert.equal(extensions.length, 1)
+    const indexes = await rows<{ indexname: string; indexdef: string }>(
+      sql`select indexname, indexdef from pg_indexes
+          where tablename in ('resources', 'resource_versions', 'resource_version_outcomes',
+            'resource_version_items', 'resource_shares')
+          order by indexname`,
+    )
+    assert.ok(indexes.length >= 10)
+    for (const index of indexes)
+      assert.match(index.indexdef, /\(institution_id[,)]/, `${index.indexname} kurumla başlamalı`)
+    const search = indexes.find((index) => index.indexname === 'resource_versions_search_idx')
+    assert.match(search?.indexdef ?? '', /USING gin \(institution_id, search_vector\)/)
+  })
+
+  test('DOM-KYN-051: kısıtlar başka kurumun sürümüne bağlanmayı, içeriksiz canlı sürümü ve ikinci açık taslağı reddeder', async () => {
+    const a = await createInstitution(app)
+    const b = await createInstitution(app)
+    const owner = a.admin.id
+    const { resource, versions } = await seedResource(db, a.id, {
+      ownerUserId: owner,
+      versions: [{ status: 'published' }, { status: 'draft' }],
+    })
+    const published = versions[0]!
+    const stored = await rows<{ current_version_id: string; license_kind: string }>(
+      sql`select r.current_version_id, v.license_kind from resources r
+          join resource_versions v on v.institution_id = r.institution_id and v.id = r.current_version_id
+          where r.institution_id = ${a.id} and r.id = ${resource.id}`,
+    )
+    assert.deepEqual(stored, [
+      { current_version_id: published.id, license_kind: 'institution_original' },
+    ])
+
+    const violates = async (query: ReturnType<typeof sql>, constraint: string) => {
+      await assert.rejects(db.execute(query), (error: unknown) => {
+        const cause = (error as { cause?: { constraint?: string } }).cause
+        assert.equal(cause?.constraint ?? (error as { constraint?: string }).constraint, constraint)
+        return true
+      })
+    }
+    // Başka kurumun sürümünü güncel yapmak: bileşik yabancı anahtar.
+    const { resource: other } = await seedResource(db, b.id, { ownerUserId: b.admin.id })
+    await violates(
+      sql`update resources set current_version_id = ${published.id}
+          where institution_id = ${b.id} and id = ${other.id}`,
+      'resources_current_version_fkey',
+    )
+    await violates(
+      sql`update resource_versions set content = null
+          where institution_id = ${a.id} and id = ${published.id}`,
+      'resource_versions_content_check',
+    )
+    await violates(
+      sql`insert into resource_versions (institution_id, id, resource_id, version_number, status,
+            author_user_id, title, content, search_vector)
+          values (${a.id}, gen_random_uuid(), ${resource.id}, 3, 'rejected', ${owner}, 'Başlık',
+            '{"type":"text","body":"x","fileId":null}', to_tsvector('simple', 'baslik'))`,
+      'resource_versions_editable_key',
+    )
+    await violates(
+      sql`update resource_versions set status = 'published', published_at = null
+          where institution_id = ${a.id} and id = ${versions[1]!.id}`,
+      'resource_versions_published_check',
+    )
   })
 })

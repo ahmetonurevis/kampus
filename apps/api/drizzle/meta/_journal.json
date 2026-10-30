@@ -71,6 +71,20 @@
       "when": 1793344560394,
       "tag": "0009_split_conversation_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793357207615,
+      "tag": "0010_enable_btree_gin",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793357211908,
+      "tag": "0011_create_content_pool",
+      "breakpoints": true
     }
   ]
 }

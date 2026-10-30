@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -75,6 +76,14 @@ function DeliveryDetail({ homeworkId }: Omit<Props, 'onClose'>) {
       />
       <SummarySection title="Ödev açıklaması">
         <p className="text-sm [overflow-wrap:anywhere]">{homework.description}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <PdfButton
+            type="homework"
+            recordId={homework.id}
+            label="Çalışma kâğıdını görüntüle"
+            size="default"
+          />
+        </div>
       </SummarySection>
       <SummarySection title="Öğrenci durumu">
         {summary.students.length ? (
@@ -85,7 +94,17 @@ function DeliveryDetail({ homeworkId }: Omit<Props, 'onClose'>) {
                 className="flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-sm"
               >
                 <strong className="font-medium">{entry.name}</strong>
-                <StatusBadge text={entry.status} />
+                <span className="flex flex-wrap items-center justify-end gap-2">
+                  <StatusBadge text={entry.status} />
+                  {entry.submissionId ? (
+                    <PdfButton
+                      type="submission"
+                      recordId={entry.submissionId}
+                      label="Değerlendirme formu"
+                      ariaLabel={`${entry.name} değerlendirme formunu görüntüle`}
+                    />
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>

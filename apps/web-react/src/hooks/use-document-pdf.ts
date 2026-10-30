@@ -5,10 +5,12 @@ import { useActiveInstitutionId } from '@kampus/react-shared/use-active-institut
 import { documentData } from '@kampus/school-core/lib/document-data.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { documentErrorMessage, loadDocumentState } from '@/lib/pdf/document-state.ts'
+import { homeworkDocument, submissionDocument } from '@/lib/pdf/homework-templates.ts'
 import {
   contractDocument,
   documentFilename,
   materialDocument,
+  paymentPlanDocument,
   receiptDocument,
   type PdfDocumentType,
 } from '@/lib/pdf/templates.ts'
@@ -29,13 +31,18 @@ export class DocumentPdfError extends Error {
  * bekletir. Blob önbellekte tutulmaz (`gcTime: 0`) ve pencere odağı dönünce yeniden üretilmez;
  * önizleme, indirme ve yazdırma aynı Blob'u kullanır.
  */
-export function useDocumentPdf(type: PdfDocumentType, recordId: string, enabled: boolean) {
+export function useDocumentPdf(
+  type: PdfDocumentType,
+  recordId: string,
+  enabled: boolean,
+  studentId?: string,
+) {
   const client = useKampusClient()
   const institutionId = useActiveInstitutionId()
   const { session } = useAuth()
   const institution = session?.institution.name ?? 'Kampüs'
   return useQuery<DocumentPdf, DocumentPdfError>({
-    queryKey: institutionKey(institutionId, 'document-pdf', type, recordId),
+    queryKey: institutionKey(institutionId, 'document-pdf', type, recordId, studentId ?? ''),
     enabled: institutionId !== null && enabled && Boolean(recordId),
     gcTime: 0,
     staleTime: Infinity,
@@ -44,7 +51,11 @@ export function useDocumentPdf(type: PdfDocumentType, recordId: string, enabled:
     refetchOnReconnect: false,
     queryFn: async ({ signal }) => {
       try {
-        const state = await loadDocumentState(client, { type, recordId }, signal)
+        const state = await loadDocumentState(
+          client,
+          { type, recordId, ...(studentId ? { studentId } : {}) },
+          signal,
+        )
         const options = { institution }
         const { renderPdf } = await import('@/lib/pdf/render.ts')
         const { blob, pages } = await renderPdf((measurer) => {
@@ -55,6 +66,24 @@ export function useDocumentPdf(type: PdfDocumentType, recordId: string, enabled:
               return contractDocument(measurer, documentData(state, 'contract', recordId), options)
             case 'material':
               return materialDocument(measurer, documentData(state, 'material', recordId), options)
+            case 'payment-plan':
+              return paymentPlanDocument(
+                measurer,
+                documentData(state, 'payment-plan', recordId),
+                options,
+              )
+            case 'homework':
+              return homeworkDocument(
+                measurer,
+                documentData(state, 'homework', recordId, studentId),
+                options,
+              )
+            case 'submission':
+              return submissionDocument(
+                measurer,
+                documentData(state, 'submission', recordId),
+                options,
+              )
             default:
               return type satisfies never
           }

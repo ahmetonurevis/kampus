@@ -225,6 +225,20 @@ export class DocumentLayout {
     this.y += 38
   }
 
+  /** Birkaç kısa göstergeyi tek bantta yan yana yazar (toplam, tahsil edilen, kalan gibi). */
+  metrics(items: readonly (readonly [label: string, value: string])[]) {
+    this.ensure(27)
+    const { sapphire, sapphireSoft, orange } = COLORS
+    const step = (PAGE.contentWidth - 6) / Math.max(items.length, 1)
+    this.box(PAGE.left, this.y, PAGE.contentWidth, 22, sapphireSoft, 3)
+    this.box(PAGE.left, this.y + 5, 1.5, 12, orange, 0.75)
+    items.forEach(([label, value], index) => {
+      this.text(label, 24 + index * step, this.y + 7, 7, sapphire)
+      this.text(value, 24 + index * step, this.y + 16, 13, sapphire)
+    })
+    this.y += 27
+  }
+
   /** Tablo: sayfa değişince başlık satırı yeni sayfada yeniden çizilir. */
   table(columns: readonly TableColumn[], rows: readonly (readonly unknown[])[], compact = false) {
     const drawHeader = () => {

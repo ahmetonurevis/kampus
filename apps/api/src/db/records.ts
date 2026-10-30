@@ -74,7 +74,29 @@ export interface DayRangeMatch {
   toInstant: string | null
 }
 
-export type RecordFilter = FieldMatch | ActiveMatch | DayRangeMatch
+/**
+ * Taksit durumu süzgeci (`status`; durum saklanmaz, core `invoiceStatus` ile `paidAt`, vade ve
+ * isteğin saatinden türetilir). SQL koşulu core kuralının çevirisidir: `paidAt` doluysa (JS
+ * doğruluk değeri) "Ödendi"; değilse vade günü bugünden önceyse "Gecikmiş", değilse "Yaklaşan".
+ * Vade `YYYY-MM-DD` ise günle, `toISOString` biçiminde an ise bugünün başladığı anla
+ * karşılaştırılır; başka biçimli vade SQL'de ödenmemiş her durumun adayıdır. Karar bellekte core
+ * fonksiyonuyla verilir (`list-filters.ts`); testler iki biçimde iki tarafın aynı olduğunu
+ * sınır günleriyle doğrular.
+ */
+export interface InvoiceStatusMatch {
+  kind: 'invoiceStatus'
+  statuses: readonly InvoiceStatusLabel[]
+  /** İsteğin Europe/Istanbul günü (`YYYY-MM-DD`). */
+  today: string
+  /** `today` gününün başladığı an (UTC ISO). */
+  todayStart: string
+}
+
+/** Core `invoiceStatus` etiketleri (`lib/format.ts`). */
+export const INVOICE_STATUS_LABELS = ['Ödendi', 'Gecikmiş', 'Yaklaşan'] as const
+export type InvoiceStatusLabel = (typeof INVOICE_STATUS_LABELS)[number]
+
+export type RecordFilter = FieldMatch | ActiveMatch | DayRangeMatch | InvoiceStatusMatch
 
 /** Gün ve an biçimleri; SQL (`~`) ve bellek (`RegExp`) aynı metni kullanır. */
 export const DAY_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
@@ -110,6 +132,35 @@ function dayRangeMatch(match: DayRangeMatch): SQL {
   return sql`(jsonb_typeof(${records.data} -> ${match.field}::text) = 'string' and (${day} or ${instant}))`
 }
 
+/** JS'de yanlış sayılan JSON değerleri; `paidAt` bunlardan biri değilse taksit ödenmiştir. */
+const FALSY_JSON = sql`('null'::jsonb, 'false'::jsonb, '""'::jsonb, '0'::jsonb)`
+
+function invoiceStatusMatch(match: InvoiceStatusMatch): SQL {
+  const paid = sql`(coalesce(${records.data} -> 'paidAt', 'null'::jsonb) not in ${FALSY_JSON})`
+  const due = sql`(${records.data} ->> 'dueDate')`
+  const ordered = sql`(${due} collate "C")`
+  const dayForm = sql`(jsonb_typeof(${records.data} -> 'dueDate') = 'string' and ${due} ~ ${DAY_PATTERN})`
+  const instantForm = sql`(jsonb_typeof(${records.data} -> 'dueDate') = 'string' and ${due} ~ ${INSTANT_PATTERN})`
+  const otherForm = sql`(not ${dayForm} and not ${instantForm})`
+  const today = sql`(${match.today}::text collate "C")`
+  const todayStart = sql`(${match.todayStart}::text collate "C")`
+  const overdue = sql`((${dayForm} and ${ordered} < ${today}) or (${instantForm} and ${ordered} < ${todayStart}) or ${otherForm})`
+  const upcoming = sql`((${dayForm} and ${ordered} >= ${today}) or (${instantForm} and ${ordered} >= ${todayStart}) or ${otherForm})`
+  const parts = match.statuses.map((status) => {
+    switch (status) {
+      case 'Ödendi':
+        return paid
+      case 'Gecikmiş':
+        return sql`(not ${paid} and ${overdue})`
+      case 'Yaklaşan':
+        return sql`(not ${paid} and ${upcoming})`
+      default:
+        return status satisfies never
+    }
+  })
+  return parts.length === 0 ? sql`false` : sql`(${sql.join(parts, sql` or `)})`
+}
+
 /** Süzgecin SQL koşulu (alan adı ve değerler parametredir). */
 export function recordFilter(filter: RecordFilter): SQL {
   switch (filter.kind) {
@@ -120,6 +171,8 @@ export function recordFilter(filter: RecordFilter): SQL {
       return activeMatch(filter)
     case 'dayRange':
       return dayRangeMatch(filter)
+    case 'invoiceStatus':
+      return invoiceStatusMatch(filter)
     default:
       return filter satisfies never
   }

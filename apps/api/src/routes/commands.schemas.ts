@@ -7,6 +7,46 @@ import { authenticatedErrors } from './common.schemas.ts'
 export const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_-]{8,128}$/
 
 /**
+ * OpenAPI'de zorunlu görünecek başlığın işareti. Çalışma zamanında başlık şemada isteğe bağlıdır:
+ * eksik zorunlu anahtar Zod `validation_failed` değil 400 `idempotency_key_required` döner
+ * (`command-support.ts`). Belge dönüşümü (`requireMarkedHeaders`) işaretli başlığı `required`
+ * listesine taşır ve işareti siler.
+ */
+export const REQUIRED_HEADER_MARK = 'x-kampus-required-header'
+
+type JsonObject = Record<string, unknown>
+const isObject = (value: unknown): value is JsonObject =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** `@fastify/swagger` dönüşümünün çıktısında işaretli başlıkları zorunlu yapar. */
+export function requireMarkedHeaders<T extends { schema: unknown }>(transformed: T): T {
+  const headers = isObject(transformed.schema) ? transformed.schema.headers : undefined
+  if (!isObject(headers) || !isObject(headers.properties)) return transformed
+  const marked: string[] = []
+  const properties = Object.fromEntries(
+    Object.entries(headers.properties).map(([name, property]) => {
+      if (!isObject(property) || property[REQUIRED_HEADER_MARK] !== true) return [name, property]
+      marked.push(name)
+      return [
+        name,
+        Object.fromEntries(
+          Object.entries(property).filter(([key]) => key !== REQUIRED_HEADER_MARK),
+        ),
+      ]
+    }),
+  )
+  if (marked.length === 0) return transformed
+  const required = Array.isArray(headers.required) ? headers.required : []
+  return {
+    ...transformed,
+    schema: {
+      ...(transformed.schema as JsonObject),
+      headers: { ...headers, properties, required: [...new Set([...required, ...marked])] },
+    },
+  }
+}
+
+/**
  * Komut uçlarının başlıkları. Nesne gevşektir: Fastify doğrulanan başlık nesnesini istekte
  * kullandığı için bilinmeyen başlıklar (çerez, köken) atılmamalıdır. `ifMatch: false`: işlemin
  * önceden var olan konusu yoktur (oluşturma); başlık şemada yer almaz ve gönderilirse 400
@@ -16,16 +56,16 @@ export function commandHeadersSchema(
   idempotency: 'required' | 'optional',
   { ifMatch = true }: { ifMatch?: boolean } = {},
 ) {
+  const key = z.string().regex(IDEMPOTENCY_KEY_PATTERN, 'İstek anahtarı geçersiz.').optional()
   return z.looseObject({
-    'idempotency-key': z
-      .string()
-      .regex(IDEMPOTENCY_KEY_PATTERN, 'İstek anahtarı geçersiz.')
-      .optional()
-      .describe(
-        idempotency === 'required'
-          ? 'Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır.'
-          : 'İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır.',
-      ),
+    'idempotency-key': (idempotency === 'required'
+      ? key.meta({ [REQUIRED_HEADER_MARK]: true })
+      : key
+    ).describe(
+      idempotency === 'required'
+        ? 'Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır.'
+        : 'İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır.',
+    ),
     ...(ifMatch
       ? {
           'if-match': z

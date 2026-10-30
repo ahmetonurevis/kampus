@@ -1,3 +1,5 @@
+import { dayKey, invoiceStatus } from '@kampus/school-core/lib/format.ts'
+
 import type { RecordData } from '../db/collections.ts'
 import {
   DAY_PATTERN,
@@ -5,14 +7,17 @@ import {
   type ActiveMatch,
   type DayRangeMatch,
   type FieldMatch,
+  type InvoiceStatusLabel,
+  type InvoiceStatusMatch,
   type RecordFilter,
 } from '../db/records.ts'
 
 /**
  * Liste süzgeçlerinin bellekteki karşılığı. Her süzgecin SQL koşulu `db/records.ts`
  * `recordFilter`'dadır; burada aynı kural ayıklanmış kayıt üzerinde uygulanır. `in` SQL'de aday
- * (dizi alanı geçer), bellekte kesindir; `active` ve `dayRange` iki tarafta da kesindir ve
- * testler iki tarafın aynı sonucu verdiğini doğrular.
+ * (dizi alanı geçer), bellekte kesindir; `active` ve `dayRange` iki tarafta da kesindir;
+ * `invoiceStatus` gün ve an biçimli vadede kesin, başka biçimde SQL'de adaydır. Testler iki
+ * tarafın aynı sonucu verdiğini doğrular.
  */
 
 const TIME_ZONE = 'Europe/Istanbul'
@@ -97,6 +102,39 @@ export function matchesActive(record: RecordData, { field, active }: ActiveMatch
   return (record[field] === false) !== active
 }
 
+/**
+ * Taksitin core durumu (`invoiceStatus`); `today` Europe/Istanbul günüdür (`dayKey(ctx.now)`).
+ * Ödenmemiş taksitin vadesi okunamıyorsa durum yoktur (`null`): core böyle bir vadede hata
+ * fırlatır, kayıt hiçbir duruma sayılmaz.
+ */
+export function invoiceStatusOf(record: RecordData, today: string): InvoiceStatusLabel | null {
+  const paidAt = record.paidAt
+  const dueDate = record.dueDate
+  const paid = typeof paidAt === 'string' ? paidAt : paidAt ? String(paidAt) : null
+  if (!paid) {
+    if (typeof dueDate !== 'string' && typeof dueDate !== 'number') return null
+    if (Number.isNaN(new Date(dueDate).getTime())) return null
+  }
+  return invoiceStatus(
+    { paidAt: paid, dueDate: typeof dueDate === 'number' ? dueDate : String(dueDate) },
+    today,
+  )
+}
+
+/** Durum süzgeci; gün ve başlangıç anı isteğin saatinden (`ctx.now`). */
+export function invoiceStatusFilter(
+  statuses: readonly InvoiceStatusLabel[],
+  now: Date,
+): InvoiceStatusMatch {
+  const today = dayKey(now)
+  return { kind: 'invoiceStatus', statuses, today, todayStart: istanbulDayStart(today) }
+}
+
+export function matchesInvoiceStatus(record: RecordData, match: InvoiceStatusMatch): boolean {
+  const status = invoiceStatusOf(record, match.today)
+  return status !== null && match.statuses.includes(status)
+}
+
 function primitiveText(value: unknown): string | null {
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
@@ -119,6 +157,8 @@ export function matchesRecordFilter(record: RecordData, filter: RecordFilter): b
       return matchesActive(record, filter)
     case 'dayRange':
       return matchesDayRange(record, filter)
+    case 'invoiceStatus':
+      return matchesInvoiceStatus(record, filter)
     default:
       return filter satisfies never
   }

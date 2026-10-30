@@ -6,14 +6,18 @@ import { errorResponseSchema } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import {
   collectionModule,
+  countCollection,
   FILTER_FIELDS,
   getCollectionItem,
   listCollection,
   parseSort,
+  type CollectionReadQuery,
   type FilterField,
 } from '../services/collection-reads.ts'
 import { authenticatedErrors } from './common.schemas.ts'
 import {
+  collectionCountsQuerySchema,
+  collectionCountsResponseSchema,
   collectionItemResponseSchema,
   collectionListQuerySchema,
   collectionListResponseSchema,
@@ -30,17 +34,46 @@ function moduleOfRequest(request: FastifyRequest): string | null {
   return collectionModule(collection)
 }
 
+type ReadQueryInput = Partial<Record<FilterField, string | string[]>> & {
+  q?: string | undefined
+  archived?: CollectionReadQuery['archived']
+  isActive?: 'true' | 'false' | undefined
+  dateFrom?: string | undefined
+  dateTo?: string | undefined
+}
+
+/** Liste ve sayım sorgusunun ortak süzgeçleri (şemadan geçmiş sorgu). */
+function readQueryOf(query: ReadQueryInput): CollectionReadQuery {
+  const filters: Partial<Record<FilterField, readonly string[]>> = {}
+  for (const field of FILTER_FIELDS) {
+    const value = query[field]
+    if (value !== undefined) filters[field] = typeof value === 'string' ? [value] : value
+  }
+  return {
+    q: query.q,
+    archived: query.archived,
+    filters,
+    isActive: query.isActive === undefined ? undefined : query.isActive === 'true',
+    dateFrom: query.dateFrom,
+    dateTo: query.dateTo,
+  }
+}
+
 /**
  * Koleksiyon okuma uçları (geçiş köprüsü, api-tasarimi.md §1). Her rol kimlik doğrulamasından
  * geçer; rol, kayıt ve alan kapsamı serviste school-core `scopeFor` ile uygulanır (varsayılan ret).
  */
 export function registerCollectionRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
-  const preHandler = [app.requireRole(ROLES), app.requireModule(moduleOfRequest)]
+  // Kimlik sorgu doğrulamasından önce (oturumsuz istek her sorguda 401); modül çözücüsü
+  // doğrulanmış yol parametresini okur.
+  const preValidation = [app.requireRole(ROLES)]
+  const preHandler = [app.requireModule(moduleOfRequest)]
 
   typed.get(
     '/api/v1/collections/:collection',
     {
+      preValidation,
       preHandler,
       schema: {
         operationId: 'listCollection',
@@ -54,30 +87,52 @@ export function registerCollectionRoutes(app: FastifyInstance) {
       },
     },
     async (request) => {
-      const { page, pageSize, q, sort, archived, isActive, dateFrom, dateTo } = request.query
-      const filters: Partial<Record<FilterField, readonly string[]>> = {}
-      for (const field of FILTER_FIELDS) {
-        const value = request.query[field]
-        if (value !== undefined) filters[field] = typeof value === 'string' ? [value] : value
-      }
+      const { page, pageSize, sort } = request.query
       const result = await listCollection(contextOf(request), request.params.collection, {
+        ...readQueryOf(request.query),
         page,
         pageSize,
-        q,
         sort: parseSort(sort),
-        archived,
-        filters,
-        isActive: isActive === undefined ? undefined : isActive === 'true',
-        dateFrom,
-        dateTo,
       })
       return { data: result.items, meta: { page, pageSize, total: result.total } }
+    },
+  )
+
+  // Statik `counts` parçası `/:collection/:id`'den önce eşlenir (kimliği `counts` olan kayıt yok).
+  typed.get(
+    '/api/v1/collections/:collection/counts',
+    {
+      preValidation,
+      preHandler,
+      schema: {
+        operationId: 'countCollection',
+        tags: ['collections'],
+        summary: 'Koleksiyon sayımı',
+        description:
+          'Liste ucuyla aynı kapsam, süzgeç ve aramayla `groupBy` alanına göre grup başına kayıt sayısı; `sum` verilirse grup başına toplam (ör. durum başına taksit sayısı ve tutarı, sınıf başına öğrenci). Kapsam dışı kayıt sayılmaz; rolün göremediği alanla gruplama/toplama 400. Durumlar liste ucuyla aynıdır.',
+        params: collectionParamsSchema,
+        querystring: collectionCountsQuerySchema,
+        response: { 200: collectionCountsResponseSchema, ...errors },
+      },
+    },
+    async (request) => {
+      const { groupBy, sum } = request.query
+      const result = await countCollection(contextOf(request), request.params.collection, {
+        ...readQueryOf(request.query),
+        groupBy,
+        sum,
+      })
+      return {
+        data: result.groups,
+        meta: { total: result.total, ...(result.sum === undefined ? {} : { sum: result.sum }) },
+      }
     },
   )
 
   typed.get(
     '/api/v1/collections/:collection/:id',
     {
+      preValidation,
       preHandler,
       schema: {
         operationId: 'getCollectionRecord',

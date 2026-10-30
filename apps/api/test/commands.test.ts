@@ -382,6 +382,27 @@ describe('yazma uçları', () => {
       assert.deepEqual(entered[0]?.data.weakTopics, ['Kesirler', 'Oran'])
     })
 
+    test('OpenAPI: zorunlu Idempotency-Key uçlarında başlık required, diğerlerinde isteğe bağlı', () => {
+      const document = app.swagger() as {
+        paths: Record<string, Record<string, { parameters?: Record<string, unknown>[] }>>
+      }
+      const required: string[] = []
+      for (const [path, methods] of Object.entries(document.paths))
+        for (const [method, operation] of Object.entries(methods))
+          for (const parameter of operation.parameters ?? [])
+            if (parameter.in === 'header' && parameter.name === 'idempotency-key') {
+              assert.equal('x-kampus-required-header' in (parameter.schema as object), false)
+              if (parameter.required === true) required.push(`${method.toUpperCase()} ${path}`)
+            }
+      const expected = [
+        ...Object.entries(WORKFLOW_ROUTES)
+          .filter(([, route]) => route.idempotency === 'required')
+          .map(([command]) => `POST /api/v1/workflows/${command}`),
+        'POST /api/v1/invoices/{invoiceId}/pay',
+      ]
+      assert.deepEqual(required.sort(), expected.sort())
+    })
+
     test('toplu içe aktarma ve yenileme anahtarsız 400 idempotency_key_required', async () => {
       const a = await institution()
       assertError(

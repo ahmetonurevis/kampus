@@ -4,12 +4,14 @@ import { after, before, describe, test } from 'node:test'
 import { and, asc, eq } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
+import { invoiceStatus } from '@kampus/school-core/lib/format.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { RECORD_COLLECTIONS, recordKey } from '../src/db/collections.ts'
 import {
   findRecord,
+  INVOICE_STATUS_LABELS,
   insertMissingRecords,
   loadRecords,
   writeRecords,
@@ -18,7 +20,13 @@ import {
 } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
 import { AppError, ConflictError, databaseErrorInfo } from '../src/errors.ts'
-import { dayRange, istanbulDayStart, matchesRecordFilter } from '../src/services/list-filters.ts'
+import {
+  dayRange,
+  invoiceStatusFilter,
+  invoiceStatusOf,
+  istanbulDayStart,
+  matchesRecordFilter,
+} from '../src/services/list-filters.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
 
 const LATER = new Date('2026-10-06T10:00:00.000Z')
@@ -473,6 +481,73 @@ describe('records deposu', () => {
       'test-f-j',
       'test-f-k',
     ])
+  })
+
+  test('taksit durumu süzgeci SQL ile core invoiceStatus aynı sonucu verir; sınır günleri dahil', async () => {
+    // FIXED_NOW 2026-10-06T09:00Z: Europe/Istanbul günü 2026-10-06, gün 2026-10-05T21:00Z'de başlar.
+    const exact: Record<string, [Record<string, unknown>, string]> = {
+      'test-s-dun': [{ dueDate: '2026-10-05' }, 'Gecikmiş'],
+      'test-s-bugun': [{ dueDate: '2026-10-06' }, 'Yaklaşan'],
+      'test-s-yarin': [{ dueDate: '2026-10-07' }, 'Yaklaşan'],
+      'test-s-an-dun-son': [{ dueDate: '2026-10-05T20:59:59.999Z' }, 'Gecikmiş'],
+      'test-s-an-bugun-ilk': [{ dueDate: '2026-10-05T21:00:00.000Z' }, 'Yaklaşan'],
+      'test-s-an-bugun-son': [{ dueDate: '2026-10-06T20:59:59.999Z' }, 'Yaklaşan'],
+      'test-s-odendi': [{ dueDate: '2026-10-01', paidAt: '2026-10-01T08:00:00.000Z' }, 'Ödendi'],
+      'test-s-odendi-vadesiz': [{ dueDate: undefined, paidAt: '2026-10-01' }, 'Ödendi'],
+      'test-s-bos-odeme': [{ dueDate: '2026-10-01', paidAt: '' }, 'Gecikmiş'],
+      'test-s-yanlis-odeme': [{ dueDate: '2026-10-09', paidAt: false }, 'Yaklaşan'],
+    }
+    // Başka biçimli vade SQL'de adaydır; karar core'undur.
+    const loose: Record<string, [Record<string, unknown>, string | null]> = {
+      'test-s-bozuk': [{ dueDate: 'bozuk' }, null],
+      'test-s-vadesiz': [{ dueDate: undefined }, null],
+      'test-s-milisaniyesiz': [{ dueDate: '2026-10-05T20:59:59Z' }, 'Gecikmiş'],
+      'test-s-sayi': [{ dueDate: Date.parse('2026-10-07T00:00:00.000Z') }, 'Yaklaşan'],
+    }
+    const id = await institutionWith(
+      Object.entries({ ...exact, ...loose }).map(([key, [extra]]) => invoice(key, extra)),
+    )
+    const stored = await loadRecords(db, id, ['invoices'])
+    const today = '2026-10-06'
+    for (const row of stored) {
+      const expected = (exact[row.id] ?? loose[row.id])?.[1]
+      assert.equal(invoiceStatusOf(row.data, today), expected, row.id)
+      const { paidAt, dueDate } = row.data
+      if (row.id in exact)
+        assert.equal(
+          invoiceStatus(
+            { paidAt: paidAt ? String(paidAt) : null, dueDate: String(dueDate) },
+            today,
+          ),
+          expected,
+          `core ${row.id}`,
+        )
+    }
+    for (const label of INVOICE_STATUS_LABELS) {
+      const filter = invoiceStatusFilter([label], FIXED_NOW)
+      assert.equal(filter.today, today)
+      assert.equal(filter.todayStart, '2026-10-05T21:00:00.000Z')
+      const sqlIds = (await loadRecords(db, id, ['invoices'], { match: [filter] })).map((r) => r.id)
+      const memoryIds = stored.filter((r) => matchesRecordFilter(r.data, filter)).map((r) => r.id)
+      const isExact = (key: string) => key in exact
+      assert.deepEqual(sqlIds.filter(isExact), memoryIds.filter(isExact), label)
+      assert.ok(
+        memoryIds.every((key) => sqlIds.includes(key)),
+        `${label}: SQL bellekteki sonucun üst kümesi`,
+      )
+    }
+    const both = invoiceStatusFilter(['Gecikmiş', 'Ödendi'], FIXED_NOW)
+    const sqlBoth = (await loadRecords(db, id, ['invoices'], { match: [both] })).map((r) => r.id)
+    assert.deepEqual(
+      sqlBoth.filter((key) => key in exact),
+      Object.keys(exact)
+        .filter((key) => ['Gecikmiş', 'Ödendi'].includes(exact[key]?.[1] ?? ''))
+        .sort((a, b) => sqlBoth.indexOf(a) - sqlBoth.indexOf(b)),
+    )
+    assert.deepEqual(
+      await loadRecords(db, id, ['invoices'], { match: [invoiceStatusFilter([], FIXED_NOW)] }),
+      [],
+    )
   })
 
   test('alan ön süzgeci metin, sayı ve mantıksal değeri eşler; dizi alanı adaydır', async () => {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { accessRemainingMs, useConversations } from '@kampus/react-shared/use-communication.ts'
 import { useAuth } from '@/auth/use-auth.ts'
@@ -36,7 +36,7 @@ type Grant = { expiresAt: string; openedAt: number }
  * taraf değildir: önce öğrenciyi seçer (API `studentId` ister), listede yalnız üst veriyi görür
  * ve içeriği gerekçeyle 30 dakikalığına açar; açık erişimler yalnız bellekte durur (sunucu süreyi
  * dışa vermez), sayfa yenilenince gerekçe yeniden istenir.
- * TODO(web-conversation-paging): liste ilk 100 yazışmayla sınırlıdır.
+ * Liste sayfa sayfa gelir: sonunda "Daha fazla yükle" sonraki sayfayı getirir.
  */
 export function MessagesPage({ page, heading = true }: { page: NavPage; heading?: boolean }) {
   useDocumentTitle(page.title)
@@ -71,8 +71,16 @@ export function MessagesPage({ page, heading = true }: { page: NavPage; heading?
     }
   }, [students.data, teachers.data, parents.data])
 
-  const items = conversations.data?.items ?? NONE
+  const items = conversations.items
   const selected = items.find((item) => item.id === panel.selectedId)
+
+  // Bağlantıyla açılan yazışma henüz yüklenmemiş bir sayfadaysa, bulunana ya da liste bitene kadar
+  // sıradaki sayfa getirilir (dış sistemle eşitleme; "bulunamadı" yanlış gösterilmez).
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = conversations
+  const lookingFor = panel.selectedId !== '' && selected === undefined
+  useEffect(() => {
+    if (lookingFor && hasNextPage && !isFetchingNextPage) void fetchNextPage()
+  }, [lookingFor, hasNextPage, isFetchingNextPage, fetchNextPage])
   const grantNow = (id: string) => Math.max(now, grants[id]?.openedAt ?? 0)
   const accessIds = new Set(
     Object.entries(grants)
@@ -200,6 +208,20 @@ export function MessagesPage({ page, heading = true }: { page: NavPage; heading?
                   accessIds={accessIds}
                   onSelect={panel.open}
                 />
+                {conversations.hasNextPage ? (
+                  <div className="flex justify-center p-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void conversations.fetchNextPage()}
+                      disabled={conversations.isFetchingNextPage}
+                      aria-busy={conversations.isFetchingNextPage}
+                    >
+                      {conversations.isFetchingNextPage ? 'Yükleniyor…' : 'Daha fazla yükle'}
+                    </Button>
+                  </div>
+                ) : null}
               </nav>
             ) : null}
             {showThread ? (

@@ -257,6 +257,65 @@ test.describe('mesajlar', () => {
     await expect(page.getByRole('button', { name: 'Gerekçeyle aç' })).toHaveCount(0)
   })
 
+  // Seed bir yazışma sayfasını dolduracak kadar kayıt üretmez (sayfa boyutu 50); API sayfalı yanıtı
+  // `page.route` ile taklit edilir. Sınanan: liste sonunda "Daha fazla yükle", sıradaki sayfanın
+  // eklenmesi ve sonda düğmenin kalkması.
+  test('yazışma listesi sayfa sayfa yüklenir', async ({ page, loginAs, tenant }) => {
+    const school = await tenant({
+      roles: ['yonetici', 'ogretmen', 'ogrenci', 'veli'],
+      students: ['s1'],
+    })
+    const total = 53
+    const requested: string[] = []
+    await page.route(/\/api\/v1\/conversations\?/, async (route) => {
+      const query = new URL(route.request().url()).searchParams
+      const number = Number(query.get('page'))
+      const size = Number(query.get('pageSize'))
+      requested.push(`${number}/${size}`)
+      const ids = Array.from({ length: total }, (_, index) => index + 1).slice(
+        (number - 1) * size,
+        number * size,
+      )
+      await route.fulfill({
+        json: {
+          data: ids.map((index) => ({
+            id: `sayfa-${index}`,
+            studentId: 's1',
+            teacherId: 't1',
+            audience: 'student',
+            parentUserId: null,
+            messageCount: 1,
+            unreadCount: 0,
+            awaitingReply: null,
+            lastMessage: {
+              id: `ileti-${index}`,
+              text: `Sayfalama iletisi ${index}`,
+              sender: 'teacher',
+              sentAt: '2026-10-30T08:00:00.000Z',
+              readAt: null,
+              fromMe: false,
+            },
+          })),
+          meta: { total, page: number, pageSize: size },
+        },
+      })
+    })
+    await loginAs(school.user('ogretmen'))
+    await page.goto('/ogretmen/mesajlar')
+
+    const list = page.getByRole('navigation', { name: 'Yazışma listesi' })
+    const rows = list.getByRole('listitem')
+    await expect(list.getByText('Sayfalama iletisi 1', { exact: true })).toBeVisible()
+    await expect(rows).toHaveCount(50)
+    await expect(list.getByText('Sayfalama iletisi 51')).toHaveCount(0)
+
+    await list.getByRole('button', { name: 'Daha fazla yükle' }).click()
+    await expect(rows).toHaveCount(total)
+    await expect(list.getByText('Sayfalama iletisi 53')).toBeVisible()
+    await expect(list.getByRole('button', { name: 'Daha fazla yükle' })).toHaveCount(0)
+    expect(requested.slice(0, 2)).toEqual(['1/50', '2/50'])
+  })
+
   test('dar ekranda liste ile yazışma ayrı görünümdür', async ({ page, loginAs, api, tenant }) => {
     const school = await tenant({
       roles: ['yonetici', 'ogretmen', 'ogrenci', 'veli'],

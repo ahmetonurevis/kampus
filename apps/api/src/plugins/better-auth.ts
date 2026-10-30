@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
-import { AUTH_BASE_PATH, type Auth } from '../auth.ts'
+import { AUTH_BASE_PATH, isOpenAuthPath, type Auth } from '../auth.ts'
 import { MESSAGES } from '../errors.ts'
 import {
   FORWARDED_IP_HEADER,
@@ -108,7 +108,10 @@ async function relayResponse(reply: FastifyReply, response: Response) {
   return translateAuthError(response.status, text)
 }
 
-/** Better Auth uçlarını (`/api/v1/auth/*`) Fastify'ye bağlar. Hız sınırını Better Auth uygular. */
+/**
+ * Better Auth uçlarını (`/api/v1/auth/*`) Fastify'ye bağlar. Yalnız `OPEN_AUTH_PATHS` iletilir;
+ * hız sınırını Better Auth uygular.
+ */
 export async function registerBetterAuth(app: FastifyInstance, auth: Auth, base: string) {
   await app.register(async (scope) => {
     // Kimlik uçlarında JSON gövde ham metin kalır; boş gövdeli POST (ör. çıkış) da kabul edilir.
@@ -128,7 +131,10 @@ function registerAuthRoute(app: FastifyInstance, auth: Auth, base: string) {
     schema: { hide: true },
     config: { rateLimit: false },
     async handler(request, reply) {
-      const response = await auth.handler(toFetchRequest(request, base))
+      const fetchRequest = toFetchRequest(request, base)
+      // İzin listesi, Better Auth'un yönlendireceği normalleştirilmiş yol üzerinde denetlenir.
+      if (!isOpenAuthPath(new URL(fetchRequest.url).pathname)) return reply.callNotFound()
+      const response = await auth.handler(fetchRequest)
       return relayResponse(reply, response)
     },
   })

@@ -50,56 +50,37 @@ export const roles = {
 } satisfies Record<Role, unknown>
 
 /**
- * Açık kalan organization uçları. Üye listesi, davet, kurum oluşturma/silme ve rol CRUD kapalıdır:
- * öğrenci/veli kurumdaki diğer kişileri listeleyemez; yönetim uçları rol kapsamıyla bizde yazılır.
+ * HTTP'den erişilebilen Better Auth uçları (izin listesi; `AUTH_BASE_PATH`'e göre tam yol).
+ * Listede olmayan her yol, Better Auth'a iletilmeden 404 döner (`plugins/better-auth.ts`); sürüm
+ * yükseltmesiyle gelen yeni uç da kendiliğinden kapalı kalır. Test, kayıtlı bütün uçları dolaşır.
+ *
+ * Kapalı kalanlar ve nedeni: açık kayıt yok; üye/davet listeleri öğrenci ve velinin kurumdaki
+ * diğer kişileri görmesine yol açar; kurum ve üyelik yönetimi rol kapsamıyla bizde yazılır; kendi
+ * rolü `/me`'den gelir (`get-active-member-role` `?userId=` ile başkasının rolünü verir); sosyal
+ * giriş olmadığından Expo yetkilendirme vekili (`/expo-authorization-proxy`) açık yönlendirmedir.
+ * Parola sıfırlama e-postası bağlanınca `/reset-password/:token` ayrıca değerlendirilir.
  */
-const OPEN_ORGANIZATION_PATHS = new Set([
-  'set-active',
-  'list',
-  'get-active-member',
-  'get-active-member-role',
+export const OPEN_AUTH_PATHS: ReadonlySet<string> = new Set([
+  '/sign-in/email',
+  '/sign-out',
+  '/get-session',
+  '/change-password',
+  '/request-password-reset',
+  '/reset-password',
+  '/list-sessions',
+  '/revoke-session',
+  '/revoke-sessions',
+  '/revoke-other-sessions',
+  '/organization/list',
+  '/organization/set-active',
+  '/organization/get-active-member',
 ])
-const ORGANIZATION_PATHS = [
-  'accept-invitation',
-  'add-team-member',
-  'cancel-invitation',
-  'check-slug',
-  'create',
-  'create-role',
-  'create-team',
-  'delete',
-  'delete-role',
-  'get-active-member',
-  'get-active-member-role',
-  'get-full-organization',
-  'get-invitation',
-  'get-organization',
-  'get-role',
-  'has-permission',
-  'invite-member',
-  'leave',
-  'list',
-  'list-invitations',
-  'list-members',
-  'list-roles',
-  'list-team-members',
-  'list-teams',
-  'list-user-invitations',
-  'list-user-teams',
-  'reject-invitation',
-  'remove-member',
-  'remove-team',
-  'remove-team-member',
-  'set-active',
-  'set-active-team',
-  'update',
-  'update-member-role',
-  'update-role',
-  'update-team',
-]
-export const DISABLED_AUTH_PATHS = ORGANIZATION_PATHS.filter(
-  (path) => !OPEN_ORGANIZATION_PATHS.has(path),
-).map((path) => `/organization/${path}`)
+
+/** `pathname` Better Auth'a iletilecek isteğin yoludur; sorgu dizesi içermez. */
+export function isOpenAuthPath(pathname: string): boolean {
+  if (!pathname.startsWith(`${AUTH_BASE_PATH}/`)) return false
+  return OPEN_AUTH_PATHS.has(pathname.slice(AUTH_BASE_PATH.length))
+}
 
 export function trustedOrigins(config: Config): string[] {
   // Expo Go geliştirme kökenleri yalnız üretim dışında.
@@ -149,7 +130,6 @@ export function createAuth(config: Config, db: Database) {
         '/change-password': { window: 15 * 60, max: 5 },
       },
     },
-    disabledPaths: DISABLED_AUTH_PATHS,
     advanced: {
       cookiePrefix: 'kampus',
       useSecureCookies: config.NODE_ENV === 'production',

@@ -1,8 +1,8 @@
 import { useSearchParams } from 'react-router'
-import { EmptyState } from '@/components/EmptyState.tsx'
 import { LineTabs, type LineTabOption } from '@/components/LineTabs.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import type { NavPage } from '@/lib/navigation.ts'
+import { AppointmentsPage } from './AppointmentsPage.tsx'
 import { MessagesPage } from './MessagesPage.tsx'
 
 type Tab = 'mesajlar' | 'randevular'
@@ -14,8 +14,8 @@ const TABS: readonly LineTabOption<Tab>[] = [
 
 /**
  * Veli "Randevu & Mesajlar" sayfası: sekme adreste (`?sekme=randevular`) tutulur. Mesajlar
- * sekmesi öğretmen yazışmasıdır; randevular henüz taşınmadı.
- * TODO(web-randevu): randevu talebi ve listesi web'e taşınınca yer tutucu yerine geçer.
+ * sekmesi öğretmen yazışmasıdır; Randevular sekmesi seçili çocuğun (`?cocuk=`) randevularını ve
+ * talep formunu gösterir. Sekme değişince açık yazışma ve randevu panelleri kapanır.
  */
 export function ParentMessagesPage({ page }: { page: NavPage }) {
   const [params, setParams] = useSearchParams()
@@ -23,7 +23,7 @@ export function ParentMessagesPage({ page }: { page: NavPage }) {
 
   function select(next: Tab) {
     const updated = new URLSearchParams(params)
-    updated.delete('yazisma')
+    for (const key of ['yazisma', 'randevu', 'randevu-form']) updated.delete(key)
     if (next === 'mesajlar') updated.delete(TAB_PARAM)
     else updated.set(TAB_PARAM, next)
     setParams(updated, { replace: true })
@@ -37,11 +37,7 @@ export function ParentMessagesPage({ page }: { page: NavPage }) {
         {tab === 'mesajlar' ? (
           <MessagesPage page={page} heading={false} />
         ) : (
-          <EmptyState
-            icon="CalendarCheck2"
-            title="Randevular taşınıyor"
-            description="Randevu talebi ve listesi yeni web uygulamasına aktarılıyor. Hazır olduğunda burada görünecek."
-          />
+          <AppointmentsPage page={page} audience="parent" heading={false} />
         )}
       </div>
     </>

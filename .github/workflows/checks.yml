@@ -30,3 +30,35 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+  e2e-react:
+    # React web + API uçtan uca testleri: gerçek PostgreSQL 16, API ve derlenmiş web-react.
+    # Vue demosunun e2e işi (validate) değişmez.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kampus
+          POSTGRES_PASSWORD: kampus-yerel
+          POSTGRES_DB: postgres
+          TZ: UTC
+          PGTZ: UTC
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U kampus"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - uses: pnpm/action-setup@v6
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      # Veritabanı (kampus_e2e), migrate, seed, API ve web derlemesi global kurulumda yapılır.
+      - run: pnpm test:e2e:react

@@ -17,6 +17,7 @@ Değişikliğin büyüklüğüne göre alttan başla; bir basamak geçmeden üst
    - API: `pnpm --filter @kampus/api test` (`app.inject` + bellek içi PGlite). `apps/api/src/db/**` veya `drizzle/**` değiştiyse Docker'da PostgreSQL 16 ile `test:pg` takımı.
    - Kapsam (yeni kural eklerken veya eşik değişince): `node --test --experimental-test-coverage --test-coverage-lines=<n> --test-coverage-branches=<n>`; eşikler school-core 90/85, api 85/80, api-client 90/85, react-shared 80/70 (`test-stratejisi.md` §2). Eşik yalnız yükselir.
 3. **Arayüz** (ekran veya akış değiştiyse): ilgili e2e — `pnpm test:e2e tests/e2e/<dosya>.spec.ts` ya da `-g "<test adı>"`. Yeni web `pnpm dev:react` ile 5174 portunda açılır; eski Vue `pnpm dev` 5173'tür. Paralel ajanda görevde verilen portu kullan.
+   3b. **React web + API arayüzü** (`apps/web-react`, `apps/api` ya da `tests/e2e-react/` değiştiyse): `docker compose up -d` sonrası `pnpm test:e2e:react` (~15 sn; `kampus_e2e` veritabanını sıfırlar, API 3020 ve önizleme 4180'i kendisi açıp kapatır; CI'daki aynı komut için `CI=1 pnpm test:e2e:react`). Port/veritabanı çakışırsa `E2E_API_PORT`, `E2E_WEB_PORT`, `E2E_DB_NAME`.
 4. **Tam** (görev bitmeden, yalnız görev istiyorsa): `pnpm test:e2e` tamamı (~4,5 dk), `--reporter=line 2>&1 | tail -40` ya da `dogrulayici` ajanı.
 
 ## E2E hata ayıklama

@@ -17,7 +17,7 @@ Ayrıntı: `docs/muhendislik/test-stratejisi.md`.
 - Başarısızlık testi kaydın değişmediğini de doğrular (`unchangedOnFailure`, API'de satır karşılaştırması).
 - API testleri `app.inject` + dosya başına bellek içi PGlite + üretim migration'ları. Her test kendi kurumunu kurar; tablo boşaltma ve sıra varsayımı yok. Eşzamanlılık testleri PostgreSQL 16 ile `test:pg` takımında.
 - Her uç için: 401, 403, başka kurum kaydına okuma/yazma 404 ve B değişmemiş, listede B kaydı yok, gövdedeki `institutionId` etkisiz, rol kapsamı, modül kapalı 403. Açık uçlar listesi dışındaki her rota kimliksiz 401.
-- E2E Playwright ile `tests/e2e/` altında. Seçiciler erişilebilir rol/etiketle (`getByRole`, `getByLabel`); CSS sınıfı yalnız rolü olmayan yapılar için. `waitForTimeout` yok; otomatik bekleyen beklentiler veya `expect.poll`.
+- E2E Playwright ile `tests/e2e/` (Vue demosu) ve `tests/e2e-react/` (React web + API; temiz durum stratejisi test stratejisi §6) altında. Seçiciler erişilebilir rol/etiketle (`getByRole`, `getByLabel`); CSS sınıfı yalnız rolü olmayan yapılar için. `waitForTimeout` yok; otomatik bekleyen beklentiler veya `expect.poll`.
 - Her test bağımsızdır ve kendi verisini (API'li uygulamada kendi kurumunu) kurar; sıra varsayılmaz (`fullyParallel`). Kurulum UI'dan değil test ucundan/seed'den.
 - CI'da test başına 45 sn sınır var. Uzun tarama testleri bölünür; `test.slow()` ve zaman aşımı artırma düzeltme sayılmaz.
 - Kalıcılık doğrulaması: demo kalıcılığında `stored(page)` (localStorage snapshot); API'li uygulamada API sorgusu.

@@ -37,7 +37,6 @@ import {
 import {
   assertReadable,
   readScope,
-  readsWholeCollection,
   scopePrefilter,
   studentClasses,
   studentsOfClasses,
@@ -620,7 +619,7 @@ function visibleRows({
 
 /**
  * Süzgeçsiz, aramasız, sıralamasız listede koleksiyonun tamamını okuyan aktör
- * (`readsWholeCollection`) için sayfa ve toplam SQL'dendir; yalnız sayfanın satırları yüklenip
+ * (core `scope.readsWhole`) için sayfa ve toplam SQL'dendir; yalnız sayfanın satırları yüklenip
  * ayıklanır. Sayfada kapsamdan geçmeyen satır çıkarsa (core kuralı değişti) loglanır ve bellek
  * yoluna dönülür (`null`).
  */
@@ -642,7 +641,7 @@ async function sqlPage(
   const collection = readableCollection(name)
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, collection)
-  if (!readsWholeCollection(scope, collection)) return null
+  if (!scope.readsWhole(collection)) return null
   const { rows, total } = await loadRecordPage(ctx.db, ctx.institutionId, collection, {
     archived: query.archived,
     offset: (query.page - 1) * query.pageSize,

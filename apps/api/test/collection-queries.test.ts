@@ -10,7 +10,7 @@ import type { CollectionName } from '../src/db/collections.ts'
 import { insertMissingRecords, writeRecords } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
 import { READABLE_COLLECTIONS } from '../src/services/collection-access.ts'
-import { readScope, readsWholeCollection } from '../src/services/read-scope.ts'
+import { readScope } from '../src/services/read-scope.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -831,7 +831,12 @@ describe('koleksiyon sorguları: durum, sayım, bağlı alan', () => {
         })
         let readable = 0
         for (const collection of READABLE_COLLECTIONS) {
-          assert.equal(readsWholeCollection(scope, collection), scope.access(collection).allowed)
+          // Duyuru kuralı yayın ve alıcı koşulludur (`all` değil); core bunu `readsWhole` ile bildirir.
+          assert.equal(
+            scope.readsWhole(collection),
+            scope.access(collection).allowed && collection !== 'announcements',
+            `${actor.role} ${collection}`,
+          )
           if (!scope.access(collection).allowed) continue
           readable += 1
           for (const row of JUNK)
@@ -848,7 +853,7 @@ describe('koleksiyon sorguları: durum, sayım, bağlı alan', () => {
         now: FIXED_NOW,
         log: app.log,
       })
-      assert.equal(readsWholeCollection(parentScope, 'invoices'), false)
+      assert.equal(parentScope.readsWhole('invoices'), false)
     })
 
     test('süzgeçsiz liste SQL sayfasıyla bellek yoluyla aynı sayfa ve toplamı verir; ayıklama korunur', async () => {

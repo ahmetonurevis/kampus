@@ -101,6 +101,12 @@ export type Scope = {
   /** Kapsamdaki sınıflar: öğretmende ders verdiği ve rehberi olduğu, öğrenci/velide kendi sınıfı. */
   readonly classIds: ReadonlySet<string>
   access(collection: string): ReadDecision
+  /**
+   * Rol bu koleksiyonu satır ayrımı olmadan bütünüyle okur (erişim açık ve satır kuralı koşulsuz).
+   * Yalnız performans için: API süzgeçsiz liste sayfalamasını buna dayanarak SQL'e indirir; alan
+   * ayıklaması (`hiddenFields`) yine uygulanır ve kararı satır kuralı vermeye devam eder.
+   */
+  readsWhole(collection: string): boolean
   canRead(collection: string, row: object): boolean
   hiddenFields(collection: string): readonly string[]
   redact<T extends object>(collection: string, row: T): Redacted<T>
@@ -524,6 +530,9 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     if (!decision) decisions.set(collection, (decision = decide(collection)))
     return decision
   }
+  function readsWhole(collection: string) {
+    return !!role && access(collection).allowed && RULES[collection]?.[role] === all
+  }
   function canRead(collection: string, row: object) {
     if (!access(collection).allowed || !role) return false
     const rule = RULES[collection]?.[role]
@@ -550,6 +559,7 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     studentIds: context.studentIds,
     classIds: context.classIds,
     access,
+    readsWhole,
     canRead,
     hiddenFields,
     redact,

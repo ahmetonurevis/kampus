@@ -19,6 +19,7 @@
             "description": "Kullanıcıya gösterilebilir Türkçe mesaj"
           },
           "issues": {
+            "description": "Alan düzeyindeki hatalar: 400 doğrulama ve alan yolu bilinen iş kuralı hataları (422/409/403)",
             "type": "array",
             "items": {
               "type": "object",
@@ -3787,6 +3788,7 @@
             "description": "Kullanıcıya gösterilebilir Türkçe mesaj"
           },
           "issues": {
+            "description": "Alan düzeyindeki hatalar: 400 doğrulama ve alan yolu bilinen iş kuralı hataları (422/409/403)",
             "type": "array",
             "items": {
               "type": "object",

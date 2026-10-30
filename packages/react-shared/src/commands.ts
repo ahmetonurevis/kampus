@@ -101,7 +101,12 @@ export function commandHeaders(key: string, version?: number | null): CommandHea
 export type CommandMessages = Readonly<Partial<Record<string, string>>>
 
 export interface CommandFeedback {
-  /** Form alanlarına yazılacak doğrulama maddeleri (yolsuz madde yok). */
+  /**
+   * Form alanlarına kendiliğinden yazılacak doğrulama maddeleri (yolsuz madde yok). Yalnız 400
+   * `validation_failed` içindir; iş kuralı hatasının (422/409/403) `issues` yolu kendiliğinden
+   * alana yazılmaz (aynı mesaj alanda ve toast'ta çifte görünürdü): formun açık tercihi olarak
+   * `routeCommandErrors`'un `fieldFor`'u (ör. `errorRoutes(…, true)`) alana bağlar.
+   */
   fieldIssues: FieldIssue[]
   /** Toast metni; 401'de `null` (oturum katmanı girişe yönlendirir). */
   message: string | null
@@ -111,7 +116,10 @@ export interface CommandFeedback {
 
 export function commandFeedback(error: ApiError, messages: CommandMessages = {}): CommandFeedback {
   return {
-    fieldIssues: issuesToFieldIssues(error.issues).filter((issue) => issue.name !== ROOT_FIELD),
+    fieldIssues:
+      error.status === 400
+        ? issuesToFieldIssues(error.issues).filter((issue) => issue.name !== ROOT_FIELD)
+        : [],
     message: error.status === 401 ? null : (messages[error.code] ?? error.message),
     // `idempotency_in_progress` veri eskimesi değildir; aynı istek hâlâ işleniyordur.
     refresh: error.status === 409 && error.code !== 'idempotency_in_progress',

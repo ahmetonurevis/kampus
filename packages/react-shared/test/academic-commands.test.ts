@@ -137,7 +137,7 @@ describe('yoklama komutu', () => {
       assert.ok(ATTENDANCE_MESSAGES[code as keyof typeof ATTENDANCE_MESSAGES].length > 10, code)
   })
 
-  test('sunucu doğrulama maddeleri alana yazılır', async () => {
+  test('422 iş kuralı mesajı bildirim yokken root.server alanına yazılır', async () => {
     const { client } = fakeClient(() =>
       json(422, {
         code: 'correction_reason_required',
@@ -159,7 +159,7 @@ describe('yoklama komutu', () => {
       { setError: (name, error) => (fields[name] = error.message) },
     )
     assert.equal(outcome.status, 'failed')
-    assert.equal(fields.reason, 'Gerekçe yazın.')
+    assert.deepEqual(fields, { 'root.server': ATTENDANCE_MESSAGES.correction_reason_required })
   })
 })
 

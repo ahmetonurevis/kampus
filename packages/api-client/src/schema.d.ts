@@ -2001,6 +2001,7 @@ export interface components {
             code: string;
             /** @description Kullanıcıya gösterilebilir Türkçe mesaj */
             message: string;
+            /** @description Alan düzeyindeki hatalar: 400 doğrulama ve alan yolu bilinen iş kuralı hataları (422/409/403) */
             issues?: {
                 path: (string | number)[];
                 code: string;
@@ -2886,6 +2887,7 @@ export interface components {
             code: string;
             /** @description Kullanıcıya gösterilebilir Türkçe mesaj */
             message: string;
+            /** @description Alan düzeyindeki hatalar: 400 doğrulama ve alan yolu bilinen iş kuralı hataları (422/409/403) */
             issues?: {
                 path: (string | number)[];
                 code: string;

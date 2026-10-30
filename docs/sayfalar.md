@@ -2,7 +2,20 @@
 
 Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’una yönlenir.
 
-React web (`apps/web-react`, `pnpm dev:react`) sayfaları API'den okur; taşınmayan sayfalar yer tutucudur. Taşınanlar: `/yonetici/subeler` ve `/yonetici/personel` (yalnız okuma; sunucu sayfalı tablo, URL'de arama/filtre/sıralama/sayfa, sağ panel `?sinif=`, `?kampus-ozet=`, `?ogretmen=`). Aşağıdaki tablolar Vue demosunun sayfa yollarıdır.
+React web (`apps/web-react`, `pnpm dev:react`) sayfaları API'den okur; taşınmayan sayfalar yer tutucudur. Taşınan sayfalar yalnız okuma yapar: sunucu sayfalı tablo, arama/filtre/sıralama/sayfa ve sağ panel URL'dedir, CSV tüm filtrelenmiş sonucu içerir. Kapsam sunucuda uygulanır; kapsam dışı ayrıntı adresi "Kayıt bulunamadı" görünümüne düşer (API 404).
+
+| Rol      | Yol                                         | Sayfa ve URL durumu                                                                                                                                                    |
+| -------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Yönetici | `/yonetici/subeler`, `/yonetici/personel`   | Kampüsler & Sınıflar, Eğitim Kadrosu; panel `?sinif=`, `?kampus-ozet=`, `?ogretmen=`                                                                                   |
+| Öğretmen | `/ogretmen/siniflarim`                      | Sınıflarım (yalnız ders verdiği veya danışmanı olduğu sınıflar; `?duzey=`, özet `?sinif=`) ve `?sekme=notlar` Not listesi (`?not-sinif=`, `?not-ders=`, panel `?not=`) |
+| Öğretmen | `/ogretmen/yoklama`                         | Yoklama geçmişi (`?sinif=`, `?durum=`, `?tarih=YYYY-AA-GG`, panel `?kayit=`); yoklama alma sonraki adımdır                                                             |
+| Öğretmen | `/ogretmen/ders-programi`                   | Haftalık program (`?hafta=<pazartesi>`, panel `?ders=`); iptal edilen dersler görünmez                                                                                 |
+| Öğrenci  | `/ogrenci/notlarim`, `/ogrenci/devamsizlik` | Kendi notları (ders ortalamaları kayıtlardan hesaplanır; `?ders=`, panel `?not=`) ve devam geçmişi (`?durum=`, `?tarih=`, panel `?kayit=`)                             |
+| Öğrenci  | `/ogrenci/ders-programi`                    | Kendi sınıfının haftalık programı; iptal edilen dersler görünmez                                                                                                       |
+| Veli     | `/veli/cocuk-secici`                        | Çocuklarım kartları (ortalama ve devamsızlık kayıtlardan); karttan `?cocuk=` ile Akademik Takip açılır                                                                 |
+| Veli     | `/veli/akademik-takip`                      | Seçili çocuğun notları, devamsızlığı ve programı (`?sekme=notlar`, `devamsizlik`, `program`). Seçili çocuk her adreste `?cocuk=<öğrenci kimliği>` ile taşınır          |
+
+Aşağıdaki tablolar Vue demosunun sayfa yollarıdır.
 
 ## Yönetici
 

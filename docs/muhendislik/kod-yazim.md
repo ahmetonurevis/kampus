@@ -220,6 +220,8 @@ Yeni ekran eklerken:
 6. CSV `useCoreFetchAll` + `exportQueryFromList` + `useCsvExport` ile; dosya yalnız görünen sayfayı değil tüm filtrelenmiş sonucu içerir. 5000 kayıt sınırı aşılırsa kullanıcıya Türkçe uyarı çıkar.
 7. Sayfa `page-registry.tsx`'e (`lazy` + `MIGRATED` kümesi) eklenir; modül kapalıysa `QueryError` yönlendirir, ayrıca rota koruması RoleShell'dedir. e2e `tests/e2e-react/` altına: liste, arama, filtre (sayfa sıfırlanır), sayfalama, panel + geri/ileri, CSV içeriği, 390 px taşma.
 
+Veli ekranlarında seçili çocuk adreste `?cocuk=<öğrenci kimliği>` taşınır (`use-child-selection`, `RoleShell` eksikse tamamlar); çocuğa bağlı sorgular `studentId` filtresi taşıdığından çocuk değişince önbellek anahtarı değişir ve liste kendiliğinden tazelenir. Kapsam dışı `?<panel>=<kimlik>` adresi tek kayıt ucundan 404 alır ve `QueryError` "Kayıt bulunamadı" gösterir; kayıt satırdan okunmaz.
+
 ### Expo (mobil)
 
 - Hazır paketler: React Navigation, TanStack Query, react-hook-form, `@better-auth/expo` + `expo-secure-store`. Cam yüzey iOS'ta `expo-glass-effect`, Android ve desteklenmeyen platformda opak token zemini.

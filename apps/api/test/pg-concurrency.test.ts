@@ -19,7 +19,11 @@ import { bookAppointmentCommand } from '../src/services/appointments.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { executeWorkflowCommand, recordAttendanceCommand } from '../src/services/commands.ts'
 import { sendMessageCommand } from '../src/services/communication.ts'
-import { createProspectCommand, scheduleProspectMeetingCommand } from '../src/services/prospects.ts'
+import {
+  createProspectCommand,
+  scheduleProspectMeetingCommand,
+  scheduleTrialLessonCommand,
+} from '../src/services/prospects.ts'
 import { answerQuestionCommand } from '../src/services/questions.ts'
 import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, createMember, FIXED_NOW } from './support/app.ts'
@@ -75,8 +79,10 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     await close()
   })
 
-  async function context(): Promise<ServiceContext> {
-    const created = await createInstitution(app)
+  async function context(
+    overrides: Parameters<typeof createInstitution>[1] = {},
+  ): Promise<ServiceContext> {
+    const created = await createInstitution(app, overrides)
     return {
       db,
       institutionId: created.id,
@@ -99,13 +105,13 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
   }
 
   /** Bir bağlantı kilit bekleyene kadar yoklar (sabit uyku yerine koşul). */
-  async function untilLockWait(locktype: 'advisory' | 'transactionid' = 'advisory') {
+  async function untilLockWait(locktype: 'advisory' | 'transactionid' = 'advisory', minimum = 1) {
     for (let attempt = 0; ; attempt += 1) {
       const [waiting] = await db
         .select({ n: count() })
         .from(sql`pg_locks`)
         .where(sql`locktype = ${locktype} and not granted`)
-      if ((waiting?.n ?? 0) > 0) return
+      if ((waiting?.n ?? 0) >= minimum) return
       assert.ok(attempt < 300, 'işlem kurum kilidini beklemedi')
       await delay(10)
     }
@@ -609,8 +615,10 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
   })
 
   /** Ön büro bağlamı ve seed kampüsleri; adaylar testin kendi kurumundadır. */
-  async function frontDeskContext(): Promise<ServiceContext> {
-    const base = await context()
+  async function frontDeskContext(
+    overrides: Parameters<typeof createInstitution>[1] = {},
+  ): Promise<ServiceContext> {
+    const base = await context(overrides)
     const seed = createSeed(FIXED_NOW)
     await insertMissingRecords(
       db,
@@ -722,5 +730,113 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       .from(records)
       .where(and(eq(records.institutionId, ctx.institutionId), eq(records.collection, 'prospects')))
     assert.equal(planned.filter((row) => row.data.trialAt !== null).length, 1)
+  })
+
+  test('DOM-KAY-034, DOM-DIL-030: iki deneme istemi son boş deneme yerine eşzamanlı gelir: yalnız biri yazılır, öteki 409 trial_lesson_full', async () => {
+    const ctx = await frontDeskContext({ type: 'language_school' })
+    const lesson = {
+      id: 'test-lesson-pg',
+      classId: 'test-c-trial',
+      date: '2026-10-08T10:00:00.000Z',
+      duration: 60,
+    }
+    const open = (id: string, phone: string, extra: Record<string, unknown> = {}) => ({
+      collection: 'prospects' as const,
+      id,
+      data: {
+        id,
+        name: `Test Aday ${id}`,
+        phone,
+        email: '',
+        branchId: 'b1',
+        interest: 'B1 · Genel İngilizce',
+        source: 'Telefon',
+        stage: 'Yeni aday',
+        studentId: null,
+        minor: true,
+        guardianName: 'Test Veli',
+        createdAt: FIXED_NOW.toISOString(),
+        trialAt: null,
+        notes: [],
+        ...extra,
+      },
+    })
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        {
+          collection: 'classes' as const,
+          id: 'test-c-trial',
+          data: {
+            id: 'test-c-trial',
+            name: 'Test Grubu',
+            level: 'B1',
+            branchId: 'b1',
+            capacity: 18,
+            isActive: true,
+            deletedAt: null,
+          },
+        },
+        { collection: 'schedule' as const, id: lesson.id, data: lesson },
+        // Derste bir deneme katılımcısı var: ikinci ve son yer kalmıştır.
+        open('test-pr-held', '05559990301', {
+          stage: 'Görüşme planlandı',
+          trialLesson: {
+            lessonId: lesson.id,
+            classId: lesson.classId,
+            date: lesson.date,
+            duration: lesson.duration,
+            guardianConsentAt: FIXED_NOW.toISOString(),
+            scheduledAt: FIXED_NOW.toISOString(),
+            by: { role: 'onburo', userId: 'test-user' },
+          },
+        }),
+        open('test-pr-a', '05559990302'),
+        open('test-pr-b', '05559990303'),
+      ],
+      FIXED_NOW,
+    )
+    const body = { lessonId: lesson.id, guardianConsent: true }
+    const versioned = { idempotency: null, expectedVersion: 1 }
+    // Kurum kilidi tutulurken iki istek de kilitte bekler; bırakılınca sırayla işlenir ve ikincisi
+    // birincinin yazdığı denemeyi görür.
+    const held = gate()
+    const release = gate()
+    const holder = db.transaction(async (tx) => {
+      await lockInstitution(tx, ctx.institutionId)
+      held.open()
+      await release.opened
+    })
+    await held.opened
+    const outcomes = Promise.allSettled([
+      scheduleTrialLessonCommand(ctx, 'test-pr-a', body, versioned),
+      scheduleTrialLessonCommand(ctx, 'test-pr-b', body, versioned),
+    ])
+    try {
+      await untilLockWait('advisory', 2)
+    } finally {
+      release.open()
+      await holder
+    }
+    const settled = await outcomes
+    assert.equal(settled.filter((item) => item.status === 'fulfilled').length, 1)
+    const rejected = settled.filter((item) => item.status === 'rejected')
+    assert.equal(rejected.length, 1)
+    const reason: unknown = rejected[0]?.reason
+    assert.ok(
+      reason instanceof AppError &&
+        reason.statusCode === 409 &&
+        reason.code === 'trial_lesson_full',
+      String(reason),
+    )
+    const stored = await db
+      .select({ data: records.data })
+      .from(records)
+      .where(and(eq(records.institutionId, ctx.institutionId), eq(records.collection, 'prospects')))
+    const onLesson = stored.filter(
+      (row) => (row.data.trialLesson as { lessonId?: string } | undefined)?.lessonId === lesson.id,
+    )
+    assert.equal(onLesson.length, 2)
   })
 })

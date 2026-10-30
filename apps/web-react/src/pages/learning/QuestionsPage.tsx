@@ -40,6 +40,8 @@ const SLA_LABELS = Object.fromEntries(SLA_FILTERS.map((item) => [item.value, ite
 
 const STUDENT_MOBILE = ['subject', 'status']
 const TEACHER_MOBILE = ['student', 'status']
+// TODO(liste-arama-url): arama metni liste durumuyla birlikte adrese yazılıyor (`q`); metin kişisel
+// veri içerebilir. Uygulama genelinde ele alınacak bir konudur, bu ekrana özgü değildir.
 const STUDENT_SEARCH = ['title', 'text', 'subject', 'teacher', 'topic', 'answer']
 const TEACHER_SEARCH = ['title', 'text', 'subject', 'student', 'topic']
 

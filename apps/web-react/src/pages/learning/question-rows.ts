@@ -150,6 +150,8 @@ export function questionRow(
     student: item.joined?.studentName ?? '',
     className: item.joined?.className ?? '',
     teacherId: record.teacherId,
+    // TODO(soru-eski-ogretmen-adi): arşivdeki öğretmen `teachers` listesinde olmadığı için eski
+    // sorularda ad "—" görünür; ad sunucuda satıra bağlanınca (`joined`) buradan okunur.
     teacher: lookups.teachers.get(record.teacherId) ?? '—',
     subjectId: record.subjectId,
     subject: lookups.subjects.get(record.subjectId) ?? '—',

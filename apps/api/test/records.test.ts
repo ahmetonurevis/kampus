@@ -410,4 +410,37 @@ describe('records deposu', () => {
     assert.equal(row?.data.amount, 7)
     assert.equal(row?.version, 2)
   })
+
+  test('alan ön süzgeci metin, sayı ve mantıksal değeri eşler; dizi alanı adaydır', async () => {
+    const id = await institutionWith([
+      invoice('test-inv-a', { studentId: 's1', installment: 1, paidAt: null }),
+      invoice('test-inv-b', { studentId: 's2', installment: 2, waived: true }),
+      invoice('test-inv-c', { studentId: ['s3'], installment: 3 }),
+      invoice('test-inv-d', { studentId: undefined, installment: 10 }),
+    ])
+    const ids = async (match: { field: string; values: string[] }[]) =>
+      (await loadRecords(db, id, ['invoices'], { match })).map((row) => row.id)
+
+    assert.deepEqual(await ids([{ field: 'studentId', values: ['s1'] }]), [
+      'test-inv-a',
+      'test-inv-c',
+    ])
+    assert.deepEqual(await ids([{ field: 'installment', values: ['2', '10'] }]), [
+      'test-inv-b',
+      'test-inv-d',
+    ])
+    assert.deepEqual(await ids([{ field: 'waived', values: ['true'] }]), ['test-inv-b'])
+    // Eksik alan ve null hiçbir değerle eşleşmez; boş değer listesinde yalnız dizi kalır.
+    assert.deepEqual(await ids([{ field: 'paidAt', values: ['null'] }]), [])
+    assert.deepEqual(await ids([{ field: 'studentId', values: [] }]), ['test-inv-c'])
+    assert.deepEqual(
+      await ids([
+        { field: 'studentId', values: ['s1', 's2'] },
+        { field: 'installment', values: ['2'] },
+      ]),
+      ['test-inv-b'],
+    )
+    // Alan adı da parametredir: tırnak veya işleç taşıyan ad yalnız eşleşmez.
+    assert.deepEqual(await ids([{ field: "studentId' or '1'='1", values: ['s1'] }]), [])
+  })
 })

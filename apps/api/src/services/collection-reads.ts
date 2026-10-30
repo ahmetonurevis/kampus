@@ -1,17 +1,21 @@
 import type { RecordData } from '../db/collections.ts'
-import { findRecord, loadRecords, type StoredRecord } from '../db/records.ts'
+import { findRecord, loadRecords, type FieldMatch, type StoredRecord } from '../db/records.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { moduleOfCollection, readableCollection } from './collection-access.ts'
-import { assertReadable, readScope } from './read-scope.ts'
+import { assertReadable, readScope, scopePrefilter } from './read-scope.ts'
 
 /**
  * Koleksiyon okuma servisi (geçiş köprüsü: modüller kendi kaynak uçlarına geçene kadar). Kayıtlar
  * kurum kapsamlı depodan yüklenir; core kapsamı (`scopeFor`) satırları süzüp alanları ayıkladıktan
  * sonra arama, filtre, sıralama ve sayfalama bellekte, ayıklanmış alanlar üzerinde yapılır: rolün
  * göremediği alan aramada da eşleşmez. Varsayılan sıra deponun döndürdüğü sıradır.
- * TODO(collection-sql): büyük koleksiyonlar (not, yoklama) normalleşince veya ölçüm p95 > 50 ms
- * gösterince süzme ve sayfalama SQL'e iner (veritabani.md §4).
+ *
+ * Veritabanı yalnız aday satırları döndürür: eşitlik filtreleri ve büyük kişisel koleksiyonlarda
+ * kapsam kimlikleri SQL ön süzgecidir (`FieldMatch`, `scopePrefilter`); karar yine bellekte,
+ * core kapsamı ve ayıklanmış alanlarla verilir.
+ * TODO(collection-sql): sayfalama ve sıralama SQL'e inmedi; yönetici büyük koleksiyonu tümüyle
+ * yükler (`read-scope.ts` `TODO(perf)`; veritabani.md §4).
  */
 
 /** Eşitlik filtresi kabul edilen veri alanları (beyaz liste; bilinmeyen sorgu parametresi 400). */
@@ -127,8 +131,8 @@ function searchable(value: unknown): string[] {
   return []
 }
 
-function matchesSearch(item: VisibleRow, needle: string): boolean {
-  return Object.values(item.record).some((value) =>
+function matchesSearch(record: RecordData, needle: string): boolean {
+  return Object.values(record).some((value) =>
     searchable(value).some((text) => searchKey(text).includes(needle)),
   )
 }
@@ -139,8 +143,8 @@ function primitiveText(value: unknown): string | null {
   return null
 }
 
-function matchesFilter(item: VisibleRow, field: FilterField, values: readonly string[]) {
-  const value = item.record[field]
+function matchesFilter(record: RecordData, { field, values }: FieldMatch) {
+  const value = record[field]
   const candidates = Array.isArray(value) ? value.map(primitiveText) : [primitiveText(value)]
   return candidates.some((text) => text !== null && values.includes(text))
 }
@@ -195,26 +199,43 @@ export async function listCollection(
   const collection = readableCollection(name)
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, collection)
+  const filters: FieldMatch[] = FILTER_FIELDS.flatMap((field) => {
+    const values = query.filters?.[field]
+    return values && values.length > 0 ? [{ field, values }] : []
+  })
+  const needle = query.q ? searchKey(query.q) : null
+  const narrowed = filters.length > 0 || needle !== null
+  const matches = (record: RecordData) =>
+    filters.every((filter) => matchesFilter(record, filter)) &&
+    (needle === null || matchesSearch(record, needle))
+  const prefilter = scopePrefilter(scope, collection)
   const rows = await loadRecords(ctx.db, ctx.institutionId, [collection], {
     includeArchived: query.archived !== undefined,
+    match: prefilter ? [prefilter, ...filters] : filters,
   })
-  let items: VisibleRow[] = []
-  for (const row of rows) {
-    if (query.archived === 'only' && row.archivedAt === null) continue
-    if (!scope.canRead(collection, row.data)) continue
-    items.push({ row, record: scope.redact(collection, row.data) })
-  }
-  for (const field of FILTER_FIELDS) {
-    const values = query.filters?.[field]
-    if (values && values.length > 0)
-      items = items.filter((item) => matchesFilter(item, field, values))
-  }
-  if (query.q) {
-    const needle = searchKey(query.q)
-    items = items.filter((item) => matchesSearch(item, needle))
-  }
-  items = sorted(items, query.sort ?? [])
+  // Ayıklama alan çıkarır veya daraltır, eklemez: ham kayıtta eşleşmeyen ayıklanmışta da
+  // eşleşmez. Ham eşleşme yalnız adaydır; karar ayıklanmış kayıtta verilir.
+  const visible = rows.filter(
+    (row) =>
+      (query.archived !== 'only' || row.archivedAt !== null) &&
+      scope.canRead(collection, row.data) &&
+      (!narrowed || matches(row.data)),
+  )
+  const redact = (row: StoredRecord): VisibleRow => ({
+    row,
+    record: scope.redact(collection, row.data),
+  })
   const start = (query.page - 1) * query.pageSize
+  const sort = query.sort ?? []
+  if (!narrowed && sort.length === 0)
+    // Arama ve sıralama yoksa yalnız istenen sayfa ayıklanır.
+    return {
+      items: visible.slice(start, start + query.pageSize).map((row) => toItem(redact(row))),
+      total: visible.length,
+    }
+  let items = visible.map(redact)
+  if (narrowed) items = items.filter((item) => matches(item.record))
+  items = sorted(items, sort)
   return { items: items.slice(start, start + query.pageSize).map(toItem), total: items.length }
 }
 

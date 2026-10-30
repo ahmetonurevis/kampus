@@ -8,8 +8,9 @@ import {
   type ScopeSource,
 } from '@kampus/school-core/lib/scope.ts'
 
+import type { Role } from '../auth.ts'
 import type { CollectionName, RecordData } from '../db/collections.ts'
-import { loadRecords } from '../db/records.ts'
+import { loadRecords, type FieldMatch } from '../db/records.ts'
 import { ForbiddenError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { ModuleDisabledError } from '../plugins/modules.ts'
@@ -138,4 +139,34 @@ export function assertReadable(ctx: ServiceContext, scope: Scope, collection: Co
     default:
       throw decision.reason satisfies never
   }
+}
+
+type ScopeKey = 'studentId' | 'classId'
+
+/**
+ * SQL ön süzgeci (performans): büyük kişisel koleksiyonlarda rolün core kuralı satırın öğrencisinin
+ * veya sınıfının kapsamda olmasını gerektirir (`ownStudent`, `ownClass`, `subjectOrHomeroom`).
+ * Veritabanı yalnız bu kimliklerin satırlarını döndürür; her satır yine core `canRead` ile süzülür.
+ * Süzgeç gerekli koşuldur: yanlışsa yalnız satır gizler, sızdırmaz. Testler örnek verideki her
+ * demo aktörü için core sonucunun süzgecin alt kümesi olduğunu doğrular.
+ * TODO(perf): core kapsamı koleksiyon başına SQL'e çevrilebilir anahtar tanımı verince
+ * (`scope.keys(collection)` gibi) bu tablo kalkar; yönetici listesinde de sayfalama ve sıralama
+ * SQL'e iner. O zamana kadar yönetici ve ön büro büyük koleksiyonu tümüyle yükler.
+ */
+const PREFILTER: Partial<Record<CollectionName, Partial<Record<Role, ScopeKey>>>> = {
+  grades: { ogretmen: 'studentId', ogrenci: 'studentId', veli: 'studentId' },
+  attendance: { ogretmen: 'classId', ogrenci: 'studentId', veli: 'studentId' },
+  invoices: { ogrenci: 'studentId', veli: 'studentId' },
+  contracts: { veli: 'studentId' },
+  submissions: { ogretmen: 'studentId', ogrenci: 'studentId', veli: 'studentId' },
+  quizAttempts: { ogretmen: 'studentId', ogrenci: 'studentId', veli: 'studentId' },
+  schedule: { ogrenci: 'classId', veli: 'classId' },
+}
+
+/** Koleksiyonun bu aktör için SQL ön süzgeci; tabloda yoksa `null` (bütün koleksiyon yüklenir). */
+export function scopePrefilter(scope: Scope, collection: CollectionName): FieldMatch | null {
+  const key = PREFILTER[collection]?.[scope.actor.role]
+  if (!key) return null
+  const ids = key === 'studentId' ? scope.studentIds : scope.classIds
+  return { field: key, values: [...ids] }
 }

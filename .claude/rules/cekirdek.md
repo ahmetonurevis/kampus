@@ -14,7 +14,7 @@ Ayrıntı: `docs/muhendislik/kod-yazim.md` (klasör yapısı, hata sınıfları)
 - İş kuralı reddi `DomainError(code, mesaj, { kind, path })` ile; `code` İngilizce snake_case, mesaj Türkçe. Taşınan dosyada `throw new Error('…')` mesajı korunarak `DomainError`'a çevrilir.
 - Hesaplanabilen değer saklanmaz (hedef ilerlemesi, quiz puanı, rubrik toplamı).
 - Para tamsayı kuruş; tarih ISO UTC veya `YYYY-MM-DD`, gösterim Europe/Istanbul (`lib/format`).
-- Rol kapsamı core'da çözülür (`lib/scope.ts` `scopeFor(source, actor)`, `Actor = { role, links }`): öğretmen kendi sınıfları/branşı, öğrenci kendisi, veli bağlı çocukları. Rehberlik iç notunu yalnız rehberlik görevli öğretmen görür; denetim kaydına içerik değil alan adı yazılır. Koleksiyon → modül eşlemesi `modules/collection-modules.ts`. API bu fonksiyonları kullanır; kapsamı ikinci kez elle yazmaz.
+- Rol kapsamı core'da çözülür (`lib/scope.ts` `scopeFor(source, actor)`, `Actor = { role, links }`): öğretmen kendi sınıfları/branşı, öğrenci kendisi, veli bağlı çocukları. Rehberlik iç notunu yalnız rehberlik görevli öğretmen görür; denetim kaydına içerik değil alan adı yazılır. Koleksiyon → modül eşlemesi `modules/collection-modules.ts`, komut → modül/koleksiyon tablosu `modules/commands.ts` (`commandSpec`), yazma yetkisi `lib/authorize.ts` (`requireAuthorized`). API bu fonksiyonları kullanır; kapsamı ve yetkiyi ikinci kez elle yazmaz.
 - Büyük listelerde satır başına tam tarama yapılmaz; `studentId` gibi anahtarlarla `Map` indeksi bir kez kurulur.
 - Örnek veri deterministiktir: kimlikler sabit, tarihler başlangıç gününe göre üretilir. Mevcut kimlik değiştirilmez.
 - Yeni kişisel alan şemada sınıfıyla işaretlenir (`// kvkk: K|Ç|Ö`).

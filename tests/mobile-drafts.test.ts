@@ -1,20 +1,20 @@
-// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createDraftRepository, draftKey } from '../apps/mobile/src/model/drafts.ts'
 import { contentTitle } from '../apps/mobile/src/model/presentation.ts'
 import { appendMessage, conversationFor } from '../apps/mobile/src/model/messaging.ts'
+import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 
 function memoryStorage() {
-  const records = new Map()
+  const records = new Map<string, string>()
   return {
     records,
-    getItem: async (key) => records.get(key) || null,
-    setItem: async (key, value) => {
+    getItem: async (key: string) => records.get(key) || null,
+    setItem: async (key: string, value: string) => {
       records.set(key, value)
     },
-    removeItem: async (key) => {
+    removeItem: async (key: string) => {
       records.delete(key)
     },
   }
@@ -23,7 +23,7 @@ test('Taslak: rol, çocuk, kayıt, sınıf/gün ve veri sıfırlama kapsamları 
   const storage = memoryStorage(),
     repository = createDraftRepository(storage)
   const data = { createdAt: '2026-09-28T06:00:00Z' },
-    parent = { role: 'veli', childId: 's1' }
+    parent: Session = { role: 'veli', childId: 's1' }
   const key = draftKey(data, parent, 'message', 'conv1')
   const keys = [
     key,
@@ -43,14 +43,14 @@ test('Taslak: rol, çocuk, kayıt, sınıf/gün ve veri sıfırlama kapsamları 
 })
 test('Taslak: ardışık yazma ve silme yarışında eski çalışma geri gelmez', async () => {
   const storage = memoryStorage(),
-    writes = []
-  let release
+    writes: unknown[] = []
+  let release: (value?: unknown) => void = () => {}
   const blocked = new Promise((resolve) => {
     release = resolve
   })
   const repository = createDraftRepository({
     ...storage,
-    setItem: async (key, raw) => {
+    setItem: async (key: string, raw: string) => {
       writes.push(JSON.parse(raw).value)
       if (writes.length === 1) await blocked
       await storage.setItem(key, raw)
@@ -93,7 +93,7 @@ test('Taslak: gönderilmiş kayda ait eski sürüm kullanılmaz; bozuk taslak se
 })
 test('Mobil mesaj: öğretmen/veli/öğrenci ve modül kapsamı doğrulanır', () => {
   const state = createSeed(),
-    parent = { role: 'veli', childId: 's1' }
+    parent: Session = { role: 'veli', childId: 's1' }
   assert.equal(conversationFor(state, parent, 'conv1'), null)
   assert.equal(conversationFor(state, { ...parent, childId: 's2' }, 'conv2'), null)
   assert.throws(
@@ -102,9 +102,12 @@ test('Mobil mesaj: öğretmen/veli/öğrenci ve modül kapsamı doğrulanır', (
   )
   assert.throws(() => appendMessage(state, parent, 'conv2', '', () => 'id'))
   appendMessage(state, parent, 'conv2', 'Deniz için görüşme rica ediyorum.', () => 'new-msg')
-  const message = state.conversations.find((c) => c.id === 'conv2').messages.at(-1)
-  assert.equal(message.sender, 'parent')
-  assert.equal(conversationFor(state, { role: 'ogretmen' }, 'conv2').messages.at(-1).id, 'new-msg')
+  const message = state.conversations.find((c) => c.id === 'conv2')!.messages.at(-1)
+  assert.equal(message!.sender, 'parent')
+  assert.equal(
+    conversationFor(state, { role: 'ogretmen' }, 'conv2')!.messages.at(-1)!.id,
+    'new-msg',
+  )
   state.modules.communication = false
   assert.equal(conversationFor(state, parent, 'conv2'), null)
   assert.throws(() => appendMessage(state, parent, 'conv2', 'Kapalı modül', () => 'id'))

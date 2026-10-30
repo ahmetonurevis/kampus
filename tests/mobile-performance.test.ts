@@ -1,6 +1,6 @@
-// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import { dateLabel, dayKey, money, timeLabel } from '../packages/school-core/src/lib/format.ts'
 import { moduleNavigationState } from '../apps/mobile/src/model/navigation.ts'
@@ -14,7 +14,7 @@ test('Biçimleyici tekrar kullanımı Türkçe para ve İstanbul gün sınırın
   assert.equal(timeLabel('2026-09-30T21:00:00.000Z'), '00:00')
   assert.equal(dateLabel(null), '—')
   const date = '2026-09-30T21:00:00.000Z'
-  const options = { year: 'numeric', timeZone: 'UTC' }
+  const options: Intl.DateTimeFormatOptions = { year: 'numeric', timeZone: 'UTC' }
   assert.equal(
     dateLabel(date, options),
     new Intl.DateTimeFormat('tr-TR', {
@@ -56,12 +56,12 @@ test('Kategori geçişi ana ekran kimliğini korur ve eski detayları yığında
   assert.equal(next.routes.length, 2)
   assert.deepEqual(next.routes[1], { name: 'Module', params: { page: 'finans' } })
   assert.deepEqual(moduleNavigationState(next, 'dashboard'), { index: 0, routes: [home] })
-  assert.equal(moduleNavigationState({ routes: [] }, 'finans').routes[0].name, 'Home')
+  assert.equal(moduleNavigationState({ routes: [] }, 'finans').routes[0]!.name, 'Home')
 })
 
 test('Hızlı dashboard ve risk özeti bütün veriden hesaplanan sonuçla aynı; ödeme sonrası güncel', () => {
   const data = createSeed(),
-    session = { role: 'yonetici', childId: 's1' }
+    session: Session = { role: 'yonetici', childId: 's1' }
   // Ayın ilk günlerinde doğal örnek veride gecikmiş taksit bulunmayabilir.
   data.invoices
     .filter((i) => !i.paidAt)
@@ -81,9 +81,9 @@ test('Hızlı dashboard ve risk özeti bütün veriden hesaplanan sonuçla aynı
     risk.map((r) => r.id),
   )
   const next = structuredClone(data)
-  next.invoices.find((i) => i.id === expected[0].id).paidAt = new Date().toISOString()
+  next.invoices.find((i) => i.id === expected[0]!.id)!.paidAt = new Date().toISOString()
   const updated = homeSummary(next, session)
-  assert.ok(updated.important.every((r) => r.id !== expected[0].id))
+  assert.ok(updated.important.every((r) => r.id !== expected[0]!.id))
   assert.deepEqual(
     updated.important,
     rowsFor(next, session, 'finans')
@@ -101,17 +101,17 @@ test('Hızlı dashboard ve risk özeti bütün veriden hesaplanan sonuçla aynı
 
 test('Ana ekran bitmiş dersleri sıradaki ders olarak göstermez; devam eden ve gelecek dersler korunur', () => {
   const data = createSeed()
-  const lesson = data.schedule.find((s) => s.classId === data.students[0].classId)
+  const lesson = data.schedule.find((s) => s.classId === data.students[0]!.classId)
   const now = Date.now()
   data.schedule = [-500, -400, -300, -10, 60, 120, 180].map((minutes, i) => ({
-    ...lesson,
+    ...lesson!,
     id: `schedule-${i}`,
     teacherId: 't1',
     date: new Date(now + minutes * 60000).toISOString(),
     duration: 40,
   }))
-  for (const role of ['ogrenci', 'veli', 'ogretmen']) {
-    const summary = homeSummary(data, { role, childId: data.students[0].id })
+  for (const role of ['ogrenci', 'veli', 'ogretmen'] as const) {
+    const summary = homeSummary(data, { role, childId: data.students[0]!.id })
     assert.deepEqual(
       summary.lessons.map((r) => r.id),
       ['schedule-3', 'schedule-4', 'schedule-5'],

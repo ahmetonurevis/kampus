@@ -54,6 +54,13 @@ const StudentMaterialsPage = lazy(async () => ({
   default: (await import('./learning/StudentMaterialsPage.tsx')).StudentMaterialsPage,
 }))
 
+// Okul iş akışı modülleri tek ortak sayfayı paylaşır (core sunum tanımı menü yolundan gelir).
+const WorkflowPage = lazy(async () => ({
+  default: (await import('./workflows/WorkflowPage.tsx')).WorkflowPage,
+}))
+/** Bağlanmış iş akışı sayfaları; kalanlar yer tutucudur (bkz. README geçiş durumu). */
+const WORKFLOW_PATHS = new Set(['yemek-menusu', 'okul-takvimi', 'kulupler'])
+
 const MIGRATED = new Set([
   'yonetici/subeler',
   'yonetici/personel',
@@ -76,11 +83,13 @@ const MIGRATED = new Set([
 ])
 
 export function isMigratedPage(role: RoleKey, path: string): boolean {
-  return MIGRATED.has(`${role}/${path}`)
+  return MIGRATED.has(`${role}/${path}`) || WORKFLOW_PATHS.has(path)
 }
 
 /** Taşınmış sayfayı çizer; `Suspense` içinde kullanılır. */
 export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
+  // Menüde olmayan rol bu yola gelemez (`resolveShell`); modülün rolleri core kaydındadır.
+  if (WORKFLOW_PATHS.has(page.path)) return <WorkflowPage page={page} />
   switch (`${role}/${page.path}`) {
     case 'yonetici/subeler':
       return <CampusesPage page={page} />

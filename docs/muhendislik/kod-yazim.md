@@ -244,6 +244,16 @@ const onSubmit = form.handleSubmit(async (values) => {
 
 Yeni komut: `react-shared`'de `use-<alan>-commands.ts` içinde `useApiCommand({ request, invalidates, messages? })`; `request` `client.POST(…, { params: { path, header: headers }, body })` biçimindedir. e2e: başarı ve kalıcılık (API sorgusu), çift tıklamada tek istek, 409 yolu, yetkisiz rolde menü ve rota kapalı.
 
+#### Okul iş akışı sayfası (web-react)
+
+İş akışı modülleri (`yemek-menusu`, `okul-takvimi`, `kulupler`; kalanlar sırayla) tek sayfayı paylaşır: `pages/workflows/WorkflowPage.tsx`. Ekran sunum yazmaz, core'u çağırır:
+
+1. Menü yolundan core modül tanımı (`workflowPage(path)`); okunacak koleksiyonlar `workflow-state.ts` `MODULE_SOURCES` + kapsam kaynakları (`workflowSources`). `useWorkflowState` bunları `useCollectionsAll` ile okur, `buildWorkflowState` ile core `State` ve id → sürüm haritası kurar. Yardımcı koleksiyonun 403/404'ü boş sayılır (`isUnreadableCollectionError`), ana koleksiyonun hatası `QueryError`'dır.
+2. Oturum `coreSession(session, childId)`: `/me` bağlantıları (`links`) ve velinin seçili çocuğu. Satır `workflowRows`, detay `workflowDetails`, oluşturma düğmeleri `workflowCreateActions` (yetkisi olmayan rolde düğme yok). Kapsam ve rehberlik iç not ayıklaması sunucudadır; ekran ayrı süzgeç yazmaz.
+3. Liste `ServerDataTable` + `useListState('kayitlar', { urlFilters: { status: 'durum' } })` + `listView`: arama/durum/sıralama/sayfa URL'de, sayfalama istemcide, CSV tüm filtrelenmiş satırlar. `TODO(api-workflow-rows)`: satır metni birden çok koleksiyondan türediği için sunucu sayfalaması sonraki iştir.
+4. Detay `useDetailPanel('kayit')` sağ panelde. Form `workflowForm(...).fields(values)` + react-hook-form; çözücü `normalizeWorkflowInput` sonrası core şemasını `zodResolver(schema, undefined, { raw: true })` ile uygular, sunucuya ham değer gider. İki adım ("Kontrol et" → "Onayla ve kaydet"); ≤ 6 alan `SidePanel`, fazlası `Modal size="wide"`. Gönderim `useWorkflowCommand(komut)`: konusu olan komutta okunan sürümle `If-Match`, `ApiError.issues` → `setError` ve düzenleme adımına dönüş.
+5. Kapalı modülün doğrudan adresi kabuk içinde "Modül kullanıma kapalı" der (`showsClosedNotice`, `ModuleClosedPage`); diğer sayfalar uyarıyla dashboard'a döner. Yeni modül bağlamak `page-registry.tsx` `WORKFLOW_PATHS`'e yol eklemek ve e2e senaryosudur.
+
 ### Expo (mobil)
 
 - Hazır paketler: React Navigation, TanStack Query, react-hook-form, `@better-auth/expo` + `expo-secure-store`. Cam yüzey iOS'ta `expo-glass-effect`, Android ve desteklenmeyen platformda opak token zemini.

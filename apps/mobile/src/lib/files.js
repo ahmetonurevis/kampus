@@ -4,8 +4,8 @@ import * as Sharing from 'expo-sharing'
 import * as Print from 'expo-print'
 import { Platform } from 'react-native'
 import { randomUUID } from 'expo-crypto'
-import { documentData } from '@kampus/school-core/lib/document-data.js'
-import { dateLabel, money } from '@kampus/school-core/lib/format.js'
+import { documentData } from '@kampus/school-core/lib/document-data.ts'
+import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 
 export const fileSelectionMessage = (error) =>
   ({ FILE_TYPE: 'PDF, JPG veya PNG dosyası seçin.', FILE_SIZE: 'Dosya en fazla 10 MB olabilir.' })[

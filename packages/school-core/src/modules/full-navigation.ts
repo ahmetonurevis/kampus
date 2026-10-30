@@ -1,7 +1,7 @@
-import { navigation as baseNavigation } from './navigation.js'
-import { schoolModules } from './school-workflows.js'
+import { navigation as baseNavigation } from './navigation.ts'
+import { schoolModules } from './school-workflows.ts'
 
-export { roles } from './navigation.js'
+export { roles } from './navigation.ts'
 
 const SCHOOL_LIFE_MODULES = ['transport', 'meals', 'clubs', 'calendar']
 

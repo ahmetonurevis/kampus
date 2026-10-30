@@ -1,8 +1,8 @@
 import { z } from 'zod'
 z.config(z.locales.tr())
-import { dayKey } from './format.js'
-import { csvObjects } from './delimited-input.js'
-import { tutorConflict } from './tutor-conflicts.js'
+import { dayKey } from './format.ts'
+import { csvObjects } from './delimited-input.ts'
+import { tutorConflict } from './tutor-conflicts.ts'
 
 const integer = (min, max) => z.coerce.number().int().min(min).max(max)
 const identifier = z.string().trim().min(1, 'Bir kayıt seçin.')

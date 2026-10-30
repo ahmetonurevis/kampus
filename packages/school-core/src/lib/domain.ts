@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { dayKey } from './format.js'
+import { dayKey } from './format.ts'
 
 z.config(z.locales.tr())
 

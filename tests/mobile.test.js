@@ -1,15 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSeed } from '../packages/school-core/src/data/seed.js'
-import { gradeQuiz } from '../packages/school-core/src/lib/domain.js'
+import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { gradeQuiz } from '../packages/school-core/src/lib/domain.ts'
 import {
   createSnapshotWriter,
   restoreSnapshot,
-} from '../packages/school-core/src/lib/demo-persistence.js'
+} from '../packages/school-core/src/lib/demo-persistence.ts'
 import { availablePages, rowsFor, navigation, clone } from '../apps/mobile/src/model/school.js'
 import { operation, normalizeFields } from '../apps/mobile/src/model/operations.js'
-import { workflowPage } from '../packages/school-core/src/modules/school-workflows.js'
-import { workflowRows } from '../packages/school-core/src/lib/workflow-presentation.js'
+import { workflowPage } from '../packages/school-core/src/modules/school-workflows.ts'
+import { workflowRows } from '../packages/school-core/src/lib/workflow-presentation.ts'
 const session = (role) => ({ role, childId: 's1', theme: 'light' })
 let sequence = 0
 const id = (prefix) => `${prefix}-mobile-test-${++sequence}`
@@ -240,9 +240,9 @@ test('Mobil: referans ödevi ve yanıtı güncellemede korunur; dosyasız veya d
 })
 
 test('Mobil: mazeretli yoklama mevcut günü günceller; devamsızlık sayılmaz ve eski geç kayıtları korunur', async () => {
-  const { recordAttendance } = await import('../packages/school-core/src/lib/domain.js')
+  const { recordAttendance } = await import('../packages/school-core/src/lib/domain.ts')
   const { absentCount } = await import('../apps/mobile/src/model/school.js')
-  const { dayKey } = await import('../packages/school-core/src/lib/format.js')
+  const { dayKey } = await import('../packages/school-core/src/lib/format.ts')
   const seed = createSeed(),
     state = clone(seed),
     date = new Date().toISOString()

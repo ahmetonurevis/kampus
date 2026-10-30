@@ -15,7 +15,7 @@ import { icons } from './icons.js'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useSchool } from '../store/SchoolProvider.jsx'
 import { palettes, spaces, shape } from './theme.js'
-import { initials, dateLabel } from '@kampus/school-core/lib/format.js'
+import { initials, dateLabel } from '@kampus/school-core/lib/format.ts'
 
 export const useColors = () => palettes[useSchool().resolvedTheme]
 export function Icon({ name = 'Circle', size = 21, color, ...props }) {

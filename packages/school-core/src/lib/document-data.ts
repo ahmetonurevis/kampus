@@ -1,5 +1,5 @@
-import { subjectById } from '../data/curriculum.js'
-import { invoiceStatus } from './format.js'
+import { subjectById } from '../data/curriculum.ts'
+import { invoiceStatus } from './format.ts'
 
 function studentContext(state, studentId, classId) {
   const student = state.students.find((s) => s.id === studentId)

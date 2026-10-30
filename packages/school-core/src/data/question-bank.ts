@@ -1,4 +1,4 @@
-import { subjectById } from './curriculum.js'
+import { subjectById } from './curriculum.ts'
 
 // Her satır: soru, doğru cevap, üç çeldirici, konu, çözüm açıklaması.
 const entries = {

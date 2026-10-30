@@ -1,4 +1,4 @@
-import { schoolModules } from '../modules/school-workflows.js'
+import { schoolModules } from '../modules/school-workflows.ts'
 
 export function createSchoolWorkflows(state, date) {
   const year = new Date(state.createdAt).getUTCFullYear()

@@ -1,1 +1,1 @@
-export * from '@kampus/school-core/data/seed.js'
+export * from '@kampus/school-core/data/seed.ts'

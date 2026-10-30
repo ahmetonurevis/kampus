@@ -1,4 +1,4 @@
-import { createSeed } from '../data/seed.js'
+import { createSeed } from '../data/seed.ts'
 
 // Zengin başlangıç verisini tekrar yazmak yerine yalnızca demo değişikliklerini saklar.
 export function createSnapshotWriter(seed) {

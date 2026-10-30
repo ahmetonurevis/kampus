@@ -1,7 +1,7 @@
 import React from 'react'
 import { Pressable, View } from 'react-native'
-import { dayKey, timeLabel } from '@kampus/school-core/lib/format.js'
-import { readFormValue } from '@kampus/school-core/lib/workflow-presentation.js'
+import { dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
+import { readFormValue } from '@kampus/school-core/lib/workflow-presentation.ts'
 import { DateField, Field, Icon, Select, T, useColors } from './components.jsx'
 
 const KEYBOARDS = { number: 'decimal-pad' }

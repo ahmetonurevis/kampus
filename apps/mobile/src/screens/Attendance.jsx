@@ -4,8 +4,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Pressable, useWindowDimensions } from 'react-native'
 import { useSchool } from '../store/SchoolProvider.jsx'
 import { context, nameOf } from '../model/school.js'
-import { recordAttendance } from '@kampus/school-core/lib/domain.js'
-import { dateLabel, dayKey } from '@kampus/school-core/lib/format.js'
+import { recordAttendance } from '@kampus/school-core/lib/domain.ts'
+import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   Button,
   Card,

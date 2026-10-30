@@ -1,8 +1,8 @@
 import { z } from 'zod'
-import { installmentAmounts } from './domain.js'
-import { dayKey } from './format.js'
-import { subjectsForGrade } from '../data/curriculum.js'
-import { tutorConflict } from './tutor-conflicts.js'
+import { installmentAmounts } from './domain.ts'
+import { dayKey } from './format.ts'
+import { subjectsForGrade } from '../data/curriculum.ts'
+import { tutorConflict } from './tutor-conflicts.ts'
 
 z.config(z.locales.tr())
 const text = z.string().trim().min(2, 'En az iki karakter girin.').max(2000)

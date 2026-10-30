@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSeed } from '../packages/school-core/src/data/seed.js'
-import { runWorkflow, mayRun } from '../packages/school-core/src/lib/school-workflows.js'
-import { runAssessment } from '../packages/school-core/src/lib/assessment-automation.js'
-import { schoolModules } from '../packages/school-core/src/modules/school-workflows.js'
+import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { runWorkflow, mayRun } from '../packages/school-core/src/lib/school-workflows.ts'
+import { runAssessment } from '../packages/school-core/src/lib/assessment-automation.ts'
+import { schoolModules } from '../packages/school-core/src/modules/school-workflows.ts'
 import {
   workflowRows,
   workflowDetails,
@@ -15,7 +15,7 @@ import {
   changeFormValue,
   normalizeWorkflowInput,
   csvTemplate,
-} from '../packages/school-core/src/lib/workflow-presentation.js'
+} from '../packages/school-core/src/lib/workflow-presentation.ts'
 
 const now = '2026-10-06T10:00:00.000Z'
 const seed = () => createSeed(new Date(now))

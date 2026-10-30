@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { requiredText } from './domain.js'
-import { subjectsForGrade, subjectById } from '../data/curriculum.js'
-import { tutorConflict } from './tutor-conflicts.js'
+import { requiredText } from './domain.ts'
+import { subjectsForGrade, subjectById } from '../data/curriculum.ts'
+import { tutorConflict } from './tutor-conflicts.ts'
 export const branchSchema = z.object({ name: requiredText.max(80), address: requiredText.max(240) })
 export const teacherSchema = z.object({
   name: requiredText.max(80),

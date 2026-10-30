@@ -16,7 +16,7 @@ import { Badge, Button, Card, T, useColors } from '../ui/components.jsx'
 import { ChildSelector, ListRow, Screen, Section } from '../ui/SchoolLayout.jsx'
 import ModuleHub from '../ui/ModuleHub.jsx'
 import { useMinute } from '../ui/use-minute.js'
-import { dateLabel, dayKey, money, timeLabel } from '@kampus/school-core/lib/format.js'
+import { dateLabel, dayKey, money, timeLabel } from '@kampus/school-core/lib/format.ts'
 
 export default function RoleHome({ navigation }) {
   const { data, session } = useSchool(),

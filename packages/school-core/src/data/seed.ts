@@ -1,8 +1,8 @@
-import { questionBank } from './question-bank.js'
-import { subjects, subjectsForGrade, subjectById } from './curriculum.js'
-import { gradeQuiz } from '../lib/domain.js'
-import { createSchoolWorkflows } from './school-workflows.js'
-import { createAssessmentAutomation } from './assessment-automation.js'
+import { questionBank } from './question-bank.ts'
+import { subjects, subjectsForGrade, subjectById } from './curriculum.ts'
+import { gradeQuiz } from '../lib/domain.ts'
+import { createSchoolWorkflows } from './school-workflows.ts'
+import { createAssessmentAutomation } from './assessment-automation.ts'
 export const topics = subjects.map((s) => s.name)
 export const studentNames = [
   'Deniz Yılmaz',

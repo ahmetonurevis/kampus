@@ -47,8 +47,33 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
     )
   assert.deepEqual(
     navigation.ogretmen.filter((p) => p.apiOnly).map((p) => p.path),
-    ['duyurular', 'mesajlar'],
+    ['icerik-havuzu', 'duyurular', 'mesajlar'],
   )
+})
+
+test('İçerik Havuzu yalnız yönetici ve öğretmende, learning modülüne bağlı ve ÖĞRENME kategorisindedir (DOM-YTK-021)', () => {
+  for (const role of roleKeys) {
+    const page = navigation[role].find((p) => p.path === 'icerik-havuzu')
+    if (role !== 'yonetici' && role !== 'ogretmen') {
+      assert.equal(page, undefined, `${role} içerik havuzunu görmemeli`)
+      continue
+    }
+    assert.ok(page, `${role} menüsünde yok`)
+    assert.equal(page.module, 'learning')
+    assert.equal(page.group, 'ÖĞRENME')
+    assert.equal(page.apiOnly, true)
+    // Kategori sürekli kalır: aynı gruptaki sayfalar yan yana durur.
+    const groups = navigation[role].map((p) => p.group)
+    const first = groups.indexOf('ÖĞRENME')
+    assert.equal(
+      groups.lastIndexOf('ÖĞRENME') - first + 1,
+      groups.filter((g) => g === 'ÖĞRENME').length,
+    )
+  }
+  const teacher = navigation.ogretmen.map((p) => p.path)
+  assert.equal(teacher[teacher.indexOf('sorular') + 1], 'icerik-havuzu')
+  const admin = navigation.yonetici.map((p) => p.path)
+  assert.ok(admin.indexOf('icerik-havuzu') < admin.indexOf('kayit-raporlari'))
 })
 
 test('Vue demosu apiOnly sayfaları almaz ve temel menü + okul iş akışlarını korur', () => {

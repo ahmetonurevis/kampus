@@ -25,6 +25,8 @@ export const MIGRATED = new Set([
   'veli/dashboard',
   'yonetici/subeler',
   'yonetici/personel',
+  'yonetici/icerik-havuzu',
+  'ogretmen/icerik-havuzu',
   'yonetici/ayarlar',
   'ogrenci/ayarlar',
   'veli/ayarlar',

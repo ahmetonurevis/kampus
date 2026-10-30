@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   CEFR_LEVELS,
+  COPYRIGHT_DECLARATION,
   CONTENT_TYPES,
   FILE_PURPOSES,
   LICENSE_KINDS,
@@ -130,4 +131,10 @@ test('Dosya amacı yanlış türü, büyük dosyayı ve uzun kaydı reddeder', (
       durationSeconds: null,
     }),
   )
+})
+
+test('DOM-KYN-020: telif beyanı kullanma hakkını ve incelemeyi anlatır', () => {
+  assert.match(COPYRIGHT_DECLARATION, /kullanma hakkım var/)
+  assert.match(COPYRIGHT_DECLARATION, /telif ihlali bildirilirse/i)
+  assert.ok(COPYRIGHT_DECLARATION.length < 200)
 })

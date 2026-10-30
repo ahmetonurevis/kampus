@@ -212,6 +212,13 @@ export const OPEN_LICENSES = {
 export type OpenLicense = keyof typeof OPEN_LICENSES
 
 /**
+ * Telif beyanı (DOM-KYN-020, 025): içeriği hazırlayan, kullanma hakkı olduğunu bu metinle
+ * beyan eder. Form onay kutusunda gösterir; telif bildirimi gelen içerik incelemeye alınır.
+ */
+export const COPYRIGHT_DECLARATION =
+  'Bu içeriği kullanma hakkım var. Telif ihlali bildirilirse içeriğin incelemeye alınacağını biliyorum.'
+
+/**
  * Lisanslı yayının bitiş günü geçti mi (DOM-KYN-021). Bitiş günü dahil geçerlidir; gün
  * Europe/Istanbul'a göre sayılır. Bitiş tarihi olmayan lisans türleri süresizdir.
  */

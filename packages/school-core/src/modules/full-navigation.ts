@@ -66,8 +66,47 @@ const apiCommunicationPages: Record<Role, readonly NavigationPage[]> = {
   veli: [],
 }
 
+// İçerik havuzu (ADR 0004, docs/domain/kaynak-platformu.md): yalnız içerik personeli (yönetici,
+// öğretmen; DOM-YTK-021). Öğrenci ve veli içeriği paylaşım ve atamayla görür, ön büro görmez.
+// Vue demosunun karşılığı yoktur; mobil API menüsü yalnız taşıdığı sayfaları gösterir.
+const contentPoolPage = (description: string): NavigationPage => ({
+  path: 'icerik-havuzu',
+  title: 'İçerik Havuzu',
+  icon: 'Library',
+  module: 'learning',
+  view: 'ContentPool',
+  description,
+  group: 'ÖĞRENME',
+  apiOnly: true,
+})
+
+const apiLearningPages: Record<Role, readonly NavigationPage[]> = {
+  yonetici: [
+    contentPoolPage('Kurumun okuma parçası ve soru havuzunu inceleyin, onaylayın ve yönetin.'),
+  ],
+  onburo: [],
+  ogretmen: [
+    contentPoolPage('Okuma parçası ve soru hazırlayın, onaya gönderin, yayındaki içeriği izleyin.'),
+  ],
+  ogrenci: [],
+  veli: [],
+}
+
+/**
+ * ÖĞRENME kategorisi varsa onun sonuna, yoksa RAPORLAR'dan (o da yoksa SİSTEM'den) önce; hiçbiri
+ * yoksa sona eklenir.
+ */
+function withLearning(role: Role, pages: NavigationPage[]): NavigationPage[] {
+  const extra = apiLearningPages[role].filter((added) => !pages.some((p) => p.path === added.path))
+  if (!extra.length) return pages
+  const lastLearning = pages.findLastIndex((page) => page.group === 'ÖĞRENME')
+  const before = pages.findIndex((page) => page.group === 'RAPORLAR' || page.group === 'SİSTEM')
+  const at = lastLearning >= 0 ? lastLearning + 1 : before >= 0 ? before : pages.length
+  return [...pages.slice(0, at), ...extra, ...pages.slice(at)]
+}
+
 function withCommunication(role: Role): NavigationPage[] {
-  const base: NavigationPage[] = [...baseNavigation[role]]
+  const base: NavigationPage[] = withLearning(role, [...baseNavigation[role]])
   const extra = apiCommunicationPages[role].filter(
     (added) => !base.some((page) => page.path === added.path),
   )

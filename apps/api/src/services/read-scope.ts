@@ -27,9 +27,14 @@ import { getInstitutionModules } from './modules.ts'
  */
 
 // Kapsamın okuduğu alanlar; tür tutmayan satır kapsam vermez (en dar varsayılan).
-const studentSource = z.object({ id: z.string(), classId: z.string() }) satisfies z.ZodType<
-  ScopeSource['students'][number]
->
+// `isActive` yalnız kayıtta varsa aktarılır: core `related` pasif öğrenciyi alanın varlığıyla
+// ayırt eder (`'isActive' in student`); yazışma başlatma ve veli hesapları aynı kararı verir.
+const studentSource = z
+  .object({ id: z.string(), classId: z.string(), isActive: z.boolean().optional() })
+  .transform(({ isActive, ...rest }) => ({
+    ...rest,
+    ...(isActive === undefined ? {} : { isActive }),
+  })) satisfies z.ZodType<ScopeSource['students'][number]>
 const teacherSource = z
   .object({
     id: z.string(),

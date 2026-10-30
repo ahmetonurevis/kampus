@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
@@ -242,6 +242,7 @@ async function parentAccounts(
         eq(membershipLinks.institutionId, institutionId),
         eq(membershipLinks.kind, 'child'),
         eq(membershipLinks.recordId, studentId),
+        isNull(membershipLinks.archivedAt),
         eq(memberships.institutionId, institutionId),
         eq(memberships.role, 'veli'),
       ),

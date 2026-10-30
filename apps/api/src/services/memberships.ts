@@ -1,4 +1,4 @@
-import { and, asc, count, eq, type SQL } from 'drizzle-orm'
+import { and, asc, count, eq, isNull, type SQL } from 'drizzle-orm'
 
 import { roleSchema, type Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
@@ -73,6 +73,8 @@ export async function listMembershipLinks(
       and(
         eq(membershipLinks.institutionId, institutionId),
         eq(membershipLinks.membershipId, membershipId),
+        // Arşivlenen bağlantı kapsam vermez (silme = arşiv).
+        isNull(membershipLinks.archivedAt),
       ),
     )
     .orderBy(asc(membershipLinks.kind), asc(membershipLinks.recordId))

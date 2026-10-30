@@ -142,26 +142,35 @@ export function readSource(ctx: ServiceContext): Promise<ScopeSource> {
 }
 
 /**
- * Sınıfların (arşivlenmemiş) öğrencileri, kapsam kaynağından (ek sorgu yok). Kurumun bütün
- * öğrencileri arasından seçilir: sonuç yalnız aday süzgecidir, her satır yine core `canRead`
- * ile süzülür. Sınıf öğrencinin güncel sınıfıdır (`students.classId`).
+ * Sınıfların (arşivlenmemiş) öğrencileri, kapsam kaynağından (ek sorgu yok). Yalnız aktörün
+ * kapsamındaki öğrenciler (`scope.studentIds`) arasından seçilir: kapsam dışı öğrencinin güncel
+ * sınıfı bu yolla sızmaz (öğretmen için başka sınıfa geçmiş öğrenci, DOM-YTK-022). Sonuç yalnız
+ * aday süzgecidir, her satır yine core `canRead` ile süzülür. Sınıf öğrencinin güncel sınıfıdır
+ * (`students.classId`).
  */
 export async function studentsOfClasses(
   ctx: ServiceContext,
   classIds: readonly string[],
 ): Promise<string[]> {
-  const source = await scopeState(ctx).source
+  const [source, scope] = await Promise.all([scopeState(ctx).source, readScope(ctx)])
   const wanted = new Set(classIds)
-  return source.students.filter((student) => wanted.has(student.classId)).map((s) => s.id)
+  return source.students
+    .filter((student) => scope.studentIds.has(student.id) && wanted.has(student.classId))
+    .map((s) => s.id)
 }
 
 /**
- * Öğrenci → güncel sınıf eşlemesi, kapsam kaynağından (ek sorgu yok). Yalnız kapsamdan geçmiş
- * satırları etiketlemek (sınıfa göre gruplama) için kullanılır; kapsam kararı vermez.
+ * Öğrenci → güncel sınıf eşlemesi, kapsam kaynağından (ek sorgu yok); yalnız aktörün
+ * kapsamındaki öğrenciler eşlenir, diğerleri eşlemede yoktur (grup `null`). Yalnız kapsamdan
+ * geçmiş satırları etiketlemek (sınıfa göre gruplama) için kullanılır; kapsam kararı vermez.
  */
 export async function studentClasses(ctx: ServiceContext): Promise<ReadonlyMap<string, string>> {
-  const source = await scopeState(ctx).source
-  return new Map(source.students.map((student) => [student.id, student.classId]))
+  const [source, scope] = await Promise.all([scopeState(ctx).source, readScope(ctx)])
+  return new Map(
+    source.students
+      .filter((student) => scope.studentIds.has(student.id))
+      .map((student) => [student.id, student.classId]),
+  )
 }
 
 /**

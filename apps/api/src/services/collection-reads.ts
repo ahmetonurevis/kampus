@@ -85,11 +85,12 @@ export type FilterField = (typeof FILTER_FIELDS)[number]
 /**
  * Kaydında `classId` olmayan, öğrenciye bağlı koleksiyonlar: `classId` süzgeci öğrencinin
  * güncel sınıfından (`students.classId`, kapsam kaynağı) öğrenci kimliklerine çevrilir; istemci
- * sınıfın öğrencilerini tek tek göndermez. Diğer koleksiyonlarda `classId` kaydın alanıdır:
- * `contracts` (sözleşmenin sınıfı) ve `enrollmentHistory` (biten dönemin sınıfı) bilerek dışındadır.
+ * sınıfın öğrencilerini tek tek göndermez. Çözüm yalnız aktörün kapsamındaki öğrencilerle
+ * yapılır (`read-scope.ts` `studentsOfClasses`): kapsam dışı öğrencinin güncel sınıfı sızmaz.
+ * Diğer koleksiyonlarda `classId` kaydın alanıdır: `contracts` (sözleşmenin sınıfı) ve
+ * `enrollmentHistory` (biten dönemin sınıfı) bilerek dışındadır; `grades` için `CLASS_OWN_OR_VIA`.
  */
 const CLASS_VIA_STUDENT: ReadonlySet<CollectionName> = new Set<CollectionName>([
-  'grades',
   'invoices',
   'absences',
   'submissions',
@@ -106,6 +107,15 @@ const CLASS_VIA_STUDENT: ReadonlySet<CollectionName> = new Set<CollectionName>([
   'clubMemberships',
   'socialAchievements',
 ])
+
+/**
+ * Kaydında `classId` bazen olan koleksiyonlar: not, verildiği sınıfı (`classId`, not girişi
+ * komutu yazar) saklar; öğrenci sonradan sınıf değiştirse de not o sınıfındır (DOM-YTK-022
+ * `gradeReader` de buna bakar). Örnek veri ve eski kayıtlar sınıf taşımaz: onlarda `classId`
+ * öğrencinin güncel sınıfıdır. Süzgeç ve gruplama önce kaydın alanını, yoksa öğrencinin
+ * (kapsamdaki) güncel sınıfını kullanır.
+ */
+const CLASS_OWN_OR_VIA: ReadonlySet<CollectionName> = new Set<CollectionName>(['grades'])
 
 /**
  * Saklanmayan, istekte türetilen alanlar: taksitin `status`'u core `invoiceStatus` ile `paidAt`,
@@ -367,6 +377,16 @@ async function listFilters(
       const students = await studentsOfClasses(ctx, values)
       if (students.length === 0) return null
       filters.push({ field: 'studentId', values: students })
+    } else if (field === 'classId' && CLASS_OWN_OR_VIA.has(collection)) {
+      // Kendi alanı eşleşen not kapsam dışı öğrenci sınıfı olmadan da döner; boş çözüm sonucu boşaltmaz.
+      const students = await studentsOfClasses(ctx, values)
+      filters.push({
+        kind: 'ownOrVia',
+        field: 'classId',
+        values,
+        viaField: 'studentId',
+        viaValues: students,
+      })
     } else if (field === 'status' && DERIVED_STATUS.has(collection)) {
       const statuses = values.filter(isInvoiceStatus)
       if (statuses.length !== values.length)
@@ -389,6 +409,7 @@ async function listFilters(
   const fieldOf = (filter: RecordFilter): string[] => {
     if (filter.kind === 'invoiceStatus') return ['paidAt', 'dueDate']
     if (filter.kind === 'any') return filter.matches.map((match) => match.field)
+    if (filter.kind === 'ownOrVia') return [filter.field, filter.viaField]
     return [filter.field]
   }
   return filters.some((filter) => fieldOf(filter).some((field) => hidden.includes(field)))
@@ -742,7 +763,7 @@ function hiddenFieldError(field: 'groupBy' | 'sum'): ValidationError {
  * grup başına sayı ve istenirse toplam. Rolün göremediği (ayıklanan) alanla gruplama veya toplama
  * 400'dür: alan o rol için yoktur. Değer ayıklanmış kayıttan okunur; taksit `status`'u türetilir,
  * `isActive` alanı olmayan kayıt etkindir, kaydında sınıf olmayan öğrenci koleksiyonlarında
- * `classId` öğrencinin güncel sınıfıdır (süzgeçle aynı). Gruplar değere göre sıralıdır, `null` sonda.
+ * `classId` kapsamdaki öğrencinin güncel sınıfıdır, notta önce kaydın `classId`'si (süzgeçle aynı). Gruplar değere göre sıralıdır, `null` sonda.
  */
 export async function countCollection(
   ctx: ServiceContext,
@@ -765,12 +786,16 @@ export async function countCollection(
   const { collection } = result
   const resolver = fieldResolver(ctx, collection)
   const classOf =
-    query.groupBy === 'classId' && CLASS_VIA_STUDENT.has(collection)
+    query.groupBy === 'classId' &&
+    (CLASS_VIA_STUDENT.has(collection) || CLASS_OWN_OR_VIA.has(collection))
       ? await studentClasses(ctx)
       : null
   const valueOf = (record: RecordData): GroupValue => {
     if (month !== null) return monthOf(record[month])
     if (classOf) {
+      // Kaydın kendi sınıfı varsa o (`CLASS_OWN_OR_VIA`); yoksa kapsamdaki öğrencinin güncel sınıfı.
+      const own = CLASS_OWN_OR_VIA.has(collection) ? record.classId : undefined
+      if (typeof own === 'string') return own
       const student = record.studentId
       return typeof student === 'string' ? (classOf.get(student) ?? null) : null
     }

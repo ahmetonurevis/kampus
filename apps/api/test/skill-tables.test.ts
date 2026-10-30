@@ -18,6 +18,7 @@ import {
   taskAttempts,
   taskSubmissions,
 } from '../src/db/schema/skills.ts'
+import { databaseErrorInfo } from '../src/errors.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
 import { seedResource } from './support/resources-sample.ts'
 import {
@@ -43,6 +44,19 @@ async function violates(work: Promise<unknown>, constraint: string, code?: strin
     const cause = (error as { cause?: { constraint?: string; code?: string } }).cause
     assert.equal(cause?.constraint ?? (error as { constraint?: string }).constraint, constraint)
     if (code !== undefined) assert.equal(cause?.code ?? (error as { code?: string }).code, code)
+    return true
+  })
+}
+
+/**
+ * Değişmez satır tetikleyicisinin reddi (`kampus_reject_immutable_change`): 55000 ve tablo adı.
+ * İleti teknik ve İngilizcedir; kullanıcıya gösterilmez.
+ */
+async function rejectsImmutable(work: Promise<unknown>, table: string) {
+  await assert.rejects(work, (error: unknown) => {
+    assert.equal(databaseErrorInfo(error)?.code, '55000')
+    const cause = (error as { cause?: { message?: string } }).cause
+    assert.match(cause?.message ?? String(error), new RegExp(`${table} rows are immutable`))
     return true
   })
 }
@@ -179,21 +193,37 @@ describe('0013: beceri görevi tabloları', () => {
       eq(submissionVersions.institutionId, institutionId),
       eq(submissionVersions.id, c.submissionVersionId),
     )
-    await violates(
+    await rejectsImmutable(
       db
         .update(submissionVersions)
         .set({ body: 'Değişti', version: sql`${submissionVersions.version} + 1`, updatedAt: LATER })
         .where(where),
-      'submission_versions_immutable_check',
-      '23514',
+      'submission_versions',
     )
-    await violates(
+    await rejectsImmutable(
       db.update(submissionVersions).set({ archivedAt: LATER }).where(where),
-      'submission_versions_immutable_check',
+      'submission_versions',
     )
+    // Sürüm ve zaman kolonlarına dokunmayan tek kolon güncellemesi de reddedilir.
+    await rejectsImmutable(
+      db.update(submissionVersions).set({ body: 'x' }).where(where),
+      'submission_versions',
+    )
+    await rejectsImmutable(db.delete(submissionVersions).where(where), 'submission_versions')
+    // Eklenen satır ilk sürümüyle ve arşivsiz gelir.
     await violates(
-      db.update(submissionVersions).set({ body: 'Değişti', updatedAt: LATER }).where(where),
-      'submission_versions_immutable_check',
+      db.insert(submissionVersions).values({
+        institutionId,
+        id: randomUUID(),
+        submissionId: c.submissionId,
+        versionNumber: 2,
+        submittedAt: FIXED_NOW,
+        body: 'Arşivli',
+        ...at,
+        archivedAt: FIXED_NOW,
+      }),
+      'submission_versions_version_check',
+      '23514',
     )
     const [stored] = await db.select().from(submissionVersions).where(where)
     assert.equal(stored?.body, 'My weekend was busy.')
@@ -278,12 +308,12 @@ describe('0013: beceri görevi tabloları', () => {
     await score('final')
     await score('final')
     await violates(score('coordinator'), 'rubric_scores_rater_role_check')
-    await violates(
+    await rejectsImmutable(
       db
         .update(rubricScores)
-        .set({ overallComment: 'Değişti', version: sql`${rubricScores.version} + 1` })
+        .set({ overallComment: 'Değişti' })
         .where(eq(rubricScores.institutionId, institutionId)),
-      'rubric_scores_immutable_check',
+      'rubric_scores',
     )
     // Atama arşivlenip rubrik bağı kalksa da puan rubrik sürümünü korur.
     await db
@@ -419,12 +449,12 @@ describe('0013: beceri görevi tabloları', () => {
     await violates(request({ dueAt: FIXED_NOW }), 'resubmission_requests_due_check')
     await request()
     await violates(request(), 'resubmission_requests_pkey')
-    await violates(
+    await rejectsImmutable(
       db
         .update(resubmissionRequests)
-        .set({ dueAt: new Date(LATER.getTime() + 1), version: 2 })
+        .set({ dueAt: new Date(LATER.getTime() + 1) })
         .where(eq(resubmissionRequests.institutionId, institutionId)),
-      'resubmission_requests_immutable_check',
+      'resubmission_requests',
     )
 
     const secondRating = (columns: Record<string, unknown>) =>
@@ -504,17 +534,102 @@ describe('0013: beceri görevi tabloları', () => {
     await violates(transfer({ score: 101 }), 'score_transfers_score_check')
     await transfer({})
     await violates(transfer({}), 'score_transfers_assignment_learner_key', '23505')
-    await violates(
+    await rejectsImmutable(
       db
         .update(scoreTransfers)
-        .set({ score: 90, version: sql`${scoreTransfers.version} + 1`, updatedAt: LATER })
+        .set({ score: 100 })
         .where(eq(scoreTransfers.institutionId, institutionId)),
-      'score_transfers_immutable_check',
+      'score_transfers',
     )
     // Aktarımın kaynağı olan deneme silinemez.
     await violates(
       db.delete(taskAttempts).where(eq(taskAttempts.id, attemptId)),
       'score_transfers_source_attempt_fkey',
     )
+  })
+
+  test('DOM-BEC-040, 021, 060: değişmez dört tabloda kolon güncellemesi, silme ve truncate tetikleyiciyle reddedilir; imha işinin set local atlatması yalnız silmeye izin verir', async () => {
+    const { institutionId, owner, chain: c } = await chain()
+    const scoreId = randomUUID()
+    await db.insert(rubricScores).values({
+      institutionId,
+      id: scoreId,
+      submissionVersionId: c.submissionVersionId,
+      rubricVersionId: c.rubricVersionId,
+      raterUserId: owner,
+      raterRole: 'first',
+      criteria: [{ criterionId: 'task', band: 3, comment: null }],
+      overallComment: 'İyi.',
+      scoredAt: FIXED_NOW,
+      ...at,
+    })
+    await db.insert(resubmissionRequests).values({
+      institutionId,
+      submissionId: c.submissionId,
+      versionNumber: 1,
+      dueAt: LATER,
+      requestedByUserId: owner,
+      requestedAt: FIXED_NOW,
+      ...at,
+    })
+    await db.insert(scoreTransfers).values({
+      institutionId,
+      id: randomUUID(),
+      assignmentId: c.assignmentId,
+      learnerId: LEARNER,
+      gradeType: 'performans',
+      score: 80,
+      sourceRubricScoreId: scoreId,
+      gradeRecordId: 'test-grade-1',
+      transferredByUserId: owner,
+      transferredAt: LATER,
+      ...at,
+    })
+    const own = (table: string) => sql`${sql.identifier(table)}.institution_id = ${institutionId}`
+    // Silme sırası yabancı anahtarlara uyar: aktarım → puan → yeniden teslim isteği → sürüm.
+    const tables = [
+      ['score_transfers', sql`score = 100`],
+      ['rubric_scores', sql`overall_comment = 'Değişti'`],
+      ['resubmission_requests', sql`due_at = due_at + interval '1 day'`],
+      ['submission_versions', sql`body = 'x'`],
+    ] as const
+    for (const [table, assignment] of tables) {
+      await rejectsImmutable(
+        db.execute(sql`update ${sql.identifier(table)} set ${assignment} where ${own(table)}`),
+        table,
+      )
+      await rejectsImmutable(
+        db.execute(sql`delete from ${sql.identifier(table)} where ${own(table)}`),
+        table,
+      )
+    }
+    await rejectsImmutable(db.execute(sql`truncate score_transfers`), 'score_transfers')
+
+    // Atlatma güncellemeyi açmaz.
+    await rejectsImmutable(
+      db.transaction(async (tx) => {
+        await tx.execute(sql`set local kampus.allow_immutable_purge = 'on'`)
+        await tx.execute(
+          sql`update score_transfers set score = 100 where ${own('score_transfers')}`,
+        )
+      }),
+      'score_transfers',
+    )
+    // İmha işi: atlatma yalnız kendi transaction'ında geçerlidir.
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`set local kampus.allow_immutable_purge = 'on'`)
+      for (const [table] of tables)
+        await tx.execute(sql`delete from ${sql.identifier(table)} where ${own(table)}`)
+    })
+    for (const [table] of tables) {
+      const [remaining] = await rows<{ n: number }>(
+        sql`select count(*)::int as n from ${sql.identifier(table)} where ${own(table)}`,
+      )
+      assert.equal(remaining?.n, 0, table)
+    }
+    const [setting] = await rows<{ value: string | null }>(
+      sql`select current_setting('kampus.allow_immutable_purge', true) as value`,
+    )
+    assert.notEqual(setting?.value, 'on')
   })
 })

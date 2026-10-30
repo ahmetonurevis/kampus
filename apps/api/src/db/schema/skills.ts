@@ -57,9 +57,11 @@ import { resources, resourceVersions } from './resources.ts'
  * - Hesaplanan değer saklanmaz (karar 5): otomatik puan, rubrik toplamı, son puan, sayılan deneme,
  *   geç bayrağı, sözcük sayısı. Yalnız kararın kendisi ve not defterine aktarım anındaki puan
  *   (`score_transfers`) saklanır.
- * - Değişmez satırlar (teslim sürümü, rubrik puanı, yeniden teslim isteği, not aktarımı) için
- *   tetikleyici yoktur; depo güncelleme fonksiyonu sunmaz ve `<tablo>_immutable_check` kolon
- *   kısıtı her güncellemenin yaptığı `version + 1` ve `updated_at` yazımını reddeder.
+ * - Değişmez satırlar (teslim sürümü, rubrik puanı, yeniden teslim isteği, not aktarımı) migration
+ *   0013'teki `kampus_reject_immutable_change()` tetikleyicisiyle korunur: her `update`, `delete`
+ *   ve `truncate` 55000 ile reddedilir. Tek istisna imha işidir: transaction'da
+ *   `set local kampus.allow_immutable_purge = 'on'` verilince yalnız `delete` geçer. Tetikleyiciyi
+ *   Drizzle şeması izlemez (elle SQL); `<tablo>_version_check` yalnız eklenen satırı sınırlar.
  * - Kullanılmış rubrik sürümü atama ve puan satırlarının `on delete restrict` yabancı anahtarıyla
  *   korunur; yalnız arşivlenir (DOM-BEC-022).
  * - Tablolar yeni ve boştur; kısıtlar `not valid` adımına gerek olmadan tek adımda eklenir.
@@ -71,14 +73,12 @@ import { resources, resourceVersions } from './resources.ts'
 
 const required = requiredColumns
 
-/** Satır bir kez yazılır: güncelleme `version`'ı artırır ve `updated_at`'i değiştirir, arşiv yoktur. */
-function immutable(table: {
-  version: AnyPgColumn
-  archivedAt: AnyPgColumn
-  createdAt: AnyPgColumn
-  updatedAt: AnyPgColumn
-}): SQL {
-  return sql`${table.version} = 1 and ${table.archivedAt} is null and ${table.updatedAt} = ${table.createdAt}`
+/**
+ * Değişmez satır ilk sürümüyle ve arşivsiz eklenir. Kısıt yalnız eklemede anlamlıdır; sonraki her
+ * `update`/`delete` tetikleyiciyle reddedilir (`kampus_reject_immutable_change`, migration 0013).
+ */
+function firstVersion(table: { version: AnyPgColumn; archivedAt: AnyPgColumn }): SQL {
+  return sql`${table.version} = 1 and ${table.archivedAt} is null`
 }
 
 /** Rubrik (karar 7). Başlık ve kriterler sürümdedir; rubrik kurumundur (IST-048). */
@@ -435,7 +435,7 @@ export const submissionVersions = pgTable(
       'submission_versions_body_check',
       sql`${table.body} is null or char_length(${table.body}) <= 50000`,
     ),
-    check('submission_versions_immutable_check', immutable(table)),
+    check('submission_versions_version_check', firstVersion(table)),
     // Sürüm numarası teslimde tekildir; teslim yabancı anahtarının indeksidir. Kısıt (indeks değil):
     // yeniden teslim isteğinin bileşik yabancı anahtarı ona bağlanır ve migration'da tabloyla
     // birlikte, yabancı anahtarlardan önce oluşur.
@@ -514,7 +514,7 @@ export const resubmissionRequests = pgTable(
       ],
     }),
     check('resubmission_requests_due_check', sql`${table.dueAt} > ${table.requestedAt}`),
-    check('resubmission_requests_immutable_check', immutable(table)),
+    check('resubmission_requests_version_check', firstVersion(table)),
   ],
 )
 
@@ -561,7 +561,7 @@ export const rubricScores = pgTable(
       'rubric_scores_criteria_check',
       sql`jsonb_typeof(${table.criteria}) = 'array' and jsonb_array_length(${table.criteria}) between 1 and 10`,
     ),
-    check('rubric_scores_immutable_check', immutable(table)),
+    check('rubric_scores_version_check', firstVersion(table)),
     // Teslim sürümünün puanları; yabancı anahtar indeksi.
     index('rubric_scores_submission_version_idx').on(
       table.institutionId,
@@ -727,7 +727,7 @@ export const scoreTransfers = pgTable(
       'score_transfers_source_check',
       sql`(${table.sourceAttemptId} is null) <> (${table.sourceRubricScoreId} is null)`,
     ),
-    check('score_transfers_immutable_check', immutable(table)),
+    check('score_transfers_version_check', firstVersion(table)),
     // Görev ve kursiyer başına tek aktarım (DOM-BEC-060); atama yabancı anahtarının indeksi.
     uniqueIndex('score_transfers_assignment_learner_key').on(
       table.institutionId,

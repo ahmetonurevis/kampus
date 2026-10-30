@@ -649,6 +649,44 @@ describe('0013: beceri görevi tabloları', () => {
     assert.ok(foreignKeys >= 30, `yabancı anahtar sayısı ${foreignKeys}`)
   })
 
+  test('DOM-BEC-040, 060: değişmez dört tabloda satır ve truncate tetikleyicisi kurulu, etkin ve ortak fonksiyonu çağırır', async () => {
+    const triggers = await rows<{
+      table_name: string
+      tgname: string
+      tgtype: number
+      tgenabled: string
+      proname: string
+    }>(
+      sql`select c.relname::text as table_name, t.tgname::text as tgname, t.tgtype::int as tgtype,
+            t.tgenabled::text as tgenabled, p.proname::text as proname
+          from pg_trigger t
+          join pg_class c on c.oid = t.tgrelid
+          join pg_proc p on p.oid = t.tgfoid
+          where not t.tgisinternal and c.relname in (${tableList})
+          order by c.relname, t.tgname`,
+    )
+    // pg_trigger.tgtype bitleri: ROW 1, BEFORE 2, DELETE 8, UPDATE 16, TRUNCATE 32.
+    const ROW_UPDATE_DELETE = 1 | 2 | 8 | 16
+    const STATEMENT_TRUNCATE = 2 | 32
+    const immutableTables = [
+      'resubmission_requests',
+      'rubric_scores',
+      'score_transfers',
+      'submission_versions',
+    ]
+    assert.deepEqual(
+      triggers.map(({ table_name, tgname, tgtype }) => [table_name, tgname, tgtype]),
+      immutableTables.flatMap((table) => [
+        [table, `${table}_immutable_trigger`, ROW_UPDATE_DELETE],
+        [table, `${table}_truncate_trigger`, STATEMENT_TRUNCATE],
+      ]),
+    )
+    for (const trigger of triggers) {
+      assert.equal(trigger.tgenabled, 'O', `${trigger.tgname} etkin olmalı`)
+      assert.equal(trigger.proname, 'kampus_reject_immutable_change')
+    }
+  })
+
   test('migration ikinci kez uygulanınca hiçbir adım yeniden çalışmaz', async () => {
     const client = newPGlite()
     try {

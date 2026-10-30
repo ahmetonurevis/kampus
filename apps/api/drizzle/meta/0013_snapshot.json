@@ -1,5 +1,5 @@
 {
-  "id": "755916ca-40bb-4001-b018-4cf1eeb72168",
+  "id": "88546cba-b729-4906-8324-758c8f4f96d3",
   "prevId": "81f3ce68-88df-42f3-bedb-b0b59f665eee",
   "version": "7",
   "dialect": "postgresql",
@@ -2383,9 +2383,9 @@
           "name": "resubmission_requests_due_check",
           "value": "\"resubmission_requests\".\"due_at\" > \"resubmission_requests\".\"requested_at\""
         },
-        "resubmission_requests_immutable_check": {
-          "name": "resubmission_requests_immutable_check",
-          "value": "\"resubmission_requests\".\"version\" = 1 and \"resubmission_requests\".\"archived_at\" is null and \"resubmission_requests\".\"updated_at\" = \"resubmission_requests\".\"created_at\""
+        "resubmission_requests_version_check": {
+          "name": "resubmission_requests_version_check",
+          "value": "\"resubmission_requests\".\"version\" = 1 and \"resubmission_requests\".\"archived_at\" is null"
         }
       },
       "isRLSEnabled": false
@@ -2613,9 +2613,9 @@
           "name": "rubric_scores_criteria_check",
           "value": "jsonb_typeof(\"rubric_scores\".\"criteria\") = 'array' and jsonb_array_length(\"rubric_scores\".\"criteria\") between 1 and 10"
         },
-        "rubric_scores_immutable_check": {
-          "name": "rubric_scores_immutable_check",
-          "value": "\"rubric_scores\".\"version\" = 1 and \"rubric_scores\".\"archived_at\" is null and \"rubric_scores\".\"updated_at\" = \"rubric_scores\".\"created_at\""
+        "rubric_scores_version_check": {
+          "name": "rubric_scores_version_check",
+          "value": "\"rubric_scores\".\"version\" = 1 and \"rubric_scores\".\"archived_at\" is null"
         }
       },
       "isRLSEnabled": false
@@ -3389,9 +3389,9 @@
           "name": "score_transfers_source_check",
           "value": "(\"score_transfers\".\"source_attempt_id\" is null) <> (\"score_transfers\".\"source_rubric_score_id\" is null)"
         },
-        "score_transfers_immutable_check": {
-          "name": "score_transfers_immutable_check",
-          "value": "\"score_transfers\".\"version\" = 1 and \"score_transfers\".\"archived_at\" is null and \"score_transfers\".\"updated_at\" = \"score_transfers\".\"created_at\""
+        "score_transfers_version_check": {
+          "name": "score_transfers_version_check",
+          "value": "\"score_transfers\".\"version\" = 1 and \"score_transfers\".\"archived_at\" is null"
         }
       },
       "isRLSEnabled": false
@@ -3755,9 +3755,9 @@
           "name": "submission_versions_body_check",
           "value": "\"submission_versions\".\"body\" is null or char_length(\"submission_versions\".\"body\") <= 50000"
         },
-        "submission_versions_immutable_check": {
-          "name": "submission_versions_immutable_check",
-          "value": "\"submission_versions\".\"version\" = 1 and \"submission_versions\".\"archived_at\" is null and \"submission_versions\".\"updated_at\" = \"submission_versions\".\"created_at\""
+        "submission_versions_version_check": {
+          "name": "submission_versions_version_check",
+          "value": "\"submission_versions\".\"version\" = 1 and \"submission_versions\".\"archived_at\" is null"
         }
       },
       "isRLSEnabled": false

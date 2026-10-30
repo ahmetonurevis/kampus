@@ -43,7 +43,8 @@ import {
  * - Yazmalar çağıranın transaction'ında çalışır. Satır sürümü (`version`) her güncellemede bir
  *   artar; iyimser kilit beklenen sürümle yazılır, 0 satır → 409.
  * - Değişmez satırlar (teslim sürümü, rubrik puanı, yeniden teslim isteği, not aktarımı) için
- *   güncelleme fonksiyonu yoktur; kolon kısıtı (`*_immutable_check`) da reddeder.
+ *   güncelleme ve silme fonksiyonu yoktur; veritabanı tetikleyicisi de her `update`/`delete`'i
+ *   reddeder (`kampus_reject_immutable_change`, migration 0013).
  * - Benzersizlik ihlali (eşzamanlı ikinci yazma) core'un çakışma koduyla 409'a çevrilir.
  */
 
@@ -502,7 +503,7 @@ export function insertSubmission(
 
 /**
  * Değişmez teslim sürümü (`planSubmissionVersion`); aynı numara eşzamanlı gönderimde 409
- * `version_conflict`. `created_at` ve `updated_at` aynı andır (`submission_versions_immutable_check`).
+ * `version_conflict`. Satır yazıldıktan sonra değişmez (tetikleyici).
  */
 export function insertSubmissionVersion(
   tx: Database,

@@ -1,7 +1,8 @@
 -- Beceri görevi tabloları (ADR 0004 karar 4–7 ve F4b1 eki): rubrik ve sürümü, atama ve hedefleri,
 -- deneme, teslim, değişmez teslim sürümü, taslak, yeniden teslim isteği, rubrik puanı, ikinci
 -- puanlama isteği, itiraz ve not aktarımı. Tablolar yeni ve boştur: `not valid` adımı gerekmez.
--- Değişmez satırların `*_immutable_check` kısıtı güncellemeyi (version + 1, updated_at) reddeder.
+-- Değişmez tablolar (teslim sürümü, rubrik puanı, yeniden teslim isteği, not aktarımı) dosyanın
+-- sonundaki elle yazılmış tetikleyiciyle korunur; `<tablo>_version_check` yalnız eklemeyi sınırlar.
 -- TODO(F3c2-files): attempt_media_plays ve teslim sürümünün dosya bağlantıları `files` ile gelir.
 CREATE TABLE "resubmission_requests" (
 	"institution_id" text NOT NULL,
@@ -16,7 +17,7 @@ CREATE TABLE "resubmission_requests" (
 	"version" integer DEFAULT 1 NOT NULL,
 	CONSTRAINT "resubmission_requests_pkey" PRIMARY KEY("institution_id","submission_id","version_number"),
 	CONSTRAINT "resubmission_requests_due_check" CHECK ("resubmission_requests"."due_at" > "resubmission_requests"."requested_at"),
-	CONSTRAINT "resubmission_requests_immutable_check" CHECK ("resubmission_requests"."version" = 1 and "resubmission_requests"."archived_at" is null and "resubmission_requests"."updated_at" = "resubmission_requests"."created_at")
+	CONSTRAINT "resubmission_requests_version_check" CHECK ("resubmission_requests"."version" = 1 and "resubmission_requests"."archived_at" is null)
 );
 --> statement-breakpoint
 CREATE TABLE "rubric_scores" (
@@ -36,7 +37,7 @@ CREATE TABLE "rubric_scores" (
 	CONSTRAINT "rubric_scores_pkey" PRIMARY KEY("institution_id","id"),
 	CONSTRAINT "rubric_scores_rater_role_check" CHECK ("rubric_scores"."rater_role" in ('first', 'second', 'final')),
 	CONSTRAINT "rubric_scores_criteria_check" CHECK (jsonb_typeof("rubric_scores"."criteria") = 'array' and jsonb_array_length("rubric_scores"."criteria") between 1 and 10),
-	CONSTRAINT "rubric_scores_immutable_check" CHECK ("rubric_scores"."version" = 1 and "rubric_scores"."archived_at" is null and "rubric_scores"."updated_at" = "rubric_scores"."created_at")
+	CONSTRAINT "rubric_scores_version_check" CHECK ("rubric_scores"."version" = 1 and "rubric_scores"."archived_at" is null)
 );
 --> statement-breakpoint
 CREATE TABLE "rubric_versions" (
@@ -121,7 +122,7 @@ CREATE TABLE "score_transfers" (
 	CONSTRAINT "score_transfers_grade_type_check" CHECK ("score_transfers"."grade_type" in ('sinav', 'performans', 'proje')),
 	CONSTRAINT "score_transfers_score_check" CHECK ("score_transfers"."score" between 0 and 100),
 	CONSTRAINT "score_transfers_source_check" CHECK (("score_transfers"."source_attempt_id" is null) <> ("score_transfers"."source_rubric_score_id" is null)),
-	CONSTRAINT "score_transfers_immutable_check" CHECK ("score_transfers"."version" = 1 and "score_transfers"."archived_at" is null and "score_transfers"."updated_at" = "score_transfers"."created_at")
+	CONSTRAINT "score_transfers_version_check" CHECK ("score_transfers"."version" = 1 and "score_transfers"."archived_at" is null)
 );
 --> statement-breakpoint
 CREATE TABLE "second_rating_requests" (
@@ -168,7 +169,7 @@ CREATE TABLE "submission_versions" (
 	CONSTRAINT "submission_versions_submission_number_key" UNIQUE("institution_id","submission_id","version_number"),
 	CONSTRAINT "submission_versions_number_check" CHECK ("submission_versions"."version_number" >= 1),
 	CONSTRAINT "submission_versions_body_check" CHECK ("submission_versions"."body" is null or char_length("submission_versions"."body") <= 50000),
-	CONSTRAINT "submission_versions_immutable_check" CHECK ("submission_versions"."version" = 1 and "submission_versions"."archived_at" is null and "submission_versions"."updated_at" = "submission_versions"."created_at")
+	CONSTRAINT "submission_versions_version_check" CHECK ("submission_versions"."version" = 1 and "submission_versions"."archived_at" is null)
 );
 --> statement-breakpoint
 CREATE TABLE "task_assignment_targets" (
@@ -315,4 +316,29 @@ CREATE INDEX "task_assignments_scoring_version_idx" ON "task_assignments" USING 
 CREATE INDEX "task_assignments_rubric_version_idx" ON "task_assignments" USING btree ("institution_id","rubric_version_id") WHERE "task_assignments"."rubric_version_id" is not null;--> statement-breakpoint
 CREATE INDEX "task_assignments_assigned_by_idx" ON "task_assignments" USING btree ("institution_id","assigned_by_user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "task_attempts_assignment_learner_number_key" ON "task_attempts" USING btree ("institution_id","assignment_id","learner_id","attempt_number");--> statement-breakpoint
-CREATE UNIQUE INDEX "task_submissions_assignment_learner_key" ON "task_submissions" USING btree ("institution_id","assignment_id","learner_id");
+CREATE UNIQUE INDEX "task_submissions_assignment_learner_key" ON "task_submissions" USING btree ("institution_id","assignment_id","learner_id");--> statement-breakpoint
+-- Elle yazıldı: Drizzle şeması ve snapshot tetikleyici ile fonksiyonu izlemez; drizzle-kit yeniden
+-- üretirse bu blok yeniden eklenir. Değişmez satırların her `update`/`delete`/`truncate` işlemini
+-- 55000 (object_not_in_prerequisite_state) ile reddeder. Uygulama yerelde ve testte tablo sahibi
+-- rolle bağlandığı için `revoke` korumaz; tetikleyici her rolde çalışır. Tek atlatma imha işidir:
+-- transaction'da `set local kampus.allow_immutable_purge = 'on'` verilirse yalnız satır `delete`'i
+-- geçer (veritabani.md §7). Süper kullanıcı isteyen `session_replication_role` kullanılmaz.
+CREATE FUNCTION "kampus_reject_immutable_change"() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' AND current_setting('kampus.allow_immutable_purge', true) = 'on' THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'kampus: % rows are immutable (%)', TG_TABLE_NAME, TG_OP
+    USING ERRCODE = '55000', TABLE = TG_TABLE_NAME;
+END;
+$$;
+--> statement-breakpoint
+CREATE TRIGGER "submission_versions_immutable_trigger" BEFORE UPDATE OR DELETE ON "submission_versions" FOR EACH ROW EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
+CREATE TRIGGER "submission_versions_truncate_trigger" BEFORE TRUNCATE ON "submission_versions" FOR EACH STATEMENT EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
+CREATE TRIGGER "rubric_scores_immutable_trigger" BEFORE UPDATE OR DELETE ON "rubric_scores" FOR EACH ROW EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
+CREATE TRIGGER "rubric_scores_truncate_trigger" BEFORE TRUNCATE ON "rubric_scores" FOR EACH STATEMENT EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
+CREATE TRIGGER "resubmission_requests_immutable_trigger" BEFORE UPDATE OR DELETE ON "resubmission_requests" FOR EACH ROW EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
+CREATE TRIGGER "resubmission_requests_truncate_trigger" BEFORE TRUNCATE ON "resubmission_requests" FOR EACH STATEMENT EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
+CREATE TRIGGER "score_transfers_immutable_trigger" BEFORE UPDATE OR DELETE ON "score_transfers" FOR EACH ROW EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
+CREATE TRIGGER "score_transfers_truncate_trigger" BEFORE TRUNCATE ON "score_transfers" FOR EACH STATEMENT EXECUTE FUNCTION "kampus_reject_immutable_change"();

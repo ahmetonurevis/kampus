@@ -172,11 +172,11 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 ## Mevcut kodla farklar
 
-| Kural | Fark |
-| --- | --- |
-| DOM-KAY-006 | Tanışma görüşmesi çakışması yalnız aynı başlangıç anını yakalar (`apps/web/src/views/Crm.vue:198-203`). |
+| Kural       | Fark                                                                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DOM-KAY-006 | Tanışma görüşmesi çakışması yalnız aynı başlangıç anını yakalar (`apps/web/src/views/Crm.vue:198-203`).                                                                                                                   |
 | DOM-KAY-010 | Sınıf kapasitesi 40'a kadar girilebilir (`packages/school-core/src/lib/school-management.js:23`), ÖÖKY tavanı 30; kesin kayıt planlanmış yenilemeleri kontenjandan düşmez (`packages/school-core/src/lib/domain.js:113`). |
-| DOM-KAY-012 | Kimlik no, doğum tarihi, yakınlık, ödeyici tutulmaz; veli adı "<öğrenci> velisi" olarak üretilir (`packages/school-core/src/lib/domain.js:153-157`). |
-| DOM-KAY-013 | Kardeş kaydı mevcut veliye bağlanmaz, her kayıt yeni veli açar (`packages/school-core/src/lib/domain.js:119`). |
-| DOM-KAY-021 | Sınıf tekrarı için aynı düzeyde yenileme yapılamaz (`packages/school-core/src/lib/school-workflows.js:779`). |
-| DOM-KAY-022 | 8. sınıf çıkışı/mezuniyeti tanımlı değil (`packages/school-core/src/lib/school-workflows.js:758`). |
+| DOM-KAY-012 | Kimlik no, doğum tarihi, yakınlık, ödeyici tutulmaz; veli adı "<öğrenci> velisi" olarak üretilir (`packages/school-core/src/lib/domain.js:153-157`).                                                                      |
+| DOM-KAY-013 | Kardeş kaydı mevcut veliye bağlanmaz, her kayıt yeni veli açar (`packages/school-core/src/lib/domain.js:119`).                                                                                                            |
+| DOM-KAY-021 | Sınıf tekrarı için aynı düzeyde yenileme yapılamaz (`packages/school-core/src/lib/school-workflows.js:779`).                                                                                                              |
+| DOM-KAY-022 | 8. sınıf çıkışı/mezuniyeti tanımlı değil (`packages/school-core/src/lib/school-workflows.js:758`).                                                                                                                        |

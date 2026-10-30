@@ -16,7 +16,7 @@ import {
   type RecordWrite,
 } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
-import { AppError, ConflictError } from '../src/errors.ts'
+import { AppError, ConflictError, databaseErrorInfo } from '../src/errors.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
 
 const LATER = new Date('2026-10-06T10:00:00.000Z')
@@ -172,6 +172,7 @@ describe('records deposu', () => {
       LATER,
     )
     assert.equal(revived?.version, 3)
+    assert.equal(revived?.kind, 'restore')
     const row = await findRecord(db, id, 'invoices', 'test-inv-2')
     assert.equal(row?.archivedAt, null)
     assert.equal(row?.data.amount, 5)
@@ -221,6 +222,43 @@ describe('records deposu', () => {
     assert.deepEqual(await rowsOf(id), before)
   })
 
+  test('yazmalar verilen sırayla değil (koleksiyon, kimlik) sırasıyla yapılır', async () => {
+    const id = await institutionWith([invoice('test-inv-2'), invoice('test-inv-4')])
+    const written = await writeRecords(
+      db,
+      id,
+      [
+        { kind: 'insert', ...invoice('test-inv-5') },
+        { kind: 'archive', collection: 'invoices', id: 'test-inv-4', expectedVersion: 1 },
+        { kind: 'insert', collection: 'students', id: 'test-s-1', data: { id: 'test-s-1' } },
+        { kind: 'insert', ...invoice('test-inv-1') },
+        {
+          kind: 'update',
+          collection: 'invoices',
+          id: 'test-inv-2',
+          data: invoice('test-inv-2', { amount: 3 }).data,
+          expectedVersion: 1,
+        },
+      ],
+      LATER,
+    )
+    assert.deepEqual(
+      written.map((row) => `${row.collection}:${row.id}`),
+      [
+        'invoices:test-inv-1',
+        'invoices:test-inv-2',
+        'invoices:test-inv-4',
+        'invoices:test-inv-5',
+        'students:test-s-1',
+      ],
+    )
+    // Sırası verilmeyen eklemeler yine verilen sırayla sona eklenir.
+    assert.deepEqual(
+      (await loadRecords(db, id, ['invoices'])).map((row) => row.id),
+      ['test-inv-2', 'test-inv-5', 'test-inv-1'],
+    )
+  })
+
   test('canlı kayıtla aynı anahtarda ekleme 409 verir', async () => {
     const id = await institutionWith([invoice('test-inv-1')])
     const before = await rowsOf(id)
@@ -262,6 +300,68 @@ describe('records deposu', () => {
     assert.deepEqual(await rowsOf(id), before)
   })
 
+  test('veritabanı boyut kısıtı jsonb ikili boyutunu sınar; ihlal 422 record_too_large olur', async () => {
+    const id = await institutionWith([invoice('test-inv-1')])
+    const before = await rowsOf(id)
+    // JSON metni ~200 KB (uygulama denetimini geçer), jsonb ikili biçimi ~1,2 MB (kısıta takılır).
+    const list = Array.from({ length: 100_000 }, () => 0)
+    const dense = invoice('test-inv-dense', { list })
+    assert.ok(Buffer.byteLength(JSON.stringify(dense.data)) < 262_144)
+
+    // Kısıt doğrudan: uygulama denetimi olmadan da veritabanı reddeder.
+    await assert.rejects(
+      db.insert(records).values({
+        institutionId: id,
+        collection: 'invoices',
+        id: dense.id,
+        data: dense.data,
+        position: 0,
+      }),
+      (error: unknown) => {
+        assert.deepEqual(databaseErrorInfo(error), {
+          code: '23514',
+          constraint: 'records_data_size_check',
+        })
+        return true
+      },
+    )
+    const isTooLarge = (error: unknown) => {
+      assert.ok(error instanceof AppError, String(error))
+      assert.equal(error.statusCode, 422)
+      assert.equal(error.code, 'record_too_large')
+      return true
+    }
+    await assert.rejects(
+      writeRecords(
+        db,
+        id,
+        [
+          { kind: 'insert', ...invoice('test-inv-ok') },
+          { kind: 'insert', ...dense },
+        ],
+        LATER,
+      ),
+      isTooLarge,
+    )
+    await assert.rejects(
+      writeRecords(
+        db,
+        id,
+        [
+          {
+            kind: 'update',
+            ...invoice('test-inv-1', { list }),
+            expectedVersion: 1,
+          },
+        ],
+        LATER,
+      ),
+      isTooLarge,
+    )
+    await assert.rejects(insertMissingRecords(db, id, [dense], LATER), isTooLarge)
+    assert.deepEqual(await rowsOf(id), before)
+  })
+
   test('bilinmeyen koleksiyon programlama hatasıdır (500)', async () => {
     const { id } = await createInstitution(app)
     await assert.rejects(
@@ -269,6 +369,15 @@ describe('records deposu', () => {
       loadRecords(db, id, ['notACollection']),
       (error: unknown) => error instanceof AppError && error.statusCode === 500,
     )
+  })
+
+  test("core denetim koleksiyonu (audit) records'a yazılamaz (500)", async () => {
+    const { id } = await createInstitution(app)
+    const audit = { collection: 'audit' as const, id: 'test-audit-1', data: { id: 'test-audit-1' } }
+    const isInternal = (error: unknown) => error instanceof AppError && error.statusCode === 500
+    await assert.rejects(writeRecords(db, id, [{ kind: 'insert', ...audit }], LATER), isInternal)
+    await assert.rejects(insertMissingRecords(db, id, [audit], LATER), isInternal)
+    assert.deepEqual(await rowsOf(id), [])
   })
 
   test('eksik kayıt ekleme idempotenttir ve değişmiş kaydı ezmez', async () => {

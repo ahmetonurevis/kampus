@@ -13,7 +13,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
-import { AppError } from '../src/errors.ts'
+import { AppError, mapDatabaseError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { mapOperationError, runOperation } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
@@ -97,6 +97,7 @@ describe('işlem çalıştırıcı', () => {
     const ctx = await institution(['invoices'])
     const outcome = await runOperation(ctx, {
       action: 'invoice.pay',
+      entity: { type: 'invoices', id: unpaid.id },
       collections: ['invoices'],
       run: (state, { now }) => pay(state, now),
     })
@@ -127,6 +128,7 @@ describe('işlem çalıştırıcı', () => {
     const ctx = await institution(['invoices'])
     const request = {
       action: 'invoice.pay',
+      entity: { type: 'invoices', id: unpaid.id },
       collections: ['invoices'] as const,
       run: (state: State, { now }: { now: string }) => pay(state, now),
     }
@@ -148,6 +150,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
         collections: ['invoices'],
         expectedVersions: [{ collection: 'invoices', id: unpaid.id, version: 7 }],
         run,
@@ -157,6 +160,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
         collections: ['invoices'],
         expectedVersions: [{ collection: 'invoices', id: 'test-inv-missing', version: 1 }],
         run,
@@ -167,6 +171,7 @@ describe('işlem çalıştırıcı', () => {
 
     const outcome = await runOperation(ctx, {
       action: 'invoice.pay',
+      entity: { type: 'invoices', id: unpaid.id },
       collections: ['invoices'],
       expectedVersions: [{ collection: 'invoices', id: unpaid.id, version: 1 }],
       run,
@@ -181,6 +186,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(a, {
         action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
         collections: ['invoices'],
         run: (state, { now }) => pay(state, now),
       }),
@@ -252,6 +258,13 @@ describe('işlem çalıştırıcı', () => {
       12_000_000,
     )
     assert.equal((await findRecord(db, ctx.institutionId, 'prospects', prospect.id))?.version, 2)
+    // Denetim, çağıranın verdiği varlığa bağlanır; yazılan ilk kayda (sözleşme) değil.
+    const [audit] = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.institutionId, ctx.institutionId))
+    assert.deepEqual([audit?.entityType, audit?.entityId], ['prospects', prospect.id])
+    assert.equal(outcome.changes[0]?.collection, 'contracts')
   })
 
   test('doğrulama hatası 400 ve alan yollarıyla döner; hiçbir kayıt değişmez', async () => {
@@ -261,6 +274,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'prospect.enroll',
+        entity: { type: 'prospects', id: prospect.id },
         collections: enrollmentCollections,
         run: (state, { now, makeId }) =>
           enrollProspect(
@@ -289,6 +303,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
         collections: ['invoices'],
         run: (state, { now }) => {
           pay(state, now)
@@ -307,6 +322,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
         collections: ['invoices'],
         run: (state, { now }) => {
           pay(state, now)
@@ -319,12 +335,13 @@ describe('işlem çalıştırıcı', () => {
   })
 
   test('listeden çıkarılan kayıt arşivlenir; State dışı alanlar bağlamdan gelir', async () => {
-    const ctx = await institution(['transportAssignments', 'audit'])
+    const ctx = await institution(['transportAssignments'])
     const assignment = seed.transportAssignments[0]
     assert.ok(assignment)
     const outcome = await runOperation(ctx, {
       action: 'transport.remove',
-      collections: ['transportAssignments', 'audit'],
+      entity: { type: 'transportAssignments', id: assignment.id },
+      collections: ['transportAssignments'],
       scalars: { modules: seed.modules },
       makeId: counterIds(),
       run: (state, { now, makeId }) =>
@@ -340,7 +357,7 @@ describe('işlem çalıştırıcı', () => {
     })
     assert.deepEqual(
       outcome.changes.map((change) => `${change.kind}:${change.collection}:${change.id}`).sort(),
-      ['archive:transportAssignments:' + assignment.id, 'insert:audit:audit-test-1'],
+      ['archive:transportAssignments:' + assignment.id],
     )
     const live = await loadRecords(db, ctx.institutionId, ['transportAssignments'])
     assert.ok(!live.some((row) => row.id === assignment.id))
@@ -357,12 +374,213 @@ describe('işlem çalıştırıcı', () => {
     assert.equal(archived?.version, 2)
   })
 
+  test('core denetimi kalıcı yazılmaz; rehberlik iç notu loga ve denetim kaydına düşmez', async () => {
+    const logs: string[] = []
+    const logged = await buildTestApp(db, { logs })
+    try {
+      const guidance = ['guidanceCases', 'students', 'teachers', 'classes', 'assignments'] as const
+      const ctx = { ...(await institution(guidance)), log: logged.log }
+      // Eski sürümden kalmış core denetim satırı: yüklenmez, dokunulmaz.
+      await db.insert(records).values({
+        institutionId: ctx.institutionId,
+        collection: 'audit',
+        id: 'test-audit-legacy',
+        data: { id: 'test-audit-legacy', action: 'guidance' },
+        position: 0,
+        createdAt: FIXED_NOW,
+        updatedAt: FIXED_NOW,
+      })
+      const secret = 'GIZLI-IC-NOT-7f3a'
+      const secretNote = 'GIZLI-GORUSME-NOTU-91c2'
+      const session = { role: 'yonetici' as const }
+      const ids = counterIds()
+      const created = await runOperation(ctx, {
+        action: 'guidance.create',
+        collections: guidance,
+        scalars: { modules: seed.modules },
+        entity: { type: 'guidanceCases', id: 'guidance-new' },
+        makeId: ids,
+        run: (state, { now, makeId }) => {
+          const result = runWorkflow(
+            state,
+            session,
+            'guidance',
+            {
+              studentId: 's1',
+              teacherId: 't1',
+              title: 'Takip',
+              plan: 'Plan',
+              sharedNote: '',
+              internalNote: secret,
+              followUp: '2026-10-20',
+            },
+            makeId,
+            undefined,
+            now,
+          )
+          // Core kendi denetimini State'e ekledi; sunucu bunu yazmaz.
+          assert.equal(state.audit.length, 1)
+          return result
+        },
+      })
+      const caseId = created.changes.find((change) => change.collection === 'guidanceCases')?.id
+      assert.ok(caseId)
+      await runOperation(ctx, {
+        action: 'guidance.note',
+        collections: guidance,
+        scalars: { modules: seed.modules },
+        entity: { type: 'guidanceCases', id: caseId },
+        makeId: ids,
+        run: (state, { now, makeId }) =>
+          runWorkflow(
+            state,
+            session,
+            'guidance-note',
+            { text: secretNote, sharedNote: '', followUp: '2026-10-27', status: 'Takipte' },
+            makeId,
+            caseId,
+            now,
+          ),
+      })
+      const auditRecords = await loadRecords(db, ctx.institutionId, ['audit'], {
+        includeArchived: true,
+      })
+      assert.deepEqual(
+        auditRecords.map((row) => [row.id, row.version]),
+        [['test-audit-legacy', 1]],
+      )
+      const entries = await db
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.institutionId, ctx.institutionId))
+      assert.deepEqual(entries.map((entry) => entry.action).sort(), [
+        'guidance.create',
+        'guidance.note',
+      ])
+      for (const entry of entries) assert.equal(entry.actorUserId, ctx.actor.userId)
+      const note = entries.find((entry) => entry.action === 'guidance.note')
+      assert.deepEqual(note?.changes, { fields: ['followUp', 'notes'] })
+      const text = JSON.stringify(entries) + logs.join('')
+      assert.ok(logs.some((line) => line.includes('operation.applied')))
+      assert.ok(!text.includes(secret), 'iç not sızdı')
+      assert.ok(!text.includes(secretNote), 'görüşme notu sızdı')
+    } finally {
+      await logged.close()
+    }
+  })
+
+  test('skaler alanı değiştiren işlem geri alınır: 500 ve değersiz yapılandırılmış log', async () => {
+    const logs: string[] = []
+    const logged = await buildTestApp(db, { logs })
+    try {
+      const ctx = { ...(await institution(['invoices'])), log: logged.log }
+      const before = await snapshot(ctx.institutionId)
+      await assert.rejects(
+        runOperation(ctx, {
+          action: 'invoice.pay',
+          collections: ['invoices'],
+          entity: { type: 'invoices', id: unpaid.id },
+          scalars: { modules: { ...seed.modules }, academicYear: 2026 },
+          run: (state, { now }) => {
+            pay(state, now)
+            state.modules.transport = false
+            state.academicYear = 4321
+          },
+        }),
+        hasStatus(500, 'internal_error'),
+      )
+      assert.deepEqual(await snapshot(ctx.institutionId), before)
+      const line = logs.find((item) => item.includes('operation.scalar_changed'))
+      assert.ok(line, 'skaler değişikliği loglanmadı')
+      const entry = JSON.parse(line)
+      assert.equal(entry.level, 50)
+      assert.deepEqual(entry.fields, ['academicYear', 'modules.transport'])
+      assert.ok(!line.includes('4321'))
+    } finally {
+      await logged.close()
+    }
+  })
+
+  test('skaler alanı okuyup değiştirmeyen işlem yazılır', async () => {
+    const ctx = await institution(['invoices'])
+    const outcome = await runOperation(ctx, {
+      action: 'invoice.pay',
+      collections: ['invoices'],
+      entity: { type: 'invoices', id: unpaid.id },
+      scalars: { modules: { ...seed.modules }, academicYear: 2026 },
+      run: (state, { now }) => {
+        assert.equal(state.academicYear, 2026)
+        return pay(state, now)
+      },
+    })
+    assert.equal(outcome.changes.length, 1)
+  })
+
+  test('arşivli kaydı yeniden açma sürümü sürdürür ve denetime yeniden açıldı düşer', async () => {
+    const ctx = await institution(['transportAssignments'])
+    const assignment = seed.transportAssignments[0]
+    assert.ok(assignment)
+    const entity = { type: 'transportAssignments', id: assignment.id }
+    await runOperation(ctx, {
+      action: 'transport.remove',
+      collections: ['transportAssignments'],
+      entity,
+      run: (state) => {
+        state.transportAssignments.splice(0, 1)
+      },
+    })
+    const archived = await findRecord(
+      db,
+      ctx.institutionId,
+      'transportAssignments',
+      assignment.id,
+      {
+        includeArchived: true,
+      },
+    )
+    assert.equal(archived?.version, 2)
+    assert.ok(archived?.archivedAt)
+
+    const reopened = { ...assignment, status: 'test-yeniden' }
+    const outcome = await runOperation(ctx, {
+      action: 'transport.assign',
+      collections: ['transportAssignments'],
+      entity,
+      run: (state) => {
+        state.transportAssignments.unshift(reopened)
+      },
+    })
+    assert.deepEqual(outcome.changes, [
+      { kind: 'restore', collection: 'transportAssignments', id: assignment.id, version: 3 },
+    ])
+    const live = await findRecord(db, ctx.institutionId, 'transportAssignments', assignment.id)
+    assert.equal(live?.archivedAt, null)
+    assert.equal(live?.version, 3)
+    assert.deepEqual(live?.data, JSON.parse(JSON.stringify(reopened)))
+    // Yeniden açılan kayıt core'un koyduğu yerde (başta) yüklenir.
+    const order = await loadRecords(db, ctx.institutionId, ['transportAssignments'])
+    assert.equal(order[0]?.id, assignment.id)
+
+    const entries = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.institutionId, ctx.institutionId))
+    const assign = entries.find((entry) => entry.action === 'transport.assign')
+    assert.deepEqual(assign?.changes, {
+      fields: Object.keys(JSON.parse(JSON.stringify(reopened))).sort(),
+      restored: [{ collection: 'transportAssignments', id: assignment.id }],
+    })
+    const remove = entries.find((entry) => entry.action === 'transport.remove')
+    assert.equal(remove?.changes && 'restored' in remove.changes, false)
+  })
+
   test('yüklenmeyen koleksiyona erişim programlama hatasıdır (500)', async () => {
     const ctx = await institution(['transportAssignments'])
     const before = await snapshot(ctx.institutionId)
     await assert.rejects(
       runOperation(ctx, {
         action: 'transport.remove',
+        entity: { type: 'transportAssignments', id: 'test-assignment' },
         collections: ['transportAssignments'],
         run: (state) => state.students.length,
       }),
@@ -371,6 +589,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'transport.remove',
+        entity: { type: 'transportAssignments', id: 'test-assignment' },
         collections: ['transportAssignments'],
         // modules verilmedi: sessizce "kapalı" sayılmaz.
         run: (state) => state.modules.transport,
@@ -380,17 +599,127 @@ describe('işlem çalıştırıcı', () => {
     assert.deepEqual(await snapshot(ctx.institutionId), before)
   })
 
+  /** jsonb'nin saklayacağı biçim; core State'iyle karşılaştırmak için. */
+  const json = (value: unknown): unknown => JSON.parse(JSON.stringify(value))
+
+  async function loadedOrder(institutionId: string, collection: CollectionName) {
+    const rows = await loadRecords(db, institutionId, [collection])
+    return rows.map((row) => row.data)
+  }
+
+  test('yükle, işlem, yükle: diziler core doğrudan çalıştığında oluşan sıradadır', async () => {
+    assert.ok(prospect && target)
+    const ctx = await institution(enrollmentCollections)
+    const input = {
+      prospectId: prospect.id,
+      classId: target.id,
+      total: 120000,
+      count: 3,
+      startDate: '2026-11-01',
+    }
+    await runOperation(ctx, {
+      action: 'prospect.enroll',
+      collections: enrollmentCollections,
+      entity: { type: 'prospects', id: prospect.id },
+      makeId: counterIds(),
+      run: (state, { now, makeId }) => enrollProspect(state, input, makeId, now),
+    })
+    const direct = structuredClone(seed)
+    enrollProspect(direct, input, counterIds(), LATER.toISOString())
+    for (const collection of enrollmentCollections)
+      assert.deepEqual(
+        await loadedOrder(ctx.institutionId, collection),
+        json(direct[collection]),
+        collection,
+      )
+    // Yerinde kalan kayıtlara yazılmaz: yalnız eklenen kayıtlar ve aday değişti.
+    const rows = await loadRecords(db, ctx.institutionId, enrollmentCollections)
+    assert.deepEqual(
+      rows.filter((row) => row.updatedAt.getTime() !== FIXED_NOW.getTime()).length,
+      7,
+    )
+  })
+
+  test('başa, araya ve yer değiştirerek yazılan sıra korunur; yalnız değişenler yazılır', async () => {
+    const ctx = await institution(['invoices'])
+    const extra = (id: string) => ({ ...unpaid, id, amount: 1 })
+    const reorder = (state: State) => {
+      const last = state.invoices.pop()
+      assert.ok(last)
+      state.invoices.unshift(last)
+      state.invoices.splice(5, 0, extra('test-inv-mid-1'), extra('test-inv-mid-2'))
+      state.invoices.unshift(extra('test-inv-head'))
+    }
+    const outcome = await runOperation(ctx, {
+      action: 'invoice.reorder',
+      collections: ['invoices'],
+      entity: { type: 'invoices', id: 'test-inv-head' },
+      run: reorder,
+    })
+    assert.deepEqual(outcome.changes.map((change) => change.kind).sort(), [
+      'insert',
+      'insert',
+      'insert',
+      'move',
+    ])
+    const direct = structuredClone(seed)
+    reorder(direct)
+    assert.deepEqual(await loadedOrder(ctx.institutionId, 'invoices'), json(direct.invoices))
+  })
+
+  test('aynı noktaya art arda ekleme aralığı tüketince yalnız o koleksiyon numaralanır', async () => {
+    const ctx = await institution(['invoices', 'students'])
+    const studentsBefore = await loadRecords(db, ctx.institutionId, ['students'])
+    const mirror = structuredClone(seed.invoices)
+    for (let round = 0; round < 14; round += 1) {
+      const item = { ...unpaid, id: `test-inv-wedge-${round}` }
+      mirror.splice(1, 0, structuredClone(item))
+      await runOperation(ctx, {
+        action: 'invoice.wedge',
+        collections: ['invoices'],
+        entity: { type: 'invoices', id: item.id },
+        run: (state) => {
+          state.invoices.splice(1, 0, item)
+        },
+      })
+      assert.deepEqual(await loadedOrder(ctx.institutionId, 'invoices'), json(mirror))
+    }
+    assert.deepEqual(await loadRecords(db, ctx.institutionId, ['students']), studentsBefore)
+  })
+
   test('değişiklik yoksa yazma ve denetim kaydı yoktur', async () => {
     const ctx = await institution(['invoices'])
     const before = await snapshot(ctx.institutionId)
     const outcome = await runOperation(ctx, {
       action: 'invoice.read',
+      entity: { type: 'invoices', id: 'test-all' },
       collections: ['invoices'],
       run: (state) => state.invoices.length,
     })
     assert.equal(outcome.result, seed.invoices.length)
     assert.deepEqual(outcome.changes, [])
     assert.deepEqual(await snapshot(ctx.institutionId), before)
+  })
+})
+
+describe('veritabanı hata eşlemesi', () => {
+  /** Drizzle sürücü hatasını `cause`'a sarar; eşleme zinciri izler. */
+  const wrapped = (code: string, constraint?: string) =>
+    new Error('Failed query', { cause: Object.assign(new Error('pg'), { code, constraint }) })
+
+  test('kilitlenme ve serileştirme 409 conflict, boyut kısıtı 422; ötekiler aynen kalır', () => {
+    for (const code of ['40P01', '40001']) {
+      const mapped = mapDatabaseError(wrapped(code))
+      assert.ok(mapped instanceof AppError)
+      assert.deepEqual([mapped.statusCode, mapped.code], [409, 'conflict'])
+    }
+    const size = mapDatabaseError(wrapped('23514', 'records_data_size_check'))
+    assert.ok(size instanceof AppError)
+    assert.deepEqual([size.statusCode, size.code], [422, 'record_too_large'])
+    const otherCheck = wrapped('23514', 'başka_check')
+    assert.equal(mapDatabaseError(otherCheck), otherCheck)
+    const node = Object.assign(new Error('x'), { code: 'ERR_INVALID_ARG_TYPE' })
+    assert.equal(mapDatabaseError(node), node)
   })
 })
 

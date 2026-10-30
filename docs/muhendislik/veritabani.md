@@ -55,6 +55,7 @@ create table records (
   collection     text not null,
   id             text not null,
   data           jsonb not null,
+  position       bigint not null,   -- core dizisindeki sıra (seyrek tamsayı)
   version        integer not null default 1,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
@@ -77,13 +78,15 @@ update records
  where institution_id = $2 and collection = $3 and id = $4 and version = $5
 ```
 
-- Bir işlemin değiştirdiği bütün kayıtlar tek transaction'da yazılır; biri çakışırsa hepsi geri alınır.
+- Bir işlemin değiştirdiği bütün kayıtlar tek transaction'da yazılır; biri çakışırsa hepsi geri alınır. Yazmalar verilen sırayla değil `(collection, id)` sırasıyla yapılır; aynı satırları farklı sırada değiştiren iki transaction kilitlenmez. Yine de oluşan kilitlenme (40P01) veya serileştirme hatası (40001) 409 `conflict` olur (yeniden denenebilir, `mapDatabaseError`).
 - Koleksiyonlar arası bütünlük (yabancı anahtar) jsonb'de veritabanınca sağlanmaz; school-core sağlar. Bütünlüğün veritabanı garantisi gerekiyorsa koleksiyon normalleştirilir.
 - Hesaplanabilen değer (`goalProgress`, quiz puanı, rubrik toplamı) `data`'ya yazılmaz.
-- Dosya ve medya `data`'ya gömülmez (base64 yok); depolama arayüzünde tutulur, kayıt yalnız anahtar ve meta veri taşır. Belge başına sınır 256 KB.
+- Dosya ve medya `data`'ya gömülmez (base64 yok); depolama arayüzünde tutulur, kayıt yalnız anahtar ve meta veri taşır. Belge başına sınır 256 KB. Uygulama yazmadan önce JSON metin boyutunu denetler; jsonb'nin ikili boyutu metinden büyük olabildiği için (ör. çok sayıda küçük sayı) `records_data_size_check` yine de reddedebilir. Bu ihlal (23514, bu kısıt) de 422 `record_too_large`'a çevrilir (`mapDatabaseError`).
 - Geçiş notu: bazı eski kayıtlarda `deletedAt`/`isActive` alanları var. API'ye taşımada arşiv durumu `archived_at` kolonuna aktarılır; jsonb'deki eski alanlar school-core uyumu bitene kadar okunur, yenisi yazılmaz.
 - Kayıt anahtarı `data.id`'dir; kimliksiz `videoProgress` için `<studentId>:<videoId>` (`apps/api/src/db/collections.ts`). Kurum satırı silinince kayıtlar kendiliğinden silinmez (cascade yok).
-- Depo `apps/api/src/db/records.ts`, işlem çalıştırıcı `apps/api/src/services/operation-runner.ts`: koleksiyonları yükler, core işlemini `now` ile çalıştırır, farkı (ekleme, değişiklik, listeden çıkarma) tek transaction'da yazar. Core'un listeden çıkardığı kayıt `archived_at` ile arşivlenir ve çalıştırıcıya bir daha yüklenmez; core'un kendi `deletedAt`/`isActive` alanları uyum bitene kadar `data`'da kalır (pasif öğretmen/öğrenci core kurallarınca görülmeye devam eder). Dizi olmayan State alanları `records`'ta tutulmaz, çağıran kurum ayarından verir: `modules` `institutions.enabled_modules`'tan (saklanmayan modül açık), `academicYear` `institution_settings.academic_year`'dan.
+- Sıra: core dizinin sırasına dayanır (başa ekleme, ilk N kayıt), bu yüzden kayıt `position` kolonuyla core dizisinin sırasında yüklenir (`order by position, id`). Değerler 1024 adımlı seyrek tamsayıdır (`apps/api/src/db/positions.ts`): çalıştırıcı işlem sonrası dizide saklanan değerlerin en uzun artan alt dizisini yerinde bırakır; yeni veya yer değiştiren kayıt komşularından türetilen değeri alır (başa ekleme en küçükten bir adım küçük, sona ekleme en büyükten bir adım büyük, araya ekleme aradaki değer). Ara kalmazsa yalnız o koleksiyon baştan numaralanır. Yalnız sırası değişen kayıt `move` yazmasıyla güncellenir (veri aynı kaldığından `version` artmaz); her işlemde bütün satırlar yeniden yazılmaz. Mevcut satırlar `0004_add_records_position` ile kimlik sırasında (önceki yükleme sırası) numaralandı; core sırası SQL'de bilinemediği için tohumu yeniden çalıştırmak tohum kayıtlarını yalnız sıra değeriyle core sırasına getirir.
+- Kurum kilidi: işlem çalıştırıcı transaction'ı yüklemeden önce `pg_advisory_xact_lock(<ad alanı>, hashtext(institution_id))` ile açar (`lockInstitution`). READ COMMITTED altında kilitsiz iki işlem aynı görüntüyü yükleyip farklı yeni kimlikle ekleyebilir (aynı gün iki yoklama, son boş yere iki kayıt, aynı saate iki etüt); sürüm denetimi yalnız var olan satırı korur. Kurum içi işlemler böylece sıraya girer; kurum başına tek kilit olduğundan kilit sıralaması sorunu yoktur. İki anahtarlı biçim, tek anahtarlı kilit kullanan `pg-boss`'la çakışmaz. Doğrulaması `test:pg` takımındadır (`test/pg-concurrency.test.ts`).
+- Depo `apps/api/src/db/records.ts`, işlem çalıştırıcı `apps/api/src/services/operation-runner.ts`: koleksiyonları yükler, core işlemini `now` ile çalıştırır, farkı (ekleme, değişiklik, listeden çıkarma) tek transaction'da yazar. Core'un listeden çıkardığı kayıt `archived_at` ile arşivlenir ve çalıştırıcıya bir daha yüklenmez; core'un kendi `deletedAt`/`isActive` alanları uyum bitene kadar `data`'da kalır (pasif öğretmen/öğrenci core kurallarınca görülmeye devam eder). Dizi olmayan State alanları `records`'ta tutulmaz, çağıran kurum ayarından verir: `modules` `institutions.enabled_modules`'tan (saklanmayan modül açık), `academicYear` `institution_settings.academic_year`'dan. Core işlemi bunlardan birini değiştirirse değişiklik yazılamayacağı için sessizce düşürülmez: işlem geri alınır, 500 `internal_error` döner ve `operation.scalar_changed` olayı yalnız alan adlarıyla (`modules.transport`; değer yok) `error` düzeyinde loglanır. Kurum ayarı değiştiren işlem kendi ayar servisinden geçer.
 
 ## 4. Normalleştirme ölçütü
 
@@ -121,7 +124,7 @@ Taşıma tek migration'la yapılır: tablo oluşturulur, `records`'tan veri kopy
 ## 7. Arşivleme ve silme
 
 - Kullanıcı işlemiyle silme = arşivleme: `archived_at = now()`, `version + 1`. Sorgular varsayılan olarak `archived_at is null` süzer; depo fonksiyonları bunu varsayılan yapar.
-- Arşivden geri alma `archived_at = null`; aktarılmış bağlı görevler otomatik geri taşınmaz (CLAUDE.md iş kuralı).
+- Arşivden geri alma `archived_at = null`; çalıştırıcıda core arşivli bir kaydın kimliğini yeniden eklerse kayıt yeniden açılır: veri core'un yeni kaydıyla değişir, `version` arşivdeki sürümden artarak sürer, yazma `restore` olarak döner ve denetim kaydının `changes`'ına `restored: [{ collection, id }]` eklenir; aktarılmış bağlı görevler otomatik geri taşınmaz (CLAUDE.md iş kuralı).
 - Bağlı kaydı olan kayıt arşivlenirken bağlılar school-core kuralıyla aktarılır veya işlem reddedilir; geçmiş finans/not/yoklama korunur.
 - Kalıcı silme (`delete`) yalnız üç yolla: saklama süresi dolan kayıtların imha işi, veri sahibinin silme talebi, süresi dolan teknik kayıtlar (Better Auth `sessions` ve `verifications`, `idempotency_keys`; günlük `pg-boss` temizlik işiyle). Her biri denetim kaydına yazılır. Ayrıntı: [guvenlik-kvkk.md](guvenlik-kvkk.md#10-saklama-ve-silme).
 
@@ -148,5 +151,6 @@ create index audit_log_actor_idx on audit_log (institution_id, actor_user_id, cr
 - Yalnız eklenir. Uygulamanın veritabanı rolüne bu tabloda `insert` ve `select` verilir; `update`/`delete` yetkisi yalnız imha işinin rolündedir.
 - İşlemle **aynı transaction'da** yazılır; denetim kaydı yazılamazsa işlem de olmaz. Better Auth olaylarında kanca Better Auth'un işleminden sonra çalışır; yazılamazsa `error` düzeyinde loglanır.
 - Yazılan olaylar: bütün yazma işlemleri; giriş başarısı/başarısızlığı, çıkış, parola değişimi/sıfırlama, oturumların toplu kapatılması (Better Auth `hooks`/`databaseHooks` ile); rol, üyelik ve modül değişikliği; kişisel veri dışa aktarımı (CSV/PDF); özel nitelikli veri okuması (sağlık, rehberlik iç notu); veri sahibi talepleri ve imha.
+- School-core'un kendi `audit` koleksiyonu sunucuda kalıcı yazılmaz: core onu değerleri maskesiz (rehberlik iç notu, sağlık), sabit demo kullanıcısıyla (`t1`, `s1`) doldurur ve 200 kayda kırpar. İşlem çalıştırıcı bu koleksiyonu her işlemde boş verir ve değişikliklerini yok sayar; depo `audit` koleksiyonuna yazmayı reddeder, tohum yazmaz. Önceden yazılmış satırlar `0005_archive_core_audit_records` ile arşivlendi. Sunucu denetimi yalnız bu tablodadır: gerçek aktör (`actor_user_id`, `actor_role`), işlem (`action`), çağıranın zorunlu verdiği varlık ve değişen alan adları.
 - `changes` önceki/sonraki değer değil, değişen alan adlarını tutar (`{ "fields": ["status", "feedback"] }`). Değer gerekiyorsa yalnız sınıflandırması "genel" olan alanların değeri yazılır.
 - Denetim kaydı imleçli sayfalamayla yalnız `yonetici` rolüne açılır.

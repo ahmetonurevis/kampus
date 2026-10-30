@@ -88,6 +88,25 @@ export function isScalarStateKey(value: string): value is ScalarStateKey {
 export const RECORD_COLLECTIONS: readonly CollectionName[] =
   Object.keys(COLLECTION_FLAGS).filter(isRecordCollection)
 
+/**
+ * Core'un kendi tuttuğu ama sunucuda kalıcı yazılmayan koleksiyonlar. `audit`: core işlem
+ * başına değerleri maskesiz (rehberlik iç notu, sağlık) ve sabit demo kullanıcısıyla (`t1`,
+ * `s1`) ekler, 200 kayda kırpar. Sunucuda denetim yalnız `audit_log`'a gerçek aktör ve alan
+ * adlarıyla yazılır (veritabani.md §8); işlem çalıştırıcı bu koleksiyonu boş verir ve
+ * değişikliklerini yok sayar. Mevcut satırlar `0005_archive_core_audit_records` ile arşivlendi.
+ */
+export type EphemeralCollection = 'audit'
+const EPHEMERAL_SET: ReadonlySet<string> = new Set<EphemeralCollection>(['audit'])
+
+export function isEphemeralCollection(value: string): value is EphemeralCollection {
+  return EPHEMERAL_SET.has(value)
+}
+
+/** `records`'a yazılan koleksiyonlar (geçici olanlar hariç). */
+export const STORED_COLLECTIONS: readonly CollectionName[] = RECORD_COLLECTIONS.filter(
+  (collection) => !isEphemeralCollection(collection),
+)
+
 /** Kayıt verisi: düz JSON nesnesi. Kolonlar (`version`, `archived_at` …) içine yazılmaz. */
 export type RecordData = Record<string, unknown>
 

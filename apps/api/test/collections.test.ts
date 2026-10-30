@@ -150,10 +150,10 @@ describe('koleksiyon okuma uçları', () => {
     assert.equal(response.headers['cache-control'], 'no-store')
     const body = response.json()
     assert.deepEqual(body.meta, { page: 1, pageSize: 25, total: 5 })
-    // Varsayılan sıra deponun sırasıdır.
+    // Varsayılan sıra deponun sırasıdır: core dizisinin sırası (`position`), kimlik değil.
     assert.deepEqual(
       body.data.map((item: { id: string }) => item.id),
-      ['s1', 's11', 's12', 's2', 's3'],
+      ['s1', 's2', 's3', 's11', 's12'],
     )
     const first = body.data[0]
     assert.equal(first.version, 1)
@@ -231,7 +231,7 @@ describe('koleksiyon okuma uçları', () => {
     assert.deepEqual(second.meta, { page: 2, pageSize: 2, total: 5 })
     assert.deepEqual(
       second.data.map((item: { id: string }) => item.id),
-      ['s12', 's2'],
+      ['s3', 's11'],
     )
     const beyond = (await get('/api/v1/collections/students?page=9&pageSize=2', adminCookie)).json()
     assert.deepEqual(beyond.data, [])
@@ -258,7 +258,7 @@ describe('koleksiyon okuma uçları', () => {
 
     assert.deepEqual(
       await ids('classId=c1'),
-      ['s1', 's11', 's12', 's2', 's3'].filter((id) => classOf(id) === 'c1'),
+      ['s1', 's2', 's3', 's11', 's12'].filter((id) => classOf(id) === 'c1'),
     )
     assert.deepEqual(await ids('classId=c1&classId=c2'), ['s1', 's2'])
     assert.deepEqual(await ids('q=DENİZ%20YILMAZ'), ['s1'])
@@ -290,8 +290,8 @@ describe('koleksiyon okuma uçları', () => {
         .json()
         .data.map((item: { id: string }) => item.id)
 
-    assert.deepEqual(await ids(''), ['s1', 's11', 's12', 's2'])
-    assert.deepEqual(await ids('archived=include'), ['s1', 's11', 's12', 's2', 's3'])
+    assert.deepEqual(await ids(''), ['s1', 's2', 's11', 's12'])
+    assert.deepEqual(await ids('archived=include'), ['s1', 's2', 's3', 's11', 's12'])
     assert.deepEqual(await ids('archived=only'), ['s3'])
     assert.equal((await get('/api/v1/collections/students/s3', adminCookie)).statusCode, 404)
     const archived = await get('/api/v1/collections/students/s3?archived=include', adminCookie)

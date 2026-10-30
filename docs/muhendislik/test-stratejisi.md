@@ -89,6 +89,7 @@ export async function buildTestApp() {
 - Test yalıtımı kurum düzeyindedir: her test dosyası `before` içinde kendi kurumlarını (A ve B) ve rol başına bir üyeyi kurar, oturumları bir kez açar (scrypt her testte tekrarlanmasın). Her test kendi kayıtlarını önekli kimlikle oluşturur; tablo boşaltma veya test sırası varsayımı yok.
 - Migration süresi dosya başına 1 sn'yi aşarsa bir kez migrate edilmiş veri dizini dökülüp (`dumpDataDir`) her dosyada yüklenir.
 - PGlite tek bağlantılıdır. Eşzamanlılık (iki isteğin aynı `version` ile yarışması, `FOR UPDATE`, kilit beklemesi) ve PostgreSQL'e özgü uzantı davranışı PGlite'ta doğrulanamaz; bunlar Docker'da PostgreSQL 16 ile koşan ayrı `test:pg` takımındadır. Bu takım `apps/api/src/db/**` veya `apps/api/drizzle/**` değişince ve gece koşar.
+- `test:pg` dosyaları `apps/api/test/pg-*.test.ts`; adres `TEST_PG_URL` ile verilir, yoksa takım atlanır (olağan `test` koşusunda da). Adres atılabilir ayrı bir veritabanı olmalıdır: `docker compose up -d`, `docker compose exec postgres createdb -U kampus kampus_test`, ardından `TEST_PG_URL=postgres://kampus:kampus-yerel@127.0.0.1:5433/kampus_test pnpm --filter @kampus/api test:pg`. Migration'lar her koşuda uygulanır; her test kendi kurumunu kurar.
 
 ## 5. Kiracı izolasyonu ve yetki testleri
 

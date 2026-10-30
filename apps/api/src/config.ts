@@ -127,6 +127,18 @@ export function loadDatabaseUrl(env: Record<string, string | undefined> = proces
   return parsed.data.DATABASE_URL
 }
 
+/**
+ * `test:pg` takımının PostgreSQL 16 adresi (`TEST_PG_URL`). Verilmezse gerçek veritabanı testleri
+ * atlanır; adres her test koşusunda tabloları değiştirdiğinden yalnız atılabilir veritabanı verilir.
+ */
+export function loadTestPgUrl(
+  env: Record<string, string | undefined> = process.env,
+): string | null {
+  const parsed = z.object({ TEST_PG_URL: optional(databaseUrl) }).safeParse(env)
+  if (!parsed.success) throw failure(parsed.error)
+  return parsed.data.TEST_PG_URL ?? null
+}
+
 export function publicUrl(config: Config): string {
   return config.BETTER_AUTH_URL ?? `http://localhost:${config.PORT}`
 }

@@ -27,6 +27,7 @@ export const MESSAGES = {
   csrf_rejected: 'İstek güvenilmeyen bir kaynaktan geldi.',
   not_found: 'İstenen kayıt bulunamadı.',
   version_conflict: 'Kayıt başka biri tarafından değiştirildi. Sayfayı yenileyip yeniden deneyin.',
+  conflict: 'İşlem aynı anda yapılan başka bir işlemle çakıştı. Lütfen yeniden deneyin.',
   record_too_large: 'Kayıt izin verilen boyutu aşıyor.',
   payload_too_large: 'Gönderilen veri çok büyük.',
   unsupported_media_type: 'İstek biçimi desteklenmiyor.',
@@ -92,6 +93,17 @@ export class ConflictError extends AppError {
 }
 
 /** 422: biçim doğru, iş kuralı reddetti. `message` school-core'un Türkçe mesajıdır. */
+/**
+ * 409: veritabanı kilitlenme (40P01) veya serileştirme (40001) nedeniyle transaction'ı geri aldı.
+ * Hiçbir kayıt değişmedi; aynı istek olduğu gibi yeniden denenebilir.
+ */
+export class TransientConflictError extends AppError {
+  constructor(options: { cause?: unknown } = {}) {
+    super(409, 'conflict', MESSAGES.conflict, options)
+    this.name = 'TransientConflictError'
+  }
+}
+
 export class RuleViolationError extends AppError {
   constructor(code: string, message: string, options: { issues?: Issue[]; cause?: unknown } = {}) {
     super(422, code, message, options)
@@ -103,6 +115,47 @@ export class UnavailableError extends AppError {
   constructor(options: { cause?: unknown } = {}) {
     super(503, 'unavailable', MESSAGES.unavailable, options)
     this.name = 'UnavailableError'
+  }
+}
+
+/** Veritabanı hatasının SQLSTATE'i ve kısıt adı; Drizzle sürücü hatasını `cause`'a sarar. */
+export function databaseErrorInfo(error: unknown): { code: string; constraint?: string } | null {
+  let current: unknown = error
+  for (let depth = 0; depth < 4 && typeof current === 'object' && current !== null; depth += 1) {
+    const code: unknown = Reflect.get(current, 'code')
+    // SQLSTATE beş karakterdir (ör. 23514, 40P01); Node hata kodları (ERR_…) elenir.
+    if (typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code)) {
+      const constraint: unknown = Reflect.get(current, 'constraint')
+      return typeof constraint === 'string' ? { code, constraint } : { code }
+    }
+    current = Reflect.get(current, 'cause')
+  }
+  return null
+}
+
+/**
+ * Kullanıcıya anlamlı veritabanı hatalarını uygulama hatasına çevirir (boyut kısıtı 422,
+ * kilitlenme/serileştirme 409 `conflict`); ötekiler aynen döner
+ * (500, ayrıntı yalnız logda). `records_data_size_check`: jsonb'nin ikili boyutu JSON metninden
+ * büyük olabildiği için uygulamanın metin denetimi geçse de kısıt reddedebilir.
+ */
+export function mapDatabaseError(error: unknown): Error {
+  if (error instanceof AppError) return error
+  const info = databaseErrorInfo(error)
+  if (info?.code === '23514' && info.constraint === 'records_data_size_check')
+    return new RuleViolationError('record_too_large', MESSAGES.record_too_large, { cause: error })
+  if (info?.code === '40P01' || info?.code === '40001')
+    return new TransientConflictError({ cause: error })
+  if (error instanceof Error) return error
+  return new AppError(500, 'internal_error', MESSAGES.internal_error, { cause: error })
+}
+
+/** Veritabanı işinin hatasını `mapDatabaseError` ile çevirir. */
+export async function withDatabaseErrors<T>(work: Promise<T>): Promise<T> {
+  try {
+    return await work
+  } catch (error) {
+    throw mapDatabaseError(error)
   }
 }
 

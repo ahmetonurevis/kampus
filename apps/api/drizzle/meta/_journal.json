@@ -29,6 +29,20 @@
       "when": 1793324088475,
       "tag": "0003_create_institution_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793325419154,
+      "tag": "0004_add_records_position",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793325420961,
+      "tag": "0005_archive_core_audit_records",
+      "breakpoints": true
     }
   ]
 }

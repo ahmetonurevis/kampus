@@ -12,7 +12,8 @@ import {
   seedDemo,
   stateRecords,
 } from '../src/db/demo-seed.ts'
-import { findRecord, writeRecords } from '../src/db/records.ts'
+import { STORED_COLLECTIONS } from '../src/db/collections.ts'
+import { findRecord, loadRecords, writeRecords } from '../src/db/records.ts'
 import { institutions, memberships, users } from '../src/db/schema/auth.ts'
 import { membershipLinks } from '../src/db/schema/membership-links.ts'
 import { records } from '../src/db/schema/records.ts'
@@ -113,6 +114,29 @@ describe('demo tohumu', () => {
       founderMe.data.memberships.map((item: { institutionType: string }) => item.institutionType),
       ['school', 'language_school'],
     )
+  })
+
+  test('kayıtlar core dizisinin sırasıyla yüklenir; ikinci tohum sırayı değiştirmez', async () => {
+    const { institutionIds } = await seedDemo(app.auth, db, DEFAULT_DEMO_PASSWORD, {
+      now: FIXED_NOW,
+    })
+    const akademi = institutionIds.akademi
+    assert.ok(akademi)
+    // Kimlik sırası karşılaştırılır: öteki test bir kaydın verisini değiştirmiş olabilir.
+    const expected = stateRecords(demoState('akademi', FIXED_NOW))
+    const check = async () => {
+      const rows = await loadRecords(db, akademi, STORED_COLLECTIONS)
+      for (const collection of STORED_COLLECTIONS)
+        assert.deepEqual(
+          rows.filter((row) => row.collection === collection).map((row) => row.id),
+          expected.filter((item) => item.collection === collection).map((item) => item.id),
+          collection,
+        )
+      return rows.map((row) => [row.collection, row.id, row.position, row.version])
+    }
+    const first = await check()
+    await seedDemo(app.auth, db, DEFAULT_DEMO_PASSWORD, { now: FIXED_NOW })
+    assert.deepEqual(await check(), first)
   })
 
   test('üyelik bağlantıları kurumdaki örnek kayıtlardaki kişilere işaret eder', async () => {

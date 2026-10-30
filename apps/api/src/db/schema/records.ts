@@ -1,5 +1,14 @@
 import { sql } from 'drizzle-orm'
-import { check, integer, jsonb, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core'
+import {
+  bigint,
+  check,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core'
 
 import type { RecordData } from '../collections.ts'
 import { institutions } from './auth.ts'
@@ -22,6 +31,8 @@ export const records = pgTable(
     id: text('id').notNull(),
     // kvkk: K|Ç (koleksiyona göre; Ö veri buraya yazılmaz)
     data: jsonb('data').$type<RecordData>().notNull(),
+    /** Core dizisindeki sıra; seyrek tamsayı, yalnız aynı koleksiyonda karşılaştırılır (`positions.ts`). */
+    position: bigint('position', { mode: 'number' }).notNull(),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

@@ -69,7 +69,7 @@ importers:
         specifier: 6.1.2
         version: 6.1.2
       '@kampus/school-core':
-        specifier: workspace:1.3.0
+        specifier: workspace:2.0.0
         version: link:../../packages/school-core
       better-auth:
         specifier: 1.7.10
@@ -106,7 +106,7 @@ importers:
   apps/mobile:
     dependencies:
       '@kampus/school-core':
-        specifier: workspace:1.3.0
+        specifier: workspace:2.0.0
         version: link:../../packages/school-core
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
@@ -197,7 +197,7 @@ importers:
         specifier: 5.3.0
         version: 5.3.0
       '@kampus/school-core':
-        specifier: workspace:1.3.0
+        specifier: workspace:2.0.0
         version: link:../../packages/school-core
       '@lucide/vue':
         specifier: 1.48.0
@@ -234,7 +234,7 @@ importers:
         specifier: 5.9.1
         version: 5.9.1(@sinclair/typebox@0.27.12)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.2.18)(react@19.2.3))(zod@4.6.5)
       '@kampus/school-core':
-        specifier: workspace:1.3.0
+        specifier: workspace:2.0.0
         version: link:../../packages/school-core
       '@tanstack/react-table':
         specifier: 9.3.1

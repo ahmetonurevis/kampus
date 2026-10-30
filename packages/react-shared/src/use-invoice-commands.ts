@@ -1,10 +1,16 @@
+import type { operations } from '@kampus/api-client/schema.d.ts'
+
 import { collectionKeyPrefix } from './collections.ts'
 import { useApiCommand } from './use-api-command.ts'
 
+/** Ödeme yöntemleri OpenAPI'den gelir (core `paymentInputSchema`; yeni yöntem tek yerden eklenir). */
+export type PaymentMethod =
+  operations['payInvoice']['requestBody']['content']['application/json']['method']
+
 export interface PayInvoiceInput {
   invoiceId: string
-  /** Ödeme yöntemi (ör. `Banka havalesi`, `Nakit`, `Kredi kartı`). */
-  method: string
+  /** Ödeme yöntemi (`Banka havalesi`, `Nakit`, `Kredi kartı`). */
+  method: PaymentMethod
 }
 
 /** Mükerrer ödeme (core `invoice_already_paid`, 409): liste aynı anda tazelenir. */

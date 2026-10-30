@@ -5,12 +5,12 @@ import type { Download, Page, Request } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Finans & Tahsilat (yönetici /finans, ön büro /tahsilat-takip). Seed: 240 öğrenci × 8 taksit =
 // 1920 taksit; her öğrencinin ilk üç taksiti ödenmiş, 5.–8. taksitlerin vadesi ileridedir.
-// Testler paralel koşar: ödeme yapan her test kendi öğrencisinin ileri vadeli taksidini öder;
-// listeyi sayan testler bu öğrencilere ve ileri vadeli taksit sayısına dayanmaz.
+// Liste testleri seed kurumunu yalnız okur. Ödeme yapan her test kendi kurumunu kurar (öğrenci ve
+// taksit kimlikleri seed ile aynı, kurum ayrı): tekrar koşuda ve paralel testte taksit hâlâ ödenmemiştir.
 
 const ADMIN_URL = '/yonetici/finans'
 const FRONT_OFFICE_URL = '/onburo/tahsilat-takip'
@@ -65,9 +65,11 @@ test.describe('Finans: tahsilat', () => {
     page,
     loginAs,
     api,
+    tenant,
   }) => {
-    await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici')
+    const school = await tenant({ roles: [], students: ['s10'] })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     expect((await invoice(client, 'inv-s10-5')).paidAt).toBeNull()
     const payments = recordPayments(page)
 
@@ -103,9 +105,11 @@ test.describe('Finans: tahsilat', () => {
     page,
     loginAs,
     api,
+    tenant,
   }) => {
-    await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici')
+    const school = await tenant({ roles: [], students: ['s11'] })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
     const payments = recordPayments(page)
 
     await page.goto(`${ADMIN_URL}?tahsilat=inv-s11-5`)
@@ -136,9 +140,11 @@ test.describe('Finans: tahsilat', () => {
     page,
     loginAs,
     api,
+    tenant,
   }) => {
-    await loginAs('yonetici', { fresh: true })
-    const client = await api('yonetici', { fresh: true })
+    const school = await tenant({ roles: [], students: ['s13'] })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
 
     await page.goto(ADMIN_URL)
     await page.getByLabel('Tabloda ara').fill('İpek Güneş')
@@ -159,9 +165,10 @@ test.describe('Finans: tahsilat', () => {
     expect((await invoice(client, 'inv-s13-5')).method).toBe('Kredi kartı')
   })
 
-  test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api }) => {
-    await loginAs('onburo', { fresh: true })
-    const client = await api('onburo')
+  test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api, tenant }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s12'] })
+    await loginAs(school.user('onburo'))
+    const client = await api(school.user('onburo'))
 
     await page.goto(FRONT_OFFICE_URL)
     await expect(page.getByRole('heading', { level: 1, name: 'Tahsilat Takibi' })).toBeVisible()
@@ -219,7 +226,7 @@ test.describe('Finans: liste', () => {
     const cards = page.getByLabel('Kurum geneli ödeme toplamları')
     const card = (name: string) => cards.locator('div').filter({ hasText: name }).locator('dd')
 
-    // Paralel testler tahsilat yazabildiği için API her denemede yeniden okunur; ikisi yakınsar.
+    // Kartlar kendi yanıtından gelir; API her denemede yeniden okunur ve ikisi yakınsayana dek beklenir.
     await expect
       .poll(async () => {
         const result = await client.get(
@@ -316,12 +323,12 @@ test.describe('Finans: liste', () => {
     await page.goto(ADMIN_URL)
     await page.getByLabel('Tabloda ara').fill('Deniz Yılmaz')
     await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
-    for (const row of await bodyRows(page).all()) await expect(row).toContainText('Deniz Yılmaz')
+    await expectEveryRow(bodyRows(page), 'Deniz Yılmaz')
 
     // Okul numarası ve sınıf adı da sunucuda aranır; aksan ve büyük/küçük harf duyarsız.
     await page.getByLabel('Tabloda ara').fill('2026001')
     await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
-    for (const row of await bodyRows(page).all()) await expect(row).toContainText('Deniz Yılmaz')
+    await expectEveryRow(bodyRows(page), 'Deniz Yılmaz')
     await page.getByLabel('Tabloda ara').fill('deniz yilmaz')
     await expect(resultCount(page)).toContainText('/ 8 kayıt')
     await page.getByLabel('Tabloda ara').fill('7-a')
@@ -361,16 +368,13 @@ test.describe('Finans: liste', () => {
     await expect(page).toHaveURL(/[?&]durum=yaklasan/)
     await expect(page).not.toHaveURL(/[?&]sayfa=/)
     await expect(bodyRows(page)).toHaveCount(8)
-    for (const row of await bodyRows(page).all()) await expect(row).toContainText('Yaklaşan')
+    await expectEveryRow(bodyRows(page), 'Yaklaşan')
 
     await page.getByLabel('Tabloda ara').fill('Deniz Yılmaz')
     await expect(page).toHaveURL(/[?&]q=Deniz/)
     await page.getByLabel('Ödeme durumu').selectOption({ label: 'Ödendi' })
     await expect(resultCount(page)).toContainText('1–3 / 3 kayıt')
-    for (const row of await bodyRows(page).all()) {
-      await expect(row).toContainText('Deniz Yılmaz')
-      await expect(row).toContainText('Ödendi')
-    }
+    await expectEveryRow(bodyRows(page), ['Deniz Yılmaz', 'Ödendi'])
 
     // Yenileme ve geri/ileri durumu korur.
     await page.reload()

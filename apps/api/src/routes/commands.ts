@@ -75,13 +75,16 @@ declare module 'fastify' {
 const response = { 200: commandResponseSchema, ...commandErrors }
 const created = { 201: commandResponseSchema, ...commandErrors }
 
-function captureInput(): preValidationAsyncHookHandler {
+export function captureInput(): preValidationAsyncHookHandler {
   return async function (request) {
     request.commandInput = structuredClone(request.body ?? {})
   }
 }
 
-function options(request: FastifyRequest, idempotency: 'required' | 'optional'): CommandOptions {
+export function options(
+  request: FastifyRequest,
+  idempotency: 'required' | 'optional',
+): CommandOptions {
   return {
     idempotency: idempotencyOf(request, idempotency === 'required'),
     expectedVersion: ifMatchVersion(request),
@@ -92,7 +95,7 @@ function options(request: FastifyRequest, idempotency: 'required' | 'optional'):
  * Konusu önceden var olmayan (oluşturma) uç: `If-Match` gövde doğrulamasından önce 400
  * `if_match_not_supported` olur; istemci kilit beklediği halde sessizce kilitsiz yazılmaz.
  */
-function rejectIfMatch(): preValidationAsyncHookHandler {
+export function rejectIfMatch(): preValidationAsyncHookHandler {
   return async function (request) {
     ifMatchVersion(request, false)
   }

@@ -5,6 +5,8 @@ import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { scopeFor, type Actor } from '@kampus/school-core/lib/scope.ts'
 
 import { RECORD_COLLECTIONS } from '../src/db/collections.ts'
+import type { RecordFilter } from '../src/db/records.ts'
+import { matchesRecordFilter } from '../src/services/list-filters.ts'
 import { scopePrefilter } from '../src/services/read-scope.ts'
 import { FIXED_NOW } from './support/app.ts'
 
@@ -33,9 +35,8 @@ const ACTORS: Actor[] = [
     })),
 ]
 
-function passes(row: Record<string, unknown>, field: string, values: readonly string[]) {
-  const value = row[field]
-  return Array.isArray(value) || (typeof value === 'string' && values.includes(value))
+function passes(row: Record<string, unknown>, filter: RecordFilter) {
+  return matchesRecordFilter(row, filter)
 }
 
 describe('okuma kapsamı SQL ön süzgeci', () => {
@@ -51,7 +52,7 @@ describe('okuma kapsamı SQL ön süzgeci', () => {
           if (!scope.canRead(collection, row)) continue
           checked += 1
           assert.ok(
-            passes(row, prefilter.field, prefilter.values),
+            passes(row, prefilter),
             `${actor.role} ${JSON.stringify(actor.links)} ${collection}`,
           )
         }
@@ -68,5 +69,35 @@ describe('okuma kapsamı SQL ön süzgeci', () => {
     const unlinked = scopeFor(SEED, { role: 'veli', links: [] })
     assert.deepEqual(scopePrefilter(unlinked, 'grades'), { field: 'studentId', values: [] })
     assert.equal(scopePrefilter(unlinked, 'students'), null)
+  })
+
+  test('DOM-AKD-054: sınıf değiştiren öğrencinin eski notu eski öğretmenin ön süzgecinden geçer', () => {
+    // s1 c1'den c9'a geçti; not c1'de verildi (core `gradeReader`: verildiği sınıfın öğretmeni görür).
+    const moved = {
+      ...SEED,
+      students: SEED.students.map((item) => (item.id === 's1' ? { ...item, classId: 'c9' } : item)),
+    }
+    const given = { id: 'g-moved', studentId: 's1', subjectId: 'math', classId: 'c1' }
+    const legacy = { id: 'g-legacy', studentId: 's1', subjectId: 'math' }
+    const math = SEED.assignments.find((a) => a.classId === 'c1' && a.subjectId === 'math')
+    const current = SEED.assignments.find((a) => a.classId === 'c9' && a.subjectId === 'math')
+    assert.ok(math && current)
+    const visible = (teacherId: string, row: Record<string, unknown>) => {
+      const scope = scopeFor(moved, {
+        role: 'ogretmen',
+        links: [{ kind: 'teacher', recordId: teacherId }],
+      })
+      const prefilter = scopePrefilter(scope, 'grades')
+      assert.ok(prefilter)
+      const core = scope.canRead('grades', row)
+      // Ön süzgeç gerekli koşuldur: core görüyorsa süzgeç de geçirir, fazladan dışlama yok.
+      if (core) assert.ok(passes(row, prefilter), teacherId)
+      return core
+    }
+    assert.equal(visible(math.teacherId, given), true)
+    assert.equal(visible(math.teacherId, legacy), false)
+    // Yeni öğretmen aynı branşta ve öğrenci artık kendi sınıfında: core `subjectOrHomeroom` notu da görür.
+    assert.equal(visible(current.teacherId, given), true)
+    assert.equal(visible(current.teacherId, legacy), true)
   })
 })

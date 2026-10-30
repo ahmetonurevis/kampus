@@ -22,6 +22,16 @@ import { runAssessment } from '../packages/school-core/src/lib/assessment-automa
 import { payInvoice, recordAttendance } from '../packages/school-core/src/lib/domain.ts'
 import { recordGrade, updateGrade } from '../packages/school-core/src/lib/grades.ts'
 import { archiveRecord, restoreRecord } from '../packages/school-core/src/lib/school-management.ts'
+import {
+  markAnnouncementRead,
+  markMessagesRead,
+  openConversationAccess,
+  publishAnnouncement,
+  reviseAnnouncement,
+  sendMessage,
+  startConversation,
+  withdrawAnnouncement,
+} from '../packages/school-core/src/lib/communication.ts'
 import { csvTemplate } from '../packages/school-core/src/lib/workflow-presentation.ts'
 import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -338,4 +348,69 @@ test('Temel yazma işlemleri yetkiyle birlikte yalnız tablodaki koleksiyonlarla
   const restore = operation(state, 'record.restore')
   requireAuthorized(director, 'record.restore', { kind: 'class' }, restore)
   restoreRecord(restore, 'class', 'c1')
+})
+
+test('İletişim işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır', () => {
+  const state = seed()
+  const director = { role: 'yonetici' as const, links: [], userId: 'u-admin' }
+  const teacher = {
+    role: 'ogretmen' as const,
+    links: [{ kind: 'teacher' as const, recordId: 't2' }],
+    userId: 'u-t2',
+  }
+  const parent = {
+    role: 'veli' as const,
+    links: [{ kind: 'child' as const, recordId: 's1' }],
+    userId: 'u-veli',
+  }
+  const published = publishAnnouncement(
+    operation(state, 'announcement.publish'),
+    teacher,
+    {
+      title: 'Kitap listesi',
+      text: 'Okuma listesi panoda.',
+      category: 'Akademik',
+      target: { classIds: ['c1'], roles: ['veli'] },
+    },
+    id,
+    now,
+  )
+  reviseAnnouncement(
+    operation(state, 'announcement.revise'),
+    teacher,
+    published.id,
+    { title: 'Güncel kitap listesi' },
+    now,
+  )
+  markAnnouncementRead(operation(state, 'announcement.read'), parent, published.id, now)
+  withdrawAnnouncement(
+    operation(state, 'announcement.withdraw'),
+    director,
+    published.id,
+    { reason: 'Yanlış sınıf' },
+    now,
+  )
+  const { conversation } = startConversation(
+    operation(state, 'conversation.start'),
+    parent,
+    { studentId: 's1', teacherId: 't2', text: 'Merhaba' },
+    id,
+    now,
+  )
+  sendMessage(
+    operation(state, 'message.send'),
+    teacher,
+    conversation.id,
+    { text: 'Merhaba' },
+    id,
+    now,
+  )
+  markMessagesRead(operation(state, 'message.read'), parent, conversation.id, now)
+  openConversationAccess(
+    operation(state, 'conversation.access'),
+    director,
+    conversation.id,
+    { reason: 'Şikâyet dilekçesi incelemesi' },
+    now,
+  )
 })

@@ -63,7 +63,7 @@ export interface CommandOptions {
   expectedVersion: number | null
 }
 
-interface Environment {
+export interface Environment {
   session: Session
   /** Core yetki aktörü (`requireAuthorized`): oturum rolü ve üyelik bağlantıları. */
   actor: Actor
@@ -75,9 +75,10 @@ interface Environment {
  * Core oturumu ve skaler State alanları: bağlantılar `membership_links`'ten, modüller kurumdan,
  * eğitim yılı `institution_settings`'ten. Ayar satırı yoksa `academicYear` verilmez; onu okuyan
  * işlem (yenileme) 500 ile durur. İşlem çalıştırıcı bunu kurum kilidinden sonra, işlemin
- * transaction'ında (`tx`) çağırır (`OperationRequest.load`).
+ * transaction'ında (`tx`) çağırır (`OperationRequest.load`). İletişim komutları da kullanır
+ * (`services/communication.ts`).
  */
-async function environment(
+export async function environment(
   tx: Database,
   ctx: ServiceContext,
   spec: CommandSpec,

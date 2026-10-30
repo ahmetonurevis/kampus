@@ -403,6 +403,10 @@ describe('yazma uçları', () => {
           .map(([command]) => `POST /api/v1/workflows/${command}`),
         'POST /api/v1/invoices/{invoiceId}/pay',
         'POST /api/v1/grades',
+        // İletişim (routes/communication.ts): oluşturma ve mesaj gönderimi.
+        'POST /api/v1/announcements',
+        'POST /api/v1/conversations',
+        'POST /api/v1/conversations/{conversationId}/messages',
       ]
       assert.deepEqual(required.sort(), expected.sort())
     })
@@ -643,6 +647,14 @@ describe('yazma uçları', () => {
       )
       const invalid = await post(url, a.adminCookie, { method: '' }, key(5))
       assertError(invalid, 400, 'validation_failed')
+      // Yöntem listesi core `paymentInputSchema`'sındadır; listede olmayan değer (demo yöntemi
+      // dahil) 400 ve Türkçe alan mesajı verir.
+      for (const [index, method] of ['Çek', 'Demo Sanal POS'].entries()) {
+        const rejected = await post(url, a.adminCookie, { method }, key(20 + index))
+        assertError(rejected, 400, 'validation_failed')
+        assert.equal(rejected.json().issues[0].path[0], 'method')
+        assert.equal(rejected.json().issues[0].message, 'Ödeme yöntemini seçin.')
+      }
       assert.equal(await version(a.id, 'invoices', UNPAID.id), 1)
     })
 

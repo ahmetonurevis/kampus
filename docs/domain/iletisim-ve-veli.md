@@ -12,7 +12,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** "Sınıfa özel / genel" ayrımı kampüs ve rol bazlı idari duyurulara yetmez; okundu oranı sabit bir alıcı listesine göre hesaplanır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — duyuru yalnız `classId` veya genel (`packages/school-core/src/data/seed.js:594-601`), süzme istemcide (`apps/web/src/views/Communication.vue:126-134`); rol/kampüs kapsamı ve alıcı listesi yok.
+- **Kodda:** var — core `publishAnnouncement` hedef kitleyi (kampüs, düzey, CEFR seviyesi, sınıf × rol) yayında alıcı listesine çözer, görünürlük core kapsamındadır (`packages/school-core/src/lib/communication.ts`, `lib/communication-access.ts`); API `apps/api/src/routes/communication.ts` `POST /announcements`, okuma `GET /collections/announcements`. Vue demosu eski `classId`/genel kuralıyla çalışır.
 
 ### DOM-ILT-002 · Kim duyuru yayınlar
 
@@ -20,7 +20,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Duyuru kurum adına konuşur; kapsamı yayınlayanın yetkisiyle sınırlıdır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — duyuru oluşturma işlemi yok.
+- **Kodda:** var — core `authorize('announcement.publish')` (`publishDecision`); API `apps/api/src/routes/communication.ts`.
 
 ### DOM-ILT-003 · Okundu bilgisi
 
@@ -28,7 +28,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Kritik idari duyurunun ulaşıp ulaşmadığı ölçülmeli; okuma kaydı ise rıza değildir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** var — core `markAnnouncementRead` (veli anahtarı çocuk başına), alıcıya `myReadAt`, yayınlayan ve yöneticiye `readCount`/`recipientCount`; API `apps/api/src/routes/communication.ts` `POST /announcements/:id/read`. Okumayanlar listesi ve hatırlatma yok.
 
 ### DOM-ILT-004 · Duyuru düzeltme ve geri çekme
 
@@ -36,7 +36,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Velinin gördüğü bilgi sonradan iz bırakmadan değişmemelidir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — düzeltme `revisions` geçmişi ve `revisedAt`, geri çekme silmeden `withdrawnAt`; geri çekilen duyuru alıcıya işaretle görünür, metni (`text`) ve gerekçesi yalnız yayınlayan ve yöneticiye döner (`narrowAnnouncement`); API `apps/api/src/routes/communication.ts` `PATCH /announcements/:id`, `POST …/withdraw`. Yeniden bildirim yok (`TODO(notifications)`).
 
 ## Birebir mesaj
 
@@ -46,7 +46,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ayrı yaşayan velilerde ortak konuşma kişisel bilgi sızdırır (`DOM-ILT-073`); konuşmanın öğrenciye bağlı olması kardeşler arasında karışıklığı önler.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi (yetişkin kursiyerde veli yoktur, `DOM-YTK-030`)
-- **Kodda:** kısmen — alıcılar sınıfa atanmış öğretmenlerle sınırlı (`apps/web/src/views/Communication.vue:40-42`), konuşma öğrenci + hedef kitleye bağlı (`apps/web/src/views/Communication.vue:85-91`); veli başına ayrım ve idare/rehber öğretmen alıcısı yok.
+- **Kodda:** kısmen — core `startConversation` yazışmayı öğrenci + öğretmen + hedef kitle + veli hesabı (`parentUserId`) başına tekil açar, öğretmen yalnız ders verdiği/rehberi olduğu öğrencinin velisiyle başlatır; API `apps/api/src/routes/communication.ts` `POST /conversations`, veli seçimi `GET /students/:id/parent-accounts`. İdare (yönetici, ön büro) ile veli yazışması yok.
 
 ### DOM-ILT-011 · Öğrenci–öğretmen sınırları
 
@@ -54,7 +54,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Çocukla yetişkin arasında kayıtsız, birebir özel kanal çocuk koruma açısından risklidir; kayıtlı kanal hem öğrenciyi hem öğretmeni korur. Öğrencinin öğretmenine sorduğu soruların veliye açık olması ise öğrencinin soru sormasını engeller.
 - **Kaynak:** İşletme kuralı. Velinin reşit olmayanın yazışmalarını görme hakkının sınırı **doğrulanmalı** (TMK md. 339-340 ve çocuğun özel hayatı dengesi).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — öğrenci alıcıları sınıf öğretmenleri (`apps/web/src/views/Communication.vue:40-42`); öğrenci–öğrenci mesajı yok; yönetici erişimi ve denetim yok.
+- **Kodda:** var — öğrenci yalnız ders veren, sınıf rehberi veya rehberlik görevli öğretmenle yazışır; veli öğrenci yazışmasını görmez; yönetici gerekçeyle (≥ 10 karakter) 30 dakikalık erişim açar, erişim `audit_log`'a gerekçesiyle yazılır (`POST /conversations/:id/access`).
 
 ### DOM-ILT-012 · Gönderilen mesaj değişmez
 
@@ -62,7 +62,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Veli–kurum yazışması uyuşmazlıkta delildir.
 - **Kaynak:** İşletme kuralı; 5 dakika işletme kuralıdır.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — mesaj düzenleme/silme yok (`apps/web/src/views/Communication.vue:141-169`); geri çekme yok.
+- **Kodda:** kısmen — core `sendMessage` yalnız ekler; API'de düzenleme/silme ucu yoktur (API `apps/api/src/routes/communication.ts`). 5 dakikalık geri çekme ve ek dosya yok.
 
 ### DOM-ILT-013 · Yanıt süresi iş saatiyle ölçülür
 
@@ -120,7 +120,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Öğretmen "mesaj ulaştı mı" sorusunu tekrar mesajla sormamalı; okunmuş mesaj ise rıza veya tebligat değildir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — mesaj okundu bilgisi core `markMessagesRead` (`readAt`, karşı tarafın mesajları) ve API `apps/api/src/routes/communication.ts` `POST /conversations/:id/read`; yöneticinin okuması okundu üretmez.
 
 ## Veli onayı ve izinler
 
@@ -294,16 +294,14 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 
 ## Mevcut kodla farklar
 
-| Kural            | Fark                                                                                                                                                                                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| DOM-ILT-001, 002 | Duyuru oluşturma yok; hedef kitle yalnız sınıf/genel, süzme istemcide (`apps/web/src/views/Communication.vue:126-134`).                                                                                                  |
-| DOM-ILT-003, 024 | Duyuru ve mesajda okundu bilgisi yok.                                                                                                                                                                                    |
-| DOM-ILT-010      | Konuşma veli başına değil, öğrenci + hedef kitle başına; iki veli aynı konuşmayı paylaşır (`apps/web/src/views/Communication.vue:85-91`). Öğretmen yeni konuşma başlatamaz (`apps/web/src/views/Communication.vue:147`). |
-| DOM-ILT-013      | Yanıt süresi duvar saatiyle 24 saat; sessiz saat, hafta sonu, tatil sayılıyor (`packages/school-core/src/lib/format.js:51-60`).                                                                                          |
-| DOM-ILT-020, 021 | Tercih kaydediliyor ama gönderim, zorunlu bildirim ve sessiz saat yok (`apps/web/src/views/Settings.vue:16-26,212`).                                                                                                     |
-| DOM-ILT-030, 034 | Veli kararı üzerine yazılıyor, geçmiş ve metin sürümü yok (`packages/school-core/src/lib/school-workflows.js:1062-1065`).                                                                                                |
-| DOM-ILT-032      | Etkinlik iptalinde veliye bildirim yok (`packages/school-core/src/lib/school-workflows.js:1077-1083`).                                                                                                                   |
-| DOM-ILT-040      | İç not core kapsamında yalnız rehberlik görevli öğretmene dönüyor; yöneticinin gerekçeli erişimi ve API'nin kapsam fonksiyonunu kullanması yok (`packages/school-core/src/lib/scope.ts`).                                |
-| DOM-ILT-041      | Core denetim kaydı iç notu maskeliyor; bildirim, PDF ve CSV yan kanalları ayrıca denetlenmedi.                                                                                                                           |
-| DOM-ILT-053      | Geçmiş tarihli mazeret bildirimi engelli, yoklamaya bağlanmıyor (`apps/web/src/views/Communication.vue:312-345`).                                                                                                        |
-| DOM-ILT-070, 073 | Velayet durumu ve çoklu veli yok; öğrenci başına tek `parentId` (`packages/school-core/src/data/seed.js:197,205-212`).                                                                                                   |
+| Kural                | Fark                                                                                                                                                                                                                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| DOM-ILT-001…012, 024 | Kural core ve API'dedir (`lib/communication.ts`, `routes/communication.ts`); Vue demosu eski davranıştadır: duyuru yalnız sınıf/genel, iki veli aynı konuşmayı paylaşır, öğretmen konuşma başlatamaz (`apps/web/src/views/Communication.vue:85-91,147`). React web ve mobil ekranlar API'ye geçmedi. İdare–veli yazışması, mesaj geri çekme ve bildirim yok. |
+| DOM-ILT-013          | Yanıt süresi duvar saatiyle 24 saat; sessiz saat, hafta sonu, tatil sayılıyor (`packages/school-core/src/lib/format.js:51-60`).                                                                                                                                                                                                                              |
+| DOM-ILT-020, 021     | Tercih kaydediliyor ama gönderim, zorunlu bildirim ve sessiz saat yok (`apps/web/src/views/Settings.vue:16-26,212`).                                                                                                                                                                                                                                         |
+| DOM-ILT-030, 034     | Veli kararı üzerine yazılıyor, geçmiş ve metin sürümü yok (`packages/school-core/src/lib/school-workflows.js:1062-1065`).                                                                                                                                                                                                                                    |
+| DOM-ILT-032          | Etkinlik iptalinde veliye bildirim yok (`packages/school-core/src/lib/school-workflows.js:1077-1083`).                                                                                                                                                                                                                                                       |
+| DOM-ILT-040          | İç not core kapsamında yalnız rehberlik görevli öğretmene dönüyor; yöneticinin gerekçeli erişimi ve API'nin kapsam fonksiyonunu kullanması yok (`packages/school-core/src/lib/scope.ts`).                                                                                                                                                                    |
+| DOM-ILT-041          | Core denetim kaydı iç notu maskeliyor; bildirim, PDF ve CSV yan kanalları ayrıca denetlenmedi.                                                                                                                                                                                                                                                               |
+| DOM-ILT-053          | Geçmiş tarihli mazeret bildirimi engelli, yoklamaya bağlanmıyor (`apps/web/src/views/Communication.vue:312-345`).                                                                                                                                                                                                                                            |
+| DOM-ILT-070, 073     | Velayet durumu ve çoklu veli yok; öğrenci başına tek `parentId` (`packages/school-core/src/data/seed.js:197,205-212`).                                                                                                                                                                                                                                       |

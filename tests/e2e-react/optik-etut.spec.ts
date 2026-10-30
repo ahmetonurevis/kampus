@@ -213,7 +213,7 @@ test.describe('optik değerlendirme', () => {
     const before = (await recordsOf(client, EVALUATIONS)).length
 
     await confirm.click()
-    const alert = page.getByRole('alert').filter({ hasText: 'Veri değişti' })
+    const alert = page.locator('main').getByRole('alert').filter({ hasText: 'Veri değişti' })
     await expect(alert).toBeVisible()
     await expect(alert).toContainText('yeniden önizleyip')
     expect(await recordsOf(client, EVALUATIONS)).toHaveLength(before)
@@ -486,7 +486,7 @@ test.describe('otomatik etüt', () => {
     expect(before).toBeGreaterThan(0)
 
     await confirm.click()
-    const alert = page.getByRole('alert').filter({ hasText: 'Plan değişmiş' })
+    const alert = page.locator('main').getByRole('alert').filter({ hasText: 'Plan değişmiş' })
     await expect(alert).toBeVisible()
     // Önizlemedeki etütler artık planda yok (zaten etütte); fark listelenir, hiçbir etüt eklenmez.
     await expect(alert.getByRole('heading', { name: 'Kalkan etütler' })).toBeVisible()

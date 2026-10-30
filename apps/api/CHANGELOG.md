@@ -2,6 +2,14 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Alınabilir randevu saatleri okuma ucu
+
+- `GET /api/v1/appointments/slots?studentId=…&from=…&to=…` (öğrenci, veli): öğrencinin sınıfına ders veren etkin öğretmenlerin gelecekteki uygunluk saatleri; her saat `slotId`, `teacherId`, `teacherName`, `startsAt`, `duration`, `campusName` (varsa), `subjectNames` ve `available` taşır (`BookableSlot`). Kural core 2.19.0 `bookableSlots` (DOM-ILT-105); `available: false` talepteki `appointment_conflict` kararıyla aynıdır, nedeni, saati tutan randevu ve kişisi ile saatin iç notu dönmez (DOM-ILT-073).
+- Aralık ISO 8601; verilmezse şimdiden itibaren 14 gün, `to` yalnız `from` ile, en çok 28 gün. Aşan, ters, başlangıçsız aralık, geçersiz tarih ve bilinmeyen parametre 400 `validation_failed`.
+- Başka velinin çocuğu, kapsam dışı veya olmayan öğrenci 404 `not_found` (talepteki 403 `student_scope_denied`'den farklı: okuma öğrencinin varlığını sızdırmaz); pasif öğrenci 422 `student_inactive`. Öğretmen, yönetici ve ön büro 403 `forbidden`; `communication` kapalıyken 403 `module_disabled` (mevcut modül kapısı).
+- Salt okunur (`runReadOnly`): kurum kilidi alınmaz, denetim kaydı ve sürüm yazılmaz. Ders programı, etüt, etkinlik ve randevular talep ucundaki gibi bütünüyle yüklenir (`TODO(perf)`).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
 ## Randevu yazma uçları
 
 - `POST /api/v1/appointments` (öğrenci, veli; uygunluk saati `slotId` seçilerek talep; 201 + `Location`; `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`) ve `PATCH /api/v1/appointments/:appointmentId` (öğretmen, öğrenci, veli; `Onaylandı`, `Reddedildi`, `İptal`, `Geri çekildi`; `If-Match` zorunlu). Kurallar core 2.18.0 `lib/appointments.ts` (DOM-ILT-100…104); modül `communication`. Yönetici ve ön büro yazamaz (403 `forbidden`).

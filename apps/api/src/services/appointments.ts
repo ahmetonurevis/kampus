@@ -1,7 +1,9 @@
 import {
+  bookableSlots,
   bookAppointment,
   bookAppointmentSchema,
   updateAppointment,
+  type BookableSlot,
 } from '@kampus/school-core/lib/appointments.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
@@ -9,7 +11,7 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
-import { runCommand, type CommandResponse } from './operation-runner.ts'
+import { runCommand, runReadOnly, type CommandResponse } from './operation-runner.ts'
 
 /**
  * Öğretmen randevusu servisi (docs/domain/iletisim-ve-veli.md DOM-ILT-100…104). Kurallar, rol
@@ -28,6 +30,30 @@ import { runCommand, type CommandResponse } from './operation-runner.ts'
  */
 
 const appointmentEntity = (id: string) => ({ type: 'appointments', id })
+
+/**
+ * Veli ve öğrencinin alınabilir saatleri (DOM-ILT-105): core `bookableSlots` talepteki çakışma
+ * denetimiyle aynı kararı verir. Salt okunur çalışır (`runReadOnly`): kurum kilidi alınmaz, hiçbir
+ * şey yazılmaz; kayıtlar yalnız etkin kurumdan yüklenir. Kapsam dışı öğrenci 404, pasif öğrenci
+ * 422 core'dandır.
+ * TODO(perf): ders programı, etüt, etkinlik ve randevular bütünüyle yüklenir (talep ucuyla aynı);
+ * büyük kurumda aralıkla süzülerek yüklenmeli.
+ */
+export function listBookableSlots(ctx: ServiceContext, query: unknown): Promise<BookableSlot[]> {
+  const spec = OPERATION_COMMANDS['appointment.slots']
+  return runReadOnly(ctx, {
+    action: 'appointment.slots',
+    collections: spec.collections,
+    load: async (tx) => {
+      const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+      const by: Participant = { ...actor, userId: ctx.actor.userId }
+      return {
+        scalars,
+        run: (state, { now }) => bookableSlots(state, by, query, now, { institutionType }),
+      }
+    },
+  })
+}
 
 /** Veli bağlı çocuğu, öğrenci kendisi için randevu talep eder (DOM-ILT-100, -101). 201. */
 export function bookAppointmentCommand(

@@ -81,6 +81,8 @@ export type HiddenField =
   | 'corrections'
   | 'senderUserId'
   | 'parentUserId'
+  | 'keyCsv'
+  | 'keys'
 export type Redacted<T> = Omit<T, HiddenField> & Partial<Pick<T, Extract<keyof T, HiddenField>>>
 
 export type ReadDenial =
@@ -330,7 +332,8 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
   clubMemberships: { ...ADMIN, ogretmen: ownClub, ...PERSONAL },
   clubAttendance: { ...ADMIN, ogretmen: ownClub, ...PERSONAL },
   socialAchievements: { ...ADMIN, ogretmen: ownClub, ...PERSONAL },
-  opticalProfiles: { ...ADMIN, ogretmen: all },
+  // Öğrenci ve veli profili yalnız revizyon eşlemesi için okur (cevap anahtarı alanları gizli).
+  opticalProfiles: { ...ADMIN, ogretmen: all, ogrenci: all, veli: all },
   opticalEvaluations: {
     ...ADMIN,
     ogretmen: (c, r) => ownStudent(c, r) && text(r, 'subjectId') === c.teacher?.subjectId,
@@ -349,6 +352,7 @@ const NONE: readonly string[] = []
 const GUIDANCE_INTERNAL: readonly string[] = ['internalNote', 'notes']
 const TEACHER_PRIVATE: readonly string[] = ['email', 'phone', 'attendanceRate', 'homeworkRate']
 const CORRECTION_HISTORY: readonly string[] = ['corrections']
+const ANSWER_KEY_FIELDS: readonly string[] = ['keyCsv', 'keys']
 const MESSAGE_HIDDEN_FIELDS: readonly string[] = ['senderUserId', 'parentUserId']
 const personal = (c: Context) => c.role === 'ogrenci' || c.role === 'veli'
 /**
@@ -373,6 +377,9 @@ const HIDDEN_FIELDS: Partial<Record<CollectionName, (context: Context) => readon
   // Gönderenin kişi kimliği ve velinin kullanıcı kimliği kopyası hiçbir role ham dönmez;
   // gönderen tarafı `sender` alanındadır (DOM-ILT-014).
   conversationMessages: () => MESSAGE_HIDDEN_FIELDS,
+  // Öğrenci ve veli kendi analizini görür; sınavın bütün cevap anahtarını (kitapçık, tüm sorular)
+  // görmez, profil onlara yalnız `revision` ile güncel analizi eşlemek için döner.
+  opticalProfiles: (c) => (personal(c) ? ANSWER_KEY_FIELDS : NONE),
 }
 const HIDDEN: Readonly<Record<string, ((context: Context) => readonly string[]) | undefined>> =
   HIDDEN_FIELDS
@@ -400,6 +407,17 @@ function narrowTutorSession(context: Context, row: Record<string, unknown>) {
       ? { attendance: Object.fromEntries(Object.entries(attendance).filter(([id]) => own(id))) }
       : {}),
   }
+}
+
+/**
+ * Modül kaydının rol listesi menü sayfasını belirler; bu koleksiyonlarda satır kuralı olan öğrenci
+ * ve veli de okur. Optik modülü yalnız yönetici ve öğretmene menü sayfası açar, ama öğrenci ve veli
+ * Deneme Sınavları detayında kendi soru analizini görür (`docs/optik-degerlendirme-etut.md`); satır
+ * kuralı (`READ_RULES`) yalnız kendi/bağlı çocuğunun kaydını verir.
+ */
+const READ_BEYOND_MODULE_ROLES: Readonly<Record<string, readonly Role[]>> = {
+  opticalEvaluations: ['ogrenci', 'veli'],
+  opticalProfiles: ['ogrenci', 'veli'],
 }
 
 const MODULE_ROLES: ReadonlyMap<string, readonly Role[]> = new Map(
@@ -492,7 +510,12 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     if (status === 'disabled') return deny('module_disabled')
     const module = collectionModule(collection)
     const moduleRoles = module && module !== ALWAYS_ON ? MODULE_ROLES.get(module) : undefined
-    if (!role || !RULES[collection]?.[role] || (moduleRoles && !moduleRoles.includes(role)))
+    const viaRule = !!role && READ_BEYOND_MODULE_ROLES[collection]?.includes(role) === true
+    if (
+      !role ||
+      !RULES[collection]?.[role] ||
+      (moduleRoles && !moduleRoles.includes(role) && !viaRule)
+    )
       return deny('role_denied')
     return { allowed: true }
   }

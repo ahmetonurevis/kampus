@@ -2,6 +2,14 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Beceri görevi tabloları ve deposu
+
+- Migration `0013_create_skill_tasks` eklendi (ADR 0004 karar 4–7): `rubrics`, `rubric_versions`, `task_assignments`, `task_assignment_targets`, `task_attempts`, `task_submissions`, `submission_versions`, `submission_drafts`, `resubmission_requests`, `rubric_scores`, `second_rating_requests`, `score_appeals`, `score_transfers`. Bütün yabancı anahtarlar `(institution_id, …)` bileşiktir; başka kurumun satırına bağlanmak veritabanınca reddedilir. Tablolar yeni ve boştur; veri migration'ı yok.
+- Değişmez satırlar (`submission_versions`, `rubric_scores`, `resubmission_requests`, `score_transfers`) tetikleyici yerine `<tablo>_immutable_check` kısıtıyla korunur. Kullanılmış rubrik sürümü atama ve puan yabancı anahtarlarında `on delete restrict`'tir (DOM-BEC-022).
+- Kurum kapsamlı depo `src/db/skills.ts` eklendi; okumalar school-core `skills/*` satır tiplerini döndürür. Eşzamanlı ikinci yazma 409 ile reddedilir: `open_rubric_version_exists`, `attempt_in_progress`, `submission_exists`, `version_conflict`, `resubmission_exists`, `rubric_score_exists`, `appeal_exists`, `score_transfer_exists`; taslağın eski revizyonla yazılması `draft_conflict` (IST-047).
+- `schema/columns.ts` ortak kolon yardımcıları (`oneOf`, `keys`, `requiredColumns`) eklendi; `schema/resources.ts` bunları kullanır, şema farkı yoktur.
+- HTTP ucu yok; OpenAPI ve `api-client` değişmedi. Dosyalı teslim sürümü (`TODO(F3c2-files)`) henüz saklanmaz.
+
 ## Öğretmenime Sor yazma uçları
 
 - `POST /api/v1/questions` (öğrenci; kendi sınıfının o dersine atanmış öğretmene soru; 201 + `Location`), `POST /api/v1/questions/:questionId/answers` (atanmış öğretmen; ilk yanıt `answer`/`answeredAt`, sonrakiler `followUps`, en çok 10 yanıt; 201 + `Location`), `PATCH /api/v1/questions/:questionId` (öğrenci; yalnız `{ "withdrawn": true }`, yanıtlanmamış soruyu geri çeker, kayıt silinmez; 200). Kurallar core `lib/questions.ts`'tedir (DOM-ILT-090…092); rol ve kapsam core `requireAuthorized`, modül `learning`. Yazma `runCommand` ile kurum kilidi, `audit_log` (yalnız alan adları) ve kısmi yüklemeyle (`loadScope`: soru açarken hiçbir soru, yanıt ve geri çekmede hedef soru) tek transaction'dadır.

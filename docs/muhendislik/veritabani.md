@@ -113,6 +113,18 @@ Taşıma tek migration'la yapılır: tablo oluşturulur, `records`'tan veri kopy
 - Kaynak satırındaki `resources.archived_at` bütün sürümler arşivlenince ve kaldırmada dolar, yeni sürüm açılınca boşalır. Kaldırmada sürümlerin içeriği ve cevap anahtarı boşalır, `search_vector` yalnız başlıktan yeniden üretilir.
 - Yayımlanmış sürümün içerik, etiket ve lisans kolonları değişmez; tetikleyici yoktur, servis reddeder. Sürüm yazımı `where version = beklenen` koşuludur (0 satır → 409); eşzamanlı ikinci açık sürüm `resource_versions_editable_key` 23505'iyle 409 `open_version_exists` olur.
 
+### Beceri görevi tabloları (ADR 0004 karar 4–7)
+
+Migration `0013_create_skill_tasks`; şema `apps/api/src/db/schema/skills.ts`, depo `apps/api/src/db/skills.ts`. Kural school-core `skills/*`'tadır; tablolar onun satırlarıdır, hesaplanan değer (puan, toplam, geç bayrağı) saklanmaz. Ortak kolon yardımcıları (`oneOf`, `keys`, `requiredColumns`) `schema/columns.ts`'tedir.
+
+- `rubrics`, `rubric_versions` (kriter × bant jsonb; rubrikte tek açık taslak `rubric_versions_draft_key`, tek yayındaki sürüm `rubric_versions_published_key`). Kullanılmış sürüm atama ve puan yabancı anahtarlarında `on delete restrict`'tir; silme 23001 (`restrict_violation`) döner (DOM-BEC-022).
+- `task_assignments` sabitlenmiş ayarlar (içerik, puanlama ve rubrik sürümü, deneme, süre, dinleme, teslim ayarı jsonb; `check`'ler core kurallarıyla sınırlı), `task_assignment_targets` (`class`/`group`/`student`; `records` kimlikleri, yabancı anahtar yok).
+- `task_attempts` (kursiyerin atamasında deneme numarası tekil), `task_submissions` (kursiyer × atama başına tek; DOM-BEC-040), `submission_versions` (değişmez gönderim), `submission_drafts` (kursiyer × atama başına bir satır; satır `version`'ı core `revision`'dır).
+- `resubmission_requests` (teslim sürümüne bileşik FK; FK `submission_versions_submission_number_key` benzersiz **kısıtına** bağlanır, çünkü drizzle-kit yabancı anahtarları indekslerden önce oluşturur), `rubric_scores` (`first`/`second` sürüm başına bir, `final` birden çok), `second_rating_requests` (teslim başına bir, `source` `sample`/`manual`), `score_appeals` (sürüm başına bir), `score_transfers` (görev × kursiyer başına tek; kaynak deneme XOR rubrik puanı; DOM-BEC-060).
+- **Değişmez satır kısıtı.** Tetikleyici yazılmaz; değişmez tablolarda `<tablo>_immutable_check` = `version = 1 and archived_at is null and updated_at = created_at`. Her güncelleme `version`'ı artırdığı ve `updated_at`'i yazdığı için kısıt reddeder; depo bu tablolar için güncelleme fonksiyonu sunmaz. Uygulandığı tablolar: `submission_versions`, `rubric_scores`, `resubmission_requests`, `score_transfers`.
+- Benzersizlik ihlali (eşzamanlı ikinci yazma) depoda core'un çakışma koduyla 409'a çevrilir (`open_rubric_version_exists`, `attempt_in_progress`, `submission_exists`, `version_conflict`, `resubmission_exists`, `rubric_score_exists`, `appeal_exists`, `score_transfer_exists`). Taslak iyimser kilidi tutmazsa 409 `draft_conflict`; eşzamanlı iki pencere `test:pg`'de (`pg-skill-drafts.test.ts`) sınanır.
+- Ertelenen: `attempt_media_plays` ve teslim dosya bağlantıları `TODO(F3c2-files)`, bireysel ek süre `TODO(F4b-ek-sure)`, aktarılmış notun düzeltilmesi `TODO(F4b-aktarim-duzeltme)`.
+
 ## 5. Migration kuralları
 
 - Şema değişikliği yalnız migration ile: `pnpm --filter @kampus/api exec drizzle-kit generate --name <ne_yapildigi>` (ör. `add_audit_log`). Üretilen SQL okunur, gerekirse elle düzenlenir ve commit edilir.

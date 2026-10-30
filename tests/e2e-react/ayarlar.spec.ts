@@ -132,4 +132,26 @@ test.describe('kurum modülleri', () => {
       expect((await (await api(school.user(role))).get('/api/v1/modules')).status).toBe(403)
     }
   })
+
+  test('ön büronun menüsünde Ayarlar yoktur; adres bulunamadı der, yönetici sekmeleri çıkmaz', async ({
+    loginAs,
+    tenant,
+  }) => {
+    // Çekirdek menüde ön büro için `ayarlar` girdisi yok; ayar sayfası yalnız yönetici, öğrenci ve
+    // veli rollerindedir (Vue referansı da aynı). Ön büroya yönetici ayarları açılmaz.
+    const school = await tenant({ roles: ['yonetici', 'onburo'] })
+    const page = await loginAs(school.user('onburo'))
+    await page.goto('/onburo/dashboard')
+    const menu = page.getByRole('navigation', { name: 'Menü' })
+    await expect(menu.getByRole('link', { name: 'Genel Bakış' })).toBeVisible()
+    await expect(menu.getByRole('link', { name: 'Ayarlar' })).toHaveCount(0)
+
+    await page.goto('/onburo/ayarlar')
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Bu sayfa kampüste bulunamadı.' }),
+    ).toBeVisible()
+    for (const tab of ['Kurum & Modüller', 'Kullanıcı & Yetkiler', 'İşlem Geçmişi']) {
+      await expect(page.getByRole('tab', { name: tab })).toHaveCount(0)
+    }
+  })
 })

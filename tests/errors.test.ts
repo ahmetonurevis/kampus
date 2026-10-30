@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO(ts): test tipleri dosya dosya tamamlanacak
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { DomainError } from '../packages/school-core/src/lib/errors.ts'

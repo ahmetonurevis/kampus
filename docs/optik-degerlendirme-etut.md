@@ -38,7 +38,7 @@ A;3;science;Hücre;A
 
 Bu başlık örneğidir; sınavın tüm soruları girilir. Soru numaraları her kitapçıkta 1'den başlayıp kesintisiz gider. En fazla 8 kitapçık ve kitapçık başına 400 soru desteklenir; ders başına üst sınır 200 sorudur. `subjectId`, sınavın ders kodlarından biri olmalıdır. Her derste en az bir iptal edilmemiş soru bulunmalıdır. Kitapçıkların ders/kazanım soru sayıları ve iptal sayıları eşit olmalıdır; soru sıraları ve doğru cevaplar farklı olabilir.
 
-Kazanım başarısı, doğru / iptal edilmemiş soru sayısıdır. Yüzde ekranda yuvarlanır; etüt eşiği gerçek oranla karşılaştırılır. Eşiğe eşit başarı etüde alınmaz. Aynı sınav/öğrenci/ders tekrar değerlendirildiğinde sonuç güncellenir, çoğalmaz. Anahtar değişince eski soru analizi etüt için kullanılmaz; dosyayı yeniden değerlendirin. Deneme ekranından manuel değiştirilmiş sonuç da eski optik analizle eşleştirilmez.
+Kazanım başarısı, doğru / iptal edilmemiş soru sayısıdır. Yüzde ekranda yuvarlanır; etüt eşiği gerçek oranla karşılaştırılır. Eşiğe eşit başarı etüde alınmaz. Aynı sınav/öğrenci/ders tekrar değerlendirildiğinde sonuç güncellenir, çoğalmaz. Kapsamınız dışındaki öğrenci numarası, kurumda olmayan numarayla aynı hatayı (`optical_student_unmatched`, aynı ileti) verir; numaranın var olduğu anlaşılmaz. Anahtar değişince eski soru analizi etüt için kullanılmaz; dosyayı yeniden değerlendirin. Deneme ekranından manuel değiştirilmiş sonuç da eski optik analizle eşleştirilmez.
 
 Öğrenci ve veli, Deneme Sınavları detayında kendilerine ait soru ve kazanım analizini görür. Velinin seçili çocuğu değişince kapsam değişir.
 

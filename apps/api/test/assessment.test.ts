@@ -355,7 +355,24 @@ describe('optik değerlendirme ve etüt uçları', () => {
       const other = await institution()
       const outsider = await member(other.id, 'ogretmen', [{ kind: 'teacher', recordId: 't33' }])
       const denied = await post(`${BASE}/evaluate`, outsider, evaluate, key())
-      assertError(denied, 422, 'optical_student_out_of_scope')
+      assertError(denied, 422, 'optical_student_unmatched')
+      assert.equal(await count(other.id, 'opticalEvaluations'), 0)
+      // Kapsam dışı numara ile kurumda olmayan numara ayırt edilemez: aynı kod, ileti ve satır yolu.
+      const [first] = classStudents('c1')
+      const existing = first?.number
+      assert.ok(existing)
+      const probe = async (cookie: string, number: string, url = `${BASE}/evaluate/preview`) => {
+        const text = ['student;booklet;answers', `${number};A;BBBDABCDABCD`].join('\n')
+        const response = await post(url, cookie, { ...evaluate, text })
+        assertError(response, 422, 'optical_student_unmatched')
+        return response.json() as { message: string; issues: { path: unknown[]; code: string }[] }
+      }
+      const known = await probe(outsider, existing)
+      const missing = await probe(outsider, '9999999')
+      assert.equal(known.message, missing.message.replace('9999999', existing))
+      assert.deepEqual(known.issues[0]?.path, ['text', 'line', 2])
+      assert.deepEqual(known.issues[0]?.path, missing.issues[0]?.path)
+      assert.equal(known.issues[0]?.code, missing.issues[0]?.code)
       assert.equal(await count(other.id, 'opticalEvaluations'), 0)
     })
 

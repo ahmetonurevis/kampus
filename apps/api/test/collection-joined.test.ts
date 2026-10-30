@@ -32,7 +32,12 @@ const branchName = (id: string) => SEED.branches.find((item) => item.id === id)?
 interface Item {
   id: string
   record: Record<string, unknown>
-  joined?: { studentName?: string; className?: string; branchName?: string }
+  joined?: {
+    studentName?: string
+    studentNumber?: string
+    className?: string
+    branchName?: string
+  }
 }
 
 /** `t1` Kadıköy kampüsündeki sınıflarında ders verir; b2 kampüsündeki sınıf kapsamda ama kampüsü değil. */
@@ -79,7 +84,7 @@ const EXTRA = [
   },
 ].map((item) => ({ ...item, id: String(item.data.id) }))
 
-describe('liste yanıtında bağlı adlar: studentName, className, branchName', () => {
+describe('liste yanıtında bağlı adlar: studentName, studentNumber, className, branchName', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
@@ -201,11 +206,19 @@ describe('liste yanıtında bağlı adlar: studentName, className, branchName', 
     assert.ok(own.length > 0)
     for (const item of own) {
       assert.equal(item.record.studentId, 's2')
-      assert.deepEqual(item.joined, { studentName: student('s2').name, className: className('c2') })
+      assert.deepEqual(item.joined, {
+        studentName: student('s2').name,
+        studentNumber: student('s2').number,
+        className: className('c2'),
+      })
     }
     const pupil = await member(id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
     for (const item of await list(pupil, 'grades')) {
-      assert.deepEqual(item.joined, { studentName: student('s1').name, className: className('c1') })
+      assert.deepEqual(item.joined, {
+        studentName: student('s1').name,
+        studentNumber: student('s1').number,
+        className: className('c1'),
+      })
     }
     // Veli sınıf listesinde yalnız çocuğunun sınıfını, kampüs adıyla birlikte görür.
     const classes = await list(parent, 'classes')
@@ -252,6 +265,72 @@ describe('liste yanıtında bağlı adlar: studentName, className, branchName', 
     // Başka kurumun yöneticisi bu kurumun taksitini ve adını görmez.
     const foreign = await signInAs(app, other.admin)
     assert.deepEqual(await list(foreign, 'invoices'), [])
+  })
+
+  test('DOM-YTK-022/024/025: studentNumber yalnız okul numarasını okuyabilen aktöre döner', async () => {
+    const nonumber = {
+      collection: 'students' as const,
+      id: 'test-s-nonumber',
+      data: { ...student('s2'), id: 'test-s-nonumber', name: 'Numarasız Öğrenci' },
+    }
+    delete (nonumber.data as { number?: unknown }).number
+    const { id, adminCookie } = await institution([
+      ...EXTRA,
+      nonumber,
+      {
+        collection: 'invoices',
+        id: 'test-inv-nonumber',
+        data: {
+          id: 'test-inv-nonumber',
+          studentId: 'test-s-nonumber',
+          installment: 1,
+          amount: 100_00,
+          dueDate: '2026-11-01',
+          paidAt: null,
+          method: null,
+          reminderAt: null,
+        },
+      },
+    ])
+    const numberOf = (studentId: string) => student(studentId).number
+    assert.ok(numberOf('s1') && numberOf('s2') && numberOf('s11'))
+    const check = (items: readonly Item[]) => {
+      assert.ok(items.length > 0)
+      for (const item of items) {
+        const studentId = String(item.record.studentId)
+        assert.equal(
+          item.joined?.studentNumber,
+          studentId === 'test-s-nonumber' ? undefined : numberOf(studentId),
+          item.id,
+        )
+      }
+    }
+    // Yönetici ve ön büro öğrenci kaydını okur; okul numarası taksit satırında gelir.
+    check(await list(adminCookie, 'invoices'))
+    check(await list(await member(id, 'onburo'), 'invoices'))
+    // Okul numarası saklanmamış öğrencide alan yanıta girmez.
+    const missing = byId(await list(adminCookie, 'invoices'), 'test-inv-nonumber')
+    assert.equal('studentNumber' in (missing.joined ?? {}), false)
+    // Öğretmen yalnız kapsamındaki öğrencilerin numarasını görür (DOM-YTK-022).
+    const teacher = await member(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+    const attendance = await list(teacher, 'attendance')
+    assert.equal(byId(attendance, 'test-att-foreign').joined?.studentNumber, undefined)
+    const own = attendance.filter((item) => item.record.studentId === 's1')
+    assert.ok(own.length > 0)
+    for (const item of own) assert.equal(item.joined?.studentNumber, numberOf('s1'))
+    for (const item of attendance)
+      assert.notEqual(item.joined?.studentNumber, numberOf('s11'), item.id)
+    // Veli ve öğrenci yalnız kendi kaydının numarasını görür (DOM-YTK-024, DOM-YTK-025).
+    const parent = await member(id, 'veli', [{ kind: 'child', recordId: 's2' }])
+    check(await list(parent, 'invoices'))
+    const pupil = await member(id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
+    const grades = await list(pupil, 'grades')
+    check(grades)
+    // Tek kayıt yanıtı da aynı alanı taşır.
+    const first = grades[0] ?? assert.fail('not yok')
+    const single = await get(`/api/v1/collections/grades/${first.id}`, pupil)
+    assert.equal(single.statusCode, 200, single.body)
+    assert.equal(single.json().data.joined.studentNumber, numberOf('s1'))
   })
 
   test('oturumsuz 401', async () => {

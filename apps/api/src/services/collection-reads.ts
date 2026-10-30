@@ -85,7 +85,8 @@ export type FilterField = (typeof FILTER_FIELDS)[number]
 /**
  * Kaydında `classId` olmayan, öğrenciye bağlı koleksiyonlar: `classId` süzgeci öğrencinin
  * güncel sınıfından (`students.classId`, kapsam kaynağı) öğrenci kimliklerine çevrilir; istemci
- * sınıfın öğrencilerini tek tek göndermez. Diğer koleksiyonlarda `classId` kaydın alanıdır.
+ * sınıfın öğrencilerini tek tek göndermez. Diğer koleksiyonlarda `classId` kaydın alanıdır:
+ * `contracts` (sözleşmenin sınıfı) ve `enrollmentHistory` (biten dönemin sınıfı) bilerek dışındadır.
  */
 const CLASS_VIA_STUDENT: ReadonlySet<CollectionName> = new Set<CollectionName>([
   'grades',
@@ -95,6 +96,15 @@ const CLASS_VIA_STUDENT: ReadonlySet<CollectionName> = new Set<CollectionName>([
   'quizAttempts',
   'mockResults',
   'studentGoals',
+  'guidanceCases',
+  'studyTasks',
+  'appointments',
+  'requests',
+  'renewals',
+  'eventConsents',
+  'transportAssignments',
+  'clubMemberships',
+  'socialAchievements',
 ])
 
 /**

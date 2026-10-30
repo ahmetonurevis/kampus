@@ -7,8 +7,8 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 /**
  * Bağlı alanlar (api-tasarimi.md §3): kaydın kimlik alanından (`studentId`, `classId`,
  * `branchId`) bağlı kaydın adı. Liste ve sayım uçlarında `q` bu alanlarda da arar, liste bu
- * alanlarla sıralar; liste ve tek kayıt yanıtı satır başına `studentName`, `className`,
- * `branchName` taşır. Genel ama dar: yalnız aşağıdaki beyaz liste, tek düzey (sınıf adı kayıtta
+ * alanlarla sıralar; liste ve tek kayıt yanıtı satır başına `studentName`, `studentNumber`,
+ * `className`, `branchName` taşır. Genel ama dar: yalnız aşağıdaki beyaz liste, tek düzey (sınıf adı kayıtta
  * sınıf yoksa öğrencinin güncel sınıfından) ve yalnız ad/numara alanı.
  *
  * Kapsam korunur: bağlı kayıt aktörün okuyabildiği (`access` + `canRead`), arşivlenmemiş ve
@@ -20,8 +20,17 @@ export const JOINED_FIELDS = ['studentName', 'studentNumber', 'className', 'bran
 export type JoinedField = (typeof JOINED_FIELDS)[number]
 export type JoinedValues = Partial<Record<JoinedField, string>>
 
-/** Yanıta giren bağlı adlar (`studentNumber` yalnız arama ve sıralamadadır). */
-export const RESPONSE_JOINED_FIELDS = ['studentName', 'className', 'branchName'] as const
+/**
+ * Yanıta giren bağlı alanlar. `studentNumber` (okul numarası) yalnız aktör öğrencinin kaydını
+ * core kapsamıyla okuyabiliyorsa ve numara ayıklanmamışsa gelir; kural core'dadır
+ * (`scopeFor`/`HIDDEN_FIELDS`), burada yeniden yazılmaz.
+ */
+export const RESPONSE_JOINED_FIELDS = [
+  'studentName',
+  'studentNumber',
+  'className',
+  'branchName',
+] as const
 export type ResponseJoinedField = (typeof RESPONSE_JOINED_FIELDS)[number]
 export type JoinedNames = Partial<Record<ResponseJoinedField, string>>
 
@@ -209,7 +218,10 @@ export async function loadPageNames(
     scope.access(target).allowed
       ? await loadRecordsByIds(ctx.db, ctx.institutionId, target, wanted)
       : []
-  const needsStudents = fields.includes('studentName') || fields.includes('className')
+  const needsStudents =
+    fields.includes('studentName') ||
+    fields.includes('studentNumber') ||
+    fields.includes('className')
   const students = needsStudents ? await load('students', ids(records, 'studentId')) : []
   const studentIndex = indexTargets(scope, students).get('students') ?? new Map()
   // Sınıf adı kayıttaki `classId`'den, yoksa öğrencinin güncel sınıfından çözülür.
@@ -222,9 +234,10 @@ export async function loadPageNames(
   ])
   const joiner = makeJoiner(fields, indexTargets(scope, [...students, ...classes, ...branches]))
   return records.map((record) => {
-    const { studentName, className, branchName } = joiner.values(record)
+    const { studentName, studentNumber, className, branchName } = joiner.values(record)
     return {
       ...(studentName === undefined ? {} : { studentName }),
+      ...(studentNumber === undefined ? {} : { studentNumber }),
       ...(className === undefined ? {} : { className }),
       ...(branchName === undefined ? {} : { branchName }),
     }

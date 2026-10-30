@@ -351,6 +351,33 @@ export async function loadRecords(
 }
 
 /**
+ * Bir koleksiyonun verilen kimlikli (arşivlenmemiş) kayıtları, deponun sırasıyla. Birincil
+ * anahtar indeksini kullanır; bağlı ad çözümünde yalnız sayfanın kimlikleri yüklenir.
+ */
+export async function loadRecordsByIds(
+  db: Database,
+  institutionId: string,
+  collection: CollectionName,
+  ids: readonly string[],
+): Promise<StoredRecord[]> {
+  if (ids.length === 0) return []
+  assertCollections([collection])
+  const rows = await db
+    .select()
+    .from(records)
+    .where(
+      and(
+        eq(records.institutionId, institutionId),
+        eq(records.collection, collection),
+        inArray(records.id, [...ids]),
+        isNull(records.archivedAt),
+      ),
+    )
+    .orderBy(asc(records.position), asc(records.id))
+  return rows.map(toStored)
+}
+
+/**
  * Koleksiyonun bir sayfası ve toplamı, deponun sırasıyla (`position`, kimlik). Yalnız süzgeçsiz,
  * sıralamasız ve aktörün koleksiyonun tamamını okuduğu listede kullanılır
  * (`collection-reads.ts`); diğer listeler aday satırları yükler.

@@ -84,6 +84,23 @@
           "total"
         ]
       },
+      "CollectionItemJoinedInput": {
+        "type": "object",
+        "properties": {
+          "studentName": {
+            "description": "Kaydın öğrencisinin adı",
+            "type": "string"
+          },
+          "className": {
+            "description": "Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı",
+            "type": "string"
+          },
+          "branchName": {
+            "description": "Kaydın kampüsünün adı",
+            "type": "string"
+          }
+        }
+      },
       "CollectionItemInput": {
         "type": "object",
         "properties": {
@@ -129,6 +146,10 @@
             },
             "additionalProperties": {},
             "description": "school-core kaydı; rolün göremediği alanlar çıkarılmıştır. İçindeki `createdAt`/`updatedAt` core iş alanıdır, sistem zamanı üst alanlardır"
+          },
+          "joined": {
+            "description": "Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)",
+            "$ref": "#/components/schemas/CollectionItemJoinedInput"
           }
         },
         "required": [
@@ -629,6 +650,24 @@
         ],
         "additionalProperties": false
       },
+      "CollectionItemJoined": {
+        "type": "object",
+        "properties": {
+          "studentName": {
+            "description": "Kaydın öğrencisinin adı",
+            "type": "string"
+          },
+          "className": {
+            "description": "Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı",
+            "type": "string"
+          },
+          "branchName": {
+            "description": "Kaydın kampüsünün adı",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "CollectionItem": {
         "type": "object",
         "properties": {
@@ -674,6 +713,10 @@
             },
             "additionalProperties": {},
             "description": "school-core kaydı; rolün göremediği alanlar çıkarılmıştır. İçindeki `createdAt`/`updatedAt` core iş alanıdır, sistem zamanı üst alanlardır"
+          },
+          "joined": {
+            "description": "Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)",
+            "$ref": "#/components/schemas/CollectionItemJoined"
           }
         },
         "required": [

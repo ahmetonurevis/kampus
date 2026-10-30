@@ -1148,6 +1148,14 @@ export interface components {
             /** @description Filtre uygulanmış toplam kayıt sayısı */
             total: number;
         };
+        CollectionItemJoinedInput: {
+            /** @description Kaydın öğrencisinin adı */
+            studentName?: string;
+            /** @description Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı */
+            className?: string;
+            /** @description Kaydın kampüsünün adı */
+            branchName?: string;
+        };
         CollectionItemInput: {
             /** @description Kayıt kimliği */
             id: string;
@@ -1169,6 +1177,8 @@ export interface components {
             record: {
                 [key: string]: unknown;
             };
+            /** @description Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır) */
+            joined?: components["schemas"]["CollectionItemJoinedInput"];
         };
         CollectionCountGroupInput: {
             /** @description Grup değeri; alanı olmayan veya skaler olmayan değerli kayıtlar `null` grubundadır */
@@ -1313,6 +1323,14 @@ export interface components {
             /** @description Filtre uygulanmış toplam kayıt sayısı */
             total: number;
         };
+        CollectionItemJoined: {
+            /** @description Kaydın öğrencisinin adı */
+            studentName?: string;
+            /** @description Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı */
+            className?: string;
+            /** @description Kaydın kampüsünün adı */
+            branchName?: string;
+        };
         CollectionItem: {
             /** @description Kayıt kimliği */
             id: string;
@@ -1334,6 +1352,8 @@ export interface components {
             record: {
                 [key: string]: unknown;
             };
+            /** @description Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır) */
+            joined?: components["schemas"]["CollectionItemJoined"];
         };
         CollectionCountGroup: {
             /** @description Grup değeri; alanı olmayan veya skaler olmayan değerli kayıtlar `null` grubundadır */

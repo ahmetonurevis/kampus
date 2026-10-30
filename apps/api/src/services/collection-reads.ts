@@ -21,7 +21,9 @@ import {
   joinedFieldsOf,
   JOINED_FIELDS,
   loadJoiner,
+  loadPageNames,
   type JoinedField,
+  type JoinedNames,
   type JoinedValues,
   type Joiner,
 } from './collection-joins.ts'
@@ -259,6 +261,8 @@ export interface CollectionItem {
   updatedAt: string
   archivedAt: string | null
   record: RecordData
+  /** Bağlı adlar (`collection-joins.ts`); koleksiyonda bağlı ad tanımlı değilse yok. */
+  joined?: JoinedNames
 }
 
 function isSortField(value: string): value is SortField {
@@ -283,7 +287,7 @@ interface VisibleRow {
   joined?: JoinedValues
 }
 
-function toItem({ row, record }: VisibleRow): CollectionItem {
+function toItem({ row, record }: VisibleRow, names?: JoinedNames): CollectionItem {
   return {
     id: row.id,
     version: row.version,
@@ -291,7 +295,27 @@ function toItem({ row, record }: VisibleRow): CollectionItem {
     updatedAt: row.updatedAt.toISOString(),
     archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
     record,
+    ...(names ? { joined: names } : {}),
   }
+}
+
+/**
+ * Sayfanın satırları yanıt kaydına çevrilir; bağlı adlar yalnız sayfadaki kimliklerden çözülür
+ * (aktörün kapsamından ve ayıklanmış kimlikten, `loadPageNames`).
+ */
+async function toItems(
+  ctx: ServiceContext,
+  scope: Scope,
+  collection: CollectionName,
+  page: readonly VisibleRow[],
+): Promise<CollectionItem[]> {
+  const names = await loadPageNames(
+    ctx,
+    scope,
+    collection,
+    page.map((item) => item.record),
+  )
+  return page.map((item, index) => toItem(item, names?.[index]))
 }
 
 /** Türkçe büyük/küçük harf ve aksan duyarsız karşılaştırma biçimi (api-tasarimi.md §3). */
@@ -595,7 +619,12 @@ async function sqlPage(
     return null
   }
   return {
-    items: rows.map((row) => toItem({ row, record: scope.redact(collection, row.data) })),
+    items: await toItems(
+      ctx,
+      scope,
+      collection,
+      rows.map((row) => ({ row, record: scope.redact(collection, row.data) })),
+    ),
     total,
   }
 }
@@ -617,13 +646,21 @@ export async function listCollection(
   if (!narrowed && sort.length === 0)
     // Arama ve sıralama yoksa yalnız istenen sayfa ayıklanır.
     return {
-      items: rows
-        .slice(start, start + query.pageSize)
-        .map((row) => toItem({ row, record: scope.redact(collection, row.data) })),
+      items: await toItems(
+        ctx,
+        scope,
+        collection,
+        rows
+          .slice(start, start + query.pageSize)
+          .map((row) => ({ row, record: scope.redact(collection, row.data) })),
+      ),
       total: rows.length,
     }
   const items = sorted(fieldResolver(ctx, collection), visibleRows(result), sort)
-  return { items: items.slice(start, start + query.pageSize).map(toItem), total: items.length }
+  return {
+    items: await toItems(ctx, scope, collection, items.slice(start, start + query.pageSize)),
+    total: items.length,
+  }
 }
 
 /** Gruplanabilen alanlar (beyaz liste): eşitlik süzgeci alanları, `isActive` ve `level`. */
@@ -769,7 +806,11 @@ export async function getCollectionItem(
     includeArchived: options.archived === 'include',
   })
   if (!row || !scope.canRead(collection, row.data)) throw new NotFoundError()
-  return toItem({ row, record: scope.redact(collection, row.data) })
+  const [item] = await toItems(ctx, scope, collection, [
+    { row, record: scope.redact(collection, row.data) },
+  ])
+  if (!item) throw new NotFoundError()
+  return item
 }
 
 /** `requireModule` çözücüsü: koleksiyonun core modülü; bilinmeyen koleksiyon 404. */

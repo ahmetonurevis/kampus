@@ -159,6 +159,20 @@ export const collectionItemSchema = z
       .describe(
         'school-core kaydı; rolün göremediği alanlar çıkarılmıştır. İçindeki `createdAt`/`updatedAt` core iş alanıdır, sistem zamanı üst alanlardır',
       ),
+    joined: z
+      .object({
+        studentName: z.string().optional().describe('Kaydın öğrencisinin adı'),
+        className: z
+          .string()
+          .optional()
+          .describe('Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı'),
+        branchName: z.string().optional().describe('Kaydın kampüsünün adı'),
+      })
+      .meta({ id: 'CollectionItemJoined' })
+      .optional()
+      .describe(
+        'Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)',
+      ),
   })
   .meta({ id: 'CollectionItem' })
 

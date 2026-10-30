@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import type { Download, Page } from '@playwright/test'
 
 import { expect, test } from './support/fixtures.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Yönetici okuma ekranları (Kampüsler & Sınıflar, Eğitim Kadrosu). Paylaşılan yönetici oturumu
 // salt okunurdur; hiçbir test kayıt yazmaz. Seed: 3 kampüs, 24 sınıf (kampüs başına 8), 48 öğretmen
@@ -65,7 +65,7 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await expect(resultCount(page)).not.toContainText('/ 24 kayıt')
     const rows = bodyRows(page, CLASS_TABLE)
     await expect(rows.first()).toContainText('7-A')
-    for (const row of await rows.all()) await expect(row).toContainText('7-A')
+    await expectEveryRow(rows, '7-A')
 
     // Yenileme durumu korur.
     await page.reload()
@@ -86,8 +86,7 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await page.getByLabel('Tabloda ara').fill('kadikoy')
     await expect(page).toHaveURL(/[?&]q=kadikoy/)
     await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
-    for (const row of await bodyRows(page, CLASS_TABLE).all())
-      await expect(row).toContainText(KADIKOY)
+    await expectEveryRow(bodyRows(page, CLASS_TABLE), KADIKOY)
 
     await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
     await expect(resultCount(page)).toContainText('/ 24 kayıt')
@@ -115,8 +114,7 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await expect(page).toHaveURL(/[?&]kampus=/)
     await expect(page).not.toHaveURL(/[?&]sayfa=/)
     await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
-    for (const row of await bodyRows(page, CLASS_TABLE).all())
-      await expect(row).toContainText(KADIKOY)
+    await expectEveryRow(bodyRows(page, CLASS_TABLE), KADIKOY)
 
     await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).click()
     await expect(resultCount(page)).toContainText('1–8 / 24 kayıt')
@@ -133,7 +131,7 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await expect(page).toHaveURL(/[?&]duzey=7/)
     await expect(page).not.toHaveURL(/[?&]sayfa=/)
     await expect(resultCount(page)).toContainText('1–3 / 3 kayıt')
-    for (const row of await bodyRows(page, CLASS_TABLE).all()) await expect(row).toContainText('7-')
+    await expectEveryRow(bodyRows(page, CLASS_TABLE), '7-')
 
     await page.getByRole('button', { name: 'Sınıf düzeyi filtresini kaldır' }).click()
     await expect(resultCount(page)).toContainText('/ 24 kayıt')

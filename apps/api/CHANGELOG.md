@@ -2,6 +2,13 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## İçerik havuzu yazma uçları
+
+- `POST /api/v1/resources` (201 + `Location`), `PATCH /api/v1/resources/:resourceId/versions/:versionId` (kısmi; `If-Match` zorunlu), `POST /api/v1/resources/:resourceId/versions` (yeni sürüm), `POST /api/v1/resources/:resourceId/versions/:versionId/{submit,publish,withdraw,approve,reject,reopen,archive,report}`, `POST /api/v1/resources/:resourceId/{remove,share,copy}`. Roller yönetici ve öğretmen (kaldırma yalnız yönetici), modül `learning`. Kurallar core `content/*` plan fonksiyonlarıdır; yazma `runCommand` ile kurum kilidi, isteğe bağlı `Idempotency-Key`, `audit_log` ve geri okumayla tek transaction'dadır.
+- Yeni hata kodları: `if_match_required` (400); `review_required`, `resource_action_forbidden`, `share_target_out_of_scope`, `license_forbids_copy` (403); `version_immutable`, `open_version_exists`, `resource_transition_invalid`, `resource_removed`, `copy_source_not_published` (409); `content_type_immutable`, `quiz_item_missing`, `resource_files_unsupported`, `share_target_not_found`, `license_inherited`, `attribution_inherited`, `reason_required` (422).
+- Ayrıntı yanıtının `resource` nesnesi `archivedAt` ve `rowVersion` taşır. `resources.archived_at` bütün sürümler arşivlenince ve kaldırmada dolar, yeni sürüm açılınca boşalır. Şema değişikliği ve migration yok.
+- Bilinen sınırlar: onayı yalnız yönetici verir (`TODO(content-reviewer)`), telif bildirimi gerekçesi saklanmaz (`TODO(content-report-log)`), dosyalı içerik 422. OpenAPI ve `api-client` şeması yeniden üretildi. `test:pg`: eşzamanlı iki onayda biri 409.
+
 ## İçerik havuzu tabloları ve okuma uçları
 
 - Migration `0010_enable_btree_gin` (`btree_gin` eklentisi) ve `0011_create_content_pool`: `resources`, `resource_versions`, `resource_version_outcomes`, `resource_version_items`, `resource_shares` (bileşik kurum yabancı anahtarları, durum/sözlük `check`'leri, kaynak başına tek düzenlenen sürüm, `(institution_id, search_vector)` bileşik GIN). Ayrıntı `docs/muhendislik/veritabani.md` §4, §6.

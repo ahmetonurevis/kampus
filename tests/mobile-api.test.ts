@@ -73,11 +73,11 @@ describe('uygulama modu', () => {
       kind: 'api',
       url: 'https://api.ornek.test',
     })
-    assert.deepEqual(resolveAppMode(' http://127.0.0.1:3080 '), {
+    assert.deepEqual(resolveAppMode(' http://127.0.0.1:3080 ', true), {
       kind: 'api',
       url: 'http://127.0.0.1:3080',
     })
-    assert.equal(parseApiUrl('http://[::1]:3080/kampus//'), 'http://[::1]:3080/kampus')
+    assert.equal(parseApiUrl('http://[::1]:3080/kampus//', true), 'http://[::1]:3080/kampus')
   })
 
   test('geçersiz adres demoyu sessizce açmaz, yapılandırma hatası verir', () => {
@@ -91,9 +91,36 @@ describe('uygulama modu', () => {
       'http://127.0.0.1:70000',
       'https://api ornek.test',
     ]) {
-      assert.deepEqual(resolveAppMode(raw), { kind: 'invalid' }, raw)
-      assert.equal(parseApiUrl(raw), null, raw)
+      for (const dev of [false, true]) {
+        assert.deepEqual(resolveAppMode(raw, dev), { kind: 'invalid' }, raw)
+        assert.equal(parseApiUrl(raw, dev), null, raw)
+      }
     }
+  })
+
+  test('üretimde http geçersiz, https geçerlidir', () => {
+    for (const raw of ['http://127.0.0.1:3080', 'http://10.0.2.2:3080', 'HTTP://api.ornek.test']) {
+      assert.deepEqual(resolveAppMode(raw, false), { kind: 'invalid' }, raw)
+      assert.equal(parseApiUrl(raw, false), null, raw)
+    }
+    assert.deepEqual(resolveAppMode('https://api.ornek.test', false), {
+      kind: 'api',
+      url: 'https://api.ornek.test',
+    })
+  })
+
+  test('geliştirmede yerel ve LAN http adresleri geçerlidir', () => {
+    for (const raw of [
+      'http://127.0.0.1:3080',
+      'http://10.0.2.2:3080',
+      'http://192.168.1.20:3080',
+    ]) {
+      assert.deepEqual(resolveAppMode(raw, true), { kind: 'api', url: raw }, raw)
+    }
+  })
+
+  test('bayrak verilmezse (birim ortamında __DEV__ yok) üretim sayılır', () => {
+    assert.deepEqual(resolveAppMode('http://127.0.0.1:3080'), { kind: 'invalid' })
   })
 })
 

@@ -73,11 +73,11 @@ Varsayılan derleme çevrimdışı demodur. `EXPO_PUBLIC_API_URL` verilince uygu
 docker compose up -d && pnpm --filter @kampus/api db:migrate && pnpm --filter @kampus/api db:seed
 pnpm dev:api                                         # apps/api/.env: PORT, CORS_ORIGINS
 EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 pnpm mobile --clear
-EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 pnpm --filter @kampus/mobile export:web --clear
+EXPO_PUBLIC_API_URL=https://api.ornek.test pnpm --filter @kampus/mobile export:web --clear   # export üretim derlemesidir: yalnız https
 ```
 
 - Mod değiştirirken Metro önbelleği `--clear` ile temizlenir; yoksa önceki moddaki değer pakette kalabilir.
-- Adres yoksa demo, geçerli `http(s)` köküyse API modu açılır. Kullanıcı bilgisi, sorgu veya parça içeren ya da geçersiz portlu adreste demo sessizce açılmaz; "Uygulama yapılandırması geçersiz" ekranı gösterilir.
+- Adres yoksa demo, geçerli köküyse API modu açılır; üretim derlemesinde (`__DEV__` kapalı, `export:web`, APK) yalnız `https` kabul edilir, `http` (127.0.0.1, 10.0.2.2, LAN) yalnız geliştirmede geçerlidir. Kullanıcı bilgisi, sorgu veya parça içeren ya da geçersiz portlu adreste demo sessizce açılmaz; "Uygulama yapılandırması geçersiz" ekranı gösterilir.
 - Telefonda giriş Better Auth Expo istemcisiyle yapılır: oturum çerezi yalnız `expo-secure-store`'da (Android Keystore) tutulur, istekler `Cookie` başlığıyla gider. AsyncStorage'a yalnız tema tercihi yazılır; seçili çocuk ve liste durumu bellekte kalır, oturum veya kurum değişince silinir. Web derlemesinde oturum tarayıcının HttpOnly çerezindedir; web kökeni API `CORS_ORIGINS` listesinde olmalıdır.
 - API güvenilir kökenleri: uygulama şeması `kampus://` her ortamda (`TRUSTED_ORIGINS`), Expo Go `exp://` yalnız geliştirme/testte. Üretim API'si `exp://` kökenli girişi 403 ile reddeder; Expo Go ile yalnız geliştirme API'sine bağlanılır. Fiziksel cihazda `127.0.0.1` yerine bilgisayarın ağ adresi kullanılır.
 - API modunda açık ekranlar: öğretmen Sınıflarım, veli Akademik Takip (çocuk seçici + notlar); salt okuma. Avatar menüsünde kurum değiştirme, tema ve çıkış bulunur. Diğer rollerin ana ekranı "hazırlanıyor" bilgisini gösterir; o ekranlar şimdilik demo modundadır.

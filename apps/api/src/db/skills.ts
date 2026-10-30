@@ -13,7 +13,14 @@ import type {
 import type { AttemptRow, AttemptRules } from '@kampus/school-core/skills/scoring.ts'
 import type { DraftRow, VersionRow } from '@kampus/school-core/skills/submission.ts'
 
-import { AppError, ConflictError, databaseErrorInfo, MESSAGES } from '../errors.ts'
+import {
+  AppError,
+  ConflictError,
+  databaseErrorInfo,
+  MESSAGES,
+  NotFoundError,
+  RuleViolationError,
+} from '../errors.ts'
 import type { Database } from './client.ts'
 import {
   resubmissionRequests,
@@ -46,28 +53,38 @@ import {
  *   güncelleme ve silme fonksiyonu yoktur; veritabanı tetikleyicisi de her `update`/`delete`'i
  *   reddeder (`kampus_reject_immutable_change`, migration 0013).
  * - Benzersizlik ihlali (eşzamanlı ikinci yazma) core'un çakışma koduyla 409'a çevrilir.
+ * - Satırda kolonu olmayan sahiplik bağları (puan kaynağı, puanın rubrik sürümü, itirazın kursiyeri)
+ *   yazmadan önce aynı transaction'da denetlenir: kaynak yoksa 404, başkasınınsa 422. Kaynak
+ *   satırlar değişmez veya silinemez olduğundan ekleme anındaki denetim kalıcıdır.
  */
 
 const iso = (value: Date) => value.toISOString()
 const isoOrNull = (value: Date | null) => (value === null ? null : value.toISOString())
 const dateOrNull = (value: string | null) => (value === null ? null : new Date(value))
 
-/** Benzersizlik ihlalini (23505, verilen kısıt) core'un çakışma koduyla 409'a çevirir. */
-async function uniqueAs<T>(
-  work: Promise<T>,
-  constraint: string,
-  code: string,
-  message: string,
-): Promise<T> {
+/** Kısıt adına göre kullanıcı hatası: benzersizlik 409, sahiplik yabancı anahtarı 422. */
+type ConstraintErrors = Record<string, { status: 409 | 422; code: string; message: string }>
+
+/**
+ * Bilinen benzersizlik (23505) veya yabancı anahtar (23503) ihlalini kısıt adına göre `AppError`'a
+ * çevirir; diğer hatalar olduğu gibi geçer (500, ayrıntı yalnız logda).
+ */
+async function constraintAs<T>(work: Promise<T>, errors: ConstraintErrors): Promise<T> {
   try {
     return await work
   } catch (error) {
     const info = databaseErrorInfo(error)
-    if (info?.code === '23505' && info.constraint === constraint)
-      throw new AppError(409, code, message, { cause: error })
+    const mapped =
+      (info?.code === '23505' || info?.code === '23503') && info.constraint !== undefined
+        ? errors[info.constraint]
+        : undefined
+    if (mapped !== undefined)
+      throw new AppError(mapped.status, mapped.code, mapped.message, { cause: error })
     throw error
   }
 }
+
+const conflict = (code: string, message: string) => ({ status: 409 as const, code, message })
 
 // --- Rubrik -------------------------------------------------------------------------------
 
@@ -109,14 +126,17 @@ export async function insertRubric(
   })
 }
 
-/** Yeni sürüm; rubrikte açık taslak varsa (eşzamanlı istek) 409 `open_rubric_version_exists`. */
+/**
+ * Yeni sürüm. Eşzamanlı istekte 409: rubrikte açık taslak varsa `open_rubric_version_exists`, sürüm
+ * numarası alınmışsa `rubric_version_exists`, ikinci yayındaki sürümde `published_rubric_version_exists`.
+ */
 export function insertRubricVersion(
   tx: Database,
   institutionId: string,
   version: RubricVersionRow,
   now: Date,
 ): Promise<unknown> {
-  return uniqueAs(
+  return constraintAs(
     tx.insert(rubricVersions).values({
       institutionId,
       id: version.id,
@@ -132,9 +152,20 @@ export function insertRubricVersion(
       createdAt: new Date(version.createdAt),
       updatedAt: now,
     }),
-    'rubric_versions_draft_key',
-    'open_rubric_version_exists',
-    'Bu rubriğin açık bir taslağı var; önce onu tamamlayın.',
+    {
+      rubric_versions_draft_key: conflict(
+        'open_rubric_version_exists',
+        'Bu rubriğin açık bir taslağı var; önce onu tamamlayın.',
+      ),
+      rubric_versions_rubric_number_key: conflict(
+        'rubric_version_exists',
+        'Rubriğin bu sürümü aynı anda başka bir işlemle oluşturuldu. Sayfayı yenileyip yeniden deneyin.',
+      ),
+      rubric_versions_published_key: conflict(
+        'published_rubric_version_exists',
+        'Bu rubriğin yayındaki bir sürümü zaten var. Sayfayı yenileyip yeniden deneyin.',
+      ),
+    },
   )
 }
 
@@ -278,7 +309,7 @@ function toAssignment(row: TaskAssignmentRow, targets: AssignmentTarget[]): Stor
   }
 }
 
-/** Yeni atama ve hedefleri (core `planAssignment` çıktısı). */
+/** Yeni atama ve hedefleri (core `planAssignment` çıktısı); aynı hedef iki kez 409. */
 export async function insertAssignment(
   tx: Database,
   institutionId: string,
@@ -315,15 +346,23 @@ export async function insertAssignment(
     updatedAt: now,
   })
   if (input.targets.length > 0)
-    await tx.insert(taskAssignmentTargets).values(
-      input.targets.map((target) => ({
-        institutionId,
-        assignmentId: input.id,
-        targetKind: target.kind,
-        targetId: target.id,
-        createdAt: now,
-        updatedAt: now,
-      })),
+    await constraintAs(
+      tx.insert(taskAssignmentTargets).values(
+        input.targets.map((target) => ({
+          institutionId,
+          assignmentId: input.id,
+          targetKind: target.kind,
+          targetId: target.id,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      ),
+      {
+        task_assignment_targets_pkey: conflict(
+          'assignment_target_exists',
+          'Aynı hedef atamaya yalnız bir kez eklenebilir.',
+        ),
+      },
     )
 }
 
@@ -418,7 +457,7 @@ export function insertAttempt(
   },
   now: Date,
 ): Promise<unknown> {
-  return uniqueAs(
+  return constraintAs(
     tx.insert(taskAttempts).values({
       institutionId,
       id: attempt.id,
@@ -429,13 +468,16 @@ export function insertAttempt(
       createdAt: now,
       updatedAt: now,
     }),
-    'task_attempts_assignment_learner_number_key',
-    'attempt_in_progress',
-    'Süren bir denemeniz var; ona devam edin.',
+    {
+      task_attempts_assignment_learner_number_key: conflict(
+        'attempt_in_progress',
+        'Süren bir denemeniz var; ona devam edin.',
+      ),
+    },
   )
 }
 
-/** Kursiyerin bu atamadaki bütün denemeleri, numara sırasıyla. */
+/** Kursiyerin bu atamadaki arşivlenmemiş denemeleri, numara sırasıyla. */
 export async function loadAttempts(
   db: Database,
   institutionId: string,
@@ -450,6 +492,7 @@ export async function loadAttempts(
         eq(taskAttempts.institutionId, institutionId),
         eq(taskAttempts.assignmentId, assignmentId),
         eq(taskAttempts.learnerId, learnerId),
+        isNull(taskAttempts.archivedAt),
       ),
     )
     .orderBy(asc(taskAttempts.attemptNumber))
@@ -491,34 +534,40 @@ export function insertSubmission(
   submission: { id: string; assignmentId: string; learnerId: string },
   now: Date,
 ): Promise<unknown> {
-  return uniqueAs(
+  return constraintAs(
     tx
       .insert(taskSubmissions)
       .values({ institutionId, ...submission, createdAt: now, updatedAt: now }),
-    'task_submissions_assignment_learner_key',
-    'submission_exists',
-    'Bu görev için teslim kaydınız zaten var; sayfayı yenileyin.',
+    {
+      task_submissions_assignment_learner_key: conflict(
+        'submission_exists',
+        'Bu görev için teslim kaydınız zaten var; sayfayı yenileyin.',
+      ),
+    },
   )
 }
 
 /**
  * Değişmez teslim sürümü (`planSubmissionVersion`); aynı numara eşzamanlı gönderimde 409
- * `version_conflict`. Satır yazıldıktan sonra değişmez (tetikleyici).
+ * `version_conflict`. Satır yazıldıktan sonra değişmez (tetikleyici). Dosyalı ve sesli sürüm
+ * (`fileIds` dolu) `files` tablosu gelene kadar 422 `submission_kind_unavailable` ile reddedilir.
  */
-export function insertSubmissionVersion(
+export async function insertSubmissionVersion(
   tx: Database,
   institutionId: string,
   submissionId: string,
   version: VersionRow,
   now: Date,
 ): Promise<unknown> {
-  // TODO(F3c2-files): `version.fileIds` `files` bağlantı tablosuna yazılır; şimdilik dosyalı
-  // teslim saklanamaz ve reddedilir.
+  // TODO(F3c2-files): `version.fileIds` `files` bağlantı tablosuna yazılır; şimdilik dosyalı ve
+  // sesli teslim saklanamaz ve reddedilir. F4b2: atama oluşturulurken `file`/`audio` türü de
+  // reddedilmeli; yoksa kursiyer teslim edemeyeceği bir görev alır.
   if (version.fileIds.length > 0)
-    throw new AppError(500, 'internal_error', MESSAGES.internal_error, {
-      cause: new Error('submission files are not supported yet'),
-    })
-  return uniqueAs(
+    throw new RuleViolationError(
+      'submission_kind_unavailable',
+      'Dosyalı ve sesli teslim henüz açık değil.',
+    )
+  return constraintAs(
     tx.insert(submissionVersions).values({
       institutionId,
       id: version.id,
@@ -529,9 +578,12 @@ export function insertSubmissionVersion(
       createdAt: now,
       updatedAt: now,
     }),
-    'submission_versions_submission_number_key',
-    'version_conflict',
-    MESSAGES.version_conflict,
+    {
+      submission_versions_submission_number_key: conflict(
+        'version_conflict',
+        MESSAGES.version_conflict,
+      ),
+    },
   )
 }
 
@@ -543,7 +595,7 @@ export function insertResubmissionRequest(
   request: ResubmissionRequestRow,
   now: Date,
 ): Promise<unknown> {
-  return uniqueAs(
+  return constraintAs(
     tx.insert(resubmissionRequests).values({
       institutionId,
       submissionId,
@@ -554,15 +606,18 @@ export function insertResubmissionRequest(
       createdAt: now,
       updatedAt: now,
     }),
-    'resubmission_requests_pkey',
-    'resubmission_exists',
-    'Bu sürüm için yeniden teslim zaten istendi.',
+    {
+      resubmission_requests_pkey: conflict(
+        'resubmission_exists',
+        'Bu sürüm için yeniden teslim zaten istendi.',
+      ),
+    },
   )
 }
 
 /**
- * Kursiyerin teslim kaydı, değişmez sürümleri (eskiden yeniye) ve yeniden teslim istekleri; teslim
- * yoksa `null`. Taslak ayrıdır (`loadDraft`).
+ * Kursiyerin arşivlenmemiş teslim kaydı, değişmez sürümleri (eskiden yeniye) ve yeniden teslim
+ * istekleri; teslim yoksa veya arşivliyse `null`. Taslak ayrıdır (`loadDraft`).
  */
 export async function loadSubmission(
   db: Database,
@@ -582,6 +637,7 @@ export async function loadSubmission(
         eq(taskSubmissions.institutionId, institutionId),
         eq(taskSubmissions.assignmentId, assignmentId),
         eq(taskSubmissions.learnerId, learnerId),
+        isNull(taskSubmissions.archivedAt),
       ),
     )
   if (row === undefined) return null
@@ -592,6 +648,7 @@ export async function loadSubmission(
       and(
         eq(submissionVersions.institutionId, institutionId),
         eq(submissionVersions.submissionId, row.id),
+        isNull(submissionVersions.archivedAt),
       ),
     )
     .orderBy(asc(submissionVersions.versionNumber))
@@ -602,6 +659,7 @@ export async function loadSubmission(
       and(
         eq(resubmissionRequests.institutionId, institutionId),
         eq(resubmissionRequests.submissionId, row.id),
+        isNull(resubmissionRequests.archivedAt),
       ),
     )
     .orderBy(asc(resubmissionRequests.versionNumber))
@@ -637,7 +695,7 @@ export async function loadSubmission(
 /** Core `planDraftSave`'in çakışma mesajı (`draft_conflict`). */
 const DRAFT_CONFLICT = 'Taslak başka bir pencerede değişti; sayfayı yenileyip devam edin.'
 
-/** Kursiyerin taslağı; satır sürümü core `revision`'dır. */
+/** Kursiyerin arşivlenmemiş taslağı; satır sürümü core `revision`'dır. */
 export async function loadDraft(
   db: Database,
   institutionId: string,
@@ -652,6 +710,7 @@ export async function loadDraft(
         eq(submissionDrafts.institutionId, institutionId),
         eq(submissionDrafts.assignmentId, assignmentId),
         eq(submissionDrafts.learnerId, learnerId),
+        isNull(submissionDrafts.archivedAt),
       ),
     )
   return row === undefined
@@ -712,14 +771,47 @@ export async function saveDraft(
 
 // --- Puan ---------------------------------------------------------------------------------
 
-/** Rubrik puanı (`planRubricScore`, `planAppealDecision`); sürümde aynı rolde ikinci puan 409. */
-export function insertRubricScore(
+/**
+ * Rubrik puanı (`planRubricScore`, `planAppealDecision`); sürümde aynı rolde ikinci puan 409.
+ * Puanın rubrik sürümü atamanın sabitlenmiş sürümüdür (DOM-BEC-022): değilse 422
+ * `rubric_version_mismatch`, teslim sürümü yoksa 404.
+ */
+export async function insertRubricScore(
   tx: Database,
   institutionId: string,
   score: RubricScoreRow,
   now: Date,
 ): Promise<unknown> {
-  return uniqueAs(
+  const [pinned] = await tx
+    .select({ rubricVersionId: taskAssignments.rubricVersionId })
+    .from(submissionVersions)
+    .innerJoin(
+      taskSubmissions,
+      and(
+        eq(taskSubmissions.institutionId, submissionVersions.institutionId),
+        eq(taskSubmissions.id, submissionVersions.submissionId),
+      ),
+    )
+    .innerJoin(
+      taskAssignments,
+      and(
+        eq(taskAssignments.institutionId, taskSubmissions.institutionId),
+        eq(taskAssignments.id, taskSubmissions.assignmentId),
+      ),
+    )
+    .where(
+      and(
+        eq(submissionVersions.institutionId, institutionId),
+        eq(submissionVersions.id, score.submissionVersionId),
+      ),
+    )
+  if (pinned === undefined) throw new NotFoundError()
+  if (pinned.rubricVersionId !== score.rubricVersionId)
+    throw new RuleViolationError(
+      'rubric_version_mismatch',
+      'Puan, görevin sabitlenmiş rubrik sürümüyle verilmelidir.',
+    )
+  return constraintAs(
     tx.insert(rubricScores).values({
       institutionId,
       id: score.id,
@@ -733,9 +825,12 @@ export function insertRubricScore(
       createdAt: now,
       updatedAt: now,
     }),
-    'rubric_scores_version_role_key',
-    'rubric_score_exists',
-    'Bu teslim sürümü bu rolde zaten puanlandı.',
+    {
+      rubric_scores_version_role_key: conflict(
+        'rubric_score_exists',
+        'Bu teslim sürümü bu rolde zaten puanlandı.',
+      ),
+    },
   )
 }
 
@@ -826,14 +921,39 @@ export async function isSecondRatingRequested(
 
 // --- İtiraz -------------------------------------------------------------------------------
 
-/** İtiraz (`planAppeal`); aynı sürüme ikinci itiraz 409 `appeal_exists` (DOM-BEC-025). */
-export function insertAppeal(
+/**
+ * İtiraz (`planAppeal`); aynı sürüme ikinci itiraz 409 `appeal_exists` (DOM-BEC-025). İtirazın
+ * kursiyeri teslimin kursiyeridir: değilse 422 `appeal_learner_mismatch`, sürüm yoksa 404.
+ */
+export async function insertAppeal(
   tx: Database,
   institutionId: string,
   appeal: AppealDraft & { id: string },
   now: Date,
 ): Promise<unknown> {
-  return uniqueAs(
+  const [owner] = await tx
+    .select({ learnerId: taskSubmissions.learnerId })
+    .from(submissionVersions)
+    .innerJoin(
+      taskSubmissions,
+      and(
+        eq(taskSubmissions.institutionId, submissionVersions.institutionId),
+        eq(taskSubmissions.id, submissionVersions.submissionId),
+      ),
+    )
+    .where(
+      and(
+        eq(submissionVersions.institutionId, institutionId),
+        eq(submissionVersions.id, appeal.submissionVersionId),
+      ),
+    )
+  if (owner === undefined) throw new NotFoundError()
+  if (owner.learnerId !== appeal.learnerId)
+    throw new RuleViolationError(
+      'appeal_learner_mismatch',
+      'İtiraz yalnız kursiyerin kendi teslimine yapılabilir.',
+    )
+  return constraintAs(
     tx.insert(scoreAppeals).values({
       institutionId,
       id: appeal.id,
@@ -845,13 +965,16 @@ export function insertAppeal(
       createdAt: now,
       updatedAt: now,
     }),
-    'score_appeals_submission_version_key',
-    'appeal_exists',
-    'Bu sonuca zaten itiraz edildi.',
+    {
+      score_appeals_submission_version_key: conflict(
+        'appeal_exists',
+        'Bu sonuca zaten itiraz edildi.',
+      ),
+    },
   )
 }
 
-/** Teslimin bütün sürümlerine yapılmış itirazlar (core `AppealRow`). */
+/** Teslimin sürümlerine yapılmış arşivlenmemiş itirazlar (core `AppealRow`). */
 export async function loadAppeals(
   db: Database,
   institutionId: string,
@@ -871,6 +994,8 @@ export async function loadAppeals(
       and(
         eq(scoreAppeals.institutionId, institutionId),
         eq(submissionVersions.submissionId, submissionId),
+        isNull(scoreAppeals.archivedAt),
+        isNull(submissionVersions.archivedAt),
       ),
     )
     .orderBy(asc(scoreAppeals.filedAt), asc(scoreAppeals.id))
@@ -896,14 +1021,53 @@ export type StoredScoreTransfer = Omit<
   'institutionId' | 'transferredAt' | 'createdAt' | 'updatedAt' | 'archivedAt' | 'version'
 > & { transferredAt: string }
 
-/** Not defterine aktarım (DOM-BEC-060); görev ve kursiyer başına ikinci aktarım 409. */
-export function insertScoreTransfer(
+const SOURCE_MISMATCH = {
+  status: 422 as const,
+  code: 'score_transfer_source_mismatch',
+  message: 'Aktarılacak sonuç bu görevin ve kursiyerin teslimine ait değil.',
+}
+
+/**
+ * Not defterine aktarım (DOM-BEC-060); görev ve kursiyer başına ikinci aktarım 409. Kaynak aynı
+ * görevin ve kursiyerin denemesi ya da rubrik puanıdır, değilse 422 `score_transfer_source_mismatch`:
+ * deneme için bileşik yabancı anahtar (`score_transfers_source_attempt_fkey`), rubrik puanı için
+ * buradaki denetim (puan satırında atama ve kursiyer kolonu yok); puan yoksa 404.
+ */
+export async function insertScoreTransfer(
   tx: Database,
   institutionId: string,
   transfer: StoredScoreTransfer,
   now: Date,
 ): Promise<unknown> {
-  return uniqueAs(
+  if (transfer.sourceRubricScoreId !== null) {
+    const [source] = await tx
+      .select({ assignmentId: taskSubmissions.assignmentId, learnerId: taskSubmissions.learnerId })
+      .from(rubricScores)
+      .innerJoin(
+        submissionVersions,
+        and(
+          eq(submissionVersions.institutionId, rubricScores.institutionId),
+          eq(submissionVersions.id, rubricScores.submissionVersionId),
+        ),
+      )
+      .innerJoin(
+        taskSubmissions,
+        and(
+          eq(taskSubmissions.institutionId, submissionVersions.institutionId),
+          eq(taskSubmissions.id, submissionVersions.submissionId),
+        ),
+      )
+      .where(
+        and(
+          eq(rubricScores.institutionId, institutionId),
+          eq(rubricScores.id, transfer.sourceRubricScoreId),
+        ),
+      )
+    if (source === undefined) throw new NotFoundError()
+    if (source.assignmentId !== transfer.assignmentId || source.learnerId !== transfer.learnerId)
+      throw new RuleViolationError(SOURCE_MISMATCH.code, SOURCE_MISMATCH.message)
+  }
+  return constraintAs(
     tx.insert(scoreTransfers).values({
       institutionId,
       ...transfer,
@@ -911,9 +1075,13 @@ export function insertScoreTransfer(
       createdAt: now,
       updatedAt: now,
     }),
-    'score_transfers_assignment_learner_key',
-    'score_transfer_exists',
-    'Bu görevin sonucu not olarak zaten aktarıldı.',
+    {
+      score_transfers_assignment_learner_key: conflict(
+        'score_transfer_exists',
+        'Bu görevin sonucu not olarak zaten aktarıldı.',
+      ),
+      score_transfers_source_attempt_fkey: SOURCE_MISMATCH,
+    },
   )
 }
 

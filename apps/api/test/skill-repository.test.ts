@@ -2,10 +2,18 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
+import { and, eq, sql } from 'drizzle-orm'
+
 import type { FixedAssignment } from '@kampus/school-core/skills/assignment.ts'
 import type { RubricScoreRow } from '@kampus/school-core/skills/rubric.ts'
 
 import type { Database } from '../src/db/client.ts'
+import {
+  scoreAppeals,
+  submissionDrafts,
+  taskAttempts,
+  taskSubmissions,
+} from '../src/db/schema/skills.ts'
 import {
   findAssignment,
   findRubricVersion,
@@ -45,6 +53,9 @@ import { DUE_AT, LEARNER, sampleRubricData, seedSkillChain } from './support/ski
 const LATER = new Date(FIXED_NOW.getTime() + 60_000)
 const iso = (value: Date) => value.toISOString()
 
+/** Kullanıcı silmesinin karşılığı: satırı arşivler (`archived_at`, `version + 1`). */
+const archive = { archivedAt: LATER, version: sql`version + 1` }
+
 /** `work` verilen durum ve kodla `AppError` fırlatır (eşzamanlı yazmanın kullanıcıya dönen yüzü). */
 async function rejectsWith(work: () => Promise<unknown>, statusCode: number, code: string) {
   await assert.rejects(work, (error: unknown) => {
@@ -76,7 +87,7 @@ describe('beceri görevi deposu', () => {
     return { institutionId: own.id, owner: own.admin.id, otherId: other.id, chain }
   }
 
-  test('DOM-BEC-022: rubrik sürümleri sırayla okunur; ikinci açık taslak ve yayımlanmış sürümü düzenlemek 409', async () => {
+  test('DOM-BEC-022: rubrik sürümleri sırayla okunur; ikinci açık taslak, alınmış numara, ikinci yayındaki sürüm ve yayımlanmış sürümü düzenlemek 409', async () => {
     const { institutionId, owner, otherId, chain: c } = await setup()
     const rubricId = randomUUID()
     await insertRubric(db, institutionId, { id: rubricId, ownerUserId: owner }, FIXED_NOW)
@@ -118,6 +129,42 @@ describe('beceri görevi deposu', () => {
       updatedAt: iso(LATER),
       rowVersion: 2,
     })
+    // Aynı numara (arşivli sürüm dahil) ve ikinci yayındaki sürüm 409.
+    await rejectsWith(
+      () =>
+        insertRubricVersion(
+          db,
+          institutionId,
+          {
+            ...draft,
+            id: randomUUID(),
+            status: 'archived',
+            publishedAt: iso(FIXED_NOW),
+            archivedAt: iso(LATER),
+          },
+          LATER,
+        ),
+      409,
+      'rubric_version_exists',
+    )
+    await rejectsWith(
+      () =>
+        insertRubricVersion(
+          db,
+          institutionId,
+          {
+            ...draft,
+            id: randomUUID(),
+            rubricId: c.rubricId,
+            versionNumber: 2,
+            status: 'published',
+            publishedAt: iso(LATER),
+          },
+          LATER,
+        ),
+      409,
+      'published_rubric_version_exists',
+    )
     // Eski sürümle yazma ve yayımlanmış sürümü düzenleme 0 satır → 409.
     await rejectsWith(
       () => updateRubricVersionDraft(db, institutionId, draft.id, 1, sampleRubricData(), LATER),
@@ -164,7 +211,7 @@ describe('beceri görevi deposu', () => {
     })
   })
 
-  test('ADR 0004 karar 4: atama sabit ayarları ve etkin hedefleriyle geri okunur; deneme numarası tekil', async () => {
+  test('ADR 0004 karar 4: atama sabit ayarları ve etkin hedefleriyle geri okunur; aynı hedef iki kez 409; deneme numarası tekil; arşivli deneme okunmaz', async () => {
     const { institutionId, owner, otherId, chain: c } = await setup()
     const assignment: FixedAssignment = {
       resourceId: c.resourceId,
@@ -213,6 +260,27 @@ describe('beceri görevi deposu', () => {
       ].sort((left, right) => (left[0]! < right[0]! ? -1 : 1)),
     )
     assert.deepEqual(await loadResourceAssignments(db, otherId, c.resourceId), [])
+    // Aynı hedef iki kez: hedef birincil anahtarı 409; transaction'la atama da yazılmaz.
+    const duplicateId = randomUUID()
+    await rejectsWith(
+      () =>
+        db.transaction((tx) =>
+          insertAssignment(
+            tx,
+            institutionId,
+            {
+              id: duplicateId,
+              assignedByUserId: owner,
+              assignment,
+              targets: [targets[0]!, targets[0]!],
+            },
+            FIXED_NOW,
+          ),
+        ),
+      409,
+      'assignment_target_exists',
+    )
+    assert.equal(await findAssignment(db, institutionId, duplicateId), null)
 
     const attempt = (attemptNumber: number) => ({
       id: randomUUID(),
@@ -241,9 +309,17 @@ describe('beceri görevi deposu', () => {
       rowVersion: 1,
     })
     assert.deepEqual(await loadAttempts(db, otherId, id, LEARNER), [])
+    await db
+      .update(taskAttempts)
+      .set(archive)
+      .where(and(eq(taskAttempts.institutionId, institutionId), eq(taskAttempts.id, second.id)))
+    assert.deepEqual(
+      (await loadAttempts(db, institutionId, id, LEARNER)).map((row) => row.attemptNumber),
+      [1],
+    )
   })
 
-  test('DOM-BEC-040: teslim tek; sürüm numarası tekil; yeniden teslim isteği son istekten okunur; dosyalı sürüm henüz saklanmaz', async () => {
+  test('DOM-BEC-040: teslim tek; sürüm numarası tekil; yeniden teslim isteği son istekten okunur; dosyalı sürüm 422; arşivli teslim okunmaz', async () => {
     const { institutionId, owner, otherId, chain: c } = await setup()
     await rejectsWith(
       () =>
@@ -268,9 +344,9 @@ describe('beceri görevi deposu', () => {
       409,
       'version_conflict',
     )
-    // TODO(F3c2-files) kapanana kadar dosyalı sürüm yazılmadan reddedilir.
+    // TODO(F3c2-files) kapanana kadar dosyalı ve sesli sürüm yazılmadan 422 ile reddedilir.
     await rejectsWith(
-      async () =>
+      () =>
         insertSubmissionVersion(
           db,
           institutionId,
@@ -278,8 +354,8 @@ describe('beceri görevi deposu', () => {
           { ...version(2), fileIds: ['file-1'] },
           LATER,
         ),
-      500,
-      'internal_error',
+      422,
+      'submission_kind_unavailable',
     )
     const second = version(2)
     await insertSubmissionVersion(db, institutionId, c.submissionId, second, LATER)
@@ -318,9 +394,19 @@ describe('beceri görevi deposu', () => {
     assert.deepEqual(loaded?.resubmissions, [request(1, firstDue), request(2, secondDue)])
     assert.equal(await loadSubmission(db, otherId, c.assignmentId, LEARNER), null)
     assert.equal(await loadSubmission(db, institutionId, c.assignmentId, 'test-s-yok'), null)
+    await db
+      .update(taskSubmissions)
+      .set(archive)
+      .where(
+        and(
+          eq(taskSubmissions.institutionId, institutionId),
+          eq(taskSubmissions.id, c.submissionId),
+        ),
+      )
+    assert.equal(await loadSubmission(db, institutionId, c.assignmentId, LEARNER), null)
   })
 
-  test('IST-047: taslak beklenen revizyonla yazılır; eski revizyon 409 draft_conflict', async () => {
+  test('IST-047: taslak beklenen revizyonla yazılır; eski revizyon 409 draft_conflict; arşivli taslak okunmaz', async () => {
     const { institutionId, otherId, chain: c } = await setup()
     assert.equal(await loadDraft(db, institutionId, c.assignmentId, LEARNER), null)
     const draft = (revision: number, body: string) => ({
@@ -355,9 +441,19 @@ describe('beceri görevi deposu', () => {
       409,
       'draft_conflict',
     )
+    await db
+      .update(submissionDrafts)
+      .set(archive)
+      .where(
+        and(
+          eq(submissionDrafts.institutionId, institutionId),
+          eq(submissionDrafts.assignmentId, c.assignmentId),
+        ),
+      )
+    assert.equal(await loadDraft(db, institutionId, c.assignmentId, LEARNER), null)
   })
 
-  test('DOM-BEC-021, 024, 025, 060: puan, ikinci puan isteği, itiraz ve not aktarımı teslim başına tekil', async () => {
+  test('DOM-BEC-021, 024, 025, 060: puan, ikinci puan isteği, itiraz ve not aktarımı teslim başına tekil; arşivli itiraz okunmaz', async () => {
     const { institutionId, owner, otherId, chain: c } = await setup()
     const score = (raterRole: RubricScoreRow['raterRole'], scoredAt: Date): RubricScoreRow => ({
       id: randomUUID(),
@@ -426,6 +522,11 @@ describe('beceri görevi deposu', () => {
       },
     ])
     assert.deepEqual(await loadAppeals(db, otherId, c.submissionId), [])
+    await db
+      .update(scoreAppeals)
+      .set(archive)
+      .where(and(eq(scoreAppeals.institutionId, institutionId), eq(scoreAppeals.id, appeal.id)))
+    assert.deepEqual(await loadAppeals(db, institutionId, c.submissionId), [])
 
     const transfer = {
       id: randomUUID(),
@@ -447,5 +548,151 @@ describe('beceri görevi deposu', () => {
     )
     assert.deepEqual(await loadScoreTransfers(db, institutionId, c.assignmentId), [transfer])
     assert.deepEqual(await loadScoreTransfers(db, otherId, c.assignmentId), [])
+  })
+
+  test('DOM-BEC-022, 025, 060: sahiplik: puanın rubrik sürümü atamanınkidir, itiraz kursiyerin kendi teslimine, aktarım aynı görev ve kursiyerin kaynağından; değilse 422, kaynak yoksa 404', async () => {
+    const { institutionId, owner, chain: c } = await setup()
+    // Aynı kurumda başka bir rubrik sürümü: atamaya sabitlenmemiş.
+    const rubricId = randomUUID()
+    await insertRubric(db, institutionId, { id: rubricId, ownerUserId: owner }, FIXED_NOW)
+    const otherVersionId = randomUUID()
+    await insertRubricVersion(
+      db,
+      institutionId,
+      {
+        ...sampleRubricData(),
+        id: otherVersionId,
+        rubricId,
+        versionNumber: 1,
+        status: 'draft',
+        createdAt: iso(FIXED_NOW),
+        publishedAt: null,
+        archivedAt: null,
+      },
+      FIXED_NOW,
+    )
+    const score: RubricScoreRow = {
+      id: randomUUID(),
+      submissionVersionId: c.submissionVersionId,
+      rubricVersionId: c.rubricVersionId,
+      raterUserId: owner,
+      raterRole: 'first',
+      criteria: [{ criterionId: 'task', band: 4, comment: null }],
+      overallComment: 'İyi.',
+      scoredAt: iso(FIXED_NOW),
+    }
+    await rejectsWith(
+      () =>
+        insertRubricScore(db, institutionId, { ...score, rubricVersionId: otherVersionId }, LATER),
+      422,
+      'rubric_version_mismatch',
+    )
+    await rejectsWith(
+      () =>
+        insertRubricScore(
+          db,
+          institutionId,
+          { ...score, submissionVersionId: randomUUID() },
+          LATER,
+        ),
+      404,
+      'not_found',
+    )
+    await insertRubricScore(db, institutionId, score, LATER)
+
+    const appeal = {
+      id: randomUUID(),
+      submissionVersionId: c.submissionVersionId,
+      learnerId: 'test-s-diger',
+      filedByUserId: owner,
+      reason: 'Dilbilgisi puanı yanlış hesaplandı.',
+      filedAt: iso(LATER),
+    }
+    await rejectsWith(
+      () => insertAppeal(db, institutionId, appeal, LATER),
+      422,
+      'appeal_learner_mismatch',
+    )
+    await rejectsWith(
+      () =>
+        insertAppeal(
+          db,
+          institutionId,
+          { ...appeal, learnerId: LEARNER, submissionVersionId: randomUUID() },
+          LATER,
+        ),
+      404,
+      'not_found',
+    )
+    assert.deepEqual(await loadAppeals(db, institutionId, c.submissionId), [])
+
+    const otherLearnerAttempt = {
+      id: randomUUID(),
+      assignmentId: c.assignmentId,
+      learnerId: 'test-s-diger',
+      attemptNumber: 1,
+      startedAt: iso(FIXED_NOW),
+    }
+    await insertAttempt(db, institutionId, otherLearnerAttempt, FIXED_NOW)
+    const transfer = {
+      id: randomUUID(),
+      assignmentId: c.assignmentId,
+      learnerId: 'test-s-diger',
+      gradeType: 'performans' as const,
+      score: 70,
+      sourceAttemptId: null,
+      sourceRubricScoreId: score.id,
+      gradeRecordId: 'test-grade-beceri',
+      transferredByUserId: owner,
+      transferredAt: iso(LATER),
+    }
+    // Rubrik puanı LEARNER'ındır; başka kursiyere aktarılamaz (depo denetimi).
+    await rejectsWith(
+      () => insertScoreTransfer(db, institutionId, transfer, LATER),
+      422,
+      'score_transfer_source_mismatch',
+    )
+    await rejectsWith(
+      () =>
+        insertScoreTransfer(
+          db,
+          institutionId,
+          { ...transfer, sourceRubricScoreId: randomUUID() },
+          LATER,
+        ),
+      404,
+      'not_found',
+    )
+    // Başka kursiyerin denemesi LEARNER'a aktarılamaz (bileşik yabancı anahtar).
+    await rejectsWith(
+      () =>
+        insertScoreTransfer(
+          db,
+          institutionId,
+          {
+            ...transfer,
+            learnerId: LEARNER,
+            sourceRubricScoreId: null,
+            sourceAttemptId: otherLearnerAttempt.id,
+          },
+          LATER,
+        ),
+      422,
+      'score_transfer_source_mismatch',
+    )
+    assert.deepEqual(await loadScoreTransfers(db, institutionId, c.assignmentId), [])
+    await insertScoreTransfer(
+      db,
+      institutionId,
+      { ...transfer, sourceRubricScoreId: null, sourceAttemptId: otherLearnerAttempt.id },
+      LATER,
+    )
+    await insertScoreTransfer(
+      db,
+      institutionId,
+      { ...transfer, id: randomUUID(), learnerId: LEARNER },
+      LATER,
+    )
+    assert.equal((await loadScoreTransfers(db, institutionId, c.assignmentId)).length, 2)
   })
 })

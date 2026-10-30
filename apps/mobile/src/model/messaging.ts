@@ -1,6 +1,7 @@
-import { requiredText } from '@kampus/school-core/lib/domain.ts'
+import type { State } from '@kampus/school-core/data/seed.ts'
+import { requiredText, type MakeId, type Session } from '@kampus/school-core/lib/domain.ts'
 
-export function conversationFor(state, session, id) {
+export function conversationFor(state: State, session: Session, id: string) {
   if (!state.modules.communication) return null
   const conversation = state.conversations.find((item) => item.id === id)
   if (!conversation) return null
@@ -12,7 +13,13 @@ export function conversationFor(state, session, id) {
     ? conversation
     : null
 }
-export function appendMessage(state, session, conversationId, text, makeId) {
+export function appendMessage(
+  state: State,
+  session: Session,
+  conversationId: string,
+  text: string,
+  makeId: MakeId,
+) {
   const conversation = conversationFor(state, session, conversationId)
   if (!conversation) throw new Error('Bu konuşmaya erişilemiyor.')
   conversation.messages.push({

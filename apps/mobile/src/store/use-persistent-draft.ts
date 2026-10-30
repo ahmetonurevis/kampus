@@ -1,20 +1,37 @@
 import { useEffect, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { createDraftRepository, draftKey } from '../model/drafts.js'
-import { recordError, useSchool } from './SchoolProvider.jsx'
+import { createDraftRepository, draftKey, type DraftValue } from '../model/drafts.ts'
+import { recordError, useSchool } from './SchoolProvider.tsx'
+
+export type DraftStatus = '' | 'restored' | 'saving' | 'saved' | 'error' | 'read-error'
+type DraftState<T> = { identity: string; value: T; ready: boolean; status: DraftStatus }
 
 const repository = createDraftRepository(AsyncStorage)
-export function usePersistentDraft(kind, recordId, initialValue, revision = '') {
+const isUpdater = <T>(value: T | ((current: T) => T)): value is (current: T) => T =>
+  typeof value === 'function'
+
+export function usePersistentDraft<T extends DraftValue>(
+  kind: string,
+  recordId: string | undefined,
+  initialValue: T,
+  revision = '',
+) {
   const { data, session, notify } = useSchool()
+  if (!data) throw new Error('Taslak, okul verisi yüklenmeden kullanılamaz.')
   const key = draftKey(data, session, kind, recordId)
   const identity = key + revision
-  const [state, setState] = useState({ identity, value: initialValue, ready: false, status: '' })
+  const [state, setState] = useState<DraftState<T>>({
+    identity,
+    value: initialValue,
+    ready: false,
+    status: '',
+  })
   const active = useRef(identity),
     current = useRef(state),
     initial = useRef(initialValue)
   active.current = identity
   initial.current = initialValue
-  const publish = (next) => {
+  const publish = (next: DraftState<T>) => {
     current.current = next
     setState(next)
   }
@@ -33,7 +50,7 @@ export function usePersistentDraft(kind, recordId, initialValue, revision = '') 
             status: saved ? 'restored' : '',
           })
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         recordError(error, 'draft-read')
         if (live) {
           publish({ identity, value, ready: false, status: 'read-error' })
@@ -45,11 +62,10 @@ export function usePersistentDraft(kind, recordId, initialValue, revision = '') 
     }
     // initialValue her renderda yeniden oluşabilir; yalnızca kayıt/ana veri sürümü değişince yüklenir.
   }, [identity])
-  function change(valueOrUpdate) {
+  function change(valueOrUpdate: T | ((current: T) => T)) {
     if (current.current.identity !== identity || !current.current.ready) return
-    const value =
-      typeof valueOrUpdate === 'function' ? valueOrUpdate(current.current.value) : valueOrUpdate
-    const next = { identity, value, ready: true, status: 'saving' }
+    const value = isUpdater(valueOrUpdate) ? valueOrUpdate(current.current.value) : valueOrUpdate
+    const next: DraftState<T> = { identity, value, ready: true, status: 'saving' }
     publish(next)
     repository
       .write(key, value, revision)
@@ -57,7 +73,7 @@ export function usePersistentDraft(kind, recordId, initialValue, revision = '') 
         if (active.current === identity && current.current.value === value)
           publish({ ...next, status: 'saved' })
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         recordError(error, 'draft-write')
         if (active.current === identity && current.current.value === value) {
           publish({ ...next, status: 'error' })
@@ -65,7 +81,7 @@ export function usePersistentDraft(kind, recordId, initialValue, revision = '') 
         }
       })
   }
-  async function clear(nextValue = initial.current) {
+  async function clear(nextValue: T = initial.current) {
     try {
       await repository.clear(key)
       if (active.current === identity)
@@ -78,7 +94,8 @@ export function usePersistentDraft(kind, recordId, initialValue, revision = '') 
       return false
     }
   }
-  const visible =
-    state.identity === identity ? state : { value: initialValue, ready: false, status: '' }
+  const visible: Pick<DraftState<T>, 'value' | 'ready' | 'status'> = state.identity === identity
+    ? state
+    : { value: initialValue, ready: false, status: '' }
   return { ...visible, set: change, clear, retry: () => change(current.current.value) }
 }

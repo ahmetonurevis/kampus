@@ -186,6 +186,10 @@ importers:
       zod:
         specifier: 4.6.5
         version: 4.6.5
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
 
   apps/web:
     dependencies:

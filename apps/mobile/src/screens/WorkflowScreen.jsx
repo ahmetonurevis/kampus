@@ -7,7 +7,7 @@ import {
   workflowCreateActions,
 } from '@kampus/school-core/lib/workflow-presentation.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
-import { useSchool } from '../store/SchoolProvider.jsx'
+import { useSchool } from '../store/SchoolProvider.tsx'
 import { Badge, Button, Empty, Heading, SearchField, Sheet, T } from '../ui/components.jsx'
 import { ListRow, Notice, Pagination, Screen, Section, Tabs } from '../ui/SchoolLayout.jsx'
 import DocumentLink from '../ui/DocumentLink.jsx'

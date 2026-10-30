@@ -5,13 +5,13 @@ import { decodeText } from '@kampus/school-core/lib/text-decoding.ts'
 
 export const MAX_TEXT_FILE_BYTES = 1024 * 1024
 
-function base64ToBytes(value) {
+function base64ToBytes(value: string) {
   const binary = atob(value)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
   return bytes
 }
-async function readBytes(uri) {
+async function readBytes(uri: string) {
   if (Platform.OS === 'web') return new Uint8Array(await (await fetch(uri)).arrayBuffer())
   return base64ToBytes(
     await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 }),
@@ -19,7 +19,13 @@ async function readBytes(uri) {
 }
 
 // CSV/DAT/TXT dosyası seçtirir ve belirtilen kodlamayla metne çevirir. Seçim iptal edilirse null döner.
-export async function pickTextFile({ extensions, encoding = 'utf-8' }) {
+export async function pickTextFile({
+  extensions,
+  encoding = 'utf-8',
+}: {
+  extensions: readonly string[]
+  encoding?: string
+}): Promise<{ name: string; text: string } | null> {
   const result = await DocumentPicker.getDocumentAsync({
     type: '*/*',
     copyToCacheDirectory: true,
@@ -27,6 +33,7 @@ export async function pickTextFile({ extensions, encoding = 'utf-8' }) {
   })
   if (result.canceled) return null
   const file = result.assets[0]
+  if (!file) throw new Error('Dosya seçilemedi.')
   const pattern = new RegExp(`\\.(${extensions.join('|')})$`, 'i')
   if (!pattern.test(file.name))
     throw new Error(`En fazla 1 MB boyutunda ${extensions.join(', ').toUpperCase()} dosyası seçin.`)

@@ -11,6 +11,7 @@ import { loadConfig, type Config } from '../../src/config.ts'
 import { MIGRATIONS_FOLDER, schema, type Database } from '../../src/db/client.ts'
 import {
   ensureInstitution,
+  ensureInstitutionSettings,
   ensureMember,
   ensureMembershipLinks,
   ensureUser,
@@ -103,9 +104,17 @@ export interface TestInstitution {
   adminMembershipId: string
 }
 
+export interface InstitutionOverrides {
+  name: string
+  type: InstitutionType
+  enabledModules: Record<string, boolean>
+  /** Kurum ayar satırı; `null` verilirse satır açılmaz. Varsayılan `FIXED_NOW` yılı. */
+  academicYear: number | null
+}
+
 export async function createInstitution(
   app: App,
-  overrides: Partial<{ name: string; type: InstitutionType }> = {},
+  overrides: Partial<InstitutionOverrides> = {},
 ): Promise<TestInstitution> {
   const admin = await createUser(app, { name: 'Test Yönetici' })
   const slug = uniqueId('test-kurum')
@@ -114,7 +123,12 @@ export async function createInstitution(
     slug,
     type: overrides.type ?? 'school',
     creatorUserId: admin.id,
+    ...(overrides.enabledModules ? { enabledModules: overrides.enabledModules } : {}),
   })
+  const academicYear =
+    overrides.academicYear === undefined ? FIXED_NOW.getUTCFullYear() : overrides.academicYear
+  if (academicYear !== null)
+    await ensureInstitutionSettings(app.db, institution.id, { academicYear })
   const membership = await ensureMember(app.auth, app.db, {
     institutionId: institution.id,
     userId: admin.id,

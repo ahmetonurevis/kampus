@@ -14,8 +14,8 @@ import {
   workflowCsvReferences,
 } from '@kampus/school-core/lib/workflow-presentation.ts'
 import { money } from '@kampus/school-core/lib/format.ts'
-import { useSchool, recordError } from '../store/SchoolProvider.jsx'
-import { pickTextFile } from '../lib/text-files.js'
+import { useSchool, recordError } from '../store/SchoolProvider.tsx'
+import { pickTextFile } from '../lib/text-files.ts'
 import { Button, Card, Sheet, T, useColors } from './components.jsx'
 import { TextAction } from './SchoolLayout.jsx'
 import WorkflowField from './WorkflowFields.jsx'

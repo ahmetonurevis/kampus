@@ -25,6 +25,7 @@ export function meFixture(role: RoleKey = 'yonetici', patch: Partial<Me> = {}): 
       slug: 'test-okulu',
       type: 'school',
       enabledModules: {},
+      academicYear: null,
     },
     activeMembership: { id: 'test-member-a', role, links: LINKS[role] },
     memberships: [

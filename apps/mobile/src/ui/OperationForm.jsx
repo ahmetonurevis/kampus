@@ -1,11 +1,11 @@
-import { usePersistentDraft } from '../store/use-persistent-draft.js'
+import { usePersistentDraft } from '../store/use-persistent-draft.ts'
 import DraftStatus from './DraftStatus.jsx'
 import React, { useState } from 'react'
 import { View, Pressable } from 'react-native'
-import { useSchool, recordError } from '../store/SchoolProvider.jsx'
-import { operation, normalizeFields } from '../model/operations.js'
+import { useSchool, recordError } from '../store/SchoolProvider.tsx'
+import { operation, normalizeFields } from '../model/operations.ts'
 import { Button, DateField, Field, Icon, Select, Sheet, T, useColors } from './components.jsx'
-import { pickFile, fileSelectionMessage } from '../lib/files.js'
+import { pickFile, fileSelectionMessage } from '../lib/files.ts'
 
 export default function OperationForm({ descriptor, onClose }) {
   const { data, session, commit, busy, notify } = useSchool(),

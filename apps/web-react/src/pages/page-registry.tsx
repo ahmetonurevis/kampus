@@ -61,6 +61,8 @@ const MIGRATED = new Set([
   'yonetici/dashboard',
   'onburo/dashboard',
   'ogretmen/dashboard',
+  'ogrenci/dashboard',
+  'veli/dashboard',
   'yonetici/subeler',
   'yonetici/personel',
   'yonetici/finans',

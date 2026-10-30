@@ -2,6 +2,14 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Alınabilir randevu saatleri okuma ucu
+
+- `GET /api/v1/appointments/slots?studentId=…&from=…&to=…` (öğrenci, veli): öğrencinin sınıfına ders veren etkin öğretmenlerin gelecekteki uygunluk saatleri; her saat `slotId`, `teacherId`, `teacherName`, `startsAt`, `duration`, `campusName` (varsa), `subjectNames` ve `available` taşır (`BookableSlot`). Kural core 2.19.0 `bookableSlots` (DOM-ILT-105); `available: false` talepteki `appointment_conflict` kararıyla aynıdır, nedeni, saati tutan randevu ve kişisi ile saatin iç notu dönmez (DOM-ILT-073).
+- Aralık ISO 8601; verilmezse şimdiden itibaren 14 gün, `to` yalnız `from` ile, en çok 28 gün. Aşan, ters, başlangıçsız aralık, geçersiz tarih ve bilinmeyen parametre 400 `validation_failed`.
+- Başka velinin çocuğu, kapsam dışı veya olmayan öğrenci 404 `not_found` (talepteki 403 `student_scope_denied`'den farklı: okuma öğrencinin varlığını sızdırmaz); pasif öğrenci 422 `student_inactive`. Öğretmen, yönetici ve ön büro 403 `forbidden`; `communication` kapalıyken 403 `module_disabled` (mevcut modül kapısı).
+- Salt okunur (`runReadOnly`): kurum kilidi alınmaz, denetim kaydı ve sürüm yazılmaz. Ders programı, etüt, etkinlik ve randevular talep ucundaki gibi bütünüyle yüklenir (`TODO(perf)`).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
 ## Beceri görevi tabloları ve deposu
 
 - Migration `0013_create_skill_tasks` eklendi (ADR 0004 karar 4–7): `rubrics`, `rubric_versions`, `task_assignments`, `task_assignment_targets`, `task_attempts`, `task_submissions`, `submission_versions`, `submission_drafts`, `resubmission_requests`, `rubric_scores`, `second_rating_requests`, `score_appeals`, `score_transfers`. Bütün yabancı anahtarlar `(institution_id, …)` bileşiktir; başka kurumun satırına bağlanmak veritabanınca reddedilir. Tablolar yeni ve boştur; veri migration'ı yok.

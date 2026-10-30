@@ -59,6 +59,7 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'absence.notify': ['veli'],
     'appointment.book': ['ogrenci', 'veli'],
     'appointment.update': ['ogretmen', 'ogrenci', 'veli'],
+    'appointment.slots': ['ogrenci', 'veli'],
     'question.ask': ['ogrenci'],
     'question.answer': ['ogretmen'],
     'question.withdraw': ['ogrenci'],

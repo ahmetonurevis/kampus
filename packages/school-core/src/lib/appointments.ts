@@ -7,7 +7,7 @@ import { requireAuthorized } from './authorize.ts'
 import type { Participant } from './communication.ts'
 import type { MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
-import { scopeFor } from './scope.ts'
+import { scopeFor, type Scope } from './scope.ts'
 import { tutorConflict } from './tutor-conflicts.ts'
 
 /**
@@ -133,6 +133,8 @@ export type AppointmentFields = {
 
 type AppointmentRecord = State['appointments'][number]
 type StudentRecord = State['students'][number]
+type TeacherRecord = State['teachers'][number]
+type SlotRecord = State['availability'][number]
 
 const actorOf = (by: Participant): AppointmentActor => ({ role: by.role, userId: by.userId })
 const notFound = () =>
@@ -155,17 +157,16 @@ function requireActiveStudent(state: State, studentId: string): StudentRecord {
  * Randevu adayının çakışma denetimi; kampüs öğrencinin sınıfından gelir (etkinlik denetimi).
  * Çakışan randevuyu isteği yapan göremiyorsa ileti genel kalır: başka velinin açtığı görüşme
  * ya da başka öğretmenin randevusu iletiden öğrenilmez (DOM-ILT-073, DOM-ILT-103).
+ * Kapsam çağırandan gelir; saat listesi (`bookableSlots`) onu bir kez kurar.
  */
 function conflictOf(
   state: State,
-  by: Participant,
+  scope: Scope,
   candidate: { teacherId: string; studentId: string; date: string; duration?: number | undefined },
-  options: AppointmentOptions,
 ): string {
   const classroom = state.classes.find(
     (c) => c.id === state.students.find((s) => s.id === candidate.studentId)?.classId,
   )
-  const scope = scopeFor(state, by, options)
   return tutorConflict(
     state,
     {
@@ -180,6 +181,55 @@ function conflictOf(
     '',
     { canSeeAppointment: (appointment) => scope.canRead('appointments', appointment) },
   )
+}
+
+type SlotCheck =
+  | { slot: SlotRecord; teacher: TeacherRecord; error?: never }
+  | { error: DomainError; slot?: never; teacher?: never }
+
+/**
+ * Uygunluk saati bu öğrenci için alınabilir mi (DOM-ILT-101). Talep (`bookAppointment`) ve saat
+ * listesi (`bookableSlots`, DOM-ILT-105) aynı denetimi kullanır; liste kuralı kopyalamaz.
+ * Saat yoksa, başka öğretmenin ya da öğrenciye ders vermeyen öğretmenin saatiyse aynı ret:
+ * öğrenci ve veli uygunluk listesini yalnız kendi öğretmenleri için görür.
+ */
+function checkSlot(
+  state: State,
+  scope: Scope,
+  student: StudentRecord,
+  slot: SlotRecord | undefined,
+  now: string,
+): SlotCheck {
+  const teacher = slot && state.teachers.find((t) => t.id === slot.teacherId)
+  const teaches =
+    !!teacher &&
+    state.assignments.some((a) => a.classId === student.classId && a.teacherId === teacher.id)
+  if (!slot || !teacher || !teaches || teacher.isActive === false || teacher.deletedAt)
+    return {
+      error: new DomainError('appointment_slot_unavailable', 'Müsait bir görüşme saati seçin.', {
+        path: ['slotId'],
+      }),
+    }
+  if (Date.parse(slot.date) <= Date.parse(now))
+    return {
+      error: new DomainError('appointment_in_past', 'Gelecekteki bir görüşme saati seçin.', {
+        path: ['slotId'],
+      }),
+    }
+  const reason = conflictOf(state, scope, {
+    teacherId: teacher.id,
+    studentId: student.id,
+    date: slot.date,
+    duration: slot.duration,
+  })
+  if (reason)
+    return {
+      error: new DomainError('appointment_conflict', reason, {
+        kind: 'conflict',
+        path: ['slotId'],
+      }),
+    }
+  return { slot, teacher }
 }
 
 /**
@@ -208,29 +258,15 @@ export function bookAppointment(
   // TODO(randevu-modul): `tutoring` kapalı, `communication` açıkken uygunluk saati eklenemez ve
   // kaldırılamaz (saat komutları `tutoring`'dir) ama var olan saatlerden talep açılabilir.
   // Ürün kararı gerekir (DOM-ILT-101 notu).
-  // Saat yoksa, başka öğretmenin ya da öğrenciye ders vermeyen öğretmenin saatiyse aynı yanıt:
-  // öğrenci ve veli uygunluk listesini yalnız kendi öğretmenleri için görür.
-  const slot = state.availability.find((s) => s.id === data.slotId)
-  const teacher = slot && state.teachers.find((t) => t.id === slot.teacherId)
-  const teaches =
-    !!teacher &&
-    state.assignments.some((a) => a.classId === student.classId && a.teacherId === teacher.id)
-  if (!slot || !teacher || !teaches || teacher.isActive === false || teacher.deletedAt)
-    throw new DomainError('appointment_slot_unavailable', 'Müsait bir görüşme saati seçin.', {
-      path: ['slotId'],
-    })
-  if (Date.parse(slot.date) <= Date.parse(now))
-    throw new DomainError('appointment_in_past', 'Gelecekteki bir görüşme saati seçin.', {
-      path: ['slotId'],
-    })
-  const reason = conflictOf(
+  const check = checkSlot(
     state,
-    by,
-    { teacherId: teacher.id, studentId: student.id, date: slot.date, duration: slot.duration },
-    options,
+    scopeFor(state, by, options),
+    student,
+    state.availability.find((s) => s.id === data.slotId),
+    now,
   )
-  if (reason)
-    throw new DomainError('appointment_conflict', reason, { kind: 'conflict', path: ['slotId'] })
+  if (check.error) throw check.error
+  const { slot, teacher } = check
   const requester = actorOf(by)
   const appointment: AppointmentRecord = {
     id: makeId('apt'),
@@ -320,9 +356,8 @@ export function updateAppointment(
         requireActiveStudent(state, appointment.studentId)
         const reason = conflictOf(
           { ...state, appointments: state.appointments.filter((a) => a.id !== appointment.id) },
-          by,
+          scopeFor(state, by, options),
           appointment,
-          options,
         )
         if (reason)
           throw new DomainError('appointment_conflict', reason, {
@@ -369,4 +404,135 @@ export function updateAppointment(
   })
   // TODO(notifications): karşı tarafa uygulama içi bildirim (DOM-ILT-020).
   return appointment
+}
+
+// --- Alınabilir saatler (DOM-ILT-105) ----------------------------------------------------------
+
+/** Aralık verilmezse bugünden (`now`) itibaren bu kadar gün okunur. */
+export const BOOKABLE_SLOTS_DEFAULT_DAYS = 14
+/** Bir istekte okunabilen en uzun aralık. */
+export const BOOKABLE_SLOTS_MAX_DAYS = 28
+const DAY_MS = 86_400_000
+
+const instant = z.iso.datetime({ offset: true, error: 'Geçerli bir tarih ve saat girin.' })
+
+/**
+ * Saat listesi sorgusu: öğrenci (velide seçili çocuk, öğrencide kendisi) ve isteğe bağlı aralık
+ * (ISO 8601). `from` yoksa `now`, `to` yoksa `from` + 14 gündür; `to` yalnız `from` ile verilir,
+ * aralık en çok 28 gündür. API sorgu şemasıdır (bilinmeyen parametre 400).
+ */
+export const bookableSlotsQuerySchema = z
+  .strictObject({
+    studentId: identifier('Bir öğrenci seçin.'),
+    from: instant.optional(),
+    to: instant.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.to === undefined) return
+    if (data.from === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['from'],
+        message: 'Bitiş verildiğinde başlangıcı da verin.',
+      })
+      return
+    }
+    const span = Date.parse(data.to) - Date.parse(data.from)
+    if (span <= 0)
+      ctx.addIssue({ code: 'custom', path: ['to'], message: 'Bitiş başlangıçtan sonra olmalıdır.' })
+    else if (span > BOOKABLE_SLOTS_MAX_DAYS * DAY_MS)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['to'],
+        message: `Aralık en fazla ${BOOKABLE_SLOTS_MAX_DAYS} gün olabilir.`,
+      })
+  })
+export type BookableSlotsQuery = z.input<typeof bookableSlotsQuerySchema>
+
+/**
+ * Öğrenci ve velinin gördüğü uygunluk saati (DOM-ILT-105). Alanlar beyaz listedir: saatin iç
+ * notu, saati tutan randevu ve onun sahibi hiç dönmez. `available: false` saatin dolu olduğunu
+ * söyler, nedenini söylemez (DOM-ILT-073): başka velinin gizli görüşmesi de, öğrencinin kendi
+ * dersi de aynı "Dolu"dur.
+ */
+export type BookableSlot = {
+  slotId: string
+  teacherId: string
+  teacherName: string
+  /** Başlangıç, ISO 8601 UTC. */
+  startsAt: string
+  /** Dakika. */
+  duration: number
+  /** Öğretmenin kampüsü; kampüs kaydı yoksa yok. */
+  campusName?: string
+  /** Öğretmenin öğrencinin sınıfında verdiği dersler (ada göre sıralı). */
+  subjectNames: string[]
+  available: boolean
+}
+
+const byStart = (a: BookableSlot, b: BookableSlot) =>
+  Date.parse(a.startsAt) - Date.parse(b.startsAt) ||
+  a.teacherName.localeCompare(b.teacherName, 'tr') ||
+  a.slotId.localeCompare(b.slotId)
+
+/**
+ * Talep ekranının saatleri (DOM-ILT-105): öğrencinin sınıfına ders veren etkin öğretmenlerin
+ * aralıktaki gelecek saatleri. Her saat talep (`bookAppointment`) ile aynı denetimden geçer
+ * (`checkSlot`): bekleyen/onaylı randevunun tuttuğu ya da öğrencinin dersi, etüdü, randevusu
+ * veya okul etkinliğiyle çakışan saat `available: false` olur. Saf okuma; State değişmez.
+ *
+ * Yetki `appointment.slots`: öğrenci kendisi, veli bağlı çocuğu için okur; kapsam dışı öğrenci
+ * olmayan öğrenciyle aynı `student_not_found` (404). Pasif öğrenci talepteki gibi 422
+ * `student_inactive`.
+ */
+export function bookableSlots(
+  state: State,
+  by: Participant,
+  query: unknown,
+  now: string,
+  options: AppointmentOptions = {},
+): BookableSlot[] {
+  const data = bookableSlotsQuerySchema.parse(query)
+  requireAuthorized(by, 'appointment.slots', { studentId: data.studentId }, state, options)
+  const student = requireActiveStudent(state, data.studentId)
+  const from = Date.parse(data.from ?? now)
+  const to =
+    data.to === undefined ? from + BOOKABLE_SLOTS_DEFAULT_DAYS * DAY_MS : Date.parse(data.to)
+  const subjectName = new Map(state.subjects.map((s) => [s.id, s.name]))
+  const campusName = new Map(state.branches.map((b) => [b.id, b.name]))
+  // Öğretmen → öğrencinin sınıfında verdiği dersler; anahtar yoksa öğretmen sınıfa girmiyor.
+  const subjectsOf = new Map<string, Set<string>>()
+  for (const a of state.assignments)
+    if (a.classId === student.classId) {
+      const names = subjectsOf.get(a.teacherId) ?? new Set<string>()
+      const name = subjectName.get(a.subjectId)
+      if (name !== undefined) names.add(name)
+      subjectsOf.set(a.teacherId, names)
+    }
+  const teacherById = new Map(state.teachers.map((t) => [t.id, t]))
+  const scope = scopeFor(state, by, options)
+  const slots: BookableSlot[] = []
+  for (const slot of state.availability) {
+    const starts = Date.parse(slot.date)
+    if (!(starts >= from && starts < to) || !subjectsOf.has(slot.teacherId)) continue
+    const check = checkSlot(state, scope, student, slot, now)
+    // Ders vermeyen, pasif öğretmenin ve geçmiş saat listede hiç yoktur; yalnız çakışma "Dolu"dur.
+    if (check.error && check.error.code !== 'appointment_conflict') continue
+    const teacher = teacherById.get(slot.teacherId)
+    if (!teacher) continue
+    const campus = campusName.get(teacher.branchId)
+    slots.push({
+      slotId: slot.id,
+      teacherId: teacher.id,
+      teacherName: teacher.name,
+      startsAt: new Date(starts).toISOString(),
+      duration: slot.duration,
+      ...(campus === undefined ? {} : { campusName: campus }),
+      subjectNames: [...(subjectsOf.get(teacher.id) ?? [])].sort((a, b) =>
+        a.localeCompare(b, 'tr'),
+      ),
+      available: check.error === undefined,
+    })
+  }
+  return slots.sort(byStart)
 }

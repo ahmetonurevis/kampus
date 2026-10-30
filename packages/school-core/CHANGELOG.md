@@ -1,5 +1,13 @@
 # Değişiklikler
 
+## 2.20.0
+
+Veli ve öğrencinin randevu alabileceği saatleri okuyan saf kural eklendi (W20a; `docs/domain/iletisim-ve-veli.md` DOM-ILT-105). Uç ve kanca ayrı adımdadır, ekran W20b'dedir. Başka açık dal da 2.19.0 kullanıyor; birleştirmede sürüm çözülecek.
+
+- `lib/appointments.ts`: `bookableSlotsQuerySchema` (sıkı: `studentId`, isteğe bağlı ISO 8601 `from`/`to`; `to` yalnız `from` ile, aralık en çok `BOOKABLE_SLOTS_MAX_DAYS` = 28 gün, varsayılan `BOOKABLE_SLOTS_DEFAULT_DAYS` = 14 gün) ve `bookableSlots(state, by, query, now, options)`: öğrencinin sınıfına ders veren etkin öğretmenlerin aralıktaki gelecek uygunluk saatleri, başlangıca göre sıralı. Saat başına yalnız `slotId`, `teacherId`, `teacherName`, `startsAt`, `duration`, `campusName` (varsa), `subjectNames`, `available` döner (`BookableSlot`); neden, tutan randevu ve kişisi dönmez (DOM-ILT-073). Pasif öğrenci 422 `student_inactive`.
+- `bookAppointment` ve `bookableSlots` aynı saat denetimini (`checkSlot`: öğretmen, gelecek, `tutorConflict`) kullanır; liste kuralı kopyalamaz, `available: false` talepte `appointment_conflict` alan saattir. Talebin davranışı ve iletileri değişmedi; çakışma denetimi kapsamı bir kez kurar.
+- `lib/authorize.ts` ve `modules/commands.ts`: `appointment.slots` (öğrenci, veli), modül `communication`; kapsam dışı öğrenci 404 `student_not_found` (talepteki 403'ten farklı: okuma öğrencinin varlığını sızdırmaz). Komut uygunluk saatlerini, kampüsleri, dersleri ve çakışma koleksiyonlarını okur.
+
 ## 2.19.0
 
 Ön büro aday/CRM (`prospects`) yazma işlemleri eklendi (D16a; `docs/domain/kayit-ve-crm.md` DOM-KAY-002…009, DOM-KAY-030…034; `docs/domain/dil-okulu.md` DOM-DIL-030). Okuma kapsamı değişmedi; kesin kayıt (`enrollProspect`) yalnız açık aday şartı ve `prospect.enroll` yetki eylemini aldı. API uçları D16b'dedir. 2.18.0 başka açık dalda kullanıldığı için bu dal 2.19.0'dır.

@@ -3776,6 +3776,53 @@
           "affectedContainerVersionIds"
         ]
       },
+      "BookableSlotInput": {
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "string",
+            "description": "Uygunluk saati kimliği; talepte `slotId` olarak gönderilir"
+          },
+          "teacherId": {
+            "type": "string"
+          },
+          "teacherName": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "description": "Başlangıç, ISO 8601 UTC"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Dakika"
+          },
+          "campusName": {
+            "description": "Öğretmenin kampüsü; kayıt yoksa yok",
+            "type": "string"
+          },
+          "subjectNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Öğretmenin öğrencinin sınıfında verdiği dersler, ada göre sıralı"
+          },
+          "available": {
+            "type": "boolean",
+            "description": "`false`: saat dolu (\"Dolu\"); neden hiçbir durumda bildirilmez (DOM-ILT-073)"
+          }
+        },
+        "required": [
+          "slotId",
+          "teacherId",
+          "teacherName",
+          "startsAt",
+          "duration",
+          "subjectNames",
+          "available"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -7652,6 +7699,54 @@
           "versionIds",
           "affectedCopyIds",
           "affectedContainerVersionIds"
+        ],
+        "additionalProperties": false
+      },
+      "BookableSlot": {
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "string",
+            "description": "Uygunluk saati kimliği; talepte `slotId` olarak gönderilir"
+          },
+          "teacherId": {
+            "type": "string"
+          },
+          "teacherName": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "description": "Başlangıç, ISO 8601 UTC"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Dakika"
+          },
+          "campusName": {
+            "description": "Öğretmenin kampüsü; kayıt yoksa yok",
+            "type": "string"
+          },
+          "subjectNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Öğretmenin öğrencinin sınıfında verdiği dersler, ada göre sıralı"
+          },
+          "available": {
+            "type": "boolean",
+            "description": "`false`: saat dolu (\"Dolu\"); neden hiçbir durumda bildirilmez (DOM-ILT-073)"
+          }
+        },
+        "required": [
+          "slotId",
+          "teacherId",
+          "teacherName",
+          "startsAt",
+          "duration",
+          "subjectNames",
+          "available"
         ],
         "additionalProperties": false
       }
@@ -23995,6 +24090,143 @@
             }
           },
           "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appointments/slots": {
+      "get": {
+        "operationId": "listBookableSlots",
+        "summary": "Randevu alınabilecek saatleri listele",
+        "tags": [
+          "appointments"
+        ],
+        "description": "Öğrenci kendisi, veli seçili çocuğu (`studentId`) için öğrencinin sınıfına ders veren etkin öğretmenlerin gelecekteki uygunluk saatlerini okur (core `bookableSlots`, DOM-ILT-105). Aralık `from`–`to` (ISO 8601); verilmezse şimdiden itibaren 14 gün, `to` yalnız `from` ile verilir, en çok 28 gün (aşan, ters veya `from`suz aralık 400). Saat başına yalnız `slotId`, öğretmen ve adı, başlangıç, süre, varsa kampüs ve ders adları ile `available` döner; saatin iç notu, saati tutan randevu ve kişisi dönmez. `available: false` saatin talepte çakışma alacağını söyler (bekleyen/onaylı randevu ya da öğrencinin dersi, etüdü, randevusu, okul etkinliği; DOM-ILT-101) ve nedeni hiçbir durumda bildirilmez (DOM-ILT-073). Başka velinin çocuğu, kapsam dışı veya olmayan öğrenci olmayan kayıtla aynı 404 `not_found`; pasif öğrenci 422 `student_inactive`. Hiçbir şey yazılmaz. Modül `communication`. Roller: `ogrenci`, `veli`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BookableSlot"
+                      },
+                      "description": "Başlangıca göre sıralı; aralıkla sınırlı, sayfalanmaz"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
             "description": "Default Response",
             "content": {
               "application/json": {

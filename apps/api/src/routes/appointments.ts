@@ -8,20 +8,31 @@ import {
 import { WRITE_ACTION_ROLES, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
+import { errorResponseSchema } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
-import { bookAppointmentCommand, updateAppointmentCommand } from '../services/appointments.ts'
-import { appointmentParamsSchema } from './appointments.schemas.ts'
+import {
+  bookAppointmentCommand,
+  listBookableSlots,
+  updateAppointmentCommand,
+} from '../services/appointments.ts'
+import {
+  appointmentParamsSchema,
+  bookableSlotsQuerySchema,
+  bookableSlotsResponseSchema,
+} from './appointments.schemas.ts'
 import { sendCommand } from './command-support.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema, commandResponseSchema } from './commands.schemas.ts'
+import { authenticatedErrors } from './common.schemas.ts'
 
 /**
- * Öğretmen randevusu uçları (docs/domain/iletisim-ve-veli.md DOM-ILT-100…104). Okuma genel
- * koleksiyon ucundadır (`GET /collections/appointments`): öğretmen kendi randevularını,
+ * Öğretmen randevusu uçları (docs/domain/iletisim-ve-veli.md DOM-ILT-100…105). Randevu okuması
+ * genel koleksiyon ucundadır (`GET /collections/appointments`): öğretmen kendi randevularını,
  * yönetici hepsini görür; öğrenci velinin açtığı görüşmeyi, veli başka velinin görüşmesini
  * görmez. Sıra komut uçlarıyla aynıdır: 401 → 403 `module_disabled` → 403 `forbidden` (core
  * `WRITE_ACTION_ROLES`) → `If-Match` → 400 gövde → işlem (404, 409 sürüm, 403, 422, 409).
- * Kapsam core `requireAuthorized` ve `requireVisibleAppointment`'tadır.
+ * Kapsam core `requireAuthorized` ve `requireVisibleAppointment`'tadır. Veli ve öğrencinin
+ * alınabilir saatleri ayrı salt okunur uçtadır (`GET /appointments/slots`, DOM-ILT-105).
  */
 
 const response = { 200: commandResponseSchema, ...commandErrors }
@@ -47,6 +58,33 @@ export function registerAppointmentRoutes(app: FastifyInstance) {
   const rolesOf = (action: WriteAction) =>
     WRITE_ACTION_ROLES[action].map((role) => `\`${role}\``).join(', ')
   const input = (request: FastifyRequest) => request.commandInput
+
+  const slotsModule = OPERATION_COMMANDS['appointment.slots'].module
+  typed.get(
+    '/api/v1/appointments/slots',
+    {
+      // Okuma: `If-Match` ve gövde yok. Sıra kimlik → modül → rol → sorgu (400) → core.
+      preValidation: [
+        app.authenticate,
+        ...(slotsModule === null ? [] : [app.requireModule(slotsModule)]),
+        app.requireRole(WRITE_ACTION_ROLES['appointment.slots']),
+      ],
+      schema: {
+        operationId: 'listBookableSlots',
+        tags: ['appointments'],
+        summary: 'Randevu alınabilecek saatleri listele',
+        description: `Öğrenci kendisi, veli seçili çocuğu (\`studentId\`) için öğrencinin sınıfına ders veren etkin öğretmenlerin gelecekteki uygunluk saatlerini okur (core \`bookableSlots\`, DOM-ILT-105). Aralık \`from\`–\`to\` (ISO 8601); verilmezse şimdiden itibaren 14 gün, \`to\` yalnız \`from\` ile verilir, en çok 28 gün (aşan, ters veya \`from\`suz aralık 400). Saat başına yalnız \`slotId\`, öğretmen ve adı, başlangıç, süre, varsa kampüs ve ders adları ile \`available\` döner; saatin iç notu, saati tutan randevu ve kişisi dönmez. \`available: false\` saatin talepte çakışma alacağını söyler (bekleyen/onaylı randevu ya da öğrencinin dersi, etüdü, randevusu, okul etkinliği; DOM-ILT-101) ve nedeni hiçbir durumda bildirilmez (DOM-ILT-073). Başka velinin çocuğu, kapsam dışı veya olmayan öğrenci olmayan kayıtla aynı 404 \`not_found\`; pasif öğrenci 422 \`student_inactive\`. Hiçbir şey yazılmaz. Modül \`communication\`. Roller: ${rolesOf('appointment.slots')}.`,
+        querystring: bookableSlotsQuerySchema,
+        response: {
+          200: bookableSlotsResponseSchema,
+          ...authenticatedErrors,
+          404: errorResponseSchema,
+          422: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => ({ data: await listBookableSlots(contextOf(request), request.query) }),
+  )
 
   typed.post(
     '/api/v1/appointments',

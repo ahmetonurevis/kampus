@@ -1744,6 +1744,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/appointments/slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Randevu alınabilecek saatleri listele
+         * @description Öğrenci kendisi, veli seçili çocuğu (`studentId`) için öğrencinin sınıfına ders veren etkin öğretmenlerin gelecekteki uygunluk saatlerini okur (core `bookableSlots`, DOM-ILT-105). Aralık `from`–`to` (ISO 8601); verilmezse şimdiden itibaren 14 gün, `to` yalnız `from` ile verilir, en çok 28 gün (aşan, ters veya `from`suz aralık 400). Saat başına yalnız `slotId`, öğretmen ve adı, başlangıç, süre, varsa kampüs ve ders adları ile `available` döner; saatin iç notu, saati tutan randevu ve kişisi dönmez. `available: false` saatin talepte çakışma alacağını söyler (bekleyen/onaylı randevu ya da öğrencinin dersi, etüdü, randevusu, okul etkinliği; DOM-ILT-101) ve nedeni hiçbir durumda bildirilmez (DOM-ILT-073). Başka velinin çocuğu, kapsam dışı veya olmayan öğrenci olmayan kayıtla aynı 404 `not_found`; pasif öğrenci 422 `student_inactive`. Hiçbir şey yazılmaz. Modül `communication`. Roller: `ogrenci`, `veli`.
+         */
+        get: operations["listBookableSlots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/appointments": {
         parameters: {
             query?: never;
@@ -3042,6 +3062,22 @@ export interface components {
             /** @description Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri */
             affectedContainerVersionIds: string[];
         };
+        BookableSlotInput: {
+            /** @description Uygunluk saati kimliği; talepte `slotId` olarak gönderilir */
+            slotId: string;
+            teacherId: string;
+            teacherName: string;
+            /** @description Başlangıç, ISO 8601 UTC */
+            startsAt: string;
+            /** @description Dakika */
+            duration: number;
+            /** @description Öğretmenin kampüsü; kayıt yoksa yok */
+            campusName?: string;
+            /** @description Öğretmenin öğrencinin sınıfında verdiği dersler, ada göre sıralı */
+            subjectNames: string[];
+            /** @description `false`: saat dolu ("Dolu"); neden hiçbir durumda bildirilmez (DOM-ILT-073) */
+            available: boolean;
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -3927,6 +3963,22 @@ export interface components {
             affectedCopyIds: string[];
             /** @description Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri */
             affectedContainerVersionIds: string[];
+        };
+        BookableSlot: {
+            /** @description Uygunluk saati kimliği; talepte `slotId` olarak gönderilir */
+            slotId: string;
+            teacherId: string;
+            teacherName: string;
+            /** @description Başlangıç, ISO 8601 UTC */
+            startsAt: string;
+            /** @description Dakika */
+            duration: number;
+            /** @description Öğretmenin kampüsü; kayıt yoksa yok */
+            campusName?: string;
+            /** @description Öğretmenin öğrencinin sınıfında verdiği dersler, ada göre sıralı */
+            subjectNames: string[];
+            /** @description `false`: saat dolu ("Dolu"); neden hiçbir durumda bildirilmez (DOM-ILT-073) */
+            available: boolean;
         };
     };
     responses: never;
@@ -13725,6 +13777,96 @@ export interface operations {
             };
             /** @description Default Response */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listBookableSlots: {
+        parameters: {
+            query: {
+                studentId: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Başlangıca göre sıralı; aralıkla sınırlı, sayfalanmaz */
+                        data: components["schemas"]["BookableSlot"][];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

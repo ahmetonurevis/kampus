@@ -220,8 +220,8 @@ describe('routeCommandErrors', () => {
     assert.deepEqual(result, { fields: [], toasts: ['Beklenmeyen hata.'] })
   })
 
-  test('DOM-YTK-001: 422 iş kuralı issues yolu (byPath) yalnız o alanın altında görünür', () => {
-    const error = new ApiError({
+  const subjectTeacherError = () =>
+    new ApiError({
       status: 422,
       code: 'subject_teacher_required',
       message: 'Matematik dersi için uygun branş öğretmeni seçin.',
@@ -233,14 +233,35 @@ describe('routeCommandErrors', () => {
         },
       ],
     })
-    const { fields, toasts } = route(error, {
+
+  test("DOM-YTK-001: byPath'siz formda yollu 422 alana yazılmaz, tek toast olur", () => {
+    const error = subjectTeacherError()
+    assert.deepEqual(commandFeedback(error).fieldIssues, [])
+    const { fields, toasts } = route(error, { fieldFor: () => undefined })
+    assert.deepEqual(fields, [])
+    assert.deepEqual(toasts, ['Matematik dersi için uygun branş öğretmeni seçin.'])
+  })
+
+  test("DOM-YTK-001: byPath'li formda yollu 422 tek alan yazımı olur, toast çıkmaz", () => {
+    const { fields, toasts } = route(subjectTeacherError(), {
       fieldFor: (e) => e.issues.find((issue) => issue.path.length > 0)?.path.join('.'),
     })
     assert.deepEqual(fields, [
       ['subjectTeachers.math', 'Matematik dersi için uygun branş öğretmeni seçin.'],
-      ['subjectTeachers.math', 'Matematik dersi için uygun branş öğretmeni seçin.'],
     ])
     assert.deepEqual(toasts, [])
+  })
+
+  test('400 validation_failed alan maddeleri kendiliğinden alana yazılır, toast da çıkar', () => {
+    const error = new ApiError({
+      status: 400,
+      code: 'validation_failed',
+      message: 'Formda düzeltilmesi gereken alanlar var.',
+      issues: [{ path: ['capacity'], code: 'too_big', message: 'En çok 40.' }],
+    })
+    const { fields, toasts } = route(error, { fieldFor: () => undefined })
+    assert.deepEqual(fields, [['capacity', 'En çok 40.']])
+    assert.deepEqual(toasts, ['Formda düzeltilmesi gereken alanlar var.'])
   })
 
   test('yolsuz 422 (issues yok) alana yazılmaz; toast olarak kalır', () => {

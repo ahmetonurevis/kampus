@@ -12,13 +12,7 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { collectionQueryFromList, sortableColumns } from '@/lib/collection-list.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { ClassSubjectFilters, filterValue, useClassSubjectFilters } from './LearningFilters.tsx'
-import {
-  learningLookups,
-  QUIZ_LIST,
-  teacherQuizRow,
-  uniqueValues,
-  type TeacherQuizRow,
-} from './learning-rows.ts'
+import { QUIZ_LIST, teacherQuizRow, uniqueValues, type TeacherQuizRow } from './learning-rows.ts'
 import { QuizResultsPanel } from './QuizResultsPanel.tsx'
 
 const URL_FILTERS = { classId: 'sinif', subjectId: 'ders' }
@@ -28,20 +22,16 @@ const NONE: readonly never[] = []
 
 /**
  * Quiz Oluştur (öğretmen, Vue `Learning.vue` `/quiz-olustur`): kapsamdaki sınıfların quizleri
- * sunucu sayfalı; soru sayısı, çözen sayısı ve sınıf ortalaması. Ortalama, sayfadaki quizlerin
- * denemelerinin cevaplarından core `gradeQuiz` ile soru bankasına karşı hesaplanır. Yalnız okuma.
+ * sunucu sayfalı; soru sayısı, çözen sayısı ve sınıf ortalaması. Sınıf adı satırın `joined`
+ * alanından gelir. Ortalama, sayfadaki quizlerin denemelerinin cevaplarından core `gradeQuiz` ile
+ * soru bankasına karşı hesaplanır. Yalnız okuma.
  * TODO(api-quiz-write): quiz oluşturma ve soru seçimi yazma ucuyla gelir; soru bankası ayrı görevdir.
- * TODO(api-aggregate): ortalama sayfadaki quizlerin denemelerinden istemcide hesaplanır; toplu uç
- * gelince tek sorguya iner.
+ * TODO(api-aggregate): ortalama (cevaptan puan hesabı gerekir) sayfadaki quizlerin
+ * denemelerinden istemcide hesaplanır; sunucu ortalaması gelince tek sorguya iner.
  */
 export function TeacherQuizzesPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const classes = useCoreAll('classes')
-  const students = useCoreAll('students')
-  const lookups = useMemo(
-    () => learningLookups(classes.data ?? NONE, students.data ?? NONE),
-    [classes.data, students.data],
-  )
   const filters = useClassSubjectFilters(classes.data ?? NONE)
 
   const list = useListState('quizler', { urlFilters: URL_FILTERS })
@@ -72,8 +62,8 @@ export function TeacherQuizzesPage({ page }: { page: NavPage }) {
     if (!pageRows) return undefined
     const records = attempts.data?.map((row) => row.record) ?? NONE
     const questions = bank.data?.map((row) => row.record) ?? NONE
-    return pageRows.map((item) => teacherQuizRow(item, records, questions, lookups))
-  }, [pageRows, attempts.data, bank.data, lookups])
+    return pageRows.map((item) => teacherQuizRow(item, records, questions))
+  }, [pageRows, attempts.data, bank.data])
 
   const panel = useDetailPanel('quiz')
   const openQuiz = panel.open
@@ -130,7 +120,7 @@ export function TeacherQuizzesPage({ page }: { page: NavPage }) {
     [openQuiz, ready],
   )
 
-  const error = quizzes.error ?? classes.error ?? students.error
+  const error = quizzes.error ?? classes.error
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
@@ -163,7 +153,6 @@ export function TeacherQuizzesPage({ page }: { page: NavPage }) {
                 onRetry={() => {
                   if (quizzes.error) void quizzes.refetch()
                   if (classes.error) void classes.refetch()
-                  if (students.error) void students.refetch()
                 }}
               />
             ) : undefined
@@ -171,7 +160,7 @@ export function TeacherQuizzesPage({ page }: { page: NavPage }) {
           onRowClick={(row) => openQuiz(row.id)}
           externalActive={classId !== '' || subjectId !== ''}
           externalLabel={[
-            classId ? `Sınıf: ${lookups.classes.get(classId)?.name ?? classId}` : '',
+            classId ? `Sınıf: ${filters.className(classId)}` : '',
             subjectId ? `Ders: ${filters.subjectName(subjectId)}` : '',
           ]
             .filter(Boolean)
@@ -190,7 +179,7 @@ export function TeacherQuizzesPage({ page }: { page: NavPage }) {
           }
         />
       </section>
-      <QuizResultsPanel quizId={panel.selectedId} lookups={lookups} onClose={panel.close} />
+      <QuizResultsPanel quizId={panel.selectedId} onClose={panel.close} />
     </>
   )
 }

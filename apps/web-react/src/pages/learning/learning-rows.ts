@@ -1,6 +1,6 @@
 // Öğrenme okuma ekranlarının (ödev, teslim durumu, materyal, quiz) satır ve özet hesapları
-// (Vue `Learning.vue`). Saf işlevlerdir: API satırları ve başvuru eşlemeleri girer, tablo satırı
-// ve özet çıkar. Ödev durumu ve quiz puanı core'dan gelir (`homeworkStatus`, `gradeQuiz`); burada
+// (Vue `Learning.vue`). Saf işlevlerdir: API satırları girer (sınıf adı satırın `joined`
+// alanındandır), tablo satırı ve özet çıkar. Ödev durumu ve quiz puanı core'dan gelir (`homeworkStatus`, `gradeQuiz`); burada
 // yeniden yazılmaz ve saklanmaz.
 import { gradeQuiz } from '@kampus/school-core/lib/domain.ts'
 import { average, homeworkStatus } from '@kampus/school-core/lib/format.ts'
@@ -14,7 +14,6 @@ type Attempt = CoreRecord<'quizAttempts'>
 type Material = CoreRecord<'materials'>
 type BankQuestion = CoreRecord<'bank'>
 type Student = CoreRecord<'students'>
-type SchoolClass = CoreRecord<'classes'>
 
 /** Sunucunun sıralayabildiği ve süzebildiği alanlar (api-tasarimi.md §3 beyaz liste). */
 export const HOMEWORK_LIST = {
@@ -40,32 +39,13 @@ export const MATERIAL_LIST = {
   defaultSort: ['title', 'id'],
 } satisfies CollectionListConfig
 
-export type LearningLookups = {
-  classes: ReadonlyMap<string, SchoolClass>
-  /** Sınıf kimliği → o sınıfın aktif öğrencileri (ad sırasıyla). */
-  studentsByClass: ReadonlyMap<string, readonly Student[]>
+/** Bir sınıfın aktif öğrencileri, ad sırasıyla (Türkçe). */
+export function activeRoster(students: readonly CoreRow<'students'>[]): Student[] {
+  return students
+    .map((row) => row.record)
+    .filter((student) => student.isActive !== false)
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
 }
-
-export function learningLookups(
-  classes: readonly CoreRow<'classes'>[],
-  students: readonly CoreRow<'students'>[],
-): LearningLookups {
-  const byClass = new Map<string, Student[]>()
-  for (const { record } of students) {
-    if (record.isActive === false) continue
-    const list = byClass.get(record.classId)
-    if (list) list.push(record)
-    else byClass.set(record.classId, [record])
-  }
-  for (const list of byClass.values()) list.sort((a, b) => a.name.localeCompare(b.name, 'tr'))
-  return {
-    classes: new Map(classes.map((row) => [row.record.id, row.record])),
-    studentsByClass: byClass,
-  }
-}
-
-const className = (lookups: LearningLookups, classId: string) =>
-  lookups.classes.get(classId)?.name ?? '—'
 
 /** `Ödev durumu` etiketleri core `homeworkStatus` çıktısıdır. */
 export type HomeworkStatus = ReturnType<typeof homeworkStatus>
@@ -107,7 +87,7 @@ export function homeworkRow(
   }
 }
 
-/** Öğretmen listesi satırı: sınıfın teslim sayıları. */
+/** Öğretmen listesi satırı: sınıfın teslim sayıları (sunucu sayımından). */
 export type TeacherHomeworkRow = {
   id: string
   title: string
@@ -121,21 +101,18 @@ export type TeacherHomeworkRow = {
 
 export function teacherHomeworkRow(
   item: CoreRow<'homework'>,
-  submissions: readonly SubmissionRef[],
-  lookups: LearningLookups,
-  now: Date,
+  counts: { delivered: number; total: number },
 ): TeacherHomeworkRow {
   const homework = item.record
-  const summary = deliverySummary(homework, submissions, lookups.studentsByClass, now)
   return {
     id: homework.id,
     title: homework.title,
     subject: homework.subject,
     classId: homework.classId,
-    className: className(lookups, homework.classId),
+    className: item.joined?.className ?? '—',
     dueDate: homework.dueDate,
-    delivered: summary.delivered,
-    total: summary.total,
+    delivered: counts.delivered,
+    total: counts.total,
   }
 }
 
@@ -160,17 +137,17 @@ export type DeliverySummary = {
 }
 
 /**
- * Teslim durumu özeti. Her öğrencinin durumu core `homeworkStatus`'tan gelir; yalnız sınıfın
- * öğrencileri sayılır (ödev başka sınıfın teslimini içermez).
+ * Teslim durumu özeti. Her öğrencinin durumu core `homeworkStatus`'tan gelir; `roster` ödevin
+ * sınıfının aktif öğrencileridir (ödev başka sınıfın teslimini içermez).
  */
 export function deliverySummary(
   homework: Pick<Homework, 'id' | 'classId' | 'dueDate'>,
   submissions: readonly SubmissionRef[],
-  studentsByClass: ReadonlyMap<string, readonly Student[]>,
+  roster: readonly Student[],
   now: Date,
 ): DeliverySummary {
   const own = submissions.filter((entry) => entry.homeworkId === homework.id)
-  const students = (studentsByClass.get(homework.classId) ?? []).map((student): DeliveryEntry => ({
+  const students = roster.map((student): DeliveryEntry => ({
     studentId: student.id,
     name: student.name,
     status: homeworkStatus(homework, own, student.id, now),
@@ -253,7 +230,6 @@ export function teacherQuizRow(
   item: CoreRow<'quizzes'>,
   attempts: readonly CoreRecord<'quizAttempts'>[],
   bank: readonly BankQuestion[],
-  lookups: LearningLookups,
 ): TeacherQuizRow {
   const quiz = item.record
   const own = attempts.filter((attempt) => attempt.quizId === quiz.id)
@@ -262,7 +238,7 @@ export function teacherQuizRow(
     id: quiz.id,
     title: quiz.title,
     subject: quiz.subject,
-    className: className(lookups, quiz.classId),
+    className: item.joined?.className ?? '—',
     questions: quiz.questionIds.length,
     duration: quiz.duration,
     solved: own.length,

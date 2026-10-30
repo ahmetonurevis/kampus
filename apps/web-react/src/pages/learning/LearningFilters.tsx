@@ -23,6 +23,7 @@ export function useClassSubjectFilters(classes: readonly CoreRow<'classes'>[]) {
       classOptions,
       subjectOptions,
       subjectName: (id: string) => subjectOptions.find((option) => option.id === id)?.name ?? id,
+      className: (id: string) => classOptions.find((option) => option.id === id)?.name ?? id,
     }
   }, [classes, subjects.data])
 }

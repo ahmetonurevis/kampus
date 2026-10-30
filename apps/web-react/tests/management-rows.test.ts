@@ -11,6 +11,7 @@ import {
   isArchiveView,
   managementLookups,
   recordStatus,
+  studentCountsByClass,
   teacherCsvRow,
   teacherRow,
   type ManagementSources,
@@ -29,13 +30,23 @@ const wrap = <T extends { id: string }>(records: readonly T[]) =>
     record,
   }))
 
+/** Sunucu `counts?groupBy=classId&isActive=true` yanıtının seed'den karşılığı. */
+function activeStudentCounts() {
+  const byClass = new Map<string, number>()
+  for (const student of createSeed(NOW).students)
+    if (student.isActive) byClass.set(student.classId, (byClass.get(student.classId) ?? 0) + 1)
+  return studentCountsByClass({
+    total: [...byClass.values()].reduce((sum, count) => sum + count, 0),
+    groups: [...byClass].map(([value, count]) => ({ value, count })),
+  })
+}
+
 function sources(): ManagementSources {
   const seed = createSeed(NOW)
   return {
     branches: wrap(seed.branches),
     classes: wrap(seed.classes),
     teachers: wrap(seed.teachers),
-    students: wrap(seed.students),
     assignments: wrap(seed.assignments),
     subjects: wrap(seed.subjects),
   }
@@ -43,7 +54,7 @@ function sources(): ManagementSources {
 
 test('sınıf satırı kampüs, danışman, aktif öğrenci ve ders sayısını eşlemeden alır', () => {
   const data = sources()
-  const lookups = managementLookups(data)
+  const lookups = managementLookups(data, activeStudentCounts())
   const c1 = data.classes.find((row) => row.id === 'c1')!
   const row = classRow(c1, lookups)
   const seed = createSeed(NOW)
@@ -58,15 +69,45 @@ test('sınıf satırı kampüs, danışman, aktif öğrenci ve ders sayısını 
   assert.equal(classCsvRow(row).count, `${expectedCount} / ${c1.record.capacity}`)
 })
 
-test('arşivdeki öğrenci sayılmaz; lise sınıfı Lise olarak etiketlenir; eksik eşleme boş kalır', () => {
+test('sayım yanıtı sınıf kimliğine eşlenir; sınıfsız (null) grup ve eksik sınıf 0 kalır', () => {
+  const counts = studentCountsByClass({
+    total: 7,
+    groups: [
+      { value: 'c1', count: 5 },
+      { value: 'c2', count: 1 },
+      { value: null, count: 1 },
+    ],
+  })
+  assert.deepEqual(
+    [...counts],
+    [
+      ['c1', 5],
+      ['c2', 1],
+    ],
+  )
   const data = sources()
-  const c1Students = data.students.filter((row) => row.record.classId === 'c1')
-  const archived = { ...c1Students[0]!, record: { ...c1Students[0]!.record, isActive: false } }
-  data.students = data.students.map((row) => (row.id === archived.id ? archived : row))
-  const lookups = managementLookups(data)
-  const c1 = data.classes.find((row) => row.id === 'c1')!
-  assert.equal(classRow(c1, lookups).count, c1Students.length - 1)
+  const lookups = managementLookups(data, counts)
+  assert.equal(
+    classRow(
+      data.classes.find((row) => row.id === 'c1')!,
+      lookups,
+    ).count,
+    5,
+  )
+  assert.equal(
+    classRow(
+      data.classes.find((row) => row.id === 'c3')!,
+      lookups,
+    ).count,
+    0,
+  )
+  // Sayım gelmeden (bekleyen sorgu) satır kırılmaz.
+  assert.equal(classRow(data.classes[0]!, managementLookups(data)).count, 0)
+})
 
+test('lise sınıfı Lise olarak etiketlenir; eksik eşleme boş kalır', () => {
+  const data = sources()
+  const lookups = managementLookups(data, activeStudentCounts())
   const lise = data.classes.find((row) => row.record.grade >= 9)!
   const orphan = { ...lise, record: { ...lise.record, branchId: 'yok', teacherId: 'yok' } }
   const row = classRow(orphan, lookups)
@@ -97,7 +138,7 @@ test('öğretmen satırı aktif sınıflardaki dersleri listeler; dersi yoksa a�
 test('kampüs özeti yalnız aktif sınıf, öğrenci ve öğretmenleri sayar', () => {
   const data = sources()
   const seed = createSeed(NOW)
-  const lookups = managementLookups(data)
+  const lookups = managementLookups(data, activeStudentCounts())
   const [first] = campusSummaries(data, lookups)
   const b1Classes = seed.classes.filter((c) => c.branchId === 'b1')
   assert.equal(first!.id, 'b1')

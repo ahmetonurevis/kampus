@@ -69,6 +69,25 @@ export function useCollectionAll<TRecord>(
   })
 }
 
+/**
+ * Toplu sayım ve toplam (`GET /collections/:c/counts`): liste süzgeçleriyle aynı kapsamda grup
+ * başına sayı ve toplam. Toplam kartları ve sayımlar için; satırlar çekilmez.
+ */
+export function useCollectionCounts(
+  collection: string,
+  query: CollectionCountsQuery,
+  options: CollectionOptions = {},
+): UseQueryResult<CollectionCounts, ApiError> {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQuery<CollectionCounts, ApiError>({
+    queryKey: institutionKey(institutionId, ...collectionCountsKey(collection, query)),
+    queryFn: ({ signal }) => fetchCollectionCounts(client, collection, query, signal),
+    enabled: institutionId !== null && (options.enabled ?? true),
+    placeholderData: keepPreviousData,
+  })
+}
+
 /** Tek kayıt (detay paneli); `id` boşken istek atılmaz. */
 export function useCollectionItem<TRecord>(
   collection: string,
@@ -94,24 +113,6 @@ export function useCollectionFetchAll<TRecord>(collection: string) {
       fetchAllCollectionPages<TRecord>(client, collection, query),
     [client, collection],
   )
-}
-
-/**
- * Toplu sayım (`/counts`): sayaçlar ve dağılımlar bütün koleksiyon çekilmeden sunucuda sayılır.
- * Kapsam ve süzgeçler liste ucuyla aynıdır; anahtar etkin kurumla başlar.
- */
-export function useCollectionCounts(
-  collection: string,
-  query: CollectionCountsQuery,
-  options: CollectionOptions = {},
-): UseQueryResult<CollectionCounts, ApiError> {
-  const client = useKampusClient()
-  const institutionId = useActiveInstitutionId()
-  return useQuery<CollectionCounts, ApiError>({
-    queryKey: institutionKey(institutionId, ...collectionCountsKey(collection, query)),
-    queryFn: ({ signal }) => fetchCollectionCounts(client, collection, query, signal),
-    enabled: institutionId !== null && (options.enabled ?? true),
-  })
 }
 
 export interface CollectionCountSeries {

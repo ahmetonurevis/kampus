@@ -79,6 +79,26 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await expect(page).not.toHaveURL(/[?&]q=/)
   })
 
+  test('arama kampüs adıyla sınıf bulur; kampüs sütunu kampüs adına göre sıralanır', async ({
+    page,
+  }) => {
+    await page.goto(CLASSES_URL)
+    await page.getByLabel('Tabloda ara').fill('kadikoy')
+    await expect(page).toHaveURL(/[?&]q=kadikoy/)
+    await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
+    for (const row of await bodyRows(page, CLASS_TABLE).all())
+      await expect(row).toContainText(KADIKOY)
+
+    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
+    await expect(resultCount(page)).toContainText('/ 24 kayıt')
+    const header = tableOf(page, CLASS_TABLE).getByRole('columnheader', { name: /Kampüs/ })
+    await header.getByRole('button').click()
+    await expect(header).toHaveAttribute('aria-sort', 'ascending')
+    await expect(page).toHaveURL(/[?&]sirala=branch/)
+    // Alfabetik ilk kampüs Ataşehir'dir (Beşiktaş, Kadıköy sonra).
+    await expect(bodyRows(page, CLASS_TABLE).first()).toContainText('Ataşehir Kampüsü')
+  })
+
   test('sayfalama ilerler; kampüs filtresi sayfayı 1e döndürür', async ({ page }) => {
     await page.goto(CLASSES_URL)
     await expect(resultCount(page)).toContainText('1–8 / 24 kayıt')

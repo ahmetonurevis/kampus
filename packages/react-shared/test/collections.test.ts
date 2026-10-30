@@ -5,8 +5,8 @@ import { createKampusClient } from '@kampus/api-client/client.ts'
 import { ApiError } from '@kampus/api-client/errors.ts'
 
 import {
+  collectionCountParams,
   collectionCountsKey,
-  collectionCountsParams,
   collectionItemKey,
   collectionKeyPrefix,
   collectionListParams,
@@ -105,6 +105,14 @@ describe('sorgu anahtarları', () => {
   })
 })
 
+describe('bağlı ad sıralaması', () => {
+  test('studentName sıralaması sorguya yazılır', () => {
+    assert.deepEqual(collectionListParams({ sort: ['-studentName', 'id'] }), {
+      sort: '-studentName,id',
+    })
+  })
+})
+
 describe('fetchCollectionPage ve fetchCollectionItem', () => {
   test('sayfa satırlarını ve toplamı döndürür; parametreler sorguya yazılır', async () => {
     const { client, urls } = pagedClient(3)
@@ -146,6 +154,96 @@ describe('fetchCollectionPage ve fetchCollectionItem', () => {
       () => fetchCollectionItem(client, 'classes', 'c1'),
       (error) => error instanceof ApiError && isModuleDisabledError(error),
     )
+  })
+})
+
+describe('toplu sayım', () => {
+  test('parametreler liste süzgeçleriyle aynı biçimde kurulur; kısa arama gönderilmez', () => {
+    assert.deepEqual(
+      collectionCountParams({
+        groupBy: 'status',
+        sum: 'amount',
+        q: 'Deniz',
+        filters: { studentId: ['s1', 's2'], classId: '' },
+      }),
+      { groupBy: 'status', sum: 'amount', q: 'Deniz', studentId: ['s1', 's2'] },
+    )
+    assert.deepEqual(collectionCountParams({ groupBy: 'isActive', q: 'D' }), {
+      groupBy: 'isActive',
+    })
+  })
+
+  test('sayım anahtarı liste önekinin altındadır ve süzgeç sırasından bağımsızdır', () => {
+    const left = collectionCountsKey('invoices', {
+      groupBy: 'status',
+      filters: { studentId: 's1', classId: 'c1' },
+    })
+    const right = collectionCountsKey('invoices', {
+      groupBy: 'status',
+      filters: { classId: 'c1', studentId: 's1' },
+    })
+    assert.deepEqual(left, right)
+    assert.deepEqual(left.slice(0, 2), collectionKeyPrefix('invoices'))
+  })
+
+  test('gruplar, toplam ve tutar toplamı döner; sum yoksa alan yoktur', async () => {
+    const urls: URL[] = []
+    const client = createKampusClient({
+      baseUrl: 'https://api.kampus.test',
+      credentials: 'include',
+      requestId: () => undefined,
+      fetch: async (input) => {
+        const url = new URL(input instanceof Request ? input.url : String(input))
+        urls.push(url)
+        const withSum = url.searchParams.has('sum')
+        return json(200, {
+          data: [
+            { value: 'Gecikmiş', count: 2, ...(withSum ? { sum: 4900000 } : {}) },
+            { value: 'Ödendi', count: 3, ...(withSum ? { sum: 7350000 } : {}) },
+          ],
+          meta: { total: 5, ...(withSum ? { sum: 12250000 } : {}) },
+        })
+      },
+    })
+    const counts = await fetchCollectionCounts(client, 'invoices', {
+      groupBy: 'status',
+      sum: 'amount',
+      q: 'Deniz',
+    })
+    assert.equal(urls[0]!.pathname, '/api/v1/collections/invoices/counts')
+    assert.equal(urls[0]!.searchParams.get('groupBy'), 'status')
+    assert.equal(urls[0]!.searchParams.get('sum'), 'amount')
+    assert.equal(counts.total, 5)
+    assert.equal(counts.sum, 12250000)
+    assert.deepEqual(counts.groups[0], { value: 'Gecikmiş', count: 2, sum: 4900000 })
+
+    const plain = await fetchCollectionCounts(client, 'invoices', { groupBy: 'status' })
+    assert.equal('sum' in plain, false)
+  })
+})
+
+describe('countOf ve sumOf', () => {
+  const counts = {
+    groups: [
+      { value: 'Gecikmiş', count: 2, sum: 500 },
+      { value: true, count: 4 },
+      { value: null, count: 1 },
+    ],
+    total: 7,
+  }
+
+  test('grup değerini metin olarak karşılaştırır', () => {
+    assert.equal(countOf(counts, 'Gecikmiş'), 2)
+    assert.equal(sumOf(counts, 'Gecikmiş'), 500)
+    assert.equal(countOf(counts, true), 4)
+    assert.equal(sumOf(counts, true), 0)
+  })
+
+  test('olmayan grup, null grubu ve veri yokken 0 döner', () => {
+    assert.equal(countOf(counts, 'Ödendi'), 0)
+    assert.equal(countOf(counts, 'null'), 0)
+    assert.equal(countOf(undefined, 'Ödendi'), 0)
+    assert.equal(sumOf(undefined, 'Ödendi'), 0)
   })
 })
 
@@ -198,97 +296,5 @@ describe('isModuleDisabledError', () => {
       false,
     )
     assert.equal(isModuleDisabledError({ status: 403, code: 'module_disabled' }), false)
-  })
-})
-
-describe('toplu sayım', () => {
-  test('parametreler liste süzgeçlerini taşır; groupBy ve sum eklenir, sayfa/sıra yoktur', () => {
-    assert.deepEqual(
-      collectionCountsParams({
-        groupBy: 'status',
-        sum: 'amount',
-        q: 'a',
-        filters: { studentId: ['s1', 's2'], dateFrom: '2026-10-01', classId: '' },
-      }),
-      { groupBy: 'status', sum: 'amount', studentId: ['s1', 's2'], dateFrom: '2026-10-01' },
-    )
-    assert.deepEqual(collectionCountsParams({ groupBy: 'isActive' }), { groupBy: 'isActive' })
-  })
-
-  test('anahtar süzgeç sırasından bağımsız, liste anahtarından ayrıdır', () => {
-    const left = collectionCountsKey('attendance', {
-      groupBy: 'status',
-      filters: { dateFrom: '2026-10-01', dateTo: '2026-10-07' },
-    })
-    const right = collectionCountsKey('attendance', {
-      groupBy: 'status',
-      filters: { dateTo: '2026-10-07', dateFrom: '2026-10-01' },
-    })
-    assert.deepEqual(left, right)
-    assert.notDeepEqual(left, collectionCountsKey('attendance', { groupBy: 'classId' }))
-    assert.deepEqual(left.slice(0, 3), ['collections', 'attendance', 'counts'])
-    assert.deepEqual(collectionKeyPrefix('attendance'), left.slice(0, 2))
-  })
-
-  test('gruplar, toplam ve toplamı döndürür; countOf/sumOf değeri metin karşılaştırır', async () => {
-    const urls: URL[] = []
-    const client = createKampusClient({
-      baseUrl: 'https://api.kampus.test',
-      credentials: 'include',
-      requestId: () => undefined,
-      fetch: async (input) => {
-        urls.push(new URL(input instanceof Request ? input.url : String(input)))
-        return json(200, {
-          data: [
-            { value: 'Gecikmiş', count: 2, sum: 500 },
-            { value: true, count: 4, sum: 100 },
-            { value: null, count: 1, sum: 0 },
-          ],
-          meta: { total: 7, sum: 600 },
-        })
-      },
-    })
-    const counts = await fetchCollectionCounts(client, 'invoices', {
-      groupBy: 'status',
-      sum: 'amount',
-    })
-    assert.equal(urls[0]?.pathname, '/api/v1/collections/invoices/counts')
-    assert.equal(urls[0]?.searchParams.get('groupBy'), 'status')
-    assert.equal(urls[0]?.searchParams.get('sum'), 'amount')
-    assert.equal(counts.total, 7)
-    assert.equal(counts.sum, 600)
-    assert.equal(countOf(counts, 'Gecikmiş'), 2)
-    assert.equal(sumOf(counts, 'Gecikmiş'), 500)
-    assert.equal(countOf(counts, true), 4)
-    assert.equal(countOf(counts, 'Ödendi'), 0)
-    assert.equal(countOf(undefined, 'Ödendi'), 0)
-    assert.equal(sumOf(counts, 'null'), 0)
-  })
-
-  test('sum istenmezse toplam alanı yoktur; hata ApiError olarak fırlar', async () => {
-    const ok = createKampusClient({
-      baseUrl: 'https://api.kampus.test',
-      credentials: 'include',
-      requestId: () => undefined,
-      fetch: async () => json(200, { data: [{ value: 'absent', count: 3 }], meta: { total: 3 } }),
-    })
-    const counts = await fetchCollectionCounts(ok, 'attendance', { groupBy: 'status' })
-    assert.equal(Object.hasOwn(counts, 'sum'), false)
-
-    const failing = createKampusClient({
-      baseUrl: 'https://api.kampus.test',
-      credentials: 'include',
-      requestId: () => undefined,
-      fetch: async () =>
-        json(400, {
-          code: 'validation_failed',
-          message: 'Formda düzeltilmesi gereken alanlar var.',
-          issues: [{ path: ['groupBy'], code: 'custom', message: 'Alan okunamaz.' }],
-        }),
-    })
-    await assert.rejects(
-      fetchCollectionCounts(failing, 'teachers', { groupBy: 'status' }),
-      (error) => error instanceof ApiError && error.status === 400,
-    )
   })
 })

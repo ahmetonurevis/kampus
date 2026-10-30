@@ -1,7 +1,7 @@
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
-import { useCoreItem } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import { recordStatus, type ManagementLookups } from './management-rows.ts'
 import {
   SummaryHeader,
@@ -43,10 +43,17 @@ export function ClassSummaryPanel({ classId, lookups, onClose }: Props) {
 
 function ClassSummary({ classId, lookups }: Omit<Props, 'onClose'>) {
   const item = useCoreItem('classes', classId)
+  // Sınıfın aktif öğrencileri okul numarası sırasıyla; panel açılınca yalnız o sınıf çekilir.
+  const studentList = useCoreAll('students', {
+    filters: { classId, isActive: 'true' },
+    sort: ['number'],
+  })
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
-  if (!item.data) return <SummaryLoading />
+  if (studentList.error)
+    return <QueryError error={studentList.error} onRetry={() => void studentList.refetch()} />
+  if (!item.data || !studentList.data) return <SummaryLoading />
   const record = item.data.record
-  const students = lookups.studentsByClass.get(record.id) ?? []
+  const students = studentList.data.map((row) => row.record)
   const assignments = lookups.assignmentsByClass.get(record.id) ?? []
   const branch = lookups.branches.get(record.branchId)?.name ?? '—'
   return (

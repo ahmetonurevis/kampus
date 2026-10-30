@@ -52,9 +52,9 @@ export function useCoreFetchAll<K extends CoreCollection>(collection: K) {
   return useCollectionFetchAll<CoreRecord<K>>(collection)
 }
 
-/** Sunucuda toplu sayım (sayaç, dağılım); koleksiyon istemciye çekilmez. */
-export function useCoreCounts(
-  collection: CoreCollection,
+/** Toplu sayım ve toplam (toplam kartları, sayımlar); satırlar çekilmez. */
+export function useCoreCounts<K extends CoreCollection>(
+  collection: K,
   query: CollectionCountsQuery,
   options: { enabled?: boolean } = {},
 ) {
@@ -62,8 +62,8 @@ export function useCoreCounts(
 }
 
 /** Aynı koleksiyonda sıralı sayımlar (haftalık dilimler gibi). */
-export function useCoreCountSeries(
-  collection: CoreCollection,
+export function useCoreCountSeries<K extends CoreCollection>(
+  collection: K,
   queries: readonly CollectionCountsQuery[],
   options: { enabled?: boolean } = {},
 ) {

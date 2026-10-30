@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { AuthClientError } from '../src/auth/sign-in-errors.ts'
+import type { AuthClientError } from '@kampus/react-shared/sign-in-errors.ts'
 import {
   createBetterAuthPort,
   SignOutError,

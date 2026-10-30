@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { subjectAverages } from '@kampus/school-core/lib/grades.ts'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import {
@@ -21,7 +22,7 @@ import {
   overallAverage,
   scoreText,
   scoreTone,
-  subjectAverages,
+  withSubjectNames,
   teacherClassRow,
   weekDays,
   weekStart,
@@ -58,7 +59,11 @@ const subjects = new Map([
   ['eng', { name: 'İngilizce' }],
   ['art', { name: 'Görsel Sanatlar' }],
 ])
-const grade = (subjectId: string, score: number, subject = subjectId) => ({
+const grade = (
+  subjectId: string,
+  score: number,
+  subject = subjects.get(subjectId)?.name ?? subjectId,
+) => ({
   subjectId,
   subject,
   score,
@@ -67,29 +72,26 @@ const grade = (subjectId: string, score: number, subject = subjectId) => ({
 // --- Ders ve genel ortalama ---------------------------------------------------
 
 test('notu olmayan öğrencide ders ve genel ortalama boş/0 döner', () => {
-  assert.deepEqual(subjectAverages([], subjects), [])
+  assert.deepEqual(subjectAverages([]), [])
   assert.equal(overallAverage([]), 0)
 })
 
 test('tek notlu derste ortalama o nottur ve sayı 1 olur', () => {
-  assert.deepEqual(subjectAverages([grade('math', 73)], subjects), [
+  assert.deepEqual(subjectAverages([grade('math', 73)]), [
     { subjectId: 'math', name: 'Matematik', average: 73, count: 1 },
   ])
   assert.equal(overallAverage([{ score: 73 }]), 73)
 })
 
 test('karışık derslerde ders ortalaması yuvarlanır, Türkçe ad sırasıyla dizilir', () => {
-  const result = subjectAverages(
-    [
-      grade('math', 80),
-      grade('eng', 90),
-      grade('math', 55),
-      grade('art', 61),
-      grade('math', 70),
-      grade('eng', 71),
-    ],
-    subjects,
-  )
+  const result = subjectAverages([
+    grade('math', 80),
+    grade('eng', 90),
+    grade('math', 55),
+    grade('art', 61),
+    grade('math', 70),
+    grade('eng', 71),
+  ])
   assert.deepEqual(
     result.map((item) => item.name),
     ['Görsel Sanatlar', 'İngilizce', 'Matematik'],
@@ -109,13 +111,27 @@ test('genel ortalama bütün notların ortalamasıdır, ders ortalamalarının d
   // Tüm notlar: 340 / 4 = 85. Ders ortalamalarının ortalaması (100 + 40) / 2 = 70 olurdu.
   assert.equal(overallAverage(grades), 85)
   assert.deepEqual(
-    subjectAverages(grades, subjects).map((item) => item.average),
+    subjectAverages(grades).map((item) => item.average),
     [40, 100],
   )
 })
 
-test('ders kaydı eşlemede yoksa notun kendi ders adı kullanılır', () => {
-  assert.equal(subjectAverages([grade('x', 50, 'Satranç')], subjects)[0]!.name, 'Satranç')
+test('ders adı güncel ders kaydından gösterilir; eşlemede yoksa notun adı kalır, sıra yenilenir', () => {
+  const averages = subjectAverages([
+    grade('math', 50, 'Mat.'),
+    grade('eng', 70, 'Eng'),
+    grade('x', 60, 'Satranç'),
+  ])
+  const named = withSubjectNames(averages, subjects)
+  assert.deepEqual(
+    named.map((item) => [item.subjectId, item.name]),
+    [
+      ['eng', 'İngilizce'],
+      ['math', 'Matematik'],
+      ['x', 'Satranç'],
+    ],
+  )
+  assert.deepEqual(withSubjectNames([], subjects), [])
 })
 
 test('başarı rozeti 65 altında dikkat, 65 ve üstünde yeşil olur', () => {

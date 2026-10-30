@@ -6,6 +6,7 @@ import { ApiError } from '@kampus/api-client/errors.ts'
 import {
   cacheActionFor,
   clearInstitutionCache,
+  clearSessionData,
   createKampusQueryClient,
   DEFAULT_STALE_TIME_MS,
   shouldRetry,
@@ -111,41 +112,47 @@ describe('clearInstitutionCache', () => {
 })
 
 describe('cacheActionFor', () => {
-  const inA = { authenticated: true, institutionId: 'a' }
+  const inA = { authenticated: true, userId: 'u1', institutionId: 'a' }
+  const idle = { authenticated: false, userId: null, institutionId: null }
 
   test('oturum kapanınca her şey silinir', () => {
-    assert.equal(cacheActionFor(inA, { authenticated: false, institutionId: null }), 'clear-all')
+    assert.equal(cacheActionFor(inA, idle), 'clear-all')
+  })
+
+  test('arada unauthenticated görülmeden kullanıcı A→B olursa her şey silinir', () => {
+    // Aynı kurum, authenticated true→true: yalnız kullanıcı kimliği değişir.
+    assert.equal(cacheActionFor(inA, { ...inA, userId: 'u2' }), 'clear-all')
+    assert.equal(cacheActionFor(inA, { ...inA, userId: 'u2', institutionId: 'b' }), 'clear-all')
+  })
+
+  test('aynı kullanıcıda yenilemede önbellek korunur', () => {
+    assert.equal(cacheActionFor(inA, { ...inA }), 'none')
   })
 
   test('kurum değişince kuruma bağlı sorgular silinir', () => {
-    assert.equal(
-      cacheActionFor(inA, { authenticated: true, institutionId: 'b' }),
-      'clear-institution',
-    )
+    assert.equal(cacheActionFor(inA, { ...inA, institutionId: 'b' }), 'clear-institution')
   })
 
   test('üyelik kalkıp etkin kurum kaybolursa kuruma bağlı sorgular silinir', () => {
-    assert.equal(
-      cacheActionFor(inA, { authenticated: true, institutionId: null }),
-      'clear-institution',
-    )
+    assert.equal(cacheActionFor(inA, { ...inA, institutionId: null }), 'clear-institution')
   })
 
-  test('değişiklik yoksa ve ilk kurum atanırken dokunulmaz', () => {
-    assert.equal(cacheActionFor(inA, inA), 'none')
-    assert.equal(
-      cacheActionFor(
-        { authenticated: true, institutionId: null },
-        { authenticated: true, institutionId: 'a' },
-      ),
-      'none',
-    )
-    assert.equal(
-      cacheActionFor(
-        { authenticated: false, institutionId: null },
-        { authenticated: false, institutionId: null },
-      ),
-      'none',
-    )
+  test('ilk girişte, ilk kurum atanırken ve boştayken dokunulmaz', () => {
+    assert.equal(cacheActionFor(idle, inA), 'none')
+    assert.equal(cacheActionFor({ ...inA, institutionId: null }, inA), 'none')
+    assert.equal(cacheActionFor(idle, idle), 'none')
+  })
+})
+
+describe('clearSessionData', () => {
+  test('kuruma bağlı veriyi siler, oturum sorgusunu (/me) korur', async () => {
+    const queryClient = createKampusQueryClient()
+    queryClient.setQueryData(ME_QUERY_KEY, { user: { id: 'u1' } })
+    queryClient.setQueryData(institutionKey('a', 'classes'), ['A sınıfı'])
+    queryClient.setQueryData(institutionKey('a', 'grades'), ['A notu'])
+    await clearSessionData(queryClient)
+    assert.equal(queryClient.getQueryData(institutionKey('a', 'classes')), undefined)
+    assert.equal(queryClient.getQueryData(institutionKey('a', 'grades')), undefined)
+    assert.deepEqual(queryClient.getQueryData(ME_QUERY_KEY), { user: { id: 'u1' } })
   })
 })

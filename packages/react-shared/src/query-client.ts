@@ -2,7 +2,7 @@ import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 
 import { isApiError } from '@kampus/api-client/errors.ts'
 
-import { isInstitutionKey } from './query-keys.ts'
+import { isInstitutionKey, SESSION_KEY_ROOT } from './query-keys.ts'
 
 /** Taze sayılma süresi; liste ekranları arasında gezinirken gereksiz yeniden istek atılmaz. */
 export const DEFAULT_STALE_TIME_MS = 30_000
@@ -57,17 +57,33 @@ export type CacheAction = 'none' | 'clear-institution' | 'clear-all'
 
 export interface CacheSnapshot {
   authenticated: boolean
+  /** Better Auth oturumunun kullanıcısı; oturum yokken `null`. */
+  userId: string | null
   institutionId: string | null
 }
 
 /**
- * Oturum veya etkin kurum değişince önbelleğe ne yapılacağı. Oturum kapanırsa her şey silinir
+ * Oturum, kullanıcı veya etkin kurum değişince önbelleğe ne yapılacağı. Oturum kapanırsa ya da
+ * kullanıcı kimliği değişirse (A→B, arada `unauthenticated` görülmese de) her şey silinir
  * (sonraki kullanıcı öncekinin verisini görmesin); kurum değişirse yalnız kuruma bağlı sorgular.
  */
 export function cacheActionFor(previous: CacheSnapshot, next: CacheSnapshot): CacheAction {
   if (previous.authenticated && !next.authenticated) return 'clear-all'
+  if (previous.userId !== null && previous.userId !== next.userId) return 'clear-all'
   if (previous.institutionId !== null && previous.institutionId !== next.institutionId) {
     return 'clear-institution'
   }
   return 'none'
+}
+
+/**
+ * Oturum kullanıcı çıkış yapmadan kapandığında (ör. `/me` 401) kuruma bağlı verinin tamamını
+ * siler; Better Auth durumu henüz `authenticated` kalsa bile sonraki girişe sızmaz. Oturum
+ * sorgusu (`/me`) kalır: yeniden istek atmadan 401 durumu korunur.
+ */
+export async function clearSessionData(queryClient: QueryClient): Promise<void> {
+  const predicate = (query: { queryKey: readonly unknown[] }) =>
+    query.queryKey[0] !== SESSION_KEY_ROOT
+  await queryClient.cancelQueries({ predicate })
+  queryClient.removeQueries({ predicate })
 }

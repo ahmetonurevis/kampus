@@ -59,7 +59,7 @@ function CampusDetail({ campusId, campuses, lookups }: Omit<Props, 'onClose'>) {
           items={(summary?.classes ?? []).map((schoolClass) => ({
             key: schoolClass.id,
             label: schoolClass.name,
-            value: `${lookups.studentsByClass.get(schoolClass.id)?.length ?? 0} / ${schoolClass.capacity} öğrenci · Derslik ${schoolClass.room}`,
+            value: `${lookups.studentCounts.get(schoolClass.id) ?? 0} / ${schoolClass.capacity} öğrenci · Derslik ${schoolClass.room}`,
           }))}
         />
       </SummarySection>

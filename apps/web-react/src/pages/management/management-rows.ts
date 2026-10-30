@@ -1,11 +1,11 @@
 // Kampüs, sınıf ve kadro ekranlarının satır hesapları (Vue `SchoolManagement.vue`). Saf
 // işlevlerdir: API satırları ve başvuru koleksiyonlarının eşlemeleri girer, tablo/CSV satırı çıkar.
+import type { CollectionCounts } from '@kampus/react-shared/collections.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
 
 type Branch = CoreRecord<'branches'>
 type Teacher = CoreRecord<'teachers'>
 type SchoolClass = CoreRecord<'classes'>
-type Student = CoreRecord<'students'>
 type Assignment = CoreRecord<'assignments'>
 type Subject = CoreRecord<'subjects'>
 
@@ -13,7 +13,6 @@ export type ManagementSources = {
   branches: readonly CoreRow<'branches'>[]
   classes: readonly CoreRow<'classes'>[]
   teachers: readonly CoreRow<'teachers'>[]
-  students: readonly CoreRow<'students'>[]
   assignments: readonly CoreRow<'assignments'>[]
   subjects: readonly CoreRow<'subjects'>[]
 }
@@ -24,8 +23,8 @@ export type ManagementLookups = {
   classes: ReadonlyMap<string, SchoolClass>
   teachers: ReadonlyMap<string, Teacher>
   subjects: ReadonlyMap<string, Subject>
-  /** Sınıftaki aktif öğrenciler (okul numarası sırasıyla). */
-  studentsByClass: ReadonlyMap<string, readonly Student[]>
+  /** Sınıftaki aktif öğrenci sayısı (sunucu `counts?groupBy=classId`); sınıfsız kayıt yok. */
+  studentCounts: ReadonlyMap<string, number>
   assignmentsByClass: ReadonlyMap<string, readonly Assignment[]>
   assignmentsByTeacher: ReadonlyMap<string, readonly Assignment[]>
 }
@@ -45,17 +44,25 @@ function groupBy<T>(items: readonly T[], key: (item: T) => string): Map<string, 
   return groups
 }
 
-export function managementLookups(sources: ManagementSources): ManagementLookups {
-  const activeStudents = sources.students
-    .map((row) => row.record)
-    .filter((student) => student.isActive)
+/** `students` için `counts?groupBy=classId&isActive=true` yanıtı → sınıf kimliği → aktif öğrenci sayısı. */
+export function studentCountsByClass(counts: CollectionCounts): Map<string, number> {
+  const byClass = new Map<string, number>()
+  for (const group of counts.groups)
+    if (typeof group.value === 'string') byClass.set(group.value, group.count)
+  return byClass
+}
+
+export function managementLookups(
+  sources: ManagementSources,
+  studentCounts: ReadonlyMap<string, number> = new Map(),
+): ManagementLookups {
   const assignments = sources.assignments.map((row) => row.record)
   return {
     branches: byId(sources.branches),
     classes: byId(sources.classes),
     teachers: byId(sources.teachers),
     subjects: byId(sources.subjects),
-    studentsByClass: groupBy(activeStudents, (student) => student.classId),
+    studentCounts,
     assignmentsByClass: groupBy(assignments, (assignment) => assignment.classId),
     assignmentsByTeacher: groupBy(assignments, (assignment) => assignment.teacherId),
   }
@@ -104,7 +111,7 @@ export function classRow(item: CoreRow<'classes'>, lookups: ManagementLookups): 
     grade: record.grade,
     branch: lookups.branches.get(record.branchId)?.name ?? '',
     teacher: lookups.teachers.get(record.teacherId)?.name ?? '',
-    count: lookups.studentsByClass.get(record.id)?.length ?? 0,
+    count: lookups.studentCounts.get(record.id) ?? 0,
     capacity: record.capacity,
     lessons: lookups.assignmentsByClass.get(record.id)?.length ?? 0,
     status: recordStatus(record),
@@ -192,7 +199,7 @@ export function campusSummaries(
       status: recordStatus(record),
       classes: own,
       students: own.reduce(
-        (sum, schoolClass) => sum + (lookups.studentsByClass.get(schoolClass.id)?.length ?? 0),
+        (sum, schoolClass) => sum + (lookups.studentCounts.get(schoolClass.id) ?? 0),
         0,
       ),
       teachers: teachers.get(record.id)?.length ?? 0,

@@ -73,11 +73,11 @@ describe('uygulama modu', () => {
       kind: 'api',
       url: 'https://api.ornek.test',
     })
-    assert.deepEqual(resolveAppMode(' http://127.0.0.1:3080 '), {
+    assert.deepEqual(resolveAppMode(' http://127.0.0.1:3080 ', true), {
       kind: 'api',
       url: 'http://127.0.0.1:3080',
     })
-    assert.equal(parseApiUrl('http://[::1]:3080/kampus//'), 'http://[::1]:3080/kampus')
+    assert.equal(parseApiUrl('http://[::1]:3080/kampus//', true), 'http://[::1]:3080/kampus')
   })
 
   test('geçersiz adres demoyu sessizce açmaz, yapılandırma hatası verir', () => {
@@ -91,9 +91,36 @@ describe('uygulama modu', () => {
       'http://127.0.0.1:70000',
       'https://api ornek.test',
     ]) {
-      assert.deepEqual(resolveAppMode(raw), { kind: 'invalid' }, raw)
-      assert.equal(parseApiUrl(raw), null, raw)
+      for (const dev of [false, true]) {
+        assert.deepEqual(resolveAppMode(raw, dev), { kind: 'invalid' }, raw)
+        assert.equal(parseApiUrl(raw, dev), null, raw)
+      }
     }
+  })
+
+  test('üretimde http geçersiz, https geçerlidir', () => {
+    for (const raw of ['http://127.0.0.1:3080', 'http://10.0.2.2:3080', 'HTTP://api.ornek.test']) {
+      assert.deepEqual(resolveAppMode(raw, false), { kind: 'invalid' }, raw)
+      assert.equal(parseApiUrl(raw, false), null, raw)
+    }
+    assert.deepEqual(resolveAppMode('https://api.ornek.test', false), {
+      kind: 'api',
+      url: 'https://api.ornek.test',
+    })
+  })
+
+  test('geliştirmede yerel ve LAN http adresleri geçerlidir', () => {
+    for (const raw of [
+      'http://127.0.0.1:3080',
+      'http://10.0.2.2:3080',
+      'http://192.168.1.20:3080',
+    ]) {
+      assert.deepEqual(resolveAppMode(raw, true), { kind: 'api', url: raw }, raw)
+    }
+  })
+
+  test('bayrak verilmezse (birim ortamında __DEV__ yok) üretim sayılır', () => {
+    assert.deepEqual(resolveAppMode('http://127.0.0.1:3080'), { kind: 'invalid' })
   })
 })
 
@@ -238,8 +265,8 @@ describe('kurum değişimi', () => {
     queryClient.setQueryData(institutionKey('test-inst-a', 'students'), ['ogrenci'])
     queryClient.setQueryData(ME_QUERY_KEY, me())
     const action = cacheActionFor(
-      { authenticated: true, institutionId: 'test-inst-a' },
-      { authenticated: true, institutionId: 'test-inst-b' },
+      { authenticated: true, userId: 'test-user-a', institutionId: 'test-inst-a' },
+      { authenticated: true, userId: 'test-user-a', institutionId: 'test-inst-b' },
     )
     assert.equal(action, 'clear-institution')
     await clearInstitutionCache(queryClient)
@@ -255,11 +282,23 @@ describe('kurum değişimi', () => {
   test('oturum kapanınca önbelleğin tamamı silinir', () => {
     assert.equal(
       cacheActionFor(
-        { authenticated: true, institutionId: 'test-inst-a' },
-        { authenticated: false, institutionId: null },
+        { authenticated: true, userId: 'test-user-a', institutionId: 'test-inst-a' },
+        { authenticated: false, userId: null, institutionId: null },
       ),
       'clear-all',
     )
+  })
+
+  test('/me 401 sonrası Better Auth hâlâ açıkken aynı kurumda B girişi önbelleği boşaltır', async () => {
+    const queryClient = createKampusQueryClient()
+    queryClient.setQueryData(institutionKey('test-inst-a', 'classes'), ['A sınıfı'])
+    const action = cacheActionFor(
+      { authenticated: true, userId: 'test-user-a', institutionId: 'test-inst-a' },
+      { authenticated: true, userId: 'test-user-b', institutionId: 'test-inst-a' },
+    )
+    assert.equal(action, 'clear-all')
+    queryClient.clear()
+    assert.equal(queryClient.getQueryData(institutionKey('test-inst-a', 'classes')), undefined)
   })
 })
 

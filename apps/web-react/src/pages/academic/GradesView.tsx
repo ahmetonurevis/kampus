@@ -3,6 +3,8 @@ import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { Icon } from '@/components/Icon.tsx'
+import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll, useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
@@ -16,6 +18,7 @@ import {
   type CollectionListConfig,
 } from '@/lib/collection-list.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
+import { subjectAverages } from '@kampus/school-core/lib/grades.ts'
 import type { UrlFilters } from '@/lib/list-url.ts'
 import { LookupError, StatGrid, TableSection } from './AcademicParts.tsx'
 import {
@@ -24,11 +27,14 @@ import {
   overallAverage,
   scoreText,
   scoreTone,
-  subjectAverages,
+  withSubjectNames,
   type GradeRow,
 } from './academic-rows.ts'
+import { canCorrectGrade } from './academic-write.ts'
+import { GradeEntryPanel } from './GradeEntryPanel.tsx'
 import { GradePanel } from './GradePanel.tsx'
 import { useAcademicLookups } from './use-academic-lookups.ts'
+import { useTeacherScope } from './use-teacher-scope.ts'
 
 const GRADE_LIST = {
   sortFields: { title: 'title', date: 'date', score: 'score' },
@@ -56,8 +62,9 @@ type GradesViewProps = {
 /**
  * Not listesi (Vue `Academic.vue` `notlarim` ve not geçmişi): sunucu sayfalı tablo; ders (ve
  * öğretmende sınıf) filtresi, başlık/tarih/puan sıralaması, satırdan sağ panelde ayrıntı. Ders
- * bazında ortalama core `average` ile kayıtlardan hesaplanır, saklanmaz. Yalnız okuma.
- * TODO(D-grades-write): not girişi core işlemi gelince "Not ekle" eklenir.
+ * bazında ortalama core `average` ile kayıtlardan hesaplanır, saklanmaz. Öğretmen "Not gir" ile
+ * resmî not girer ve ayrıntı panelinden kendi dersinin notunu gerekçeyle düzeltir; öğrenci ve
+ * veli görünümü yalnız okunurdur.
  */
 export function GradesView({ audience, studentId, urlPrefix = '', title }: GradesViewProps) {
   const data = useAcademicLookups()
@@ -81,6 +88,8 @@ export function GradesView({ audience, studentId, urlPrefix = '', title }: Grade
   const rows = grades.data?.rows.map((item) => gradeRow(item, lookups))
   const panel = useDetailPanel('not')
   const openGrade = panel.open
+  const entry = useDetailPanel('notgir')
+  const scope = useTeacherScope(lookups, teacher)
   const fetchAll = useCoreFetchAll('grades')
   const csv = useCsvExport()
 
@@ -89,7 +98,11 @@ export function GradesView({ audience, studentId, urlPrefix = '', title }: Grade
     enabled: !teacher,
   })
   const averages = useMemo(
-    () => subjectAverages(own.data?.map((item) => item.record) ?? [], lookups.subjects),
+    () =>
+      withSubjectNames(
+        subjectAverages(own.data?.map((item) => item.record) ?? []),
+        lookups.subjects,
+      ),
     [own.data, lookups.subjects],
   )
 
@@ -181,6 +194,14 @@ export function GradesView({ audience, studentId, urlPrefix = '', title }: Grade
         onDownload={download}
         downloadBusy={csv.busy}
         downloadDisabled={data.pending}
+        action={
+          teacher ? (
+            <Button onClick={() => entry.open('yeni')} disabled={data.pending || scope.pending}>
+              <Icon name="Plus" size={17} aria-hidden="true" />
+              Not gir
+            </Button>
+          ) : null
+        }
       >
         <ServerDataTable
           list={list}
@@ -238,7 +259,30 @@ export function GradesView({ audience, studentId, urlPrefix = '', title }: Grade
           }
         />
       </TableSection>
-      <GradePanel gradeId={panel.selectedId} lookups={lookups} onClose={panel.close} />
+      <GradePanel
+        gradeId={panel.selectedId}
+        lookups={lookups}
+        onClose={panel.close}
+        {...(teacher
+          ? {
+              canCorrect: (record) =>
+                canCorrectGrade(
+                  scope.assignments,
+                  scope.teacherId,
+                  lookups.students.get(record.studentId)?.classId,
+                  record.subjectId,
+                ),
+            }
+          : {})}
+      />
+      {teacher ? (
+        <GradeEntryPanel
+          open={entry.selectedId !== ''}
+          lookups={lookups}
+          scope={scope}
+          onClose={entry.close}
+        />
+      ) : null}
     </>
   )
 }

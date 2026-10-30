@@ -352,11 +352,11 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 
 ### DOM-ILT-101 · Randevu saati uygunluk saatine bağlıdır ve çakışmaz
 
-- **Kural:** Talep öğretmenin bir uygunluk saati seçilerek açılır; randevunun başlangıcı ve süresi o saatten alınır. Saat gelecekte olmalıdır. Öğretmenin veya öğrencinin o aralıkta iptal edilmemiş dersi, başka etüdü, `Bekliyor` ya da `Onaylandı` durumunda başka randevusu veya öğrencinin kampüsünde okul etkinliği varsa talep reddedilir. Aynı saati iki talep aynı anda isterse yalnız biri yazılır.
+- **Kural:** Talep öğretmenin bir uygunluk saati seçilerek açılır; randevunun başlangıcı ve süresi o saatten alınır. Saat gelecekte olmalıdır. Öğretmenin veya öğrencinin o aralıkta iptal edilmemiş dersi, başka etüdü, `Bekliyor` ya da `Onaylandı` durumunda başka randevusu veya öğrencinin kampüsünde okul etkinliği varsa talep reddedilir. Aynı saati iki talep aynı anda isterse yalnız biri yazılır. Çakışan randevuyu talep eden (veya onaylayan öğretmen) göremiyorsa ret iletisi genel kalır ("Bu saat uygun değil."); görebildiği randevuda neyin çakıştığı söylenir (`DOM-ILT-073`, `DOM-ILT-103`).
 - **Gerekçe:** Öğretmen yalnız ayırdığı zamanda görüşür; çakışan iki görüşme veya derse denk gelen randevu yerine getirilemez.
 - **Kaynak:** İşletme kuralı; CLAUDE.md "Etütler öğretmen uygunluk saatlerini kullanır".
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `bookAppointment` (`lib/tutor-conflicts.ts` `tutorConflict` ile tam denetim); API talepte yalnız seçilen uygunluk saatini yükler, kurum kilidi eşzamanlı iki talepten yalnız birini yazar (`apps/api/test/pg-concurrency.test.ts`). Vue demosu talepte ders ve etkinlik çakışmasını denetlemez (`apps/web/src/views/Communication.vue:122-137`).
+- **Kodda:** kısmen — core `bookAppointment` (`lib/tutor-conflicts.ts` `tutorConflict` ile tam denetim; görünmeyen randevu `canSeeAppointment` ile `HIDDEN_CONFLICT_MESSAGE` döner, talepte ve onayda); API talepte yalnız seçilen uygunluk saatini yükler, kurum kilidi eşzamanlı iki talepten yalnız birini yazar (`apps/api/test/pg-concurrency.test.ts`). Vue demosu talepte ders ve etkinlik çakışmasını denetlemez (`apps/web/src/views/Communication.vue:122-137`).
 
 ### DOM-ILT-102 · Onay, red, iptal ve geri çekme
 

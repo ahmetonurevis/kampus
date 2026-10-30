@@ -213,11 +213,12 @@ test('DOM-ILT-101: ders, randevu, etüt ve okul etkinliğiyle çakışan saat 40
     isDomainError('appointment_conflict', 'conflict')(error) &&
     pattern.test((error as Error).message) &&
     JSON.stringify((error as { path?: unknown }).path) === '["slotId"]'
-  // Ece'nin onaylı veli görüşmesi (apt2) t1'in 9 Ekim 13:00 saatini tutar.
+  // Ece'nin onaylı veli görüşmesi (apt2) t1'in 9 Ekim 13:00 saatini tutar. Açanı bilinmeyen eski
+  // kayıt veliye kapalıdır; ileti genel kalır (DOM-ILT-103).
   unchangedOnFailure(
     state,
     () => booked(state, parent, booking({ slotId: 'slot-t1-2' })),
-    conflict(/Öğretmenin bu saatte randevusu var/),
+    conflict(/^Bu saat uygun değil\.$/),
   )
   // t1'in 7 Ekim 06:50'de 8. sınıfta dersi var.
   addSlot(state, 'slot-test-lesson', 't1', '2026-10-07T06:50:00.000Z')
@@ -233,11 +234,12 @@ test('DOM-ILT-101: ders, randevu, etüt ve okul etkinliğiyle çakışan saat 40
     () => booked(state, parent, booking({ slotId: 'slot-test-event' })),
     conflict(/okul etkinliği/),
   )
-  // Öğrencinin aynı saatte başka öğretmenle randevusu varsa da çakışır.
+  // Öğrencinin aynı saatte başka öğretmenle randevusu varsa da çakışır; veli kendi açtığı
+  // görüşmeyi görür.
   booked(state, parent, booking({ slotId: 'slot-t2-0' }))
   unchangedOnFailure(
     state,
-    () => booked(state, student, booking({ slotId: 'slot-t1-0' })),
+    () => booked(state, parent, booking({ slotId: 'slot-t1-0' })),
     conflict(/Öğrencinin bu saatte randevusu var/),
   )
   // Öğretmenin etüdü de saati tutar.
@@ -255,6 +257,64 @@ test('DOM-ILT-101: ders, randevu, etüt ve okul etkinliğiyle çakışan saat 40
     state,
     () => booked(state, parent, booking({ slotId: 'slot-t1-1' })),
     conflict(/başka etüdü var/),
+  )
+})
+
+test('DOM-ILT-073, DOM-ILT-103: göremediği randevuyla çakışmada ileti genel kalır; gördüğünde ayrıntılı', () => {
+  const state = seed()
+  const hidden = (error: unknown) =>
+    isDomainError('appointment_conflict', 'conflict')(error) &&
+    (error as Error).message === 'Bu saat uygun değil.' &&
+    JSON.stringify((error as { path?: unknown }).path) === '["slotId"]'
+  const detailed = (error: unknown) =>
+    isDomainError('appointment_conflict', 'conflict')(error) &&
+    (error as Error).message === 'Öğrencinin bu saatte randevusu var.'
+  // Veli A, t1 ile 7 Ekim 13:00'te görüşme açar; aynı saat t2'de de vardır (slot-t2-0).
+  booked(state, parent)
+  // Aynı çocuğun ikinci velisi ve öğrenci bu görüşmeyi görmez: genel ileti.
+  unchangedOnFailure(
+    state,
+    () => booked(state, otherParent, booking({ slotId: 'slot-t2-0' })),
+    hidden,
+  )
+  unchangedOnFailure(state, () => booked(state, student, booking({ slotId: 'slot-t2-0' })), hidden)
+  // Açan veli kendi görüşmesini görür: ayrıntılı ileti.
+  unchangedOnFailure(state, () => booked(state, parent, booking({ slotId: 'slot-t2-0' })), detailed)
+  // Öğrencinin kendi randevusu iki veliye de görünür: ayrıntılı ileti.
+  const other = seed()
+  booked(other, student)
+  unchangedOnFailure(
+    other,
+    () => booked(other, otherParent, booking({ slotId: 'slot-t2-0' })),
+    detailed,
+  )
+  // Onayda da aynı kural: t2 görmediği t1 randevusuyla çakışan talebi onaylarken genel ileti alır.
+  const approval = seed()
+  const pending = booked(approval, student, booking({ slotId: 'slot-t2-0' }))
+  const held = approval.appointments.find((a) => a.id === pending.id)!
+  approval.appointments.push({
+    ...held,
+    id: 'apt-test-t1',
+    teacherId: 't1',
+    slotId: 'slot-t1-0',
+    status: 'Onaylandı',
+  })
+  assert.throws(
+    () => updateAppointment(approval, otherTeacher, pending.id, { status: 'Onaylandı' }, now),
+    (error: unknown) =>
+      isDomainError('appointment_conflict', 'conflict')(error) &&
+      (error as Error).message === 'Bu saat uygun değil.',
+  )
+  // Kapsam seçeneği verilmeyen denetim (etüt, sınıf düzenleme) ayrıntılı iletiyi korur.
+  assert.equal(
+    tutorConflict(approval, {
+      teacherId: 't5',
+      date: held.date,
+      branchId: 'b1',
+      room: '',
+      studentIds: ['s1'],
+    }),
+    'Öğrencinin bu saatte randevusu var.',
   )
 })
 

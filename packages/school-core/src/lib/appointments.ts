@@ -151,22 +151,35 @@ function requireActiveStudent(state: State, studentId: string): StudentRecord {
   return student
 }
 
-/** Randevu adayının çakışma denetimi; kampüs öğrencinin sınıfından gelir (etkinlik denetimi). */
+/**
+ * Randevu adayının çakışma denetimi; kampüs öğrencinin sınıfından gelir (etkinlik denetimi).
+ * Çakışan randevuyu isteği yapan göremiyorsa ileti genel kalır: başka velinin açtığı görüşme
+ * ya da başka öğretmenin randevusu iletiden öğrenilmez (DOM-ILT-073, DOM-ILT-103).
+ */
 function conflictOf(
   state: State,
+  by: Participant,
   candidate: { teacherId: string; studentId: string; date: string; duration?: number | undefined },
+  options: AppointmentOptions,
 ): string {
   const classroom = state.classes.find(
     (c) => c.id === state.students.find((s) => s.id === candidate.studentId)?.classId,
   )
-  return tutorConflict(state, {
-    teacherId: candidate.teacherId,
-    date: candidate.date,
-    ...(candidate.duration === undefined ? {} : { duration: candidate.duration }),
-    branchId: classroom?.branchId,
-    room: '',
-    studentIds: [candidate.studentId],
-  })
+  const scope = scopeFor(state, by, options)
+  return tutorConflict(
+    state,
+    {
+      teacherId: candidate.teacherId,
+      date: candidate.date,
+      ...(candidate.duration === undefined ? {} : { duration: candidate.duration }),
+      branchId: classroom?.branchId,
+      room: '',
+      studentIds: [candidate.studentId],
+    },
+    [],
+    '',
+    { canSeeAppointment: (appointment) => scope.canRead('appointments', appointment) },
+  )
 }
 
 /**
@@ -207,12 +220,12 @@ export function bookAppointment(
     throw new DomainError('appointment_in_past', 'Gelecekteki bir görüşme saati seçin.', {
       path: ['slotId'],
     })
-  const reason = conflictOf(state, {
-    teacherId: teacher.id,
-    studentId: student.id,
-    date: slot.date,
-    duration: slot.duration,
-  })
+  const reason = conflictOf(
+    state,
+    by,
+    { teacherId: teacher.id, studentId: student.id, date: slot.date, duration: slot.duration },
+    options,
+  )
   if (reason)
     throw new DomainError('appointment_conflict', reason, { kind: 'conflict', path: ['slotId'] })
   const requester = actorOf(by)
@@ -304,7 +317,9 @@ export function updateAppointment(
         requireActiveStudent(state, appointment.studentId)
         const reason = conflictOf(
           { ...state, appointments: state.appointments.filter((a) => a.id !== appointment.id) },
+          by,
           appointment,
+          options,
         )
         if (reason)
           throw new DomainError('appointment_conflict', reason, {

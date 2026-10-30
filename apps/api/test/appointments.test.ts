@@ -340,6 +340,26 @@ describe('randevu uçları', () => {
     assert.equal((await stored(a.id)).length, 2)
   })
 
+  test('DOM-ILT-073, DOM-ILT-103: göremediği görüşmeyle çakışan talep genel ileti alır; açan veli ayrıntıyı görür', async () => {
+    const a = await institution()
+    const first = await parent(a.id)
+    const second = await parent(a.id)
+    // Veli A, t1 ile 13:00'te görüşme açar; aynı saat t2'nin `slot-t2-0` saatidir.
+    await booked(first)
+    const before = (await stored(a.id)).length
+    for (const cookie of [second, await student(a.id)]) {
+      const hidden = await book(cookie, { ...BOOKING, slotId: 'slot-t2-0' })
+      assertError(hidden, 409, 'appointment_conflict')
+      assert.equal(hidden.json().message, 'Bu saat uygun değil.')
+      assert.deepEqual(hidden.json().issues[0].path, ['slotId'])
+      assert.equal(hidden.body.includes('randevusu'), false)
+    }
+    const visible = await book(first, { ...BOOKING, slotId: 'slot-t2-0' })
+    assertError(visible, 409, 'appointment_conflict')
+    assert.equal(visible.json().message, 'Öğrencinin bu saatte randevusu var.')
+    assert.equal((await stored(a.id)).length, before)
+  })
+
   test('DOM-ILT-101: talepte yalnız seçilen uygunluk saati yüklenir; not ve gerekçe loglanmaz', async () => {
     const a = await institution()
     const parentCookie = await parent(a.id)

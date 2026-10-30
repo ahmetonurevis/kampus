@@ -2,6 +2,10 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## R6 inceleme düzeltmeleri
+
+- Okuma kapsamı: öğrenci ve veli `opticalProfiles`'ta yalnız görebildiği denemelerin profilini alır (liste, arama, sıralama, ayrıntı ve `counts?groupBy=examId`); başka düzeyin profili artık yok. Kapsam kaynağı `mockExams`'i de yükler. Yanıt şekli değişmedi.
+
 ## Ayarlar: kurum kullanıcıları ve işlem geçmişi
 
 - `GET /api/v1/institution-members` (yalnız yönetici): kurum üyeleri; ad, e-posta, rol, durum (bağlı kişi kaydından türetilir), bağlı kişi adı ve oluşturulma anı. `q`, `role`, `status`, `sort`, sayfalama. Telefon, parola, oturum ve IP dönmez. Yalnız okuma.

@@ -24,6 +24,7 @@ import {
   evaluationText,
   PLAN,
   profileBody,
+  SAMPLE,
   SEED,
   sampleRows,
 } from './support/assessment-sample.ts'
@@ -366,6 +367,31 @@ describe('optik değerlendirme ve etüt uçları', () => {
       })
       assertError(preview, 413, 'payload_too_large')
       assert.deepEqual(await snapshot(a.id), before)
+    })
+
+    test('kapsamdaki pasif öğrenci optical_student_out_of_scope alır; hiçbir kayıt değişmez', async () => {
+      const created = await createInstitution(app)
+      const students = SAMPLE.students?.map((item) =>
+        item.id === 's25' ? { ...item, isActive: false } : item,
+      )
+      await insertMissingRecords(db, created.id, sampleRows({ ...SAMPLE, students }), FIXED_NOW)
+      const cookie = await signInAs(app, created.admin)
+      const before = await snapshot(created.id)
+      const [active] = classStudents('c1')
+      const text = [
+        'student;booklet;answers',
+        `${active!.number};A;BBBDABCDABCD`,
+        '2026025;A;BBBDABCDABCD',
+      ].join('\n')
+      for (const [url, headers] of [
+        [`${BASE}/evaluate`, key()],
+        [`${BASE}/evaluate/preview`, {}],
+      ] as const) {
+        const response = await post(url, cookie, { ...evaluate, text }, headers)
+        assertError(response, 422, 'optical_student_out_of_scope')
+        assert.deepEqual(response.json().issues[0]?.path, ['text', 'line', 3])
+      }
+      assert.deepEqual(await snapshot(created.id), before)
     })
 
     test('öğretmen yalnız kendi sınıfındaki öğrencilerin kendi branş sonucunu kaydeder', async () => {
@@ -962,6 +988,125 @@ describe('optik değerlendirme ve etüt uçları', () => {
         )
         assert.ok(typeof list[0]?.record.keyCsv === 'string')
       }
+    })
+
+    /** 5. ve 8. sınıf denemelerinin profilini ekler (örnek veride yalnız 7. sınıfınki vardır). */
+    async function addForeignProfiles(institutionId: string) {
+      const base = SEED.opticalProfiles[0]!
+      await insertMissingRecords(
+        db,
+        institutionId,
+        ['exam-5-1', 'exam-8-1'].map((examId) => ({
+          collection: 'opticalProfiles' as const,
+          id: `optical-${examId}`,
+          data: { ...base, id: `optical-${examId}`, examId, title: `Profil ${examId}` },
+        })),
+        FIXED_NOW,
+      )
+    }
+
+    test('opticalProfiles: öğrenci ve veli başka düzeyin profilini ne listede, ne ayrıntıda, ne sayımda görür', async () => {
+      const a = await institution()
+      await addForeignProfiles(a.id)
+      const url = '/api/v1/collections/opticalProfiles'
+      const student = await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
+      const parent = await member(a.id, 'veli', [{ kind: 'child', recordId: 's1' }])
+      for (const cookie of [student, parent]) {
+        // Süzgeçsiz sayfa, arama ve sıralı sayfa aynı sonucu verir; toplam da kapsamdadır.
+        for (const query of ['', '?q=Profil', '?sort=title']) {
+          const response = await get(`${url}${query}`, cookie)
+          assert.equal(response.statusCode, 200, response.body)
+          assert.deepEqual(
+            (response.json().data as { id: string }[]).map((item) => item.id),
+            query === '?q=Profil' ? [] : ['optical-exam-7-1'],
+            query,
+          )
+          assert.equal(response.json().meta.total, query === '?q=Profil' ? 0 : 1, query)
+        }
+        for (const foreign of ['optical-exam-5-1', 'optical-exam-8-1'])
+          assert.equal((await get(`${url}/${foreign}`, cookie)).statusCode, 404, foreign)
+        const counts = await get(`${url}/counts?groupBy=examId`, cookie)
+        assert.equal(counts.statusCode, 200, counts.body)
+        assert.deepEqual(counts.json().data, [{ value: 'exam-7-1', count: 1 }])
+      }
+      // Yönetici bütün profilleri ve sayımı görür.
+      const all = await rows(url, a.adminCookie)
+      assert.deepEqual(all.map((item) => item.id).sort(), [
+        'optical-exam-5-1',
+        'optical-exam-7-1',
+        'optical-exam-8-1',
+      ])
+      const counts = await get(`${url}/counts?groupBy=examId`, a.adminCookie)
+      assert.equal((counts.json().data as unknown[]).length, 3)
+    })
+
+    test('opticalProfiles: öğrenci cevap anahtarındaki kazanım adıyla arayarak anahtarı yoklayamaz', async () => {
+      const a = await institution()
+      const topic = SEED.opticalProfiles[0]!.keyCsv.split('\n')[1]!.split(';')[3]
+      assert.ok(topic)
+      const url = `/api/v1/collections/opticalProfiles?q=${encodeURIComponent(topic)}`
+      const student = await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
+      const parent = await member(a.id, 'veli', [{ kind: 'child', recordId: 's1' }])
+      for (const cookie of [student, parent]) {
+        const response = await get(url, cookie)
+        assert.equal(response.statusCode, 200, response.body)
+        assert.deepEqual(response.json().data, [])
+        assert.equal(response.json().meta.total, 0)
+      }
+      // Aynı arama yönetici için eşleşir: sıfır sonuç anahtarın gizliliğinden gelir.
+      assert.ok((await rows(url, a.adminCookie)).length > 0)
+    })
+
+    test('opticalEvaluations: veli iki çocuğunun analizini görür, üçüncü öğrencinin analizini görmez', async () => {
+      const a = await evaluated()
+      await addForeignProfiles(a.id)
+      const [deniz, third] = classStudents('c1')
+      assert.ok(deniz && third)
+      // Ece (s2, 5. sınıf) için 5. sınıf denemesinde bir analiz satırı: Deniz'inkinin kopyası.
+      const [source] = (await loadRecords(db, a.id, ['opticalEvaluations'])).filter(
+        (row) => row.data.studentId === deniz.id,
+      )
+      assert.ok(source)
+      await insertMissingRecords(
+        db,
+        a.id,
+        [
+          {
+            collection: 'opticalEvaluations',
+            id: 'test-eval-ece',
+            data: {
+              ...source.data,
+              id: 'test-eval-ece',
+              studentId: 's2',
+              examId: 'exam-5-1',
+              profileId: 'optical-exam-5-1',
+            },
+          },
+        ],
+        FIXED_NOW,
+      )
+      const parent = await member(a.id, 'veli', [
+        { kind: 'child', recordId: 's1' },
+        { kind: 'child', recordId: 's2' },
+      ])
+      const list = await rows('/api/v1/collections/opticalEvaluations?pageSize=100', parent)
+      const students = new Set(list.map((item) => item.record.studentId))
+      assert.deepEqual([...students].sort(), ['s1', 's2'])
+      assert.equal(students.has(third.id), false)
+      const thirdRow = (
+        await rows('/api/v1/collections/opticalEvaluations?pageSize=100', a.adminCookie)
+      ).find((item) => item.record.studentId === third.id)
+      assert.ok(thirdRow)
+      assert.equal(
+        (await get(`/api/v1/collections/opticalEvaluations/${thirdRow.id}`, parent)).statusCode,
+        404,
+      )
+      // İki çocuğun düzeyi (7 ve 5) profilleri de açar; 8. sınıf profili kapalıdır.
+      const profiles = await rows('/api/v1/collections/opticalProfiles', parent)
+      assert.deepEqual(profiles.map((item) => item.id).sort(), [
+        'optical-exam-5-1',
+        'optical-exam-7-1',
+      ])
     })
 
     test('opticalEvaluations: öğretmen yalnız kendi branşını görür; öğrenci ve veli yalnız kendi/çocuğunun analizini görür', async () => {

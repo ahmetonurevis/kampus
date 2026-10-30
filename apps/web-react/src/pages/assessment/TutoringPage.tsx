@@ -15,6 +15,7 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { useSourcesState } from '../workflows/use-workflow-state.ts'
 import { collectionSources, coreSession } from '../workflows/workflow-state.ts'
 import { AssessmentPanel } from './AssessmentPanel.tsx'
+import { AvailabilitySection } from './AvailabilitySection.tsx'
 import { TutorDetailPanel } from './TutorDetailPanel.tsx'
 import { TutoringPlanSection } from './TutoringPlanSection.tsx'
 import { TUTORING_LIST_SOURCES, tutorRows, type TutorRow } from './tutoring-model.ts'
@@ -23,7 +24,7 @@ const MOBILE_COLUMNS = ['title', 'status'] as const
 
 /**
  * Otomatik etüt (Vue `AssessmentAutomation.vue`, etüt bölümü): yönetici ve öğretmen plan
- * önizler/onaylar, etüt iptal eder ve yoklama alır; öğrenci ve veli yalnız kendi kapsamındaki
+ * önizler/onaylar, uygunluk saati ekler/kaldırır, etüt iptal eder ve yoklama alır; öğrenci ve veli yalnız kendi kapsamındaki
  * etütleri salt okunur görür (kapsamı sunucu ve core `tutoringSessions` uygular; veli seçili
  * çocuğu görür). İptal gerekçesi ve yoklama geçmişi ayrıntıda korunur.
  */
@@ -113,6 +114,7 @@ function TutoringView({ page, session }: { page: NavPage; session: Session }) {
           onRowClick={(row) => openRecord(row.id)}
         />
       </AssessmentPanel>
+      {writer ? <AvailabilitySection session={session} actor={actor} /> : null}
       <TutorDetailPanel
         selectedId={panel.selectedId}
         row={selected}

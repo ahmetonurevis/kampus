@@ -31,3 +31,27 @@ export const ME_QUERY_KEY = sessionKey('me')
 export function isInstitutionKey(key: readonly unknown[]): boolean {
   return key[0] === INSTITUTION_KEY_ROOT
 }
+
+/**
+ * İletişim sorgularının anahtar parçaları (kurum başa `useApi*` kancalarında eklenir). Yazışma
+ * kökü liste, mesaj sayfaları ve veli hesaplarını ayrı alt kollarda tutar; gönderme ve okundu
+ * sonrası `['conversations']` önekiyle topluca geçersiz kılınır. Duyurular genel koleksiyon
+ * anahtarlarındadır (`collectionKeyPrefix('announcements')`).
+ */
+export const CONVERSATIONS_KEY_ROOT = 'conversations'
+
+export function conversationsPrefix(): readonly unknown[] {
+  return [CONVERSATIONS_KEY_ROOT]
+}
+
+export function conversationListKey(filters: { studentId?: string | undefined } = {}) {
+  return [CONVERSATIONS_KEY_ROOT, 'list', { studentId: filters.studentId ?? null }] as const
+}
+
+export function conversationMessagesKey(conversationId: string) {
+  return [CONVERSATIONS_KEY_ROOT, 'messages', conversationId] as const
+}
+
+export function parentAccountsKey(studentId: string) {
+  return [CONVERSATIONS_KEY_ROOT, 'parent-accounts', studentId] as const
+}

@@ -62,7 +62,14 @@ Her yeni ekran ve önemli değişiklikte PR açıklamasında işaretlenir. Kolon
 | 4.1.2 Ad, rol, değer  | ✓   | ✓   | Özel bileşenler doğru rol/durum taşır (`aria-expanded`, `accessibilityState`); yerel öğe önceliklidir       |
 | 4.1.3 Durum mesajları | ✓   | ✓   | Toast `role="status"` (hata `role="alert"`); mobilde `accessibilityLiveRegion` / `announceForAccessibility` |
 
-Proje kuralları (WCAG üstü): azaltılmış hareket tercihine uyulur (web `prefers-reduced-motion`, mobil `useReducedMotion`); görünmeyen sekmede animasyon durur; web 390 px ve mobil 320 dp genişlikte taşma yok.
+Proje kuralları (WCAG üstü): azaltılmış hareket tercihine uyulur (web `prefers-reduced-motion`, mobil `useReducedMotion`); görünmeyen sekmede animasyon durur; web 390 px ve mobil 320 dp genişlikte taşma yok. Hazır bileşenlerin (Radix/shadcn, React Navigation) verdiği odak yönetimi, ARIA rolleri ve klavye davranışı ezilmez; özelleştirme bunları bozuyorsa yapılmaz.
+
+### Cam yüzey (ölçülü Liquid Glass, ADR 0002)
+
+- Cam yalnız yüzen katmanda (sidebar, navbar, menü, popover, modal/sağ panel zemini, toast, mobil üst başlık); tablo, form, belge, PDF ve uzun metin opaktır.
+- Kontrast, cam altından geçebilecek **en kötü** içerikle ölçülür (beyaz ve koyu tablo satırı, safir/turuncu rozet); metin 4,5:1, ikon ve kontrol sınırı 3:1. Tutmuyorsa token zemininin opaklığı artırılır; bulanıklığa güvenilmez.
+- `prefers-reduced-transparency: reduce`, `prefers-contrast: more`, `forced-colors: active` ve `@supports not (backdrop-filter: blur(1px))` durumlarında yüzey opak token zeminine döner. Mobilde iOS "Saydamlığı Azalt" ayarı (`AccessibilityInfo.isReduceTransparencyEnabled`) aynı sonucu verir; Android'de cam yoktur.
+- Odak halkası cam üstünde de 3:1 ve görünürdür; cam katman odaklı öğeyi örtmez (2.4.11).
 
 ### Ölçüm
 
@@ -88,8 +95,9 @@ Saha değerleri 75. yüzdelik; laboratuvar referansı orta seviye Android telefo
 | Font                      | Inter woff2, latin-ext alt kümesi, en fazla 3 ağırlık                 |
 | 100 satırlık tablo çizimi | ≤ 100 ms; 200 satırdan büyük listeler sayfalanır veya sanallaştırılır |
 
-- pdfjs-dist ve jspdf ilk yüklemede yoktur; belge açıldığında `import()` ile gelir.
-- Rotalar `React.lazy` ile bölünür; ortak bileşenler kabukta kalır.
+- pdfjs-dist ve jspdf ilk yüklemede yoktur; belge açıldığında `import()` ile gelir. `recharts` yalnız grafik içeren rotanın parçasındadır; `date-fns` fonksiyon bazında içe aktarılır.
+- Rotalar `react-router` `lazy` ile bölünür; kabukta yalnız ortak düzen ve sık kullanılan shadcn bileşenleri kalır.
+- Cam maliyeti: aynı anda en fazla 3 bulanık katman; bulanıklık yarıçapı token değeridir. Kaydırılan içeriğin üstündeki katmanda INP ve kare süresi düşük güçlü cihazda ölçülür; bütçe aşılırsa katman opak yedeğe döner.
 - Görsel ve font boyutu sabit (yer tutucu) verilir; CLS üretmez.
 
 ### API (`apps/api`)

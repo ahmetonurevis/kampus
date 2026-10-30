@@ -9,7 +9,7 @@ Ayrıntı: `docs/muhendislik/kod-yazim.md` (klasör yapısı, hata sınıfları)
 
 - Saf modül: Vue, React, DOM (`window`, `document`, `localStorage`), React Native, Node'a özgü modüller (`node:fs` vb.) ve veritabanı içe aktarılmaz. Web, mobil ve API aynı dosyayı çalıştırır.
 - Dışa aktarım `package.json` içindeki `"./*": "./src/*"` ile dosya yolu üzerindendir (`@kampus/school-core/lib/x.ts`). Yeni kod core'u doğrudan içe aktarır; Vue uygulamasındaki `export *` aracı dosyalar yalnız eski kod içindir.
-- Klasörler: `data` (örnek veri), `lib` (kurallar, şemalar, kapsam, `errors.ts`), `modules` (kayıt), `contracts` (API istek/yanıt şemaları; API ve api-client ortak).
+- Klasörler: `data` (örnek veri), `lib` (kurallar, şemalar, kapsam, `errors.ts`), `modules` (kayıt). İşlem girdi şemaları API gövde şeması ve web/mobil form şeması (`zodResolver`) olarak da kullanılır.
 - İşlemler saf fonksiyondur: state ve parametre alır, Zod ile doğrular, ya hepsini değiştirir ya hiçbirini. Zaman gerekiyorsa `now` parametresi alır; testler gerçek saate bağlanmaz.
 - İş kuralı reddi `DomainError(code, mesaj, { kind, path })` ile; `code` İngilizce snake_case, mesaj Türkçe. Taşınan dosyada `throw new Error('…')` mesajı korunarak `DomainError`'a çevrilir.
 - Hesaplanabilen değer saklanmaz (hedef ilerlemesi, quiz puanı, rubrik toplamı).

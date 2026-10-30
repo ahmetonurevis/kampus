@@ -9,7 +9,8 @@ paths:
 Ayrıntı: `docs/muhendislik/veritabani.md`.
 
 - Tablo ve kolon adları snake_case İngilizce, tablo çoğul. Kısıt/indeks adı `<tablo>_<kolonlar>_idx|_key|_fkey|_check`.
-- Kurum tablolarında zorunlu: `institution_id` (PK ve her indeksin ilk kolonu), `created_at`, `updated_at`, `archived_at`, `version`. İstisna yalnız `institutions`, `audit_log`, `idempotency_keys`, `refresh_tokens`.
+- Kurum tablolarında zorunlu: `institution_id` (PK ve her indeksin ilk kolonu), `created_at`, `updated_at`, `archived_at`, `version`. İstisna yalnız Better Auth tabloları, `audit_log`, `idempotency_keys` ve `pg-boss` şeması.
+- Kimlik tabloları Better Auth CLI ile `src/db/schema/auth.ts`'e üretilir, elle düzenlenmez, doğrudan `update`/`delete` yazılmaz; üyelik–school-core bağlantısı `membership_links`'te.
 - Tipler: zaman `timestamptz`, gün `date`, para `bigint` kuruş + `currency`, durum `text` + `check` (PostgreSQL enum yok), metin `text`.
 - `records`: `collection` school-core state anahtarıdır; `data` yazmadan önce school-core Zod şemasıyla doğrulanır, bütün olarak ve `where version = $beklenen` ile yazılır (0 satır → 409). `jsonb_set` ile parça güncelleme, hesaplanan değer, dosya/base64 yok; belge ≤ 256 KB.
 - Bir işlemin bütün yazmaları ve `audit_log` kaydı tek transaction'dadır.

@@ -4,7 +4,7 @@ PostgreSQL 16, Drizzle ORM, drizzle-kit migration'ları. Şema `apps/api/src/db/
 
 ## 1. Adlandırma
 
-- Tablo ve kolon adları snake_case, İngilizce. Tablo çoğul: `institutions`, `memberships`, `audit_log` (kayıt defteri tekil kalır).
+- Tablo ve kolon adları snake_case, İngilizce. Tablo çoğul: `institutions`, `membership_links`, `audit_log` (kayıt defteri tekil kalır).
 - Birincil anahtar `id`; yabancı anahtar `<tekil_tablo>_id`: `institution_id`, `user_id`.
 - Zaman kolonları `…_at` (`timestamptz`), takvim günü `…_date` (`date`), boolean `is_…`/`has_…`.
 - Kısıt ve indeks adları: `<tablo>_<kolonlar>_idx`, benzersiz `…_key`, yabancı anahtar `…_fkey`, denetim `…_check`.
@@ -22,7 +22,22 @@ Kuruma ait her tablo:
 | `archived_at`    | `timestamptz null`                      | Dolu ise kayıt arşivdedir                     |
 | `version`        | `integer not null default 1`            | Her yazmada +1; iyimser kilit                 |
 
-İstisnalar (açıkça sınırlı liste): `institutions` (`institution_id` yok), yalnız eklenen tablolar `audit_log`, `idempotency_keys`, `refresh_tokens` (`archived_at` ve `version` yok; iptal `revoked_at` ile). Yeni istisna bu listeye eklenmeden açılmaz.
+İstisnalar (açıkça sınırlı liste): Better Auth tabloları (aşağıda), yalnız eklenen tablolar `audit_log` ve `idempotency_keys` (`archived_at` ve `version` yok), `pg-boss`'un kendi şeması. Yeni istisna bu listeye eklenmeden açılmaz.
+
+### Kimlik tabloları (Better Auth)
+
+ADR 0002 gereği kimlik ve kiracı çekirdeği Better Auth'undur; ADR 0001'deki `users`, `memberships`, `refresh_tokens` tabloları yazılmaz.
+
+- Şema `pnpm dlx @better-auth/cli@<sürüm> generate` (Better Auth CLI, Drizzle bağdaştırıcısı; sürüm `better-auth` paketiyle aynı) ile `src/db/schema/auth.ts`'e üretilir, sonra drizzle-kit ile migration'a dönüştürülür. Üretilen dosya elle düzenlenmez; Better Auth sürümü veya eklentisi değişince komut yeniden koşulur ve fark ayrı migration olur.
+- Adlar mümkün olduğunca bizim kuralımıza eşlenir: Drizzle bağdaştırıcısında `usePlural: true`, kolonlar snake_case; `organization` modeli `institutions`, `member` modeli `memberships` adını `modelName` ile alır. Eşlenemeyen ad veya kolon bu bölüme istisna olarak yazılır.
+- Better Auth tablolarına (`users`, `sessions`, `accounts`, `verifications`, `institutions`, `memberships`, `invitations`) `version` ve `archived_at` eklenmez; yaşam döngüleri Better Auth API'siyle yönetilir, doğrudan `update`/`delete` yazılmaz.
+- Kurumun ek alanları (`type`: `school`/`language_school`, açık modüller) `organization` eklentisinin `additionalFields`'ı ile; sık değişen veya büyüyen ayarlar 1:1 `institution_settings` tablosunda (zorunlu kolonlarla).
+- Üyeliğin school-core bağlantısı (öğrenci kimliği, veliye bağlı çocuklar, öğretmen kimliği) `membership_links` tablosundadır: `(institution_id, membership_id, kind, record_id)`, `kind in ('student', 'child', 'teacher')`. Kapsam fonksiyonları bu tablodan beslenir.
+- Kimlik kolonu `text`'tir (Better Auth kimlikleri); bizim tablolarımızdaki `institution_id` ve `user_id` aynı tiptedir.
+
+### `pg-boss`
+
+`pg-boss` kendi şemasını (`pgboss`) kendisi kurar ve yükseltir; bu şema drizzle-kit migration'larına girmez ve uygulama kodu ona doğrudan sorgu yazmaz. Testte PGlite ile çalışmıyorsa işler bellek içi sahte kuyrukla çağrılır, gerçek kuyruk `test:pg` takımında denenir.
 
 Tip kuralları:
 
@@ -106,14 +121,14 @@ Taşıma tek migration'la yapılır: tablo oluşturulur, `records`'tan veri kopy
 - Kullanıcı işlemiyle silme = arşivleme: `archived_at = now()`, `version + 1`. Sorgular varsayılan olarak `archived_at is null` süzer; depo fonksiyonları bunu varsayılan yapar.
 - Arşivden geri alma `archived_at = null`; aktarılmış bağlı görevler otomatik geri taşınmaz (CLAUDE.md iş kuralı).
 - Bağlı kaydı olan kayıt arşivlenirken bağlılar school-core kuralıyla aktarılır veya işlem reddedilir; geçmiş finans/not/yoklama korunur.
-- Kalıcı silme (`delete`) yalnız üç yolla: saklama süresi dolan kayıtların imha işi, veri sahibinin silme talebi, süresi dolan teknik kayıtlar (`refresh_tokens`, `idempotency_keys`). Her biri denetim kaydına yazılır. Ayrıntı: [guvenlik-kvkk.md](guvenlik-kvkk.md#10-saklama-ve-silme).
+- Kalıcı silme (`delete`) yalnız üç yolla: saklama süresi dolan kayıtların imha işi, veri sahibinin silme talebi, süresi dolan teknik kayıtlar (Better Auth `sessions` ve `verifications`, `idempotency_keys`; günlük `pg-boss` temizlik işiyle). Her biri denetim kaydına yazılır. Ayrıntı: [guvenlik-kvkk.md](guvenlik-kvkk.md#10-saklama-ve-silme).
 
 ## 8. Denetim kaydı (`audit_log`)
 
 ```sql
 create table audit_log (
   id               uuid primary key,
-  institution_id   text not null references institutions (id),
+  institution_id   text references institutions (id),  -- yalnız etkin kurumsuz kimlik olayında null
   actor_user_id    text,            -- sistem işinde null
   actor_role       text,
   action           text not null,   -- 'goal.approve', 'auth.login_failed', 'student.export'
@@ -129,7 +144,7 @@ create index audit_log_actor_idx on audit_log (institution_id, actor_user_id, cr
 ```
 
 - Yalnız eklenir. Uygulamanın veritabanı rolüne bu tabloda `insert` ve `select` verilir; `update`/`delete` yetkisi yalnız imha işinin rolündedir.
-- İşlemle **aynı transaction'da** yazılır; denetim kaydı yazılamazsa işlem de olmaz.
-- Yazılan olaylar: bütün yazma işlemleri; giriş başarısı/başarısızlığı, parola değişimi/sıfırlama, yenileme belirteci yeniden kullanımı; rol, üyelik ve modül değişikliği; kişisel veri dışa aktarımı (CSV/PDF); özel nitelikli veri okuması (sağlık, rehberlik iç notu); veri sahibi talepleri ve imha.
+- İşlemle **aynı transaction'da** yazılır; denetim kaydı yazılamazsa işlem de olmaz. Better Auth olaylarında kanca Better Auth'un işleminden sonra çalışır; yazılamazsa `error` düzeyinde loglanır.
+- Yazılan olaylar: bütün yazma işlemleri; giriş başarısı/başarısızlığı, çıkış, parola değişimi/sıfırlama, oturumların toplu kapatılması (Better Auth `hooks`/`databaseHooks` ile); rol, üyelik ve modül değişikliği; kişisel veri dışa aktarımı (CSV/PDF); özel nitelikli veri okuması (sağlık, rehberlik iç notu); veri sahibi talepleri ve imha.
 - `changes` önceki/sonraki değer değil, değişen alan adlarını tutar (`{ "fields": ["status", "feedback"] }`). Değer gerekiyorsa yalnız sınıflandırması "genel" olan alanların değeri yazılır.
 - Denetim kaydı imleçli sayfalamayla yalnız `yonetici` rolüne açılır.

@@ -60,7 +60,7 @@ export function makeGoalInput(overrides: Partial<GoalInput> = {}): GoalInput {
 }
 ```
 
-- API fabrikaları `apps/api/test/support/` altındadır: `createInstitution(db, { type })`, `createUser(db, { institutionId, role, studentIds })`, `loginAs(app, user)` (yetkili başlıkları döndürür).
+- API fabrikaları `apps/api/test/support/` altındadır ve kimlik verisini **Better Auth sunucu API'siyle** kurar (tabloya elle yazmaz): `createInstitution(auth, { type })` (organization), `createMember(auth, { institutionId, role, links })` (kullanıcı + üyelik + `membership_links`), `signInAs(app, member)` (e-posta girişinden dönen oturum çerezini başlık olarak döndürür).
 - "Başarısızlıkta değişmez" kontrolü yardımcıyla yapılır (birimde `unchangedOnFailure`, API'de işlem öncesi/sonrası `records` satırlarının karşılaştırılması).
 - Test verisi kurgusaldır. Gerçek kişi adı-soyadı eşleşmesi, gerçek T.C. kimlik numarası, gerçek telefon veya üretimden kopya veri kullanılmaz. Örnek kişiler CLAUDE.md'dekilerdir (Deniz Yılmaz, Ayşe Yılmaz, Selin Kaya).
 
@@ -86,7 +86,7 @@ export async function buildTestApp() {
 }
 ```
 
-- Test yalıtımı kurum düzeyindedir: her test kendi kurumunu (`createInstitution`) kurar; tablo boşaltma veya test sırası varsayımı yok. Böylece testler aynı dosyada paralel koşabilir ve izolasyon kendiliğinden sınanır.
+- Test yalıtımı kurum düzeyindedir: her test dosyası `before` içinde kendi kurumlarını (A ve B) ve rol başına bir üyeyi kurar, oturumları bir kez açar (scrypt her testte tekrarlanmasın). Her test kendi kayıtlarını önekli kimlikle oluşturur; tablo boşaltma veya test sırası varsayımı yok.
 - Migration süresi dosya başına 1 sn'yi aşarsa bir kez migrate edilmiş veri dizini dökülüp (`dumpDataDir`) her dosyada yüklenir.
 - PGlite tek bağlantılıdır. Eşzamanlılık (iki isteğin aynı `version` ile yarışması, `FOR UPDATE`, kilit beklemesi) ve PostgreSQL'e özgü uzantı davranışı PGlite'ta doğrulanamaz; bunlar Docker'da PostgreSQL 16 ile koşan ayrı `test:pg` takımındadır. Bu takım `apps/api/src/db/**` veya `apps/api/drizzle/**` değişince ve gece koşar.
 
@@ -102,14 +102,24 @@ Her uç için zorunlu senaryolar (iki kurum A ve B, kullanıcı A'dan):
 6. Rol kapsamı: veli yalnız kendi çocuğu, öğrenci yalnız kendisi, öğretmen yalnız kendi sınıfı/branşı; rehberlik iç notu veli/öğrenci yanıtında yok.
 7. Modül kapalı → 403 `module_disabled`.
 
-Genel güvenlik ağı: `onRoute` kancasıyla toplanan bütün rotalar tek testte gezilir; açık uç listesinde (`/api/v1/auth/login`, `/api/v1/auth/refresh`, `/api/v1/health`) olmayan her rota kimliksiz istekte 401 dönmelidir. Yeni açık uç bu listeye gerekçeyle eklenir.
+Oturum ve kimlik yapılandırması için bir kez (uç başına değil, `auth.test.ts`'te):
+
+- İptal edilmiş oturum ve süresi dolmuş oturum → 401; üyeliği kaldırılmış kullanıcı → 403; etkin kurumu olmayan oturum → 403 `no_active_institution`.
+- Kullanıcı A'nın B'yi etkin kurum yapma denemesi reddedilir.
+- Rol değişikliği bir sonraki istekte etkili (oturum önbelleği kapalı).
+- `Sec-Fetch-Site: cross-site` veya izinsiz `Origin` ile `POST` → 403 `csrf_rejected`.
+- Hassas işlem eski oturumla → 403 `reauthentication_required`.
+- Giriş hız sınırı devreye girer (429); parola sıfırlama yanıtı kayıtlı ve kayıtsız e-postada aynıdır; 12 karakterden kısa ve yaygın listedeki parola reddedilir; açık kayıt kapalıdır.
+- Kimlik olayları `audit_log`'a yazılır; loglarda çerez ve parola görünmez.
+
+Genel güvenlik ağı: `onRoute` kancasıyla toplanan bütün rotalar tek testte gezilir; açık uç listesinde (`/api/v1/auth/*` Better Auth uçları, `/api/v1/health`) olmayan her rota kimliksiz istekte 401 dönmelidir. Yeni açık uç bu listeye gerekçeyle eklenir.
 
 ## 6. Uçtan uca (e2e) kurallar
 
 - Playwright, `tests/e2e/<akış>.spec.ts`. Seçiciler erişilebilir rol ve etiketle (`getByRole`, `getByLabel`); CSS sınıfı yalnız rolü olmayan yapıda.
 - `waitForTimeout` yok; otomatik bekleyen `expect` veya `expect.poll`.
 - Her test bağımsızdır, kendi kurumunu kurar ve kendi rolüyle giriş yapar. API'li uygulamada kurulum test ortamına özel uçla (`NODE_ENV=test` dışında kayıtlı değil) veya doğrudan seed betiğiyle yapılır; UI üzerinden kurulum yapılmaz.
-- Giriş bir kez yapılıp `storageState` ile yeniden kullanılır.
+- Giriş Better Auth uçlarıyla bir kez yapılıp oturum çerezi `storageState` ile yeniden kullanılır.
 - Bir test bir akışı anlatır; adı Türkçe ve sonuç odaklıdır ("Öğretmen hedefi onaylar ve veli onayı görür").
 - Kalıcılık API sorgusuyla doğrulanır (demo uygulamasında `stored(page)`).
 - Zorunlu çeşitlemeler: masaüstü 1440 px; kritik akışlarda dar ekran (390 px) ve koyu tema; modül kapatınca menü ve doğrudan rota kapanır.

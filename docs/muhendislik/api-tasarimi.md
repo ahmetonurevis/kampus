@@ -1,6 +1,6 @@
 # API tasarımı
 
-Kampüs API'si JSON üzerinden REST'tir; tek istemcisi `packages/api-client`'tır. Uç ekleme adımları `api-ucu` skill'inde, katman kuralları `.claude/rules/api.md`'dedir.
+Kampüs API'si JSON üzerinden REST'tir; tek istemcisi `packages/api-client`'tır (`openapi-fetch`, tipler OpenAPI'den üretilir; kimlik için Better Auth istemcisi). Uç ekleme adımları `api-ucu` skill'inde, katman kuralları `.claude/rules/api.md`'dedir.
 
 ## 1. Yollar ve kaynaklar
 
@@ -8,7 +8,8 @@ Kampüs API'si JSON üzerinden REST'tir; tek istemcisi `packages/api-client`'tı
 - Kaynak adı çoğul, kebab-case İngilizce isimdir: `/students`, `/tutoring-sessions`, `/exam-results`.
 - Yol parametresi kaynağa göre adlandırılır: `/students/:studentId`. Kimlikler opaktır; istemci kimlik biçimini çözümlemez.
 - İç içe yol en fazla bir düzeydir ve yalnız sahiplik varsa: `/students/:studentId/goals`. Daha derini üst düzey kaynak + filtredir: `/goal-steps?goalId=…`.
-- Kurum kimliği yolda, sorguda veya gövdede **yoktur**; oturumdan gelir. Kullanıcının birden çok kurumu varsa kurum değiştirme yeni belirteç alır (`POST /auth/switch-institution`).
+- Kurum kimliği yolda, sorguda veya gövdede **yoktur**; oturumun etkin kurumundan gelir. Kullanıcının birden çok kurumu varsa kurum Better Auth `organization.setActive` ile değiştirilir.
+- **Kimlik uçları istisnadır:** `/api/v1/auth/*` Better Auth'a aittir (giriş, çıkış, parola, oturum, kurum/üyelik, davet). Bu uçların yolu ve yanıt biçimi Better Auth'undur; bu belgedeki zarf, sayfalama ve adlandırma kuralları onlara uygulanmaz. İstemci bu uçları yalnız Better Auth istemcisiyle çağırır; aynı işi yapan ikinci uç yazılmaz.
 
 | İşlem                    | Metot ve yol                  | Başarı                  |
 | ------------------------ | ----------------------------- | ----------------------- |
@@ -98,24 +99,24 @@ Bütün hata yanıtları aynı şekildedir:
 
 ## 5. HTTP durum kodları
 
-| Durum | `code` örnekleri                                                 | Ne zaman                                                                 |
-| ----- | ---------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| 200   | —                                                                | Okuma, güncelleme, komut, arşivleme                                      |
-| 201   | —                                                                | Oluşturma (`Location` başlığıyla)                                        |
-| 202   | —                                                                | Uzun süren içe aktarma kuyruğa alındı (`/imports/:importId` ile izlenir) |
-| 204   | —                                                                | Gövdesiz başarı (çıkış)                                                  |
-| 400   | `validation_failed`, `invalid_query`, `idempotency_key_required` | Şema/biçim hatası                                                        |
-| 401   | `unauthenticated`, `token_expired`                               | Belirteç yok, geçersiz veya süresi dolmuş                                |
-| 403   | `forbidden`, `module_disabled`                                   | Rol veya kapsam yetmiyor; modül kurumda kapalı                           |
-| 404   | `not_found`                                                      | Yok **veya başka kuruma ait** (varlığı sızdırılmaz)                      |
-| 409   | `version_conflict`, `duplicate`, `idempotency_in_progress`       | Sürüm çakışması, benzersizlik ihlali, aynı anahtarla süren istek         |
-| 413   | `payload_too_large`                                              | Gövde sınırı (varsayılan 1 MB)                                           |
-| 415   | `unsupported_media_type`                                         | Beklenmeyen `Content-Type`                                               |
-| 422   | iş kuralı kodu (`goal_already_open`), `idempotency_key_reused`   | Biçim doğru, iş kuralı reddetti (`DomainError` kind `rule`)              |
-| 426   | `client_upgrade_required`                                        | Mobil sürümü artık desteklenmiyor                                        |
-| 429   | `rate_limited`                                                   | Hız sınırı (`Retry-After` başlığıyla)                                    |
-| 500   | `internal_error`                                                 | Beklenmeyen hata                                                         |
-| 503   | `unavailable`                                                    | Bakım veya bağımlılık (veritabanı) erişilemez                            |
+| Durum | `code` örnekleri                                                                                      | Ne zaman                                                                                                   |
+| ----- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 200   | —                                                                                                     | Okuma, güncelleme, komut, arşivleme                                                                        |
+| 201   | —                                                                                                     | Oluşturma (`Location` başlığıyla)                                                                          |
+| 202   | —                                                                                                     | Uzun süren içe aktarma kuyruğa alındı (`/imports/:importId` ile izlenir)                                   |
+| 204   | —                                                                                                     | Gövdesiz başarı (çıkış)                                                                                    |
+| 400   | `validation_failed`, `invalid_query`, `idempotency_key_required`                                      | Şema/biçim hatası                                                                                          |
+| 401   | `unauthenticated`                                                                                     | Oturum yok, geçersiz, iptal edilmiş veya süresi dolmuş                                                     |
+| 403   | `forbidden`, `module_disabled`, `no_active_institution`, `reauthentication_required`, `csrf_rejected` | Rol/kapsam yetmiyor; modül kapalı; etkin kurum yok; hassas işlem için taze oturum gerekli; kaynak denetimi |
+| 404   | `not_found`                                                                                           | Yok **veya başka kuruma ait** (varlığı sızdırılmaz)                                                        |
+| 409   | `version_conflict`, `duplicate`, `idempotency_in_progress`                                            | Sürüm çakışması, benzersizlik ihlali, aynı anahtarla süren istek                                           |
+| 413   | `payload_too_large`                                                                                   | Gövde sınırı (varsayılan 1 MB)                                                                             |
+| 415   | `unsupported_media_type`                                                                              | Beklenmeyen `Content-Type`                                                                                 |
+| 422   | iş kuralı kodu (`goal_already_open`), `idempotency_key_reused`                                        | Biçim doğru, iş kuralı reddetti (`DomainError` kind `rule`)                                                |
+| 426   | `client_upgrade_required`                                                                             | Mobil sürümü artık desteklenmiyor                                                                          |
+| 429   | `rate_limited`                                                                                        | Hız sınırı (`Retry-After` başlığıyla)                                                                      |
+| 500   | `internal_error`                                                                                      | Beklenmeyen hata                                                                                           |
+| 503   | `unavailable`                                                                                         | Bakım veya bağımlılık (veritabanı) erişilemez                                                              |
 
 400 ile 422 ayrımı: Zod şemasını geçemeyen istek 400; şemayı geçip school-core kuralına takılan istek 422.
 
@@ -170,10 +171,14 @@ Zorunlu uçlar: ödeme/tahsilat kaydı, iade, taksit planı oluşturma, sözleş
 - `X-Request-Id` her yanıtta döner; istemci gönderirse (UUID biçimindeyse) korunur.
 - Önbellek: kişisel veri içeren yanıtlar `Cache-Control: no-store`.
 
-## 11. OpenAPI üretimi
+## 11. OpenAPI ve istemci üretimi
 
-- Tek kaynak Zod şemalarıdır. Rotalar `fastify-type-provider-zod` (Zod 4 destekli sürüm) ile şema alır, `@fastify/swagger` OpenAPI 3.1 belgesini üretir.
-- Belge geliştirme ve test ortamında `GET /api/v1/openapi.json` ile sunulur; üretimde kapalıdır.
-- `apps/api/openapi.json` commit edilir. `pnpm --filter @kampus/api openapi:check` belgeyi yeniden üretip farkı kontrol eder; fark varsa CI kırılır. Böylece sözleşme değişikliği incelemede görünür.
-- Her şema `.describe('…')` ile Türkçe açıklama ve gerektiğinde örnek taşır; para alanlarının açıklaması "kuruş" birimini belirtir.
-- İstek/yanıt şemaları `packages/school-core/src/contracts/<alan>.ts` içindedir; API rotası ve `api-client` aynı dosyayı içe aktarır, tipler `z.infer` ile türer. OpenAPI'den kod üretimi yapılmaz.
+Zincir: Zod şeması → OpenAPI belgesi → `openapi-typescript` tipleri → `openapi-fetch` çağrısı. Hiçbir halkada elle tip veya elle istemci fonksiyonu yazılmaz.
+
+- Girdi şeması (gövde) school-core'daki işlem şemasıdır (`workflowSchemas.goal` gibi); web ve mobil form aynı şemayı `zodResolver` ile kullanır. Yanıt ve sorgu şemaları `apps/api/src/routes/<alan>.schemas.ts`'tedir. Hata zarfı tek ortak şemadır (`ErrorResponse`) ve her rotanın 4xx/5xx yanıtında yer alır.
+- Rotalar `fastify-type-provider-zod` (Zod 4 destekli sürüm) ile şema alır; `@fastify/swagger` OpenAPI 3.1 belgesini üretir. `@fastify/swagger-ui` yalnız geliştirmede açıktır; belge geliştirme ve testte `GET /api/v1/openapi.json` ile sunulur, üretimde kapalıdır.
+- Her şema `.describe('…')` ile Türkçe açıklama ve gerektiğinde örnek taşır; para alanlarının açıklaması "kuruş" birimini belirtir. Her rota `operationId` (camelCase, ör. `approveGoal`) ve `tags` (alan adı) taşır.
+- `apps/api/openapi.json` commit edilir. `packages/api-client/src/schema.d.ts` bu belgeden `openapi-typescript` ile üretilir ve commit edilir; elle düzenlenmez.
+- Uç değişikliği, `openapi.json` ve `schema.d.ts` aynı committedir. `pnpm --filter @kampus/api openapi:check` ve `pnpm --filter @kampus/api-client generate:check` ikisini yeniden üretip farkı kontrol eder; fark varsa CI kırılır. Böylece sözleşme değişikliği incelemede görünür.
+- Kırıcı sözleşme değişikliği `schema.d.ts` farkında tip hatası olarak web ve mobilde görünür; `pnpm typecheck` geçmeden birleştirilmez.
+- Better Auth uçları bu belgeye eklenmez; tipleri Better Auth istemcisinden gelir.

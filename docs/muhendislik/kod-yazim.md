@@ -62,53 +62,60 @@ function statusLabel(status: GoalStatus): string {
 
 ## 3. Klasör yapısı
 
+Genel sorun (tablo, form, diyalog, bildirim, kimlik, sorgu önbelleği, kuyruk) için klasöre kendi kütüphanemiz konmaz; ADR 0002 paketleri kullanılır. Kendi kodumuz alana özgü kural (school-core), paketleri bağlayan ince katman ve tasarım tokenlarıdır.
+
 ### `packages/school-core` (saf; DOM, Node, React, veritabanı yok)
 
 ```
 src/
   data/       # deterministik örnek veri (seed), müfredat, soru bankası
-  lib/        # iş kuralları, Zod şemaları, kapsam, biçimleyiciler; errors.ts burada
+  lib/        # iş kuralları, girdi Zod şemaları, kapsam, biçimleyiciler; errors.ts burada
   modules/    # modül ve menü kaydı
-  contracts/  # API istek/yanıt Zod şemaları; API ve api-client ortak kullanır
 ```
 
-Dışa aktarım dosya yolu üzerindendir: `@kampus/school-core/lib/school-workflows.ts`. Barrel (`index.ts` ile `export *`) eklenmez.
+Dışa aktarım dosya yolu üzerindendir: `@kampus/school-core/lib/school-workflows.ts`. Barrel (`index.ts` ile `export *`) eklenmez. İşlem girdi şemaları (ör. `workflowSchemas.goal`) hem API rotasında hem web/mobil formunda (`zodResolver`) kullanılır.
 
 ### `apps/api`
 
 ```
 src/
-  app.ts            # buildApp(options): test ve sunucu aynı fabrikayı kullanır
-  server.ts         # listen, SIGTERM ile düzgün kapanış
-  config.ts         # ortam değişkenleri Zod ile doğrulanır; eksikse süreç başlamaz
-  errors.ts         # AppError ve alt sınıfları
-  plugins/          # auth, error-handler, request-context, rate-limit, security-headers, db
-  routes/<alan>.ts  # HTTP: şema, kimlik, rol; iş kuralı ve SQL yok
-  services/<alan>.ts# iş akışı: school-core çağrısı, transaction
+  app.ts                # buildApp(options): test ve sunucu aynı fabrikayı kullanır
+  server.ts             # listen, SIGTERM ile düzgün kapanış
+  config.ts             # ortam değişkenleri Zod ile doğrulanır; eksikse süreç başlamaz
+  auth.ts               # Better Auth yapılandırması (organization, access control, rate limit)
+  errors.ts             # AppError ve alt sınıfları
+  plugins/              # authenticate (Better Auth oturumu → request.ctx), error-handler,
+                        # request-context, csrf; @fastify/* eklentilerinin kaydı
+  routes/<alan>.ts      # HTTP: şema, kimlik, rol; iş kuralı ve SQL yok
+  routes/<alan>.schemas.ts  # yanıt ve sorgu şemaları (girdi şeması school-core'dan)
+  services/<alan>.ts    # iş akışı: school-core çağrısı, transaction
+  jobs/<iş-adı>.ts      # pg-boss iş tanımı ve işleyicisi
   db/
-    schema/<tablo>.ts
+    schema/<tablo>.ts   # Drizzle şeması; schema/auth.ts Better Auth CLI çıktısı
     client.ts
-    records.ts      # records deposu (kurum kapsamlı okuma/yazma)
-  lib/              # alan dışı yardımcılar (id, saat, sayfalama)
-drizzle/            # üretilmiş migration'lar (commit edilir)
+    records.ts          # records deposu (kurum kapsamlı okuma/yazma)
+  lib/                  # alan dışı yardımcılar (id, saat, sayfalama, depolama arayüzü)
+drizzle/                # üretilmiş migration'lar (commit edilir)
+openapi.json            # üretilmiş sözleşme (commit edilir)
 test/
   <alan>.test.ts
-  support/          # buildTestApp, fabrikalar, loginAs
+  support/              # buildTestApp, fabrikalar, signInAs
 ```
 
 ### `apps/web-react`
 
 ```
 src/
-  main.tsx, App.tsx, routes.tsx
-  components/       # ortak bileşenler: DataTable.tsx, Modal.tsx, Pagination.tsx …
+  main.tsx, App.tsx, routes.tsx   # react-router 7
+  components/ui/    # shadcn/ui CLI çıktısı (Radix); yalnız token ve erişilebilirlik için düzenlenir
+  components/       # paketler üzerine ince katman: DataTable.tsx (TanStack Table), Modal.tsx …
   pages/<alan>/     # rota bileşenleri ve yalnız o sayfaya ait parçalar: GoalListPage.tsx
   hooks/            # yalnız web'e özgü hook'lar (sunucu verisi değil)
-  lib/              # web'e özgü yardımcılar (pdf, csv indirme)
-  styles/           # tokens.css ve bileşen stilleri
+  lib/              # web'e özgü yardımcılar (pdf, csv indirme, auth-client.ts)
+  styles/           # Tailwind v4 giriş dosyası ve tek token dosyası (@theme)
 ```
 
-Sunucu verisi `@kampus/react-shared` hook'larından gelir; bileşen içinde `fetch` yazılmaz.
+Sunucu verisi `@kampus/react-shared` hook'larından gelir; bileşen içinde `fetch` yazılmaz. `components/ui/` dosyaları CLI ile alınır (`pnpm dlx shadcn@<sürüm> add <bileşen>`); kaynak yapılandırma `components.json`'da durur, bileşen elle baştan yazılmaz.
 
 ### `apps/mobile` (mevcut yapı korunur)
 
@@ -118,29 +125,32 @@ src/
   screens/          # PascalCase ekranlar: WorkflowScreen.tsx
   ui/               # ortak bileşenler, tema, ikonlar
   model/            # role göre görünür veri, sunum modelleri (platformdan bağımsız)
-  store/            # oturum, tema, taslaklar
-  lib/              # dosya seçimi, paylaşım gibi cihaz yardımcıları
+  store/            # tema, taslaklar (oturum Better Auth istemcisinde)
+  lib/              # dosya seçimi, paylaşım gibi cihaz yardımcıları; auth-client.ts
 ```
 
 ### `packages/api-client` ve `packages/react-shared`
 
 ```
 api-client/src/
-  client.ts         # createApiClient({ baseUrl, fetch, tokenStore }); yenileme dahil
-  errors.ts         # ApiError (status, code, message, issues, requestId)
-  endpoints/<alan>.ts
+  schema.d.ts       # openapi-typescript çıktısı (apps/api/openapi.json'dan); elle düzenlenmez
+  client.ts         # openapi-fetch createClient + ara katman (X-Client-Version, X-Request-Id)
+  errors.ts         # ApiError: hata zarfını TanStack Query'ye tipli taşıyan ince sınıf
 react-shared/src/
-  session/          # oturum sağlayıcı ve hook'ları
-  queries/<alan>.ts # use-<alan>-list, use-<alan>-mutation
+  query-keys.ts     # anahtarlar etkin kurumla başlar: ['inst', institutionId, 'goals', filtre]
+  queries/<alan>.ts # use-<alan>-list, use-<alan>-mutation (TanStack Query)
+  forms/            # react-hook-form + zodResolver yardımcıları, issues → setError
 ```
 
-`api-client` React'e, DOM'a ve React Native'e bağımlı değildir; `fetch` ve belirteç deposu dışarıdan verilir.
+`api-client` React'e, DOM'a ve React Native'e bağımlı değildir; `fetch` ve oturum başlıkları (web'de `credentials: 'include'`, mobilde Better Auth Expo istemcisinin çerezi) dışarıdan verilir. Uç başına elle istemci fonksiyonu yazılmaz; çağrı `client.GET('/api/v1/goals', { params })` biçimindedir.
 
 ## 4. Çatıya özgü kurallar
 
 ### Fastify (API)
 
-- Her rota `/api/v1` önekiyle kaydedilir ve `schema` içinde `params`, `querystring`, `body` ve **`response`** taşır. Yanıt şeması zorunludur; şemada olmayan alan istemciye gitmez.
+- Her rota `/api/v1` önekiyle kaydedilir ve `schema` içinde `params`, `querystring`, `body` ve **`response`** taşır (`fastify-type-provider-zod`). Yanıt şeması zorunludur; şemada olmayan alan istemciye gitmez.
+- Resmi eklentiler kullanılır: `@fastify/helmet`, `cors`, `cookie`, `rate-limit`, `multipart`, `swagger` (+ `swagger-ui` yalnız geliştirmede). Aynı işi yapan ara katman elle yazılmaz.
+- Better Auth işleyicisi `/api/v1/auth/*` altına bağlanır; diğer rotalar oturumu `app.authenticate` ön işleyicisinde `auth.api.getSession({ headers })` ile alır.
 - Kimlik, rol ve modül kontrolü `preHandler` ile bildirilir: `preHandler: [app.authenticate, app.requireRole(['yonetici', 'ogretmen']), app.requireModule('goals')]`.
 - Handler `async` olur ve değer döndürür; `reply.send` ile dönüş karıştırılmaz.
 - Servis `request` nesnesi almaz; açık bağlam alır: `{ db, institutionId, actor, now, log }`. Bu sayede servis test edilirken HTTP gerekmez.
@@ -165,22 +175,34 @@ app.post(
 )
 ```
 
+### Arka plan işleri (`pg-boss`)
+
+- İş adı noktalı İngilizce: `exam-results.import`, `notifications.send`. Tanım ve işleyici `src/jobs/<ad>.ts`'te; işleyici aynı servis katmanını çağırır.
+- İş yükü yalnız kimlik taşır: `{ institutionId, actorUserId, importId }`. Kişisel veri, dosya içeriği veya oturum bilgisi yüke yazılmaz.
+- İşleyici idempotenttir (pg-boss en az bir kez teslim eder): aynı iş iki kez koşarsa sonuç değişmez. Tekrarı önlemek için `singletonKey`.
+- Yeniden deneme sınırlı ve geri çekilmeli (`retryLimit`, `retryBackoff`); son hata `error` düzeyinde loglanır ve kullanıcıya iş durumu ucuyla Türkçe gösterilir.
+- İşin yaptığı yazma `audit_log`'a `actor_user_id` = işi başlatan kullanıcı olarak yazılır.
+
 ### React (web)
 
 - Fonksiyon bileşeni; props tipi `type Props = { … }`; `React.FC` kullanılmaz.
+- Önce hazır bileşen: diyalog, menü, popover, sekme, seçim kutusu shadcn/ui (Radix); tablo `@tanstack/react-table`; form `react-hook-form`; bildirim `sonner`; tarih seçici `react-day-picker`. Radix'in verdiği odak yönetimi ve ARIA davranışı ezilmez.
+- Stil Tailwind v4 sınıflarıyla ve yalnız token değişkenleriyle; bileşende sabit hex, sabit `backdrop-filter` değeri veya satır içi `style` ile renk yok. Cam yalnız yüzen katmanda (ADR 0002 karar 6).
 - Türetilebilen değer state'te tutulmaz; render sırasında hesaplanır. `useEffect` yalnız dış sistemle eşitleme içindir (abonelik, DOM ölçümü); veri çekme ve türetilmiş state için kullanılmaz.
+- Sunucu durumu yalnız TanStack Query'de; aynı veri ayrıca `useState`'e kopyalanmaz. Sorgu anahtarı etkin kurumla başlar; kurum değişince `queryClient.clear()`.
 - Liste anahtarı kalıcı kimliktir, dizin değildir.
 - `useMemo`/`memo` ölçülmüş yavaşlıkta kullanılır.
-- Form doğrulaması school-core Zod şemasıyla; API'den gelen `issues` alanlara eşlenir; gönderim sürerken düğme kilitlenir.
+- Form doğrulaması `zodResolver(<school-core şeması>)`; API'den gelen `issues` `setError` ile alanlara eşlenir; gönderim sürerken düğme kilitlenir.
 - Her rota bir hata sınırı (error boundary) içinde render edilir; kullanıcı Türkçe mesaj ve "Yeniden dene" görür.
-- Ağır kitaplıklar (pdfjs, jspdf) yalnız kullanıldığı anda `import()` ile yüklenir.
+- Ağır kitaplıklar (pdfjs, jspdf, recharts) yalnız kullanıldığı rotada veya anda `import()` ile yüklenir. `date-fns` fonksiyon bazında içe aktarılır.
 
 ### Expo (mobil)
 
+- Hazır paketler: React Navigation, TanStack Query, react-hook-form, `@better-auth/expo` + `expo-secure-store`. Cam yüzey iOS'ta `expo-glass-effect`, Android ve desteklenmeyen platformda opak token zemini.
 - Ekranlar `screens/`, yeniden kullanılan parçalar `ui/`; renk ve ölçü `ui/theme.ts`'den. Satır içi sabit renk yok.
 - Her dokunulabilir öğe en az 48 dp, `accessibilityRole` ve `accessibilityLabel` taşır.
 - 20'den fazla öğeli listeler `FlatList`/`SectionList` ile; `ScrollView` içinde `map` yok.
-- Belirteçler `expo-secure-store`'da; AsyncStorage'a kişisel veri veya belirteç yazılmaz (geçiş bitene kadar mevcut demo snapshot'ı istisnadır).
+- Oturum yalnız `@better-auth/expo` üzerinden güvenli depoda; AsyncStorage'a kişisel veri veya oturum yazılmaz (geçiş bitene kadar mevcut demo snapshot'ı istisnadır).
 - `EXPO_PUBLIC_*` değişkenleri pakete gömülür ve herkese açıktır; gizli değer içeremez.
 - Ayrıntılı mobil kurallar `apps/mobile/CLAUDE.md` içindedir.
 
@@ -235,14 +257,14 @@ Geçiş notu: school-core bugün `throw new Error('…Türkçe…')` kullanıyor
 - Hata yakalandığı yerde ya loglanır ya yeniden fırlatılır; ikisi birden değil (çift log olmaz).
 - Kullanıcıya teknik ayrıntı (yığın, SQL, dosya yolu, kimlik) gösterilmez; her hata yanıtında `requestId` bulunur, destek bu kimlikle logu bulur.
 - Promise'ler bekletilir (`await`) veya `void` ile bilinçli bırakılır; bırakılan promise `.catch` taşır.
-- İstemci: `ApiError.issues` form alanlarına, diğer hatalar toast'a gider. 401 bir kez sessiz yenileme denenir, başarısızsa oturum kapanır.
+- İstemci: `ApiError.issues` form alanlarına (`setError`), diğer hatalar `sonner` toast'ına gider. 401 alınca oturum Better Auth istemcisiyle kapatılıp giriş ekranına dönülür; istemcide belirteç yenileme mantığı yazılmaz.
 
 ## 6. Loglama
 
 - API'de Fastify'ın pino logger'ı kullanılır; `console.*` yok (betikler hariç). Üretimde düzey `info`, testte `silent`, geliştirmede `debug` + `pino-pretty`.
 - Log yapılandırılmıştır: `msg` kısa İngilizce cümle, bağlam alanlarda. Her istek logunda `reqId`, `institutionId`, `userId`, `route`, `statusCode`, `responseTime` bulunur (`request.log.child` ile).
 - Olay adları `event` alanında noktalı biçimde: `auth.login_failed`, `records.version_conflict`, `payment.recorded`.
-- Düzeyler: `error` = 5xx ve müdahale gerektiren; `warn` = beklenen ama izlenmesi gereken (yenileme belirteci yeniden kullanımı, hız sınırı); `info` = istek özeti ve iş olayı; `debug` = geliştirme.
+- Düzeyler: `error` = 5xx ve müdahale gerektiren; `warn` = beklenen ama izlenmesi gereken (CSRF reddi, hız sınırı, iş yeniden denemesi); `info` = istek özeti ve iş olayı; `debug` = geliştirme.
 - İstek/yanıt gövdesi loglanmaz. Kişisel veri yerine kimlik loglanır (`studentId`, e-posta değil). Zod hatasında yalnız alan yolları (`issues[].path`) loglanır, değerler değil.
 - Maskeleme zorunlu ve merkezi:
 
@@ -258,7 +280,7 @@ const app = Fastify({
         '*.password',
         '*.newPassword',
         '*.token',
-        '*.refreshToken',
+        '*.currentPassword',
         '*.email',
         '*.phone',
         '*.nationalId',
@@ -288,25 +310,53 @@ if (key.revision !== analysis.keyRevision)
 
 ## 8. Bağımlılık ekleme politikası
 
-Yeni paket son çaredir. Sırayla sorulur: platform (Node, Web API, React, Expo) çözüyor mu? Mevcut bağımlılık çözüyor mu? 50 satırlık kendi kodumuz yeter mi?
+### İlke: önce hazır paket (ADR 0002)
 
-Eklenecekse commit gövdesinde gerekçe yazılır:
+Genel bir sorun (tablo, form, diyalog, menü, bildirim, tarih seçici, kimlik doğrulama, sorgu önbelleği, kuyruk, e-posta, nesne depolama) için kod yazılmaz; ADR 0002'deki seçili paket kullanılır. Kendi kodumuz yalnız üç yerdedir: alana özgü kural (school-core), paketleri bağlayan ince katman (ör. `DataTable`, `authenticate`) ve tasarım tokenları.
+
+Sırayla sorulur:
+
+1. ADR 0002 listesindeki bir paket çözüyor mu? → onu kullan, yeni paket ekleme.
+2. Platform (Node, Web API, React, Expo SDK) veya mevcut bağımlılık çözüyor mu? → onu kullan.
+3. Listede olmayan hazır paket gerekiyor → aşağıdaki ölçütlerin hepsini karşılamalı.
+4. Hiçbir paket ölçütleri karşılamıyorsa veya iş alana özgüyse → kendi kodumuz, gerekçesiyle.
+
+Aynı ihtiyaç için ikinci paket (ikinci tablo, form, tarih, ikon, durum yönetimi, UI kitaplığı) ADR'siz eklenmez.
+
+### Yeni paket ölçütleri
+
+| Ölçüt              | Eşik                                                                                                                                                                                                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Bakım              | Son 6 ayda sürüm, birden çok bakımcı veya kurumsal destek, güvenlik bildirimlerine yanıt veriliyor, arşivlenmemiş                                                                                                                                                        |
+| TypeScript tipleri | Paket kendi tiplerini taşır; `@types/*` yalnız iyi bakılıyorsa. Node 24, React 19, Expo SDK 57 (mobilde yeni mimari) ile uyumlu, ESM                                                                                                                                     |
+| Lisans             | Doğrudan bağımlılık: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause (ISC ve 0BSD MIT eşdeğeri kabul). Dolaylı üretim bağımlılığında ek olarak BlueOak-1.0.0, CC0-1.0, CC-BY-4.0 (yalnız veri paketleri). GPL, AGPL, LGPL, SSPL, BUSL, ticari olmayan (NC), lisanssız: yasak |
+| Erişilebilirlik    | Arayüz paketi WAI-ARIA desenlerine uyar, klavye ve ekran okuyucu desteği belgelidir (Radix düzeyi); mobilde `accessibility*` özelliklerini geçirir                                                                                                                       |
+| Boyut              | Web: ağaç sarsılabilir (tree-shakeable); ilk yüklemeye giren gzip artışı ≤ 30 KB, değilse rota parçasına veya `import()`'a alınır. Mobil: APK artışı ölçülür                                                                                                             |
+| Yayın yaşı         | pnpm `minimumReleaseAge` beklemesine uyulur; istisna yalnız `minimumReleaseAgeExclude`'a tam sürümle ve gerekçeyle                                                                                                                                                       |
+| Sürüm sabitleme    | `package.json`'da tam sürüm (`"zod": "4.6.5"`); `^`/`~` yok. İstisna: Expo SDK paketleri `pnpm expo install` ile `~`                                                                                                                                                     |
+| Kurulum betiği     | Yok tercih edilir; gerekiyorsa `allowBuilds`/`onlyBuiltDependencies`'e gerekçeyle                                                                                                                                                                                        |
+| Dış servis         | Paket kendi başına dış servise veri göndermez (telemetri kapatılabilir değilse eklenmez); SaaS bağımlılığı ADR ister                                                                                                                                                     |
+
+Eklenirken commit gövdesine yazılır:
 
 ```
-Bağımlılık: <paket>@<sürüm>
-Neden: <hangi ihtiyaç, neden kendi kodumuz değil>
+Bağımlılık: <paket>@<tam-sürüm>
+Neden: <ihtiyaç; ADR 0002 listesindeki paket neden yetmiyor>
 Alternatifler: <değerlendirilenler>
-Boyut: <web/mobil paketine gzip etkisi, yalnız sunucuysa "sunucu">
-Bakım: <son sürüm tarihi, bakımcı sayısı>
+Bakım: <son sürüm tarihi, bakımcılar>
+Tipler: <paket içinde | @types>
 Lisans: <SPDX>
-Kurulum betiği: <var/yok; varsa allowBuilds gerekçesi>
+Erişilebilirlik: <arayüz paketiyse belge bağlantısı>
+Boyut: <gzip etkisi; yalnız sunucuysa "sunucu">
+Kurulum betiği: <yok | allowBuilds gerekçesi>
 ```
 
-- **Sürüm sabitlenir:** `package.json`'da tam sürüm (`"zod": "4.6.5"`). İstisna: Expo SDK paketleri `pnpm expo install` ile `~` alır. Mevcut `^` girdileri dokunulduğunda tam sürüme çevrilir.
+### Diğer kurallar
+
 - **Yer:** bağımlılık onu kullanan pakete eklenir; kök `package.json` yalnız araç zinciri içindir. Tip paketleri `devDependencies`'e.
 - **Lockfile** aynı committe güncellenir; CI `--frozen-lockfile` ile kurar.
-- **Lisans:** izinli MIT, ISC, BSD-2-Clause, BSD-3-Clause, Apache-2.0, 0BSD, BlueOak-1.0.0, CC0-1.0. MPL-2.0 değiştirilmeden kullanımda izinli. GPL, AGPL, LGPL, SSPL, BUSL, ticari olmayan (NC) ve lisanssız paket eklenmez. Kontrol: `pnpm licenses list --prod`.
-- **Güvenlik:** `pnpm-workspace.yaml`'daki yayın yaşı beklemesi ve kurulum betiği izinleri (`allowBuilds`, `onlyBuiltDependencies`) korunur; istisna tam sürümle ve gerekçeyle eklenir.
-- **Tek ihtiyaç, tek kitaplık:** ikon için lucide, doğrulama için Zod, tarih için `Intl` + school-core `format`. İkinci bir tarih, durum yönetimi veya UI kitaplığı ADR'siz eklenmez.
-- **Dış servis** (SaaS SDK'sı, analitik, hata izleme) ADR 0001 gereği eklenmez; gerekiyorsa ADR yazılır.
+- Mevcut `^` girdileri dokunulduğunda tam sürüme çevrilir.
+- **Kopyalanan kod** (shadcn/ui bileşenleri) CLI ile alınır, lisansı MIT'tir ve bizim bakımımızdadır; değişiklik token ve erişilebilirlikle sınırlıdır.
+- **Üretilen kod** (`openapi-typescript` çıktısı, Better Auth CLI şeması, drizzle-kit migration'ları) elle düzenlenmez; üreten komut yeniden koşulur.
+- Lisans kontrolü: `pnpm licenses list --prod`. Güvenlik denetimi: [guvenlik-kvkk.md](guvenlik-kvkk.md#15-bağımlılık-güvenliği).
 - Kullanılmayan bağımlılık aynı committe kaldırılır.

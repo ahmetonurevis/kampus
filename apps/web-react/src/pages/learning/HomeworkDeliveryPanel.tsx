@@ -6,45 +6,46 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import { SummaryLoading, SummaryMetrics, SummarySection } from '../management/SummaryParts.tsx'
 import { SummaryTitle } from './LearningParts.tsx'
-import { deliverySummary, type LearningLookups } from './learning-rows.ts'
+import { deliverySummary } from './learning-rows.ts'
+import { useClassRoster } from './use-class-roster.ts'
 
 type Props = {
   homeworkId: string
-  lookups: LearningLookups
   onClose: () => void
 }
 
 /** Öğretmen ödev özeti: teslim eden, geciken ve bekleyen sayıları, öğrenci bazında durum. */
-export function HomeworkDeliveryPanel({ homeworkId, lookups, onClose }: Props) {
+export function HomeworkDeliveryPanel({ homeworkId, onClose }: Props) {
   return (
     <SidePanel
       open={homeworkId !== ''}
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Ödev teslim durumu"
     >
-      {homeworkId ? <DeliveryDetail homeworkId={homeworkId} lookups={lookups} /> : null}
+      {homeworkId ? <DeliveryDetail homeworkId={homeworkId} /> : null}
     </SidePanel>
   )
 }
 
-function DeliveryDetail({ homeworkId, lookups }: Omit<Props, 'onClose'>) {
+function DeliveryDetail({ homeworkId }: Omit<Props, 'onClose'>) {
   // Tek kayıt ucu kapsamı uygular: başka sınıfın ödevi 404 döner ve "bulunamadı" görünür.
   const item = useCoreItem('homework', homeworkId)
   const submissions = useCoreAll('submissions', { filters: { homeworkId } })
   const homework = item.data?.record
+  const { roster, query: students } = useClassRoster(homework?.classId)
   const summary = useMemo(
     () =>
-      homework && submissions.data
+      homework && submissions.data && roster
         ? deliverySummary(
             homework,
             submissions.data.map((row) => row.record),
-            lookups.studentsByClass,
+            roster,
             new Date(),
           )
         : null,
-    [homework, submissions.data, lookups.studentsByClass],
+    [homework, submissions.data, roster],
   )
-  const error = item.error ?? submissions.error
+  const error = item.error ?? submissions.error ?? students.error
   if (error)
     return (
       <QueryError
@@ -52,17 +53,17 @@ function DeliveryDetail({ homeworkId, lookups }: Omit<Props, 'onClose'>) {
         onRetry={() => {
           if (item.error) void item.refetch()
           if (submissions.error) void submissions.refetch()
+          if (students.error) void students.refetch()
         }}
       />
     )
   if (!homework || !summary) return <SummaryLoading />
-  const schoolClass = lookups.classes.get(homework.classId)
   return (
     <>
       <SummaryTitle
         icon="NotebookPen"
         title={homework.title}
-        subtitle={`${schoolClass?.name ?? '—'} · ${homework.subject} · Son teslim ${dateLabel(homework.dueDate, { year: 'numeric' })}`}
+        subtitle={`${item.data?.joined?.className ?? '—'} · ${homework.subject} · Son teslim ${dateLabel(homework.dueDate, { year: 'numeric' })}`}
       />
       <SummaryMetrics
         items={[

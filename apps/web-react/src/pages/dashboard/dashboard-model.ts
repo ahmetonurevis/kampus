@@ -150,6 +150,44 @@ export function trendSummary(points: readonly TrendPoint[], unit: string): strin
   )
 }
 
+// --- Aylık seri (mini grafik) --------------------------------------------------
+
+export type MonthSlice = { key: string; label: string }
+
+/**
+ * Bugünün ayı dahil son `months` ay, eskiden yeniye. Anahtar sunucunun `<alan>:month`
+ * gruplamasındaki `YYYY-MM` değeridir (Europe/Istanbul ayı).
+ */
+export function monthSlices(today: string, months = 6): MonthSlice[] {
+  const year = Number(today.slice(0, 4))
+  const month = Number(today.slice(5, 7)) - 1
+  return Array.from({ length: months }, (_, index) => {
+    const date = new Date(Date.UTC(year, month - (months - 1 - index), 15, 12))
+    const key = date.toISOString().slice(0, 7)
+    const label = new Intl.DateTimeFormat('tr-TR', {
+      month: 'short',
+      year: '2-digit',
+      timeZone: 'UTC',
+    }).format(date)
+    return { key, label }
+  })
+}
+
+/** Aylık gruplamanın `dateFrom` değeri: ilk dilimin ayının ilk günü. */
+export const monthRangeStart = (slices: readonly MonthSlice[]) => `${slices[0]?.key ?? ''}-01`
+
+/** Aylık sayımdan seri; kaydı olmayan ay sıfırdır. `sum` istenirse değer grubun toplamıdır. */
+export function monthlyPoints(
+  slices: readonly MonthSlice[],
+  counts: CollectionCounts,
+  measure: 'count' | 'sum' = 'count',
+): TrendPoint[] {
+  return slices.map((slice) => {
+    const group = counts.groups.find((item) => item.value === slice.key)
+    return { label: slice.label, value: (measure === 'sum' ? group?.sum : group?.count) ?? 0 }
+  })
+}
+
 // --- Notlar -----------------------------------------------------------------
 
 export type SubjectAverageRow = { subjectId: string; name: string; average: number; count: number }
@@ -179,24 +217,6 @@ export function subjectAverageRows(
 /** Genel ortalama: bütün notların ortalaması (`meta.sum / meta.total`); not yoksa `null`. */
 export function overallAverage(counts: CollectionCounts): number | null {
   return counts.total > 0 ? Math.round((counts.sum ?? 0) / counts.total) : null
-}
-
-// --- Ödevler ----------------------------------------------------------------
-
-/**
- * Son teslim tarihi gelmemiş ödevler, en yakın önce. Liste sunucudan `-dueDate` sırasıyla gelir;
- * süzme yalnız ekrandaki kısa listeyi daraltır, sayaç üretmez.
- * TODO(api-due-date-range): `dueDate` aralık süzgeci gelince süzme sunucuya taşınır.
- */
-export function upcomingByDueDate<T extends { dueDate: string }>(
-  records: readonly T[],
-  now: Date,
-  limit: number,
-): T[] {
-  return records
-    .filter((record) => new Date(record.dueDate).getTime() >= now.getTime())
-    .sort((left, right) => left.dueDate.localeCompare(right.dueDate))
-    .slice(0, limit)
 }
 
 // --- Kampüs doluluğu ----------------------------------------------------------

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { dateLabel, homeworkStatus, money, number } from '@kampus/school-core/lib/format.ts'
+import { dateLabel, dayKey, homeworkStatus, money, number } from '@kampus/school-core/lib/format.ts'
 import { EmptyState } from '@/components/EmptyState.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -24,11 +24,11 @@ import {
   outstandingAmount,
   overallAverage,
   subjectAverageRows,
-  upcomingByDueDate,
 } from './dashboard-model.ts'
 
 const NONE: readonly never[] = []
-const HOMEWORK_WINDOW = 20
+/** Kısa listede gösterilen yaklaşan ödev sayısı. */
+const HOMEWORK_LIMIT = 5
 
 type Props = { session: Session; now: Date }
 
@@ -98,7 +98,11 @@ function StudentSummary({ session, now, student }: Props & { student: Student })
   )
   const homework = useCoreList(
     'homework',
-    { filters: { classId: student.classId }, sort: ['-dueDate'], pageSize: HOMEWORK_WINDOW },
+    {
+      filters: { classId: student.classId, dateField: 'dueDate', dateFrom: dayKey(now) },
+      sort: ['dueDate'],
+      pageSize: HOMEWORK_LIMIT,
+    },
     { enabled: learning },
   )
   const recentGrades = useCoreList(
@@ -108,11 +112,8 @@ function StudentSummary({ session, now, student }: Props & { student: Student })
   )
   const subjects = useCoreAll('subjects', {}, { enabled: academic })
 
-  const upcoming = upcomingByDueDate(
-    (homework.data?.rows ?? NONE).map((row) => row.record),
-    now,
-    5,
-  )
+  // Son teslim günü bugün ya da sonrası; süzme ve sıra sunucuda.
+  const upcoming = (homework.data?.rows ?? NONE).map((row) => row.record)
   const submissions = useCoreList(
     'submissions',
     { filters: { studentId, homeworkId: upcoming.map((item) => item.id) }, pageSize: 5 },

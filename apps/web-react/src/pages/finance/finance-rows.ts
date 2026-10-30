@@ -1,5 +1,6 @@
 // Finans & Tahsilat listesinin satır ve sorgu hesapları (Vue `Finance.vue`). Saf işlevlerdir:
-// API satırları ve öğrenci/sınıf eşlemeleri girer; tablo/CSV satırı ve sunucu sorgusu çıkar.
+// API satırları girer (öğrenci ve sınıf adı satırın `joined` alanındandır); tablo/CSV satırı ve
+// sunucu sorgusu çıkar.
 import {
   dateLabel,
   INVOICE_STATUS_KEYS,
@@ -10,16 +11,13 @@ import {
   type InvoiceStatusKey,
 } from '@kampus/school-core/lib/format.ts'
 import type { CollectionCounts, CollectionQuery } from '@kampus/react-shared/collections.ts'
-import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
+import type { CoreRow } from '@/hooks/use-core-collection.ts'
 import {
   collectionQueryFromList,
   exportQueryFromList,
   type CollectionListConfig,
 } from '../../lib/collection-list.ts'
 import type { ListState } from '../../lib/list-state.ts'
-
-type Student = CoreRecord<'students'>
-type SchoolClass = CoreRecord<'classes'>
 
 /** Durum seçenekleri; URL'de core durum anahtarıyla taşınır (`?durum=gecikmis`). */
 export const INVOICE_STATUS_OPTIONS = INVOICE_STATUS_KEYS.map((key) => ({
@@ -46,27 +44,12 @@ export const INVOICE_LIST = {
   defaultSort: ['dueDate', 'id'],
 } satisfies CollectionListConfig
 
-export type FinanceLookups = {
-  students: ReadonlyMap<string, Student>
-  classes: ReadonlyMap<string, SchoolClass>
-}
-
-export function financeLookups(
-  students: readonly CoreRow<'students'>[],
-  classes: readonly CoreRow<'classes'>[],
-): FinanceLookups {
-  return {
-    students: new Map(students.map((row) => [row.record.id, row.record])),
-    classes: new Map(classes.map((row) => [row.record.id, row.record])),
-  }
-}
-
 export type InvoiceRow = {
   id: string
   version: number
   studentId: string
+  /** Kapsam dışı öğrencide "—". */
   studentName: string
-  studentNumber: string
   className: string
   installment: number
   dueDate: string
@@ -78,20 +61,14 @@ export type InvoiceRow = {
 }
 
 /** `today` Europe/Istanbul günüdür (`dayKey()`); durum vadesi geçmiş ödenmemiş taksitte "Gecikmiş". */
-export function invoiceRow(
-  item: CoreRow<'invoices'>,
-  lookups: FinanceLookups,
-  today: string,
-): InvoiceRow {
+export function invoiceRow(item: CoreRow<'invoices'>, today: string): InvoiceRow {
   const invoice = item.record
-  const student = lookups.students.get(invoice.studentId)
   return {
     id: invoice.id,
     version: item.version,
     studentId: invoice.studentId,
-    studentName: student?.name ?? 'Öğrenci bulunamadı',
-    studentNumber: student?.number ?? '—',
-    className: (student && lookups.classes.get(student.classId)?.name) ?? '—',
+    studentName: item.joined?.studentName ?? '—',
+    className: item.joined?.className ?? '—',
     installment: invoice.installment,
     dueDate: invoice.dueDate,
     amount: invoice.amount,

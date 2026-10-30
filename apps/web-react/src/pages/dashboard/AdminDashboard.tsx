@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router'
-import { dayKey, money, number } from '@kampus/school-core/lib/format.ts'
-import { countOf } from '@kampus/react-shared/collections.ts'
+import { dayKey, INVOICE_STATUS_LABELS, money, number } from '@kampus/school-core/lib/format.ts'
+import { countOf, sumOf } from '@kampus/react-shared/collections.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreAll, useCoreCounts, useCoreList } from '@/hooks/use-core-collection.ts'
 import type { Session } from '@/auth/auth-port.ts'
+import { CollectionTrend } from './CollectionTrend.tsx'
 import {
   CardList,
   combineStates,
@@ -24,14 +25,13 @@ import {
 } from './dashboard-model.ts'
 
 const ACTIVE = { isActive: 'true' } as const
-const NONE: readonly never[] = []
 const SLICE_TONE = { gecikmis: 'warning', yaklasan: 'primary', odendi: 'success' } as const
 
 /**
  * Yönetici Genel Bakış (Vue `Dashboard.vue` yönetici): öğrenci, sınıf ve kadro sayıları; taksit
  * durumu dağılımı (tutar kuruş → TL); bugünkü yoklama; son kayıtlar ve kampüs doluluğu. Bütün
- * sayılar sunucu sayımından gelir; kartlar ilgili listeyi filtresi adreste açar.
- * TODO(api-aggregate-monthly): Vue'daki aylık tahsilat eğilimi `paidAt` gün aralığı süzgeci ister.
+ * sayılar sunucu sayımından gelir; kartlar ilgili listeyi filtresi adreste açar. Bugünkü tahsilat
+ * `paidAt` günü süzgeciyle, aylık tahsilat eğilimi `paidAt:month` gruplamasıyla sayılır.
  */
 export function AdminDashboard({ session, now }: { session: Session; now: Date }) {
   const role = session.role
@@ -52,6 +52,15 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
     { groupBy: 'status', sum: 'amount' },
     { enabled: finance },
   )
+  const collectedToday = useCoreCounts(
+    'invoices',
+    {
+      groupBy: 'status',
+      sum: 'amount',
+      filters: { dateField: 'paidAt', dateFrom: today, dateTo: today },
+    },
+    { enabled: finance },
+  )
   const attendance = useCoreCounts(
     'attendance',
     { groupBy: 'status', filters: { dateFrom: today, dateTo: today } },
@@ -61,10 +70,6 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
   const classRefs = useCoreAll('classes')
   const branchRefs = useCoreAll('branches', { filters: ACTIVE })
 
-  const classNames = useMemo(
-    () => new Map((classRefs.data ?? NONE).map((row) => [row.record.id, row.record.name])),
-    [classRefs.data],
-  )
   const occupancy = useMemo(() => {
     if (!classRefs.data || !branchRefs.data || !studentsByClass.data || !classes.data) return []
     const classBranch = new Map(classRefs.data.map((row) => [row.record.id, row.record.branchId]))
@@ -112,6 +117,16 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
           href={dashboardHref(role, 'personel')}
           state={combineStates(teachers)}
         />
+        {finance ? (
+          <StatCard
+            label="Bugünkü tahsilat"
+            icon="CircleCheck"
+            value={money(sumOf(collectedToday.data, INVOICE_STATUS_LABELS.odendi))}
+            note={`${number(countOf(collectedToday.data, INVOICE_STATUS_LABELS.odendi))} taksit bugün ödendi`}
+            href={dashboardHref(role, 'finans', { durum: 'odendi' })}
+            state={combineStates(collectedToday)}
+          />
+        ) : null}
         {finance ? (
           <StatCard
             label="Bekleyen tahsilat"
@@ -193,6 +208,12 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
         ) : null}
       </DashboardGrid>
 
+      {finance ? (
+        <DashboardGrid>
+          <CollectionTrend now={now} href={dashboardHref(role, 'finans', { durum: 'odendi' })} />
+        </DashboardGrid>
+      ) : null}
+
       <DashboardGrid>
         <ListCard
           title="Son kayıtlar"
@@ -210,7 +231,7 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
                     {row.record.name}
                   </strong>
                   <small className="text-sm text-muted-foreground">
-                    {[classNames.get(row.record.classId), row.record.number]
+                    {[row.joined?.className ?? '—', row.record.number]
                       .filter(Boolean)
                       .join(' · No: ')}
                   </small>

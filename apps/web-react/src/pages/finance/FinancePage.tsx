@@ -8,12 +8,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import {
-  useCoreAll,
-  useCoreCounts,
-  useCoreFetchAll,
-  useCoreList,
-} from '@/hooks/use-core-collection.ts'
+import { useCoreCounts, useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
@@ -23,7 +18,6 @@ import { sortableColumns } from '@/lib/collection-list.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import {
-  financeLookups,
   INVOICE_LIST,
   INVOICE_STATUS_OPTIONS,
   invoiceCsvRow,
@@ -43,7 +37,6 @@ const SORTABLE = sortableColumns(INVOICE_LIST)
 const MOBILE_COLUMNS = ['installment', 'dueDate', 'amount', 'status']
 const CSV_NAME = 'finans-raporu'
 const ALL = 'all'
-const NONE: readonly never[] = []
 const TOTALS_QUERY = { groupBy: 'status', sum: 'amount' } as const
 
 /**
@@ -51,19 +44,10 @@ const TOTALS_QUERY = { groupBy: 'status', sum: 'amount' } as const
  * taksitleri sunucu sayfalı; öğrenci adı/numarası/sınıf araması, ödeme durumu filtresi,
  * öğrenci/vade/tutar/taksit sıralaması sunucuda uygulanır. Toplam kartları kurum geneli
  * `counts?groupBy=status&sum=amount` yanıtından gelir (liste araması ve durumundan bağımsız).
- * Öğrenci ve sınıf adları yalnız satırda gösterilir; ad eşlemesi için kendi okumalarıdır.
+ * Öğrenci ve sınıf adları satırın `joined` alanından gelir; ayrı öğrenci/sınıf listesi çekilmez.
  */
 export function FinancePage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
-  const students = useCoreAll('students')
-  const classes = useCoreAll('classes')
-  const lookups = useMemo(
-    () => financeLookups(students.data ?? NONE, classes.data ?? NONE),
-    [students.data, classes.data],
-  )
-  const lookupsPending = students.isPending || classes.isPending
-  const lookupsError = students.error ?? classes.error
-
   const list = useListState('taksitler', { urlFilters: INVOICE_URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
   const query = useMemo(() => invoiceListQuery(list.state, search), [list.state, search])
@@ -77,10 +61,10 @@ export function FinancePage({ page }: { page: NavPage }) {
   const today = dayKey()
   const view = useMemo(
     () => ({
-      rows: active.data?.rows.map((item) => invoiceRow(item, lookups, today)),
+      rows: active.data?.rows.map((item) => invoiceRow(item, today)),
       total: active.data?.total ?? 0,
     }),
-    [active.data, lookups, today],
+    [active.data, today],
   )
 
   const panel = useDetailPanel('detay')
@@ -105,9 +89,7 @@ export function FinancePage({ page }: { page: NavPage }) {
             <Avatar name={row.studentName} size="small" />
             <span className="grid min-w-0">
               <strong className="font-medium">{row.studentName}</strong>
-              <small className="text-xs text-muted-foreground">
-                {row.className} · No: {row.studentNumber}
-              </small>
+              <small className="text-xs text-muted-foreground">{row.className}</small>
             </span>
           </span>
         ),
@@ -160,12 +142,12 @@ export function FinancePage({ page }: { page: NavPage }) {
     const csvColumns = columns.filter((column) => column.key !== ACTIONS_KEY)
     void csv.download(CSV_NAME, csvColumns, async () => {
       const items = await fetchAll(invoiceExportQuery(list.state, search))
-      return items.map((item) => invoiceCsvRow(invoiceRow(item, lookups, today)))
+      return items.map((item) => invoiceCsvRow(invoiceRow(item, today)))
     })
   }
 
-  const loading = lookupsPending || active.isPending
-  const error = active.error ?? lookupsError
+  const loading = active.isPending
+  const error = active.error
   return (
     <>
       <PageHeading
@@ -175,7 +157,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           <Button
             variant="secondary"
             onClick={download}
-            disabled={csv.busy || lookupsPending}
+            disabled={csv.busy}
             aria-busy={csv.busy || undefined}
           >
             <Icon name="Download" size={17} aria-hidden="true" />
@@ -228,18 +210,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           loading={loading}
           fetching={active.isFetching && !active.isPending}
           error={
-            error ? (
-              <QueryError
-                error={error}
-                onRetry={() => {
-                  if (lookupsError) {
-                    void students.refetch()
-                    void classes.refetch()
-                  }
-                  void active.refetch()
-                }}
-              />
-            ) : undefined
+            error ? <QueryError error={error} onRetry={() => void active.refetch()} /> : undefined
           }
           onRowClick={(row) => openInvoice(row.id)}
           externalActive={statusKey !== ''}
@@ -264,7 +235,6 @@ export function FinancePage({ page }: { page: NavPage }) {
       </section>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}
-        lookups={lookups}
         onClose={panel.close}
         actions={(row) => (
           <Button onClick={() => openPayment(row.id)}>
@@ -273,7 +243,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           </Button>
         )}
       />
-      <PaymentPanel invoiceId={payment.selectedId} lookups={lookups} onClose={payment.close} />
+      <PaymentPanel invoiceId={payment.selectedId} onClose={payment.close} />
     </>
   )
 }

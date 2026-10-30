@@ -1,6 +1,6 @@
 import { dateLabel, dayKey, money, number } from '@kampus/school-core/lib/format.ts'
 import { INVOICE_STATUS_LABELS } from '@kampus/school-core/lib/format.ts'
-import { countOf } from '@kampus/react-shared/collections.ts'
+import { countOf, sumOf } from '@kampus/react-shared/collections.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreCounts, useCoreList, type CoreRow } from '@/hooks/use-core-collection.ts'
 import type { Session } from '@/auth/auth-port.ts'
@@ -20,9 +20,9 @@ const LIST_SIZE = 5
 
 /**
  * Ön büro Genel Bakış (Vue `Dashboard.vue` ön büro): gecikmiş ve yaklaşan taksit sayıları/tutarları,
- * öncelikli taksit listeleri, son tahsilatlar ve (CRM açıksa) görüşme bekleyen adaylar.
- * TODO(api-paid-at-range): "Bugünkü tahsilat" toplamı `paidAt` gün aralığı süzgeci (veya
- * `groupBy` gün) ister; o gelene kadar son tahsilatlar listelenir, bugün ödenenler işaretlenir.
+ * öncelikli taksit listeleri, son tahsilatlar ve (CRM açıksa) görüşme bekleyen adaylar. "Bugünkü
+ * tahsilat" `paidAt` günü süzgeciyle sunucuda toplanır; öğrenci adları satırın `joined` alanından
+ * gelir.
  */
 export function FrontDeskDashboard({ session, now }: { session: Session; now: Date }) {
   const role = session.role
@@ -33,6 +33,15 @@ export function FrontDeskDashboard({ session, now }: { session: Session; now: Da
   const invoices = useCoreCounts(
     'invoices',
     { groupBy: 'status', sum: 'amount' },
+    { enabled: finance },
+  )
+  const collectedToday = useCoreCounts(
+    'invoices',
+    {
+      groupBy: 'status',
+      sum: 'amount',
+      filters: { dateField: 'paidAt', dateFrom: today, dateTo: today },
+    },
     { enabled: finance },
   )
   const prospects = useCoreCounts('prospects', { groupBy: 'stage' }, { enabled: crm })
@@ -80,6 +89,14 @@ export function FrontDeskDashboard({ session, now }: { session: Session; now: Da
               note={`${money(slice('yaklasan')?.amount)} vadesi gelmedi`}
               href={dashboardHref(role, PAGE_PATH, { durum: 'yaklasan' })}
               state={invoiceState}
+            />
+            <StatCard
+              label="Bugünkü tahsilat"
+              icon="CircleCheck"
+              value={money(sumOf(collectedToday.data, INVOICE_STATUS_LABELS.odendi))}
+              note={`${number(countOf(collectedToday.data, INVOICE_STATUS_LABELS.odendi))} taksit bugün ödendi`}
+              href={dashboardHref(role, PAGE_PATH, { durum: 'odendi' })}
+              state={combineStates(collectedToday)}
             />
             <StatCard
               label="Tahsil edilen"
@@ -188,7 +205,7 @@ type InvoiceListProps = {
 function InvoiceList({ label, rows, compact = false, today }: InvoiceListProps) {
   return (
     <CardList label={label}>
-      {rows?.map(({ id, record }) => {
+      {rows?.map(({ id, record, joined }) => {
         const paidToday = today !== undefined && !!record.paidAt && dayKey(record.paidAt) === today
         const detail =
           today !== undefined && record.paidAt
@@ -199,7 +216,7 @@ function InvoiceList({ label, rows, compact = false, today }: InvoiceListProps) 
             key={id}
             className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
           >
-            <StudentName studentId={record.studentId} detail={detail} />
+            <StudentName name={joined?.studentName} detail={detail} />
             <span
               className={
                 compact

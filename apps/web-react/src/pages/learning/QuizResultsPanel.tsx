@@ -5,27 +5,29 @@ import { SidePanel } from '@/components/SidePanel.tsx'
 import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import { SummaryLoading, SummaryMetrics, SummarySection } from '../management/SummaryParts.tsx'
 import { SummaryTitle } from './LearningParts.tsx'
-import { attemptResult, type LearningLookups } from './learning-rows.ts'
+import { attemptResult } from './learning-rows.ts'
+import { useClassRoster } from './use-class-roster.ts'
 
-type Props = { quizId: string; lookups: LearningLookups; onClose: () => void }
+type Props = { quizId: string; onClose: () => void }
 
 /** Öğretmen quiz özeti: sınıf ortalaması ve öğrenci bazında sonuç (cevaplardan hesaplanır). */
-export function QuizResultsPanel({ quizId, lookups, onClose }: Props) {
+export function QuizResultsPanel({ quizId, onClose }: Props) {
   return (
     <SidePanel
       open={quizId !== ''}
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Quiz sonuçları"
     >
-      {quizId ? <QuizResultsDetail quizId={quizId} lookups={lookups} /> : null}
+      {quizId ? <QuizResultsDetail quizId={quizId} /> : null}
     </SidePanel>
   )
 }
 
-function QuizResultsDetail({ quizId, lookups }: Omit<Props, 'onClose'>) {
+function QuizResultsDetail({ quizId }: Omit<Props, 'onClose'>) {
   // Tek kayıt ucu kapsamı uygular: başka sınıfın quizi 404 döner ve "bulunamadı" görünür.
   const item = useCoreItem('quizzes', quizId)
   const quiz = item.data?.record
+  const { roster, query: students } = useClassRoster(quiz?.classId)
   const attempts = useCoreAll('quizAttempts', { filters: { quizId } })
   const bank = useCoreAll(
     'bank',
@@ -33,7 +35,7 @@ function QuizResultsDetail({ quizId, lookups }: Omit<Props, 'onClose'>) {
     { enabled: quiz !== undefined },
   )
   const results = useMemo(() => {
-    if (!quiz || !attempts.data || !bank.data) return null
+    if (!quiz || !attempts.data || !bank.data || !roster) return null
     const questions = bank.data.map((row) => row.record)
     const byStudent = new Map(
       attempts.data.map((row) => [
@@ -41,23 +43,23 @@ function QuizResultsDetail({ quizId, lookups }: Omit<Props, 'onClose'>) {
         attemptResult(row.record, quiz, questions),
       ]),
     )
-    const students = lookups.studentsByClass.get(quiz.classId) ?? []
-    const entries = students.map((student) => ({
+    const entries = roster.map((student) => ({
       id: student.id,
       name: student.name,
       result: byStudent.get(student.id) ?? null,
     }))
     const scores = entries.flatMap((entry) => (entry.result ? [entry.result.score] : []))
     return { entries, solved: scores.length, average: scores.length ? average(scores) : null }
-  }, [quiz, attempts.data, bank.data, lookups.studentsByClass])
+  }, [quiz, attempts.data, bank.data, roster])
 
-  const error = item.error ?? attempts.error ?? bank.error
+  const error = item.error ?? attempts.error ?? bank.error ?? students.error
   if (error)
     return (
       <QueryError
         error={error}
         onRetry={() => {
-          for (const query of [item, attempts, bank]) if (query.error) void query.refetch()
+          for (const query of [item, attempts, bank, students])
+            if (query.error) void query.refetch()
         }}
       />
     )
@@ -67,7 +69,7 @@ function QuizResultsDetail({ quizId, lookups }: Omit<Props, 'onClose'>) {
       <SummaryTitle
         icon="ListChecks"
         title={quiz.title}
-        subtitle={`${lookups.classes.get(quiz.classId)?.name ?? '—'} · ${quiz.questionIds.length} soru · ${quiz.duration} dk`}
+        subtitle={`${item.data?.joined?.className ?? '—'} · ${quiz.questionIds.length} soru · ${quiz.duration} dk`}
       />
       <SummaryMetrics
         items={[

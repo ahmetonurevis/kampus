@@ -30,6 +30,15 @@ const wrap = <T extends { id: string }>(records: readonly T[]) =>
     record,
   }))
 
+/** Kampüse bağlı kayıt: sunucu `joined.branchName` döndürür. */
+const wrapWithBranch = <T extends { id: string; branchId: string }>(records: readonly T[]) => {
+  const branches = createSeed(NOW).branches
+  return wrap(records).map((row) => {
+    const name = branches.find((branch) => branch.id === row.record.branchId)?.name
+    return name ? { ...row, joined: { branchName: name } } : row
+  })
+}
+
 /** Sunucu `counts?groupBy=classId&isActive=true` yanıtının seed'den karşılığı. */
 function activeStudentCounts() {
   const byClass = new Map<string, number>()
@@ -45,8 +54,8 @@ function sources(): ManagementSources {
   const seed = createSeed(NOW)
   return {
     branches: wrap(seed.branches),
-    classes: wrap(seed.classes),
-    teachers: wrap(seed.teachers),
+    classes: wrapWithBranch(seed.classes),
+    teachers: wrapWithBranch(seed.teachers),
     assignments: wrap(seed.assignments),
     subjects: wrap(seed.subjects),
   }
@@ -112,7 +121,9 @@ test('lise sınıfı Lise olarak etiketlenir; eksik eşleme boş kalır', () => 
   const orphan = { ...lise, record: { ...lise.record, branchId: 'yok', teacherId: 'yok' } }
   const row = classRow(orphan, lookups)
   assert.match(row.detail, /^Lise · Derslik /)
-  assert.deepEqual([row.branch, row.teacher], ['', ''])
+  assert.equal(row.teacher, '')
+  // Kampüs adı gelmeyen (kapsam dışı) kayıtta "—".
+  assert.equal(classRow({ ...lise, joined: {} }, lookups).branch, '—')
 })
 
 test('öğretmen satırı aktif sınıflardaki dersleri listeler; dersi yoksa açıklama yazar', () => {

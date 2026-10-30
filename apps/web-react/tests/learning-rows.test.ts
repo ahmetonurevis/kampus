@@ -3,11 +3,11 @@ import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { gradeQuiz } from '@kampus/school-core/lib/domain.ts'
 import {
+  activeRoster,
   attemptResult,
   deliverySummary,
   homeworkRow,
   HOMEWORK_LIST,
-  learningLookups,
   materialRow,
   MATERIAL_LIST,
   QUIZ_LIST,
@@ -22,7 +22,10 @@ const NOW = new Date('2026-10-15T09:00:00.000Z')
 const PAST = '2026-10-01T09:00:00.000Z'
 const FUTURE = '2026-11-01T09:00:00.000Z'
 
-const wrap = <T extends { id: string }>(records: readonly T[]) =>
+const wrap = <T extends { id: string }>(
+  records: readonly T[],
+  joined?: { className?: string; studentName?: string },
+) =>
   records.map((record) => ({
     id: record.id,
     version: 1,
@@ -30,19 +33,18 @@ const wrap = <T extends { id: string }>(records: readonly T[]) =>
     updatedAt: NOW.toISOString(),
     archivedAt: null,
     record,
+    ...(joined ? { joined } : {}),
   }))
 
 function setup() {
   const seed = createSeed(NOW)
-  const classes = wrap(seed.classes)
-  const students = wrap(seed.students)
-  const lookups = learningLookups(classes, students)
   const classId = 'c1'
   const classStudents = seed.students.filter((student) => student.classId === classId)
   const template = seed.homework.find((item) => item.classId === classId)
   assert.ok(template)
   const homework = (id: string, dueDate: string) => ({ ...template, id, dueDate, classId })
-  return { seed, lookups, classStudents, homework, classId }
+  const roster = activeRoster(wrap(classStudents))
+  return { seed, roster, classStudents, homework, classId }
 }
 
 const submission = (homeworkId: string, studentId: string, score: number | null = null) => ({
@@ -51,21 +53,18 @@ const submission = (homeworkId: string, studentId: string, score: number | null 
   score,
 })
 
-test('learningLookups sınıf eşlemesi kurar; pasif öğrenci ad sırasıyla sayılmaz', () => {
-  const { seed, lookups, classStudents } = setup()
-  assert.equal(lookups.classes.get('c1')?.name, '7-A')
-  const active = lookups.studentsByClass.get('c1') ?? []
-  assert.equal(active.length, classStudents.length)
-  const names = active.map((student) => student.name)
+test('activeRoster pasif öğrenciyi saymaz ve Türkçe ad sırasıyla verir', () => {
+  const { classStudents, roster } = setup()
+  assert.equal(roster.length, classStudents.length)
+  const names = roster.map((student) => student.name)
   assert.deepEqual(
     names,
     [...names].sort((a, b) => a.localeCompare(b, 'tr')),
   )
 
-  const first = seed.students[0]
+  const first = classStudents[0]
   assert.ok(first)
-  const inactive = learningLookups(wrap(seed.classes), wrap([{ ...first, isActive: false }]))
-  assert.equal(inactive.studentsByClass.get(first.classId), undefined)
+  assert.deepEqual(activeRoster(wrap([{ ...first, isActive: false }])), [])
 })
 
 test('homeworkRow durumu core homeworkStatus ile verir ve yalnız o öğrencinin teslimini sayar', () => {
@@ -87,13 +86,13 @@ test('homeworkRow durumu core homeworkStatus ile verir ve yalnız o öğrencinin
 })
 
 test('deliverySummary teslim eden, geciken, bekleyen ve değerlendirilen sayılarını verir', () => {
-  const { lookups, classStudents, homework, classId } = setup()
+  const { roster, classStudents, homework, classId } = setup()
   const [a, b, c] = classStudents
   assert.ok(a && b && c)
   const late = homework('hw-late', PAST)
   const submissions = [submission('hw-late', a.id, 70), submission('hw-late', b.id)]
 
-  const summary = deliverySummary(late, submissions, lookups.studentsByClass, NOW)
+  const summary = deliverySummary(late, submissions, roster, NOW)
   assert.equal(summary.total, classStudents.length)
   assert.equal(summary.delivered, 2)
   assert.equal(summary.evaluated, 1)
@@ -103,39 +102,32 @@ test('deliverySummary teslim eden, geciken, bekleyen ve değerlendirilen sayıla
 
   // Süresi süren ödevde teslim etmeyenler "bekleyen"dir, geciken yoktur.
   const open = homework('hw-open', FUTURE)
-  const openSummary = deliverySummary(
-    open,
-    [submission('hw-open', a.id)],
-    lookups.studentsByClass,
-    NOW,
-  )
+  const openSummary = deliverySummary(open, [submission('hw-open', a.id)], roster, NOW)
   assert.equal(openSummary.late, 0)
   assert.equal(openSummary.pending, classStudents.length - 1)
   assert.equal(openSummary.delivered, 1)
 
-  // Başka ödevin teslimi sayılmaz; başka sınıfın öğrencisi listeye girmez.
-  const other = deliverySummary(late, [submission('hw-open', a.id)], lookups.studentsByClass, NOW)
+  // Başka ödevin teslimi sayılmaz; öğrencisi olmayan (boş roster) sınıfta toplam sıfırdır.
+  const other = deliverySummary(late, [submission('hw-open', a.id)], roster, NOW)
   assert.equal(other.delivered, 0)
-  const noClass = deliverySummary(
-    { ...late, classId: 'yok' },
-    submissions,
-    lookups.studentsByClass,
-    NOW,
-  )
+  const noClass = deliverySummary(late, submissions, [], NOW)
   assert.equal(noClass.total, 0)
   assert.equal(classId, 'c1')
 })
 
-test('teacherHomeworkRow sınıf adı ve teslim sayısını eşler', () => {
-  const { lookups, classStudents, homework } = setup()
-  const [a] = classStudents
-  assert.ok(a)
-  const item = wrap([homework('hw-t', PAST)])[0]
+test('teacherHomeworkRow sınıf adını joined alanından, sayıları sunucu sayımından alır', () => {
+  const { homework } = setup()
+  const item = wrap([homework('hw-t', PAST)], { className: '7-A' })[0]
   assert.ok(item)
-  const row = teacherHomeworkRow(item, [submission('hw-t', a.id)], lookups, NOW)
+  const row = teacherHomeworkRow(item, { delivered: 1, total: 24 })
   assert.equal(row.className, '7-A')
   assert.equal(row.delivered, 1)
-  assert.equal(row.total, classStudents.length)
+  assert.equal(row.total, 24)
+
+  // Kapsam dışı sınıfın adı gelmez: "—".
+  const [bare] = wrap([homework('hw-u', PAST)])
+  assert.ok(bare)
+  assert.equal(teacherHomeworkRow(bare, { delivered: 0, total: 0 }).className, '—')
 })
 
 function quizFixture() {
@@ -146,7 +138,7 @@ function quizFixture() {
   assert.ok(quiz)
   const attempts = seed.quizAttempts.filter((attempt) => attempt.quizId === quiz.id)
   assert.ok(attempts.length > 1)
-  return { seed, quiz, attempts, lookups: learningLookups(wrap(seed.classes), []) }
+  return { seed, quiz, attempts }
 }
 
 test('attemptResult soru bankası varken puanı cevaplardan core gradeQuiz ile hesaplar', () => {
@@ -177,21 +169,21 @@ test('attemptResult cevap anahtarı yoksa veya eksikse saklı sonuca düşer', (
 })
 
 test('teacherQuizRow sınıf ortalamasını denemelerin cevaplarından hesaplar', () => {
-  const { seed, quiz, attempts, lookups } = quizFixture()
-  const item = wrap([quiz])[0]
+  const { seed, quiz, attempts } = quizFixture()
+  const item = wrap([quiz], { className: '7-A' })[0]
   assert.ok(item)
   const scores = attempts.map((attempt) => gradeQuiz(quiz, seed.bank, attempt.answers, true).score)
   const expected = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
 
-  const row = teacherQuizRow(item, attempts, seed.bank, lookups)
+  const row = teacherQuizRow(item, attempts, seed.bank)
   assert.equal(row.average, expected)
   assert.equal(row.solved, attempts.length)
   assert.equal(row.questions, quiz.questionIds.length)
-  assert.equal(row.className, lookups.classes.get(quiz.classId)?.name)
+  assert.equal(row.className, '7-A')
 
   // Başka quizin denemesi ortalamaya girmez; çözen yoksa ortalama yoktur.
   const foreign = attempts.map((attempt) => ({ ...attempt, quizId: 'baska' }))
-  const empty = teacherQuizRow(item, foreign, seed.bank, lookups)
+  const empty = teacherQuizRow(item, foreign, seed.bank)
   assert.equal(empty.average, null)
   assert.equal(empty.solved, 0)
 })

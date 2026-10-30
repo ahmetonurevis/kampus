@@ -49,7 +49,8 @@ const filterValue = (value: unknown) => (typeof value === 'string' ? value : '')
  * tablosu; kampüs ve branş filtresi, ad sıralaması, satırdan öğretmen özeti. Yalnız okuma.
  * TODO(D1b2): "Öğretmen ekle", düzenle/arşivle yazma uçlarıyla eklenir.
  * "Aktif kayıtlar / Arşiv" sekmesi (`?durum=arsiv`) sunucu `isActive` filtresidir.
- * TODO(api-search-joined): kampüs/branş adıyla arama (Vue'da var) ilişkili ad araması gelince.
+ * Arama (`q`) sunucuda öğretmenin alanlarında ve kampüs adında yapılır; kampüs adı satırın
+ * `joined.branchName` alanından gelir.
  * TODO(api-aggregate): Vue'daki "Performans" sütunu soru/SLA verisinden hesaplanır; toplu uç
  * veya kaynak ucu gelince eklenir.
  */

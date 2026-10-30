@@ -6,36 +6,35 @@ import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreItem } from '@/hooks/use-core-collection.ts'
 import { SummaryLoading, SummaryMetrics } from '../management/SummaryParts.tsx'
-import { invoiceRow, type FinanceLookups, type InvoiceRow } from './finance-rows.ts'
+import { invoiceRow, type InvoiceRow } from './finance-rows.ts'
 
 type Props = {
   invoiceId: string
-  lookups: FinanceLookups
   onClose: () => void
   /** Ödenmemiş taksidin işlemleri (tahsilat); ödenmiş taksitte çağrılmaz. */
   actions?: (row: InvoiceRow) => ReactNode
 }
 
 /** Taksit detayı (Vue `Finance.vue` drawer): öğrenci, tutar, durum, vade ve tahsilat bilgisi. */
-export function InvoiceSummaryPanel({ invoiceId, lookups, onClose, actions }: Props) {
+export function InvoiceSummaryPanel({ invoiceId, onClose, actions }: Props) {
   return (
     <SidePanel
       open={invoiceId !== ''}
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Taksit detayı"
     >
-      {invoiceId ? (
-        <InvoiceDetail invoiceId={invoiceId} lookups={lookups} actions={actions} />
-      ) : null}
+      {invoiceId ? <InvoiceDetail invoiceId={invoiceId} actions={actions} /> : null}
     </SidePanel>
   )
 }
 
-function InvoiceDetail({ invoiceId, lookups, actions }: Omit<Props, 'onClose'>) {
+function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
   const item = useCoreItem('invoices', invoiceId)
+  // Okul numarası liste bağlı alanlarında yoktur; yalnız bu öğrencinin kaydı okunur.
+  const student = useCoreItem('students', item.data?.record.studentId ?? null)
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
-  const row = invoiceRow(item.data, lookups, dayKey())
+  const row = invoiceRow(item.data, dayKey())
   // TODO(pdf-receipt): ödenmiş taksitte "Dekontu görüntüle" PDF görevinde eklenir.
   return (
     <>
@@ -62,7 +61,7 @@ function InvoiceDetail({ invoiceId, lookups, actions }: Omit<Props, 'onClose'>) 
             row.paidAt ? dateLabel(row.paidAt, { year: 'numeric' }) : 'Henüz tahsil edilmedi',
           ],
           ['Ödeme yöntemi', row.paidAt ? (row.method ?? '—') : '—'],
-          ['Okul numarası', row.studentNumber],
+          ['Okul numarası', student.data?.record.number ?? '—'],
           ['Kayıt numarası', row.id.toUpperCase()],
         ].map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 border-b py-2.5 last:border-b-0">

@@ -182,6 +182,100 @@ test.describe('Genel Bakış: sayaçlar API sayımıyla eşleşir', () => {
   })
 })
 
+/** Ayın ilk günü, `back` ay önce (`YYYY-MM-DD`). */
+const monthStart = (day: string, back: number) => {
+  const [year, month] = day.split('-').map(Number)
+  return new Date(Date.UTC(year ?? 0, (month ?? 1) - 1 - back, 1)).toISOString().slice(0, 10)
+}
+
+test.describe('Genel Bakış: API okuma süzgeçleri', () => {
+  test('yönetici: bugünkü tahsilat paidAt günü, aylık tahsilat paidAt:month sayımıdır', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const admin = await api('yonetici')
+    const today = istanbulDay()
+    const paidToday = await counts(
+      admin,
+      'invoices',
+      `groupBy=status&sum=amount&dateField=paidAt&dateFrom=${today}&dateTo=${today}`,
+    )
+    const monthly = await counts(
+      admin,
+      'invoices',
+      `groupBy=paidAt:month&sum=amount&dateField=paidAt&dateFrom=${monthStart(today, 5)}&dateTo=${today}`,
+    )
+
+    await loginAs('yonetici')
+    await openDashboard(page, 'yonetici')
+    await expect
+      .poll(async () => cents(await cardValue(page, 'Bugünkü tahsilat').innerText()))
+      .toBe(sumOf(paidToday, 'Ödendi'))
+
+    const trend = page.getByRole('region', { name: 'Aylık tahsilat' })
+    await expect(trend).toBeVisible()
+    if (monthly.total === 0) {
+      await expect(trend.getByText('Son 6 ayda tahsilat kaydı yok.')).toBeVisible()
+    } else {
+      await expect(trend.getByText(`Son 6 ayda ${tr(monthly.total)} taksitte toplam`)).toBeVisible()
+      await expect
+        .poll(async () => cents((await trend.innerText()).match(MONEY)?.[0] ?? ''))
+        .toBe(monthly.sum)
+      await expect(trend.locator('.trend-bars')).toHaveAttribute('aria-hidden', 'true')
+    }
+  })
+
+  test('ön büro: bugünkü tahsilat paidAt günü süzgecinden gelir', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const desk = await api('onburo')
+    const today = istanbulDay()
+    const paidToday = await counts(
+      desk,
+      'invoices',
+      `groupBy=status&sum=amount&dateField=paidAt&dateFrom=${today}&dateTo=${today}`,
+    )
+    await loginAs('onburo')
+    await openDashboard(page, 'onburo')
+    await expect
+      .poll(async () => cents(await cardValue(page, 'Bugünkü tahsilat').innerText()))
+      .toBe(sumOf(paidToday, 'Ödendi'))
+    await expect(card(page, 'Bugünkü tahsilat')).toContainText(
+      `${tr(countOf(paidToday, 'Ödendi'))} taksit bugün ödendi`,
+    )
+  })
+
+  test('öğretmen: notlanmamış teslim graded=false, bugünkü ders cancelled=false sayımıdır', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const teacher = await api('ogretmen')
+    const today = istanbulDay()
+    const ungraded = await counts(teacher, 'submissions', 'groupBy=homeworkId&graded=false')
+    const self = await teacher.get('/api/v1/collections/teachers')
+    const teacherId = (self.body as { data: { id: string }[] }).data[0]?.id ?? ''
+    const lessons = await teacher.get(
+      `/api/v1/collections/schedule?teacherId=${teacherId}&dateFrom=${today}&dateTo=${today}&cancelled=false&pageSize=1`,
+    )
+    expect(lessons.status).toBe(200)
+    const lessonTotal = (lessons.body as { meta: { total: number } }).meta.total
+
+    await loginAs('ogretmen')
+    await openDashboard(page, 'ogretmen')
+    await expect
+      .poll(() => cardValue(page, 'Notlanmamış teslim').innerText())
+      .toBe(tr(ungraded.total))
+    // İptal edilen ders listeye ve sayıya girmez; açıklama sunucu toplamını söyler.
+    await expect(
+      page.getByRole('region', { name: 'Bugünkü derslerim' }).getByText(`${lessonTotal} ders`),
+    ).toBeVisible()
+  })
+})
+
 type Student = { name: string; classId: string }
 type Row<T> = { id: string; record: T }
 

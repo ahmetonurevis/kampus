@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
+import { countOf } from '@kampus/react-shared/collections.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
-import { useCoreAll, useCoreList } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, useCoreCounts, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
@@ -16,7 +17,6 @@ import { HomeworkDeliveryPanel } from './HomeworkDeliveryPanel.tsx'
 import { ClassSubjectFilters, filterValue, useClassSubjectFilters } from './LearningFilters.tsx'
 import {
   HOMEWORK_LIST,
-  learningLookups,
   teacherHomeworkRow,
   uniqueValues,
   type TeacherHomeworkRow,
@@ -30,19 +30,14 @@ const NONE: readonly never[] = []
 /**
  * Ödevler & Değerlendirme (öğretmen, Vue `Learning.vue` `/odevler`): kapsamdaki sınıfların
  * ödevleri sunucu sayfalı; sınıf ve ders filtresi, başlık araması, son teslim sıralaması. Satırdan
- * açılan panel teslim eden/geciken/bekleyen sayılarını ve öğrenci durumunu gösterir. Yalnız okuma.
+ * açılan panel teslim eden/geciken/bekleyen sayılarını ve öğrenci durumunu gösterir. Sınıf adı
+ * satırın `joined` alanından, teslim ve öğrenci sayıları sunucu sayımından gelir (satırlar
+ * çekilmez). Yalnız okuma.
  * TODO(api-homework-write): ödev atama, teslim değerlendirme ve geri bildirim yazma uçlarıyla gelir.
- * TODO(api-aggregate): teslim sayıları sayfadaki ödevlerin teslimlerinden hesaplanır; toplu uç
- * gelince tek sorguya iner.
  */
 export function TeacherHomeworkPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const classes = useCoreAll('classes')
-  const students = useCoreAll('students')
-  const lookups = useMemo(
-    () => learningLookups(classes.data ?? NONE, students.data ?? NONE),
-    [classes.data, students.data],
-  )
   const filters = useClassSubjectFilters(classes.data ?? NONE)
 
   const list = useListState('odevler', { urlFilters: URL_FILTERS })
@@ -52,18 +47,33 @@ export function TeacherHomeworkPage({ page }: { page: NavPage }) {
     collectionQueryFromList(list.state, HOMEWORK_LIST, search),
   )
   const ids = useMemo(() => homework.data?.rows.map((row) => row.record.id) ?? [], [homework.data])
-  const submissions = useCoreAll(
+  const classIds = useMemo(
+    () => uniqueValues(homework.data?.rows.map((row) => row.record.classId) ?? []),
+    [homework.data],
+  )
+  const deliveries = useCoreCounts(
     'submissions',
-    { filters: { homeworkId: uniqueValues(ids) } },
+    { groupBy: 'homeworkId', filters: { homeworkId: uniqueValues(ids) } },
     { enabled: ids.length > 0 },
   )
-  const rows = useMemo(() => {
-    const entries = submissions.data?.map((row) => row.record) ?? NONE
-    const now = new Date()
-    return homework.data?.rows.map((item) => teacherHomeworkRow(item, entries, lookups, now))
-  }, [homework.data, submissions.data, lookups])
-  // Teslimler gelene kadar sayılar yanıltmasın: satırlar görünür, teslim sütunu "…" kalır.
-  const countsReady = ids.length === 0 || submissions.data !== undefined
+  const enrolled = useCoreCounts(
+    'students',
+    { groupBy: 'classId', filters: { classId: classIds, isActive: 'true' } },
+    { enabled: classIds.length > 0 },
+  )
+  const rows = useMemo(
+    () =>
+      homework.data?.rows.map((item) =>
+        teacherHomeworkRow(item, {
+          delivered: countOf(deliveries.data, item.record.id),
+          total: countOf(enrolled.data, item.record.classId),
+        }),
+      ),
+    [homework.data, deliveries.data, enrolled.data],
+  )
+  // Sayımlar gelene kadar sayılar yanıltmasın: satırlar görünür, teslim sütunu "…" kalır.
+  const countsReady =
+    ids.length === 0 || (deliveries.data !== undefined && enrolled.data !== undefined)
 
   const panel = useDetailPanel('odev')
   const openHomework = panel.open
@@ -118,7 +128,7 @@ export function TeacherHomeworkPage({ page }: { page: NavPage }) {
     [openHomework, countsReady],
   )
 
-  const error = homework.error ?? classes.error ?? students.error
+  const error = homework.error ?? classes.error ?? deliveries.error ?? enrolled.error
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
@@ -151,7 +161,8 @@ export function TeacherHomeworkPage({ page }: { page: NavPage }) {
                 onRetry={() => {
                   if (homework.error) void homework.refetch()
                   if (classes.error) void classes.refetch()
-                  if (students.error) void students.refetch()
+                  if (deliveries.error) void deliveries.refetch()
+                  if (enrolled.error) void enrolled.refetch()
                 }}
               />
             ) : undefined
@@ -159,7 +170,7 @@ export function TeacherHomeworkPage({ page }: { page: NavPage }) {
           onRowClick={(row) => openHomework(row.id)}
           externalActive={classId !== '' || subjectId !== ''}
           externalLabel={[
-            classId ? `Sınıf: ${lookups.classes.get(classId)?.name ?? classId}` : '',
+            classId ? `Sınıf: ${filters.className(classId)}` : '',
             subjectId ? `Ders: ${filters.subjectName(subjectId)}` : '',
           ]
             .filter(Boolean)
@@ -178,11 +189,7 @@ export function TeacherHomeworkPage({ page }: { page: NavPage }) {
           }
         />
       </section>
-      <HomeworkDeliveryPanel
-        homeworkId={panel.selectedId}
-        lookups={lookups}
-        onClose={panel.close}
-      />
+      <HomeworkDeliveryPanel homeworkId={panel.selectedId} onClose={panel.close} />
     </>
   )
 }

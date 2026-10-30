@@ -17,7 +17,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreItem } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
-import { invoiceRow, type FinanceLookups } from './finance-rows.ts'
+import { invoiceRow } from './finance-rows.ts'
 
 type PaymentValues = PaymentInput
 
@@ -25,7 +25,6 @@ const FORM_ID = 'tahsilat-formu'
 
 type Props = {
   invoiceId: string
-  lookups: FinanceLookups
   onClose: () => void
 }
 
@@ -34,19 +33,19 @@ type Props = {
  * Gönderim `usePayInvoice` ile: istek anahtarı, çift tıklama kilidi, 409'da Türkçe mesaj ve
  * liste tazeleme kancadadır. Başarıda veya mükerrer ödemede panel kapanır.
  */
-export function PaymentPanel({ invoiceId, lookups, onClose }: Props) {
+export function PaymentPanel({ invoiceId, onClose }: Props) {
   return (
     <SidePanel
       open={invoiceId !== ''}
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Tahsilat kaydet"
     >
-      {invoiceId ? <PaymentForm invoiceId={invoiceId} lookups={lookups} onClose={onClose} /> : null}
+      {invoiceId ? <PaymentForm invoiceId={invoiceId} onClose={onClose} /> : null}
     </SidePanel>
   )
 }
 
-function PaymentForm({ invoiceId, lookups, onClose }: Props) {
+function PaymentForm({ invoiceId, onClose }: Props) {
   const item = useCoreItem('invoices', invoiceId)
   const pay = usePayInvoice()
   const form = useForm<PaymentValues>({
@@ -67,7 +66,7 @@ function PaymentForm({ invoiceId, lookups, onClose }: Props) {
 
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
-  const row = invoiceRow(item.data, lookups, dayKey())
+  const row = invoiceRow(item.data, dayKey())
   // Bağlantıyla açılan ödenmiş taksit (veya başka sekmede ödenmiş): form gösterilmez.
   if (row.paidAt && !busy)
     return (

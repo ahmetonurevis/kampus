@@ -73,9 +73,10 @@ src/
   modules/    # modül ve menü kaydı
   content/    # içerik havuzu: taksonomi, kaynak/sürüm, görünürlük, kopya (ADR 0004; State dışı)
   skills/     # beceri görevleri: otomatik puan, deneme, süre, geç teslim, teslim sürümü, taslak, rubrik ve puanlayıcı, atama (ADR 0004; State dışı)
+  cefr/       # CEFR: kanıt seçimi ve seviye önerisi, seviye tespiti ve yerleştirme kararı, düzey hedefi (ADR 0004; State dışı)
 ```
 
-`content/`, `skills/` (ileride `cefr/`) modülleri State'e koleksiyon eklemez (ADR 0004 karar 2): girdi API servisinin ilişkisel tablolardan yüklediği tipli satırlardır, fonksiyon `now` alır ve yazılacak değişikliği döndürür.
+`content/`, `skills/` ve `cefr/` modülleri State'e koleksiyon eklemez (ADR 0004 karar 2): girdi API servisinin ilişkisel tablolardan yüklediği tipli satırlardır, fonksiyon `now` alır ve yazılacak değişikliği döndürür.
 
 Dışa aktarım dosya yolu üzerindendir: `@kampus/school-core/lib/school-workflows.ts`. Barrel (`index.ts` ile `export *`) eklenmez. İşlem girdi şemaları (ör. `workflowSchemas.goal`) hem API rotasında hem web/mobil formunda (`zodResolver`) kullanılır.
 

@@ -120,7 +120,7 @@
 - **Gerekçe:** Hesaplanabilen değer saklanmaz; karar ise verildiği anın kanıtıyla denetlenebilmeli.
 - **Kaynak:** Proje kuralı (`.claude/rules/cekirdek.md`); hedef ilerlemesiyle aynı ilke.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — aynı ilkenin örneği hedef ilerlemesi (`packages/school-core/src/lib/school-workflows.js:373-392`).
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/suggestion.ts` `suggestCefrLevels` öneriyi `now`'a göre hesaplar, saklamaz; karar anının kopyası `evidenceSnapshotSchema`/`evidenceSnapshotOf` (`level_decisions.evidence_snapshot`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ### DOM-BEC-031 · Kanıt nedir
 
@@ -128,7 +128,7 @@
 - **Gerekçe:** Sınırsız tekrar edilebilen alıştırma ve gözetimsiz sonuç seviye kanıtı olamaz; eski kanıt bugünkü seviyeyi göstermez. Tek kriterde çok düşük performans ortalamayla gizlenmemeli.
 - **Kaynak:** İşletme kuralı (eşikler ve pencere). v1'de eşikler sabittir; kurum değiştiremez, böylece kurumlar arası rapor karşılaştırılabilir kalır.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/suggestion.ts` `selectEvidence` (dışarıda kalan sonuç nedeniyle listelenir; pencerenin bitiş anı hariç, gün Europe/Istanbul) ve `resultSuccessful` (otomatikte yuvarlanmamış oran; rubrikte düz ve ağırlıklı ortalama birlikte, `TODO(cefr-agirlikli-ortalama)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ### DOM-BEC-032 · Bir seviyenin gösterilmesi ve öneri
 
@@ -136,7 +136,7 @@
 - **Gerekçe:** Tek iyi gün seviye göstermez; muhafazakâr eşik kursiyeri hazır olmadığı kura taşımaz. Artı seviye, CEFR-CV'deki "bir sonraki seviyeye doğru güçlü performans" anlamına karşılık gelir.
 - **Kaynak:** CEFR-CV (artı seviyeler); sayılar işletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/suggestion.ts` `suggestSkillLevel`, `plusStepOf`; artı hedefli kanıt bir sonraki ana seviyeye sayılmaz, eksik kanıt sayısı her yeni kanıt başarılı ve yeni günde varsayılarak verilir (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ### DOM-BEC-033 · Genel seviye önerisi
 
@@ -144,7 +144,7 @@
 - **Gerekçe:** Dil profilleri dengesizdir; tek beceriyle genel seviye yükseltmek veya düşürmek yanıltır. Alt medyan, aritmetik ortalamadan daha muhafazakârdır ve harf ölçekte tanımlıdır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/suggestion.ts` `overallSuggestion`, `CORE_SKILLS`, `SEPARATE_SKILLS` (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ### DOM-BEC-034 · Önerinin gösterimi
 
@@ -152,7 +152,7 @@
 - **Gerekçe:** Makine önerisinin kesin hüküm gibi okunması kursiyeri ve veliyi yanıltır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/suggestion.ts` `cefrProfileView` (öneri ve kararlar ayrı alan; okulda "Kurum içi beceri profili", karar yok) ve `canViewCefrProfile` (öğretmenin sınıf kapsamı serviste, `TODO(cefr-profil-kapsam)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ## Teslim kuralları
 
@@ -294,7 +294,7 @@
 - **Gerekçe:** MEB programının düzey hedefleri ve özel okulun yoğunlaştırılmış İngilizce programı farklıdır; yanlış varsayılan eşleme veliyi yanıltır.
 - **Kaynak:** İşletme kuralı; MEB programının düzeylere göre CEFR hedefi **doğrulanmalı**.
 - **Kurum türü:** `school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/targets.ts` `cefrTargetsInputSchema`, `planCefrTargets` (yalnız güncel eğitim yılı, ilk kayıt kilit; `TODO(cefr-hedef-yili)`), `cefrTargetFor`; State koleksiyonu kaydı yok (`TODO(cefr-targets-state)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
 
 ### DOM-BEC-064 · Hazırlık sınıfı
 

@@ -15,7 +15,10 @@ import {
   taskSubmissions,
 } from '../src/db/schema/skills.ts'
 import {
+  applyRubricArchive,
+  applyRubricPublish,
   findAssignment,
+  findRubric,
   findRubricVersion,
   insertAppeal,
   insertAssignment,
@@ -37,6 +40,7 @@ import {
   loadScoreTransfers,
   loadSubmission,
   loadSubmissionScores,
+  rubricUsageByVersion,
   rubricVersionUsage,
   saveDraft,
   updateRubricVersionDraft,
@@ -209,6 +213,154 @@ describe('beceri görevi deposu', () => {
       assignmentCount: 0,
       scoreCount: 0,
     })
+  })
+
+  test('DOM-BEC-022: yayım önceki yayındaki sürümü aynı işlemde arşivler; eski satır sürümü ve plan dışı yayındaki sürüm 409; arşiv yalnız yayındakini', async () => {
+    const { institutionId, owner, otherId, chain: c } = await setup()
+    const draft = {
+      ...sampleRubricData(),
+      id: randomUUID(),
+      rubricId: c.rubricId,
+      versionNumber: 2,
+      status: 'draft' as const,
+      createdAt: iso(FIXED_NOW),
+      publishedAt: null,
+      archivedAt: null,
+    }
+    await insertRubricVersion(db, institutionId, draft, FIXED_NOW)
+    const states = async () =>
+      (await loadRubricVersions(db, institutionId, c.rubricId)).map((v) => ({
+        id: v.id,
+        status: v.status,
+        publishedAt: v.publishedAt,
+        archivedAt: v.archivedAt,
+        rowVersion: v.rowVersion,
+      }))
+    const before = await states()
+    const published = { id: c.rubricVersionId, rowVersion: 1 }
+    const target = { id: draft.id, rowVersion: 1 }
+    const plan = { publishedAt: iso(LATER), archiveVersionIds: [c.rubricVersionId] }
+
+    // Plan önceki yayındaki sürümü atlarsa benzersiz indeks yayımı reddeder.
+    await rejectsWith(
+      () =>
+        applyRubricPublish(
+          db,
+          institutionId,
+          target,
+          [published, target],
+          { ...plan, archiveVersionIds: [] },
+          LATER,
+        ),
+      409,
+      'published_rubric_version_exists',
+    )
+    // Eski satır sürümü 0 satır görür; transaction önceki sürümün arşivini de geri alır.
+    for (const [stale, versions] of [
+      [{ ...target, rowVersion: 7 }, [published]],
+      [target, [{ ...published, rowVersion: 7 }]],
+      [target, []],
+    ] as const) {
+      await rejectsWith(
+        () =>
+          db.transaction((tx) =>
+            applyRubricPublish(tx, institutionId, stale, versions, plan, LATER),
+          ),
+        409,
+        'version_conflict',
+      )
+    }
+    // Başka kurumun bağlamından aynı kimlikler yazılmaz.
+    await rejectsWith(
+      () =>
+        db.transaction((tx) => applyRubricPublish(tx, otherId, target, [published], plan, LATER)),
+      409,
+      'version_conflict',
+    )
+    assert.deepEqual(await states(), before)
+
+    await db.transaction((tx) =>
+      applyRubricPublish(tx, institutionId, target, [published], plan, LATER),
+    )
+    assert.deepEqual(await states(), [
+      {
+        id: c.rubricVersionId,
+        status: 'archived',
+        publishedAt: iso(FIXED_NOW),
+        archivedAt: iso(LATER),
+        rowVersion: 2,
+      },
+      {
+        id: draft.id,
+        status: 'published',
+        publishedAt: iso(LATER),
+        archivedAt: null,
+        rowVersion: 2,
+      },
+    ])
+    // Yayımlanmış sürüm yeniden yayımlanmaz; arşivli sürüm yeniden arşivlenmez.
+    await rejectsWith(
+      () => applyRubricPublish(db, institutionId, { ...target, rowVersion: 2 }, [], plan, LATER),
+      409,
+      'version_conflict',
+    )
+    await rejectsWith(
+      () =>
+        applyRubricArchive(
+          db,
+          institutionId,
+          { ...published, rowVersion: 2 },
+          { archivedAt: iso(LATER) },
+          LATER,
+        ),
+      409,
+      'version_conflict',
+    )
+    await rejectsWith(
+      () =>
+        applyRubricArchive(
+          db,
+          otherId,
+          { ...target, rowVersion: 2 },
+          { archivedAt: iso(LATER) },
+          LATER,
+        ),
+      409,
+      'version_conflict',
+    )
+    await applyRubricArchive(
+      db,
+      institutionId,
+      { ...target, rowVersion: 2 },
+      { archivedAt: iso(LATER) },
+      LATER,
+    )
+    const archived = await findRubricVersion(db, institutionId, draft.id)
+    assert.equal(archived?.status, 'archived')
+    assert.equal(archived?.archivedAt, iso(LATER))
+    assert.equal(archived?.rowVersion, 3)
+
+    // Kullanım tek sorguda sürüm başına sayılır; başka kurumda sıfırdır.
+    const unknown = randomUUID()
+    assert.deepEqual(
+      [...(await rubricUsageByVersion(db, institutionId, [c.rubricVersionId, draft.id, unknown]))],
+      [
+        [c.rubricVersionId, { assignmentCount: 1, scoreCount: 0 }],
+        [draft.id, { assignmentCount: 0, scoreCount: 0 }],
+        [unknown, { assignmentCount: 0, scoreCount: 0 }],
+      ],
+    )
+    assert.deepEqual(
+      [...(await rubricUsageByVersion(db, otherId, [c.rubricVersionId]))],
+      [[c.rubricVersionId, { assignmentCount: 0, scoreCount: 0 }]],
+    )
+    assert.deepEqual(await rubricUsageByVersion(db, institutionId, []), new Map())
+    assert.deepEqual(await findRubric(db, institutionId, c.rubricId), {
+      id: c.rubricId,
+      ownerUserId: owner,
+      createdAt: iso(FIXED_NOW),
+    })
+    assert.equal(await findRubric(db, otherId, c.rubricId), null)
   })
 
   test('ADR 0004 karar 4: atama sabit ayarları ve etkin hedefleriyle geri okunur; aynı hedef iki kez 409; deneme numarası tekil; arşivli deneme okunmaz', async () => {

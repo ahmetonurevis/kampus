@@ -233,6 +233,166 @@ export async function findRubricVersion(
   return row === undefined ? null : toRubricVersion(row)
 }
 
+/** Rubrik satırı ve oluşturulma anı; başka kurumun veya arşivli rubrik `null`. */
+export async function findRubric(
+  db: Database,
+  institutionId: string,
+  rubricId: string,
+): Promise<(RubricRecord & { createdAt: string }) | null> {
+  const [row] = await db
+    .select({ id: rubrics.id, ownerUserId: rubrics.ownerUserId, createdAt: rubrics.createdAt })
+    .from(rubrics)
+    .where(
+      and(
+        eq(rubrics.institutionId, institutionId),
+        eq(rubrics.id, rubricId),
+        isNull(rubrics.archivedAt),
+      ),
+    )
+  return row === undefined ? null : { ...row, createdAt: iso(row.createdAt) }
+}
+
+/** Satır sürümüyle yazılacak rubrik sürümü (iyimser kilit `rowVersion`). */
+type LockedRubricVersion = Pick<StoredRubricVersion, 'id' | 'rowVersion'>
+
+/** Yayındaki sürümün arşivi: yalnız `published` ve beklenen satır sürümünde; 0 satır → 409. */
+async function archivePublished(
+  tx: Database,
+  institutionId: string,
+  version: LockedRubricVersion,
+  archivedAt: Date,
+  now: Date,
+): Promise<void> {
+  const updated = await tx
+    .update(rubricVersions)
+    .set({
+      status: 'archived',
+      archivedAt,
+      updatedAt: now,
+      version: sql`${rubricVersions.version} + 1`,
+    })
+    .where(
+      and(
+        eq(rubricVersions.institutionId, institutionId),
+        eq(rubricVersions.id, version.id),
+        eq(rubricVersions.version, version.rowVersion),
+        eq(rubricVersions.status, 'published'),
+      ),
+    )
+    .returning({ id: rubricVersions.id })
+  if (updated.length === 0) throw new ConflictError()
+}
+
+/**
+ * Core `planRubricPublish` kararını yazar (DOM-BEC-022): önce aynı rubriğin yayındaki sürümleri
+ * arşivlenir, sonra taslak yayımlanır. Sıra benzersiz indeks içindir: tek yayındaki sürüm
+ * (`rubric_versions_published_key`). Her satır yüklendiği sürümle yazılır; eşzamanlı yazma
+ * 0 satır görür ve 409 `version_conflict` alır. Arşivlenmesi gereken yayındaki sürüm plana
+ * girmemişse indeks yayımı 409 `published_rubric_version_exists` ile reddeder.
+ */
+export async function applyRubricPublish(
+  tx: Database,
+  institutionId: string,
+  target: LockedRubricVersion,
+  versions: readonly LockedRubricVersion[],
+  plan: { publishedAt: string; archiveVersionIds: readonly string[] },
+  now: Date,
+): Promise<void> {
+  const publishedAt = new Date(plan.publishedAt)
+  for (const id of plan.archiveVersionIds) {
+    const previous = versions.find((version) => version.id === id)
+    if (previous === undefined) throw new ConflictError()
+    await archivePublished(tx, institutionId, previous, publishedAt, now)
+  }
+  const updated = await constraintAs(
+    tx
+      .update(rubricVersions)
+      .set({
+        status: 'published',
+        publishedAt,
+        updatedAt: now,
+        version: sql`${rubricVersions.version} + 1`,
+      })
+      .where(
+        and(
+          eq(rubricVersions.institutionId, institutionId),
+          eq(rubricVersions.id, target.id),
+          eq(rubricVersions.version, target.rowVersion),
+          eq(rubricVersions.status, 'draft'),
+          isNull(rubricVersions.archivedAt),
+        ),
+      )
+      .returning({ id: rubricVersions.id }),
+    {
+      rubric_versions_published_key: conflict(
+        'published_rubric_version_exists',
+        'Bu rubriğin yayındaki bir sürümü zaten var. Sayfayı yenileyip yeniden deneyin.',
+      ),
+    },
+  )
+  if (updated.length === 0) throw new ConflictError()
+}
+
+/**
+ * Core `planRubricArchive` kararını yazar (DOM-BEC-022): yayındaki sürüm arşivlenir; sabitlendiği
+ * atamalarda puanlanmaya devam eder. Beklenen satır sürümü tutmazsa 409.
+ */
+export function applyRubricArchive(
+  tx: Database,
+  institutionId: string,
+  target: LockedRubricVersion,
+  plan: { archivedAt: string },
+  now: Date,
+): Promise<void> {
+  return archivePublished(tx, institutionId, target, new Date(plan.archivedAt), now)
+}
+
+/**
+ * Sürüm başına kullanım (core `RubricUsage`): tek sorguda sabitlendiği atama ve puan sayısı.
+ * Listede olmayan sürüm kullanılmamıştır.
+ */
+export async function rubricUsageByVersion(
+  db: Database,
+  institutionId: string,
+  versionIds: readonly string[],
+): Promise<Map<string, RubricUsage>> {
+  const usage = new Map<string, RubricUsage>(
+    versionIds.map((id) => [id, { assignmentCount: 0, scoreCount: 0 }]),
+  )
+  if (versionIds.length === 0) return usage
+  const [assignments, scores] = await Promise.all([
+    db
+      .select({ id: taskAssignments.rubricVersionId, n: count() })
+      .from(taskAssignments)
+      .where(
+        and(
+          eq(taskAssignments.institutionId, institutionId),
+          inArray(taskAssignments.rubricVersionId, [...versionIds]),
+        ),
+      )
+      .groupBy(taskAssignments.rubricVersionId),
+    db
+      .select({ id: rubricScores.rubricVersionId, n: count() })
+      .from(rubricScores)
+      .where(
+        and(
+          eq(rubricScores.institutionId, institutionId),
+          inArray(rubricScores.rubricVersionId, [...versionIds]),
+        ),
+      )
+      .groupBy(rubricScores.rubricVersionId),
+  ])
+  for (const row of assignments) {
+    const entry = row.id === null ? undefined : usage.get(row.id)
+    if (entry) entry.assignmentCount = row.n
+  }
+  for (const row of scores) {
+    const entry = usage.get(row.id)
+    if (entry) entry.scoreCount = row.n
+  }
+  return usage
+}
+
 /** Sürümün sabitlendiği atama ve verilmiş puan sayısı (core `RubricUsage`; arşivli atama dahil). */
 export async function rubricVersionUsage(
   db: Database,

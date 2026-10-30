@@ -54,6 +54,9 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'message.send': ['ogretmen', 'ogrenci', 'veli'],
     'message.read': ['ogretmen', 'ogrenci', 'veli'],
     'conversation.access': ['yonetici'],
+    'request.open': ['veli'],
+    'request.update': ['yonetici', 'onburo'],
+    'absence.notify': ['veli'],
   })
   assert.deepEqual(Object.keys(WRITE_ACTION_ROLES), [...WRITE_ACTIONS])
 })

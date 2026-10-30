@@ -248,7 +248,14 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
   // verildiği sınıf da kapsam verir (`gradeReader`).
   grades: { ...ADMIN, ogretmen: gradeReader, ...PERSONAL },
   attendance: { ...ADMIN, ogretmen: ownClass, ...PERSONAL },
-  absences: { ...ADMIN, ogretmen: ownStudent, ...PERSONAL },
+  // Mazeret metni sağlık bilgisi içerebilir: öğretmenlerden yalnız sınıf rehber öğretmeni okur;
+  // ön büro okumaz (DOM-ILT-053, DOM-YTK-021).
+  absences: {
+    ...ADMIN,
+    ogretmen: (c, r) =>
+      ownStudent(c, r) && member(c.homeroomIds, c.studentClass.get(text(r, 'studentId') ?? '')),
+    ...PERSONAL,
+  },
   schedule: {
     ...ADMIN_FRONT_OFFICE,
     ogretmen: (c, r) =>

@@ -81,3 +81,30 @@ test('absenceRow: durumu olmayan telefon bildirimi "İletildi" sayılır, gönde
   assert.equal(web.student, 'Deniz')
   assert.equal(absenceCsvRow(web).sentAt, '13 Eki 2026')
 })
+
+test('DOM-ILT-053: absenceRow gerekçe kategorisinin etiketini gösterir; eski kayıt kendi metnini', () => {
+  const notice = absenceRow(
+    wrap({
+      id: 'a2',
+      studentId: 's1',
+      startDate: '2026-11-02',
+      endDate: '2026-11-02',
+      reasonCategory: 'health' as const,
+      category: 'Sağlık nedeniyle',
+    }),
+  )
+  assert.equal(notice.category, 'Sağlık nedeniyle')
+  assert.equal(notice.reason, '')
+  const legacy = absenceRow(
+    wrap({
+      id: 'a3',
+      studentId: 's1',
+      startDate: '2026-11-02',
+      endDate: '2026-11-02',
+      category: 'Seyahat',
+      reason: 'Aile ziyareti',
+    }),
+  )
+  assert.equal(legacy.category, 'Seyahat')
+  assert.equal(legacy.reason, 'Aile ziyareti')
+})

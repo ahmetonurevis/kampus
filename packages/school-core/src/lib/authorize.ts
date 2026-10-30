@@ -61,6 +61,10 @@ export type WriteTargets = {
   'message.send': { conversation: ConversationParties | undefined; userId: string }
   'message.read': { conversation: ConversationParties | undefined; userId: string }
   'conversation.access': { reason: string; conversation?: ConversationParties | undefined }
+  // Talep ve izin/mazeret (`lib/requests.ts`): hedef öğrenci istemciden gelir, kapsamla denetlenir.
+  'request.open': { studentId: string }
+  'request.update': Record<string, never>
+  'absence.notify': { studentId: string }
 }
 
 /** Yetki için gereken kaynak; not yetkisi ders atamasının dersini de okur. */
@@ -118,6 +122,13 @@ export const WRITE_ACTION_ROLES = {
   'message.read': ['ogretmen', 'ogrenci', 'veli'],
   // Yöneticinin yazışmayı okuması gerekçeli ve denetim kayıtlı ayrı işlemdir (DOM-YTK-052).
   'conversation.access': ['yonetici'],
+  // Talebi veli bağlı çocuğu için açar; durum, ilgili birim ve yanıt ön büro ve yöneticidedir.
+  // Yetişkin kursiyerin kendi adına talebi henüz yoktur (DOM-YTK-030).
+  // TODO(adult-learner): dil okulunda kursiyer (`ogrenci`) kendi talebini ve bildirimini açar.
+  'request.open': ['veli'],
+  'request.update': ['yonetici', 'onburo'],
+  // İzin ve mazereti veli bildirir (DOM-ILT-053); ön büro yoklama ve mazeret görmez (DOM-YTK-021).
+  'absence.notify': ['veli'],
 } as const satisfies Record<WriteAction, readonly Actor['role'][]>
 
 const ROLE_TABLE: Readonly<Record<WriteAction, readonly string[]>> = WRITE_ACTION_ROLES
@@ -286,6 +297,14 @@ function decide(
       )
     case 'conversation.access':
       return fromCommunication(accessDecision(request.target.reason, request.target.conversation))
+    case 'request.open':
+    case 'absence.notify':
+      // Veli yalnız bağlı çocuğu için bildirir (DOM-YTK-025, DOM-ILT-053).
+      return scope.studentIds.has(request.target.studentId)
+        ? ALLOWED
+        : deny('student_scope_denied', 'Bu öğrenci için işlem yetkiniz bulunmuyor.', 'DOM-YTK-025')
+    case 'request.update':
+      return ALLOWED
     default:
       return request satisfies never
   }

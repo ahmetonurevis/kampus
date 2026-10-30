@@ -1684,6 +1684,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Talep, şikayet veya öneri aç
+         * @description Veli bağlı çocuğu için talep açar; talep `Yeni` durumunda `Ön büro`'ya düşer (core `openRequest`, DOM-ILT-080). Başka velinin çocuğu veya kurumda olmayan öğrenci 403 `student_scope_denied` (DOM-YTK-025), pasif öğrenci 422 `student_inactive`. Modül `communication`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `veli`.
+         */
+        post: operations["openRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Talebi güncelle ve yanıtla
+         * @description Talebin durumunu (`Yeni`, `İnceleniyor`, `Çözüldü`) ve ilgili birimini değiştirir; `reply` verilirse yanıtı `replies` listesine ekler, önceki yanıtlar değişmez ve veli yanıtları talepte görür (core `updateRequest`, DOM-ILT-080). Yanıt süresi saklanmaz (core `requestResponse`, DOM-ILT-013). Değişiklik yoksa 409 `request_unchanged`, çözülmüş talep yeniden incelemeye alınmadan 409 `request_resolved`, ele alınmış talep `Yeni`'ye dönerse 422 `request_status_invalid`; olmayan veya başka kurumun talebi 404. `If-Match` zorunludur (talebin sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`.
+         */
+        patch: operations["updateRequest"];
+        trace?: never;
+    };
+    "/api/v1/absences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin veya mazeret bildir
+         * @description Veli bağlı çocuğu için ileri tarihli izin veya geçmiş tarihli mazeret bildirir (core `notifyAbsence`, DOM-ILT-053). Geçmiş tarih devamsızlığın bitiminden itibaren ortaokulda 3, lisede 5 iş günü içinde kabul edilir, aksi 422 `absence_notice_late`. Aynı öğrencinin örtüşen bildirimi 409 `absence_overlap`; belge eki (`files`) henüz 422 `absence_files_unsupported`; başka velinin çocuğu 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Gerekçe yalnız kategoridir (`reasonCategory`: `health`, `family`, `official`, `other`); serbest açıklama (`reason`) ve bilinmeyen alan 400 `validation_failed`, sağlık ayrıntısı alınmaz (KVKK md. 6, en az veri). Bildirim yoklamayı değiştirmez ve talep kaydı açmaz; ön büro bildirimleri göremez. Modül `academic`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `veli`.
+         */
+        post: operations["notifyAbsence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/resources": {
         parameters: {
             query?: never;
@@ -13247,6 +13307,333 @@ export interface operations {
             };
             /** @description Default Response */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    openRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    /** @enum {string} */
+                    category: "Talep" | "Şikayet" | "Öneri";
+                    title: string;
+                    text: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Talep kimliği */
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status?: "Yeni" | "İnceleniyor" | "Çözüldü";
+                    /** @enum {string} */
+                    assignedTo?: "Ön büro" | "Akademik koordinatör" | "Finans birimi" | "Şube müdürü";
+                    reply?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    notifyAbsence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    startDate: string;
+                    endDate: string;
+                    /** @enum {string} */
+                    reasonCategory: "health" | "family" | "official" | "other";
+                    files?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

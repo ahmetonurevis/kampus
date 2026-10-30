@@ -8,9 +8,10 @@ import type { Tenant, TenantOptions } from './support/tenant.ts'
 import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Şikayet & Talep (veli), Şikayet & Talepler (ön büro) ve İzin & Mazeret (veli). Bu sayfalar yalnız
-// okur: core'da ve API'de `requests`/`absences` yazan komut yok (TODO(api-request-write),
-// TODO(api-absence-write)); talep açma, durum değiştirme, yanıt ve izin bildirme senaryoları uç
-// gelince eklenir. Seed talepleri: req1 (Deniz, İnceleniyor), req2 (Ece, Yeni), req3 (s3, Çözüldü).
+// okur: yazma uçları API'de var (`POST /requests`, `PATCH /requests/:id`, `POST /absences`), ekran
+// formları henüz yok (TODO(api-request-write), TODO(api-absence-write)); talep açma, durum
+// değiştirme, yanıt ve izin bildirme senaryoları formlarla eklenir. İzin kayıtları kategorisi
+// olmayan eski biçimdedir (tür + açıklama). Seed talepleri: req1 (Deniz, İnceleniyor), req2 (Ece, Yeni), req3 (s3, Çözüldü).
 // Okuma testleri seed kurumunu kullanır; izin kayıtları seed'de olmadığından `tenant` ile kurulur.
 
 const REQUESTS_TABLE = 'Taleplerim'

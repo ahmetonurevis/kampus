@@ -21,6 +21,7 @@ import type {
   ConversationFields,
   ConversationMessageFields,
 } from '../lib/communication.ts'
+import type { AbsenceReasonCategory, RequestActor, RequestFields } from '../lib/requests.ts'
 export const topics = subjects.map((s) => s.name)
 
 // Örnek veri kendi içinde tutarlıdır; aranan kayıt yoksa üretici hatalıdır ve hemen durur.
@@ -879,18 +880,27 @@ type StatePatches = {
       originalTeacherId?: string
       substitutions?: LessonSubstitution[]
     })[]
-  // Web bildirimi `status` ve `date` yazar; çevrimdışı telefon yalnız `createdAt` yazar.
+  // Web bildirimi `status` ve `date` yazar; çevrimdışı telefon yalnız `createdAt` yazar. API
+  // bildirimi (`lib/requests.ts`) ikisini ve bildiren kişiyi yazar.
   absences: {
     id: string
     studentId: string
     startDate: string
     endDate: string
+    /** Tür etiketi; API bildirimi `reasonCategory` etiketini yazar, eski kayıt kendi metnini. */
     category: string
-    reason: string
+    // kvkk: Ç — genel gerekçe kategorisi (`lib/requests.ts`); eski kayıt ve telefon taşımaz.
+    reasonCategory?: AbsenceReasonCategory
+    // kvkk: Ö — eski kayıtların serbest açıklaması; API bildirimi yazmaz (DOM-ILT-053).
+    // TODO(kvkk-mazeret-notu): Serbest açıklama F2'de şifreli ayrı tabloyla gelir.
+    reason?: string
     status?: string
     date?: string
     createdAt?: string
+    notifiedBy?: RequestActor
   }[]
+  // Talep işlemlerinin alanları; örnek veri ve eski kayıtlar taşımaz (lib/requests.ts).
+  requests: (Item<'requests'> & RequestFields)[]
   // Telefon yüklenen dosyanın cihazdaki yolunu da saklar; örnek veri ve web taşımaz.
   questions: (Item<'questions'> & {
     // kvkk: Ç — öğrencinin yüklediği dosyanın yolu.

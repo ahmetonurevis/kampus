@@ -48,9 +48,11 @@ function AbsenceDetail({ recordId }: { recordId: string }) {
           { label: 'Gönderildi', value: dateLabel(row.sentAt, { year: 'numeric' }) },
         ]}
       />
-      <SummarySection title="Açıklama">
-        <p className="text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">{row.reason}</p>
-      </SummarySection>
+      {row.reason ? (
+        <SummarySection title="Açıklama">
+          <p className="text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">{row.reason}</p>
+        </SummarySection>
+      ) : null}
     </>
   )
 }

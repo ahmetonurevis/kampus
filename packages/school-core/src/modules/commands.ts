@@ -173,6 +173,11 @@ export const OPERATION_COMMANDS = {
   'message.send': spec('communication', [...SCOPE, 'conversations', 'conversationMessages']),
   'message.read': spec('communication', [...SCOPE, 'conversations', 'conversationMessages']),
   'conversation.access': spec('communication', [...SCOPE, 'conversations']),
+  // Talep ve izin/mazeret (`lib/requests.ts`). API talep açarken talepleri hiç, güncellerken
+  // yalnız hedef talebi; bildirimde yalnız aynı öğrencinin bildirimlerini yükler.
+  'request.open': spec('communication', [...SCOPE, 'requests']),
+  'request.update': spec('communication', [...SCOPE, 'requests']),
+  'absence.notify': spec('academic', [...SCOPE, 'absences']),
 } as const satisfies Record<string, CommandSpec>
 export type OperationCommand = keyof typeof OPERATION_COMMANDS
 

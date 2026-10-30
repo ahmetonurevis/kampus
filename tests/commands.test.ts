@@ -41,6 +41,11 @@ import {
   startConversation,
   withdrawAnnouncement,
 } from '../packages/school-core/src/lib/communication.ts'
+import {
+  notifyAbsence,
+  openRequest,
+  updateRequest,
+} from '../packages/school-core/src/lib/requests.ts'
 import { csvTemplate } from '../packages/school-core/src/lib/workflow-presentation.ts'
 import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -475,6 +480,43 @@ test('İletişim işlemleri yalnız komut tablosundaki koleksiyonlarla çalış�
     director,
     pupilConversation.id,
     { reason: 'Şikâyet dilekçesi incelemesi' },
+    now,
+  )
+})
+
+test('Talep ve izin/mazeret işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır', () => {
+  const state = seed()
+  const parent = {
+    role: 'veli' as const,
+    links: [{ kind: 'child' as const, recordId: 's1' }],
+    userId: 'u-veli',
+  }
+  const front = { role: 'onburo' as const, links: [], userId: 'u-front' }
+  const opened = openRequest(
+    operation(state, 'request.open'),
+    parent,
+    { studentId: 's1', category: 'Talep', title: 'Servis', text: 'Servis saati değişsin.' },
+    id,
+    now,
+  )
+  updateRequest(
+    operation(state, 'request.update'),
+    front,
+    opened.id,
+    { status: 'Çözüldü', reply: 'Saat güncellendi.' },
+    id,
+    now,
+  )
+  notifyAbsence(
+    operation(state, 'absence.notify'),
+    parent,
+    {
+      studentId: 's1',
+      startDate: '2026-10-08',
+      endDate: '2026-10-08',
+      reasonCategory: 'health',
+    },
+    id,
     now,
   )
 })

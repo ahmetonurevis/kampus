@@ -9,6 +9,18 @@ Beceri görevlerinin rubrik ve atama kuralları eklendi (ADR 0004 karar 4–7, 1
 - `skills/submission.ts`: `versionAllowance.gradedVersionNumbers` belgesi `rubric.ts` kaynağını gösterir; davranış aynı.
 - Tüketiciler `workspace:2.14.0` sürümüne sabitlendi.
 
+## 2.13.0
+
+Veli talep/şikayet ve izin/mazeret bildirimi yazma işlemleri eklendi (D14; `docs/domain/iletisim-ve-veli.md` DOM-ILT-053, DOM-ILT-080). Okuma kapsamı yalnız `absences`'ta daraldı; diğer koleksiyonlar değişmedi.
+
+- `lib/requests.ts`: `openRequest` (veli, bağlı çocuğu için; `Yeni` durumunda `Ön büro`'ya düşer, açan kişi `openedBy`), `updateRequest` (ön büro ve yönetici; durum, ilgili birim ve eklenen yanıt `replies`). Değişiklik yoksa 409 `request_unchanged`, çözülmüş talep yeniden incelemeye alınmadan 409 `request_resolved`, ele alınmış talep `Yeni`'ye dönerse 422 `request_status_invalid`, talep yoksa `not_found`. Yanıt süresi saklanmaz: `requestResponse` talep anından iş saatiyle bir iş günü hedefini, ilk yanıtı ve gecikmeyi hesaplar (DOM-ILT-013).
+- `notifyAbsence` (veli): ileri tarihli izin ve geçmiş tarihli mazeret. Geçmiş tarih devamsızlığın bitiminden itibaren ortaokulda 3, lisede 5 iş günü içinde kabul edilir (`excuseBusinessDays`, `addBusinessDays`; dil okulunda 3), aksi 422 `absence_notice_late`. Aynı öğrencinin örtüşen bildirimi 409 `absence_overlap`, belge eki (`files`) 422 `absence_files_unsupported`, pasif öğrenci 422 `student_inactive`. Bildirim yoklamayı değiştirmez ve talep kaydı açmaz (Vue demosu açıyordu; mazeret metni ön büroya gidiyordu). Yoklama bağlantısı `absenceNotices(absences)(öğrenciId, gün)` ile hesaplanır; etiket `ABSENCE_NOTICED_LABEL`.
+- KVKK (en az veri, KVKK md. 6; `.claude/rules/guvenlik.md`): bildirimin gerekçesi yalnız zorunlu kategoridir, `reasonCategory` (`ABSENCE_REASON_CATEGORIES`: `health` "Sağlık nedeniyle", `family` "Ailevi neden", `official` "Resmi işlem", `other` "Diğer"; `ABSENCE_REASON_LABELS`, `// kvkk: Ç`). Serbest açıklama öngörülebilir biçimde sağlık bilgisi (tanı, ilaç) taşıdığı ve özel nitelikli veri `records.data`'ya yazılamadığı için alınmaz: `notifyAbsenceSchema` katıdır, `reason`, eski `category` ve bilinmeyen alan reddedilir (API 400 `validation_failed`). Kayıt `reasonCategory` ve eski okuyucular için tür etiketini `category`'de taşır, `reason` yazmaz. State tipinde `absences.reason` isteğe bağlı oldu; eski kayıtların (örnek veri, Vue/telefon demo snapshot'ı, sürüm 3) tür ve açıklaması okunmaya devam eder, gösterim `absenceReasonLabel` (kategori yoksa kayıttaki tür). Serbest açıklama F2'de şifreli ayrı tabloyla gelir (`TODO(kvkk-mazeret-notu)`).
+- `lib/authorize.ts`: `request.open` (`['veli']`), `request.update` (`['yonetici', 'onburo']`), `absence.notify` (`['veli']`) eylemleri; veli yalnız bağlı çocuğu için (403 `student_scope_denied`, DOM-YTK-025). `modules/commands.ts` `OPERATION_COMMANDS`: talepler `communication`, bildirim `academic` modülüne bağlı.
+- `lib/scope.ts`: `absences`'ı öğretmenlerden yalnız öğrencinin sınıf rehber öğretmeni okur (DOM-ILT-053); önceden öğrenciye ders veren her öğretmen okuyordu. Ön büro yine okumaz.
+- State tipi: `requests` kaydına `openedBy`, `replies`, `updatedAt`; `absences` kaydına `notifiedBy` eklendi (isteğe bağlı; eski kayıtlar taşımaz).
+- Tüketiciler `workspace:2.13.0` sürümüne sabitlendi.
+
 ## 2.12.0
 
 Beceri görevlerinin saf kuralları eklendi (ADR 0004 karar 2, 5, 6, 11; `docs/domain/beceri-gelisimi.md`). Yeni modüller State'e koleksiyon eklemez: girdi servisin yüklediği satırlardır, fonksiyonlar `now` alır. Puan, geç bayrağı ve sayılan deneme saklanmaz, her okumada hesaplanır. Mevcut davranış değişmedi; tablo, uç ve ekran F4b ve sonrasındadır.

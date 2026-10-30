@@ -6,7 +6,7 @@ import type { Role } from '../modules/navigation.ts'
 import { requireAuthorized } from './authorize.ts'
 import type { MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
-import { dayKey } from './format.ts'
+import { average, dayKey } from './format.ts'
 import { linkedRecordId, requireReadable, scopeFor, type Actor } from './scope.ts'
 
 /**
@@ -114,6 +114,31 @@ export type OfficialGradeFields = {
 }
 
 export type GradeOptions = { institutionType?: InstitutionType }
+
+export type SubjectAverage = { subjectId: string; name: string; average: number; count: number }
+
+/**
+ * Ders bazında ortalama (`average`, tam sayıya yuvarlanır); ders adına göre Türkçe sıralı. Notu
+ * olmayan ders yer almaz. Saklanmaz, notlardan hesaplanır; ders adı kaydın `subject` alanındandır.
+ */
+export function subjectAverages(
+  grades: readonly { subjectId: string; subject: string; score: number }[],
+): SubjectAverage[] {
+  const groups = new Map<string, { name: string; scores: number[] }>()
+  for (const grade of grades) {
+    const group = groups.get(grade.subjectId)
+    if (group) group.scores.push(grade.score)
+    else groups.set(grade.subjectId, { name: grade.subject, scores: [grade.score] })
+  }
+  return [...groups]
+    .map(([subjectId, { name, scores }]) => ({
+      subjectId,
+      name,
+      average: average(scores),
+      count: scores.length,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name, 'tr'))
+}
 
 function requireSchool(options: GradeOptions) {
   if ((options.institutionType ?? 'school') !== 'school')

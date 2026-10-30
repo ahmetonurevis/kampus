@@ -1,27 +1,28 @@
 ---
 name: ts-tasima
-description: Kampüs kodunu JavaScript'ten TypeScript'e davranış değiştirmeden taşıma yöntemi — paket sırası, tsconfig, node:test ve Expo ayrıntıları, doğrulama. school-core, testler, mobil veya e2e dosyalarını TS'e taşırken kullan. Vue dosyaları taşınmaz (yerini React alır).
+description: Kampüs kodunu JavaScript'ten TypeScript'e davranış değiştirmeden taşıma yöntemi — artımlı geçiş (ts-nocheck ile yeşil commit, sonra dosya dosya), paket sırası, tsconfig, node:test ve Expo ayrıntıları, DomainError dönüşümü, doğrulama. school-core, testler, mobil veya e2e dosyalarını TS'e taşırken kullan. Vue dosyaları taşınmaz (yerini React alır).
 ---
 
 # TypeScript'e taşıma
 
-Sıra: kök araç zinciri → `packages/school-core` → `tests` (birim) → `apps/mobile` → `tests/e2e`. Her adım ayrı commit; her commit yeşil.
+Kurallar `.claude/rules/typescript.md`, ayrıntı `docs/muhendislik/kod-yazim.md`. Sıra: kök araç zinciri → `packages/school-core` → `tests` (birim) → `apps/mobile` → `tests/e2e`. Her commit yeşil.
 
 ## Kök araç zinciri (bir kez)
 
 - Kök devDependencies: `typescript`, `@types/node`, `typescript-eslint`.
-- `tsconfig.base.json`: `strict`, `noEmit`, `target`/`module` `esnext`, `moduleResolution` `bundler`, `allowImportingTsExtensions`, `verbatimModuleSyntax`, `erasableSyntaxOnly`, `isolatedModules`, `skipLibCheck`, `resolveJsonModule`.
-- Her paket kendi `tsconfig.json`'u ile tabanı genişletir. Kök `pnpm typecheck` her paketin `typecheck` script'ini koşar (`pnpm -r --if-present typecheck`). CI'a `pnpm typecheck` adımı eklenir.
-- ESLint: `typescript-eslint` önerilen kuralları `.ts`/`.tsx` için; mevcut Vue ve JS kuralları korunur.
+- `tsconfig.base.json`: `strict`, `noUncheckedIndexedAccess`, `noEmit`, `module`/`target` `esnext`, `moduleResolution` `bundler`, `allowImportingTsExtensions`, `verbatimModuleSyntax`, `erasableSyntaxOnly`, `isolatedModules`, `skipLibCheck`, `resolveJsonModule`. Paketler kendi `tsconfig.json`'uyla genişletir.
+- Kök `pnpm typecheck` = `pnpm -r --if-present typecheck`; CI'da adım olarak bulunur. ESLint `.ts`/`.tsx` için `typescript-eslint`; mevcut JS kuralları korunur.
 
-## Dosya taşıma
+## Artımlı yöntem
 
-1. `git mv x.js x.ts` (JSX → `.tsx`). İçe aktaran bütün yollar `.ts` uzantısına güncellenir (`grep -rn "x.js'"`).
-2. Tipler: Zod şemalarından `z.infer`; state tipi `ReturnType<typeof createSeed>`; fonksiyon parametreleri ve dönüşleri açık. Kaçınılmaz `any` → `// TODO(ts): neden`.
-3. Davranış değiştirme. Kod okurken bulduğun hatayı not et, ayrı committe düzelt.
-4. Node 24 `.ts` dosyalarını doğrudan çalıştırır: birim testleri `node --test tests/*.test.ts`. Enum, namespace ve parametre özelliği kullanılamaz.
-5. Expo: `apps/mobile/tsconfig.json` `expo/tsconfig.base`'i genişletir; Metro uzantılı `.ts` içe aktarmalarını çözer, `export:web` ile doğrula.
+1. **Saf rename ayrı commit:** `git mv x.js x.ts` (JSX → `.tsx`) ve içe aktarma yollarının `.ts` uzantısına güncellenmesi (`grep -rn "x.js'"`) başka hiçbir değişiklik içermez; git benzerlik oranıyla geçmişi izler. Rename'i tip düzeltmesiyle karıştırma.
+2. **Yeşil geçiş:** tip hataları çoksa dosyanın başına `// @ts-nocheck — TODO(ts): <neden>` koy, commit yeşil kalsın. Sonra dosya dosya (her biri ayrı commit) işareti kaldırıp tipleri düzelt. İşaretli dosya sayısı yalnız azalır.
+3. **Tipler:** Zod şemalarından `z.infer`; state tipi örnek veri üreticisinden; fonksiyon sınırları açık. `any` yerine `unknown` + daraltma; kaçınılmaz olanda `// TODO(ts): neden`. Non-null `!` yalnız testte; kaynak kodda daraltma veya açık hata.
+4. **`DomainError` dönüşümü ayrı commit:** string/sonuç nesnesi hatalarını `DomainError`'a çevirmek davranış değişikliğidir (çağıranlar ve testler etkilenir); taşımayla karıştırma, kendi testleriyle gelir.
+5. Davranış değiştirme. Okurken bulduğun hatayı not et; ayrı committe ve önce hatayı üreten testle düzelt.
+6. Node 24 `.ts` dosyalarını doğrudan çalıştırır (`node --test tests/*.test.ts`); enum, namespace, parametre özelliği yok (`erasableSyntaxOnly`).
+7. Expo: `apps/mobile/tsconfig.json` `expo/tsconfig.base`'i genişletir; `export:web` ile doğrula.
 
 ## Doğrulama
 
-`pnpm typecheck` sıfır hata, `pnpm lint`, `pnpm test`, `pnpm build`, ilgili e2e; mobilde `export:web`. Commit: "<paket> paketini TypeScript'e taşı".
+`dogrula` skill'i: `pnpm typecheck` sıfır hata, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm build`, ilgili e2e; mobilde `export:web`. Commit başlıkları: "<paket> dosyalarını yeniden adlandır", "<dosya> tiplerini tamamla", "<paket> hatalarını DomainError'a çevir".

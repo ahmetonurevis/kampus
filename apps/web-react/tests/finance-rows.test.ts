@@ -3,7 +3,6 @@ import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
-  financeLookups,
   INVOICE_STATUS_OPTIONS,
   invoiceCsvRow,
   invoiceExportQuery,
@@ -17,36 +16,40 @@ import { initialListState, type ListState } from '../src/lib/list-state.ts'
 const NOW = new Date('2026-10-15T09:00:00.000Z')
 const TODAY = dayKey(NOW)
 
-const wrap = <T extends { id: string }>(records: readonly T[]) =>
-  records.map((record) => ({
-    id: record.id,
-    version: 3,
-    createdAt: NOW.toISOString(),
-    updatedAt: NOW.toISOString(),
-    archivedAt: null,
-    record,
-  }))
-
+/** Sunucunun `joined` alanı: seed öğrencisi ve sınıfından kurulur. */
 function setup() {
   const seed = createSeed(NOW)
-  const lookups = financeLookups(wrap(seed.students), wrap(seed.classes))
-  const invoices = wrap(seed.invoices)
-  return { seed, lookups, invoices }
+  const invoices = seed.invoices.map((record) => {
+    const student = seed.students.find((item) => item.id === record.studentId)
+    const schoolClass = seed.classes.find((item) => item.id === student?.classId)
+    return {
+      id: record.id,
+      version: 3,
+      createdAt: NOW.toISOString(),
+      updatedAt: NOW.toISOString(),
+      archivedAt: null,
+      record,
+      joined: {
+        ...(student ? { studentName: student.name } : {}),
+        ...(schoolClass ? { className: schoolClass.name } : {}),
+      },
+    }
+  })
+  return { seed, invoices }
 }
 
 const state = (patch: Partial<ListState> = {}): ListState => ({ ...initialListState(), ...patch })
 
-test('taksit satırı öğrenci adı, sınıf, numara ve core durumunu eşlemeden alır', () => {
-  const { lookups, invoices } = setup()
+test('taksit satırı öğrenci adı ve sınıfı `joined` alanından, core durumunu kayıttan alır', () => {
+  const { invoices } = setup()
   const rows = invoices
     .filter((item) => item.record.studentId === 's1')
-    .map((item) => invoiceRow(item, lookups, TODAY))
+    .map((item) => invoiceRow(item, TODAY))
 
   assert.equal(rows.length, 8)
   const first = rows[0]!
   assert.equal(first.studentName, 'Deniz Yılmaz')
   assert.equal(first.className, '7-A')
-  assert.equal(first.studentNumber, '2026001')
   assert.equal(first.version, 3)
   // Seed: ilk üç taksit ödenmiş, dördüncünün vadesi bu ayın 10'u (geçmiş), sonrakiler ileride.
   assert.deepEqual(
@@ -57,13 +60,12 @@ test('taksit satırı öğrenci adı, sınıf, numara ve core durumunu eşlemede
   assert.equal(rows[3]!.paidAt, null)
 })
 
-test('öğrencisi bulunamayan taksit kırılmaz, yer tutucu gösterir', () => {
-  const { lookups, invoices } = setup()
-  const item = { ...invoices[0]!, record: { ...invoices[0]!.record, studentId: 'yok' } }
-  const row = invoiceRow(item, lookups, TODAY)
-  assert.equal(row.studentName, 'Öğrenci bulunamadı')
+test('bağlı ad gelmeyen (kapsam dışı) taksit kırılmaz, "—" gösterir', () => {
+  const { invoices } = setup()
+  const { joined: _joined, ...item } = invoices[0]!
+  const row = invoiceRow(item, TODAY)
+  assert.equal(row.studentName, '—')
   assert.equal(row.className, '—')
-  assert.equal(row.studentNumber, '—')
 })
 
 test('durum seçenekleri core etiketleridir; bilinmeyen anahtar reddedilir', () => {
@@ -151,8 +153,8 @@ test('toplam kartları sayım yanıtından kuruş olarak hesaplanır', () => {
 })
 
 test('CSV satırı tutarı TL, vadeyi okunur tarih olarak yazar', () => {
-  const { lookups, invoices } = setup()
-  const row = invoiceRow(invoices[0]!, lookups, TODAY)
+  const { invoices } = setup()
+  const row = invoiceRow(invoices[0]!, TODAY)
   assert.deepEqual(invoiceCsvRow(row), {
     studentName: 'Deniz Yılmaz',
     installment: 1,

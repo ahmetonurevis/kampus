@@ -355,6 +355,13 @@ test.describe('Finans: liste', () => {
     await expect(page).toHaveURL(/[?&]sirala=amount/)
     await expect(page).not.toHaveURL(/[?&]sayfa=/)
     await expect(bodyRows(page).first()).toContainText('24.500,00 ₺')
+
+    // Okul numarası bağlı alandan gelir ve sunucuda sıralanır.
+    const number = tableOf(page).getByRole('columnheader', { name: /Okul no/ })
+    await number.getByRole('button').click()
+    await expect(number).toHaveAttribute('aria-sort', 'ascending')
+    await expect(page).toHaveURL(/[?&]sirala=studentNumber/)
+    await expect(bodyRows(page).first()).toContainText('2026001')
   })
 
   test('arama öğrenciyi bulur; durum filtresi sayfayı 1e döndürür ve URLde kalır', async ({
@@ -416,12 +423,13 @@ test.describe('Finans: liste', () => {
     const pending = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Raporu indir' }).click()
     const csv = await readCsv(await pending)
-    expect(csv[0]).toEqual(['Öğrenci', 'Taksit', 'Vade tarihi', 'Tutar', 'Durum'])
+    expect(csv[0]).toEqual(['Öğrenci', 'Okul no', 'Taksit', 'Vade tarihi', 'Tutar', 'Durum'])
     expect(csv).toHaveLength(1 + 3)
     for (const row of csv.slice(1)) {
       expect(row[0]).toBe('Deniz Yılmaz')
-      expect(row[3]).toBe('24.500,00 ₺')
-      expect(row[4]).toBe('Ödendi')
+      expect(row[1]).toBe('2026001')
+      expect(row[4]).toBe('24.500,00 ₺')
+      expect(row[5]).toBe('Ödendi')
     }
   })
 

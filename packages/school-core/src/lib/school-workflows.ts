@@ -277,6 +277,8 @@ export type AuditEntry = {
   changed_at: string
   old_value: unknown
   new_value: unknown
+  /** Değeri denetim kaydına yazılmayan, değişen gizli alanların adları (DOM-ILT-041). */
+  masked_fields?: string[]
 }
 const commandModules = {
   goal: 'goals',
@@ -326,7 +328,8 @@ const commandRoles: Partial<Record<string, readonly Role[]>> = {
   'goal-comment': ['yonetici', 'ogretmen', 'veli'],
   'goal-close': ['yonetici', 'ogretmen', 'ogrenci'],
   guidance: ['yonetici', 'ogretmen'],
-  'guidance-note': ['yonetici', 'ogretmen'],
+  // İç notun tek yazarı rehberlik görevli öğretmendir (DOM-YTK-026, DOM-ILT-040).
+  'guidance-note': ['ogretmen'],
   exam: ['yonetici', 'ogretmen'],
   'exam-result': ['yonetici', 'ogretmen'],
   'exam-import': ['yonetici', 'ogretmen'],
@@ -876,6 +879,12 @@ function executeWorkflow(
     const data = workflowSchemas.guidance.parse(input)
     scopedStudent(state, session, data.studentId)
     active(state.teachers, data.teacherId)
+    if (data.internalNote && !workflowScope(state, session).scope.counselor)
+      throw new DomainError(
+        'guidance_counselor_only',
+        'Kurum içi notu yalnız rehberlik görevli öğretmen yazabilir.',
+        { kind: 'forbidden', path: ['internalNote'] },
+      )
     if (session.role === 'ogretmen' && data.teacherId !== teacherId)
       throw new DomainError(
         'guidance_own_only',
@@ -895,6 +904,12 @@ function executeWorkflow(
     const data = workflowSchemas['guidance-note'].parse(input)
     const entry = requireRecord(state.guidanceCases, recordId)
     scopedStudent(state, session, entry.studentId)
+    if (!workflowScope(state, session).scope.counselor)
+      throw new DomainError(
+        'guidance_counselor_only',
+        'Görüşme notunu yalnız rehberlik görevli öğretmen kaydedebilir.',
+        { kind: 'forbidden' },
+      )
     if (session.role === 'ogretmen' && entry.teacherId !== teacherId)
       throw new DomainError('guidance_not_owner', 'Bu takip dosyasının sorumlusu değilsiniz.', {
         kind: 'forbidden',
@@ -1593,6 +1608,35 @@ type AuditedCollection = {
 const clone = (value: unknown): unknown => JSON.parse(JSON.stringify(value))
 const findById = (list: readonly { id: string }[], id: string) => list.find((r) => r.id === id)
 
+// Denetim kaydı gizli alanlara arka kapı olmamalıdır: rehberlik iç notu eski/yeni değerden
+// çıkarılır, yalnız değişen alanın adı yazılır (DOM-ILT-041, DOM-YTK-053).
+const AUDIT_MASKED_FIELDS: Partial<Record<AuditedCollection, readonly string[]>> = {
+  guidanceCases: ['internalNote', 'notes'],
+}
+function maskAuditValues(
+  collection: AuditedCollection | undefined,
+  oldValue: unknown,
+  newValue: unknown,
+) {
+  const fields = (collection && AUDIT_MASKED_FIELDS[collection]) || []
+  if (!fields.length) return { oldValue, newValue, fields: [] }
+  const read = (value: unknown, key: string): unknown =>
+    typeof value === 'object' && value !== null && Object.hasOwn(value, key)
+      ? Reflect.get(value, key)
+      : undefined
+  const strip = (value: unknown) =>
+    typeof value === 'object' && value !== null
+      ? Object.fromEntries(Object.entries(value).filter(([key]) => !fields.includes(key)))
+      : value
+  return {
+    oldValue: strip(oldValue),
+    newValue: strip(newValue),
+    fields: fields.filter(
+      (key) => JSON.stringify(read(oldValue, key)) !== JSON.stringify(read(newValue, key)),
+    ),
+  }
+}
+
 export function runWorkflow(
   state: State,
   session: Session,
@@ -1643,6 +1687,8 @@ export function runWorkflow(
   const oldValue = previous ? clone(previous) : null
   const result = executeWorkflow(state, session, command, input, makeId, recordId, now)
   const resultId = typeof result === 'object' && 'id' in result ? result.id : undefined
+  const newValue = typeof result === 'object' ? clone(result) : { result }
+  const masked = maskAuditValues(collection, oldValue, newValue)
   state.audit.unshift({
     id: makeId('audit'),
     actor: session.role,
@@ -1660,8 +1706,9 @@ export function runWorkflow(
     record_id: recordId || resultId || command,
     date: now,
     changed_at: now,
-    old_value: oldValue,
-    new_value: typeof result === 'object' ? clone(result) : { result },
+    old_value: masked.oldValue,
+    new_value: masked.newValue,
+    ...(masked.fields.length ? { masked_fields: masked.fields } : {}),
   })
   state.audit = state.audit.slice(0, 200)
   return result

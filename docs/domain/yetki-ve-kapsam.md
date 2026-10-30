@@ -143,7 +143,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Rehberlik gizliliği (`DOM-ILT-040`) ancak rehberlik yetkisi branş öğretmenliğinden ayrılırsa uygulanabilir.
 - **Kaynak:** MEB Rehberlik ve Psikolojik Danışma Hizmetleri Yönetmeliği (RG 14/8/2020-31213) md. 3/1-ç.
 - **Kurum türü:** `school`
-- **Kodda:** yok — rehberlik dosyasını her `ogretmen` açar (`packages/school-core/src/lib/school-workflows.js:256-257`).
+- **Kodda:** kısmen — rehberlik görevi öğretmen kaydındadır (`guidanceCounselor`; demoda `t1`). Görevli öğretmen kurumun bütün dosyalarını iç notlarıyla okur, görüşme notunu yalnız o yazar (`packages/school-core/src/lib/scope.ts`); dosya açmak hâlâ her `ogretmen` ve yöneticiye açık, kampüs sınırı yok.
 
 ### DOM-YTK-027 · Zümre başkanı ve akademik koordinatör
 

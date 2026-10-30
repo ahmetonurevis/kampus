@@ -45,7 +45,8 @@ export const SCOPE_SOURCE_COLLECTIONS = [
 ] as const satisfies readonly CollectionName[]
 export type ScopeSource = {
   students: readonly Pick<Student, 'id' | 'classId'>[]
-  teachers: readonly Pick<Teacher, 'id' | 'subjectId' | 'branchId' | 'isActive' | 'deletedAt'>[]
+  teachers: readonly (Pick<Teacher, 'id' | 'subjectId' | 'branchId' | 'isActive' | 'deletedAt'> &
+    Partial<Pick<Teacher, 'guidanceCounselor'>>)[]
   classes: readonly Pick<Classroom, 'id' | 'grade' | 'level' | 'branchId' | 'teacherId'>[]
   assignments: readonly Pick<Assignment, 'classId' | 'teacherId'>[]
   clubs: readonly Pick<Club, 'id' | 'teacherId'>[]
@@ -68,6 +69,8 @@ export type Scope = {
   readonly institutionType: InstitutionType
   /** Öğretmen aktörün etkin öğretmen kaydı; bağlantı yoksa veya kayıt pasifse `undefined`. */
   readonly teacher: ScopeSource['teachers'][number] | undefined
+  /** Öğretmen aktörün rehberlik görevi var mı (DOM-YTK-026); iç notları yalnız bu aktör görür. */
+  readonly counselor: boolean
   /** Kapsamdaki öğrenciler (yönetici ve ön büroda kurumun tümü; pasif öğrenciler dahil). */
   readonly studentIds: ReadonlySet<string>
   /** Kapsamdaki sınıflar: öğretmende ders verdiği ve rehberi olduğu, öğrenci/velide kendi sınıfı. */
@@ -83,6 +86,7 @@ export type Scope = {
 type Context = {
   role: Role | undefined
   teacher: ScopeSource['teachers'][number] | undefined
+  counselor: boolean
   studentIds: ReadonlySet<string>
   classIds: ReadonlySet<string>
   homeroomIds: ReadonlySet<string>
@@ -228,11 +232,13 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
   availability: { ...ADMIN, ogretmen: ownTeacher },
   // Denetim kaydını yalnız yönetici görür (DOM-YTK-053).
   audit: ADMIN,
-  // Rehberlik: paylaşılan plan dosyanın öğretmenine, sınıf öğretmenlerine ve öğrenci/veliye açık;
-  // iç not alanları `HIDDEN_FIELDS` ile ayıklanır (DOM-ILT-040).
+  // Rehberlik: rehberlik görevli öğretmen kurumun bütün dosyalarını okur (DOM-YTK-026); diğer
+  // öğretmen sorumlusu olduğu dosyanın ve sınıflarındaki öğrencilerin paylaşılan planını görür.
+  // Yönetici paylaşılan planı okur. Ön büro hiç okumaz (DOM-YTK-021). İç not alanları
+  // `HIDDEN_FIELDS` ile ayıklanır (DOM-ILT-040).
   guidanceCases: {
     ...ADMIN,
-    ogretmen: (c, r) => ownTeacher(c, r) || ownStudent(c, r),
+    ogretmen: (c, r) => c.counselor || ownTeacher(c, r) || ownStudent(c, r),
     ...PERSONAL,
   },
   mockExams: { ...ADMIN, ogretmen: ownGrade, ogrenci: ownGrade, veli: ownGrade },
@@ -282,13 +288,16 @@ const TEACHER_PRIVATE: readonly string[] = ['email', 'phone', 'attendanceRate', 
 /**
  * Alan ayıklama: rol satırı görse de bu alanları hiç almaz (yanıt, arama, sıralama dahil).
  * Ön büro öğrencinin akademik ilerlemesini görmez (DOM-YTK-021); öğrenci ve veli öğretmenin
- * iletişim ve performans alanlarını görmez; rehberlik iç notu veli ve öğrenciye dönmez
- * (DOM-ILT-040, DOM-ILT-041).
+ * iletişim ve performans alanlarını görmez; rehberlik iç notu yalnız rehberlik görevli
+ * öğretmene döner (DOM-ILT-040, DOM-ILT-041).
  */
 const HIDDEN_FIELDS: Partial<Record<CollectionName, (context: Context) => readonly string[]>> = {
   students: (c) => (c.role === 'onburo' ? ['progress'] : NONE),
   teachers: (c) => (c.role === 'ogrenci' || c.role === 'veli' ? TEACHER_PRIVATE : NONE),
-  guidanceCases: (c) => (c.role === 'ogrenci' || c.role === 'veli' ? GUIDANCE_INTERNAL : NONE),
+  // İç not yalnız rehberlik görevli öğretmene döner; yönetici, ön büro, görevsiz öğretmen, öğrenci
+  // ve veli görmez (DOM-ILT-040, DOM-YTK-020).
+  // TODO(IST-020): yöneticinin adli/idari soruşturma gerekçesiyle, denetim kaydına düşen erişimi.
+  guidanceCases: (c) => (c.counselor ? NONE : GUIDANCE_INTERNAL),
 }
 const HIDDEN: Readonly<Record<string, ((context: Context) => readonly string[]) | undefined>> =
   HIDDEN_FIELDS
@@ -380,6 +389,7 @@ function buildContext(source: ScopeSource, actor: Actor, role: Role | undefined)
   return {
     role,
     teacher,
+    counselor: teacher?.guidanceCounselor === true,
     studentIds,
     classIds,
     homeroomIds,
@@ -436,6 +446,7 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     actor,
     institutionType,
     teacher: context.teacher,
+    counselor: context.counselor,
     studentIds: context.studentIds,
     classIds: context.classIds,
     access,

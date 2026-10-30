@@ -12,16 +12,13 @@ import {
   goalProgress,
 } from './school-workflows.ts'
 import { dateLabel, money, timeLabel, dayKey } from './format.ts'
-import { DEMO_TEACHER_ID, sessionTeacherId } from './scope.ts'
+import { DEMO_TEACHER_ID, sessionTeacherId, type Redacted } from './scope.ts'
 import { subjectsForGrade } from '../data/curriculum.ts'
 
 type Goal = State['studentGoals'][number]
 type GuidanceCase = State['guidanceCases'][number]
-// Veli ve öğrenciye dönen rehberlik kaydında iç notlar boşaltılır.
-type RedactedGuidanceCase = Omit<GuidanceCase, 'internalNote' | 'notes'> & {
-  internalNote: undefined
-  notes: undefined
-}
+// İç notu görmeyen aktöre dönen rehberlik kaydında iç not alanları yoktur (`lib/scope.ts`).
+type RedactedGuidanceCase = Redacted<GuidanceCase>
 type NamedCollection = 'subjects' | 'students' | 'classes' | 'teachers' | 'branches'
 type RowSource = {
   id: string
@@ -185,10 +182,7 @@ export function workflowRows(
         (r) => own(r) && (session.role !== 'ogretmen' || r.teacherId === teacherOf(state, session)),
       )
       .map((r) => {
-        const source =
-          scope.institution || session.role === 'ogretmen'
-            ? r
-            : { ...r, internalNote: undefined, notes: undefined }
+        const source: GuidanceCase | RedactedGuidanceCase = scope.scope.redact('guidanceCases', r)
         return row(
           source,
           r.title,
@@ -481,7 +475,7 @@ export function workflowDetails(
       record.sharedNote,
       `Sonraki takip: ${labelDate(record.followUp)}`,
     ])
-    if (scope.institution || session.role === 'ogretmen') {
+    if (scope.scope.counselor) {
       section('Kurum içi görüşme notları', [
         record.internalNote,
         ...present(record.notes).map((n) => `${labelDate(n.date)} · ${n.text}`),
@@ -926,7 +920,8 @@ export function workflowForm(
         field('title', 'Takip başlığı'),
         field('plan', 'Destek planı', 'textarea'),
         field('sharedNote', 'Veli ve öğrenciyle paylaşılan not', 'textarea'),
-        field('internalNote', 'Kurum içi not', 'textarea'),
+        // İç notu yalnız rehberlik görevli öğretmen yazar (DOM-ILT-040).
+        ...(scope.scope.counselor ? [field('internalNote', 'Kurum içi not', 'textarea')] : []),
         field('followUp', 'Sonraki takip tarihi', 'date'),
       ],
     })

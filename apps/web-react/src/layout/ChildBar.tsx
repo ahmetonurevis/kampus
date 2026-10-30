@@ -7,12 +7,15 @@ type ChildBarProps = {
   options: readonly SessionChild[]
   value: string
   onChange: (childId: string) => void
+  /** Ad okuması başarısızsa seçici hata durumunu ve yeniden deneme düğmesini gösterir. */
+  namesError?: boolean
+  onRetryNames?: () => void
 }
 
 /** Veli çocuk seçici çubuğu (Vue `.child-bar`): sayfadaki bütün bilgiler seçili çocuğa aittir. */
-export function ChildBar({ options, value, onChange }: ChildBarProps) {
-  // TODO(core-scope): çocuk adları veli kapsamlı öğrenci okuması gelene kadar seçici yükleniyor
-  // durumundadır; kayıt kimliği veya uydurma ad etiket yapılmaz.
+export function ChildBar({ options, value, onChange, namesError, onRetryNames }: ChildBarProps) {
+  // Adlar velinin kapsamlı öğrenci okumasından gelir; gelene kadar seçici yükleniyor durumundadır,
+  // kayıt kimliği veya uydurma ad etiket yapılmaz.
   const pending = childNamesPending(options)
   return (
     <div className="child-bar mb-6 flex items-center gap-4 rounded-2xl border bg-primary-soft px-[18px] py-3 text-sm max-[650px]:mb-[23px] max-[650px]:flex-wrap max-[650px]:gap-2.5 max-[650px]:p-3">
@@ -30,7 +33,9 @@ export function ChildBar({ options, value, onChange }: ChildBarProps) {
           className="min-h-8 bg-surface py-[5px] pr-7 pl-2.5 text-sm max-[650px]:min-h-11 max-[650px]:max-w-[160px]"
         >
           {pending ? (
-            <NativeSelectOption value="">Öğrenciler yükleniyor…</NativeSelectOption>
+            <NativeSelectOption value="">
+              {namesError ? 'Öğrenciler yüklenemedi' : 'Öğrenciler yükleniyor…'}
+            </NativeSelectOption>
           ) : (
             options.map((child) => (
               <NativeSelectOption key={child.id} value={child.id}>
@@ -39,6 +44,15 @@ export function ChildBar({ options, value, onChange }: ChildBarProps) {
             ))
           )}
         </NativeSelect>
+        {pending && namesError && onRetryNames ? (
+          <button
+            type="button"
+            onClick={onRetryNames}
+            className="ml-2 min-h-8 rounded-field px-2 text-sm font-medium text-primary hover:underline"
+          >
+            Yeniden dene
+          </button>
+        ) : null}
       </div>
       <span className="ml-auto text-xs text-muted-foreground max-[650px]:ml-0 max-[650px]:w-full">
         Tüm bilgiler seçili çocuğunuza aittir.

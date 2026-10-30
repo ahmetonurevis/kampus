@@ -17,6 +17,7 @@ type ChildSelection = {
   options: readonly SessionChild[]
   childId: string
   selectChild: (childId: string) => void
+  names: { error: unknown; retry: () => void }
 }
 
 type AppLayoutProps = {
@@ -103,7 +104,13 @@ export function AppLayout({ session, title, child, children }: AppLayoutProps) {
           className="main-content mx-auto w-full max-w-content flex-1 scroll-mt-24 p-8 outline-none max-[650px]:px-4 max-[650px]:py-6"
         >
           {child ? (
-            <ChildBar options={child.options} value={child.childId} onChange={child.selectChild} />
+            <ChildBar
+              options={child.options}
+              value={child.childId}
+              onChange={child.selectChild}
+              namesError={Boolean(child.names.error)}
+              onRetryNames={child.names.retry}
+            />
           ) : null}
           {children}
         </main>

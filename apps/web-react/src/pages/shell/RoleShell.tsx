@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/use-auth.ts'
 import { useChildSelection } from '@/hooks/use-child-selection.ts'
 import { AppLayout } from '@/layout/AppLayout.tsx'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
+import { withChildParam } from '@/lib/child-selection.ts'
 import { loginHref } from '@/lib/return-path.ts'
 import { resolveShell } from '@/lib/route-guard.ts'
 import { isMigratedPage, MigratedPage } from '@/pages/page-registry.tsx'
@@ -67,6 +68,18 @@ export function RoleShell() {
     case 'not-found':
     case 'page':
       if (!session) return null
+      // Veli sayfasında seçili çocuk adreste tutulur; eksikse (menü bağlantısı, yenileme) tamamlanır.
+      if (child.urlMissing)
+        return (
+          <Navigate
+            to={{
+              pathname: location.pathname,
+              search: withChildParam(location.search, child.childId),
+              hash: location.hash,
+            }}
+            replace
+          />
+        )
       return (
         <AppLayout
           session={session}

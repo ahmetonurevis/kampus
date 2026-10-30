@@ -92,7 +92,7 @@
   --glass-bar: color-mix(in srgb, var(--surface) 78%, transparent);
   --glass-menu: color-mix(in srgb, var(--surface) 88%, transparent);
   --glass-dialog: color-mix(in srgb, var(--surface) 94%, transparent);
-  --glass-sidebar: color-mix(in srgb, var(--sidebar) 90%, transparent);
+  --glass-sidebar: color-mix(in srgb, var(--sidebar) 95%, transparent);
   --glass-highlight: color-mix(in srgb, var(--white) 55%, transparent);
   --glass-sidebar-highlight: color-mix(in srgb, var(--white) 14%, transparent);
 

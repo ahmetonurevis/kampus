@@ -8,6 +8,10 @@ export const notify = {
   info(message: string) {
     toast.info(message)
   },
+  /** Aynı `id` ile tekrarlanan uyarı tek toast olarak kalır (ör. yönlendirme korumaları). */
+  warning(message: string, id?: string) {
+    toast.warning(message, id ? { id } : undefined)
+  },
   /** Teknik neden kullanıcıya gösterilmez; yalnız konsola/log'a gider. */
   error(message: string, cause?: unknown) {
     if (cause !== undefined) console.error('[kampus]', message, cause)

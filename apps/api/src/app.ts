@@ -70,14 +70,24 @@ export const REDACTED_PATHS = [
   '*.email',
   '*.phone',
   '*.nationalId',
+  // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
+  // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).
+  'reasonCategory',
   '*.reasonCategory',
-  // kvkk: Ç — randevu görüşme konusu ve red/iptal gerekçesi (DOM-ILT-100, DOM-ILT-102).
+  // kvkk: Ç — randevu görüşme konusu ve red/iptal gerekçesi; gerekçe durum geçmişinde de
+  // durur (DOM-ILT-100, DOM-ILT-102).
+  'note',
   '*.note',
+  'reason',
   '*.reason',
+  'history[*].reason',
+  '*.history[*].reason',
   // kvkk: Ç — öğrenci sorusunun ilk yanıtı ve ek yanıtları (DOM-ILT-092). Soru başlığı ve metni
   // (`title`, `text`) başka koleksiyonlarla ortak adlardır; gövde zaten loglanmaz.
+  'answer',
   '*.answer',
+  'followUps',
   '*.followUps',
   '*.cookie',
   '*.authorization',

@@ -199,4 +199,58 @@ describe('üretim güvenlik varsayılanları', () => {
       await app.close()
     }
   })
+
+  test('DOM-ILT-100, DOM-ILT-102, DOM-ILT-092: log gizleme üst düzey, iç içe ve geçmiş dizisindeki serbest metni yazmaz', async () => {
+    const logs: string[] = []
+    const texts = {
+      note: 'Gizli görüşme konusu.',
+      reason: 'Gizli red gerekçesi.',
+      bodyNote: 'Gövdedeki gizli konu.',
+      bodyReason: 'Gövdedeki gizli gerekçe.',
+      historyReason: 'Geçmişteki gizli gerekçe.',
+      recordHistoryReason: 'Kayıt geçmişindeki gizli gerekçe.',
+      answer: 'Gizli soru yanıtı.',
+      followUp: 'Gizli ek yanıt.',
+      bodyAnswer: 'Gövdedeki gizli yanıt.',
+      reasonCategory: 'health',
+    }
+    // Uygulamanın gerçek logger yapılandırması (`REDACTED_PATHS`); hem uygulama hem istek logu.
+    const app = await buildTestApp(db, {
+      logs,
+      extend(instance) {
+        instance.get('/api/v1/test-redacted-logs', { schema: { hide: true } }, async (request) => {
+          request.log.info({ note: texts.note, reason: texts.reason }, 'redaksiyon üst düzey')
+          request.log.info(
+            { body: { note: texts.bodyNote, reason: texts.bodyReason } },
+            'redaksiyon gövde',
+          )
+          return { data: null }
+        })
+      },
+    })
+    try {
+      const response = await app.inject({ method: 'GET', url: '/api/v1/test-redacted-logs' })
+      assert.equal(response.statusCode, 200)
+      app.log.info({ history: [{ status: 'Reddedildi', reason: texts.historyReason }] }, 'geçmiş')
+      app.log.info(
+        { record: { history: [{ status: 'İptal', reason: texts.recordHistoryReason }] } },
+        'kayıt geçmişi',
+      )
+      app.log.info({ answer: texts.answer, followUps: [{ text: texts.followUp }] }, 'soru')
+      app.log.info({ body: { answer: texts.bodyAnswer } }, 'soru gövdesi')
+      app.log.info({ reasonCategory: texts.reasonCategory }, 'mazeret')
+      const lines = logs.join('').split('\n').filter(Boolean)
+      for (const message of ['redaksiyon üst düzey', 'redaksiyon gövde', 'geçmiş', 'soru'])
+        assert.ok(
+          lines.some((line) => line.includes(`"msg":"${message}"`)),
+          `log satırı yok: ${message}`,
+        )
+      const text = lines.join('\n')
+      for (const [field, value] of Object.entries(texts))
+        assert.equal(text.includes(value), false, `logda: ${field}`)
+      assert.ok(text.includes('[gizli]'))
+    } finally {
+      await app.close()
+    }
+  })
 })

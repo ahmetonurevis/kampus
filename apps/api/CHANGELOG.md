@@ -8,7 +8,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 - Talepte uygunluk saatlerinden yalnız seçilen saat yüklenir (`loadScope`); ders, etüt, etkinlik ve randevular çakışma denetimi için bütünüyle yüklenir. Kurum kilidi aynı saate eşzamanlı iki talepten yalnız birini yazar, öteki 409 `appointment_conflict` alır (test:pg).
 - Durum değişikliğinde görünürlük sürümden önce denetlenir: aktörün göremediği randevu (`requireVisibleAppointment`) `If-Match` ne olursa olsun 404'tür, sürüm farkı ancak görünür kayıtta 409 `version_conflict` olur. Çalıştırıcıya `expectedVersions` verilmez; satır sürümü kurum kilidi altında okunur.
 - Yeni hata kodları: `appointment_teacher_only`, `appointment_requester_only`, `appointment_cancel_forbidden` (403); `appointment_conflict`, `appointment_closed` (409); `appointment_slot_unavailable`, `appointment_in_past`, `appointment_type_invalid`, `appointment_transition_invalid` (422, `issues` alan yoluyla). Red ve iptalde gerekçe yoksa 400 `validation_failed` (`reason`).
-- Log gizleme listesine `*.note` ve `*.reason` eklendi (kvkk: Ç); denetim kaydına yalnız değişen alan adları yazılır.
+- Log gizleme listesine `note`, `*.note`, `reason`, `*.reason`, `history[*].reason` ve `*.history[*].reason` eklendi (kvkk: Ç); denetim kaydına yalnız değişen alan adları yazılır. pino `*.x` deseni yalnız ikinci düzeyi yakaladığı için üst düzey `answer`, `followUps` ve `reasonCategory` de listeye alındı. `test/security-defaults.test.ts` uygulamanın gerçek logger yapılandırmasıyla üst düzey, gövde içi ve geçmiş dizisindeki metnin loga düşmediğini doğrular.
 - OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
 
 ## Öğretmenime Sor yazma uçları

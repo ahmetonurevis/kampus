@@ -30,6 +30,7 @@ import {
   CONTENT_TYPES,
   DIFFICULTIES,
   INTERACTION_CHANNELS,
+  LICENSE_KINDS,
   OUTCOME_SOURCES,
   PRIMARY_SKILLS,
   SHARE_SCOPES,
@@ -190,6 +191,19 @@ export const resourceVersions = pgTable(
     check(
       'resource_versions_primary_skill_check',
       sql`${table.primarySkill} is null or ${oneOf(table.primarySkill, PRIMARY_SKILLS)}`,
+    ),
+    check(
+      'resource_versions_activity_mode_check',
+      sql`${table.activityMode} is null or ${oneOf(table.activityMode, keys(ACTIVITY_MODES))}`,
+    ),
+    check(
+      'resource_versions_interaction_channel_check',
+      sql`${table.interactionChannel} is null or ${oneOf(table.interactionChannel, keys(INTERACTION_CHANNELS))}`,
+    ),
+    // Türetilmiş kolon da sözlükle sınırlıdır: core şemasının dışında bir `license.kind` yazılamaz.
+    check(
+      'resource_versions_license_kind_check',
+      sql`${table.licenseKind} is null or ${oneOf(table.licenseKind, keys(LICENSE_KINDS))}`,
     ),
     check(
       'resource_versions_difficulty_check',

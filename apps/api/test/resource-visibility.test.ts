@@ -9,7 +9,7 @@ import type { InstitutionType } from '@kampus/school-core/modules/collection-mod
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
-import { listVisibleVersionIds } from '../src/db/resources.ts'
+import { listVisibleResources, listVisibleVersionIds } from '../src/db/resources.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -23,7 +23,8 @@ import { seedResource, type SampleResource } from './support/resources-sample.ts
 /**
  * Görünürlük SQL'i (`db/resources.ts` `versionVisibleSql`) ile core `canReadVersion` aynı kararı
  * verir: rol matrisi × durum × paylaşım kapsamı × lisans × düzey/seviye ızgarasında her kişinin
- * okuyabildiği sürüm kümesi iki yoldan eşittir (DOM-KYN-030, 040, 041, 042, 051, 052).
+ * okuyabildiği sürüm kümesi iki yoldan eşittir (DOM-KYN-030, 040, 041, 042, 051, 052). Liste
+ * sorgusunun baş sürüm seçimi ve sayımı da aynı ızgarada core'dan hesaplananla karşılaştırılır.
  */
 
 const STATUSES = Object.keys(RESOURCE_STATUSES) as ResourceStatus[]
@@ -251,6 +252,59 @@ describe('içerik görünürlüğü: SQL ↔ core eşitliği', () => {
         if (['onburo', 'veliCocuksuz', 'ogrenciSeviyesiz'].includes(name))
           assert.equal(actual.length, 0, name)
         else assert.ok(actual.length > 0, `${type} · ${name}: ızgara boş küme vermemeli`)
+      }
+
+      // Liste satırları ve sayım (baş sürüm alt sorgusu + ayrı `count`) core ile aynı: personelde
+      // okunabilir sürümlerden arşivli olmayan en yüksek numaralı; arşivli/kaldırılan baş sürüm
+      // yalnız açık durum süzgeciyle (DOM-KYN-051). Öğrenci ve velide güncel yayın sürümü.
+      for (const [name, viewer] of Object.entries(viewers)) {
+        for (const status of [undefined, 'archived', 'removed', 'published'] as const) {
+          if (viewer.kind !== 'staff' && status !== undefined) continue
+          const expected = seeded
+            .flatMap(({ resource, versions }) => {
+              const record = { ...resource, ownerActive: resource.ownerUserId === owner.id }
+              const readable = versions.filter((version) =>
+                canReadVersion(viewer, {
+                  institutionType: type,
+                  resource: record,
+                  version,
+                  now: FIXED_NOW,
+                }),
+              )
+              const head =
+                viewer.kind === 'staff'
+                  ? [...readable].sort(
+                      (a, b) =>
+                        Number(a.status === 'archived') - Number(b.status === 'archived') ||
+                        b.versionNumber - a.versionNumber,
+                    )[0]
+                  : readable.find((version) => version.id === resource.currentVersionId)
+              if (!head) return []
+              const shown =
+                status === undefined
+                  ? head.status !== 'archived' && head.status !== 'removed'
+                  : head.status === status
+              return shown ? [`${resource.id}:${head.id}`] : []
+            })
+            .sort()
+          const actual: string[] = []
+          let total: number | undefined
+          for (let page = 1; ; page += 1) {
+            const result = await listVisibleResources(db, institution.id, viewer, type, FIXED_NOW, {
+              page,
+              pageSize: 40,
+              terms: null,
+              status,
+              sort: '-updatedAt',
+            })
+            total = result.total
+            actual.push(...result.rows.map((row) => `${row.resource.id}:${row.version.id}`))
+            if (result.rows.length < 40) break
+          }
+          const label = `${type} · ${name} · ${status ?? 'varsayılan'}`
+          assert.deepEqual(actual.sort(), expected, label)
+          assert.equal(total, expected.length, `${label}: sayım`)
+        }
       }
 
       // Başka kurumun kişisi aynı kimliklerle hiçbir sürüm görmez.

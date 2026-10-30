@@ -22303,7 +22303,7 @@
         "tags": [
           "resources"
         ],
-        "description": "Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve `view: 'staff'` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü `view: 'learner'` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Süzgeçler baş sürüme uygulanır; bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve `view: 'staff'` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü `view: 'learner'` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Baş sürümü arşivli veya kaldırılmış kaynak varsayılan olarak listede ve aramada yoktur; yalnız `status=archived` / `status=removed` ile gelir (DOM-KYN-051). Normalleşince terim kalmayan `q` (ör. `!!!`) boş sonuç döner. Süzgeçler baş sürüme uygulanır; bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {
@@ -22458,7 +22458,7 @@
             "in": "query",
             "name": "status",
             "required": false,
-            "description": "Baş sürümün durumu. Yalnız personel; öğrenci ve velide 400 `staff_only_filter`"
+            "description": "Baş sürümün durumu. Verilmezse arşivli ve kaldırılan kaynaklar dışlanır (DOM-KYN-051). Yalnız personel; öğrenci ve velide 400 `staff_only_filter`"
           },
           {
             "schema": {

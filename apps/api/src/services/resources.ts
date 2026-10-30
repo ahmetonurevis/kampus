@@ -160,7 +160,9 @@ export async function listResources(ctx: ServiceContext, input: ResourceListInpu
     if (issues.length > 0) throw new ValidationError(issues)
   }
   const { q, ...rest } = input
-  const terms = q === undefined ? [] : searchQueryTerms(q)
+  // Normalleşince terim kalmayan arama (`q=!!!`) boş sonuçtur, 400 değil: kullanıcı yazarken
+  // hata görmez (`ResourceListQuery.terms`).
+  const terms = q === undefined ? null : searchQueryTerms(q)
   const page = await listVisibleResources(
     ctx.db,
     ctx.institutionId,

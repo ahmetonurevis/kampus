@@ -51,7 +51,12 @@ import {
  */
 
 type ResourcesTable = typeof resources
-type VersionsTable = typeof resourceVersions
+/**
+ * Personel listesinin baş sürüm alt sorgusundaki takma ad (`head`). Kolonları `resource_versions`
+ * ile aynıdır; görünürlük ifadeleri iki tabloyu da aynı tiple alır.
+ */
+const headVersions = alias(resourceVersions, 'head')
+type VersionsTable = typeof resourceVersions | typeof headVersions
 
 /** Kaynak satırı, core kaydı ve sistem kolonları. */
 export type StoredResource = ResourceRecord & {
@@ -469,8 +474,11 @@ export type ResourceSort = (typeof RESOURCE_SORTS)[number]
 export interface ResourceListQuery {
   page: number
   pageSize: number
-  /** `searchQueryTerms` çıktısı: yalnız harf ve rakam; boşsa arama yok. */
-  terms: readonly string[]
+  /**
+   * `searchQueryTerms` çıktısı: yalnız harf ve rakam; `null` arama yok. Boş dizi aranacak terim
+   * kalmamış aramadır (`q=!!!`) ve hiçbir satır döndürmez.
+   */
+  terms: readonly string[] | null
   contentType?: ResourceRecord['contentType'] | undefined
   cefrLevel?: ResourceTags['cefrLevel'] | undefined
   primarySkill?: ResourceTags['primarySkill'] | undefined
@@ -487,12 +495,17 @@ export interface ResourceListRow {
   version: StoredResourceVersion
 }
 
+/** Durum süzgeci verilmediğinde listede olmayan baş sürüm durumları (DOM-KYN-051). */
+const HIDDEN_BY_DEFAULT: ResourceStatus[] = ['archived', 'removed']
+
 function listFilters(query: ResourceListQuery, v: VersionsTable): SQL[] {
   const filters: SQL[] = []
-  if (query.terms.length > 0) {
+  if (query.terms !== null) {
     // Terimler yalnız harf ve rakamdır (`searchQueryTerms`); sorgu metni parametredir.
     const tsquery = query.terms.map((term) => `${term}:*`).join(' & ')
-    filters.push(sql`${v.searchVector} @@ to_tsquery('simple', ${tsquery})`)
+    filters.push(
+      query.terms.length === 0 ? FALSE : sql`${v.searchVector} @@ to_tsquery('simple', ${tsquery})`,
+    )
   }
   if (query.contentType) filters.push(eq(resources.contentType, query.contentType))
   if (query.cefrLevel) filters.push(eq(v.cefrLevel, query.cefrLevel))
@@ -502,6 +515,9 @@ function listFilters(query: ResourceListQuery, v: VersionsTable): SQL[] {
   if (query.gradeLevel !== undefined)
     filters.push(sql`${query.gradeLevel}::integer = any(${v.gradeLevels})`)
   if (query.status) filters.push(eq(v.status, query.status))
+  // DOM-KYN-051: arşivlenen ve kaldırılan kaynak aramaya ve listeye girmez; yalnız açık durum
+  // süzgeciyle gelir (`removed` görünürlük gereği yalnız sahibe ve yöneticiye).
+  else filters.push(not(inArray(v.status, HIDDEN_BY_DEFAULT)))
   if (query.ownerUserId) filters.push(eq(resources.ownerUserId, query.ownerUserId))
   return filters
 }
@@ -535,8 +551,8 @@ export async function listVisibleResources(
   const v = resourceVersions
   let join: SQL
   if (viewer.kind === 'staff') {
-    // Takma ad aynı kolonları taşır; yalnız tablo adı tipi farklıdır (`head`).
-    const head = alias(resourceVersions, 'head') as unknown as VersionsTable
+    // Ham `sql` içinde takma ad tablo yalnız adıyla yazılır; kaynak tablo açıkça verilir.
+    const head = headVersions
     join = sql`${v.id} = (select ${head.id} from ${resourceVersions} as ${sql.identifier('head')}
       where ${head.institutionId} = ${resources.institutionId} and ${head.resourceId} = ${resources.id}
         and ${versionVisibleSql(viewer, institutionType, now, resources, head)}

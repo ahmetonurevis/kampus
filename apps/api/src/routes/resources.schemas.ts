@@ -65,7 +65,9 @@ export const resourceListQuerySchema = pageQuerySchema
       .describe('Sınıf düzeyi'),
     status: status
       .optional()
-      .describe('Baş sürümün durumu. Yalnız personel; öğrenci ve velide 400 `staff_only_filter`'),
+      .describe(
+        'Baş sürümün durumu. Verilmezse arşivli ve kaldırılan kaynaklar dışlanır (DOM-KYN-051). Yalnız personel; öğrenci ve velide 400 `staff_only_filter`',
+      ),
     ownerUserId: z
       .string()
       .min(1)

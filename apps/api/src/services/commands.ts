@@ -11,6 +11,7 @@ import {
 import { runWorkflow, type WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
 import { SCOPE_SOURCE_COLLECTIONS, scopeFor } from '@kampus/school-core/lib/scope.ts'
 
+import type { Database } from '../db/client.ts'
 import { isRecordCollection, type CollectionName, type ScalarStateKey } from '../db/collections.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
 import { ForbiddenError, NotFoundError } from '../errors.ts'
@@ -124,13 +125,18 @@ interface Environment {
 /**
  * Core oturumu ve skaler State alanları: bağlantılar `membership_links`'ten, modüller kurumdan,
  * eğitim yılı `institution_settings`'ten. Ayar satırı yoksa `academicYear` verilmez; onu okuyan
- * işlem (yenileme) 500 ile durur.
+ * işlem (yenileme) 500 ile durur. İşlem çalıştırıcı bunu kurum kilidinden sonra, işlemin
+ * transaction'ında (`tx`) çağırır (`OperationRequest.load`).
  */
-async function environment(ctx: ServiceContext, childId?: string): Promise<Environment> {
+async function environment(
+  tx: Database,
+  ctx: ServiceContext,
+  childId?: string,
+): Promise<Environment> {
   const [links, institution, settings] = await Promise.all([
-    listMembershipLinks(ctx.db, ctx.institutionId, ctx.actor.membershipId),
-    getInstitutionModules(ctx.db, ctx.institutionId),
-    ctx.db
+    listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId),
+    getInstitutionModules(tx, ctx.institutionId),
+    tx
       .select({ academicYear: institutionSettings.academicYear })
       .from(institutionSettings)
       .where(eq(institutionSettings.institutionId, ctx.institutionId))
@@ -188,21 +194,25 @@ export async function executeWorkflowCommand(
   workflow: WorkflowInput,
   options: CommandOptions,
 ): Promise<CommandResponse> {
-  const { session, scalars } = await environment(ctx, workflow.childId)
   const { command, input, recordId } = workflow
   return execute(
     ctx,
     {
       action: `workflow.${command}`,
       collections: WORKFLOW_COLLECTIONS,
-      scalars,
       ...(recordId !== undefined && options.expectedVersion !== null
         ? { expectedRecordVersion: { id: recordId, version: options.expectedVersion } }
         : {}),
       entity: auditEntity(recordId ?? command),
-      run: (state, { now, makeId }) => {
-        runWorkflow(state, session, command, input, makeId, recordId, now)
-        return auditedEntity(state, command)
+      load: async (tx) => {
+        const { session, scalars } = await environment(tx, ctx, workflow.childId)
+        return {
+          scalars,
+          run: (state, { now, makeId }) => {
+            runWorkflow(state, session, command, input, makeId, recordId, now)
+            return auditedEntity(state, command)
+          },
+        }
       },
     },
     options,
@@ -219,13 +229,11 @@ export async function executeTutoringCommand(
   recordId: string | undefined,
   options: CommandOptions,
 ): Promise<CommandResponse> {
-  const { session, scalars } = await environment(ctx)
   return execute(
     ctx,
     {
       action: `tutoring.${command}`,
       collections: ASSESSMENT_COLLECTIONS,
-      scalars,
       ...(recordId !== undefined && options.expectedVersion !== null
         ? {
             expectedVersions: [
@@ -234,9 +242,15 @@ export async function executeTutoringCommand(
           }
         : {}),
       entity: auditEntity(recordId ?? command),
-      run: (state, { now, makeId }) => {
-        runAssessment(state, session, command, input, makeId, recordId ?? '', now)
-        return recordId === undefined ? null : { collection: 'tutorSessions', id: recordId }
+      load: async (tx) => {
+        const { session, scalars } = await environment(tx, ctx)
+        return {
+          scalars,
+          run: (state, { now, makeId }) => {
+            runAssessment(state, session, command, input, makeId, recordId ?? '', now)
+            return recordId === undefined ? null : { collection: 'tutorSessions', id: recordId }
+          },
+        }
       },
     },
     options,
@@ -289,13 +303,11 @@ export async function recordAttendanceCommand(
   marks: Readonly<Record<string, AttendanceStatus>>,
   options: CommandOptions,
 ): Promise<CommandResponse> {
-  const { session, scalars } = await environment(ctx)
   return execute(
     ctx,
     {
       action: 'attendance.record',
       collections: ATTENDANCE_COLLECTIONS,
-      scalars,
       // İşlemin konusu sınıftır: `If-Match` sınıf kaydının okunan sürümüyle karşılaştırılır.
       ...(options.expectedVersion !== null
         ? {
@@ -305,15 +317,21 @@ export async function recordAttendanceCommand(
           }
         : {}),
       entity: { type: 'classes', id: classId },
-      run: (state) => {
-        if (!state.classes.some((item) => item.id === classId)) throw new NotFoundError()
-        if (session.role === 'ogretmen') {
-          const scope = scopeFor(state, { role: session.role, links: session.links ?? [] })
-          if (!scope.classIds.has(classId)) throw new ForbiddenError()
+      load: async (tx) => {
+        const { session, scalars } = await environment(tx, ctx)
+        return {
+          scalars,
+          run: (state) => {
+            if (!state.classes.some((item) => item.id === classId)) throw new NotFoundError()
+            if (session.role === 'ogretmen') {
+              const scope = scopeFor(state, { role: session.role, links: session.links ?? [] })
+              if (!scope.classIds.has(classId)) throw new ForbiddenError()
+            }
+            // Gün Europe/Istanbul günüdür; 09:00Z o günün öğlesidir (istemcilerle aynı biçim).
+            recordAttendance(state, classId, `${date}T09:00:00.000Z`, marks)
+            return { collection: 'classes', id: classId }
+          },
         }
-        // Gün Europe/Istanbul günüdür; 09:00Z o günün öğlesidir (istemcilerle aynı biçim).
-        recordAttendance(state, classId, `${date}T09:00:00.000Z`, marks)
-        return { collection: 'classes', id: classId }
       },
     },
     options,

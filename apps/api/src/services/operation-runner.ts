@@ -69,7 +69,21 @@ export interface AuditEntity {
   id: string
 }
 
-export interface OperationRequest<R> {
+/** İşlemin State'i değiştiren saf adımı (core işlemi). */
+export type OperationRun<R> = (state: State, tools: OperationTools) => R
+
+/** Kurum kilidinden sonra okunan ortamla kurulan işlem adımı (`OperationRequest.load`). */
+export interface LoadedOperation<R> {
+  /**
+   * Dizi olmayan State alanları (`modules`, `academicYear` …). `records`'ta tutulmaz; çağıran
+   * kurum ayarlarından verir. İşlem bunları değiştirirse değişiklik yazılamayacağı için işlem
+   * geri alınır (500, `operation.scalar_changed` logu).
+   */
+  scalars?: Partial<Pick<State, ScalarStateKey>>
+  run: OperationRun<R>
+}
+
+interface OperationBase<R> {
   /** Denetim kaydı eylemi, ör. `invoice.pay`. */
   action: string
   /**
@@ -77,12 +91,6 @@ export interface OperationRequest<R> {
    * Core `audit` her zaman boş verilir ve yazılmaz; listede olması gerekmez.
    */
   collections: readonly CollectionName[]
-  /**
-   * Dizi olmayan State alanları (`modules`, `academicYear` …). `records`'ta tutulmaz; çağıran
-   * kurum ayarlarından verir. İşlem bunları değiştirirse değişiklik yazılamayacağı için işlem
-   * geri alınır (500, `operation.scalar_changed` logu).
-   */
-  scalars?: Partial<Pick<State, ScalarStateKey>>
   /** İstemcinin okuduğu sürümler (gövdedeki `version`); tutmazsa 409, kayıt yoksa 404. */
   expectedVersions?: readonly ExpectedVersion[]
   /**
@@ -97,8 +105,19 @@ export interface OperationRequest<R> {
    */
   entity: AuditEntity | ((result: R) => AuditEntity)
   makeId?: MakeId
-  run: (state: State, tools: OperationTools) => R
 }
+
+/**
+ * İşlem isteği. Ortamı (modül haritası, üyelik bağlantıları, kurum ayarı) okuyan işlem `load`
+ * verir: ortam kurum kilidi alındıktan sonra aynı transaction'da okunur; eşzamanlı ayar veya
+ * üyelik değişikliği işlemin gördüğü görüntüyü bayatlatamaz. Ortamsız işlem `run` ve isteğe
+ * bağlı sabit `scalars` verir.
+ */
+export type OperationRequest<R> = OperationBase<R> &
+  (
+    | (LoadedOperation<R> & { load?: never })
+    | { load: (tx: Database) => Promise<LoadedOperation<R>>; scalars?: never; run?: never }
+  )
 
 export interface OperationResult<R> {
   result: R
@@ -324,8 +343,13 @@ async function applyOperation<R>(
     if (rows.some((row) => row.version !== version)) throw new ConflictError()
   }
 
+  const operation: LoadedOperation<R> = request.load ? await request.load(tx) : request
+  const scalars = operation.scalars ?? {}
+  for (const key of Object.keys(scalars))
+    if (!isScalarStateKey(key)) throw programmingError(`unknown scalar state key: ${key}`)
+
   // Core State'i yerinde değiştirir; yüklenen satırlar fark için dokunulmadan kalır.
-  const target: Record<string, unknown> = structuredClone(request.scalars ?? {})
+  const target: Record<string, unknown> = structuredClone(scalars)
   // Core denetimi yalnız bu işlem içinde yaşar: boş başlar, farka girmez (collections.ts).
   target.audit = []
   for (const collection of collections)
@@ -335,13 +359,13 @@ async function applyOperation<R>(
 
   let result: R
   try {
-    result = request.run(guardedState(target), tools)
+    result = operation.run(guardedState(target), tools)
   } catch (error) {
     throw mapOperationError(error)
   }
 
   // Skaler alan `records`'ta tutulmaz; değişikliği sessizce düşürmek yerine işlem geri alınır.
-  const scalarChanges = changedScalars(request.scalars ?? {}, target)
+  const scalarChanges = changedScalars(scalars, target)
   if (scalarChanges.length > 0) {
     ctx.log.error({
       event: 'operation.scalar_changed',
@@ -384,8 +408,6 @@ function prepare<R>(ctx: ServiceContext, request: OperationRequest<R>) {
   const collections = [...new Set(request.collections)].filter(
     (collection) => !isEphemeralCollection(collection),
   )
-  for (const key of Object.keys(request.scalars ?? {}))
-    if (!isScalarStateKey(key)) throw programmingError(`unknown scalar state key: ${key}`)
   const tools: OperationTools = {
     now: ctx.now.toISOString(),
     makeId: request.makeId ?? defaultMakeId,

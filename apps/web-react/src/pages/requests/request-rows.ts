@@ -1,6 +1,7 @@
 // Şikayet/talep ve izin/mazeret ekranlarının satır hesapları (Vue `Communication.vue`). Saf
 // işlevlerdir: API satırı girer, tablo/CSV satırı çıkar. Durum ve ilgili birim kayıttaki metindir.
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
+import { absenceReasonLabel } from '@kampus/school-core/lib/requests.ts'
 import type { CoreRow } from '@/hooks/use-core-collection.ts'
 import type { CollectionListConfig } from '@/lib/collection-list.ts'
 
@@ -60,7 +61,9 @@ export type AbsenceRow = {
   id: string
   studentId: string
   student: string
+  /** Gerekçe kategorisinin etiketi; kategorisi olmayan eski kayıtta kayıttaki tür metni. */
   category: string
+  /** Eski kayıtların serbest açıklaması; yeni bildirim açıklama taşımaz (DOM-ILT-053). */
   reason: string
   status: string
   startDate: string
@@ -83,8 +86,8 @@ export function absenceRow(item: CoreRow<'absences'>): AbsenceRow {
     id: item.id,
     studentId: record.studentId,
     student: item.joined?.studentName ?? '',
-    category: record.category,
-    reason: record.reason,
+    category: absenceReasonLabel(record),
+    reason: record.reason ?? '',
     status: record.status || ABSENCE_DEFAULT_STATUS,
     startDate: record.startDate,
     endDate: record.endDate,

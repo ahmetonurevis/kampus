@@ -5,7 +5,9 @@ import type { Participant } from '../packages/school-core/src/lib/communication.
 import {
   ABSENCE_EXCUSE_BUSINESS_DAYS,
   ABSENCE_NOTICE_STATUS,
+  ABSENCE_REASON_LABELS,
   absenceNotices,
+  absenceReasonLabel,
   addBusinessDays,
   excuseBusinessDays,
   notifyAbsence,
@@ -60,8 +62,7 @@ const absence = (overrides: Record<string, unknown> = {}) => ({
   studentId: 's1',
   startDate: '2026-10-08',
   endDate: '2026-10-09',
-  category: 'Ailevi nedenler',
-  reason: 'Aile ziyareti nedeniyle okula gelemeyecek.',
+  reasonCategory: 'family',
   ...overrides,
 })
 const zodError = (error: unknown) => error instanceof Error && error.name === 'ZodError'
@@ -316,6 +317,57 @@ test('DOM-ILT-053: veli ileri tarihli izin bildirir; talep açılmaz, yoklama de
   assert.equal(JSON.stringify(state.attendance), attendance)
 })
 
+test('DOM-ILT-053: gerekçe zorunlu kategoridir; serbest açıklama ve bilinmeyen alan reddedilir', () => {
+  const state = seed()
+  const noCategory: Record<string, unknown> = absence()
+  delete noCategory.reasonCategory
+  for (const input of [
+    noCategory,
+    absence({ reasonCategory: '' }),
+    absence({ reason: 'Grip, antibiyotik kullanıyor.' }),
+    absence({ category: 'Sağlık' }),
+    absence({ note: 'Ayrıntı' }),
+  ])
+    unchangedOnFailure(
+      state,
+      ['absences'],
+      () => notifyAbsence(state, parent, input, id, now),
+      zodError,
+    )
+  const notice = notifyAbsence(state, parent, absence({ reasonCategory: 'health' }), id, now)
+  assert.equal(notice.reasonCategory, 'health')
+  assert.equal(notice.category, ABSENCE_REASON_LABELS.health)
+  assert.equal('reason' in notice, false)
+  assert.deepEqual(Object.values(ABSENCE_REASON_LABELS), [
+    'Sağlık nedeniyle',
+    'Ailevi neden',
+    'Resmi işlem',
+    'Diğer',
+  ])
+})
+
+test('DOM-ILT-053: kategorisi olmayan eski bildirim kendi tür ve açıklamasıyla okunur', () => {
+  const state = seed()
+  state.absences.push({
+    id: 'absence-legacy',
+    studentId: 's1',
+    startDate: '2026-09-01',
+    endDate: '2026-09-01',
+    category: 'Sağlık',
+    reason: 'Eski kayıt açıklaması',
+    createdAt: '2026-09-01T07:00:00.000Z',
+  })
+  const legacy = visibleRecords(state, parent, 'absences').find((a) => a.id === 'absence-legacy')
+  assert.equal(legacy?.reason, 'Eski kayıt açıklaması')
+  assert.equal(absenceReasonLabel(legacy ?? {}), 'Sağlık')
+  assert.equal(
+    absenceReasonLabel({ reasonCategory: 'official', category: 'Resmi işlem' }),
+    'Resmi işlem',
+  )
+  assert.equal(absenceReasonLabel({ reasonCategory: 'bilinmeyen', category: 'Seyahat' }), 'Seyahat')
+  assert.equal(absenceNotices(state.absences)('s1', '2026-09-01')?.id, 'absence-legacy')
+})
+
 test('DOM-ILT-053: geçmiş tarihli mazeret ortaokulda 3, lisede 5 iş günü içinde kabul edilir', () => {
   const state = seed()
   // 7-A: perşembe biten devamsızlığın son günü salıdır (cuma, pazartesi, salı).
@@ -422,8 +474,7 @@ test('DOM-ILT-053: örtüşen bildirim, belge eki ve geçersiz aralık kaydı de
   for (const input of [
     absence({ startDate: '2026-10-12', endDate: '2026-10-11' }),
     absence({ startDate: '2026-02-30', endDate: '2026-03-01' }),
-    absence({ reason: '' }),
-    absence({ category: 'Tatil' }),
+    absence({ reasonCategory: 'Tatil' }),
   ])
     unchangedOnFailure(
       state,
@@ -473,7 +524,7 @@ test('DOM-ILT-053: bildirim yalnız velidedir ve kendi çocuğuyla, açık modü
   )
 })
 
-test('DOM-ILT-053: mazeret metnini ön büro ve branş öğretmeni görmez; sınıf rehber öğretmeni görür', () => {
+test('DOM-ILT-053: mazeret bildirimini ön büro ve branş öğretmeni görmez; sınıf rehber öğretmeni görür', () => {
   const state = seed()
   const notice = notifyAbsence(state, parent, absence(), id, now)
   const sees = (by: Participant) =>

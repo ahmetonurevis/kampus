@@ -61,8 +61,7 @@ const absence = {
   studentId: 's1',
   startDate: '2026-10-08',
   endDate: '2026-10-09',
-  category: 'Sağlık' as const,
-  reason: 'Doktor kontrolü.',
+  reasonCategory: 'health' as const,
 }
 
 describe('talep ve izin/mazeret komutları', () => {

@@ -21,7 +21,7 @@ import type {
   ConversationFields,
   ConversationMessageFields,
 } from '../lib/communication.ts'
-import type { RequestActor, RequestFields } from '../lib/requests.ts'
+import type { AbsenceReasonCategory, RequestActor, RequestFields } from '../lib/requests.ts'
 export const topics = subjects.map((s) => s.name)
 
 // Örnek veri kendi içinde tutarlıdır; aranan kayıt yoksa üretici hatalıdır ve hemen durur.
@@ -887,9 +887,13 @@ type StatePatches = {
     studentId: string
     startDate: string
     endDate: string
+    /** Tür etiketi; API bildirimi `reasonCategory` etiketini yazar, eski kayıt kendi metnini. */
     category: string
-    // kvkk: Ö — sağlık bilgisi içerebilir (DOM-ILT-053).
-    reason: string
+    // kvkk: Ç — genel gerekçe kategorisi (`lib/requests.ts`); eski kayıt ve telefon taşımaz.
+    reasonCategory?: AbsenceReasonCategory
+    // kvkk: Ö — eski kayıtların serbest açıklaması; API bildirimi yazmaz (DOM-ILT-053).
+    // TODO(kvkk-mazeret-notu): Serbest açıklama F2'de şifreli ayrı tabloyla gelir.
+    reason?: string
     status?: string
     date?: string
     createdAt?: string

@@ -68,6 +68,8 @@ export const REDACTED_PATHS = [
   '*.email',
   '*.phone',
   '*.nationalId',
+  // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).
+  '*.reasonCategory',
   '*.cookie',
   '*.authorization',
 ]

@@ -1735,7 +1735,7 @@ export interface paths {
         put?: never;
         /**
          * İzin veya mazeret bildir
-         * @description Veli bağlı çocuğu için ileri tarihli izin veya geçmiş tarihli mazeret bildirir (core `notifyAbsence`, DOM-ILT-053). Geçmiş tarih devamsızlığın bitiminden itibaren ortaokulda 3, lisede 5 iş günü içinde kabul edilir, aksi 422 `absence_notice_late`. Aynı öğrencinin örtüşen bildirimi 409 `absence_overlap`; belge eki (`files`) henüz 422 `absence_files_unsupported`; başka velinin çocuğu 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Bildirim yoklamayı değiştirmez ve talep kaydı açmaz; mazeret metnini ön büro göremez. Modül `academic`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `veli`.
+         * @description Veli bağlı çocuğu için ileri tarihli izin veya geçmiş tarihli mazeret bildirir (core `notifyAbsence`, DOM-ILT-053). Geçmiş tarih devamsızlığın bitiminden itibaren ortaokulda 3, lisede 5 iş günü içinde kabul edilir, aksi 422 `absence_notice_late`. Aynı öğrencinin örtüşen bildirimi 409 `absence_overlap`; belge eki (`files`) henüz 422 `absence_files_unsupported`; başka velinin çocuğu 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Gerekçe yalnız kategoridir (`reasonCategory`: `health`, `family`, `official`, `other`); serbest açıklama (`reason`) ve bilinmeyen alan 400 `validation_failed`, sağlık ayrıntısı alınmaz (KVKK md. 6, en az veri). Bildirim yoklamayı değiştirmez ve talep kaydı açmaz; ön büro bildirimleri göremez. Modül `academic`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `veli`.
          */
         post: operations["notifyAbsence"];
         delete?: never;
@@ -13570,8 +13570,7 @@ export interface operations {
                     startDate: string;
                     endDate: string;
                     /** @enum {string} */
-                    category: "Sağlık" | "Ailevi nedenler" | "Seyahat" | "Diğer";
-                    reason: string;
+                    reasonCategory: "health" | "family" | "official" | "other";
                     files?: string[];
                 };
             };

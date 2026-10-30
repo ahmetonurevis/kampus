@@ -243,13 +243,33 @@ export function requestResponse(
 
 // --- İzin ve mazeret -------------------------------------------------------------------------
 
-/** Mazeret türleri (Vue `absenceForm.category`). */
-export const ABSENCE_CATEGORIES = ['Sağlık', 'Ailevi nedenler', 'Seyahat', 'Diğer'] as const
 /** Bildirimin ilk durumu: kuruma iletildi, idare onayı ayrıdır. */
 export const ABSENCE_NOTICE_STATUS = 'İletildi'
 /** Yoklamada bildirimi olan günün etiketi (DOM-ILT-053). */
 export const ABSENCE_NOTICED_LABEL = 'Mazeret bildirildi'
-export const ABSENCE_REASON_MAX_LENGTH = 1000
+
+/**
+ * İzin/mazeret gerekçesinin genel kategorisi (DOM-ILT-053). Gerekçe yalnız kategori olarak
+ * alınır; tanı, ilaç gibi sağlık ayrıntısı alınmaz (KVKK md. 6, en az veri).
+ */
+export const ABSENCE_REASON_CATEGORIES = ['health', 'family', 'official', 'other'] as const
+export type AbsenceReasonCategory = (typeof ABSENCE_REASON_CATEGORIES)[number]
+export const ABSENCE_REASON_LABELS: Record<AbsenceReasonCategory, string> = {
+  health: 'Sağlık nedeniyle',
+  family: 'Ailevi neden',
+  official: 'Resmi işlem',
+  other: 'Diğer',
+}
+/** Bildirimin gerekçe etiketi; eski kayıtta kategori yoksa kayıttaki tür metni döner. */
+export function absenceReasonLabel(notice: {
+  reasonCategory?: string | undefined
+  category?: string | undefined
+}): string {
+  const code = notice.reasonCategory
+  return code !== undefined && code in ABSENCE_REASON_LABELS
+    ? ABSENCE_REASON_LABELS[code as AbsenceReasonCategory]
+    : (notice.category ?? '')
+}
 
 /**
  * Özür belgesi süresi (iş günü, devamsızlığın bitiminden itibaren; DOM-ILT-053): ortaokulda 3
@@ -260,21 +280,14 @@ export const ABSENCE_REASON_MAX_LENGTH = 1000
 // en kısa süre (3 iş günü) uygulanır.
 export const ABSENCE_EXCUSE_BUSINESS_DAYS = { middle: 3, high: 5 } as const
 
+// Gövde katıdır: serbest açıklama (`reason`) ve bilinmeyen alan reddedilir (API 400).
 export const notifyAbsenceSchema = z
-  .object({
+  .strictObject({
     studentId: identifier,
     startDate: day,
     endDate: day,
-    category: z.enum(ABSENCE_CATEGORIES, 'Mazeret türünü seçin.'),
-    // kvkk: Ö — mazeret metni sağlık bilgisi içerebilir (DOM-ILT-053, KVKK md. 6); loglanmaz.
-    reason: z
-      .string()
-      .trim()
-      .min(2, 'Açıklama yazın.')
-      .max(
-        ABSENCE_REASON_MAX_LENGTH,
-        `Açıklama en fazla ${ABSENCE_REASON_MAX_LENGTH} karakter olabilir.`,
-      ),
+    // kvkk: Ç — genel gerekçe kategorisi; sağlık ayrıntısı taşımaz (DOM-ILT-053, KVKK md. 6).
+    reasonCategory: z.enum(ABSENCE_REASON_CATEGORIES, 'Gerekçe kategorisini seçin.'),
     /** Özür belgesi; dosya deposu gelene kadar kabul edilmez (422 `absence_files_unsupported`). */
     files: z.array(z.string().trim().min(1).max(200)).max(5).optional(),
   })
@@ -371,16 +384,17 @@ export function notifyAbsence(
       kind: 'conflict',
       path: ['startDate'],
     })
-  // TODO(health-data-storage): mazeret metni özel nitelikli olabilir (KVKK md. 6); şifreli ayrı
-  // tabloya taşınana kadar `records`'ta durur, okuma kapsamı yönetici, sınıf rehber öğretmeni ve
-  // veliyle sınırlıdır (DOM-ILT-053, guvenlik-kvkk.md §8).
+  // TODO(kvkk-mazeret-notu): Serbest açıklama F2'de şifreli ayrı tabloyla gelir. O zamana kadar
+  // gerekçe yalnız kategoridir; okuma kapsamı yönetici, sınıf rehber öğretmeni ve velidir
+  // (DOM-ILT-053, guvenlik-kvkk.md §8).
   const notice: AbsenceRecord = {
     id: makeId('absence'),
     studentId: data.studentId,
     startDate: data.startDate,
     endDate: data.endDate,
-    category: data.category,
-    reason: data.reason,
+    reasonCategory: data.reasonCategory,
+    // Eski okuyucular (liste filtresi, Vue/telefon görünümü) türü `category`'den okur.
+    category: ABSENCE_REASON_LABELS[data.reasonCategory],
     status: ABSENCE_NOTICE_STATUS,
     date: now,
     createdAt: now,

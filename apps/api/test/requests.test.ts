@@ -64,9 +64,9 @@ const ABSENCE = {
   studentId: 's1',
   startDate: '2026-10-08',
   endDate: '2026-10-09',
-  category: 'Sağlık',
-  reason: 'Diş tedavisi randevusu.',
+  reasonCategory: 'health',
 }
+const HEALTH_DETAIL = 'Diş tedavisi, antibiyotik kullanıyor.'
 
 describe('talep ve izin/mazeret uçları', () => {
   let db: Database
@@ -329,6 +329,9 @@ describe('talep ve izin/mazeret uçları', () => {
     const notices = await stored(a.id, 'absences')
     assert.equal(notices.length, 1)
     assert.equal(notices[0]?.data.status, 'İletildi')
+    assert.equal(notices[0]?.data.reasonCategory, 'health')
+    assert.equal(notices[0]?.data.category, 'Sağlık nedeniyle')
+    assert.equal('reason' in (notices[0]?.data ?? {}), false)
     assert.equal((await stored(a.id, 'requests')).length, 0)
     assertError(await read(await frontOffice(a.id), '/api/v1/collections/absences'), 403)
     // 7-A'nın sınıf rehber öğretmeni Selin Kaya (t1) görür; Türkçe öğretmeni (t2) görmez.
@@ -343,7 +346,24 @@ describe('talep ve izin/mazeret uçları', () => {
       .select()
       .from(auditLog)
       .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'absence.notify')))
-    assert.equal(JSON.stringify(audit).includes(ABSENCE.reason), false)
+    assert.equal(audit.length, 1)
+  })
+
+  test('DOM-ILT-053: gerekçe kategorisi zorunlu; serbest açıklama 400 ve kayıt açılmaz', async () => {
+    const a = await institution()
+    const cookie = await parent(a.id)
+    const withoutCategory = { studentId: 's1', startDate: '2026-10-08', endDate: '2026-10-09' }
+    for (const body of [
+      withoutCategory,
+      { ...ABSENCE, reasonCategory: 'Sağlık' },
+      { ...ABSENCE, reason: HEALTH_DETAIL },
+      { ...ABSENCE, category: 'Sağlık' },
+    ]) {
+      const response = await notify(cookie, body)
+      assertError(response, 400, 'validation_failed')
+      assert.equal(response.body.includes(HEALTH_DETAIL), false)
+    }
+    assert.equal((await stored(a.id, 'absences')).length, 0)
   })
 
   test('DOM-ILT-053: geçmiş tarih ortaokulda 3, lisede 5 iş günü; geç bildirim 422, örtüşme 409, belge 422', async () => {

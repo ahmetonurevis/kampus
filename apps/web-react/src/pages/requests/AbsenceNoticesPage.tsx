@@ -30,9 +30,10 @@ const TABLE_NAME = 'Bildirim geçmişi'
  * bildirim geçmişi; arama, sıralama, sayfa, satırdan sağ panelde ayrıntı ve CSV. Kapsamı sunucu
  * velinin bağlı çocuklarına daraltır; mazeret metni sağlık bilgisi içerebileceğinden ön büro bu
  * koleksiyonu okuyamaz (DOM-ILT-053).
- * TODO(api-absence-write): izin/mazeret bildirimi oluşturma komutu API'de ve core'da yok
- * (`absences` yazan işlem tanımlı değil); uç gelince form (tarih aralığı, tür, açıklama) buraya
- * eklenir. DOM-ILT-053 (geçmiş tarihli mazeret, yoklamaya bağlama) o işin kapsamındadır.
+ * Tür sütunu gerekçe kategorisidir; yeni bildirim serbest açıklama taşımaz, Açıklama sütunu
+ * yalnız eski kayıtların metnini gösterir (DOM-ILT-053, KVKK md. 6).
+ * TODO(api-absence-write): bildirim formu (tarih aralığı, gerekçe kategorisi) `POST /absences`
+ * ve react-shared `useNotifyAbsence` üzerine buraya eklenir.
  */
 export function AbsenceNoticesPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)

@@ -266,6 +266,7 @@ Geçiş notu: school-core bugün `throw new Error('…Türkçe…')` kullanıyor
 - Olay adları `event` alanında noktalı biçimde: `auth.login_failed`, `records.version_conflict`, `payment.recorded`.
 - Düzeyler: `error` = 5xx ve müdahale gerektiren; `warn` = beklenen ama izlenmesi gereken (CSRF reddi, hız sınırı, iş yeniden denemesi); `info` = istek özeti ve iş olayı; `debug` = geliştirme.
 - İstek/yanıt gövdesi loglanmaz. Kişisel veri yerine kimlik loglanır (`studentId`, e-posta değil). Zod hatasında yalnız alan yolları (`issues[].path`) loglanır, değerler değil.
+- Beklenmeyen hata mesajsız loglanır (`loggableError`, `plugins/error-handler.ts`): ad, kod (pg SQLSTATE), mesaj satırı çıkarılmış yığın ve `cause` zinciri. Drizzle/pg mesajı sorgu parametrelerini ve çakışan değeri taşıyabilir.
 - Maskeleme zorunlu ve merkezi:
 
 ```ts

@@ -194,7 +194,7 @@ ssh abbara-server 'bash /var/www/kampus-demo/deploy/<surum>/activate.sh <surum>'
 
 ## Doğrulama
 
-`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test`, `pnpm --filter @kampus/api test` ve `pnpm build` temel kontrollerdir. 30 Ekim 2026 API iskeleti: 29 API testi (PGlite) ve 80 birim testi geçti; PostgreSQL 16 üzerinde migrate, iki kez seed, sağlık ve giriş duman testi başarılı. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
+`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test`, `pnpm --filter @kampus/api test` ve `pnpm build` temel kontrollerdir. 30 Ekim 2026 API iskeleti: 49 API testi (PGlite) ve 80 birim testi geçti; PostgreSQL 16 üzerinde migrate, iki kez seed, sağlık ve giriş duman testi başarılı. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
 
 6 Ekim 2026 optik/etüt teslim kontrolü: lint, format ve web derlemesi başarılı; 65 birim testi ve 58 tarayıcı senaryosu geçti. Yayın öncesinde tüm 58 tarayıcı senaryosu tekrar geçti. Canlı adres üzerinde 14 senaryo; beş rolün masaüstü/dar ekran sayfaları, optik/etüt işlemleri, video ve PDF akışlarını doğruladı. Sağlık yanıtı sürümle eşleşti; HTTPS yönlendirmesi, video aralık isteği ve PDF worker MIME türü kontrol edildi.
 

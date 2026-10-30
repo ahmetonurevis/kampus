@@ -14,7 +14,7 @@ import {
 import { z } from 'zod'
 
 import { createAuth, type Auth } from './auth.ts'
-import { publicUrl, type Config } from './config.ts'
+import { isDevelopmentLike, publicUrl, type Config } from './config.ts'
 import type { Database } from './db/client.ts'
 import { registerAuthenticate } from './plugins/authenticate.ts'
 import { registerBetterAuth } from './plugins/better-auth.ts'
@@ -88,6 +88,16 @@ function loggerOptions(config: Config, stream?: NodeJS.WritableStream) {
   }
 }
 
+/**
+ * Hop sayısı `proxy-addr`'ın sayı davranışıyla aynı işleve çevrilir (Fastify tipleri sayıyı
+ * kabul etmez): istemciye en yakın `hops` vekil güvenilir, `X-Forwarded-For`'un geri kalanı yok
+ * sayılır.
+ */
+function trustProxyOption(value: Config['TRUST_PROXY']) {
+  if (typeof value !== 'number') return value
+  return (_address: string, hop: number) => hop < value
+}
+
 /** Saat kaynağı; testler sabit bir an verir. */
 export type Clock = () => Date
 
@@ -118,7 +128,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
 
   const app: FastifyInstance = Fastify({
     logger: loggerOptions(config, options.logStream),
-    trustProxy: config.TRUST_PROXY,
+    trustProxy: trustProxyOption(config.TRUST_PROXY),
     genReqId: genRequestId,
     bodyLimit: 1024 * 1024,
   })
@@ -144,7 +154,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   await app.register(cookie)
   await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' })
 
-  const docs = config.NODE_ENV !== 'production'
+  const docs = isDevelopmentLike(config)
   await app.register(swagger, {
     openapi: {
       openapi: '3.1.0',
@@ -161,7 +171,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
     transformObject: jsonSchemaTransformObject,
   })
   if (docs) {
-    // Belge arayüzü yalnız üretim dışında; kendi CSP başlığını kullanır.
+    // Belge arayüzü yalnız açıkça geliştirme/test ortamında; kendi CSP başlığını kullanır.
     await app.register(swaggerUi, { routePrefix: '/api/docs', staticCSP: true })
     app.get('/api/v1/openapi.json', { schema: { hide: true } }, async () => app.swagger())
   }

@@ -1,3 +1,5 @@
+import { isIP } from 'node:net'
+
 import { z } from 'zod'
 
 // Ortam değişkenleri yalnız bu dosyada okunur ve doğrulanır; eksik veya geçersizse süreç başlamaz.
@@ -12,11 +14,6 @@ const csv = z
       .filter(Boolean),
   )
 
-const flag = z
-  .enum(['true', 'false', '1', '0'])
-  .default('false')
-  .transform((value) => value === 'true' || value === '1')
-
 /** `.env` içindeki boş değer (`DEMO_PASSWORD=`) tanımsız sayılır. */
 function optional<T extends z.ZodType>(schema: T) {
   return z.preprocess((value) => (value === '' ? undefined : value), schema.optional())
@@ -24,16 +21,72 @@ function optional<T extends z.ZodType>(schema: T) {
 
 const databaseUrl = z.url({ protocol: /^postgres(ql)?$/ })
 
+/** `proxy-addr`'ın tanıdığı adres grupları (Fastify `trustProxy`). */
+const PROXY_RANGE_NAMES = new Set(['loopback', 'linklocal', 'uniquelocal'])
+
+function isProxyAddress(value: string): boolean {
+  if (PROXY_RANGE_NAMES.has(value)) return true
+  const [address = '', prefix, ...rest] = value.split('/')
+  const version = isIP(address)
+  if (version === 0 || rest.length > 0) return false
+  if (prefix === undefined) return true
+  if (!/^\d{1,3}$/.test(prefix)) return false
+  return Number(prefix) <= (version === 4 ? 32 : 128)
+}
+
+/**
+ * Hangi vekilin `X-Forwarded-For` başlığına güvenileceği. Boş/`false`/`0`: hiçbirine (varsayılan).
+ * Pozitif tamsayı: istemciye en yakın o kadar vekil atlanır (hop). Aksi halde virgülle ayrılmış
+ * vekil IP/CIDR listesi. `true` (bütün vekiller) reddedilir: başlığı istemci yazabilir ve hız
+ * sınırı IP'si sahtelenir.
+ */
+const trustProxy = z
+  .string()
+  .default('')
+  .transform((value, ctx): false | number | string[] => {
+    const trimmed = value.trim()
+    if (trimmed === '' || trimmed === 'false' || trimmed === '0') return false
+    if (/^\d+$/.test(trimmed)) return Number(trimmed)
+    const items = trimmed
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+    if (items.length === 0 || !items.every(isProxyAddress)) {
+      ctx.addIssue({ code: 'custom', message: 'invalid' })
+      return z.NEVER
+    }
+    return items
+  })
+
+/** Örnek dosyalarda ve betiklerde geçen, gizli olmayan değerler; üretimde reddedilir. */
+export const PLACEHOLDER_SECRET_PREFIX = 'CHANGE_ME'
+const KNOWN_PUBLIC_SECRETS = new Set([
+  'degistir-en-az-32-karakter-rastgele-deger',
+  'cli-schema-generation-only-not-a-secret',
+  'openapi-generation-only-not-a-secret',
+  'test-secret-test-secret-test-secret-0123',
+])
+
+function isPlaceholderSecret(secret: string): boolean {
+  return (
+    secret.toUpperCase().startsWith(PLACEHOLDER_SECRET_PREFIX) || KNOWN_PUBLIC_SECRETS.has(secret)
+  )
+}
+
 export const configSchema = z
   .object({
-    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    /**
+     * Varsayılanı yoktur: verilmezse süreç başlamaz. Böylece ortamı unutulmuş bir üretim sunucusu
+     * geliştirme ayarlarıyla (Expo kökenleri, API belgesi) açılmaz.
+     */
+    NODE_ENV: z.enum(['development', 'test', 'production']),
     HOST: z.string().min(1).default('127.0.0.1'),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
-    /** Ters vekil arkasında `true`; yalnız vekilin eklediği IP başlığına güvenilir. */
-    TRUST_PROXY: flag,
+    /** Ters vekil arkasında hop sayısı veya vekil IP/CIDR listesi; varsayılan güvenme. */
+    TRUST_PROXY: trustProxy,
     DATABASE_URL: databaseUrl,
     BETTER_AUTH_SECRET: z.string().min(32),
     /** API'nin dışarıdan görünen kök adresi; üretimde zorunlu. */
@@ -46,8 +99,11 @@ export const configSchema = z
     DEMO_PASSWORD: optional(z.string().min(12)),
   })
   .superRefine((config, ctx) => {
-    if (config.NODE_ENV === 'production' && !config.BETTER_AUTH_URL)
+    if (config.NODE_ENV !== 'production') return
+    if (!config.BETTER_AUTH_URL)
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_URL'], message: 'required' })
+    if (isPlaceholderSecret(config.BETTER_AUTH_SECRET))
+      ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_SECRET'], message: 'placeholder' })
   })
 
 export type Config = z.infer<typeof configSchema>
@@ -73,4 +129,14 @@ export function loadDatabaseUrl(env: Record<string, string | undefined> = proces
 
 export function publicUrl(config: Config): string {
   return config.BETTER_AUTH_URL ?? `http://localhost:${config.PORT}`
+}
+
+/** Geliştirme kolaylıkları (Expo Go kökenleri, API belgesi) yalnız açıkça bu ortamlarda açılır. */
+export function isDevelopmentLike(config: Config): boolean {
+  return config.NODE_ENV === 'development' || config.NODE_ENV === 'test'
+}
+
+/** Çerez, üretimde ve dış adres https olduğunda her zaman `Secure` işaretlenir. */
+export function useSecureCookies(config: Config): boolean {
+  return config.NODE_ENV === 'production' || new URL(publicUrl(config)).protocol === 'https:'
 }

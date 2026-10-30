@@ -34,7 +34,8 @@ Kimlik doğrulama ve oturum **Better Auth** iledir (ADR 0002 karar 3; ADR 0001 k
 - Oturumu süresi dolan istemci 401 alır ve giriş ekranına yönlenir; istemcide yenileme mantığı yazılmaz.
 - Hassas işlemler (iade, rol/üyelik değişikliği, kişisel veri dışa aktarma, veri sahibi silme talebi) taze oturum ister: oturum `freshAge`'den eskiyse 403 `reauthentication_required`, istemci parolayı yeniden sorar.
 - Çıkış oturumu siler; "Bütün cihazlardan çık" `revokeSessions` kullanır. Yönetici, kullanıcının oturumlarını kapatabilir.
-- `BETTER_AUTH_SECRET` en az 32 bayt rastgele değerdir; ortamdan gelir ve ortamlar arası paylaşılmaz.
+- `BETTER_AUTH_SECRET` en az 32 bayt rastgele değerdir; ortamdan gelir ve ortamlar arası paylaşılmaz. Üretimde `CHANGE_ME` önekli veya depoda geçen bilinen değerler reddedilir.
+- `Secure` çerez üretimde ve `BETTER_AUTH_URL` https olduğunda her zaman açıktır. `NODE_ENV` zorunludur (varsayılanı yok); Expo Go kökenleri (`exp://`) ve `/api/docs` yalnız açıkça `development`/`test` ortamında açılır.
 
 ## 4. Hız sınırlama
 
@@ -49,7 +50,7 @@ Kimlik doğrulama ve oturum **Better Auth** iledir (ADR 0002 karar 3; ADR 0001 k
 
 - Uygulama uçları: `@fastify/rate-limit`, 429 + `Retry-After` + `rate_limited`. Kimlikli istekte anahtar kullanıcı kimliği, kimliksizde IP. Genel sınır kullanıcı başına 300/dk; içe/dışa aktarma kullanıcı başına 10/dk.
 - Hesap kalıcı kilitlenmez (kötü niyetli kişi veliyi kilitleyemesin).
-- v1 tek sunucu örneğinde bellek içi sayaç; birden çok örnekte Better Auth `storage: 'database'` ve paylaşılan depo kullanılır (dağıtım ADR'si). Ters vekil arkasında gerçek IP başlığı (`advanced.ipAddress`, Fastify `trustProxy`) yalnız vekil adresine güvenilerek ayarlanır.
+- v1 tek sunucu örneğinde bellek içi sayaç; birden çok örnekte Better Auth `storage: 'database'` ve paylaşılan depo kullanılır (dağıtım ADR'si). Ters vekil arkasında gerçek IP (`advanced.ipAddress`, Fastify `trustProxy`) yalnız vekile güvenilerek ayarlanır: `TRUST_PROXY` vekil sayısı (hop) veya vekil IP/CIDR listesidir, varsayılan güvenmemektir; bütün vekillere güvenen `true` reddedilir, çünkü istemcinin yazdığı `X-Forwarded-For` hız sınırını atlatır.
 
 ## 5. CORS, CSRF, CSP ve güvenlik başlıkları
 

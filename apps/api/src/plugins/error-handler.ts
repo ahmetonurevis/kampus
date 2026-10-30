@@ -7,6 +7,39 @@ function issuePath(instancePath: string): string[] {
   return instancePath.split('/').filter(Boolean)
 }
 
+interface LoggedError {
+  type: string
+  code?: string
+  stack?: string
+  cause?: LoggedError
+}
+
+function stringProperty(value: object, key: string): string | undefined {
+  const property: unknown = Reflect.get(value, key)
+  return typeof property === 'string' || typeof property === 'number' ? String(property) : undefined
+}
+
+/**
+ * Hata loga mesajsız yazılır: Drizzle `Failed query: … params: …` mesajı sorgu parametrelerini
+ * (e-posta vb.), pg `detail` alanı benzersizlik çakışmasındaki değeri taşır. Kalan: hata adı, kodu
+ * (pg SQLSTATE dahil), mesaj satırı çıkarılmış yığın ve aynı biçimde `cause` zinciri.
+ */
+export function loggableError(error: unknown, depth = 0): LoggedError {
+  if (typeof error !== 'object' || error === null) return { type: typeof error }
+  const type = error instanceof Error ? error.name : (error.constructor?.name ?? 'Object')
+  const logged: LoggedError = { type }
+  const code = stringProperty(error, 'code')
+  if (code !== undefined) logged.code = code
+  if (error instanceof Error && typeof error.stack === 'string') {
+    // Yığının ilk satırları `Ad: mesaj`tır (mesaj çok satırlı olabilir); yalnız çerçeveler kalır.
+    const frames = error.stack.split('\n').filter((line) => /^\s+at /.test(line))
+    if (frames.length > 0) logged.stack = frames.join('\n')
+  }
+  const cause: unknown = error instanceof Error ? error.cause : undefined
+  if (cause !== undefined && depth < 3) logged.cause = loggableError(cause, depth + 1)
+  return logged
+}
+
 /** Bütün hataları tek zarfa çevirir; 5xx ayrıntısı yalnız logda kalır. */
 export function registerErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((error: FastifyError, request, reply) => {
@@ -30,7 +63,8 @@ export function registerErrorHandler(app: FastifyInstance) {
     if (error instanceof AppError) {
       const body: ErrorResponse = { code: error.code, message: error.message, requestId }
       if (error.issues) body.issues = error.issues
-      if (error.statusCode >= 500) request.log.error({ err: error }, 'request failed')
+      if (error.statusCode >= 500)
+        request.log.error({ err: loggableError(error) }, 'request failed')
       return reply.status(error.statusCode).send(body)
     }
     const status = typeof error.statusCode === 'number' ? error.statusCode : 500
@@ -40,7 +74,7 @@ export function registerErrorHandler(app: FastifyInstance) {
       const body: ErrorResponse = { code, message: MESSAGES[code], requestId }
       return reply.status(status).send(body)
     }
-    request.log.error({ err: error }, 'unexpected error')
+    request.log.error({ err: loggableError(error) }, 'unexpected error')
     const body: ErrorResponse = {
       code: 'internal_error',
       message: MESSAGES.internal_error,

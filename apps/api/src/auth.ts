@@ -6,7 +6,7 @@ import { organization } from 'better-auth/plugins/organization'
 import { defaultStatements } from 'better-auth/plugins/organization/access'
 import { z } from 'zod'
 
-import { publicUrl, type Config } from './config.ts'
+import { isDevelopmentLike, publicUrl, useSecureCookies, type Config } from './config.ts'
 import { schema, type Database } from './db/client.ts'
 import {
   authAfterHook,
@@ -83,8 +83,8 @@ export function isOpenAuthPath(pathname: string): boolean {
 }
 
 export function trustedOrigins(config: Config): string[] {
-  // Expo Go geliştirme kökenleri yalnız üretim dışında.
-  const development = config.NODE_ENV === 'production' ? [] : ['exp://', 'exp://**']
+  // Expo Go geliştirme kökenleri yalnız açıkça geliştirme/test ortamında.
+  const development = isDevelopmentLike(config) ? ['exp://', 'exp://**'] : []
   return [...config.CORS_ORIGINS, ...config.TRUSTED_ORIGINS, ...development]
 }
 
@@ -132,7 +132,7 @@ export function createAuth(config: Config, db: Database) {
     },
     advanced: {
       cookiePrefix: 'kampus',
-      useSecureCookies: config.NODE_ENV === 'production',
+      useSecureCookies: useSecureCookies(config),
       ipAddress: { ipAddressHeaders: [FORWARDED_IP_HEADER] },
     },
     databaseHooks: {

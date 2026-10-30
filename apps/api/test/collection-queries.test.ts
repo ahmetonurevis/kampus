@@ -7,8 +7,10 @@ import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import type { CollectionName } from '../src/db/collections.ts'
-import { insertMissingRecords } from '../src/db/records.ts'
+import { insertMissingRecords, writeRecords } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
+import { READABLE_COLLECTIONS } from '../src/services/collection-access.ts'
+import { readScope, readsWholeCollection } from '../src/services/read-scope.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -696,6 +698,124 @@ describe('koleksiyon sorguları: durum, sayım, bağlı alan', () => {
         .filter((row) => row.studentId === 's1' && row.subjectId === 'turkish')
         .map((row) => String(row.id))
       assert.deepEqual(await ids(branch, listed('grades', q('Deniz'))), turkish)
+    })
+  })
+
+  describe('SQL sayfalaması (koleksiyonun tamamını okuyan rol)', () => {
+    const JUNK = [
+      {},
+      {
+        id: 'test-x',
+        studentId: 'test-x',
+        studentIds: ['test-x'],
+        classId: 'test-x',
+        branchId: 'test-x',
+        teacherId: 'test-x',
+        clubId: 'test-x',
+        level: 'test-x',
+        grade: -1,
+        audience: 'test-x',
+      },
+    ]
+
+    test('yönetici ve ön büro okuyabildikleri her koleksiyonda her satırı okur (core kuralı `all`)', async () => {
+      const { id, admin, adminMembershipId } = await institution()
+      const frontOffice = await createMember(app, id, 'onburo')
+      const actors = [
+        { userId: admin.id, role: 'yonetici' as const, membershipId: adminMembershipId },
+        { userId: frontOffice.id, role: 'onburo' as const, membershipId: frontOffice.membershipId },
+      ]
+      for (const actor of actors) {
+        const scope = await readScope({
+          db,
+          institutionId: id,
+          actor,
+          now: FIXED_NOW,
+          log: app.log,
+        })
+        let readable = 0
+        for (const collection of READABLE_COLLECTIONS) {
+          assert.equal(readsWholeCollection(scope, collection), scope.access(collection).allowed)
+          if (!scope.access(collection).allowed) continue
+          readable += 1
+          for (const row of JUNK)
+            assert.equal(scope.canRead(collection, row), true, `${actor.role} ${collection}`)
+        }
+        assert.ok(readable >= 10, actor.role)
+      }
+      // Kişisel kapsamlı roller bütün koleksiyonu okumaz.
+      const parent = await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's1' }])
+      const parentScope = await readScope({
+        db,
+        institutionId: id,
+        actor: { userId: parent.id, role: 'veli', membershipId: parent.membershipId },
+        now: FIXED_NOW,
+        log: app.log,
+      })
+      assert.equal(readsWholeCollection(parentScope, 'invoices'), false)
+    })
+
+    test('süzgeçsiz liste SQL sayfasıyla bellek yoluyla aynı sayfa ve toplamı verir; ayıklama korunur', async () => {
+      const { id, adminCookie } = await institution()
+      const frontOffice = await memberCookie(id, 'onburo')
+      // `q` ve `sort=id` bellek yolunu kullanır; süzgeçsiz istek SQL sayfasını.
+      for (const [cookie, collection] of [
+        [adminCookie, 'invoices'],
+        [adminCookie, 'guidanceCases'],
+        [frontOffice, 'students'],
+      ] as const) {
+        const memory = await ids(cookie, `/api/v1/collections/${collection}?pageSize=100&sort=id`)
+        for (const pageSize of [1, 2, 5]) {
+          const pages: string[] = []
+          for (let page = 1; page <= Math.ceil(memory.length / pageSize) + 1; page += 1) {
+            const response = await get(
+              `/api/v1/collections/${collection}?pageSize=${pageSize}&page=${page}`,
+              cookie,
+            )
+            assert.equal(response.statusCode, 200)
+            assert.equal(response.json().meta.total, memory.length, `${collection} ${page}`)
+            pages.push(...response.json().data.map((item: { id: string }) => item.id))
+          }
+          assert.deepEqual([...pages].sort(), [...memory].sort(), `${collection} ${pageSize}`)
+        }
+      }
+      // Ayıklama SQL sayfasında da: ön büro `progress`, yönetici rehberlik iç notunu görmez.
+      const students = (await get('/api/v1/collections/students?pageSize=3', frontOffice)).json()
+      for (const item of students.data) assert.equal('progress' in item.record, false)
+      const cases = (await get('/api/v1/collections/guidanceCases?pageSize=3', adminCookie)).json()
+      assert.ok(cases.data.length > 0)
+      for (const item of cases.data) {
+        assert.equal('internalNote' in item.record, false)
+        assert.equal('notes' in item.record, false)
+      }
+    })
+
+    test('arşiv kipleri SQL sayfasında da geçerli; başka kurum satırı sayılmaz', async () => {
+      const { id, adminCookie } = await institution()
+      await writeRecords(
+        db,
+        id,
+        [{ kind: 'archive', collection: 'branches', id: 'b2', expectedVersion: 1 }],
+        FIXED_NOW,
+      )
+      const page = async (query: string) =>
+        (await get(`/api/v1/collections/branches?${query}`, adminCookie)).json()
+      assert.deepEqual(
+        (await page('')).data.map((item: { id: string }) => item.id),
+        ['b1'],
+      )
+      assert.deepEqual((await page('')).meta.total, 1)
+      assert.deepEqual(
+        (await page('archived=only')).data.map((item: { id: string }) => item.id),
+        ['b2'],
+      )
+      assert.deepEqual((await page('archived=include')).meta.total, 2)
+      const other = await createInstitution(app)
+      const otherCookie = await signInAs(app, other.admin)
+      assert.deepEqual(
+        (await get('/api/v1/collections/branches?archived=include', otherCookie)).json().meta,
+        { page: 1, pageSize: 25, total: 0 },
+      )
     })
   })
 })

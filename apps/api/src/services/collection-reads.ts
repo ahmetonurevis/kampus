@@ -5,6 +5,7 @@ import type { CollectionName, RecordData } from '../db/collections.ts'
 import {
   findRecord,
   INVOICE_STATUS_LABELS,
+  loadRecordPage,
   loadRecords,
   type InvoiceStatusLabel,
   type RecordFilter,
@@ -31,6 +32,7 @@ import {
 import {
   assertReadable,
   readScope,
+  readsWholeCollection,
   scopePrefilter,
   studentClasses,
   studentsOfClasses,
@@ -419,12 +421,52 @@ function visibleRows({
   return narrowed ? items.filter(matches) : items
 }
 
+/**
+ * Süzgeçsiz, aramasız, sıralamasız listede koleksiyonun tamamını okuyan aktör
+ * (`readsWholeCollection`) için sayfa ve toplam SQL'dendir; yalnız sayfanın satırları yüklenip
+ * ayıklanır. Sayfada kapsamdan geçmeyen satır çıkarsa (core kuralı değişti) loglanır ve bellek
+ * yoluna dönülür (`null`).
+ */
+async function sqlPage(
+  ctx: ServiceContext,
+  name: string,
+  query: CollectionListQuery,
+): Promise<{ items: CollectionItem[]; total: number } | null> {
+  const plain =
+    !query.q &&
+    (query.sort ?? []).length === 0 &&
+    query.isActive === undefined &&
+    query.dateFrom === undefined &&
+    query.dateTo === undefined &&
+    Object.values(query.filters ?? {}).every((values) => !values || values.length === 0)
+  if (!plain) return null
+  const collection = readableCollection(name)
+  const scope = await readScope(ctx)
+  assertReadable(ctx, scope, collection)
+  if (!readsWholeCollection(scope, collection)) return null
+  const { rows, total } = await loadRecordPage(ctx.db, ctx.institutionId, collection, {
+    archived: query.archived,
+    offset: (query.page - 1) * query.pageSize,
+    limit: query.pageSize,
+  })
+  if (!rows.every((row) => scope.canRead(collection, row.data))) {
+    ctx.log.warn({ event: 'collection.sql_page_scope_mismatch', collection })
+    return null
+  }
+  return {
+    items: rows.map((row) => toItem({ row, record: scope.redact(collection, row.data) })),
+    total,
+  }
+}
+
 export async function listCollection(
   ctx: ServiceContext,
   name: string,
   query: CollectionListQuery,
 ): Promise<{ items: CollectionItem[]; total: number }> {
   const sort = query.sort ?? []
+  const page = await sqlPage(ctx, name, query)
+  if (page) return page
   const result = await readRows(ctx, name, query, {
     joined: sort.flatMap((key) => (isJoinedField(key.field) ? [key.field] : [])),
   })

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, max, sql, type SQL } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, isNotNull, isNull, max, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
@@ -267,6 +267,38 @@ export async function loadRecords(
     .where(and(...filters))
     .orderBy(asc(records.collection), asc(records.position), asc(records.id))
   return rows.map(toStored)
+}
+
+/**
+ * Koleksiyonun bir sayfası ve toplamı, deponun sırasıyla (`position`, kimlik). Yalnız süzgeçsiz,
+ * sıralamasız ve aktörün koleksiyonun tamamını okuduğu listede kullanılır
+ * (`collection-reads.ts`); diğer listeler aday satırları yükler.
+ */
+export async function loadRecordPage(
+  db: Database,
+  institutionId: string,
+  collection: CollectionName,
+  options: { archived?: 'include' | 'only' | undefined; offset: number; limit: number },
+): Promise<{ rows: StoredRecord[]; total: number }> {
+  assertCollections([collection])
+  const filters: SQL[] = [
+    eq(records.institutionId, institutionId),
+    eq(records.collection, collection),
+  ]
+  if (options.archived === undefined) filters.push(isNull(records.archivedAt))
+  if (options.archived === 'only') filters.push(isNotNull(records.archivedAt))
+  const where = and(...filters)
+  const [rows, [counted]] = await Promise.all([
+    db
+      .select()
+      .from(records)
+      .where(where)
+      .orderBy(asc(records.position), asc(records.id))
+      .limit(options.limit)
+      .offset(options.offset),
+    db.select({ total: count() }).from(records).where(where),
+  ])
+  return { rows: rows.map(toStored), total: counted?.total ?? 0 }
 }
 
 /** Tek kayıt; yoksa veya başka kurumdaysa `null` (rota 404'e çevirir). */

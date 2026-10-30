@@ -127,7 +127,7 @@ export const OUTCOME_SOURCE_OPTIONS = options(OUTCOME_SOURCES)
 export const LICENSE_NOTES: Record<(typeof FORM_LICENSE_KINDS)[number], string> = {
   institution_original: 'Kurumda üretildi, başka eserden alıntı yok.',
   contains_quotation:
-    'Alıntı içeriğin ayırt edilebilir bölümüdür; eser adı, eser sahibi ve alındığı yer kaynak gösteriminde yazılır (DOM-KYN-022).',
+    'Alıntı içeriğin ayırt edilebilir bölümüdür; eser adı, eser sahibi ve alındığı yer kaynak gösteriminde yazılır.',
   open_license:
     'Ticari kullanıma izin veren açık lisans (NC ve ND lisansları kabul edilmez); kaynak gösterimi zorunludur.',
   public_domain: 'Eserin koruma süresi dolmuştur; dayanağı yazın ve kaynak gösterin.',

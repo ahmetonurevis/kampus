@@ -4,8 +4,9 @@ import { INVOICE_STATUS_LABELS } from '../db/records.ts'
 import { READABLE_COLLECTIONS } from '../services/collection-access.ts'
 import {
   ARCHIVED_MODES,
+  DATE_FIELD_NAMES,
   FILTER_FIELDS,
-  GROUP_FIELDS,
+  GROUP_BY_VALUES,
   SORT_FIELDS,
   SUM_FIELDS,
 } from '../services/collection-reads.ts'
@@ -50,7 +51,7 @@ const dayValue = (edge: string) =>
     .date()
     .optional()
     .describe(
-      `\`date\` alanının Europe/Istanbul günü için ${edge} (\`YYYY-MM-DD\`, dahil). Gün (\`YYYY-MM-DD\`) veya an (ISO UTC) değerli kayıtlar eşlenir`,
+      `Tarih alanının (\`dateField\`; varsayılan koleksiyonun ilk alanı, çoğunlukla \`date\`) Europe/Istanbul günü için ${edge} (\`YYYY-MM-DD\`, dahil). Gün (\`YYYY-MM-DD\`) veya an (ISO UTC) değerli kayıtlar eşlenir`,
     )
 
 /** Liste ve sayım uçlarının ortak süzgeçleri. */
@@ -73,6 +74,24 @@ const readQueryShape = {
     .optional()
     .describe(
       'Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır',
+    ),
+  cancelled: z
+    .enum(['true', 'false'])
+    .optional()
+    .describe(
+      'Yalnız `schedule`: `true` iptal edilen dersler (`cancelledAt` dolu), `false` iptal edilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400',
+    ),
+  graded: z
+    .enum(['true', 'false'])
+    .optional()
+    .describe(
+      'Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400',
+    ),
+  dateField: z
+    .enum(DATE_FIELD_NAMES)
+    .optional()
+    .describe(
+      'Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir',
     ),
   dateFrom: dayValue('başlangıç'),
   dateTo: dayValue('bitiş'),
@@ -101,9 +120,9 @@ export const collectionCountsQuerySchema = z
   .object({
     ...readQueryShape,
     groupBy: z
-      .enum(GROUP_FIELDS)
+      .enum(GROUP_BY_VALUES)
       .describe(
-        'Gruplama alanı (zorunlu). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır',
+        'Gruplama alanı (zorunlu) ya da aylık gruplama `<tarih alanı>:month` (ör. `paidAt:month`, `dueDate:month`; değer `YYYY-MM`, Europe/Istanbul ayı; tarih alanı `dateField` izin listesindedir, dışındaki 400; tarih olmayan değer `null` grubudur). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır',
       ),
     sum: z
       .enum(SUM_FIELDS)
@@ -139,6 +158,20 @@ export const collectionItemSchema = z
       .record(z.string(), z.unknown())
       .describe(
         'school-core kaydı; rolün göremediği alanlar çıkarılmıştır. İçindeki `createdAt`/`updatedAt` core iş alanıdır, sistem zamanı üst alanlardır',
+      ),
+    joined: z
+      .object({
+        studentName: z.string().optional().describe('Kaydın öğrencisinin adı'),
+        className: z
+          .string()
+          .optional()
+          .describe('Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı'),
+        branchName: z.string().optional().describe('Kaydın kampüsünün adı'),
+      })
+      .meta({ id: 'CollectionItemJoined' })
+      .optional()
+      .describe(
+        'Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)',
       ),
   })
   .meta({ id: 'CollectionItem' })

@@ -52,6 +52,16 @@ export interface FieldMatch {
 }
 
 /**
+ * Birleşik eşitlik süzgeci: alan eşleşmelerinden biri yeter (`or`). Kapsam ön süzgecinde satırın
+ * öğrenci veya sınıf anahtarından biriyle kapsama girdiği kurallar için (ör. not: verildiği
+ * sınıf ya da öğrencinin güncel sınıfı). Her eşleşme `FieldMatch` gibi gerekli koşuldur.
+ */
+export interface AnyMatch {
+  kind: 'any'
+  matches: readonly FieldMatch[]
+}
+
+/**
  * Etkinlik süzgeci (`isActive`): `active: false` yalnız alanı `false` olanı, `active: true`
  * alanı `false` olmayanı (eksik alan dahil; core'da alanı olmayan kayıt etkindir) eşler. Kesin
  * koşuldur: bellekteki `matchesActive` ile aynı sonucu verir.
@@ -60,6 +70,19 @@ export interface ActiveMatch {
   kind: 'active'
   field: string
   active: boolean
+}
+
+/**
+ * Doluluk süzgeci (`cancelled`, `graded`): alanın dolu olup olmadığı. `truthy` JS doğruluk
+ * değeridir (core `!lesson.cancelledAt`: boş metin ve `false` boştur); `nonNull` yalnız `null`
+ * ve eksik alanı boş sayar (core `score == null`: `0` puandır, dolu). Kesin koşuldur: bellekteki
+ * `matchesSet` ile aynı sonucu verir. `set: false` boş olanı eşler.
+ */
+export interface SetMatch {
+  kind: 'set'
+  field: string
+  set: boolean
+  rule: 'truthy' | 'nonNull'
 }
 
 /**
@@ -103,7 +126,8 @@ export const INVOICE_STATUS_LABELS: readonly InvoiceStatus[] = Object.values(
 )
 export type InvoiceStatusLabel = InvoiceStatus
 
-export type RecordFilter = FieldMatch | ActiveMatch | DayRangeMatch | InvoiceStatusMatch
+export type RecordFilter =
+  FieldMatch | AnyMatch | ActiveMatch | SetMatch | DayRangeMatch | InvoiceStatusMatch
 
 /** Gün ve an biçimleri; SQL (`~`) ve bellek (`RegExp`) aynı metni kullanır. */
 export const DAY_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
@@ -172,6 +196,13 @@ function activeMatch({ field, active }: ActiveMatch): SQL {
     : sql`${value} = 'false'::jsonb`
 }
 
+function setMatch({ field, set, rule }: SetMatch): SQL {
+  const value = sql`coalesce(${records.data} -> ${field}::text, 'null'::jsonb)`
+  const filled =
+    rule === 'truthy' ? sql`(${value} not in ${FALSY_JSON})` : sql`(${value} <> 'null'::jsonb)`
+  return set ? filled : sql`(not ${filled})`
+}
+
 function dayRangeMatch(match: DayRangeMatch): SQL {
   const text = sql`(${records.data} ->> ${match.field}::text)`
   const ordered = sql`(${text} collate "C")`
@@ -217,8 +248,14 @@ export function recordFilter(filter: RecordFilter): SQL {
     case undefined:
     case 'in':
       return fieldMatch(filter)
+    case 'any':
+      return filter.matches.length === 0
+        ? sql`false`
+        : sql`(${sql.join(filter.matches.map(fieldMatch), sql` or `)})`
     case 'active':
       return activeMatch(filter)
+    case 'set':
+      return setMatch(filter)
     case 'dayRange':
       return dayRangeMatch(filter)
     case 'invoiceStatus':
@@ -310,6 +347,33 @@ export async function loadRecords(
     .from(records)
     .where(and(...filters))
     .orderBy(asc(records.collection), asc(records.position), asc(records.id))
+  return rows.map(toStored)
+}
+
+/**
+ * Bir koleksiyonun verilen kimlikli (arşivlenmemiş) kayıtları, deponun sırasıyla. Birincil
+ * anahtar indeksini kullanır; bağlı ad çözümünde yalnız sayfanın kimlikleri yüklenir.
+ */
+export async function loadRecordsByIds(
+  db: Database,
+  institutionId: string,
+  collection: CollectionName,
+  ids: readonly string[],
+): Promise<StoredRecord[]> {
+  if (ids.length === 0) return []
+  assertCollections([collection])
+  const rows = await db
+    .select()
+    .from(records)
+    .where(
+      and(
+        eq(records.institutionId, institutionId),
+        eq(records.collection, collection),
+        inArray(records.id, [...ids]),
+        isNull(records.archivedAt),
+      ),
+    )
+    .orderBy(asc(records.position), asc(records.id))
   return rows.map(toStored)
 }
 

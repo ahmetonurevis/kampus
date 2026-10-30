@@ -10,6 +10,7 @@ import {
   type InvoiceStatusLabel,
   type InvoiceStatusMatch,
   type RecordFilter,
+  type SetMatch,
 } from '../db/records.ts'
 
 /**
@@ -98,8 +99,26 @@ export function matchesDayRange(record: RecordData, match: DayRangeMatch): boole
   return false
 }
 
+/**
+ * Tarih alanının Europe/Istanbul ayı (`YYYY-MM`): gün biçimli değer kendi ayıdır, an (ISO UTC)
+ * Istanbul gününe çevrilir. Başka biçim ve metin olmayan değer `null` grubudur (`matchesDayRange`
+ * ile aynı biçim kuralı).
+ */
+export function monthOf(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  if (DAY.test(value)) return value.slice(0, 7)
+  if (INSTANT.test(value)) return dayKey(value).slice(0, 7)
+  return null
+}
+
 export function matchesActive(record: RecordData, { field, active }: ActiveMatch): boolean {
   return (record[field] === false) !== active
+}
+
+export function matchesSet(record: RecordData, { field, set, rule }: SetMatch): boolean {
+  const value = record[field]
+  const filled = rule === 'truthy' ? Boolean(value) : value !== null && value !== undefined
+  return filled === set
 }
 
 /**
@@ -156,8 +175,12 @@ export function matchesRecordFilter(record: RecordData, filter: RecordFilter): b
     case undefined:
     case 'in':
       return matchesField(record, filter)
+    case 'any':
+      return filter.matches.some((match) => matchesField(record, match))
     case 'active':
       return matchesActive(record, filter)
+    case 'set':
+      return matchesSet(record, filter)
     case 'dayRange':
       return matchesDayRange(record, filter)
     case 'invoiceStatus':

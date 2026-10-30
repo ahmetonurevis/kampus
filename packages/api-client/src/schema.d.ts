@@ -1336,6 +1336,14 @@ export interface components {
             /** @description Filtre uygulanmış toplam kayıt sayısı */
             total: number;
         };
+        CollectionItemJoinedInput: {
+            /** @description Kaydın öğrencisinin adı */
+            studentName?: string;
+            /** @description Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı */
+            className?: string;
+            /** @description Kaydın kampüsünün adı */
+            branchName?: string;
+        };
         CollectionItemInput: {
             /** @description Kayıt kimliği */
             id: string;
@@ -1357,6 +1365,8 @@ export interface components {
             record: {
                 [key: string]: unknown;
             };
+            /** @description Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır) */
+            joined?: components["schemas"]["CollectionItemJoinedInput"];
         };
         CollectionCountGroupInput: {
             /** @description Grup değeri; alanı olmayan veya skaler olmayan değerli kayıtlar `null` grubundadır */
@@ -1534,6 +1544,14 @@ export interface components {
             /** @description Filtre uygulanmış toplam kayıt sayısı */
             total: number;
         };
+        CollectionItemJoined: {
+            /** @description Kaydın öğrencisinin adı */
+            studentName?: string;
+            /** @description Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı */
+            className?: string;
+            /** @description Kaydın kampüsünün adı */
+            branchName?: string;
+        };
         CollectionItem: {
             /** @description Kayıt kimliği */
             id: string;
@@ -1555,6 +1573,8 @@ export interface components {
             record: {
                 [key: string]: unknown;
             };
+            /** @description Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır) */
+            joined?: components["schemas"]["CollectionItemJoined"];
         };
         CollectionCountGroup: {
             /** @description Grup değeri; alanı olmayan veya skaler olmayan değerli kayıtlar `null` grubundadır */
@@ -1907,9 +1927,15 @@ export interface operations {
                 archived?: "include" | "only";
                 /** @description Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır */
                 isActive?: "true" | "false";
-                /** @description `date` alanının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                /** @description Yalnız `schedule`: `true` iptal edilen dersler (`cancelledAt` dolu), `false` iptal edilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                cancelled?: "true" | "false";
+                /** @description Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                graded?: "true" | "false";
+                /** @description Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir */
+                dateField?: "date" | "joinedAt" | "dueDate" | "paidAt" | "createdAt" | "trialAt" | "submittedAt" | "answeredAt" | "followUp" | "deadline" | "reviewedAt" | "endDate" | "consentDeadline";
+                /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
                 dateFrom?: string;
-                /** @description `date` alanının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
                 dateTo?: string;
                 /** @description `studentId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 studentId?: string | string[];
@@ -2034,9 +2060,15 @@ export interface operations {
                 archived?: "include" | "only";
                 /** @description Etkinlik süzgeci (kampüs, sınıf, kadro arşivi `isActive: false` yapar): `true` etkin kayıtlar (alanı olmayan kayıt etkindir), `false` arşivdekiler. Verilmezse ikisi birlikte döner. Sistem arşivi (`archived`) ayrıdır */
                 isActive?: "true" | "false";
-                /** @description `date` alanının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                /** @description Yalnız `schedule`: `true` iptal edilen dersler (`cancelledAt` dolu), `false` iptal edilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                cancelled?: "true" | "false";
+                /** @description Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                graded?: "true" | "false";
+                /** @description Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir */
+                dateField?: "date" | "joinedAt" | "dueDate" | "paidAt" | "createdAt" | "trialAt" | "submittedAt" | "answeredAt" | "followUp" | "deadline" | "reviewedAt" | "endDate" | "consentDeadline";
+                /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
                 dateFrom?: string;
-                /** @description `date` alanının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
+                /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
                 dateTo?: string;
                 /** @description `studentId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 studentId?: string | string[];
@@ -2072,8 +2104,8 @@ export interface operations {
                 type?: string | string[];
                 /** @description `grade` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 grade?: string | string[];
-                /** @description Gruplama alanı (zorunlu). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır */
-                groupBy: "studentId" | "classId" | "teacherId" | "subjectId" | "branchId" | "parentId" | "examId" | "clubId" | "routeId" | "quizId" | "homeworkId" | "videoId" | "status" | "stage" | "category" | "type" | "grade" | "isActive" | "level";
+                /** @description Gruplama alanı (zorunlu) ya da aylık gruplama `<tarih alanı>:month` (ör. `paidAt:month`, `dueDate:month`; değer `YYYY-MM`, Europe/Istanbul ayı; tarih alanı `dateField` izin listesindedir, dışındaki 400; tarih olmayan değer `null` grubudur). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır */
+                groupBy: "studentId" | "classId" | "teacherId" | "subjectId" | "branchId" | "parentId" | "examId" | "clubId" | "routeId" | "quizId" | "homeworkId" | "videoId" | "status" | "stage" | "category" | "type" | "grade" | "isActive" | "level" | "date:month" | "joinedAt:month" | "dueDate:month" | "paidAt:month" | "createdAt:month" | "trialAt:month" | "submittedAt:month" | "answeredAt:month" | "followUp:month" | "deadline:month" | "reviewedAt:month" | "endDate:month" | "consentDeadline:month";
                 /** @description Grup başına toplanacak sayısal alan; sayı olmayan değer toplama girmez. `amount` kuruştur. Rolün göremediği alan 400 */
                 sum?: "amount" | "capacity" | "score" | "progress" | "attendanceRate" | "homeworkRate";
             };
@@ -6395,8 +6427,11 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description Ödeme yöntemi (ör. `Kredi kartı`, `Nakit`, `Havale/EFT`) */
-                    method: string;
+                    /**
+                     * @description Ödeme yöntemi: `Banka havalesi`, `Nakit`, `Kredi kartı`
+                     * @enum {string}
+                     */
+                    method: "Banka havalesi" | "Nakit" | "Kredi kartı";
                 };
             };
         };

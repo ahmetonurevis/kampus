@@ -448,6 +448,31 @@ describe('resmî not uçları', () => {
       assert.equal(stored?.data.classId, 'c1')
     })
 
+    test('DOM-AKD-054: sınıf değiştiren öğrencinin eski notu eski öğretmenin listesinde görünür', async () => {
+      const a = await movedInstitution()
+      const ids = async (cookie: string, query = '') => {
+        const response = await read(cookie, `/api/v1/collections/grades?pageSize=100${query}`)
+        assert.equal(response.statusCode, 200, response.body)
+        return response
+          .json()
+          .data.map((item: { id: string }) => item.id)
+          .sort()
+      }
+      // Eski öğretmen (c1 matematik): c1'de verilen notu görür; sınıfsız eski not güncel sınıfa
+      // (c9) bağlıdır, onu görmez. Yeni öğretmen (t17, c9 matematik) öğrenci artık sınıfında
+      // olduğundan ikisini de görür (core `gradeReader`: branş + güncel sınıf).
+      assert.deepEqual(await ids(await teacher(a.id)), ['test-g-moved'])
+      assert.deepEqual(await ids(await teacher(a.id, 't17')), ['test-g-legacy', 'test-g-moved'])
+      assert.deepEqual(await ids(a.adminCookie), ['test-g-legacy', 'test-g-moved'])
+      // Süzgeç yolu ön süzgeçle birleşir; sayım ucu listeyle aynı kapsamı sayar.
+      assert.deepEqual(await ids(await teacher(a.id), '&studentId=s1'), ['test-g-moved'])
+      const count = await read(
+        await teacher(a.id),
+        '/api/v1/collections/grades/counts?groupBy=studentId',
+      )
+      assert.deepEqual(count.json().data, [{ value: 's1', count: 1 }])
+    })
+
     test('sınıfı saklanmamış eski notta yetki öğrencinin güncel sınıfına düşer', async () => {
       const a = await movedInstitution()
       const body = { score: 64, reason: REASON }

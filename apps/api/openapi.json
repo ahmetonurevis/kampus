@@ -84,6 +84,23 @@
           "total"
         ]
       },
+      "CollectionItemJoinedInput": {
+        "type": "object",
+        "properties": {
+          "studentName": {
+            "description": "Kaydın öğrencisinin adı",
+            "type": "string"
+          },
+          "className": {
+            "description": "Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı",
+            "type": "string"
+          },
+          "branchName": {
+            "description": "Kaydın kampüsünün adı",
+            "type": "string"
+          }
+        }
+      },
       "CollectionItemInput": {
         "type": "object",
         "properties": {
@@ -129,6 +146,10 @@
             },
             "additionalProperties": {},
             "description": "school-core kaydı; rolün göremediği alanlar çıkarılmıştır. İçindeki `createdAt`/`updatedAt` core iş alanıdır, sistem zamanı üst alanlardır"
+          },
+          "joined": {
+            "description": "Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)",
+            "$ref": "#/components/schemas/CollectionItemJoinedInput"
           }
         },
         "required": [
@@ -754,6 +775,24 @@
         ],
         "additionalProperties": false
       },
+      "CollectionItemJoined": {
+        "type": "object",
+        "properties": {
+          "studentName": {
+            "description": "Kaydın öğrencisinin adı",
+            "type": "string"
+          },
+          "className": {
+            "description": "Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı",
+            "type": "string"
+          },
+          "branchName": {
+            "description": "Kaydın kampüsünün adı",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "CollectionItem": {
         "type": "object",
         "properties": {
@@ -799,6 +838,10 @@
             },
             "additionalProperties": {},
             "description": "school-core kaydı; rolün göremediği alanlar çıkarılmıştır. İçindeki `createdAt`/`updatedAt` core iş alanıdır, sistem zamanı üst alanlardır"
+          },
+          "joined": {
+            "description": "Bağlı kayıtların adları (yalnız bağlı alanı tanımlı koleksiyonlarda: öğrenciye bağlı kayıtlar `studentName`/`className`, sınıfa bağlı kayıtlar `className`, kampüse bağlı kayıtlar `branchName`). Bağlı kayıt aktörün okuyabildiği kayıtsa ad döner; kapsam dışı kaydın adı yoktur (alan eksik kalır)",
+            "$ref": "#/components/schemas/CollectionItemJoined"
           }
         },
         "required": [
@@ -1690,13 +1733,63 @@
           {
             "schema": {
               "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "cancelled",
+            "required": false,
+            "description": "Yalnız `schedule`: `true` iptal edilen dersler (`cancelledAt` dolu), `false` iptal edilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "graded",
+            "required": false,
+            "description": "Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "date",
+                "joinedAt",
+                "dueDate",
+                "paidAt",
+                "createdAt",
+                "trialAt",
+                "submittedAt",
+                "answeredAt",
+                "followUp",
+                "deadline",
+                "reviewedAt",
+                "endDate",
+                "consentDeadline"
+              ]
+            },
+            "in": "query",
+            "name": "dateField",
+            "required": false,
+            "description": "Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir"
+          },
+          {
+            "schema": {
+              "type": "string",
               "format": "date",
               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
             },
             "in": "query",
             "name": "dateFrom",
             "required": false,
-            "description": "`date` alanının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
+            "description": "Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
           },
           {
             "schema": {
@@ -1707,7 +1800,7 @@
             "in": "query",
             "name": "dateTo",
             "required": false,
-            "description": "`date` alanının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
+            "description": "Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
           },
           {
             "schema": {
@@ -2295,13 +2388,63 @@
           {
             "schema": {
               "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "cancelled",
+            "required": false,
+            "description": "Yalnız `schedule`: `true` iptal edilen dersler (`cancelledAt` dolu), `false` iptal edilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "graded",
+            "required": false,
+            "description": "Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "date",
+                "joinedAt",
+                "dueDate",
+                "paidAt",
+                "createdAt",
+                "trialAt",
+                "submittedAt",
+                "answeredAt",
+                "followUp",
+                "deadline",
+                "reviewedAt",
+                "endDate",
+                "consentDeadline"
+              ]
+            },
+            "in": "query",
+            "name": "dateField",
+            "required": false,
+            "description": "Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir"
+          },
+          {
+            "schema": {
+              "type": "string",
               "format": "date",
               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
             },
             "in": "query",
             "name": "dateFrom",
             "required": false,
-            "description": "`date` alanının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
+            "description": "Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
           },
           {
             "schema": {
@@ -2312,7 +2455,7 @@
             "in": "query",
             "name": "dateTo",
             "required": false,
-            "description": "`date` alanının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
+            "description": "Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir"
           },
           {
             "schema": {
@@ -2761,13 +2904,26 @@
                 "type",
                 "grade",
                 "isActive",
-                "level"
+                "level",
+                "date:month",
+                "joinedAt:month",
+                "dueDate:month",
+                "paidAt:month",
+                "createdAt:month",
+                "trialAt:month",
+                "submittedAt:month",
+                "answeredAt:month",
+                "followUp:month",
+                "deadline:month",
+                "reviewedAt:month",
+                "endDate:month",
+                "consentDeadline:month"
               ]
             },
             "in": "query",
             "name": "groupBy",
             "required": true,
-            "description": "Gruplama alanı (zorunlu). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır"
+            "description": "Gruplama alanı (zorunlu) ya da aylık gruplama `<tarih alanı>:month` (ör. `paidAt:month`, `dueDate:month`; değer `YYYY-MM`, Europe/Istanbul ayı; tarih alanı `dateField` izin listesindedir, dışındaki 400; tarih olmayan değer `null` grubudur). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında `classId` öğrencinin güncel sınıfıdır"
           },
           {
             "schema": {
@@ -9659,9 +9815,12 @@
                 "properties": {
                   "method": {
                     "type": "string",
-                    "minLength": 2,
-                    "maxLength": 60,
-                    "description": "Ödeme yöntemi (ör. `Kredi kartı`, `Nakit`, `Havale/EFT`)"
+                    "enum": [
+                      "Banka havalesi",
+                      "Nakit",
+                      "Kredi kartı"
+                    ],
+                    "description": "Ödeme yöntemi: `Banka havalesi`, `Nakit`, `Kredi kartı`"
                   }
                 },
                 "required": [

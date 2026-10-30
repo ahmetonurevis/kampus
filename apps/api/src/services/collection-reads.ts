@@ -10,6 +10,7 @@ import {
   type InvoiceStatusLabel,
   type RecordFilter,
   type SearchMatch,
+  type SetMatch,
   type StoredRecord,
 } from '../db/records.ts'
 import { NotFoundError, ValidationError } from '../errors.ts'
@@ -20,7 +21,9 @@ import {
   joinedFieldsOf,
   JOINED_FIELDS,
   loadJoiner,
+  loadPageNames,
   type JoinedField,
+  type JoinedNames,
   type JoinedValues,
   type Joiner,
 } from './collection-joins.ts'
@@ -29,6 +32,7 @@ import {
   invoiceStatusFilter,
   invoiceStatusOf,
   matchesRecordFilter,
+  monthOf,
 } from './list-filters.ts'
 import {
   assertReadable,
@@ -104,8 +108,95 @@ function isInvoiceStatus(value: string): value is InvoiceStatusLabel {
   return INVOICE_STATUS_LABELS.some((label) => label === value)
 }
 
-/** Gün aralığı süzgecinin alanı (`dateFrom`/`dateTo`). */
-export const DATE_FILTER_FIELD = 'date'
+/**
+ * Durum süzgeçleri (`cancelled=true|false`, `graded=true|false`): alanın dolu olup olmadığı.
+ * Her süzgeç tek koleksiyona bağlıdır; başka koleksiyonda 400. Kural core'la aynıdır: iptal
+ * `cancelledAt` doğruluk değeridir (`!lesson.cancelledAt`), notlanma `score` boş olmamasıdır
+ * (`score == null` notlanmamış; `0` puandır).
+ */
+export const STATE_FILTERS = {
+  cancelled: {
+    collection: 'schedule',
+    field: 'cancelledAt',
+    rule: 'truthy',
+    where: 'ders programında',
+  },
+  graded: { collection: 'submissions', field: 'score', rule: 'nonNull', where: 'teslimlerde' },
+} as const satisfies Record<
+  string,
+  { collection: CollectionName; field: string; rule: 'truthy' | 'nonNull'; where: string }
+>
+export type StateFilter = keyof typeof STATE_FILTERS
+export const STATE_FILTER_NAMES = Object.keys(STATE_FILTERS) as [StateFilter, ...StateFilter[]]
+
+function stateFiltersOf(
+  collection: CollectionName,
+  states: CollectionReadQuery['states'],
+): SetMatch[] {
+  const filters: SetMatch[] = []
+  for (const name of STATE_FILTER_NAMES) {
+    const set = states?.[name]
+    if (set === undefined) continue
+    const state = STATE_FILTERS[name]
+    if (state.collection !== collection)
+      throw new ValidationError([
+        {
+          path: [name],
+          code: 'invalid_value',
+          message: `Bu süzgeç yalnız ${state.where} kullanılır.`,
+        },
+      ])
+    filters.push({ kind: 'set', field: state.field, set, rule: state.rule })
+  }
+  return filters
+}
+
+/**
+ * Gün aralığı süzgecinin (`dateFrom`/`dateTo`) seçilebilir tarih alanları, koleksiyon başına
+ * izin listesi; ilki `dateField` verilmezse kullanılan varsayılandır. Listede olmayan koleksiyonda
+ * tek alan `date`'tir (eski davranış). Alan adı sorguya yalnız bu listeden girer.
+ */
+const DATE_FIELDS: Partial<Record<CollectionName, readonly string[]>> = {
+  students: ['joinedAt'],
+  invoices: ['dueDate', 'paidAt'],
+  prospects: ['createdAt', 'trialAt'],
+  quizzes: ['createdAt'],
+  homework: ['dueDate', 'createdAt'],
+  submissions: ['submittedAt'],
+  questions: ['createdAt', 'answeredAt'],
+  materials: ['createdAt'],
+  guidanceCases: ['followUp', 'createdAt'],
+  mockExams: ['date', 'createdAt'],
+  mockResults: ['createdAt'],
+  studentGoals: ['deadline', 'reviewedAt', 'createdAt'],
+  studyTasks: ['dueDate', 'createdAt'],
+  schoolEvents: ['date', 'endDate', 'consentDeadline', 'createdAt'],
+}
+const DEFAULT_DATE_FIELD = 'date'
+
+/** Sorgu şemasındaki `dateField` değerleri: bütün koleksiyonlarda geçen alanların birleşimi. */
+export const DATE_FIELD_NAMES = [
+  ...new Set([DEFAULT_DATE_FIELD, ...Object.values(DATE_FIELDS).flat()]),
+] as [string, ...string[]]
+
+export function dateFieldsOf(collection: CollectionName): readonly string[] {
+  return DATE_FIELDS[collection] ?? [DEFAULT_DATE_FIELD]
+}
+
+/** İstenen alanın koleksiyonda izinli olduğunu denetler; verilmezse koleksiyonun varsayılanı. */
+function dateFieldOf(collection: CollectionName, requested: string | undefined): string {
+  const allowed = dateFieldsOf(collection)
+  if (requested === undefined) return allowed[0] ?? DEFAULT_DATE_FIELD
+  if (!allowed.includes(requested))
+    throw new ValidationError([
+      {
+        path: ['dateField'],
+        code: 'invalid_value',
+        message: `Bu listede tarih aralığı ${allowed.join(', ')} alanlarından biriyle süzülür.`,
+      },
+    ])
+  return requested
+}
 
 /**
  * Sıralama alanları. `createdAt`/`updatedAt` kayıt kolonudur; bağlı alanlar (`JOINED_FIELDS`)
@@ -147,7 +238,11 @@ export interface CollectionReadQuery {
   filters?: Partial<Record<FilterField, readonly string[]>> | undefined
   /** `isActive` süzgeci; verilmezse etkin ve pasif kayıtlar birlikte döner. */
   isActive?: boolean | undefined
-  /** `date` alanının Europe/Istanbul günü aralığı (`YYYY-MM-DD`, iki uç dahil). */
+  /** Durum süzgeçleri (`STATE_FILTERS`): `true` alan dolu, `false` boş olanı getirir. */
+  states?: Partial<Record<StateFilter, boolean>> | undefined
+  /** Aralığın tarih alanı (`DATE_FIELDS` izin listesi); verilmezse koleksiyonun varsayılanı. */
+  dateField?: string | undefined
+  /** Tarih alanının Europe/Istanbul günü aralığı (`YYYY-MM-DD`, iki uç dahil). */
   dateFrom?: string | undefined
   dateTo?: string | undefined
 }
@@ -166,6 +261,8 @@ export interface CollectionItem {
   updatedAt: string
   archivedAt: string | null
   record: RecordData
+  /** Bağlı adlar (`collection-joins.ts`); koleksiyonda bağlı ad tanımlı değilse yok. */
+  joined?: JoinedNames
 }
 
 function isSortField(value: string): value is SortField {
@@ -190,7 +287,7 @@ interface VisibleRow {
   joined?: JoinedValues
 }
 
-function toItem({ row, record }: VisibleRow): CollectionItem {
+function toItem({ row, record }: VisibleRow, names?: JoinedNames): CollectionItem {
   return {
     id: row.id,
     version: row.version,
@@ -198,7 +295,27 @@ function toItem({ row, record }: VisibleRow): CollectionItem {
     updatedAt: row.updatedAt.toISOString(),
     archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
     record,
+    ...(names ? { joined: names } : {}),
   }
+}
+
+/**
+ * Sayfanın satırları yanıt kaydına çevrilir; bağlı adlar yalnız sayfadaki kimliklerden çözülür
+ * (aktörün kapsamından ve ayıklanmış kimlikten, `loadPageNames`).
+ */
+async function toItems(
+  ctx: ServiceContext,
+  scope: Scope,
+  collection: CollectionName,
+  page: readonly VisibleRow[],
+): Promise<CollectionItem[]> {
+  const names = await loadPageNames(
+    ctx,
+    scope,
+    collection,
+    page.map((item) => item.record),
+  )
+  return page.map((item, index) => toItem(item, names?.[index]))
 }
 
 /** Türkçe büyük/küçük harf ve aksan duyarsız karşılaştırma biçimi (api-tasarimi.md §3). */
@@ -229,6 +346,9 @@ async function listFilters(
   collection: CollectionName,
   query: CollectionReadQuery,
 ): Promise<RecordFilter[] | null> {
+  // Alan izin listesinden geçer (aralık yoksa etkisizdir ama geçersiz alan yine 400'dür).
+  const dateField = dateFieldOf(collection, query.dateField)
+  const stateFilters = stateFiltersOf(collection, query.states)
   const filters: RecordFilter[] = []
   for (const field of FILTER_FIELDS) {
     const values = query.filters?.[field]
@@ -252,11 +372,15 @@ async function listFilters(
   }
   if (query.isActive !== undefined)
     filters.push({ kind: 'active', field: 'isActive', active: query.isActive })
-  const range = dayRange(DATE_FILTER_FIELD, query.dateFrom, query.dateTo)
+  filters.push(...stateFilters)
+  const range = dayRange(dateField, query.dateFrom, query.dateTo)
   if (range) filters.push(range)
   const hidden = scope.hiddenFields(collection)
-  const fieldOf = (filter: RecordFilter) =>
-    filter.kind === 'invoiceStatus' ? ['paidAt', 'dueDate'] : [filter.field]
+  const fieldOf = (filter: RecordFilter): string[] => {
+    if (filter.kind === 'invoiceStatus') return ['paidAt', 'dueDate']
+    if (filter.kind === 'any') return filter.matches.map((match) => match.field)
+    return [filter.field]
+  }
   return filters.some((filter) => fieldOf(filter).some((field) => hidden.includes(field)))
     ? null
     : filters
@@ -475,6 +599,8 @@ async function sqlPage(
     !query.q &&
     (query.sort ?? []).length === 0 &&
     query.isActive === undefined &&
+    Object.values(query.states ?? {}).every((value) => value === undefined) &&
+    query.dateField === undefined &&
     query.dateFrom === undefined &&
     query.dateTo === undefined &&
     Object.values(query.filters ?? {}).every((values) => !values || values.length === 0)
@@ -493,7 +619,12 @@ async function sqlPage(
     return null
   }
   return {
-    items: rows.map((row) => toItem({ row, record: scope.redact(collection, row.data) })),
+    items: await toItems(
+      ctx,
+      scope,
+      collection,
+      rows.map((row) => ({ row, record: scope.redact(collection, row.data) })),
+    ),
     total,
   }
 }
@@ -515,18 +646,43 @@ export async function listCollection(
   if (!narrowed && sort.length === 0)
     // Arama ve sıralama yoksa yalnız istenen sayfa ayıklanır.
     return {
-      items: rows
-        .slice(start, start + query.pageSize)
-        .map((row) => toItem({ row, record: scope.redact(collection, row.data) })),
+      items: await toItems(
+        ctx,
+        scope,
+        collection,
+        rows
+          .slice(start, start + query.pageSize)
+          .map((row) => ({ row, record: scope.redact(collection, row.data) })),
+      ),
       total: rows.length,
     }
   const items = sorted(fieldResolver(ctx, collection), visibleRows(result), sort)
-  return { items: items.slice(start, start + query.pageSize).map(toItem), total: items.length }
+  return {
+    items: await toItems(ctx, scope, collection, items.slice(start, start + query.pageSize)),
+    total: items.length,
+  }
 }
 
 /** Gruplanabilen alanlar (beyaz liste): eşitlik süzgeci alanları, `isActive` ve `level`. */
 export const GROUP_FIELDS = [...FILTER_FIELDS, 'isActive', 'level'] as const
 export type GroupField = (typeof GROUP_FIELDS)[number]
+
+const MONTH_SUFFIX = ':month'
+
+/**
+ * `groupBy` değerleri: gruplanabilir alanlar ve tarih alanının aylık gruplaması
+ * (`<tarih alanı>:month`, değer `YYYY-MM` Europe/Istanbul ayı). Tarih alanı koleksiyonun izin
+ * listesindedir (`DATE_FIELDS`).
+ */
+export const GROUP_BY_VALUES = [
+  ...GROUP_FIELDS,
+  ...DATE_FIELD_NAMES.map((field) => `${field}${MONTH_SUFFIX}`),
+] as [string, ...string[]]
+
+/** `paidAt:month` → `paidAt`; aylık gruplama değilse `null`. */
+function monthGroupField(groupBy: string): string | null {
+  return groupBy.endsWith(MONTH_SUFFIX) ? groupBy.slice(0, -MONTH_SUFFIX.length) : null
+}
 
 /** Grup başına toplanabilen sayısal alanlar (beyaz liste; para alanı kuruş). */
 export const SUM_FIELDS = [
@@ -540,7 +696,8 @@ export const SUM_FIELDS = [
 export type SumField = (typeof SUM_FIELDS)[number]
 
 export interface CollectionCountQuery extends CollectionReadQuery {
-  groupBy: GroupField
+  /** `GROUP_BY_VALUES`: alan adı ya da `<tarih alanı>:month`. */
+  groupBy: string
   sum?: SumField | undefined
 }
 
@@ -582,10 +739,14 @@ export async function countCollection(
   name: string,
   query: CollectionCountQuery,
 ): Promise<{ groups: CountGroup[]; total: number; sum?: number }> {
+  const month = monthGroupField(query.groupBy)
   const result = await readRows(ctx, name, query, {
     check(scope, collection) {
       const hidden = scope.hiddenFields(collection)
-      if (hidden.includes(query.groupBy)) throw hiddenFieldError('groupBy')
+      // Aylık gruplama tarih alanının izin listesinden geçer; ayıklanan alanla gruplama 400.
+      if (month !== null && !dateFieldsOf(collection).includes(month))
+        throw hiddenFieldError('groupBy')
+      if (hidden.includes(month ?? query.groupBy)) throw hiddenFieldError('groupBy')
       if (query.sum && hidden.includes(query.sum)) throw hiddenFieldError('sum')
     },
   })
@@ -598,6 +759,7 @@ export async function countCollection(
       ? await studentClasses(ctx)
       : null
   const valueOf = (record: RecordData): GroupValue => {
+    if (month !== null) return monthOf(record[month])
     if (classOf) {
       const student = record.studentId
       return typeof student === 'string' ? (classOf.get(student) ?? null) : null
@@ -644,7 +806,11 @@ export async function getCollectionItem(
     includeArchived: options.archived === 'include',
   })
   if (!row || !scope.canRead(collection, row.data)) throw new NotFoundError()
-  return toItem({ row, record: scope.redact(collection, row.data) })
+  const [item] = await toItems(ctx, scope, collection, [
+    { row, record: scope.redact(collection, row.data) },
+  ])
+  if (!item) throw new NotFoundError()
+  return item
 }
 
 /** `requireModule` çözücüsü: koleksiyonun core modülü; bilinmeyen koleksiyon 404. */

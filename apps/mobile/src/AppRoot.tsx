@@ -1,14 +1,20 @@
-import { KeyboardScope } from './ui/KeyboardLayout.tsx'
-import React, { useState } from 'react'
+import { Component, useState, type ReactNode } from 'react'
 import { View, ScrollView, Pressable, useWindowDimensions } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native'
-import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { NavigationContainer, DefaultTheme, DarkTheme, type Route } from '@react-navigation/native'
+import {
+  createNativeStackNavigator,
+  type NativeStackHeaderProps,
+} from '@react-navigation/native-stack'
 import { StatusBar } from 'expo-status-bar'
-import { SchoolProvider, useSchool, recordError } from './store/SchoolProvider.tsx'
+import type { Role } from '@kampus/school-core/modules/navigation.ts'
+import { SchoolProvider, useSchool, useActiveSchool, recordError } from './store/SchoolProvider.tsx'
 import { roles, availablePages } from './model/school.ts'
 import { moduleNavigationState } from './model/navigation.ts'
 import { accountPages, categoryLabel, pageTitle } from './model/hub.ts'
+import type { RootStackParamList } from './route-types.ts'
+import { KeyboardScope } from './ui/KeyboardLayout.tsx'
+import { toIconName } from './ui/icons.ts'
 import {
   Avatar,
   Button,
@@ -29,12 +35,12 @@ import Detail from './screens/Detail.jsx'
 import Quiz from './screens/Quiz.jsx'
 import Video from './screens/Video.jsx'
 
-const Stack = createNativeStackNavigator()
-function RoleChoices({ onSelect }) {
+const Stack = createNativeStackNavigator<RootStackParamList>()
+function RoleChoices({ onSelect }: { onSelect: (role: Role) => void }) {
   const { session } = useSchool(),
     c = useColors()
-  const order = ['ogrenci', 'veli', 'ogretmen', 'yonetici', 'onburo']
-  const descriptions = {
+  const order: Role[] = ['ogrenci', 'veli', 'ogretmen', 'yonetici', 'onburo']
+  const descriptions: Record<Role, string> = {
     ogrenci: 'Derslerim ve öğrenme yolculuğum',
     veli: 'Çocuğumun okul hayatı',
     ogretmen: 'Sınıflarım ve günlük planım',
@@ -65,7 +71,7 @@ function RoleChoices({ onSelect }) {
                   alignItems: 'center',
                 }}
               >
-                <Icon name={role.icon} color={c.primary} />
+                <Icon name={toIconName(role.icon)} color={c.primary} />
               </View>
               <View style={{ flex: 1, gap: 3 }}>
                 <T bold size={15}>
@@ -144,31 +150,42 @@ function Login() {
     </SafeAreaView>
   )
 }
-function Header({ navigation, route, back }) {
-  const { data, session, preference } = useSchool(),
+// TODO(ts): başlık özelliği rotayı parametresiz (ParamListBase) verir; ad eşleşince parametre tipi kök listeden gelir.
+function isScreen<Name extends keyof RootStackParamList>(
+  route: Route<string>,
+  name: Name,
+): route is Route<Name, RootStackParamList[Name]> {
+  return route.name === name
+}
+const screenTitles: Partial<Record<string, string>> = { Video: 'Ders videosu', Quiz: 'Quiz' }
+function Header({ navigation, route, back }: NativeStackHeaderProps) {
+  const { data, session, preference } = useActiveSchool(),
     c = useColors()
   const [roleMenu, setRoleMenu] = useState(false),
     { fontScale } = useWindowDimensions()
   const pages = availablePages(data, session.role)
   const isHome = route.name === 'Home'
+  const currentPage = isScreen(route, 'Module') ? route.params?.page : undefined
+  const currentRow = isScreen(route, 'Detail') ? route.params?.row : undefined
+  const foundPage = pages.find((p) => p.path === currentPage)
   const title = isHome
     ? 'Kampüs'
-    : route.name === 'Category'
+    : isScreen(route, 'Category')
       ? categoryLabel(route.params.category)
-      : route.name === 'Detail'
-        ? route.params?.row.kind === 'homework' && session.role === 'ogrenci'
+      : isScreen(route, 'Detail')
+        ? currentRow?.kind === 'homework' && session.role === 'ogrenci'
           ? 'Ödev detayı'
-          : route.params?.row.kind === 'question' && session.role === 'ogretmen'
+          : currentRow?.kind === 'question' && session.role === 'ogretmen'
             ? 'Soruyu yanıtla'
-            : route.params?.row.kind === 'conversation'
-              ? route.params.row.title
+            : currentRow?.kind === 'conversation'
+              ? currentRow.title
               : 'Ayrıntılar'
-        : pageTitle(session.role, pages.find((p) => p.path === route.params?.page) || {}) ||
-          { Video: 'Ders videosu', Quiz: 'Quiz' }[route.name] ||
-          (route.params?.page === 'mesajlar' ? 'Mesajlar' : '') ||
+        : (foundPage ? pageTitle(session.role, foundPage) : undefined) ||
+          screenTitles[route.name] ||
+          (currentPage === 'mesajlar' ? 'Mesajlar' : '') ||
           'Kampüs'
-  function navigate(page) {
-    if (page === route.params?.page || (page === 'dashboard' && isHome)) return
+  function navigate(page: string) {
+    if (page === currentPage || (page === 'dashboard' && isHome)) return
     navigation.reset(moduleNavigationState(navigation.getState(), page))
   }
   return (
@@ -246,7 +263,7 @@ function Header({ navigation, route, back }) {
           {accountPages(data, session.role).map((page) => (
             <Button
               key={page.path}
-              icon={page.icon}
+              icon={toIconName(page.icon)}
               onPress={() => {
                 setRoleMenu(false)
                 navigate(page.path)
@@ -386,15 +403,15 @@ function Application() {
     </SafeAreaView>
   )
 }
-class ErrorBoundary extends React.Component {
-  state = { failed: false }
+class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false }
   static getDerivedStateFromError() {
     return { failed: true }
   }
-  componentDidCatch(error) {
+  override componentDidCatch(error: unknown) {
     recordError(error, 'render')
   }
-  render() {
+  override render() {
     return this.state.failed ? (
       <View style={{ flex: 1, padding: 28, justifyContent: 'center', gap: 18 }}>
         <T bold size={22}>

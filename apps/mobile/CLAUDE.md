@@ -2,7 +2,7 @@
 
 React Native ve Expo. Beş rol, mevcut modüller, çevrimdışı ortak örnek veri ve AsyncStorage kalıcılığı. Gerçek ödeme, uzaktan bildirim ve web–telefon senkronizasyonu yoktur.
 
-- TypeScript geçişi: `src/model`, `src/lib`, `src/store` ile `polyfills`, `ui/theme`, `ui/icons`, `ui/use-minute` TypeScript'tir (`pnpm --filter @kampus/mobile typecheck`); `ui/*` bileşenleri de TypeScript'tir; ekranlar (`src/screens/*.jsx`), `AppRoot.jsx`, `App.js` henüz JavaScript (`allowJs`, `checkJs` kapalı).
+- TypeScript geçişi: `src/model`, `src/lib`, `src/store` ile `polyfills`, `ui/theme`, `ui/icons`, `ui/use-minute` TypeScript'tir (`pnpm --filter @kampus/mobile typecheck`); `ui/*` bileşenleri de TypeScript'tir; ekranlar (`src/screens/*.jsx`), `AppRoot.tsx`, `App.js` henüz JavaScript (`allowJs`, `checkJs` kapalı).
 - `src/ui`: ortak açık/koyu tema, 48 dp dokunma alanları, alan etiketleri, seçim/detay pencereleri.
 - `src/model`: role göre görünür veri ve doğrulanan atomik işlemler; platform bağımsızdır.
 - `src/screens`: dashboard, modül listeleri, ayrıntı/quiz/video/yoklama akışları.

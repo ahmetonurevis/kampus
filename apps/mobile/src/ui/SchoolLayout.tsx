@@ -5,6 +5,7 @@ import { useActiveSchool } from '../store/SchoolProvider.tsx'
 import type { ThemePreference as ThemeChoice } from '../model/experience.ts'
 import { context, nameOf } from '../model/school.ts'
 import { FormScrollView } from './KeyboardLayout.tsx'
+import { useAppearance } from './appearance.ts'
 import {
   Avatar,
   Button,
@@ -427,15 +428,15 @@ const themeOptions: { value: ThemeChoice; label: string }[] = [
   { value: 'system', label: 'Sistem ayarı' },
 ]
 export function ThemePreference() {
-  const { session, preference } = useActiveSchool()
+  const { theme, setTheme } = useAppearance()
   return (
     <Select
       label="Tema"
       required
-      value={session.theme}
+      value={theme}
       onChange={(value) => {
         const choice = themeOptions.find((option) => option.value === value)
-        if (choice) void preference({ theme: choice.value })
+        if (choice) setTheme(choice.value)
       }}
       options={themeOptions}
     />

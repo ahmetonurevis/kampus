@@ -19,11 +19,11 @@ import type { LucideProps } from 'lucide-react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { icons, type IconName } from './icons.ts'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { useSchool } from '../store/SchoolProvider.tsx'
+import { useAppearance } from './appearance.ts'
 import { palettes, spaces, shape, type Palette } from './theme.ts'
 import { initials, dateLabel } from '@kampus/school-core/lib/format.ts'
 
-export const useColors = (): Palette => palettes[useSchool().resolvedTheme]
+export const useColors = (): Palette => palettes[useAppearance().resolvedTheme]
 
 type IconProps = Omit<LucideProps, 'ref'> & { name?: IconName }
 export function Icon({ name = 'Circle', size = 21, color, ...props }: IconProps) {
@@ -432,7 +432,7 @@ type SheetProps = {
 export function Sheet({ visible, title, onClose, children, footer, compact = false }: SheetProps) {
   const c = useColors()
   const insets = useSafeAreaInsets()
-  const { reduceMotion } = useSchool()
+  const { reduceMotion } = useAppearance()
   return (
     <Modal
       visible={visible}
@@ -507,7 +507,7 @@ type SelectProps = {
 export function Select({ label, value, options, onChange, required = false }: SelectProps) {
   const c = useColors()
   const insets = useSafeAreaInsets()
-  const { reduceMotion } = useSchool()
+  const { reduceMotion } = useAppearance()
   const [open, setOpen] = useState(false),
     [query, setQuery] = useState('')
   const visible = options.filter((o) =>

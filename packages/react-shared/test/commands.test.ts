@@ -17,6 +17,7 @@ import {
   keepsIdempotencyKey,
   newIdempotencyKey,
   reportCommandError,
+  routeCommandErrors,
   runCommand,
   stableFingerprint,
   type CommandHeaders,
@@ -182,6 +183,52 @@ describe('commandFeedback ve reportCommandError', () => {
       setError: (name, { message }) => fields.push([name, message]),
     })
     assert.deepEqual(fields, [['root.server', 'Bu işlem için yetkiniz yok.']])
+  })
+})
+
+describe('routeCommandErrors', () => {
+  const route = (error: ApiError, routes: Parameters<typeof routeCommandErrors>[1]) => {
+    const fields: [string, string][] = []
+    const toasts: string[] = []
+    const targets = routeCommandErrors(
+      {
+        setError: (name, { message }) => fields.push([name, message]),
+        notifyError: (message) => toasts.push(message),
+      },
+      routes,
+    )
+    reportCommandError(error, commandFeedback(error), targets)
+    return { fields, toasts }
+  }
+
+  test('alana bağlanan kod yalnız alan altında görünür, toast çıkmaz', () => {
+    const error = apiError(409, 'branch_name_taken', 'Bu kampüs adı kullanılıyor.')
+    const { fields, toasts } = route(error, {
+      fieldFor: (error) => (error.code === 'branch_name_taken' ? 'name' : undefined),
+    })
+    assert.deepEqual(fields, [['name', 'Bu kampüs adı kullanılıyor.']])
+    assert.deepEqual(toasts, [])
+  })
+
+  test('formun kendi bildirdiği hata toast üretmez; bağlanmayan hata yalnız toast olur', () => {
+    const conflict = apiError(409, 'version_conflict', 'Kayıt değişti.')
+    const silent = route(conflict, { silent: (error) => error.code === 'version_conflict' })
+    assert.deepEqual(silent, { fields: [], toasts: [] })
+
+    const other = apiError(500, 'internal', 'Beklenmeyen hata.')
+    const result = route(other, { fieldFor: () => undefined })
+    assert.deepEqual(result, { fields: [], toasts: ['Beklenmeyen hata.'] })
+  })
+
+  test('bildirim yoksa mesaj root.server alanında kalır', () => {
+    const error = apiError(403, 'forbidden', 'Yetkiniz yok.')
+    const fields: [string, string][] = []
+    const targets = routeCommandErrors(
+      { setError: (name, { message }) => fields.push([name, message]) },
+      { fieldFor: () => 'name' },
+    )
+    reportCommandError(error, commandFeedback(error), targets)
+    assert.deepEqual(fields, [['root.server', 'Yetkiniz yok.']])
   })
 })
 

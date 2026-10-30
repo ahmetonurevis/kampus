@@ -26,6 +26,7 @@ import { registerCollectionRoutes } from './routes/collections.ts'
 import { registerAssessmentRoutes } from './routes/assessment.ts'
 import { registerCommandRoutes } from './routes/commands.ts'
 import { registerCommunicationRoutes } from './routes/communication.ts'
+import { registerDashboardRoutes } from './routes/dashboard.ts'
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 import { registerHealthRoutes } from './routes/health.ts'
 import { registerMeRoutes } from './routes/me.ts'
@@ -197,6 +198,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerAuditEventRoutes(app)
   registerModuleRoutes(app)
   registerCollectionRoutes(app)
+  registerDashboardRoutes(app)
   registerCommandRoutes(app)
   registerAssessmentRoutes(app)
   // Komut uçlarından sonra: ham gövde süsü (`commandInput`) orada tanımlanır.

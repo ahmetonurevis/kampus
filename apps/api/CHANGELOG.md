@@ -2,6 +2,12 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Genel Bakış tek özet ucu
+
+- `GET /api/v1/dashboard` (beş rol): Genel Bakış'ın kartları, kısa listeleri ve mini grafik verisi tek yanıtta; yanıt `role` ayırıcılı. Web rol başına 6-17 `counts`/liste isteği yerine tek istek atar. Değerler `countCollection`/`listCollection` ile hesaplanır (rol/kurum kapsamı, alan ayıklama ve türetilmiş durum `counts` ucuyla aynıdır); sayım hâlâ bellekte (`TODO(perf)`).
+- Okuduğu koleksiyon aktöre kapalı olan bölüm (modül kapalı, kurum türünde yok, rol okuyamıyor) `null` döner. `studentId` yalnız öğrenci ve velide: velide verilmezse ilk çocuk, personelde 400, kapsam dışı öğrenci 404. Öğrenci özetinde ödeme alanı yoktur.
+- OpenAPI ve istemci şeması yeniden üretildi. Şema değişikliği ve migration yok; mevcut uçlar değişmedi.
+
 ## R6 inceleme düzeltmeleri
 
 - Okuma kapsamı: öğrenci ve veli `opticalProfiles`'ta yalnız görebildiği denemelerin profilini alır (liste, arama, sıralama, ayrıntı ve `counts?groupBy=examId`); başka düzeyin profili artık yok. Kapsam kaynağı `mockExams`'i de yükler. Yanıt şekli değişmedi.

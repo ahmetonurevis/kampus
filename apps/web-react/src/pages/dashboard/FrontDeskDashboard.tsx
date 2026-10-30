@@ -1,8 +1,6 @@
 import { dateLabel, dayKey, money, number } from '@kampus/school-core/lib/format.ts'
-import { INVOICE_STATUS_LABELS } from '@kampus/school-core/lib/format.ts'
-import { countOf, sumOf } from '@kampus/react-shared/collections.ts'
+import { useDashboard } from '@kampus/react-shared/use-dashboard.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
-import { useCoreCounts, useCoreList, type CoreRow } from '@/hooks/use-core-collection.ts'
 import type { Session } from '@/auth/auth-port.ts'
 import {
   CardList,
@@ -13,61 +11,35 @@ import {
   StatGrid,
 } from './DashboardParts.tsx'
 import { StudentName } from './StudentName.tsx'
-import { dashboardHref, invoiceStatusSlices } from './dashboard-model.ts'
+import {
+  dashboardHref,
+  invoiceStatusSlices,
+  sectionVisible,
+  type InvoiceRow,
+} from './dashboard-model.ts'
 
 const PAGE_PATH = 'tahsilat-takip'
-const LIST_SIZE = 5
 
 /**
  * Ön büro Genel Bakış (Vue `Dashboard.vue` ön büro): gecikmiş ve yaklaşan taksit sayıları/tutarları,
- * öncelikli taksit listeleri, son tahsilatlar ve (CRM açıksa) görüşme bekleyen adaylar. "Bugünkü
- * tahsilat" `paidAt` günü süzgeciyle sunucuda toplanır; öğrenci adları satırın `joined` alanından
- * gelir.
+ * öncelikli taksit listeleri, son tahsilatlar ve (CRM açıksa) görüşme bekleyen adaylar. Bütün
+ * değerler tek özet isteğinden gelir (`useDashboard`); "Bugünkü tahsilat" sunucuda `paidAt` günüyle
+ * toplanır, öğrenci adları satırın bağlı adıdır.
  */
-export function FrontDeskDashboard({ session, now }: { session: Session; now: Date }) {
+export function FrontDeskDashboard({ session }: { session: Session }) {
   const role = session.role
-  const finance = session.modules.finance === true
-  const crm = session.modules.crm === true
-  const today = dayKey(now)
+  const query = useDashboard('onburo')
+  const data = query.data ?? null
+  const state = combineStates(query)
+  const loaded = data !== null
+  const finance = sectionVisible(data?.finance, loaded, session.modules.finance === true)
+  const crm = sectionVisible(data?.prospects, loaded, session.modules.crm === true)
+  const today = data?.today ?? ''
 
-  const invoices = useCoreCounts(
-    'invoices',
-    { groupBy: 'status', sum: 'amount' },
-    { enabled: finance },
-  )
-  const collectedToday = useCoreCounts(
-    'invoices',
-    {
-      groupBy: 'status',
-      sum: 'amount',
-      filters: { dateField: 'paidAt', dateFrom: today, dateTo: today },
-    },
-    { enabled: finance },
-  )
-  const prospects = useCoreCounts('prospects', { groupBy: 'stage' }, { enabled: crm })
-  const overdue = useCoreList(
-    'invoices',
-    { filters: { status: INVOICE_STATUS_LABELS.gecikmis }, sort: ['dueDate'], pageSize: LIST_SIZE },
-    { enabled: finance },
-  )
-  const upcoming = useCoreList(
-    'invoices',
-    { filters: { status: INVOICE_STATUS_LABELS.yaklasan }, sort: ['dueDate'], pageSize: LIST_SIZE },
-    { enabled: finance },
-  )
-  const paid = useCoreList(
-    'invoices',
-    {
-      filters: { status: INVOICE_STATUS_LABELS.odendi },
-      sort: ['-updatedAt', '-dueDate'],
-      pageSize: LIST_SIZE,
-    },
-    { enabled: finance },
-  )
-
-  const slices = invoices.data ? invoiceStatusSlices(invoices.data) : []
+  const slices = data?.finance ? invoiceStatusSlices(data.finance.invoices) : []
   const slice = (key: 'gecikmis' | 'yaklasan' | 'odendi') => slices.find((s) => s.key === key)
-  const invoiceState = combineStates(invoices)
+  const stageCount = (stage: string) =>
+    data?.prospects?.stages.find((item) => item.stage === stage)?.count ?? 0
 
   return (
     <>
@@ -80,7 +52,7 @@ export function FrontDeskDashboard({ session, now }: { session: Session; now: Da
               value={number(slice('gecikmis')?.count)}
               note={`${money(slice('gecikmis')?.amount)} tahsilat bekliyor`}
               href={dashboardHref(role, PAGE_PATH, { durum: 'gecikmis' })}
-              state={invoiceState}
+              state={state}
             />
             <StatCard
               label="Yaklaşan taksit"
@@ -88,15 +60,15 @@ export function FrontDeskDashboard({ session, now }: { session: Session; now: Da
               value={number(slice('yaklasan')?.count)}
               note={`${money(slice('yaklasan')?.amount)} vadesi gelmedi`}
               href={dashboardHref(role, PAGE_PATH, { durum: 'yaklasan' })}
-              state={invoiceState}
+              state={state}
             />
             <StatCard
               label="Bugünkü tahsilat"
               icon="CircleCheck"
-              value={money(sumOf(collectedToday.data, INVOICE_STATUS_LABELS.odendi))}
-              note={`${number(countOf(collectedToday.data, INVOICE_STATUS_LABELS.odendi))} taksit bugün ödendi`}
+              value={money(data?.finance?.collectedToday.amount ?? 0)}
+              note={`${number(data?.finance?.collectedToday.count ?? 0)} taksit bugün ödendi`}
               href={dashboardHref(role, PAGE_PATH, { durum: 'odendi' })}
-              state={combineStates(collectedToday)}
+              state={state}
             />
             <StatCard
               label="Tahsil edilen"
@@ -104,7 +76,7 @@ export function FrontDeskDashboard({ session, now }: { session: Session; now: Da
               value={money(slice('odendi')?.amount)}
               note={`${number(slice('odendi')?.count)} taksit ödendi`}
               href={dashboardHref(role, PAGE_PATH, { durum: 'odendi' })}
-              state={invoiceState}
+              state={state}
             />
           </>
         ) : null}
@@ -112,10 +84,10 @@ export function FrontDeskDashboard({ session, now }: { session: Session; now: Da
           <StatCard
             label="Görüşme bekleyen aday"
             icon="ContactRound"
-            value={number(countOf(prospects.data, 'Yeni aday'))}
-            note={`${number(countOf(prospects.data, 'Kayıt oldu'))} aday kesin kayıt oldu`}
+            value={number(stageCount('Yeni aday'))}
+            note={`${number(stageCount('Kayıt oldu'))} aday kesin kayıt oldu`}
             href={dashboardHref(role, 'adaylar')}
-            state={combineStates(prospects)}
+            state={state}
           />
         ) : null}
       </StatGrid>
@@ -130,11 +102,11 @@ export function FrontDeskDashboard({ session, now }: { session: Session; now: Da
                 label: 'Tümünü gör',
                 href: dashboardHref(role, PAGE_PATH, { durum: 'gecikmis' }),
               }}
-              state={combineStates(overdue)}
-              isEmpty={overdue.data?.rows.length === 0}
+              state={state}
+              isEmpty={data?.finance?.overdue.length === 0}
               emptyText="Gecikmiş taksit bulunmuyor."
             >
-              <InvoiceList label="Gecikmiş taksitler" rows={overdue.data?.rows} />
+              <InvoiceList label="Gecikmiş taksitler" rows={data?.finance?.overdue} />
             </ListCard>
             <ListCard
               title="Yaklaşan taksitler"
@@ -143,11 +115,11 @@ export function FrontDeskDashboard({ session, now }: { session: Session; now: Da
                 label: 'Tümünü gör',
                 href: dashboardHref(role, PAGE_PATH, { durum: 'yaklasan' }),
               }}
-              state={combineStates(upcoming)}
-              isEmpty={upcoming.data?.rows.length === 0}
+              state={state}
+              isEmpty={data?.finance?.upcoming.length === 0}
               emptyText="Yaklaşan taksit bulunmuyor."
             >
-              <InvoiceList label="Yaklaşan taksitler" rows={upcoming.data?.rows} compact />
+              <InvoiceList label="Yaklaşan taksitler" rows={data?.finance?.upcoming} compact />
             </ListCard>
           </DashboardGrid>
           <DashboardGrid>
@@ -158,28 +130,32 @@ export function FrontDeskDashboard({ session, now }: { session: Session; now: Da
                 label: 'Tümünü gör',
                 href: dashboardHref(role, PAGE_PATH, { durum: 'odendi' }),
               }}
-              state={combineStates(paid)}
-              isEmpty={paid.data?.rows.length === 0}
+              state={state}
+              isEmpty={data?.finance?.recentPayments.length === 0}
               emptyText="Henüz tahsilat kaydı yok."
             >
-              <InvoiceList label="Son tahsilatlar" rows={paid.data?.rows} today={today} />
+              <InvoiceList
+                label="Son tahsilatlar"
+                rows={data?.finance?.recentPayments}
+                today={today}
+              />
             </ListCard>
             {crm ? (
               <ListCard
                 title="Aday aşamaları"
                 description="CRM'deki adayların dağılımı"
                 action={{ label: 'Adayları aç', href: dashboardHref(role, 'adaylar') }}
-                state={combineStates(prospects)}
-                isEmpty={prospects.data?.total === 0}
+                state={state}
+                isEmpty={data?.prospects?.total === 0}
                 emptyText="Henüz aday kaydı yok."
               >
                 <CardList label="Aday aşamaları">
-                  {prospects.data?.groups.map((group) => (
+                  {data?.prospects?.stages.map((group) => (
                     <li
-                      key={String(group.value)}
+                      key={String(group.stage)}
                       className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0"
                     >
-                      <span>{group.value === null ? 'Aşama yok' : String(group.value)}</span>
+                      <span>{group.stage ?? 'Aşama yok'}</span>
                       <strong className="font-semibold tabular-nums">{number(group.count)}</strong>
                     </li>
                   ))}
@@ -195,7 +171,7 @@ export function FrontDeskDashboard({ session, now }: { session: Session; now: Da
 
 type InvoiceListProps = {
   label: string
-  rows: readonly CoreRow<'invoices'>[] | undefined
+  rows: readonly InvoiceRow[] | undefined
   /** Dar sütunda tutar ve vade alt satıra iner. */
   compact?: boolean
   /** Verilirse ödeme günü gösterilir; bugün ödenenler rozetle işaretlenir. */
@@ -205,18 +181,18 @@ type InvoiceListProps = {
 function InvoiceList({ label, rows, compact = false, today }: InvoiceListProps) {
   return (
     <CardList label={label}>
-      {rows?.map(({ id, record, joined }) => {
-        const paidToday = today !== undefined && !!record.paidAt && dayKey(record.paidAt) === today
+      {rows?.map((row) => {
+        const paidToday = today !== undefined && !!row.paidAt && dayKey(row.paidAt) === today
         const detail =
-          today !== undefined && record.paidAt
-            ? `${record.installment}. taksit · ödeme ${dateLabel(record.paidAt, { year: 'numeric' })}`
-            : `${record.installment}. taksit · vade ${dateLabel(record.dueDate, { year: 'numeric' })}`
+          today !== undefined && row.paidAt
+            ? `${row.installment}. taksit · ödeme ${dateLabel(row.paidAt, { year: 'numeric' })}`
+            : `${row.installment}. taksit · vade ${row.dueDate ? dateLabel(row.dueDate, { year: 'numeric' }) : '—'}`
         return (
           <li
-            key={id}
+            key={row.id}
             className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
           >
-            <StudentName name={joined?.studentName} detail={detail} />
+            <StudentName name={row.studentName} detail={detail} />
             <span
               className={
                 compact
@@ -224,7 +200,7 @@ function InvoiceList({ label, rows, compact = false, today }: InvoiceListProps) 
                   : 'flex items-center gap-2 text-md font-semibold tabular-nums'
               }
             >
-              {money(record.amount)}
+              {money(row.amount)}
               {paidToday ? <StatusBadge text="Bugün" tone="green" /> : null}
             </span>
           </li>

@@ -401,15 +401,20 @@ test.describe('Genel Bakış: dar ekran', () => {
       await page.setViewportSize({ width, height: 844 })
       await loginAs('yonetici')
       // Taksit tutarları ×1000: "27.540.000.000,00 ₺" düzeyinde en kötü durum.
-      await page.route(/\/collections\/invoices\/counts\?/, async (route) => {
+      // Tutarlar tek özet ucundan gelir (`GET /dashboard`); finans bölümünün her tutarı ×1000.
+      await page.route(/\/api\/v1\/dashboard(\?|$)/, async (route) => {
         const response = await route.fetch()
-        const body = (await response.json()) as {
-          data: { sum?: number }[]
-          meta: { sum?: number }
+        const body = (await response.json()) as { data: { finance: unknown } }
+        const scale = (node: unknown): void => {
+          if (Array.isArray(node)) return node.forEach(scale)
+          if (node === null || typeof node !== 'object') return
+          const record = node as Record<string, unknown>
+          for (const [key, value] of Object.entries(record)) {
+            if (key === 'amount' && typeof value === 'number') record[key] = value * 1000
+            else scale(value)
+          }
         }
-        const scale = (value?: number) => (value === undefined ? value : value * 1000)
-        body.meta.sum = scale(body.meta.sum)
-        for (const group of body.data) group.sum = scale(group.sum)
+        scale(body.data.finance)
         // Gerçek yanıtın başlıkları (içerik uzunluğu, sıkıştırma) değişen gövdeyle uyuşmaz.
         await route.fulfill({ status: response.status(), json: body })
       })

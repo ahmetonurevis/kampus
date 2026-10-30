@@ -28,9 +28,9 @@ test.describe('API yardımcıları ve kurum değiştirme', () => {
   }) => {
     // Kurum etkin oturumda saklanır: paylaşılan önbellek oturumu değil, kendi oturumumuz.
     await loginAs('yonetici', { fresh: true })
-    // Genel Bakış açılışta 11 eşzamanlı istek atar; tarayıcının 6 bağlantı sınırında kurum değişimi
-    // isteği bunların arkasında bekler (yükte 8 sn'yi aşıyordu). Testin konusu panel değil kurum
-    // değişimi olduğundan hafif bir sayfadan başlanır.
+    // Genel Bakış eskiden açılışta 11 eşzamanlı istek atıyor, kurum değişimi isteği tarayıcının 6
+    // bağlantı sınırında bunların arkasında bekliyordu (yükte 8 sn'yi aşıyordu); artık tek özet
+    // isteği atar. Testin konusu panel değil kurum değişimi olduğundan hafif bir sayfadan başlanır.
     await page.goto('/yonetici/ayarlar')
     await switchInstitutionThroughMenu(page, 'Murat Yılmaz', institutions.kampusDil)
 

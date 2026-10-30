@@ -20,7 +20,7 @@ const DESCRIPTIONS = {
 
 /**
  * Genel Bakış (beş rol; Vue `Dashboard.vue`). Başlık menü kaydındandır; selamlama ve tarih
- * açıklamadadır. Rol içeriği kendi bileşenindedir; sayaçlar sunucu sayımından gelir.
+ * açıklamadadır. Rol içeriği kendi bileşenindedir; bütün değerler tek özet isteğinden (`useDashboard`) gelir.
  */
 export function DashboardPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -36,9 +36,9 @@ export function DashboardPage({ page }: { page: NavPage }) {
         description={`Merhaba ${firstName(session.user.name)}, ${today}. ${DESCRIPTIONS[session.role]}`}
       />
       {session.role === 'yonetici' ? (
-        <AdminDashboard session={session} now={now} />
+        <AdminDashboard session={session} />
       ) : session.role === 'onburo' ? (
-        <FrontDeskDashboard session={session} now={now} />
+        <FrontDeskDashboard session={session} />
       ) : session.role === 'ogretmen' ? (
         <TeacherDashboard session={session} now={now} />
       ) : (

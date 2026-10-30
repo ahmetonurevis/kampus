@@ -1,7 +1,6 @@
-import { dateLabel, dayKey, number, timeLabel } from '@kampus/school-core/lib/format.ts'
-import { countOf } from '@kampus/react-shared/collections.ts'
+import { dateLabel, number, timeLabel } from '@kampus/school-core/lib/format.ts'
+import { useDashboard } from '@kampus/react-shared/use-dashboard.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
-import { useCoreAll, useCoreCounts, useCoreList } from '@/hooks/use-core-collection.ts'
 import type { Session } from '@/auth/auth-port.ts'
 import { attendanceStatusLabel } from '../academic/academic-rows.ts'
 import {
@@ -13,85 +12,29 @@ import {
   StatGrid,
 } from './DashboardParts.tsx'
 import { StudentName } from './StudentName.tsx'
-import { dashboardHref } from './dashboard-model.ts'
+import { dashboardHref, sectionVisible } from './dashboard-model.ts'
 
 const NONE: readonly never[] = []
-const ACTIVE = { isActive: 'true' } as const
-/** Kısa listede gösterilen yaklaşan ödev sayısı. */
-const HOMEWORK_LIMIT = 5
 
 /**
  * Öğretmen Genel Bakış (Vue `Dashboard.vue` öğretmen): öğrenci ve sınıf sayıları, bugün gelmeyen
- * öğrenciler; bugünkü dersler (`cancelled=false`; iptal sayısı `cancelled=true` sayımından),
- * teslim süresi dolmamış kendi ödevleri (`dueDate` aralığı) teslim sayılarıyla, notlanmamış
- * teslimler (`graded=false` sayımı) ve son devamsızlık kayıtları. Kapsam sunucudadır; sınıf ve
- * öğrenci adları liste satırının `joined` alanından gelir.
+ * öğrenciler; bugünkü dersler (iptaller ayrı sayılır), teslim süresi dolmamış kendi ödevleri teslim
+ * sayılarıyla, notlanmamış teslimler ve son devamsızlık kayıtları. Bütün değerler tek özet
+ * isteğinden gelir (`useDashboard`); kapsam sunucudadır.
  */
 export function TeacherDashboard({ session, now }: { session: Session; now: Date }) {
   const role = session.role
-  const academic = session.modules.academic === true
-  const learning = session.modules.learning === true
-  const today = dayKey(now)
+  const query = useDashboard('ogretmen')
+  const data = query.data ?? null
+  const state = combineStates(query)
+  const loaded = data !== null
+  const academic = sectionVisible(data?.academic, loaded, session.modules.academic === true)
+  const learning = sectionVisible(data?.learning, loaded, session.modules.learning === true)
+  const today = data?.today ?? ''
 
-  // Öğretmenin kendi kaydı (kapsam yalnız onu döndürür): ödev ve ders süzgeci için kimlik.
-  const self = useCoreAll('teachers')
-  const teacherId = self.data?.[0]?.record.id ?? ''
-  const students = useCoreCounts('students', { groupBy: 'isActive' })
-  const studentsByClass = useCoreCounts('students', { groupBy: 'classId', filters: ACTIVE })
-  const classes = useCoreCounts('classes', { groupBy: 'isActive' })
-  const todayAttendance = useCoreCounts(
-    'attendance',
-    { groupBy: 'status', filters: { dateFrom: today, dateTo: today } },
-    { enabled: academic },
-  )
-  const lessons = useCoreList(
-    'schedule',
-    {
-      filters: { teacherId, dateFrom: today, dateTo: today, cancelled: 'false' },
-      sort: ['date'],
-      pageSize: 20,
-    },
-    { enabled: academic && teacherId !== '' },
-  )
-  const cancelledLessons = useCoreCounts(
-    'schedule',
-    {
-      groupBy: 'teacherId',
-      filters: { teacherId, dateFrom: today, dateTo: today, cancelled: 'true' },
-    },
-    { enabled: academic && teacherId !== '' },
-  )
-  // Son teslim günü bugün ya da sonrası olan ödevler, en yakın önce (Istanbul günü sunucuda).
-  const homework = useCoreList(
-    'homework',
-    {
-      filters: { teacherId, dateField: 'dueDate', dateFrom: today },
-      sort: ['dueDate'],
-      pageSize: HOMEWORK_LIMIT,
-    },
-    { enabled: learning && teacherId !== '' },
-  )
-  const ungraded = useCoreCounts(
-    'submissions',
-    { groupBy: 'homeworkId', filters: { graded: 'false' } },
-    { enabled: learning },
-  )
-  const recentAbsences = useCoreList(
-    'attendance',
-    { filters: { status: ['absent', 'late'] }, sort: ['-date'], pageSize: 5 },
-    { enabled: academic },
-  )
-
-  const visibleLessons = lessons.data?.rows ?? NONE
-  const upcoming = (homework.data?.rows ?? NONE).map((row) => ({
-    ...row.record,
-    className: row.joined?.className,
-  }))
-  const deliveries = useCoreCounts(
-    'submissions',
-    { groupBy: 'homeworkId', filters: { homeworkId: upcoming.map((item) => item.id) } },
-    { enabled: learning && upcoming.length > 0 },
-  )
+  const lessons = data?.academic?.lessons
+  const upcoming = data?.learning?.homework ?? NONE
+  const attendanceToday = data?.academic?.attendanceToday
 
   return (
     <>
@@ -99,37 +42,37 @@ export function TeacherDashboard({ session, now }: { session: Session; now: Date
         <StatCard
           label="Öğrencilerim"
           icon="GraduationCap"
-          value={number(countOf(students.data, true))}
+          value={number(data?.students.active)}
           note="Ders verdiğiniz sınıflardaki öğrenciler"
           href={dashboardHref(role, 'siniflarim')}
-          state={combineStates(students)}
+          state={state}
         />
         <StatCard
           label="Sınıflarım"
           icon="School"
-          value={number(countOf(classes.data, true))}
+          value={number(data?.classes.active)}
           note="Danışman veya branş öğretmeni olduğunuz"
           href={dashboardHref(role, 'siniflarim')}
-          state={combineStates(classes)}
+          state={state}
         />
         {academic ? (
           <StatCard
             label="Bugün gelmeyen"
             icon="ClipboardCheck"
-            value={number(countOf(todayAttendance.data, 'absent'))}
-            note={`${number(todayAttendance.data?.total)} öğrencinin yoklaması alındı`}
+            value={number(attendanceToday?.absent)}
+            note={`${number(attendanceToday?.total)} öğrencinin yoklaması alındı`}
             href={dashboardHref(role, 'yoklama', { durum: 'absent', tarih: today })}
-            state={combineStates(todayAttendance)}
+            state={state}
           />
         ) : null}
         {learning ? (
           <StatCard
             label="Notlanmamış teslim"
             icon="ClipboardCheck"
-            value={number(ungraded.data?.total)}
+            value={number(data?.learning?.ungraded)}
             note="Öğrencilerinizin puanlanmamış ödev teslimi"
             href={dashboardHref(role, 'odevler')}
-            state={combineStates(ungraded)}
+            state={state}
           />
         ) : null}
       </StatGrid>
@@ -139,34 +82,32 @@ export function TeacherDashboard({ session, now }: { session: Session; now: Date
           <ListCard
             title="Bugünkü derslerim"
             description={
-              lessons.data
-                ? `${dateLabel(now, { weekday: 'long' })} · ${number(lessons.data.total)} ders` +
-                  (cancelledLessons.data?.total
-                    ? ` · ${number(cancelledLessons.data.total)} iptal`
-                    : '')
+              lessons
+                ? `${dateLabel(now, { weekday: 'long' })} · ${number(lessons.total)} ders` +
+                  (lessons.cancelled ? ` · ${number(lessons.cancelled)} iptal` : '')
                 : dateLabel(now, { weekday: 'long' })
             }
             action={{ label: 'Programı aç', href: dashboardHref(role, 'ders-programi') }}
-            state={combineStates(self, lessons, cancelledLessons)}
-            isEmpty={visibleLessons.length === 0}
+            state={state}
+            isEmpty={(lessons?.items ?? NONE).length === 0}
             emptyText="Bugün dersiniz yok."
           >
             <CardList label="Bugünkü derslerim">
-              {visibleLessons.map(({ id, record, joined }) => (
-                <li key={id} className="flex items-center gap-4 py-2.5 first:pt-0 last:pb-0">
+              {lessons?.items.map((lesson) => (
+                <li key={lesson.id} className="flex items-center gap-4 py-2.5 first:pt-0 last:pb-0">
                   <time
-                    dateTime={record.date}
+                    dateTime={lesson.date}
                     className="w-12 shrink-0 text-md font-semibold tabular-nums"
                   >
-                    {timeLabel(record.date)}
+                    {timeLabel(lesson.date)}
                   </time>
                   <span className="grid min-w-0">
                     <strong className="font-medium [overflow-wrap:anywhere]">
-                      {record.title ?? record.subject ?? 'Ders'}
+                      {lesson.title ?? lesson.subject ?? 'Ders'}
                     </strong>
                     <small className="text-sm text-muted-foreground">
-                      {[joined?.className, `Derslik ${record.room}`].filter(Boolean).join(' · ')}
-                      {` · ${record.duration} dk`}
+                      {[lesson.className, `Derslik ${lesson.room}`].filter(Boolean).join(' · ')}
+                      {` · ${lesson.duration} dk`}
                     </small>
                   </span>
                 </li>
@@ -179,30 +120,26 @@ export function TeacherDashboard({ session, now }: { session: Session; now: Date
             title="Teslim bekleyen ödevler"
             description="Son teslim tarihi gelmemiş ödevleriniz"
             action={{ label: 'Ödevleri aç', href: dashboardHref(role, 'odevler') }}
-            state={combineStates(self, homework, deliveries, studentsByClass)}
+            state={state}
             isEmpty={upcoming.length === 0}
             emptyText="Teslim süresi devam eden ödev yok."
           >
             <CardList label="Teslim bekleyen ödevler">
-              {upcoming.map((item) => {
-                const delivered = countOf(deliveries.data, item.id)
-                const expected = countOf(studentsByClass.data, item.classId)
-                return (
-                  <li key={item.id} className="grid gap-1 py-2.5 first:pt-0 last:pb-0">
-                    <strong className="font-medium [overflow-wrap:anywhere]">{item.title}</strong>
-                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                      <span>
-                        {[item.className, `Son teslim ${dateLabel(item.dueDate)}`]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                      <span className="font-medium text-foreground tabular-nums">
-                        {number(delivered)}/{number(expected)} teslim
-                      </span>
+              {upcoming.map((item) => (
+                <li key={item.id} className="grid gap-1 py-2.5 first:pt-0 last:pb-0">
+                  <strong className="font-medium [overflow-wrap:anywhere]">{item.title}</strong>
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    <span>
+                      {[item.className, `Son teslim ${dateLabel(item.dueDate)}`]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </span>
-                  </li>
-                )
-              })}
+                    <span className="font-medium text-foreground tabular-nums">
+                      {number(item.delivered)}/{number(item.expected)} teslim
+                    </span>
+                  </span>
+                </li>
+              ))}
             </CardList>
           </ListCard>
         ) : null}
@@ -217,23 +154,23 @@ export function TeacherDashboard({ session, now }: { session: Session; now: Date
               label: 'Yoklamayı aç',
               href: dashboardHref(role, 'yoklama', { durum: 'absent' }),
             }}
-            state={combineStates(recentAbsences)}
-            isEmpty={recentAbsences.data?.rows.length === 0}
+            state={state}
+            isEmpty={data?.academic?.recentAbsences.length === 0}
             emptyText="Son yoklamalarda devamsızlık yok."
           >
             <CardList label="Son yoklamalar">
-              {recentAbsences.data?.rows.map(({ id, record, joined }) => (
+              {data?.academic?.recentAbsences.map((row) => (
                 <li
-                  key={id}
+                  key={row.id}
                   className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
                 >
                   <StudentName
-                    name={joined?.studentName}
-                    detail={[joined?.className, dateLabel(record.date)].filter(Boolean).join(' · ')}
+                    name={row.studentName}
+                    detail={[row.className, dateLabel(row.date)].filter(Boolean).join(' · ')}
                   />
                   <StatusBadge
-                    text={attendanceStatusLabel(record.status)}
-                    tone={record.status === 'absent' ? 'red' : 'amber'}
+                    text={attendanceStatusLabel(row.status)}
+                    tone={row.status === 'absent' ? 'red' : 'amber'}
                   />
                 </li>
               ))}

@@ -1,10 +1,8 @@
-import { useMemo } from 'react'
 import { Link } from 'react-router'
-import { dayKey, INVOICE_STATUS_LABELS, money, number } from '@kampus/school-core/lib/format.ts'
-import { countOf, sumOf } from '@kampus/react-shared/collections.ts'
+import { money, number } from '@kampus/school-core/lib/format.ts'
+import { useDashboard } from '@kampus/react-shared/use-dashboard.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
-import { useCoreAll, useCoreCounts, useCoreList } from '@/hooks/use-core-collection.ts'
 import type { Session } from '@/auth/auth-port.ts'
 import { CollectionTrend } from './CollectionTrend.tsx'
 import {
@@ -22,69 +20,32 @@ import {
   dashboardHref,
   invoiceStatusSlices,
   outstandingAmount,
+  sectionVisible,
 } from './dashboard-model.ts'
 
-const ACTIVE = { isActive: 'true' } as const
 const SLICE_TONE = { gecikmis: 'warning', yaklasan: 'primary', odendi: 'success' } as const
 
 /**
  * Yönetici Genel Bakış (Vue `Dashboard.vue` yönetici): öğrenci, sınıf ve kadro sayıları; taksit
  * durumu dağılımı (tutar kuruş → TL); bugünkü yoklama; son kayıtlar ve kampüs doluluğu. Bütün
- * sayılar sunucu sayımından gelir; kartlar ilgili listeyi filtresi adreste açar. Bugünkü tahsilat
- * `paidAt` günü süzgeciyle, aylık tahsilat eğilimi `paidAt:month` gruplamasıyla sayılır.
+ * değerler tek özet isteğinden gelir (`GET /api/v1/dashboard`, `useDashboard`); kartlar ilgili
+ * listeyi filtresi adreste açar. Kapalı modülün bölümü sunucuda `null`'dır ve kartı çizilmez.
  */
-export function AdminDashboard({ session, now }: { session: Session; now: Date }) {
+export function AdminDashboard({ session }: { session: Session }) {
   const role = session.role
-  const finance = session.modules.finance === true
-  const academic = session.modules.academic === true
-  const today = dayKey(now)
+  const query = useDashboard('yonetici')
+  const data = query.data ?? null
+  const state = combineStates(query)
+  const loaded = data !== null
+  const finance = sectionVisible(data?.finance, loaded, session.modules.finance === true)
+  const academic = sectionVisible(data?.attendanceToday, loaded, session.modules.academic === true)
 
-  const students = useCoreCounts('students', { groupBy: 'isActive' })
-  const studentsByClass = useCoreCounts('students', { groupBy: 'classId', filters: ACTIVE })
-  const classes = useCoreCounts('classes', {
-    groupBy: 'branchId',
-    sum: 'capacity',
-    filters: ACTIVE,
-  })
-  const teachers = useCoreCounts('teachers', { groupBy: 'isActive' })
-  const invoices = useCoreCounts(
-    'invoices',
-    { groupBy: 'status', sum: 'amount' },
-    { enabled: finance },
-  )
-  const collectedToday = useCoreCounts(
-    'invoices',
-    {
-      groupBy: 'status',
-      sum: 'amount',
-      filters: { dateField: 'paidAt', dateFrom: today, dateTo: today },
-    },
-    { enabled: finance },
-  )
-  const attendance = useCoreCounts(
-    'attendance',
-    { groupBy: 'status', filters: { dateFrom: today, dateTo: today } },
-    { enabled: academic },
-  )
-  const recent = useCoreList('students', { sort: ['-createdAt'], pageSize: 5, filters: ACTIVE })
-  const classRefs = useCoreAll('classes')
-  const branchRefs = useCoreAll('branches', { filters: ACTIVE })
-
-  const occupancy = useMemo(() => {
-    if (!classRefs.data || !branchRefs.data || !studentsByClass.data || !classes.data) return []
-    const classBranch = new Map(classRefs.data.map((row) => [row.record.id, row.record.branchId]))
-    return campusOccupancy(
-      branchRefs.data.map((row) => row.record),
-      classBranch,
-      studentsByClass.data,
-      classes.data,
-    )
-  }, [classRefs.data, branchRefs.data, studentsByClass.data, classes.data])
-
-  const slices = invoices.data ? invoiceStatusSlices(invoices.data) : []
+  const invoices = data?.finance?.invoices
+  const slices = invoices ? invoiceStatusSlices(invoices) : []
   const overdue = slices.find((slice) => slice.key === 'gecikmis')
-  const summary = attendance.data ? attendanceSummary(attendance.data) : null
-  const campusCount = classes.data?.groups.filter((group) => group.value !== null).length ?? 0
+  const summary = data?.attendanceToday ? attendanceSummary(data.attendanceToday) : null
+  const occupancy = data ? campusOccupancy(data.campuses) : []
+  const archived = data?.students.archived ?? 0
 
   return (
     <>
@@ -92,49 +53,45 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
         <StatCard
           label="Aktif öğrenci"
           icon="GraduationCap"
-          value={number(countOf(students.data, true))}
-          note={
-            countOf(students.data, false)
-              ? `${number(countOf(students.data, false))} öğrenci arşivde`
-              : 'Arşivde öğrenci yok'
-          }
+          value={number(data?.students.active)}
+          note={archived ? `${number(archived)} öğrenci arşivde` : 'Arşivde öğrenci yok'}
           href={dashboardHref(role, 'subeler')}
-          state={combineStates(students)}
+          state={state}
         />
         <StatCard
           label="Aktif sınıf"
           icon="School"
-          value={number(classes.data?.total)}
-          note={`${number(campusCount)} kampüste`}
+          value={number(data?.classes.active)}
+          note={`${number(data?.classes.campusCount)} kampüste`}
           href={dashboardHref(role, 'subeler')}
-          state={combineStates(classes)}
+          state={state}
         />
         <StatCard
           label="Öğretmen kadrosu"
           icon="UsersRound"
-          value={number(countOf(teachers.data, true))}
+          value={number(data?.teachers.active)}
           note="Aktif öğretmen"
           href={dashboardHref(role, 'personel')}
-          state={combineStates(teachers)}
+          state={state}
         />
         {finance ? (
           <StatCard
             label="Bugünkü tahsilat"
             icon="CircleCheck"
-            value={money(sumOf(collectedToday.data, INVOICE_STATUS_LABELS.odendi))}
-            note={`${number(countOf(collectedToday.data, INVOICE_STATUS_LABELS.odendi))} taksit bugün ödendi`}
+            value={money(data?.finance?.collectedToday.amount ?? 0)}
+            note={`${number(data?.finance?.collectedToday.count ?? 0)} taksit bugün ödendi`}
             href={dashboardHref(role, 'finans', { durum: 'odendi' })}
-            state={combineStates(collectedToday)}
+            state={state}
           />
         ) : null}
         {finance ? (
           <StatCard
             label="Bekleyen tahsilat"
             icon="Wallet"
-            value={money(invoices.data ? outstandingAmount(invoices.data) : 0)}
+            value={money(invoices ? outstandingAmount(invoices) : 0)}
             note={`${number(overdue?.count)} gecikmiş taksit`}
             href={dashboardHref(role, 'finans', { durum: 'gecikmis' })}
-            state={combineStates(invoices)}
+            state={state}
           />
         ) : null}
       </StatGrid>
@@ -143,10 +100,10 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
         {finance ? (
           <ListCard
             title="Taksit durumu"
-            description={`Ödeme planı toplamı ${money(invoices.data?.sum)} · ${number(invoices.data?.total)} taksit`}
+            description={`Ödeme planı toplamı ${money(invoices?.amount)} · ${number(invoices?.total)} taksit`}
             action={{ label: 'Finansı aç', href: dashboardHref(role, 'finans') }}
-            state={combineStates(invoices)}
-            isEmpty={invoices.data?.total === 0}
+            state={state}
+            isEmpty={invoices?.total === 0}
             emptyText="Henüz ödeme planı oluşturulmadı."
           >
             <CardList label="Taksit durumları">
@@ -177,7 +134,7 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
           <ListCard
             title="Bugünkü yoklama"
             description="Bugün alınan yoklama kayıtları"
-            state={combineStates(attendance)}
+            state={state}
             isEmpty={summary?.total === 0}
             emptyText="Bugün henüz yoklama alınmadı."
           >
@@ -210,7 +167,11 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
 
       {finance ? (
         <DashboardGrid>
-          <CollectionTrend now={now} href={dashboardHref(role, 'finans', { durum: 'odendi' })} />
+          <CollectionTrend
+            monthly={data?.finance?.monthlyCollection}
+            state={state}
+            href={dashboardHref(role, 'finans', { durum: 'odendi' })}
+          />
         </DashboardGrid>
       ) : null}
 
@@ -218,22 +179,18 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
         <ListCard
           title="Son kayıtlar"
           description="Kuruma en son eklenen öğrenciler"
-          state={combineStates(recent)}
-          isEmpty={recent.data?.rows.length === 0}
+          state={state}
+          isEmpty={data?.recentStudents.length === 0}
           emptyText="Henüz öğrenci kaydı yok."
         >
           <CardList label="Son kayıtlar">
-            {recent.data?.rows.map((row) => (
+            {data?.recentStudents.map((row) => (
               <li key={row.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                <Avatar name={row.record.name} size="small" />
+                <Avatar name={row.name} size="small" />
                 <span className="grid min-w-0">
-                  <strong className="font-medium [overflow-wrap:anywhere]">
-                    {row.record.name}
-                  </strong>
+                  <strong className="font-medium [overflow-wrap:anywhere]">{row.name}</strong>
                   <small className="text-sm text-muted-foreground">
-                    {[row.joined?.className ?? '—', row.record.number]
-                      .filter(Boolean)
-                      .join(' · No: ')}
+                    {[row.className ?? '—', row.number].filter(Boolean).join(' · No: ')}
                   </small>
                 </span>
               </li>
@@ -243,7 +200,7 @@ export function AdminDashboard({ session, now }: { session: Session; now: Date }
         <ListCard
           title="Kampüs dolulukları"
           description="Aktif öğrenci ve kontenjan"
-          state={combineStates(classRefs, branchRefs, studentsByClass, classes)}
+          state={state}
           isEmpty={occupancy.length === 0}
           emptyText="Aktif kampüs bulunmuyor."
         >

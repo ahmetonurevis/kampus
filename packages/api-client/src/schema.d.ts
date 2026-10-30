@@ -204,6 +204,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Genel Bakış özeti
+         * @description Etkin rolün Genel Bakış kartları, kısa listeleri ve mini grafik verisi tek yanıtta; yanıt `role` alanıyla ayrılır. Değerler koleksiyon okuma uçlarının (`/collections/:c`, `/collections/:c/counts`) aynı kapsam ve süzgeçleriyle hesaplanır. Okuduğu koleksiyon aktöre kapalı olan bölüm (kapalı modül, kurum türünde olmayan modül, rolün okuyamadığı koleksiyon) `null` döner. Etkin kurum yoksa 403 `no_active_institution`; velide kapsam dışı `studentId` 404.
+         */
+        get: operations["getDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workflows/goal": {
         parameters: {
             query?: never;
@@ -1823,6 +1843,302 @@ export interface components {
                 overdue: boolean;
             } | null;
         };
+        DashboardStatusTotalInput: {
+            count: number;
+            /** @description Kuruş */
+            amount: number;
+        };
+        DashboardInvoiceSummaryInput: {
+            /** @description Taksit sayısı */
+            total: number;
+            /** @description Ödeme planı toplamı (kuruş) */
+            amount: number;
+            /** @description Gecikmiş */
+            overdue: components["schemas"]["DashboardStatusTotalInput"];
+            /** @description Yaklaşan */
+            upcoming: components["schemas"]["DashboardStatusTotalInput"];
+            /** @description Ödendi */
+            paid: components["schemas"]["DashboardStatusTotalInput"];
+        };
+        DashboardAttendanceCountsInput: {
+            present: number;
+            absent: number;
+            late: number;
+            excused: number;
+            total: number;
+        };
+        DashboardInvoiceRowInput: {
+            id: string;
+            /** @description Bağlı öğrenci adı; kapsam dışında yok */
+            studentName?: string;
+            installment?: number;
+            /** @description Kuruş */
+            amount?: number;
+            /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+            dueDate?: string;
+            /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+            paidAt?: string;
+        };
+        DashboardAdminInput: {
+            /** @constant */
+            role: "yonetici";
+            /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+            today: string;
+            students: {
+                active: number;
+                archived: number;
+            };
+            classes: {
+                active: number;
+                /** @description Aktif sınıfı olan kampüs sayısı */
+                campusCount: number;
+            };
+            teachers: {
+                active: number;
+            };
+            /** @description `finance` modülü kapalıysa `null` */
+            finance: {
+                /** @description Taksit durumu dağılımı (core `invoiceStatus`, isteğin Istanbul günü) */
+                invoices: components["schemas"]["DashboardInvoiceSummaryInput"];
+                /** @description Bugün (`paidAt` günü) ödenen taksitler */
+                collectedToday: components["schemas"]["DashboardStatusTotalInput"];
+                monthlyCollection: {
+                    /** @description Son 6 ayda ödenen taksit */
+                    count: number;
+                    /** @description Kuruş */
+                    amount: number;
+                    /** @description Eskiden yeniye 6 ay (`paidAt:month`); kaydı olmayan ay sıfır */
+                    months: {
+                        /** @description `YYYY-MM` */
+                        month: string;
+                        count: number;
+                        /** @description Kuruş */
+                        amount: number;
+                    }[];
+                };
+            } | null;
+            /** @description Bugünkü yoklama; `academic` modülü kapalıysa `null` */
+            attendanceToday: components["schemas"]["DashboardAttendanceCountsInput"] | null;
+            /** @description En son eklenen 5 aktif öğrenci */
+            recentStudents: {
+                id: string;
+                name: string;
+                number?: string;
+                className?: string;
+            }[];
+            /** @description Aktif kampüs başına aktif öğrenci ve aktif sınıf kontenjanı */
+            campuses: {
+                id: string;
+                name: string;
+                students: number;
+                capacity: number;
+            }[];
+        };
+        DashboardFrontDeskInput: {
+            /** @constant */
+            role: "onburo";
+            /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+            today: string;
+            /** @description `finance` modülü kapalıysa `null` */
+            finance: {
+                /** @description Taksit durumu dağılımı (core `invoiceStatus`, isteğin Istanbul günü) */
+                invoices: components["schemas"]["DashboardInvoiceSummaryInput"];
+                /** @description Taksit sayısı ve tutarı (kuruş) */
+                collectedToday: components["schemas"]["DashboardStatusTotalInput"];
+                /** @description Vadesi en eski 5 gecikmiş taksit */
+                overdue: components["schemas"]["DashboardInvoiceRowInput"][];
+                /** @description Vadesi en yakın 5 yaklaşan taksit */
+                upcoming: components["schemas"]["DashboardInvoiceRowInput"][];
+                /** @description En son kaydedilen 5 ödeme */
+                recentPayments: components["schemas"]["DashboardInvoiceRowInput"][];
+            } | null;
+            /** @description `crm` modülü kapalıysa `null` */
+            prospects: {
+                total: number;
+                /** @description Aşama başına aday; aşamasız `null` sonda */
+                stages: {
+                    stage: string | null;
+                    count: number;
+                }[];
+            } | null;
+        };
+        DashboardTeacherInput: {
+            /** @constant */
+            role: "ogretmen";
+            /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+            today: string;
+            students: {
+                active: number;
+            };
+            classes: {
+                active: number;
+            };
+            /** @description `academic` modülü kapalıysa `null` */
+            academic: {
+                /** @description Yoklama durum sayıları; `total` bütün kayıtlar */
+                attendanceToday: components["schemas"]["DashboardAttendanceCountsInput"];
+                lessons: {
+                    /** @description Bugünkü iptal edilmemiş ders */
+                    total: number;
+                    /** @description Bugün iptal edilen ders */
+                    cancelled: number;
+                    items: {
+                        id: string;
+                        /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                        date: string;
+                        title?: string;
+                        subject?: string;
+                        room?: string;
+                        duration?: number;
+                        className?: string;
+                    }[];
+                };
+                /** @description Son 5 gelmedi/geç geldi kaydı */
+                recentAbsences: {
+                    id: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    date: string;
+                    status: string;
+                    studentName?: string;
+                    className?: string;
+                }[];
+            } | null;
+            /** @description `learning` modülü kapalıysa `null` */
+            learning: {
+                /** @description Notlanmamış teslim */
+                ungraded: number;
+                /** @description Son teslim günü bugün veya sonrası olan en yakın 5 ödev */
+                homework: {
+                    id: string;
+                    title: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    dueDate: string;
+                    className?: string;
+                    delivered: number;
+                    /** @description Ödevin sınıfındaki aktif öğrenci */
+                    expected: number;
+                }[];
+            } | null;
+        };
+        DashboardStudentInput: {
+            /** @constant */
+            role: "ogrenci";
+            /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+            today: string;
+            student: {
+                id: string;
+                name: string;
+            };
+            /** @description `academic` modülü kapalıysa `null` */
+            academic: {
+                grades: {
+                    count: number;
+                    scoreSum: number;
+                    subjects: {
+                        subjectId: string;
+                        name?: string;
+                        count: number;
+                        scoreSum: number;
+                    }[];
+                };
+                /** @description Yoklama durum sayıları; `total` bütün kayıtlar */
+                attendance: components["schemas"]["DashboardAttendanceCountsInput"];
+                /** @description Son 8 hafta (pazartesi–pazar), eskiden yeniye */
+                weeklyAbsences: {
+                    /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+                    from: string;
+                    /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+                    to: string;
+                    absent: number;
+                }[];
+                recentGrades: {
+                    id: string;
+                    title: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    date: string;
+                    score?: number;
+                }[];
+            } | null;
+            /** @description `learning` modülü kapalıysa `null` */
+            learning: {
+                submitted: number;
+                /** @description Sınıfa verilen ödev */
+                assigned: number;
+                homework: {
+                    id: string;
+                    title: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    dueDate: string;
+                    /** @description Teslim yoksa `null`; `score` `null` ise notlanmamış */
+                    submission: {
+                        score: number | null;
+                    } | null;
+                }[];
+            } | null;
+        };
+        DashboardParentInput: {
+            /** @constant */
+            role: "veli";
+            /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+            today: string;
+            student: {
+                id: string;
+                name: string;
+            };
+            /** @description `academic` modülü kapalıysa `null` */
+            academic: {
+                grades: {
+                    count: number;
+                    scoreSum: number;
+                    subjects: {
+                        subjectId: string;
+                        name?: string;
+                        count: number;
+                        scoreSum: number;
+                    }[];
+                };
+                /** @description Yoklama durum sayıları; `total` bütün kayıtlar */
+                attendance: components["schemas"]["DashboardAttendanceCountsInput"];
+                /** @description Son 8 hafta (pazartesi–pazar), eskiden yeniye */
+                weeklyAbsences: {
+                    /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+                    from: string;
+                    /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+                    to: string;
+                    absent: number;
+                }[];
+                recentGrades: {
+                    id: string;
+                    title: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    date: string;
+                    score?: number;
+                }[];
+            } | null;
+            /** @description `learning` modülü kapalıysa `null` */
+            learning: {
+                submitted: number;
+                /** @description Sınıfa verilen ödev */
+                assigned: number;
+                homework: {
+                    id: string;
+                    title: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    dueDate: string;
+                    /** @description Teslim yoksa `null`; `score` `null` ise notlanmamış */
+                    submission: {
+                        score: number | null;
+                    } | null;
+                }[];
+            } | null;
+            /** @description Seçili çocuğun bakiyesi; `finance` modülü kapalıysa `null` */
+            balance: {
+                /** @description Gecikmiş + yaklaşan taksit toplamı */
+                outstanding: number;
+                overdueCount: number;
+            } | null;
+        };
+        DashboardInput: components["schemas"]["DashboardAdminInput"] | components["schemas"]["DashboardFrontDeskInput"] | components["schemas"]["DashboardTeacherInput"] | components["schemas"]["DashboardStudentInput"] | components["schemas"]["DashboardParentInput"];
         HealthInput: {
             /**
              * @description Sunucu çalışıyor
@@ -2210,6 +2526,302 @@ export interface components {
                 overdue: boolean;
             } | null;
         };
+        DashboardStatusTotal: {
+            count: number;
+            /** @description Kuruş */
+            amount: number;
+        };
+        DashboardInvoiceSummary: {
+            /** @description Taksit sayısı */
+            total: number;
+            /** @description Ödeme planı toplamı (kuruş) */
+            amount: number;
+            /** @description Gecikmiş */
+            overdue: components["schemas"]["DashboardStatusTotal"];
+            /** @description Yaklaşan */
+            upcoming: components["schemas"]["DashboardStatusTotal"];
+            /** @description Ödendi */
+            paid: components["schemas"]["DashboardStatusTotal"];
+        };
+        DashboardAttendanceCounts: {
+            present: number;
+            absent: number;
+            late: number;
+            excused: number;
+            total: number;
+        };
+        DashboardInvoiceRow: {
+            id: string;
+            /** @description Bağlı öğrenci adı; kapsam dışında yok */
+            studentName?: string;
+            installment?: number;
+            /** @description Kuruş */
+            amount?: number;
+            /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+            dueDate?: string;
+            /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+            paidAt?: string;
+        };
+        DashboardAdmin: {
+            /** @constant */
+            role: "yonetici";
+            /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+            today: string;
+            students: {
+                active: number;
+                archived: number;
+            };
+            classes: {
+                active: number;
+                /** @description Aktif sınıfı olan kampüs sayısı */
+                campusCount: number;
+            };
+            teachers: {
+                active: number;
+            };
+            /** @description `finance` modülü kapalıysa `null` */
+            finance: {
+                /** @description Taksit durumu dağılımı (core `invoiceStatus`, isteğin Istanbul günü) */
+                invoices: components["schemas"]["DashboardInvoiceSummary"];
+                /** @description Bugün (`paidAt` günü) ödenen taksitler */
+                collectedToday: components["schemas"]["DashboardStatusTotal"];
+                monthlyCollection: {
+                    /** @description Son 6 ayda ödenen taksit */
+                    count: number;
+                    /** @description Kuruş */
+                    amount: number;
+                    /** @description Eskiden yeniye 6 ay (`paidAt:month`); kaydı olmayan ay sıfır */
+                    months: {
+                        /** @description `YYYY-MM` */
+                        month: string;
+                        count: number;
+                        /** @description Kuruş */
+                        amount: number;
+                    }[];
+                };
+            } | null;
+            /** @description Bugünkü yoklama; `academic` modülü kapalıysa `null` */
+            attendanceToday: components["schemas"]["DashboardAttendanceCounts"] | null;
+            /** @description En son eklenen 5 aktif öğrenci */
+            recentStudents: {
+                id: string;
+                name: string;
+                number?: string;
+                className?: string;
+            }[];
+            /** @description Aktif kampüs başına aktif öğrenci ve aktif sınıf kontenjanı */
+            campuses: {
+                id: string;
+                name: string;
+                students: number;
+                capacity: number;
+            }[];
+        };
+        DashboardFrontDesk: {
+            /** @constant */
+            role: "onburo";
+            /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+            today: string;
+            /** @description `finance` modülü kapalıysa `null` */
+            finance: {
+                /** @description Taksit durumu dağılımı (core `invoiceStatus`, isteğin Istanbul günü) */
+                invoices: components["schemas"]["DashboardInvoiceSummary"];
+                /** @description Taksit sayısı ve tutarı (kuruş) */
+                collectedToday: components["schemas"]["DashboardStatusTotal"];
+                /** @description Vadesi en eski 5 gecikmiş taksit */
+                overdue: components["schemas"]["DashboardInvoiceRow"][];
+                /** @description Vadesi en yakın 5 yaklaşan taksit */
+                upcoming: components["schemas"]["DashboardInvoiceRow"][];
+                /** @description En son kaydedilen 5 ödeme */
+                recentPayments: components["schemas"]["DashboardInvoiceRow"][];
+            } | null;
+            /** @description `crm` modülü kapalıysa `null` */
+            prospects: {
+                total: number;
+                /** @description Aşama başına aday; aşamasız `null` sonda */
+                stages: {
+                    stage: string | null;
+                    count: number;
+                }[];
+            } | null;
+        };
+        DashboardTeacher: {
+            /** @constant */
+            role: "ogretmen";
+            /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+            today: string;
+            students: {
+                active: number;
+            };
+            classes: {
+                active: number;
+            };
+            /** @description `academic` modülü kapalıysa `null` */
+            academic: {
+                /** @description Yoklama durum sayıları; `total` bütün kayıtlar */
+                attendanceToday: components["schemas"]["DashboardAttendanceCounts"];
+                lessons: {
+                    /** @description Bugünkü iptal edilmemiş ders */
+                    total: number;
+                    /** @description Bugün iptal edilen ders */
+                    cancelled: number;
+                    items: {
+                        id: string;
+                        /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                        date: string;
+                        title?: string;
+                        subject?: string;
+                        room?: string;
+                        duration?: number;
+                        className?: string;
+                    }[];
+                };
+                /** @description Son 5 gelmedi/geç geldi kaydı */
+                recentAbsences: {
+                    id: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    date: string;
+                    status: string;
+                    studentName?: string;
+                    className?: string;
+                }[];
+            } | null;
+            /** @description `learning` modülü kapalıysa `null` */
+            learning: {
+                /** @description Notlanmamış teslim */
+                ungraded: number;
+                /** @description Son teslim günü bugün veya sonrası olan en yakın 5 ödev */
+                homework: {
+                    id: string;
+                    title: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    dueDate: string;
+                    className?: string;
+                    delivered: number;
+                    /** @description Ödevin sınıfındaki aktif öğrenci */
+                    expected: number;
+                }[];
+            } | null;
+        };
+        DashboardStudent: {
+            /** @constant */
+            role: "ogrenci";
+            /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+            today: string;
+            student: {
+                id: string;
+                name: string;
+            };
+            /** @description `academic` modülü kapalıysa `null` */
+            academic: {
+                grades: {
+                    count: number;
+                    scoreSum: number;
+                    subjects: {
+                        subjectId: string;
+                        name?: string;
+                        count: number;
+                        scoreSum: number;
+                    }[];
+                };
+                /** @description Yoklama durum sayıları; `total` bütün kayıtlar */
+                attendance: components["schemas"]["DashboardAttendanceCounts"];
+                /** @description Son 8 hafta (pazartesi–pazar), eskiden yeniye */
+                weeklyAbsences: {
+                    /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+                    from: string;
+                    /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+                    to: string;
+                    absent: number;
+                }[];
+                recentGrades: {
+                    id: string;
+                    title: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    date: string;
+                    score?: number;
+                }[];
+            } | null;
+            /** @description `learning` modülü kapalıysa `null` */
+            learning: {
+                submitted: number;
+                /** @description Sınıfa verilen ödev */
+                assigned: number;
+                homework: {
+                    id: string;
+                    title: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    dueDate: string;
+                    /** @description Teslim yoksa `null`; `score` `null` ise notlanmamış */
+                    submission: {
+                        score: number | null;
+                    } | null;
+                }[];
+            } | null;
+        };
+        DashboardParent: {
+            /** @constant */
+            role: "veli";
+            /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+            today: string;
+            student: {
+                id: string;
+                name: string;
+            };
+            /** @description `academic` modülü kapalıysa `null` */
+            academic: {
+                grades: {
+                    count: number;
+                    scoreSum: number;
+                    subjects: {
+                        subjectId: string;
+                        name?: string;
+                        count: number;
+                        scoreSum: number;
+                    }[];
+                };
+                /** @description Yoklama durum sayıları; `total` bütün kayıtlar */
+                attendance: components["schemas"]["DashboardAttendanceCounts"];
+                /** @description Son 8 hafta (pazartesi–pazar), eskiden yeniye */
+                weeklyAbsences: {
+                    /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+                    from: string;
+                    /** @description Europe/Istanbul günü (`YYYY-MM-DD`) */
+                    to: string;
+                    absent: number;
+                }[];
+                recentGrades: {
+                    id: string;
+                    title: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    date: string;
+                    score?: number;
+                }[];
+            } | null;
+            /** @description `learning` modülü kapalıysa `null` */
+            learning: {
+                submitted: number;
+                /** @description Sınıfa verilen ödev */
+                assigned: number;
+                homework: {
+                    id: string;
+                    title: string;
+                    /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                    dueDate: string;
+                    /** @description Teslim yoksa `null`; `score` `null` ise notlanmamış */
+                    submission: {
+                        score: number | null;
+                    } | null;
+                }[];
+            } | null;
+            /** @description Seçili çocuğun bakiyesi; `finance` modülü kapalıysa `null` */
+            balance: {
+                /** @description Gecikmiş + yaklaşan taksit toplamı */
+                outstanding: number;
+                overdueCount: number;
+            } | null;
+        };
+        Dashboard: components["schemas"]["DashboardAdmin"] | components["schemas"]["DashboardFrontDesk"] | components["schemas"]["DashboardTeacher"] | components["schemas"]["DashboardStudent"] | components["schemas"]["DashboardParent"];
         Health: {
             /**
              * @description Sunucu çalışıyor
@@ -3199,6 +3811,85 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["CollectionItem"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getDashboard: {
+        parameters: {
+            query?: {
+                /** @description Yalnız öğrenci ve velide: özeti gösterilecek öğrenci. Velide seçili çocuk (verilmezse kapsamdaki ilk çocuk); kapsam dışı öğrenci 404. Diğer rollerde 400 */
+                studentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Dashboard"];
                     };
                 };
             };

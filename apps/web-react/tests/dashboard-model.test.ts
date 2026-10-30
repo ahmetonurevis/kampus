@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
-import type { CollectionCounts } from '@kampus/react-shared/collections.ts'
 import {
   attendanceSummary,
   campusOccupancy,
@@ -8,22 +7,28 @@ import {
   firstName,
   hasTrendData,
   invoiceStatusSlices,
+  monthLabel,
   monthlyPoints,
-  monthRangeStart,
-  monthSlices,
   outstandingAmount,
   overallAverage,
+  sectionVisible,
   subjectAverageRows,
   trendSummary,
   weeklyPoints,
-  weekSlices,
+  type InvoiceSummary,
 } from '../src/pages/dashboard/dashboard-model.ts'
 
-const counts = (
-  groups: CollectionCounts['groups'],
-  sum?: number,
-  total = groups.reduce((n, group) => n + group.count, 0),
-): CollectionCounts => ({ groups, total, ...(sum === undefined ? {} : { sum }) })
+// Girdi Genel Bakış özetinin (`GET /api/v1/dashboard`) parçalarıdır; hafta/ay dilimleri ve sayımlar
+// sunucudadır (apps/api/test/dashboard.test.ts). Burada yalnız oran, ortalama ve etiket türetilir.
+
+const summary = (parts: Partial<InvoiceSummary> = {}): InvoiceSummary => ({
+  total: 0,
+  amount: 0,
+  overdue: { count: 0, amount: 0 },
+  upcoming: { count: 0, amount: 0 },
+  paid: { count: 0, amount: 0 },
+  ...parts,
+})
 
 describe('bağlantılar ve adlar', () => {
   test('ilk ad boşluklardan ayrılır', () => {
@@ -46,16 +51,24 @@ describe('bağlantılar ve adlar', () => {
   })
 })
 
+describe('bölüm görünürlüğü', () => {
+  test('yanıt gelince sunucunun kararı (null bölüm gizli), gelmeden modül bayrağı', () => {
+    assert.equal(sectionVisible(null, true, true), false)
+    assert.equal(sectionVisible({}, true, false), true)
+    assert.equal(sectionVisible(undefined, false, true), true)
+    assert.equal(sectionVisible(undefined, false, false), false)
+  })
+})
+
 describe('taksit dağılımı', () => {
   test('durumlar öncelik sırasıyla, kayıt olmayan durum sıfırla gelir', () => {
     const slices = invoiceStatusSlices(
-      counts(
-        [
-          { value: 'Gecikmiş', count: 2, sum: 250_000 },
-          { value: 'Ödendi', count: 6, sum: 750_000 },
-        ],
-        1_000_000,
-      ),
+      summary({
+        total: 8,
+        amount: 1_000_000,
+        overdue: { count: 2, amount: 250_000 },
+        paid: { count: 6, amount: 750_000 },
+      }),
     )
     assert.deepEqual(
       slices.map(({ key, count, amount, share }) => [key, count, amount, share]),
@@ -69,17 +82,16 @@ describe('taksit dağılımı', () => {
   })
 
   test('toplam yoksa pay sıfırdır; ödenmemiş tutar gecikmiş + yaklaşandır', () => {
-    assert.ok(invoiceStatusSlices(counts([])).every((slice) => slice.share === 0))
+    assert.ok(invoiceStatusSlices(summary()).every((slice) => slice.share === 0))
     assert.equal(
       outstandingAmount(
-        counts(
-          [
-            { value: 'Gecikmiş', count: 1, sum: 100 },
-            { value: 'Yaklaşan', count: 2, sum: 300 },
-            { value: 'Ödendi', count: 5, sum: 900 },
-          ],
-          1300,
-        ),
+        summary({
+          total: 8,
+          amount: 1300,
+          overdue: { count: 1, amount: 100 },
+          upcoming: { count: 2, amount: 300 },
+          paid: { count: 5, amount: 900 },
+        }),
       ),
       400,
     )
@@ -88,45 +100,29 @@ describe('taksit dağılımı', () => {
 
 describe('yoklama özeti', () => {
   test('katılım geldi + geç geldi üzerinden; kayıt yoksa oran yok', () => {
-    const summary = attendanceSummary(
-      counts([
-        { value: 'absent', count: 1 },
-        { value: 'late', count: 1 },
-        { value: 'present', count: 6 },
-      ]),
+    const counts = { present: 6, absent: 1, late: 1, excused: 0, total: 8 }
+    assert.deepEqual(attendanceSummary(counts), { ...counts, rate: 88 })
+    assert.equal(
+      attendanceSummary({ present: 0, absent: 0, late: 0, excused: 0, total: 0 }).rate,
+      null,
     )
-    assert.deepEqual(summary, { present: 6, absent: 1, late: 1, excused: 0, total: 8, rate: 88 })
-    assert.equal(attendanceSummary(counts([])).rate, null)
   })
 })
 
 describe('haftalık seri', () => {
-  test('bugünün haftası dahil sekiz pazartesi, eskiden yeniye', () => {
-    // 2026-10-30 cuma; haftası 26 Ekim pazartesi.
-    const slices = weekSlices('2026-10-30')
-    assert.equal(slices.length, 8)
-    assert.deepEqual(slices.at(-1), { from: '2026-10-26', to: '2026-11-01', label: '26 Eki' })
-    assert.equal(slices[0]?.from, '2026-09-07')
-    assert.equal(slices[1]?.from, '2026-09-14')
-  })
-
-  test('dilim sayımlarından istenen grup; veri yoksa grafik yok ve özet bunu söyler', () => {
-    const slices = weekSlices('2026-10-30', 3)
-    const points = weeklyPoints(
-      slices,
-      [
-        counts([{ value: 'absent', count: 2 }]),
-        counts([{ value: 'present', count: 4 }]),
-        counts([
-          { value: 'absent', count: 1 },
-          { value: 'late', count: 3 },
-        ]),
-      ],
-      'absent',
-    )
+  test('etiket haftanın pazartesisi; veri yoksa grafik yok ve özet bunu söyler', () => {
+    const points = weeklyPoints([
+      { from: '2026-10-12', to: '2026-10-18', absent: 2 },
+      { from: '2026-10-19', to: '2026-10-25', absent: 0 },
+      { from: '2026-10-26', to: '2026-11-01', absent: 1 },
+    ])
     assert.deepEqual(
-      points.map((point) => point.value),
-      [2, 0, 1],
+      points.map((point) => [point.label, point.value]),
+      [
+        ['12 Eki', 2],
+        ['19 Eki', 0],
+        ['26 Eki', 1],
+      ],
     )
     assert.equal(hasTrendData(points), true)
     assert.equal(
@@ -141,90 +137,54 @@ describe('haftalık seri', () => {
 })
 
 describe('not ortalamaları', () => {
-  test('ders ortalaması sum / count, ders adına göre Türkçe sıralı; genel ortalama meta’dan', () => {
-    const grades = counts(
-      [
-        { value: 'math', count: 2, sum: 171 },
-        { value: 'eng', count: 3, sum: 240 },
-        { value: null, count: 1, sum: 50 },
+  test('ders ortalaması scoreSum / count, ders adına göre Türkçe sıralı; adsız ders "Ders"', () => {
+    const grades = {
+      count: 6,
+      scoreSum: 461,
+      subjects: [
+        { subjectId: 'math', name: 'Matematik', count: 2, scoreSum: 171 },
+        { subjectId: 'eng', name: 'İngilizce', count: 3, scoreSum: 240 },
+        { subjectId: 'x', count: 1, scoreSum: 50 },
       ],
-      461,
-    )
-    const names = new Map([
-      ['math', 'Matematik'],
-      ['eng', 'İngilizce'],
-    ])
-    assert.deepEqual(subjectAverageRows(grades, names), [
+    }
+    assert.deepEqual(subjectAverageRows(grades), [
+      { subjectId: 'x', name: 'Ders', average: 50, count: 1 },
       { subjectId: 'eng', name: 'İngilizce', average: 80, count: 3 },
       { subjectId: 'math', name: 'Matematik', average: 86, count: 2 },
     ])
     assert.equal(overallAverage(grades), 77)
-    assert.equal(overallAverage(counts([])), null)
+    assert.equal(overallAverage({ count: 0, scoreSum: 0, subjects: [] }), null)
   })
 })
 
 describe('aylık seri', () => {
-  test('bugünün ayı dahil altı ay, yıl sınırını aşar ve eskiden yeniye sıralanır', () => {
-    const slices = monthSlices('2026-02-10')
+  test('ay etiketi kısa ad ve iki haneli yıl; değer ayın toplamıdır', () => {
+    assert.equal(monthLabel('2026-10'), 'Eki 26')
     assert.deepEqual(
-      slices.map((slice) => slice.key),
-      ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02'],
-    )
-    assert.equal(monthRangeStart(slices), '2025-09-01')
-  })
-
-  test('sunucunun YYYY-MM gruplarından değer; grubu olmayan ay sıfır', () => {
-    const slices = monthSlices('2026-10-30', 3)
-    const grouped = counts(
+      monthlyPoints([
+        { month: '2026-08', count: 2, amount: 5000 },
+        { month: '2026-09', count: 0, amount: 0 },
+        { month: '2026-10', count: 1, amount: 2500 },
+      ]).map((point) => [point.label, point.value]),
       [
-        { value: '2026-08', count: 2, sum: 5000 },
-        { value: '2026-10', count: 1, sum: 2500 },
-        { value: null, count: 4, sum: 100 },
+        ['Ağu 26', 5000],
+        ['Eyl 26', 0],
+        ['Eki 26', 2500],
       ],
-      7600,
-    )
-    assert.deepEqual(
-      monthlyPoints(slices, grouped, 'sum').map((point) => point.value),
-      [5000, 0, 2500],
-    )
-    assert.deepEqual(
-      monthlyPoints(slices, grouped).map((point) => point.value),
-      [2, 0, 1],
     )
   })
 })
 
 describe('kampüs doluluğu', () => {
-  test('sınıf sayımı sınıfın kampüsüyle birleşir; kontenjan yoksa yüzde sıfır', () => {
-    const rows = campusOccupancy(
-      [
-        { id: 'b1', name: 'Merkez' },
-        { id: 'b2', name: 'Kuzey' },
-        { id: 'b3', name: 'Yeni' },
-      ],
-      new Map([
-        ['c1', 'b1'],
-        ['c2', 'b1'],
-        ['c3', 'b2'],
-      ]),
-      counts([
-        { value: 'c1', count: 20 },
-        { value: 'c2', count: 10 },
-        { value: 'c3', count: 30 },
-        { value: 'c9', count: 5 },
-      ]),
-      counts(
-        [
-          { value: 'b1', count: 2, sum: 60 },
-          { value: 'b2', count: 1, sum: 24 },
-        ],
-        84,
-      ),
-    )
-    assert.deepEqual(rows, [
-      { id: 'b1', name: 'Merkez', students: 30, capacity: 60, percentage: 50 },
-      { id: 'b2', name: 'Kuzey', students: 30, capacity: 24, percentage: 100 },
-      { id: 'b3', name: 'Yeni', students: 0, capacity: 0, percentage: 0 },
+  test('doluluk yüzdesi en fazla 100; kontenjan yoksa sıfır', () => {
+    const rows = campusOccupancy([
+      { id: 'b1', name: 'Merkez', students: 30, capacity: 60 },
+      { id: 'b2', name: 'Kuzey', students: 30, capacity: 24 },
+      { id: 'b3', name: 'Yeni', students: 0, capacity: 0 },
     ])
+    assert.deepEqual(
+      rows.map((row) => row.percentage),
+      [50, 100, 0],
+    )
   })
 })

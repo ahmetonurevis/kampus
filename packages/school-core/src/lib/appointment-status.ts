@@ -44,8 +44,8 @@ export function appointmentClosed(appointment: { status?: string | undefined }):
 /**
  * Günlük programda görünen randevular: yalnız onaylanmışlar (DOM-ILT-104). Bekleyen talep henüz
  * yapılacak görüşme değildir; iptal, red ve geri çekme programdan düşer.
- * TODO(randevu-w20): React W20 ekranı günlük/haftalık programda randevuları bununla süzmeli;
- * Vue ve telefon demosu hâlâ yalnız `Reddedildi` durumunu dışlıyor.
+ * React randevu ekranı "Yaklaşan randevular"ı bununla kurar (W20b); Vue ve telefon demosu hâlâ
+ * yalnız `Reddedildi` durumunu dışlıyor.
  */
 export function scheduledAppointments<T extends { status?: string | undefined }>(
   appointments: readonly T[],

@@ -231,6 +231,8 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <MessagesPage page={page} />
     case 'ogrenci/randevu-talep':
       return <AppointmentsPage page={page} audience="student" />
+    case 'ogretmen/randevular':
+      return <AppointmentsPage page={page} audience="teacher" />
     case 'veli/randevu-mesaj':
       return <ParentMessagesPage page={page} />
     case 'veli/sikayet-talep':

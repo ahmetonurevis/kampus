@@ -17,7 +17,6 @@ const KNOWN_PLACEHOLDERS: readonly string[] = [
   'onburo/adaylar',
   'onburo/deneme-dersi-takvimi',
   'onburo/kayit-islemleri',
-  'ogretmen/randevular',
 ]
 
 /** Kurum türünde bulunan menü sayfaları: modülü o türde açılabilen ya da modülsüz olanlar. */

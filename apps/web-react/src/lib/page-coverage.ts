@@ -54,6 +54,7 @@ export const MIGRATED = new Set([
   'yonetici/mesajlar',
   'veli/randevu-mesaj',
   'ogrenci/randevu-talep',
+  'ogretmen/randevular',
   'veli/finans',
   'veli/dekontlar',
   'veli/odeme-yap',

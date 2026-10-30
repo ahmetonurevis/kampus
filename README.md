@@ -6,7 +6,7 @@ Ortaokul ve lise için Vue 3 web paneli ve React Native Android uygulamasıyla h
 
 Rehberlik/takip dosyası, LGS/YKS/okul denemeleri ve CSV sonuç aktarımı, kayıt yenileme/dönem geçişi, çakışma kontrollü program yönetimi, çalışma planı/onay/değerlendirme, okul takvimi/veli izinleri, servis güzergâhları, yemek/alerjen menüsü ve kulüp/yoklama/proje akışları web paneline eklendi. Sekiz özellik servis/yemek ayrımıyla dokuz bağımsız modüldür. Yönetici ayarlarından ayrı ayrı kapatılabilir.
 
-Yeni akışlar ortak school-core 2.2.0 paketini kullanır. Eski yerel kayıtlar ve modül tercihleri korunur. Yenileme sözleşmesi yalnızca yeni dönem taksitlerini içerir; sınıf geçişi ayrı onayla uygulanır. Kullanım ve CSV şablonu: [Okul iş akışları](docs/okul-is-akislari.md).
+Yeni akışlar ortak school-core 2.4.0 paketini kullanır. Eski yerel kayıtlar ve modül tercihleri korunur. Yenileme sözleşmesi yalnızca yeni dönem taksitlerini içerir; sınıf geçişi ayrı onayla uygulanır. Kullanım ve CSV şablonu: [Okul iş akışları](docs/okul-is-akislari.md).
 
 ## Optik değerlendirme ve otomatik etüt
 

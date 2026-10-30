@@ -140,7 +140,9 @@ export const resourceVersions = pgTable(
     answerKey: jsonb('answer_key').$type<AnswerKey>(),
     license: jsonb('license').$type<ResourceLicense>(),
     /** Süzgeç ve bağımlılık göstergesi için lisans türü; `license`'tan türetilir, elle yazılmaz. */
-    licenseKind: text('license_kind').generatedAlwaysAs(sql`(license ->> 'kind')`),
+    licenseKind: text('license_kind')
+      .$type<ResourceLicense['kind']>()
+      .generatedAlwaysAs(sql`(license ->> 'kind')`),
     attributions: jsonb('attributions').$type<Attribution[]>().notNull().default([]),
     subjectId: text('subject_id'),
     gradeLevels: integer('grade_levels')

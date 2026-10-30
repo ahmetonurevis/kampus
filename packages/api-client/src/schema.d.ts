@@ -1612,6 +1612,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İçerik havuzu
+         * @description Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve `view: 'staff'` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü `view: 'learner'` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Süzgeçler baş sürüme uygulanır; bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listResources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kaynak ayrıntısı
+         * @description Personel: kaynak, paylaşım hedefleri, okunabilir sürümler, baş sürümün tamamı (içerik, cevap anahtarı, lisans) ve açık sürümde yayım eksikleri. Öğrenci/veli: güncel yayın sürümünün öğrenci görünümü (seçenekler kişiye sabit karıştırılır, cevap anahtarı yok, dinleme dökümü gizli; DOM-KYN-003, 024). Okunabilir sürümü olmayan veya başka kurumun kaynağı 404. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getResource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kaynak sürümü
+         * @description Tek sürüm. Personel okuyabildiği her sürümü (arşivli dahil; DOM-KYN-032) tam görür; öğrenci/veli yalnız güncel yayın sürümünü öğrenci görünümüyle. Diğer durumlarda 404. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getResourceVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2299,6 +2359,187 @@ export interface components {
             /** @description Yeni kurum ayar sürümü */
             version: number;
         };
+        ResourceTagsInput: {
+            subjectId: string | null;
+            gradeLevels: number[];
+            cefrLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+            primarySkill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+            skills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
+            activityMode: ("reception" | "production" | "interaction" | "mediation") | null;
+            interactionChannel: ("spoken" | "written" | "online") | null;
+            mediation: {
+                /** @enum {string} */
+                sourceSkill: "reading" | "listening" | "writing" | "speaking";
+                /** @enum {string} */
+                targetSkill: "reading" | "listening" | "writing" | "speaking";
+            } | null;
+            durationMinutes: number | null;
+            difficulty: ("easy" | "medium" | "hard") | null;
+            outcomes: {
+                outcomeId: string;
+                /** @enum {string} */
+                outcomeSource: "platform" | "institution";
+            }[];
+        };
+        ResourceAttributionInput: {
+            work: string;
+            author: string;
+            source: string;
+            year: number | null;
+        };
+        ResourceVersionSummaryInput: {
+            /** Format: uuid */
+            id: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+            title: string;
+            authorUserId: string;
+            tags: components["schemas"]["ResourceTagsInput"];
+            /** @description Lisans türü; seçilmemişse `null` */
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
+            archivedAt: string | null;
+            removedAt: string | null;
+        };
+        ResourceVersionInput: {
+            /** Format: uuid */
+            id: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+            title: string;
+            authorUserId: string;
+            tags: components["schemas"]["ResourceTagsInput"];
+            /** @description Lisans türü; seçilmemişse `null` */
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
+            archivedAt: string | null;
+            removedAt: string | null;
+            /** @description Kaldırılan sürümde `null` (DOM-KYN-051) */
+            content: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Cevap anahtarı (school-core `answerKeySchema`); yalnız personel */
+            answerKey: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel */
+            license: {
+                [key: string]: unknown;
+            } | null;
+            attributions: components["schemas"]["ResourceAttributionInput"][];
+            submittedAt: string | null;
+            reviewedByUserId: string | null;
+            reviewedAt: string | null;
+            rejectionReason: string | null;
+            removalReason: string | null;
+            /** @description İyimser kilit sürümü (`If-Match`) */
+            rowVersion: number;
+        };
+        LearnerResourceVersionInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            resourceId: string;
+            title: string;
+            /** @description Öğrenci görünümü: seçenekler kişiye sabit karıştırılır, dinleme görevinde döküm gizlidir */
+            content: {
+                [key: string]: unknown;
+            };
+            tags: components["schemas"]["ResourceTagsInput"];
+            attributions: components["schemas"]["ResourceAttributionInput"][];
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+        };
+        StaffResourceListItemInput: {
+            /** @constant */
+            view: "staff";
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            ownerUserId: string;
+            /** @enum {string} */
+            shareScope: "private" | "students" | "classes" | "department" | "institution";
+            /** @description Güncel yayındaki sürüm; hiç yayımlanmadıysa `null` */
+            currentVersionId: string | null;
+            /** @description Kopyalandığı sürüm */
+            derivedFromVersionId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Okunabilir baş sürüm */
+            version: components["schemas"]["ResourceVersionSummaryInput"];
+        };
+        LearnerResourceListItemInput: {
+            /** @constant */
+            view: "learner";
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            version: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                tags: components["schemas"]["ResourceTagsInput"];
+                licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            };
+        };
+        StaffResourceDetailInput: {
+            /** @constant */
+            view: "staff";
+            resource: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+                ownerUserId: string;
+                /** @enum {string} */
+                shareScope: "private" | "students" | "classes" | "department" | "institution";
+                /** @description Güncel yayındaki sürüm; hiç yayımlanmadıysa `null` */
+                currentVersionId: string | null;
+                /** @description Kopyalandığı sürüm */
+                derivedFromVersionId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                sharedStudentIds: string[];
+                sharedClassIds: string[];
+            };
+            /** @description Okunabilir sürümler, numaraya göre artan */
+            versions: components["schemas"]["ResourceVersionSummaryInput"][];
+            head: components["schemas"]["ResourceVersionInput"];
+            /** @description Açık sürümde (taslak, incelemede, reddedildi) yayım eksikleri; diğerlerinde boş */
+            publicationIssues: {
+                code: string;
+                message: string;
+                path: string[];
+            }[];
+        };
+        LearnerResourceDetailInput: {
+            /** @constant */
+            view: "learner";
+            resource: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            };
+            version: components["schemas"]["LearnerResourceVersionInput"];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -2981,6 +3222,187 @@ export interface components {
             };
             /** @description Yeni kurum ayar sürümü */
             version: number;
+        };
+        ResourceTags: {
+            subjectId: string | null;
+            gradeLevels: number[];
+            cefrLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+            primarySkill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+            skills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
+            activityMode: ("reception" | "production" | "interaction" | "mediation") | null;
+            interactionChannel: ("spoken" | "written" | "online") | null;
+            mediation: {
+                /** @enum {string} */
+                sourceSkill: "reading" | "listening" | "writing" | "speaking";
+                /** @enum {string} */
+                targetSkill: "reading" | "listening" | "writing" | "speaking";
+            } | null;
+            durationMinutes: number | null;
+            difficulty: ("easy" | "medium" | "hard") | null;
+            outcomes: {
+                outcomeId: string;
+                /** @enum {string} */
+                outcomeSource: "platform" | "institution";
+            }[];
+        };
+        ResourceAttribution: {
+            work: string;
+            author: string;
+            source: string;
+            year: number | null;
+        };
+        ResourceVersionSummary: {
+            /** Format: uuid */
+            id: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+            title: string;
+            authorUserId: string;
+            tags: components["schemas"]["ResourceTags"];
+            /** @description Lisans türü; seçilmemişse `null` */
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
+            archivedAt: string | null;
+            removedAt: string | null;
+        };
+        ResourceVersion: {
+            /** Format: uuid */
+            id: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+            title: string;
+            authorUserId: string;
+            tags: components["schemas"]["ResourceTags"];
+            /** @description Lisans türü; seçilmemişse `null` */
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
+            archivedAt: string | null;
+            removedAt: string | null;
+            /** @description Kaldırılan sürümde `null` (DOM-KYN-051) */
+            content: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Cevap anahtarı (school-core `answerKeySchema`); yalnız personel */
+            answerKey: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel */
+            license: {
+                [key: string]: unknown;
+            } | null;
+            attributions: components["schemas"]["ResourceAttribution"][];
+            submittedAt: string | null;
+            reviewedByUserId: string | null;
+            reviewedAt: string | null;
+            rejectionReason: string | null;
+            removalReason: string | null;
+            /** @description İyimser kilit sürümü (`If-Match`) */
+            rowVersion: number;
+        };
+        LearnerResourceVersion: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            resourceId: string;
+            title: string;
+            /** @description Öğrenci görünümü: seçenekler kişiye sabit karıştırılır, dinleme görevinde döküm gizlidir */
+            content: {
+                [key: string]: unknown;
+            };
+            tags: components["schemas"]["ResourceTags"];
+            attributions: components["schemas"]["ResourceAttribution"][];
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+        };
+        StaffResourceListItem: {
+            /** @constant */
+            view: "staff";
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            ownerUserId: string;
+            /** @enum {string} */
+            shareScope: "private" | "students" | "classes" | "department" | "institution";
+            /** @description Güncel yayındaki sürüm; hiç yayımlanmadıysa `null` */
+            currentVersionId: string | null;
+            /** @description Kopyalandığı sürüm */
+            derivedFromVersionId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Okunabilir baş sürüm */
+            version: components["schemas"]["ResourceVersionSummary"];
+        };
+        LearnerResourceListItem: {
+            /** @constant */
+            view: "learner";
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            version: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                tags: components["schemas"]["ResourceTags"];
+                licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            };
+        };
+        StaffResourceDetail: {
+            /** @constant */
+            view: "staff";
+            resource: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+                ownerUserId: string;
+                /** @enum {string} */
+                shareScope: "private" | "students" | "classes" | "department" | "institution";
+                /** @description Güncel yayındaki sürüm; hiç yayımlanmadıysa `null` */
+                currentVersionId: string | null;
+                /** @description Kopyalandığı sürüm */
+                derivedFromVersionId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                sharedStudentIds: string[];
+                sharedClassIds: string[];
+            };
+            /** @description Okunabilir sürümler, numaraya göre artan */
+            versions: components["schemas"]["ResourceVersionSummary"][];
+            head: components["schemas"]["ResourceVersion"];
+            /** @description Açık sürümde (taslak, incelemede, reddedildi) yayım eksikleri; diğerlerinde boş */
+            publicationIssues: {
+                code: string;
+                message: string;
+                path: string[];
+            }[];
+        };
+        LearnerResourceDetail: {
+            /** @constant */
+            view: "learner";
+            resource: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            };
+            version: components["schemas"]["LearnerResourceVersion"];
         };
     };
     responses: never;
@@ -11768,6 +12190,276 @@ export interface operations {
                             userId: string;
                             name: string;
                         }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listResources: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Başlık, metin ve kaynak gösteriminde önek araması. Türkçe harf, büyük/küçük harf ve uyumluluk biçimleri (NFKD) duyarsız; en fazla 8 terim, hepsi eşleşmeli. Cevap anahtarı ve dinleme dökümü aranmaz */
+                q?: string;
+                /** @description İçerik türü */
+                contentType?: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+                /** @description CEFR seviyesi */
+                cefrLevel?: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                /** @description Birincil beceri */
+                primarySkill?: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                /** @description Beceri listesinde bulunan beceri */
+                skill?: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation";
+                /** @description Ders kimliği */
+                subjectId?: string;
+                /** @description Sınıf düzeyi */
+                gradeLevel?: number;
+                /** @description Baş sürümün durumu. Yalnız personel; öğrenci ve velide 400 `staff_only_filter` */
+                status?: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+                /** @description Kaynak sahibi. Yalnız personel; öğrenci ve velide 400 `staff_only_filter` */
+                ownerUserId?: string;
+                /** @description Sıralama; eksi azalan. Eşitlikte kaynak kimliği */
+                sort?: "-updatedAt" | "updatedAt" | "title" | "-title";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: (components["schemas"]["StaffResourceListItem"] | components["schemas"]["LearnerResourceListItem"])[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StaffResourceDetail"] | components["schemas"]["LearnerResourceDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getResourceVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kaynak kimliği */
+                resourceId: string;
+                /** @description Sürüm kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            view: "staff";
+                            version: components["schemas"]["ResourceVersion"];
+                        } | {
+                            /** @enum {string} */
+                            view: "learner";
+                            version: components["schemas"]["LearnerResourceVersion"];
+                        };
                     };
                 };
             };

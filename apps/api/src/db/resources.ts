@@ -21,6 +21,7 @@ import {
   searchDocument,
   type ContentActor,
   type ResourceContent,
+  type ResourceLicense,
   type ResourceRecord,
   type ResourceStatus,
   type ResourceTags,
@@ -67,7 +68,7 @@ export type StoredResource = ResourceRecord & {
  */
 export type StoredResourceVersion = Omit<ResourceVersion, 'content'> & {
   content: ResourceContent | null
-  licenseKind: string | null
+  licenseKind: ResourceLicense['kind'] | null
   updatedAt: string
   rowVersion: number
 }
@@ -505,9 +506,15 @@ function listFilters(query: ResourceListQuery, v: VersionsTable): SQL[] {
   return filters
 }
 
+/** Başlık sıralaması Türkçe harfleri ASCII'ye katlar (`institution-members.ts` ad sırasıyla aynı). */
+const FOLD_FROM = 'ıİğĞüÜşŞöÖçÇ'
+const FOLD_TO = 'iigguussoocc'
+const foldedTitle = (v: VersionsTable) =>
+  sql`translate(lower(translate(${v.title}, ${FOLD_FROM}, ${FOLD_TO})), ${FOLD_FROM}, ${FOLD_TO})`
+
 function listOrder(sort: ResourceSort, v: VersionsTable): SQL[] {
   const direction = sort.startsWith('-') ? desc : asc
-  const key = sort === 'title' || sort === '-title' ? sql`lower(${v.title})` : v.updatedAt
+  const key = sort === 'title' || sort === '-title' ? foldedTitle(v) : v.updatedAt
   return [direction(key), asc(resources.id)]
 }
 
@@ -530,7 +537,7 @@ export async function listVisibleResources(
   if (viewer.kind === 'staff') {
     // Takma ad aynı kolonları taşır; yalnız tablo adı tipi farklıdır (`head`).
     const head = alias(resourceVersions, 'head') as unknown as VersionsTable
-    join = sql`${v.id} = (select ${head.id} from ${head}
+    join = sql`${v.id} = (select ${head.id} from ${resourceVersions} as ${sql.identifier('head')}
       where ${head.institutionId} = ${resources.institutionId} and ${head.resourceId} = ${resources.id}
         and ${versionVisibleSql(viewer, institutionType, now, resources, head)}
       order by (${head.status} = 'archived'), ${head.versionNumber} desc

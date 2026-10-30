@@ -220,6 +220,37 @@ describe('GET /api/v1/audit-events (DOM-YTK-053)', () => {
     }
   })
 
+  test('entityType=guidanceCases süzgecinde de kimlik, alan adı ve gerekçe boş döner', async () => {
+    const { institution, cookie } = await kurum()
+    await write(institution, {
+      action: 'workflow.guidance-note',
+      entityType: 'guidanceCases',
+      entityId: 'guid-gizli-1',
+      changes: { fields: ['notes', 'saglikNotu'] },
+      reason: 'gizli-gerekce',
+    })
+    await write(institution, {
+      action: 'guidanceCases.archive',
+      entityType: 'guidanceCases',
+      entityId: 'guid-gizli-2',
+      changes: { fields: ['deletedAt'] },
+    })
+    await write(institution, { action: 'x.1', entityType: 'invoices', entityId: 'i1' })
+    const response = await get('/api/v1/audit-events?entityType=guidanceCases', cookie)
+    assert.equal(response.statusCode, 200, response.body)
+    for (const secret of ['guid-gizli', 'notes', 'saglikNotu', 'gizli-gerekce', 'deletedAt'])
+      assert.ok(!response.body.includes(secret), secret)
+    const { data, meta } = response.json<EventList>()
+    assert.equal(meta.total, 2)
+    for (const row of data) {
+      assert.equal(row.action, 'workflow.guidance')
+      assert.equal(row.entityType, 'guidanceCases')
+      assert.equal(row.entityId, null)
+      assert.deepEqual(row.fields, [])
+      assert.equal(row.reason, null)
+    }
+  })
+
   test('isGuidanceEntry yalnız rehberlik varlıklarını yakalar', () => {
     const entry = (action: string, entityType: string | null, entityId: string | null = null) => ({
       action,
@@ -339,6 +370,43 @@ describe('GET /api/v1/audit-events (DOM-YTK-053)', () => {
       'dateFrom=dun',
       'dateFrom=2026-10-05&dateTo=2026-10-01',
     ])
+      assert.equal((await get(`/api/v1/audit-events?${bad}`, cookie)).statusCode, 400, bad)
+  })
+
+  test('createdBefore üst sınırı sonuçları süzer (hariç); sürerken yazılan kayıt sayfaları kaydırmaz', async () => {
+    const { institution, cookie } = await kurum()
+    for (let index = 0; index < 5; index += 1)
+      await write(institution, {
+        action: `b.${index}`,
+        createdAt: new Date(Date.UTC(2026, 9, 1, 10, index)),
+      })
+    const actions = async (query: string) =>
+      (await get(`/api/v1/audit-events?${query}`, cookie))
+        .json<EventList>()
+        .data.map((r) => r.action)
+    // Sınır hariçtir: 10:03 kaydı dışarıda kalır.
+    assert.deepEqual(await actions('createdBefore=2026-10-01T10:03:00.000Z'), ['b.2', 'b.1', 'b.0'])
+    assert.deepEqual(await actions('createdBefore=2026-10-01T10:03:00.001Z'), [
+      'b.3',
+      'b.2',
+      'b.1',
+      'b.0',
+    ])
+    assert.deepEqual(await actions('createdBefore=2026-10-01T09:00:00.000Z'), [])
+    // Dışa aktarma başlarken sınır sabitlenir; ilk sayfadan sonra yeni kayıt yazılsa da ikinci sayfa
+    // aynı satırları tekrar getirmez ve yeni kaydı içermez.
+    const bound = 'createdBefore=2026-10-01T11:00:00.000Z'
+    const first = await actions(`${bound}&pageSize=2&page=1`)
+    await write(institution, { action: 'b.yeni', createdAt: new Date('2026-10-01T12:00:00.000Z') })
+    const second = await actions(`${bound}&pageSize=2&page=2`)
+    const third = await actions(`${bound}&pageSize=2&page=3`)
+    assert.deepEqual([...first, ...second, ...third], ['b.4', 'b.3', 'b.2', 'b.1', 'b.0'])
+    // dateTo ile birlikte ikisi de uygulanır; kurum ve auth süzgeçleri korunur.
+    assert.deepEqual(
+      await actions('dateFrom=2026-10-01&dateTo=2026-10-01&createdBefore=2026-10-01T10:02:00.000Z'),
+      ['b.1', 'b.0'],
+    )
+    for (const bad of ['createdBefore=dun', 'createdBefore=2026-10-01', 'createdBefore='])
       assert.equal((await get(`/api/v1/audit-events?${bad}`, cookie)).statusCode, 400, bad)
   })
 

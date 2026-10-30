@@ -5,6 +5,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 ## R6 inceleme düzeltmeleri
 
 - Okuma kapsamı: öğrenci ve veli `opticalProfiles`'ta yalnız görebildiği denemelerin profilini alır (liste, arama, sıralama, ayrıntı ve `counts?groupBy=examId`); başka düzeyin profili artık yok. Kapsam kaynağı `mockExams`'i de yükler. Yanıt şekli değişmedi.
+- `GET /audit-events`: yeni `createdBefore` sorgu parametresi (ISO 8601 UTC, hariç üst zaman sınırı). Sayfalı dışa aktarma sınırı ilk istekte sabitler; sürerken yazılan yeni denetim kaydı offset sayfalarını kaydırıp CSV'de mükerrer satır üretmez. OpenAPI ve `api-client` şeması yeniden üretildi.
 - `GET /institution-members`: rolü tanınmayan (ör. sütun varsayılanı `member`) tek bir üyelik artık bütün listeyi 500'e düşürmez; satır `institution_members.role_unrecognized` uyarısıyla (yalnız üyelik kimliği) loglanıp listeden atlanır. `meta.total` satırı saymaya devam eder. Kimlik doğrulamadaki `safeParse` kalıbıyla aynıdır.
 
 ## Ayarlar: kurum kullanıcıları ve işlem geçmişi

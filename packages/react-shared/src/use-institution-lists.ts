@@ -5,6 +5,7 @@ import type { ApiError } from '@kampus/api-client/errors.ts'
 
 import {
   auditListKey,
+  fetchAllAuditEvents,
   fetchAllPages,
   fetchAuditPage,
   fetchMemberPage,
@@ -80,11 +81,7 @@ export function useInstitutionMembersFetchAll() {
 export function useAuditEventsFetchAll() {
   const client = useKampusClient()
   return useCallback(
-    (query: Omit<AuditQuery, 'page' | 'pageSize'>) =>
-      fetchAllPages<AuditQuery, AuditEvent>(
-        (pageQuery, signal) => fetchAuditPage(client, pageQuery, signal),
-        query,
-      ),
+    (query: Omit<AuditQuery, 'page' | 'pageSize'>) => fetchAllAuditEvents(client, query),
     [client],
   )
 }

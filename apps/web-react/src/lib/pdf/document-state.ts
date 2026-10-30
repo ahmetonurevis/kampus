@@ -78,6 +78,21 @@ export async function loadDocumentState(
     return buildWorkflowState(records, { modules: {}, academicYear: null })
   }
 
+  if (type === 'submission') {
+    // Değerlendirme formu teslime bağlıdır; teslim eden öğrenci, ödev ve öğretmen ayrıca okunur.
+    const submission = await read('submissions', recordId)
+    const homework = await read('homework', submission.homeworkId)
+    const [student, teacher] = await Promise.all([
+      read('students', submission.studentId),
+      optional(read('teachers', homework.teacherId)),
+    ])
+    records.submissions = [submission]
+    records.homework = [homework]
+    records.teachers = teacher ? [teacher] : []
+    Object.assign(records, await studentRecords(read, student, student.classId))
+    return buildWorkflowState(records, { modules: {}, academicYear: null })
+  }
+
   if (type === 'payment-plan') {
     // Taahhütname öğrenciye bağlıdır: kayıt kimliği öğrenci kimliğidir (core `documentData`).
     const student = await read('students', recordId)

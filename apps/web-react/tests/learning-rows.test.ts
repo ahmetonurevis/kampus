@@ -115,6 +115,22 @@ test('deliverySummary teslim eden, geciken, bekleyen ve değerlendirilen sayıla
   assert.equal(classId, 'c1')
 })
 
+test('deliverySummary kimlikli teslimi değerlendirme formuna bağlar; teslimsiz öğrencide null verir', () => {
+  const { roster, classStudents, homework } = setup()
+  const [a, b] = classStudents
+  assert.ok(a && b)
+  const summary = deliverySummary(
+    homework('hw-form', PAST),
+    [{ ...submission('hw-form', a.id, 70), id: 'sub-form-a' }],
+    roster,
+    NOW,
+  )
+  const idOf = (studentId: string) =>
+    summary.students.find((entry) => entry.studentId === studentId)?.submissionId
+  assert.equal(idOf(a.id), 'sub-form-a')
+  assert.equal(idOf(b.id), null)
+})
+
 test('teacherHomeworkRow sınıf adını joined alanından, sayıları sunucu sayımından alır', () => {
   const { homework } = setup()
   const item = wrap([homework('hw-t', PAST)], { className: '7-A' })[0]

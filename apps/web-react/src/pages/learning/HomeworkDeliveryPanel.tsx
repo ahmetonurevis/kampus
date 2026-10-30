@@ -94,7 +94,17 @@ function DeliveryDetail({ homeworkId }: Omit<Props, 'onClose'>) {
                 className="flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-sm"
               >
                 <strong className="font-medium">{entry.name}</strong>
-                <StatusBadge text={entry.status} />
+                <span className="flex flex-wrap items-center justify-end gap-2">
+                  <StatusBadge text={entry.status} />
+                  {entry.submissionId ? (
+                    <PdfButton
+                      type="submission"
+                      recordId={entry.submissionId}
+                      label="Değerlendirme formu"
+                      ariaLabel={`${entry.name} değerlendirme formunu görüntüle`}
+                    />
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>

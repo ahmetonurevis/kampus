@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 
-import type { Download, Page } from '@playwright/test'
+import type { Download, Locator, Page } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
@@ -183,4 +183,111 @@ test.describe('PDF: ödev çalışma kâğıdı', () => {
     await expect(page.getByRole('main')).toBeVisible()
     await expect(page.getByRole('button', { name: /Çalışma kâğıdını/ })).toHaveCount(0)
   })
+})
+
+test.describe('PDF: ödev değerlendirme formu', () => {
+  test('öğretmen teslim satırından açar; puan ve geri bildirim görünür, indirme PDF verir', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const teacher = await api('ogretmen')
+    const submissions = await listAll<{
+      homeworkId: string
+      studentId: string
+      score: number | null
+      feedback: string
+    }>(teacher, '/api/v1/collections/submissions?pageSize=100')
+    const graded = submissions.find((row) => row.record.score !== null && row.record.feedback)
+    expect(graded, 'seed: değerlendirilmiş teslim').toBeTruthy()
+    if (!graded) return
+    const students = await listAll<{ name: string }>(
+      teacher,
+      '/api/v1/collections/students?pageSize=100',
+    )
+    const name = students.find((row) => row.id === graded.record.studentId)?.record.name
+    expect(name, 'teslim eden öğrenci öğretmen kapsamında').toBeTruthy()
+
+    await loginAs('ogretmen')
+    await page.goto(`/ogretmen/odevler?odev=${graded.record.homeworkId}`)
+    const panel = page.getByRole('dialog', { name: 'Ödev teslim durumu' })
+    const opener = panel.getByRole('button', {
+      name: `${name} değerlendirme formunu görüntüle`,
+    })
+    await opener.click()
+
+    const preview = page.getByRole('dialog', { name: 'Ödev değerlendirme formu · Önizleme' })
+    await expect(
+      preview.getByRole('img', { name: 'Ödev değerlendirme formu, sayfa 1' }),
+    ).toBeVisible()
+    const viewer = preview.getByLabel('PDF sayfa görünümü')
+    await expect(viewer).toContainText('ÖDEV DEĞERLENDİRME FORMU')
+    await expect(viewer).toContainText(name ?? '')
+    await expect(viewer).toContainText(`${graded.record.score} / 100`)
+    await expect(viewer).toContainText('Öğretmen geri bildirimi')
+    await expect(viewer).toContainText(`Belge no: ${graded.id}`)
+
+    const download = await expectPdfDownload(
+      page,
+      preview.getByRole('button', { name: 'PDF’yi indir' }),
+    )
+    expect(download.suggestedFilename()).toBe(`odev-degerlendirme-${graded.id}.pdf`)
+    await page.keyboard.press('Escape')
+    await expect(preview).toBeHidden()
+    await expect(opener).toBeFocused()
+  })
+
+  test('düğme yalnız teslimi olan öğrencinin satırında bulunur', async ({ page, loginAs, api }) => {
+    const teacher = await api('ogretmen')
+    const homework = await listAll<{ classId: string }>(
+      teacher,
+      '/api/v1/collections/homework?pageSize=100',
+    )
+    // Seed'de bir ödevin teslimi ya sınıfın tamamındadır ya hiç yoktur; ikisi de denenir.
+    const counts = new Map<number, { id: string; enrolled: number }>()
+    for (const row of homework) {
+      const submissions = await listAll<{ studentId: string }>(
+        teacher,
+        `/api/v1/collections/submissions?homeworkId=${row.id}&pageSize=100`,
+      )
+      const delivered = new Set(submissions.map((entry) => entry.record.studentId)).size
+      if (!counts.has(delivered)) {
+        const enrolled = await listAll<{ name: string }>(
+          teacher,
+          `/api/v1/collections/students?classId=${row.record.classId}&isActive=true&pageSize=100`,
+        )
+        counts.set(delivered, { id: row.id, enrolled: enrolled.length })
+      }
+      if (counts.has(0) && counts.size > 1) break
+    }
+    const none = counts.get(0)
+    const some = [...counts.entries()].find(([delivered]) => delivered > 0)
+    expect(none && some, 'seed: teslimsiz ve teslimli ödev').toBeTruthy()
+    if (!none || !some) return
+
+    await loginAs('ogretmen')
+    const forms = (panel: Locator) =>
+      panel.getByRole('button', { name: /değerlendirme formunu görüntüle/ })
+    await page.goto(`/ogretmen/odevler?odev=${none.id}`)
+    const empty = page.getByRole('dialog', { name: 'Ödev teslim durumu' })
+    await expect(empty.getByRole('listitem')).toHaveCount(none.enrolled)
+    await expect(forms(empty)).toHaveCount(0)
+
+    await page.goto(`/ogretmen/odevler?odev=${some[1].id}`)
+    const filled = page.getByRole('dialog', { name: 'Ödev teslim durumu' })
+    await expect(filled.getByRole('listitem')).toHaveCount(some[1].enrolled)
+    await expect(forms(filled)).toHaveCount(some[0])
+  })
+
+  for (const [role, url] of [
+    ['ogrenci', '/ogrenci/odevler?odev=hw-review'],
+    ['veli', '/veli/akademik-takip?sekme=odevler&cocuk=s1&odev=hw-review'],
+  ] as const)
+    test(`${role} rolünde değerlendirme formu düğmesi yoktur`, async ({ page, loginAs }) => {
+      await loginAs(role)
+      await page.goto(url)
+      const panel = page.getByRole('dialog', { name: 'Ödev ayrıntısı' })
+      await expect(panel.getByRole('button', { name: 'Çalışma kâğıdını görüntüle' })).toBeVisible()
+      await expect(page.getByRole('button', { name: /Değerlendirme formu/i })).toHaveCount(0)
+    })
 })

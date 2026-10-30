@@ -51,6 +51,8 @@ export function activeRoster(students: readonly CoreRow<'students'>[]): Student[
 export type HomeworkStatus = ReturnType<typeof homeworkStatus>
 
 export type SubmissionRef = Pick<Submission, 'homeworkId' | 'studentId'> & {
+  /** Teslim kaydı kimliği; verilirse özet satırı değerlendirme formuna bağlanır. */
+  id?: string
   score?: number | null
 }
 
@@ -120,6 +122,8 @@ export type DeliveryEntry = {
   studentId: string
   name: string
   status: HomeworkStatus
+  /** Öğrencinin teslimi yoksa `null`. */
+  submissionId: string | null
 }
 
 export type DeliverySummary = {
@@ -151,6 +155,7 @@ export function deliverySummary(
     studentId: student.id,
     name: student.name,
     status: homeworkStatus(homework, own, student.id, now),
+    submissionId: own.find((entry) => entry.studentId === student.id)?.id ?? null,
   }))
   const count = (status: HomeworkStatus) =>
     students.filter((entry) => entry.status === status).length

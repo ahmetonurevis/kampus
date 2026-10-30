@@ -5,7 +5,7 @@ import { useActiveInstitutionId } from '@kampus/react-shared/use-active-institut
 import { documentData } from '@kampus/school-core/lib/document-data.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { documentErrorMessage, loadDocumentState } from '@/lib/pdf/document-state.ts'
-import { homeworkDocument } from '@/lib/pdf/homework-templates.ts'
+import { homeworkDocument, submissionDocument } from '@/lib/pdf/homework-templates.ts'
 import {
   contractDocument,
   documentFilename,
@@ -76,6 +76,12 @@ export function useDocumentPdf(
               return homeworkDocument(
                 measurer,
                 documentData(state, 'homework', recordId, studentId),
+                options,
+              )
+            case 'submission':
+              return submissionDocument(
+                measurer,
+                documentData(state, 'submission', recordId),
                 options,
               )
             default:

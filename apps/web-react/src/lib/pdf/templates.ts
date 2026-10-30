@@ -6,7 +6,8 @@ import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
 import { COLORS, date, DocumentLayout, type PdfDocument, type TextMeasurer } from './layout.ts'
 
 /** Web'de PDF olarak üretilen belge türleri. */
-export type PdfDocumentType = 'receipt' | 'contract' | 'material' | 'payment-plan' | 'homework'
+export type PdfDocumentType =
+  'receipt' | 'contract' | 'material' | 'payment-plan' | 'homework' | 'submission'
 
 export type TemplateOptions = {
   institution: string
@@ -22,6 +23,7 @@ export const DOCUMENT_TITLES = {
   material: 'Ders çalışma kâğıdı',
   'payment-plan': 'Taksit taahhütnamesi',
   homework: 'Ödev çalışma kâğıdı',
+  submission: 'Ödev değerlendirme formu',
 } as const satisfies Record<PdfDocumentType, string>
 
 const FILE_PREFIXES = {
@@ -30,6 +32,7 @@ const FILE_PREFIXES = {
   material: 'materyal',
   'payment-plan': 'taksit-plani',
   homework: 'odev',
+  submission: 'odev-degerlendirme',
 } as const satisfies Record<PdfDocumentType, string>
 
 /** İndirilen dosya adı: kayıt kimliği güvenli karakterlere indirilir, `.pdf` ile biter. */

@@ -7,6 +7,7 @@ import swaggerUi from '@fastify/swagger-ui'
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify'
 import {
   jsonSchemaTransform,
+  jsonSchemaTransformObject,
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod'
@@ -156,6 +157,8 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
       servers: [{ url: base }],
     },
     transform: jsonSchemaTransform,
+    // `.meta({ id })` taşıyan şemalar `components.schemas` altında ortak tanım olur.
+    transformObject: jsonSchemaTransformObject,
   })
   if (docs) {
     // Belge arayüzü yalnız üretim dışında; kendi CSP başlığını kullanır.

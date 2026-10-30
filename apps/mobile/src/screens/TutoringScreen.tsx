@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { View } from 'react-native'
 import {
   automationExams,
@@ -8,7 +8,9 @@ import {
   runAssessment,
 } from '@kampus/school-core/lib/assessment-automation.ts'
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
-import { recordError, useSchool } from '../store/SchoolProvider.tsx'
+import type { State } from '@kampus/school-core/data/seed.ts'
+import { recordError, useActiveSchool } from '../store/SchoolProvider.tsx'
+import type { ScreenProps } from '../route-types.ts'
 import {
   Badge,
   Button,
@@ -25,11 +27,43 @@ import {
 import { ListRow, Notice, Screen, Section } from '../ui/SchoolLayout.tsx'
 import { useMinute } from '../ui/use-minute.ts'
 
-const ATTENDANCE = ['Geldi', 'Gelmedi', 'İzinli'].map((value) => ({ value, label: value }))
-const stamp = (value) => `${dateLabel(value)} ${timeLabel(value)}`
+type PlanInput = {
+  examId: string
+  threshold: string
+  fromDate: string
+  toDate: string
+  duration: string
+  maxGroupSize: string
+  branchId: string
+  subjectId: string
+}
+type SlotInput = { teacherId: string; date: string; time: string; duration: string }
+type Slot = State['availability'][number] & { teacher: string }
+// Önizleme satırı: planlanan etütler tarih taşır, yerleştirilemeyenler neden taşır.
+type PreviewRow = {
+  id: string
+  subjectId: string
+  topic: string
+  branchId: string
+  studentIds: string[]
+  teacher: string
+  room: string
+  status: string
+  date?: string
+  reason?: string
+}
+type TutorEntry = ReturnType<typeof tutoringSessions>[number] & {
+  title: string
+  teacher: string
+  campus: string
+}
+type Issue = { path: readonly PropertyKey[]; message: string }
 
-export default function TutoringScreen({ route }) {
-  const { data, session, commit, notify, busy } = useSchool(),
+const ATTENDANCE = ['Geldi', 'Gelmedi', 'İzinli'].map((value) => ({ value, label: value }))
+const stamp = (value: string) => `${dateLabel(value)} ${timeLabel(value)}`
+
+export default function TutoringScreen({ route }: ScreenProps<'Module'>) {
+  const { data, session, commit, notify, busy } = useActiveSchool(),
     c = useColors()
   const minute = useMinute()
   const now = minute * 60000
@@ -38,7 +72,7 @@ export default function TutoringScreen({ route }) {
     () => automationExams(data, session),
     [data.mockExams, data.students, data.classes, session.role, session.childId],
   )
-  const [input, setInput] = useState(() => ({
+  const [input, setInput] = useState<PlanInput>(() => ({
     examId: exams.find((e) => e.id === route.params?.examId)?.id || exams[0]?.id || '',
     threshold: '70',
     fromDate: dayKey(new Date(Date.now() + 86400000)),
@@ -48,15 +82,15 @@ export default function TutoringScreen({ route }) {
     branchId: '',
     subjectId: '',
   }))
-  const [plan, setPlan] = useState(null),
-    [errors, setErrors] = useState({}),
+  const [plan, setPlan] = useState<ReturnType<typeof planTutoring> | null>(null),
+    [errors, setErrors] = useState<Record<string, string>>({}),
     [error, setError] = useState(''),
     [selectedId, setSelectedId] = useState(''),
-    [slotInput, setSlotInput] = useState(null),
-    [slotErrors, setSlotErrors] = useState({}),
-    [marks, setMarks] = useState(null),
-    [cancelReason, setCancelReason] = useState(null),
-    [confirmSlot, setConfirmSlot] = useState(null)
+    [slotInput, setSlotInput] = useState<SlotInput | null>(null),
+    [slotErrors, setSlotErrors] = useState<Record<string, string>>({}),
+    [marks, setMarks] = useState<Record<string, string> | null>(null),
+    [cancelReason, setCancelReason] = useState<string | null>(null),
+    [confirmSlot, setConfirmSlot] = useState<Slot | null>(null)
 
   const teachers = data.teachers.filter(
     (t) => t.isActive && (session.role === 'yonetici' || t.id === 't1'),
@@ -66,10 +100,10 @@ export default function TutoringScreen({ route }) {
       data.mockExams.find((e) => e.id === input.examId)?.subjectIds.includes(s.id) &&
       (session.role !== 'ogretmen' || s.id === data.teachers.find((t) => t.id === 't1')?.subjectId),
   )
-  const subjectName = (id) => data.subjects.find((s) => s.id === id)?.name || id
-  const studentName = (id) => data.students.find((s) => s.id === id)?.name || id
-  const branchName = (id) => data.branches.find((b) => b.id === id)?.name || id
-  const teacherName = (id) => data.teachers.find((t) => t.id === id)?.name || id
+  const subjectName = (id: string) => data.subjects.find((s) => s.id === id)?.name || id
+  const studentName = (id: string) => data.students.find((s) => s.id === id)?.name || id
+  const branchName = (id: string) => data.branches.find((b) => b.id === id)?.name || id
+  const teacherName = (id: string) => data.teachers.find((t) => t.id === id)?.name || id
   const sessions = useMemo(
     () =>
       tutoringSessions(data, session).map((s) => ({
@@ -80,11 +114,11 @@ export default function TutoringScreen({ route }) {
       })),
     [data, session.role, session.childId],
   )
-  const selected = sessions.find((s) => s.id === selectedId)
-  const slots = data.availability
+  const selected: TutorEntry | undefined = sessions.find((s) => s.id === selectedId)
+  const slots: Slot[] = data.availability
     .filter((s) => Date.parse(s.date) > now && teachers.some((t) => t.id === s.teacherId))
     .map((s) => ({ ...s, teacher: teacherName(s.teacherId) }))
-  const previewRows = plan
+  const previewRows: PreviewRow[] = plan
     ? [
         ...plan.sessions.map((s, i) => ({
           ...s,
@@ -102,24 +136,31 @@ export default function TutoringScreen({ route }) {
       ]
     : []
 
-  function changeInput(key, value) {
+  function changeInput(key: keyof PlanInput, value: string) {
     setInput((old) => ({ ...old, [key]: value, ...(key === 'examId' ? { subjectId: '' } : {}) }))
     setPlan(null)
     setError('')
     setErrors({})
   }
-  function showError(exception) {
+  function showError(exception: unknown) {
     recordError(exception, 'tutoring', 'warn')
+    const issues: unknown =
+      typeof exception === 'object' && exception !== null && 'issues' in exception
+        ? exception.issues
+        : undefined
+    const first: unknown = Array.isArray(issues) ? issues[0] : undefined
+    const issue =
+      typeof first === 'object' && first !== null && 'message' in first ? first.message : undefined
     const message =
-      exception.issues?.[0]?.message ||
-      (exception.name === 'Error'
+      (typeof issue === 'string' && issue) ||
+      (exception instanceof Error && exception.name === 'Error'
         ? exception.message
         : 'Etüt işlemi tamamlanamadı. Tekrar deneyin.')
     setError(message)
     notify(message, 'error')
   }
-  const issuesByField = (issues) => {
-    const found = {}
+  const issuesByField = (issues: readonly Issue[]) => {
+    const found: Record<string, string> = {}
     for (const issue of issues) found[issue.path.join('.')] ||= issue.message
     return found
   }
@@ -127,7 +168,7 @@ export default function TutoringScreen({ route }) {
     const parsed = automationSchemas.plan.safeParse(input)
     if (!parsed.success) {
       setErrors(issuesByField(parsed.error.issues))
-      notify(parsed.error.issues[0].message, 'error')
+      notify(parsed.error.issues[0]?.message ?? 'Girdiğiniz bilgileri kontrol edin.', 'error')
       return
     }
     try {
@@ -162,16 +203,16 @@ export default function TutoringScreen({ route }) {
       duration: '30',
     })
   }
-  async function saveSlot() {
+  async function saveSlot(slot: SlotInput) {
     const value = {
-      teacherId: slotInput.teacherId,
-      date: `${slotInput.date}T${slotInput.time}+03:00`,
-      duration: slotInput.duration,
+      teacherId: slot.teacherId,
+      date: `${slot.date}T${slot.time}+03:00`,
+      duration: slot.duration,
     }
     const parsed = automationSchemas.slot.safeParse(value)
     if (!parsed.success) {
       setSlotErrors(issuesByField(parsed.error.issues))
-      notify(parsed.error.issues[0].message, 'error')
+      notify(parsed.error.issues[0]?.message ?? 'Girdiğiniz bilgileri kontrol edin.', 'error')
       return
     }
     const ok = await commit(
@@ -183,9 +224,9 @@ export default function TutoringScreen({ route }) {
       setPlan(null)
     }
   }
-  async function removeSlot() {
+  async function removeSlot(slot: Slot) {
     const ok = await commit(
-      (next, makeId) => runAssessment(next, session, 'slot-remove', {}, makeId, confirmSlot.id),
+      (next, makeId) => runAssessment(next, session, 'slot-remove', {}, makeId, slot.id),
       'Uygunluk saati kaldırıldı.',
     )
     if (ok) {
@@ -193,21 +234,21 @@ export default function TutoringScreen({ route }) {
       setPlan(null)
     }
   }
-  const startAttendance = () =>
+  const startAttendance = (entry: TutorEntry) =>
     setMarks(
-      Object.fromEntries(selected.studentIds.map((id) => [id, selected.attendance[id] || 'Geldi'])),
+      Object.fromEntries(entry.studentIds.map((id) => [id, entry.attendance[id] || 'Geldi'])),
     )
-  async function saveAttendance() {
+  async function saveAttendance(entry: TutorEntry, values: Record<string, string>) {
     const ok = await commit(
-      (next, makeId) => runAssessment(next, session, 'attendance', { marks }, makeId, selected.id),
+      (next, makeId) =>
+        runAssessment(next, session, 'attendance', { marks: values }, makeId, entry.id),
       'Etüt yoklaması kaydedildi.',
     )
     if (ok) setMarks(null)
   }
-  async function cancel() {
+  async function cancel(entry: TutorEntry, reason: string) {
     const ok = await commit(
-      (next, makeId) =>
-        runAssessment(next, session, 'cancel', { reason: cancelReason }, makeId, selected.id),
+      (next, makeId) => runAssessment(next, session, 'cancel', { reason }, makeId, entry.id),
       'Etüt iptal edildi.',
     )
     if (ok) {
@@ -215,6 +256,8 @@ export default function TutoringScreen({ route }) {
       setPlan(null)
     }
   }
+  const changeSlot = (changes: Partial<SlotInput>) =>
+    setSlotInput((old) => old && { ...old, ...changes })
   const closeDetail = () => {
     setSelectedId('')
     setMarks(null)
@@ -231,7 +274,7 @@ export default function TutoringScreen({ route }) {
         />
       </Screen>
     )
-  const valid = (list) => list.filter((e) => e)
+  const valid = (list: (string | undefined)[]) => list.filter((e) => e)
   return (
     <Screen>
       <Heading
@@ -453,7 +496,10 @@ export default function TutoringScreen({ route }) {
               {!!selected.cancelReason && <T>İptal nedeni: {selected.cancelReason}</T>}
               {canManage && selected.status !== 'İptal' && (
                 <View style={{ gap: 10 }}>
-                  <Button disabled={Date.parse(selected.date) > now} onPress={startAttendance}>
+                  <Button
+                    disabled={Date.parse(selected.date) > now}
+                    onPress={() => startAttendance(selected)}
+                  >
                     Yoklama al / güncelle
                   </Button>
                   {selected.status !== 'Tamamlandı' && (
@@ -480,7 +526,7 @@ export default function TutoringScreen({ route }) {
           title="Uygunluk saati ekle"
           onClose={() => !busy && setSlotInput(null)}
           footer={
-            <Button primary disabled={busy} onPress={saveSlot}>
+            <Button primary disabled={busy} onPress={() => saveSlot(slotInput)}>
               {busy ? 'Kaydediliyor…' : 'Uygunluk saatini kaydet'}
             </Button>
           }
@@ -493,26 +539,26 @@ export default function TutoringScreen({ route }) {
               value: t.id,
               label: `${t.name} · ${subjectName(t.subjectId)}`,
             }))}
-            onChange={(v) => setSlotInput((old) => ({ ...old, teacherId: v }))}
+            onChange={(v) => changeSlot({ teacherId: v })}
           />
           <FieldError message={slotErrors.teacherId} />
           <DateField
             label="Uygunluk tarihi"
             value={slotInput.date}
-            onChange={(v) => setSlotInput((old) => ({ ...old, date: v }))}
+            onChange={(v) => changeSlot({ date: v })}
           />
           <DateField
             time
             label="Uygunluk saati"
             value={slotInput.time}
-            onChange={(v) => setSlotInput((old) => ({ ...old, time: v }))}
+            onChange={(v) => changeSlot({ time: v })}
           />
           <FieldError message={slotErrors.date} />
           <Field
             label="Uygunluk süresi (dakika)"
             keyboard="number-pad"
             value={slotInput.duration}
-            onChange={(v) => setSlotInput((old) => ({ ...old, duration: v }))}
+            onChange={(v) => changeSlot({ duration: v })}
           />
           <FieldError message={slotErrors.duration} />
         </Sheet>
@@ -523,7 +569,7 @@ export default function TutoringScreen({ route }) {
           title="Etüt yoklaması"
           onClose={() => !busy && setMarks(null)}
           footer={
-            <Button primary disabled={busy} onPress={saveAttendance}>
+            <Button primary disabled={busy} onPress={() => saveAttendance(selected, marks)}>
               {busy ? 'Kaydediliyor…' : 'Yoklamayı kaydet'}
             </Button>
           }
@@ -546,7 +592,7 @@ export default function TutoringScreen({ route }) {
           title="Etüdü iptal et"
           onClose={() => !busy && setCancelReason(null)}
           footer={
-            <Button primary disabled={busy} onPress={cancel}>
+            <Button primary disabled={busy} onPress={() => cancel(selected, cancelReason)}>
               {busy ? 'Kaydediliyor…' : 'İptali onayla'}
             </Button>
           }
@@ -567,7 +613,7 @@ export default function TutoringScreen({ route }) {
           title="Uygunluğu kaldır"
           onClose={() => !busy && setConfirmSlot(null)}
           footer={
-            <Button primary disabled={busy} onPress={removeSlot}>
+            <Button primary disabled={busy} onPress={() => removeSlot(confirmSlot)}>
               Kaldırmayı onayla
             </Button>
           }
@@ -582,7 +628,7 @@ export default function TutoringScreen({ route }) {
   )
 }
 
-function FieldError({ message }) {
+function FieldError({ message }: { message: string | undefined }) {
   const c = useColors()
   return message ? (
     <T accessibilityRole="alert" size={13} style={{ color: c.red }}>

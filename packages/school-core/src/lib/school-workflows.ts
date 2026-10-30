@@ -5,6 +5,7 @@ import type { Role } from '../modules/navigation.ts'
 import { installmentAmounts, type MakeId, type Session } from './domain.ts'
 import { dayKey } from './format.ts'
 import { tutorConflict, type Interval } from './tutor-conflicts.ts'
+import { DomainError } from './errors.ts'
 
 z.config(z.locales.tr())
 const text = z.string().trim().min(2, 'En az iki karakter girin.').max(2000)
@@ -345,6 +346,8 @@ const commandRoles: Partial<Record<string, readonly Role[]>> = {
   'club-archive': ['yonetici', 'ogretmen'],
 }
 export function mayRun(session: Session, command: string) {
+  // Komut adı dışarıdan gelir; `toString` gibi yerleşik özellikler tabloda yok sayılır.
+  if (!Object.hasOwn(commandRoles, command)) return false
   return !!commandRoles[command]?.includes(session.role)
 }
 export function workflowScope(state: State, session: Session) {
@@ -374,7 +377,10 @@ export function workflowScope(state: State, session: Session) {
 }
 function requireRecord<T extends { id: string }>(list: readonly T[], id: string | undefined) {
   const value = list.find((r) => r.id === id)
-  if (!value) throw new Error('İlgili kayıt bulunamadı. Listeyi yenileyin.')
+  if (!value)
+    throw new DomainError('record_not_found', 'İlgili kayıt bulunamadı. Listeyi yenileyin.', {
+      kind: 'not_found',
+    })
   return value
 }
 function active<
@@ -382,14 +388,16 @@ function active<
 >(list: readonly T[], id: string | undefined) {
   const record = requireRecord(list, id)
   if (record.isActive === false || record.deletedAt || record.status === 'Arşiv')
-    throw new Error('Pasif veya arşivlenmiş kayıt kullanılamaz.')
+    throw new DomainError('record_inactive', 'Pasif veya arşivlenmiş kayıt kullanılamaz.')
   return record
 }
 function scopedStudent(state: State, session: Session, id: string | undefined) {
   const student = active(state.students, id)
   // Bulunan öğrencinin kimliği aranan kimlikle aynıdır.
   if (!workflowScope(state, session).studentIds.has(student.id))
-    throw new Error('Bu öğrenci için işlem yetkiniz bulunmuyor.')
+    throw new DomainError('student_scope_denied', 'Bu öğrenci için işlem yetkiniz bulunmuyor.', {
+      kind: 'forbidden',
+    })
   return student
 }
 function gradeOf(state: State, student: { classId: string }) {
@@ -494,13 +502,18 @@ function goalRecord(state: State, session: Session, recordId: string | undefined
     goal.subjectId &&
     goal.subjectId !== state.teachers.find((t) => t.id === 't1')?.subjectId
   )
-    throw new Error('Bu hedef başka bir branşa ait.')
+    throw new DomainError('goal_branch_mismatch', 'Bu hedef başka bir branşa ait.', {
+      kind: 'forbidden',
+    })
   return goal
 }
 function openGoalRecord(state: State, session: Session, recordId: string | undefined) {
   const goal = goalRecord(state, session, recordId)
   if (!OPEN_GOAL_STATUSES.includes(goal.status))
-    throw new Error('Reddedilmiş veya kapatılmış hedef üzerinde işlem yapılamaz.')
+    throw new DomainError(
+      'goal_closed',
+      'Reddedilmiş veya kapatılmış hedef üzerinde işlem yapılamaz.',
+    )
   return goal
 }
 export function renewalQuote(input: unknown) {
@@ -510,7 +523,10 @@ export function renewalQuote(input: unknown) {
   const discountAmount = Math.round(data.discount * 100)
   const amount = gross - scholarshipAmount - discountAmount
   if (amount < 10000)
-    throw new Error('Burs ve indirim sonrası eğitim bedeli en az 100 ₺ olmalıdır.')
+    throw new DomainError(
+      'renewal_amount_too_low',
+      'Burs ve indirim sonrası eğitim bedeli en az 100 ₺ olmalıdır.',
+    )
   return {
     gross,
     scholarshipAmount,
@@ -543,44 +559,68 @@ function validateLesson(state: State, data: LessonSlot, ignoreId: string | undef
         .map((s) => s.id),
     },
   )
-  if (tutorReason) throw new Error(tutorReason)
+  if (tutorReason)
+    throw new DomainError('tutor_schedule_conflict', tutorReason, { kind: 'conflict' })
   if (
     teacher.subjectId !== data.subjectId ||
     teacher.branchId !== classroom.branchId ||
     !state.assignments.some((a) => a.classId === classroom.id && a.subjectId === data.subjectId)
   )
-    throw new Error('Öğretmenin branşı ve kampüsü seçilen derse uygun olmalıdır.')
+    throw new DomainError(
+      'lesson_teacher_mismatch',
+      'Öğretmenin branşı ve kampüsü seçilen derse uygun olmalıdır.',
+    )
   for (const lesson of state.schedule) {
     if (lesson.id === ignoreId || lesson.cancelledAt || !overlaps(data, lesson)) continue
     const otherClass = requireRecord(state.classes, lesson.classId)
     if (lesson.teacherId === data.teacherId)
-      throw new Error('Öğretmenin bu saatte başka dersi var.')
-    if (lesson.classId === data.classId) throw new Error('Sınıfın bu saatte başka dersi var.')
+      throw new DomainError('teacher_lesson_conflict', 'Öğretmenin bu saatte başka dersi var.', {
+        kind: 'conflict',
+      })
+    if (lesson.classId === data.classId)
+      throw new DomainError('class_lesson_conflict', 'Sınıfın bu saatte başka dersi var.', {
+        kind: 'conflict',
+      })
     if (
       otherClass.branchId === classroom.branchId &&
       lesson.room.trim().toLocaleLowerCase('tr') === data.room.trim().toLocaleLowerCase('tr')
     )
-      throw new Error('Derslik bu saatte başka bir sınıf tarafından kullanılıyor.')
+      throw new DomainError(
+        'room_conflict',
+        'Derslik bu saatte başka bir sınıf tarafından kullanılıyor.',
+        { kind: 'conflict' },
+      )
   }
   if (
     state.appointments.some(
       (a) => a.teacherId === data.teacherId && a.status !== 'Reddedildi' && overlaps(data, a),
     )
   )
-    throw new Error('Öğretmenin bu saatte görüşme randevusu var.')
+    throw new DomainError(
+      'teacher_appointment_conflict',
+      'Öğretmenin bu saatte görüşme randevusu var.',
+      { kind: 'conflict' },
+    )
 }
 function validateExamResult(state: State, session: Session, input: unknown) {
   const data = workflowSchemas['exam-result'].parse(input)
   const student = scopedStudent(state, session, data.studentId),
     exam = requireRecord(state.mockExams, data.examId)
   if (gradeOf(state, student) !== exam.grade)
-    throw new Error('Öğrencinin sınıf düzeyi sınavla aynı olmalıdır.')
+    throw new DomainError('exam_level_mismatch', 'Öğrencinin sınıf düzeyi sınavla aynı olmalıdır.')
   if (!exam.subjectIds.includes(data.subjectId))
-    throw new Error('Ders bu denemenin kapsamında değil.')
+    throw new DomainError('exam_subject_out_of_scope', 'Ders bu denemenin kapsamında değil.')
   if (session.role === 'ogretmen' && active(state.teachers, 't1').subjectId !== data.subjectId)
-    throw new Error('Yalnızca kendi branşınızın sonuçlarını girebilirsiniz.')
+    throw new DomainError(
+      'exam_branch_forbidden',
+      'Yalnızca kendi branşınızın sonuçlarını girebilirsiniz.',
+      { kind: 'forbidden' },
+    )
   if (data.correct + data.wrong + data.blank < 1 || data.correct + data.wrong + data.blank > 200)
-    throw new Error('Ders soru toplamı 1–200 arasında olmalıdır.')
+    throw new DomainError(
+      'exam_question_total_invalid',
+      'Ders soru toplamı 1–200 arasında olmalıdır.',
+    )
   return data
 }
 function upsertResult(
@@ -623,16 +663,19 @@ export function parseResultsCsv(raw: string) {
       }
     } else if (char !== '\r' && char !== undefined) cell += char
   }
-  if (quoted) throw new Error('CSV içinde kapanmamış tırnak var.')
+  if (quoted) throw new DomainError('csv_unclosed_quote', 'CSV içinde kapanmamış tırnak var.')
   const header = ['examId', 'studentId', 'subjectId', 'correct', 'wrong', 'blank', 'weakTopics']
   const [headerRow] = rows
   if (!headerRow || headerRow.join('|') !== header.join('|'))
-    throw new Error('CSV başlıkları örnek şablonla aynı olmalıdır.')
+    throw new DomainError('csv_invalid_header', 'CSV başlıkları örnek şablonla aynı olmalıdır.')
   if (rows.length < 2 || rows.length > 1001)
-    throw new Error('Bir aktarımda 1–1000 sonuç satırı olmalıdır.')
+    throw new DomainError('csv_invalid_row_count', 'Bir aktarımda 1–1000 sonuç satırı olmalıdır.')
   return rows.slice(1).map((values, index) => {
     if (values.length !== header.length || values.slice(3, 6).some((v) => !/^\d+$/.test(v)))
-      throw new Error(`CSV ${index + 2}. satır: sütun sayısı veya sayısal değerler geçersiz.`)
+      throw new DomainError(
+        'csv_invalid_column_count',
+        `CSV ${index + 2}. satır: sütun sayısı veya sayısal değerler geçersiz.`,
+      )
     return Object.fromEntries(header.map((key, i) => [key, values[i]]))
   })
 }
@@ -647,7 +690,9 @@ export function eventStudents(state: State, event: { classId?: string | null; br
 function ownedClub(state: State, session: Session, recordId: string | undefined) {
   const club = active(state.clubs, recordId)
   if (session.role === 'ogretmen' && club.teacherId !== 't1')
-    throw new Error('Yalnızca sorumlu olduğunuz kulübü yönetebilirsiniz.')
+    throw new DomainError('club_own_only', 'Yalnızca sorumlu olduğunuz kulübü yönetebilirsiniz.', {
+      kind: 'forbidden',
+    })
   return club
 }
 function executeWorkflow(
@@ -659,25 +704,39 @@ function executeWorkflow(
   recordId: string | undefined,
   now: string,
 ) {
+  if (!Object.hasOwn(moduleOf, command))
+    throw new DomainError('unknown_command', 'İşlem bulunamadı.')
   const module = moduleOf[command]
-  if (!module || !state.modules[module]) throw new Error('Bu modül kullanıma kapalı.')
-  if (!mayRun(session, command)) throw new Error('Bu işlem için rolünüzün yetkisi yok.')
+  if (!module || !state.modules[module])
+    throw new DomainError('module_disabled', 'Bu modül kullanıma kapalı.', { kind: 'forbidden' })
+  if (!mayRun(session, command))
+    throw new DomainError('permission_denied', 'Bu işlem için rolünüzün yetkisi yok.', {
+      kind: 'forbidden',
+    })
   if (session.role === 'ogretmen') active(state.teachers, 't1')
   // Şeması olan her komut, dalın ilk adımı olarak girdisini kendi şemasıyla doğrular.
   if (command === 'goal') {
     const data = workflowSchemas.goal.parse(input)
     const student = scopedStudent(state, session, data.studentId)
-    if (data.deadline < dayKey(now)) throw new Error('Hedef son tarihi geçmişte olamaz.')
+    if (data.deadline < dayKey(now))
+      throw new DomainError('goal_due_date_past', 'Hedef son tarihi geçmişte olamaz.')
     if (
       data.subjectId &&
       !subjectsForGrade(gradeOf(state, student)).some((s) => s.id === data.subjectId)
     )
-      throw new Error('Seçilen ders öğrencinin sınıf düzeyine uygun değil.')
+      throw new DomainError(
+        'goal_subject_level_mismatch',
+        'Seçilen ders öğrencinin sınıf düzeyine uygun değil.',
+      )
     if (
       session.role === 'ogretmen' &&
       data.subjectId !== state.teachers.find((t) => t.id === 't1')?.subjectId
     )
-      throw new Error('Yalnızca kendi dersiniz için hedef belirleyebilirsiniz.')
+      throw new DomainError(
+        'goal_own_subject_only',
+        'Yalnızca kendi dersiniz için hedef belirleyebilirsiniz.',
+        { kind: 'forbidden' },
+      )
     if (
       state.studentGoals.some(
         (g) =>
@@ -686,12 +745,19 @@ function executeWorkflow(
           OPEN_GOAL_STATUSES.includes(g.status),
       )
     )
-      throw new Error('Bu kapsam için açık bir hedef zaten var. Önce mevcut hedefi kapatın.')
+      throw new DomainError(
+        'goal_already_open',
+        'Bu kapsam için açık bir hedef zaten var. Önce mevcut hedefi kapatın.',
+        { kind: 'conflict' },
+      )
     const series = goalSeries(state, data.studentId, data.subjectId)
     const last = series[series.length - 1]
     const baselineNet = last ? last.net : 0
     if (data.targetNet <= baselineNet)
-      throw new Error(`Hedef net, mevcut net değerinin (${baselineNet}) üzerinde olmalıdır.`)
+      throw new DomainError(
+        'goal_target_net_too_low',
+        `Hedef net, mevcut net değerinin (${baselineNet}) üzerinde olmalıdır.`,
+      )
     const entry = stamped(
       makeId,
       'goal',
@@ -713,17 +779,22 @@ function executeWorkflow(
     const data = workflowSchemas['goal-review'].parse(input)
     const entry = goalRecord(state, session, recordId)
     if (entry.status !== 'Onay bekliyor')
-      throw new Error('Yalnızca onay bekleyen hedef değerlendirilir.')
+      throw new DomainError('goal_not_pending', 'Yalnızca onay bekleyen hedef değerlendirilir.')
     Object.assign(entry, data, { reviewedAt: now, updatedAt: now })
     return entry
   }
   if (command === 'goal-step') {
     const data = workflowSchemas['goal-step'].parse(input)
     const entry = openGoalRecord(state, session, recordId)
-    if (data.dueDate < dayKey(now)) throw new Error('Adım son tarihi geçmişte olamaz.')
+    if (data.dueDate < dayKey(now))
+      throw new DomainError('step_due_date_past', 'Adım son tarihi geçmişte olamaz.')
     if (data.dueDate > entry.deadline.slice(0, 10))
-      throw new Error('Adım son tarihi hedef son tarihinden sonra olamaz.')
-    if (entry.steps.length >= 30) throw new Error('Bir hedefe en fazla 30 adım eklenebilir.')
+      throw new DomainError(
+        'step_due_date_after_goal',
+        'Adım son tarihi hedef son tarihinden sonra olamaz.',
+      )
+    if (entry.steps.length >= 30)
+      throw new DomainError('goal_step_limit', 'Bir hedefe en fazla 30 adım eklenebilir.')
     entry.steps.push({
       id: makeId('step'),
       title: data.title,
@@ -739,10 +810,19 @@ function executeWorkflow(
     const data = workflowSchemas['goal-step-done'].parse(input)
     const entry = openGoalRecord(state, session, recordId)
     if (entry.status !== 'Aktif')
-      throw new Error('Adımlar hedef onaylandıktan sonra tamamlanabilir.')
+      throw new DomainError(
+        'goal_not_approved',
+        'Adımlar hedef onaylandıktan sonra tamamlanabilir.',
+      )
     const step = entry.steps.find((s) => s.id === data.stepId)
-    if (!step) throw new Error('Gelişim adımı bulunamadı. Listeyi yenileyin.')
-    if (step.done) throw new Error('Bu adım zaten tamamlanmış.')
+    if (!step)
+      throw new DomainError('step_not_found', 'Gelişim adımı bulunamadı. Listeyi yenileyin.', {
+        kind: 'not_found',
+      })
+    if (step.done)
+      throw new DomainError('step_already_completed', 'Bu adım zaten tamamlanmış.', {
+        kind: 'conflict',
+      })
     Object.assign(step, { done: true, doneAt: now })
     entry.updatedAt = now
     return entry
@@ -752,11 +832,12 @@ function executeWorkflow(
     const entry = openGoalRecord(state, session, recordId)
     const suggestions = suggestGoalSteps(state, entry, now)
     if (!suggestions.length)
-      throw new Error(
+      throw new DomainError(
+        'goal_no_suggestions',
         'Önerilecek yeni zayıf konu bulunamadı. Deneme sonucu girildiğinde tekrar deneyin.',
       )
     if (entry.steps.length + suggestions.length > 30)
-      throw new Error('Bir hedefe en fazla 30 adım eklenebilir.')
+      throw new DomainError('goal_step_limit', 'Bir hedefe en fazla 30 adım eklenebilir.')
     for (const suggestion of suggestions)
       entry.steps.push({ id: makeId('step'), ...suggestion, done: false })
     entry.updatedAt = now
@@ -780,7 +861,11 @@ function executeWorkflow(
     scopedStudent(state, session, data.studentId)
     active(state.teachers, data.teacherId)
     if (session.role === 'ogretmen' && data.teacherId !== 't1')
-      throw new Error('Kendi sorumluluğunuzda takip dosyası açabilirsiniz.')
+      throw new DomainError(
+        'guidance_own_only',
+        'Kendi sorumluluğunuzda takip dosyası açabilirsiniz.',
+        { kind: 'forbidden' },
+      )
     const entry = stamped(
       makeId,
       'guidance',
@@ -795,7 +880,9 @@ function executeWorkflow(
     const entry = requireRecord(state.guidanceCases, recordId)
     scopedStudent(state, session, entry.studentId)
     if (session.role === 'ogretmen' && entry.teacherId !== 't1')
-      throw new Error('Bu takip dosyasının sorumlusu değilsiniz.')
+      throw new DomainError('guidance_not_owner', 'Bu takip dosyasının sorumlusu değilsiniz.', {
+        kind: 'forbidden',
+      })
     entry.notes.push({ id: makeId('note'), text: data.text, date: now, actor: session.role })
     Object.assign(entry, {
       sharedNote: data.sharedNote,
@@ -812,16 +899,26 @@ function executeWorkflow(
       new Set(data.subjectIds).size !== data.subjectIds.length ||
       data.subjectIds.some((id) => !allowed.includes(id))
     )
-      throw new Error('Sınav dersleri seçilen sınıf düzeyine uygun olmalıdır.')
+      throw new DomainError(
+        'exam_subjects_level_mismatch',
+        'Sınav dersleri seçilen sınıf düzeyine uygun olmalıdır.',
+      )
     if ((data.type === 'LGS' && data.grade !== 8) || (data.type === 'YKS' && data.grade < 9))
-      throw new Error('LGS için 8. sınıf; YKS için lise düzeyi seçin.')
+      throw new DomainError(
+        'exam_type_level_mismatch',
+        'LGS için 8. sınıf; YKS için lise düzeyi seçin.',
+      )
     if (
       session.role === 'ogretmen' &&
       !state.classes.some(
         (c) => c.grade === data.grade && workflowScope(state, session).classIds.has(c.id),
       )
     )
-      throw new Error('Bu sınıf düzeyinde göreviniz bulunmuyor.')
+      throw new DomainError(
+        'class_level_not_assigned',
+        'Bu sınıf düzeyinde göreviniz bulunmuyor.',
+        { kind: 'forbidden' },
+      )
     const entry = stamped(makeId, 'exam', { ...data, date: atDay(data.date) }, now)
     state.mockExams.unshift(entry)
     return entry
@@ -838,7 +935,10 @@ function executeWorkflow(
     const results = parseResultsCsv(data.csv).map((row) => validateExamResult(state, session, row))
     const keys = results.map((r) => `${r.examId}/${r.studentId}/${r.subjectId}`)
     if (new Set(keys).size !== keys.length)
-      throw new Error('CSV aynı öğrenci, sınav ve ders için yinelenen satır içeriyor.')
+      throw new DomainError(
+        'csv_duplicate_rows',
+        'CSV aynı öğrenci, sınav ve ders için yinelenen satır içeriyor.',
+      )
     results.forEach((result) => upsertResult(state, result, makeId, now))
     return results.length
   }
@@ -847,14 +947,28 @@ function executeWorkflow(
     const student = scopedStudent(state, session, data.studentId),
       oldClass = active(state.classes, student.classId)
     if (data.year <= state.academicYear)
-      throw new Error('Yenileme için mevcut dönemden sonraki bir yıl seçin.')
+      throw new DomainError(
+        'renewal_year_invalid',
+        'Yenileme için mevcut dönemden sonraki bir yıl seçin.',
+      )
     if (state.renewals.some((r) => r.studentId === student.id && r.year === data.year))
-      throw new Error('Bu öğrenci için bu yılın yenilemesi zaten oluşturulmuş.')
+      throw new DomainError(
+        'renewal_already_exists',
+        'Bu öğrenci için bu yılın yenilemesi zaten oluşturulmuş.',
+        { kind: 'conflict' },
+      )
     if (state.renewals.some((r) => r.studentId === student.id && r.status === 'Planlandı'))
-      throw new Error('Öğrencinin planlanmış bir dönem geçişi var; önce onu tamamlayın.')
+      throw new DomainError(
+        'transition_planned_exists',
+        'Öğrencinin planlanmış bir dönem geçişi var; önce onu tamamlayın.',
+        { kind: 'conflict' },
+      )
     if (data.mode === 'graduate') {
       if (oldClass.grade !== 12)
-        throw new Error('Mezuniyet yalnızca 12. sınıf öğrencileri için yapılabilir.')
+        throw new DomainError(
+          'graduation_grade_invalid',
+          'Mezuniyet yalnızca 12. sınıf öğrencileri için yapılabilir.',
+        )
       const entry = stamped(
         makeId,
         'renewal',
@@ -875,7 +989,10 @@ function executeWorkflow(
     const target = active(state.classes, data.targetClassId)
     active(state.branches, target.branchId)
     if (target.grade !== oldClass.grade + 1)
-      throw new Error('Yeni sınıf öğrencinin bir üst sınıf düzeyinde olmalıdır.')
+      throw new DomainError(
+        'new_class_level_invalid',
+        'Yeni sınıf öğrencinin bir üst sınıf düzeyinde olmalıdır.',
+      )
     const occupants = new Set(
       state.students.filter((s) => s.isActive && s.classId === target.id).map((s) => s.id),
     )
@@ -884,7 +1001,8 @@ function executeWorkflow(
         (r) => r.targetClassId === target.id && r.year === data.year && r.status === 'Planlandı',
       )
       .forEach((r) => occupants.add(r.studentId))
-    if (occupants.size >= target.capacity) throw new Error('Yeni sınıfta yeterli kontenjan yok.')
+    if (occupants.size >= target.capacity)
+      throw new DomainError('class_capacity_full', 'Yeni sınıfta yeterli kontenjan yok.')
     const quote = renewalQuote(input),
       entryId = makeId('renewal'),
       contractId = makeId('contract'),
@@ -944,9 +1062,16 @@ function executeWorkflow(
   if (command === 'renewal-activate') {
     const entry = requireRecord(state.renewals, recordId),
       student = active(state.students, entry.studentId)
-    if (entry.status !== 'Planlandı') throw new Error('Bu dönem geçişi zaten uygulanmış.')
+    if (entry.status !== 'Planlandı')
+      throw new DomainError('transition_already_applied', 'Bu dönem geçişi zaten uygulanmış.', {
+        kind: 'conflict',
+      })
     if (student.classId !== entry.fromClassId)
-      throw new Error('Öğrencinin sınıfı değişmiş. Dönem geçişi uygulanamadı.')
+      throw new DomainError(
+        'transition_class_changed',
+        'Öğrencinin sınıfı değişmiş. Dönem geçişi uygulanamadı.',
+        { kind: 'conflict' },
+      )
     if (
       (state.tutorSessions || []).some(
         (tutor) =>
@@ -955,7 +1080,8 @@ function executeWorkflow(
           tutor.studentIds.includes(student.id),
       )
     )
-      throw new Error(
+      throw new DomainError(
+        'transition_has_future_tutoring',
         'Öğrencinin ileri tarihli etütlerini iptal ettikten sonra dönem geçişini uygulayın.',
       )
     if (entry.mode === 'renew') {
@@ -965,7 +1091,7 @@ function executeWorkflow(
         state.students.filter((s) => s.isActive && s.classId === target.id).length >=
         target.capacity
       )
-        throw new Error('Hedef sınıfın kontenjanı dolu.')
+        throw new DomainError('class_capacity_full', 'Hedef sınıfın kontenjanı dolu.')
     }
     state.enrollmentHistory.push(
       stamped(
@@ -1029,7 +1155,8 @@ function executeWorkflow(
     const title = () => state.subjects.find((s) => s.id === data.subjectId)?.name
     if (recordId) {
       const entry = requireRecord(state.schedule, recordId)
-      if (entry.cancelledAt) throw new Error('İptal edilmiş ders düzenlenemez.')
+      if (entry.cancelledAt)
+        throw new DomainError('lesson_cancelled', 'İptal edilmiş ders düzenlenemez.')
       Object.assign(entry, data, { title: title(), updatedAt: now })
       return entry
     }
@@ -1041,8 +1168,10 @@ function executeWorkflow(
   if (command === 'substitute') {
     const data = workflowSchemas.substitute.parse(input)
     const lesson = requireRecord(state.schedule, recordId)
-    if (lesson.cancelledAt) throw new Error('İptal edilmiş ders için görevlendirme yapılamaz.')
-    if (lesson.teacherId === data.teacherId) throw new Error('Farklı bir öğretmen seçin.')
+    if (lesson.cancelledAt)
+      throw new DomainError('lesson_cancelled', 'İptal edilmiş ders için görevlendirme yapılamaz.')
+    if (lesson.teacherId === data.teacherId)
+      throw new DomainError('teacher_unchanged', 'Farklı bir öğretmen seçin.')
     validateLesson(state, { ...lesson, teacherId: data.teacherId }, lesson.id)
     lesson.originalTeacherId ||= lesson.teacherId
     lesson.substitutions ||= []
@@ -1057,22 +1186,32 @@ function executeWorkflow(
   }
   if (command === 'lesson-cancel') {
     const entry = requireRecord(state.schedule, recordId)
-    if (entry.cancelledAt) throw new Error('Ders zaten iptal edilmiş.')
+    if (entry.cancelledAt)
+      throw new DomainError('lesson_already_cancelled', 'Ders zaten iptal edilmiş.', {
+        kind: 'conflict',
+      })
     entry.cancelledAt = now
     return entry
   }
   if (command === 'study-task') {
     const data = workflowSchemas['study-task'].parse(input)
     if (data.dueDate < dayKey(now))
-      throw new Error('Yeni çalışma görevinin son tarihi geçmişte olamaz.')
+      throw new DomainError(
+        'task_due_date_past',
+        'Yeni çalışma görevinin son tarihi geçmişte olamaz.',
+      )
     const student = scopedStudent(state, session, data.studentId)
     const teacher = state.assignments.find(
       (a) => a.classId === student.classId && a.subjectId === data.subjectId,
     )?.teacherId
     if (!teacher || !state.teachers.some((t) => t.id === teacher && t.isActive))
-      throw new Error('Bu ders için aktif öğretmen ataması bulunmuyor.')
+      throw new DomainError('lesson_no_teacher', 'Bu ders için aktif öğretmen ataması bulunmuyor.')
     if (session.role === 'ogretmen' && teacher !== 't1')
-      throw new Error('Yalnızca kendi dersiniz için görev verebilirsiniz.')
+      throw new DomainError(
+        'homework_own_lesson_only',
+        'Yalnızca kendi dersiniz için görev verebilirsiniz.',
+        { kind: 'forbidden' },
+      )
     const entry = stamped(
       makeId,
       'study',
@@ -1094,7 +1233,10 @@ function executeWorkflow(
     const entry = requireRecord(state.studyTasks, recordId)
     scopedStudent(state, session, entry.studentId)
     if (!['Onaylandı', 'Tekrar çalışılacak'].includes(entry.status))
-      throw new Error('Yalnızca onaylanmış veya tekrar verilen görev teslim edilebilir.')
+      throw new DomainError(
+        'homework_not_submittable',
+        'Yalnızca onaylanmış veya tekrar verilen görev teslim edilebilir.',
+      )
     Object.assign(entry, data, { status: 'Değerlendirme bekliyor', completedAt: now })
     return entry
   }
@@ -1103,12 +1245,14 @@ function executeWorkflow(
     const entry = requireRecord(state.studyTasks, recordId)
     scopedStudent(state, session, entry.studentId)
     if (session.role === 'ogretmen' && entry.teacherId !== 't1')
-      throw new Error('Bu çalışma görevinin öğretmeni değilsiniz.')
+      throw new DomainError('homework_not_owner', 'Bu çalışma görevinin öğretmeni değilsiniz.', {
+        kind: 'forbidden',
+      })
     if (
       (entry.status === 'Onay bekliyor' && data.status !== 'Onaylandı') ||
       (entry.status !== 'Onay bekliyor' && entry.status !== 'Değerlendirme bekliyor')
     )
-      throw new Error('Görevin durumuna uygun değerlendirme seçin.')
+      throw new DomainError('review_status_invalid', 'Görevin durumuna uygun değerlendirme seçin.')
     Object.assign(entry, data, { reviewedAt: now })
     return entry
   }
@@ -1117,16 +1261,23 @@ function executeWorkflow(
     active(state.branches, data.branchId)
     const classroom = data.classId ? active(state.classes, data.classId) : null
     if (classroom && classroom.branchId !== data.branchId)
-      throw new Error('Sınıf ve kampüs aynı olmalıdır.')
+      throw new DomainError('event_campus_mismatch', 'Sınıf ve kampüs aynı olmalıdır.')
     if (
       session.role === 'ogretmen' &&
       (!classroom || !workflowScope(state, session).classIds.has(classroom.id))
     )
-      throw new Error('Yalnızca kendi sınıflarınıza etkinlik oluşturabilirsiniz.')
+      throw new DomainError(
+        'event_own_class_only',
+        'Yalnızca kendi sınıflarınıza etkinlik oluşturabilirsiniz.',
+        { kind: 'forbidden' },
+      )
     if (Date.parse(data.endDate) <= Date.parse(data.date))
-      throw new Error('Bitiş zamanı başlangıçtan sonra olmalıdır.')
+      throw new DomainError('event_time_invalid', 'Bitiş zamanı başlangıçtan sonra olmalıdır.')
     if (data.requiresConsent && Date.parse(atDay(data.consentDeadline)) > Date.parse(data.date))
-      throw new Error('Onay son tarihi etkinlik başlangıcından sonra olamaz.')
+      throw new DomainError(
+        'event_deadline_invalid',
+        'Onay son tarihi etkinlik başlangıcından sonra olamaz.',
+      )
     const conflict = tutorConflict(
       { ...state, schedule: [], appointments: [], schoolEvents: [] },
       {
@@ -1137,7 +1288,7 @@ function executeWorkflow(
         studentIds: eventStudents(state, data).map((student) => student.id),
       },
     )
-    if (conflict) throw new Error(conflict)
+    if (conflict) throw new DomainError('tutor_schedule_conflict', conflict, { kind: 'conflict' })
     const entry = stamped(
       makeId,
       'event',
@@ -1161,12 +1312,16 @@ function executeWorkflow(
       event.status === 'İptal' ||
       !eventStudents(state, event).some((s) => s.id === student.id)
     )
-      throw new Error('Bu etkinlik için çocuğunuz adına onay verilemez.')
+      throw new DomainError(
+        'event_consent_denied',
+        'Bu etkinlik için çocuğunuz adına onay verilemez.',
+        { kind: 'forbidden' },
+      )
     if (
       Date.parse(now) > Date.parse(event.consentDeadline) + 43199999 ||
       Date.parse(now) >= Date.parse(event.date)
     )
-      throw new Error('Etkinliğin onay süresi dolmuş.')
+      throw new DomainError('event_consent_expired', 'Etkinliğin onay süresi dolmuş.')
     const existing = state.eventConsents.find(
       (c) => c.eventId === event.id && c.studentId === student.id,
     )
@@ -1185,7 +1340,11 @@ function executeWorkflow(
   if (command === 'event-cancel') {
     const event = requireRecord(state.schoolEvents, recordId)
     if (session.role === 'ogretmen' && event.teacherId !== 't1')
-      throw new Error('Yalnızca oluşturduğunuz etkinliği iptal edebilirsiniz.')
+      throw new DomainError(
+        'event_cancel_own_only',
+        'Yalnızca oluşturduğunuz etkinliği iptal edebilirsiniz.',
+        { kind: 'forbidden' },
+      )
     event.status = 'İptal'
     return event
   }
@@ -1200,7 +1359,9 @@ function executeWorkflow(
           r.plate.toLocaleLowerCase('tr') === data.plate.toLocaleLowerCase('tr'),
       )
     )
-      throw new Error('Bu plaka başka aktif güzergâhta kullanılıyor.')
+      throw new DomainError('route_plate_taken', 'Bu plaka başka aktif güzergâhta kullanılıyor.', {
+        kind: 'conflict',
+      })
     if (recordId) {
       const entry = active(state.transportRoutes, recordId),
         assignments = state.transportAssignments.filter((a) => a.routeId === recordId)
@@ -1214,7 +1375,8 @@ function executeWorkflow(
             )?.branchId !== data.branchId,
         )
       )
-        throw new Error(
+        throw new DomainError(
+          'route_has_assignments',
           'Atanmış öğrenciler nedeniyle kapasite, durak veya kampüs değişikliği yapılamaz. Önce atamaları güncelleyin.',
         )
       Object.assign(entry, data, { updatedAt: now })
@@ -1227,7 +1389,8 @@ function executeWorkflow(
   if (command === 'route-archive') {
     const entry = active(state.transportRoutes, recordId)
     if (state.transportAssignments.some((a) => a.routeId === entry.id))
-      throw new Error(
+      throw new DomainError(
+        'route_has_students',
         'Önce bu güzergâhtaki öğrencileri başka servise taşıyın veya atamalarını kaldırın.',
       )
     entry.status = 'Arşiv'
@@ -1238,13 +1401,14 @@ function executeWorkflow(
     const student = scopedStudent(state, session, data.studentId),
       route = active(state.transportRoutes, data.routeId)
     if (state.classes.find((c) => c.id === student.classId)?.branchId !== route.branchId)
-      throw new Error('Servis ve öğrenci aynı kampüste olmalıdır.')
-    if (!route.stops.includes(data.stop)) throw new Error('Seçilen durak bu güzergâhta bulunmuyor.')
+      throw new DomainError('route_campus_mismatch', 'Servis ve öğrenci aynı kampüste olmalıdır.')
+    if (!route.stops.includes(data.stop))
+      throw new DomainError('route_stop_invalid', 'Seçilen durak bu güzergâhta bulunmuyor.')
     if (
       state.transportAssignments.filter((a) => a.routeId === route.id && a.studentId !== student.id)
         .length >= route.capacity
     )
-      throw new Error('Servis kontenjanı dolu.')
+      throw new DomainError('route_capacity_full', 'Servis kontenjanı dolu.')
     const existing = state.transportAssignments.find((a) => a.studentId === student.id)
     if (existing) Object.assign(existing, data, { updatedAt: now })
     else state.transportAssignments.push(stamped(makeId, 'transport', data, now))
@@ -1262,7 +1426,11 @@ function executeWorkflow(
       (m) => m.branchId === data.branchId && m.date.slice(0, 10) === data.date,
     )
     if (previous && previous.id !== recordId)
-      throw new Error('Bu kampüs ve gün için menü zaten var. Mevcut menüyü düzenleyin.')
+      throw new DomainError(
+        'menu_exists',
+        'Bu kampüs ve gün için menü zaten var. Mevcut menüyü düzenleyin.',
+        { kind: 'conflict' },
+      )
     if (recordId) {
       const entry = requireRecord(state.mealMenus, recordId)
       Object.assign(entry, data, { date: atDay(data.date), updatedAt: now })
@@ -1277,7 +1445,8 @@ function executeWorkflow(
     active(state.branches, data.branchId)
     const teacher = active(state.teachers, data.teacherId)
     if (teacher.branchId !== data.branchId || (session.role === 'ogretmen' && teacher.id !== 't1'))
-      throw new Error(
+      throw new DomainError(
+        'club_teacher_invalid',
         'Kulüp sorumlusu kampüse uygun olmalıdır; öğretmen kendi adına kulüp açabilir.',
       )
     const entry = stamped(makeId, 'club', { ...data, status: 'Aktif' }, now)
@@ -1290,16 +1459,19 @@ function executeWorkflow(
       student = scopedStudent(state, session, data.studentId)
     if (session.role === 'ogretmen') ownedClub(state, session, recordId)
     if (state.classes.find((c) => c.id === student.classId)?.branchId !== club.branchId)
-      throw new Error('Öğrenci ve kulüp aynı kampüste olmalıdır.')
+      throw new DomainError('club_campus_mismatch', 'Öğrenci ve kulüp aynı kampüste olmalıdır.')
     const existing = state.clubMemberships.find(
       (m) => m.clubId === club.id && m.studentId === student.id,
     )
-    if (existing?.status === 'Aktif') throw new Error('Öğrenci bu kulübe zaten kayıtlı.')
+    if (existing?.status === 'Aktif')
+      throw new DomainError('club_member_exists', 'Öğrenci bu kulübe zaten kayıtlı.', {
+        kind: 'conflict',
+      })
     if (
       state.clubMemberships.filter((m) => m.clubId === club.id && m.status === 'Aktif').length >=
       club.capacity
     )
-      throw new Error('Kulüp kontenjanı dolu.')
+      throw new DomainError('club_capacity_full', 'Kulüp kontenjanı dolu.')
     if (existing) Object.assign(existing, { status: 'Aktif', updatedAt: now })
     else
       state.clubMemberships.push(
@@ -1311,7 +1483,10 @@ function executeWorkflow(
     const member = requireRecord(state.clubMemberships, recordId)
     scopedStudent(state, session, member.studentId)
     if (session.role === 'ogretmen') ownedClub(state, session, member.clubId)
-    if (member.status !== 'Aktif') throw new Error('Üyelik zaten sonlandırılmış.')
+    if (member.status !== 'Aktif')
+      throw new DomainError('membership_already_ended', 'Üyelik zaten sonlandırılmış.', {
+        kind: 'conflict',
+      })
     member.status = 'Ayrıldı'
     return member
   }
@@ -1319,7 +1494,11 @@ function executeWorkflow(
     const data = workflowSchemas['club-attendance'].parse(input)
     const club = ownedClub(state, session, recordId),
       members = state.clubMemberships.filter((m) => m.clubId === club.id && m.status === 'Aktif')
-    if (data.date > dayKey(now)) throw new Error('Gelecek tarih için kulüp yoklaması alınamaz.')
+    if (data.date > dayKey(now))
+      throw new DomainError(
+        'club_attendance_future',
+        'Gelecek tarih için kulüp yoklaması alınamaz.',
+      )
     // Durumu seçilmiş üyeler üye sırasıyla; eksik üye varsa liste kısalır.
     const marked = members.flatMap((member) => {
       const status = data.marks[member.studentId]
@@ -1330,7 +1509,10 @@ function executeWorkflow(
       marked.length !== members.length ||
       Object.keys(data.marks).some((id) => !members.some((m) => m.studentId === id))
     )
-      throw new Error('Tüm aktif üyelerin yoklama durumunu seçin.')
+      throw new DomainError(
+        'club_attendance_incomplete',
+        'Tüm aktif üyelerin yoklama durumunu seçin.',
+      )
     for (const member of marked) {
       const entry = state.clubAttendance.find(
         (a) =>
@@ -1365,7 +1547,10 @@ function executeWorkflow(
         (m) => m.studentId === data.studentId && m.clubId === data.clubId && m.status === 'Aktif',
       )
     )
-      throw new Error('Başarı kaydı için öğrenci kulübün aktif üyesi olmalıdır.')
+      throw new DomainError(
+        'club_achievement_member_required',
+        'Başarı kaydı için öğrenci kulübün aktif üyesi olmalıdır.',
+      )
     const entry = stamped(makeId, 'achievement', { ...data, date: atDay(data.date) }, now)
     state.socialAchievements.push(entry)
     return entry
@@ -1380,7 +1565,7 @@ function executeWorkflow(
       })
     return club
   }
-  throw new Error('İşlem bulunamadı.')
+  throw new DomainError('unknown_command', 'İşlem bulunamadı.')
 }
 
 type AuditedCollection = {

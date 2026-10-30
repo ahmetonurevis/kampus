@@ -6,6 +6,7 @@ import { createSeed } from '../apps/web/src/data/seed.js'
 import { documentData } from '../apps/web/src/lib/document-data.js'
 import { renderDocument } from '../apps/web/src/lib/pdf-layout.js'
 import { filterRows, pageNumbers } from '../apps/web/src/lib/list-query.js'
+import { isDomainError } from './support/domain-error.js'
 const { jsPDF } = createRequire(new URL('../apps/web/package.json', import.meta.url))('jspdf')
 const font = readFileSync(
   new URL('../apps/web/public/fonts/NotoSans-Regular.ttf', import.meta.url),
@@ -150,4 +151,16 @@ test('Sayfa bağlantıları ilk, son ve geçerli sayfayı içerir; arada atlanan
   assert.deepEqual(pageNumbers(1, 3), [1, 2, 3])
   assert.deepEqual(pageNumbers(24, 24), [1, 'gap-23', 23, 24])
   assert.deepEqual(pageNumbers(12, 24), [1, 'gap-11', 11, 12, 13, 'gap-24', 24])
+})
+
+test('Belge verisi bulunamayan kaydı DomainError ile reddeder', () => {
+  const state = createSeed()
+  assert.throws(
+    () => documentData(state, 'contract', 'missing'),
+    isDomainError('contract_not_found', 'not_found'),
+  )
+  assert.throws(
+    () => documentData(state, 'unknown-type', 'x', 's1'),
+    isDomainError('unsupported_document_type'),
+  )
 })

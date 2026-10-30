@@ -385,7 +385,8 @@ export function workflowCreateActions(
     meals: [['meal', 'Menü ekle']],
     clubs: [['club', 'Kulüp oluştur']],
   }
-  return present(candidates[definition.key])
+  // Optik değerlendirme ve otomatik etüt gibi kendi ekranında işlem yapan modüllerin tabloda karşılığı yoktur.
+  return (candidates[definition.key] ?? [])
     .filter(([cmd]) => mayRun(session, cmd))
     .map(([cmd, label]) => action(cmd, label))
 }

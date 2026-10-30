@@ -4,6 +4,7 @@ import type { MakeId, Session } from './domain.ts'
 import { dayKey } from './format.ts'
 import { csvObjects } from './delimited-input.ts'
 import { tutorConflict } from './tutor-conflicts.ts'
+import { DomainError } from './errors.ts'
 
 z.config(z.locales.tr())
 
@@ -128,7 +129,10 @@ export type TutorSession = PlannedTutorSession &
 
 const record = <T extends { id: string }>(list: readonly T[] | undefined, id: string) => {
   const value = list?.find((r) => r.id === id)
-  if (!value) throw new Error('İlgili kayıt bulunamadı. Listeyi yenileyin.')
+  if (!value)
+    throw new DomainError('record_not_found', 'İlgili kayıt bulunamadı. Listeyi yenileyin.', {
+      kind: 'not_found',
+    })
   return value
 }
 const active = <T extends { id: string; isActive?: boolean; deletedAt?: string | null }>(
@@ -136,13 +140,19 @@ const active = <T extends { id: string; isActive?: boolean; deletedAt?: string |
   id: string,
 ) => {
   const value = record(list, id)
-  if (value.isActive === false || value.deletedAt) throw new Error('Pasif kayıt kullanılamaz.')
+  if (value.isActive === false || value.deletedAt)
+    throw new DomainError('record_inactive', 'Pasif kayıt kullanılamaz.')
   return value
 }
 function access(state: State, session: Session, module: string, write = false) {
-  if (!state.modules[module]) throw new Error('Bu modül kurum ayarlarından kapalı.')
+  if (!state.modules[module])
+    throw new DomainError('module_disabled', 'Bu modül kurum ayarlarından kapalı.', {
+      kind: 'forbidden',
+    })
   if (write && !['yonetici', 'ogretmen'].includes(session.role))
-    throw new Error('Bu işlem için yetkiniz bulunmuyor.')
+    throw new DomainError('permission_denied', 'Bu işlem için yetkiniz bulunmuyor.', {
+      kind: 'forbidden',
+    })
   if (session.role === 'ogretmen') active(state.teachers, 't1')
 }
 export function automationScope(state: State, session: Session) {
@@ -193,11 +203,18 @@ export function parseAnswerKey(state: State, exam: MockExam, raw: string) {
       number < 1 ||
       number > 400
     )
-      throw new Error(`Anahtar ${index + 2}. satırda kitapçık veya soru numarası geçersiz.`)
+      throw new DomainError(
+        'answer_key_invalid_row',
+        `Anahtar ${index + 2}. satırda kitapçık veya soru numarası geçersiz.`,
+      )
     if (!exam.subjectIds.includes(subjectId) || !state.subjects.some((s) => s.id === subjectId))
-      throw new Error(`Anahtar ${index + 2}. satırdaki ders sınav kapsamında değil.`)
+      throw new DomainError(
+        'answer_key_subject_out_of_scope',
+        `Anahtar ${index + 2}. satırdaki ders sınav kapsamında değil.`,
+      )
     if (!topic || topic.length > 200 || !/^[A-E-]$/.test(answer))
-      throw new Error(
+      throw new DomainError(
+        'answer_key_invalid_values',
         `Anahtar ${index + 2}. satırda kazanım veya cevap geçersiz. Cevap A–E, iptal soru - olmalıdır.`,
       )
     let questions = keys.get(booklet)
@@ -206,10 +223,17 @@ export function parseAnswerKey(state: State, exam: MockExam, raw: string) {
       keys.set(booklet, questions)
     }
     if (questions.some((q) => q.number === number))
-      throw new Error(`${booklet} kitapçığında ${number}. soru yineleniyor.`)
+      throw new DomainError(
+        'answer_key_duplicate_question',
+        `${booklet} kitapçığında ${number}. soru yineleniyor.`,
+      )
     questions.push({ number, subjectId, topic, answer })
   }
-  if (keys.size > 8) throw new Error('En fazla sekiz kitapçık tanımlayabilirsiniz.')
+  if (keys.size > 8)
+    throw new DomainError(
+      'answer_key_too_many_booklets',
+      'En fazla sekiz kitapçık tanımlayabilirsiniz.',
+    )
   const sorted = [...keys]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([booklet, questions]) => ({
@@ -219,7 +243,8 @@ export function parseAnswerKey(state: State, exam: MockExam, raw: string) {
   let expected = ''
   for (const key of sorted) {
     if (key.questions.some((q, i) => q.number !== i + 1))
-      throw new Error(
+      throw new DomainError(
+        'answer_key_question_sequence',
         `${key.booklet} kitapçığı soruları 1'den başlayan kesintisiz sıra içermelidir.`,
       )
     const counts: Record<string, number> = {}
@@ -236,12 +261,21 @@ export function parseAnswerKey(state: State, exam: MockExam, raw: string) {
         (id) => !key.questions.some((q) => q.subjectId === id && q.answer !== '-'),
       )
     )
-      throw new Error('Her sınav dersi en az bir geçerli soru içermelidir.')
+      throw new DomainError(
+        'answer_key_subject_empty',
+        'Her sınav dersi en az bir geçerli soru içermelidir.',
+      )
     if (exam.subjectIds.some((id) => key.questions.filter((q) => q.subjectId === id).length > 200))
-      throw new Error('Bir derste en fazla 200 soru olabilir.')
+      throw new DomainError(
+        'answer_key_subject_too_large',
+        'Bir derste en fazla 200 soru olabilir.',
+      )
     const signature = JSON.stringify(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b)))
     if (expected && signature !== expected)
-      throw new Error('Kitapçıkların ders/kazanım soru sayıları ve iptalleri eşit olmalıdır.')
+      throw new DomainError(
+        'answer_key_booklet_mismatch',
+        'Kitapçıkların ders/kazanım soru sayıları ve iptalleri eşit olmalıdır.',
+      )
     expected = signature
   }
   return sorted
@@ -249,12 +283,23 @@ export function parseAnswerKey(state: State, exam: MockExam, raw: string) {
 export function prepareProfile(state: State, session: Session, input: unknown, profileId = '') {
   access(state, session, 'optical', true)
   if (session.role !== 'yonetici')
-    throw new Error('Cevap anahtarını yalnızca yönetici düzenleyebilir.')
-  if (!state.modules.exams) throw new Error('Deneme sınavları modülü kapalı.')
+    throw new DomainError(
+      'answer_key_admin_only',
+      'Cevap anahtarını yalnızca yönetici düzenleyebilir.',
+      { kind: 'forbidden' },
+    )
+  if (!state.modules.exams)
+    throw new DomainError('module_disabled', 'Deneme sınavları modülü kapalı.', {
+      kind: 'forbidden',
+    })
   const data = automationSchemas.profile.parse(input),
     exam = record(state.mockExams, data.examId)
   if (state.opticalProfiles.some((p) => p.examId === exam.id && p.id !== profileId))
-    throw new Error('Bu sınavın zaten optik profili var. Mevcut profili düzenleyin.')
+    throw new DomainError(
+      'optical_profile_exists',
+      'Bu sınavın zaten optik profili var. Mevcut profili düzenleyin.',
+      { kind: 'conflict' },
+    )
   const keys = parseAnswerKey(state, exam, data.keyCsv)
   if (data.format === 'fixed') {
     const fields: [number, number][] = [
@@ -269,14 +314,24 @@ export function prepareProfile(state: State, session: Session, input: unknown, p
         ),
       )
     )
-      throw new Error('DAT/TXT öğrenci, kitapçık ve cevap alanları çakışmamalıdır.')
+      throw new DomainError(
+        'optical_field_overlap',
+        'DAT/TXT öğrenci, kitapçık ve cevap alanları çakışmamalıdır.',
+      )
     if (keys.some((k) => k.questions.length !== data.answersLength))
-      throw new Error('Cevap alanı uzunluğu kitapçığın soru sayısıyla aynı olmalıdır.')
+      throw new DomainError(
+        'optical_answer_length_mismatch',
+        'Cevap alanı uzunluğu kitapçığın soru sayısıyla aynı olmalıdır.',
+      )
     if (keys.some((k) => k.booklet.length > data.bookletLength))
-      throw new Error('Kitapçık alanı kodu içerecek kadar uzun olmalıdır.')
+      throw new DomainError(
+        'optical_booklet_field_too_short',
+        'Kitapçık alanı kodu içerecek kadar uzun olmalıdır.',
+      )
   }
   const existing = profileId ? record(state.opticalProfiles, profileId) : null
-  if (existing && existing.examId !== exam.id) throw new Error('Profilin sınavı değiştirilemez.')
+  if (existing && existing.examId !== exam.id)
+    throw new DomainError('optical_profile_exam_locked', 'Profilin sınavı değiştirilemez.')
   return {
     ...data,
     keys,
@@ -294,7 +349,7 @@ function responseRows(profile: OpticalProfile, raw: string) {
     .slice(profile.headerLines)
   while (lines.length && !lines.at(-1)?.trim()) lines.pop()
   if (!lines.length || lines.length > 1000)
-    throw new Error('DAT/TXT 1–1000 öğrenci satırı içermelidir.')
+    throw new DomainError('optical_row_count_invalid', 'DAT/TXT 1–1000 öğrenci satırı içermelidir.')
   const width = Math.max(
     profile.studentStart + profile.studentLength - 1,
     profile.bookletStart + profile.bookletLength - 1,
@@ -304,7 +359,10 @@ function responseRows(profile: OpticalProfile, raw: string) {
     const characters = Array.from(line),
       rowNumber = i + profile.headerLines + 1
     if (characters.length < width)
-      throw new Error(`DAT/TXT ${rowNumber}. satır alanları dolduracak kadar uzun değil.`)
+      throw new DomainError(
+        'optical_row_too_short',
+        `DAT/TXT ${rowNumber}. satır alanları dolduracak kadar uzun değil.`,
+      )
     const field = (start: number, length: number) =>
       characters.slice(start - 1, start - 1 + length).join('')
     return {
@@ -347,7 +405,10 @@ export function previewOptical(
   input: unknown,
 ): OpticalPreviewRow[] {
   access(state, session, 'optical', true)
-  if (!state.modules.exams) throw new Error('Deneme sınavları modülü kapalı.')
+  if (!state.modules.exams)
+    throw new DomainError('module_disabled', 'Deneme sınavları modülü kapalı.', {
+      kind: 'forbidden',
+    })
   const data = automationSchemas.evaluate.parse(input),
     profile = record(state.opticalProfiles, data.profileId)
   const exam = record(state.mockExams, profile.examId),
@@ -361,25 +422,42 @@ export function previewOptical(
       )
     const [student] = matches
     if (matches.length !== 1 || !student)
-      throw new Error(
+      throw new DomainError(
+        'optical_student_unmatched',
         `${row.line}. satırdaki öğrenci tekil eşleşmedi: ${identity || 'boş kimlik'}.`,
       )
     if (!student.isActive || !scope.studentIds.has(student.id))
-      throw new Error(`${row.line}. satırdaki öğrenci pasif veya yetki kapsamınız dışında.`)
+      throw new DomainError(
+        'optical_student_out_of_scope',
+        `${row.line}. satırdaki öğrenci pasif veya yetki kapsamınız dışında.`,
+      )
     if (state.classes.find((c) => c.id === student.classId)?.grade !== exam.grade)
-      throw new Error(`${row.line}. satırdaki öğrencinin sınıf düzeyi sınavla uyumsuz.`)
-    if (seen.has(student.id)) throw new Error(`${row.line}. satırda öğrenci yineleniyor.`)
+      throw new DomainError(
+        'optical_level_mismatch',
+        `${row.line}. satırdaki öğrencinin sınıf düzeyi sınavla uyumsuz.`,
+      )
+    if (seen.has(student.id))
+      throw new DomainError(
+        'optical_student_duplicate',
+        `${row.line}. satırda öğrenci yineleniyor.`,
+      )
     seen.add(student.id)
     const booklet = row.booklet.trim().toUpperCase(),
       key = profile.keys.find((k) => k.booklet === booklet)
-    if (!key) throw new Error(`${row.line}. satırdaki kitapçık tanımsız: ${booklet || 'boş'}.`)
+    if (!key)
+      throw new DomainError(
+        'optical_booklet_unknown',
+        `${row.line}. satırdaki kitapçık tanımsız: ${booklet || 'boş'}.`,
+      )
     const responses = Array.from(row.answers.toUpperCase())
     if (responses.length !== key.questions.length)
-      throw new Error(
+      throw new DomainError(
+        'optical_answer_count_mismatch',
         `${row.line}. satırda ${key.questions.length} cevap bekleniyor; ${responses.length} karakter var. Boş cevaplar için - kullanabilirsiniz.`,
       )
     if (responses.some((c) => !'ABCDE -._*'.includes(c)))
-      throw new Error(
+      throw new DomainError(
+        'optical_answer_invalid',
         `${row.line}. satırda geçersiz cevap var. A–E, boş için -/./_/boşluk, çoklu işaret için * kullanın.`,
       )
     for (const subjectId of exam.subjectIds.filter(
@@ -423,7 +501,11 @@ export function previewOptical(
       })
     }
   }
-  if (!output.length) throw new Error('Sınavda branşınıza uygun değerlendirme bulunmuyor.')
+  if (!output.length)
+    throw new DomainError(
+      'no_evaluation_in_scope',
+      'Sınavda branşınıza uygun değerlendirme bulunmuyor.',
+    )
   return output
 }
 
@@ -487,17 +569,23 @@ export function tutoringCalendarEntries(state: State, session: Session) {
 function planInput(state: State, session: Session, input: unknown, now: string) {
   access(state, session, 'tutoring', true)
   const data = automationSchemas.plan.parse(input)
-  if (!state.modules.exams) throw new Error('Deneme sınavları modülü kapalı.')
+  if (!state.modules.exams)
+    throw new DomainError('module_disabled', 'Deneme sınavları modülü kapalı.', {
+      kind: 'forbidden',
+    })
   record(state.mockExams, data.examId)
   if (
     data.fromDate < dayKey(now) ||
     data.toDate < data.fromDate ||
     (Date.parse(data.toDate) - Date.parse(data.fromDate)) / 86400000 > 30
   )
-    throw new Error('Etüt tarih aralığı bugün veya sonrasında, en fazla 31 gün olmalıdır.')
+    throw new DomainError(
+      'tutoring_date_range_invalid',
+      'Etüt tarih aralığı bugün veya sonrasında, en fazla 31 gün olmalıdır.',
+    )
   if (data.branchId) active(state.branches, data.branchId)
   if (data.subjectId && !record(state.mockExams, data.examId).subjectIds.includes(data.subjectId))
-    throw new Error('Ders sınav kapsamında değil.')
+    throw new DomainError('subject_out_of_scope', 'Ders sınav kapsamında değil.')
   return data
 }
 export function planTutoring(
@@ -683,7 +771,11 @@ export function runAssessment(
   } else if (command === 'evaluate') {
     const preview = previewOptical(state, session, input)
     if (input.expectedPreview && input.expectedPreview !== JSON.stringify(preview))
-      throw new Error('Değerlendirme değişmiş. Sonuçları yeniden önizleyin.')
+      throw new DomainError(
+        'evaluation_stale',
+        'Değerlendirme değişmiş. Sonuçları yeniden önizleyin.',
+        { kind: 'conflict' },
+      )
     const evaluations = [...state.opticalEvaluations],
       results = [...state.mockResults]
     for (const row of preview) {
@@ -727,9 +819,14 @@ export function runAssessment(
   } else if (command === 'plan') {
     const plan = planTutoring(state, session, input, now)
     if (input.expectedPlan && input.expectedPlan !== JSON.stringify(plan))
-      throw new Error('Etüt planı değişmiş. Güncel planı yeniden önizleyin.')
+      throw new DomainError(
+        'tutoring_plan_stale',
+        'Etüt planı değişmiş. Güncel planı yeniden önizleyin.',
+        { kind: 'conflict' },
+      )
     if (!plan.sessions.length)
-      throw new Error(
+      throw new DomainError(
+        'tutoring_nothing_to_create',
         'Oluşturulabilecek etüt yok. Eksik kazanımları, mevcut etütleri ve uygunluk saatlerini kontrol edin.',
       )
     const sessions = plan.sessions.map((s) =>
@@ -753,16 +850,20 @@ export function runAssessment(
     data.date = new Date(data.date).toISOString()
     const teacher = active(state.teachers, data.teacherId)
     if (session.role === 'ogretmen' && teacher.id !== 't1')
-      throw new Error('Yalnızca kendi uygunluk saatinizi ekleyebilirsiniz.')
+      throw new DomainError(
+        'availability_own_only',
+        'Yalnızca kendi uygunluk saatinizi ekleyebilirsiniz.',
+        { kind: 'forbidden' },
+      )
     if (Date.parse(data.date) <= Date.parse(now))
-      throw new Error('Uygunluk saati gelecekte olmalıdır.')
+      throw new DomainError('availability_must_be_future', 'Uygunluk saati gelecekte olmalıdır.')
     const reason = tutorConflict(state, {
       ...data,
       branchId: teacher.branchId,
       room: '',
       studentIds: [],
     })
-    if (reason) throw new Error(reason)
+    if (reason) throw new DomainError('tutor_schedule_conflict', reason, { kind: 'conflict' })
     if (
       state.availability.some(
         (s) =>
@@ -771,7 +872,11 @@ export function runAssessment(
           Date.parse(data.date) < Date.parse(s.date) + s.duration * 60000,
       )
     )
-      throw new Error('Bu saat başka bir uygunluk aralığıyla çakışıyor.')
+      throw new DomainError(
+        'availability_overlap',
+        'Bu saat başka bir uygunluk aralığıyla çakışıyor.',
+        { kind: 'conflict' },
+      )
     const slot = stamp('slot', data)
     result = slot
     state.availability.push(slot)
@@ -780,7 +885,11 @@ export function runAssessment(
     access(state, session, 'tutoring', true)
     const slot = record(state.availability, recordId)
     if (session.role === 'ogretmen' && slot.teacherId !== 't1')
-      throw new Error('Yalnızca kendi uygunluk saatinizi kaldırabilirsiniz.')
+      throw new DomainError(
+        'availability_own_only',
+        'Yalnızca kendi uygunluk saatinizi kaldırabilirsiniz.',
+        { kind: 'forbidden' },
+      )
     oldValue = structuredClone(slot)
     result = slot
     state.availability = state.availability.filter((s) => s.id !== recordId)
@@ -789,12 +898,18 @@ export function runAssessment(
     access(state, session, 'tutoring', true)
     const entry = record(state.tutorSessions, recordId)
     if (session.role === 'ogretmen' && entry.teacherId !== 't1')
-      throw new Error('Yalnızca kendi etüdünüzü yönetebilirsiniz.')
-    if (entry.status === 'İptal') throw new Error('Etüt iptal edilmiş.')
+      throw new DomainError('tutoring_own_only', 'Yalnızca kendi etüdünüzü yönetebilirsiniz.', {
+        kind: 'forbidden',
+      })
+    if (entry.status === 'İptal')
+      throw new DomainError('tutoring_already_cancelled', 'Etüt iptal edilmiş.', {
+        kind: 'conflict',
+      })
     oldValue = structuredClone(entry)
     if (command === 'cancel') {
       const reason = z.string().trim().min(2, 'İptal nedenini girin.').max(500).parse(input.reason)
-      if (entry.status === 'Tamamlandı') throw new Error('Tamamlanmış etüt iptal edilemez.')
+      if (entry.status === 'Tamamlandı')
+        throw new DomainError('tutoring_completed', 'Tamamlanmış etüt iptal edilemez.')
       Object.assign(entry, {
         status: 'İptal',
         cancelReason: reason,
@@ -803,13 +918,16 @@ export function runAssessment(
       })
     } else {
       if (Date.parse(entry.date) > Date.parse(now))
-        throw new Error('Gelecek etüdün yoklaması alınamaz.')
+        throw new DomainError('tutoring_attendance_future', 'Gelecek etüdün yoklaması alınamaz.')
       const marks = z.record(z.string(), z.enum(['Geldi', 'Gelmedi', 'İzinli'])).parse(input.marks)
       if (
         Object.keys(marks).length !== entry.studentIds.length ||
         entry.studentIds.some((id) => !Object.hasOwn(marks, id))
       )
-        throw new Error('Yoklamada tüm etüt öğrencileri ve yalnızca bu öğrenciler bulunmalıdır.')
+        throw new DomainError(
+          'tutoring_attendance_roster_mismatch',
+          'Yoklamada tüm etüt öğrencileri ve yalnızca bu öğrenciler bulunmalıdır.',
+        )
       Object.assign(entry, {
         attendance: marks,
         status: 'Tamamlandı',
@@ -819,7 +937,7 @@ export function runAssessment(
     }
     result = entry
     collection = 'tutorSessions'
-  } else throw new Error('İşlem bulunamadı.')
+  } else throw new DomainError('unknown_command', 'İşlem bulunamadı.')
   state.audit.unshift({
     id: makeId('audit'),
     actor: session.role,
@@ -862,7 +980,10 @@ export function exampleOpticalFile(
       ),
       cells = Array(width).fill(' ')
     if (identity.length > profile.studentLength)
-      throw new Error('Örnek öğrenci kimliği alan uzunluğuna sığmıyor.')
+      throw new DomainError(
+        'optical_student_id_too_long',
+        'Örnek öğrenci kimliği alan uzunluğuna sığmıyor.',
+      )
     const placements: [number, string][] = [
       [profile.studentStart, identity],
       [profile.bookletStart, key.booklet],

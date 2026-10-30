@@ -16,6 +16,8 @@ import {
   createSnapshotWriter,
   restoreSnapshot,
 } from '../packages/school-core/src/lib/demo-persistence.ts'
+import { csvObjects } from '../packages/school-core/src/lib/delimited-input.ts'
+import { isDomainError } from './support/domain-error.js'
 const now = '2026-10-06T10:00:00.000Z',
   seed = () => createSeed(new Date(now))
 const admin = { role: 'yonetici', childId: 's1' },
@@ -571,4 +573,32 @@ test('Yeni ders ve arşiv işlemleri planlanmış etütlerle çakışamaz; kayı
   const restored = restoreSnapshot(createSnapshotWriter(seed())(state))
   assert.deepEqual(restored.opticalEvaluations, state.opticalEvaluations)
   assert.deepEqual(restored.tutorSessions, state.tutorSessions)
+})
+
+test('CSV ayrıştırıcı hataları DomainError olarak kod ile döner', () => {
+  assert.throws(() => csvObjects('a;b\n1;2', ['x', 'y']), isDomainError('csv_invalid_header'))
+  assert.throws(() => csvObjects('a;b', ['a', 'b']), isDomainError('csv_invalid_row_count'))
+  assert.throws(() => csvObjects('a;b\n1', ['a', 'b']), isDomainError('csv_invalid_column_count'))
+  assert.throws(() => csvObjects('a;b\n"1;2', ['a', 'b']), isDomainError('csv_unclosed_quote'))
+})
+
+test('Optik ve etüt işlemleri DomainError, kod ve tür ile reddeder; kayıt değişmez', () => {
+  const state = seed()
+  failsUnchanged(
+    state,
+    () => evaluate(state, responses('BBBDABCDABCD', 'yok')),
+    isDomainError('optical_student_unmatched'),
+  )
+  failsUnchanged(
+    state,
+    () => runAssessment(state, admin, 'bilinmeyen', {}, id, '', now),
+    isDomainError('unknown_command'),
+  )
+  failsUnchanged(
+    state,
+    () => evaluate(state, responses(), { role: 'ogrenci', childId: 's1' }),
+    isDomainError('permission_denied', 'forbidden'),
+  )
+  state.modules.exams = false
+  failsUnchanged(state, () => evaluate(state), isDomainError('module_disabled', 'forbidden'))
 })

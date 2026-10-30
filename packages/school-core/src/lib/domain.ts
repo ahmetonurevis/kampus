@@ -3,6 +3,7 @@ import type { questionBank } from '../data/question-bank.ts'
 import type { State } from '../data/seed.ts'
 import type { Role } from '../modules/navigation.ts'
 import { dayKey } from './format.ts'
+import { DomainError } from './errors.ts'
 
 z.config(z.locales.tr())
 
@@ -43,7 +44,7 @@ export function installmentAmounts(cents: number, count: number) {
     count < 1 ||
     count > 12
   )
-    throw new Error('Taksit tutarı veya sayısı geçersiz.')
+    throw new DomainError('invalid_installment', 'Taksit tutarı veya sayısı geçersiz.')
   const base = Math.floor(cents / count)
   return Array.from({ length: count }, (_, i) => base + (i < cents % count ? 1 : 0))
 }
@@ -54,8 +55,10 @@ export function payInvoice(
   now = new Date().toISOString(),
 ) {
   const invoice = state.invoices.find((i) => i.id === invoiceId)
-  if (!invoice) throw new Error('Ödeme kaydı bulunamadı.')
-  if (invoice.paidAt) throw new Error('Bu taksit zaten ödenmiş.')
+  if (!invoice)
+    throw new DomainError('invoice_not_found', 'Ödeme kaydı bulunamadı.', { kind: 'not_found' })
+  if (invoice.paidAt)
+    throw new DomainError('invoice_already_paid', 'Bu taksit zaten ödenmiş.', { kind: 'conflict' })
   invoice.paidAt = now
   invoice.method = method
   return invoice
@@ -68,14 +71,17 @@ export function recordAttendance(
   marks: Readonly<Record<string, string>>,
 ) {
   const students = state.students.filter((s) => s.classId === classId && s.isActive)
-  if (!Number.isFinite(+new Date(date))) throw new Error('Geçerli bir yoklama tarihi seçin.')
-  if (dayKey(date) > dayKey()) throw new Error('Gelecek tarih için yoklama alınamaz.')
-  if (!students.length) throw new Error('Bu sınıfta aktif öğrenci bulunmuyor.')
+  if (!Number.isFinite(+new Date(date)))
+    throw new DomainError('invalid_attendance_date', 'Geçerli bir yoklama tarihi seçin.')
+  if (dayKey(date) > dayKey())
+    throw new DomainError('attendance_future_date', 'Gelecek tarih için yoklama alınamaz.')
+  if (!students.length)
+    throw new DomainError('class_has_no_active_students', 'Bu sınıfta aktif öğrenci bulunmuyor.')
   // Önce tüm işaretler doğrulanır; geçersiz işaret varsa hiçbir kayıt değişmez.
   const marked = students.map((student) => {
     const status = marks[student.id]
     if (status === undefined || !ATTENDANCE_STATUSES.includes(status))
-      throw new Error('Tüm öğrencilerin yoklama durumunu seçin.')
+      throw new DomainError('attendance_incomplete', 'Tüm öğrencilerin yoklama durumunu seçin.')
     return { student, status }
   })
   for (const { student, status } of marked) {
@@ -104,7 +110,9 @@ export function gradeQuiz(
   const found = quiz.questionIds.map((id) => bank.find((q) => q.id === id))
   const questions = found.filter((q) => q !== undefined)
   if (!found.length || questions.length !== found.length)
-    throw new Error('Sınav soruları bulunamadı.')
+    throw new DomainError('quiz_questions_not_found', 'Sınav soruları bulunamadı.', {
+      kind: 'not_found',
+    })
   if (
     questions.some((q) => {
       const answer = answers[q.id]
@@ -117,7 +125,7 @@ export function gradeQuiz(
       )
     })
   )
-    throw new Error('Lütfen tüm soruları yanıtlayın.')
+    throw new DomainError('quiz_unanswered', 'Lütfen tüm soruları yanıtlayın.')
   const correct = questions.filter((q) => answers[q.id] === q.answer).length
   const topicScores = [...new Set(questions.map((q) => q.topic))].map((topic) => {
     const subset = questions.filter((q) => q.topic === topic)
@@ -145,11 +153,15 @@ export function enrollProspect(
   const prospect = state.prospects.find((p) => p.id === data.prospectId)
   const cls = state.classes.find((c) => c.id === data.classId && c.isActive)
   if (!prospect || !cls || !state.branches.some((b) => b.id === cls.branchId && b.isActive))
-    throw new Error('Aday veya sınıf bulunamadı.')
+    throw new DomainError('prospect_or_class_not_found', 'Aday veya sınıf bulunamadı.', {
+      kind: 'not_found',
+    })
   if (prospect.studentId || prospect.stage === 'Kayıt oldu')
-    throw new Error('Bu adayın kaydı zaten tamamlanmış.')
+    throw new DomainError('prospect_already_enrolled', 'Bu adayın kaydı zaten tamamlanmış.', {
+      kind: 'conflict',
+    })
   if (state.students.filter((s) => s.classId === cls.id && s.isActive).length >= cls.capacity)
-    throw new Error('Seçilen sınıfın kontenjanı dolu.')
+    throw new DomainError('class_capacity_full', 'Seçilen sınıfın kontenjanı dolu.')
   const student = {
     id: makeId('s'),
     name: prospect.name,
@@ -164,7 +176,7 @@ export function enrollProspect(
   const amounts = installmentAmounts(data.total * 100, data.count)
   const start = new Date(`${data.startDate}T09:00:00.000Z`)
   if (Number.isNaN(+start) || dayKey(start) !== data.startDate)
-    throw new Error('Geçerli bir ödeme tarihi girin.')
+    throw new DomainError('invalid_payment_date', 'Geçerli bir ödeme tarihi girin.')
   const invoices = amounts.map((amount, i) => {
     const lastDay = new Date(
       Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i + 1, 0),

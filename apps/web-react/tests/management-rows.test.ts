@@ -2,9 +2,13 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import {
+  archiveViewFilter,
+  campusesInView,
   campusSummaries,
   classCsvRow,
   classRow,
+  isActiveFilter,
+  isArchiveView,
   managementLookups,
   recordStatus,
   teacherCsvRow,
@@ -110,4 +114,20 @@ test('kampüs özeti yalnız aktif sınıf, öğrenci ve öğretmenleri sayar', 
   assert.equal(campusSummaries(data, managementLookups(data))[0]!.teachers, first!.teachers - 1)
   assert.equal(recordStatus({ isActive: false }), 'Arşivde')
   assert.equal(recordStatus({}), 'Aktif')
+})
+
+test('kayıt durumu sekmesi adres değerine ve sunucu isActive süzgecine çevrilir', () => {
+  assert.equal(isArchiveView('arsiv'), true)
+  assert.equal(isArchiveView(''), false)
+  assert.equal(isArchiveView(undefined), false)
+  assert.equal(archiveViewFilter(true), 'arsiv')
+  assert.equal(archiveViewFilter(false), '')
+  assert.deepEqual(isActiveFilter(false), { isActive: 'true' })
+  assert.deepEqual(isActiveFilter(true), { isActive: 'false' })
+})
+
+test('kampüs kartları sekmeye göre süzülür', () => {
+  const cards = [{ status: 'Aktif' }, { status: 'Arşivde' }, { status: 'Aktif' }]
+  assert.equal(campusesInView(cards, false).length, 2)
+  assert.deepEqual(campusesInView(cards, true), [{ status: 'Arşivde' }])
 })

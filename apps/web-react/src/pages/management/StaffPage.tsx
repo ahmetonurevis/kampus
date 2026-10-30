@@ -21,7 +21,15 @@ import {
 } from '@/lib/collection-list.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
-import { teacherCsvRow, teacherRow, type TeacherRow } from './management-rows.ts'
+import { ArchiveTabs } from './ArchiveTabs.tsx'
+import {
+  archiveViewFilter,
+  isActiveFilter,
+  isArchiveView,
+  teacherCsvRow,
+  teacherRow,
+  type TeacherRow,
+} from './management-rows.ts'
 import { TeacherSummaryPanel } from './TeacherSummaryPanel.tsx'
 import { useManagementLookups } from './use-management-lookups.ts'
 
@@ -29,7 +37,7 @@ const TEACHER_LIST = {
   sortFields: { name: 'name' },
   filterFields: { branchId: 'branchId', subjectId: 'subjectId' },
 } satisfies CollectionListConfig
-const TEACHER_URL_FILTERS = { branchId: 'kampus', subjectId: 'brans' }
+const TEACHER_URL_FILTERS = { branchId: 'kampus', subjectId: 'brans', archive: 'durum' }
 const SORTABLE = sortableColumns(TEACHER_LIST)
 const MOBILE_COLUMNS = ['subject', 'branch', 'attendanceRate']
 const ALL = 'all'
@@ -40,7 +48,7 @@ const filterValue = (value: unknown) => (typeof value === 'string' ? value : '')
  * Eğitim Kadrosu (yönetici, Vue `SchoolManagement.vue` `/personel`): sunucu sayfalı öğretmen
  * tablosu; kampüs ve branş filtresi, ad sıralaması, satırdan öğretmen özeti. Yalnız okuma.
  * TODO(D1b2): "Öğretmen ekle", düzenle/arşivle yazma uçlarıyla eklenir.
- * TODO(api-archive-filter): Vue'daki "Aktif kayıtlar / Arşiv" sekmesi `isActive` filtresiyle.
+ * "Aktif kayıtlar / Arşiv" sekmesi (`?durum=arsiv`) sunucu `isActive` filtresidir.
  * TODO(api-search-joined): kampüs/branş adıyla arama (Vue'da var) ilişkili ad araması gelince.
  * TODO(api-aggregate): Vue'daki "Performans" sütunu soru/SLA verisinden hesaplanır; toplu uç
  * veya kaynak ucu gelince eklenir.
@@ -52,9 +60,13 @@ export function StaffPage({ page }: { page: NavPage }) {
 
   const list = useListState('ogretmenler', { urlFilters: TEACHER_URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
+  const archived = isArchiveView(list.state.filters.archive)
+  const withActive = <T extends { filters?: Record<string, string | readonly string[]> }>(
+    query: T,
+  ): T => ({ ...query, filters: { ...query.filters, ...isActiveFilter(archived) } })
   const teachers = useCoreList(
     'teachers',
-    collectionQueryFromList(list.state, TEACHER_LIST, search),
+    withActive(collectionQueryFromList(list.state, TEACHER_LIST, search)),
   )
   const rows = useMemo(
     () => teachers.data?.rows.map((item) => teacherRow(item, lookups)),
@@ -69,6 +81,7 @@ export function StaffPage({ page }: { page: NavPage }) {
   const subjectId = filterValue(list.state.filters.subjectId)
   const setFilter = (key: 'branchId' | 'subjectId', value: string) =>
     list.dispatch({ type: 'filter', key, value: value === ALL ? '' : value })
+  const setArchive = (value: string) => list.dispatch({ type: 'filter', key: 'archive', value })
 
   const columns = useMemo<DataColumn<TeacherRow>[]>(
     () => [
@@ -125,7 +138,7 @@ export function StaffPage({ page }: { page: NavPage }) {
   )
 
   function download() {
-    const query = exportQueryFromList(list.state, TEACHER_LIST, search)
+    const query = withActive(exportQueryFromList(list.state, TEACHER_LIST, search))
     void csv.download(
       page.title,
       columns.filter((column) => column.key !== ACTIONS_KEY),
@@ -153,6 +166,11 @@ export function StaffPage({ page }: { page: NavPage }) {
           </Button>
         }
       />
+      <ArchiveTabs
+        archived={archived}
+        onChange={setArchive}
+        activeNote="İletişim, branş ve görev bilgileri."
+      />
       {data.error ? (
         <div role="alert" className="mb-6 rounded-card border bg-surface p-8">
           <QueryError error={data.error} onRetry={data.retry} />
@@ -167,7 +185,7 @@ export function StaffPage({ page }: { page: NavPage }) {
             Branş öğretmenleri
           </h2>
           <p className="text-sm text-muted-foreground">
-            {total} kayıt · İletişim, branş ve görev bilgileri
+            {total} {archived ? 'arşiv kaydı' : 'kayıt'} · İletişim, branş ve görev bilgileri
           </p>
         </header>
         <ServerDataTable
@@ -191,6 +209,8 @@ export function StaffPage({ page }: { page: NavPage }) {
           onReset={() => {
             setFilter('branchId', ALL)
             setFilter('subjectId', ALL)
+            // "Temizle" bütün filtreleri siler; kayıt durumu sekmesi arama/filtre değildir, kalır.
+            setArchive(archiveViewFilter(archived))
           }}
           toolbar={
             <>

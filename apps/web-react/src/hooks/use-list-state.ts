@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState, type UIEvent } from 'react'
 import { useLocation, useNavigationType, useSearchParams } from 'react-router'
-import {
-  listReducer,
-  restoreListState,
-  type ListState,
-  type ScrollPosition,
-} from '@/lib/list-state.ts'
+import { listReducer, restoreListState, type ScrollPosition } from '@/lib/list-state.ts'
 import {
   applyListParams,
   listStateFromParams,

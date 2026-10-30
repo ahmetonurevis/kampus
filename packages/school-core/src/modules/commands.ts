@@ -188,6 +188,22 @@ export const OPERATION_COMMANDS = {
   'question.ask': spec('learning', [...SCOPE, 'subjects', 'questions']),
   'question.answer': spec('learning', [...SCOPE, 'questions']),
   'question.withdraw': spec('learning', [...SCOPE, 'questions']),
+  // Aday/CRM (`lib/prospects.ts`). Tekillik bütün adayları okur; görüşme çakışması diğer adayların
+  // görüşmelerini ve ders/randevu/etüt/etkinlik kayıtlarını, deneme dersi ders programını okur.
+  'prospect.create': spec('crm', [...SCOPE, 'branches', 'prospects']),
+  'prospect.stage': spec('crm', [...SCOPE, 'prospects']),
+  'prospect.note': spec('crm', [...SCOPE, 'prospects']),
+  'prospect.meeting': spec('crm', [...SCOPE, 'branches', 'prospects', ...CONFLICTS]),
+  'prospect.trial': spec('crm', [...SCOPE, 'prospects', 'schedule']),
+  // Kesin kayıt (`enrollProspect`, `lib/domain.ts`): öğrenci, veli, taksit ve sözleşmeyi yazar.
+  'prospect.enroll': spec('crm', [
+    ...SCOPE,
+    'branches',
+    'prospects',
+    'parents',
+    'invoices',
+    'contracts',
+  ]),
 } as const satisfies Record<string, CommandSpec>
 export type OperationCommand = keyof typeof OPERATION_COMMANDS
 

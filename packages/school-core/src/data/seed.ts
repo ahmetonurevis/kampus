@@ -24,6 +24,7 @@ import type {
 import type { AbsenceReasonCategory, RequestActor, RequestFields } from '../lib/requests.ts'
 import type { AppointmentFields } from '../lib/appointments.ts'
 import type { QuestionFields } from '../lib/questions.ts'
+import type { ProspectFields } from '../lib/prospects.ts'
 export const topics = subjects.map((s) => s.name)
 
 // Örnek veri kendi içinde tutarlıdır; aranan kayıt yoksa üretici hatalıdır ve hemen durur.
@@ -901,6 +902,13 @@ type StatePatches = {
     createdAt?: string
     notifiedBy?: RequestActor
   }[]
+  // Aday işlemlerinin alanları ve notu yazan kişi; örnek veri ve eski kayıtlar taşımaz
+  // (lib/prospects.ts).
+  prospects: (Patch<
+    Item<'prospects'>,
+    { notes: (Item<'prospects'>['notes'][number] & { by?: RequestActor })[] }
+  > &
+    ProspectFields)[]
   // Talep işlemlerinin alanları; örnek veri ve eski kayıtlar taşımaz (lib/requests.ts).
   requests: (Item<'requests'> & RequestFields)[]
   // Telefon yüklenen dosyanın cihazdaki yolunu da saklar; örnek veri ve web taşımaz.

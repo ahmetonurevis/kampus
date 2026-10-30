@@ -74,6 +74,15 @@ export type WriteTargets = {
   'question.ask': { studentId: string | undefined; subjectId: string; teacherId?: string }
   'question.answer': { question: QuestionParties | undefined }
   'question.withdraw': { question: QuestionParties | undefined }
+  // Aday/CRM (`lib/prospects.ts`): kurum kapsamlıdır, hedef kaydı yetkiyi değiştirmez.
+  'prospect.create': Record<string, never>
+  'prospect.stage': Record<string, never>
+  'prospect.note': Record<string, never>
+  'prospect.meeting': Record<string, never>
+  'prospect.trial': Record<string, never>
+  // Kesin kayıt (`enrollProspect`, `lib/domain.ts`); işlem yetkiyi kendisi denetlemez, çağıran
+  // önce `requireAuthorized` çalıştırır.
+  'prospect.enroll': Record<string, never>
 }
 
 /** Soru yetkisinin dayandığı taraflar (DOM-ILT-090…092). */
@@ -157,6 +166,15 @@ export const WRITE_ACTION_ROLES = {
   'question.ask': ['ogrenci'],
   'question.answer': ['ogretmen'],
   'question.withdraw': ['ogrenci'],
+  // Aday ve tanışma görüşmesi kurum genelinde yönetici ve ön büronundur; öğretmen, öğrenci ve
+  // veli aday kaydına erişmez (yetki matrisi "Aday, tanışma görüşmesi", DOM-YTK-021).
+  'prospect.create': ['yonetici', 'onburo'],
+  'prospect.stage': ['yonetici', 'onburo'],
+  'prospect.note': ['yonetici', 'onburo'],
+  'prospect.meeting': ['yonetici', 'onburo'],
+  'prospect.trial': ['yonetici', 'onburo'],
+  // Kesin kayıt (aday → öğrenci, sözleşme ve taksit) yönetici ve ön büronundur (DOM-KAY-011).
+  'prospect.enroll': ['yonetici', 'onburo'],
 } as const satisfies Record<WriteAction, readonly Actor['role'][]>
 
 const ROLE_TABLE: Readonly<Record<WriteAction, readonly string[]>> = WRITE_ACTION_ROLES
@@ -211,7 +229,8 @@ function moduleDecision(
 }
 
 /**
- * Aktör bu eylemi bu hedefte yapabilir mi. Önce modül (DOM-YTK-040), sonra rol (matris), sonra
+ * Aktör bu eylemi bu hedefte yapabilir mi. Önce modül (DOM-YTK-040) ve kurum türü (DOM-YTK-012),
+ * sonra rol (matris), sonra
  * kapsam (DOM-YTK-002, -022, -025) denetlenir. Kayıt varlığı işlemin işidir; burada yalnız yetki
  * çözülür.
  */
@@ -225,6 +244,10 @@ export function authorize<A extends WriteAction>(
   const institutionType = options.institutionType ?? 'school'
   const moduleCheck = moduleDecision(action, source, institutionType)
   if (!moduleCheck.allowed) return moduleCheck
+  // Kurum türünde bulunmayan işlem her rol için yok sayılır (404); rol denetiminden önce gelir ki
+  // yetkisiz rol 403 ile işlemin varlığını öğrenmesin (DOM-YTK-012).
+  if (action === 'prospect.trial' && institutionType !== 'language_school')
+    return deny('trial_lesson_unavailable', 'İlgili kayıt bulunamadı.', 'DOM-DIL-030', 'not_found')
   if (!ROLE_TABLE[action].includes(actor.role)) return roleDenied('DOM-YTK-001')
   // Hedef tipi eyleme bağlıdır; birleşimi daraltmak için eylem adıyla ayrıştırılır.
   const request = { action, target } as WriteRequest
@@ -387,6 +410,15 @@ function decide(
         ? ALLOWED
         : deny('question_not_found', 'Soru bulunamadı.', 'DOM-ILT-091', 'not_found')
     }
+    // Deneme dersinin kurum türü (yalnız dil okulu, DOM-DIL-030) `authorize` içinde rolden önce
+    // denetlenir.
+    case 'prospect.create':
+    case 'prospect.stage':
+    case 'prospect.note':
+    case 'prospect.meeting':
+    case 'prospect.trial':
+    case 'prospect.enroll':
+      return ALLOWED
     default:
       return request satisfies never
   }

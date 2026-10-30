@@ -8,9 +8,9 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Akademik yazma ekranları: öğretmen (Selin Kaya) yoklama alır, resmî not girer ve düzeltir.
 // Selin 8 sınıfta Matematik okutur (5-A c2, 6-A c3, 7-A c1, 8-A c4, 9-A … 12-A); 7-B (c9) kapsamı
-// dışındadır. Testler paralel koşar ve her biri kendi sınıfını/öğrencisini yazar: yoklama ve not
-// kayıtları gün + tür bazında tekildir, bu yüzden iki test aynı (sınıf, öğrenci, tür) çiftini
-// kullanmaz. Kalıcılık her testte API sorgusuyla doğrulanır.
+// dışındadır. Yazan her test kendi kurumunu kurar (`tenant`: seed ile aynı sınıf/öğrenci kimlikleri,
+// ayrı kurum); yoklama ve not kayıtları gün + tür bazında tekil olduğundan tekrar koşu ve paralel
+// testler birbirinin kaydına çarpmaz. Kalıcılık her testte API sorgusuyla doğrulanır.
 
 const COLLECTIONS = '/api/v1/collections'
 const FOREIGN_CLASS_NAME = '7-B'
@@ -116,9 +116,11 @@ test.describe('öğretmen: yoklama alma', () => {
     page,
     loginAs,
     api,
+    tenant,
   }) => {
-    await loginAs('ogretmen', { fresh: true })
-    const client = await api('ogretmen', { fresh: true })
+    const school = await tenant({ roles: ['ogretmen'], classes: ['c3'] })
+    await loginAs(school.user('ogretmen'))
+    const client = await api(school.user('ogretmen'))
     const students = await classStudents(client, 'c3')
     expect(students.length).toBeGreaterThan(2)
     const [first, second] = students
@@ -163,9 +165,10 @@ test.describe('öğretmen: yoklama alma', () => {
     ).toBeVisible()
   })
 
-  test('çift tıklama tek yoklama isteği atar', async ({ page, loginAs, api }) => {
-    await loginAs('ogretmen', { fresh: true })
-    const client = await api('ogretmen', { fresh: true })
+  test('çift tıklama tek yoklama isteği atar', async ({ page, loginAs, api, tenant }) => {
+    const school = await tenant({ roles: ['ogretmen'], classes: ['c2'] })
+    await loginAs(school.user('ogretmen'))
+    const client = await api(school.user('ogretmen'))
     const students = await classStudents(client, 'c2')
     const posts = recordAttendancePosts(page, 'c2')
 
@@ -195,9 +198,11 @@ test.describe('öğretmen: yoklama alma', () => {
     page,
     loginAs,
     api,
+    tenant,
   }) => {
-    await loginAs('ogretmen', { fresh: true })
-    const client = await api('ogretmen', { fresh: true })
+    const school = await tenant({ roles: ['ogretmen'], classes: ['c4'] })
+    await loginAs(school.user('ogretmen'))
+    const client = await api(school.user('ogretmen'))
     const students = await classStudents(client, 'c4')
 
     await page.goto('/ogretmen/yoklama')
@@ -235,9 +240,15 @@ test.describe('öğretmen: yoklama alma', () => {
 test.describe('öğretmen: not girişi ve düzeltme', () => {
   const NOTES_URL = '/ogretmen/siniflarim?sekme=notlar'
 
-  test('öğretmen not girer; kayıt kalıcıdır ve listede görünür', async ({ page, loginAs, api }) => {
-    await loginAs('ogretmen', { fresh: true })
-    const client = await api('ogretmen', { fresh: true })
+  test('öğretmen not girer; kayıt kalıcıdır ve listede görünür', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen'], classes: ['c4'] })
+    await loginAs(school.user('ogretmen'))
+    const client = await api(school.user('ogretmen'))
     const [student] = await classStudents(client, 'c4')
 
     await page.goto(NOTES_URL)
@@ -294,9 +305,11 @@ test.describe('öğretmen: not girişi ve düzeltme', () => {
     page,
     loginAs,
     api,
+    tenant,
   }) => {
-    await loginAs('ogretmen', { fresh: true })
-    const client = await api('ogretmen', { fresh: true })
+    const school = await tenant({ roles: ['ogretmen'], classes: ['c3'] })
+    await loginAs(school.user('ogretmen'))
+    const client = await api(school.user('ogretmen'))
     const [student] = await classStudents(client, 'c3')
     const gradeId = await createGrade(client, {
       studentId: student!.id,
@@ -335,9 +348,11 @@ test.describe('öğretmen: not girişi ve düzeltme', () => {
     page,
     loginAs,
     api,
+    tenant,
   }) => {
-    await loginAs('ogretmen', { fresh: true })
-    const client = await api('ogretmen', { fresh: true })
+    const school = await tenant({ roles: ['ogretmen'], classes: ['c3'] })
+    await loginAs(school.user('ogretmen'))
+    const client = await api(school.user('ogretmen'))
     const students = await classStudents(client, 'c3')
     const student = students[1]!
     const gradeId = await createGrade(client, {

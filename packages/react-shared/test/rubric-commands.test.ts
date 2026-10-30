@@ -13,9 +13,11 @@ import {
 } from '../src/commands.ts'
 import { institutionKey } from '../src/query-keys.ts'
 import {
+  archiveRubricCommand,
   archiveRubricRequest,
   createRubricRequest,
   createRubricVersionRequest,
+  publishRubricCommand,
   publishRubricRequest,
   RUBRIC_CHANGED_MESSAGE,
   RUBRIC_INVALIDATES,
@@ -137,6 +139,13 @@ describe('rubrik komutları', () => {
       sent.map((request) => request.headers.get('idempotency-key')),
       ['key-12345', 'key-67890'],
     )
+  })
+
+  test('DOM-BEC-022: yayım ve arşiv komutları öbür rubrik komutları gibi exclusive çalışır', () => {
+    assert.equal(publishRubricCommand.exclusive, true)
+    assert.equal(archiveRubricCommand.exclusive, true)
+    assert.equal(publishRubricCommand.version({ rubricId: 'r', versionId: 'v', version: 3 }), 3)
+    assert.equal(archiveRubricCommand.messages, RUBRIC_MESSAGES)
   })
 
   test('DOM-BEC-022: okunan sürüm yoksa düzenleme, yayım ve arşiv isteği atılmaz', async () => {

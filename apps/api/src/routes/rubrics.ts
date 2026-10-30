@@ -155,6 +155,7 @@ export function registerRubricRoutes(app: FastifyInstance) {
         request.body,
         idempotencyOf(request, false),
       )
+      reply.header('location', `/api/v1/rubrics/${request.params.rubricId}`)
       return send(reply, result)
     },
   )

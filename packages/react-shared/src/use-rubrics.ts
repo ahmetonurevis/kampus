@@ -191,24 +191,22 @@ export function useUpdateRubricDraft(options: CommandOptions = {}) {
   })
 }
 
+/** Yayım ve arşiv komutlarının ortak ayarı: yollu `issues` alana gider, çakışma tek toast (çift tıklamada yersiz 409 yok). */
+const sharedPublishing = {
+  version: versionOf,
+  invalidates: RUBRIC_INVALIDATES,
+  messages: RUBRIC_MESSAGES,
+  exclusive: true,
+} as const
+export const publishRubricCommand = { request: publishRubricRequest, ...sharedPublishing }
+export const archiveRubricCommand = { request: archiveRubricRequest, ...sharedPublishing }
+
 /** Taslağı yayımlar; önceki yayındaki sürüm sunucuda aynı işlemde arşivlenir (DOM-BEC-022). */
 export function usePublishRubric(options: CommandOptions = {}) {
-  return useApiCommand({
-    request: publishRubricRequest,
-    version: versionOf,
-    invalidates: RUBRIC_INVALIDATES,
-    messages: RUBRIC_MESSAGES,
-    ...withSuccess(options),
-  })
+  return useApiCommand({ ...publishRubricCommand, ...withSuccess(options) })
 }
 
 /** Yayındaki sürümü arşivler; sabitlendiği görevlerde puanlanmaya devam eder (DOM-BEC-022). */
 export function useArchiveRubric(options: CommandOptions = {}) {
-  return useApiCommand({
-    request: archiveRubricRequest,
-    version: versionOf,
-    invalidates: RUBRIC_INVALIDATES,
-    messages: RUBRIC_MESSAGES,
-    ...withSuccess(options),
-  })
+  return useApiCommand({ ...archiveRubricCommand, ...withSuccess(options) })
 }

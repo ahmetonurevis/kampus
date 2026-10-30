@@ -159,8 +159,20 @@ describe('rubrik uçları', () => {
     assert.deepEqual(await snapshot(t.institution.id), before)
     const closed = await createInstitution(app, { enabledModules: { learning: false } })
     const admin = await signInAs(app, closed.admin)
-    fails(await post('/rubrics', admin, body()), 403, 'module_disabled')
-    fails(await call('GET', '/rubrics', admin), 403, 'module_disabled')
+    // Kapalı kurumun rubriği: modül kapısı kayıt aramadan önce çalışır, ayrıntı da yazma da 403.
+    const id = '00000000-0000-4000-8000-000000000001'
+    const closedVersion = `/rubrics/${id}/versions/${id}`
+    const closedRequests = [
+      post('/rubrics', admin, body()),
+      call('GET', '/rubrics', admin),
+      call('GET', `/rubrics/${id}`, admin),
+      post(`/rubrics/${id}/versions`, admin, body()),
+      patch(closedVersion, admin, { title: 'Değişti' }, 1),
+      command(`${closedVersion}/publish`, admin, 1),
+      command(`${closedVersion}/archive`, admin, 1),
+    ]
+    for (const response of await Promise.all(closedRequests))
+      fails(response, 403, 'module_disabled')
   })
 
   test('DOM-BEC-020: oluşturma 201 + Location, ilk taslak sürüm, denetim kaydı yalnız alan adları; gövdedeki institutionId etkisiz', async () => {
@@ -278,6 +290,7 @@ describe('rubrik uçları', () => {
         await command(`${version}/publish`, cookie, 1),
         await command(`${version}/publish`, cookie, 9),
         await command(`${version}/archive`, cookie, 9),
+        await command(`${version}/archive`, cookie, 1),
         // Kendi rubriğinin yolunda başka kurumun sürümü de 404.
         await command(
           `/rubrics/${own.rubric.id}/versions/${foreign.version.id}/publish`,
@@ -387,10 +400,9 @@ describe('rubrik uçları', () => {
     )
     assert.deepEqual(await snapshot(t.institution.id), before)
 
-    const second = await ok(
-      await post(`${base}/versions`, t.cookies.teacher, body('Yazma v2')),
-      201,
-    )
+    const secondResponse = await post(`${base}/versions`, t.cookies.teacher, body('Yazma v2'))
+    const second = await ok(secondResponse, 201)
+    assert.equal(secondResponse.headers.location, `/api/v1${base}`)
     assert.equal(second.version.versionNumber, 2)
     assert.equal(second.version.status, 'draft')
     fails(

@@ -31,7 +31,7 @@ Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokun
 
 ## Okul iş akışları ve iş kuralları
 
-- Okul iş akışı modülleri web, mobil ve API'de aynı `school-core` tanımlarını kullanır: `modules/school-workflows.ts` modül kaydı, `lib/school-workflows.ts` Zod doğrulaması, rol kapsamı ve atomik işlemler, `lib/workflow-presentation.ts` ortak liste/form/detay tanımları. Menü `modules/full-navigation.ts` ile paylaşılır. Mobil karşılıklar `WorkflowScreen.tsx`, `OpticalScreen.jsx`, `TutoringScreen.jsx`.
+- Okul iş akışı modülleri web, mobil ve API'de aynı `school-core` tanımlarını kullanır: `modules/school-workflows.ts` modül kaydı, `lib/school-workflows.ts` Zod doğrulaması, rol kapsamı ve atomik işlemler, `lib/workflow-presentation.ts` ortak liste/form/detay tanımları. Menü `modules/full-navigation.ts` ile paylaşılır. Mobil karşılıklar `WorkflowScreen.tsx`, `OpticalScreen.tsx`, `TutoringScreen.tsx`.
 - İşlemler atomiktir: önce kalıcı yazılır, sonra state değişir; başarısızlıkta hiçbir kayıt değişmez. Snapshot sürümü 3 ve eski kayıtlar demo kalıcılığı silinene kadar korunur.
 - Yenileme planlama ve sınıf geçişi ayrı işlemlerdir. Sözleşme `invoiceIds` ile yalnızca kendi taksitlerini çözümler. Rehberlik iç notları veli/öğrenciye gösterilmez. İptal dersleri günlük programlarda görünmez.
 - Optik/etüt doğrulaması `lib/assessment-automation.ts`, CSV ayrıştırması `lib/delimited-input.ts`, rezervasyon çakışmaları `lib/tutor-conflicts.ts` içindedir. Okuyucu CSV/DAT/TXT çıktısı kullanılır; cevap anahtarının her sorusu ders/kazanıma bağlıdır. Anahtar revizyonu veya manuel sonuç değişikliği eski optik analizin kullanımını engeller.

@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FlatList, Keyboard, View } from 'react-native'
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
-import { useSchool } from '../store/SchoolProvider.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
 import { usePersistentDraft } from '../store/use-persistent-draft.ts'
-import { context, nameOf, rowsFor } from '../model/school.ts'
+import { context, nameOf, rowsFor, type Row } from '../model/school.ts'
 import { appendMessage, conversationFor } from '../model/messaging.ts'
 import {
   Button,
@@ -26,9 +26,12 @@ import {
 import { KeyboardFrame } from '../ui/KeyboardLayout.tsx'
 import DraftStatus from '../ui/DraftStatus.tsx'
 import OperationForm from '../ui/OperationForm.tsx'
+import type { ScreenProps } from '../route-types.ts'
 
-export default function Conversations({ navigation }) {
-  const { data, session } = useSchool(),
+type Message = Row<'conversation'>['source']['messages'][number]
+
+export default function Conversations({ navigation }: ScreenProps<'Module'>) {
+  const { data, session } = useActiveSchool(),
     scope = context(data, session)
   const [query, setQuery] = useState(''),
     [audience, setAudience] = useState(''),
@@ -79,26 +82,29 @@ export default function Conversations({ navigation }) {
           </View>
         </View>
         <View>
-          {filtered.slice(current * 12, current * 12 + 12).map((row) => (
-            <ListRow
-              key={row.id}
-              title={row.title}
-              eyebrow={
-                row.source.messages.at(-1)
-                  ? dateLabel(row.source.messages.at(-1).date, {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : 'Yeni konuşma'
-              }
-              onPress={() => navigation.navigate('Detail', { row })}
-              label={`${row.title} konuşmasını aç`}
-            >
-              <T muted size={14} numberOfLines={2}>
-                {row.body || 'Henüz mesaj yok.'}
-              </T>
-            </ListRow>
-          ))}
+          {filtered.slice(current * 12, current * 12 + 12).map((row) => {
+            const last = row.source.messages.at(-1)
+            return (
+              <ListRow
+                key={row.id}
+                title={row.title}
+                eyebrow={
+                  last
+                    ? dateLabel(last.date, {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : 'Yeni konuşma'
+                }
+                onPress={() => navigation.navigate('Detail', { row })}
+                label={`${row.title} konuşmasını aç`}
+              >
+                <T muted size={14} numberOfLines={2}>
+                  {row.body || 'Henüz mesaj yok.'}
+                </T>
+              </ListRow>
+            )
+          })}
         </View>
         {!filtered.length && (
           <EmptyResults
@@ -142,8 +148,8 @@ export default function Conversations({ navigation }) {
   )
 }
 
-export function ConversationDetail({ route }) {
-  const { data, session, commit, busy, notify } = useSchool(),
+export function ConversationDetail({ route }: ScreenProps<'Detail'>) {
+  const { data, session, commit, busy, notify } = useActiveSchool(),
     c = useColors()
   const conversation = conversationFor(data, session, route.params.row.id)
   const draft = usePersistentDraft(
@@ -152,7 +158,7 @@ export function ConversationDetail({ route }) {
     { text: '' },
     conversation?.messages.at(-1)?.id || '',
   )
-  const list = useRef(null),
+  const list = useRef<FlatList<Message>>(null),
     [limit, setLimit] = useState(40),
     [error, setError] = useState(''),
     [keyboardVisible, setKeyboardVisible] = useState(Keyboard.isVisible?.() || false)
@@ -180,7 +186,7 @@ export function ConversationDetail({ route }) {
       </Screen>
     )
   const student = data.students.find((s) => s.id === conversation.studentId)
-  async function send() {
+  const send = async () => {
     if (draft.value.text.trim().length < 2 || draft.value.text.trim().length > 2000) {
       setError('Mesaj 2–2.000 karakter arasında olmalı.')
       notify('Mesaj 2–2.000 karakter arasında olmalı.', 'error')
@@ -207,7 +213,7 @@ export function ConversationDetail({ route }) {
         }}
       >
         <T muted size={13}>
-          {student?.name} · {nameOf(data, 'classes', student?.classId)} ·{' '}
+          {student?.name} · {nameOf(data, 'classes', student?.classId ?? '')} ·{' '}
           {conversation.audience === 'parent' ? 'Veli görüşmesi' : 'Öğrenci görüşmesi'}
         </T>
       </View>

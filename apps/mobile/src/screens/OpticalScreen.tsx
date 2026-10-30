@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 import { View } from 'react-native'
+import { CommonActions } from '@react-navigation/native'
 import {
   automationExams,
   automationSchemas,
@@ -8,9 +9,15 @@ import {
   currentEvaluations,
   runAssessment,
   exampleOpticalFile,
+  type OpticalEvaluation,
+  type OpticalPreviewRow,
+  type QuestionOutcome,
 } from '@kampus/school-core/lib/assessment-automation.ts'
-import { useSchool, recordError } from '../store/SchoolProvider.tsx'
+import type { State } from '@kampus/school-core/data/seed.ts'
+import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
 import { moduleNavigationState } from '../model/navigation.ts'
+import type { FormValues } from '../model/operations.ts'
+import type { ScreenProps } from '../route-types.ts'
 import { pickTextFile } from '../lib/text-files.ts'
 import {
   Badge,
@@ -25,7 +32,17 @@ import {
 } from '../ui/components.tsx'
 import { ListRow, Notice, Screen, Section, TextAction } from '../ui/SchoolLayout.tsx'
 
-const OUTCOME = {
+type OpticalProfile = State['opticalProfiles'][number]
+// Önizleme ve kayıtlı sonuçlar aynı satır görünümüyle gösterilir.
+type ResultItem = Omit<OpticalPreviewRow, 'studentName' | 'replaces'> & {
+  id: string
+  subject: string
+  studentName: string
+  status: string
+}
+type FieldExtra = Omit<ComponentProps<typeof Field>, 'label' | 'value' | 'onChange'>
+
+const OUTCOME: Record<QuestionOutcome, string> = {
   correct: 'Doğru',
   wrong: 'Yanlış',
   blank: 'Boş',
@@ -55,13 +72,19 @@ const FIXED_FIELDS = [
 ]
 
 // Hata nesnesinden kullanıcıya gösterilecek Türkçe mesajı çıkarır.
-const errorMessage = (error) =>
-  error?.issues?.[0]?.message ||
-  (error?.name === 'Error'
+function errorMessage(error: unknown) {
+  const issues: unknown =
+    typeof error === 'object' && error !== null && 'issues' in error ? error.issues : undefined
+  const first: unknown = Array.isArray(issues) ? issues[0] : undefined
+  const issue =
+    typeof first === 'object' && first !== null && 'message' in first ? first.message : undefined
+  if (typeof issue === 'string' && issue) return issue
+  return error instanceof Error && error.name === 'Error'
     ? error.message
-    : 'Dosya işlenemedi. Biçimini ve karakter kodlamasını kontrol edin.')
+    : 'Dosya işlenemedi. Biçimini ve karakter kodlamasını kontrol edin.'
+}
 
-function newKey(state, examId) {
+function newKey(state: State, examId: string) {
   const exam = state.mockExams.find((e) => e.id === examId)
   return [
     'booklet;question;subjectId;topic;answer',
@@ -73,10 +96,10 @@ function newKey(state, examId) {
     ),
   ].join('\n')
 }
-const answersLengthFor = (state, examId) =>
+const answersLengthFor = (state: State, examId: string) =>
   (state.mockExams.find((e) => e.id === examId)?.subjectIds.length || 1) * 2
 
-function ResultRow({ row, onPress }) {
+function ResultRow({ row, onPress }: { row: ResultItem; onPress?: () => void }) {
   return (
     <ListRow
       card
@@ -89,7 +112,7 @@ function ResultRow({ row, onPress }) {
   )
 }
 
-function ResultDetail({ row, onClose }) {
+function ResultDetail({ row, onClose }: { row: ResultItem | undefined; onClose: () => void }) {
   return (
     <Sheet
       visible
@@ -118,7 +141,7 @@ function ResultDetail({ row, onClose }) {
             {row.questionResults.map((question) => (
               <T key={question.number}>
                 {question.number}. soru · {question.topic} · {OUTCOME[question.outcome]} · İşaret{' '}
-                {question.response.trim() || 'boş'} / Anahtar {question.answer}
+                {(question.response ?? '').trim() || 'boş'} / Anahtar {question.answer}
               </T>
             ))}
           </View>
@@ -130,19 +153,26 @@ function ResultDetail({ row, onClose }) {
   )
 }
 
-function ProfileSheet({ initial, editingId, exams, onClose, onSaved }) {
-  const { data, session, commit, busy, notify } = useSchool(),
+type ProfileSheetProps = {
+  initial: FormValues
+  editingId: string
+  exams: ReturnType<typeof automationExams>
+  onClose: () => void
+  onSaved: (id: string) => void
+}
+function ProfileSheet({ initial, editingId, exams, onClose, onSaved }: ProfileSheetProps) {
+  const { data, session, commit, busy, notify } = useActiveSchool(),
     c = useColors()
   const [input, setInput] = useState(initial),
-    [errors, setErrors] = useState({}),
-    [review, setReview] = useState(null),
+    [errors, setErrors] = useState<Record<string, string>>({}),
+    [review, setReview] = useState<ReturnType<typeof prepareProfile> | null>(null),
     [showSubjects, setShowSubjects] = useState(false)
-  const set = (key, value) => {
+  const set = (key: string, value: unknown) => {
     setInput((old) => ({ ...old, [key]: value }))
     setErrors({})
     setReview(null)
   }
-  const changeExam = (examId) => {
+  const changeExam = (examId: string) => {
     setInput((old) => ({
       ...old,
       examId,
@@ -156,10 +186,10 @@ function ProfileSheet({ initial, editingId, exams, onClose, onSaved }) {
     if (!review) {
       const parsed = automationSchemas.profile.safeParse(input)
       if (!parsed.success) {
-        const next = {}
+        const next: Record<string, string> = {}
         for (const issue of parsed.error.issues) next[issue.path.join('.')] ||= issue.message
         setErrors(next)
-        notify(parsed.error.issues[0].message, 'error')
+        notify(parsed.error.issues[0]?.message ?? 'Girdiğiniz bilgileri kontrol edin.', 'error')
         return
       }
       try {
@@ -172,11 +202,11 @@ function ProfileSheet({ initial, editingId, exams, onClose, onSaved }) {
     }
     let savedId = ''
     const ok = await commit((next, makeId) => {
-      savedId = runAssessment(next, session, 'profile', input, makeId, editingId).id
+      savedId = runAssessment(next, session, 'profile', input, makeId, editingId).id ?? ''
     }, 'Optik profil kaydedildi.')
     if (ok) onSaved(savedId)
   }
-  const text = (key, label, extra = {}) => (
+  const text = (key: string, label: string, extra: FieldExtra = {}) => (
     <View key={key} style={{ gap: 6 }}>
       <Field label={label} value={input[key]} onChange={(v) => set(key, v)} {...extra} />
       {!!errors[key] && (
@@ -273,8 +303,8 @@ function ProfileSheet({ initial, editingId, exams, onClose, onSaved }) {
   )
 }
 
-export default function OpticalScreen({ navigation }) {
-  const { data, session, commit, busy, notify } = useSchool(),
+export default function OpticalScreen({ navigation }: ScreenProps<'Module'>) {
+  const { data, session, commit, busy, notify } = useActiveSchool(),
     c = useColors()
   const exams = useMemo(() => automationExams(data, session), [data, session.role, session.childId])
   const profiles = useMemo(
@@ -285,10 +315,10 @@ export default function OpticalScreen({ navigation }) {
     [text, setText] = useState(''),
     [encoding, setEncoding] = useState('utf-8'),
     [importing, setImporting] = useState(false),
-    [preview, setPreview] = useState(null),
+    [preview, setPreview] = useState<OpticalPreviewRow[] | null>(null),
     [error, setError] = useState(''),
     [selectedId, setSelectedId] = useState(''),
-    [profileInput, setProfileInput] = useState(null),
+    [profileInput, setProfileInput] = useState<FormValues | null>(null),
     [editingId, setEditingId] = useState(''),
     [showKey, setShowKey] = useState(false)
   const readRequest = useRef(0)
@@ -307,28 +337,29 @@ export default function OpticalScreen({ navigation }) {
     setShowKey(false)
   }, [profileId])
 
-  const subjectName = (id) => data.subjects.find((s) => s.id === id)?.name || id
-  const present = (row) => ({
+  const subjectName = (id: string) => data.subjects.find((s) => s.id === id)?.name || id
+  const present = (row: OpticalPreviewRow | OpticalEvaluation, status: string): ResultItem => ({
     ...row,
-    id: row.id || `${row.studentId}-${row.subjectId}`,
+    id: ('id' in row && row.id) || `${row.studentId}-${row.subjectId}`,
     subject: subjectName(row.subjectId),
-    studentName: data.students.find((s) => s.id === row.studentId)?.name || row.studentName,
+    studentName:
+      data.students.find((s) => s.id === row.studentId)?.name ||
+      ('studentName' in row ? row.studentName : ''),
+    status,
   })
   const previewRows = useMemo(
     () =>
-      (preview || []).map((row) => ({
-        ...present(row),
-        status: row.replaces ? 'Mevcut sonucu günceller' : 'Yeni değerlendirme',
-      })),
+      (preview || []).map((row) =>
+        present(row, row.replaces ? 'Mevcut sonucu günceller' : 'Yeni değerlendirme'),
+      ),
     [preview, data.students, data.subjects],
   )
   const results = useMemo(
     () =>
       profile
-        ? currentEvaluations(data, profile.examId, session).map((row) => ({
-            ...present(row),
-            status: 'Değerlendirildi',
-          }))
+        ? currentEvaluations(data, profile.examId, session).map((row) =>
+            present(row, 'Değerlendirildi'),
+          )
         : [],
     [data, profile, session.role, session.childId],
   )
@@ -343,7 +374,7 @@ export default function OpticalScreen({ navigation }) {
     [profile, data.subjects],
   )
 
-  function showError(value) {
+  function showError(value: unknown) {
     recordError(value, 'optical', 'warn')
     const message = errorMessage(value)
     setError(message)
@@ -388,14 +419,14 @@ export default function OpticalScreen({ navigation }) {
       setText('')
     }
   }
-  function loadSample() {
+  function loadSample(target: OpticalProfile) {
     try {
-      setText(exampleOpticalFile(data, profile, session))
+      setText(exampleOpticalFile(data, target, session))
     } catch (exception) {
       showError(exception)
     }
   }
-  function openProfile(existing) {
+  function openProfile(existing?: OpticalProfile) {
     setEditingId(existing?.id || '')
     const examId =
       existing?.examId ||
@@ -422,8 +453,11 @@ export default function OpticalScreen({ navigation }) {
     )
     setError('')
   }
+  // `navigation.reset` kök rota listesine bağlı tiplidir; dispatch aynı eylemi gevşek tipli gönderir.
   const openTutoring = () =>
-    navigation.reset(moduleNavigationState(navigation.getState(), 'otomatik-etut'))
+    navigation.dispatch(
+      CommonActions.reset(moduleNavigationState(navigation.getState(), 'otomatik-etut')),
+    )
 
   if (!data.modules.optical)
     return (
@@ -468,7 +502,7 @@ export default function OpticalScreen({ navigation }) {
             />
             {profile ? (
               <>
-                <Button onPress={loadSample}>Örnek cevap dosyasını yükle</Button>
+                <Button onPress={() => loadSample(profile)}>Örnek cevap dosyasını yükle</Button>
                 {manager && <Button onPress={() => openProfile(profile)}>Profili düzenle</Button>}
                 {data.modules.tutoring && (
                   <Button onPress={openTutoring}>Otomatik etüt planla</Button>

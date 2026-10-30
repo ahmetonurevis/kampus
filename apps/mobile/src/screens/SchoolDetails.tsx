@@ -1,21 +1,24 @@
+import { useState } from 'react'
+import { View, Pressable } from 'react-native'
+import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { usePersistentDraft } from '../store/use-persistent-draft.ts'
 import DraftStatus from '../ui/DraftStatus.tsx'
 import { contentTitle } from '../model/presentation.ts'
-import React, { useState } from 'react'
-import { View, Pressable } from 'react-native'
-import { useSchool, recordError } from '../store/SchoolProvider.tsx'
+import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
 import { context, nameOf } from '../model/school.ts'
-import { operation } from '../model/operations.ts'
+import { operation, str, type PickedFile } from '../model/operations.ts'
 import { waitingLabel } from '../model/experience.ts'
 import { pickFile, fileSelectionMessage } from '../lib/files.ts'
 import { Badge, Button, Card, Field, T, useColors } from '../ui/components.tsx'
 import { DetailPair, Notice, Screen, Section, TextAction } from '../ui/SchoolLayout.tsx'
 import DocumentLink from '../ui/DocumentLink.tsx'
-import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { useMinute } from '../ui/use-minute.ts'
+import type { ScreenProps } from '../route-types.ts'
 
-export function HomeworkDetail({ route, navigation }) {
-  const { data, session, commit, busy, notify } = useSchool(),
+type HomeworkDraft = { file: PickedFile | null; note: string }
+
+export function HomeworkDetail({ route, navigation }: ScreenProps<'Detail'>) {
+  const { data, session, commit, busy, notify } = useActiveSchool(),
     scope = context(data, session),
     c = useColors()
   const homework = data.homework.find(
@@ -24,15 +27,15 @@ export function HomeworkDetail({ route, navigation }) {
   const submission = data.submissions.find(
     (s) => s.homeworkId === homework?.id && s.studentId === scope.student.id,
   )
-  const draft = usePersistentDraft(
+  const draft = usePersistentDraft<HomeworkDraft>(
     'homework',
     homework?.id || route.params.row.id,
     { file: null, note: '' },
     submission?.submittedAt || '',
   )
   const { file, note } = draft.value
-  const setFile = (file) => draft.set((old) => ({ ...old, file }))
-  const setNote = (note) => draft.set((old) => ({ ...old, note }))
+  const setFile = (file: PickedFile | null) => draft.set((old) => ({ ...old, file }))
+  const setNote = (note: string) => draft.set((old) => ({ ...old, note }))
   const [picking, setPicking] = useState(false),
     [error, setError] = useState(''),
     [extras, setExtras] = useState(false),
@@ -63,7 +66,7 @@ export function HomeworkDetail({ route, navigation }) {
       setPicking(false)
     }
   }
-  async function submit() {
+  const submit = async () => {
     if (!file) {
       setError('Dosya seçilmedi. Teslim için PDF veya görsel ekle.')
       notify('Dosya seçilmedi. Teslim için PDF veya görsel ekle.', 'error')
@@ -80,6 +83,8 @@ export function HomeworkDetail({ route, navigation }) {
       setExtras(false)
     }
   }
+  // Core teslim tipinde `note` alanı yok; işlem teslimle birlikte yazar.
+  const submissionNote = submission && 'note' in submission ? str(submission.note) : ''
   const completed = submission && !editing && !file && !note
   return (
     <Screen
@@ -90,8 +95,14 @@ export function HomeworkDetail({ route, navigation }) {
               primary
               onPress={() => {
                 const previous = navigation.getState().routes.at(-2)
-                if (previous?.name === 'Module' && previous.params?.page === 'odevler')
-                  navigation.goBack()
+                const previousParams: unknown = previous?.params
+                const previousPage =
+                  typeof previousParams === 'object' &&
+                  previousParams !== null &&
+                  'page' in previousParams
+                    ? previousParams.page
+                    : undefined
+                if (previous?.name === 'Module' && previousPage === 'odevler') navigation.goBack()
                 else navigation.replace('Module', { page: 'odevler' })
               }}
             >
@@ -163,7 +174,7 @@ export function HomeworkDetail({ route, navigation }) {
               title="Ödev teslim edildi"
               text={`${dateLabel(submission.submittedAt, { year: 'numeric', hour: '2-digit', minute: '2-digit' })}\n${submission.fileName}`}
             />
-            {!!submission.note && <T muted>{submission.note}</T>}
+            {!!submissionNote && <T muted>{submissionNote}</T>}
             {submission.score != null ? (
               <Notice
                 title={`Öğretmen değerlendirmesi · ${submission.score} / 100`}
@@ -173,7 +184,7 @@ export function HomeworkDetail({ route, navigation }) {
               <TextAction
                 onPress={() => {
                   setEditing(true)
-                  setNote(submission.note || '')
+                  setNote(submissionNote)
                 }}
               >
                 Teslimi değiştir
@@ -216,9 +227,9 @@ export function HomeworkDetail({ route, navigation }) {
   )
 }
 
-export function QuestionDetail({ route }) {
+export function QuestionDetail({ route }: ScreenProps<'Detail'>) {
   useMinute()
-  const { data, session, commit, busy, notify } = useSchool()
+  const { data, session, commit, busy, notify } = useActiveSchool()
   const question = data.questions.find((q) => q.id === route.params.row.id && q.teacherId === 't1')
   const student = data.students.find((s) => s.id === question?.studentId)
   const draft = usePersistentDraft(
@@ -228,7 +239,7 @@ export function QuestionDetail({ route }) {
     question?.answeredAt || '',
   )
   const { answer } = draft.value
-  const setAnswer = (answer) => draft.set({ answer })
+  const setAnswer = (answer: string) => draft.set({ answer })
   const [error, setError] = useState(''),
     [editing, setEditing] = useState(!question?.answeredAt)
   if (!question || !data.modules.learning)
@@ -241,7 +252,7 @@ export function QuestionDetail({ route }) {
       </Screen>
     )
   const showEditor = editing || (draft.ready && answer !== (question.answer || ''))
-  async function send() {
+  const send = async () => {
     if (answer.trim().length < 2 || answer.trim().length > 2000) {
       const message = 'Yanıtın 2–2.000 karakter arasında olmalı.'
       setError(message)
@@ -276,7 +287,7 @@ export function QuestionDetail({ route }) {
         </T>
         <View style={{ gap: 9 }}>
           <T bold size={17}>
-            {student?.name} · {nameOf(data, 'classes', student?.classId)}
+            {student?.name} · {nameOf(data, 'classes', student?.classId ?? '')}
           </T>
           <T muted size={14}>
             {question.title} · {waitingLabel(question)}

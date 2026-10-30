@@ -1,11 +1,13 @@
-import { usePersistentDraft } from '../store/use-persistent-draft.ts'
-import DraftStatus from '../ui/DraftStatus.tsx'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Pressable, useWindowDimensions } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.tsx'
-import { context, nameOf } from '../model/school.ts'
+import type { KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller'
 import { recordAttendance } from '@kampus/school-core/lib/domain.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
+import { usePersistentDraft } from '../store/use-persistent-draft.ts'
+import DraftStatus from '../ui/DraftStatus.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { context, nameOf } from '../model/school.ts'
+import type { ScreenProps } from '../route-types.ts'
 import {
   Button,
   Card,
@@ -25,15 +27,22 @@ import {
   TextAction,
 } from '../ui/SchoolLayout.tsx'
 
-export default function Attendance({ route }) {
-  const { data, session, commit, busy, notify } = useSchool(),
+type Marks = Record<string, string>
+// Durum anahtarı, etiket ve renk tonu.
+const choices = [
+  ['present', 'Mevcut', 'green'],
+  ['absent', 'Yok', 'accent'],
+  ['excused', 'Mazeretli', 'primary'],
+] as const
+
+export default function Attendance({ route }: ScreenProps<'Module'>) {
+  const { data, session, commit, busy, notify } = useActiveSchool(),
     scope = context(data, session),
     c = useColors(),
     { fontScale } = useWindowDimensions()
   const [classId, setClassId] = useState(
-    scope.teacherClasses.some((s) => s.id === route.params.classId)
-      ? route.params.classId
-      : scope.teacherClasses[0]?.id || '',
+    scope.teacherClasses.find((s) => s.id === route.params.classId)?.id ??
+      (scope.teacherClasses[0]?.id || ''),
   )
   const [date, setDate] = useState(route.params.date || dayKey()),
     [query, setQuery] = useState(''),
@@ -43,7 +52,7 @@ export default function Attendance({ route }) {
     [saved, setSaved] = useState(false)
   const [draftClass, setDraftClass] = useState(classId),
     [draftDate, setDraftDate] = useState(date)
-  const scrollRef = useRef(null)
+  const scrollRef = useRef<KeyboardAwareScrollViewRef>(null)
   const students = useMemo(
     () => data.students.filter((s) => s.isActive && s.classId === classId),
     [data.students, classId],
@@ -67,7 +76,7 @@ export default function Attendance({ route }) {
     JSON.stringify(initialMarks),
   )
   const marks = draft.value.marks
-  const setMarks = (update) =>
+  const setMarks = (update: Marks | ((old: Marks) => Marks)) =>
     draft.set((old) => ({ marks: typeof update === 'function' ? update(old.marks) : update }))
   useEffect(() => {
     setError('')
@@ -80,7 +89,7 @@ export default function Attendance({ route }) {
   )
   const pageSize = 6
   const current = Math.min(page, Math.max(0, Math.ceil(filtered.length / pageSize) - 1))
-  function change(id, value) {
+  function change(id: string, value: string) {
     setMarks((old) => ({ ...old, [id]: value }))
     setSaved(false)
     setError('')
@@ -190,11 +199,7 @@ export default function Attendance({ route }) {
                   )}
                 </View>
                 <View style={{ flexDirection: fontScale > 1.3 ? 'column' : 'row', gap: 6 }}>
-                  {[
-                    ['present', 'Mevcut', 'green'],
-                    ['absent', 'Yok', 'accent'],
-                    ['excused', 'Mazeretli', 'primary'],
-                  ].map(([key, label, tone]) => (
+                  {choices.map(([key, label, tone]) => (
                     <Pressable
                       key={key}
                       accessibilityRole="radio"
@@ -217,7 +222,7 @@ export default function Attendance({ route }) {
                         borderWidth: 1,
                         borderColor: c.border,
                         backgroundColor:
-                          marks[student.id] === key ? c[tone + 'Soft'] : c.background,
+                          marks[student.id] === key ? c[`${tone}Soft` as const] : c.background,
                       }}
                     >
                       <T

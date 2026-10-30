@@ -1,8 +1,10 @@
-import { contentTitle } from '../model/presentation.ts'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { View } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.tsx'
-import { context, nameOf, rowsFor } from '../model/school.ts'
+import type { KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller'
+import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
+import { contentTitle } from '../model/presentation.ts'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { context, nameOf, rowsFor, type Row } from '../model/school.ts'
 import { homeworkRows, paymentSummary, waitingLabel } from '../model/experience.ts'
 import { Badge, Button, Card, SearchField, Select, Sheet, T, styles } from '../ui/components.tsx'
 import {
@@ -15,13 +17,21 @@ import {
   TextAction,
 } from '../ui/SchoolLayout.tsx'
 import { useMinute } from '../ui/use-minute.ts'
-import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
+import type { ScreenProps } from '../route-types.ts'
 
-export default function SchoolList({ kind, navigation }) {
-  const { data, session } = useSchool(),
+type HomeworkItem = ReturnType<typeof homeworkRows>[number]
+// Üç liste türü aynı ekranı kullanır; satırın `kind` alanı kaynağın şeklini ayırt eder.
+type ListItem = Row<'invoice'> | Row<'question'> | HomeworkItem
+type SchoolListProps = {
+  kind: 'payment' | 'question' | 'homework'
+  navigation: ScreenProps<'Module'>['navigation']
+}
+
+export default function SchoolList({ kind, navigation }: SchoolListProps) {
+  const { data, session } = useActiveSchool(),
     scope = context(data, session),
     now = useMinute()
-  const [tab, setTab] = useState('pending'),
+  const [tab, setTab] = useState<'pending' | 'done'>('pending'),
     [query, setQuery] = useState(''),
     [subject, setSubject] = useState(''),
     [status, setStatus] = useState(''),
@@ -29,35 +39,47 @@ export default function SchoolList({ kind, navigation }) {
     [order, setOrder] = useState('date'),
     [filters, setFilters] = useState(false),
     [page, setPage] = useState(0)
-  const scrollRef = useRef(null),
+  const scrollRef = useRef<KeyboardAwareScrollViewRef>(null),
     payment = kind === 'payment',
     question = kind === 'question'
   const finance = useMemo(
     () => (payment ? paymentSummary(data, session) : null),
     [data, session.childId, payment],
   )
-  const rows = useMemo(
+  const rows = useMemo<ListItem[]>(
     () =>
-      payment
+      finance
         ? finance.rows
         : question
           ? rowsFor(data, session, 'sorular')
           : homeworkRows(data, session),
     [data, session.role, session.childId, payment, question, finance, now],
   )
-  const done = (row) =>
-    payment ? !!row.source.paidAt : question ? !!row.source.answeredAt : !!row.submission
+  const done = (row: ListItem) =>
+    row.kind === 'invoice'
+      ? !!row.source.paidAt
+      : row.kind === 'question'
+        ? !!row.source.answeredAt
+        : !!row.submission
   const pendingCount = rows.filter((r) => !done(r)).length
-  const classFor = (row) =>
-    question
+  const classFor = (row: ListItem) =>
+    row.kind === 'question'
       ? data.students.find((s) => s.id === row.source.studentId)?.classId
-      : row.source.classId
-  const courseFor = (row) =>
-    row.source.subject || data.subjects.find((s) => s.id === row.source.subjectId)?.name || ''
+      : row.kind === 'homework'
+        ? row.source.classId
+        : undefined
+  const courseFor = (row: ListItem) =>
+    row.kind === 'invoice'
+      ? ''
+      : (row.kind === 'homework' ? row.source.subject : '') ||
+        data.subjects.find((s) => s.id === row.source.subjectId)?.name ||
+        ''
+  const sortDate = (row: ListItem) =>
+    (row.kind === 'question' ? '' : row.source.dueDate) || row.source.createdAt || ''
   const filtered = rows
     .filter((row) => {
       const search =
-        `${row.title} ${row.subtitle} ${row.body} ${courseFor(row)} ${question ? nameOf(data, 'classes', classFor(row)) : ''}`.toLocaleLowerCase(
+        `${row.title} ${row.subtitle} ${row.body} ${courseFor(row)} ${question ? nameOf(data, 'classes', classFor(row) ?? '') : ''}`.toLocaleLowerCase(
           'tr',
         )
       return (
@@ -70,10 +92,8 @@ export default function SchoolList({ kind, navigation }) {
     })
     .sort((a, b) =>
       order === 'name'
-        ? a.title.localeCompare(b.title, 'tr')
-        : (a.source.dueDate || a.source.createdAt).localeCompare(
-            b.source.dueDate || b.source.createdAt,
-          ) * (order === 'recent' ? -1 : 1),
+        ? (a.title ?? '').localeCompare(b.title ?? '', 'tr')
+        : sortDate(a).localeCompare(sortDate(b)) * (order === 'recent' ? -1 : 1),
     )
   useEffect(() => setPage(0), [query, subject, status, classId, tab, order, session.childId])
   const current = Math.min(page, Math.max(0, Math.ceil(filtered.length / 10) - 1))
@@ -85,7 +105,8 @@ export default function SchoolList({ kind, navigation }) {
     setClassId('')
     setOrder('date')
   }
-  const open = (row) => navigation.navigate('Detail', { row })
+  const open = (row: ListItem) => navigation.navigate('Detail', { row })
+  const nextInvoice = finance?.next
   const noun = payment ? 'taksit' : question ? 'soru' : 'ödev'
   const statusOptions = [
     ...new Set(rows.filter((r) => done(r) === (tab === 'done')).map((r) => r.status)),
@@ -107,7 +128,7 @@ export default function SchoolList({ kind, navigation }) {
           ) : undefined
         }
       >
-        {payment ? (
+        {finance ? (
           <>
             <ChildSelector />
             <Card soft style={{ gap: 8 }}>
@@ -120,8 +141,8 @@ export default function SchoolList({ kind, navigation }) {
               <T muted size={13}>
                 {finance.unpaid.length} taksit ödeme bekliyor
               </T>
-              {finance.next && (
-                <Button accent onPress={() => open(finance.next)}>
+              {nextInvoice && (
+                <Button accent onPress={() => open(nextInvoice)}>
                   Taksit ayrıntısını gör
                 </Button>
               )}
@@ -174,34 +195,34 @@ export default function SchoolList({ kind, navigation }) {
               card
               key={row.id}
               title={
-                payment
+                row.kind === 'invoice'
                   ? money(row.source.amount)
-                  : question
-                    ? `${nameOf(data, 'students', row.source.studentId)} · ${nameOf(data, 'classes', classFor(row))}`
+                  : row.kind === 'question'
+                    ? `${nameOf(data, 'students', row.source.studentId)} · ${nameOf(data, 'classes', classFor(row) ?? '')}`
                     : contentTitle(row.title, courseFor(row))
               }
               eyebrow={
-                payment
+                row.kind === 'invoice'
                   ? `Eğitim taksiti · ${scope.student.name}`
-                  : !question
+                  : row.kind !== 'question'
                     ? courseFor(row)
                     : undefined
               }
               subtitle={
-                payment
+                row.kind === 'invoice'
                   ? `Son ödeme: ${dateLabel(row.source.dueDate, { year: 'numeric' })}`
-                  : question
+                  : row.kind === 'question'
                     ? `${row.title} · ${waitingLabel(row.source)}`
                     : `Son teslim: ${dateLabel(row.source.dueDate, { hour: '2-digit', minute: '2-digit' })}`
               }
               badge={
                 <Badge
                   text={
-                    question && !row.source.answeredAt && row.status === 'Bekliyor'
+                    row.kind === 'question' && !row.source.answeredAt && row.status === 'Bekliyor'
                       ? 'Yanıt bekliyor'
-                      : !payment && !question && row.status === 'Bekliyor'
+                      : row.kind === 'homework' && row.status === 'Bekliyor'
                         ? 'Teslim bekliyor'
-                        : !payment && !question && row.status === 'Gecikmiş'
+                        : row.kind === 'homework' && row.status === 'Gecikmiş'
                           ? 'Teslim süresi geçti'
                           : row.status
                   }
@@ -248,9 +269,9 @@ export default function SchoolList({ kind, navigation }) {
               label="Sınıf"
               value={classId}
               onChange={setClassId}
-              options={[...new Set(rows.map(classFor))]
-                .filter(Boolean)
-                .map((value) => ({ value, label: nameOf(data, 'classes', value) }))}
+              options={[...new Set(rows.map(classFor))].flatMap((value) =>
+                value ? [{ value, label: nameOf(data, 'classes', value) }] : [],
+              )}
             />
           )}
           <Select label="Durum" value={status} onChange={setStatus} options={statusOptions} />

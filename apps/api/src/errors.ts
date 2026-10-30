@@ -30,6 +30,7 @@ export const MESSAGES = {
   version_conflict: 'Kayıt başka biri tarafından değiştirildi. Sayfayı yenileyip yeniden deneyin.',
   conflict: 'İşlem aynı anda yapılan başka bir işlemle çakıştı. Lütfen yeniden deneyin.',
   idempotency_key_required: 'Bu işlem için istek anahtarı (Idempotency-Key) gerekli.',
+  if_match_not_supported: 'Bu işlemde sürüm denetimi (If-Match) kullanılamaz.',
   idempotency_in_progress: 'Aynı istek hâlâ işleniyor. Lütfen biraz sonra yeniden deneyin.',
   idempotency_key_reused: 'Bu istek anahtarı farklı bir işlem için kullanılmış.',
   record_too_large: 'Kayıt izin verilen boyutu aşıyor.',

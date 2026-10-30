@@ -82,6 +82,16 @@ function options(request: FastifyRequest, idempotency: 'required' | 'optional'):
   }
 }
 
+/**
+ * Konusu önceden var olmayan (oluşturma) uç: `If-Match` gövde doğrulamasından önce 400
+ * `if_match_not_supported` olur; istemci kilit beklediği halde sessizce kilitsiz yazılmaz.
+ */
+function rejectIfMatch(): preValidationAsyncHookHandler {
+  return async function (request) {
+    ifMatchVersion(request, false)
+  }
+}
+
 /** Ham gövde nesnesi; şema doğrulaması geçtiği için nesnedir, değilse boş sayılır. */
 function inputObject(request: FastifyRequest): Readonly<Record<string, unknown>> {
   const input = request.commandInput
@@ -107,12 +117,17 @@ export function registerCommandRoutes(app: FastifyInstance) {
   app.decorateRequest('commandInput', null)
   const typed = app.withTypeProvider<ZodTypeProvider>()
 
-  /** Rota ön işleyicileri: kimlik → modül → rol → ham gövde. */
-  function guard(roles: readonly Role[], module: string | null): preValidationAsyncHookHandler[] {
+  /** Rota ön işleyicileri: kimlik → modül → rol → `If-Match` (oluşturmada) → ham gövde. */
+  function guard(
+    roles: readonly Role[],
+    module: string | null,
+    { subject = true }: { subject?: boolean } = {},
+  ): preValidationAsyncHookHandler[] {
     return [
       app.authenticate,
       ...(module === null ? [] : [app.requireModule(module)]),
       app.requireRole(roles),
+      ...(subject ? [] : [rejectIfMatch()]),
       captureInput(),
     ]
   }
@@ -127,7 +142,6 @@ export function registerCommandRoutes(app: FastifyInstance) {
       tags: ['workflows'],
       summary: route.summary,
       description: workflowDescription(name, roles),
-      headers: commandHeadersSchema(route.idempotency),
       querystring: workflowQuerySchema,
       body: workflowBody(name),
       response,
@@ -151,8 +165,12 @@ export function registerCommandRoutes(app: FastifyInstance) {
       typed.post(
         `/api/v1/workflows/${name}`,
         {
-          preValidation: guard(ROLES, module),
-          schema: { ...base, operationId: `runWorkflow${pascal(name)}` },
+          preValidation: guard(ROLES, module, { subject: false }),
+          schema: {
+            ...base,
+            operationId: `runWorkflow${pascal(name)}`,
+            headers: commandHeadersSchema(route.idempotency, { ifMatch: false }),
+          },
         },
         (request, reply) => run(request, reply, undefined),
       )
@@ -164,6 +182,7 @@ export function registerCommandRoutes(app: FastifyInstance) {
           schema: {
             ...base,
             operationId: `runWorkflow${pascal(name)}${route.record === 'optional' ? 'Update' : ''}`,
+            headers: commandHeadersSchema(route.idempotency),
             params: workflowRecordParamsSchema,
           },
         },
@@ -212,7 +231,7 @@ export function registerCommandRoutes(app: FastifyInstance) {
         tags: ['attendance'],
         summary: 'Sınıf yoklaması al',
         description:
-          'Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. Roller: `yonetici`; `ogretmen` yalnız core kapsamındaki sınıfta.',
+          'Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. `If-Match` sınıf kaydının sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`; `ogretmen` yalnız core kapsamındaki sınıfta.',
         headers: commandHeadersSchema('optional'),
         params: classParamsSchema,
         body: attendanceBodySchema,
@@ -338,14 +357,14 @@ export function registerCommandRoutes(app: FastifyInstance) {
   typed.post(
     '/api/v1/tutor-sessions',
     {
-      preValidation: guard(ROLES, 'tutoring'),
+      preValidation: guard(ROLES, 'tutoring', { subject: false }),
       schema: {
         operationId: 'createTutorSessions',
         tags: ['tutoring'],
         summary: 'Etüt planını onayla',
         description:
           "Deneme sonuçlarından etüt planını güncel veriyle yeniden hesaplar ve etütleri oluşturur (core `runAssessment('plan')`). `expectedPlan` önizlemedeki plandır; plan değiştiyse 409 `tutoring_plan_stale`.",
-        headers: commandHeadersSchema('optional'),
+        headers: commandHeadersSchema('optional', { ifMatch: false }),
         body: automationSchemas.plan.extend({
           expectedPlan: z
             .string()

@@ -296,6 +296,14 @@ export async function recordAttendanceCommand(
       action: 'attendance.record',
       collections: ATTENDANCE_COLLECTIONS,
       scalars,
+      // İşlemin konusu sınıftır: `If-Match` sınıf kaydının okunan sürümüyle karşılaştırılır.
+      ...(options.expectedVersion !== null
+        ? {
+            expectedVersions: [
+              { collection: 'classes', id: classId, version: options.expectedVersion },
+            ],
+          }
+        : {}),
       entity: { type: 'classes', id: classId },
       run: (state) => {
         if (!state.classes.some((item) => item.id === classId)) throw new NotFoundError()

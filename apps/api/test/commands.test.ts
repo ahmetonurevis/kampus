@@ -477,6 +477,102 @@ describe('yazma uçları', () => {
     })
   })
 
+  // --- If-Match ve ön büro sınırı ---------------------------------------------------------
+
+  describe('If-Match: konusu olmayan oluşturmada 400, yoklamada sınıf sürümü (api-tasarimi.md §6)', () => {
+    const goal = {
+      studentId: 's1',
+      subjectId: 'science',
+      title: 'Fen netini artır',
+      targetNet: 15,
+      deadline: '2026-12-15',
+    }
+
+    test('oluşturma komutunda If-Match 400 if_match_not_supported; kayıt yazılmaz', async () => {
+      const a = await institution()
+      const ifMatch = { 'if-match': '"1"' }
+      assertError(
+        await post('/api/v1/workflows/goal', a.adminCookie, goal, ifMatch),
+        400,
+        'if_match_not_supported',
+      )
+      // Kimliksiz `lesson` oluşturur; kimlikli yolu güncellemedir ve If-Match alır.
+      assertError(
+        await post('/api/v1/workflows/lesson', a.adminCookie, {}, ifMatch),
+        400,
+        'if_match_not_supported',
+      )
+      assertError(
+        await post('/api/v1/tutor-sessions', a.adminCookie, {}, ifMatch),
+        400,
+        'if_match_not_supported',
+      )
+      assert.equal(await count(a.id, 'studentGoals'), SEED.studentGoals.length)
+      assert.equal(await count(a.id, 'tutorSessions'), 0)
+      const created = await post('/api/v1/workflows/goal', a.adminCookie, goal)
+      assert.equal(created.statusCode, 200, created.body)
+    })
+
+    test('yoklamada If-Match sınıf sürümüdür: tutmazsa 409 version_conflict, kayıt yazılmaz', async () => {
+      const a = await institution()
+      const url = '/api/v1/classes/c1/attendance'
+      const body = { date: DAY, marks: marksFor('c1') }
+      assertError(
+        await post(url, a.adminCookie, body, { 'if-match': '"99"' }),
+        409,
+        'version_conflict',
+      )
+      assert.equal(await count(a.id, 'attendance'), 0)
+      assertError(
+        await post('/api/v1/classes/test-yok/attendance', a.adminCookie, body, {
+          'if-match': '"1"',
+        }),
+        404,
+        'not_found',
+      )
+      const current = await version(a.id, 'classes', 'c1')
+      const ok = await post(url, a.adminCookie, body, { 'if-match': `"${current}"` })
+      assert.equal(ok.statusCode, 200, ok.body)
+      assert.equal(await count(a.id, 'attendance'), classStudents('c1').length)
+    })
+
+    test('ön büro rehberlik, deneme sonucu ve yoklama komutlarında 403; kayıt yazılmaz', async () => {
+      const a = await institution()
+      const frontOffice = await member(a.id, 'onburo')
+      const guidance = {
+        studentId: 's1',
+        teacherId: 't1',
+        title: 'Görüşme',
+        plan: 'Haftalık takip',
+        internalNote: 'Gizli not',
+        followUp: '2026-10-20',
+      }
+      const note = { text: 'Not', followUp: '2026-10-20', status: 'Takipte' }
+      const result = {
+        examId: 'exam-7-1',
+        studentId: RESULTLESS.id,
+        subjectId: 'math',
+        correct: 8,
+        wrong: 2,
+        blank: 0,
+        weakTopics: 'Kesirler',
+      }
+      const guidanceId = SEED.guidanceCases[0]?.id ?? 'guidance-s1'
+      const before = await version(a.id, 'guidanceCases', guidanceId)
+      for (const [url, body] of [
+        ['/api/v1/workflows/guidance', guidance],
+        [`/api/v1/workflows/guidance-note/${guidanceId}`, note],
+        ['/api/v1/workflows/exam-result', result],
+        ['/api/v1/classes/c1/attendance', { date: DAY, marks: marksFor('c1') }],
+      ] as const)
+        assertError(await post(url, frontOffice, body), 403)
+      assert.equal(await count(a.id, 'guidanceCases'), SEED.guidanceCases.length)
+      assert.equal(await version(a.id, 'guidanceCases', guidanceId), before)
+      assert.equal(await count(a.id, 'mockResults'), SEED.mockResults.length)
+      assert.equal(await count(a.id, 'attendance'), 0)
+    })
+  })
+
   // --- Ödeme --------------------------------------------------------------------------------
 
   describe('POST /invoices/:invoiceId/pay (DOM-FIN aynı ödeme iki kez işlenmez)', () => {

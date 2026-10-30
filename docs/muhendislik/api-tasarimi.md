@@ -24,7 +24,7 @@ Kampüs API'si JSON üzerinden REST'tir; tek istemcisi `packages/api-client`'tı
 
 - CRUD'a sığmayan iş adımı fiil olarak alt yoldur (`/approve`, `/reject`, `/close`); adı kebab-case İngilizce emir kipindedir.
 - Geçiş köprüsü: school-core `runWorkflow` komutları API'ye `POST /workflows/:command` ile taşınabilir. Bir modül kendi kaynak uçlarına geçince köprüdeki komutları kaldırılır.
-- Yazma uçları (`apps/api/src/routes/commands.ts`, servis `services/commands.ts`). Yanıt `{ data: CommandResult }`: işlemin konusu (`entity`), değişiklik sayıları ve yazılan kayıtların yeni `version`'ı. Konu kaydı için isteğe bağlı `If-Match` sürümü tutmazsa 409 `version_conflict`. Core'un rol denetlemediği işlemlerde (ödeme, yoklama, arşiv) uç en dar varsayılanı uygular; core bu kuralları verince rol oradan okunur.
+- Yazma uçları (`apps/api/src/routes/commands.ts`, servis `services/commands.ts`). Yanıt `{ data: CommandResult }`: işlemin konusu (`entity`), değişiklik sayıları ve yazılan kayıtların yeni `version`'ı. Konu kaydı için isteğe bağlı `If-Match` sürümü tutmazsa 409 `version_conflict`; yoklamada konu sınıf kaydıdır. Önceden var olan konusu olmayan oluşturma uçlarında (kimliksiz `POST /workflows/<komut>`, `POST /tutor-sessions`) `If-Match` 400 `if_match_not_supported` döner, sessizce yok sayılmaz. Core'un rol denetlemediği işlemlerde (ödeme, yoklama, arşiv) uç en dar varsayılanı uygular; core bu kuralları verince rol oradan okunur.
 
   | Yöntem ve yol                                                     | Rol                                                      | Modül          | Anahtar                                                  |
   | ----------------------------------------------------------------- | -------------------------------------------------------- | -------------- | -------------------------------------------------------- |
@@ -119,7 +119,7 @@ Bütün hata yanıtları aynı şekildedir:
 | 201   | —                                                                                                     | Oluşturma (`Location` başlığıyla)                                                                               |
 | 202   | —                                                                                                     | Uzun süren içe aktarma kuyruğa alındı (`/imports/:importId` ile izlenir)                                        |
 | 204   | —                                                                                                     | Gövdesiz başarı (çıkış)                                                                                         |
-| 400   | `validation_failed`, `invalid_query`, `idempotency_key_required`                                      | Şema/biçim hatası                                                                                               |
+| 400   | `validation_failed`, `invalid_query`, `idempotency_key_required`, `if_match_not_supported`            | Şema/biçim hatası                                                                                               |
 | 401   | `unauthenticated`                                                                                     | Oturum yok, geçersiz, iptal edilmiş veya süresi dolmuş                                                          |
 | 403   | `forbidden`, `module_disabled`, `no_active_institution`, `reauthentication_required`, `csrf_rejected` | Rol/kapsam yetmiyor; modül kapalı; etkin kurum yok; hassas işlem için taze oturum gerekli; kaynak denetimi      |
 | 404   | `not_found`                                                                                           | Yok **veya başka kuruma ait** (varlığı sızdırılmaz)                                                             |
@@ -139,6 +139,7 @@ Modül denetimi: modüle bağlı rota `app.requireModule('<anahtar>')` ön işle
 ## 6. Eşzamanlılık
 
 - Güncelleme ve komut gövdesi okunan kaydın `version` değerini taşır. Sunucu yazarken `WHERE version = $beklenen` uygular; eşleşmezse 409 `version_conflict`. İstemci kaydı yeniden yükler ve kullanıcıya "Kayıt başka biri tarafından değiştirildi." gösterir. Veritabanı kilitlenme (40P01) veya serileştirme (40001) nedeniyle transaction'ı geri alırsa 409 `conflict` döner: hiçbir kayıt değişmemiştir, aynı istek yeniden denenebilir.
+- Komut uçlarında okunan sürüm `If-Match` başlığıyla gelir (`"4"`, `W/"4"`). Konusu olmayan oluşturma uçları başlığı kabul etmez: 400 `if_match_not_supported` (gövde doğrulamasından önce).
 - Başarılı yazma yeni `version`'ı döndürür.
 
 ## 7. Idempotency anahtarı

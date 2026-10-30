@@ -875,7 +875,7 @@ export interface paths {
         put?: never;
         /**
          * Sınıf yoklaması al
-         * @description Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. Roller: `yonetici`; `ogretmen` yalnız core kapsamındaki sınıfta.
+         * @description Sınıfın günlük yoklamasını yazar (core `recordAttendance`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. `If-Match` sınıf kaydının sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`; `ogretmen` yalnız core kapsamındaki sınıfta.
          */
         post: operations["recordClassAttendance"];
         delete?: never;
@@ -1770,8 +1770,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -2552,8 +2550,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -2784,8 +2780,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -2898,8 +2892,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -3012,8 +3004,6 @@ export interface operations {
             header?: {
                 /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -3120,8 +3110,6 @@ export interface operations {
             header?: {
                 /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -3347,8 +3335,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -3798,8 +3784,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -4136,8 +4120,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -4476,8 +4458,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -4817,8 +4797,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -5037,8 +5015,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -5266,8 +5242,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -5714,8 +5688,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -6791,8 +6763,6 @@ export interface operations {
             header?: {
                 /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
                 "idempotency-key"?: string;
-                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
-                "if-match"?: string;
             };
             path?: never;
             cookie?: never;

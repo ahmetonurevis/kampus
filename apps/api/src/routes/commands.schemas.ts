@@ -8,9 +8,14 @@ export const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_-]{8,128}$/
 
 /**
  * Komut uçlarının başlıkları. Nesne gevşektir: Fastify doğrulanan başlık nesnesini istekte
- * kullandığı için bilinmeyen başlıklar (çerez, köken) atılmamalıdır.
+ * kullandığı için bilinmeyen başlıklar (çerez, köken) atılmamalıdır. `ifMatch: false`: işlemin
+ * önceden var olan konusu yoktur (oluşturma); başlık şemada yer almaz ve gönderilirse 400
+ * `if_match_not_supported` döner (`command-support.ts`), sessizce yok sayılmaz.
  */
-export function commandHeadersSchema(idempotency: 'required' | 'optional') {
+export function commandHeadersSchema(
+  idempotency: 'required' | 'optional',
+  { ifMatch = true }: { ifMatch?: boolean } = {},
+) {
   return z.looseObject({
     'idempotency-key': z
       .string()
@@ -21,13 +26,17 @@ export function commandHeadersSchema(idempotency: 'required' | 'optional') {
           ? 'Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır.'
           : 'İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır.',
       ),
-    'if-match': z
-      .string()
-      .regex(/^(W\/)?"?\d{1,9}"?$/, 'Sürüm geçersiz.')
-      .optional()
-      .describe(
-        'İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`.',
-      ),
+    ...(ifMatch
+      ? {
+          'if-match': z
+            .string()
+            .regex(/^(W\/)?"?\d{1,9}"?$/, 'Sürüm geçersiz.')
+            .optional()
+            .describe(
+              'İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`.',
+            ),
+        }
+      : {}),
   })
 }
 

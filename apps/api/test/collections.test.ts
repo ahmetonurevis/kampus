@@ -4,6 +4,7 @@ import { after, before, describe, test } from 'node:test'
 import { asc, eq } from 'drizzle-orm'
 
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
+import { ALWAYS_ON, COLLECTION_MODULES } from '@kampus/school-core/modules/collection-modules.ts'
 import { schoolModules } from '@kampus/school-core/modules/school-workflows.ts'
 
 import type { App } from '../src/app.ts'
@@ -12,7 +13,11 @@ import type { Database } from '../src/db/client.ts'
 import { RECORD_COLLECTIONS, recordKey, type CollectionName } from '../src/db/collections.ts'
 import { insertMissingRecords, writeRecords } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
-import { collectionAccessTable, READABLE_COLLECTIONS } from '../src/services/collection-access.ts'
+import {
+  collectionAccessTable,
+  moduleOfCollection,
+  READABLE_COLLECTIONS,
+} from '../src/services/collection-access.ts'
 import { parseSort, searchKey } from '../src/services/collection-reads.ts'
 import { isModuleKey } from '../src/services/modules.ts'
 import {
@@ -99,9 +104,11 @@ describe('koleksiyon okuma uçları', () => {
     for (const collection of READABLE_COLLECTIONS) {
       const access = table[collection]
       assert.ok(access, collection)
-      if (access.module === null) continue
-      assert.ok(isModuleKey(access.module), `${collection}: ${access.module}`)
-      const allowed = moduleRoles.get(access.module)
+      const module = moduleOfCollection(collection)
+      assert.equal(module ?? ALWAYS_ON, COLLECTION_MODULES[collection], collection)
+      if (module === null) continue
+      assert.ok(isModuleKey(module), `${collection}: ${module}`)
+      const allowed = moduleRoles.get(module)
       if (!allowed) continue
       for (const role of Object.keys(access.read))
         assert.ok(
@@ -312,6 +319,24 @@ describe('koleksiyon okuma uçları', () => {
       assert.equal(response.json().code, 'module_disabled')
     }
     assert.equal((await get('/api/v1/collections/studentGoals', adminCookie)).statusCode, 200)
+    assert.equal((await get('/api/v1/collections/students', adminCookie)).statusCode, 200)
+  })
+
+  test('DOM-YTK-012: dil okulunda kurum türüne uymayan modülün koleksiyonu bulunmaz (404)', async () => {
+    const { adminCookie } = await institution({ type: 'language_school' })
+
+    for (const url of [
+      '/api/v1/collections/guidanceCases',
+      '/api/v1/collections/guidanceCases/guidance-s1',
+      '/api/v1/collections/studentGoals',
+      '/api/v1/collections/mockExams',
+    ]) {
+      const response = await get(url, adminCookie)
+      assert.equal(response.statusCode, 404, url)
+      assert.equal(response.json().code, 'not_found')
+    }
+    // İki türde de bulunan modül ve çekirdek kayıtlar açıktır.
+    assert.equal((await get('/api/v1/collections/mealMenus', adminCookie)).statusCode, 200)
     assert.equal((await get('/api/v1/collections/students', adminCookie)).statusCode, 200)
   })
 

@@ -1,7 +1,9 @@
 import type { FastifyInstance, FastifyRequest, preHandlerAsyncHookHandler } from 'fastify'
 
-import { AppError, MESSAGES } from '../errors.ts'
-import { getEnabledModules, isModuleKey } from '../services/modules.ts'
+import { moduleAvailableFor } from '@kampus/school-core/modules/collection-modules.ts'
+
+import { AppError, MESSAGES, NotFoundError } from '../errors.ts'
+import { getInstitutionModules, isModuleKey } from '../services/modules.ts'
 import { contextOf } from './authenticate.ts'
 
 /**
@@ -27,7 +29,10 @@ export type ModuleSource = string | ((request: FastifyRequest) => string | null)
 
 declare module 'fastify' {
   interface FastifyInstance {
-    /** Kimlik + etkin kurumda modül açık mı; kapalıysa 403 `module_disabled`. */
+    /**
+     * Kimlik + etkin kurumda modül var ve açık mı. Kurum türünde olmayan modül 404 (bulunmaz
+     * gibi, DOM-YTK-012), kapalı modül 403 `module_disabled` (DOM-YTK-040).
+     */
     requireModule: (module: ModuleSource) => preHandlerAsyncHookHandler
   }
 }
@@ -49,8 +54,12 @@ export function registerModuleGuard(app: FastifyInstance) {
       if (key === null) return
       assertModuleKey(key)
       const ctx = contextOf(request)
-      const enabled = await getEnabledModules(ctx.db, ctx.institutionId)
-      if (enabled?.[key] !== true) {
+      const institution = await getInstitutionModules(ctx.db, ctx.institutionId)
+      if (institution && !moduleAvailableFor(key, institution.type)) {
+        request.log.info({ event: 'module.unavailable_denied', module: key })
+        throw new NotFoundError()
+      }
+      if (institution?.modules[key] !== true) {
         request.log.info({ event: 'module.disabled_denied', module: key })
         throw new ModuleDisabledError()
       }

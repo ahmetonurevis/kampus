@@ -186,8 +186,8 @@ export async function listCollection(
   name: string,
   query: CollectionListQuery,
 ): Promise<{ items: CollectionItem[]; total: number }> {
-  const { collection, access } = readableCollection(name)
-  const roleAccess = roleReadAccess(access, ctx.actor.role)
+  const { collection, access, module } = readableCollection(name)
+  const roleAccess = roleReadAccess(access, module, ctx.actor.role)
   const rows = await loadRecords(ctx.db, ctx.institutionId, [collection], {
     includeArchived: query.archived !== undefined,
   })
@@ -214,8 +214,8 @@ export async function getCollectionItem(
   id: string,
   options: { archived?: 'include' | undefined } = {},
 ): Promise<CollectionItem> {
-  const { collection, access } = readableCollection(name)
-  const roleAccess = roleReadAccess(access, ctx.actor.role)
+  const { collection, access, module } = readableCollection(name)
+  const roleAccess = roleReadAccess(access, module, ctx.actor.role)
   const row = await findRecord(ctx.db, ctx.institutionId, collection, id, {
     includeArchived: options.archived === 'include',
   })
@@ -225,5 +225,5 @@ export async function getCollectionItem(
 
 /** `requireModule` çözücüsü: koleksiyonun modülü; bilinmeyen koleksiyon 404. */
 export function collectionModule(name: string): string | null {
-  return readableCollection(name).access.module
+  return readableCollection(name).module
 }

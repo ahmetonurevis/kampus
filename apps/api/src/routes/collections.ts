@@ -47,7 +47,7 @@ export function registerCollectionRoutes(app: FastifyInstance) {
         tags: ['collections'],
         summary: 'Koleksiyon kayıtları',
         description:
-          'Etkin kurumun koleksiyon kayıtlarını rol kapsamıyla, sayfalı döndürür. Kapalı modül 403 `module_disabled`, rolün okuyamadığı koleksiyon 403 `forbidden`, bilinmeyen koleksiyon 404.',
+          'Etkin kurumun koleksiyon kayıtlarını rol kapsamıyla, sayfalı döndürür. Kapalı modül 403 `module_disabled`, rolün okuyamadığı koleksiyon 403 `forbidden`, bilinmeyen koleksiyon veya kurum türünde bulunmayan modülün koleksiyonu 404.',
         params: collectionParamsSchema,
         querystring: collectionListQuerySchema,
         response: { 200: collectionListResponseSchema, ...errors },

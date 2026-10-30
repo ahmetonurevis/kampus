@@ -1,3 +1,5 @@
+import { ALWAYS_ON, collectionModule } from '@kampus/school-core/modules/collection-modules.ts'
+
 import type { Role } from '../auth.ts'
 import { isRecordCollection, RECORD_COLLECTIONS, type CollectionName } from '../db/collections.ts'
 import { ForbiddenError, NotFoundError } from '../errors.ts'
@@ -17,15 +19,12 @@ import { moduleAllowsRole } from './modules.ts'
  * TODO(core-scope): core kişiye göre kapsam fonksiyonu (`scopeFor(state, { role, links })` gibi)
  * verince öğretmen/öğrenci/veli satırları o fonksiyonla açılır; API kapsamı yeniden yazmaz.
  *
- * Modül eşlemesi de core'da yok (komut→modül ve komut→koleksiyon tabloları dışa aktarılmıyor);
- * tek yer burasıdır ve anahtarlar core modül kaydına karşı test edilir.
- * TODO(core-collection-modules): core koleksiyon→modül eşlemesini dışa aktarınca oradan okunur.
+ * Koleksiyon → modül eşlemesi ve kurum türü kısıtı core'dandır (`COLLECTION_MODULES`,
+ * DOM-YTK-012); burada tutulmaz.
  */
 export type ReadScope = 'institution'
 
 export interface CollectionAccess {
-  /** school-core modül anahtarı; `null` çekirdek kayıt (her modül kullanır, kapatılamaz). */
-  module: string | null
   read: Partial<Record<Role, ReadScope>>
   /** Alan kapsamı: rol bu alanları hiç görmez (yanıt, arama, filtre ve sıralama dahil). */
   omit?: Partial<Record<Role, readonly string[]>>
@@ -53,54 +52,52 @@ const GUIDANCE_INTERNAL = ['internalNote', 'notes'] as const
  * okuması gerekçeli ve denetim kayıtlı ayrı işlemdir (DOM-YTK-052), genel okumaya açılmaz.
  */
 const COLLECTION_ACCESS = {
-  subjects: { module: null, read: EVERYONE },
-  branches: { module: null, read: ADMIN_FRONT_OFFICE },
-  classes: { module: null, read: ADMIN_FRONT_OFFICE },
-  teachers: { module: null, read: ADMIN },
+  subjects: { read: EVERYONE },
+  branches: { read: ADMIN_FRONT_OFFICE },
+  classes: { read: ADMIN_FRONT_OFFICE },
+  teachers: { read: ADMIN },
   // Ön büro kimlik, iletişim, sınıf ve finans bilgisini görür; akademik ilerleme görmez.
-  students: { module: null, read: ADMIN_FRONT_OFFICE, omit: { onburo: ['progress'] } },
-  parents: { module: null, read: ADMIN_FRONT_OFFICE },
-  assignments: { module: 'academic', read: ADMIN },
-  grades: { module: 'academic', read: ADMIN },
-  attendance: { module: 'academic', read: ADMIN },
-  absences: { module: 'academic', read: ADMIN },
-  schedule: { module: 'academic', read: ADMIN },
-  invoices: { module: 'finance', read: ADMIN_FRONT_OFFICE },
-  contracts: { module: 'finance', read: ADMIN_FRONT_OFFICE },
-  prospects: { module: 'crm', read: ADMIN_FRONT_OFFICE },
-  bank: { module: 'learning', read: ADMIN },
-  quizzes: { module: 'learning', read: ADMIN },
-  quizAttempts: { module: 'learning', read: ADMIN },
-  homework: { module: 'learning', read: ADMIN },
-  submissions: { module: 'learning', read: ADMIN },
-  questions: { module: 'learning', read: ADMIN },
-  videos: { module: 'learning', read: ADMIN },
-  videoProgress: { module: 'learning', read: ADMIN },
-  materials: { module: 'learning', read: ADMIN },
-  announcements: { module: 'communication', read: ADMIN_FRONT_OFFICE },
+  students: { read: ADMIN_FRONT_OFFICE, omit: { onburo: ['progress'] } },
+  parents: { read: ADMIN_FRONT_OFFICE },
+  assignments: { read: ADMIN },
+  grades: { read: ADMIN },
+  attendance: { read: ADMIN },
+  absences: { read: ADMIN },
+  schedule: { read: ADMIN },
+  invoices: { read: ADMIN_FRONT_OFFICE },
+  contracts: { read: ADMIN_FRONT_OFFICE },
+  prospects: { read: ADMIN_FRONT_OFFICE },
+  bank: { read: ADMIN },
+  quizzes: { read: ADMIN },
+  quizAttempts: { read: ADMIN },
+  homework: { read: ADMIN },
+  submissions: { read: ADMIN },
+  questions: { read: ADMIN },
+  videos: { read: ADMIN },
+  videoProgress: { read: ADMIN },
+  materials: { read: ADMIN },
+  announcements: { read: ADMIN_FRONT_OFFICE },
   conversations: null,
-  appointments: { module: 'communication', read: ADMIN },
-  requests: { module: 'communication', read: ADMIN_FRONT_OFFICE },
-  availability: { module: 'communication', read: ADMIN },
+  appointments: { read: ADMIN },
+  requests: { read: ADMIN_FRONT_OFFICE },
+  availability: { read: ADMIN },
   audit: null,
   guidanceCases: {
-    module: 'guidance',
     read: ADMIN,
     omit: { yonetici: GUIDANCE_INTERNAL },
   },
-  mockExams: { module: 'exams', read: ADMIN },
-  mockResults: { module: 'exams', read: ADMIN },
-  studentGoals: { module: 'goals', read: ADMIN },
-  renewals: { module: 'renewal', read: ADMIN_FRONT_OFFICE },
-  enrollmentHistory: { module: 'renewal', read: ADMIN_FRONT_OFFICE },
-  studyTasks: { module: 'study', read: ADMIN },
-  schoolEvents: { module: 'calendar', read: ADMIN_FRONT_OFFICE },
-  eventConsents: { module: 'calendar', read: ADMIN_FRONT_OFFICE },
-  transportRoutes: { module: 'transport', read: ADMIN_FRONT_OFFICE },
-  transportAssignments: { module: 'transport', read: ADMIN_FRONT_OFFICE },
+  mockExams: { read: ADMIN },
+  mockResults: { read: ADMIN },
+  studentGoals: { read: ADMIN },
+  renewals: { read: ADMIN_FRONT_OFFICE },
+  enrollmentHistory: { read: ADMIN_FRONT_OFFICE },
+  studyTasks: { read: ADMIN },
+  schoolEvents: { read: ADMIN_FRONT_OFFICE },
+  eventConsents: { read: ADMIN_FRONT_OFFICE },
+  transportRoutes: { read: ADMIN_FRONT_OFFICE },
+  transportAssignments: { read: ADMIN_FRONT_OFFICE },
   // Menü kişisel veri taşımaz; yemek modülünün core rol listesindeki rollere açıktır.
   mealMenus: {
-    module: 'meals',
     read: {
       yonetici: 'institution',
       onburo: 'institution',
@@ -108,13 +105,13 @@ const COLLECTION_ACCESS = {
       veli: 'institution',
     },
   },
-  clubs: { module: 'clubs', read: ADMIN },
-  clubMemberships: { module: 'clubs', read: ADMIN },
-  clubAttendance: { module: 'clubs', read: ADMIN },
-  socialAchievements: { module: 'clubs', read: ADMIN },
-  opticalProfiles: { module: 'optical', read: ADMIN },
-  opticalEvaluations: { module: 'optical', read: ADMIN },
-  tutorSessions: { module: 'tutoring', read: ADMIN },
+  clubs: { read: ADMIN },
+  clubMemberships: { read: ADMIN },
+  clubAttendance: { read: ADMIN },
+  socialAchievements: { read: ADMIN },
+  opticalProfiles: { read: ADMIN },
+  opticalEvaluations: { read: ADMIN },
+  tutorSessions: { read: ADMIN },
 } as const satisfies Record<CollectionName, CollectionAccess | null>
 
 const ACCESS: Readonly<Record<CollectionName, CollectionAccess | null>> = COLLECTION_ACCESS
@@ -128,15 +125,22 @@ export function collectionAccessTable(): Readonly<Record<CollectionName, Collect
   return ACCESS
 }
 
+/** Koleksiyonun core modül anahtarı; `null` çekirdek kayıt (her modül kullanır, kapatılamaz). */
+export function moduleOfCollection(collection: CollectionName): string | null {
+  const module = collectionModule(collection)
+  return module === undefined || module === ALWAYS_ON ? null : module
+}
+
 /** Okunabilir koleksiyon ve erişim kaydı; bilinmeyen veya açılmamış ad 404 (varlık sızdırılmaz). */
 export function readableCollection(name: string): {
   collection: CollectionName
   access: CollectionAccess
+  module: string | null
 } {
   if (!isRecordCollection(name)) throw new NotFoundError()
   const access = ACCESS[name]
   if (!access) throw new NotFoundError()
-  return { collection: name, access }
+  return { collection: name, access, module: moduleOfCollection(name) }
 }
 
 export interface RoleReadAccess {
@@ -145,9 +149,12 @@ export interface RoleReadAccess {
 }
 
 /** Rolün koleksiyonu okuma kapsamı; yoksa 403 (varsayılan ret, DOM-YTK-001). */
-export function roleReadAccess(access: CollectionAccess, role: Role): RoleReadAccess {
+export function roleReadAccess(
+  access: CollectionAccess,
+  module: string | null,
+  role: Role,
+): RoleReadAccess {
   const scope = access.read[role]
-  if (!scope || (access.module !== null && !moduleAllowsRole(access.module, role)))
-    throw new ForbiddenError()
+  if (!scope || (module !== null && !moduleAllowsRole(module, role))) throw new ForbiddenError()
   return { scope, omit: access.omit?.[role] ?? [] }
 }

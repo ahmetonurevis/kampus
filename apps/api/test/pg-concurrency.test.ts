@@ -162,6 +162,22 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     assert.equal(await attendanceCount(ctx.institutionId), 1)
   })
 
+  test('boyut kısıtı ihlali node-postgres hatasından da 422 record_too_large olur', async () => {
+    const ctx = await context()
+    const data = { id: 'test-att-dense', list: Array.from({ length: 100_000 }, () => 0) }
+    await assert.rejects(
+      writeRecords(
+        db,
+        ctx.institutionId,
+        [{ kind: 'insert', collection: 'attendance', id: data.id, data }],
+        FIXED_NOW,
+      ),
+      (error: unknown) =>
+        error instanceof AppError && error.statusCode === 422 && error.code === 'record_too_large',
+    )
+    assert.equal(await attendanceCount(ctx.institutionId), 0)
+  })
+
   test('farklı kurumların işlemleri birbirini beklemez', async () => {
     const [a, b] = await Promise.all([context(), context()])
     const held = gate()

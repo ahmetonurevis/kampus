@@ -1,7 +1,13 @@
 import { and, asc, eq, inArray, isNull, max, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { AppError, ConflictError, MESSAGES, RuleViolationError } from '../errors.ts'
+import {
+  AppError,
+  ConflictError,
+  MESSAGES,
+  RuleViolationError,
+  withDatabaseErrors,
+} from '../errors.ts'
 import type { Database } from './client.ts'
 import {
   isEphemeralCollection,
@@ -205,7 +211,7 @@ export async function writeRecords(
       ? write
       : { ...write, data: checkData(write) },
   )
-  return db.transaction(async (tx) => {
+  const work = db.transaction(async (tx) => {
     const written: WrittenRecord[] = []
     const inserts = prepared.filter((write) => write.kind === 'insert')
     if (inserts.length > 0) {
@@ -270,6 +276,7 @@ export async function writeRecords(
     }
     return written
   })
+  return withDatabaseErrors(work)
 }
 
 function updateSet(write: Exclude<RecordWrite, { kind: 'insert' }>, now: Date) {
@@ -333,7 +340,7 @@ export async function insertMissingRecords(
 ): Promise<number> {
   const collections = [...new Set(items.map((item) => item.collection))]
   assertWritable(collections)
-  return db.transaction(async (tx) => {
+  const work = db.transaction(async (tx) => {
     const stored = new Map<string, number>()
     if (collections.length > 0) {
       const rows = await tx
@@ -392,4 +399,5 @@ export async function insertMissingRecords(
     }
     return inserted
   })
+  return withDatabaseErrors(work)
 }

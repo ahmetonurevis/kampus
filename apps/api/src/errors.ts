@@ -106,6 +106,44 @@ export class UnavailableError extends AppError {
   }
 }
 
+/** Veritabanı hatasının SQLSTATE'i ve kısıt adı; Drizzle sürücü hatasını `cause`'a sarar. */
+export function databaseErrorInfo(error: unknown): { code: string; constraint?: string } | null {
+  let current: unknown = error
+  for (let depth = 0; depth < 4 && typeof current === 'object' && current !== null; depth += 1) {
+    const code: unknown = Reflect.get(current, 'code')
+    // SQLSTATE beş karakterdir (ör. 23514, 40P01); Node hata kodları (ERR_…) elenir.
+    if (typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code)) {
+      const constraint: unknown = Reflect.get(current, 'constraint')
+      return typeof constraint === 'string' ? { code, constraint } : { code }
+    }
+    current = Reflect.get(current, 'cause')
+  }
+  return null
+}
+
+/**
+ * Kullanıcıya anlamlı veritabanı hatalarını uygulama hatasına çevirir; ötekiler aynen döner
+ * (500, ayrıntı yalnız logda). `records_data_size_check`: jsonb'nin ikili boyutu JSON metninden
+ * büyük olabildiği için uygulamanın metin denetimi geçse de kısıt reddedebilir.
+ */
+export function mapDatabaseError(error: unknown): Error {
+  if (error instanceof AppError) return error
+  const info = databaseErrorInfo(error)
+  if (info?.code === '23514' && info.constraint === 'records_data_size_check')
+    return new RuleViolationError('record_too_large', MESSAGES.record_too_large, { cause: error })
+  if (error instanceof Error) return error
+  return new AppError(500, 'internal_error', MESSAGES.internal_error, { cause: error })
+}
+
+/** Veritabanı işinin hatasını `mapDatabaseError` ile çevirir. */
+export async function withDatabaseErrors<T>(work: Promise<T>): Promise<T> {
+  try {
+    return await work
+  } catch (error) {
+    throw mapDatabaseError(error)
+  }
+}
+
 const STATUS_CODES: Partial<Record<number, ErrorCode>> = {
   400: 'bad_request',
   401: 'unauthenticated',

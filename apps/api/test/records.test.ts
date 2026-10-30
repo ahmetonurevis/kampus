@@ -16,7 +16,7 @@ import {
   type RecordWrite,
 } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
-import { AppError, ConflictError } from '../src/errors.ts'
+import { AppError, ConflictError, databaseErrorInfo } from '../src/errors.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
 
 const LATER = new Date('2026-10-06T10:00:00.000Z')
@@ -259,6 +259,68 @@ describe('records deposu', () => {
         return true
       },
     )
+    assert.deepEqual(await rowsOf(id), before)
+  })
+
+  test('veritabanı boyut kısıtı jsonb ikili boyutunu sınar; ihlal 422 record_too_large olur', async () => {
+    const id = await institutionWith([invoice('test-inv-1')])
+    const before = await rowsOf(id)
+    // JSON metni ~200 KB (uygulama denetimini geçer), jsonb ikili biçimi ~1,2 MB (kısıta takılır).
+    const list = Array.from({ length: 100_000 }, () => 0)
+    const dense = invoice('test-inv-dense', { list })
+    assert.ok(Buffer.byteLength(JSON.stringify(dense.data)) < 262_144)
+
+    // Kısıt doğrudan: uygulama denetimi olmadan da veritabanı reddeder.
+    await assert.rejects(
+      db.insert(records).values({
+        institutionId: id,
+        collection: 'invoices',
+        id: dense.id,
+        data: dense.data,
+        position: 0,
+      }),
+      (error: unknown) => {
+        assert.deepEqual(databaseErrorInfo(error), {
+          code: '23514',
+          constraint: 'records_data_size_check',
+        })
+        return true
+      },
+    )
+    const isTooLarge = (error: unknown) => {
+      assert.ok(error instanceof AppError, String(error))
+      assert.equal(error.statusCode, 422)
+      assert.equal(error.code, 'record_too_large')
+      return true
+    }
+    await assert.rejects(
+      writeRecords(
+        db,
+        id,
+        [
+          { kind: 'insert', ...invoice('test-inv-ok') },
+          { kind: 'insert', ...dense },
+        ],
+        LATER,
+      ),
+      isTooLarge,
+    )
+    await assert.rejects(
+      writeRecords(
+        db,
+        id,
+        [
+          {
+            kind: 'update',
+            ...invoice('test-inv-1', { list }),
+            expectedVersion: 1,
+          },
+        ],
+        LATER,
+      ),
+      isTooLarge,
+    )
+    await assert.rejects(insertMissingRecords(db, id, [dense], LATER), isTooLarge)
     assert.deepEqual(await rowsOf(id), before)
   })
 

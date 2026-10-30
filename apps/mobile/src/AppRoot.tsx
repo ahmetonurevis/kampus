@@ -30,10 +30,10 @@ import {
 import { ThemePreference } from './ui/SchoolLayout.tsx'
 import Home from './screens/Home.jsx'
 import ModuleScreen from './screens/ModuleScreen.jsx'
-import CategoryScreen from './screens/CategoryScreen.jsx'
+import CategoryScreen from './screens/CategoryScreen.tsx'
 import Detail from './screens/Detail.jsx'
-import Quiz from './screens/Quiz.jsx'
-import Video from './screens/Video.jsx'
+import Quiz from './screens/Quiz.tsx'
+import Video from './screens/Video.tsx'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 function RoleChoices({ onSelect }: { onSelect: (role: Role) => void }) {

@@ -1,21 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ScrollView, View, Pressable } from 'react-native'
-import { usePreventRemove } from '@react-navigation/native'
-import { useSchool } from '../store/SchoolProvider.tsx'
-import { context } from '../model/school.ts'
+import { usePreventRemove, type NavigationAction } from '@react-navigation/native'
 import { gradeQuiz } from '@kampus/school-core/lib/domain.ts'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { context } from '../model/school.ts'
+import type { ScreenProps } from '../route-types.ts'
 import { Button, Card, Heading, Icon, Sheet, T, styles, useColors } from '../ui/components.tsx'
 
-export default function Quiz({ route, navigation }) {
-  const { data, session, commit, busy } = useSchool(),
+export default function Quiz({ route, navigation }: ScreenProps<'Quiz'>) {
+  const { data, session, commit, busy } = useActiveSchool(),
     c = useColors(),
     scope = context(data, session)
   const quiz = data.quizzes.find((q) => q.id === route.params.row.id)
-  const [answers, setAnswers] = useState({}),
+  if (!quiz) throw new Error('Quiz kaydı bulunamadı.')
+  const [answers, setAnswers] = useState<Record<string, number>>({}),
     [index, setIndex] = useState(0),
     [remaining, setRemaining] = useState(quiz.duration * 60),
-    [result, setResult] = useState(null),
-    [exit, setExit] = useState(null),
+    [result, setResult] = useState<ReturnType<typeof gradeQuiz> | null>(null),
+    [exit, setExit] = useState<NavigationAction | null>(null),
     [allowExit, setAllowExit] = useState(false)
   const deadline = useRef(Date.now() + quiz.duration * 60000),
     submitting = useRef(false)
@@ -33,14 +35,19 @@ export default function Quiz({ route, navigation }) {
   useEffect(() => {
     if (allowExit && exit) navigation.dispatch(exit)
   }, [allowExit, exit, navigation])
-  const questions = quiz.questionIds.map((id) => data.bank.find((q) => q.id === id)),
-    question = questions[index]
-  async function finish() {
+  const questions = quiz.questionIds.map((id) => {
+    const found = data.bank.find((q) => q.id === id)
+    if (!found) throw new Error('Sınav soruları bulunamadı.')
+    return found
+  })
+  const question = questions[index]
+  const finish = async () => {
     if (submitting.current) return
     submitting.current = true
-    let score
+    const outcome: { score: ReturnType<typeof gradeQuiz> | null } = { score: null }
     const ok = await commit((s, id) => {
-      score = gradeQuiz(quiz, s.bank, answers, remaining === 0)
+      const score = gradeQuiz(quiz, s.bank, answers, remaining === 0)
+      outcome.score = score
       const date = new Date().toISOString()
       s.quizAttempts.push({
         id: id('attempt'),
@@ -61,12 +68,13 @@ export default function Quiz({ route, navigation }) {
         date,
       })
     }, 'Quiz sonucu kaydedildi.')
-    if (ok) setResult(score)
+    if (ok && outcome.score) setResult(outcome.score)
     submitting.current = false
   }
   useEffect(() => {
-    if (remaining === 0 && !result && !submitting.current) finish()
+    if (remaining === 0 && !result && !submitting.current) void finish()
   }, [remaining])
+  if (!question) throw new Error('Sınav soruları bulunamadı.')
   return (
     <>
       <ScrollView contentContainerStyle={styles.page}>
@@ -88,14 +96,20 @@ export default function Quiz({ route, navigation }) {
                 {result.correct} doğru · {result.total - result.correct} yanlış / boş
               </T>
             </Card>
-            {questions.map((q) => (
-              <Card key={q.id}>
-                <T bold>{q.text}</T>
-                <T>Cevabın: {q.options[answers[q.id]] || 'Boş bırakıldı'}</T>
-                <T>Doğru cevap: {q.options[q.answer]}</T>
-                <T muted>{q.explanation}</T>
-              </Card>
-            ))}
+            {questions.map((q) => {
+              const given = answers[q.id]
+              return (
+                <Card key={q.id}>
+                  <T bold>{q.text}</T>
+                  <T>
+                    Cevabın:{' '}
+                    {(given === undefined ? undefined : q.options[given]) || 'Boş bırakıldı'}
+                  </T>
+                  <T>Doğru cevap: {q.options[q.answer]}</T>
+                  <T muted>{q.explanation}</T>
+                </Card>
+              )
+            })}
             <Button primary onPress={() => navigation.goBack()}>
               Quiz listesine dön
             </Button>

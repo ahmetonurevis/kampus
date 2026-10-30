@@ -423,7 +423,7 @@ export function SearchField({
 }
 type SheetProps = {
   visible: boolean
-  title: string
+  title: ReactNode
   onClose: () => void
   children?: ReactNode
   footer?: ReactNode

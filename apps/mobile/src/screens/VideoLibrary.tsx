@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { View } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
 import { context, rowsFor } from '../model/school.ts'
 import { contentTitle } from '../model/presentation.ts'
+import type { ScreenProps } from '../route-types.ts'
 import {
   Badge,
   Button,
@@ -17,8 +18,8 @@ import {
 } from '../ui/components.tsx'
 import { EmptyResults, Pagination, Screen, TextAction } from '../ui/SchoolLayout.tsx'
 
-export default function VideoLibrary({ navigation }) {
-  const { data, session } = useSchool(),
+export default function VideoLibrary({ navigation }: ScreenProps<'Module'>) {
+  const { data, session } = useActiveSchool(),
     scope = context(data, session),
     c = useColors()
   const [query, setQuery] = useState(''),
@@ -30,7 +31,7 @@ export default function VideoLibrary({ navigation }) {
     () => rowsFor(data, session, 'videolar'),
     [data, session.role, session.childId],
   )
-  const progress = (id) =>
+  const progress = (id: string) =>
     data.videoProgress.find((p) => p.videoId === id && p.studentId === scope.student.id)
       ?.progress || 0
   const filtered = rows.filter(

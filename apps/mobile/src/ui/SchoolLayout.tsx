@@ -335,7 +335,6 @@ export function ChildSelector() {
     [saving, setSaving] = useState(false)
   const parent = data.parents[0]
   if (!parent) throw new Error('Veli kaydı bulunamadı.')
-  if (!scope.classroom) throw new Error('Sınıf kaydı bulunamadı.')
   return (
     <>
       <Pressable

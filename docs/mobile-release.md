@@ -81,7 +81,7 @@ a5c4d8eab035581112111ac13b8b6d8c46daa3f4b8950f1e4dd9d3cbd2c8cf14
 
 - `src/AppRoot.tsx`: üst bar, kategori menüsü ve gezinme.
 - `src/screens/RoleHome.jsx`, `SchoolLists.jsx`, `SchoolDetails.jsx`, `Attendance.jsx`: öğrenci/veli/öğretmen ana ekranları, listeler, teslim/yanıt ve yoklama.
-- `src/screens/Timetable.jsx`, `VideoLibrary.jsx`, `Conversations.jsx`: ders programı, video kütüphanesi ve mesajlar.
+- `src/screens/Timetable.tsx`, `VideoLibrary.tsx`, `Conversations.jsx`: ders programı, video kütüphanesi ve mesajlar.
 - `src/ui/SchoolLayout.tsx`, `components.tsx`, `KeyboardLayout.tsx`: ortak bölüm/liste, alanlar, seçim pencereleri ve klavye düzeni.
 - `src/store/`: cihaz kalıcılığı, rol/tema ve taslaklar.
 

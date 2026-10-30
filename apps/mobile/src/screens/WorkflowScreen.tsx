@@ -1,22 +1,30 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { View } from 'react-native'
 import { workflowPage } from '@kampus/school-core/modules/school-workflows.ts'
 import {
   workflowRows,
   workflowDetails,
   workflowCreateActions,
+  type WorkflowAction,
+  type WorkflowRow,
 } from '@kampus/school-core/lib/workflow-presentation.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
-import { useSchool } from '../store/SchoolProvider.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import type { ScreenProps } from '../route-types.ts'
 import { Badge, Button, Empty, Heading, SearchField, Sheet, T } from '../ui/components.tsx'
 import { ListRow, Notice, Pagination, Screen, Section, Tabs } from '../ui/SchoolLayout.tsx'
 import DocumentLink from '../ui/DocumentLink.tsx'
-import WorkflowFormSheet from '../ui/WorkflowFormSheet.tsx'
+import WorkflowFormSheet, { type WorkflowDescriptor } from '../ui/WorkflowFormSheet.tsx'
 
 const PAGE_SIZE = 12
 
-function Detail({ row, onClose, onAction }) {
-  const { data, session } = useSchool()
+type DetailProps = {
+  row: WorkflowRow
+  onClose: () => void
+  onAction: (action: WorkflowAction) => void
+}
+function Detail({ row, onClose, onAction }: DetailProps) {
+  const { data, session } = useActiveSchool()
   const detail = workflowDetails(data, session, row)
   return (
     <Sheet visible title={row.title} onClose={onClose}>
@@ -53,15 +61,15 @@ function Detail({ row, onClose, onAction }) {
   )
 }
 
-export default function WorkflowScreen({ route }) {
-  const { data, session } = useSchool()
+export default function WorkflowScreen({ route }: ScreenProps<'Module'>) {
+  const { data, session } = useActiveSchool()
   const page = route.params.page
   const definition = workflowPage(page)
   const [query, setQuery] = useState(''),
     [status, setStatus] = useState(''),
     [index, setIndex] = useState(0),
     [selectedId, setSelectedId] = useState(''),
-    [form, setForm] = useState(null)
+    [form, setForm] = useState<WorkflowDescriptor | null>(null)
   const rows = useMemo(
     () => workflowRows(data, session, page),
     [data, session.role, session.childId, page],

@@ -181,3 +181,25 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Mini grafik (recharts): renkler yalnız token değişkenlerinden gelir. */
+.trend-bars .recharts-bar-rectangle path,
+.trend-bars .recharts-bar-rectangle rect {
+  fill: var(--chart-bar);
+}
+.trend-bars .recharts-cartesian-grid line {
+  stroke: var(--chart-grid);
+}
+.trend-bars .recharts-cartesian-axis-line {
+  stroke: var(--chart-grid);
+}
+.trend-bars .recharts-cartesian-axis-tick-value {
+  fill: var(--chart-axis);
+}
+
+@media (forced-colors: active) {
+  .trend-bars .recharts-bar-rectangle path,
+  .trend-bars .recharts-bar-rectangle rect {
+    fill: Highlight;
+  }
+}

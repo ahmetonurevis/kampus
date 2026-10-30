@@ -7,6 +7,7 @@ import { useCoreAll, useCoreCounts, useCoreList } from '@/hooks/use-core-collect
 import type { Session } from '@/auth/auth-port.ts'
 import { scoreText, scoreTone } from '../academic/academic-rows.ts'
 import { useLearningStudent } from '../learning/use-learning-student.ts'
+import { AbsenceTrend } from './AbsenceTrend.tsx'
 import {
   CardList,
   combineStates,
@@ -236,6 +237,11 @@ function StudentSummary({ session, now, student }: Props & { student: Student })
 
       {academic ? (
         <DashboardGrid>
+          <AbsenceTrend
+            studentId={studentId}
+            now={now}
+            href={link('devamsizlik', 'devamsizlik', { durum: 'absent' })}
+          />
           <ListCard
             title="Son notlar"
             description="En son girilen değerlendirmeler"

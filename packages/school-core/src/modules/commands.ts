@@ -178,6 +178,11 @@ export const OPERATION_COMMANDS = {
   'request.open': spec('communication', [...SCOPE, 'requests']),
   'request.update': spec('communication', [...SCOPE, 'requests']),
   'absence.notify': spec('academic', [...SCOPE, 'absences']),
+  // Öğretmenime Sor (`lib/questions.ts`); kazanım denetimi ders listesini okur. API soru açarken
+  // soruları hiç, yanıt ve geri çekmede yalnız hedef soruyu yükler.
+  'question.ask': spec('learning', [...SCOPE, 'subjects', 'questions']),
+  'question.answer': spec('learning', [...SCOPE, 'questions']),
+  'question.withdraw': spec('learning', [...SCOPE, 'questions']),
 } as const satisfies Record<string, CommandSpec>
 export type OperationCommand = keyof typeof OPERATION_COMMANDS
 

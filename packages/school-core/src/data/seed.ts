@@ -22,6 +22,7 @@ import type {
   ConversationMessageFields,
 } from '../lib/communication.ts'
 import type { AbsenceReasonCategory, RequestActor, RequestFields } from '../lib/requests.ts'
+import type { QuestionFields } from '../lib/questions.ts'
 export const topics = subjects.map((s) => s.name)
 
 // Örnek veri kendi içinde tutarlıdır; aranan kayıt yoksa üretici hatalıdır ve hemen durur.
@@ -902,10 +903,13 @@ type StatePatches = {
   // Talep işlemlerinin alanları; örnek veri ve eski kayıtlar taşımaz (lib/requests.ts).
   requests: (Item<'requests'> & RequestFields)[]
   // Telefon yüklenen dosyanın cihazdaki yolunu da saklar; örnek veri ve web taşımaz.
-  questions: (Item<'questions'> & {
-    // kvkk: Ç — öğrencinin yüklediği dosyanın yolu.
-    fileUri?: string | null
-  })[]
+  // Soru işlemlerinin alanları (kazanım, yanıtlayan, ek yanıtlar, geri çekme); örnek veri ve eski
+  // kayıtlar taşımaz (lib/questions.ts).
+  questions: (Item<'questions'> &
+    QuestionFields & {
+      // kvkk: Ç — öğrencinin yüklediği dosyanın yolu.
+      fileUri?: string | null
+    })[]
   submissions: (Item<'submissions'> & {
     // kvkk: Ç — öğrencinin yüklediği ödev dosyasının yolu.
     fileUri?: string | null

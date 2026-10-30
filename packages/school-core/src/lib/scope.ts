@@ -140,6 +140,16 @@ const subjectOrHomeroom: Rule = (c, r) => {
     (text(r, 'subjectId') === c.teacher?.subjectId || member(c.homeroomIds, classId))
   )
 }
+// Not, verildiği sınıfı (`classId`) taşır: o sınıfın branş veya rehber öğretmeni öğrenci sınıf
+// değiştirdikten sonra da notu görür (düzeltme yetkisi `authorize('grade.update')`). Sınıfı
+// saklanmamış eski notta yalnız öğrencinin güncel sınıfı geçerlidir.
+const gradeReader: Rule = (c, r) => {
+  const classId = text(r, 'classId')
+  const givenInOwnClass =
+    member(c.classIds, classId) &&
+    (text(r, 'subjectId') === c.teacher?.subjectId || member(c.homeroomIds, classId))
+  return givenInOwnClass || subjectOrHomeroom(c, r)
+}
 
 /** Öğrenci kendi, veli çocuğunun kaydını okur (DOM-YTK-024, DOM-YTK-025). */
 const PERSONAL = { ogrenci: ownStudent, veli: ownStudent } as const
@@ -187,8 +197,9 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
     veli: (c, r) => texts(r, 'studentIds').some((id) => c.studentIds.has(id)),
   },
   assignments: { ...ADMIN, ogretmen: ownClass, ogrenci: ownClass, veli: ownClass },
-  // Branş öğretmeni kendi dersini, sınıf rehber öğretmeni şubesinin bütün notlarını okur.
-  grades: { ...ADMIN, ogretmen: subjectOrHomeroom, ...PERSONAL },
+  // Branş öğretmeni kendi dersini, sınıf rehber öğretmeni şubesinin bütün notlarını okur; notun
+  // verildiği sınıf da kapsam verir (`gradeReader`).
+  grades: { ...ADMIN, ogretmen: gradeReader, ...PERSONAL },
   attendance: { ...ADMIN, ogretmen: ownClass, ...PERSONAL },
   absences: { ...ADMIN, ogretmen: ownStudent, ...PERSONAL },
   schedule: {

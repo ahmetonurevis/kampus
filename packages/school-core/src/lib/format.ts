@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 // Intl kurucuları Android'de pahalıdır; satır başına yeniden oluşturulmaz.
 const moneyFormatter = new Intl.NumberFormat('tr-TR', {
   minimumFractionDigits: 2,

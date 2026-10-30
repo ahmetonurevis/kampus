@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 // CSV alanları tırnak içinde ayraç, çift tırnak ve satır sonu içerebilir.
 export function delimitedRows(raw) {
   const source = raw.replace(/^\uFEFF/, '')

@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { questionBank } from './question-bank.ts'
 import { subjects, subjectsForGrade, subjectById } from './curriculum.ts'
 import { gradeQuiz } from '../lib/domain.ts'

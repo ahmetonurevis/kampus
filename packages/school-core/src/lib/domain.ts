@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { z } from 'zod'
 import { dayKey } from './format.ts'
 

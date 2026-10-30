@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { workflowPage } from '../modules/school-workflows.ts'
 import { currentEvaluations } from './assessment-automation.ts'
 import {

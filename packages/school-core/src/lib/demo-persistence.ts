@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { createSeed } from '../data/seed.ts'
 
 // Zengin başlangıç verisini tekrar yazmak yerine yalnızca demo değişikliklerini saklar.

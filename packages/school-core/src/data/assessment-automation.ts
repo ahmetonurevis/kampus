@@ -1,6 +1,10 @@
-export function createAssessmentAutomation(state) {
+export function createAssessmentAutomation(state: { createdAt: string }) {
   const subjectIds = ['math', 'turkish', 'science']
-  const topics = { math: 'Denklemler', turkish: 'Sözcükte anlam', science: 'Hücre ve canlılar' }
+  const topics: Record<string, string> = {
+    math: 'Denklemler',
+    turkish: 'Sözcükte anlam',
+    science: 'Hücre ve canlılar',
+  }
   const questions = subjectIds.flatMap((subjectId, index) =>
     Array.from({ length: 4 }, (_, n) => ({
       number: index * 4 + n + 1,

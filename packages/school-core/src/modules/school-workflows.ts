@@ -1,4 +1,15 @@
-export const schoolModules = [
+import type { Role } from './navigation.ts'
+
+export type SchoolModule = {
+  key: string
+  title: string
+  path: string
+  icon: string
+  view?: string
+  description: string
+  roles: Role[]
+}
+export const schoolModules: SchoolModule[] = [
   {
     key: 'optical',
     title: 'Optik Değerlendirme',
@@ -99,4 +110,5 @@ export const schoolModules = [
     roles: ['yonetici', 'ogretmen', 'ogrenci', 'veli'],
   },
 ]
-export const workflowPage = (path) => schoolModules.find((item) => item.path === path)
+export const workflowPage = (path: string): SchoolModule | undefined =>
+  schoolModules.find((item) => item.path === path)

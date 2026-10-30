@@ -35,7 +35,16 @@ export const roles = {
     description: 'Çocuğunuzun eğitim yolculuğunun her adımında yanında olun.',
   },
 }
-const page = (path, title, icon, module, view, description, group = 'YÖNETİM') => ({
+export type Role = keyof typeof roles
+const page = (
+  path: string,
+  title: string,
+  icon: string,
+  module: string | null,
+  view: string,
+  description: string,
+  group = 'YÖNETİM',
+) => ({
   path,
   title,
   icon,

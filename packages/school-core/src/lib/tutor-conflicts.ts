@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 export const intervalsOverlap = (first, second) =>
   Date.parse(first.date) < Date.parse(second.date) + (second.duration || 30) * 60000 &&
   Date.parse(second.date) < Date.parse(first.date) + (first.duration || 30) * 60000

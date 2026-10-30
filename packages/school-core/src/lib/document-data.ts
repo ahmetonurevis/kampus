@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { subjectById } from '../data/curriculum.ts'
 import { invoiceStatus } from './format.ts'
 

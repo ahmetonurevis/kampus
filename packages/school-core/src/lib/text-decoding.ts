@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 // Optik/CSV dosyaları için bayt dizisini metne çevirir. Windows-1254 el ile çözülür;
 // böylece Node, tarayıcı ve telefon motorlarında aynı sonuç alınır.
 // 0x80–0x9F aralığı Windows-1254 tablosuna göre eşlenir; tanımsız baytlar

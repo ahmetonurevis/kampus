@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { z } from 'zod'
 import { requiredText } from './domain.ts'
 import { subjectsForGrade, subjectById } from '../data/curriculum.ts'

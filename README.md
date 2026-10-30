@@ -54,7 +54,7 @@ Platform geçişinin ([ADR 0001](docs/adr/0001-platform-mimarisi.md), [ADR 0002]
 docker compose up -d                       # PostgreSQL 16, 127.0.0.1:5433
 cp apps/api/.env.example apps/api/.env     # BETTER_AUTH_SECRET'ı değiştirin
 pnpm --filter @kampus/api db:migrate
-pnpm --filter @kampus/api db:seed          # idempotent demo kurumları ve kullanıcıları
+pnpm --filter @kampus/api db:seed          # idempotent demo kurumları, kullanıcıları ve kayıtları
 pnpm dev:api                               # http://127.0.0.1:3000
 docker compose down
 ```
@@ -142,7 +142,7 @@ Finansta kampüs/sınıf/yöntem/vade/tahsilat tarihi/tutar; CRM'de program/kamp
 
 ## Mimari ve kapsam
 
-Platform geçişi (ADR 0001): `apps/api` iskeleti, Better Auth kimliği ve kurum kapsamı hazır; `records` deposu, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır. Aşağıdaki bölüm Vue demosunu anlatır.
+Platform geçişi (ADR 0001): `apps/api` iskeleti, Better Auth kimliği, kurum kapsamı, `records` deposu, school-core işlem çalıştırıcısı ve iki örnek kurumun kayıt tohumu hazır; koleksiyon ve iş akışı uçları, modül kapatma (`requireModule`), React web ve mobilin API'ye bağlanması sıradaki adımlardır. Aşağıdaki bölüm Vue demosunu anlatır.
 
 Görsel düzen düz renkler üzerine kuruludur: saf beyaz (`#FFFFFF`) zemin, koyu safir mavi (`#1E3A8A`) menü/ana işlem rengi, turuncu (`#F97316`) aksan, ince kenarlıklar ve yuvarlak köşeler. Açık ve koyu temada renk geçişleri kullanılmaz. Slogan bandı ve veriye dayanmayan mini grafikler kaldırılmıştır. Öğrenci, veli ve öğretmen panellerinde ders programı ile bekleyen işler üst bölümdedir; grafikler kayıtlı veriyi gösterir. Büyük para tutarları tek satırda, uzun ders adları doğal satırlarla gösterilir.
 
@@ -194,7 +194,7 @@ ssh abbara-server 'bash /var/www/kampus-demo/deploy/<surum>/activate.sh <surum>'
 
 ## Doğrulama
 
-`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test`, `pnpm --filter @kampus/api test` ve `pnpm build` temel kontrollerdir. 30 Ekim 2026 API iskeleti: 49 API testi (PGlite) ve 80 birim testi geçti; PostgreSQL 16 üzerinde migrate, iki kez seed, sağlık ve giriş duman testi başarılı. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
+`pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test`, `pnpm --filter @kampus/api test` ve `pnpm build` temel kontrollerdir. 30 Ekim 2026 `records` deposu ve işlem çalıştırıcı: 71 API testi (PGlite) ve 105 birim testi geçti; PostgreSQL 16 üzerinde migrate, iki kez seed (kurum başına 27.464 kayıt, ikincisinde 0 yeni) ve eşzamanlı iki ödemede 409 duman testi başarılı. Tarayıcı akışları `pnpm test:e2e` ile çalıştırılır. Mobil sürümün native kontrol kapsamı [Android teslim notlarında](docs/mobile-release.md) açıklanır.
 
 6 Ekim 2026 optik/etüt teslim kontrolü: lint, format ve web derlemesi başarılı; 65 birim testi ve 58 tarayıcı senaryosu geçti. Yayın öncesinde tüm 58 tarayıcı senaryosu tekrar geçti. Canlı adres üzerinde 14 senaryo; beş rolün masaüstü/dar ekran sayfaları, optik/etüt işlemleri, video ve PDF akışlarını doğruladı. Sağlık yanıtı sürümle eşleşti; HTTPS yönlendirmesi, video aralık isteği ve PDF worker MIME türü kontrol edildi.
 

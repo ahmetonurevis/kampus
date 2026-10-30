@@ -1,4 +1,7 @@
+import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
+
 import type { Auth, InstitutionType, Role } from '../auth.ts'
+import { AppError, MESSAGES } from '../errors.ts'
 import {
   ensureInstitution,
   ensureMember,
@@ -7,6 +10,8 @@ import {
   type MembershipLinkInput,
 } from '../services/identity.ts'
 import type { Database } from './client.ts'
+import { RECORD_COLLECTIONS, recordKey, type RecordData } from './collections.ts'
+import { insertMissingRecords } from './records.ts'
 
 /** Üretim dışında `DEMO_PASSWORD` verilmezse kullanılan demo parolası. */
 export const DEFAULT_DEMO_PASSWORD = 'Demo-Giris-2026!'
@@ -30,10 +35,10 @@ export const DEMO_INSTITUTIONS = [
 
 /**
  * Kurucu yönetici her iki kurumun da sahibidir. Akademi kişileri ve kayıt kimlikleri
- * school-core örnek verisiyle aynıdır (`modules/navigation.js` → `roles`, `data/seed.js`:
- * öğretmen `t1` Selin Kaya, öğrenci `s1` Deniz, `s2` Ece, veli `p1` Ayşe Yılmaz). Kimlikler
- * school-core'dan içe aktarılmaz; veri olduğu için burada sabittir. Dil akademisi kişileri
- * kurgusaldır, kayıtları `records` deposu gelince bağlanır. Gerçek kişi verisi yoktur.
+ * school-core örnek verisiyle aynıdır (`data/seed.ts`: öğretmen `t1` Selin Kaya, öğrenci `s1`
+ * Deniz, `s2` Ece, veli `p1` Ayşe Yılmaz). Dil akademisi şimdilik aynı örnek veriyi kullanır;
+ * bağlı dört kişinin adı o kurumun demo hesaplarına göre değiştirilir (`LANGUAGE_SCHOOL_NAMES`).
+ * Kimlikler veri olduğu için burada sabittir. Gerçek kişi verisi yoktur.
  */
 const FOUNDER: DemoMember = {
   name: 'Murat Yılmaz',
@@ -87,22 +92,85 @@ export const DEMO_MEMBERS: readonly DemoMember[] = [
   {
     name: 'Ozan Er',
     email: 'ozan.er@kampus.example',
-    memberships: [{ institution: 'kampus-dil', role: 'ogretmen' }],
+    memberships: [
+      { institution: 'kampus-dil', role: 'ogretmen', links: [{ kind: 'teacher', recordId: 't1' }] },
+    ],
   },
   {
     name: 'Lale Sezer',
     email: 'lale.sezer@kampus.example',
-    memberships: [{ institution: 'kampus-dil', role: 'ogrenci' }],
+    memberships: [
+      { institution: 'kampus-dil', role: 'ogrenci', links: [{ kind: 'student', recordId: 's1' }] },
+    ],
   },
   {
     name: 'Hakan Sezer',
     email: 'hakan.sezer@kampus.example',
-    memberships: [{ institution: 'kampus-dil', role: 'veli' }],
+    memberships: [
+      {
+        institution: 'kampus-dil',
+        role: 'veli',
+        links: [
+          { kind: 'child', recordId: 's1' },
+          { kind: 'child', recordId: 's2' },
+        ],
+      },
+    ],
   },
 ]
 
-/** İdempotent: var olan kullanıcı, kurum, üyelik ve bağlantı yeniden açılmaz, parola değişmez. */
-export async function seedDemo(auth: Auth, db: Database, password: string) {
+/**
+ * TODO(F-dil-okulu): dil okuluna özgü örnek veri (CEFR düzeyleri, beceriler) gelince bu
+ * yeniden adlandırma ve okul verisinin kopyası kalkar.
+ */
+const LANGUAGE_SCHOOL_NAMES = {
+  teachers: { t1: 'Ozan Er' },
+  students: { s1: 'Lale Sezer', s2: 'Can Sezer' },
+  parents: { p1: 'Hakan Sezer' },
+} as const
+
+type DemoSlug = (typeof DEMO_INSTITUTIONS)[number]['slug']
+
+function rename(items: { id: string; name: string }[], names: Readonly<Record<string, string>>) {
+  for (const item of items) item.name = names[item.id] ?? item.name
+}
+
+/** Kurumun örnek State'i; `now` örnek tarihlerin başlangıç günüdür. */
+export function demoState(slug: DemoSlug, now: Date): State {
+  const state = createSeed(now)
+  if (slug === 'kampus-dil') {
+    rename(state.teachers, LANGUAGE_SCHOOL_NAMES.teachers)
+    rename(state.students, LANGUAGE_SCHOOL_NAMES.students)
+    rename(state.parents, LANGUAGE_SCHOOL_NAMES.parents)
+  }
+  return state
+}
+
+/** State'in bütün koleksiyonlarını `records` satırlarına çevirir. */
+export function stateRecords(state: State) {
+  return RECORD_COLLECTIONS.flatMap((collection) => {
+    const items: readonly RecordData[] = state[collection]
+    return items.map((data) => {
+      const id = recordKey(collection, data)
+      if (id === null)
+        throw new AppError(500, 'internal_error', MESSAGES.internal_error, {
+          cause: new Error(`seed item without key in ${collection}`),
+        })
+      return { collection, id, data }
+    })
+  })
+}
+
+export interface SeedOptions {
+  /** Örnek verinin başlangıç günü; betik o anı, testler sabit tarihi verir. */
+  now: Date
+}
+
+/**
+ * İdempotent: var olan kullanıcı, kurum, üyelik, bağlantı ve kayıt yeniden açılmaz, parola
+ * değişmez; sonradan değiştirilmiş kayıt ezilmez.
+ */
+export async function seedDemo(auth: Auth, db: Database, password: string, options: SeedOptions) {
   const founder = await ensureUser(auth, { ...FOUNDER, password })
   const institutionIds = new Map<string, string>()
   for (const institution of DEMO_INSTITUTIONS) {
@@ -122,5 +190,17 @@ export async function seedDemo(auth: Auth, db: Database, password: string) {
       await ensureMembershipLinks(db, institutionId, id, membership.links ?? [])
     }
   }
-  return { institutionIds: Object.fromEntries(institutionIds) }
+  const insertedRecords: Record<string, number> = {}
+  for (const institution of DEMO_INSTITUTIONS) {
+    const institutionId = institutionIds.get(institution.slug)
+    if (!institutionId) continue
+    const rows = stateRecords(demoState(institution.slug, options.now))
+    insertedRecords[institution.slug] = await insertMissingRecords(
+      db,
+      institutionId,
+      rows,
+      options.now,
+    )
+  }
+  return { institutionIds: Object.fromEntries(institutionIds), insertedRecords }
 }

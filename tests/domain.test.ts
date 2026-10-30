@@ -7,6 +7,9 @@ import {
   gradeQuiz,
   payInvoice,
   recordAttendance,
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_LABELS,
+  paymentInputSchema,
 } from '../apps/web/src/lib/domain.js'
 import { dayKey } from '../apps/web/src/lib/format.js'
 import { isDomainError } from './support/domain-error.ts'
@@ -182,4 +185,29 @@ test('Domain işlemleri DomainError, kod ve tür ile reddeder', () => {
     () => payInvoice(s, invoice!.id, 'Nakit'),
     isDomainError('invoice_already_paid', 'conflict'),
   )
+})
+
+test('Ödeme yöntemleri ve tahsilat girdi şeması', () => {
+  assert.deepEqual([...PAYMENT_METHODS], ['Banka havalesi', 'Nakit', 'Kredi kartı'])
+  for (const method of PAYMENT_METHODS) {
+    assert.equal(PAYMENT_METHOD_LABELS[method], method)
+    assert.equal(paymentInputSchema.parse({ method }).method, method)
+  }
+  for (const input of [{ method: 'Çek' }, { method: '' }, {}])
+    assert.equal(paymentInputSchema.safeParse(input).success, false)
+  assert.equal(
+    paymentInputSchema.safeParse({ method: 'Çek' }).error?.issues[0]?.message,
+    'Ödeme yöntemini seçin.',
+  )
+})
+test('Geçersiz ödeme yöntemi DomainError ile reddedilir ve taksit değişmez', () => {
+  const s = createSeed(),
+    invoice = s.invoices.find((i) => !i.paidAt)!
+  const before = JSON.stringify(invoice)
+  for (const method of ['Çek', '', 'nakit'])
+    assert.throws(() => payInvoice(s, invoice.id, method), isDomainError('invalid_payment_method'))
+  assert.equal(JSON.stringify(invoice), before)
+  // Çevrimdışı demo değerleri kabul edilir.
+  payInvoice(s, invoice.id, 'Kredi kartı (demo)', '2026-09-26T12:00:00.000Z')
+  assert.equal(invoice.method, 'Kredi kartı (demo)')
 })

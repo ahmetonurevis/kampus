@@ -65,7 +65,10 @@ const WorkflowPage = lazy(async () => ({
 const OpticalPage = lazy(async () => ({
   default: (await import('./assessment/OpticalPage.tsx')).OpticalPage,
 }))
-const ASSESSMENT_PATHS = new Set(['optik-degerlendirme'])
+const TutoringPage = lazy(async () => ({
+  default: (await import('./assessment/TutoringPage.tsx')).TutoringPage,
+}))
+const ASSESSMENT_PATHS = new Set(['optik-degerlendirme', 'otomatik-etut'])
 /** Bağlanmış iş akışı sayfaları; kalanlar yer tutucudur (bkz. README geçiş durumu). */
 const WORKFLOW_PATHS = new Set([
   'yemek-menusu',
@@ -115,6 +118,7 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
   if (page.path === 'dashboard') return <DashboardPage page={page} />
   // Menüde olmayan rol bu yola gelemez (`resolveShell`); modülün rolleri core kaydındadır.
   if (page.path === 'optik-degerlendirme') return <OpticalPage page={page} />
+  if (page.path === 'otomatik-etut') return <TutoringPage page={page} />
   if (WORKFLOW_PATHS.has(page.path)) return <WorkflowPage page={page} />
   switch (`${role}/${page.path}`) {
     case 'yonetici/subeler':

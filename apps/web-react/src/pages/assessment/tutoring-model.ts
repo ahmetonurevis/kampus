@@ -206,24 +206,22 @@ export function previewPlan(
       students: group.studentIds.length,
       reason: group.reason,
     }))
-    const warnings = [
+    // Aynı uyarı birden çok grupta çıkabilir; tekrarlar tek satır olur.
+    const warnings = new Set([
       ...sessions
         .filter((row) => row.full)
-        .map(
-          (row) =>
-            `${row.title}: derslik kapasitesi doldu (${row.capacity}); kalan öğrenciler ayrı oturuma bölünür.`,
-        ),
+        .map((row) => `${row.title}: derslik kapasitesi doldu (${row.capacity}).`),
       ...unresolved.map(
         (row) => `${row.title}: ${row.students} öğrenci yerleşemedi. ${row.reason}`,
       ),
-    ]
+    ])
     return {
       ok: true,
       signature: JSON.stringify(plan),
       summary: planSummary(plan),
       sessions,
       unresolved,
-      warnings,
+      warnings: [...warnings],
     }
   } catch (error) {
     if (error instanceof ZodError) {

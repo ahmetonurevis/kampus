@@ -47,6 +47,11 @@ import {
   updateRequest,
 } from '../packages/school-core/src/lib/requests.ts'
 import { bookAppointment, updateAppointment } from '../packages/school-core/src/lib/appointments.ts'
+import {
+  answerQuestion,
+  askQuestion,
+  withdrawQuestion,
+} from '../packages/school-core/src/lib/questions.ts'
 import { csvTemplate } from '../packages/school-core/src/lib/workflow-presentation.ts'
 import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -549,4 +554,39 @@ test('Randevu işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır 
     now,
   )
   assert.equal(approved.status, 'Onaylandı')
+})
+
+test('Öğretmenime Sor işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır', () => {
+  const state = seed()
+  const student = {
+    role: 'ogrenci' as const,
+    links: [{ kind: 'student' as const, recordId: 's1' }],
+    userId: 'u-s1',
+  }
+  const teacher = {
+    role: 'ogretmen' as const,
+    links: [{ kind: 'teacher' as const, recordId: 't1' }],
+    userId: 'u-t1',
+  }
+  const asked = askQuestion(
+    operation(state, 'question.ask'),
+    student,
+    {
+      subjectId: 'math',
+      topic: 'Denklemler',
+      title: 'Denklem',
+      text: 'Eşitliğin iki tarafına neden aynı işlemi yapıyoruz?',
+    },
+    id,
+    now,
+  )
+  answerQuestion(
+    operation(state, 'question.answer'),
+    teacher,
+    asked.id,
+    { text: 'Denge.' },
+    id,
+    now,
+  )
+  withdrawQuestion(operation(state, 'question.withdraw'), student, 'ask1', { withdrawn: true }, now)
 })

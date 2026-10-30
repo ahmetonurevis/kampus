@@ -314,6 +314,32 @@ describe('talep ve izin/mazeret uçları', () => {
     assert.equal(record?.version, version)
   })
 
+  test('DOM-YTK-011: başka kurum ve yetkisiz rol yanlış sürümle de olmayan talepteki yanıtı alır; ön büroya 409', async () => {
+    const a = await institution()
+    const b = await institution()
+    const { id, version } = await opened(b.id, await parent(b.id))
+    const body = { status: 'Çözüldü' }
+    // Sürüm denetimi yetkiden önce çalışsaydı başka kurumun ön bürosu 409 alır, talebin var
+    // olduğunu öğrenirdi.
+    const front = await frontOffice(a.id)
+    const missing = await patch(front, 'req-yok', body, 99)
+    assertError(missing, 404, 'not_found')
+    for (const stale of [99, version + 1]) {
+      const response = await patch(front, id, body, stale)
+      assertError(response, 404, 'not_found')
+      assert.equal(response.json().message, missing.json().message)
+    }
+    // Talebi güncelleyemeyen rol, kayıt olsa da olmasa da aynı 403'ü alır.
+    for (const cookie of [await parent(b.id), await teacher(b.id, 't1')]) {
+      assertError(await patch(cookie, 'req-yok', body, 99), 403, 'forbidden')
+      assertError(await patch(cookie, id, body, 99), 403, 'forbidden')
+    }
+    const record = await findRecord(db, b.id, 'requests', id)
+    assert.equal(record?.version, version)
+    assertError(await patch(await frontOffice(b.id), id, body, 99), 409, 'version_conflict')
+    assert.equal((await findRecord(db, b.id, 'requests', id))?.data.status, 'Yeni')
+  })
+
   // --- İzin ve mazeret -------------------------------------------------------------------------
 
   test('DOM-ILT-053: veli izin bildirir; 201, talep açılmaz, ön büro okuyamaz, sınıf rehber öğretmeni okur', async () => {

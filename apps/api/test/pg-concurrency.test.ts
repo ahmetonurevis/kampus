@@ -19,6 +19,7 @@ import { bookAppointmentCommand } from '../src/services/appointments.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { executeWorkflowCommand, recordAttendanceCommand } from '../src/services/commands.ts'
 import { sendMessageCommand } from '../src/services/communication.ts'
+import { answerQuestionCommand } from '../src/services/questions.ts'
 import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, createMember, FIXED_NOW } from './support/app.ts'
 import { createPgDatabase, PG_SKIP } from './support/pg.ts'
@@ -433,6 +434,66 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       (page?.rows ?? []).map((row) => (row as { id: string }).id),
       stored.map((row) => row.id),
     )
+  })
+
+  test('DOM-ILT-092: aynı soruya aynı sürümle eşzamanlı iki yanıt: biri 201, öteki 409 version_conflict', async () => {
+    const base = await context()
+    const seed = createSeed(FIXED_NOW)
+    const question = seed.questions.find((item) => item.id === 'ask1')
+    assert.ok(question !== undefined && question.answeredAt === null, 'örnek soru yanıtsız değil')
+    const samples = [
+      ...seed.subjects.map((data) => ({ collection: 'subjects' as const, id: data.id, data })),
+      ...seed.teachers.map((data) => ({ collection: 'teachers' as const, id: data.id, data })),
+      ...seed.classes
+        .filter((item) => item.id === 'c1')
+        .map((data) => ({ collection: 'classes' as const, id: data.id, data })),
+      ...seed.students
+        .filter((item) => item.id === 's1')
+        .map((data) => ({ collection: 'students' as const, id: data.id, data })),
+      ...seed.assignments
+        .filter((item) => item.classId === 'c1')
+        .map((data) => ({ collection: 'assignments' as const, id: data.id, data })),
+      { collection: 'questions' as const, id: question.id, data: question },
+    ]
+    await insertMissingRecords(db, base.institutionId, samples, FIXED_NOW)
+    const teacher = await createMember(app, base.institutionId, 'ogretmen', [
+      { kind: 'teacher', recordId: question.teacherId },
+    ])
+    const ctx: ServiceContext = {
+      ...base,
+      actor: { userId: teacher.id, role: 'ogretmen', membershipId: teacher.membershipId },
+    }
+    const options = { idempotency: null, expectedVersion: 1 }
+    const outcomes = await Promise.allSettled([
+      answerQuestionCommand(ctx, 'ask1', { text: 'Birinci yanıt' }, options),
+      answerQuestionCommand(ctx, 'ask1', { text: 'İkinci yanıt' }, options),
+    ])
+    const fulfilled = outcomes.filter((item) => item.status === 'fulfilled')
+    assert.deepEqual(
+      fulfilled.map((item) => item.value.statusCode),
+      [201],
+    )
+    const rejected = outcomes.filter((item) => item.status === 'rejected')
+    assert.equal(rejected.length, 1)
+    const reason: unknown = rejected[0]?.reason
+    assert.ok(
+      reason instanceof AppError && reason.statusCode === 409 && reason.code === 'version_conflict',
+      String(reason),
+    )
+    // Kaybeden yanıt ek yanıt olarak da yazılmaz: tek yanıt, boş followUps, sürüm 2.
+    const [stored] = await db
+      .select({ version: records.version, data: records.data })
+      .from(records)
+      .where(
+        and(
+          eq(records.institutionId, ctx.institutionId),
+          eq(records.collection, 'questions'),
+          eq(records.id, 'ask1'),
+        ),
+      )
+    assert.equal(stored?.version, 2)
+    assert.ok(['Birinci yanıt', 'İkinci yanıt'].includes(String(stored?.data.answer)))
+    assert.deepEqual(stored?.data.followUps ?? [], [])
   })
 
   test('komut ortamı kurum kilidinden sonra okunur: kilit sahibinin kapattığı modül görülür', async () => {

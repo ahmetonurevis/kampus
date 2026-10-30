@@ -47,7 +47,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Kaynak:** İşletme kuralı. ÖÖKY md. 46/9 özel öğretim kurslarında seviye belirleme sınavlarının ücretsiz ve kurum binasında yapılmasını, dönem başı/ortası/sonunda tekrarlanmasını ister; bu hükmün kişisel gelişim kursu olan dil okuluna uygulanıp uygulanmadığı **doğrulanmalı**. Platform muhafazakâr olarak ücretsizliği her türde uygular.
 - **Kurum türü:** `language_school`
 - **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `planPlacementSession`, `placementSectionResults`, `placementSummary` (tespit bağlamı, `PLACEMENT_AUTO_SECTIONS`), `planPlacementDecision` (gerekçe her zaman zorunlu, karar oturum başına bir; karar kopyası tespit önerisini taşır). Tespit eşiği `packages/school-core/src/cefr/suggestion.ts` `suggestCefrLevels({ context: { kind: 'placement' } })` ve `PLACEMENT_DEMONSTRATION_RULES`; genel bağlam değişmedi, `LevelTally.demonstratedBy` dayanağı gösterir (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
-- **Not:** Tespit önerisi eşiği — kullanıcı onayı bekliyor (patron kararı, 30 Ekim 2026).
+- **Not:** Tespit önerisi eşiği patron kararıdır ve kullanıcı tarafından onaylandı (30 Ekim 2026).
 
 ### DOM-DIL-011 · Uzaktan yapılan tespit ön tahmindir
 

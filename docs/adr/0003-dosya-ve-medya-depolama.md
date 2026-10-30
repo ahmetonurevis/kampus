@@ -1,7 +1,7 @@
 # ADR 0003 · Dosya ve medya depolama
 
-- Durum: Önerildi (2026-10-30) — kullanıcı onayı bekliyor
-- Onaylayacak: Oğuzhan Demirci
+- Durum: Kabul edildi (2026-10-30, Oğuzhan Demirci); "Açık sorular" bölümünde önerilen seçenekler kabul edildi
+- Onaylayan: Oğuzhan Demirci
 - Ayrıntılandırdığı: ADR 0001 karar 8, ADR 0002 karar 3 (nesne depolama)
 
 ## Bağlam
@@ -93,7 +93,7 @@ Bağlayıcı kurallar:
 - **Virüs taramasız başlamak:** işletim yükü yok; ama öğretmenin yüklediği dosya yüzlerce öğrenciye dağıtılır. Elendi; tarayıcı yerel konteyner olduğu için veri kurum dışına çıkmaz.
 - **Ç sınıfı dosyalarda uygulama düzeyi şifreleme:** daha güçlü, ama imzalı doğrudan indirme ve tarayıcı oynatıcısıyla uyumsuz; SSE + erişim kapsamı + kısa ömürlü bağlantı yeterli görüldü.
 
-## Açık sorular
+## Açık sorular (önerilen seçeneklerle kapandı)
 
 1. **Yerel ve üretim S3 uyumlu yazılım.** MinIO topluluk sürümünün 2025'te ikili/imaj dağıtımını bıraktığı bilgisi var (**doğrulanmalı**).
    - a) Üretimde Türkiye'de barındıran yönetilen S3 uyumlu hizmet, yerelde Garage veya SeaweedFS konteyneri **(önerilen)**

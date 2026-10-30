@@ -2,7 +2,7 @@ import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { collectionKeyPrefix } from './collections.ts'
-import type { CommandHeaders, CommandMessages } from './commands.ts'
+import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 
 // Veli talebi ve izin/mazeret bildirimi yazma komutları (`POST /requests`,
@@ -54,7 +54,7 @@ export function updateRequestRequest(
   return client.PATCH('/api/v1/requests/{requestId}', {
     params: {
       path: { requestId },
-      header: { ...idempotencyOnly(headers), 'if-match': headers['if-match'] ?? '' },
+      header: { ...idempotencyOnly(headers), 'if-match': requireIfMatch(headers) },
     },
     body,
   })

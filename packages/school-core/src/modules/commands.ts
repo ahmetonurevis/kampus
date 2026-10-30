@@ -182,6 +182,11 @@ export const OPERATION_COMMANDS = {
   // okur (DOM-ILT-101). API talepte yalnız seçilen uygunluk saatini yükler.
   'appointment.book': spec('communication', [...SCOPE, 'availability', ...CONFLICTS]),
   'appointment.update': spec('communication', [...SCOPE, ...CONFLICTS]),
+  // Öğretmenime Sor (`lib/questions.ts`); kazanım denetimi ders listesini okur. API soru açarken
+  // soruları hiç, yanıt ve geri çekmede yalnız hedef soruyu yükler.
+  'question.ask': spec('learning', [...SCOPE, 'subjects', 'questions']),
+  'question.answer': spec('learning', [...SCOPE, 'questions']),
+  'question.withdraw': spec('learning', [...SCOPE, 'questions']),
 } as const satisfies Record<string, CommandSpec>
 export type OperationCommand = keyof typeof OPERATION_COMMANDS
 

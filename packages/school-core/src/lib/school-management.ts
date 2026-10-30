@@ -5,6 +5,7 @@ import { requiredText, type MakeId } from './domain.ts'
 import { appointmentHoldsTime } from './appointment-status.ts'
 import { tutorConflict, type Interval } from './tutor-conflicts.ts'
 import { DomainError } from './errors.ts'
+import { isOpenQuestion } from './questions.ts'
 
 export const branchSchema = z.object({ name: requiredText.max(80), address: requiredText.max(240) })
 export const teacherSchema = z.object({
@@ -284,9 +285,14 @@ export function saveClass(
       assignments.find((a) => a.subjectId === lesson.subjectId)?.teacherId || data.teacherId
     lesson.room = data.room
   }
+  // Yalnız yanıt bekleyen sorular taşınır; geri çekilmiş soru eski öğretmende kalır (DOM-ILT-092).
+  // TODO(soru-ortak-ders): ders atamaları tek öğretmenli varsayılır (`subjectTeachers` ders başına
+  // bir öğretmen); ortak derste soru ilk eşleşen atamaya taşınır, öğrencinin seçtiği öğretmen
+  // korunmaz. Ortak ders kuralı netleşince taşıma sorunun öğretmeni hâlâ atanmışsa ona dokunmamalı.
   for (const question of state.questions.filter(
     (q) =>
-      !q.answeredAt && state.students.some((s) => s.id === q.studentId && s.classId === classId),
+      isOpenQuestion(q) &&
+      state.students.some((s) => s.id === q.studentId && s.classId === classId),
   ))
     question.teacherId =
       assignments.find((a) => a.subjectId === question.subjectId)?.teacherId || data.teacherId
@@ -565,7 +571,7 @@ export function archiveRecord(
           member.status = 'Ayrıldı'
       }
       for (const question of state.questions.filter(
-        (q) => !q.answeredAt && students.some((s) => s.id === q.studentId),
+        (q) => isOpenQuestion(q) && students.some((s) => s.id === q.studentId),
       ))
         question.teacherId =
           state.assignments.find(
@@ -581,7 +587,7 @@ export function archiveRecord(
       (a) => a.teacherId === recordId && active(state.classes, a.classId),
     )
     const advisers = state.classes.filter((c) => c.isActive && c.teacherId === recordId)
-    const pending = state.questions.filter((q) => q.teacherId === recordId && !q.answeredAt)
+    const pending = state.questions.filter((q) => q.teacherId === recordId && isOpenQuestion(q))
     const future = state.schedule.filter(
       (l) => !l.cancelledAt && l.teacherId === recordId && l.date >= now,
     )

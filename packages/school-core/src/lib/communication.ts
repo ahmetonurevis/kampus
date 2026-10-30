@@ -18,7 +18,7 @@ import { scopeFor, type Actor, type Scope } from './scope.ts'
  * kurallar denetlenir, sonra State değişir. Yetki `lib/authorize.ts` tablosundadır
  * (`announcement.*`, `conversation.*`, `message.*`; kararlar `lib/communication-access.ts`).
  *
- * Veri modeli `records` deposundadır (ADR 0004 onay bekliyor): duyuru `announcements`,
+ * Veri modeli `records` deposundadır (ADR 0004): duyuru `announcements`,
  * yazışma `conversations` kaydıdır; mesajlar ayrı `conversationMessages` kayıtlarıdır (mesaj
  * başına bir kayıt, `conversationId` ile; ADR 0005). Yazışma kaydı yalnız taraf bilgisini ve son
  * mesaj anını (`lastMessageAt`, liste sırası) taşır; okunmamış sayısı, son mesaj ve yanıt

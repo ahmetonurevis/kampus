@@ -35,6 +35,7 @@ import { registerInstitutionMemberRoutes } from './routes/institution-members.ts
 import { registerMembershipRoutes } from './routes/memberships.ts'
 import { registerModuleRoutes } from './routes/modules.ts'
 import { registerResourceCommandRoutes } from './routes/resource-commands.ts'
+import { registerQuestionRoutes } from './routes/questions.ts'
 import { registerRequestRoutes } from './routes/requests.ts'
 import { registerAppointmentRoutes } from './routes/appointments.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
@@ -74,6 +75,10 @@ export const REDACTED_PATHS = [
   // kvkk: Ç — randevu görüşme konusu ve red/iptal gerekçesi (DOM-ILT-100, DOM-ILT-102).
   '*.note',
   '*.reason',
+  // kvkk: Ç — öğrenci sorusunun ilk yanıtı ve ek yanıtları (DOM-ILT-092). Soru başlığı ve metni
+  // (`title`, `text`) başka koleksiyonlarla ortak adlardır; gövde zaten loglanmaz.
+  '*.answer',
+  '*.followUps',
   '*.cookie',
   '*.authorization',
 ]
@@ -214,6 +219,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerCommunicationRoutes(app)
   registerRequestRoutes(app)
   registerAppointmentRoutes(app)
+  registerQuestionRoutes(app)
   registerResourceRoutes(app)
   registerResourceCommandRoutes(app)
 

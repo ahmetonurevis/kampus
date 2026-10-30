@@ -417,6 +417,8 @@ describe('yazma uçları', () => {
         'POST /api/v1/absences',
         // Randevu talebi (routes/appointments.ts; DOM-ILT-100, DOM-ILT-101).
         'POST /api/v1/appointments',
+        // Öğretmenime Sor: soru gönderme (routes/questions.ts; DOM-ILT-090).
+        'POST /api/v1/questions',
         // Kurum modül ayarı (routes/modules.ts).
         'PATCH /api/v1/modules/{moduleKey}',
         // Kampüs, öğretmen ve sınıf oluşturma (yeniden denemede ikinci kayıt açılmaz).

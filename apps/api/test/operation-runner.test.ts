@@ -180,6 +180,33 @@ describe('işlem çalıştırıcı', () => {
     assert.equal(outcome.changes[0]?.version, 2)
   })
 
+  test('eski sürümde core yetki/kapsam reddi (403, 404) sürümden önce gelir; kural ve çakışma 409 olur, 500 gizlenmez', async () => {
+    const ctx = await institution(['invoices'])
+    const before = await snapshot(ctx.institutionId)
+    const stale = (run: () => never) =>
+      runOperation(ctx, {
+        action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
+        collections: ['invoices'],
+        expectedVersions: [{ collection: 'invoices', id: unpaid.id, version: 7 }],
+        run,
+      })
+    const fail = (kind: 'not_found' | 'forbidden' | 'rule' | 'conflict') => () => {
+      throw new DomainError(`test_${kind}`, 'Test hatası.', { kind })
+    }
+    await assert.rejects(stale(fail('not_found')), hasStatus(404, 'not_found'))
+    await assert.rejects(stale(fail('forbidden')), hasStatus(403, 'test_forbidden'))
+    await assert.rejects(stale(fail('rule')), hasStatus(409, 'version_conflict'))
+    await assert.rejects(stale(fail('conflict')), hasStatus(409, 'version_conflict'))
+    await assert.rejects(
+      stale(() => {
+        throw new TypeError('beklenmeyen')
+      }),
+      hasStatus(500),
+    )
+    assert.deepEqual(await snapshot(ctx.institutionId), before)
+  })
+
   test('başka kurumun kaydı işlemde görünmez; B değişmez', async () => {
     const a = await institution([])
     const b = await institution(['invoices'])

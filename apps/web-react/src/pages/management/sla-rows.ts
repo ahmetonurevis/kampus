@@ -53,7 +53,8 @@ const shortClass = (name: string) => name.split(' · ')[0] ?? name
 
 /**
  * Aktif öğretmenlerin SLA satırları. Sıra: ihlali çok olan önce, sonra bekleyen, sonra ad.
- * Soru, öğretmene `teacherId` ile bağlıdır; arşivdeki öğretmen listelenmez.
+ * Soru, öğretmene `teacherId` ile bağlıdır; arşivdeki öğretmen listelenmez. Geri çekilen soru
+ * (`withdrawnAt`) toplam, bekleyen, ihlal ve uyum hesabına girmez (DOM-ILT-091).
  */
 export function slaRows(
   teachers: readonly CoreRow<'teachers'>[],
@@ -63,6 +64,7 @@ export function slaRows(
 ): SlaRow[] {
   const byTeacher = new Map<string, QuestionTimes[]>()
   for (const { record } of questions) {
+    if (record.withdrawnAt) continue
     const list = byTeacher.get(record.teacherId)
     if (list) list.push(record)
     else byTeacher.set(record.teacherId, [record])

@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import {
-  MAX_FILTER_VALUES,
   ROLE_HOMEROOM,
   ROLE_SUBJECT,
   NO_REASON,
@@ -14,6 +13,7 @@ import {
   attendanceStatusLabel,
   gradeCsvRow,
   gradeRow,
+  attendanceDayFilters,
   isDayKey,
   isVisibleLesson,
   lessonRow,
@@ -21,7 +21,6 @@ import {
   overallAverage,
   scoreText,
   scoreTone,
-  studentScope,
   subjectAverages,
   teacherClassRow,
   weekDays,
@@ -125,53 +124,7 @@ test('başarı rozeti 65 altında dikkat, 65 ve üstünde yeşil olur', () => {
   assert.equal(scoreText(80), '80/100')
 })
 
-// --- Öğrenci kapsamı ----------------------------------------------------------
-
-test('sabit öğrenci sınıftan önce gelir ve tek kimliktir', () => {
-  const { lookups } = sources()
-  assert.deepEqual(studentScope('s1', 'c1', lookups), {
-    ids: ['s1'],
-    empty: false,
-    truncated: false,
-  })
-})
-
-test('sınıf seçilmediyse öğrenci filtresi yoktur; öğrencisiz sınıf boş sayılır', () => {
-  const { lookups } = sources()
-  assert.deepEqual(studentScope(undefined, '', lookups), {
-    ids: [],
-    empty: false,
-    truncated: false,
-  })
-  assert.deepEqual(studentScope(undefined, 'yok-sinif', lookups), {
-    ids: [],
-    empty: true,
-    truncated: false,
-  })
-})
-
-test('sınıf seçilince yalnız o sınıfın aktif öğrencileri gelir', () => {
-  const { seed, lookups } = sources()
-  const expected = seed.students.filter((s) => s.classId === 'c1' && s.isActive).map((s) => s.id)
-  const scope = studentScope(undefined, 'c1', lookups)
-  assert.deepEqual(scope.ids, expected.slice(0, MAX_FILTER_VALUES))
-  assert.equal(scope.empty, false)
-})
-
-test('20 öğrenciden fazlası kırpılır ve uyarı için işaretlenir', () => {
-  const base = createSeed(NOW).students[0]!
-  const many = Array.from({ length: 25 }, (_, index) => ({
-    ...base,
-    id: `kalabalik-${index}`,
-    classId: 'kalabalik',
-    isActive: true,
-  }))
-  const lookups = academicLookups({ ...sources().data, students: wrap(many) })
-  const scope = studentScope(undefined, 'kalabalik', lookups)
-  assert.equal(scope.ids.length, MAX_FILTER_VALUES)
-  assert.equal(scope.truncated, true)
-  assert.equal(scope.empty, false)
-})
+// --- Sınıf eşlemesi -----------------------------------------------------------
 
 test('arşivdeki öğrenci sınıf eşlemesine girmez', () => {
   const { seed } = sources()
@@ -247,6 +200,15 @@ test('gün anahtarı yalnız YYYY-MM-DD biçimini kabul eder', () => {
   assert.equal(isDayKey('15.10.2026'), false)
   assert.equal(isDayKey(undefined), false)
   assert.equal(isDayKey(20261015), false)
+})
+
+test('tek gün süzgeci dateFrom ve dateTo aynı günü taşır; geçersiz gün süzgeç üretmez', () => {
+  assert.deepEqual(attendanceDayFilters('2026-10-15'), {
+    dateFrom: '2026-10-15',
+    dateTo: '2026-10-15',
+  })
+  assert.deepEqual(attendanceDayFilters(''), {})
+  assert.deepEqual(attendanceDayFilters('15.10.2026'), {})
 })
 
 // --- Sınıflar -----------------------------------------------------------------

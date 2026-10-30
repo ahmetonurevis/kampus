@@ -91,38 +91,6 @@ export function gradeCsvRow(row: GradeRow) {
   return { ...row, date: dateLabel(row.date, { year: 'numeric' }), score: scoreText(row.score) }
 }
 
-/** Sunucu eşitlik filtresi en çok 20 değer alır (API beyaz listesi). */
-export const MAX_FILTER_VALUES = 20
-
-export type StudentScope = {
-  /** `studentId` filtresine gidecek kimlikler; boşsa öğrenci filtresi yok. */
-  ids: string[]
-  /** Sınıf seçildi ama öğrencisi yok: liste boş olmalı (filtresiz sorgu bütün kapsamı döndürür). */
-  empty: boolean
-  /** Sınıf 20'den çok öğrenci içeriyor; ilk 20'si süzülür. */
-  truncated: boolean
-}
-
-/**
- * Not kaydında sınıf alanı yoktur; sınıf filtresi sınıftaki öğrencilerin `studentId` filtresine
- * çevrilir. Sabit öğrenci (veli: seçili çocuk) sınıftan önce gelir.
- * TODO(api-filter-class): notlarda `classId` filtresi gelince bu çeviri ve 20 kimlik sınırı kalkar.
- */
-export function studentScope(
-  studentId: string | undefined,
-  classId: string,
-  lookups: Pick<AcademicLookups, 'studentsByClass'>,
-): StudentScope {
-  if (studentId) return { ids: [studentId], empty: false, truncated: false }
-  if (!classId) return { ids: [], empty: false, truncated: false }
-  const ids = (lookups.studentsByClass.get(classId) ?? []).map((student) => student.id)
-  return {
-    ids: ids.slice(0, MAX_FILTER_VALUES),
-    empty: ids.length === 0,
-    truncated: ids.length > MAX_FILTER_VALUES,
-  }
-}
-
 export type SubjectAverage = { subjectId: string; name: string; average: number; count: number }
 
 /** Ders bazında ortalama (core `average`); ders adı sırasıyla. Notu olmayan ders yer almaz. */
@@ -222,10 +190,15 @@ export function attendanceCounts(records: readonly Pick<Attendance, 'status'>[])
   return counts
 }
 
-/** Yoklama `date` alanı UTC ISO'dur; tarih filtresi sunucu aramasına `YYYY-MM-DD` olarak gider. */
+/** Gün anahtarı (`YYYY-MM-DD`): adres durumu ve sunucu `dateFrom`/`dateTo` değeri. */
 export const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/
 export const isDayKey = (value: unknown): value is string =>
   typeof value === 'string' && DAY_KEY.test(value)
+
+/** Tek gün süzgeci: sunucuda `dateFrom` = `dateTo` (gün Europe/Istanbul'a göre eşlenir). */
+export function attendanceDayFilters(day: string): { dateFrom?: string; dateTo?: string } {
+  return isDayKey(day) ? { dateFrom: day, dateTo: day } : {}
+}
 
 // --- Sınıflar ---------------------------------------------------------------
 

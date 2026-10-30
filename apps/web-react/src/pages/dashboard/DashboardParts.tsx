@@ -26,12 +26,12 @@ export function combineStates(
   }
 }
 
-/** Sayaç ızgarası: geniş ekranda dört, dar ekranda tek/iki sütun. */
+/** Sayaç ızgarası: geniş ekranda dört, dar ekranda iki sütun. */
 export function StatGrid({ children, label }: { children: ReactNode; label: string }) {
   return (
     <section
       aria-label={label}
-      className="dashboard-stats mb-[var(--space-section)] grid grid-cols-[repeat(auto-fit,minmax(min(100%,210px),1fr))] gap-4"
+      className="dashboard-stats mb-[var(--space-section)] grid grid-cols-[repeat(auto-fit,minmax(min(100%,150px),1fr))] gap-3 sm:gap-4"
     >
       {children}
     </section>
@@ -69,7 +69,7 @@ export function StatCard({ label, icon, value, note, href, state }: StatCardProp
     <article
       aria-labelledby={id}
       aria-busy={state.isPending || undefined}
-      className="stat-card relative flex min-w-0 flex-col gap-2 rounded-card border bg-surface p-5 focus-within:ring-2 focus-within:ring-focus"
+      className="stat-card relative flex min-w-0 flex-col gap-2 rounded-card border bg-surface p-4 focus-within:ring-2 focus-within:ring-focus"
     >
       <div className="flex items-start justify-between gap-3">
         <h2 id={id} className="text-sm font-medium text-muted-foreground">
@@ -100,7 +100,7 @@ export function StatCard({ label, icon, value, note, href, state }: StatCardProp
           <span className="sr-only">Yükleniyor…</span>
         </p>
       ) : (
-        <p className="stat-value text-2xl font-semibold tracking-[-0.4px] tabular-nums [overflow-wrap:anywhere]">
+        <p className="stat-value text-lg font-semibold sm:text-2xl tracking-[-0.4px] tabular-nums [overflow-wrap:anywhere]">
           {value}
         </p>
       )}

@@ -3,6 +3,9 @@
 import { lazy } from 'react'
 import type { NavPage, RoleKey } from '@/lib/navigation.ts'
 
+const DashboardPage = lazy(async () => ({
+  default: (await import('./dashboard/DashboardPage.tsx')).DashboardPage,
+}))
 const CampusesPage = lazy(async () => ({
   default: (await import('./management/CampusesPage.tsx')).CampusesPage,
 }))
@@ -55,6 +58,7 @@ const StudentMaterialsPage = lazy(async () => ({
 }))
 
 const MIGRATED = new Set([
+  'yonetici/dashboard',
   'yonetici/subeler',
   'yonetici/personel',
   'yonetici/finans',
@@ -81,6 +85,7 @@ export function isMigratedPage(role: RoleKey, path: string): boolean {
 
 /** Taşınmış sayfayı çizer; `Suspense` içinde kullanılır. */
 export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
+  if (page.path === 'dashboard') return <DashboardPage page={page} />
   switch (`${role}/${page.path}`) {
     case 'yonetici/subeler':
       return <CampusesPage page={page} />

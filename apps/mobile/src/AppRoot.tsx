@@ -29,7 +29,7 @@ import {
 } from './ui/components.tsx'
 import { ThemePreference } from './ui/SchoolLayout.tsx'
 import Home from './screens/Home.tsx'
-import ModuleScreen from './screens/ModuleScreen.jsx'
+import ModuleScreen from './screens/ModuleScreen.tsx'
 import CategoryScreen from './screens/CategoryScreen.tsx'
 import Detail from './screens/Detail.tsx'
 import Quiz from './screens/Quiz.tsx'

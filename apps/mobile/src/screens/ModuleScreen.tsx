@@ -1,10 +1,10 @@
-import Timetable from './Timetable.tsx'
-import VideoLibrary from './VideoLibrary.tsx'
-import Conversations from './Conversations.tsx'
-import { FormScrollView } from '../ui/KeyboardLayout.tsx'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Switch } from 'react-native'
-import { useSchool } from '../store/SchoolProvider.tsx'
+import type { KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller'
+import { dateLabel, average } from '@kampus/school-core/lib/format.ts'
+import { workflowPage } from '@kampus/school-core/modules/school-workflows.ts'
+import { FormScrollView } from '../ui/KeyboardLayout.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
 import {
   availablePages,
   context,
@@ -16,15 +16,18 @@ import {
   teacherId,
   gradeAverage,
   absentCount,
+  type Row,
 } from '../model/school.ts'
-import { createActions } from '../model/operations.ts'
-import { dateLabel, average } from '@kampus/school-core/lib/format.ts'
+import { createActions, str, type OperationKind } from '../model/operations.ts'
+import type { ScreenProps } from '../route-types.ts'
+import Timetable from './Timetable.tsx'
+import VideoLibrary from './VideoLibrary.tsx'
+import Conversations from './Conversations.tsx'
 import Attendance from './Attendance.tsx'
 import SchoolList from './SchoolLists.tsx'
 import WorkflowScreen from './WorkflowScreen.tsx'
 import OpticalScreen from './OpticalScreen.tsx'
 import TutoringScreen from './TutoringScreen.tsx'
-import { workflowPage } from '@kampus/school-core/modules/school-workflows.ts'
 import { ThemePreference } from '../ui/SchoolLayout.tsx'
 import {
   Avatar,
@@ -40,16 +43,20 @@ import {
   styles,
   useColors,
 } from '../ui/components.tsx'
-import OperationForm from '../ui/OperationForm.tsx'
+import OperationForm, { type OperationDescriptor } from '../ui/OperationForm.tsx'
 import { useMinute } from '../ui/use-minute.ts'
 import RecordCard from '../ui/RecordCard.tsx'
 import appConfig from '../../app.json'
 
+// Rol tercihleri kayıtta serbest biçimde tutulur; yalnız nesne olarak okunur.
+const preferencesOf = (value: unknown): Record<string, unknown> =>
+  typeof value === 'object' && value !== null ? { ...value } : {}
+
 function Settings() {
-  const { data, session, commit, reset } = useSchool(),
+  const { data, session, commit, reset } = useActiveSchool(),
     c = useColors(),
     [confirm, setConfirm] = useState(false)
-  const prefs = data.preferences[session.role] || {}
+  const prefs = preferencesOf(data.preferences[session.role])
   return (
     <View style={styles.stack}>
       <T muted size={14}>
@@ -67,11 +74,14 @@ function Settings() {
             <Switch
               accessibilityLabel={channel}
               value={prefs[channel] !== false}
-              onValueChange={(value) =>
-                commit((s) => {
-                  s.preferences[session.role] = { ...s.preferences[session.role], [channel]: value }
+              onValueChange={(value) => {
+                void commit((s) => {
+                  s.preferences[session.role] = {
+                    ...preferencesOf(s.preferences[session.role]),
+                    [channel]: value,
+                  }
                 }, 'Bildirim tercihi kaydedildi.')
-              }
+              }}
               trackColor={{ true: c.primary }}
             />
           </View>
@@ -90,14 +100,14 @@ function Settings() {
                 <Switch
                   accessibilityLabel={`${label} modülü`}
                   value={data.modules[key]}
-                  onValueChange={(value) =>
-                    commit(
+                  onValueChange={(value) => {
+                    void commit(
                       (s) => {
                         s.modules[key] = value
                       },
                       `${label} modülü ${value ? 'açıldı' : 'kapatıldı'}.`,
                     )
-                  }
+                  }}
                   trackColor={{ true: c.primary }}
                 />
               </View>
@@ -153,12 +163,13 @@ function Settings() {
   )
 }
 function ChildPicker() {
-  const { data, preference, session } = useSchool()
+  const { data, preference, session } = useActiveSchool()
   return (
     <View style={styles.stack}>
       <Heading title="Çocuklarım" subtitle="Takip etmek istediğiniz öğrenciyi seçin." />
-      {data.parents[0].studentIds.map((id) => {
+      {(data.parents[0]?.studentIds ?? []).map((id) => {
         const student = data.students.find((s) => s.id === id)
+        if (!student) throw new Error('Öğrenci kaydı bulunamadı.')
         return (
           <Card key={id} onPress={() => preference({ childId: id })}>
             <View style={styles.row}>
@@ -179,8 +190,8 @@ function ChildPicker() {
     </View>
   )
 }
-function Analysis({ page }) {
-  const { data, session } = useSchool(),
+function Analysis({ page }: { page: string }) {
+  const { data, session } = useActiveSchool(),
     c = useColors(),
     scope = context(data, session),
     [classId, setClassId] = useState(scope.teacherClasses[0]?.id || scope.classroom.id),
@@ -251,8 +262,15 @@ function Analysis({ page }) {
     </View>
   )
 }
-function AcademicOverview({ navigation }) {
-  const { data, session } = useSchool(),
+const academicSections = [
+  ['notlarim', 'Son notlar'],
+  ['devamsizlik', 'Devamsızlık'],
+  ['ders-programi', 'Ders programı'],
+  ['odevler', 'Ödevler'],
+] as const
+
+function AcademicOverview({ navigation }: Pick<ScreenProps<'Module'>, 'navigation'>) {
+  const { data, session } = useActiveSchool(),
     scope = context(data, session)
   return (
     <View style={styles.stack}>
@@ -266,12 +284,7 @@ function AcademicOverview({ navigation }) {
         </T>
         <T muted>Not ortalaması · {absentCount(data, scope.student.id)} gün devamsızlık</T>
       </Card>
-      {[
-        ['notlarim', 'Son notlar'],
-        ['devamsizlik', 'Devamsızlık'],
-        ['ders-programi', 'Ders programı'],
-        ['odevler', 'Ödevler'],
-      ]
+      {academicSections
         .filter(([key]) => key !== 'odevler' || data.modules.learning)
         .map(([key, title]) => (
           <View key={key} style={styles.stack}>
@@ -292,8 +305,8 @@ function AcademicOverview({ navigation }) {
     </View>
   )
 }
-export default function ModuleScreen(props) {
-  const { data, session } = useSchool()
+export default function ModuleScreen(props: ScreenProps<'Module'>) {
+  const { data, session } = useActiveSchool()
   const page = props.route.params.page
   if (
     page === 'mesajlar' &&
@@ -317,27 +330,35 @@ export default function ModuleScreen(props) {
   }
   return <GeneralModuleScreen {...props} />
 }
-function GeneralModuleScreen({ route, navigation }) {
+// Satır kaynağı türe göre değişir; kapsam alanı (sınıf/kampüs/tarih) olmayan kayıtta değer boştur.
+const sourceField = (row: Row, key: string): unknown => {
+  const fields: Record<string, unknown> = { ...row.source }
+  return fields[key]
+}
+const internalModules: Partial<Record<string, string>> = {
+  classes: 'academic',
+  students: 'academic',
+  mesajlar: 'communication',
+  notlarim: 'academic',
+  devamsizlik: 'academic',
+}
+const assignHomework: readonly [label: string, kind: OperationKind] = ['Ödev ata', 'homework']
+
+function GeneralModuleScreen({ route, navigation }: ScreenProps<'Module'>) {
   const now = useMinute()
-  const { data, session } = useSchool(),
+  const { data, session } = useActiveSchool(),
     scope = context(data, session),
-    listRef = useRef(null),
+    listRef = useRef<KeyboardAwareScrollViewRef>(null),
     [filtersOpen, setFiltersOpen] = useState(false),
     [query, setQuery] = useState(''),
     [filter, setFilter] = useState(''),
     [subject, setSubject] = useState(''),
     [index, setIndex] = useState(0),
-    [form, setForm] = useState(null),
+    [form, setForm] = useState<OperationDescriptor | null>(null),
     [order, setOrder] = useState('default')
   const page = route.params.page
   const definition = availablePages(data, session.role).find((p) => p.path === page)
-  const internalModule = {
-    classes: 'academic',
-    students: 'academic',
-    mesajlar: 'communication',
-    notlarim: 'academic',
-    devamsizlik: 'academic',
-  }[page]
+  const internalModule = internalModules[page]
   const allowed =
     !!definition ||
     (!!internalModule &&
@@ -350,11 +371,15 @@ function GeneralModuleScreen({ route, navigation }) {
     () =>
       rowsFor(data, session, page).filter(
         (row) =>
-          (!route.params.classId || row.source.classId === route.params.classId) &&
-          (!route.params.branchId || row.source.branchId === route.params.branchId),
+          (!route.params.classId || sourceField(row, 'classId') === route.params.classId) &&
+          (!route.params.branchId || sourceField(row, 'branchId') === route.params.branchId),
       ),
     [data, session.role, session.childId, page, route.params.classId, route.params.branchId, now],
   )
+  const sortDate = (row: Row) =>
+    str(sourceField(row, 'date')) ||
+    str(sourceField(row, 'createdAt')) ||
+    str(sourceField(row, 'dueDate'))
   const filtered = useMemo(() => {
     const search = query.toLocaleLowerCase('tr')
     const list = rows.filter(
@@ -364,13 +389,8 @@ function GeneralModuleScreen({ route, navigation }) {
         (!search ||
           `${row.title} ${row.subtitle} ${row.body}`.toLocaleLowerCase('tr').includes(search)),
     )
-    if (order === 'name') list.sort((a, b) => a.title.localeCompare(b.title, 'tr'))
-    if (order === 'date')
-      list.sort((a, b) =>
-        (b.source.date || b.source.createdAt || b.source.dueDate || '').localeCompare(
-          a.source.date || a.source.createdAt || a.source.dueDate || '',
-        ),
-      )
+    if (order === 'name') list.sort((a, b) => (a.title ?? '').localeCompare(b.title ?? '', 'tr'))
+    if (order === 'date') list.sort((a, b) => sortDate(b).localeCompare(sortDate(a)))
     return list
   }, [rows, query, filter, subject, order])
   useEffect(() => setIndex(0), [query, filter, subject, order, page, session.childId])
@@ -379,7 +399,7 @@ function GeneralModuleScreen({ route, navigation }) {
     visible = filtered.slice(current * 12, current * 12 + 12)
   const action =
     page === 'odevler' && scope.teacher
-      ? ['Ödev ata', 'homework']
+      ? assignHomework
       : page === 'mesajlar' && scope.teacher
         ? null
         : createActions[page]
@@ -389,7 +409,7 @@ function GeneralModuleScreen({ route, navigation }) {
         <Empty title="Modül kullanıma kapalı" text="Yönetici modül tercihlerini değiştirebilir." />
       </FormScrollView>
     )
-  let special =
+  const special =
     page === 'ayarlar' ? (
       <Settings />
     ) : page === 'cocuk-secici' ? (
@@ -545,16 +565,12 @@ function GeneralModuleScreen({ route, navigation }) {
                     <RecordCard
                       key={row.id}
                       row={row}
-                      onPress={() =>
-                        navigation.push(
-                          row.kind === 'video'
-                            ? 'Video'
-                            : row.kind === 'quiz' && session.role === 'ogrenci'
-                              ? 'Quiz'
-                              : 'Detail',
-                          { row },
-                        )
-                      }
+                      onPress={() => {
+                        if (row.kind === 'video') navigation.push('Video', { row })
+                        else if (row.kind === 'quiz' && session.role === 'ogrenci')
+                          navigation.push('Quiz', { row })
+                        else navigation.push('Detail', { row })
+                      }}
                     />
                   ))
                 ) : (

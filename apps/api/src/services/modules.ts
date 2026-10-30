@@ -23,8 +23,8 @@ export function isModuleKey(value: string): boolean {
 
 /**
  * Core'un rol listesi bildirdiği modüller (okul iş akışları). Temel modüllerin core'da rol
- * listesi yoktur (menü sayfaları yetki değildir); onlar için rol kararı koleksiyon erişim
- * tablosundadır.
+ * listesi yoktur (menü sayfaları yetki değildir). Okuma uçlarında rol kararı core kapsamındadır
+ * (`scopeFor`, modül rol listesi dahil); bu yardımcı modüle bağlı diğer uçlar içindir.
  */
 const MODULE_ROLES: ReadonlyMap<string, ReadonlySet<Role>> = new Map(
   schoolModules.map((module) => [module.key, new Set(module.roles)]),

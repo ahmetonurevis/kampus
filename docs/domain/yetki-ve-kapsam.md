@@ -85,7 +85,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Dil okulunda "7-A şubesi" veya "LGS netleri" anlamsız veri ve yanlış yetki alanı üretir.
 - **Kaynak:** ADR 0001 karar 4.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — modül → kurum türü tablosu `MODULE_INSTITUTION_TYPES` ve koleksiyon → modül eşlemesi `COLLECTION_MODULES` (`packages/school-core/src/modules/collection-modules.ts`); `scopeFor(..., { institutionType })` uymayan modülün koleksiyonunu bulunmaz sayar. Kurum kaydı ve API kullanımı yok.
+- **Kodda:** kısmen — modül → kurum türü tablosu `MODULE_INSTITUTION_TYPES` ve koleksiyon → modül eşlemesi `COLLECTION_MODULES` (`packages/school-core/src/modules/collection-modules.ts`); `scopeFor(..., { institutionType })` uymayan modülün koleksiyonunu bulunmaz sayar. API kurum kaydındaki türü kullanır: `requireModule` ve koleksiyon okuma uçları uymayan modülde 404 döner (`apps/api/src/plugins/modules.ts`, `apps/api/src/services/read-scope.ts`); kurum türüne göre modül açma engeli (ayar ekranı) yok.
 
 ## Roller ve kapsamlar
 

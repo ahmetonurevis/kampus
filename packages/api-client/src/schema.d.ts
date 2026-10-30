@@ -93,7 +93,7 @@ export interface paths {
         };
         /**
          * Koleksiyon kaydı
-         * @description Tek kayıt. Yok, arşivde veya başka kuruma ait kayıt 404 (varlığı sızdırılmaz); kapsam ve modül kuralları listeyle aynıdır.
+         * @description Tek kayıt. Yok, arşivde, başka kuruma ait veya aktörün kapsamı dışındaki kayıt 404 (varlığı sızdırılmaz); kapsam ve modül kuralları listeyle aynıdır.
          */
         get: operations["getCollectionRecord"];
         put?: never;

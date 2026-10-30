@@ -108,7 +108,8 @@ export const ASSESSMENT_COMMANDS = {
   evaluate: workflow('optical', [...OPTICAL]),
   plan: workflow('tutoring', [...OPTICAL, 'branches', 'availability', ...CONFLICTS]),
   slot: workflow('tutoring', ['availability', ...CONFLICTS]),
-  'slot-remove': workflow('tutoring', ['availability']),
+  // Randevusu olan saat kaldırılamaz (DOM-ILT-101); randevular okunur, yazılmaz.
+  'slot-remove': workflow('tutoring', ['availability', 'appointments']),
   cancel: workflow('tutoring', ['tutorSessions']),
   attendance: workflow('tutoring', ['tutorSessions']),
 } as const satisfies Record<string, ModuleCommandSpec>

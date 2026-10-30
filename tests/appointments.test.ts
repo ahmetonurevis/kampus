@@ -15,6 +15,7 @@ import {
   requireVisibleAppointment,
   updateAppointment,
 } from '../packages/school-core/src/lib/appointments.ts'
+import { runAssessment } from '../packages/school-core/src/lib/assessment-automation.ts'
 import { visibleRecords } from '../packages/school-core/src/lib/scope.ts'
 import { tutorConflict } from '../packages/school-core/src/lib/tutor-conflicts.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -650,4 +651,29 @@ test('DOM-ILT-104: yalnız bekleyen ve onaylı randevu zamanı tutar; programda 
   assert.match(tutorConflict(state, candidate), /randevusu var/)
   updateAppointment(state, parent, created.id, { status: 'Geri çekildi' }, now)
   assert.equal(tutorConflict(state, candidate), '')
+})
+
+test('DOM-ILT-101: bekleyen veya onaylı randevusu olan uygunluk saati kaldırılamaz; kapanınca kaldırılır', () => {
+  const state = seed()
+  const teacherSession = { role: 'ogretmen' as const, links: teacher.links }
+  const remove = (slotId: string) =>
+    runAssessment(state, teacherSession, 'slot-remove', {}, id, slotId, now)
+  const blocked = (error: unknown) =>
+    isDomainError('availability_has_appointments', 'conflict')(error) &&
+    JSON.stringify((error as { path?: unknown }).path) === '["slotId"]'
+  // Bekleyen talep.
+  const pending = booked(state)
+  unchangedOnFailure(state, () => remove('slot-t1-0'), blocked)
+  // Onaylı randevu.
+  updateAppointment(state, teacher, pending.id, { status: 'Onaylandı' }, now)
+  unchangedOnFailure(state, () => remove('slot-t1-0'), blocked)
+  // Saati bilinmeyen eski onaylı randevu (apt2) aynı aralıktaki saati de tutar.
+  unchangedOnFailure(state, () => remove('slot-t1-2'), blocked)
+  // Kapanan randevu saati bırakır (DOM-ILT-104).
+  updateAppointment(state, teacher, pending.id, { status: 'İptal', reason: 'Toplantı çıktı.' }, now)
+  remove('slot-t1-0')
+  assert.equal(
+    state.availability.some((slot) => slot.id === 'slot-t1-0'),
+    false,
+  )
 })

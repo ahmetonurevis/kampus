@@ -9,6 +9,7 @@
 - `lib/scope.ts`: `appointments` okuma kuralı: öğrenci velinin açtığı görüşmeyi görmez; veli yalnız kendi açtığı veli görüşmesini görür; açanı bilinmeyen eski `Veli görüşmesi` öğrenci ve veliye kapalıdır (DOM-ILT-103, DOM-ILT-073).
 - `lib/authorize.ts` ve `modules/commands.ts`: `appointment.book` (öğrenci, veli; seçilen uygunluk saati ve çakışma koleksiyonları) ve `appointment.update` (öğretmen, öğrenci, veli), modül `communication`. Yönetici yazmaz (`TODO(randevu-yonetici-iptal)`).
 - `lib/tutor-conflicts.ts`: `tutorConflict` isteğe bağlı `{ canSeeAppointment }` alır; çakışan randevuyu isteği yapan göremiyorsa ayrıntılı ileti yerine `HIDDEN_CONFLICT_MESSAGE` ("Bu saat uygun değil.") döner. Randevu talebi ve onayı bunu kapsamla (`scopeFor`) çağırır; başka velinin açtığı gizli görüşme iletiden öğrenilmez (DOM-ILT-073, DOM-ILT-101, DOM-ILT-103). Kod `appointment_conflict` ve yol aynı kalır; seçeneksiz çağrılar (etüt, sınıf düzenleme) değişmedi.
+- `lib/assessment-automation.ts` `slot-remove`: bekleyen veya onaylı randevusu olan uygunluk saati kaldırılamaz, `DomainError` `availability_has_appointments` (kind `conflict`, yol `slotId`); saati bilinmeyen eski randevu aynı öğretmenin o aralıktaki randevusu sayılır. `modules/commands.ts` `slot-remove` artık `appointments` koleksiyonunu da okur (DOM-ILT-101).
 - Tüketiciler `workspace:2.18.0` sürümüne sabitlendi.
 
 ## 2.17.0

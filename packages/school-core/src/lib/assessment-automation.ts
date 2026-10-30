@@ -4,7 +4,8 @@ import { toAuditValue, type RecordAuditEntry } from './audit.ts'
 import type { MakeId, Session } from './domain.ts'
 import { dayKey } from './format.ts'
 import { csvObjects } from './delimited-input.ts'
-import { tutorConflict } from './tutor-conflicts.ts'
+import { appointmentHoldsTime } from './appointment-status.ts'
+import { intervalsOverlap, tutorConflict } from './tutor-conflicts.ts'
 import { DomainError } from './errors.ts'
 import { scopeFor, sessionActor, sessionTeacherId } from './scope.ts'
 
@@ -897,6 +898,21 @@ export function runAssessment(
         'availability_own_only',
         'Yalnızca kendi uygunluk saatinizi kaldırabilirsiniz.',
         { kind: 'forbidden' },
+      )
+    // Bekleyen talep ya da onaylı randevu saate bağlıdır; saat kalkarsa talep yine onaylanabilir
+    // ve randevu dayanaksız kalırdı (DOM-ILT-101). Önce talep reddedilir veya randevu iptal
+    // edilir. Saati bilinmeyen eski randevu, aynı öğretmenin bu aralıktaki randevusu sayılır.
+    const booked = state.appointments.some(
+      (a) =>
+        appointmentHoldsTime(a) &&
+        (a.slotId === slot.id ||
+          (a.slotId === undefined && a.teacherId === slot.teacherId && intervalsOverlap(a, slot))),
+    )
+    if (booked)
+      throw new DomainError(
+        'availability_has_appointments',
+        'Bu saatte bekleyen veya onaylı randevu var; önce talebi reddedin ya da randevuyu iptal edin.',
+        { kind: 'conflict', path: ['slotId'] },
       )
     oldValue = structuredClone(slot)
     result = slot

@@ -569,6 +569,35 @@ describe('randevu uçları', () => {
     assert.equal(approved.statusCode, 200, approved.body)
   })
 
+  test('DOM-ILT-101: bekleyen randevusu olan uygunluk saati 409 availability_has_appointments; geri çekilince kaldırılır', async () => {
+    const a = await institution()
+    const parentCookie = await parent(a.id)
+    const teacherCookie = await teacher(a.id)
+    const pending = await booked(parentCookie)
+    const remove = (cookie: string) =>
+      send('POST', '/api/v1/assessment/slot-remove/slot-t1-0', cookie, {})
+    const slotBefore = await findRecord(db, a.id, 'availability', 'slot-t1-0')
+    for (const cookie of [teacherCookie, a.adminCookie]) {
+      const blocked = await remove(cookie)
+      assertError(blocked, 409, 'availability_has_appointments')
+      assert.deepEqual(blocked.json().issues[0].path, ['slotId'])
+    }
+    const slotAfter = await findRecord(db, a.id, 'availability', 'slot-t1-0')
+    assert.deepEqual(slotAfter, slotBefore)
+    const withdrawn = await patch(
+      parentCookie,
+      pending.id,
+      { status: 'Geri çekildi' },
+      pending.version,
+    )
+    assert.equal(withdrawn.statusCode, 200, withdrawn.body)
+    const removed = await remove(teacherCookie)
+    assert.equal(removed.statusCode, 200, removed.body)
+    assert.equal(await findRecord(db, a.id, 'availability', 'slot-t1-0'), null)
+    // Randevu kaydı silinmez; yalnız saat kalkar.
+    assert.ok(await findRecord(db, a.id, 'appointments', pending.id))
+  })
+
   test('DOM-YTK-040: iletişim modülü kapalıyken randevu uçları 403 module_disabled', async () => {
     const a = await institution({ enabledModules: { communication: false } })
     assertError(await book(await parent(a.id)), 403, 'module_disabled')

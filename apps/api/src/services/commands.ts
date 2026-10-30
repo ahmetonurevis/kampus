@@ -10,9 +10,14 @@ import {
   type ArchiveKind,
 } from '@kampus/school-core/lib/school-management.ts'
 import { runWorkflow, type WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
-import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '@kampus/school-core/lib/scope.ts'
+import type { Actor } from '@kampus/school-core/lib/scope.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
-import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
+import {
+  ASSESSMENT_COMMANDS,
+  OPERATION_COMMANDS,
+  WORKFLOW_COMMANDS,
+  type CommandSpec,
+} from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import { isRecordCollection, type CollectionName, type ScalarStateKey } from '../db/collections.ts'
@@ -38,58 +43,11 @@ import {
  * (DOM-YTK-001); eylemin yükleyeceği koleksiyonlar core komut tablosundandır
  * (`OPERATION_COMMANDS`).
  *
- * Koleksiyon listeleri işlem dosyalarının okuduğu State anahtarlarıdır: işlem dosyası +
- * yardımcıları (`tutor-conflicts.ts`) + core kapsam kaynakları (`SCOPE_SOURCE_COLLECTIONS`,
- * velinin demo yolu için `parents`). Eksik koleksiyon sessizce boş görünmez; işlem çalıştırıcı
- * 500 ile durur ve testler bunu yakalar.
- * TODO(core-command-collections): core işlem başına okuduğu koleksiyonları dışa aktarınca
- * buradaki listeler oradan okunur.
+ * Komutun modülü, yükleyeceği koleksiyonlar ve skaler State alanları core komut tablosundandır
+ * (`modules/commands.ts`: `WORKFLOW_COMMANDS`, `ASSESSMENT_COMMANDS`, `OPERATION_COMMANDS`);
+ * API kendi kopyasını tutmaz. Core denetim listesi (`audit`) tabloda yoktur; işlem çalıştırıcı
+ * onu her zaman boş verir. Eksik koleksiyon sessizce boş görünmez; işlem çalıştırıcı 500 ile durur.
  */
-
-const SCOPE_COLLECTIONS: readonly CollectionName[] = [...SCOPE_SOURCE_COLLECTIONS, 'parents']
-const TUTOR_CONFLICT_COLLECTIONS: readonly CollectionName[] = [
-  'appointments',
-  'classes',
-  'schedule',
-  'schoolEvents',
-  'students',
-  'tutorSessions',
-]
-
-const WORKFLOW_COLLECTIONS: readonly CollectionName[] = [
-  ...SCOPE_COLLECTIONS,
-  ...TUTOR_CONFLICT_COLLECTIONS,
-  'branches',
-  'clubAttendance',
-  'clubMemberships',
-  'contracts',
-  'enrollmentHistory',
-  'eventConsents',
-  'guidanceCases',
-  'invoices',
-  'mealMenus',
-  'mockExams',
-  'mockResults',
-  'renewals',
-  'socialAchievements',
-  'studentGoals',
-  'studyTasks',
-  'subjects',
-  'transportAssignments',
-  'transportRoutes',
-]
-
-const ASSESSMENT_COLLECTIONS: readonly CollectionName[] = [
-  ...SCOPE_COLLECTIONS,
-  ...TUTOR_CONFLICT_COLLECTIONS,
-  'availability',
-  'branches',
-  'mockExams',
-  'mockResults',
-  'opticalEvaluations',
-  'opticalProfiles',
-  'subjects',
-]
 
 /** Uç seçenekleri: istek anahtarı, `If-Match` sürümü ve velinin seçili çocuğu. */
 export interface CommandOptions {
@@ -115,6 +73,7 @@ interface Environment {
 async function environment(
   tx: Database,
   ctx: ServiceContext,
+  spec: CommandSpec,
   childId?: string,
 ): Promise<Environment> {
   const [links, institution, settings] = await Promise.all([
@@ -128,11 +87,12 @@ async function environment(
   ])
   const session: Session = { role: ctx.actor.role, links }
   if (childId !== undefined) session.childId = childId
-  const scalars: Partial<Pick<State, ScalarStateKey>> = {
-    modules: institution?.modules ?? {},
-  }
+  // Yalnız komutun okuduğu skalerler verilir (core `scalars`); okunmayan alan görünümde yoktur.
+  const scalars: Partial<Pick<State, ScalarStateKey>> = {}
+  if (spec.scalars.includes('modules')) scalars.modules = institution?.modules ?? {}
   const academicYear = settings[0]?.academicYear
-  if (academicYear !== undefined) scalars.academicYear = academicYear
+  if (spec.scalars.includes('academicYear') && academicYear !== undefined)
+    scalars.academicYear = academicYear
   return {
     session,
     actor: { role: ctx.actor.role, links },
@@ -189,13 +149,18 @@ export async function executeWorkflowCommand(
     ctx,
     {
       action: `workflow.${command}`,
-      collections: WORKFLOW_COLLECTIONS,
+      collections: WORKFLOW_COMMANDS[command].collections,
       ...(recordId !== undefined && options.expectedVersion !== null
         ? { expectedRecordVersion: { id: recordId, version: options.expectedVersion } }
         : {}),
       entity: auditEntity(recordId ?? command),
       load: async (tx) => {
-        const { session, scalars } = await environment(tx, ctx, workflow.childId)
+        const { session, scalars } = await environment(
+          tx,
+          ctx,
+          WORKFLOW_COMMANDS[command],
+          workflow.childId,
+        )
         return {
           scalars,
           run: (state, { now, makeId }) => {
@@ -223,7 +188,7 @@ export async function executeTutoringCommand(
     ctx,
     {
       action: `tutoring.${command}`,
-      collections: ASSESSMENT_COLLECTIONS,
+      collections: ASSESSMENT_COMMANDS[command].collections,
       ...(recordId !== undefined && options.expectedVersion !== null
         ? {
             expectedVersions: [
@@ -233,7 +198,7 @@ export async function executeTutoringCommand(
         : {}),
       entity: auditEntity(recordId ?? command),
       load: async (tx) => {
-        const { session, scalars } = await environment(tx, ctx)
+        const { session, scalars } = await environment(tx, ctx, ASSESSMENT_COMMANDS[command])
         return {
           scalars,
           run: (state, { now, makeId }) => {
@@ -273,7 +238,8 @@ export async function payInvoiceCommand(
         : {}),
       entity: { type: 'invoices', id: invoiceId },
       load: async (tx) => {
-        const { actor, institutionType, scalars } = await environment(tx, ctx)
+        const spec = OPERATION_COMMANDS['invoice.pay']
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
         return {
           scalars,
           run: (state, { now }) => {
@@ -330,7 +296,8 @@ export async function recordAttendanceCommand(
         : {}),
       entity: { type: 'classes', id: classId },
       load: async (tx) => {
-        const { actor, institutionType, scalars } = await environment(tx, ctx)
+        const spec = OPERATION_COMMANDS['attendance.record']
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
         return {
           scalars,
           run: (state, { now }) => {
@@ -404,7 +371,11 @@ async function archiveOrRestore(
         : {}),
       entity: { type: collection, id: recordId },
       load: async (tx) => {
-        const { actor, institutionType, scalars } = await environment(tx, ctx)
+        const { actor, institutionType, scalars } = await environment(
+          tx,
+          ctx,
+          OPERATION_COMMANDS[action],
+        )
         return {
           scalars,
           run: (state, { now }) => {

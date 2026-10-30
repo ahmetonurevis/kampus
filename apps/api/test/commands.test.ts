@@ -5,9 +5,9 @@ import { and, asc, eq } from 'drizzle-orm'
 
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
 import { runAssessment } from '@kampus/school-core/lib/assessment-automation.ts'
-import { DomainError } from '@kampus/school-core/lib/errors.ts'
-import { runWorkflow, type WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
+import type { WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
 import { MODULE_KEYS, moduleAvailableFor } from '@kampus/school-core/modules/collection-modules.ts'
+import { WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
@@ -16,7 +16,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
-import { WORKFLOW_MODULES, WORKFLOW_ROUTES } from '../src/routes/workflows.schemas.ts'
+import { WORKFLOW_ROUTES } from '../src/routes/workflows.schemas.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
   buildTestApp,
@@ -402,7 +402,7 @@ describe('yazma uçları', () => {
   // --- Kurum türü modül kısıtı (DOM-YTK-012) -----------------------------------------------
 
   describe('DOM-YTK-012: kurum türünde olmayan modülün yazma uçları bulunmaz (404)', () => {
-    const commands = Object.keys(WORKFLOW_MODULES) as WorkflowCommand[]
+    const commands = Object.keys(WORKFLOW_COMMANDS) as WorkflowCommand[]
 
     /** Kurumun bütün kayıtları ve denetim satırları: reddedilen istek hiçbirini değiştirmez. */
     async function snapshot(institutionId: string) {
@@ -418,22 +418,20 @@ describe('yazma uçları', () => {
       return { stored, audit: audit.length }
     }
 
-    test('komut → modül tablosu core ile aynıdır: yalnız o modül kapanınca core reddeder', () => {
-      const allOn = Object.fromEntries(MODULE_KEYS.map((key) => [key, true]))
-      const run = (command: WorkflowCommand, modules: Record<string, boolean>) => {
-        const state = createSeed(FIXED_NOW)
-        state.modules = { ...state.modules, ...modules }
-        try {
-          runWorkflow(state, { role: 'yonetici' }, command, {}, (p) => `${p}-t`, 'test-yok')
-          return null
-        } catch (error) {
-          return error instanceof DomainError ? error.code : 'other'
+    test('rota tablosu core komut tablosunu izler: her komut core modülü kapanınca 403 module_disabled', async () => {
+      assert.deepEqual(Object.keys(WORKFLOW_ROUTES).sort(), [...commands].sort())
+      const modules = [...new Set(commands.map((command) => WORKFLOW_COMMANDS[command].module))]
+      let serial = 0
+      for (const module of modules) {
+        const a = await institution({ enabledModules: { ...SEED.modules, [module]: false } })
+        const before = await snapshot(a.id)
+        for (const command of commands.filter((c) => WORKFLOW_COMMANDS[c].module === module)) {
+          const route = WORKFLOW_ROUTES[command]
+          const url = `/api/v1/workflows/${command}${route.record === 'required' ? '/goal-s1-math' : ''}`
+          const headers = { 'idempotency-key': `test-mod-${String(++serial).padStart(4, '0')}` }
+          assertError(await post(url, a.adminCookie, {}, headers), 403, 'module_disabled')
         }
-      }
-      for (const command of commands) {
-        const module = WORKFLOW_MODULES[command]
-        assert.equal(run(command, { ...allOn, [module]: false }), 'module_disabled', command)
-        assert.notEqual(run(command, allOn), 'module_disabled', command)
+        assert.deepEqual(await snapshot(a.id), before, module)
       }
     })
 
@@ -444,7 +442,7 @@ describe('yazma uçları', () => {
       })
       const before = await snapshot(a.id)
       const unavailable = commands.filter(
-        (command) => !moduleAvailableFor(WORKFLOW_MODULES[command], 'language_school'),
+        (command) => !moduleAvailableFor(WORKFLOW_COMMANDS[command].module, 'language_school'),
       )
       assert.ok(unavailable.includes('goal') && unavailable.includes('renewal'))
       let serial = 0

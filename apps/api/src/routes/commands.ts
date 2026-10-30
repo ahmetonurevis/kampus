@@ -15,7 +15,7 @@ import {
   workflowSchemas,
   type WorkflowCommand,
 } from '@kampus/school-core/lib/school-workflows.ts'
-import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
+import { OPERATION_COMMANDS, WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import { ROLES, type Role } from '../auth.ts'
 import { contextOf } from '../plugins/authenticate.ts'
@@ -47,7 +47,6 @@ import {
 } from './commands.schemas.ts'
 import {
   emptyCommandBodySchema,
-  WORKFLOW_MODULES,
   WORKFLOW_ROUTES,
   workflowDescription,
   workflowQuerySchema,
@@ -162,7 +161,7 @@ export function registerCommandRoutes(app: FastifyInstance) {
 
     // Rol kuralı core'dadır (`mayRun`): rota her rolü kabul eder, core reddi 403'tür. Modül
     // rotada denetlenir (okuma uçlarıyla aynı 404/403); core da kapalı modülü ayrıca reddeder.
-    const module = WORKFLOW_MODULES[name]
+    const module = WORKFLOW_COMMANDS[name].module
     if (route.record !== 'required')
       typed.post(
         `/api/v1/workflows/${name}`,

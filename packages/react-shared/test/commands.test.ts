@@ -18,6 +18,7 @@ import {
   newIdempotencyKey,
   reportCommandError,
   routeCommandErrors,
+  routeFeedback,
   runCommand,
   stableFingerprint,
   type CommandHeaders,
@@ -174,6 +175,43 @@ describe('commandFeedback ve reportCommandError', () => {
     // Yolsuz madde alana yazılmaz; form düzeyi mesaj toast'tır.
     assert.deepEqual(fields, [['method', 'Ödeme yöntemini seçin.']])
     assert.deepEqual(toasts, ['Formda düzeltilmesi gereken alanlar var.'])
+  })
+
+  test('exclusive: 422 gövdesindeki issues alan altına gider, toast bastırılır (D13 sözleşmesi)', () => {
+    const error = new ApiError({
+      status: 422,
+      code: 'rule_violation',
+      message: 'Kural ihlali.',
+      issues: [{ path: ['body', 'license'], code: 'custom', message: 'Lisansı seçin.' }],
+    })
+    const feedback = routeFeedback(commandFeedback(error), { exclusive: true, hasForm: true })
+    const fields: [string, string][] = []
+    const toasts: string[] = []
+    reportCommandError(error, feedback, {
+      setError: (name, { message }) => fields.push([name, message]),
+      notifyError: (message) => toasts.push(message),
+    })
+    assert.equal(fields.length, 1)
+    assert.equal(fields[0]?.[1], 'Lisansı seçin.')
+    assert.deepEqual(toasts, [])
+  })
+
+  test('exclusive: issues yoksa ya da form verilmemişse hata toast olur', () => {
+    const plain = apiError(422, 'rule', 'Kural ihlali.')
+    assert.equal(
+      routeFeedback(commandFeedback(plain), { exclusive: true, hasForm: true }).message,
+      'Kural ihlali.',
+    )
+    const withIssues = new ApiError({
+      status: 422,
+      code: 'rule',
+      message: 'Kural ihlali.',
+      issues: [{ path: ['title'], code: 'custom', message: 'Başlık gerekli.' }],
+    })
+    assert.equal(
+      routeFeedback(commandFeedback(withIssues), { exclusive: true, hasForm: false }).message,
+      'Kural ihlali.',
+    )
   })
 
   test('bildirim yoksa mesaj formun root.server alanına yazılır', () => {

@@ -33,11 +33,11 @@ const SLICE_TONE = { gecikmis: 'warning', yaklasan: 'primary', odendi: 'success'
  * sayılar sunucu sayımından gelir; kartlar ilgili listeyi filtresi adreste açar.
  * TODO(api-aggregate-monthly): Vue'daki aylık tahsilat eğilimi `paidAt` gün aralığı süzgeci ister.
  */
-export function AdminDashboard({ session }: { session: Session }) {
+export function AdminDashboard({ session, now }: { session: Session; now: Date }) {
   const role = session.role
   const finance = session.modules.finance === true
   const academic = session.modules.academic === true
-  const today = dayKey()
+  const today = dayKey(now)
 
   const students = useCoreCounts('students', { groupBy: 'isActive' })
   const studentsByClass = useCoreCounts('students', { groupBy: 'classId', filters: ACTIVE })

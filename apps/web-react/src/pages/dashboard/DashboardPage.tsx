@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/use-auth.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage, RoleKey } from '@/lib/navigation.ts'
 import { AdminDashboard } from './AdminDashboard.tsx'
+import { FrontDeskDashboard } from './FrontDeskDashboard.tsx'
 import { firstName } from './dashboard-model.ts'
 
 const DESCRIPTIONS = {
@@ -32,7 +33,11 @@ export function DashboardPage({ page }: { page: NavPage }) {
         title={page.title}
         description={`Merhaba ${firstName(session.user.name)}, ${today}. ${DESCRIPTIONS[session.role]}`}
       />
-      {session.role === 'yonetici' ? <AdminDashboard session={session} /> : null}
+      {session.role === 'yonetici' ? (
+        <AdminDashboard session={session} now={now} />
+      ) : session.role === 'onburo' ? (
+        <FrontDeskDashboard session={session} now={now} />
+      ) : null}
     </>
   )
 }

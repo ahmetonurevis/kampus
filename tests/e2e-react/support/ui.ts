@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 import { accounts, e2e, type RoleKey } from './env.ts'
 
@@ -39,4 +39,25 @@ export async function expectNoHorizontalOverflow(page: Page) {
       ),
     )
     .toBeLessThanOrEqual(0)
+}
+
+/**
+ * Her satır (ya da hücre) `texts`'in hepsini içerene dek bekler; en az bir satır olmalıdır.
+ * Arama, süzgeç, sıralama, sayfa ve çocuk değişince eski sayfa yeni yanıt gelene kadar ekranda
+ * kalır: `for (const row of await rows.all())` bu eski satırların anlık görüntüsünü alır ve
+ * son satır sayısı farklıysa kararsızlaşır. Burada anlık görüntü son durumda yeniden okunur.
+ * `exact`: hücre metni (kırpılmış) `texts[0]`'a eşit olmalıdır.
+ */
+export async function expectEveryRow(rows: Locator, texts: string | string[], exact = false) {
+  const wanted = Array.isArray(texts) ? texts : [texts]
+  await expect
+    .poll(async () => {
+      const cells = (await rows.allTextContents()).map((cell) => cell.trim())
+      if (cells.length === 0) return 'satır yok'
+      const bad = cells.find((cell) =>
+        exact ? cell !== wanted[0] : !wanted.every((text) => cell.includes(text)),
+      )
+      return bad === undefined ? 'tamam' : `uymayan satır: ${bad.slice(0, 80)}`
+    })
+    .toBe('tamam')
 }

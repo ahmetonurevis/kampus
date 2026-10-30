@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Öğrenme okuma ekranları: öğretmen (ödevler, materyaller, quizler), öğrenci (Ödevlerim,
 // Materyaller, Quiz & Testler) ve veli (Akademik Takip → ödev durumu, quiz sonuçları). Hiçbir
@@ -113,7 +113,7 @@ test.describe('Öğrenme: öğretmen', () => {
     await expect(page.getByText(`${c1Total} ödev · `)).toBeVisible()
     await expect(resultCount(page)).toContainText(`/ ${c1Total} kayıt`)
     const classCells = bodyRows(page, 'Ödev ve teslim listesi').locator('td:nth-child(2)')
-    for (const cell of await classCells.all()) await expect(cell).toHaveText('7-A')
+    await expectEveryRow(classCells, '7-A', true)
   })
 
   test('ders filtresi listeyi o derse daraltır', async ({ page, api }) => {
@@ -124,7 +124,7 @@ test.describe('Öğrenme: öğretmen', () => {
     const mathTotal = await total(teacher, '/api/v1/collections/homework?subjectId=math')
     await expect(resultCount(page)).toContainText(`/ ${mathTotal} kayıt`)
     const subjectCells = bodyRows(page, 'Ödev ve teslim listesi').locator('td:nth-child(3)')
-    for (const cell of await subjectCells.all()) await expect(cell).toHaveText('Matematik')
+    await expectEveryRow(subjectCells, 'Matematik', true)
   })
 
   test('teslim durumu paneli teslim eden, geciken ve bekleyen sayılarını gösterir', async ({

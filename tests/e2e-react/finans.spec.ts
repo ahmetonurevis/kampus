@@ -5,7 +5,7 @@ import type { Download, Page, Request } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Finans & Tahsilat (yönetici /finans, ön büro /tahsilat-takip). Seed: 240 öğrenci × 8 taksit =
 // 1920 taksit; her öğrencinin ilk üç taksiti ödenmiş, 5.–8. taksitlerin vadesi ileridedir.
@@ -226,7 +226,7 @@ test.describe('Finans: liste', () => {
     const cards = page.getByLabel('Kurum geneli ödeme toplamları')
     const card = (name: string) => cards.locator('div').filter({ hasText: name }).locator('dd')
 
-    // Paralel testler tahsilat yazabildiği için API her denemede yeniden okunur; ikisi yakınsar.
+    // Kartlar kendi yanıtından gelir; API her denemede yeniden okunur ve ikisi yakınsayana dek beklenir.
     await expect
       .poll(async () => {
         const result = await client.get(
@@ -323,12 +323,12 @@ test.describe('Finans: liste', () => {
     await page.goto(ADMIN_URL)
     await page.getByLabel('Tabloda ara').fill('Deniz Yılmaz')
     await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
-    for (const row of await bodyRows(page).all()) await expect(row).toContainText('Deniz Yılmaz')
+    await expectEveryRow(bodyRows(page), 'Deniz Yılmaz')
 
     // Okul numarası ve sınıf adı da sunucuda aranır; aksan ve büyük/küçük harf duyarsız.
     await page.getByLabel('Tabloda ara').fill('2026001')
     await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
-    for (const row of await bodyRows(page).all()) await expect(row).toContainText('Deniz Yılmaz')
+    await expectEveryRow(bodyRows(page), 'Deniz Yılmaz')
     await page.getByLabel('Tabloda ara').fill('deniz yilmaz')
     await expect(resultCount(page)).toContainText('/ 8 kayıt')
     await page.getByLabel('Tabloda ara').fill('7-a')
@@ -368,16 +368,13 @@ test.describe('Finans: liste', () => {
     await expect(page).toHaveURL(/[?&]durum=yaklasan/)
     await expect(page).not.toHaveURL(/[?&]sayfa=/)
     await expect(bodyRows(page)).toHaveCount(8)
-    for (const row of await bodyRows(page).all()) await expect(row).toContainText('Yaklaşan')
+    await expectEveryRow(bodyRows(page), 'Yaklaşan')
 
     await page.getByLabel('Tabloda ara').fill('Deniz Yılmaz')
     await expect(page).toHaveURL(/[?&]q=Deniz/)
     await page.getByLabel('Ödeme durumu').selectOption({ label: 'Ödendi' })
     await expect(resultCount(page)).toContainText('1–3 / 3 kayıt')
-    for (const row of await bodyRows(page).all()) {
-      await expect(row).toContainText('Deniz Yılmaz')
-      await expect(row).toContainText('Ödendi')
-    }
+    await expectEveryRow(bodyRows(page), ['Deniz Yılmaz', 'Ödendi'])
 
     // Yenileme ve geri/ileri durumu korur.
     await page.reload()

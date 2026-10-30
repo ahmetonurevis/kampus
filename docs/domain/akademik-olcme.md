@@ -45,7 +45,7 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 - **Gerekçe:** Dönem puanı formülü türlere göre ayrı ortalama alır; türsüz not listesinden resmî puan hesaplanamaz.
 - **Kaynak:** OİKY md. 22, 23/4, 27/2; OKY md. 44/1, 48/4, 51/1.
 - **Kurum türü:** `school`
-- **Kodda:** kısmen — `packages/school-core/src/lib/grades.ts` (`recordGrade`, `updateGrade`) tür, dönem, sıra, tarih, puan ve giren öğretmeni yazar; düzeltme eski puanı gerekçesiyle `corrections` geçmişinde saklar; notlu quiz tek kayıt olarak ilk tamamlanan denemeden aktarılır. Çelişen kısım: `K`/`G` özel durumları yok; örnek notların türü serbest başlıktır (`packages/school-core/src/data/seed.ts`), dönem ve sıra yoktur; Vue demosunda quiz denemesi doğrudan not olur (`apps/web/src/views/Learning.vue`).
+- **Kodda:** kısmen — `packages/school-core/src/lib/grades.ts` (`recordGrade`, `updateGrade`) tür, dönem, sıra, tarih, puan, giren öğretmeni ve notun verildiği sınıfı (`classId`) yazar; düzeltme eski puanı gerekçesiyle `corrections` geçmişinde saklar; notlu quiz tek kayıt olarak ilk tamamlanan denemeden aktarılır. Çelişen kısım: `K`/`G` özel durumları yok; örnek notların türü serbest başlıktır (`packages/school-core/src/data/seed.ts`), dönem ve sıra yoktur; Vue demosunda quiz denemesi doğrudan not olur (`apps/web/src/views/Learning.vue`).
 
 ## Ortaokul ölçme (OİKY)
 
@@ -244,7 +244,7 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 - **Gerekçe:** Karne ve sınıf geçme kesinleşmiş puanlara dayanmalıdır.
 - **Kaynak:** OİKY md. 26/1. Lisede aynı kesinleşme süresi işletme kuralıdır.
 - **Kurum türü:** `school`
-- **Kodda:** yok.
+- **Kodda:** kısmen — düzeltme eski puanı gerekçe ve düzeltenle `corrections` geçmişinde saklar (`packages/school-core/src/lib/grades.ts`, `updateGrade`); öğrenci ve veli geçmişi görmez (`lib/scope.ts`). Çizelge kesinleşmesi ve onaylı düzeltme talebi yok.
 
 ### DOM-AKD-052 · Teşekkür ve takdir belgesi
 
@@ -268,11 +268,15 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 
 ### DOM-AKD-054 · Not ve devamsızlık kapsamı
 
-- **Kural:** Öğretmen yalnız atandığı sınıf ve branşta not ve yoklama girer. Sınıf rehber öğretmeni kendi şubesinin bütün derslerini salt okur görür. Veli yalnız kendi çocuklarının, öğrenci yalnız kendisinin yayımlanmış notunu ve devamsızlığını görür. Kurum kimliği ve öğretmen kimliği oturumdan gelir; istemcinin gönderdiği öğretmen kimliğine güvenilmez.
+- **Kural:**
+  - **Giriş:** Öğretmen yalnız atandığı sınıf ve branşta not ve yoklama girer. Sınıf rehber öğretmeni kendi şubesinin bütün derslerini salt okur görür.
+  - **Not düzeltme:** Yetki notun verildiği sınıfa göre belirlenir: notta saklanan sınıf ve dersin branşı. Öğrencinin güncel sınıfına bakılmaz. Sınıf değiştiren öğrencinin eski notunu notu veren sınıfın ders öğretmeni düzeltir; yeni sınıfın öğretmeni notu görür ama düzeltemez. Sınıfı saklanmamış eski kayıtta öğrencinin güncel sınıfı esas alınır. Yönetici her durumda gerekçeyle düzeltir.
+  - **Veli ve öğrenci:** Veli yalnız kendi çocuklarının, öğrenci yalnız kendisinin yayımlanmış notunu ve devamsızlığını görür. Yalnız güncel değer gösterilir; düzeltme geçmişi (gerekçe, düzelten kişi) gösterilmez.
+  - **Kimlik:** Kurum kimliği ve öğretmen kimliği oturumdan gelir; istemcinin gönderdiği öğretmen kimliğine güvenilmez.
 - **Gerekçe:** Not ve devamsızlık kişisel veridir; başka branşın notunu değiştirmek ölçme güvenliğini bozar.
 - **Kaynak:** İşletme kuralı; KVKK md. 12; ADR 0001 karar 7.
 - **Kurum türü:** `school`
-- **Kodda:** çelişiyor — öğretmen kapsamı sabit `'t1'` kimliğine bağlı (`packages/school-core/src/lib/school-workflows.js:291`, `505`).
+- **Kodda:** kısmen — okuma kapsamı `packages/school-core/src/lib/scope.ts` (`scopeFor`, not için notun sınıfı da kapsam verir), yazma yetkisi `lib/authorize.ts` (`grade.record`, `grade.update`, `attendance.record`); API oturumu üyelik bağlantılarından gelir. Çelişen kısım: yayım adımı yok (`DOM-AKD-053`); çevrimdışı demo öğretmeni sabit `t1` kimliğine eşlenir (`sessionActor`).
 
 ## Deneme ve optik
 
@@ -320,8 +324,8 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 | DOM-AKD-030 | Yoklama gün bazında tek durum; ders saati yok (`packages/school-core/src/lib/domain.js:50-74`).                                                 |
 | DOM-AKD-031 | Yarım gün ve "5 geç = yarım gün" yok; devamsızlık yalnız `absent` sayar (`apps/web/src/stores/demo.js:198-199`).                                |
 | DOM-AKD-032 | Özür belgesi ve süresi yok; veli izin bildirimi geçmiş tarihi engeller ve yoklamaya bağlanmaz (`apps/web/src/views/Communication.vue:322-323`). |
-| DOM-AKD-035 | Yoklama düzeltmesi iz bırakmadan üzerine yazar (`packages/school-core/src/lib/domain.js:63`).                                                   |
+| DOM-AKD-035 | Düzeltme geçmişi gün bazındaki kayıttadır; ders saati bazında sürüm yok (`DOM-AKD-030`).                                                        |
 | DOM-AKD-040 | Sınıf geçme kararı yok; dönem geçişi kararı denetlemez (`packages/school-core/src/lib/school-workflows.js:846-927`).                            |
-| DOM-AKD-054 | Öğretmen kapsamı sabit `'t1'` (`packages/school-core/src/lib/school-workflows.js:291`, `505`).                                                  |
+| DOM-AKD-054 | Not yayım adımı yok; çevrimdışı demo öğretmeni sabit `t1` (`sessionActor`).                                                                     |
 | DOM-AKD-060 | Her quiz denemesi yeni not kaydı ekler (`apps/web/src/views/Learning.vue:411-432`).                                                             |
 | DOM-AKD-061 | Ders soru toplamı soru sayısıyla eşitlenmez, yalnız 1–200 denetlenir (`packages/school-core/src/lib/school-workflows.js:507`).                  |

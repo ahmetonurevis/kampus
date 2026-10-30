@@ -8,7 +8,7 @@ skills:
   - dogrula
 ---
 
-İstenen basamakları `dogrula` skill'indeki sırayla koş. Dosya değiştirme, commit atma.
+İstenen basamakları `dogrula` skill'indeki sırayla koş (typecheck, API testleri PGlite, kapsam ölçümü, web-react dahil). Dosya değiştirme, commit atma. Bağlam dolarsa kalan basamakları ve elindeki sonuçları raporla, tahmin etme.
 
 Rapor (en fazla 200 kelime):
 

@@ -1,9 +1,10 @@
-import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, max, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { AppError, ConflictError, MESSAGES, RuleViolationError } from '../errors.ts'
 import type { Database } from './client.ts'
 import { isRecordCollection, type CollectionName, type RecordData } from './collections.ts'
+import { planPositions, POSITION_STEP } from './positions.ts'
 import { RECORD_MAX_BYTES, records } from './schema/records.ts'
 
 /**
@@ -15,6 +16,8 @@ export interface StoredRecord {
   collection: CollectionName
   id: string
   data: RecordData
+  /** Core dizisindeki sıra; yalnız aynı koleksiyonda anlamlıdır (`positions.ts`). */
+  position: number
   version: number
   createdAt: Date
   updatedAt: Date
@@ -51,6 +54,7 @@ function toStored(row: typeof records.$inferSelect): StoredRecord {
     collection: row.collection,
     id: row.id,
     data: row.data,
+    position: row.position,
     version: row.version,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -78,7 +82,7 @@ export async function lockInstitution(tx: Database, institutionId: string): Prom
   )
 }
 
-/** Koleksiyonların kayıtları; sıra kararlı (koleksiyon, kimlik). */
+/** Koleksiyonların kayıtları; koleksiyon içinde core dizisinin sırasıyla (`position`, kimlik). */
 export async function loadRecords(
   db: Database,
   institutionId: string,
@@ -96,7 +100,7 @@ export async function loadRecords(
     .select()
     .from(records)
     .where(and(...filters))
-    .orderBy(asc(records.collection), asc(records.id))
+    .orderBy(asc(records.collection), asc(records.position), asc(records.id))
   return rows.map(toStored)
 }
 
@@ -123,13 +127,26 @@ export async function findRecord(
   return row ? toStored(row) : null
 }
 
+/**
+ * Yazma türleri. `position` verilmezse ekleme koleksiyonun sonuna gider, güncelleme sırayı
+ * korur. `move` yalnız sırayı değiştirir: veri değişmediği için sürüm artmaz, ama okunan sürüm
+ * yine denetlenir.
+ */
 export type RecordWrite =
-  | { kind: 'insert'; collection: CollectionName; id: string; data: RecordData }
+  | { kind: 'insert'; collection: CollectionName; id: string; data: RecordData; position?: number }
   | {
       kind: 'update'
       collection: CollectionName
       id: string
       data: RecordData
+      expectedVersion: number
+      position?: number
+    }
+  | {
+      kind: 'move'
+      collection: CollectionName
+      id: string
+      position: number
       expectedVersion: number
     }
   | { kind: 'archive'; collection: CollectionName; id: string; expectedVersion: number }
@@ -171,20 +188,24 @@ export async function writeRecords(
   if (writes.length === 0) return []
   assertCollections(writes.map((write) => write.collection))
   const prepared = writes.map((write) =>
-    write.kind === 'archive' ? write : { ...write, data: checkData(write) },
+    write.kind === 'archive' || write.kind === 'move'
+      ? write
+      : { ...write, data: checkData(write) },
   )
   return db.transaction(async (tx) => {
     const written: WrittenRecord[] = []
     const inserts = prepared.filter((write) => write.kind === 'insert')
     if (inserts.length > 0) {
+      const positions = await appendPositions(tx, institutionId, inserts)
       const rows = await tx
         .insert(records)
         .values(
-          inserts.map((write) => ({
+          inserts.map((write, index) => ({
             institutionId,
             collection: write.collection,
             id: write.id,
             data: write.data,
+            position: positions[index] ?? 0,
             createdAt: now,
             updatedAt: now,
           })),
@@ -193,6 +214,7 @@ export async function writeRecords(
           target: [records.institutionId, records.collection, records.id],
           set: {
             data: sql`excluded.data`,
+            position: sql`excluded.position`,
             version: sql`${records.version} + 1`,
             updatedAt: now,
             archivedAt: null,
@@ -211,10 +233,7 @@ export async function writeRecords(
     }
     for (const write of prepared) {
       if (write.kind === 'insert') continue
-      const set =
-        write.kind === 'update'
-          ? { data: write.data, version: sql`${records.version} + 1`, updatedAt: now }
-          : { archivedAt: now, version: sql`${records.version} + 1`, updatedAt: now }
+      const set = updateSet(write, now)
       const [row] = await tx
         .update(records)
         .set(set)
@@ -240,9 +259,57 @@ export async function writeRecords(
   })
 }
 
+function updateSet(write: Exclude<RecordWrite, { kind: 'insert' }>, now: Date) {
+  const bump = { version: sql`${records.version} + 1`, updatedAt: now }
+  switch (write.kind) {
+    case 'update':
+      return write.position === undefined
+        ? { data: write.data, ...bump }
+        : { data: write.data, position: write.position, ...bump }
+    case 'move':
+      return { position: write.position }
+    case 'archive':
+      return { archivedAt: now, ...bump }
+    default:
+      return write satisfies never
+  }
+}
+
+/** Sırası verilmemiş eklemeler koleksiyonun (arşivliler dahil) en büyük sırasından sonra gelir. */
+async function appendPositions(
+  tx: Database,
+  institutionId: string,
+  inserts: readonly { collection: CollectionName; position?: number | undefined }[],
+): Promise<number[]> {
+  const missing = [
+    ...new Set(inserts.filter((w) => w.position === undefined).map((w) => w.collection)),
+  ]
+  const next = new Map<string, number>()
+  if (missing.length > 0) {
+    const rows = await tx
+      .select({ collection: records.collection, last: max(records.position) })
+      .from(records)
+      .where(and(eq(records.institutionId, institutionId), inArray(records.collection, missing)))
+      .groupBy(records.collection)
+    for (const collection of missing) {
+      const last = rows.find((row) => row.collection === collection)?.last
+      next.set(collection, last === null || last === undefined ? 0 : Number(last) + POSITION_STEP)
+    }
+  }
+  return inserts.map((write) => {
+    if (write.position !== undefined) return write.position
+    const position = next.get(write.collection) ?? 0
+    next.set(write.collection, position + POSITION_STEP)
+    return position
+  })
+}
+
 /**
- * Tohum için: yoksa ekler, varsa dokunmaz (idempotent; değiştirilmiş kayıt ezilmez).
- * Tek transaction, parametre sınırı için parçalar halinde. Eklenen satır sayısını döndürür.
+ * Tohum için: yoksa ekler, varsa verisine dokunmaz (idempotent; değiştirilmiş kayıt ezilmez).
+ * Sıra verilen dizinin koleksiyon içindeki sırasıdır: eksik kayıt komşularının arasına girer,
+ * sırası bozulmuş mevcut kayıt (ör. migration dolgusundan) yalnız sıra değeriyle düzeltilir;
+ * sırası doğru kayda yazılmaz. Verilmeyen kayıtlar sıra hesabına girmez. Tek transaction,
+ * parametre sınırı için parçalar halinde. Eklenen satır sayısını döndürür.
  */
 export async function insertMissingRecords(
   db: Database,
@@ -251,15 +318,55 @@ export async function insertMissingRecords(
   now: Date,
   chunkSize = 1000,
 ): Promise<number> {
-  assertCollections([...new Set(items.map((item) => item.collection))])
+  const collections = [...new Set(items.map((item) => item.collection))]
+  assertCollections(collections)
   return db.transaction(async (tx) => {
+    const stored = new Map<string, number>()
+    if (collections.length > 0) {
+      const rows = await tx
+        .select({ collection: records.collection, id: records.id, position: records.position })
+        .from(records)
+        .where(
+          and(eq(records.institutionId, institutionId), inArray(records.collection, collections)),
+        )
+      for (const row of rows) stored.set(`${row.collection}\u0000${row.id}`, row.position)
+    }
+    const planned = new Map<string, number>()
+    for (const collection of collections) {
+      const keys = items
+        .filter((item) => item.collection === collection)
+        .map((item) => `${collection}\u0000${item.id}`)
+      const positions = planPositions(keys.map((key) => stored.get(key) ?? null))
+      keys.forEach((key, index) => planned.set(key, positions[index] ?? 0))
+    }
+    const positionOf = (item: { collection: CollectionName; id: string }) =>
+      planned.get(`${item.collection}\u0000${item.id}`) ?? 0
+
+    for (const item of items) {
+      const key = `${item.collection}\u0000${item.id}`
+      const current = stored.get(key)
+      if (current === undefined || current === positionOf(item)) continue
+      await tx
+        .update(records)
+        .set({ position: positionOf(item) })
+        .where(
+          and(
+            eq(records.institutionId, institutionId),
+            eq(records.collection, item.collection),
+            eq(records.id, item.id),
+          ),
+        )
+    }
+
+    const missing = items.filter((item) => !stored.has(`${item.collection}\u0000${item.id}`))
     let inserted = 0
-    for (let start = 0; start < items.length; start += chunkSize) {
-      const chunk = items.slice(start, start + chunkSize).map((item) => ({
+    for (let start = 0; start < missing.length; start += chunkSize) {
+      const chunk = missing.slice(start, start + chunkSize).map((item) => ({
         institutionId,
         collection: item.collection,
         id: item.id,
         data: checkData(item),
+        position: positionOf(item),
         createdAt: now,
         updatedAt: now,
       }))

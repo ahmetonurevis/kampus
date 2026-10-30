@@ -12,7 +12,7 @@ Ayrıntı: `docs/muhendislik/veritabani.md`.
 - Kurum tablolarında zorunlu: `institution_id` (PK ve her indeksin ilk kolonu), `created_at`, `updated_at`, `archived_at`, `version`. İstisna yalnız Better Auth tabloları, `audit_log`, `idempotency_keys` ve `pg-boss` şeması.
 - Kimlik tabloları Better Auth CLI ile `src/db/schema/auth.ts`'e üretilir, elle düzenlenmez, doğrudan `update`/`delete` yazılmaz; üyelik–school-core bağlantısı `membership_links`'te.
 - Tipler: zaman `timestamptz`, gün `date`, para `bigint` kuruş + `currency`, durum `text` + `check` (PostgreSQL enum yok), metin `text`.
-- `records`: `collection` school-core state anahtarıdır; `data` yazmadan önce school-core Zod şemasıyla doğrulanır, bütün olarak ve `where version = $beklenen` ile yazılır (0 satır → 409). `jsonb_set` ile parça güncelleme, hesaplanan değer, dosya/base64 yok; belge ≤ 256 KB.
+- `records`: `collection` school-core state anahtarıdır; `data` yazmadan önce school-core Zod şemasıyla doğrulanır, bütün olarak ve `where version = $beklenen` ile yazılır (0 satır → 409). `jsonb_set` ile parça güncelleme, hesaplanan değer, dosya/base64 yok; belge ≤ 256 KB. Yükleme core dizi sırasıyla (`position`, seyrek tamsayı; `positions.ts`).
 - Bir işlemin bütün yazmaları ve `audit_log` kaydı tek transaction'dadır; işlem çalıştırıcı yüklemeden önce kurum danışma kilidini alır (`lockInstitution`), kurum içi işlemler sıraya girer.
 - Normalleştirme (ayrı ADR): kurumda 20.000+ kayıt, veritabanı kısıtı ihtiyacı, SQL raporlama, yükleme p95 > 50 ms veya > 5 MB, özel nitelikli veri.
 - Migration yalnız `drizzle-kit generate --name <ne_yapildigi>`; SQL okunur ve commit edilir. `push` yalnız atılacak yerel veritabanında.

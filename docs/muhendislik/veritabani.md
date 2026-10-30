@@ -55,6 +55,7 @@ create table records (
   collection     text not null,
   id             text not null,
   data           jsonb not null,
+  position       bigint not null,   -- core dizisindeki sıra (seyrek tamsayı)
   version        integer not null default 1,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
@@ -83,6 +84,7 @@ update records
 - Dosya ve medya `data`'ya gömülmez (base64 yok); depolama arayüzünde tutulur, kayıt yalnız anahtar ve meta veri taşır. Belge başına sınır 256 KB.
 - Geçiş notu: bazı eski kayıtlarda `deletedAt`/`isActive` alanları var. API'ye taşımada arşiv durumu `archived_at` kolonuna aktarılır; jsonb'deki eski alanlar school-core uyumu bitene kadar okunur, yenisi yazılmaz.
 - Kayıt anahtarı `data.id`'dir; kimliksiz `videoProgress` için `<studentId>:<videoId>` (`apps/api/src/db/collections.ts`). Kurum satırı silinince kayıtlar kendiliğinden silinmez (cascade yok).
+- Sıra: core dizinin sırasına dayanır (başa ekleme, ilk N kayıt), bu yüzden kayıt `position` kolonuyla core dizisinin sırasında yüklenir (`order by position, id`). Değerler 1024 adımlı seyrek tamsayıdır (`apps/api/src/db/positions.ts`): çalıştırıcı işlem sonrası dizide saklanan değerlerin en uzun artan alt dizisini yerinde bırakır; yeni veya yer değiştiren kayıt komşularından türetilen değeri alır (başa ekleme en küçükten bir adım küçük, sona ekleme en büyükten bir adım büyük, araya ekleme aradaki değer). Ara kalmazsa yalnız o koleksiyon baştan numaralanır. Yalnız sırası değişen kayıt `move` yazmasıyla güncellenir (veri aynı kaldığından `version` artmaz); her işlemde bütün satırlar yeniden yazılmaz. Mevcut satırlar `0003_add_records_position` ile kimlik sırasında (önceki yükleme sırası) numaralandı; core sırası SQL'de bilinemediği için tohumu yeniden çalıştırmak tohum kayıtlarını yalnız sıra değeriyle core sırasına getirir.
 - Kurum kilidi: işlem çalıştırıcı transaction'ı yüklemeden önce `pg_advisory_xact_lock(<ad alanı>, hashtext(institution_id))` ile açar (`lockInstitution`). READ COMMITTED altında kilitsiz iki işlem aynı görüntüyü yükleyip farklı yeni kimlikle ekleyebilir (aynı gün iki yoklama, son boş yere iki kayıt, aynı saate iki etüt); sürüm denetimi yalnız var olan satırı korur. Kurum içi işlemler böylece sıraya girer; kurum başına tek kilit olduğundan kilit sıralaması sorunu yoktur. İki anahtarlı biçim, tek anahtarlı kilit kullanan `pg-boss`'la çakışmaz. Doğrulaması `test:pg` takımındadır (`test/pg-concurrency.test.ts`).
 - Depo `apps/api/src/db/records.ts`, işlem çalıştırıcı `apps/api/src/services/operation-runner.ts`: koleksiyonları yükler, core işlemini `now` ile çalıştırır, farkı (ekleme, değişiklik, listeden çıkarma) tek transaction'da yazar. Core'un listeden çıkardığı kayıt `archived_at` ile arşivlenir ve çalıştırıcıya bir daha yüklenmez; core'un kendi `deletedAt`/`isActive` alanları uyum bitene kadar `data`'da kalır (pasif öğretmen/öğrenci core kurallarınca görülmeye devam eder). Dizi olmayan State alanları (`modules`, `academicYear`) `records`'ta tutulmaz, çağıran verir.
 

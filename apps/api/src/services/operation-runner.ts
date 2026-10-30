@@ -14,6 +14,7 @@ import {
   type RecordData,
   type ScalarStateKey,
 } from '../db/collections.ts'
+import { planPositions } from '../db/positions.ts'
 import {
   loadRecords,
   lockInstitution,
@@ -187,7 +188,11 @@ interface Difference {
   fields: Set<string>
 }
 
-/** Önceki kayıtlar ile işlem sonrası State arasındaki kayıt düzeyindeki fark. */
+/**
+ * Önceki kayıtlar ile işlem sonrası State arasındaki kayıt düzeyindeki fark. Dizinin sırası da
+ * farka girer: yeni kayıt core'un koyduğu yere göre sıra alır, yer değiştiren kayıt `move` ile
+ * (verisi de değiştiyse güncellemenin içinde) yeni sırasını alır; yerinde kalan kayda yazılmaz.
+ */
 function difference(
   collections: readonly CollectionName[],
   before: ReadonlyMap<CollectionName, ReadonlyMap<string, StoredRecord>>,
@@ -200,23 +205,39 @@ function difference(
     if (!Array.isArray(items)) throw programmingError(`${collection} is not an array`)
     const previous = before.get(collection) ?? new Map<string, StoredRecord>()
     const seen = new Set<string>()
-    for (const item of items) {
+    const entries = items.map((item) => {
       const data = normalize(collection, item)
       const id = recordKey(collection, data)
       if (id === null) throw programmingError(`${collection}: item without key`)
       if (seen.has(id)) throw programmingError(`${collection}: duplicate key`)
       seen.add(id)
-      const old = previous.get(id)
+      return { id, data, old: previous.get(id) }
+    })
+    const positions = planPositions(entries.map((entry) => entry.old?.position ?? null))
+    entries.forEach(({ id, data, old }, index) => {
+      const position = positions[index] ?? 0
       if (!old) {
-        writes.push({ kind: 'insert', collection, id, data })
+        writes.push({ kind: 'insert', collection, id, data, position })
         for (const key of Object.keys(data)) fields.add(key)
-        continue
+        return
       }
+      const moved = position !== old.position
       const changed = changedFields(old.data, data)
-      if (changed.length === 0) continue
-      writes.push({ kind: 'update', collection, id, data, expectedVersion: old.version })
+      if (changed.length === 0) {
+        if (moved)
+          writes.push({ kind: 'move', collection, id, position, expectedVersion: old.version })
+        return
+      }
+      writes.push({
+        kind: 'update',
+        collection,
+        id,
+        data,
+        expectedVersion: old.version,
+        ...(moved ? { position } : {}),
+      })
       for (const key of changed) fields.add(key)
-    }
+    })
     // Core'un listeden çıkardığı kayıt silinmez, arşivlenir (veritabani.md §7).
     for (const [id, old] of previous)
       if (!seen.has(id))
@@ -285,6 +306,7 @@ export async function runOperation<R>(
       inserted: changes.filter((change) => change.kind === 'insert').length,
       updated: changes.filter((change) => change.kind === 'update').length,
       archived: changes.filter((change) => change.kind === 'archive').length,
+      moved: changes.filter((change) => change.kind === 'move').length,
     })
     return { result, changes }
   })

@@ -22,6 +22,13 @@
       "when": 1793323129151,
       "tag": "0002_create_records",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793324647234,
+      "tag": "0003_add_records_position",
+      "breakpoints": true
     }
   ]
 }

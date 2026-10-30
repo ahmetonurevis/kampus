@@ -382,6 +382,94 @@ describe('işlem çalıştırıcı', () => {
     assert.deepEqual(await snapshot(ctx.institutionId), before)
   })
 
+  /** jsonb'nin saklayacağı biçim; core State'iyle karşılaştırmak için. */
+  const json = (value: unknown): unknown => JSON.parse(JSON.stringify(value))
+
+  async function loadedOrder(institutionId: string, collection: CollectionName) {
+    const rows = await loadRecords(db, institutionId, [collection])
+    return rows.map((row) => row.data)
+  }
+
+  test('yükle, işlem, yükle: diziler core doğrudan çalıştığında oluşan sıradadır', async () => {
+    assert.ok(prospect && target)
+    const ctx = await institution(enrollmentCollections)
+    const input = {
+      prospectId: prospect.id,
+      classId: target.id,
+      total: 120000,
+      count: 3,
+      startDate: '2026-11-01',
+    }
+    await runOperation(ctx, {
+      action: 'prospect.enroll',
+      collections: enrollmentCollections,
+      entity: { type: 'prospects', id: prospect.id },
+      makeId: counterIds(),
+      run: (state, { now, makeId }) => enrollProspect(state, input, makeId, now),
+    })
+    const direct = structuredClone(seed)
+    enrollProspect(direct, input, counterIds(), LATER.toISOString())
+    for (const collection of enrollmentCollections)
+      assert.deepEqual(
+        await loadedOrder(ctx.institutionId, collection),
+        json(direct[collection]),
+        collection,
+      )
+    // Yerinde kalan kayıtlara yazılmaz: yalnız eklenen kayıtlar ve aday değişti.
+    const rows = await loadRecords(db, ctx.institutionId, enrollmentCollections)
+    assert.deepEqual(
+      rows.filter((row) => row.updatedAt.getTime() !== FIXED_NOW.getTime()).length,
+      7,
+    )
+  })
+
+  test('başa, araya ve yer değiştirerek yazılan sıra korunur; yalnız değişenler yazılır', async () => {
+    const ctx = await institution(['invoices'])
+    const extra = (id: string) => ({ ...unpaid, id, amount: 1 })
+    const reorder = (state: State) => {
+      const last = state.invoices.pop()
+      assert.ok(last)
+      state.invoices.unshift(last)
+      state.invoices.splice(5, 0, extra('test-inv-mid-1'), extra('test-inv-mid-2'))
+      state.invoices.unshift(extra('test-inv-head'))
+    }
+    const outcome = await runOperation(ctx, {
+      action: 'invoice.reorder',
+      collections: ['invoices'],
+      entity: { type: 'invoices', id: 'test-inv-head' },
+      run: reorder,
+    })
+    assert.deepEqual(outcome.changes.map((change) => change.kind).sort(), [
+      'insert',
+      'insert',
+      'insert',
+      'move',
+    ])
+    const direct = structuredClone(seed)
+    reorder(direct)
+    assert.deepEqual(await loadedOrder(ctx.institutionId, 'invoices'), json(direct.invoices))
+  })
+
+  test('aynı noktaya art arda ekleme aralığı tüketince yalnız o koleksiyon numaralanır', async () => {
+    const ctx = await institution(['invoices', 'students'])
+    const studentsBefore = await loadRecords(db, ctx.institutionId, ['students'])
+    const mirror = structuredClone(seed.invoices)
+    for (let round = 0; round < 14; round += 1) {
+      const item = { ...unpaid, id: `test-inv-wedge-${round}` }
+      mirror.splice(1, 0, structuredClone(item))
+      await runOperation(ctx, {
+        action: 'invoice.wedge',
+        collections: ['invoices'],
+        entity: { type: 'invoices', id: item.id },
+        run: (state) => {
+          state.invoices.splice(1, 0, item)
+        },
+      })
+      assert.deepEqual(await loadedOrder(ctx.institutionId, 'invoices'), json(mirror))
+    }
+    assert.deepEqual(await loadRecords(db, ctx.institutionId, ['students']), studentsBefore)
+  })
+
   test('değişiklik yoksa yazma ve denetim kaydı yoktur', async () => {
     const ctx = await institution(['invoices'])
     const before = await snapshot(ctx.institutionId)

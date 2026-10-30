@@ -13,6 +13,11 @@ type Options = {
   pageSize?: number
   /** Aynı sayfada birden çok liste varsa URL parametre öneki (ör. `odeme-`). */
   urlPrefix?: string
+  /**
+   * Dış filtre (sekme, durum seçimi) anahtarı; değişince sayfa ve kaydırma sıfırlanır.
+   * Çocuk/kapsam değişimi için `key` kullanılır (her kapsamın kendi durumu vardır).
+   */
+  resetKey?: string
 }
 
 /**
@@ -20,7 +25,10 @@ type Options = {
  * sıralama ayrıca URL'de tutulur. Geri/ileri ile değişen URL yeniden okunur; kendi `replace`
  * yazımlarımız okunmaz. Kaydırma konumu her olayda render tetiklemesin diye ref'te izlenir.
  */
-export function useListState(key: string, { pageSize = 8, urlPrefix = '' }: Options = {}) {
+export function useListState(
+  key: string,
+  { pageSize = 8, urlPrefix = '', resetKey = '' }: Options = {},
+) {
   const [params, setParams] = useSearchParams()
   const location = useLocation()
   const navigationType = useNavigationType()
@@ -42,6 +50,11 @@ export function useListState(key: string, { pageSize = 8, urlPrefix = '' }: Opti
   if (sync === 'read-url') {
     const next = applyListParams(state, params, urlPrefix)
     if (next !== state) dispatch({ type: 'replace', state: next })
+  }
+  const [seenReset, setSeenReset] = useState(resetKey)
+  if (seenReset !== resetKey) {
+    setSeenReset(resetKey)
+    if (sync !== 'restore') dispatch({ type: 'external' })
   }
 
   const element = useRef<HTMLElement | null>(null)

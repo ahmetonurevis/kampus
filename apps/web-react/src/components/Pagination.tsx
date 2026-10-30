@@ -10,6 +10,7 @@ type PaginationProps = {
   sizes?: readonly number[]
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
+  className?: string
 }
 
 const pageButton =
@@ -23,12 +24,18 @@ export function Pagination({
   sizes = [8, 16, 32, 64],
   onPageChange,
   onPageSizeChange,
+  className,
 }: PaginationProps) {
   const pages = pageCount(total, pageSize)
   const options = [...new Set([pageSize, ...sizes])].sort((a, b) => a - b)
   const first = total ? (page - 1) * pageSize + 1 : 0
   return (
-    <div className="list-pagination flex flex-wrap items-center justify-between gap-3 border-t px-[22px] py-4">
+    <div
+      className={cn(
+        'list-pagination flex flex-wrap items-center justify-between gap-3 border-t px-[22px] py-4',
+        className,
+      )}
+    >
       <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <span role="status" aria-live="polite" aria-atomic="true" className="result-count">
           <strong className="font-medium text-foreground">

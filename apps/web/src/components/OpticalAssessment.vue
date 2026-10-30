@@ -116,7 +116,7 @@ function showError(value) {
   logError(value, 'optical', 'warn')
   error.value =
     value.issues?.[0]?.message ||
-    (value.name === 'Error'
+    (value.name === 'Error' || value.name === 'DomainError'
       ? value.message
       : 'Dosya işlenemedi. Biçimini ve karakter kodlamasını kontrol edin.')
   notify(error.value, 'error')

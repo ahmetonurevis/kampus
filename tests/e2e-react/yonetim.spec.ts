@@ -83,6 +83,9 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     page,
   }) => {
     await page.goto(CLASSES_URL)
+    // Arama, ilk liste yanıtı gelip ekran yerleştikten sonra yazılır; böylece beklenen sayı
+    // yalnız aramanın yanıtını ölçer (yükte ilk yanıt gecikirse iki istek üst üste binmez).
+    await expect(resultCount(page)).toContainText('1–8 / 24 kayıt')
     await page.getByLabel('Tabloda ara').fill('kadikoy')
     await expect(page).toHaveURL(/[?&]q=kadikoy/)
     await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
@@ -305,6 +308,7 @@ test.describe('yönetici: Eğitim Kadrosu', () => {
     page,
   }) => {
     await page.goto(STAFF_URL)
+    await expect(resultCount(page)).toContainText('1–8 / 48 kayıt')
     await page.getByLabel('Tabloda ara').fill('kadikoy')
     await expect(page).toHaveURL(/[?&]q=kadikoy/)
     await expect(resultCount(page)).toContainText('1–8 / 16 kayıt')
@@ -340,6 +344,7 @@ test.describe('yönetici: Eğitim Kadrosu', () => {
 
   test('arama öğretmeni bulur; bulunamayınca boş durum gösterilir', async ({ page }) => {
     await page.goto(STAFF_URL)
+    await expect(resultCount(page)).toContainText('1–8 / 48 kayıt')
     await page.getByLabel('Tabloda ara').fill('Selin Kaya')
     await expect(page).toHaveURL(/[?&]q=Selin/)
     await expect(bodyRows(page, STAFF_TABLE).first()).toContainText('Selin Kaya')
@@ -350,6 +355,7 @@ test.describe('yönetici: Eğitim Kadrosu', () => {
 
   test('öğretmen özeti URLde açılır; geri paneli kapatır, ileri açar', async ({ page }) => {
     await page.goto(STAFF_URL)
+    await expect(resultCount(page)).toContainText('1–8 / 48 kayıt')
     await page.getByLabel('Tabloda ara').fill('Selin Kaya')
     const opener = tableOf(page, STAFF_TABLE)
       .getByRole('button', { name: 'Selin Kaya özeti' })

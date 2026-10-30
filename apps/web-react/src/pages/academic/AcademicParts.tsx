@@ -78,9 +78,14 @@ export function StatGrid({ label, items }: { label: string; items: readonly Stat
       className="stats-grid mb-6 grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3"
     >
       {items.map((item) => (
-        <div key={item.label} className="rounded-card border bg-surface px-5 py-4">
+        <div
+          key={item.label}
+          className="stat-item @container min-w-0 rounded-card border bg-surface px-5 py-4"
+        >
           <dt className="text-xs text-muted-foreground">{item.label}</dt>
-          <dd className="mt-1 text-2xl font-semibold">{item.value}</dd>
+          <dd className="stat-value mt-1 text-stat font-semibold tabular-nums [overflow-wrap:anywhere]">
+            {item.value}
+          </dd>
           {item.note ? <p className="mt-1 text-xs text-muted-foreground">{item.note}</p> : null}
         </div>
       ))}

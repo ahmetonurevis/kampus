@@ -180,7 +180,7 @@ export function transaction(mutate, message) {
       error.issues?.[0]?.message ||
         (error.name === 'QuotaExceededError'
           ? 'Depolama alanı dolu. İşlem kaydedilmedi; yer açıp tekrar deneyin.'
-          : error.name === 'Error'
+          : error.name === 'Error' || error.name === 'DomainError'
             ? error.message
             : 'İşlem kaydedilemedi. Tarayıcı depolama izinlerini kontrol edip tekrar deneyin.') ||
         'İşlem kaydedilemedi.',

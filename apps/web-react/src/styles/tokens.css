@@ -261,6 +261,10 @@
   --text-3xl--line-height: 1.3;
   --text-4xl: 27px;
   --text-4xl--line-height: 1.05;
+  /* Özet kartı değeri (tutar, sayı): kartın (`@container`) iç genişliğine göre 14–23 px.
+     Dar kartta küçülür, geniş kartta `--text-2xl` değerine çıkar; taşmayı yazı boyutu karşılar. */
+  --text-stat: clamp(14px, 11cqi, 23px);
+  --text-stat--line-height: 1.3;
 
   --spacing-sidebar: var(--sidebar-width);
   --spacing-shell: var(--shell-inset);

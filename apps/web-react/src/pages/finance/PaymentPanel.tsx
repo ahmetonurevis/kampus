@@ -1,6 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import {
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_METHODS,
+  paymentInputSchema,
+  type PaymentInput,
+} from '@kampus/school-core/lib/domain.ts'
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { usePayInvoice } from '@kampus/react-shared/use-invoice-commands.ts'
 import { FormField } from '@/components/FormField.tsx'
@@ -14,13 +19,7 @@ import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { invoiceRow, type FinanceLookups } from './finance-rows.ts'
 
-/** Vue `Finance.vue` tahsilat yöntemleri (örnek verideki yöntemlerle aynı). */
-export const PAYMENT_METHODS = ['Banka havalesi', 'Nakit', 'Kredi kartı'] as const
-
-const paymentSchema = z.object({
-  method: z.enum(PAYMENT_METHODS, 'Ödeme yöntemini seçin.'),
-})
-type PaymentValues = z.infer<typeof paymentSchema>
+type PaymentValues = PaymentInput
 
 const FORM_ID = 'tahsilat-formu'
 
@@ -51,7 +50,7 @@ function PaymentForm({ invoiceId, lookups, onClose }: Props) {
   const item = useCoreItem('invoices', invoiceId)
   const pay = usePayInvoice()
   const form = useForm<PaymentValues>({
-    resolver: zodResolver(paymentSchema),
+    resolver: zodResolver(paymentInputSchema),
     defaultValues: { method: PAYMENT_METHODS[0] },
   })
   const busy = pay.isPending || form.formState.isSubmitting
@@ -89,7 +88,7 @@ function PaymentForm({ invoiceId, lookups, onClose }: Props) {
           <NativeSelect {...control} {...form.register('method')} disabled={busy}>
             {PAYMENT_METHODS.map((method) => (
               <NativeSelectOption key={method} value={method}>
-                {method}
+                {PAYMENT_METHOD_LABELS[method]}
               </NativeSelectOption>
             ))}
           </NativeSelect>

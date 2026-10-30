@@ -1,35 +1,30 @@
 import { eq } from 'drizzle-orm'
 
-import { navigation } from '@kampus/school-core/modules/full-navigation.ts'
+import {
+  MODULE_KEYS as CORE_MODULE_KEYS,
+  isModuleKey as isCoreModuleKey,
+} from '@kampus/school-core/modules/collection-modules.ts'
 import { schoolModules } from '@kampus/school-core/modules/school-workflows.ts'
 
-import type { Role } from '../auth.ts'
+import type { InstitutionType, Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
 import { institutions } from '../db/schema/auth.ts'
 
 /**
- * Modül kaydı school-core'dandır (`modules/full-navigation.ts`, `modules/school-workflows.ts`);
- * burada yalnız okunur. Bilinen modüller: menü sayfalarının `module` anahtarları (temel modüller
- * `crm`, `finance`, `academic`, `learning`, `communication`) ve okul iş akışı modülleri.
+ * Modül kaydı ve kurum türü kısıtı school-core'dandır (`modules/collection-modules.ts`; anahtar
+ * kümesi menü ve iş akışı kaydıyla aynıdır, core testleri doğrular); burada yalnız okunur. API
+ * yanıtlarında anahtarlar alfabetik sıradadır.
  */
-export const MODULE_KEYS: readonly string[] = [
-  ...new Set(
-    Object.values(navigation).flatMap((pages) =>
-      pages.flatMap((page) => (page.module === null ? [] : [page.module])),
-    ),
-  ),
-].sort()
-
-const MODULE_SET: ReadonlySet<string> = new Set(MODULE_KEYS)
+export const MODULE_KEYS: readonly string[] = [...CORE_MODULE_KEYS].sort()
 
 export function isModuleKey(value: string): boolean {
-  return MODULE_SET.has(value)
+  return isCoreModuleKey(value)
 }
 
 /**
  * Core'un rol listesi bildirdiği modüller (okul iş akışları). Temel modüllerin core'da rol
- * listesi yoktur (menü sayfaları yetki değildir); onlar için rol kararı koleksiyon erişim
- * tablosundadır.
+ * listesi yoktur (menü sayfaları yetki değildir). Okuma uçlarında rol kararı core kapsamındadır
+ * (`scopeFor`, modül rol listesi dahil); bu yardımcı modüle bağlı diğer uçlar içindir.
  */
 const MODULE_ROLES: ReadonlyMap<string, ReadonlySet<Role>> = new Map(
   schoolModules.map((module) => [module.key, new Set(module.roles)]),
@@ -60,15 +55,24 @@ export function toModuleMap(value: unknown): Record<string, boolean> {
   )
 }
 
-/** Kurumun etkin modül haritası; kurum yoksa `null` (üyelik doğrulandığı için olağan değil). */
-export async function getEnabledModules(
+export interface InstitutionModules {
+  type: InstitutionType
+  /** Etkin modül haritası (`effectiveModules`). */
+  modules: Record<string, boolean>
+}
+
+/**
+ * Kurumun türü ve etkin modül haritası; kurum yoksa `null` (üyelik doğrulandığı için olağan
+ * değil). Tür, modülün o kurumda bulunup bulunmadığını belirler (DOM-YTK-012).
+ */
+export async function getInstitutionModules(
   db: Database,
   institutionId: string,
-): Promise<Record<string, boolean> | null> {
+): Promise<InstitutionModules | null> {
   const [row] = await db
-    .select({ enabledModules: institutions.enabledModules })
+    .select({ type: institutions.type, enabledModules: institutions.enabledModules })
     .from(institutions)
     .where(eq(institutions.id, institutionId))
     .limit(1)
-  return row ? effectiveModules(toModuleMap(row.enabledModules)) : null
+  return row ? { type: row.type, modules: effectiveModules(toModuleMap(row.enabledModules)) } : null
 }

@@ -115,6 +115,20 @@ describe('modül kaydı ve requireModule (DOM-YTK-040)', () => {
     assert.equal(denied.json().requestId, denied.headers['x-request-id'])
   })
 
+  test('DOM-YTK-012: kurum türünde olmayan modül açık işaretli olsa da 404 döner', async () => {
+    const language = await createInstitution(app, {
+      type: 'language_school',
+      enabledModules: { guidance: true },
+    })
+    const cookie = await signInAs(app, language.admin)
+
+    const missing = await get('/api/v1/test-guidance', cookie)
+    assert.equal(missing.statusCode, 404)
+    assert.equal(missing.json().code, 'not_found')
+    assert.equal((await get('/api/v1/test-modules/tutoring', cookie)).statusCode, 404)
+    assert.equal((await get('/api/v1/test-modules/meals', cookie)).statusCode, 200)
+  })
+
   test('kapalı modül bütün rollerde kapalıdır', async () => {
     const institution = await createInstitution(app, { enabledModules: { guidance: false } })
     const teacher = await createMember(app, institution.id, 'ogretmen')

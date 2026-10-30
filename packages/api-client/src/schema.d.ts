@@ -73,7 +73,7 @@ export interface paths {
         };
         /**
          * Koleksiyon kayıtları
-         * @description Etkin kurumun koleksiyon kayıtlarını rol kapsamıyla, sayfalı döndürür. Kapalı modül 403 `module_disabled`, rolün okuyamadığı koleksiyon 403 `forbidden`, bilinmeyen koleksiyon 404.
+         * @description Etkin kurumun koleksiyon kayıtlarını rol kapsamıyla, sayfalı döndürür. Kapalı modül 403 `module_disabled`, rolün okuyamadığı koleksiyon 403 `forbidden`, bilinmeyen koleksiyon veya kurum türünde bulunmayan modülün koleksiyonu 404.
          */
         get: operations["listCollection"];
         put?: never;
@@ -93,7 +93,7 @@ export interface paths {
         };
         /**
          * Koleksiyon kaydı
-         * @description Tek kayıt. Yok, arşivde veya başka kuruma ait kayıt 404 (varlığı sızdırılmaz); kapsam ve modül kuralları listeyle aynıdır.
+         * @description Tek kayıt. Yok, arşivde, başka kuruma ait veya aktörün kapsamı dışındaki kayıt 404 (varlığı sızdırılmaz); kapsam ve modül kuralları listeyle aynıdır.
          */
         get: operations["getCollectionRecord"];
         put?: never;

@@ -1,15 +1,21 @@
 import type { RecordData } from '../db/collections.ts'
-import { findRecord, loadRecords, type StoredRecord } from '../db/records.ts'
+import { findRecord, loadRecords, type FieldMatch, type StoredRecord } from '../db/records.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
-import { readableCollection, roleReadAccess, type RoleReadAccess } from './collection-access.ts'
+import { moduleOfCollection, readableCollection } from './collection-access.ts'
+import { assertReadable, readScope, scopePrefilter } from './read-scope.ts'
 
 /**
  * Koleksiyon okuma servisi (geçiş köprüsü: modüller kendi kaynak uçlarına geçene kadar). Kayıtlar
- * kurum kapsamlı depodan yüklenir; rol kapsamı ve alan kapsamı uygulandıktan sonra arama, filtre,
- * sıralama ve sayfalama bellekte yapılır. Varsayılan sıra deponun döndürdüğü sıradır.
- * TODO(collection-sql): büyük koleksiyonlar (not, yoklama) normalleşince veya ölçüm p95 > 50 ms
- * gösterince süzme ve sayfalama SQL'e iner (veritabani.md §4).
+ * kurum kapsamlı depodan yüklenir; core kapsamı (`scopeFor`) satırları süzüp alanları ayıkladıktan
+ * sonra arama, filtre, sıralama ve sayfalama bellekte, ayıklanmış alanlar üzerinde yapılır: rolün
+ * göremediği alan aramada da eşleşmez. Varsayılan sıra deponun döndürdüğü sıradır.
+ *
+ * Veritabanı yalnız aday satırları döndürür: eşitlik filtreleri ve büyük kişisel koleksiyonlarda
+ * kapsam kimlikleri SQL ön süzgecidir (`FieldMatch`, `scopePrefilter`); karar yine bellekte,
+ * core kapsamı ve ayıklanmış alanlarla verilir.
+ * TODO(collection-sql): sayfalama ve sıralama SQL'e inmedi; yönetici büyük koleksiyonu tümüyle
+ * yükler (`read-scope.ts` `TODO(perf)`; veritabani.md §4).
  */
 
 /** Eşitlik filtresi kabul edilen veri alanları (beyaz liste; bilinmeyen sorgu parametresi 400). */
@@ -96,10 +102,13 @@ export function parseSort(raw: string | undefined): SortKey[] {
   })
 }
 
-function project(row: StoredRecord, access: RoleReadAccess): CollectionItem {
-  const record: RecordData = {}
-  const hidden = new Set(access.omit)
-  for (const [key, value] of Object.entries(row.data)) if (!hidden.has(key)) record[key] = value
+/** Kapsamdan geçmiş satır ve rolün görebildiği alanları (ayıklanmış kopya). */
+interface VisibleRow {
+  row: StoredRecord
+  record: RecordData
+}
+
+function toItem({ row, record }: VisibleRow): CollectionItem {
   return {
     id: row.id,
     version: row.version,
@@ -122,8 +131,8 @@ function searchable(value: unknown): string[] {
   return []
 }
 
-function matchesSearch(item: CollectionItem, needle: string): boolean {
-  return Object.values(item.record).some((value) =>
+function matchesSearch(record: RecordData, needle: string): boolean {
+  return Object.values(record).some((value) =>
     searchable(value).some((text) => searchKey(text).includes(needle)),
   )
 }
@@ -134,16 +143,17 @@ function primitiveText(value: unknown): string | null {
   return null
 }
 
-function matchesFilter(item: CollectionItem, field: FilterField, values: readonly string[]) {
-  const value = item.record[field]
+function matchesFilter(record: RecordData, { field, values }: FieldMatch) {
+  const value = record[field]
   const candidates = Array.isArray(value) ? value.map(primitiveText) : [primitiveText(value)]
   return candidates.some((text) => text !== null && values.includes(text))
 }
 
-function sortValue(item: CollectionItem, field: SortField): unknown {
-  if (field === 'id') return item.id
-  if (field === 'createdAt') return item.createdAt
-  if (field === 'updatedAt') return item.updatedAt
+function sortValue(item: VisibleRow, field: SortField): unknown {
+  // Kolon zamanları ISO metni olarak karşılaştırılır (yanıttaki biçimle aynı sıra).
+  if (field === 'id') return item.row.id
+  if (field === 'createdAt') return item.row.createdAt.toISOString()
+  if (field === 'updatedAt') return item.row.updatedAt.toISOString()
   return item.record[field]
 }
 
@@ -162,7 +172,7 @@ function compareValues(a: unknown, b: unknown, descending: boolean): number {
   return descending ? -result : result
 }
 
-function sorted(items: CollectionItem[], keys: readonly SortKey[]): CollectionItem[] {
+function sorted(items: VisibleRow[], keys: readonly SortKey[]): VisibleRow[] {
   if (keys.length === 0) return items
   // Eşitlikte deponun sırası korunur (kararlı sıralama); aynı sorgu aynı sırayı verir.
   return items
@@ -186,44 +196,67 @@ export async function listCollection(
   name: string,
   query: CollectionListQuery,
 ): Promise<{ items: CollectionItem[]; total: number }> {
-  const { collection, access } = readableCollection(name)
-  const roleAccess = roleReadAccess(access, ctx.actor.role)
+  const collection = readableCollection(name)
+  const scope = await readScope(ctx)
+  assertReadable(ctx, scope, collection)
+  const filters: FieldMatch[] = FILTER_FIELDS.flatMap((field) => {
+    const values = query.filters?.[field]
+    return values && values.length > 0 ? [{ field, values }] : []
+  })
+  const needle = query.q ? searchKey(query.q) : null
+  const narrowed = filters.length > 0 || needle !== null
+  const matches = (record: RecordData) =>
+    filters.every((filter) => matchesFilter(record, filter)) &&
+    (needle === null || matchesSearch(record, needle))
+  const prefilter = scopePrefilter(scope, collection)
   const rows = await loadRecords(ctx.db, ctx.institutionId, [collection], {
     includeArchived: query.archived !== undefined,
+    match: prefilter ? [prefilter, ...filters] : filters,
   })
-  let items = rows
-    .filter((row) => query.archived !== 'only' || row.archivedAt !== null)
-    .map((row) => project(row, roleAccess))
-  for (const field of FILTER_FIELDS) {
-    const values = query.filters?.[field]
-    if (values && values.length > 0)
-      items = items.filter((item) => matchesFilter(item, field, values))
-  }
-  if (query.q) {
-    const needle = searchKey(query.q)
-    items = items.filter((item) => matchesSearch(item, needle))
-  }
-  items = sorted(items, query.sort ?? [])
+  // Ayıklama alan çıkarır veya daraltır, eklemez: ham kayıtta eşleşmeyen ayıklanmışta da
+  // eşleşmez. Ham eşleşme yalnız adaydır; karar ayıklanmış kayıtta verilir.
+  const visible = rows.filter(
+    (row) =>
+      (query.archived !== 'only' || row.archivedAt !== null) &&
+      scope.canRead(collection, row.data) &&
+      (!narrowed || matches(row.data)),
+  )
+  const redact = (row: StoredRecord): VisibleRow => ({
+    row,
+    record: scope.redact(collection, row.data),
+  })
   const start = (query.page - 1) * query.pageSize
-  return { items: items.slice(start, start + query.pageSize), total: items.length }
+  const sort = query.sort ?? []
+  if (!narrowed && sort.length === 0)
+    // Arama ve sıralama yoksa yalnız istenen sayfa ayıklanır.
+    return {
+      items: visible.slice(start, start + query.pageSize).map((row) => toItem(redact(row))),
+      total: visible.length,
+    }
+  let items = visible.map(redact)
+  if (narrowed) items = items.filter((item) => matches(item.record))
+  items = sorted(items, sort)
+  return { items: items.slice(start, start + query.pageSize).map(toItem), total: items.length }
 }
 
+/** Tek kayıt. Yok, arşivde, başka kurumda veya aktörün kapsamı dışında: aynı 404 (DOM-YTK-011). */
 export async function getCollectionItem(
   ctx: ServiceContext,
   name: string,
   id: string,
   options: { archived?: 'include' | undefined } = {},
 ): Promise<CollectionItem> {
-  const { collection, access } = readableCollection(name)
-  const roleAccess = roleReadAccess(access, ctx.actor.role)
+  const collection = readableCollection(name)
+  const scope = await readScope(ctx)
+  assertReadable(ctx, scope, collection)
   const row = await findRecord(ctx.db, ctx.institutionId, collection, id, {
     includeArchived: options.archived === 'include',
   })
-  if (!row) throw new NotFoundError()
-  return project(row, roleAccess)
+  if (!row || !scope.canRead(collection, row.data)) throw new NotFoundError()
+  return toItem({ row, record: scope.redact(collection, row.data) })
 }
 
-/** `requireModule` çözücüsü: koleksiyonun modülü; bilinmeyen koleksiyon 404. */
+/** `requireModule` çözücüsü: koleksiyonun core modülü; bilinmeyen koleksiyon 404. */
 export function collectionModule(name: string): string | null {
-  return readableCollection(name).access.module
+  return moduleOfCollection(readableCollection(name))
 }

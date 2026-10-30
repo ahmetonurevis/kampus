@@ -35,9 +35,27 @@ export interface StoredRecord {
   archivedAt: Date | null
 }
 
+/**
+ * Veri alanı ön süzgeci: alanın metin değeri (`data ->> alan`) değerlerden biri olmalı ya da alan
+ * dizi olmalı (dizi üyeliği SQL'de denetlenmez). Gerekli koşuldur, yeter koşul değil: çağıran
+ * satırları yine kendi kuralıyla süzer. Alan adı ve değerler sorgu parametresidir.
+ */
+export interface FieldMatch {
+  field: string
+  values: readonly string[]
+}
+
 export interface LoadOptions {
   /** Arşivlenmişler varsayılan olarak dışarıda kalır. */
   includeArchived?: boolean
+  /** Hepsi sağlanmalı (`and`); boş değer listesinde yalnız alanı dizi olan satırlar kalır. */
+  match?: readonly FieldMatch[]
+}
+
+function fieldMatch({ field, values }: FieldMatch): SQL {
+  const text = sql`(${records.data} ->> ${field}::text)`
+  const array = sql`jsonb_typeof(${records.data} -> ${field}::text) = 'array'`
+  return values.length === 0 ? array : sql`(${inArray(text, [...values])} or ${array})`
 }
 
 /**
@@ -115,6 +133,7 @@ export async function loadRecords(
     inArray(records.collection, [...collections]),
   ]
   if (!options.includeArchived) filters.push(isNull(records.archivedAt))
+  for (const match of options.match ?? []) filters.push(fieldMatch(match))
   const rows = await db
     .select()
     .from(records)

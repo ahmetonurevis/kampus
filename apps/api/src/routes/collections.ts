@@ -32,7 +32,7 @@ function moduleOfRequest(request: FastifyRequest): string | null {
 
 /**
  * Koleksiyon okuma uçları (geçiş köprüsü, api-tasarimi.md §1). Her rol kimlik doğrulamasından
- * geçer; koleksiyona göre rol ve alan kapsamı serviste uygulanır (varsayılan ret).
+ * geçer; rol, kayıt ve alan kapsamı serviste school-core `scopeFor` ile uygulanır (varsayılan ret).
  */
 export function registerCollectionRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
@@ -47,7 +47,7 @@ export function registerCollectionRoutes(app: FastifyInstance) {
         tags: ['collections'],
         summary: 'Koleksiyon kayıtları',
         description:
-          'Etkin kurumun koleksiyon kayıtlarını rol kapsamıyla, sayfalı döndürür. Kapalı modül 403 `module_disabled`, rolün okuyamadığı koleksiyon 403 `forbidden`, bilinmeyen koleksiyon 404.',
+          'Etkin kurumun koleksiyon kayıtlarını rol kapsamıyla, sayfalı döndürür. Kapalı modül 403 `module_disabled`, rolün okuyamadığı koleksiyon 403 `forbidden`, bilinmeyen koleksiyon veya kurum türünde bulunmayan modülün koleksiyonu 404.',
         params: collectionParamsSchema,
         querystring: collectionListQuerySchema,
         response: { 200: collectionListResponseSchema, ...errors },
@@ -81,7 +81,7 @@ export function registerCollectionRoutes(app: FastifyInstance) {
         tags: ['collections'],
         summary: 'Koleksiyon kaydı',
         description:
-          'Tek kayıt. Yok, arşivde veya başka kuruma ait kayıt 404 (varlığı sızdırılmaz); kapsam ve modül kuralları listeyle aynıdır.',
+          'Tek kayıt. Yok, arşivde, başka kuruma ait veya aktörün kapsamı dışındaki kayıt 404 (varlığı sızdırılmaz); kapsam ve modül kuralları listeyle aynıdır.',
         params: collectionRecordParamsSchema,
         querystring: collectionRecordQuerySchema,
         response: { 200: collectionItemResponseSchema, ...errors },

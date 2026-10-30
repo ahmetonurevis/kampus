@@ -10,7 +10,12 @@ import {
   scheduledAppointments,
   type AppointmentStatus,
 } from '@kampus/school-core/lib/appointment-status.ts'
+import {
+  APPOINTMENT_TYPES,
+  APPOINTMENT_TYPES_BY_ROLE,
+} from '@kampus/school-core/lib/appointments.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
+import type { FilterField } from '@/lib/list-query.ts'
 import type { CoreRow } from '@/hooks/use-core-collection.ts'
 
 /** Ekranı kullanan taraf; veli ve öğrenci aynı ekranı farklı tür seçenekleriyle görür. */
@@ -93,7 +98,9 @@ const isStatus = (value: string): value is AppointmentStatus =>
  * Durumdaki geçerli işlemler (DOM-ILT-102). Öğretmen bekleyen talebi onaylar (saat gelecekte
  * olmalı) ya da reddeder; talep eden onaydan önce geri çeker. Onaylı ve başlamamış randevuyu
  * öğretmen ya da talep eden iptal eder. Yönetici ve ön büro randevuyu değiştirmez
- * (`TODO(randevu-yonetici-iptal)`). Sunucu aynı kuralı yeniden denetler.
+ * (`TODO(randevu-yonetici-iptal)`). Sunucu aynı kuralı yeniden denetler. Saate bağlıdır:
+ * `AppointmentRow.actions` satır kurulduğu andaki değerdir; açık duran ekranlar düğmeleri
+ * her çizimde güncel `now` ile buradan hesaplar.
  */
 export function appointmentActions(
   row: { status: string; startsAt: string; mine: boolean },
@@ -108,6 +115,25 @@ export function appointmentActions(
   if (row.status === 'Onaylandı' && future && (audience === 'teacher' || row.mine))
     return ['cancel']
   return []
+}
+
+/**
+ * Liste süzgeçleri: durum ve tür. Seçenekler satırlardan türetilmez, sabittir; böylece süzgeç
+ * henüz hiç satırı olmayan bir durumu (ör. "Reddedildi") da seçtirir ve boş sonuç söyler.
+ * Öğrenci yalnız kendi seçebildiği türleri (`APPOINTMENT_TYPES_BY_ROLE`), öğretmen ve veli
+ * öteki tarafın açtığı türleri de görür.
+ */
+export function appointmentFilters(audience: AppointmentAudience): FilterField[] {
+  const types: readonly string[] =
+    audience === 'student' ? APPOINTMENT_TYPES_BY_ROLE.ogrenci : APPOINTMENT_TYPES
+  return [
+    {
+      key: 'status',
+      label: 'Durum',
+      options: APPOINTMENT_STATUSES.map((value) => ({ value, label: value })),
+    },
+    { key: 'type', label: 'Tür', options: types.map((value) => ({ value, label: value })) },
+  ]
 }
 
 export function appointmentLookups(
@@ -159,9 +185,14 @@ export function appointmentRow(
   }
 }
 
-/** Sıra: bekleyen talepler, onaylılar, sonra sonuçlananlar. İlk ikisi yaklaşan önce, sonuncusu yeniden eskiye. */
-export function orderAppointments(rows: readonly AppointmentRow[]): AppointmentRow[] {
-  const rank = (row: AppointmentRow) => (row.status === 'Bekliyor' ? 0 : row.open ? 1 : 2)
+/**
+ * Sıra: bekleyen talepler, yaklaşan onaylılar, sonra sonuçlananlar. İlk ikisi yaklaşan önce,
+ * sonuncusu yeniden eskiye. Saati geçmiş onaylı randevu artık yaklaşan değil, yapılmış görüşmedir:
+ * sonuçlananlar grubuna girer (`now` ile).
+ */
+export function orderAppointments(rows: readonly AppointmentRow[], now: string): AppointmentRow[] {
+  const rank = (row: AppointmentRow) =>
+    row.status === 'Bekliyor' ? 0 : row.open && Date.parse(row.startsAt) > Date.parse(now) ? 1 : 2
   const start = (row: AppointmentRow) => Date.parse(row.startsAt)
   return [...rows].sort(
     (a, b) => rank(a) - rank(b) || (rank(a) === 2 ? start(b) - start(a) : start(a) - start(b)),
@@ -183,6 +214,16 @@ export function upcomingSchedule(
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
     .slice(0, limit)
 }
+
+/**
+ * Veli panelinde açılan randevu seçili çocuğun değilse gösterilmez: adres (`?cocuk=s2&randevu=…`)
+ * başka çocuğun randevusunu taşıyabilir. Öğrenci ve öğretmende çocuk kavramı yoktur.
+ */
+export const outsideChildScope = (
+  row: Pick<AppointmentRow, 'studentId'>,
+  audience: AppointmentAudience,
+  childId: string | undefined,
+): boolean => audience === 'parent' && childId !== undefined && row.studentId !== childId
 
 export const pendingCount = (rows: readonly AppointmentRow[]) =>
   rows.filter((row) => row.status === 'Bekliyor').length

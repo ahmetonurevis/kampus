@@ -1,6 +1,7 @@
 import { use, useMemo } from 'react'
 import { useAuth } from '@/auth/use-auth.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
+import { EmptyState } from '@/components/EmptyState.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -17,6 +18,7 @@ import { AppointmentPanel } from './AppointmentPanel.tsx'
 import { BookAppointmentPanel, NEW_APPOINTMENT } from './BookAppointmentPanel.tsx'
 import {
   STATUS_TONES,
+  appointmentFilters,
   appointmentLookups,
   appointmentRow,
   orderAppointments,
@@ -64,10 +66,12 @@ export function AppointmentsPage({
   const now = useMinuteClock()
   const viewerId = session?.user.id ?? ''
 
+  // Bağlı çocuğu olmayan veli hesabı: sorgu açılmaz, sayfa yüklemede takılmaz (boş durum).
+  const noChild = parent && childId === ''
   const appointments = useCoreAll(
     'appointments',
     parent ? { filters: { studentId: childId } } : {},
-    { enabled: !parent || childId !== '' },
+    { enabled: !noChild },
   )
   const teachers = useCoreAll('teachers', {}, { enabled: !teacher })
   const lookups = useMemo(
@@ -79,10 +83,12 @@ export function AppointmentsPage({
       appointments.data && lookups
         ? orderAppointments(
             appointments.data.map((item) => appointmentRow(item, lookups, audience, viewerId, now)),
+            now,
           )
         : undefined,
     [appointments.data, lookups, audience, viewerId, now],
   )
+  const filters = useMemo(() => appointmentFilters(audience), [audience])
   const upcoming = useMemo(() => (rows ? upcomingSchedule(rows, now) : []), [rows, now])
 
   const columns = useMemo<DataColumn<AppointmentRow>[]>(
@@ -128,7 +134,17 @@ export function AppointmentsPage({
   }
   const tableName = teacher ? 'Talepler ve randevular' : 'Randevularım'
   const waiting = rows ? pendingCount(rows) : 0
-  const loading = rows === undefined && !error
+  const loading = rows === undefined && !error && !noChild
+  if (noChild)
+    return (
+      <>
+        {heading ? <PageHeading title={page.title} description={page.description} /> : null}
+        <EmptyState
+          title="Bağlı öğrenci bulunamadı."
+          description="Hesabınıza bağlı bir öğrenci olduğunda randevularınız burada görünür."
+        />
+      </>
+    )
   return (
     <>
       {heading ? <PageHeading title={page.title} description={page.description} /> : null}
@@ -153,7 +169,9 @@ export function AppointmentsPage({
             mobileColumns={['startsAt', 'status']}
             caption={tableName}
             searchKeys={SEARCH_KEYS}
+            filters={filters}
             empty={teacher ? 'Henüz randevu talebi yok.' : 'Henüz randevu talebiniz yok.'}
+            emptyFiltered="Aramanızla eşleşen randevu bulunamadı."
             onRowClick={(row) => openAppointment(row.id)}
           />
         </TableGate>
@@ -163,6 +181,9 @@ export function AppointmentsPage({
         onClose={panel.close}
         audience={audience}
         lookups={lookups}
+        lookupsError={teachers.error}
+        onRetryLookups={() => void teachers.refetch()}
+        childId={parent ? childId : undefined}
       />
       {teacher ? null : (
         <BookAppointmentPanel

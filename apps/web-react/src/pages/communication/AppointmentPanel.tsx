@@ -1,5 +1,5 @@
 import { useAuth } from '@/auth/use-auth.ts'
-import { QueryError } from '@/components/QueryError.tsx'
+import { NOT_FOUND_MESSAGE, QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { useCoreItem } from '@/hooks/use-core-collection.ts'
 import { useMinuteClock } from '@/hooks/use-minute-clock.ts'
@@ -14,6 +14,7 @@ import { AppointmentActions } from './AppointmentActions.tsx'
 import {
   STATUS_TONES,
   appointmentRow,
+  outsideChildScope,
   type AppointmentAudience,
   type AppointmentLookups,
   type AppointmentRow,
@@ -25,6 +26,11 @@ type Props = {
   audience: AppointmentAudience
   /** Öğretmen adları; hazır olana kadar `undefined`. */
   lookups: AppointmentLookups | undefined
+  /** Öğretmen adları okunamadıysa hata; panel yüklemede kalmaz. */
+  lookupsError?: unknown
+  onRetryLookups?: () => void
+  /** Veli için seçili çocuk; başka çocuğun randevusu bu panelde açılmaz. Diğer rollerde boş. */
+  childId?: string
 }
 
 /**
@@ -32,7 +38,15 @@ type Props = {
  * başka öğretmenin randevusu) olmayan kayıtla aynı 404 ile "bulunamadı" olur (DOM-ILT-103).
  * Konu, durum geçmişi (kim, ne zaman, gerekçe) ve geçerli işlemler görünür (DOM-ILT-102).
  */
-export function AppointmentPanel({ appointmentId, onClose, audience, lookups }: Props) {
+export function AppointmentPanel({
+  appointmentId,
+  onClose,
+  audience,
+  lookups,
+  lookupsError,
+  onRetryLookups,
+  childId,
+}: Props) {
   return (
     <SidePanel
       open={appointmentId !== ''}
@@ -40,7 +54,14 @@ export function AppointmentPanel({ appointmentId, onClose, audience, lookups }: 
       title="Randevu ayrıntısı"
     >
       {appointmentId ? (
-        <AppointmentDetail appointmentId={appointmentId} audience={audience} lookups={lookups} />
+        <AppointmentDetail
+          appointmentId={appointmentId}
+          audience={audience}
+          lookups={lookups}
+          lookupsError={lookupsError}
+          onRetryLookups={onRetryLookups}
+          childId={childId}
+        />
       ) : null}
     </SidePanel>
   )
@@ -50,18 +71,21 @@ function AppointmentDetail({
   appointmentId,
   audience,
   lookups,
-}: {
-  appointmentId: string
-  audience: AppointmentAudience
-  lookups: AppointmentLookups | undefined
-}) {
+  lookupsError,
+  onRetryLookups,
+  childId,
+}: Omit<Props, 'onClose'>) {
   const { session } = useAuth()
   const item = useCoreItem('appointments', appointmentId)
   const now = useMinuteClock()
   const viewerId = session?.user.id ?? ''
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
+  if (lookupsError && !lookups) return <QueryError error={lookupsError} onRetry={onRetryLookups} />
   if (!item.data || !lookups) return <SummaryLoading />
   const row = appointmentRow(item.data, lookups, audience, viewerId, now)
+  // Adres başka çocuğun randevusunu gösterebilir (`?cocuk=s2&randevu=<Deniz'in kimliği>`): seçili
+  // çocuğun olmayan randevu bu panelde açılmaz, olmayan kayıtla aynı "bulunamadı" görünür.
+  if (outsideChildScope(row, audience, childId)) return <NotFound />
   return (
     <>
       <SummaryHeader
@@ -108,6 +132,8 @@ function AppointmentDetail({
       <AppointmentActions
         key={row.id}
         row={row}
+        audience={audience}
+        now={now}
         reload={async () => {
           const fresh = (await item.refetch()).data
           return fresh
@@ -116,6 +142,14 @@ function AppointmentDetail({
         }}
       />
     </>
+  )
+}
+
+function NotFound() {
+  return (
+    <p role="status" className="text-center text-base text-muted-foreground">
+      {NOT_FOUND_MESSAGE}
+    </p>
   )
 }
 

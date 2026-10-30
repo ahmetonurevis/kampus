@@ -18,7 +18,11 @@ import {
   reasonLabel,
   transitionBody,
 } from './appointment-forms.ts'
-import type { AppointmentRow } from './appointment-rows.ts'
+import {
+  appointmentActions,
+  type AppointmentAudience,
+  type AppointmentRow,
+} from './appointment-rows.ts'
 
 /** `status` sunucu yolunun alanıdır (yanlış geçiş, çakışma, geçmiş saat); formda girdisi yoktur. */
 type ActionValues = { reason: string; status?: string }
@@ -28,12 +32,18 @@ type Props = {
   row: AppointmentRow
   /** Güncel randevuyu yeniden okur; gönderim ve çakışma sonrası eylemler bununla tazelenir. */
   reload: () => Promise<AppointmentRow | null>
+  audience: AppointmentAudience
+  /** Güncel an (dakikalık saat); düğmeler her çizimde bununla hesaplanır. */
+  now: string
 }
 
 /**
  * Randevu işlemleri: öğretmen onaylar ya da gerekçeyle reddeder, onaylı randevuyu gerekçeyle iptal
  * eder; talep eden bekleyen talebini geri çeker, onaylı randevusunu gerekçeyle iptal eder
  * (DOM-ILT-102). Hangi düğmenin göründüğü satırdan türer (`appointmentActions`); karar sunucudadır.
+ *
+ * Düğmelerin görünürlüğü her çizimde güncel saatle hesaplanır; `base` yalnız `If-Match` sürümünü
+ * ve gerekçe formunun tabanını taşır.
  *
  * `If-Match` formun kurulduğu (ya da son tazelendiği) andaki sürümdür (`base`, W16b deseni): sorgu
  * arkadan yeni sürüm getirse bile gerekçe yazmaya başlanmış (kirli) form eski sürümle gönderir ve
@@ -43,7 +53,7 @@ type Props = {
  * salt okunur kopyası görünür. Sunucunun alan hataları (çakışma, geçmiş saat) düğmelerin üstünde
  * tek yerde görünür; toast çıkmaz.
  */
-export function AppointmentActions({ row, reload }: Props) {
+export function AppointmentActions({ row, reload, audience, now }: Props) {
   const update = useUpdateAppointment()
   const [base, setBase] = useState<AppointmentRow>(row)
   const [confirming, setConfirming] = useState(false)
@@ -57,7 +67,9 @@ export function AppointmentActions({ row, reload }: Props) {
   // (render sırasında kendi state'inin ayarlanması); kirli form eski tabanda kalır.
   if (row.version !== base.version && !dirty) setBase(row)
 
-  const actions = base.actions
+  // Düğmeler `base.actions`ten değil güncel saatten türer: sürüm değişmese de saat geçince
+  // "Onayla" ve onaylı randevunun "İptal"i kalkar (sunucu zaten geçmiş saati reddeder).
+  const actions = appointmentActions(base, audience, now)
   const needsReason = actions.includes('reject') || actions.includes('cancel')
 
   async function run(status: AppointmentTransition) {

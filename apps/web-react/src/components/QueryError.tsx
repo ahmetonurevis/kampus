@@ -9,13 +9,13 @@ import { ModuleClosedRedirect } from '@/pages/shell/ModuleClosedRedirect.tsx'
 
 const FALLBACK = 'Kayıtlar yüklenemedi. Lütfen yeniden deneyin.'
 const FORBIDDEN = 'Bu kayıtları görüntüleme yetkiniz yok.'
-const NOT_FOUND = 'Kayıt bulunamadı. Silinmiş veya arşive taşınmış olabilir.'
+export const NOT_FOUND_MESSAGE = 'Kayıt bulunamadı. Silinmiş veya arşive taşınmış olabilir.'
 
 /** Kullanıcıya gösterilecek Türkçe metin; teknik ayrıntı (kod, istek kimliği) yalnız loga gider. */
 export function queryErrorMessage(error: unknown): string {
   if (!isApiError(error)) return FALLBACK
   if (error.status === 403 && error.code === 'forbidden') return FORBIDDEN
-  if (error.status === 404) return NOT_FOUND
+  if (error.status === 404) return NOT_FOUND_MESSAGE
   return error.message || FALLBACK
 }
 

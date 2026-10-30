@@ -98,6 +98,7 @@ export function ContentPoolPanel({ resourceId, onClose, onEdit, subjectNames }: 
           detail={staff}
           reload={async () => void (await detail.refetch())}
           onEdit={onEdit}
+          onClose={onClose}
           subjectNames={subjectNames}
         />
       ) : data ? (
@@ -117,11 +118,13 @@ function PanelBody({
   detail,
   reload,
   onEdit,
+  onClose,
   subjectNames,
 }: {
   detail: StaffResourceDetail
   reload: () => Promise<void>
   onEdit: (resourceId: string) => void
+  onClose: () => void
   subjectNames: ReadonlyMap<string, string>
 }) {
   const { session } = useAuth()
@@ -321,8 +324,12 @@ function PanelBody({
             },
             { setError, silent: isVersionConflict },
           )
-          if (outcome.status === 'success') notify.success(SUCCESS.reject)
-          else if (outcome.status === 'failed' && isVersionConflict(outcome.error)) {
+          if (outcome.status === 'success') {
+            notify.success(SUCCESS.reject)
+            // Reddedilen taslak yalnız yazarına görünür (DOM-KYN-052): yönetici için panel kapanır.
+            if (head.authorUserId !== actor.userId && resource.ownerUserId !== actor.userId)
+              onClose()
+          } else if (outcome.status === 'failed' && isVersionConflict(outcome.error)) {
             setConflict(true)
             setRejecting(false)
           }

@@ -29,15 +29,10 @@ const KNOWN_PLACEHOLDERS: readonly string[] = [
   'ogrenci/sinav-analizi',
   'ogrenci/seviye-takibi',
   'ogrenci/randevu-talep',
-  'ogrenci/odemelerim',
   'veli/ogretmen-degerlendirmeleri',
   'veli/sinav-analizi',
   'veli/seviye-takibi',
   'veli/devamsizlik-bildirimi',
-  'veli/finans',
-  'veli/odeme-yap',
-  'veli/dekontlar',
-  'veli/sozlesmeler',
   'veli/sikayet-talep',
 ]
 

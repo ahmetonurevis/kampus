@@ -139,3 +139,59 @@ export function invoiceCsvRow(row: InvoiceRow) {
     status: row.status,
   }
 }
+
+/** Veli ve öğrenci görünümünün kapsamı: sabit öğrenci (veli: seçili çocuk) ve yalnız ödenmişler. */
+export type FamilyScope = {
+  /** Veli: seçili çocuk. Öğrencide boştur; kapsamı sunucu kendi kaydına daraltır. */
+  studentId: string
+  /** Dekontlar: yalnız ödenmiş taksitler. */
+  paidOnly: boolean
+}
+
+function withFamilyScope<T extends Pick<CollectionQuery, 'filters'>>(
+  query: T,
+  scope: FamilyScope,
+): T {
+  const filters: Record<string, string | readonly string[]> = { ...query.filters }
+  if (scope.studentId) filters.studentId = scope.studentId
+  if (scope.paidOnly) filters.status = INVOICE_STATUS_LABELS.odendi
+  return { ...query, filters }
+}
+
+/** Veli/öğrenci taksit listesi sorgusu: seçili çocuk ve (dekontlarda) ödendi süzgeci eklenir. */
+export function familyInvoiceListQuery(state: ListState, search: string, scope: FamilyScope) {
+  return withFamilyScope(invoiceListQuery(state, search), scope)
+}
+
+/** CSV için sayfasız aynı sorgu. */
+export function familyInvoiceExportQuery(state: ListState, search: string, scope: FamilyScope) {
+  return withFamilyScope(invoiceExportQuery(state, search), scope)
+}
+
+/** Kalan tutar: ödenmemiş taksitte taksit tutarı, ödenmişte 0 (kuruş). */
+export function remainingAmount(row: Pick<InvoiceRow, 'amount' | 'paidAt'>): number {
+  return row.paidAt ? 0 : row.amount
+}
+
+/** Veli/öğrenci CSV satırı: vade, tutar, kalan ve durum okunur biçimde. */
+export function familyInvoiceCsvRow(row: InvoiceRow) {
+  return {
+    installment: `${row.installment}. taksit`,
+    dueDate: dateLabel(row.dueDate, { year: 'numeric' }),
+    amount: money(row.amount),
+    remaining: money(remainingAmount(row)),
+    status: row.status,
+  }
+}
+
+/**
+ * Veli/öğrenci toplam kartları için sayım sorgusu (liste araması ve durumundan bağımsız): yalnız
+ * seçili çocuk; öğrencide sunucu kapsamı yeter.
+ */
+export function familyTotalsQuery(studentId: string) {
+  return {
+    groupBy: 'status',
+    sum: 'amount',
+    ...(studentId ? { filters: { studentId } } : {}),
+  } as const
+}

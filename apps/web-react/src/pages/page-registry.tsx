@@ -47,6 +47,19 @@ const SettingsPage = lazy(async () => ({
 const FinancePage = lazy(async () => ({
   default: (await import('./finance/FinancePage.tsx')).FinancePage,
 }))
+// Veli ve öğrenci ödeme sayfaları tek parçadır (aynı taksit görünümünü paylaşırlar).
+const ParentFinancePage = lazy(async () => ({
+  default: (await import('./finance/FamilyFinancePages.tsx')).ParentFinancePage,
+}))
+const ParentPayPage = lazy(async () => ({
+  default: (await import('./finance/FamilyFinancePages.tsx')).ParentPayPage,
+}))
+const ParentContractsPage = lazy(async () => ({
+  default: (await import('./finance/FamilyFinancePages.tsx')).ParentContractsPage,
+}))
+const StudentPaymentsPage = lazy(async () => ({
+  default: (await import('./finance/FamilyFinancePages.tsx')).StudentPaymentsPage,
+}))
 
 const TeacherHomeworkPage = lazy(async () => ({
   default: (await import('./learning/TeacherHomeworkPage.tsx')).TeacherHomeworkPage,
@@ -109,6 +122,16 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
     case 'yonetici/finans':
     case 'onburo/tahsilat-takip':
       return <FinancePage page={page} />
+    case 'veli/finans':
+      return <ParentFinancePage page={page} receipts={false} />
+    case 'veli/dekontlar':
+      return <ParentFinancePage page={page} receipts />
+    case 'veli/odeme-yap':
+      return <ParentPayPage page={page} />
+    case 'veli/sozlesmeler':
+      return <ParentContractsPage page={page} />
+    case 'ogrenci/odemelerim':
+      return <StudentPaymentsPage page={page} />
     case 'ogretmen/siniflarim':
       return <TeacherClassesPage page={page} />
     case 'ogretmen/yoklama':

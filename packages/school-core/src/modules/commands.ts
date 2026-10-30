@@ -144,6 +144,22 @@ export const OPERATION_COMMANDS = {
     ...CONFLICTS,
   ]),
   'record.restore': spec(null, [...SCOPE, 'branches']),
+  // Kampüs/öğretmen/sınıf kaydı (`saveBranch`, `saveTeacher`, `saveClass`): çekirdek kayıtlar,
+  // modül kapatılamaz. Öğretmen kampüs/branş değişikliği gelecek etütleri, sınıf düzenlemesi
+  // program/randevu/etüt/etkinlik çakışmalarını denetler ve açık ödev, soru, quiz ve çalışma
+  // görevlerini yeni ders öğretmenine taşır.
+  'branch.save': spec(null, [...SCOPE, 'branches']),
+  'teacher.save': spec(null, [...SCOPE, 'branches', 'tutorSessions']),
+  'class.save': spec(null, [
+    ...SCOPE,
+    'branches',
+    'homework',
+    'submissions',
+    'questions',
+    'quizzes',
+    'studyTasks',
+    ...CONFLICTS,
+  ]),
   // İletişim (`lib/communication.ts`); alıcı çözümü kampüs listesini de okur.
   'announcement.publish': spec('communication', [...SCOPE, 'branches', 'announcements']),
   'announcement.revise': spec('communication', [...SCOPE, 'announcements']),

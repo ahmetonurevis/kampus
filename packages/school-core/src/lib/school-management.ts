@@ -26,6 +26,17 @@ export const classSchema = z.object({
   capacity: z.coerce.number().int().min(1).max(40),
   room: requiredText.max(30),
 })
+/** Ders → branş öğretmeni seçimi (sınıfın düzeyindeki her ders için bir öğretmen). */
+export const subjectTeachersSchema = z.record(z.string().trim().min(1).max(40), requiredText)
+/** Sınıf kaydı + ders atamaları: API gövdesi ve form şeması (`saveClass` iki parçayı ayrı alır). */
+export const classInputSchema = classSchema.extend({ subjectTeachers: subjectTeachersSchema })
+/**
+ * Düzenleme gövdeleri: gönderilmeyen alan kaydın güncel değeriyle doldurulur, sonra kayıt
+ * şemasıyla bütün olarak doğrulanır (`updateBranch`, `updateTeacher`, `updateClass`).
+ */
+export const branchPatchSchema = branchSchema.partial()
+export const teacherPatchSchema = teacherSchema.partial()
+export const classPatchSchema = classInputSchema.partial()
 export type ArchiveKind = 'branch' | 'class' | 'teacher'
 // Ders ve randevular aynı listede denetlenir; randevunun sınıfı ve dersliği yoktur.
 type Booked = Interval & { teacherId: string; classId?: string; room?: string }
@@ -50,15 +61,13 @@ export function saveBranch(
     throw new DomainError('branch_not_found', 'Düzenlenecek aktif kampüs bulunamadı.', {
       kind: 'not_found',
     })
-  if (existing) Object.assign(existing, data)
-  else
-    state.branches.push({
-      ...data,
-      id: makeId('b'),
-      color: '#8674c9',
-      isActive: true,
-      deletedAt: null,
-    })
+  if (existing) {
+    Object.assign(existing, data)
+    return existing.id
+  }
+  const id = makeId('b')
+  state.branches.push({ ...data, id, color: '#8674c9', isActive: true, deletedAt: null })
+  return id
 }
 export function saveTeacher(
   state: State,
@@ -104,19 +113,23 @@ export function saveTeacher(
       'teacher_has_assignments',
       'Branşı değiştirmeden önce mevcut ders atamalarını başka bir öğretmene devredin.',
     )
-  if (existing) Object.assign(existing, data, { subject: subject.name })
-  else
-    state.teachers.push({
-      ...data,
-      id: makeId('t'),
-      subject: subject.name,
-      attendanceRate: 100,
-      homeworkRate: 100,
-      isActive: true,
-      deletedAt: null,
-      // Rehberlik görevi öğretmen formundan verilmez; yeni öğretmen görevsiz başlar.
-      guidanceCounselor: false,
-    })
+  if (existing) {
+    Object.assign(existing, data, { subject: subject.name })
+    return existing.id
+  }
+  const id = makeId('t')
+  state.teachers.push({
+    ...data,
+    id,
+    subject: subject.name,
+    attendanceRate: 100,
+    homeworkRate: 100,
+    isActive: true,
+    deletedAt: null,
+    // Rehberlik görevi öğretmen formundan verilmez; yeni öğretmen görevsiz başlar.
+    guidanceCounselor: false,
+  })
+  return id
 }
 export function saveClass(
   state: State,
@@ -172,7 +185,7 @@ export function saveClass(
         'subject_teacher_required',
         `${subject.name} dersi için uygun branş öğretmeni seçin.`,
       )
-    return { id: makeId('assign'), classId: recordId, subjectId: subject.id, teacherId: teacher.id }
+    return { subjectId: subject.id, teacherId: teacher.id }
   })
   // Gelecek programda yeni öğretmenin başka bir dersiyle çakışmaya izin verilmez.
   const future = state.schedule.filter(
@@ -245,8 +258,20 @@ export function saveClass(
       isActive: true,
       deletedAt: null,
     })
-  state.assignments = state.assignments.filter((a) => a.classId !== classId)
-  state.assignments.push(...assignments.map((a) => ({ ...a, classId })))
+  // Aynı dersin ataması yerinde güncellenir (kimlik ve sürüm korunur); düzeyde olmayan dersin
+  // ataması kalkar, yeni ders sona eklenir.
+  const previous = new Map(
+    state.assignments.filter((a) => a.classId === classId).map((a) => [a.subjectId, a]),
+  )
+  const subjects = new Set(assignments.map((a) => a.subjectId))
+  state.assignments = state.assignments.filter(
+    (a) => a.classId !== classId || (subjects.has(a.subjectId) && previous.get(a.subjectId) === a),
+  )
+  for (const assignment of assignments) {
+    const kept = previous.get(assignment.subjectId)
+    if (kept) kept.teacherId = assignment.teacherId
+    else state.assignments.push({ id: makeId('assign'), classId, ...assignment })
+  }
   for (const lesson of future) {
     lesson.teacherId =
       assignments.find((a) => a.subjectId === lesson.subjectId)?.teacherId || data.teacherId
@@ -278,6 +303,96 @@ export function saveClass(
       assignments.find((a) => a.subjectId === task.subjectId)?.teacherId || data.teacherId
   return classId
 }
+/** Sınıf ve ders atamalarını tek gövdeden açar (`classInputSchema`); yeni sınıfın kimliğini döndürür. */
+export function createClass(
+  state: State,
+  input: unknown,
+  makeId: MakeId,
+  now = new Date().toISOString(),
+) {
+  const { subjectTeachers, ...data } = classInputSchema.parse(input)
+  return saveClass(state, data, subjectTeachers, makeId, null, now)
+}
+
+/** Aktif kaydı düzenlenecek kayıt olarak bulur; yoksa `not_found` (arşivli kayıt düzenlenmez). */
+function editable<T extends { id: string; isActive: boolean }>(
+  items: readonly T[],
+  recordId: string,
+  code: string,
+  message: string,
+): T {
+  const record = active(items, recordId)
+  if (!record) throw new DomainError(code, message, { kind: 'not_found' })
+  return record
+}
+
+/** Kampüsü kısmi gövdeyle düzenler: gönderilmeyen alan güncel değerinde kalır. */
+export function updateBranch(state: State, recordId: string, input: unknown, makeId: MakeId) {
+  const patch = branchPatchSchema.parse(input)
+  const { name, address } = editable(
+    state.branches,
+    recordId,
+    'branch_not_found',
+    'Düzenlenecek aktif kampüs bulunamadı.',
+  )
+  return saveBranch(state, { name, address, ...patch }, makeId, recordId)
+}
+
+/** Öğretmeni kısmi gövdeyle düzenler; rehberlik görevi bu yoldan değişmez. */
+export function updateTeacher(
+  state: State,
+  recordId: string,
+  input: unknown,
+  makeId: MakeId,
+  now = new Date().toISOString(),
+) {
+  const patch = teacherPatchSchema.parse(input)
+  const { name, email, phone, subjectId, branchId } = editable(
+    state.teachers,
+    recordId,
+    'teacher_not_found',
+    'Düzenlenecek aktif öğretmen bulunamadı.',
+  )
+  return saveTeacher(
+    state,
+    { name, email, phone, subjectId, branchId, ...patch },
+    makeId,
+    recordId,
+    now,
+  )
+}
+
+/**
+ * Sınıfı kısmi gövdeyle düzenler. `subjectTeachers` ders bazında birleşir: gönderilmeyen dersin
+ * öğretmeni mevcut atamadan gelir.
+ */
+export function updateClass(
+  state: State,
+  recordId: string,
+  input: unknown,
+  makeId: MakeId,
+  now = new Date().toISOString(),
+) {
+  const { subjectTeachers, ...patch } = classPatchSchema.parse(input)
+  const { grade, section, branchId, teacherId, capacity, room } = editable(
+    state.classes,
+    recordId,
+    'class_not_found',
+    'Düzenlenecek aktif sınıf bulunamadı.',
+  )
+  const current = Object.fromEntries(
+    state.assignments.filter((a) => a.classId === recordId).map((a) => [a.subjectId, a.teacherId]),
+  )
+  return saveClass(
+    state,
+    { grade, section, branchId, teacherId, capacity, room, ...patch },
+    { ...current, ...subjectTeachers },
+    makeId,
+    recordId,
+    now,
+  )
+}
+
 function overlaps(a: Interval, b: Interval) {
   const startA = +new Date(a.date),
     startB = +new Date(b.date)

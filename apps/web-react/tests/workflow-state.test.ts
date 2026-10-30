@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
 import {
+  csvTemplate,
   workflowCreateActions,
   workflowDetails,
   workflowForm,
@@ -11,6 +12,8 @@ import { schoolModules } from '@kampus/school-core/modules/school-workflows.ts'
 import type { Role } from '@kampus/school-core/modules/navigation.ts'
 import {
   buildWorkflowState,
+  csvFileProblem,
+  csvSummary,
   coreSession,
   dependentResets,
   formDefaults,
@@ -163,4 +166,28 @@ test('önizleme seçenek adını, onay kutusunu ve boş değeri okunur yazar', (
     lines.map((l) => l.value),
     ['Merkez', 'Seçilmedi', 'Evet', 'Pzt', '2026-11-06 12:00', '—'],
   )
+})
+
+test('csvSummary şablonu okur, bozuk içeriği Türkçe iletiyle bildirir', () => {
+  assert.deepEqual(csvSummary(csvTemplate), { ok: true, rows: 1 })
+  assert.deepEqual(csvSummary('   '), { ok: false, message: 'CSV içeriği boş.' })
+  const header = csvTemplate.split('\n')[0] ?? ''
+  assert.deepEqual(csvSummary('a;b\n1;2'), {
+    ok: false,
+    message: 'CSV başlıkları örnek şablonla aynı olmalıdır.',
+  })
+  assert.deepEqual(csvSummary(`${header}\nexam-7-1;s1;math;12;5`), {
+    ok: false,
+    message: 'CSV 2. satır: sütun sayısı veya sayısal değerler geçersiz.',
+  })
+  assert.deepEqual(csvSummary(`${header}\nexam-7-1;"s1;math;12;5;3;x`), {
+    ok: false,
+    message: 'CSV içinde kapanmamış tırnak var.',
+  })
+})
+
+test('csvFileProblem yalnız 1 MB altı .csv dosyasını kabul eder', () => {
+  assert.equal(csvFileProblem({ name: 'sonuc.CSV', size: 10 }), null)
+  assert.match(csvFileProblem({ name: 'sonuc.xlsx', size: 10 }) ?? '', /CSV dosyası/)
+  assert.match(csvFileProblem({ name: 'sonuc.csv', size: 1024 * 1024 + 1 }) ?? '', /1 MB/)
 })

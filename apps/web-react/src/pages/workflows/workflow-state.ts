@@ -4,6 +4,8 @@
 import type { State } from '@kampus/school-core/data/seed.ts'
 import type { Session as CoreSession } from '@kampus/school-core/lib/domain.ts'
 import { dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
+import { parseResultsCsv } from '@kampus/school-core/lib/school-workflows.ts'
 import {
   changeFormValue,
   readFormValue,
@@ -187,4 +189,31 @@ export function formPreview(fields: readonly WorkflowField[], values: FormValues
     else text = value === undefined || value === null ? '' : String(value)
     return { key: field.key, label: field.label, value: text || '—' }
   })
+}
+
+/** CSV aktarım dosyası sınırı (core şeması: en fazla 1 MB). */
+export const CSV_MAX_BYTES = 1024 * 1024
+
+/** Seçilen dosyanın türü ve boyutu uygun mu; uygun değilse kullanıcıya Türkçe ileti. */
+export function csvFileProblem(file: { name: string; size: number }): string | null {
+  return file.size > CSV_MAX_BYTES || !/\.csv$/i.test(file.name)
+    ? 'En fazla 1 MB boyutunda CSV dosyası seçin.'
+    : null
+}
+
+export type CsvSummary = { ok: true; rows: number } | { ok: false; message: string }
+
+/**
+ * Aktarım içeriğinin ön kontrolü: sunucunun uyguladığı ayrıştırıcıyla (`parseResultsCsv`, aynı
+ * ayraç ve tırnak kuralları) başlık, sütun sayısı ve satır sınırını denetler. Kaydı sunucu yine
+ * doğrular; bu yalnız hatayı göndermeden önce gösterir.
+ */
+export function csvSummary(text: unknown): CsvSummary {
+  if (typeof text !== 'string' || !text.trim()) return { ok: false, message: 'CSV içeriği boş.' }
+  try {
+    return { ok: true, rows: parseResultsCsv(text).length }
+  } catch (error) {
+    if (error instanceof DomainError) return { ok: false, message: error.message }
+    throw error
+  }
 }

@@ -1,14 +1,19 @@
 import { use, useCallback, useEffect, useReducer, useRef, useState, type UIEvent } from 'react'
-import { useLocation, useNavigationType, useSearchParams } from 'react-router'
+import { useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router'
 import { listReducer, restoreListState, type ScrollPosition } from '@/lib/list-state.ts'
 import {
   applyListParams,
   listStateFromParams,
   listStateToParams,
   listSync,
+  urlBelongsToScope,
 } from '@/lib/list-url.ts'
+import { createParamsWriter } from '@/lib/params-writer.ts'
 import { readView, writeView } from '@/lib/view-memory.ts'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
+
+// Aynı sayfadaki bütün listeler tek yazıcıyı paylaşır (bkz. params-writer).
+const writeParams = createParamsWriter(() => window.location.search)
 
 type Options = {
   pageSize?: number
@@ -30,15 +35,19 @@ export function useListState(
   key: string,
   { pageSize = 8, urlPrefix = '', resetKey = '' }: Options = {},
 ) {
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
   const location = useLocation()
   const navigationType = useNavigationType()
   const scope = use(ViewScopeContext)
   const memoryKey = `list:${location.pathname}:${scope}:${key}`
   const remembered = () => restoreListState(readView(memoryKey), pageSize)
   // İlk yüklemede (yenileme, paylaşılan bağlantı) URL bellekten önce gelir.
+  const urlScopeKey = `list-url-scope:${location.pathname}`
   const [state, dispatch] = useReducer(listReducer, undefined, () =>
-    listStateFromParams(params, urlPrefix, remembered()),
+    urlBelongsToScope(readView(urlScopeKey), scope)
+      ? listStateFromParams(params, urlPrefix, remembered())
+      : remembered(),
   )
 
   // Önceki çizimdeki adres ve liste anahtarı; değişince durum çizim sırasında yeniden kurulur
@@ -68,14 +77,15 @@ export function useListState(
   }, [memoryKey, state])
 
   useEffect(() => {
-    setParams(
-      (current) => {
-        const next = listStateToParams(state, urlPrefix, current)
-        return next.toString() === current.toString() ? current : next
-      },
-      { replace: true, preventScrollReset: true },
+    writeView(urlScopeKey, scope)
+    writeParams(
+      (current) => listStateToParams(state, urlPrefix, current),
+      (search) =>
+        void Promise.resolve(
+          navigate({ search }, { replace: true, preventScrollReset: true }),
+        ).catch((error: unknown) => console.error('[liste] adres güncellenemedi', error)),
     )
-  }, [state, urlPrefix, setParams])
+  }, [state, urlPrefix, navigate, urlScopeKey, scope])
 
   // İndirgeyici kaydırmayı sıfırladığında (filtre, sayfa, sıralama) alan başa döner.
   useEffect(() => {

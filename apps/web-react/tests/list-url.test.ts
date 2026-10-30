@@ -7,6 +7,7 @@ import {
   listStateToParams,
   listSync,
   shouldReadParams,
+  urlBelongsToScope,
 } from '../src/lib/list-url.ts'
 
 test('liste durumu URL parametresine yazılır ve geri okunur', () => {
@@ -81,4 +82,11 @@ test('liste anahtarı (ör. çocuk) değişince o anahtarın durumu kurulur, URL
   assert.equal(listSync(seen, moved, 'POP'), 'read-url')
   assert.equal(listSync(seen, moved, 'PUSH'), 'read-url')
   assert.equal(listSync(seen, moved, 'REPLACE'), 'track')
+})
+
+test('URL yalnız onu yazan kapsamda (çocukta) okunur; kayıt yoksa okunur', () => {
+  assert.equal(urlBelongsToScope(undefined, 's2'), true)
+  assert.equal(urlBelongsToScope('s1', 's1'), true)
+  assert.equal(urlBelongsToScope('s1', 's2'), false)
+  assert.equal(urlBelongsToScope('', ''), true)
 })

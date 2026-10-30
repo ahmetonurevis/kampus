@@ -96,3 +96,12 @@ export function applyListParams(
   if (sameUrlState(state, next)) return state
   return { ...next, scroll: { top: 0, left: state.scroll.left } }
 }
+
+/**
+ * URL'deki liste parametreleri hangi kapsamın (veli için çocuk) yazdığını bilir. Kapsam değişip
+ * sayfa yeniden kurulunca URL önceki çocuğa aittir ve okunmaz; kayıt yoksa (yenileme,
+ * paylaşılan bağlantı) URL okunur.
+ */
+export function urlBelongsToScope(writer: unknown, scope: string): boolean {
+  return typeof writer !== 'string' || writer === scope
+}

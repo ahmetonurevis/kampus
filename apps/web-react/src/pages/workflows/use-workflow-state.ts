@@ -16,6 +16,9 @@ import {
  * onayı, menüde "Bugün", kulüpte "Kayıtlı") koleksiyonlar bütünüyle okunur ve sayfalama
  * istemcidedir; sunucu tarafı sunum/sayfa ucu gelince bu kanca kalkar.
  *
+ * TODO(perf): program yönetiminde yöneticide ~1440 ders kaydı bütünüyle okunur (sayfa sayfa
+ * istek, istemci sayfalaması); sunucu sayfalı/tarih aralıklı uç gelince tarih penceresiyle okunur.
+ *
  * Yardımcı koleksiyon okunamazsa (403/404: ön büro atamaları okuyamaz) boş sayılır; ana
  * koleksiyonun hatası sayfada gösterilir.
  */

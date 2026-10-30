@@ -16,8 +16,8 @@ import {
   teacherId,
   gradeAverage,
   absentCount,
-} from '../model/school.js'
-import { createActions } from '../model/operations.js'
+} from '../model/school.ts'
+import { createActions } from '../model/operations.ts'
 import { dateLabel, average } from '@kampus/school-core/lib/format.ts'
 import Attendance from './Attendance.jsx'
 import SchoolList from './SchoolLists.jsx'

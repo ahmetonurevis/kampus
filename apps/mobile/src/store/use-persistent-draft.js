@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { createDraftRepository, draftKey } from '../model/drafts.js'
+import { createDraftRepository, draftKey } from '../model/drafts.ts'
 import { recordError, useSchool } from './SchoolProvider.jsx'
 
 const repository = createDraftRepository(AsyncStorage)

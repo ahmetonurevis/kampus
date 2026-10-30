@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react'
 import { View } from 'react-native'
 import { useSchool } from '../store/SchoolProvider.jsx'
-import { context, rowsFor } from '../model/school.js'
-import { contentTitle } from '../model/presentation.js'
+import { context, rowsFor } from '../model/school.ts'
+import { contentTitle } from '../model/presentation.ts'
 import {
   Badge,
   Button,

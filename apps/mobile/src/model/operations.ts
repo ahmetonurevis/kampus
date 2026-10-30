@@ -1,41 +1,135 @@
 import { z } from 'zod'
+import { subjects, subjectsForGrade } from '@kampus/school-core/data/curriculum.ts'
+import type { State } from '@kampus/school-core/data/seed.ts'
 import {
   requiredText,
   prospectSchema,
   enrollProspect,
   payInvoice,
+  type MakeId,
+  type Session,
 } from '@kampus/school-core/lib/domain.ts'
+import type { DocumentType } from '@kampus/school-core/lib/document-data.ts'
+import { dayKey, dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import {
   saveBranch,
   saveTeacher,
   saveClass,
   archiveRecord,
   restoreRecord,
+  type ArchiveKind,
 } from '@kampus/school-core/lib/school-management.ts'
-import { dayKey, dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
-import { subjects, subjectsForGrade } from '@kampus/school-core/data/curriculum.ts'
-import { context, nameOf, teacherId } from './school.js'
+import type { Role } from '@kampus/school-core/modules/navigation.ts'
+import { context, nameOf, teacherId, type Row } from './school.ts'
 
-const text = (key, label, extra = {}) => ({ key, label, type: 'text', required: true, ...extra })
-const select = (key, label, options, extra = {}) =>
-  text(key, label, { type: 'select', options, ...extra })
-const options = (list, label = 'name') => list.map((i) => ({ value: i.id, label: i[label] }))
-const enumOptions = (values) => values.map((value) => ({ value, label: value }))
-const active = (list) => list.filter((i) => i.isActive)
-const at = (values) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(values.date) || !/^\d{2}:\d{2}$/.test(values.time || '09:00'))
+export type OperationKind =
+  | 'branch'
+  | 'teacher'
+  | 'class'
+  | 'archive'
+  | 'restore'
+  | 'prospect'
+  | 'note'
+  | 'trial'
+  | 'registration'
+  | 'collect'
+  | 'remind'
+  | 'question'
+  | 'answer'
+  | 'homework'
+  | 'submit'
+  | 'grade'
+  | 'material'
+  | 'quiz'
+  | 'appointment'
+  | 'slot'
+  | 'appointment-status'
+  | 'message'
+  | 'request'
+  | 'request-status'
+  | 'absence'
+
+// Form değerleri kullanıcıdan ve taslak depodan gelir; bu yüzden kullanılmadan önce daraltılır.
+export type FormValues = Record<string, unknown>
+export type PickedFile = { name: string; size?: number; uri: string }
+export type FieldOption = { value: string; label: string }
+type FieldBase = {
+  key: string
+  label: string
+  required: boolean
+  multiline?: boolean
+  keyboard?: 'email-address' | 'phone-pad' | 'number-pad'
+  hint?: string
+}
+export type FormField =
+  | (FieldBase & { type: 'text' | 'date' | 'time' | 'file' })
+  | (FieldBase & { type: 'select' | 'multi'; options: FieldOption[] })
+// İşlem yapılan kayıt; işleme göre ilgili alanlar dolu gelir (ör. arşivde `kind`).
+export type OperationRecord = {
+  id: string
+  kind?: ArchiveKind
+  [field: string]: unknown
+}
+export type OperationDefinition = {
+  title: string
+  fields: (values: FormValues) => FormField[]
+  initial: FormValues
+  run: (state: State, values: FormValues, makeId: MakeId) => void
+}
+
+const str = (value: unknown) => (typeof value === 'string' ? value : '')
+const isPickedFile = (value: unknown): value is PickedFile =>
+  typeof value === 'object' &&
+  value !== null &&
+  'uri' in value &&
+  typeof value.uri === 'string' &&
+  'name' in value &&
+  typeof value.name === 'string'
+const pickedFile = (value: unknown) => (isPickedFile(value) ? value : undefined)
+// Kayıt bulunamazsa işlem anlaşılır bir hatayla durur.
+const found = <T>(item: T | undefined, message: string): T => {
+  if (item === undefined) throw new Error(message)
+  return item
+}
+const stringList = (value: unknown) =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+
+type TextExtra = Partial<Pick<FieldBase, 'required' | 'multiline' | 'keyboard' | 'hint'>> & {
+  type?: 'text' | 'date' | 'time' | 'file'
+}
+const text = (key: string, label: string, extra: TextExtra = {}): FormField => ({
+  key,
+  label,
+  type: 'text',
+  required: true,
+  ...extra,
+})
+const select = (
+  key: string,
+  label: string,
+  options: FieldOption[],
+  extra: Partial<Pick<FieldBase, 'required' | 'hint'>> = {},
+): FormField => ({ key, label, type: 'select', required: true, options, ...extra })
+const options = (list: readonly { id: string; name: string }[]) =>
+  list.map((i) => ({ value: i.id, label: i.name }))
+const enumOptions = (values: readonly string[]) => values.map((value) => ({ value, label: value }))
+const active = <T extends { isActive: boolean }>(list: readonly T[]) =>
+  list.filter((i) => i.isActive)
+const at = (values: { date?: unknown; time?: unknown }) => {
+  const day = str(values.date),
+    time = str(values.time) || '09:00'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !/^\d{2}:\d{2}$/.test(time))
     throw new Error('Geçerli tarih ve saat girin.')
-  const date = new Date(`${values.date}T${values.time || '09:00'}:00+03:00`)
-  if (Number.isNaN(+date) || dayKey(date) !== values.date)
-    throw new Error('Geçerli bir tarih seçin.')
+  const date = new Date(`${day}T${time}:00+03:00`)
+  if (Number.isNaN(+date) || dayKey(date) !== day) throw new Error('Geçerli bir tarih seçin.')
   return date.toISOString()
 }
-const future = (values) => {
+const future = (values: { date?: unknown; time?: unknown }) => {
   const date = at(values)
   if (+new Date(date) <= Date.now()) throw new Error('Gelecek bir tarih seçin.')
   return date
 }
-export const normalizeFields = (fields, values) => {
+export const normalizeFields = (fields: readonly FormField[], values: FormValues) => {
   for (const field of fields) {
     const value = values[field.key]
     if (field.required && (value == null || String(value).trim() === ''))
@@ -45,9 +139,21 @@ export const normalizeFields = (fields, values) => {
   }
   return values
 }
-export function operation(state, session, kind, record = null) {
+const archiveCollections = { branch: 'branches', class: 'classes', teacher: 'teachers' } as const
+
+export function operation(
+  state: State,
+  session: Session,
+  kind: OperationKind,
+  record: OperationRecord | null = null,
+): OperationDefinition {
   const c = context(state, session)
-  const allowed = {
+  // Kayıt gerektiren işlemlerde kayıt verilmediyse işlem çalışırken hata verilir.
+  const need = (): OperationRecord => {
+    if (!record) throw new Error('İşlem için kayıt bulunamadı.')
+    return record
+  }
+  const allowed: Record<OperationKind, readonly Role[]> = {
     branch: ['yonetici'],
     teacher: ['yonetici'],
     class: ['yonetici'],
@@ -84,7 +190,12 @@ export function operation(state, session, kind, record = null) {
   const teacherOptions = options(
     c.teacher ? state.teachers.filter((t) => t.id === teacherId) : c.recipients,
   )
-  const config = (title, fields, initial, run) => ({
+  const config = (
+    title: string,
+    fields: FormField[] | ((values: FormValues) => FormField[]),
+    initial: FormValues,
+    run: OperationDefinition['run'],
+  ): OperationDefinition => ({
     title,
     fields: typeof fields === 'function' ? fields : () => fields,
     initial,
@@ -155,19 +266,29 @@ export function operation(state, session, kind, record = null) {
           s,
           v,
           Object.fromEntries(
-            subjects.map((subject) => [subject.id, v[`assignment_${subject.id}`]]),
+            subjects.map((subject) => [subject.id, str(v[`assignment_${subject.id}`])]),
           ),
           id,
           record?.id,
         ),
     )
   if (kind === 'archive') {
-    const collection = { branch: 'branches', class: 'classes', teacher: 'teachers' }[record.kind]
-    const targets = active(state[collection]).filter(
+    const archived = need()
+    if (!archived.kind) throw new Error('Kayıt türü geçersiz.')
+    const archiveKind = archived.kind
+    const collection = archiveCollections[archiveKind]
+    const pool: readonly {
+      id: string
+      name: string
+      isActive: boolean
+      subjectId?: string
+      grade?: number
+    }[] = state[collection]
+    const targets = active(pool).filter(
       (i) =>
-        i.id !== record.id &&
-        (record.kind !== 'teacher' || i.subjectId === record.subjectId) &&
-        (record.kind !== 'class' || i.grade === record.grade),
+        i.id !== archived.id &&
+        (archived.kind !== 'teacher' || i.subjectId === archived.subjectId) &&
+        (archived.kind !== 'class' || i.grade === archived.grade),
     )
     return config(
       'Arşivle ve kayıtları aktar',
@@ -178,11 +299,15 @@ export function operation(state, session, kind, record = null) {
         }),
       ],
       {},
-      (s, v) => archiveRecord(s, record.kind, record.id, v.replacementId || ''),
+      (s, v) => archiveRecord(s, archiveKind, archived.id, str(v.replacementId)),
     )
   }
   if (kind === 'restore')
-    return config('Kaydı geri al', [], {}, (s) => restoreRecord(s, record.kind, record.id))
+    return config('Kaydı geri al', [], {}, (s) => {
+      const target = need()
+      if (!target.kind) throw new Error('Kayıt türü geçersiz.')
+      restoreRecord(s, target.kind, target.id)
+    })
   if (kind === 'prospect')
     return config(
       'Aday öğrenci ekle',
@@ -239,16 +364,19 @@ export function operation(state, session, kind, record = null) {
           ]),
         ),
       ],
-      { stage: record.stage === 'Kayıt oldu' ? 'İletişime geçildi' : record.stage },
+      { stage: need().stage === 'Kayıt oldu' ? 'İletişime geçildi' : need().stage },
       (s, v, id) => {
-        const p = s.prospects.find((i) => i.id === record.id)
+        const p = found(
+          s.prospects.find((i) => i.id === need().id),
+          'Aday bulunamadı.',
+        )
         p.notes.unshift({
           id: id('note'),
           text: requiredText.parse(v.text),
           date: now(),
           author: 'Büşra Aydın',
         })
-        if (!p.studentId) p.stage = v.stage
+        if (!p.studentId) p.stage = str(v.stage)
       },
     )
   if (kind === 'trial')
@@ -312,12 +440,15 @@ export function operation(state, session, kind, record = null) {
       { method: c.institution ? 'Nakit' : 'Kredi kartı (demo)' },
       (s, v) => {
         if (session.role === 'ogrenci') throw new Error('Ödeme işlemi için veli hesabını kullanın.')
-        payInvoice(s, record.id, v.method)
+        payInvoice(s, need().id, str(v.method))
       },
     )
   if (kind === 'remind')
     return config('Ödeme hatırlatması', [], {}, (s) => {
-      const invoice = s.invoices.find((i) => i.id === record.id)
+      const invoice = found(
+        s.invoices.find((i) => i.id === need().id),
+        'Taksit bulunamadı.',
+      )
       if (invoice.paidAt) throw new Error('Ödenmiş taksit için hatırlatma gerekmez.')
       invoice.reminderAt = now()
     })
@@ -334,7 +465,9 @@ export function operation(state, session, kind, record = null) {
       (s, v, id) => {
         const teacher = c.recipients.find((t) => t.id === v.teacherId)
         if (!teacher) throw new Error('Dersinize giren bir öğretmen seçin.')
-        s.questions.unshift({
+        const file = pickedFile(v.file)
+        // Telefon, soruya yüklenen dosyanın yolunu da saklar; ortak tipte bu alan yoktur.
+        const asked = {
           id: id('ask'),
           studentId: c.student.id,
           teacherId: teacher.id,
@@ -344,18 +477,19 @@ export function operation(state, session, kind, record = null) {
           createdAt: now(),
           answeredAt: null,
           answer: '',
-          fileName: v.file?.name || null,
-          fileUri: v.file?.uri || null,
-        })
+          fileName: file?.name || null,
+          fileUri: file?.uri || null,
+        }
+        s.questions.unshift(asked)
       },
     )
   if (kind === 'answer')
     return config(
       'Soruyu yanıtla',
       [text('answer', 'Yanıtınız', { multiline: true })],
-      { answer: record.answer },
+      { answer: need().answer },
       (s, v) => {
-        const q = s.questions.find((i) => i.id === record.id && i.teacherId === teacherId)
+        const q = s.questions.find((i) => i.id === need().id && i.teacherId === teacherId)
         if (!q) throw new Error('Soru bulunamadı.')
         q.answer = requiredText.parse(v.answer)
         q.answeredAt = now()
@@ -373,10 +507,13 @@ export function operation(state, session, kind, record = null) {
       { classId: ownClasses[0]?.id, date: dayKey(new Date(Date.now() + 7 * 86400000)) },
       (s, v, id) => {
         if (!ownClasses.some((i) => i.id === v.classId)) throw new Error('Kendi sınıfınızı seçin.')
-        const teacher = s.teachers.find((t) => t.id === teacherId)
+        const teacher = found(
+          s.teachers.find((t) => t.id === teacherId),
+          'Öğretmen kaydı bulunamadı.',
+        )
         s.homework.unshift({
           id: id('hw'),
-          classId: v.classId,
+          classId: str(v.classId),
           teacherId,
           subjectId: teacher.subjectId,
           subject: teacher.subject,
@@ -396,18 +533,19 @@ export function operation(state, session, kind, record = null) {
       ],
       {},
       (s, v, id) => {
-        if (record.classId !== c.student.classId) throw new Error('Ödev sınıfınıza ait değil.')
-        if (!v.file?.uri) throw new Error('Bir dosya seçin.')
+        if (need().classId !== c.student.classId) throw new Error('Ödev sınıfınıza ait değil.')
+        const file = pickedFile(v.file)
+        if (!file?.uri) throw new Error('Bir dosya seçin.')
         const existing = s.submissions.find(
-          (i) => i.homeworkId === record.id && i.studentId === c.student.id,
+          (i) => i.homeworkId === need().id && i.studentId === c.student.id,
         )
         if (existing?.score != null) throw new Error('Değerlendirilen ödev tekrar teslim edilemez.')
         const payload = {
-          homeworkId: record.id,
+          homeworkId: need().id,
           studentId: c.student.id,
-          fileName: v.file.name,
-          fileUri: v.file.uri,
-          note: v.note || '',
+          fileName: file.name,
+          fileUri: file.uri,
+          note: str(v.note) || '',
           submittedAt: now(),
           score: null,
           feedback: '',
@@ -423,14 +561,17 @@ export function operation(state, session, kind, record = null) {
         text('score', 'Puan (0–100)', { keyboard: 'number-pad' }),
         text('feedback', 'Öğrenciye geri bildirim', { multiline: true }),
       ],
-      { score: record.score == null ? '' : String(record.score), feedback: record.feedback },
+      { score: need().score == null ? '' : String(need().score), feedback: need().feedback },
       (s, v) => {
         const score = z.coerce
           .number({ error: 'Geçerli bir puan girin.' })
           .min(0, 'Puan 0 ile 100 arasında olmalıdır.')
           .max(100, 'Puan 0 ile 100 arasında olmalıdır.')
           .parse(v.score)
-        const submission = s.submissions.find((i) => i.id === record.id)
+        const submission = found(
+          s.submissions.find((i) => i.id === need().id),
+          'Teslim kaydı bulunamadı.',
+        )
         if (!s.homework.some((h) => h.id === submission.homeworkId && h.teacherId === teacherId))
           throw new Error('Ödev size ait değil.')
         submission.score = score
@@ -448,22 +589,28 @@ export function operation(state, session, kind, record = null) {
       ],
       { level: ownClasses[0]?.level },
       (s, v, id) => {
-        if (!v.file?.uri) throw new Error('Dosya seçin.')
-        const t = s.teachers.find((t) => t.id === teacherId)
-        s.materials.unshift({
+        const file = pickedFile(v.file)
+        if (!file?.uri) throw new Error('Dosya seçin.')
+        const t = found(
+          s.teachers.find((t) => t.id === teacherId),
+          'Öğretmen kaydı bulunamadı.',
+        )
+        // Telefon, materyalin dosya yolunu da saklar; ortak tipte bu alan yoktur.
+        const material = {
           id: id('mat'),
           teacherId,
           subjectId: t.subjectId,
           subject: t.subject,
           title: requiredText.parse(v.title),
-          level: v.level,
-          fileName: v.file.name,
-          fileUri: v.file.uri,
-          size: `${Math.ceil((v.file.size || 0) / 1024)} KB`,
+          level: str(v.level),
+          fileName: file.name,
+          fileUri: file.uri,
+          size: `${Math.ceil((file.size || 0) / 1024)} KB`,
           type: 'Doküman',
           createdAt: now(),
           content: [requiredText.parse(v.content)],
-        })
+        }
+        s.materials.unshift(material)
       },
     )
   if (kind === 'quiz')
@@ -499,12 +646,16 @@ export function operation(state, session, kind, record = null) {
       },
       (s, v, id) => {
         const cls = ownClasses.find((c) => c.id === v.classId)
-        const t = s.teachers.find((t) => t.id === teacherId)
-        if (!cls || !v.questionIds?.length) throw new Error('Sınıf ve en az bir soru seçin.')
+        const t = found(
+          s.teachers.find((t) => t.id === teacherId),
+          'Öğretmen kaydı bulunamadı.',
+        )
+        const questionIds = stringList(v.questionIds)
+        if (!cls || !questionIds.length) throw new Error('Sınıf ve en az bir soru seçin.')
         const valid = s.bank.filter(
           (q) => q.subjectId === t.subjectId && q.minGrade <= cls.grade && q.maxGrade >= cls.grade,
         )
-        if (v.questionIds.some((id) => !valid.some((q) => q.id === id)))
+        if (questionIds.some((id) => !valid.some((q) => q.id === id)))
           throw new Error('Sınıf düzeyine uygun sorular seçin.')
         s.quizzes.unshift({
           id: id('quiz'),
@@ -519,7 +670,7 @@ export function operation(state, session, kind, record = null) {
             .min(1, 'Sınav süresi 1 ile 180 dakika arasında olmalıdır.')
             .max(180, 'Sınav süresi 1 ile 180 dakika arasında olmalıdır.')
             .parse(v.duration),
-          questionIds: [...new Set(v.questionIds)],
+          questionIds: [...new Set(questionIds)],
           createdAt: now(),
         })
       },
@@ -565,7 +716,8 @@ export function operation(state, session, kind, record = null) {
           )
         )
           throw new Error('Bu saatte başka randevu bulunuyor.')
-        s.appointments.unshift({
+        // Telefon randevuya süreyi de yazar; ortak randevu tipinde bu alan yoktur.
+        const appointment = {
           id: id('apt'),
           studentId: c.student.id,
           teacherId: slot.teacherId,
@@ -574,7 +726,8 @@ export function operation(state, session, kind, record = null) {
           type: session.role === 'veli' ? 'Veli görüşmesi' : 'Bireysel etüt',
           note: requiredText.parse(v.note),
           status: 'Bekliyor',
-        })
+        }
+        s.appointments.unshift(appointment)
       },
     )
   if (kind === 'slot')
@@ -599,7 +752,7 @@ export function operation(state, session, kind, record = null) {
             (a) =>
               a.teacherId === teacherId &&
               +new Date(a.date) < end &&
-              +new Date(a.date) + (a.duration || 30) * 60000 > +new Date(date),
+              +new Date(a.date) + (('duration' in a && a.duration) || 30) * 60000 > +new Date(date),
           )
         )
           throw new Error('Bu saat programınızla çakışıyor.')
@@ -612,7 +765,7 @@ export function operation(state, session, kind, record = null) {
       [select('status', 'Karar', enumOptions(['Onaylandı', 'Reddedildi']))],
       { status: 'Onaylandı' },
       (s, v) => {
-        const a = s.appointments.find((a) => a.id === record.id && a.teacherId === teacherId)
+        const a = s.appointments.find((a) => a.id === need().id && a.teacherId === teacherId)
         if (!a) throw new Error('Randevu bulunamadı.')
         if (
           v.status === 'Onaylandı' &&
@@ -625,7 +778,7 @@ export function operation(state, session, kind, record = null) {
           )
         )
           throw new Error('Bu saatte onaylı bir görüşme var.')
-        a.status = v.status
+        a.status = str(v.status)
       },
     )
   if (kind === 'message')
@@ -646,7 +799,7 @@ export function operation(state, session, kind, record = null) {
           conversation = {
             id: id('conv'),
             studentId: c.student.id,
-            teacherId: v.teacherId,
+            teacherId: str(v.teacherId),
             audience,
             messages: [],
           }
@@ -675,7 +828,7 @@ export function operation(state, session, kind, record = null) {
           studentId: c.student.id,
           title: requiredText.parse(v.title),
           text: requiredText.parse(v.text),
-          category: v.category,
+          category: str(v.category),
           status: 'Yeni',
           assignedTo: 'Ön büro',
           date: now(),
@@ -692,11 +845,14 @@ export function operation(state, session, kind, record = null) {
           enumOptions(['Ön büro', 'Akademik koordinatör', 'Müdürlük', 'Finans']),
         ),
       ],
-      record,
+      need(),
       (s, v) =>
         Object.assign(
-          s.requests.find((i) => i.id === record.id),
-          { status: v.status, assignedTo: v.assignedTo },
+          found(
+            s.requests.find((i) => i.id === need().id),
+            'Talep bulunamadı.',
+          ),
+          { status: str(v.status), assignedTo: str(v.assignedTo) },
         ),
     )
   if (kind === 'absence')
@@ -713,12 +869,14 @@ export function operation(state, session, kind, record = null) {
         const start = at({ date: v.startDate }),
           end = at({ date: v.endDate })
         if (end < start) throw new Error('Bitiş tarihi başlangıçtan önce olamaz.')
-        s.absences.unshift({
+        // TODO(ts): telefon mazereti `createdAt` ile yazar; core tipi web biçimini (`status`, `date`) bekler. Core tipi birleşince kalkar.
+        const absences: unknown[] = s.absences
+        absences.unshift({
           id: id('absence'),
           studentId: c.student.id,
           startDate: start,
           endDate: end,
-          category: v.category,
+          category: str(v.category),
           reason: requiredText.parse(v.reason),
           createdAt: now(),
         })
@@ -727,72 +885,75 @@ export function operation(state, session, kind, record = null) {
   throw new Error('İşlem bulunamadı.')
 }
 
-export function recordActions(row, session) {
-  const r = row.source,
-    c = session.role
+type RecordAction = {
+  label: string
+  operation?: OperationKind
+  document?: DocumentType
+  id?: string
+}
+const run = (label: string, operation: OperationKind): RecordAction => ({ label, operation })
+const open = (label: string, document: DocumentType, id?: string): RecordAction =>
+  id === undefined ? { label, document } : { label, document, id }
+
+export function recordActions(row: Row, session: Session): RecordAction[] {
+  const c = session.role
   if (row.kind === 'invoice')
     return [
-      ...(r.paidAt
-        ? [{ label: 'Dekont', document: 'receipt' }]
+      ...(row.source.paidAt
+        ? [open('Dekont', 'receipt')]
         : c === 'ogrenci'
           ? []
-          : [{ label: c === 'veli' ? 'Ödeme yap' : 'Tahsil et', operation: 'collect' }]),
-      ...(['yonetici', 'onburo'].includes(c) && !r.paidAt
-        ? [{ label: 'Hatırlat', operation: 'remind' }]
+          : [run(c === 'veli' ? 'Ödeme yap' : 'Tahsil et', 'collect')]),
+      ...((c === 'yonetici' || c === 'onburo') && !row.source.paidAt
+        ? [run('Hatırlat', 'remind')]
         : []),
-      { label: 'Ödeme planı', document: 'payment-plan', id: r.studentId },
+      open('Ödeme planı', 'payment-plan', row.source.studentId),
     ]
   if (row.kind === 'contract')
     return [
-      { label: 'Sözleşme PDF', document: 'contract' },
-      { label: 'Taksit planı', document: 'payment-plan', id: r.studentId },
+      open('Sözleşme PDF', 'contract'),
+      open('Taksit planı', 'payment-plan', row.source.studentId),
     ]
-  if (['branch', 'class', 'teacher'].includes(row.kind) && c === 'yonetici')
-    return r.isActive
-      ? [
-          { label: 'Düzenle', operation: row.kind },
-          { label: 'Arşivle', operation: 'archive' },
-        ]
-      : [{ label: 'Geri al', operation: 'restore' }]
+  if ((row.kind === 'branch' || row.kind === 'class' || row.kind === 'teacher') && c === 'yonetici')
+    return row.source.isActive
+      ? [run('Düzenle', row.kind), run('Arşivle', 'archive')]
+      : [run('Geri al', 'restore')]
   if (row.kind === 'prospect')
     return [
-      { label: 'Görüşme notu', operation: 'note' },
-      ...(!r.studentId
-        ? [
-            { label: 'Randevu planla', operation: 'trial' },
-            { label: 'Kesin kayıt', operation: 'registration' },
-          ]
+      run('Görüşme notu', 'note'),
+      ...(!row.source.studentId
+        ? [run('Randevu planla', 'trial'), run('Kesin kayıt', 'registration')]
         : []),
     ]
   if (row.kind === 'question' && c === 'ogretmen')
-    return [{ label: r.answer ? 'Yanıtı düzenle' : 'Yanıtla', operation: 'answer' }]
+    return [run(row.source.answer ? 'Yanıtı düzenle' : 'Yanıtla', 'answer')]
   if (row.kind === 'homework')
     return [
-      { label: 'Ödev PDF', document: 'homework' },
-      ...(c === 'ogrenci' ? [{ label: 'Dosya teslim et', operation: 'submit' }] : []),
+      open('Ödev PDF', 'homework'),
+      ...(c === 'ogrenci' ? [run('Dosya teslim et', 'submit')] : []),
     ]
-  if (row.kind === 'material') return [{ label: 'Dosyayı paylaş', document: 'material' }]
-  if (row.kind === 'submission') return [{ label: 'Değerlendirme PDF', document: 'submission' }]
+  if (row.kind === 'material') return [open('Dosyayı paylaş', 'material')]
+  if (row.kind === 'submission') return [open('Değerlendirme PDF', 'submission')]
   if (row.kind === 'appointment' && c === 'ogretmen')
-    return [{ label: 'Onay / ret', operation: 'appointment-status' }]
-  if (row.kind === 'request' && c === 'onburo')
-    return [{ label: 'Yönlendir', operation: 'request-status' }]
+    return [run('Onay / ret', 'appointment-status')]
+  if (row.kind === 'request' && c === 'onburo') return [run('Yönlendir', 'request-status')]
   return []
 }
-export const createActions = {
-  subeler: ['Kampüs ekle', 'branch'],
-  classes: ['Sınıf ekle', 'class'],
-  personel: ['Öğretmen ekle', 'teacher'],
-  adaylar: ['Aday ekle', 'prospect'],
-  'deneme-dersi-takvimi': ['Görüşme planla', 'trial'],
-  'kayit-islemleri': ['Kesin kayıt', 'registration'],
-  'soru-sor': ['Soru sor', 'question'],
-  'materyal-yukle': ['Materyal yükle', 'material'],
-  'quiz-olustur': ['Quiz oluştur', 'quiz'],
-  'randevu-talep': ['Randevu talep et', 'appointment'],
-  'randevu-mesaj': ['Randevu talep et', 'appointment'],
-  randevular: ['Müsaitlik ekle', 'slot'],
-  mesajlar: ['Yeni mesaj', 'message'],
-  'sikayet-talep': ['Talep gönder', 'request'],
-  'devamsizlik-bildirimi': ['Mazeret bildir', 'absence'],
-}
+export const createActions: Partial<Record<string, readonly [label: string, kind: OperationKind]>> =
+  {
+    subeler: ['Kampüs ekle', 'branch'],
+    classes: ['Sınıf ekle', 'class'],
+    personel: ['Öğretmen ekle', 'teacher'],
+    adaylar: ['Aday ekle', 'prospect'],
+    'deneme-dersi-takvimi': ['Görüşme planla', 'trial'],
+    'kayit-islemleri': ['Kesin kayıt', 'registration'],
+    'soru-sor': ['Soru sor', 'question'],
+    'materyal-yukle': ['Materyal yükle', 'material'],
+    'quiz-olustur': ['Quiz oluştur', 'quiz'],
+    'randevu-talep': ['Randevu talep et', 'appointment'],
+    'randevu-mesaj': ['Randevu talep et', 'appointment'],
+    randevular: ['Müsaitlik ekle', 'slot'],
+    mesajlar: ['Yeni mesaj', 'message'],
+    'sikayet-talep': ['Talep gönder', 'request'],
+    'devamsizlik-bildirimi': ['Mazeret bildir', 'absence'],
+  }

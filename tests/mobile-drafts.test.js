@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createDraftRepository, draftKey } from '../apps/mobile/src/model/drafts.js'
-import { contentTitle } from '../apps/mobile/src/model/presentation.js'
-import { appendMessage, conversationFor } from '../apps/mobile/src/model/messaging.js'
+import { createDraftRepository, draftKey } from '../apps/mobile/src/model/drafts.ts'
+import { contentTitle } from '../apps/mobile/src/model/presentation.ts'
+import { appendMessage, conversationFor } from '../apps/mobile/src/model/messaging.ts'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 
 function memoryStorage() {

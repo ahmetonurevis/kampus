@@ -1,4 +1,4 @@
-import { contentTitle } from '../model/presentation.js'
+import { contentTitle } from '../model/presentation.ts'
 import React from 'react'
 import { View } from 'react-native'
 import { subjects } from '@kampus/school-core/data/curriculum.ts'

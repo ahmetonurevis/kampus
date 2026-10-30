@@ -10,7 +10,7 @@ import {
   exampleOpticalFile,
 } from '@kampus/school-core/lib/assessment-automation.ts'
 import { useSchool, recordError } from '../store/SchoolProvider.jsx'
-import { moduleNavigationState } from '../model/navigation.js'
+import { moduleNavigationState } from '../model/navigation.ts'
 import { pickTextFile } from '../lib/text-files.js'
 import {
   Badge,

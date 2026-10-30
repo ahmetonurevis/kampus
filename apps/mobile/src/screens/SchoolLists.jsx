@@ -1,9 +1,9 @@
-import { contentTitle } from '../model/presentation.js'
+import { contentTitle } from '../model/presentation.ts'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { useSchool } from '../store/SchoolProvider.jsx'
-import { context, nameOf, rowsFor } from '../model/school.js'
-import { homeworkRows, paymentSummary, waitingLabel } from '../model/experience.js'
+import { context, nameOf, rowsFor } from '../model/school.ts'
+import { homeworkRows, paymentSummary, waitingLabel } from '../model/experience.ts'
 import { Badge, Button, Card, SearchField, Select, Sheet, T, styles } from '../ui/components.jsx'
 import {
   ChildSelector,

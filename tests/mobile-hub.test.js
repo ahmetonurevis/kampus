@@ -8,13 +8,13 @@ import {
   restoreSnapshot,
 } from '../packages/school-core/src/lib/demo-persistence.ts'
 import { navigation as webNavigation } from '../apps/web/src/modules/navigation.js'
-import { navigation, availablePages } from '../apps/mobile/src/model/school.js'
+import { navigation, availablePages } from '../apps/mobile/src/model/school.ts'
 import {
   accountPages,
   categoryPages,
   hubCategories,
   pageTitle,
-} from '../apps/mobile/src/model/hub.js'
+} from '../apps/mobile/src/model/hub.ts'
 
 const roles = ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli']
 const session = (role) => ({ role, childId: 's1', theme: 'light' })

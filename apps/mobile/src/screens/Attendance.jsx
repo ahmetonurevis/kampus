@@ -3,7 +3,7 @@ import DraftStatus from '../ui/DraftStatus.jsx'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Pressable, useWindowDimensions } from 'react-native'
 import { useSchool } from '../store/SchoolProvider.jsx'
-import { context, nameOf } from '../model/school.js'
+import { context, nameOf } from '../model/school.ts'
 import { recordAttendance } from '@kampus/school-core/lib/domain.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
 import {

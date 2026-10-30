@@ -1,6 +1,14 @@
-import { context, rowsFor } from './school.js'
+import type { State } from '@kampus/school-core/data/seed.ts'
+import type { Session } from '@kampus/school-core/lib/domain.ts'
+import { context, rowsFor } from './school.ts'
 
-export const resolveTheme = (preference, system) =>
+export type ThemePreference = 'light' | 'dark' | 'system'
+export type ResolvedTheme = 'light' | 'dark'
+
+export const resolveTheme = (
+  preference: ThemePreference,
+  system: string | null | undefined,
+): ResolvedTheme =>
   preference === 'system'
     ? system === 'dark'
       ? 'dark'
@@ -10,17 +18,23 @@ export const resolveTheme = (preference, system) =>
       : 'light'
 
 // Ek örnekler mevcut teslimlere dokunmadan, yalnızca ilk açılışta eklenir.
-export function prepareReferenceData(state, now = new Date()) {
+export function prepareReferenceData(state: State, now = new Date()) {
   let changed = false
   const student = state.students.find((s) => s.id === 's1')
   if (!student) return false
-  const deadline = (days) => {
+  const deadline = (days: number) => {
     const date = new Date(now)
     date.setUTCDate(date.getUTCDate() + days)
     date.setUTCHours(14, 0, 0, 0)
     return date.toISOString()
   }
-  for (const [id, subjectId, title, description, days] of [
+  const references: [
+    id: string,
+    subjectId: string,
+    title: string,
+    description: string,
+    days: number,
+  ][] = [
     [
       'hw-mobile-equations',
       'math',
@@ -35,17 +49,20 @@ export function prepareReferenceData(state, now = new Date()) {
       'Yaptığın deneyin amacını, kullandığın malzemeleri ve gözlemlerini bir raporda topla.',
       3,
     ],
-  ]) {
+  ]
+  for (const [id, subjectId, title, description, days] of references) {
     const assignment = state.assignments.find(
       (a) => a.classId === student.classId && a.subjectId === subjectId,
     )
     if (!assignment || state.homework.some((h) => h.id === id)) continue
+    const subject = state.subjects.find((s) => s.id === subjectId)
+    if (!subject) throw new Error('Ders kaydı bulunamadı.')
     state.homework.unshift({
       ...assignment,
       id,
       title,
       description,
-      subject: state.subjects.find((s) => s.id === subjectId).name,
+      subject: subject.name,
       dueDate: deadline(days),
       createdAt: now.toISOString(),
     })
@@ -69,7 +86,7 @@ export function prepareReferenceData(state, now = new Date()) {
   return changed
 }
 
-export function homeworkRows(state, session) {
+export function homeworkRows(state: State, session: Session) {
   const { student } = context(state, session)
   const submissions = new Map(
     state.submissions.filter((s) => s.studentId === student.id).map((s) => [s.homeworkId, s]),
@@ -79,7 +96,10 @@ export function homeworkRows(state, session) {
     .sort((a, b) => a.source.dueDate.localeCompare(b.source.dueDate))
 }
 
-export function waitingLabel(question, now = Date.now()) {
+export function waitingLabel(
+  question: { createdAt: string; answeredAt?: string | null },
+  now = Date.now(),
+) {
   const minutes = Math.max(0, Math.floor((now - +new Date(question.createdAt)) / 60000))
   if (question.answeredAt) return 'Yanıtlandı'
   if (minutes < 1) return 'Az önce geldi'
@@ -88,7 +108,7 @@ export function waitingLabel(question, now = Date.now()) {
   return `${Math.floor(minutes / 1440)} gündür bekliyor`
 }
 
-export function paymentSummary(state, session) {
+export function paymentSummary(state: State, session: Session) {
   const rows = rowsFor(state, session, 'finans').sort((a, b) =>
     a.source.dueDate.localeCompare(b.source.dueDate),
   )

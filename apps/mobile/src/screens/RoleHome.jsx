@@ -1,4 +1,4 @@
-import { contentTitle } from '../model/presentation.js'
+import { contentTitle } from '../model/presentation.ts'
 import React, { useMemo } from 'react'
 import { View } from 'react-native'
 import { useSchool } from '../store/SchoolProvider.jsx'
@@ -10,8 +10,8 @@ import {
   nameOf,
   absentCount,
   teacherId,
-} from '../model/school.js'
-import { homeworkRows, paymentSummary } from '../model/experience.js'
+} from '../model/school.ts'
+import { homeworkRows, paymentSummary } from '../model/experience.ts'
 import { Badge, Button, Card, T, useColors } from '../ui/components.jsx'
 import { ChildSelector, ListRow, Screen, Section } from '../ui/SchoolLayout.jsx'
 import ModuleHub from '../ui/ModuleHub.jsx'

@@ -3,8 +3,8 @@ import { FlatList, Keyboard, View } from 'react-native'
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { useSchool } from '../store/SchoolProvider.jsx'
 import { usePersistentDraft } from '../store/use-persistent-draft.js'
-import { context, nameOf, rowsFor } from '../model/school.js'
-import { appendMessage, conversationFor } from '../model/messaging.js'
+import { context, nameOf, rowsFor } from '../model/school.ts'
+import { appendMessage, conversationFor } from '../model/messaging.ts'
 import {
   Button,
   Field,

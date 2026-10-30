@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { Pressable, View, useWindowDimensions } from 'react-native'
 import { useSchool } from '../store/SchoolProvider.jsx'
-import { hubCategories } from '../model/hub.js'
+import { hubCategories } from '../model/hub.ts'
 import { Icon, T, useColors } from './components.jsx'
 import { shape } from './theme.js'
 

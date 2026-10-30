@@ -4,8 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { randomUUID } from 'expo-crypto'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { createSnapshotWriter, restoreSnapshot } from '@kampus/school-core/lib/demo-persistence.ts'
-import { prepareReferenceData, resolveTheme } from '../model/experience.js'
-import { clone, roles } from '../model/school.js'
+import { prepareReferenceData, resolveTheme } from '../model/experience.ts'
+import { clone, roles } from '../model/school.ts'
 
 const DATA_KEY = 'kampus-mobile-data-v1',
   PREF_KEY = 'kampus-mobile-preferences-v1'

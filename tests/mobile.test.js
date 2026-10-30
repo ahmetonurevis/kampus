@@ -6,8 +6,8 @@ import {
   createSnapshotWriter,
   restoreSnapshot,
 } from '../packages/school-core/src/lib/demo-persistence.ts'
-import { availablePages, rowsFor, navigation, clone } from '../apps/mobile/src/model/school.js'
-import { operation, normalizeFields } from '../apps/mobile/src/model/operations.js'
+import { availablePages, rowsFor, navigation, clone } from '../apps/mobile/src/model/school.ts'
+import { operation, normalizeFields } from '../apps/mobile/src/model/operations.ts'
 import { workflowPage } from '../packages/school-core/src/modules/school-workflows.ts'
 import { workflowRows } from '../packages/school-core/src/lib/workflow-presentation.ts'
 const session = (role) => ({ role, childId: 's1', theme: 'light' })
@@ -180,7 +180,7 @@ test('Mobil: randevu saati tekrar ayrılamaz ve süresi dolan quiz boş yanıtla
 })
 
 test('Mobil: referans ödevi ve yanıtı güncellemede korunur; dosyasız veya değerlendirilmiş teslim reddedilir', async () => {
-  const { prepareReferenceData } = await import('../apps/mobile/src/model/experience.js')
+  const { prepareReferenceData } = await import('../apps/mobile/src/model/experience.ts')
   const seed = createSeed(),
     state = clone(seed)
   assert.equal(prepareReferenceData(state), true)
@@ -241,7 +241,7 @@ test('Mobil: referans ödevi ve yanıtı güncellemede korunur; dosyasız veya d
 
 test('Mobil: mazeretli yoklama mevcut günü günceller; devamsızlık sayılmaz ve eski geç kayıtları korunur', async () => {
   const { recordAttendance } = await import('../packages/school-core/src/lib/domain.ts')
-  const { absentCount } = await import('../apps/mobile/src/model/school.js')
+  const { absentCount } = await import('../apps/mobile/src/model/school.ts')
   const { dayKey } = await import('../packages/school-core/src/lib/format.ts')
   const seed = createSeed(),
     state = clone(seed),

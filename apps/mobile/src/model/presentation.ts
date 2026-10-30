@@ -1,4 +1,4 @@
-export function contentTitle(title, subject) {
+export function contentTitle(title: unknown, subject?: unknown) {
   const text = String(title || '').trim(),
     prefix = String(subject || '').trim()
   if (

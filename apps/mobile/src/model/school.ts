@@ -11,6 +11,102 @@ import {
 } from '@kampus/school-core/lib/format.ts'
 import { navigation, roles } from '@kampus/school-core/modules/full-navigation.ts'
 import { subjectsForGrade } from '@kampus/school-core/data/curriculum.ts'
+import type { State } from '@kampus/school-core/data/seed.ts'
+import type { Session } from '@kampus/school-core/lib/domain.ts'
+import type { Role } from '@kampus/school-core/modules/navigation.ts'
+
+type Elem<T> = T extends readonly (infer U)[] ? U : never
+type Item<K extends keyof State> = Elem<State[K]>
+// Adı olan koleksiyonlar (kampüs, sınıf, öğretmen, öğrenci, ders ...).
+export type NamedCollection = {
+  [K in keyof State]: [Item<K>] extends [never]
+    ? never
+    : Item<K> extends { id: string; name: string }
+      ? K
+      : never
+}[keyof State]
+
+// Liste satırının kaynağı: satır türüne göre ilgili kayıt.
+type RowSources = {
+  invoice: Item<'invoices'>
+  contract: Item<'contracts'>
+  branch: Item<'branches'>
+  class: Item<'classes'>
+  teacher: Item<'teachers'>
+  prospect: Item<'prospects'>
+  report: { id: string }
+  student: Item<'students'>
+  lesson: Item<'schedule'>
+  grade: Item<'grades'>
+  attendance: Item<'attendance'>
+  question: Item<'questions'>
+  homework: Item<'homework'>
+  video: Item<'videos'>
+  material: Item<'materials'>
+  quiz: Item<'quizzes'>
+  announcement: Item<'announcements'>
+  appointment: Item<'appointments'>
+  conversation: Item<'conversations'>
+  request: Item<'requests'>
+  absence: Item<'absences'>
+  submission: Item<'submissions'>
+}
+export type RowKind = keyof RowSources
+type RowOf<K extends RowKind> = {
+  id: string
+  title: string | undefined
+  subtitle: string
+  body: string
+  status: string
+  kind: K
+  source: RowSources[K]
+  meta: string[]
+  subject: string
+  class: string
+  branch: string
+}
+export type Row<K extends RowKind = RowKind> = K extends RowKind ? RowOf<K> : never
+
+// Sayfa yolundan satır türü; tanımsız sayfalar boş liste döner.
+type PageKinds = {
+  finans: 'invoice'
+  'tahsilat-takip': 'invoice'
+  odemelerim: 'invoice'
+  'odeme-yap': 'invoice'
+  dekontlar: 'invoice'
+  sozlesmeler: 'contract'
+  subeler: 'branch'
+  classes: 'class'
+  siniflarim: 'class'
+  personel: 'teacher'
+  'sla-raporu': 'teacher'
+  adaylar: 'prospect'
+  'deneme-dersi-takvimi': 'prospect'
+  'kayit-raporlari': 'report'
+  students: 'student'
+  'risk-listesi': 'student'
+  'ders-programi': 'lesson'
+  notlarim: 'grade'
+  devamsizlik: 'attendance'
+  sorular: 'question'
+  'soru-sor': 'question'
+  odevler: 'homework'
+  videolar: 'video'
+  materyaller: 'material'
+  'materyal-yukle': 'material'
+  'soru-coz': 'quiz'
+  'quiz-olustur': 'quiz'
+  duyurular: 'announcement'
+  randevular: 'appointment'
+  'randevu-talep': 'appointment'
+  'randevu-mesaj': 'appointment'
+  mesajlar: 'conversation'
+  talepler: 'request'
+  'sikayet-talep': 'request'
+  'devamsizlik-bildirimi': 'absence'
+  'ogretmen-degerlendirmeleri': 'submission'
+}
+export type PageRow<P extends string> = Row<P extends keyof PageKinds ? PageKinds[P] : RowKind>
 
 export { navigation, roles }
 export const teacherId = 't1'
@@ -21,13 +117,21 @@ export const moduleNames = {
   crm: 'Kayıt & Satış',
   communication: 'İletişim',
 }
-export const clone = (value) => JSON.parse(JSON.stringify(value))
-export function context(state, session) {
+// Örnek veride tarih alanları dizi indeksinden gelir; tipi `string | undefined` kalır.
+const byDate = (a: { date?: string }, b: { date?: string }) =>
+  (a.date ?? '').localeCompare(b.date ?? '')
+const isAnswered = <T extends { answeredAt?: string | null }>(
+  question: T,
+): question is T & { answeredAt: string } => Boolean(question.answeredAt)
+// JSON kopyası kaydın tipini korur; okul verisi yalnızca JSON değerlerinden oluşur.
+export const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
+export function context(state: State, session: Session) {
   const studentId = session.role === 'veli' ? session.childId : 's1'
   const student = state.students.find((s) => s.id === studentId) || state.students[0]
+  if (!student) throw new Error('Öğrenci kaydı bulunamadı.')
   const classroom = state.classes.find((c) => c.id === student.classId)
-  const assignedClasses = new Set(),
-    assignedTeachers = new Set()
+  const assignedClasses = new Set<string>(),
+    assignedTeachers = new Set<string>()
   for (const assignment of state.assignments) {
     if (assignment.teacherId === teacherId) assignedClasses.add(assignment.classId)
     if (assignment.classId === student.classId) assignedTeachers.add(assignment.teacherId)
@@ -43,32 +147,54 @@ export function context(state, session) {
     institution: ['yonetici', 'onburo'].includes(session.role),
   }
 }
-export const nameOf = (state, collection, id) =>
-  state[collection].find((item) => item.id === id)?.name || 'Kayıt bulunamadı'
-export const gradeAverage = (state, id) =>
+export const nameOf = (state: State, collection: NamedCollection, id: string) => {
+  const list: readonly { id: string; name: string }[] = state[collection]
+  return list.find((item) => item.id === id)?.name || 'Kayıt bulunamadı'
+}
+export const gradeAverage = (state: State, id: string) =>
   average(state.grades.filter((g) => g.studentId === id).map((g) => g.score))
-export const absentCount = (state, id) =>
+export const absentCount = (state: State, id: string) =>
   state.attendance.filter((a) => a.studentId === id && a.status === 'absent').length
 // Telefonda gösterilmeyen sayfalar (web menüsünde bulunmaya devam eder).
-const hiddenOnMobile = { ogrenci: ['odemelerim'] }
-export function availablePages(state, role) {
+const hiddenOnMobile: Partial<Record<Role, readonly string[]>> = { ogrenci: ['odemelerim'] }
+export function availablePages(state: State, role: Role) {
   return (navigation[role] || []).filter(
     (p) => (!p.module || state.modules[p.module]) && !hiddenOnMobile[role]?.includes(p.path),
   )
 }
-export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = false } = {}) {
+export function rowsFor<P extends string>(
+  state: State,
+  session: Session,
+  page: P,
+  options?: { limit?: number; overdueOnly?: boolean },
+): PageRow<P>[]
+export function rowsFor(
+  state: State,
+  session: Session,
+  page: string,
+  { limit = Infinity, overdueOnly = false }: { limit?: number; overdueOnly?: boolean } = {},
+): Row[] {
   const c = context(state, session)
   const today = dayKey()
-  const names = {}
-  const lookupName = (collection, id) => {
-    names[collection] ||= new Map(state[collection].map((item) => [item.id, item.name]))
-    return names[collection].get(id) || 'Kayıt bulunamadı'
+  const names: Partial<Record<NamedCollection, Map<string, string>>> = {}
+  const lookupName = (collection: NamedCollection, id: string | null | undefined) => {
+    const list: readonly { id: string; name: string }[] = state[collection]
+    const known = (names[collection] ||= new Map(list.map((item) => [item.id, item.name])))
+    return (id == null ? undefined : known.get(id)) || 'Kayıt bulunamadı'
   }
-  const own = (item) => (c.teacher ? item.teacherId === teacherId : item.studentId === c.student.id)
-  const className = (id) => lookupName('classes', id)
-  const studentName = (id) => lookupName('students', id)
-  const teacherName = (id) => lookupName('teachers', id)
-  const row = (item, title, subtitle, body = '', status = '', kind = page, meta = []) => ({
+  const own = (item: { teacherId?: string; studentId?: string }) =>
+    c.teacher ? item.teacherId === teacherId : item.studentId === c.student.id
+  const className = (id: string | null | undefined) => lookupName('classes', id)
+  const studentName = (id: string | null | undefined) => lookupName('students', id)
+  const teacherName = (id: string | null | undefined) => lookupName('teachers', id)
+  const row = <K extends RowKind>(
+    item: RowSources[K] & { subject?: string; classId?: string | null; branchId?: string },
+    title: string | undefined,
+    subtitle: string,
+    body: string | undefined = '',
+    status: string | undefined = '',
+    kind: K,
+  ): RowOf<K> => ({
     id: item.id,
     title,
     subtitle,
@@ -76,7 +202,7 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
     status,
     kind,
     source: item,
-    meta,
+    meta: [],
     subject: item.subject || '',
     class: className(item.classId),
     branch: item.branchId ? nameOf(state, 'branches', item.branchId) : '',
@@ -148,7 +274,7 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
           ? +new Date(q.answeredAt) - +new Date(q.createdAt) > 86400000
           : slaStatus(q) === 'Süre aşıldı',
       ).length
-      const answered = questions.filter((q) => q.answeredAt)
+      const answered = questions.filter(isAnswered)
       return row(
         i,
         i.name,
@@ -170,7 +296,7 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
           `${i.interest} · ${nameOf(state, 'branches', i.branchId)}`,
           page === 'adaylar'
             ? `${i.phone}\n${i.notes.at(-1)?.text || ''}`
-            : `${dateLabel(i.trialAt)} · ${timeLabel(i.trialAt)}\n${i.notes.at(-1)?.text || ''}`,
+            : `${dateLabel(i.trialAt)} · ${i.trialAt ? timeLabel(i.trialAt) : ''}\n${i.notes.at(-1)?.text || ''}`,
           i.stage,
           'prospect',
         ),
@@ -180,7 +306,7 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
       const list = state.prospects.filter((i) => i.source === source)
       const count = list.filter((i) => i.stage === 'Kayıt oldu').length
       return row(
-        { id: source },
+        { id: source ?? '' },
         source,
         `${list.length} aday · ${count} kesin kayıt`,
         `Dönüşüm oranı %${Math.round((count / list.length) * 100)}`,
@@ -200,8 +326,8 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
       ),
     )
   if (page === 'students' || page === 'risk-listesi') {
-    const scores = new Map(),
-      absences = new Map()
+    const scores = new Map<string, { sum: number; count: number }>(),
+      absences = new Map<string, number>()
     for (const grade of state.grades) {
       const total = scores.get(grade.studentId) || { sum: 0, count: 0 }
       total.sum += grade.score
@@ -212,11 +338,11 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
       if (mark.status === 'absent')
         absences.set(mark.studentId, (absences.get(mark.studentId) || 0) + 1)
     }
-    const averageFor = (id) => {
+    const averageFor = (id: string) => {
       const total = scores.get(id)
       return total ? Math.round(total.sum / total.count) : 0
     }
-    const absentFor = (id) => absences.get(id) || 0
+    const absentFor = (id: string) => absences.get(id) || 0
     return state.students
       .filter(
         (s) =>
@@ -242,7 +368,7 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
   if (page === 'ders-programi')
     return state.schedule
       .filter((l) => (c.teacher ? l.teacherId === teacherId : l.classId === c.student.classId))
-      .sort((a, b) => a.date.localeCompare(b.date))
+      .sort((a, b) => byDate(a, b))
       .map((i) =>
         row(
           i,
@@ -256,7 +382,7 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
   if (page === 'notlarim')
     return state.grades
       .filter(own)
-      .sort((a, b) => b.date.localeCompare(a.date))
+      .sort((a, b) => byDate(b, a))
       .map((i) =>
         row(
           i,
@@ -270,7 +396,7 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
   if (page === 'devamsizlik')
     return state.attendance
       .filter(own)
-      .sort((a, b) => b.date.localeCompare(a.date))
+      .sort((a, b) => byDate(b, a))
       .map((i) =>
         row(
           i,
@@ -328,7 +454,11 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
     })
   if (page === 'materyaller' || page === 'materyal-yukle')
     return state.materials
-      .filter((i) => (c.teacher ? i.teacherId === teacherId : i.level === c.classroom.level))
+      .filter((i) => {
+        if (c.teacher) return i.teacherId === teacherId
+        if (!c.classroom) throw new Error('Öğrencinin sınıf kaydı bulunamadı.')
+        return i.level === c.classroom.level
+      })
       .map((i) =>
         row(
           i,
@@ -371,7 +501,7 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
   if (['randevular', 'randevu-talep', 'randevu-mesaj'].includes(page))
     return state.appointments
       .filter(own)
-      .sort((a, b) => b.date.localeCompare(a.date))
+      .sort((a, b) => byDate(b, a))
       .map((i) =>
         row(
           i,
@@ -426,6 +556,7 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
       .filter((i) => i.studentId === c.student.id && i.feedback)
       .map((i) => {
         const h = state.homework.find((h) => h.id === i.homeworkId)
+        if (!h) throw new Error('Ödev kaydı bulunamadı.')
         return row(
           i,
           h.title,
@@ -438,7 +569,8 @@ export function rowsFor(state, session, page, { limit = Infinity, overdueOnly = 
   return []
 }
 
-export function dashboard(state, session) {
+type Stat = { label: string; value: string | number }
+export function dashboard(state: State, session: Session): Stat[] {
   const c = context(state, session)
   if (session.role === 'yonetici') {
     const month = dayKey().slice(0, 7)
@@ -513,7 +645,7 @@ export function dashboard(state, session) {
     },
   ]
 }
-export function analysis(state, session, classId, subjectId) {
+export function analysis(state: State, session: Session, classId: string, subjectId?: string) {
   const c = context(state, session)
   const students = c.teacher ? state.students.filter((s) => s.classId === classId) : [c.student]
   const grades = state.grades.filter(
@@ -527,11 +659,11 @@ export function analysis(state, session, classId, subjectId) {
     ),
   }))
 }
-export function classSubjects(state, id) {
+export function classSubjects(state: State, id: string) {
   return subjectsForGrade(state.classes.find((c) => c.id === id)?.grade || 7)
 }
 
-export function homeSummary(data, session) {
+export function homeSummary(data: State, session: Session) {
   const scope = context(data, session)
   const stats = dashboard(data, session)
   const now = Date.now()

@@ -3,7 +3,7 @@ import DraftStatus from './DraftStatus.jsx'
 import React, { useState } from 'react'
 import { View, Pressable } from 'react-native'
 import { useSchool, recordError } from '../store/SchoolProvider.jsx'
-import { operation, normalizeFields } from '../model/operations.js'
+import { operation, normalizeFields } from '../model/operations.ts'
 import { Button, DateField, Field, Icon, Select, Sheet, T, useColors } from './components.jsx'
 import { pickFile, fileSelectionMessage } from '../lib/files.js'
 

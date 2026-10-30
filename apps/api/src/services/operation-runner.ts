@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import type { MakeId } from '@kampus/school-core/lib/domain.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
 
 import {
   isEphemeralCollection,
@@ -129,17 +130,11 @@ function issuePath(path: readonly PropertyKey[]): (string | number)[] {
   return path.map((part) => (typeof part === 'number' ? part : String(part)))
 }
 
-const DOMAIN_ERROR_KINDS = ['rule', 'conflict', 'forbidden', 'not_found'] as const
-type DomainErrorKind = (typeof DOMAIN_ERROR_KINDS)[number]
-
-function isDomainErrorKind(value: unknown): value is DomainErrorKind {
-  return DOMAIN_ERROR_KINDS.some((kind) => kind === value)
-}
-
 /**
- * school-core hatasını HTTP hatasına çevirir (kod-yazim.md hata tablosu).
- * TODO(C2-DomainError): core `DomainError`'ı dışa aktarınca yapısal denetim `instanceof` olur ve
- * düz `Error` eşlemesi kalkar (düz `Error` o zaman 500'dür).
+ * school-core hatasını HTTP hatasına çevirir (api-tasarimi.md §5): `DomainError` türüne göre
+ * 422/409/403/404, Zod 400. Düz `Error` ve alt sınıfları kullanıcı hatası sayılmaz (api.md):
+ * 500 `internal_error` olur; iç mesaj yanıta gitmez, logda da yalnız hata adı ve yığın kalır
+ * (`loggableError`).
  */
 export function mapOperationError(error: unknown): Error {
   if (error instanceof AppError) return error
@@ -151,29 +146,24 @@ export function mapOperationError(error: unknown): Error {
     }))
     return new ValidationError(issues)
   }
-  if (error instanceof Error && error.name === 'DomainError') {
-    const code: unknown = Reflect.get(error, 'code')
-    const kind: unknown = Reflect.get(error, 'kind')
-    if (typeof code === 'string' && isDomainErrorKind(kind)) {
-      switch (kind) {
-        case 'rule':
-          return new RuleViolationError(code, error.message, { cause: error })
-        case 'conflict':
-          return new AppError(409, code, error.message, { cause: error })
-        case 'forbidden':
-          return new AppError(403, code, error.message, { cause: error })
-        case 'not_found':
-          return new NotFoundError()
-        default:
-          return kind satisfies never
-      }
+  if (error instanceof DomainError) {
+    switch (error.kind) {
+      case 'rule':
+        return new RuleViolationError(error.code, error.message, { cause: error })
+      case 'conflict':
+        return new AppError(409, error.code, error.message, { cause: error })
+      case 'forbidden':
+        // Modül kapalıysa mesaj API'nin tek modül mesajıdır (`requireModule` ile aynı).
+        return error.code === 'module_disabled'
+          ? new AppError(403, 'module_disabled', MESSAGES.module_disabled, { cause: error })
+          : new AppError(403, error.code, error.message, { cause: error })
+      case 'not_found':
+        return new NotFoundError()
+      default:
+        return error.kind satisfies never
     }
   }
-  // Geçici: core bugün iş kuralı reddini düz `Error` + Türkçe mesajla fırlatıyor. Yalnız tam
-  // `Error` örneği kural reddi sayılır; TypeError gibi alt sınıflar programlama hatasıdır.
-  if (error instanceof Error && Object.getPrototypeOf(error) === Error.prototype)
-    return new RuleViolationError('rule_violation', error.message, { cause: error })
-  if (error instanceof Error) return error
+  if (error instanceof Error) return programmingError('operation failed', error)
   return programmingError('non-error thrown', error)
 }
 

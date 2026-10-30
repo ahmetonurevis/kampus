@@ -5,6 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { and, count, eq, sql } from 'drizzle-orm'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
@@ -25,7 +26,10 @@ const STUDENT = 'test-s-pg'
  */
 function markOnce(state: State, { makeId }: OperationTools) {
   if (state.attendance.some((item) => item.studentId === STUDENT && item.date === DAY))
-    throw new Error('Bu öğrencinin bugünkü yoklaması zaten alınmış.')
+    throw new DomainError(
+      'attendance_already_taken',
+      'Bu öğrencinin bugünkü yoklaması zaten alınmış.',
+    )
   state.attendance.push({
     id: makeId('att'),
     studentId: STUDENT,

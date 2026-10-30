@@ -10,7 +10,7 @@ import { schoolModules } from '@kampus/school-core/modules/school-workflows.ts'
 import type { App } from '../src/app.ts'
 import { ROLES } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
-import { MODULE_DISABLED_MESSAGE } from '../src/plugins/modules.ts'
+import { MESSAGES } from '../src/errors.ts'
 import { effectiveModules, moduleAllowsRole, MODULE_KEYS } from '../src/services/modules.ts'
 import {
   buildTestApp,
@@ -111,7 +111,7 @@ describe('modül kaydı ve requireModule (DOM-YTK-040)', () => {
     const denied = await get('/api/v1/test-guidance', closedCookie)
     assert.equal(denied.statusCode, 403)
     assert.equal(denied.json().code, 'module_disabled')
-    assert.equal(denied.json().message, MODULE_DISABLED_MESSAGE)
+    assert.equal(denied.json().message, MESSAGES.module_disabled)
     assert.equal(denied.json().requestId, denied.headers['x-request-id'])
   })
 

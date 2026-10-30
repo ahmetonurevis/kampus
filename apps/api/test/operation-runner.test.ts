@@ -5,6 +5,7 @@ import { asc, eq } from 'drizzle-orm'
 
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
 import { enrollProspect, payInvoice } from '@kampus/school-core/lib/domain.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { runWorkflow } from '@kampus/school-core/lib/school-workflows.ts'
 
 import type { App } from '../src/app.ts'
@@ -13,7 +14,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
-import { AppError, mapDatabaseError } from '../src/errors.ts'
+import { AppError, mapDatabaseError, MESSAGES } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { mapOperationError, runOperation } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
@@ -308,10 +309,10 @@ describe('işlem çalıştırıcı', () => {
         run: (state, { now }) => {
           pay(state, now)
           state.invoices.push({ ...unpaid, id: 'test-inv-new' })
-          throw new Error('Taksit planı onaylanmadı.')
+          throw new DomainError('installment_plan_rejected', 'Taksit planı onaylanmadı.')
         },
       }),
-      hasStatus(422, 'rule_violation'),
+      hasStatus(422, 'installment_plan_rejected'),
     )
     assert.deepEqual(await snapshot(ctx.institutionId), before)
   })
@@ -725,34 +726,55 @@ describe('veritabanı hata eşlemesi', () => {
 
 describe('core hata eşlemesi', () => {
   test('DomainError türü HTTP durumuna eşlenir', () => {
-    const domain = (kind: string) =>
-      Object.assign(new Error('Bu öğrenci için açık bir hedef zaten var.'), {
-        name: 'DomainError',
-        code: 'goal_already_open',
-        kind,
-      })
-    const statuses = ['rule', 'conflict', 'forbidden', 'not_found'].map((kind) => {
-      const mapped = mapOperationError(domain(kind))
-      assert.ok(mapped instanceof AppError)
-      return [mapped.statusCode, mapped.code]
+    const domain = (kind: 'rule' | 'conflict' | 'forbidden' | 'not_found') =>
+      new DomainError('goal_already_open', 'Bu öğrenci için açık bir hedef zaten var.', { kind })
+    const mapped = (['rule', 'conflict', 'forbidden', 'not_found'] as const).map((kind) => {
+      const error = mapOperationError(domain(kind))
+      assert.ok(error instanceof AppError)
+      return [error.statusCode, error.code, error.message]
     })
-    assert.deepEqual(statuses, [
-      [422, 'goal_already_open'],
-      [409, 'goal_already_open'],
-      [403, 'goal_already_open'],
-      [404, 'not_found'],
+    assert.deepEqual(mapped, [
+      [422, 'goal_already_open', 'Bu öğrenci için açık bir hedef zaten var.'],
+      [409, 'goal_already_open', 'Bu öğrenci için açık bir hedef zaten var.'],
+      [403, 'goal_already_open', 'Bu öğrenci için açık bir hedef zaten var.'],
+      [404, 'not_found', MESSAGES.not_found],
     ])
   })
 
-  test('düz Error kural reddidir; alt sınıflar programlama hatası olarak kalır', () => {
-    const rule = mapOperationError(new Error('Seçilen sınıfın kontenjanı dolu.'))
-    assert.ok(rule instanceof AppError)
-    assert.equal(rule.statusCode, 422)
-    assert.equal(rule.message, 'Seçilen sınıfın kontenjanı dolu.')
-    const bug = new TypeError("Cannot read properties of undefined (reading 'find')")
-    assert.equal(mapOperationError(bug), bug)
-    const thrown = mapOperationError('metin')
-    assert.ok(thrown instanceof AppError)
-    assert.equal(thrown.statusCode, 500)
+  test('core module_disabled API modül mesajıyla 403 olur', () => {
+    const error = mapOperationError(
+      new DomainError('module_disabled', 'Bu modül kullanıma kapalı.', { kind: 'forbidden' }),
+    )
+    assert.ok(error instanceof AppError)
+    assert.deepEqual(
+      [error.statusCode, error.code, error.message],
+      [403, 'module_disabled', MESSAGES.module_disabled],
+    )
+  })
+
+  test('DomainError adını taşıyan düz Error yapısal olarak kabul edilmez: 500', () => {
+    const fake = Object.assign(new Error('Sahte kural'), {
+      name: 'DomainError',
+      code: 'fake',
+      kind: 'rule',
+    })
+    const error = mapOperationError(fake)
+    assert.ok(error instanceof AppError)
+    assert.deepEqual([error.statusCode, error.code], [500, 'internal_error'])
+  })
+
+  test('düz Error ve alt sınıfları 500 internal_error; iç mesaj yanıta gitmez', () => {
+    for (const thrown of [
+      new Error('Seçilen sınıfın kontenjanı dolu.'),
+      new TypeError("Cannot read properties of undefined (reading 'find')"),
+      'metin',
+    ]) {
+      const error = mapOperationError(thrown)
+      assert.ok(error instanceof AppError)
+      assert.deepEqual(
+        [error.statusCode, error.code, error.message],
+        [500, 'internal_error', MESSAGES.internal_error],
+      )
+    }
   })
 })

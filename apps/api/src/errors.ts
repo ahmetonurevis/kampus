@@ -23,6 +23,7 @@ export const MESSAGES = {
   bad_request: 'İstek okunamadı. Bilgileri kontrol edip yeniden deneyin.',
   unauthenticated: 'Oturum açmanız gerekiyor.',
   forbidden: 'Bu işlem için yetkiniz yok.',
+  module_disabled: 'Bu modül kurumunuzda kapalı.',
   no_active_institution: 'Etkin bir kurum üyeliğiniz bulunmuyor.',
   csrf_rejected: 'İstek güvenilmeyen bir kaynaktan geldi.',
   not_found: 'İstenen kayıt bulunamadı.',

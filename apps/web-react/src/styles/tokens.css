@@ -57,6 +57,10 @@
   --on-danger: var(--white);
   /* Odak halkası: çevresindeki zeminle en az 3:1 (açık ≈ 10:1, koyu ≈ 9:1). */
   --focus-ring: var(--primary);
+  /* Grafik: çubuk 3:1 (WCAG 1.4.11), eksen metni 4,5:1; koyu temada --primary/--muted ile değişir. */
+  --chart-bar: var(--primary);
+  --chart-grid: var(--border);
+  --chart-axis: var(--muted);
   --sidebar: var(--sapphire-800);
   --sidebar-text: #dbe7ff;
   --sidebar-strong: #f0f1f8;

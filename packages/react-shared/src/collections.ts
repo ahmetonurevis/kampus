@@ -176,6 +176,21 @@ export async function fetchCollectionCounts(
   }
 }
 
+/** Grubun sayısı; grup yoksa 0. Değer metin karşılaştırılır (`true` ile `'true'` aynıdır). */
+export function countOf(counts: CollectionCounts | undefined, value: string | boolean): number {
+  return groupOf(counts, value)?.count ?? 0
+}
+
+/** Grubun toplamı (`sum` istenmişse); grup yoksa 0. */
+export function sumOf(counts: CollectionCounts | undefined, value: string | boolean): number {
+  return groupOf(counts, value)?.sum ?? 0
+}
+
+function groupOf(counts: CollectionCounts | undefined, value: string | boolean) {
+  const wanted = String(value)
+  return counts?.groups.find((group) => group.value !== null && String(group.value) === wanted)
+}
+
 /**
  * Sorgu anahtarı parçası: aynı anlamdaki sorgular aynı anahtarı üretir (kısa arama yok sayılır,
  * filtre sırası önemsiz). Etkin kurum `institutionKey` ile başa eklenir.

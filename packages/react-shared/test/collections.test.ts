@@ -12,11 +12,13 @@ import {
   collectionListParams,
   collectionQueryKey,
   CollectionTooLargeError,
+  countOf,
   fetchAllCollectionPages,
   fetchCollectionCounts,
   fetchCollectionItem,
   fetchCollectionPage,
   isModuleDisabledError,
+  sumOf,
 } from '../src/collections.ts'
 
 const json = (status: number, body: unknown) =>
@@ -217,6 +219,31 @@ describe('toplu sayım', () => {
 
     const plain = await fetchCollectionCounts(client, 'invoices', { groupBy: 'status' })
     assert.equal('sum' in plain, false)
+  })
+})
+
+describe('countOf ve sumOf', () => {
+  const counts = {
+    groups: [
+      { value: 'Gecikmiş', count: 2, sum: 500 },
+      { value: true, count: 4 },
+      { value: null, count: 1 },
+    ],
+    total: 7,
+  }
+
+  test('grup değerini metin olarak karşılaştırır', () => {
+    assert.equal(countOf(counts, 'Gecikmiş'), 2)
+    assert.equal(sumOf(counts, 'Gecikmiş'), 500)
+    assert.equal(countOf(counts, true), 4)
+    assert.equal(sumOf(counts, true), 0)
+  })
+
+  test('olmayan grup, null grubu ve veri yokken 0 döner', () => {
+    assert.equal(countOf(counts, 'Ödendi'), 0)
+    assert.equal(countOf(counts, 'null'), 0)
+    assert.equal(countOf(undefined, 'Ödendi'), 0)
+    assert.equal(sumOf(undefined, 'Ödendi'), 0)
   })
 })
 

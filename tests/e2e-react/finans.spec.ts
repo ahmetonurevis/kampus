@@ -260,9 +260,17 @@ test.describe('Finans: liste', () => {
     await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
     await expect(page).toHaveURL(/[?&]sayfa=2/)
     await expect(resultCount(page)).toContainText('9–16 /')
-    await expect(bodyRows(page)).toHaveCount(8)
-    for (const row of await bodyRows(page).all()) await expect(row).toContainText('Yaklaşan')
-    expect(await bodyRows(page).allTextContents()).not.toEqual(firstPage)
+    // Önceki sayfa yeni yanıt gelene kadar ekranda kalır; ikinci sayfanın satırları gelene kadar bekle.
+    await expect
+      .poll(async () => {
+        const rows = await bodyRows(page).allTextContents()
+        return (
+          rows.length === 8 &&
+          rows.every((row) => row.includes('Yaklaşan')) &&
+          JSON.stringify(rows) !== JSON.stringify(firstPage)
+        )
+      })
+      .toBe(true)
 
     // Süzme sunucuda: istekler status taşır ve her sayfa 8 satırlıktır (tüm taksitler çekilmez).
     const listed = requests.filter((search) => search.includes('status='))

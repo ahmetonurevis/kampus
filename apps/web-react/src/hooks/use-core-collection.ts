@@ -9,6 +9,7 @@ import type {
 import {
   useCollectionAll,
   useCollectionCounts,
+  useCollectionCountSeries,
   useCollectionFetchAll,
   useCollectionItem,
   useCollectionList,
@@ -58,4 +59,13 @@ export function useCoreCounts<K extends CoreCollection>(
   options: { enabled?: boolean } = {},
 ) {
   return useCollectionCounts(collection, query, options)
+}
+
+/** Aynı koleksiyonda sıralı sayımlar (haftalık dilimler gibi). */
+export function useCoreCountSeries<K extends CoreCollection>(
+  collection: K,
+  queries: readonly CollectionCountsQuery[],
+  options: { enabled?: boolean } = {},
+) {
+  return useCollectionCountSeries(collection, queries, options)
 }

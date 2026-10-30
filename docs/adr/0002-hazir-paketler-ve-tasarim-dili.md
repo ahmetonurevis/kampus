@@ -34,6 +34,7 @@ Platform geçişinde (ADR 0001) web, API ve mobil sıfırdan kuruluyor. Kullanı
 5. **Mobil:** React Navigation, TanStack Query, react-hook-form, `@better-auth/expo` + `expo-secure-store`. Cam yüzey iOS'ta `expo-glass-effect`, desteklenmeyen platformda (Android dahil) opak token zemini.
 
 6. **Tasarım dili: ölçülü Liquid Glass.**
+   - Temel, mevcut arayüz görünümüdür: Vue web ve mobil uygulamanın yerleşimi, ölçüleri, renkleri, tipografisi ve bileşen biçimleri korunur; yeni React web ve mobil aynı temayla devam eder. Liquid Glass bu görünüme yüzen katmanda eklenen malzemedir, baştan yeni bir tasarım değildir.
    - Cam malzeme yalnız içeriğin üstünde yüzen gezinme ve kontrol katmanındadır: sidebar, navbar, açılır menü, popover, modal ve sağ panel zemini, toast, mobil üst başlık. Tablo, form, belge, PDF ve uzun metin yüzeyleri opaktır.
    - Cam; yarı saydam token zemini + `backdrop-filter` (bulanıklık, doygunluk) + ince yarı saydam vurgu çizgisiyle yapılır. Köşeler eş merkezli, kontroller kapsül biçimine yakın. Değerler tokenlardan gelir; bileşende sabit değer yazılmaz.
    - Okunabilirlik önce gelir: metin ve ikon kontrastı WCAG AA. `prefers-reduced-transparency`, `prefers-contrast: more`, `backdrop-filter` desteği olmayan tarayıcı ve düşük güç durumunda yüzey opak token zeminine döner.

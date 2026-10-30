@@ -2,6 +2,15 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Rubrik uçları
+
+- `GET /api/v1/rubrics` (sayfalı; rubrik, son sürümün özeti ve yayındaki sürüm kimliği) ve `GET /api/v1/rubrics/:rubricId` (bütün sürümler, her biri atama ve puan kullanım sayısıyla); yalnız `yonetici` ve `ogretmen` (core `isContentStaff`, rubrik kurumundur, IST-048). Modül `learning`; kapalıysa 403 `module_disabled`.
+- `POST /rubrics` (yeni rubrik ve ilk taslak, 201 + `Location`) ve `POST /rubrics/:rubricId/versions` (yeni taslak sürüm, 201 + `Location`; açık taslak varken 409 `open_rubric_version_exists`). Oluşturma uçları `Idempotency-Key` kabul eder, `If-Match` 400 `if_match_not_supported` verir. Dil okulunda kazanıma bağlı bant 422 `rubric_alignment_invalid` (DOM-BEC-020).
+- `PATCH /rubrics/:rubricId/versions/:versionId` (taslak düzenleme; verilmeyen alan kalır, `criteria` bütün olarak değişir, birleşmiş içerik core şemasıyla yeniden doğrulanır), `POST …/publish` ve `POST …/archive`: `If-Match` sürümün `rowVersion`'ıdır ve zorunludur (eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`). Yayım önceki yayındaki sürümü aynı işlemde arşivler; taslak olmayan veya kullanılmış sürümün düzenlenmesi 409 `rubric_version_immutable`, yayında olmayan sürümün arşivi 409 `rubric_version_not_published` (DOM-BEC-022). Düzenleme, yayım ve arşiv yalnız rubriğin sahibine ve yöneticiye açıktır (core `canManageRubric`; diğer öğretmen 403). Sıra: kapsam (404) → yetki (403) → sürüm (409).
+- Depo (`db/skills.ts`): `findRubric`, `listRubrics`, `applyRubricPublish`, `applyRubricArchive`, `rubricUsageByVersion` eklendi. Yayım önce yayındaki sürümü arşivler, sonra taslağı yayımlar; satır sürümü tutmazsa 409 `version_conflict`, eşzamanlı ikinci yayım 409 `published_rubric_version_exists`. Bu ve `rubric_version_exists` kodları kurum kilidi yüzünden uçtan tetiklenemez; depo testinde doğrulanır.
+- Rubrik başlığı, bant tanımı ve kriter metni loglanmaz; denetim kaydına yalnız alan adları yazılır (`rubric.create`, `rubric.version_create`, `rubric.draft_update`, `rubric.publish`, `rubric.archive`).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
 ## Alınabilir randevu saatleri okuma ucu
 
 - `GET /api/v1/appointments/slots?studentId=…&from=…&to=…` (öğrenci, veli): öğrencinin sınıfına ders veren etkin öğretmenlerin gelecekteki uygunluk saatleri; her saat `slotId`, `teacherId`, `teacherName`, `startsAt`, `duration`, `campusName` (varsa), `subjectNames` ve `available` taşır (`BookableSlot`). Kural core 2.19.0 `bookableSlots` (DOM-ILT-105); `available: false` talepteki `appointment_conflict` kararıyla aynıdır, nedeni, saati tutan randevu ve kişisi ile saatin iç notu dönmez (DOM-ILT-073).

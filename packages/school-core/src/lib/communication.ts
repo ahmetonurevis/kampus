@@ -548,7 +548,7 @@ export function startConversation(
       c.studentId === data.studentId &&
       c.teacherId === teacherId &&
       c.audience === audience &&
-      (c.parentUserId === undefined || c.parentUserId === parentUserId),
+      c.parentUserId === parentUserId,
   )
   const created = !conversation
   if (!conversation) {

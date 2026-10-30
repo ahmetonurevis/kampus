@@ -294,6 +294,68 @@ describe('iletişim uçları', () => {
       assert.equal((await message(mother.cookie, id, 'Merhaba hocam')).statusCode, 201)
     })
 
+    test('DOM-ILT-010: veli kimliği olmayan eski yazışma hiçbir veliye görünmez; yeni yazışma ayrı açılır', async () => {
+      const a = await institution()
+      const teacherCookie = await teacher(a.id)
+      const mother = await parent(a.id)
+      const father = await parent(a.id)
+      await insertMissingRecords(
+        db,
+        a.id,
+        rows({
+          conversations: [
+            {
+              id: 'conv-eski',
+              studentId: 's1',
+              teacherId: 't2',
+              audience: 'parent',
+              createdAt: FIXED_NOW.toISOString(),
+              messages: [
+                {
+                  id: 'conv-eski-m0',
+                  text: 'Eski yazışma',
+                  sender: 'teacher',
+                  date: FIXED_NOW.toISOString(),
+                },
+              ],
+            },
+          ],
+        }),
+        FIXED_NOW,
+      )
+      const before = await conversation(a.id, 'conv-eski')
+      for (const who of [mother, father]) {
+        assert.equal((await read(who.cookie, '/api/v1/conversations')).json().meta.total, 0)
+        assertError(await read(who.cookie, '/api/v1/conversations/conv-eski/messages'), 404)
+        assertError(await message(who.cookie, 'conv-eski', 'Yazayım'), 404)
+        assertError(await send('POST', '/api/v1/conversations/conv-eski/read', who.cookie, {}), 404)
+      }
+      // Öğretmen eski kaydı görmeye devam eder.
+      const list = await read(teacherCookie, '/api/v1/conversations')
+      assert.deepEqual(
+        list.json().data.map((row: { id: string }) => row.id),
+        ['conv-eski'],
+      )
+      // Başlatma eski kayda eklenmez: veli ve öğretmen ayrı, yeni yazışma açar.
+      const byMother = await start(mother.cookie, {
+        studentId: 's1',
+        teacherId: 't2',
+        text: 'Merhaba',
+      })
+      assert.equal(byMother.statusCode, 201, byMother.body)
+      assert.notEqual(byMother.json().data.entity.id, 'conv-eski')
+      const byTeacher = await start(teacherCookie, {
+        studentId: 's1',
+        audience: 'parent',
+        parentUserId: father.id,
+        text: 'Merhaba Bey',
+      })
+      assert.equal(byTeacher.statusCode, 201, byTeacher.body)
+      assert.notEqual(byTeacher.json().data.entity.id, 'conv-eski')
+      assert.notEqual(byTeacher.json().data.entity.id, byMother.json().data.entity.id)
+      assert.deepEqual(await conversation(a.id, 'conv-eski'), before)
+    })
+
     test('DOM-ILT-010: öğretmen kapsam dışı öğrencinin velisiyle yazışma açamaz, veli hesaplarını göremez', async () => {
       const a = await institution()
       const teacherCookie = await teacher(a.id)

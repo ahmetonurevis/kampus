@@ -51,7 +51,7 @@ const people: Record<Role, Participant> = {
       { kind: 'child', recordId: 's1' },
       { kind: 'child', recordId: 's2' },
     ],
-    userId: 'u-ayse',
+    userId: 'p1',
   },
 }
 const teacher = (recordId: string, userId = `u-${recordId}`): Participant => ({
@@ -556,7 +556,7 @@ test('DOM-ILT-010: öğretmen kendi öğrencisinin velisiyle yazışma açar; ya
     { studentId: 's1', audience: 'parent', text: 'Merhaba, Deniz’in ödevleri hakkında.' },
     id,
     now,
-    { parentUserIds: ['u-ayse'] },
+    { parentUserIds: ['p1'] },
   )
   assert.equal(first.created, true)
   assert.equal(state.conversations.length, count + 1)
@@ -572,7 +572,7 @@ test('DOM-ILT-010: öğretmen kendi öğrencisinin velisiyle yazışma açar; ya
       studentId: 's1',
       teacherId: 't2',
       audience: 'parent',
-      parentUserId: 'u-ayse',
+      parentUserId: 'p1',
       startedBy: 'ogretmen',
     },
   )
@@ -585,7 +585,7 @@ test('DOM-ILT-010: öğretmen kendi öğrencisinin velisiyle yazışma açar; ya
     { studentId: 's1', audience: 'parent', text: 'Bir de kitap listesi.' },
     id,
     later,
-    { parentUserIds: ['u-ayse'] },
+    { parentUserIds: ['p1'] },
   )
   assert.equal(again.created, false)
   assert.equal(again.conversation, first.conversation)
@@ -731,6 +731,43 @@ test('DOM-ILT-010: iki velinin yazışması ayrıdır; biri diğerininkini görm
   )
 })
 
+test('DOM-ILT-010: veli kimliği olmayan eski yazışma hiçbir veliye görünmez ve yeni yazışmayla eşleşmez', () => {
+  const state = seed()
+  // Örnek veri velisi p1'dir; kimliksiz eski kayıt aynı öğrencinin ikinci velisine sızmamalı.
+  const legacy = state.conversations.find((c) => c.id === 'conv2')!
+  assert.equal(legacy.parentUserId, 'p1')
+  const orphan: typeof legacy = { ...legacy, id: 'conv-eski' }
+  delete orphan.parentUserId
+  state.conversations.push(orphan)
+  const second = parentOf('s1', 'u-ikinci')
+  const mine = (by: Participant) =>
+    conversationsFor(state, scopeFor(state, by), by.userId).map((c) => c.id)
+  assert.deepEqual(mine(second), [])
+  assert.deepEqual(mine(people.veli), ['conv2', 'conv3'])
+  assert.equal(isConversationParty(scopeFor(state, second), 'u-ikinci', orphan), false)
+  unchangedOnFailure(
+    state,
+    'conversations',
+    () => sendMessage(state, second, 'conv-eski', { text: 'Ben de yazayım' }, id, now),
+    isDomainError('conversation_not_found', 'not_found'),
+  )
+  // Başlatma eski kayda eklemez; kendi yazışmasını ayrı açar.
+  const before = orphan.messages.length
+  const opened = startConversation(
+    state,
+    second,
+    { studentId: 's1', teacherId: 't1', text: 'Merhaba' },
+    id,
+    now,
+  )
+  assert.equal(opened.created, true)
+  assert.notEqual(opened.conversation.id, 'conv-eski')
+  assert.equal(opened.conversation.parentUserId, 'u-ikinci')
+  assert.equal(orphan.messages.length, before)
+  // Öğretmen tarafı değişmez: eski kayıt öğretmene görünmeye devam eder.
+  assert.ok(conversationsFor(state, scopeFor(state, teacher('t1')), 'u-t1').includes(orphan))
+})
+
 test('DOM-ILT-011: öğrenci yalnız kendi öğretmeni ve rehber öğretmenle yazışır; öğrenci–öğrenci yok', () => {
   const state = seed()
   const own = startConversation(
@@ -765,9 +802,7 @@ test('DOM-ILT-011: öğrenci yalnız kendi öğretmeni ve rehber öğretmenle ya
       isDomainError('conversation_party_forbidden', 'forbidden'),
     )
   // Veli, öğrencinin öğretmen yazışmasını görmez (DOM-ILT-011).
-  assert.ok(
-    !conversationsFor(state, scopeFor(state, people.veli), 'u-ayse').includes(own.conversation),
-  )
+  assert.ok(!conversationsFor(state, scopeFor(state, people.veli), 'p1').includes(own.conversation))
   for (const role of ['yonetici', 'onburo'] as const)
     unchangedOnFailure(
       state,

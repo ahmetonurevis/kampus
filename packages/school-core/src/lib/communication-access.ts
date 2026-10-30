@@ -271,12 +271,13 @@ export function isConversationParty(
     case 'ogrenci':
       return conversation.audience === 'student' && scope.studentIds.has(conversation.studentId)
     case 'veli':
-      // Her velinin yazışması ayrıdır (DOM-ILT-010); veli kimliği olmayan eski örnek kayıt
-      // çocuğa bağlı her veliye açıktır.
+      // Her velinin yazışması ayrıdır (DOM-ILT-010). Veli kimliği olmayan eski kayıt kapalı
+      // başarısızdır: hiçbir veliye açılmaz (öğretmen ve yönetici kuralları değişmez).
       return (
         conversation.audience === 'parent' &&
         scope.studentIds.has(conversation.studentId) &&
-        (conversation.parentUserId === undefined || conversation.parentUserId === userId)
+        conversation.parentUserId !== undefined &&
+        conversation.parentUserId === userId
       )
     default:
       return false

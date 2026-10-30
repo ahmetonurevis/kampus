@@ -665,8 +665,8 @@ function buildSeed(now: Date) {
   ]
   const conversations = [
     { id: 'conv1', studentId: 's1', teacherId: 't1', audience: 'student' },
-    { id: 'conv2', studentId: 's1', teacherId: 't1', audience: 'parent' },
-    { id: 'conv3', studentId: 's2', teacherId: 't1', audience: 'parent' },
+    { id: 'conv2', studentId: 's1', teacherId: 't1', audience: 'parent', parentUserId: 'p1' },
+    { id: 'conv3', studentId: 's2', teacherId: 't1', audience: 'parent', parentUserId: 'p1' },
     { id: 'conv4', studentId: 's1', teacherId: 't3', audience: 'student' },
   ].map((c) => ({
     ...c,

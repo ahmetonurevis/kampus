@@ -13,7 +13,7 @@ import { MIGRATIONS_FOLDER, schema, type Database } from '../src/db/client.ts'
 import { stateRecords, demoState } from '../src/db/demo-seed.ts'
 import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
-import { buildTestApp, createInstitution, FIXED_NOW } from './support/app.ts'
+import { buildTestApp, createInstitution, createMember, FIXED_NOW } from './support/app.ts'
 
 interface Journal {
   entries: { tag: string }[]
@@ -124,6 +124,64 @@ describe('veri dönüştüren migration’lar', () => {
       )
       assert.equal(await insertMissingRecords(db, id, items, FIXED_NOW), 0)
       assert.deepEqual(await snapshot(), afterSeed)
+    } finally {
+      await app.close()
+    }
+  })
+})
+
+describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
+  const client = new PGlite()
+  const pglite = drizzle({ client, schema })
+  const db: Database = pglite
+  let folder: string
+
+  before(async () => {
+    folder = await migrationsUpTo('0006_create_idempotency_keys')
+    await migrate(pglite, { migrationsFolder: folder })
+  })
+  after(async () => {
+    await client.close()
+    await rm(folder, { recursive: true, force: true })
+  })
+
+  test('tek veli hesabı olan öğrencinin eski yazışması o hesapla dolar; iki veya sıfır hesapta boş kalır', async () => {
+    const app = await buildTestApp(db)
+    try {
+      const { id } = await createInstitution(app)
+      const only = await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's1' }])
+      await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's2' }])
+      await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's2' }])
+      const conversation = (key: string, studentId: string, extra: Record<string, unknown>) => ({
+        id: key,
+        data: { id: key, studentId, teacherId: 't1', audience: 'parent', messages: [], ...extra },
+      })
+      const rows = [
+        conversation('conv-tek', 's1', {}),
+        conversation('conv-iki', 's2', {}),
+        conversation('conv-yok', 's3', {}),
+        conversation('conv-dolu', 's1', { parentUserId: 'u-baska' }),
+        conversation('conv-ogrenci', 's1', { audience: 'student' }),
+      ]
+      for (const row of rows)
+        await db.execute(
+          sql`insert into records (institution_id, collection, id, data, position, created_at, updated_at) values (${id}, 'conversations', ${row.id}, ${JSON.stringify(row.data)}::jsonb, 1024, ${FIXED_NOW}, ${FIXED_NOW})`,
+        )
+
+      await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+
+      const stored = new Map(
+        (await loadRecords(db, id, ['conversations'])).map((row) => [row.id, row]),
+      )
+      const parentOf = (key: string) => stored.get(key)?.data.parentUserId
+      assert.equal(parentOf('conv-tek'), only.id)
+      assert.equal(stored.get('conv-tek')?.version, 2)
+      assert.equal(parentOf('conv-iki'), undefined)
+      assert.equal(parentOf('conv-yok'), undefined)
+      assert.equal(parentOf('conv-dolu'), 'u-baska')
+      assert.equal(parentOf('conv-ogrenci'), undefined)
+      for (const key of ['conv-iki', 'conv-yok', 'conv-dolu', 'conv-ogrenci'])
+        assert.equal(stored.get(key)?.version, 1, key)
     } finally {
       await app.close()
     }

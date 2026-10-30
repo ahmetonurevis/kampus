@@ -1,6 +1,6 @@
 # ADR 0001 · Çevrimdışı demodan çok kurumlu platforma geçiş
 
-- Durum: Kabul edildi (2026-10-30)
+- Durum: Kabul edildi (2026-10-30); karar 6 kimlik tabloları ve karar 7 ADR 0002 ile değişti
 - Karar veren: Oğuzhan Demirci
 
 ## Bağlam

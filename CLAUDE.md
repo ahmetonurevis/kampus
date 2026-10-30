@@ -4,7 +4,7 @@
 
 Dil okulları ve özel okullar (ortaokul/lise) için okul–veli–öğrenci arasında köprü kuran, okulun kendi kaynak platformunu oluşturan ve yayınevi/üçüncü taraf dijital platform bağımlılığını azaltan çok kurumlu platform. Sıradan bir LMS'ten fazlası: İngilizcede okuma-anlama, dinleme, yazma ve konuşma becerileri; diğer derslerde ders ve kazanım odaklı çalışma; kayıt, finans, iletişim ve okul iş akışları tek yerde. Canlı ders yayını kapsam dışıdır.
 
-Mimari kararlar `docs/adr/` altındadır; büyük yön değişikliği önce ADR ile yazılır. Temel karar: `docs/adr/0001-platform-mimarisi.md`.
+Mimari kararlar `docs/adr/` altındadır; büyük yön değişikliği önce ADR ile yazılır. Temel karar: `docs/adr/0001-platform-mimarisi.md`; hazır paket ilkesi ve tasarım dili: `docs/adr/0002-hazir-paketler-ve-tasarim-dili.md`.
 
 ## Geçiş durumu
 
@@ -43,7 +43,8 @@ Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokun
 ## Kalıcı tasarım ve davranış kuralları
 
 - Ana renk `#1E3A8A`, aksan `#F97316`, web açık zemini `#FFFFFF`; mobilde sayfa zemini yumuşak mavi-gri `#EFF3FB`, kartlar beyaz, üst başlık safirdir. Açık/koyu tema birlikte bulunur; varsayılan açık, mobilde sistem seçeneği de vardır. Tema tercihi saklanır.
-- Gradyan, cam efekti, ışık hüzmesi, yoğun gölge, dekoratif renkli kenar çizgisi veya veriye dayanmayan grafik kullanılmaz. İnce ayraçlar, düzenli boşluklar, ölçülü yuvarlak köşeler ve okunaklı metin esastır.
+- Tasarım dili ölçülü Liquid Glass'tır (ADR 0002). Cam yalnız içeriğin üstünde yüzen gezinme/kontrol katmanında kullanılır: sidebar, navbar, menü, popover, modal/sağ panel zemini, toast ve mobil üst başlık. Tablo, form, belge ve metin yüzeyleri opaktır. Kontrast WCAG AA'dır; azaltılmış saydamlık, yüksek kontrast ve desteksiz ortamda yüzey opak zemine döner. Gradyan zemin, ışık hüzmesi, yoğun gölge, dekoratif renkli kenar, kırılma efekti ve veriye dayanmayan grafik kullanılmaz. İnce ayraçlar, düzenli boşluklar, eş merkezli yuvarlak köşeler ve okunaklı metin esastır.
+- Genel sorunlar için hazır paket kullanılır, kendi kütüphanemiz yazılmaz (ADR 0002 paket listesi): web shadcn/ui (Radix) + Tailwind v4 + TanStack Table/Query + react-hook-form + sonner; API Fastify eklentileri + Drizzle + Better Auth.
 - Hızlı erişim bölümü, navbar hızlı araması ve mobil alt navigasyon yoktur. Beş rolde kategorili menü kullanılır; kapalı modüller ve boş kategoriler gizlenir. Mobilde hamburger menü yoktur: ana ekranda kategoriler kart olarak gelir, karta dokununca kategori ekranı modülleri kart olarak listeler. Hesap sayfaları sağ üstteki isim/avatar menüsündedir; öğrenci ödemeleri telefonda gösterilmez.
 - Web sidebar/navbar iç boşluklu yüzeylerdir; aktif bağlantı kısa pill, breadcrumb ve kontroller ayrıdır. Tema ve ölçüler tek token dosyasından gelir. Sidebar bağlantıları 11 px, grup etiketleri 10 px.
 - Ana işlem görünür, ikincil işlemler sakin tutulur. Dashboard içerikleri 2:1; mini grafikler yalnızca gerçek kayıtlardan türetilir. Avatar rengi normalleştirilmiş tam ada göre sabittir.

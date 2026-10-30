@@ -8,6 +8,7 @@ import { runRequest } from '../src/api-result.ts'
 import {
   commandFeedback,
   commandHeaders,
+  IF_MATCH_MISSING_CODE,
   runCommand,
   createCommandSession,
 } from '../src/commands.ts'
@@ -131,6 +132,21 @@ describe('moduleToggleRequest', () => {
     assert.deepEqual(sent[0]?.body, { enabled: false })
     assert.equal(sent[0]?.headers.get('if-match'), '"3"')
     assert.equal(sent[0]?.headers.get('idempotency-key'), 'anahtar-12345')
+  })
+
+  test('DOM-YTK-040: okunan sürüm yoksa modül ayarı isteği atılmaz', async () => {
+    const { kampus, sent } = client(ok)
+    await assert.rejects(
+      runRequest(() =>
+        moduleToggleRequest(
+          kampus,
+          { moduleKey: 'meals', enabled: false, version: 3 },
+          commandHeaders('anahtar-12345'),
+        ),
+      ),
+      (error: unknown) => error instanceof ApiError && error.code === IF_MATCH_MISSING_CODE,
+    )
+    assert.equal(sent.length, 0)
   })
 
   test('409 çakışmada sonuç başarısızdır, mesaj Türkçedir ve tazeleme yapılır', async () => {

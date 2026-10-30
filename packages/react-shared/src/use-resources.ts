@@ -5,7 +5,7 @@ import type { ApiError } from '@kampus/api-client/errors.ts'
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { runRequest } from './api-result.ts'
-import type { CommandHeaders } from './commands.ts'
+import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useKampusClient } from './kampus-context.ts'
 import { institutionKey } from './query-keys.ts'
 import { RESOURCE_MESSAGES, type ActionKind, type ResourceListQuery } from './resource-model.ts'
@@ -84,14 +84,25 @@ export interface UpdateDraftInput {
   patch: ResourceDraftPatch
 }
 
+/** `PATCH …/versions/:versionId`: `If-Match` zorunludur, sürüm yoksa istek atılmaz. */
+export function updateDraftRequest(
+  client: KampusClient,
+  { resourceId, versionId, patch }: UpdateDraftInput,
+  headers: CommandHeaders,
+) {
+  return client.PATCH('/api/v1/resources/{resourceId}/versions/{versionId}', {
+    params: {
+      path: { resourceId, versionId },
+      header: { ...headers, 'if-match': requireIfMatch(headers) },
+    },
+    body: patch,
+  })
+}
+
 /** Taslak düzenleme (`PATCH …/versions/:versionId`); 409'da liste ve ayrıntı tazelenir. */
 export function useUpdateDraft(options: CommandOptions = {}) {
   return useApiCommand({
-    request: (client, { resourceId, versionId, patch }: UpdateDraftInput, headers) =>
-      client.PATCH('/api/v1/resources/{resourceId}/versions/{versionId}', {
-        params: { path: { resourceId, versionId }, header: headers },
-        body: patch,
-      }),
+    request: updateDraftRequest,
     invalidates: INVALIDATES,
     version: (input) => input.version,
     messages: RESOURCE_MESSAGES,

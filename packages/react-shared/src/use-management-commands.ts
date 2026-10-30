@@ -2,7 +2,7 @@ import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { collectionKeyPrefix } from './collections.ts'
-import type { CommandHeaders, CommandMessages } from './commands.ts'
+import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 
 // Kampüs, sınıf ve eğitim kadrosu yazma komutları (`POST|PATCH|DELETE /branches|classes|teachers`,
@@ -64,10 +64,10 @@ const versionOf = <TBody>(input: SaveRecordInput<TBody>): number | null =>
 const idempotencyOnly = (headers: CommandHeaders) => ({
   'idempotency-key': headers['idempotency-key'],
 })
-/** Düzenleme uçlarında `If-Match` zorunludur; sürümsüz çağrı sunucuda 400 olur. */
+/** Düzenleme uçlarında `If-Match` zorunludur; sürüm yoksa istek atılmaz (`requireIfMatch`). */
 const patchHeaders = (headers: CommandHeaders) => ({
   ...idempotencyOnly(headers),
-  'if-match': headers['if-match'] ?? '',
+  'if-match': requireIfMatch(headers),
 })
 
 export function saveBranchRequest(

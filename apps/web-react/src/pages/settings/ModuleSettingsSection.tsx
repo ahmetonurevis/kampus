@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { IF_MATCH_MISSING_MESSAGE } from '@kampus/react-shared/commands.ts'
 import { moduleChangedMessage, type ModuleRow } from '@kampus/react-shared/module-settings.ts'
 import { useModuleSettings, useSetModuleEnabled } from '@kampus/react-shared/use-module-settings.ts'
 import { Icon } from '@/components/Icon.tsx'
@@ -22,7 +23,11 @@ export function ModuleSettingsSection() {
   const [closing, setClosing] = useState<ModuleRow | null>(null)
 
   async function submit(row: ModuleRow, enabled: boolean) {
-    if (settings.version === null) return
+    if (settings.version === null) {
+      // Sürüm okunmadan istek atılmaz; sessiz kalmak yerine nedenini söyler.
+      notify.error(IF_MATCH_MISSING_MESSAGE)
+      return
+    }
     const outcome = await setEnabled.submit({
       moduleKey: row.key,
       enabled,

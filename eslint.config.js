@@ -17,6 +17,7 @@ export default [
       'apps/mobile/ios/**',
       'apps/mobile/.expo/**',
       '.claude/worktrees/**',
+      'packages/api-client/src/schema.d.ts',
     ],
   },
   js.configs.recommended,

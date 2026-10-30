@@ -117,6 +117,28 @@ test('slaRows: arşivdeki öğretmen listelenmez; başka öğretmenin sorusu say
   assert.equal(rows[0]?.total, 0)
 })
 
+test('DOM-ILT-091: geri çekilen soru SLA toplamına, bekleyene ve ihlale girmez', () => {
+  const withdrawn = question('q-sla-9', first.id, 30, null)
+  withdrawn.record.withdrawnAt = ago(29)
+  const rows = slaRows(
+    wrap([first]),
+    [withdrawn, question('q-sla-10', first.id, 30, 2)],
+    lookups,
+    +NOW,
+  )
+  assert.deepEqual(
+    [rows[0]?.total, rows[0]?.response, rows[0]?.pending, rows[0]?.breaches, rows[0]?.slaRate],
+    [1, 2, 0, 0, 100],
+  )
+  assert.deepEqual(slaSummary(rows), {
+    teachers: 1,
+    questions: 1,
+    pending: 0,
+    breaches: 0,
+    slaRate: 100,
+  })
+})
+
 test('slaRows: sınıf adları kısaltılır ve tekrarlanmaz', () => {
   const [row] = slaRows(wrap([first]), [], lookups, +NOW)
   const classes = (lookups.assignmentsByTeacher.get(first.id) ?? []).length

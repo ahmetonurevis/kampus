@@ -665,14 +665,17 @@ test.describe('otomatik etüt', () => {
     const school = await tenant({ roles: ['yonetici'], students: ['s1'] })
     const page = await loginAs(school.user('yonetici'))
     await page.goto('/yonetici/otomatik-etut')
-    await expect(page.getByText('Henüz etüt yok.')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' })).toHaveCount(0)
+    // Sayfada uygunluk saatleri tablosu da var; denetim yalnız etüt listesinde.
+    const sessions = page.getByRole('region', { name: 'Etütler', exact: true })
+    const clear = sessions.getByRole('button', { name: 'Aramayı ve filtreleri temizle' })
+    await expect(sessions.getByText('Henüz etüt yok.')).toBeVisible()
+    await expect(clear).toHaveCount(0)
 
-    await page.getByLabel('Tabloda ara').fill('zzzz-yok')
-    await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
-    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
-    await expect(page.getByText('Henüz etüt yok.')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' })).toHaveCount(0)
+    await sessions.getByLabel('Tabloda ara').fill('zzzz-yok')
+    await expect(sessions.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
+    await clear.first().click()
+    await expect(sessions.getByText('Henüz etüt yok.')).toBeVisible()
+    await expect(clear).toHaveCount(0)
   })
 
   test('dil okulunda optik ve etüt adresleri kullanıma kapalı der', async ({ loginAs }) => {

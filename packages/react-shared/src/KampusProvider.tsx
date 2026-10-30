@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 
 import type { KampusClient } from '@kampus/api-client/client.ts'
 
-import { KampusContext, type AuthClientLike } from './kampus-context.ts'
+import { KampusContext, type AuthClientLike, type NotifyError } from './kampus-context.ts'
 import { cacheActionFor, clearInstitutionCache, type CacheSnapshot } from './query-client.ts'
 import { useActiveInstitutionId, useMe } from './use-active-institution.ts'
 import { useSession } from './use-session.ts'
@@ -37,12 +37,20 @@ export interface KampusProviderProps {
   client: KampusClient
   auth: AuthClientLike
   queryClient: QueryClient
+  /** Yazma komutlarının hata bildirimi (`useApiCommand`); web'de sonner toast. */
+  notifyError?: NotifyError
   children: ReactNode
 }
 
 /** Web ve mobil kökünde bir kez: API istemcisi, Better Auth istemcisi ve sorgu önbelleği. */
-export function KampusProvider({ client, auth, queryClient, children }: KampusProviderProps) {
-  const value = useMemo(() => ({ client, auth }), [client, auth])
+export function KampusProvider({
+  client,
+  auth,
+  queryClient,
+  notifyError,
+  children,
+}: KampusProviderProps) {
+  const value = useMemo(() => ({ client, auth, notifyError }), [client, auth, notifyError])
   return (
     <QueryClientProvider client={queryClient}>
       <KampusContext.Provider value={value}>

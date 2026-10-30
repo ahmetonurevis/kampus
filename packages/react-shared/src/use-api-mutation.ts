@@ -9,12 +9,12 @@ import {
 } from '@kampus/api-client/errors.ts'
 
 import { runRequest, type ApiResult, type DataOf } from './api-result.ts'
+import { invalidateInstitutionQueries } from './commands.ts'
 import { useKampusClient } from './kampus-context.ts'
-import { institutionKey } from './query-keys.ts'
 import { useActiveInstitutionId } from './use-active-institution.ts'
 
 export interface ApiMutationOptions<TVariables, TResult extends ApiResult> {
-  /** `client.POST(...)` vb. çağrı. Yazma uçlarında `Idempotency-Key` gerekiyorsa başlığı burada verin. */
+  /** `client.POST(...)` vb. çağrı. Komut uçlarında (`Idempotency-Key`) `useApiCommand` kullanın. */
   request: (client: KampusClient, variables: TVariables) => Promise<TResult>
   /** Başarıdan sonra geçersiz kılınacak sorgu anahtarı önekleri (kurum kendiliğinden eklenir). */
   invalidates?: readonly (readonly unknown[])[]
@@ -49,11 +49,7 @@ export function useApiMutation<TVariables, TResult extends ApiResult>(
   const mutation = useMutation<DataOf<TResult>, ApiError, TVariables>({
     mutationFn: (variables) => runRequest(() => options.request(client, variables)),
     onSuccess: async (data, variables) => {
-      await Promise.all(
-        (options.invalidates ?? []).map((prefix) =>
-          queryClient.invalidateQueries({ queryKey: institutionKey(institutionId, ...prefix) }),
-        ),
-      )
+      await invalidateInstitutionQueries(queryClient, institutionId, options.invalidates ?? [])
       await options.onSuccess?.(data, variables)
     },
   })

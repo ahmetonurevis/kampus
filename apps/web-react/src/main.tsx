@@ -11,6 +11,7 @@ import { KampusProvider } from '@kampus/react-shared/KampusProvider.tsx'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/auth/AuthProvider.tsx'
 import { apiClient, authClient, queryClient } from '@/lib/kampus-clients.ts'
+import { notify } from '@/lib/notify.ts'
 import { router } from './routes.tsx'
 import './styles/app.css'
 
@@ -19,7 +20,12 @@ if (!root) throw new Error('Kök öğe bulunamadı.')
 
 createRoot(root).render(
   <StrictMode>
-    <KampusProvider client={apiClient} auth={authClient} queryClient={queryClient}>
+    <KampusProvider
+      client={apiClient}
+      auth={authClient}
+      queryClient={queryClient}
+      notifyError={notify.error}
+    >
       <AuthProvider>
         <RouterProvider router={router} />
         <Toaster position="bottom-right" />

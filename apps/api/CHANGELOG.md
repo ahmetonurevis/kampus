@@ -2,6 +2,13 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Talep ve izin/mazeret yazma uçları
+
+- `POST /api/v1/requests` (veli; bağlı çocuğu için talep, şikayet veya öneri; 201 + `Location`), `PATCH /api/v1/requests/:requestId` (ön büro ve yönetici; durum, ilgili birim, eklenen yanıt; `If-Match` zorunlu), `POST /api/v1/absences` (veli; izin veya mazeret; 201 + `Location`). Oluşturma uçlarında `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`. Kurallar core `lib/requests.ts`'tedir (DOM-ILT-053, DOM-ILT-080); rol ve kapsam core `requireAuthorized`, modül talepte `communication`, bildirimde `academic`. Yazma `runCommand` ile kurum kilidi, `audit_log` (yalnız alan adları) ve kısmi yüklemeyle (`loadScope`: talep açarken hiçbir talep, güncellemede hedef talep, bildirimde aynı öğrencinin bildirimleri) tek transaction'dadır.
+- Yeni hata kodları: `student_scope_denied` (403, bu uçlarda); `request_unchanged`, `request_resolved`, `absence_overlap` (409); `request_status_invalid`, `student_inactive`, `absence_notice_late`, `absence_files_unsupported` (422, `issues` alan yoluyla).
+- `GET /api/v1/collections/absences`: öğretmenlerden yalnız öğrencinin sınıf rehber öğretmeni okur (core 2.13.0, DOM-ILT-053); önceden öğrenciye ders veren her öğretmen okuyordu. Ön büro yine 403.
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
 ## Core iş kuralı hatalarında alan yolu (`issues`)
 
 - `mapOperationError`: `DomainError.path` varsa 422 (kind `rule`), 409 (`conflict`) ve 403 (`forbidden`, modül kapalı hariç) gövdesine 400 Zod yanıtıyla aynı `issues: [{ path, code, message }]` eklenir; `code` hatanın kodu, `message` core'un Türkçe iletisidir. `path` core'un sabit alan yoludur (kullanıcı girdisi değil). Yolsuz `DomainError`'da gövde eskisi gibidir (`issues` yok); 404 genel `not_found` kalır.

@@ -5,12 +5,15 @@ import { createKampusClient } from '@kampus/api-client/client.ts'
 import { ApiError } from '@kampus/api-client/errors.ts'
 
 import {
+  collectionCountParams,
+  collectionCountsKey,
   collectionItemKey,
   collectionKeyPrefix,
   collectionListParams,
   collectionQueryKey,
   CollectionTooLargeError,
   fetchAllCollectionPages,
+  fetchCollectionCounts,
   fetchCollectionItem,
   fetchCollectionPage,
   isModuleDisabledError,
@@ -100,6 +103,14 @@ describe('sorgu anahtarları', () => {
   })
 })
 
+describe('bağlı ad sıralaması', () => {
+  test('studentName sıralaması sorguya yazılır', () => {
+    assert.deepEqual(collectionListParams({ sort: ['-studentName', 'id'] }), {
+      sort: '-studentName,id',
+    })
+  })
+})
+
 describe('fetchCollectionPage ve fetchCollectionItem', () => {
   test('sayfa satırlarını ve toplamı döndürür; parametreler sorguya yazılır', async () => {
     const { client, urls } = pagedClient(3)
@@ -141,6 +152,71 @@ describe('fetchCollectionPage ve fetchCollectionItem', () => {
       () => fetchCollectionItem(client, 'classes', 'c1'),
       (error) => error instanceof ApiError && isModuleDisabledError(error),
     )
+  })
+})
+
+describe('toplu sayım', () => {
+  test('parametreler liste süzgeçleriyle aynı biçimde kurulur; kısa arama gönderilmez', () => {
+    assert.deepEqual(
+      collectionCountParams({
+        groupBy: 'status',
+        sum: 'amount',
+        q: 'Deniz',
+        filters: { studentId: ['s1', 's2'], classId: '' },
+      }),
+      { groupBy: 'status', sum: 'amount', q: 'Deniz', studentId: ['s1', 's2'] },
+    )
+    assert.deepEqual(collectionCountParams({ groupBy: 'isActive', q: 'D' }), {
+      groupBy: 'isActive',
+    })
+  })
+
+  test('sayım anahtarı liste önekinin altındadır ve süzgeç sırasından bağımsızdır', () => {
+    const left = collectionCountsKey('invoices', {
+      groupBy: 'status',
+      filters: { studentId: 's1', classId: 'c1' },
+    })
+    const right = collectionCountsKey('invoices', {
+      groupBy: 'status',
+      filters: { classId: 'c1', studentId: 's1' },
+    })
+    assert.deepEqual(left, right)
+    assert.deepEqual(left.slice(0, 2), collectionKeyPrefix('invoices'))
+  })
+
+  test('gruplar, toplam ve tutar toplamı döner; sum yoksa alan yoktur', async () => {
+    const urls: URL[] = []
+    const client = createKampusClient({
+      baseUrl: 'https://api.kampus.test',
+      credentials: 'include',
+      requestId: () => undefined,
+      fetch: async (input) => {
+        const url = new URL(input instanceof Request ? input.url : String(input))
+        urls.push(url)
+        const withSum = url.searchParams.has('sum')
+        return json(200, {
+          data: [
+            { value: 'Gecikmiş', count: 2, ...(withSum ? { sum: 4900000 } : {}) },
+            { value: 'Ödendi', count: 3, ...(withSum ? { sum: 7350000 } : {}) },
+          ],
+          meta: { total: 5, ...(withSum ? { sum: 12250000 } : {}) },
+        })
+      },
+    })
+    const counts = await fetchCollectionCounts(client, 'invoices', {
+      groupBy: 'status',
+      sum: 'amount',
+      q: 'Deniz',
+    })
+    assert.equal(urls[0]!.pathname, '/api/v1/collections/invoices/counts')
+    assert.equal(urls[0]!.searchParams.get('groupBy'), 'status')
+    assert.equal(urls[0]!.searchParams.get('sum'), 'amount')
+    assert.equal(counts.total, 5)
+    assert.equal(counts.sum, 12250000)
+    assert.deepEqual(counts.groups[0], { value: 'Gecikmiş', count: 2, sum: 4900000 })
+
+    const plain = await fetchCollectionCounts(client, 'invoices', { groupBy: 'status' })
+    assert.equal('sum' in plain, false)
   })
 })
 

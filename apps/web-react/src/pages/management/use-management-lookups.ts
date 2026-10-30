@@ -1,29 +1,37 @@
 import { useMemo } from 'react'
-import { useCoreAll } from '@/hooks/use-core-collection.ts'
-import { managementLookups, type ManagementSources } from './management-rows.ts'
+import { useCoreAll, useCoreCounts } from '@/hooks/use-core-collection.ts'
+import {
+  managementLookups,
+  studentCountsByClass,
+  type ManagementSources,
+} from './management-rows.ts'
 
 const NONE: readonly never[] = []
 
 /**
  * Yönetim ekranlarının başvuru koleksiyonları (kampüs, sınıf, öğretmen, ders, atama; isteğe
- * bağlı öğrenci). Küçük kurum verisidir; bütün sayfaları bir kez çekilir ve 30 sn taze kalır.
- * TODO(api-aggregate): sınıf/kampüs sayımları için toplu uç gelince öğrenci listesi çekilmez.
+ * bağlı sınıf başına aktif öğrenci sayısı). Küçük kurum verisidir; bütün sayfaları bir kez
+ * çekilir. Öğrenci sayıları öğrenci listesi çekilmeden `counts?groupBy=classId` ile gelir.
  */
-export function useManagementLookups({ students: withStudents = false } = {}) {
+export function useManagementLookups({ studentCounts: withCounts = false } = {}) {
   const branches = useCoreAll('branches')
   const classes = useCoreAll('classes')
   const teachers = useCoreAll('teachers')
   const subjects = useCoreAll('subjects')
   const assignments = useCoreAll('assignments')
-  const students = useCoreAll('students', {}, { enabled: withStudents })
-  // Kapalı sorgu (öğrenci istenmediyse) hep "bekliyor" görünür; hesaba katılmaz.
+  const counts = useCoreCounts(
+    'students',
+    { groupBy: 'classId', filters: { isActive: 'true' } },
+    { enabled: withCounts },
+  )
+  // Kapalı sorgu (sayım istenmediyse) hep "bekliyor" görünür; hesaba katılmaz.
   const queries: { isPending: boolean; error: unknown; refetch: () => Promise<unknown> }[] = [
     branches,
     classes,
     teachers,
     subjects,
     assignments,
-    ...(withStudents ? [students] : []),
+    ...(withCounts ? [counts] : []),
   ]
 
   const sources = useMemo<ManagementSources>(
@@ -33,11 +41,13 @@ export function useManagementLookups({ students: withStudents = false } = {}) {
       teachers: teachers.data ?? NONE,
       subjects: subjects.data ?? NONE,
       assignments: assignments.data ?? NONE,
-      students: students.data ?? NONE,
     }),
-    [branches.data, classes.data, teachers.data, subjects.data, assignments.data, students.data],
+    [branches.data, classes.data, teachers.data, subjects.data, assignments.data],
   )
-  const lookups = useMemo(() => managementLookups(sources), [sources])
+  const lookups = useMemo(
+    () => managementLookups(sources, counts.data ? studentCountsByClass(counts.data) : undefined),
+    [sources, counts.data],
+  )
 
   return {
     sources,

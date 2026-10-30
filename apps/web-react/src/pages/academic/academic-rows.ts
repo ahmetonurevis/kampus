@@ -2,6 +2,7 @@
 // API satırları ve başvuru koleksiyonlarının eşlemeleri girer, tablo/CSV satırı ve özet çıkar.
 // Ortalama ve gün anahtarı school-core `format` işlevleriyle hesaplanır; hiçbiri saklanmaz.
 import { average, dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
+import type { SubjectAverage } from '@kampus/school-core/lib/grades.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
 
 type Subject = CoreRecord<'subjects'>
@@ -91,30 +92,17 @@ export function gradeCsvRow(row: GradeRow) {
   return { ...row, date: dateLabel(row.date, { year: 'numeric' }), score: scoreText(row.score) }
 }
 
-export type SubjectAverage = { subjectId: string; name: string; average: number; count: number }
-
-/** Ders bazında ortalama (core `average`); ders adı sırasıyla. Notu olmayan ders yer almaz. */
-export function subjectAverages(
-  grades: readonly Pick<Grade, 'subjectId' | 'subject' | 'score'>[],
+/**
+ * Core `subjectAverages` sonucunda ders adını güncel ders kaydından gösterir (ders sonradan
+ * yeniden adlandırıldıysa not kaydındaki eski ad yerine); eşlemede yoksa kaydın adı kalır.
+ * Ad değişebildiği için sıra yeniden Türkçe ad sırasına konur.
+ */
+export function withSubjectNames(
+  averages: readonly SubjectAverage[],
   subjects: ReadonlyMap<string, Pick<Subject, 'name'>>,
 ): SubjectAverage[] {
-  const groups = new Map<string, { name: string; scores: number[] }>()
-  for (const grade of grades) {
-    const group = groups.get(grade.subjectId)
-    if (group) group.scores.push(grade.score)
-    else
-      groups.set(grade.subjectId, {
-        name: subjects.get(grade.subjectId)?.name ?? grade.subject,
-        scores: [grade.score],
-      })
-  }
-  return [...groups]
-    .map(([subjectId, { name, scores }]) => ({
-      subjectId,
-      name,
-      average: average(scores),
-      count: scores.length,
-    }))
+  return averages
+    .map((item) => ({ ...item, name: subjects.get(item.subjectId)?.name ?? item.name }))
     .sort((left, right) => left.name.localeCompare(right.name, 'tr'))
 }
 

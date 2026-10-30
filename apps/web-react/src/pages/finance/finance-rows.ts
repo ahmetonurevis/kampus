@@ -1,38 +1,47 @@
 // Finans & Tahsilat listesinin satır ve sorgu hesapları (Vue `Finance.vue`). Saf işlevlerdir:
 // API satırları ve öğrenci/sınıf eşlemeleri girer; tablo/CSV satırı ve sunucu sorgusu çıkar.
-import { dateLabel, invoiceStatus, money } from '@kampus/school-core/lib/format.ts'
-import type { CollectionQuery } from '@kampus/react-shared/collections.ts'
+import {
+  dateLabel,
+  INVOICE_STATUS_KEYS,
+  INVOICE_STATUS_LABELS,
+  invoiceStatusKey,
+  money,
+  type InvoiceStatus,
+  type InvoiceStatusKey,
+} from '@kampus/school-core/lib/format.ts'
+import type { CollectionCounts, CollectionQuery } from '@kampus/react-shared/collections.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
 import {
+  collectionQueryFromList,
   exportQueryFromList,
-  isSearchActive,
   type CollectionListConfig,
 } from '../../lib/collection-list.ts'
-import { pageSlice } from '../../lib/list-query.ts'
 import type { ListState } from '../../lib/list-state.ts'
 
 type Student = CoreRecord<'students'>
 type SchoolClass = CoreRecord<'classes'>
 
-/** Core `invoiceStatus` etiketleri; URL'de ASCII kısa adla taşınır (`?durum=gecikmis`). */
-export const INVOICE_STATUSES = {
-  odendi: 'Ödendi',
-  gecikmis: 'Gecikmiş',
-  yaklasan: 'Yaklaşan',
-} as const satisfies Record<string, ReturnType<typeof invoiceStatus>>
-export type InvoiceStatusSlug = keyof typeof INVOICE_STATUSES
-export type InvoiceStatus = ReturnType<typeof invoiceStatus>
+/** Durum seçenekleri; URL'de core durum anahtarıyla taşınır (`?durum=gecikmis`). */
+export const INVOICE_STATUS_OPTIONS = INVOICE_STATUS_KEYS.map((key) => ({
+  key,
+  label: INVOICE_STATUS_LABELS[key],
+}))
 
-export function isInvoiceStatusSlug(value: unknown): value is InvoiceStatusSlug {
-  return typeof value === 'string' && Object.hasOwn(INVOICE_STATUSES, value)
+export function isInvoiceStatusKey(value: unknown): value is InvoiceStatusKey {
+  return typeof value === 'string' && (INVOICE_STATUS_KEYS as readonly string[]).includes(value)
 }
 
 /**
- * Sunucunun taksitte sıralayabildiği sütunlar; öğrenci adı ve durum türetilmiş alandır.
- * TODO(api-search-joined): öğrenci adı/sınıf sütunu sıralaması ilişkili alan sıralaması ister.
+ * Sunucunun taksitte sıralayabildiği sütunlar. Öğrenci adı bağlı alandır (`studentName`); durum
+ * türetilmiş olduğundan sütun olarak sıralanmaz.
  */
 export const INVOICE_LIST = {
-  sortFields: { installment: 'installment', dueDate: 'dueDate', amount: 'amount' },
+  sortFields: {
+    studentName: 'studentName',
+    installment: 'installment',
+    dueDate: 'dueDate',
+    amount: 'amount',
+  },
   // Vue gibi vadeye göre; eşitlikte kimlik (sayfalar arası kararlı sıra).
   defaultSort: ['dueDate', 'id'],
 } satisfies CollectionListConfig
@@ -88,77 +97,53 @@ export function invoiceRow(
     amount: invoice.amount,
     paidAt: invoice.paidAt ?? null,
     method: invoice.method ?? null,
-    status: invoiceStatus(invoice, today),
+    status: INVOICE_STATUS_LABELS[invoiceStatusKey(invoice, today)],
   }
 }
 
-/** Türkçe büyük/küçük harf ve aksan duyarsız biçim (API `searchKey` ile aynı). */
-export function searchKey(value: string): string {
-  return value.toLocaleLowerCase('tr-TR').replace(/ı/g, 'i').normalize('NFD').replace(/\p{M}/gu, '')
+/**
+ * Sunucu sorgusu (sayfa dahil). Arama (`q`: öğrenci adı, okul numarası, sınıf adı), durum
+ * (`status`, core durum etiketi), sıralama ve sayfa sunucuda uygulanır; `search` gecikmeli arama
+ * metnidir.
+ */
+export function invoiceListQuery(state: ListState, search: string): CollectionQuery {
+  return withStatus(collectionQueryFromList(state, INVOICE_LIST, search), state)
 }
 
-/**
- * Aramanın eşleştiği öğrenciler (ad, okul numarası, sınıf). Taksit kaydı adı taşımadığı için
- * sunucuya `studentId` filtresi olarak gider.
- * TODO(api-search-joined): sunucu ilişkili adla arama verince arama doğrudan `q` olur.
- */
-export function matchingStudentIds(lookups: FinanceLookups, query: string): string[] {
-  const needle = searchKey(query.trim())
-  const ids: string[] = []
-  for (const student of lookups.students.values()) {
-    const className = lookups.classes.get(student.classId)?.name ?? ''
-    if (
-      [student.name, student.number ?? '', className].some((text) =>
-        searchKey(text).includes(needle),
-      )
-    )
-      ids.push(student.id)
-  }
-  return ids
+/** CSV için sayfasız sorgu: aynı arama, durum ve sıralama. */
+export function invoiceExportQuery(state: ListState, search: string) {
+  return withStatus(exportQueryFromList(state, INVOICE_LIST, search), state)
 }
 
-type AllQuery = Omit<CollectionQuery, 'page' | 'pageSize'>
-
-/**
- * Listenin nasıl okunacağı. Durum türetilmiş olduğundan (`paidAt` + vade) sunucu süzemez:
- * durum seçiliyse filtrenin bütün taksitleri çekilir, süzme/sıralama/sayfa burada yapılır.
- * TODO(api-filter-invoice-status): sunucu durum filtresi verince her durum `server` olur.
- */
-export type InvoiceListPlan =
-  | { kind: 'empty' }
-  | { kind: 'server'; query: CollectionQuery }
-  | { kind: 'all'; query: AllQuery; status: InvoiceStatus }
-
-export function invoiceListPlan(
-  state: ListState,
-  studentIds: readonly string[] | null,
-): InvoiceListPlan {
-  if (studentIds !== null && studentIds.length === 0) return { kind: 'empty' }
-  // Arama sunucuya `q` olarak değil öğrenci kimlikleri olarak gider.
-  const base = exportQueryFromList(state, INVOICE_LIST, '')
-  const query: AllQuery =
-    studentIds === null ? base : { ...base, filters: { studentId: studentIds } }
+function withStatus<T extends Pick<CollectionQuery, 'filters'>>(query: T, state: ListState): T {
   const status = state.filters.status
-  if (isInvoiceStatusSlug(status)) return { kind: 'all', query, status: INVOICE_STATUSES[status] }
-  return { kind: 'server', query: { ...query, page: state.page, pageSize: state.pageSize } }
+  if (!isInvoiceStatusKey(status)) return query
+  return { ...query, filters: { ...query.filters, status: INVOICE_STATUS_LABELS[status] } }
 }
 
-/** Arama etkinse eşleşen öğrenciler, değilse `null` (bütün kurum). */
-export function searchStudentIds(lookups: FinanceLookups, query: string): string[] | null {
-  return isSearchActive(query) ? matchingStudentIds(lookups, query) : null
+export type InvoiceTotals = {
+  /** Kuruş. */
+  total: number
+  paid: number
+  remaining: number
+  overdue: number
 }
 
 /**
- * `all` planında durum süzmesi ve sayfa. Sıra sunucudandır (aynı `sort`); süzme sırayı korur,
- * böylece iki planda da aynı sıralama kuralı geçerlidir.
+ * `counts?groupBy=status&sum=amount` yanıtından toplam kartları (kuruş). Kalan bakiye ödenmemiş
+ * (gecikmiş + yaklaşan) taksitlerdir; Vue'daki "Kalan bakiye" ile aynıdır.
  */
-export function selectInvoicePage(
-  rows: readonly InvoiceRow[],
-  state: Pick<ListState, 'page' | 'pageSize'>,
-  status: InvoiceStatus,
-): { rows: InvoiceRow[]; total: number; all: InvoiceRow[] } {
-  const all = rows.filter((row) => row.status === status)
-  return { rows: pageSlice(all, state.page, state.pageSize), total: all.length, all }
+export function invoiceTotals(counts: CollectionCounts): InvoiceTotals {
+  const sumOf = (status: InvoiceStatus) =>
+    counts.groups.find((group) => group.value === status)?.sum ?? 0
+  const total = counts.sum ?? 0
+  const paid = sumOf(INVOICE_STATUS_LABELS.odendi)
+  return {
+    total,
+    paid,
+    remaining: total - paid,
+    overdue: sumOf(INVOICE_STATUS_LABELS.gecikmis),
+  }
 }
 
 /** CSV satırı: Vue "Raporu indir" sütunları; tutar ve tarih okunur biçimde. */

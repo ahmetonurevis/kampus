@@ -203,9 +203,120 @@ test.describe('Finans: tahsilat', () => {
   })
 })
 
+type StatusCounts = { data: { value: string | null; sum?: number }[]; meta: { sum?: number } }
+
+/** Kartın kuruş değeri: "24.500,00 ₺" biçimindeki metnin rakamları. */
+const cents = (text: string | null) => Number((text ?? '').replace(/\D/g, ''))
+
 test.describe('Finans: liste', () => {
   test.beforeEach(async ({ loginAs }) => {
     await loginAs('yonetici')
+  })
+
+  test('toplam kartları API toplamıyla eşleşir', async ({ page, api }) => {
+    const client = await api('yonetici')
+    await page.goto(ADMIN_URL)
+    const cards = page.getByLabel('Kurum geneli ödeme toplamları')
+    const card = (name: string) => cards.locator('div').filter({ hasText: name }).locator('dd')
+
+    // Paralel testler tahsilat yazabildiği için API her denemede yeniden okunur; ikisi yakınsar.
+    await expect
+      .poll(async () => {
+        const result = await client.get(
+          '/api/v1/collections/invoices/counts?groupBy=status&sum=amount',
+        )
+        expect(result.status).toBe(200)
+        const { data, meta } = result.body as StatusCounts
+        const sumOf = (status: string) => data.find((group) => group.value === status)?.sum ?? 0
+        const total = meta.sum ?? 0
+        const expected = [total, sumOf('Ödendi'), total - sumOf('Ödendi'), sumOf('Gecikmiş')]
+        const shown = await Promise.all(
+          ['Toplam eğitim bedeli', 'Tahsil edilen', 'Kalan bakiye', 'Gecikmiş tutar'].map(
+            async (name) => cents(await card(name).textContent()),
+          ),
+        )
+        return JSON.stringify(shown) === JSON.stringify(expected)
+          ? 'eşit'
+          : `${JSON.stringify(shown)} != ${JSON.stringify(expected)}`
+      })
+      .toBe('eşit')
+    // Seed: 1920 taksit × 24.500,00 TL; tutar kuruş olarak toplanır.
+    expect(cents(await card('Toplam eğitim bedeli').textContent())).toBeGreaterThanOrEqual(
+      1920 * 2_450_000,
+    )
+  })
+
+  test('durum filtresi sunucuda sayfalanır; ikinci sayfa aynı durumu verir', async ({ page }) => {
+    const requests: string[] = []
+    page.on('request', (request) => {
+      const url = new URL(request.url())
+      if (url.pathname === '/api/v1/collections/invoices') requests.push(url.search)
+    })
+    await page.goto(`${ADMIN_URL}?durum=yaklasan`)
+    await expect(resultCount(page)).toContainText('1–8 /')
+    const firstPage = await bodyRows(page).allTextContents()
+    expect(firstPage).toHaveLength(8)
+
+    await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
+    await expect(page).toHaveURL(/[?&]sayfa=2/)
+    await expect(resultCount(page)).toContainText('9–16 /')
+    await expect(bodyRows(page)).toHaveCount(8)
+    for (const row of await bodyRows(page).all()) await expect(row).toContainText('Yaklaşan')
+    expect(await bodyRows(page).allTextContents()).not.toEqual(firstPage)
+
+    // Süzme sunucuda: istekler status taşır ve her sayfa 8 satırlıktır (tüm taksitler çekilmez).
+    const listed = requests.filter((search) => search.includes('status='))
+    expect(listed.length).toBeGreaterThanOrEqual(2)
+    for (const search of listed) {
+      const params = new URLSearchParams(search)
+      expect(params.get('status')).toBe('Yaklaşan')
+      expect(params.get('pageSize')).toBe('8')
+    }
+  })
+
+  test('öğrenci adı sütunu sunucuda sıralanır', async ({ page }) => {
+    await page.goto(ADMIN_URL)
+    const header = tableOf(page).getByRole('columnheader', { name: /Öğrenci/ })
+    await header.getByRole('button').click()
+    await expect(header).toHaveAttribute('aria-sort', 'ascending')
+    await expect(page).toHaveURL(/[?&]sirala=studentName/)
+    const names = async () =>
+      (await bodyRows(page).locator('.person-cell strong').allTextContents()).map((name) =>
+        name.trim(),
+      )
+    await expect.poll(async () => (await names()).length).toBe(8)
+    const ascending = await names()
+    expect(ascending).toEqual([...ascending].sort((a, b) => a.localeCompare(b, 'tr')))
+
+    await header.getByRole('button').click()
+    await expect(header).toHaveAttribute('aria-sort', 'descending')
+    await expect(page).toHaveURL(/[?&]yon=azalan/)
+    await expect
+      .poll(async () => {
+        const descending = await names()
+        return descending.length === 8 && descending[0] !== ascending[0]
+      })
+      .toBe(true)
+    const descending = await names()
+    expect(descending).toEqual([...descending].sort((a, b) => b.localeCompare(a, 'tr')))
+  })
+
+  test('arama öğrenci adı, okul numarası ve sınıf adıyla bulur', async ({ page }) => {
+    await page.goto(ADMIN_URL)
+    await page.getByLabel('Tabloda ara').fill('Deniz Yılmaz')
+    await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
+    for (const row of await bodyRows(page).all()) await expect(row).toContainText('Deniz Yılmaz')
+
+    // Okul numarası ve sınıf adı da sunucuda aranır; aksan ve büyük/küçük harf duyarsız.
+    await page.getByLabel('Tabloda ara').fill('2026001')
+    await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
+    for (const row of await bodyRows(page).all()) await expect(row).toContainText('Deniz Yılmaz')
+    await page.getByLabel('Tabloda ara').fill('deniz yilmaz')
+    await expect(resultCount(page)).toContainText('/ 8 kayıt')
+    await page.getByLabel('Tabloda ara').fill('7-a')
+    await expect(page).toHaveURL(/[?&]q=7-a/)
+    await expect(resultCount(page)).not.toContainText('/ 8 kayıt')
+    await expect(bodyRows(page).first()).toContainText('7-A')
   })
 
   test('liste API verisiyle açılır, vadeye göre sıralı ve sayfalıdır', async ({ page }) => {

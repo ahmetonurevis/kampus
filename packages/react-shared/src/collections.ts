@@ -37,6 +37,12 @@ export type CollectionSortField =
   | 'amount'
   | 'installment'
   | 'number'
+  // Bağlı ad alanları: yalnız sunucunun tanımlı listelerinde (taksit/not/devamsızlıkta öğrenci ve
+  // sınıf adı, sınıfta kampüs adı); başka listede 400.
+  | 'studentName'
+  | 'studentNumber'
+  | 'className'
+  | 'branchName'
 export type CollectionSort = CollectionSortField | `-${CollectionSortField}`
 
 export interface CollectionQuery {
@@ -85,16 +91,89 @@ export function collectionListParams(query: CollectionQuery): ListQueryParams {
   if (query.page !== undefined) params.page = query.page
   if (query.pageSize !== undefined)
     params.pageSize = Math.min(Math.max(1, query.pageSize), MAX_COLLECTION_PAGE_SIZE)
+  if (query.sort?.length) params.sort = query.sort.slice(0, 3).join(',')
+  Object.assign(params, scopeParams(query))
+  return params as ListQueryParams
+}
+
+/** Liste ve sayım uçlarının ortak parametreleri: arama, arşiv ve eşitlik süzgeçleri. */
+function scopeParams(query: Pick<CollectionQuery, 'q' | 'archived' | 'filters'>) {
+  const params: Record<string, unknown> = {}
   const q = query.q?.trim() ?? ''
   if (q.length >= MIN_SEARCH_LENGTH) params.q = q
-  if (query.sort?.length) params.sort = query.sort.slice(0, 3).join(',')
   if (query.archived) params.archived = query.archived
   for (const [field, value] of Object.entries(query.filters ?? {})) {
     const values = (typeof value === 'string' ? [value] : (value ?? [])).filter(Boolean)
     if (values.length === 1) params[field] = values[0]
     else if (values.length > 1) params[field] = [...values]
   }
-  return params as ListQueryParams
+  return params
+}
+
+type CountQueryParams = operations['countCollection']['parameters']['query']
+
+/** Gruplanabilir alanlar (API beyaz listesi). */
+export type CollectionGroupField = CountQueryParams['groupBy']
+/** Toplanabilir sayısal alanlar; `amount` kuruştur. */
+export type CollectionSumField = NonNullable<CountQueryParams['sum']>
+
+/** Toplu sayım sorgusu: liste ucunun kapsam, arama ve süzgeçleri; sayfa ve sıralama yok. */
+export interface CollectionCountsQuery extends Pick<CollectionQuery, 'q' | 'archived' | 'filters'> {
+  groupBy: CollectionGroupField
+  sum?: CollectionSumField
+}
+
+export interface CollectionCountGroup {
+  /** Grup değeri; alanı olmayan kayıtlar `null` grubundadır. */
+  value: string | number | boolean | null
+  count: number
+  /** Yalnız `sum` istendiğinde (kuruş ya da alanın birimi). */
+  sum?: number
+}
+
+export interface CollectionCounts {
+  groups: CollectionCountGroup[]
+  /** Süzgeçten geçen toplam kayıt sayısı. */
+  total: number
+  /** Yalnız `sum` istendiğinde bütün grupların toplamı. */
+  sum?: number
+}
+
+export function collectionCountParams(query: CollectionCountsQuery): CountQueryParams {
+  return {
+    ...scopeParams(query),
+    groupBy: query.groupBy,
+    ...(query.sum ? { sum: query.sum } : {}),
+  } as CountQueryParams
+}
+
+/** Sayım sorgusu anahtarı; liste anahtarlarıyla aynı önek altındadır (yazma sonrası birlikte düşer). */
+export function collectionCountsKey(collection: string, query: CollectionCountsQuery): unknown[] {
+  const sorted = Object.fromEntries(
+    Object.entries(collectionCountParams(query)).sort(([left], [right]) =>
+      left.localeCompare(right),
+    ),
+  )
+  return ['collections', collection, 'counts', sorted]
+}
+
+export async function fetchCollectionCounts(
+  client: KampusClient,
+  collection: string,
+  query: CollectionCountsQuery,
+  signal?: AbortSignal,
+): Promise<CollectionCounts> {
+  const body = await runRequest(() =>
+    client.GET('/api/v1/collections/{collection}/counts', {
+      params: { path: { collection }, query: collectionCountParams(query) },
+      ...(signal ? { signal } : {}),
+    }),
+  )
+  return {
+    groups: body.data,
+    total: body.meta.total,
+    ...(body.meta.sum === undefined ? {} : { sum: body.meta.sum }),
+  }
 }
 
 /**

@@ -1,5 +1,6 @@
 // Oturum sözleşmesi. Uygulama yalnız bu tipleri ve `AuthPort`'u bilir; gerçek uygulama Better Auth
 // istemcisidir (`better-auth-port.ts`), oturum durumu `GET /api/v1/me`'den eşlenir (`session-mapping.ts`).
+import type { SignInResult } from '@kampus/react-shared/sign-in-errors.ts'
 import { z } from 'zod'
 import { ROLE_KEYS } from '../lib/navigation.ts'
 
@@ -68,8 +69,8 @@ export type AuthState =
   | { status: 'no-membership'; session: null }
   | { status: 'error'; session: null }
 
-/** Giriş hatası: `field` varsa mesaj o alanın altında, yoksa form üstünde/toast'ta gösterilir. */
-export type SignInResult = { ok: true } | { ok: false; message: string; field?: 'password' }
+/** Giriş sonucu (ortak tanım): `field` varsa mesaj o alanın altında, yoksa form üstünde gösterilir. */
+export type { SignInResult } from '@kampus/react-shared/sign-in-errors.ts'
 
 export interface AuthPort {
   /** Başarıda oturum durumu sunucudan yeniden okunmuş olarak döner. */

@@ -16,6 +16,7 @@ import {
   type CollectionListConfig,
 } from '@/lib/collection-list.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
+import { subjectAverages } from '@kampus/school-core/lib/grades.ts'
 import type { UrlFilters } from '@/lib/list-url.ts'
 import { LookupError, StatGrid, TableSection } from './AcademicParts.tsx'
 import {
@@ -24,7 +25,7 @@ import {
   overallAverage,
   scoreText,
   scoreTone,
-  subjectAverages,
+  withSubjectNames,
   type GradeRow,
 } from './academic-rows.ts'
 import { GradePanel } from './GradePanel.tsx'
@@ -89,7 +90,11 @@ export function GradesView({ audience, studentId, urlPrefix = '', title }: Grade
     enabled: !teacher,
   })
   const averages = useMemo(
-    () => subjectAverages(own.data?.map((item) => item.record) ?? [], lookups.subjects),
+    () =>
+      withSubjectNames(
+        subjectAverages(own.data?.map((item) => item.record) ?? []),
+        lookups.subjects,
+      ),
     [own.data, lookups.subjects],
   )
 

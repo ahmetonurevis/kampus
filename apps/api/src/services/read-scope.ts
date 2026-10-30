@@ -105,7 +105,7 @@ async function buildScope(ctx: ServiceContext): Promise<ScopeState> {
     clubs: parseRows(ctx, 'clubs', data('clubs'), clubSource),
     modules: institution?.modules ?? {},
   }
-  const actor: Actor = { role: ctx.actor.role, links }
+  const actor: Actor = { role: ctx.actor.role, links, userId: ctx.actor.userId }
   return {
     scope: scopeFor(source, actor, { institutionType: institution?.type ?? 'school' }),
     source,
@@ -134,6 +134,11 @@ function scopeState(ctx: ServiceContext) {
 /** İsteğin okuma kapsamı; aynı bağlamda ikinci çağrı önbellekten döner. */
 export function readScope(ctx: ServiceContext): Promise<Scope> {
   return scopeState(ctx).scope
+}
+
+/** Kapsamın kurduğu kaynak (öğrenci, öğretmen, sınıf, atama); ek sorgu yok. */
+export function readSource(ctx: ServiceContext): Promise<ScopeSource> {
+  return scopeState(ctx).source
 }
 
 /**

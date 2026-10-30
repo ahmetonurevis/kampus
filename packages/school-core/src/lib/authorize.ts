@@ -56,7 +56,7 @@ export type WriteTargets = {
   'conversation.start': ConversationParties
   'message.send': { conversation: ConversationParties | undefined; userId: string }
   'message.read': { conversation: ConversationParties | undefined; userId: string }
-  'conversation.access': { reason: string }
+  'conversation.access': { reason: string; conversation?: ConversationParties | undefined }
 }
 
 /** Yetki için gereken kaynak; not yetkisi ders atamasının dersini de okur. */
@@ -273,7 +273,7 @@ function decide(
         readDecision(scope, request.target.userId, request.target.conversation),
       )
     case 'conversation.access':
-      return fromCommunication(accessDecision(request.target.reason))
+      return fromCommunication(accessDecision(request.target.reason, request.target.conversation))
     default:
       return request satisfies never
   }

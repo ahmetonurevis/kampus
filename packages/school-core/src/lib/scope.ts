@@ -33,7 +33,15 @@ import { DomainError } from './errors.ts'
 export const ACTOR_LINK_KINDS = ['student', 'child', 'teacher'] as const
 export type ActorLinkKind = (typeof ACTOR_LINK_KINDS)[number]
 export type ActorLink = { kind: ActorLinkKind; recordId: string }
-export type Actor = { role: Role; links: readonly ActorLink[] }
+export type Actor = {
+  role: Role
+  links: readonly ActorLink[]
+  /**
+   * Kalıcı kullanıcı kimliği (API: oturumun kullanıcısı). Kişiyle eşleşen kararlar için (ön büro
+   * duyuru yayıncısı, DOM-ILT-004); yoksa o kararlar kapalı başarısızdır.
+   */
+  userId?: string | undefined
+}
 
 type Student = State['students'][number]
 type Teacher = State['teachers'][number]
@@ -98,6 +106,7 @@ export type Scope = {
 // Kural fonksiyonlarının okuduğu, kapsam başına bir kez kurulan indeksler.
 type Context = {
   role: Role | undefined
+  userId: string | undefined
   teacher: ScopeSource['teachers'][number] | undefined
   counselor: boolean
   studentIds: ReadonlySet<string>
@@ -159,6 +168,7 @@ const gradeReader: Rule = (c, r) => {
 
 const viewerOf = (c: Context): AnnouncementViewer => ({
   role: c.role,
+  userId: c.userId,
   teacherId: c.teacher?.id,
   studentIds: c.studentIds,
 })
@@ -435,6 +445,7 @@ function buildContext(source: ScopeSource, actor: Actor, role: Role | undefined)
   )
   return {
     role,
+    userId: actor.userId,
     teacher,
     counselor: teacher?.guidanceCounselor === true,
     studentIds,

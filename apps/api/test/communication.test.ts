@@ -12,7 +12,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { MESSAGE_RATE_LIMIT } from '../src/routes/communication.ts'
-import type { MembershipLinkInput } from '../src/services/identity.ts'
+import { ensureMember, type MembershipLinkInput } from '../src/services/identity.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -294,6 +294,68 @@ describe('iletişim uçları', () => {
       assert.equal((await message(mother.cookie, id, 'Merhaba hocam')).statusCode, 201)
     })
 
+    test('DOM-ILT-010: veli kimliği olmayan eski yazışma hiçbir veliye görünmez; yeni yazışma ayrı açılır', async () => {
+      const a = await institution()
+      const teacherCookie = await teacher(a.id)
+      const mother = await parent(a.id)
+      const father = await parent(a.id)
+      await insertMissingRecords(
+        db,
+        a.id,
+        rows({
+          conversations: [
+            {
+              id: 'conv-eski',
+              studentId: 's1',
+              teacherId: 't2',
+              audience: 'parent',
+              createdAt: FIXED_NOW.toISOString(),
+              messages: [
+                {
+                  id: 'conv-eski-m0',
+                  text: 'Eski yazışma',
+                  sender: 'teacher',
+                  date: FIXED_NOW.toISOString(),
+                },
+              ],
+            },
+          ],
+        }),
+        FIXED_NOW,
+      )
+      const before = await conversation(a.id, 'conv-eski')
+      for (const who of [mother, father]) {
+        assert.equal((await read(who.cookie, '/api/v1/conversations')).json().meta.total, 0)
+        assertError(await read(who.cookie, '/api/v1/conversations/conv-eski/messages'), 404)
+        assertError(await message(who.cookie, 'conv-eski', 'Yazayım'), 404)
+        assertError(await send('POST', '/api/v1/conversations/conv-eski/read', who.cookie, {}), 404)
+      }
+      // Öğretmen eski kaydı görmeye devam eder.
+      const list = await read(teacherCookie, '/api/v1/conversations')
+      assert.deepEqual(
+        list.json().data.map((row: { id: string }) => row.id),
+        ['conv-eski'],
+      )
+      // Başlatma eski kayda eklenmez: veli ve öğretmen ayrı, yeni yazışma açar.
+      const byMother = await start(mother.cookie, {
+        studentId: 's1',
+        teacherId: 't2',
+        text: 'Merhaba',
+      })
+      assert.equal(byMother.statusCode, 201, byMother.body)
+      assert.notEqual(byMother.json().data.entity.id, 'conv-eski')
+      const byTeacher = await start(teacherCookie, {
+        studentId: 's1',
+        audience: 'parent',
+        parentUserId: father.id,
+        text: 'Merhaba Bey',
+      })
+      assert.equal(byTeacher.statusCode, 201, byTeacher.body)
+      assert.notEqual(byTeacher.json().data.entity.id, 'conv-eski')
+      assert.notEqual(byTeacher.json().data.entity.id, byMother.json().data.entity.id)
+      assert.deepEqual(await conversation(a.id, 'conv-eski'), before)
+    })
+
     test('DOM-ILT-010: öğretmen kapsam dışı öğrencinin velisiyle yazışma açamaz, veli hesaplarını göremez', async () => {
       const a = await institution()
       const teacherCookie = await teacher(a.id)
@@ -305,7 +367,46 @@ describe('iletişim uçları', () => {
       )
       assertError(await read(teacherCookie, '/api/v1/students/s12/parent-accounts'), 404)
       assertError(await read(await student(a.id), '/api/v1/students/s1/parent-accounts'), 403)
+      // Yazışma başlatamayan roller veli hesaplarını görmez (DOM-ILT-010).
+      assertError(await read(a.adminCookie, '/api/v1/students/s1/parent-accounts'), 403)
+      assertError(
+        await read((await member(a.id, 'onburo')).cookie, '/api/v1/students/s1/parent-accounts'),
+        403,
+      )
+      assertError(
+        await read((await parent(a.id)).cookie, '/api/v1/students/s1/parent-accounts'),
+        403,
+      )
+      // Var olmayan öğrenci kapsam dışıyla aynı 404'tür.
+      assertError(await read(teacherCookie, '/api/v1/students/s-yok/parent-accounts'), 404)
       assert.equal((await loadRecords(db, a.id, ['conversations'])).length, 0)
+    })
+
+    test('DOM-ILT-010: rehberlik görevli öğretmen yazışma açabildiği her öğrencinin veli hesaplarını görür', async () => {
+      const a = await institution()
+      const counselor = await teacher(a.id, 't1')
+      const mother = await parent(a.id, 's12')
+      const accounts = await read(counselor, '/api/v1/students/s12/parent-accounts')
+      assert.equal(accounts.statusCode, 200, accounts.body)
+      assert.deepEqual(
+        accounts.json().data.map((item: { userId: string }) => item.userId),
+        [mother.id],
+      )
+      // Hesap görünürlüğü yazışma başlatma kuralıyla aynıdır: aynı öğrenci için yazışma açılır.
+      const opened = await start(counselor, {
+        studentId: 's12',
+        audience: 'parent',
+        text: 'Merhaba, rehberlik görüşmesi.',
+      })
+      assert.equal(opened.statusCode, 201, opened.body)
+      // Rehber olmayan öğretmen için aynı öğrenci iki uçta da kapalıdır.
+      const other = await teacher(a.id)
+      assertError(await read(other, '/api/v1/students/s12/parent-accounts'), 404)
+      assertError(
+        await start(other, { studentId: 's12', audience: 'parent', text: 'Merhaba' }),
+        403,
+        'conversation_party_forbidden',
+      )
     })
 
     test('DOM-ILT-012: mesaj değişmez; düzenleme ve silme ucu yok, kayıt aynı kalır', async () => {
@@ -425,7 +526,9 @@ describe('iletişim uçları', () => {
       assert.equal(entries[0]?.entityType, 'conversations')
       assert.equal(entries[0]?.entityId, id)
       assert.equal(entries[0]?.actorRole, 'yonetici')
-      assert.deepEqual(entries[0]?.changes, { reason: REASON })
+      // Gerekçe ayrı kolondadır; changes alan adı tutar, gerekçe metni içermez (veritabani.md §8).
+      assert.equal(entries[0]?.reason, REASON)
+      assert.equal(entries[0]?.changes ?? null, null)
 
       const before = await conversation(a.id, id)
       const messages = await read(admin, `/api/v1/conversations/${id}/messages`)
@@ -440,6 +543,57 @@ describe('iletişim uçları', () => {
       }
     })
 
+    test('DOM-ILT-011: gerekçeli yönetici erişimi veli yazışmasında kapalıdır; denetim kaydı yazılmaz', async () => {
+      const a = await institution()
+      const teacherCookie = await teacher(a.id)
+      const mother = await parent(a.id)
+      const opened = await start(teacherCookie, {
+        studentId: 's1',
+        audience: 'parent',
+        text: 'Merhaba Ayşe Hanım',
+      })
+      assert.equal(opened.statusCode, 201, opened.body)
+      const id: string = opened.json().data.entity.id
+      const before = await conversation(a.id, id)
+      const url = `/api/v1/conversations/${id}/access`
+      assertError(
+        await send('POST', url, a.adminCookie, { reason: REASON }),
+        403,
+        'conversation_access_student_only',
+      )
+      // Gerekçe eksikse önce gerekçe hatası; yazışma yoksa 404.
+      assertError(
+        await send('POST', url, a.adminCookie, { reason: 'kısa' }),
+        422,
+        'access_reason_required',
+      )
+      assert.equal((await audits(a.id, 'conversation.access')).length, 0)
+      assertError(await read(a.adminCookie, `/api/v1/conversations/${id}/messages`), 404)
+      // Öğrenci yazışmasında erişim sürer; eski bir erişim kaydı veli yazışmasını açmaz.
+      const studentId = await studentConversation(a.id, teacherCookie)
+      const ok = await send('POST', `/api/v1/conversations/${studentId}/access`, a.adminCookie, {
+        reason: REASON,
+      })
+      assert.equal(ok.statusCode, 200, ok.body)
+      await db.insert(auditLog).values({
+        institutionId: a.id,
+        actorUserId: a.admin.id,
+        actorRole: 'yonetici',
+        action: 'conversation.access',
+        entityType: 'conversations',
+        entityId: id,
+        changes: { fields: [] },
+        createdAt: FIXED_NOW,
+      })
+      assertError(await read(a.adminCookie, `/api/v1/conversations/${id}/messages`), 404)
+      assert.deepEqual(await conversation(a.id, id), before)
+      // Veli kendi yazışmasını okumaya devam eder.
+      assert.equal(
+        (await read(mother.cookie, `/api/v1/conversations/${id}/messages`)).statusCode,
+        200,
+      )
+    })
+
     test(`429: kullanıcı başına dakikada ${String(MESSAGE_RATE_LIMIT)} mesaj isteği`, async () => {
       const a = await institution()
       const cookie = await student(a.id)
@@ -450,6 +604,50 @@ describe('iletişim uçları', () => {
       assert.ok(limited.headers['retry-after'])
       // Sınır kullanıcı başınadır: başka kullanıcı etkilenmez.
       assertError(await message(await student(a.id, 's25'), 'conv-yok', 'Merhaba'), 404)
+    })
+
+    test('429: başlatma ucundaki ilk mesaj aynı kullanıcı kotasını kullanır; metinsiz başlatma saymaz', async () => {
+      const a = await institution()
+      const cookie = await student(a.id)
+      // 8-B öğretmeni s1'e ders vermez: istek 403 döner ama kota yine sayar.
+      const forbidden = { studentId: 's1', teacherId: 't18' }
+      for (let i = 0; i < 5; i += 1)
+        assertError(await start(cookie, forbidden), 403, 'conversation_party_forbidden')
+      for (let i = 0; i < MESSAGE_RATE_LIMIT / 2; i += 1)
+        assertError(await message(cookie, 'conv-yok', 'Merhaba'), 404)
+      for (let i = 0; i < MESSAGE_RATE_LIMIT / 2; i += 1)
+        assertError(await start(cookie, { ...forbidden, text: 'Merhaba' }), 403)
+      // Kota iki uç arasında paylaşılır: otuz mesajdan sonra her iki uç da 429 verir.
+      const limited = await start(cookie, { ...forbidden, text: 'Merhaba' })
+      assertError(limited, 429, 'rate_limited')
+      assert.ok(limited.headers['retry-after'])
+      assertError(await message(cookie, 'conv-yok', 'Merhaba'), 429, 'rate_limited')
+      // Aşılan kotada başlatma kaydı da yazmaz.
+      assert.equal((await loadRecords(db, a.id, ['conversations'])).length, 0)
+      // Başka kullanıcı etkilenmez.
+      assertError(
+        await start(await student(a.id, 's25'), { ...forbidden, studentId: 's25', text: 'Selam' }),
+        403,
+      )
+    })
+
+    test('429: kota kurum başınadır; aynı kullanıcı kurum değiştirince yeni kota alır', async () => {
+      const a = await institution()
+      const b = await institution()
+      const user = await createMember(app, a.id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
+      await ensureMember(app.auth, db, { institutionId: b.id, userId: user.id, role: 'ogrenci' })
+      const cookie = await signInAs(app, user)
+      for (let i = 0; i < MESSAGE_RATE_LIMIT; i += 1)
+        assertError(await message(cookie, 'conv-yok', 'Merhaba'), 404)
+      assertError(await message(cookie, 'conv-yok', 'Merhaba'), 429, 'rate_limited')
+      const switched = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/organization/set-active',
+        headers: { cookie, origin: TEST_ORIGIN },
+        payload: { organizationId: b.id },
+      })
+      assert.equal(switched.statusCode, 200, switched.body)
+      assertError(await message(cookie, 'conv-yok', 'Merhaba'), 404)
     })
 
     test('modül kapalıyken 403 module_disabled; kayıt yazılmaz', async () => {
@@ -590,8 +788,31 @@ describe('iletişim uçları', () => {
         409,
         'version_conflict',
       )
+      // Görmeye yetkisi olmayan öğretmen (alıcı değil) olmayan duyuruyla aynı 404'ü alır.
+      const stranger = await teacher(a.id, 't3')
+      const hidden = await send('PATCH', url, stranger, { title: 'Yeni başlık' })
+      const missing = await send('PATCH', '/api/v1/announcements/ann-yok', stranger, {
+        title: 'Yeni başlık',
+      })
+      assertError(hidden, 404, 'not_found')
+      const body = (response: typeof hidden) => ({
+        ...(response.json() as Record<string, unknown>),
+        requestId: null,
+      })
+      assert.deepEqual(body(hidden), body(missing))
       assertError(
-        await send('PATCH', url, await teacher(a.id, 't3'), { title: 'Yeni başlık' }),
+        await send('POST', `${url}/withdraw`, stranger, { reason: 'Yanlış duyuru' }),
+        404,
+        'not_found',
+      )
+      // Görüp yayıncı olmayan (öğretmenlere giden duyurunun alıcısı) 403 alır.
+      const forTeachers: string = (
+        await publish(a.adminCookie, { ...ANNOUNCEMENT, target: { roles: ['ogretmen'] } })
+      ).json().data.entity.id
+      assertError(
+        await send('PATCH', `/api/v1/announcements/${forTeachers}`, stranger, {
+          title: 'Yeni başlık',
+        }),
         403,
         'announcement_publisher_only',
       )
@@ -610,6 +831,105 @@ describe('iletişim uçları', () => {
         await send('PATCH', url, a.adminCookie, { title: 'Veli toplantısı (saat değişti)' }),
         409,
         'announcement_unchanged',
+      )
+    })
+
+    test('DOM-ILT-004: geri çekilen duyurunun metni ve gerekçesi alıcının aramasında ve sayımında eşleşmez', async () => {
+      const a = await institution()
+      const teacherCookie = await teacher(a.id)
+      const text = 'Perşembe akşamı kimya kulübü gezisi için otobüs kalkış saati değişti.'
+      const body = { ...ANNOUNCEMENT, title: 'Gezi duyurusu', text }
+      const id: string = (await publish(teacherCookie, body)).json().data.entity.id
+      const mother = await parent(a.id)
+      const search = async (cookie: string, q: string) => {
+        const list = await read(
+          cookie,
+          `/api/v1/collections/announcements?q=${encodeURIComponent(q)}&pageSize=100`,
+        )
+        assert.equal(list.statusCode, 200, list.body)
+        const counts = await read(
+          cookie,
+          `/api/v1/collections/announcements/counts?groupBy=category&q=${encodeURIComponent(q)}`,
+        )
+        assert.equal(counts.statusCode, 200, counts.body)
+        // Liste ve sayım aynı kümeyi görür.
+        assert.equal(counts.json().meta.total, list.json().meta.total)
+        return list.json().meta.total as number
+      }
+      // Geri çekilmeden önce alıcı metinle de bulur.
+      assert.equal(await search(mother.cookie, 'kimya kulübü'), 1)
+
+      const withdrawn = await send('POST', `/api/v1/announcements/${id}/withdraw`, teacherCookie, {
+        reason: 'Tarih yanlış yazıldı, gizli not',
+      })
+      assert.equal(withdrawn.statusCode, 200, withdrawn.body)
+      // Alıcı yalnız başlık/kategori/"Geri çekildi" görür: metin ve gerekçe aramada eşleşmez.
+      assert.equal(await search(mother.cookie, 'kimya kulübü'), 0)
+      assert.equal(await search(mother.cookie, 'otobüs kalkış'), 0)
+      assert.equal(await search(mother.cookie, 'gizli not'), 0)
+      assert.equal(await search(mother.cookie, 'Gezi duyurusu'), 1)
+      assert.equal(await search(mother.cookie, 'Akademik'), 1)
+      const seen = (await visible(mother.cookie)).find((row) => row.id === id)
+      assert.equal(seen?.withdrawnAt, FIXED_NOW.toISOString())
+      assert.ok(seen && !('text' in seen) && !('withdrawReason' in seen))
+      // Yayınlayan ve yönetici içeriği aramada bulur.
+      for (const cookie of [teacherCookie, a.adminCookie]) {
+        assert.equal(await search(cookie, 'kimya kulübü'), 1)
+        assert.equal(await search(cookie, 'gizli not'), 1)
+      }
+    })
+
+    test('DOM-ILT-004: ön büro yayıncısı kişiyle eşlenir; ikinci ön büro kullanıcısı değiştiremez ve ayrıntı görmez', async () => {
+      const a = await institution()
+      const first = await member(a.id, 'onburo')
+      const second = await member(a.id, 'onburo')
+      const body = {
+        title: 'Servis saatleri',
+        text: 'Servis 07.30’da.',
+        category: 'İdari',
+        target: { roles: ['veli'] },
+      }
+      const created = (await publish(first.cookie, body)).json().data
+      const id: string = created.entity.id
+      const mother = await parent(a.id)
+      assert.equal(
+        (await send('POST', `/api/v1/announcements/${id}/read`, mother.cookie, {})).statusCode,
+        200,
+      )
+      const url = `/api/v1/announcements/${id}`
+      assertError(
+        await send('PATCH', url, second.cookie, { title: 'Başka başlık' }),
+        403,
+        'announcement_publisher_only',
+      )
+      assertError(
+        await send('POST', `${url}/withdraw`, second.cookie, { reason: 'Yanlış duyuru' }),
+        403,
+        'announcement_publisher_only',
+      )
+      const own = (await visible(first.cookie)).find((row) => row.id === id)
+      assert.equal(own?.readCount, 1)
+      const other = (await visible(second.cookie)).find((row) => row.id === id)
+      assert.ok(other)
+      assert.ok(!('readCount' in other) && !('revisions' in other))
+      assert.equal(
+        (await send('PATCH', url, first.cookie, { title: 'Servis saatleri (yeni)' })).statusCode,
+        200,
+      )
+      assert.equal(
+        (await send('POST', `${url}/withdraw`, first.cookie, { reason: 'Saat değişti' }))
+          .statusCode,
+        200,
+      )
+      const hidden = (await visible(second.cookie)).find((row) => row.id === id)
+      assert.equal(hidden?.withdrawnAt, FIXED_NOW.toISOString())
+      for (const field of ['text', 'withdrawReason', 'withdrawnBy', 'revisions'])
+        assert.ok(!(hidden && field in hidden), field)
+      const full = (await visible(first.cookie)).find((row) => row.id === id)
+      assert.equal(full?.withdrawReason, 'Saat değişti')
+      assert.equal(
+        (await findRecord(db, a.id, 'announcements', id))?.data.withdrawReason,
+        'Saat değişti',
       )
     })
 

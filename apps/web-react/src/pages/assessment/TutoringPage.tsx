@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
-import { useNow } from '@/hooks/use-now.ts'
+import { useMinuteClock } from '@/hooks/use-minute-clock.ts'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { useSourcesState } from '../workflows/use-workflow-state.ts'
@@ -47,7 +47,7 @@ function TutoringView({ page, session }: { page: NavPage; session: Session }) {
   const writer = session.role === 'yonetici' || session.role === 'ogretmen'
 
   // Yoklama başlangıç saatinden sonra açılır; saat dakikada bir tazelenir.
-  const now = useNow()
+  const now = useMinuteClock()
   const rows = tutorRows(data.state, actor, now)
   const selected = rows.find((row) => row.id === panel.selectedId)
   const openRecord = panel.open

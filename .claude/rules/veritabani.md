@@ -20,4 +20,4 @@ Ayrıntı: `docs/muhendislik/veritabani.md`.
 - Migration ve onu kullanan kod aynı committe; testler aynı migration'ları PGlite'ta baştan uygular.
 - Benzersizlik `institution_id` içerir; arşivli kayıtları dışlamak için kısmi indeks (`where archived_at is null`). Her yabancı anahtar indekslidir. `data` üzerinde ölçümsüz GIN indeksi yok; yeni indeks `EXPLAIN` ile gerekçelendirilir.
 - Silme = arşiv (`archived_at`); sorgular varsayılan olarak arşivliyi dışlar. Kalıcı `delete` yalnız imha işi, veri sahibi talebi ve süresi dolan teknik kayıtlarda.
-- `audit_log` yalnız eklenir; uygulama rolünde `update`/`delete` yetkisi yok. `changes` alan adlarını tutar, özel nitelikli değer tutmaz; ham IP yok. Core `audit` koleksiyonu `records`'a yazılmaz; sunucu denetimi yalnız `audit_log`'da.
+- `audit_log` yalnız eklenir; uygulama rolünde `update`/`delete` yetkisi yok. `changes` alan adlarını tutar, özel nitelikli değer tutmaz; `reason` (≤ 500 karakter) yalnız gerekçeli hassas okumada dolar ve DOM-YTK-053 maskesine tabidir; ham IP yok. Core `audit` koleksiyonu `records`'a yazılmaz; sunucu denetimi yalnız `audit_log`'da.

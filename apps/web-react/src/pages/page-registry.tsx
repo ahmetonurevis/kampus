@@ -34,6 +34,10 @@ const ChildrenPage = lazy(async () => ({
   default: (await import('./academic/ChildrenPage.tsx')).ChildrenPage,
 }))
 
+const SettingsPage = lazy(async () => ({
+  default: (await import('./settings/SettingsPage.tsx')).SettingsPage,
+}))
+
 const FinancePage = lazy(async () => ({
   default: (await import('./finance/FinancePage.tsx')).FinancePage,
 }))
@@ -55,6 +59,16 @@ const StudentQuizzesPage = lazy(async () => ({
 }))
 const StudentMaterialsPage = lazy(async () => ({
   default: (await import('./learning/StudentMaterialsPage.tsx')).StudentMaterialsPage,
+}))
+
+const AnnouncementsPage = lazy(async () => ({
+  default: (await import('./communication/AnnouncementsPage.tsx')).AnnouncementsPage,
+}))
+const MessagesPage = lazy(async () => ({
+  default: (await import('./communication/MessagesPage.tsx')).MessagesPage,
+}))
+const ParentMessagesPage = lazy(async () => ({
+  default: (await import('./communication/ParentMessagesPage.tsx')).ParentMessagesPage,
 }))
 
 // Okul iş akışı modülleri tek ortak sayfayı paylaşır (core sunum tanımı menü yolundan gelir).
@@ -91,6 +105,7 @@ const MIGRATED = new Set([
   'veli/dashboard',
   'yonetici/subeler',
   'yonetici/personel',
+  'yonetici/ayarlar',
   'yonetici/finans',
   'onburo/tahsilat-takip',
   'ogretmen/siniflarim',
@@ -107,10 +122,22 @@ const MIGRATED = new Set([
   'ogrenci/odevler',
   'ogrenci/materyaller',
   'ogrenci/soru-coz',
+  'ogrenci/mesajlar',
+  'ogretmen/mesajlar',
+  'yonetici/mesajlar',
+  'veli/randevu-mesaj',
 ])
+// Duyurular beş rolün hepsinde aynı ekrandır; rol kapsamı sunucudadır.
+// TODO(web-randevu): öğretmen `randevular` ve öğrenci `randevu-talep` yer tutucu kalır.
+const ANNOUNCEMENT_PATH = 'duyurular'
 
 export function isMigratedPage(role: RoleKey, path: string): boolean {
-  return MIGRATED.has(`${role}/${path}`) || WORKFLOW_PATHS.has(path) || ASSESSMENT_PATHS.has(path)
+  return (
+    MIGRATED.has(`${role}/${path}`) ||
+    WORKFLOW_PATHS.has(path) ||
+    ASSESSMENT_PATHS.has(path) ||
+    path === ANNOUNCEMENT_PATH
+  )
 }
 
 /** Taşınmış sayfayı çizer; `Suspense` içinde kullanılır. */
@@ -120,11 +147,14 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
   if (page.path === 'optik-degerlendirme') return <OpticalPage page={page} />
   if (page.path === 'otomatik-etut') return <TutoringPage page={page} />
   if (WORKFLOW_PATHS.has(page.path)) return <WorkflowPage page={page} />
+  if (page.path === ANNOUNCEMENT_PATH) return <AnnouncementsPage page={page} />
   switch (`${role}/${page.path}`) {
     case 'yonetici/subeler':
       return <CampusesPage page={page} />
     case 'yonetici/personel':
       return <StaffPage page={page} />
+    case 'yonetici/ayarlar':
+      return <SettingsPage page={page} />
     case 'yonetici/finans':
     case 'onburo/tahsilat-takip':
       return <FinancePage page={page} />
@@ -156,6 +186,12 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <StudentMaterialsPage page={page} />
     case 'ogrenci/soru-coz':
       return <StudentQuizzesPage page={page} />
+    case 'ogrenci/mesajlar':
+    case 'ogretmen/mesajlar':
+    case 'yonetici/mesajlar':
+      return <MessagesPage page={page} />
+    case 'veli/randevu-mesaj':
+      return <ParentMessagesPage page={page} />
     default:
       return null
   }

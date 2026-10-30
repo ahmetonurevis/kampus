@@ -1,5 +1,21 @@
 # Değişiklikler
 
+## 2.6.0
+
+İletişim güvenlik incelemesi (R3) düzeltmeleri. Davranış sıkılaştı; HTTP yanıt şekilleri değişmedi.
+
+- **Kırıcı davranış (DOM-ILT-010):** veli kimliği (`parentUserId`) olmayan veli tarafı yazışma hiçbir veliye görünmez (`isConversationParty`) ve `startConversation` onunla eşleşmez; veli yeni yazışmasını ayrı açar. Öğretmen ve yönetici kuralları değişmedi. Örnek veride `conv2` ve `conv3` `parentUserId: 'p1'` (örnek veli kaydı) taşır; mevcut kimlikler değişmedi. API tohumu bu değeri velinin kalıcı kullanıcı kimliğine çevirir, migration `0007` eski kayıtları tek veli hesabı varsa doldurur.
+- **Kırıcı davranış (DOM-ILT-004):** ön büro duyuru yayıncısı rolle değil kişiyle eşlenir (`isPublisher`: `publishedBy.userId`). `Actor` isteğe bağlı `userId` alır (`Participant` zaten taşır); kimliği olmayan ön büro aktörü yayıncı sayılmaz. Düzeltme, geri çekme, okundu sayısı, geçmiş ve `withdrawReason` yalnız yayınlayan ve yöneticidedir. `AnnouncementViewer.userId` eklendi.
+- **Davranış (DOM-ILT-004):** `reviseAnnouncement` ve `withdrawAnnouncement` sırası rol/modül, görünürlük, yayıncılıktır: duyuruyu görmeye yetkisi olmayan olmayan kayıtla aynı `announcement_not_found` (404) alır; görüp yayıncı olmayan `announcement_publisher_only` (403) alır.
+- **Yeni (DOM-ILT-010):** `parentAccountsDecision(scope, source, studentId)` öğrencinin veli hesaplarını görme kararı; `startDecision` ile birebir aynı kapsamı kullanır (rehberlik görevli öğretmen dahil), öğretmen dışındaki roller reddedilir.
+- **Kırıcı davranış (DOM-ILT-011):** gerekçeli yönetici erişimi yalnız öğrenci–öğretmen yazışmasındadır; veli tarafı yazışma `conversation_access_student_only` (403) alır. `authorize('conversation.access')` hedefi isteğe bağlı `conversation` alır, `accessDecision(reason, conversation?)` önce gerekçeyi, sonra hedef kitleyi denetler.
+
+## 2.5.0
+
+- `lib/institution-modules.ts` eklendi: `setModuleEnabled(source, actor, moduleKey, input)` kurum modülünü açar/kapatır (DOM-YTK-040, DOM-YTK-042, DOM-YTK-012). Saf işlemdir: saklanan haritayı değiştirmez, yeni haritayı döndürür; koleksiyon kayıtlarına (gelecek etüt rezervasyonları dahil) dokunmaz, yani kapatma veri silmez ve arşivlemez. Reddler: yönetici olmayan rol `permission_denied` (forbidden), bilinmeyen modül `module_not_found` (not_found), kurum türünde olmayan modül `module_unavailable_for_type` (rule, `path: ['moduleKey']`), durum zaten istenen gibiyse `module_unchanged` (conflict). Core'da modüller arası bağımlılık tanımı yoktur; yeni bağımlılık eklenmedi. `moduleToggleInputSchema` (`{ enabled }`) API gövde şeması ve ayar ekranı formudur.
+- `modules/module-catalog.ts` eklendi: `moduleInfo(key)` ve `MODULE_INFOS` ayar ekranı için modül adı, açıklaması ve simgesini verir (iş akışı modülleri menü kaydından, temel beş modül burada).
+- Tüketiciler `workspace:2.5.0` sürümüne sabitlendi.
+
 ## 2.4.0
 
 - `lib/communication.ts` eklendi: duyuru ve birebir mesaj işlemleri (docs/domain/iletisim-ve-veli.md). `publishAnnouncement(state, by, input, makeId, now, opts)` hedef kitleyi (`announcementTargetSchema`: kampüs, düzey, CEFR seviyesi, sınıf birleşimi × `ogretmen`/`ogrenci`/`veli`) yayın anında alıcı listesine çözer ve kaydeder (DOM-ILT-001); `reviseAnnouncement` önceki içeriği `revisions` geçmişinde tutar, `withdrawAnnouncement` kaydı silmeden geri çeker (DOM-ILT-004); `markAnnouncementRead` alıcının ilk açılış anını bir kez yazar (DOM-ILT-003, veli anahtarı çocuk başınadır). `startConversation` yazışmayı öğrenci + öğretmen + hedef kitle + veli hesabı (`parentUserId`) başına tekil açar, varsa ilk mesajı var olana ekler (DOM-ILT-010, -011); `sendMessage` yalnız taraf gönderir, mesaj değişmez (DOM-ILT-012); `markMessagesRead` karşı tarafın mesajlarına `readAt` yazar (DOM-ILT-024); `openConversationAccess` yöneticinin gerekçeli, 30 dakikalık erişimini doğrular, State değiştirmez (DOM-YTK-052). Yardımcılar: `messagePage` (imleçli, en yeniden geriye), `conversationSummary`, `conversationsFor`, `resolveRecipients`; yanıt süresi `businessMinutesBetween`, `responseDueAt`, `awaitingReply` ve `DEFAULT_WORKING_CALENDAR` (hafta içi 08.00–17.00 Europe/Istanbul, tatil listesi; DOM-ILT-013). İşlemler `Participant` (`Actor` + kalıcı `userId`) alır.

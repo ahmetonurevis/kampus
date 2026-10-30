@@ -406,10 +406,23 @@ test('İletişim işlemleri yalnız komut tablosundaki koleksiyonlarla çalış�
     now,
   )
   markMessagesRead(operation(state, 'message.read'), parent, conversation.id, now)
+  // Gerekçeli erişim yalnız öğrenci–öğretmen yazışmasındadır (DOM-ILT-011).
+  const pupil = {
+    role: 'ogrenci' as const,
+    links: [{ kind: 'student' as const, recordId: 's1' }],
+    userId: 'u-s1',
+  }
+  const pupilConversation = startConversation(
+    operation(state, 'conversation.start'),
+    pupil,
+    { studentId: 's1', teacherId: 't2', text: 'Merhaba hocam' },
+    id,
+    now,
+  ).conversation
   openConversationAccess(
     operation(state, 'conversation.access'),
     director,
-    conversation.id,
+    pupilConversation.id,
     { reason: 'Şikâyet dilekçesi incelemesi' },
     now,
   )

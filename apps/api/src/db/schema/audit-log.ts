@@ -1,11 +1,12 @@
-import { desc } from 'drizzle-orm'
-import { index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { desc, sql } from 'drizzle-orm'
+import { check, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 import { institutions } from './auth.ts'
 
 /**
  * Yalnız eklenen denetim kaydı (docs/muhendislik/veritabani.md §8). Parola, belirteç, çerez ve
- * ham IP tutulmaz; `changes` yalnız alan adlarını taşır.
+ * ham IP tutulmaz; `changes` yalnız alan adlarını taşır. `reason` yalnız gerekçeli hassas okumada
+ * (yöneticinin yazışma erişimi, DOM-YTK-052) dolar; DOM-YTK-053 maskesine tabidir.
  */
 export const auditLog = pgTable(
   'audit_log',
@@ -24,10 +25,17 @@ export const auditLog = pgTable(
     requestId: text('request_id'),
     // kvkk: K (tuzlanmış SHA-256)
     ipHash: text('ip_hash'),
+    // `reason` burada yalnız teknik hata kodudur (ör. giriş hatası); serbest metin gerekçe `reason` kolonundadır.
     changes: jsonb('changes').$type<{ fields?: string[]; reason?: string }>(),
+    // kvkk: K — serbest metin gerekçe; `changes`'e yazılmaz, görünürlüğü yalnız yöneticidir.
+    reason: text('reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    check(
+      'audit_log_reason_check',
+      sql`${table.reason} is null or char_length(${table.reason}) <= 500`,
+    ),
     index('audit_log_entity_idx').on(
       table.institutionId,
       table.entityType,

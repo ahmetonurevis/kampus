@@ -195,7 +195,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Yalnız menüyü gizlemek, kapatılan işlevi URL veya API ile kullanılabilir bırakır.
 - **Kaynak:** CLAUDE.md "Modül kapatıldığında menü, doğrudan route erişimi ve ilgili API uçları kapanır".
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — menü (`apps/web/src/App.vue:43`) ve route (`apps/web/src/router.js:80-82`) kapanır. Komut → modül ve komut → koleksiyon tablosu `packages/school-core/src/modules/commands.ts` (`WORKFLOW_COMMANDS`, `ASSESSMENT_COMMANDS`, `OPERATION_COMMANDS`, `commandSpec`) tek yerdedir; iş akışı komutları (`runWorkflow`) ve temel yazma eylemleri (`authorize`) modülü buradan okur. Temel işlemlerin kendisi (`packages/school-core/src/lib/domain.ts`) modül denetimi yapmaz, çağıran `requireAuthorized` çalıştırır; modül durumu kurum başına değil (`packages/school-core/src/data/seed.ts`).
+- **Kodda:** kısmen — menü (`apps/web/src/App.vue:43`) ve route (`apps/web/src/router.js:80-82`) kapanır. Komut → modül ve komut → koleksiyon tablosu `packages/school-core/src/modules/commands.ts` (`WORKFLOW_COMMANDS`, `ASSESSMENT_COMMANDS`, `OPERATION_COMMANDS`, `commandSpec`) tek yerdedir; iş akışı komutları (`runWorkflow`) ve temel yazma eylemleri (`authorize`) modülü buradan okur. Modül kurum başına saklanır (`institutions.enabled_modules`); API koleksiyon okuma/yazma ve komut uçlarında `requireModule` ile 403 `module_disabled` döner, `PATCH /api/v1/modules/:moduleKey` ile açılıp kapanır (`DOM-YTK-042`). Temel işlemlerin kendisi (`packages/school-core/src/lib/domain.ts`) modül denetimi yapmaz, çağıran `requireAuthorized` çalıştırır. Kapatma kayıtlara dokunmaz; modüller arası ön koşul/bağımlılık tanımı yoktur.
 
 ### DOM-YTK-041 · Kapalı modül yan kanallarda görünmez
 
@@ -211,7 +211,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Modül kapatmak tüm rollerin iş akışını bir anda değiştirir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — yalnız yönetici ekranında (`apps/web/src/views/Settings.vue:73,85`); denetim kaydı yalnız rol ve mesaj tutar (`apps/web/src/stores/demo.js:138-147`).
+- **Kodda:** var — core `setModuleEnabled` (`packages/school-core/src/lib/institution-modules.ts`): yalnız yönetici (`permission_denied`), kurum türünde olmayan modül 422 `module_unavailable_for_type`, durum değişmiyorsa 409 `module_unchanged`; saf işlemdir, kayıtlara dokunmaz. API `PATCH /api/v1/modules/:moduleKey` (`{ enabled }`, `If-Match` = `institution_settings.version`, `Idempotency-Key` zorunlu) tek transaction'da `institutions.enabled_modules`'ı ve sürümü günceller, `audit_log`'a `module.set` + `changes.fields: ['enabledModules']` yazar. Web: Ayarlar → Kurum & Modüller, kapatmadan önce onay penceresi. Eski demo ekranı `apps/web/src/views/Settings.vue:73,85`; denetim kaydı yalnız rol ve mesaj tutar (`apps/web/src/stores/demo.js:138-147`).
 
 ## Denetim kaydı
 
@@ -237,7 +237,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Özel nitelikli veriye kimin baktığı ihlal incelemesinin ilk sorusudur; her okumayı kaydetmek ise gereksiz kişisel veri üretir.
 - **Kaynak:** KVKK md. 6/4 (Kurul'un yeterli önlemleri: erişim kayıtları) — **doğrulanmalı**; md. 4/2.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — yöneticinin gerekçeli yazışma erişimi var: `POST /conversations/:id/access` gerekçeyi (≥ 10 karakter) `audit_log.reason` kolonuna, `changes` boş bırakarak yazar (`conversation.access`, 30 dk geçerli). Rehberlik iç notu, sağlık ve acil bilgi, velayet belgesi okumaları ve toplu dışa aktarım denetim kaydı üretmez.
 
 ### DOM-YTK-053 · Denetim kaydının görünürlüğü ve maskesi
 

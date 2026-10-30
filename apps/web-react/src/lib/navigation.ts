@@ -31,8 +31,76 @@ export function getRole(role: RoleKey): RoleInfo {
   return roles[role]
 }
 
+const communicationPage = (path: string, title: string, icon: string, description: string) =>
+  ({
+    path,
+    title,
+    icon,
+    module: 'communication',
+    view: 'Communication',
+    description,
+    group: 'İLETİŞİM',
+  }) satisfies NavPage
+
+/**
+ * Yeni web'de iletişim ekranları bütün rollere açılır; core menüsünde yalnız öğrenci ve veli için
+ * kayıtlıdır (yönetici, ön büro ve öğretmen duyuru/mesaj sayfasını Vue'da başka yoldan açıyordu).
+ * TODO(core-nav-communication): çekirdek menüsü ve mobil aynı kaydı alınca bu liste silinir.
+ */
+const WEB_COMMUNICATION_PAGES: Readonly<Record<RoleKey, readonly NavPage[]>> = {
+  yonetici: [
+    communicationPage(
+      'duyurular',
+      'Duyurular',
+      'Megaphone',
+      'Kurum duyurularını yayınlayın ve izleyin.',
+    ),
+    communicationPage(
+      'mesajlar',
+      'Mesajlar',
+      'MessagesSquare',
+      'Öğrenci–öğretmen yazışmalarının üst verisini görün; içeriği gerekçeyle açın.',
+    ),
+  ],
+  onburo: [
+    communicationPage(
+      'duyurular',
+      'Duyurular',
+      'Megaphone',
+      'İdari duyuruları yayınlayın ve izleyin.',
+    ),
+  ],
+  ogretmen: [
+    communicationPage('duyurular', 'Duyurular', 'Megaphone', 'Sınıflarınıza duyuru yayınlayın.'),
+    communicationPage(
+      'mesajlar',
+      'Mesajlar',
+      'MessagesSquare',
+      'Öğrencileriniz ve velileriyle yazışın.',
+    ),
+  ],
+  ogrenci: [],
+  veli: [],
+}
+
+const pagesByRole = new Map<RoleKey, readonly NavPage[]>()
+
+/** Core menüsü + web'e özgü iletişim sayfaları; ek sayfalar hesap grubundan önce eklenir. */
 export function rolePages(role: RoleKey): readonly NavPage[] {
-  return navigation[role]
+  const cached = pagesByRole.get(role)
+  if (cached) return cached
+  const core = navigation[role]
+  const extra = WEB_COMMUNICATION_PAGES[role].filter(
+    (added) => !core.some((page) => page.path === added.path),
+  )
+  const at = core.findIndex((page) => page.group === ACCOUNT_GROUP)
+  const pages = extra.length
+    ? at < 0
+      ? [...core, ...extra]
+      : [...core.slice(0, at), ...extra, ...core.slice(at)]
+    : core
+  pagesByRole.set(role, pages)
+  return pages
 }
 
 /** Modülü kapalı sayfalar menüden ve doğrudan erişimden düşer. */

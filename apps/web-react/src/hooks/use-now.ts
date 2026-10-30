@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 
 /**
- * Güncel an (ISO), dakikada bir tazelenir. Çizim sırasında saat okunmaz (bileşenler saf kalır);
- * saate bağlı görünüm (ör. "yoklama başladı mı") dakika hassasiyetiyle güncel kalır.
+ * Şimdiki zaman (ms); `active` iken `intervalMs` aralığıyla tazelenir (geri sayım göstergeleri).
+ * Pasifken zamanlayıcı kurulmaz. Zamanlayıcı dış sistemdir; durum yalnız tık ile değişir.
  */
-export function useNow(intervalMs = 60_000): string {
-  const [now, setNow] = useState(() => new Date().toISOString())
+export function useNow(active: boolean, intervalMs = 1000): number {
+  const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date().toISOString()), intervalMs)
-    return () => clearInterval(timer)
-  }, [intervalMs])
+    if (!active) return
+    const timer = window.setInterval(() => setNow(Date.now()), intervalMs)
+    return () => window.clearInterval(timer)
+  }, [active, intervalMs])
   return now
 }

@@ -695,6 +695,75 @@
           "createdAt"
         ]
       },
+      "ModuleSettingsInput": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kurum ayar sürümü (`If-Match` için)"
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "Modül anahtarı"
+                },
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Modül açık mı"
+                }
+              },
+              "required": [
+                "key",
+                "enabled"
+              ]
+            },
+            "description": "Kurum türünde bulunan modüller; türde olmayan modül listelenmez"
+          }
+        },
+        "required": [
+          "version",
+          "modules"
+        ]
+      },
+      "ModuleChangeInput": {
+        "type": "object",
+        "properties": {
+          "moduleKey": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "enabledModules": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Güncel etkin modül haritası (`/me` `enabledModules` ile aynı)"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Yeni kurum ayar sürümü"
+          }
+        },
+        "required": [
+          "moduleKey",
+          "enabled",
+          "enabledModules",
+          "version"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -1404,6 +1473,78 @@
           "createdAt"
         ],
         "additionalProperties": false
+      },
+      "ModuleSettings": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kurum ayar sürümü (`If-Match` için)"
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "Modül anahtarı"
+                },
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Modül açık mı"
+                }
+              },
+              "required": [
+                "key",
+                "enabled"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Kurum türünde bulunan modüller; türde olmayan modül listelenmez"
+          }
+        },
+        "required": [
+          "version",
+          "modules"
+        ],
+        "additionalProperties": false
+      },
+      "ModuleChange": {
+        "type": "object",
+        "properties": {
+          "moduleKey": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "enabledModules": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Güncel etkin modül haritası (`/me` `enabledModules` ile aynı)"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Yeni kurum ayar sürümü"
+          }
+        },
+        "required": [
+          "moduleKey",
+          "enabled",
+          "enabledModules",
+          "version"
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -1628,6 +1769,260 @@
             }
           },
           "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules": {
+      "get": {
+        "operationId": "getModuleSettings",
+        "summary": "Kurum modül ayarları",
+        "tags": [
+          "modules"
+        ],
+        "description": "Etkin kurumun türünde bulunan modülleri ve açık/kapalı durumlarını ayar sürümüyle döndürür. Yalnız yönetici.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ModuleSettings"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/{moduleKey}": {
+      "patch": {
+        "operationId": "setModuleEnabled",
+        "summary": "Modülü aç veya kapat",
+        "tags": [
+          "modules"
+        ],
+        "description": "Etkin kurumun modülünü açar veya kapatır. Kapatma veri silmez ve arşivlemez; kayıtlar (gelecek etüt rezervasyonları dahil) modül yeniden açılınca aynen döner. `If-Match` ve `Idempotency-Key` zorunludur. Kurum türünde olmayan modül 422 `module_unavailable_for_type`; durum değişmiyorsa 409 `module_unchanged`. Yalnız yönetici.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Modül açık mı olacak"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "in": "path",
+            "name": "moduleKey",
+            "required": true,
+            "description": "Modül anahtarı (ör. `meals`, `finance`)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu. `GET /modules` yanıtındaki kurum ayar sürümü (ör. `\"3\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ModuleChange"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
             "description": "Default Response",
             "content": {
               "application/json": {
@@ -12191,7 +12586,7 @@
         "tags": [
           "communication"
         ],
-        "description": "Duyurunun başlık, metin veya kategorisini düzeltir; önceki içerik `revisions` geçmişinde kalır, alıcı \"Güncellendi\" işaretini görür (core `reviseAnnouncement`, DOM-ILT-004). Hedef kitle değişmez. Yalnız yayınlayan veya yönetici (403 `announcement_publisher_only`); değişiklik yoksa 409 `announcement_unchanged`, geri çekilmişse 409 `announcement_withdrawn`. `If-Match` duyurunun sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`, `ogretmen`.",
+        "description": "Duyurunun başlık, metin veya kategorisini düzeltir; önceki içerik `revisions` geçmişinde kalır, alıcı \"Güncellendi\" işaretini görür (core `reviseAnnouncement`, DOM-ILT-004). Hedef kitle değişmez. Duyuruyu görmeye yetkisi olmayan olmayan kayıtla aynı 404'ü alır; görüp yayınlayan olmayan 403 `announcement_publisher_only` alır (yalnız yayınlayan veya yönetici, ön büroda yayınlayan kişi); değişiklik yoksa 409 `announcement_unchanged`, geri çekilmişse 409 `announcement_withdrawn`. `If-Match` duyurunun sürümüdür; tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo`, `ogretmen`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -12366,7 +12761,7 @@
         "tags": [
           "communication"
         ],
-        "description": "Duyuruyu silmeden geri çeker (core `withdrawAnnouncement`, DOM-ILT-004): alıcılar duyuruyu \"Geri çekildi\" işaretiyle (`withdrawnAt`) görmeye devam eder, metni ve gerekçeyi yalnız yayınlayan ve yönetici görür. Gerekçe zorunludur. Yalnız yayınlayan veya yönetici; ikinci geri çekme 409 `announcement_withdrawn`. Roller: `yonetici`, `onburo`, `ogretmen`.",
+        "description": "Duyuruyu silmeden geri çeker (core `withdrawAnnouncement`, DOM-ILT-004): alıcılar duyuruyu \"Geri çekildi\" işaretiyle (`withdrawnAt`) görmeye devam eder, metni ve gerekçeyi yalnız yayınlayan ve yönetici görür. Gerekçe zorunludur. Yalnız yayınlayan veya yönetici (görmeye yetkisi olmayana 404, görüp yayınlayan olmayana 403); ikinci geri çekme 409 `announcement_withdrawn`. Roller: `yonetici`, `onburo`, `ogretmen`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -12810,7 +13205,7 @@
         "tags": [
           "communication"
         ],
-        "description": "Öğrenci + öğretmen + hedef kitle + veli hesabı için tek yazışma açar; varsa yenisi açılmaz, `text` var olan yazışmaya eklenir (core `startConversation`, DOM-ILT-010, -011). Yeni yazışma 201, var olan 200. Öğretmen `studentId` + `audience` verir; veli yazışmasında öğrencinin tek veli hesabı kendiliğinden seçilir, birden çoksa `parentUserId` zorunludur (422 `parent_choice_required`; hesaplar `GET /students/{id}/parent-accounts`). Öğrenci ve veli `studentId` + `teacherId` verir. İlişki yoksa 403 `conversation_party_forbidden`. `Idempotency-Key` zorunludur. Roller: `ogretmen`, `ogrenci`, `veli`.",
+        "description": "Öğrenci + öğretmen + hedef kitle + veli hesabı için tek yazışma açar; varsa yenisi açılmaz, `text` var olan yazışmaya eklenir (core `startConversation`, DOM-ILT-010, -011). Yeni yazışma 201, var olan 200. Öğretmen `studentId` + `audience` verir; veli yazışmasında öğrencinin tek veli hesabı kendiliğinden seçilir, birden çoksa `parentUserId` zorunludur (422 `parent_choice_required`; hesaplar `GET /students/{id}/parent-accounts`). Öğrenci ve veli `studentId` + `teacherId` verir. İlişki yoksa 403 `conversation_party_forbidden`. `text` varsa istek bir mesaj sayılır ve mesaj gönderme ile aynı kotayı kullanır (kullanıcı ve kurum başına dakikada 30, aşılırsa 429); metinsiz başlatma saymaz. `Idempotency-Key` zorunludur. Roller: `ogretmen`, `ogrenci`, `veli`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -12994,7 +13389,7 @@
         "tags": [
           "communication"
         ],
-        "description": "Mesajlar en yeniden geriye imleçli sayfalanır (core `messagePage`); sayfa içinde sıra eskiden yeniyedir, `meta.nextCursor` daha eski sayfayı verir. Mesajlar değişmez ve silinmez, imleç kararlıdır; geçersiz imleç 400. Taraf olmayana 404. Yönetici yalnız son 30 dakikada açtığı gerekçeli erişimle okur, yoksa 404; okuması okundu üretmez (DOM-YTK-052).",
+        "description": "Mesajlar en yeniden geriye imleçli sayfalanır (core `messagePage`); sayfa içinde sıra eskiden yeniyedir, `meta.nextCursor` daha eski sayfayı verir. Mesajlar değişmez ve silinmez, imleç kararlıdır; geçersiz imleç 400. Taraf olmayana 404. Yönetici yalnız öğrenci–öğretmen yazışmasını ve yalnız son 30 dakikada açtığı gerekçeli erişimle okur, aksi halde 404; okuması okundu üretmez (DOM-YTK-052).",
         "parameters": [
           {
             "schema": {
@@ -13140,7 +13535,7 @@
         "tags": [
           "communication"
         ],
-        "description": "Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core `sendMessage`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 `conversation_relationship_ended`). En fazla 2000 karakter. `Idempotency-Key` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı başına dakikada 30 istek, aşılırsa 429. Başarı 201. Roller: `ogretmen`, `ogrenci`, `veli`.",
+        "description": "Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core `sendMessage`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 `conversation_relationship_ended`). En fazla 2000 karakter. `Idempotency-Key` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı ve kurum başına dakikada 30 mesaj (`POST /conversations` gövdesindeki `text` ile aynı kota), aşılırsa 429 ve `Retry-After`. Başarı 201. Roller: `ogretmen`, `ogrenci`, `veli`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -13441,7 +13836,7 @@
         "tags": [
           "communication"
         ],
-        "description": "Yöneticinin şikâyet veya soruşturma gerekçesiyle yazışmayı açması (core `openConversationAccess`, DOM-YTK-052, DOM-ILT-011). Gerekçe en az 10 karakter, yoksa 422 `access_reason_required`. Erişim gerekçesiyle `audit_log`'a (`conversation.access`) yazılır ve 30 dakika geçerlidir; bu sürede `GET /conversations/{id}/messages` açıktır. Yazışma yoksa 404. Roller: `yonetici`.",
+        "description": "Yöneticinin şikâyet veya soruşturma gerekçesiyle yazışmayı açması (core `openConversationAccess`, DOM-YTK-052, DOM-ILT-011). Yalnız öğrenci–öğretmen yazışmasında geçerlidir: veli tarafı yazışma gerekçeyle de açılmaz (403 `conversation_access_student_only`). Gerekçe en az 10 karakter, yoksa 422 `access_reason_required`. Erişim gerekçesiyle `audit_log`'a (`conversation.access`) yazılır ve 30 dakika geçerlidir; bu sürede `GET /conversations/{id}/messages` açıktır. Yazışma yoksa 404. Roller: `yonetici`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -13596,7 +13991,7 @@
         "tags": [
           "communication"
         ],
-        "description": "Öğrenciye bağlı platform veli hesapları (kullanıcı kimliği ve ad); öğretmenin veli yazışması başlatırken `parentUserId` seçimi için (DOM-ILT-010). Öğretmen yalnız kapsamındaki (ders verdiği, rehberi olduğu) öğrenci için okur; kapsam dışı veya başka kurumun öğrencisi 404.",
+        "description": "Öğrenciye bağlı platform veli hesapları (kullanıcı kimliği ve ad); öğretmenin veli yazışması başlatırken `parentUserId` seçimi için (DOM-ILT-010). Yalnız veliyle yazışma başlatabilen öğretmen okur (yönetici, ön büro, öğrenci ve veli 403); kapsam `POST /conversations` ile birebir aynıdır: ders verdiği, sınıf rehberi olduğu öğrenci ya da rehberlik görevlisi olarak her öğrenci. Kapsam dışı, var olmayan veya başka kurumun öğrencisi 404.",
         "parameters": [
           {
             "schema": {

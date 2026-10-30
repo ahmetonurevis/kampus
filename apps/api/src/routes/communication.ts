@@ -1,4 +1,9 @@
-import type { FastifyInstance, FastifyRequest, preValidationAsyncHookHandler } from 'fastify'
+import type {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  preValidationAsyncHookHandler,
+} from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
 import { WRITE_ACTION_ROLES, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
@@ -13,6 +18,7 @@ import {
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Role } from '../auth.ts'
+import { AppError, MESSAGES } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import {
   listConversationMessages,
@@ -56,13 +62,35 @@ const response = { 200: commandResponseSchema, ...commandErrors }
 const created = { 201: commandResponseSchema, ...commandErrors }
 const startResponse = { 200: commandResponseSchema, 201: commandResponseSchema, ...commandErrors }
 
-/** Mesaj gönderiminde kullanıcı başına hız sınırı (dakikada); genel sınır 300'dür. */
+/** Mesaj kotası (kullanıcı ve kurum başına dakikada); genel IP sınırı 300'dür. */
 export const MESSAGE_RATE_LIMIT = 30
 
 const conversationRoles: readonly Role[] = ['ogretmen', 'ogrenci', 'veli', 'yonetici']
 
 export function registerCommunicationRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
+
+  // Mesaj kotası kullanıcı ve kurum başınadır; mesaj gönderme ve başlatmadaki ilk mesaj aynı
+  // sayacı kullanır (tek sınırlayıcı örneği). Kimlik `preValidation`'da çözülür, sayım ondan
+  // sonra yapılır. Genel IP sınırı (`app.ts`) ayrıca işler.
+  const checkMessageLimit = app.createRateLimit({
+    max: MESSAGE_RATE_LIMIT,
+    timeWindow: '1 minute',
+    keyGenerator: (request: FastifyRequest) =>
+      request.auth ? `message:${request.auth.institutionId}:${request.auth.userId}` : request.ip,
+  })
+  async function limitMessages(request: FastifyRequest, reply: FastifyReply) {
+    const limit = await checkMessageLimit(request)
+    if (limit.isAllowed || !limit.isExceeded) return
+    reply.header('retry-after', limit.ttlInSeconds)
+    throw new AppError(429, 'rate_limited', MESSAGES.rate_limited)
+  }
+  /** Başlatma gövdesinde `text` varsa istek bir mesaj sayılır; metinsiz başlatma saymaz. */
+  async function limitFirstMessage(request: FastifyRequest, reply: FastifyReply) {
+    const body = request.body
+    const text = typeof body === 'object' && body !== null && 'text' in body ? body.text : undefined
+    if (text !== undefined && text !== null) await limitMessages(request, reply)
+  }
 
   /** Komut ön işleyicileri: kimlik → modül → rol (core tablosu) → `If-Match` → ham gövde. */
   function guard(action: WriteAction, { subject = true } = {}): preValidationAsyncHookHandler[] {
@@ -125,7 +153,7 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
         operationId: 'reviseAnnouncement',
         tags: ['communication'],
         summary: 'Duyuruyu düzelt',
-        description: `Duyurunun başlık, metin veya kategorisini düzeltir; önceki içerik \`revisions\` geçmişinde kalır, alıcı "Güncellendi" işaretini görür (core \`reviseAnnouncement\`, DOM-ILT-004). Hedef kitle değişmez. Yalnız yayınlayan veya yönetici (403 \`announcement_publisher_only\`); değişiklik yoksa 409 \`announcement_unchanged\`, geri çekilmişse 409 \`announcement_withdrawn\`. \`If-Match\` duyurunun sürümüdür; tutmazsa 409 \`version_conflict\`. Roller: ${rolesOf('announcement.revise')}.`,
+        description: `Duyurunun başlık, metin veya kategorisini düzeltir; önceki içerik \`revisions\` geçmişinde kalır, alıcı "Güncellendi" işaretini görür (core \`reviseAnnouncement\`, DOM-ILT-004). Hedef kitle değişmez. Duyuruyu görmeye yetkisi olmayan olmayan kayıtla aynı 404'ü alır; görüp yayınlayan olmayan 403 \`announcement_publisher_only\` alır (yalnız yayınlayan veya yönetici, ön büroda yayınlayan kişi); değişiklik yoksa 409 \`announcement_unchanged\`, geri çekilmişse 409 \`announcement_withdrawn\`. \`If-Match\` duyurunun sürümüdür; tutmazsa 409 \`version_conflict\`. Roller: ${rolesOf('announcement.revise')}.`,
         headers: commandHeadersSchema('optional'),
         params: announcementParamsSchema,
         body: reviseAnnouncementSchema,
@@ -152,7 +180,7 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
         operationId: 'withdrawAnnouncement',
         tags: ['communication'],
         summary: 'Duyuruyu geri çek',
-        description: `Duyuruyu silmeden geri çeker (core \`withdrawAnnouncement\`, DOM-ILT-004): alıcılar duyuruyu "Geri çekildi" işaretiyle (\`withdrawnAt\`) görmeye devam eder, metni ve gerekçeyi yalnız yayınlayan ve yönetici görür. Gerekçe zorunludur. Yalnız yayınlayan veya yönetici; ikinci geri çekme 409 \`announcement_withdrawn\`. Roller: ${rolesOf('announcement.withdraw')}.`,
+        description: `Duyuruyu silmeden geri çeker (core \`withdrawAnnouncement\`, DOM-ILT-004): alıcılar duyuruyu "Geri çekildi" işaretiyle (\`withdrawnAt\`) görmeye devam eder, metni ve gerekçeyi yalnız yayınlayan ve yönetici görür. Gerekçe zorunludur. Yalnız yayınlayan veya yönetici (görmeye yetkisi olmayana 404, görüp yayınlayan olmayana 403); ikinci geri çekme 409 \`announcement_withdrawn\`. Roller: ${rolesOf('announcement.withdraw')}.`,
         headers: commandHeadersSchema('optional'),
         params: announcementParamsSchema,
         body: withdrawAnnouncementSchema,
@@ -229,7 +257,7 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
         tags: ['communication'],
         summary: 'Yazışmanın mesajları',
         description:
-          'Mesajlar en yeniden geriye imleçli sayfalanır (core `messagePage`); sayfa içinde sıra eskiden yeniyedir, `meta.nextCursor` daha eski sayfayı verir. Mesajlar değişmez ve silinmez, imleç kararlıdır; geçersiz imleç 400. Taraf olmayana 404. Yönetici yalnız son 30 dakikada açtığı gerekçeli erişimle okur, yoksa 404; okuması okundu üretmez (DOM-YTK-052).',
+          'Mesajlar en yeniden geriye imleçli sayfalanır (core `messagePage`); sayfa içinde sıra eskiden yeniyedir, `meta.nextCursor` daha eski sayfayı verir. Mesajlar değişmez ve silinmez, imleç kararlıdır; geçersiz imleç 400. Taraf olmayana 404. Yönetici yalnız öğrenci–öğretmen yazışmasını ve yalnız son 30 dakikada açtığı gerekçeli erişimle okur, aksi halde 404; okuması okundu üretmez (DOM-YTK-052).',
         params: conversationParamsSchema,
         querystring: messageListQuerySchema,
         response: { 200: messagePageResponseSchema, ...readErrors },
@@ -249,11 +277,12 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
     '/api/v1/conversations',
     {
       preValidation: guard('conversation.start', { subject: false }),
+      preHandler: limitFirstMessage,
       schema: {
         operationId: 'startConversation',
         tags: ['communication'],
         summary: 'Yazışma başlat',
-        description: `Öğrenci + öğretmen + hedef kitle + veli hesabı için tek yazışma açar; varsa yenisi açılmaz, \`text\` var olan yazışmaya eklenir (core \`startConversation\`, DOM-ILT-010, -011). Yeni yazışma 201, var olan 200. Öğretmen \`studentId\` + \`audience\` verir; veli yazışmasında öğrencinin tek veli hesabı kendiliğinden seçilir, birden çoksa \`parentUserId\` zorunludur (422 \`parent_choice_required\`; hesaplar \`GET /students/{id}/parent-accounts\`). Öğrenci ve veli \`studentId\` + \`teacherId\` verir. İlişki yoksa 403 \`conversation_party_forbidden\`. \`Idempotency-Key\` zorunludur. Roller: ${rolesOf('conversation.start')}.`,
+        description: `Öğrenci + öğretmen + hedef kitle + veli hesabı için tek yazışma açar; varsa yenisi açılmaz, \`text\` var olan yazışmaya eklenir (core \`startConversation\`, DOM-ILT-010, -011). Yeni yazışma 201, var olan 200. Öğretmen \`studentId\` + \`audience\` verir; veli yazışmasında öğrencinin tek veli hesabı kendiliğinden seçilir, birden çoksa \`parentUserId\` zorunludur (422 \`parent_choice_required\`; hesaplar \`GET /students/{id}/parent-accounts\`). Öğrenci ve veli \`studentId\` + \`teacherId\` verir. İlişki yoksa 403 \`conversation_party_forbidden\`. \`text\` varsa istek bir mesaj sayılır ve mesaj gönderme ile aynı kotayı kullanır (kullanıcı ve kurum başına dakikada ${String(MESSAGE_RATE_LIMIT)}, aşılırsa 429); metinsiz başlatma saymaz. \`Idempotency-Key\` zorunludur. Roller: ${rolesOf('conversation.start')}.`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         body: startConversationSchema,
         response: startResponse,
@@ -274,21 +303,12 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
     '/api/v1/conversations/:conversationId/messages',
     {
       preValidation: guard('message.send', { subject: false }),
-      config: {
-        // Kullanıcı başına sınır: kimlik `preValidation`'da çözülür, sınır ondan sonra sayar.
-        rateLimit: {
-          max: MESSAGE_RATE_LIMIT,
-          timeWindow: '1 minute',
-          hook: 'preHandler',
-          keyGenerator: (request: FastifyRequest) =>
-            request.auth ? `message:${request.auth.userId}` : request.ip,
-        },
-      },
+      preHandler: limitMessages,
       schema: {
         operationId: 'sendConversationMessage',
         tags: ['communication'],
         summary: 'Mesaj gönder',
-        description: `Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core \`sendMessage\`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 \`conversation_relationship_ended\`). En fazla 2000 karakter. \`Idempotency-Key\` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı başına dakikada ${String(MESSAGE_RATE_LIMIT)} istek, aşılırsa 429. Başarı 201. Roller: ${rolesOf('message.send')}.`,
+        description: `Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core \`sendMessage\`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 \`conversation_relationship_ended\`). En fazla 2000 karakter. \`Idempotency-Key\` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı ve kurum başına dakikada ${String(MESSAGE_RATE_LIMIT)} mesaj (\`POST /conversations\` gövdesindeki \`text\` ile aynı kota), aşılırsa 429 ve \`Retry-After\`. Başarı 201. Roller: ${rolesOf('message.send')}.`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: conversationParamsSchema,
         body: sendMessageSchema,
@@ -346,7 +366,7 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
         operationId: 'openConversationAccess',
         tags: ['communication'],
         summary: 'Yazışmayı gerekçeyle aç',
-        description: `Yöneticinin şikâyet veya soruşturma gerekçesiyle yazışmayı açması (core \`openConversationAccess\`, DOM-YTK-052, DOM-ILT-011). Gerekçe en az 10 karakter, yoksa 422 \`access_reason_required\`. Erişim gerekçesiyle \`audit_log\`'a (\`conversation.access\`) yazılır ve 30 dakika geçerlidir; bu sürede \`GET /conversations/{id}/messages\` açıktır. Yazışma yoksa 404. Roller: ${rolesOf('conversation.access')}.`,
+        description: `Yöneticinin şikâyet veya soruşturma gerekçesiyle yazışmayı açması (core \`openConversationAccess\`, DOM-YTK-052, DOM-ILT-011). Yalnız öğrenci–öğretmen yazışmasında geçerlidir: veli tarafı yazışma gerekçeyle de açılmaz (403 \`conversation_access_student_only\`). Gerekçe en az 10 karakter, yoksa 422 \`access_reason_required\`. Erişim gerekçesiyle \`audit_log\`'a (\`conversation.access\`) yazılır ve 30 dakika geçerlidir; bu sürede \`GET /conversations/{id}/messages\` açıktır. Yazışma yoksa 404. Roller: ${rolesOf('conversation.access')}.`,
         params: conversationParamsSchema,
         body: conversationAccessSchema,
         response: { 200: conversationAccessResponseSchema, ...commandErrors },
@@ -364,13 +384,13 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
   typed.get(
     '/api/v1/students/:studentId/parent-accounts',
     {
-      preHandler: readGuard(['ogretmen', 'yonetici', 'onburo']),
+      preHandler: readGuard(['ogretmen']),
       schema: {
         operationId: 'listStudentParentAccounts',
         tags: ['communication'],
         summary: 'Öğrencinin veli hesapları',
         description:
-          'Öğrenciye bağlı platform veli hesapları (kullanıcı kimliği ve ad); öğretmenin veli yazışması başlatırken `parentUserId` seçimi için (DOM-ILT-010). Öğretmen yalnız kapsamındaki (ders verdiği, rehberi olduğu) öğrenci için okur; kapsam dışı veya başka kurumun öğrencisi 404.',
+          'Öğrenciye bağlı platform veli hesapları (kullanıcı kimliği ve ad); öğretmenin veli yazışması başlatırken `parentUserId` seçimi için (DOM-ILT-010). Yalnız veliyle yazışma başlatabilen öğretmen okur (yönetici, ön büro, öğrenci ve veli 403); kapsam `POST /conversations` ile birebir aynıdır: ders verdiği, sınıf rehberi olduğu öğrenci ya da rehberlik görevlisi olarak her öğrenci. Kapsam dışı, var olmayan veya başka kurumun öğrencisi 404.',
         params: studentParamsSchema,
         response: { 200: parentAccountsResponseSchema, ...readErrors },
       },

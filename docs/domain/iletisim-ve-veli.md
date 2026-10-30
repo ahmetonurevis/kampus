@@ -12,7 +12,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** "Sınıfa özel / genel" ayrımı kampüs ve rol bazlı idari duyurulara yetmez; okundu oranı sabit bir alıcı listesine göre hesaplanır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — core `publishAnnouncement` hedef kitleyi (kampüs, düzey, CEFR seviyesi, sınıf × rol) yayında alıcı listesine çözer, görünürlük core kapsamındadır (`packages/school-core/src/lib/communication.ts`, `lib/communication-access.ts`); API `apps/api/src/routes/communication.ts` `POST /announcements`, okuma `GET /collections/announcements`. Vue demosu eski `classId`/genel kuralıyla çalışır.
+- **Kodda:** var — core `publishAnnouncement` hedef kitleyi (kampüs, düzey, CEFR seviyesi, sınıf × rol) yayında alıcı listesine çözer, görünürlük core kapsamındadır (`packages/school-core/src/lib/communication.ts`, `lib/communication-access.ts`); API `apps/api/src/routes/communication.ts` `POST /announcements`, okuma `GET /collections/announcements`. Vue demosu eski `classId`/genel kuralıyla çalışır. React web: `apps/web-react/src/pages/communication/` `AnnouncementsPage`, `AnnouncementFormModal`, `AnnouncementPanel`.
 
 ### DOM-ILT-002 · Kim duyuru yayınlar
 
@@ -36,7 +36,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Velinin gördüğü bilgi sonradan iz bırakmadan değişmemelidir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — düzeltme `revisions` geçmişi ve `revisedAt`, geri çekme silmeden `withdrawnAt`; geri çekilen duyuru alıcıya işaretle görünür, metni (`text`) ve gerekçesi yalnız yayınlayan ve yöneticiye döner (`narrowAnnouncement`); API `apps/api/src/routes/communication.ts` `PATCH /announcements/:id`, `POST …/withdraw`. Yeniden bildirim yok (`TODO(notifications)`).
+- **Kodda:** kısmen — düzeltme `revisions` geçmişi ve `revisedAt`, geri çekme silmeden `withdrawnAt`; geri çekilen duyuru alıcıya işaretle görünür, metni (`text`) ve gerekçesi yalnız yayınlayan ve yöneticiye döner (`narrowAnnouncement`); API `apps/api/src/routes/communication.ts` `PATCH /announcements/:id`, `POST …/withdraw`. Ön büro yayıncısı rolle değil kişiyle (`publishedBy.userId`) eşlenir: başka ön büro kullanıcısı düzeltemez, geri çekemez, okundu sayısını, geçmişi ve gerekçeyi görmez; yönetici her zaman yetkilidir. Duyuruyu görmeye yetkisi olmayan düzeltme/geri çekmede olmayan kayıtla aynı 404'ü alır, görüp yayınlayan olmayan 403 alır. Geri çekilen metin `GET /collections/announcements?q=` aramasında ve `counts`'ta alıcı için eşleşmez (alıcı başlık, kategori ve "Geri çekildi" görür). Yeniden bildirim yok (`TODO(notifications)`).
 
 ## Birebir mesaj
 
@@ -46,7 +46,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ayrı yaşayan velilerde ortak konuşma kişisel bilgi sızdırır (`DOM-ILT-073`); konuşmanın öğrenciye bağlı olması kardeşler arasında karışıklığı önler.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi (yetişkin kursiyerde veli yoktur, `DOM-YTK-030`)
-- **Kodda:** kısmen — core `startConversation` yazışmayı öğrenci + öğretmen + hedef kitle + veli hesabı (`parentUserId`) başına tekil açar, öğretmen yalnız ders verdiği/rehberi olduğu öğrencinin velisiyle başlatır; API `apps/api/src/routes/communication.ts` `POST /conversations`, veli seçimi `GET /students/:id/parent-accounts`. İdare (yönetici, ön büro) ile veli yazışması yok.
+- **Kodda:** kısmen — core `startConversation` yazışmayı öğrenci + öğretmen + hedef kitle + veli hesabı (`parentUserId`) başına tekil açar, öğretmen yalnız ders verdiği/rehberi olduğu öğrencinin velisiyle başlatır; API `apps/api/src/routes/communication.ts` `POST /conversations`, veli seçimi `GET /students/:id/parent-accounts`. Veli kimliği (`parentUserId`) olmayan eski veli yazışması hiçbir veliye görünmez ve yeni yazışmayla eşleşmez (kapalı başarısız; migration `0007` öğrencinin tek veli hesabı varsa doldurur); öğretmen ve yönetici kuralları değişmez. Veli hesapları `GET /students/:id/parent-accounts` yalnız veli yazışması başlatabilen öğretmene, `startConversation` ile aynı kapsamda (`parentAccountsDecision`) açılır; yönetici ve ön büro 403, kapsam dışı 404. Mesaj kotası (kullanıcı ve kurum başına dakikada 30) başlatmadaki ilk mesajla paylaşılır. İdare (yönetici, ön büro) ile veli yazışması yok. React web: `MessagesPage`, `NewConversationPanel` (öğretmen öğrenci/veli seçer; öğrenci ve veli öğretmen seçer).
 
 ### DOM-ILT-011 · Öğrenci–öğretmen sınırları
 
@@ -54,7 +54,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Çocukla yetişkin arasında kayıtsız, birebir özel kanal çocuk koruma açısından risklidir; kayıtlı kanal hem öğrenciyi hem öğretmeni korur. Öğrencinin öğretmenine sorduğu soruların veliye açık olması ise öğrencinin soru sormasını engeller.
 - **Kaynak:** İşletme kuralı. Velinin reşit olmayanın yazışmalarını görme hakkının sınırı **doğrulanmalı** (TMK md. 339-340 ve çocuğun özel hayatı dengesi).
 - **Kurum türü:** ikisi
-- **Kodda:** var — öğrenci yalnız ders veren, sınıf rehberi veya rehberlik görevli öğretmenle yazışır; veli öğrenci yazışmasını görmez; yönetici gerekçeyle (≥ 10 karakter) 30 dakikalık erişim açar, erişim `audit_log`'a gerekçesiyle yazılır (`POST /conversations/:id/access`).
+- **Kodda:** var — öğrenci yalnız ders veren, sınıf rehberi veya rehberlik görevli öğretmenle yazışır; veli öğrenci yazışmasını görmez; yönetici gerekçeyle (≥ 10 karakter) 30 dakikalık erişim açar, erişim `audit_log`'a gerekçesiyle (`reason` kolonu) yazılır (`POST /conversations/:id/access`). Gerekçeli erişim yalnız öğrenci–öğretmen yazışmasındadır; veli tarafı yazışmada 403 `conversation_access_student_only` (veli yazışmasına da gerekçeli erişim istenip istenmediği açık karardır). React web: yönetici `MessagesPage` içinde öğrenci seçer, `AccessGate` gerekçeyi (≥ 10 karakter) ister; veli yazışmasında düğme gösterilmez.
 
 ### DOM-ILT-012 · Gönderilen mesaj değişmez
 

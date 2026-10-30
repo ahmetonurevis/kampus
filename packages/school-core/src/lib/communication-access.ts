@@ -82,24 +82,41 @@ export function publishDecision(
 /** Duyuruyu okuyan: rol, öğretmen kaydı ve kapsamdaki öğrenciler (`scopeFor` bağlamı). */
 export type AnnouncementViewer = {
   role: Role | undefined
+  userId?: string | undefined
   teacherId: string | undefined
   studentIds: ReadonlySet<string>
 }
 export function viewerOf(
   scope: Pick<Scope, 'actor' | 'teacher' | 'studentIds'>,
 ): AnnouncementViewer {
-  return { role: scope.actor.role, teacherId: scope.teacher?.id, studentIds: scope.studentIds }
+  return {
+    role: scope.actor.role,
+    userId: scope.actor.userId,
+    teacherId: scope.teacher?.id,
+    studentIds: scope.studentIds,
+  }
 }
 
-/** Duyuruyu yayınlayan bu aktör mü (öğretmen kaydıyla; ön büro rol olarak, kişi kimliği yok). */
+/**
+ * Duyuruyu yayınlayan bu aktör mü (DOM-ILT-004): öğretmen kendi kaydıyla, ön büro kişi
+ * kimliğiyle (`publishedBy.userId`); ön büro rolü tek başına yayıncı sayılmaz. Kimliği bilinmeyen
+ * aktör yayıncı değildir.
+ */
 export function isPublisher(
-  viewer: Pick<AnnouncementViewer, 'role' | 'teacherId'>,
-  publishedBy: Pick<AnnouncementPublisher, 'role' | 'teacherId'> | undefined,
+  viewer: Pick<AnnouncementViewer, 'role' | 'teacherId'> & { userId?: string | undefined },
+  publishedBy:
+    | (Pick<AnnouncementPublisher, 'role' | 'teacherId'> & { userId?: string | undefined })
+    | undefined,
 ): boolean {
   if (!publishedBy) return false
   if (viewer.role === 'ogretmen')
     return viewer.teacherId !== undefined && publishedBy.teacherId === viewer.teacherId
-  return viewer.role === 'onburo' && publishedBy.role === 'onburo'
+  return (
+    viewer.role === 'onburo' &&
+    publishedBy.role === 'onburo' &&
+    viewer.userId !== undefined &&
+    publishedBy.userId === viewer.userId
+  )
 }
 
 /** Okundu anahtarı: öğrenci ve öğretmen kendisi, veli çocuğu üzerinden (aile düzeyi). */
@@ -159,13 +176,20 @@ function recipientsOf(row: object): AnnouncementRecipients | undefined {
     teacherIds: strings(field(value, 'teacherIds')),
   }
 }
-function publisherOf(row: object): Pick<AnnouncementPublisher, 'role' | 'teacherId'> | undefined {
+function publisherOf(
+  row: object,
+): (Pick<AnnouncementPublisher, 'role' | 'teacherId'> & { userId?: string }) | undefined {
   const value = field(row, 'publishedBy')
   if (typeof value !== 'object' || value === null) return undefined
   const role = textOf(value, 'role')
   const teacherId = textOf(value, 'teacherId')
+  const userId = textOf(value, 'userId')
   if (role === undefined) return undefined
-  return { role: role as Role, ...(teacherId === undefined ? {} : { teacherId }) }
+  return {
+    role: role as Role,
+    ...(teacherId === undefined ? {} : { teacherId }),
+    ...(userId === undefined ? {} : { userId }),
+  }
 }
 
 /** Okundu sayısını ve geçmişi gören: yönetici veya yayınlayan (DOM-ILT-003, -004). */
@@ -271,12 +295,13 @@ export function isConversationParty(
     case 'ogrenci':
       return conversation.audience === 'student' && scope.studentIds.has(conversation.studentId)
     case 'veli':
-      // Her velinin yazışması ayrıdır (DOM-ILT-010); veli kimliği olmayan eski örnek kayıt
-      // çocuğa bağlı her veliye açıktır.
+      // Her velinin yazışması ayrıdır (DOM-ILT-010). Veli kimliği olmayan eski kayıt kapalı
+      // başarısızdır: hiçbir veliye açılmaz (öğretmen ve yönetici kuralları değişmez).
       return (
         conversation.audience === 'parent' &&
         scope.studentIds.has(conversation.studentId) &&
-        (conversation.parentUserId === undefined || conversation.parentUserId === userId)
+        conversation.parentUserId !== undefined &&
+        conversation.parentUserId === userId
       )
     default:
       return false
@@ -334,6 +359,25 @@ export function startDecision(
 }
 
 /**
+ * Öğrencinin veli hesaplarını görme (DOM-ILT-010): veli yazışması başlatabilen aktörün kararıyla
+ * birebir aynıdır. Öğretmen hangi öğrenci için veli yazışması açabiliyorsa (ders verdiği, sınıf
+ * rehberi olduğu ya da rehberlik görevlisi olduğu) o öğrencinin veli hesaplarını görür; yönetici,
+ * ön büro, öğrenci ve veli yazışma başlatamadığı için görmez. Ret çağıranda 404 olur.
+ */
+export function parentAccountsDecision(
+  scope: PartyScope,
+  source: Source,
+  studentId: string,
+): CommunicationDenial | null {
+  if (scope.actor.role !== 'ogretmen' || !scope.teacher) return partyDenied
+  return startDecision(scope, source, {
+    studentId,
+    teacherId: scope.teacher.id,
+    audience: 'parent',
+  })
+}
+
+/**
  * Mesaj gönderme: yalnız taraf (taraf olmayana yazışma yoktur, 404). Öğretmenin ders ilişkisi
  * bittiyse yazışma okunur ama yeni mesaj gönderilmez (atama bitince yetki biter).
  */
@@ -377,13 +421,27 @@ export function readDecision(
 
 /** Yöneticinin gerekçeli erişimi (DOM-YTK-052, DOM-ILT-011): gerekçe en az 10 karakter. */
 export const ACCESS_REASON_MIN_LENGTH = 10
-export function accessDecision(reason: string): CommunicationDenial | null {
-  return reason.trim().length >= ACCESS_REASON_MIN_LENGTH
-    ? null
-    : {
-        code: 'access_reason_required',
-        message: 'Yazışmayı açmak için şikâyet veya soruşturma gerekçesini yazın.',
-        rule: 'DOM-YTK-052',
-        kind: 'rule',
+/**
+ * Gerekçe önce denetlenir; yazışma verilmişse erişim yalnız öğrenci–öğretmen yazışmasındadır
+ * (DOM-ILT-011): veli tarafı yazışma gerekçeyle de açılmaz. Yazışma yoksa karar işleme bırakılır
+ * (404).
+ */
+export function accessDecision(
+  reason: string,
+  conversation?: Pick<ConversationParties, 'audience'>,
+): CommunicationDenial | null {
+  if (reason.trim().length < ACCESS_REASON_MIN_LENGTH)
+    return {
+      code: 'access_reason_required',
+      message: 'Yazışmayı açmak için şikâyet veya soruşturma gerekçesini yazın.',
+      rule: 'DOM-YTK-052',
+      kind: 'rule',
+    }
+  return conversation && conversation.audience !== 'student'
+    ? {
+        code: 'conversation_access_student_only',
+        message: 'Yönetici yalnız öğrenci ile öğretmen arasındaki yazışmayı gerekçeyle açabilir.',
+        rule: 'DOM-ILT-011',
       }
+    : null
 }

@@ -90,3 +90,32 @@ test('URL yalnız onu yazan kapsamda (çocukta) okunur; kayıt yoksa okunur', ()
   assert.equal(urlBelongsToScope('s1', 's2'), false)
   assert.equal(urlBelongsToScope('', ''), true)
 })
+
+test('urlFilters verilen tekli filtreler URL’ye yazılır ve geri okunur; aralıklar yazılmaz', () => {
+  const urlFilters = { branchId: 'kampus', grade: 'duzey', amount: 'tutar' }
+  const state = {
+    ...initialListState(),
+    filters: { branchId: 'b2', grade: 7, amount: { min: 1, max: 5 }, status: 'Ödendi' },
+  }
+  const params = listStateToParams(state, 'sinif-', new URLSearchParams(), urlFilters)
+  assert.equal(params.toString(), 'sinif-kampus=b2&sinif-duzey=7')
+  const restored = listStateFromParams(params, 'sinif-', initialListState(), urlFilters)
+  assert.deepEqual(restored.filters, { branchId: 'b2', grade: '7' })
+  assert.equal(
+    listStateToParams(initialListState(), '', params, urlFilters).toString(),
+    'sinif-kampus=b2&sinif-duzey=7',
+    'başka önekin parametreleri korunur',
+  )
+})
+
+test('urlFilters geri/ileri ile döner; URL’de olmayan URL filtresi kaldırılır, diğerleri kalır', () => {
+  const urlFilters = { branchId: 'kampus' }
+  const state = { ...initialListState(), filters: { branchId: 'b2', status: 'Ödendi' }, page: 3 }
+  const back = applyListParams(state, new URLSearchParams('kampus=b1'), '', urlFilters)
+  assert.deepEqual(back.filters, { branchId: 'b1', status: 'Ödendi' })
+  assert.equal(back.page, 1)
+  const cleared = applyListParams(state, new URLSearchParams('sayfa=3'), '', urlFilters)
+  assert.deepEqual(cleared.filters, { status: 'Ödendi' })
+  const same = applyListParams(state, new URLSearchParams('kampus=b2&sayfa=3'), '', urlFilters)
+  assert.equal(same, state, 'aynı URL aynı nesneyi döndürür')
+})

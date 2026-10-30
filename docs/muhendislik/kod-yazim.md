@@ -196,6 +196,30 @@ app.post(
 - Her rota bir hata sınırı (error boundary) içinde render edilir; kullanıcı Türkçe mesaj ve "Yeniden dene" görür.
 - Ağır kitaplıklar (pdfjs, jspdf, recharts) yalnız kullanıldığı rotada veya anda `import()` ile yüklenir. `date-fns` fonksiyon bazında içe aktarılır.
 
+### API'li liste ekranı kalıbı (web-react)
+
+Örnek ekranlar: `pages/management/CampusesPage.tsx` ve `StaffPage.tsx` (yönetici, yalnız okuma). Yeni liste ekranı aynı sırayla kurulur; alt katmanlar hazır olduğundan elle `fetch`, `useEffect` veya sayfalama kodu yazılmaz.
+
+Parçalar:
+
+- `react-shared`: `collections.ts` (saf sorgu/sayfa işlevleri) ve `use-collection.ts` (`useCollectionList`, `useCollectionAll`, `useCollectionItem`, `useCollectionFetchAll`). Sorgu anahtarı `institutionKey(kurum, …)` ile etkin kurumla başlar; kurum değişince önbellek temizlenir.
+- `hooks/use-core-collection.ts`: koleksiyon adını `State` anahtarına bağlayan tipli sarmalayıcılar (`useCoreList/All/Item/FetchAll`); kayıt tipi elle yazılmaz.
+- `hooks/use-list-state.ts` + `lib/list-url.ts`: arama, sayfa, sıralama ve (`urlFilters` verilen) tekli filtreler URL'de; filtre değişince sayfa 1'e döner.
+- `lib/collection-list.ts`: `CollectionListConfig` ile `ListState` → sunucu sorgusu (`collectionQueryFromList`, CSV için sayfasız `exportQueryFromList`, `sortableColumns`). Kısa arama (<2 karakter) gönderilmez.
+- `components/DataTable.tsx` `ServerDataTable`: sunucu sayfalı tablo; masaüstünde sabit başlık/işlem sütunu, dar ekranda kart. Yükleniyor, boş ve hata durumları kendisindedir.
+- `hooks/use-detail-panel.ts` (`?parametre=<id>` ile URL'li sağ panel; geri/ileri kapatır ve açar), `use-debounced-value.ts` (arama 300 ms), `use-csv-export.ts` (tüm sayfaları çeker, indirir).
+- `components/QueryError.tsx`: Türkçe hata + "Yeniden dene"; `module_disabled` hatası kullanıcıyı dashboard'a götürür. `pages/page-registry.tsx`: taşınmış sayfaların tembel kaydı.
+
+Yeni ekran eklerken:
+
+1. API'nin o koleksiyon için izin verdiği sıralama alanları ve filtreleri (`SORT_FIELDS`, filtre alanları) belirlenir; `CollectionListConfig` sabiti `satisfies` ile yazılır. API'de karşılığı olmayan sütun sıralanamaz, olmayan filtre eklenmez; eksik `TODO(api-…)` ile işaretlenir.
+2. `useListState('<anahtar>', { urlFilters })` → `useDebouncedValue(state.query)` → `useCoreList(koleksiyon, collectionQueryFromList(state, CONFIG, arama))`.
+3. Kayıt → satır dönüşümü saf bir işlev olur (`management-rows.ts` gibi) ve `tests/` altında birim testi yazılır; ad eşlemeleri için küçük başvuru koleksiyonları `useCoreAll` ile bir kez çekilir. Büyük koleksiyon `useCoreAll` ile çekilmez.
+4. `ServerDataTable` verilir: `rows`, `total`, `sortable`, `loading`, `fetching`, `error` (`QueryError`), `onRowClick`, `mobileColumns`; kampüs gibi dış filtreler `toolbar` ile, listeden türeyen filtreler `filters` ile (seçenekleri açıkça verilir).
+5. Detay `useDetailPanel('<param>')` ve `useCoreItem` ile (liste satırından değil tek kayıt ucundan okunur; bağlantıyla gelinen kayıt da açılır). Panel başlığı erişilebilir addır ("Sınıf özeti").
+6. CSV `useCoreFetchAll` + `exportQueryFromList` + `useCsvExport` ile; dosya yalnız görünen sayfayı değil tüm filtrelenmiş sonucu içerir. 5000 kayıt sınırı aşılırsa kullanıcıya Türkçe uyarı çıkar.
+7. Sayfa `page-registry.tsx`'e (`lazy` + `MIGRATED` kümesi) eklenir; modül kapalıysa `QueryError` yönlendirir, ayrıca rota koruması RoleShell'dedir. e2e `tests/e2e-react/` altına: liste, arama, filtre (sayfa sıfırlanır), sayfalama, panel + geri/ileri, CSV içeriği, 390 px taşma.
+
 ### Expo (mobil)
 
 - Hazır paketler: React Navigation, TanStack Query, react-hook-form, `@better-auth/expo` + `expo-secure-store`. Cam yüzey iOS'ta `expo-glass-effect`, Android ve desteklenmeyen platformda opak token zemini.

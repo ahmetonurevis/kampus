@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AccessibilityInfo, useColorScheme } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { resolveTheme, type ThemePreference } from '../model/experience.ts'
-import { recordError } from '../store/SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 import type { Appearance } from '../ui/appearance.ts'
 import { API_THEME_KEY, parseStoredTheme } from './stored-theme.ts'
 

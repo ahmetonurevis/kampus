@@ -17,7 +17,8 @@ import {
   type WorkflowField as WorkflowFieldDefinition,
 } from '@kampus/school-core/lib/workflow-presentation.ts'
 import { money } from '@kampus/school-core/lib/format.ts'
-import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 import { pickTextFile } from '../lib/text-files.ts'
 import { clone } from '../model/school.ts'
 import { stringList } from '../model/operations.ts'

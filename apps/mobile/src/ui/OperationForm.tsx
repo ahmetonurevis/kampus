@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { View, Pressable } from 'react-native'
-import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 import { usePersistentDraft } from '../store/use-persistent-draft.ts'
 import {
   operation,

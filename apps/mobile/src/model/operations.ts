@@ -869,9 +869,7 @@ export function operation(
         const start = at({ date: v.startDate }),
           end = at({ date: v.endDate })
         if (end < start) throw new Error('Bitiş tarihi başlangıçtan önce olamaz.')
-        // TODO(ts): telefon mazereti `createdAt` ile yazar; core tipi web biçimini (`status`, `date`) bekler. Core tipi birleşince kalkar.
-        const absences: unknown[] = s.absences
-        absences.unshift({
+        s.absences.unshift({
           id: id('absence'),
           studentId: c.student.id,
           startDate: start,

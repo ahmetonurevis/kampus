@@ -12,7 +12,7 @@ import type { SignInResult } from '@kampus/react-shared/sign-in-errors.ts'
 import { clearSessionData } from '@kampus/react-shared/query-client.ts'
 import { useMe } from '@kampus/react-shared/use-active-institution.ts'
 import { useSession } from '@kampus/react-shared/use-session.ts'
-import { recordError } from '../store/SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 import type { ApiAuthClient } from './clients.ts'
 import {
   apiAuthState,

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createDraftRepository, draftKey, type DraftValue } from '../model/drafts.ts'
-import { recordError, useSchool } from './SchoolProvider.tsx'
+import { useSchool } from './SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 
 export type DraftStatus = '' | 'restored' | 'saving' | 'saved' | 'error' | 'read-error'
 type DraftState<T> = { identity: string; value: T; ready: boolean; status: DraftStatus }

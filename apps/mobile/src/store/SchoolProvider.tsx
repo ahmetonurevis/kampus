@@ -22,20 +22,13 @@ import {
   type ThemePreference,
 } from '../model/experience.ts'
 import { clone, roles } from '../model/school.ts'
+import { recordError } from '../lib/error-log.ts'
 import { AppearanceContext } from '../ui/appearance.ts'
 
 // Oturum rolü giriş yapılana kadar boştur.
 export type AppSession = { role: Role | ''; childId: string; theme: ThemePreference }
 export type ToastType = 'success' | 'error' | 'warning'
 export type Toast = { message: string; type: ToastType }
-type LogLevel = 'error' | 'warn'
-export type LogEntry = {
-  date: string
-  level: LogLevel
-  critical: boolean
-  context: string
-  message: string
-}
 type SchoolContext = {
   data: State | null
   session: AppSession
@@ -59,17 +52,6 @@ type SchoolContext = {
 const DATA_KEY = 'kampus-mobile-data-v1',
   PREF_KEY = 'kampus-mobile-preferences-v1'
 const Context = createContext<SchoolContext | null>(null)
-export const logs: LogEntry[] = []
-export function recordError(error: unknown, context: string, level: LogLevel = 'error') {
-  logs.push({
-    date: new Date().toISOString(),
-    level,
-    critical: level === 'error',
-    context,
-    message: String(error),
-  })
-  if (logs.length > 100) logs.shift()
-}
 export const makeId: MakeId = (prefix) => `${prefix}-${randomUUID()}`
 
 const isRole = (value: unknown): value is Role => typeof value === 'string' && value in roles

@@ -8,7 +8,7 @@ import { expoClient } from '@better-auth/expo/client'
 import { kampusAuthClientOptions } from '@kampus/api-client/auth.ts'
 import { createKampusClient } from '@kampus/api-client/client.ts'
 import { createKampusQueryClient } from '@kampus/react-shared/query-client.ts'
-import { recordError } from '../store/SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 import { nativeAuthHeaders } from './session-state.ts'
 
 /** app.json `scheme`; standart derlemede kök `kampus://` olur (API `TRUSTED_ORIGINS`). */

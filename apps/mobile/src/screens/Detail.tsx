@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { View } from 'react-native'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
 import type { ArchiveKind } from '@kampus/school-core/lib/school-management.ts'
-import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
+import { useActiveSchool } from '../store/SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 import {
   context,
   rowsFor,
@@ -51,7 +52,7 @@ const isArchiveKind = (kind: RowKind): kind is ArchiveKind =>
   kind === 'branch' || kind === 'class' || kind === 'teacher'
 const operationRecord = (row: Row): OperationRecord =>
   isArchiveKind(row.kind) ? { ...row.source, kind: row.kind } : { ...row.source }
-// Core kayıt tiplerinde `fileUri` yok; telefon dosyayı yüklerken kayda yazar.
+// `record` birleşik kayıt tipidir; yalnız dosya taşıyan türlerde (`fileUri`) alan bulunur.
 const fileUriOf = (record: object) => ('fileUri' in record ? str(record.fileUri) : '')
 
 export default function Detail(props: ScreenProps<'Detail'>) {
@@ -304,7 +305,7 @@ function GeneralDetail({ route, navigation }: ScreenProps<'Detail'>) {
                   s.homeworkId === record.id && (scope.teacher || s.studentId === scope.student.id),
               )
               .map((s) => {
-                const fileUri = fileUriOf(s)
+                const fileUri = s.fileUri ?? ''
                 return (
                   <Card key={s.id}>
                     <T bold>{nameOf(data, 'students', s.studentId)}</T>

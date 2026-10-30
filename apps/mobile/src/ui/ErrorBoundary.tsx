@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { View } from 'react-native'
-import { recordError } from '../store/SchoolProvider.tsx'
+import { recordError } from '../lib/error-log.ts'
 import { Button, T } from './components.tsx'
 
 // Çizim hatası uygulamayı kapatmaz; ayrıntı yalnız yerel loga yazılır.

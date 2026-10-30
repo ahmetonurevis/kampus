@@ -1680,9 +1680,14 @@ export function searchDocument(version: ResourceVersionData): string {
 }
 
 /**
- * Okuma parçasının sözcük sayısı (DOM-KYN-002: sistem hesaplar, saklanmaz). Kesme ve tireyle
- * bağlı parçalar ("Ankara'da", "well-known") tek sözcüktür.
+ * Sözcük sayısı (DOM-KYN-002 okuma parçası, DOM-BEC-046 yazma teslimi: sistem hesaplar,
+ * saklanmaz). Kesme ve tireyle bağlı parçalar ("Ankara'da", "don't", "well-known") tek sözcüktür.
+ * Metin önce NFC'ye getirilir; birleşmeyen işaretler (`\p{M}`) harfin parçası sayılır, böylece
+ * ayrışık yazılmış "İ" sözcüğü bölmez. Unicode tire (U+2010, U+2011) ASCII tire gibidir.
+ * Hermes `Intl.Segmenter` desteklemediği için düzenli ifade kullanılır; web, mobil ve API aynı sayar.
  */
 export function wordCount(value: string): number {
-  return value.match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu)?.length ?? 0
+  return (
+    value.normalize('NFC').match(/[\p{L}\p{M}\p{N}]+(?:['’‐‑-][\p{L}\p{M}\p{N}]+)*/gu)?.length ?? 0
+  )
 }

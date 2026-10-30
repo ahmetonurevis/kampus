@@ -326,7 +326,7 @@ test('DOM-ILT-004: düzeltme önceki içeriği geçmişte tutar; yalnız yayınl
     state,
     'announcements',
     () => reviseAnnouncement(state, teacher('t3'), own.id, { title: 'Başka başlık' }, later),
-    isDomainError('announcement_publisher_only', 'forbidden'),
+    isDomainError('announcement_not_found', 'not_found'),
   )
   unchangedOnFailure(
     state,
@@ -367,6 +367,50 @@ test('DOM-ILT-004: düzeltme önceki içeriği geçmişte tutar; yalnız yayınl
   )
   reviseAnnouncement(state, people.onburo, front.id, { title: 'Servis saatleri' }, later)
   assert.equal(front.title, 'Servis saatleri')
+})
+
+test('DOM-ILT-004: görmeye yetkisi olmayan duyuru yok sayılır (404); görüp yayıncı olmayan 403 alır', () => {
+  const state = seed()
+  // Yönetici öğretmenlere duyurur: t3 alıcıdır, t17 de; veli duyurusunu öğretmen görmez.
+  const forTeachers = publishAnnouncement(
+    state,
+    people.yonetici,
+    announcement({ target: { roles: ['ogretmen'] } }),
+    id,
+    now,
+  )
+  const forParents = publishAnnouncement(state, people.ogretmen, announcement(), id, now)
+  const stranger = teacher('t3')
+  for (const run of [
+    (aid: string) => reviseAnnouncement(state, stranger, aid, { title: 'Başka başlık' }, later),
+    (aid: string) =>
+      withdrawAnnouncement(state, stranger, aid, { reason: 'Gerekçe yazıldı' }, later),
+  ]) {
+    // Var olup görmeyen, hiç olmayan kayıtla aynı hatayı alır.
+    for (const missing of [forParents.id, 'ann-yok'])
+      unchangedOnFailure(
+        state,
+        'announcements',
+        () => run(missing),
+        isDomainError('announcement_not_found', 'not_found'),
+      )
+    // Görüp yayıncı olmayan 403 alır.
+    unchangedOnFailure(
+      state,
+      'announcements',
+      () => run(forTeachers.id),
+      isDomainError('announcement_publisher_only', 'forbidden'),
+    )
+  }
+  // Rol kapalıysa varlık ayrımı yoktur: veli ucu yine yetki hatasıdır.
+  assert.throws(
+    () => reviseAnnouncement(state, people.veli, forParents.id, { title: 'Başka başlık' }, later),
+    isDomainError('permission_denied', 'forbidden'),
+  )
+  assert.throws(
+    () => withdrawAnnouncement(state, people.veli, 'ann-yok', { reason: 'Gerekçe yazıldı' }, later),
+    isDomainError('permission_denied', 'forbidden'),
+  )
 })
 
 test('DOM-ILT-004: ön büro yayıncısı kişiyle eşlenir; başka ön büro kullanıcısı değiştiremez, geçmişi ve gerekçeyi görmez', () => {

@@ -652,8 +652,31 @@ describe('iletişim uçları', () => {
         409,
         'version_conflict',
       )
+      // Görmeye yetkisi olmayan öğretmen (alıcı değil) olmayan duyuruyla aynı 404'ü alır.
+      const stranger = await teacher(a.id, 't3')
+      const hidden = await send('PATCH', url, stranger, { title: 'Yeni başlık' })
+      const missing = await send('PATCH', '/api/v1/announcements/ann-yok', stranger, {
+        title: 'Yeni başlık',
+      })
+      assertError(hidden, 404, 'not_found')
+      const body = (response: typeof hidden) => ({
+        ...(response.json() as Record<string, unknown>),
+        requestId: null,
+      })
+      assert.deepEqual(body(hidden), body(missing))
       assertError(
-        await send('PATCH', url, await teacher(a.id, 't3'), { title: 'Yeni başlık' }),
+        await send('POST', `${url}/withdraw`, stranger, { reason: 'Yanlış duyuru' }),
+        404,
+        'not_found',
+      )
+      // Görüp yayıncı olmayan (öğretmenlere giden duyurunun alıcısı) 403 alır.
+      const forTeachers: string = (
+        await publish(a.adminCookie, { ...ANNOUNCEMENT, target: { roles: ['ogretmen'] } })
+      ).json().data.entity.id
+      assertError(
+        await send('PATCH', `/api/v1/announcements/${forTeachers}`, stranger, {
+          title: 'Yeni başlık',
+        }),
         403,
         'announcement_publisher_only',
       )

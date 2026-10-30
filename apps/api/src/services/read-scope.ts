@@ -151,6 +151,15 @@ export async function studentsOfClasses(
 }
 
 /**
+ * Öğrenci → güncel sınıf eşlemesi, kapsam kaynağından (ek sorgu yok). Yalnız kapsamdan geçmiş
+ * satırları etiketlemek (sınıfa göre gruplama) için kullanılır; kapsam kararı vermez.
+ */
+export async function studentClasses(ctx: ServiceContext): Promise<ReadonlyMap<string, string>> {
+  const source = await scopeState(ctx).source
+  return new Map(source.students.map((student) => [student.id, student.classId]))
+}
+
+/**
  * Koleksiyon bu aktöre açık mı; değilse API hatası: bilinmeyen koleksiyon veya kurum türünde
  * olmayan modül 404 (DOM-YTK-012), kapalı modül 403 `module_disabled` (DOM-YTK-040), rolün
  * okuyamadığı koleksiyon 403 `forbidden` (varsayılan ret, DOM-YTK-001).

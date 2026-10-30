@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { INVOICE_STATUS_LABELS } from '../db/records.ts'
 import { READABLE_COLLECTIONS } from '../services/collection-access.ts'
 import { ARCHIVED_MODES, FILTER_FIELDS, SORT_FIELDS } from '../services/collection-reads.ts'
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
@@ -18,6 +19,12 @@ const SORT_PATTERN = new RegExp(
   `^-?(${SORT_FIELDS.join('|')})(,-?(${SORT_FIELDS.join('|')})){0,2}$`,
 )
 
+const FILTER_DESCRIPTIONS: Partial<Record<(typeof FILTER_FIELDS)[number], string>> = {
+  classId:
+    '`classId` eşitlik filtresi; çoklu değer parametre tekrarıyla. Kaydında sınıf olmayan öğrenci koleksiyonlarında (`grades`, `absences`, `submissions`, `quizAttempts`, `mockResults`, `studentGoals`) öğrencinin güncel sınıfıdır',
+  status: `\`status\` eşitlik filtresi; çoklu değer parametre tekrarıyla. \`invoices\`'ta durum saklanmaz, core \`invoiceStatus\` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: ${INVOICE_STATUS_LABELS.map((label) => `\`${label}\``).join(', ')}; başka değer 400`,
+}
+
 const filterValue = z
   .union([z.string().min(1).max(200), z.array(z.string().min(1).max(200)).min(1).max(20)])
   .optional()
@@ -26,9 +33,8 @@ const filterShape = Object.fromEntries(
   FILTER_FIELDS.map((field) => [
     field,
     filterValue.describe(
-      field === 'classId'
-        ? '`classId` eşitlik filtresi; çoklu değer parametre tekrarıyla. Kaydında sınıf olmayan öğrenci koleksiyonlarında (`grades`, `absences`, `submissions`, `quizAttempts`, `mockResults`, `studentGoals`) öğrencinin güncel sınıfıdır'
-        : `\`${field}\` eşitlik filtresi; çoklu değer parametre tekrarıyla`,
+      FILTER_DESCRIPTIONS[field] ??
+        `\`${field}\` eşitlik filtresi; çoklu değer parametre tekrarıyla`,
     ),
   ]),
 ) as Record<(typeof FILTER_FIELDS)[number], typeof filterValue>

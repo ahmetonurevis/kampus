@@ -1595,7 +1595,7 @@ export interface operations {
                 homeworkId?: string | string[];
                 /** @description `videoId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 videoId?: string | string[];
-                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla */
+                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla. `invoices`'ta durum saklanmaz, core `invoiceStatus` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: `Ödendi`, `Gecikmiş`, `Yaklaşan`; başka değer 400 */
                 status?: string | string[];
                 /** @description `stage` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 stage?: string | string[];

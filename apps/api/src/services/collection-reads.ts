@@ -1,11 +1,24 @@
+import { dayKey } from '@kampus/school-core/lib/format.ts'
 import type { Scope } from '@kampus/school-core/lib/scope.ts'
 
 import type { CollectionName, RecordData } from '../db/collections.ts'
-import { findRecord, loadRecords, type RecordFilter, type StoredRecord } from '../db/records.ts'
-import { NotFoundError } from '../errors.ts'
+import {
+  findRecord,
+  INVOICE_STATUS_LABELS,
+  loadRecords,
+  type InvoiceStatusLabel,
+  type RecordFilter,
+  type StoredRecord,
+} from '../db/records.ts'
+import { NotFoundError, ValidationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { moduleOfCollection, readableCollection } from './collection-access.ts'
-import { dayRange, matchesRecordFilter } from './list-filters.ts'
+import {
+  dayRange,
+  invoiceStatusFilter,
+  invoiceStatusOf,
+  matchesRecordFilter,
+} from './list-filters.ts'
 import { assertReadable, readScope, scopePrefilter, studentsOfClasses } from './read-scope.ts'
 
 /**
@@ -56,6 +69,17 @@ const CLASS_VIA_STUDENT: ReadonlySet<CollectionName> = new Set<CollectionName>([
   'mockResults',
   'studentGoals',
 ])
+
+/**
+ * Saklanmayan, istekte türetilen alanlar: taksitin `status`'u core `invoiceStatus` ile `paidAt`,
+ * vade ve isteğin saatinden (`ctx.now`) hesaplanır. Süzgeç, sıralama ve gruplama bu değeri
+ * kullanır; kayıttaki aynı adlı alan yok sayılır.
+ */
+const DERIVED_STATUS: ReadonlySet<CollectionName> = new Set<CollectionName>(['invoices'])
+
+function isInvoiceStatus(value: string): value is InvoiceStatusLabel {
+  return INVOICE_STATUS_LABELS.some((label) => label === value)
+}
 
 /** Gün aralığı süzgecinin alanı (`dateFrom`/`dateTo`). */
 export const DATE_FILTER_FIELD = 'date'
@@ -180,6 +204,17 @@ async function listFilters(
       const students = await studentsOfClasses(ctx, values)
       if (students.length === 0) return null
       filters.push({ field: 'studentId', values: students })
+    } else if (field === 'status' && DERIVED_STATUS.has(collection)) {
+      const statuses = values.filter(isInvoiceStatus)
+      if (statuses.length !== values.length)
+        throw new ValidationError([
+          {
+            path: ['status'],
+            code: 'invalid_value',
+            message: `Taksit durumu ${INVOICE_STATUS_LABELS.join(', ')} değerlerinden biri olmalıdır.`,
+          },
+        ])
+      filters.push(invoiceStatusFilter(statuses, ctx.now))
     } else filters.push({ field, values })
   }
   if (query.isActive !== undefined)
@@ -187,15 +222,36 @@ async function listFilters(
   const range = dayRange(DATE_FILTER_FIELD, query.dateFrom, query.dateTo)
   if (range) filters.push(range)
   const hidden = scope.hiddenFields(collection)
-  return filters.some((filter) => hidden.includes(filter.field)) ? null : filters
+  const fieldOf = (filter: RecordFilter) =>
+    filter.kind === 'invoiceStatus' ? ['paidAt', 'dueDate'] : [filter.field]
+  return filters.some((filter) => fieldOf(filter).some((field) => hidden.includes(field)))
+    ? null
+    : filters
 }
 
-function sortValue(item: VisibleRow, field: SortField): unknown {
+/** İsteğe göre alan değeri: türetilmiş alanlar (`DERIVED_STATUS`) burada hesaplanır. */
+interface FieldResolver {
+  collection: CollectionName
+  /** İsteğin Europe/Istanbul günü (`dayKey(ctx.now)`). */
+  today: string
+}
+
+function fieldResolver(ctx: ServiceContext, collection: CollectionName): FieldResolver {
+  return { collection, today: dayKey(ctx.now) }
+}
+
+function recordValue(resolver: FieldResolver, record: RecordData, field: string): unknown {
+  if (field === 'status' && DERIVED_STATUS.has(resolver.collection))
+    return invoiceStatusOf(record, resolver.today)
+  return record[field]
+}
+
+function sortValue(resolver: FieldResolver, item: VisibleRow, field: SortField): unknown {
   // Kolon zamanları ISO metni olarak karşılaştırılır (yanıttaki biçimle aynı sıra).
   if (field === 'id') return item.row.id
   if (field === 'createdAt') return item.row.createdAt.toISOString()
   if (field === 'updatedAt') return item.row.updatedAt.toISOString()
-  return item.record[field]
+  return recordValue(resolver, item.record, field)
 }
 
 const collator = new Intl.Collator('tr-TR', { numeric: true })
@@ -213,7 +269,11 @@ function compareValues(a: unknown, b: unknown, descending: boolean): number {
   return descending ? -result : result
 }
 
-function sorted(items: VisibleRow[], keys: readonly SortKey[]): VisibleRow[] {
+function sorted(
+  resolver: FieldResolver,
+  items: VisibleRow[],
+  keys: readonly SortKey[],
+): VisibleRow[] {
   if (keys.length === 0) return items
   // Eşitlikte deponun sırası korunur (kararlı sıralama); aynı sorgu aynı sırayı verir.
   return items
@@ -221,8 +281,8 @@ function sorted(items: VisibleRow[], keys: readonly SortKey[]): VisibleRow[] {
     .sort((left, right) => {
       for (const key of keys) {
         const result = compareValues(
-          sortValue(left.item, key.field),
-          sortValue(right.item, key.field),
+          sortValue(resolver, left.item, key.field),
+          sortValue(resolver, right.item, key.field),
           key.descending,
         )
         if (result !== 0) return result
@@ -274,7 +334,7 @@ export async function listCollection(
     }
   let items = visible.map(redact)
   if (narrowed) items = items.filter((item) => matches(item.record))
-  items = sorted(items, sort)
+  items = sorted(fieldResolver(ctx, collection), items, sort)
   return { items: items.slice(start, start + query.pageSize).map(toItem), total: items.length }
 }
 

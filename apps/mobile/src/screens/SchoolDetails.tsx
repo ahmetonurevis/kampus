@@ -6,7 +6,7 @@ import DraftStatus from '../ui/DraftStatus.tsx'
 import { contentTitle } from '../model/presentation.ts'
 import { useActiveSchool, recordError } from '../store/SchoolProvider.tsx'
 import { context, nameOf } from '../model/school.ts'
-import { operation, str, type PickedFile } from '../model/operations.ts'
+import { operation, type PickedFile } from '../model/operations.ts'
 import { waitingLabel } from '../model/experience.ts'
 import { pickFile, fileSelectionMessage } from '../lib/files.ts'
 import { Badge, Button, Card, Field, T, useColors } from '../ui/components.tsx'
@@ -83,8 +83,7 @@ export function HomeworkDetail({ route, navigation }: ScreenProps<'Detail'>) {
       setExtras(false)
     }
   }
-  // Core teslim tipinde `note` alanı yok; işlem teslimle birlikte yazar.
-  const submissionNote = submission && 'note' in submission ? str(submission.note) : ''
+  const submissionNote = submission?.note ?? ''
   const completed = submission && !editing && !file && !note
   return (
     <Screen

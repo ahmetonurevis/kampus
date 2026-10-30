@@ -38,7 +38,7 @@ export default function Timetable({ navigation }: ScreenProps<'Module'>) {
   const days = Array.from({ length: 7 }, (_, index) => shiftDay(weekStart, index))
   // Eski kayıtlarda ders adı `subject` alanında tutulmuş olabilir.
   const course = (lesson: Row<'lesson'>['source']) =>
-    ('subject' in lesson && typeof lesson.subject === 'string' ? lesson.subject : '') ||
+    lesson.subject ||
     data.subjects.find((s) => s.id === lesson.subjectId)?.name ||
     lesson.title ||
     ''

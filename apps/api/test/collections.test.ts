@@ -14,6 +14,8 @@ import { insertMissingRecords, writeRecords } from '../src/db/records.ts'
 import { records } from '../src/db/schema/records.ts'
 import { moduleOfCollection, READABLE_COLLECTIONS } from '../src/services/collection-access.ts'
 import { parseSort, searchKey } from '../src/services/collection-reads.ts'
+import { ensureMembershipLinks } from '../src/services/identity.ts'
+import { readScope } from '../src/services/read-scope.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -590,6 +592,51 @@ describe('koleksiyon okuma uçları', () => {
       assert.equal(missing.statusCode, existing.statusCode, role)
       assert.equal(missing.json().code, existing.json().code, role)
     }
+  })
+
+  test('kapsam istek başına hesaplanır: aynı istekte bir kez, yeni bağlantı sonraki istekte geçerli', async () => {
+    const { id } = await institution()
+    const parent = await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's1' }])
+    const cookie = await signInAs(app, parent)
+    const ctx = {
+      db,
+      institutionId: id,
+      actor: { userId: parent.id, role: 'veli' as const, membershipId: parent.membershipId },
+      now: FIXED_NOW,
+      log: app.log,
+    }
+    const first = readScope(ctx)
+    assert.equal(readScope(ctx), first)
+    assert.notEqual(readScope({ ...ctx }), first)
+    assert.deepEqual([...(await first).studentIds], ['s1'])
+
+    assert.deepEqual((await list(cookie, 'students')).ids, ['s1'])
+    await ensureMembershipLinks(db, id, parent.membershipId, [{ kind: 'child', recordId: 's2' }])
+    assert.deepEqual((await list(cookie, 'students')).ids, ['s1', 's2'])
+  })
+
+  test('arşivlenen öğretmen kaydı ve türü bozuk kaynak satırı kapsam vermez', async () => {
+    const { id } = await institution()
+    await insertMissingRecords(
+      db,
+      id,
+      [{ collection: 'students', id: 'test-bozuk', data: { id: 'test-bozuk', classId: 7 } }],
+      FIXED_NOW,
+    )
+    const teacher = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }])
+    const parent = await memberCookie(id, 'veli', [{ kind: 'child', recordId: 'test-bozuk' }])
+    assert.equal((await list(teacher, 'students')).ids.length, 3)
+
+    await writeRecords(
+      db,
+      id,
+      [{ kind: 'archive', collection: 'teachers', id: 't2', expectedVersion: 1 }],
+      LATER,
+    )
+    assert.deepEqual((await list(teacher, 'students')).ids, [])
+    assert.deepEqual((await list(teacher, 'grades')).ids, [])
+    assert.deepEqual((await list(parent, 'students')).ids, [])
+    assert.equal(await status(parent, '/api/v1/collections/students/test-bozuk'), '404 not_found')
   })
 
   test('liste ve tekil okuma logu kişisel veri ve arama metni taşımaz', async () => {

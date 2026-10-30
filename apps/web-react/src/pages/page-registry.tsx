@@ -10,7 +10,16 @@ const StaffPage = lazy(async () => ({
   default: (await import('./management/StaffPage.tsx')).StaffPage,
 }))
 
-const MIGRATED = new Set(['yonetici/subeler', 'yonetici/personel'])
+const FinancePage = lazy(async () => ({
+  default: (await import('./finance/FinancePage.tsx')).FinancePage,
+}))
+
+const MIGRATED = new Set([
+  'yonetici/subeler',
+  'yonetici/personel',
+  'yonetici/finans',
+  'onburo/tahsilat-takip',
+])
 
 export function isMigratedPage(role: RoleKey, path: string): boolean {
   return MIGRATED.has(`${role}/${path}`)
@@ -23,6 +32,9 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <CampusesPage page={page} />
     case 'yonetici/personel':
       return <StaffPage page={page} />
+    case 'yonetici/finans':
+    case 'onburo/tahsilat-takip':
+      return <FinancePage page={page} />
     default:
       return null
   }

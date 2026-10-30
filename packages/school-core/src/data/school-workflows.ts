@@ -146,7 +146,7 @@ export function createSchoolWorkflows(
             id: 'comment-s1-1',
             text: 'Evde de düzenli tekrar yapması için destek oluyoruz.',
             date: date(-3),
-            actor: 'veli',
+            actor: 'veli' as const,
           },
         ],
         createdAt: date(-7),

@@ -1,5 +1,6 @@
-// @ts-nocheck — TODO(ts): tiplenecek (C2)
 import { z } from 'zod'
+import type { questionBank } from '../data/question-bank.ts'
+import type { State } from '../data/seed.ts'
 import { dayKey } from './format.ts'
 
 z.config(z.locales.tr())
@@ -28,7 +29,10 @@ export const registrationSchema = z.object({
   count: z.coerce.number().int().min(1).max(12),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'İlk ödeme tarihini seçin.'),
 })
-export function installmentAmounts(cents, count) {
+export type MakeId = (prefix: string) => string
+export type BankQuestion = (typeof questionBank)[number]
+
+export function installmentAmounts(cents: number, count: number) {
   if (
     !Number.isSafeInteger(cents) ||
     cents <= 0 ||
@@ -40,7 +44,12 @@ export function installmentAmounts(cents, count) {
   const base = Math.floor(cents / count)
   return Array.from({ length: count }, (_, i) => base + (i < cents % count ? 1 : 0))
 }
-export function payInvoice(state, invoiceId, method, now = new Date().toISOString()) {
+export function payInvoice(
+  state: State,
+  invoiceId: string,
+  method: string,
+  now = new Date().toISOString(),
+) {
   const invoice = state.invoices.find((i) => i.id === invoiceId)
   if (!invoice) throw new Error('Ödeme kaydı bulunamadı.')
   if (invoice.paidAt) throw new Error('Bu taksit zaten ödenmiş.')
@@ -48,42 +57,62 @@ export function payInvoice(state, invoiceId, method, now = new Date().toISOStrin
   invoice.method = method
   return invoice
 }
-export function recordAttendance(state, classId, date, marks) {
+const ATTENDANCE_STATUSES: readonly string[] = ['present', 'absent', 'late', 'excused']
+export function recordAttendance(
+  state: State,
+  classId: string,
+  date: string,
+  marks: Readonly<Record<string, string>>,
+) {
   const students = state.students.filter((s) => s.classId === classId && s.isActive)
   if (!Number.isFinite(+new Date(date))) throw new Error('Geçerli bir yoklama tarihi seçin.')
   if (dayKey(date) > dayKey()) throw new Error('Gelecek tarih için yoklama alınamaz.')
   if (!students.length) throw new Error('Bu sınıfta aktif öğrenci bulunmuyor.')
-  for (const student of students) {
-    if (!['present', 'absent', 'late', 'excused'].includes(marks[student.id]))
+  // Önce tüm işaretler doğrulanır; geçersiz işaret varsa hiçbir kayıt değişmez.
+  const marked = students.map((student) => {
+    const status = marks[student.id]
+    if (status === undefined || !ATTENDANCE_STATUSES.includes(status))
       throw new Error('Tüm öğrencilerin yoklama durumunu seçin.')
-  }
-  for (const student of students) {
+    return { student, status }
+  })
+  for (const { student, status } of marked) {
     const existing = state.attendance.find(
       (a) => a.studentId === student.id && dayKey(a.date) === dayKey(date),
     )
-    if (existing) existing.status = marks[student.id]
+    if (existing) existing.status = status
     else
       state.attendance.push({
         id: `att-${student.id}-${dayKey(date)}`,
         studentId: student.id,
         classId,
         date,
-        status: marks[student.id],
+        status,
         reason: '',
       })
   }
 }
-export function gradeQuiz(quiz, bank, answers, allowUnanswered = false) {
-  const questions = quiz.questionIds.map((id) => bank.find((q) => q.id === id))
-  if (!questions.length || questions.some((q) => !q)) throw new Error('Sınav soruları bulunamadı.')
+// Parametreler yapısal tiplidir; örnek veri üreticisi de bu fonksiyonu çağırdığından State'e bağlanmaz.
+export function gradeQuiz(
+  quiz: { questionIds: readonly string[] },
+  bank: readonly BankQuestion[],
+  answers: Readonly<Record<string, number | null | undefined>>,
+  allowUnanswered = false,
+) {
+  const found = quiz.questionIds.map((id) => bank.find((q) => q.id === id))
+  const questions = found.filter((q) => q !== undefined)
+  if (!found.length || questions.length !== found.length)
+    throw new Error('Sınav soruları bulunamadı.')
   if (
-    questions.some(
-      (q) =>
-        !(allowUnanswered && answers[q.id] == null) &&
-        (!Number.isInteger(answers[q.id]) ||
-          answers[q.id] < 0 ||
-          answers[q.id] >= q.options.length),
-    )
+    questions.some((q) => {
+      const answer = answers[q.id]
+      return (
+        !(allowUnanswered && answer == null) &&
+        (typeof answer !== 'number' ||
+          !Number.isInteger(answer) ||
+          answer < 0 ||
+          answer >= q.options.length)
+      )
+    })
   )
     throw new Error('Lütfen tüm soruları yanıtlayın.')
   const correct = questions.filter((q) => answers[q.id] === q.answer).length
@@ -103,7 +132,12 @@ export function gradeQuiz(quiz, bank, answers, allowUnanswered = false) {
     topicScores,
   }
 }
-export function enrollProspect(state, input, makeId, now = new Date().toISOString()) {
+export function enrollProspect(
+  state: State,
+  input: unknown,
+  makeId: MakeId,
+  now = new Date().toISOString(),
+) {
   const data = registrationSchema.parse(input)
   const prospect = state.prospects.find((p) => p.id === data.prospectId)
   const cls = state.classes.find((c) => c.id === data.classId && c.isActive)

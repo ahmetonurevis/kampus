@@ -60,6 +60,68 @@ export const automationSchemas = {
   slot: z.object({ teacherId: identifier, date: instant, duration: integer(15, 120) }),
 }
 
+// Kayıt tipleri State'e bağlı değildir; State bunları örnek veride boş başlayan koleksiyonlar için kullanır.
+export type AttendanceMark = 'Geldi' | 'Gelmedi' | 'İzinli'
+export type AnswerKeyQuestion = { number: number; subjectId: string; topic: string; answer: string }
+export type QuestionOutcome = 'correct' | 'wrong' | 'blank' | 'multiple' | 'cancelled'
+export type OpticalQuestionResult = AnswerKeyQuestion & {
+  response: string | undefined
+  outcome: QuestionOutcome
+}
+export type OpticalTopicScore = {
+  topic: string
+  total: number
+  correct: number
+  percent: number | null
+}
+export type OpticalPreviewRow = {
+  examId: string
+  studentId: string
+  studentName: string
+  subjectId: string
+  booklet: string
+  profileId: string
+  keyRevision: number
+  questionResults: OpticalQuestionResult[]
+  correct: number
+  wrong: number
+  blank: number
+  multiple: number
+  cancelled: number
+  topicScores: OpticalTopicScore[]
+  weakTopics: string[]
+  net: number
+  replaces: boolean
+}
+type Stamp = { id: string; createdAt: string; updatedAt: string }
+export type OpticalEvaluation = Omit<OpticalPreviewRow, 'studentName' | 'replaces'> & Stamp
+export type TutorGroup = {
+  examId: string
+  branchId: string
+  grade: number
+  subjectId: string
+  topic: string
+  studentIds: string[]
+  scores: { studentId: string; percent: number | null }[]
+}
+export type PlannedTutorSession = TutorGroup & {
+  teacherId: string
+  date: string
+  duration: number
+  room: string
+  roomClassId: string
+  capacity: number
+}
+export type TutorSession = PlannedTutorSession &
+  Stamp & {
+    status: string
+    attendance: Record<string, AttendanceMark>
+    threshold: number
+    cancelReason?: string
+    cancelledAt?: string
+    attendanceAt?: string
+  }
+
 const record = (state, collection, id) => {
   const value = state[collection]?.find((r) => r.id === id)
   if (!value) throw new Error('İlgili kayıt bulunamadı. Listeyi yenileyin.')

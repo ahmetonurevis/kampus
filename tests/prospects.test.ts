@@ -1080,6 +1080,31 @@ test('DOM-KAY-033: oda ve görevlisi bilinmeyen eski görüşme kampüsteki ört
   )
 })
 
+test('DOM-KAY-033: kayda alınmış veya vazgeçmiş adayın ileri tarihli görüşmesi saati tutmaz', () => {
+  // Seed pr18 (b3) kayda alınmış; ileri tarihli, odası bilinmeyen eski görüşmesi kalmıştır.
+  const state = seed()
+  const enrolled = prospectOf(state, 'pr18')
+  assert.equal(enrolled.stage, 'Kayıt oldu')
+  assert.ok(enrolled.trialAt && Date.parse(enrolled.trialAt) > Date.parse(now))
+  const pr3 = prospectOf(state, 'pr3')
+  assert.equal(pr3.branchId, enrolled.branchId)
+  const date = enrolled.trialAt
+  scheduleProspectMeeting(state, front, 'pr3', meetingInput({ date }), now)
+  assert.equal(pr3.trialAt, date)
+  // Vazgeçmiş adayın kalmış eski görüşmesi de saymaz; aday yeniden açılınca yine sayılır.
+  const other = seed()
+  const lost = prospectOf(other, 'pr18')
+  lost.stage = 'Vazgeçti'
+  lost.studentId = null
+  scheduleProspectMeeting(other, front, 'pr3', meetingInput({ date }), now)
+  lost.stage = 'İletişime geçildi'
+  unchangedOnFailure(
+    other,
+    () => scheduleProspectMeeting(other, front, 'pr3', meetingInput({ date }), now),
+    fails('meeting_conflict', 'conflict'),
+  )
+})
+
 test('DOM-KAY-006: görüşme öğretmenin dersi ve dersliğin kullanımıyla çakışamaz (tutor-conflicts)', () => {
   const state = withoutMeetings()
   // c1 dersi: 2026-10-06 10:50–11:30, t13, derslik 101 (b1).
@@ -1289,12 +1314,23 @@ test('DOM-DIL-030, DOM-DIL-040: aktif kursiyer + deneme katılımcısı grup kap
   const other = seed()
   const otherLesson = futureLesson(other).id
   other.classes.find((c) => c.id === 'c1')!.capacity = 40
-  const extra = LANGUAGE_GROUP_CAPACITY_MAX - enrolled
+  // 17 kursiyer + 1 deneme katılımcısı tam 18'dir ve kabul edilir; 19. kişi reddedilir.
+  const extra = LANGUAGE_GROUP_CAPACITY_MAX - 1 - enrolled
   other.students
     .filter((s) => s.classId !== 'c1' && s.isActive)
     .slice(0, extra)
     .forEach((s) => (s.classId = 'c1'))
-  const late = languageProspect(other)
+  const atLimit = languageProspect(other)
+  scheduleTrialLesson(
+    other,
+    front,
+    atLimit.id,
+    { lessonId: otherLesson, guardianConsent: true },
+    now,
+    language,
+  )
+  assert.equal(atLimit.trialLesson?.lessonId, otherLesson)
+  const late = languageProspect(other, { phone: '05559992003', name: 'Geç Aday' })
   unchangedOnFailure(
     other,
     () =>
@@ -1308,6 +1344,28 @@ test('DOM-DIL-030, DOM-DIL-040: aktif kursiyer + deneme katılımcısı grup kap
       ),
     fails('trial_capacity_full', 'conflict'),
   )
+})
+
+test('DOM-DIL-030, DOM-DIL-040: kayda alınan veya vazgeçen adayın denemesi kapasitede ve katılımcı sınırında sayılmaz', () => {
+  const state = seed()
+  const lessonId = futureLesson(state).id
+  const plan = (p: { id: string }) =>
+    scheduleTrialLesson(state, front, p.id, { lessonId, guardianConsent: true }, now, language)
+  const first = languageProspect(state, { phone: '05559994001', name: 'Kayıtlı Aday' })
+  const second = languageProspect(state, { phone: '05559994002', name: 'Vazgeçen Aday' })
+  plan(first)
+  plan(second)
+  // Birinci aday c1'e kayıt olur (kursiyer sayılır), ikinci vazgeçmiş eski kayıttır.
+  const student = state.students.find((s) => s.classId !== 'c1' && s.isActive)!
+  student.classId = 'c1'
+  first.stage = 'Kayıt oldu'
+  first.studentId = student.id
+  second.stage = 'Vazgeçti'
+  const enrolled = state.students.filter((s) => s.classId === 'c1' && s.isActive).length
+  state.classes.find((c) => c.id === 'c1')!.capacity = enrolled + 1
+  const third = languageProspect(state, { phone: '05559994003', name: 'Üçüncü Aday' })
+  plan(third)
+  assert.equal(third.trialLesson?.lessonId, lessonId)
 })
 
 test('DOM-DIL-030: deneme dersi bir kez; gerçekleşmişse tekrar planlanmaz, ileri tarihli değiştirilebilir', () => {
@@ -1362,6 +1420,33 @@ test('DOM-DIL-030: deneme dersi bir kez; gerçekleşmişse tekrar planlanmaz, il
       ),
     fails('trial_already_used', 'conflict'),
   )
+})
+
+test('DOM-DIL-030, DOM-KAY-034: iptal edilen veya programdan kalkan derse bağlı deneme kullanılmış sayılmaz', () => {
+  const state = seed()
+  const child = languageProspect(state)
+  const hourAfter = (date: string) => new Date(Date.parse(date) + 60 * 60000).toISOString()
+  const nextLesson = (after: string) => {
+    const lesson = state.schedule.find(
+      (l) => l.classId === 'c1' && Date.parse(l.date) > Date.parse(after),
+    )
+    assert.ok(lesson)
+    return lesson
+  }
+  const first = nextLesson(now)
+  const second = nextLesson(hourAfter(first.date))
+  const third = nextLesson(hourAfter(second.date))
+  const plan = (lessonId: string, at: string) =>
+    scheduleTrialLesson(state, front, child.id, { lessonId, guardianConsent: true }, at, language)
+  plan(first.id, now)
+  // Ders iptal edilir; tarihi geçtikten sonra deneme yeniden planlanabilir.
+  first.cancelledAt = now
+  plan(second.id, hourAfter(first.date))
+  assert.equal(child.trialLesson?.lessonId, second.id)
+  // Ders programdan kalkarsa da deneme yapılmamış sayılır.
+  state.schedule.splice(state.schedule.indexOf(second), 1)
+  plan(third.id, hourAfter(second.date))
+  assert.equal(child.trialLesson?.lessonId, third.id)
 })
 
 test('DOM-KAY-034: adayın görüşmesi ve deneme dersi çakışamaz; kapalı adaya deneme dersi planlanmaz', () => {

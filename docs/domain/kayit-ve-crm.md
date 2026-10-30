@@ -208,7 +208,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 ### DOM-KAY-033 · Tanışma görüşmesi planlama
 
-- **Kural:** Görüşme adayın kampüsünde, gelecek bir anda, 15–120 dakika süreyle ve bir odada yapılır; isteğe bağlı görevli öğretmen aynı kampüsün aktif öğretmenidir. Aynı kampüsteki başka adayın görüşmesiyle aynı oda veya aynı öğretmen için aralık örtüşemez; oda bilgisi olmayan eski görüşme kampüsün bütün odalarını tutuyor sayılır. Öğretmenin dersi, randevusu, etüdü ve odanın ders/etüt/etkinlik kullanımı da çakışma sayılır. Yeniden planlama önceki görüşmenin yerini alır. Görüşme `Yeni aday`/`İletişime geçildi` adayı `Görüşme planlandı` yapar; `Teklif verildi` aday geri gitmez (`DOM-KAY-030`).
+- **Kural:** Görüşme adayın kampüsünde, gelecek bir anda, 15–120 dakika süreyle ve bir odada yapılır; isteğe bağlı görevli öğretmen aynı kampüsün aktif öğretmenidir. Aynı kampüsteki başka adayın görüşmesiyle aynı oda veya aynı öğretmen için aralık örtüşemez; oda bilgisi olmayan eski görüşme kampüsün bütün odalarını tutuyor sayılır. Kayda alınmış veya vazgeçmiş adayın kalan ileri tarihli görüşmesi saati tutmaz. Öğretmenin dersi, randevusu, etüdü ve odanın ders/etüt/etkinlik kullanımı da çakışma sayılır. Yeniden planlama önceki görüşmenin yerini alır. Görüşme `Yeni aday`/`İletişime geçildi` adayı `Görüşme planlandı` yapar; `Teklif verildi` aday geri gitmez (`DOM-KAY-030`).
 - **Gerekçe:** `DOM-KAY-006`'nın "görevli/oda" çakışması; bilinmeyen kaynak çakışıyor sayılır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
@@ -216,7 +216,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 ### DOM-KAY-034 · Deneme dersi planlama
 
-- **Kural:** Deneme dersi (`DOM-DIL-030`) yalnız `language_school`'da, adayın kampüsündeki açık grubun gelecek ve iptal edilmemiş gerçek dersine planlanır. "Program başına bir kez" aday kaydı başına bir kez olarak uygulanır: gerçekleşmiş deneme dersi tekrar planlanmaz, ileri tarihli olan değiştirilebilir. Derse en fazla iki deneme katılımcısı alınır; aktif kursiyer + deneme katılımcısı grup kapasitesini ve 18'i (`DOM-DIL-040`) aşamaz. 18 yaş altı (veya yaşı bilinmeyen) adayda veli adı, veli iletişim bilgisi ve ön büronun kaydettiği veli onayı zorunludur. Adayın görüşmesi ile deneme dersi örtüşemez. Deneme kaydı yoklamaya yazılmaz.
+- **Kural:** Deneme dersi (`DOM-DIL-030`) yalnız `language_school`'da, adayın kampüsündeki açık grubun gelecek ve iptal edilmemiş gerçek dersine planlanır. "Program başına bir kez" aday kaydı başına bir kez olarak uygulanır: gerçekleşmiş deneme dersi tekrar planlanmaz, ileri tarihli olan değiştirilebilir; gerçekleşme dersin güncel kaydından okunur, iptal edilen veya programdan kalkan derse bağlı deneme yapılmamış sayılır. Derse en fazla iki deneme katılımcısı alınır; aktif kursiyer + deneme katılımcısı grup kapasitesini ve 18'i (`DOM-DIL-040`) aşamaz, tam 18 kabul edilir. Katılımcı ve kapasite sayımında yalnız açık adayların denemesi sayılır: kayda alınan aday kursiyer olarak bir kez sayılır, vazgeçenin yeri boşalır. 18 yaş altı (veya yaşı bilinmeyen) adayda veli adı, veli iletişim bilgisi ve ön büronun kaydettiği veli onayı zorunludur. Adayın görüşmesi ile deneme dersi örtüşemez. Deneme kaydı yoklamaya yazılmaz.
 - **Gerekçe:** `DOM-DIL-030`'un kapasite ve veli onayı şartlarının en korumalı uygulanışı; seviye ve yaş bandı uygunluğu henüz veriyle denetlenemez.
 - **Kaynak:** İşletme kuralı; ÖÖKY md. 48/2.
 - **Kurum türü:** `language_school`

@@ -690,7 +690,9 @@ export function scheduleProspectMeeting(
   const slot: Slot = { date: data.date, duration: data.duration }
   const room = data.room.toLocaleLowerCase('tr')
   for (const other of state.prospects) {
-    if (other.id === prospect.id || other.branchId !== prospect.branchId) continue
+    // Kayda alınmış veya vazgeçmiş adayın kalan ileri tarihli görüşmesi saati tutmaz.
+    if (other.id === prospect.id || other.branchId !== prospect.branchId || !isOpen(other.stage))
+      continue
     const otherSlot = meetingSlot(other)
     if (!otherSlot || !intervalsOverlap(slot, otherSlot)) continue
     const known = other.meeting
@@ -752,7 +754,15 @@ export function scheduleTrialLesson(
   requireAuthorized(by, 'prospect.trial', {}, state, options)
   const prospect = requireProspect(state, prospectId)
   requireOpen(prospect)
-  if (prospect.trialLesson && Date.parse(prospect.trialLesson.date) <= Date.parse(now))
+  // Kullanılmışlık dersin güncel kaydından okunur: iptal edilen veya programdan kalkan derse
+  // bağlı deneme yapılmamış sayılır, yeniden planlanabilir.
+  const previous = prospect.trialLesson
+  const previousLesson = previous && state.schedule.find((l) => l.id === previous.lessonId)
+  if (
+    previousLesson &&
+    !previousLesson.cancelledAt &&
+    Date.parse(previousLesson.date) <= Date.parse(now)
+  )
     throw new DomainError('trial_already_used', 'Aday deneme dersine zaten katıldı.', {
       kind: 'conflict',
     })
@@ -790,8 +800,10 @@ export function scheduleTrialLesson(
       '18 yaş altı adayın deneme dersi için veli onayı gerekir.',
       { path: ['guardianConsent'] },
     )
+  // Yalnız açık adayların denemesi sayılır: kayda alınan aday artık kursiyer olarak sayılır
+  // (iki kez sayılmaz), vazgeçenin yeri boşalmıştır.
   const participants = state.prospects.filter(
-    (p) => p.id !== prospect.id && p.trialLesson?.lessonId === lesson.id,
+    (p) => p.id !== prospect.id && isOpen(p.stage) && p.trialLesson?.lessonId === lesson.id,
   ).length
   if (participants >= TRIAL_PARTICIPANTS_PER_LESSON)
     throw new DomainError(

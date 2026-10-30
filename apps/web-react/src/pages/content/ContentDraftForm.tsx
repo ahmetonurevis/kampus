@@ -61,8 +61,8 @@ type FormModalProps = {
 
 /**
  * Taslak formu (geniş pencere): okuma parçası ya da tek çoktan seçmeli soru. Doğrulama core
- * `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası alan yoluyla gelirse yalnız
- * alanın altında, yoksa toast olarak görünür (`exclusive`). Diğer içerik türleri sonraki dilimdedir.
+ * `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası (400 ya da 422 iş kuralı) alan
+ * yoluyla gelirse yalnız alanın altında, yoksa toast olarak görünür (`exclusive`). Diğer içerik türleri sonraki dilimdedir.
  * TODO(F3c2): ses, video, çalışma kâğıdı, dosya ve lisanslı yayın türleri.
  */
 export function ContentDraftForm({ target, onClose, onCreated, onSaved }: FormModalProps) {

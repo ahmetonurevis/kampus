@@ -104,8 +104,9 @@ export interface CommandFeedback {
   /**
    * Form alanlarına kendiliğinden yazılacak doğrulama maddeleri (yolsuz madde yok). Yalnız 400
    * `validation_failed` içindir; iş kuralı hatasının (422/409/403) `issues` yolu kendiliğinden
-   * alana yazılmaz (aynı mesaj alanda ve toast'ta çifte görünürdü): formun açık tercihi olarak
-   * `routeCommandErrors`'un `fieldFor`'u (ör. `errorRoutes(…, true)`) alana bağlar.
+   * alana yazılmaz (aynı mesaj alanda ve toast'ta çifte görünürdü): formun açık tercihi iki
+   * yoldan biridir: `exclusive` (`routeFeedback`, `issues` yollu hata alana, toast yok) ya da
+   * `routeCommandErrors`'un `fieldFor`'u (ör. `errorRoutes(…, true)`, kod/yol alana bağlanır).
    */
   fieldIssues: FieldIssue[]
   /** Toast metni; 401'de `null` (oturum katmanı girişe yönlendirir). */
@@ -213,22 +214,26 @@ export interface CommandSteps<TVariables, TData> {
   refresh: () => Promise<void>
   messages?: CommandMessages | undefined
   /**
-   * Alana bağlanan hata yalnız alanın altında gösterilir, toast çıkmaz; alan yolu olmayan hata
-   * (ve alan hatasını yazacak form verilmemişse her hata) toast olur. İçerik havuzu formları.
+   * Formun açık tercihi: hata kodundan bağımsız, `issues` maddeleri (400 ve 422/409/403) alana
+   * yazılır; herhangi bir alan maddesi varsa toast çıkmaz, hiç yoksa tek toast çıkar. Form
+   * (`setError`) verilmemişse etkisizdir. İçerik havuzu formları.
    */
   exclusive?: boolean | undefined
 }
 
 /**
- * Hatanın nereye gösterileceği: `exclusive` ise alan maddesi varken toast bastırılır.
+ * Hatanın nereye gösterileceği. `exclusive` ve form varken alan maddeleri hatanın kendisinden
+ * (`error.issues`) her durum kodunda üretilir (`ROOT_FIELD` hariç); biri varsa toast bastırılır,
+ * hiç yoksa mesaj tek toast olur. Aksi hâlde `commandFeedback` (D13) aynen geçer.
  */
 export function routeFeedback(
+  error: ApiError,
   feedback: CommandFeedback,
   { exclusive, hasForm }: { exclusive: boolean; hasForm: boolean },
 ): CommandFeedback {
-  return exclusive && hasForm && feedback.fieldIssues.length > 0
-    ? { ...feedback, message: null }
-    : feedback
+  if (!exclusive || !hasForm) return feedback
+  const fieldIssues = issuesToFieldIssues(error.issues).filter((issue) => issue.name !== ROOT_FIELD)
+  return fieldIssues.length > 0 ? { ...feedback, fieldIssues, message: null } : feedback
 }
 
 /**
@@ -251,7 +256,7 @@ export async function runCommand<TVariables, TData>(
   } catch (cause) {
     const error = toApiError(cause)
     session.tracker.fail(error)
-    const feedback = routeFeedback(commandFeedback(error, steps.messages), {
+    const feedback = routeFeedback(error, commandFeedback(error, steps.messages), {
       exclusive: steps.exclusive ?? false,
       hasForm: targets.setError !== undefined,
     })

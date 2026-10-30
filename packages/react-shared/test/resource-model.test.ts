@@ -298,6 +298,17 @@ describe('Hata gösterimi: alan altında ya da toast, ikisi birden değil', () =
     assert.deepEqual(await run(fieldError(), true), { fields: ['title'], toasts: [] })
   })
 
+  test('exclusive: yollu 422 iş kuralı hatası da yalnız alana yazılır', async () => {
+    const error = new ApiError({
+      status: 422,
+      code: 'subject_required',
+      message: 'Ders seçin.',
+      issues: [{ path: ['tags', 'subjectId'], code: 'custom', message: 'Ders seçin.' }],
+    })
+    assert.deepEqual(await run(error, true), { fields: ['tags.subjectId'], toasts: [] })
+    assert.deepEqual(await run(error, false), { fields: [], toasts: ['Ders seçin.'] })
+  })
+
   test('exclusive: alan yolu olmayan hata toast olur', async () => {
     const error = new ApiError({ status: 422, code: 'license_required', message: 'Lisans seçin.' })
     assert.deepEqual(await run(error, true), { fields: [], toasts: ['Lisans seçin.'] })

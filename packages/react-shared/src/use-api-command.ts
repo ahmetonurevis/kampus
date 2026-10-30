@@ -35,7 +35,7 @@ export interface ApiCommandOptions<TVariables, TResult extends ApiResult> {
   version?: (variables: TVariables) => number | null | undefined
   /** Koda özgü kullanıcı mesajı (ör. `invoice_already_paid`); yoksa sunucunun mesajı. */
   messages?: CommandMessages
-  /** Alan hatası yalnız alanda, alansız hata toast olarak gösterilir (ikisi birden değil). */
+  /** Formun açık tercihi: yollu `issues` (400 ve 422/409/403) yalnız alanda, alan maddesi yoksa tek toast. */
   exclusive?: boolean
   onSuccess?: (data: DataOf<TResult>, variables: TVariables) => void | Promise<void>
 }

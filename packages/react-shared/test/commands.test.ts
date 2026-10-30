@@ -177,41 +177,93 @@ describe('commandFeedback ve reportCommandError', () => {
     assert.deepEqual(toasts, ['Formda düzeltilmesi gereken alanlar var.'])
   })
 
-  test('exclusive: 422 gövdesindeki issues alan altına gider, toast bastırılır (D13 sözleşmesi)', () => {
-    const error = new ApiError({
+  describe('exclusive: formun açık tercihi (D13 ile uzlaşık)', () => {
+    const pathed = (status: number) =>
+      new ApiError({
+        status,
+        code: 'rule_violation',
+        message: 'Kural ihlali.',
+        issues: [{ path: ['tags', 'subjectId'], code: 'custom', message: 'Dersi seçin.' }],
+      })
+    const rootOnly = new ApiError({
       status: 422,
       code: 'rule_violation',
       message: 'Kural ihlali.',
-      issues: [{ path: ['body', 'license'], code: 'custom', message: 'Lisansı seçin.' }],
+      issues: [{ path: [], code: 'custom', message: 'Genel kural.' }],
     })
-    const feedback = routeFeedback(commandFeedback(error), { exclusive: true, hasForm: true })
-    const fields: [string, string][] = []
-    const toasts: string[] = []
-    reportCommandError(error, feedback, {
-      setError: (name, { message }) => fields.push([name, message]),
-      notifyError: (message) => toasts.push(message),
-    })
-    assert.equal(fields.length, 1)
-    assert.equal(fields[0]?.[1], 'Lisansı seçin.')
-    assert.deepEqual(toasts, [])
-  })
 
-  test('exclusive: issues yoksa ya da form verilmemişse hata toast olur', () => {
-    const plain = apiError(422, 'rule', 'Kural ihlali.')
-    assert.equal(
-      routeFeedback(commandFeedback(plain), { exclusive: true, hasForm: true }).message,
-      'Kural ihlali.',
-    )
-    const withIssues = new ApiError({
-      status: 422,
-      code: 'rule',
-      message: 'Kural ihlali.',
-      issues: [{ path: ['title'], code: 'custom', message: 'Başlık gerekli.' }],
+    function route(error: ApiError, exclusive: boolean, hasForm = true) {
+      const feedback = routeFeedback(error, commandFeedback(error), { exclusive, hasForm })
+      const fields: [string, string][] = []
+      const toasts: string[] = []
+      reportCommandError(error, feedback, {
+        setError: (name, { message }) => fields.push([name, message]),
+        notifyError: (message) => toasts.push(message),
+      })
+      return { fields, toasts }
+    }
+
+    test('exclusive + yollu 422: tek alan, toast yok', () => {
+      assert.deepEqual(route(pathed(422), true), {
+        fields: [['tags.subjectId', 'Dersi seçin.']],
+        toasts: [],
+      })
     })
-    assert.equal(
-      routeFeedback(commandFeedback(withIssues), { exclusive: true, hasForm: false }).message,
-      'Kural ihlali.',
-    )
+
+    test('exclusive + yollu 409 ve 403 de alana gider', () => {
+      for (const status of [409, 403]) {
+        assert.deepEqual(route(pathed(status), true), {
+          fields: [['tags.subjectId', 'Dersi seçin.']],
+          toasts: [],
+        })
+      }
+    })
+
+    test('exclusive + yolsuz 422: alan yok, tek toast', () => {
+      assert.deepEqual(route(rootOnly, true), { fields: [], toasts: ['Kural ihlali.'] })
+      assert.deepEqual(route(apiError(422, 'rule', 'Kural ihlali.'), true), {
+        fields: [],
+        toasts: ['Kural ihlali.'],
+      })
+    })
+
+    test('exclusive yok + yollu 422: tek toast, alan yok (D13)', () => {
+      assert.deepEqual(route(pathed(422), false), { fields: [], toasts: ['Kural ihlali.'] })
+    })
+
+    test('exclusive + 400: alanlar var, toast yok', () => {
+      const error = new ApiError({
+        status: 400,
+        code: 'validation_failed',
+        message: 'İstek geçersiz.',
+        issues: [
+          { path: ['title'], code: 'too_small', message: 'Başlık gerekli.' },
+          { path: [], code: 'custom', message: 'Genel.' },
+        ],
+      })
+      assert.deepEqual(route(error, true), {
+        fields: [['title', 'Başlık gerekli.']],
+        toasts: [],
+      })
+    })
+
+    test('exclusive ama form yok: yollu 422 toast olur', () => {
+      const error = pathed(422)
+      const feedback = routeFeedback(error, commandFeedback(error), {
+        exclusive: true,
+        hasForm: false,
+      })
+      assert.equal(feedback.message, 'Kural ihlali.')
+      assert.deepEqual(feedback.fieldIssues, [])
+    })
+
+    test("exclusive 409: alan maddesi toast'ı bastırsa da veri tazelenir", () => {
+      const error = pathed(409)
+      assert.equal(
+        routeFeedback(error, commandFeedback(error), { exclusive: true, hasForm: true }).refresh,
+        true,
+      )
+    })
   })
 
   test('bildirim yoksa mesaj formun root.server alanına yazılır', () => {

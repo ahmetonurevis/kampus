@@ -526,7 +526,9 @@ describe('iletişim uçları', () => {
       assert.equal(entries[0]?.entityType, 'conversations')
       assert.equal(entries[0]?.entityId, id)
       assert.equal(entries[0]?.actorRole, 'yonetici')
-      assert.deepEqual(entries[0]?.changes, { reason: REASON })
+      // Gerekçe ayrı kolondadır; changes alan adı tutar, gerekçe metni içermez (veritabani.md §8).
+      assert.equal(entries[0]?.reason, REASON)
+      assert.equal(entries[0]?.changes ?? null, null)
 
       const before = await conversation(a.id, id)
       const messages = await read(admin, `/api/v1/conversations/${id}/messages`)
@@ -830,6 +832,51 @@ describe('iletişim uçları', () => {
         409,
         'announcement_unchanged',
       )
+    })
+
+    test('DOM-ILT-004: geri çekilen duyurunun metni ve gerekçesi alıcının aramasında ve sayımında eşleşmez', async () => {
+      const a = await institution()
+      const teacherCookie = await teacher(a.id)
+      const text = 'Perşembe akşamı kimya kulübü gezisi için otobüs kalkış saati değişti.'
+      const body = { ...ANNOUNCEMENT, title: 'Gezi duyurusu', text }
+      const id: string = (await publish(teacherCookie, body)).json().data.entity.id
+      const mother = await parent(a.id)
+      const search = async (cookie: string, q: string) => {
+        const list = await read(
+          cookie,
+          `/api/v1/collections/announcements?q=${encodeURIComponent(q)}&pageSize=100`,
+        )
+        assert.equal(list.statusCode, 200, list.body)
+        const counts = await read(
+          cookie,
+          `/api/v1/collections/announcements/counts?groupBy=category&q=${encodeURIComponent(q)}`,
+        )
+        assert.equal(counts.statusCode, 200, counts.body)
+        // Liste ve sayım aynı kümeyi görür.
+        assert.equal(counts.json().meta.total, list.json().meta.total)
+        return list.json().meta.total as number
+      }
+      // Geri çekilmeden önce alıcı metinle de bulur.
+      assert.equal(await search(mother.cookie, 'kimya kulübü'), 1)
+
+      const withdrawn = await send('POST', `/api/v1/announcements/${id}/withdraw`, teacherCookie, {
+        reason: 'Tarih yanlış yazıldı, gizli not',
+      })
+      assert.equal(withdrawn.statusCode, 200, withdrawn.body)
+      // Alıcı yalnız başlık/kategori/"Geri çekildi" görür: metin ve gerekçe aramada eşleşmez.
+      assert.equal(await search(mother.cookie, 'kimya kulübü'), 0)
+      assert.equal(await search(mother.cookie, 'otobüs kalkış'), 0)
+      assert.equal(await search(mother.cookie, 'gizli not'), 0)
+      assert.equal(await search(mother.cookie, 'Gezi duyurusu'), 1)
+      assert.equal(await search(mother.cookie, 'Akademik'), 1)
+      const seen = (await visible(mother.cookie)).find((row) => row.id === id)
+      assert.equal(seen?.withdrawnAt, FIXED_NOW.toISOString())
+      assert.ok(seen && !('text' in seen) && !('withdrawReason' in seen))
+      // Yayınlayan ve yönetici içeriği aramada bulur.
+      for (const cookie of [teacherCookie, a.adminCookie]) {
+        assert.equal(await search(cookie, 'kimya kulübü'), 1)
+        assert.equal(await search(cookie, 'gizli not'), 1)
+      }
     })
 
     test('DOM-ILT-004: ön büro yayıncısı kişiyle eşlenir; ikinci ön büro kullanıcısı değiştiremez ve ayrıntı görmez', async () => {

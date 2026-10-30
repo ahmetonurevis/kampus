@@ -12,6 +12,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator'
 import { MIGRATIONS_FOLDER, schema, type Database } from '../src/db/client.ts'
 import { stateRecords, demoState } from '../src/db/demo-seed.ts'
 import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
+import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
 import { buildTestApp, createInstitution, createMember, FIXED_NOW } from './support/app.ts'
 
@@ -185,5 +186,61 @@ describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
     } finally {
       await app.close()
     }
+  })
+})
+
+describe('0008: denetim kaydı gerekçe kolonu', () => {
+  const client = new PGlite()
+  const pglite = drizzle({ client, schema })
+  const db: Database = pglite
+  let folder: string
+
+  before(async () => {
+    folder = await migrationsUpTo('0007_backfill_conversation_parent_user')
+    await migrate(pglite, { migrationsFolder: folder })
+  })
+  after(async () => {
+    await client.close()
+    await rm(folder, { recursive: true, force: true })
+  })
+
+  test('yazışma erişim gerekçesi changes içinden reason kolonuna taşınır; diğer kayıtlar değişmez; 500 karakter sınırı', async () => {
+    const REASON = 'Veli şikâyeti üzerine inceleme'
+    const insert = (action: string, changes: unknown) =>
+      db.execute(
+        sql`insert into audit_log (action, entity_type, entity_id, changes) values (${action}, 'conversations', 'conv-1', ${JSON.stringify(changes)}::jsonb)`,
+      )
+    await insert('conversation.access', { reason: REASON })
+    await insert('conversation.access', { reason: REASON, fields: ['messages'] })
+    await insert('message.send', { fields: ['messages'] })
+
+    await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+
+    const rows = await db
+      .select({ action: auditLog.action, reason: auditLog.reason, changes: auditLog.changes })
+      .from(auditLog)
+      .orderBy(auditLog.id)
+    const access = rows.filter((row) => row.action === 'conversation.access')
+    assert.deepEqual(
+      access.map((row) => row.reason),
+      [REASON, REASON],
+    )
+    assert.deepEqual(
+      access.map((row) => row.changes).sort(),
+      [null, { fields: ['messages'] }].sort(),
+    )
+    const other = rows.find((row) => row.action === 'message.send')
+    assert.equal(other?.reason, null)
+    assert.deepEqual(other?.changes, { fields: ['messages'] })
+
+    // Gerekçe en çok 500 karakter (core şemasıyla aynı sınır).
+    await db.execute(
+      sql`insert into audit_log (action, reason) values ('conversation.access', ${'x'.repeat(500)})`,
+    )
+    await assert.rejects(
+      db.execute(
+        sql`insert into audit_log (action, reason) values ('conversation.access', ${'x'.repeat(501)})`,
+      ),
+    )
   })
 })

@@ -57,6 +57,13 @@
       "when": 1793341309919,
       "tag": "0007_backfill_conversation_parent_user",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793342723005,
+      "tag": "0008_add_audit_log_reason",
+      "breakpoints": true
     }
   ]
 }

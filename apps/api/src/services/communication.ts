@@ -519,8 +519,8 @@ export async function openConversationAccessCommand(
         action: 'conversation.access',
         entityType: 'conversations',
         entityId: conversationId,
-        // kvkk: K — gerekçe yalnız denetim kaydında tutulur (DOM-YTK-052).
-        changes: { reason: access.reason },
+        // kvkk: K — gerekçe yalnız `reason` kolonunda tutulur; `changes` boş kalır (DOM-YTK-052).
+        reason: access.reason,
         createdAt: ctx.now,
       })
     },

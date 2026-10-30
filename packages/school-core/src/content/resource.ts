@@ -1087,12 +1087,27 @@ export type Lineage = Pick<ResourceVersionData, 'license' | 'attributions'>
 const sameAttribution = (a: Attribution, b: Attribution) =>
   a.work === b.work && a.author === b.author && a.source === b.source && a.year === b.year
 
-/** Miras kaynak gösterimleri ve lisans türü korunmuş mu; değilse reddeder (DOM-KYN-024, 050). */
+/** İki lisans bütün alanlarıyla aynı mı; lisans nesneleri düzdür (yalnız ilkel değerler). */
+function sameLicense(a: ResourceLicense, b: ResourceLicense | null): boolean {
+  if (b === null) return false
+  const left = Object.entries(a)
+  const right: Record<string, unknown> = { ...b }
+  return (
+    left.length === Object.keys(right).length &&
+    left.every(([key, value]) => Object.hasOwn(right, key) && right[key] === value)
+  )
+}
+
+/**
+ * Miras kaynak gösterimleri ve lisans korunmuş mu; değilse reddeder (DOM-KYN-024, 050). Lisans
+ * yalnız türüyle değil bütün alanlarıyla (bitiş tarihi, kitap sahibi sınırı, uyarlama izni, açık
+ * lisans adı …) kaynağınkiyle aynı kalır: kopyalayan sözleşmeyi genişletemez.
+ */
 export function assertLineagePreserved(lineage: Lineage, next: ResourceVersionData): void {
-  if (lineage.license !== null && next.license?.kind !== lineage.license.kind) {
+  if (lineage.license !== null && !sameLicense(lineage.license, next.license)) {
     throw new DomainError(
       'license_inherited',
-      'Kopyalanan içeriğin menşe ve lisans türü değiştirilemez.',
+      'Kopyalanan içeriğin menşe ve lisans bilgisi değiştirilemez.',
       { path: ['license'] },
     )
   }

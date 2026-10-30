@@ -12,6 +12,7 @@ import {
   type ResourceVersionData,
   type ResourceVersionMeta,
 } from './resource.ts'
+import { licenseExpired } from './taxonomy.ts'
 import { canBrowseLibrary, canReadVersion, libraryVersionVisible } from './visibility.ts'
 
 /**
@@ -97,6 +98,13 @@ export function planCopy(input: CopyInput): CopyPlan {
         'Lisans uyarlamaya izin vermediği için bu içerik kopyalanamaz.',
         { kind: 'forbidden' },
       )
+    }
+    // DOM-KYN-021: süresi dolan lisans yayından kalkar; kopyası da yeni kullanım açamaz.
+    if (licenseExpired(license, now)) {
+      throw new DomainError('license_expired', 'Lisans süresi dolmuş içerik kopyalanamaz.', {
+        kind: 'conflict',
+        path: ['license', 'expiryDate'],
+      })
     }
     data = versionData(version)
   } else {

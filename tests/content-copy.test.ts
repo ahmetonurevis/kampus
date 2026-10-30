@@ -146,6 +146,104 @@ describe('Kurum kaynağının kopyası (DOM-KYN-050)', () => {
     assert.equal(copy(licensed(true)).version.license?.kind, 'licensed_publication')
   })
 
+  test('DOM-KYN-021: süresi dolmuş lisanslı yayın kopyalanamaz', () => {
+    const licensed = (expiryDate: string) =>
+      institutionSource(
+        schoolText({
+          license: {
+            kind: 'licensed_publication',
+            publisher: 'Örnek Yayınları',
+            contractNumber: 'S-1',
+            coverage: 'Kurum',
+            expiryDate,
+            allowsAdaptation: true,
+          },
+          attributions: [attribution],
+        }),
+      )
+    const expired = licensed('2026-01-01')
+    const before = structuredClone(expired)
+    assert.throws(() => copy(expired), isDomainError('license_expired', 'conflict'))
+    assert.deepEqual(expired, before)
+    // Bitiş günü İstanbul saatiyle dahildir: 6 Ekim'de 6 Ekim bitişli lisans geçerlidir.
+    assert.equal(copy(licensed('2026-10-06')).version.status, 'draft')
+    assert.throws(
+      () => copy(licensed('2026-10-06'), { now: '2026-10-06T21:30:00.000Z' }),
+      isDomainError('license_expired', 'conflict'),
+    )
+  })
+
+  test('DOM-KYN-050: miras lisansın hiçbir alanı kopyada değiştirilemez', () => {
+    const license = {
+      kind: 'licensed_publication' as const,
+      publisher: 'Örnek Yayınları',
+      contractNumber: 'S-1',
+      coverage: 'Kurum',
+      expiryDate: '2027-06-30',
+      allowsAdaptation: true,
+      restrictedToBookOwners: true,
+    }
+    const plan = copy(institutionSource(schoolText({ license, attributions: [attribution] })))
+    const edit = (patch: Record<string, unknown>) =>
+      planDraftUpdate({
+        actor: colleague,
+        resource: plan.resource,
+        version: plan.version,
+        input: schoolText({
+          license: { ...license, ...patch } as ResourceVersionInput['license'],
+          attributions: [attribution],
+        }),
+        lineage: plan.lineage,
+      })
+    assert.equal(edit({}).status, 'draft', 'aynı lisans kabul edilir')
+    for (const patch of [
+      { expiryDate: '2030-12-31' },
+      { restrictedToBookOwners: false },
+      { allowsAdaptation: false },
+      { contractNumber: 'S-2' },
+      { publisher: 'Başka Yayınları' },
+      { coverage: 'Bütün şubeler' },
+    ]) {
+      assert.throws(() => edit(patch), isDomainError('license_inherited'), JSON.stringify(patch))
+    }
+    assert.throws(
+      () =>
+        planDraftUpdate({
+          actor: colleague,
+          resource: plan.resource,
+          version: plan.version,
+          input: schoolText({ license: null, attributions: [attribution] }),
+          lineage: plan.lineage,
+        }),
+      isDomainError('license_inherited'),
+      'lisans boşaltılamaz',
+    )
+
+    const open = copy(
+      institutionSource(
+        schoolText({
+          license: { kind: 'open_license', license: 'CC-BY-SA-4.0' },
+          attributions: [attribution],
+        }),
+      ),
+    )
+    assert.throws(
+      () =>
+        planDraftUpdate({
+          actor: colleague,
+          resource: open.resource,
+          version: open.version,
+          input: schoolText({
+            license: { kind: 'open_license', license: 'CC0-1.0' },
+            attributions: [attribution],
+          }),
+          lineage: open.lineage,
+        }),
+      isDomainError('license_inherited'),
+      'açık lisans adı değişmez',
+    )
+  })
+
   test('öğrenci, veli ve ön büro kopyalayamaz', () => {
     for (const actor of [student, frontDesk, { role: 'veli' as const, userId: 'test-u-parent' }]) {
       assert.throws(

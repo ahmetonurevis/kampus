@@ -138,7 +138,7 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
 
     // Temizle arama ve filtreleri siler, sekmeyi değil.
     await page.getByLabel('Tabloda ara').fill('zz-yok')
-    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).click()
+    await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
     await expect(page).toHaveURL(/[?&]durum=arsiv/)
 
     await page.getByRole('button', { name: 'Aktif kayıtlar' }).click()

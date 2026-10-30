@@ -72,8 +72,11 @@ export interface OperationRequest<R> {
   scalars?: Partial<Pick<State, ScalarStateKey>>
   /** İstemcinin okuduğu sürümler (gövdedeki `version`); tutmazsa 409, kayıt yoksa 404. */
   expectedVersions?: readonly ExpectedVersion[]
-  /** Denetim kaydının varlığı; verilmezse ilk değişen kayıt. */
-  entity?: { type: string; id: string }
+  /**
+   * Denetim kaydının varlığı (işlemin konusu, ör. `{ type: 'prospects', id }`). Zorunlu: ilk
+   * değişen kayıt çoğu zaman yan kayıttır (taksit, katılım) ve denetimi yanlış varlığa bağlar.
+   */
+  entity: { type: string; id: string }
   makeId?: MakeId
   run: (state: State, tools: OperationTools) => R
 }
@@ -304,8 +307,8 @@ export async function runOperation<R>(
         actorUserId: ctx.actor.userId,
         actorRole: ctx.actor.role,
         action: request.action,
-        entityType: request.entity?.type ?? first.collection,
-        entityId: request.entity?.id ?? first.id,
+        entityType: request.entity.type,
+        entityId: request.entity.id,
         changes: { fields: [...fields].sort() },
         createdAt: ctx.now,
       })

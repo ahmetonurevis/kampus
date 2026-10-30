@@ -97,6 +97,7 @@ describe('işlem çalıştırıcı', () => {
     const ctx = await institution(['invoices'])
     const outcome = await runOperation(ctx, {
       action: 'invoice.pay',
+      entity: { type: 'invoices', id: unpaid.id },
       collections: ['invoices'],
       run: (state, { now }) => pay(state, now),
     })
@@ -127,6 +128,7 @@ describe('işlem çalıştırıcı', () => {
     const ctx = await institution(['invoices'])
     const request = {
       action: 'invoice.pay',
+      entity: { type: 'invoices', id: unpaid.id },
       collections: ['invoices'] as const,
       run: (state: State, { now }: { now: string }) => pay(state, now),
     }
@@ -148,6 +150,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
         collections: ['invoices'],
         expectedVersions: [{ collection: 'invoices', id: unpaid.id, version: 7 }],
         run,
@@ -157,6 +160,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
         collections: ['invoices'],
         expectedVersions: [{ collection: 'invoices', id: 'test-inv-missing', version: 1 }],
         run,
@@ -167,6 +171,7 @@ describe('işlem çalıştırıcı', () => {
 
     const outcome = await runOperation(ctx, {
       action: 'invoice.pay',
+      entity: { type: 'invoices', id: unpaid.id },
       collections: ['invoices'],
       expectedVersions: [{ collection: 'invoices', id: unpaid.id, version: 1 }],
       run,
@@ -181,6 +186,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(a, {
         action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
         collections: ['invoices'],
         run: (state, { now }) => pay(state, now),
       }),
@@ -252,6 +258,13 @@ describe('işlem çalıştırıcı', () => {
       12_000_000,
     )
     assert.equal((await findRecord(db, ctx.institutionId, 'prospects', prospect.id))?.version, 2)
+    // Denetim, çağıranın verdiği varlığa bağlanır; yazılan ilk kayda (sözleşme) değil.
+    const [audit] = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.institutionId, ctx.institutionId))
+    assert.deepEqual([audit?.entityType, audit?.entityId], ['prospects', prospect.id])
+    assert.equal(outcome.changes[0]?.collection, 'contracts')
   })
 
   test('doğrulama hatası 400 ve alan yollarıyla döner; hiçbir kayıt değişmez', async () => {
@@ -261,6 +274,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'prospect.enroll',
+        entity: { type: 'prospects', id: prospect.id },
         collections: enrollmentCollections,
         run: (state, { now, makeId }) =>
           enrollProspect(
@@ -289,6 +303,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
         collections: ['invoices'],
         run: (state, { now }) => {
           pay(state, now)
@@ -307,6 +322,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
         collections: ['invoices'],
         run: (state, { now }) => {
           pay(state, now)
@@ -324,6 +340,7 @@ describe('işlem çalıştırıcı', () => {
     assert.ok(assignment)
     const outcome = await runOperation(ctx, {
       action: 'transport.remove',
+      entity: { type: 'transportAssignments', id: assignment.id },
       collections: ['transportAssignments'],
       scalars: { modules: seed.modules },
       makeId: counterIds(),
@@ -458,6 +475,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'transport.remove',
+        entity: { type: 'transportAssignments', id: 'test-assignment' },
         collections: ['transportAssignments'],
         run: (state) => state.students.length,
       }),
@@ -466,6 +484,7 @@ describe('işlem çalıştırıcı', () => {
     await assert.rejects(
       runOperation(ctx, {
         action: 'transport.remove',
+        entity: { type: 'transportAssignments', id: 'test-assignment' },
         collections: ['transportAssignments'],
         // modules verilmedi: sessizce "kapalı" sayılmaz.
         run: (state) => state.modules.transport,
@@ -568,6 +587,7 @@ describe('işlem çalıştırıcı', () => {
     const before = await snapshot(ctx.institutionId)
     const outcome = await runOperation(ctx, {
       action: 'invoice.read',
+      entity: { type: 'invoices', id: 'test-all' },
       collections: ['invoices'],
       run: (state) => state.invoices.length,
     })

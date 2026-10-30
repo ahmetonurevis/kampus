@@ -346,6 +346,8 @@ const commandRoles: Partial<Record<string, readonly Role[]>> = {
   'club-archive': ['yonetici', 'ogretmen'],
 }
 export function mayRun(session: Session, command: string) {
+  // Komut adı dışarıdan gelir; `toString` gibi yerleşik özellikler tabloda yok sayılır.
+  if (!Object.hasOwn(commandRoles, command)) return false
   return !!commandRoles[command]?.includes(session.role)
 }
 export function workflowScope(state: State, session: Session) {
@@ -702,6 +704,8 @@ function executeWorkflow(
   recordId: string | undefined,
   now: string,
 ) {
+  if (!Object.hasOwn(moduleOf, command))
+    throw new DomainError('unknown_command', 'İşlem bulunamadı.')
   const module = moduleOf[command]
   if (!module || !state.modules[module])
     throw new DomainError('module_disabled', 'Bu modül kullanıma kapalı.', { kind: 'forbidden' })

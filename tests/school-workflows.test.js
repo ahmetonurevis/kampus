@@ -7,6 +7,7 @@ import {
   renewalQuote,
   examProgress,
   workflowScope,
+  mayRun,
 } from '../packages/school-core/src/lib/school-workflows.ts'
 import {
   workflowRows,
@@ -523,4 +524,12 @@ test('İş akışı reddi DomainError, kod ve tür taşır: kapalı modül, bulu
     () => run(state, 'guidance', { studentId: 's1' }),
     isDomainError('module_disabled', 'forbidden'),
   )
+})
+
+test('Yerleşik nesne özelliği adı geçen komut TypeError değil unknown_command verir', () => {
+  const state = seed()
+  for (const command of ['toString', 'constructor', '__proto__', 'hasOwnProperty', 'bilinmeyen']) {
+    assert.equal(mayRun(session('yonetici'), command), false)
+    unchangedOnFailure(state, () => run(state, command), isDomainError('unknown_command'))
+  }
 })

@@ -1,21 +1,26 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
-import { exampleOpticalFile, runAssessment } from '@kampus/school-core/lib/assessment-automation.ts'
+import {
+  automationSchemas,
+  exampleOpticalFile,
+  runAssessment,
+} from '@kampus/school-core/lib/assessment-automation.ts'
 import type { Session } from '@kampus/school-core/lib/domain.ts'
 import {
   answerFileProblem,
+  answerTextProblem,
+  decodeAnswerFile,
+  formFieldOf,
   evaluationRows,
   examsWithoutProfile,
-  previewAnswerFile,
-  previewSummary,
+  profileFormDefaults,
   profileGaps,
   profileRows,
 } from '../src/pages/assessment/optical-model.ts'
 
 const NOW = '2026-10-30T09:00:00.000Z'
 const admin: Session = { role: 'yonetici' }
-const teacher: Session = { role: 'ogretmen', links: [{ kind: 'teacher', recordId: 't1' }] }
 
 const fresh = (): State => structuredClone(createSeed(new Date(NOW)))
 let counter = 0
@@ -70,51 +75,47 @@ test('profili olmayan denemeler yöneticide listelenir', () => {
   assert.ok(ids.includes('exam-8-1'))
 })
 
-test('geçerli dosya önizlenir; kayıt oluşmaz ve özet sayıları doğrudur', () => {
-  const state = fresh()
-  const before = JSON.stringify(state)
-  const text = exampleOpticalFile(state, profileOf(state))
-  const preview = previewAnswerFile(state, admin, profileOf(state).id, text)
-  assert.ok(preview.ok)
-  assert.equal(JSON.stringify(state), before)
-  assert.equal(preview.summary.students, 3)
-  assert.equal(preview.summary.results, preview.rows.length)
-  assert.deepEqual(preview.summary, previewSummary(preview.rows))
+test('UTF-8 dosya olduğu gibi, Windows-1254 dosya Türkçe karakterleri bozmadan çözülür', () => {
+  const utf8 = new TextEncoder().encode('student;booklet;answers\n2026001;A;şğı')
+  assert.deepEqual(decodeAnswerFile(utf8), {
+    text: 'student;booklet;answers\n2026001;A;şğı',
+    encoding: 'utf-8',
+  })
+  // Windows-1254: ş=0xFE, ğ=0xF0, ı=0xFD (geçerli UTF-8 değildir).
+  const legacy = Uint8Array.from([0x41, 0x3b, 0xfe, 0xf0, 0xfd])
+  assert.deepEqual(decodeAnswerFile(legacy), { text: 'A;şğı', encoding: 'windows-1254' })
+  // UTF-8 BOM metne karışmaz.
+  const bom = Uint8Array.from([0xef, 0xbb, 0xbf, 0x41])
+  assert.equal(decodeAnswerFile(bom).text, 'A')
 })
 
-test('ön kontrol hataları satır numarasıyla bildirilir', () => {
-  const state = fresh()
-  const id = profileOf(state).id
-  const head = 'student;booklet;answers\n'
-  const unmatched = previewAnswerFile(state, admin, id, `${head}9999999;A;BBBDABCDABCD\n`)
-  assert.ok(!unmatched.ok)
-  assert.equal(unmatched.code, 'optical_student_unmatched')
-  assert.match(unmatched.message, /2\. satırdaki öğrenci tekil eşleşmedi: 9999999/)
-
-  const short = previewAnswerFile(state, admin, id, `${head}2026001;A;BBB\n`)
-  assert.ok(!short.ok)
-  assert.equal(short.code, 'optical_answer_count_mismatch')
-  assert.match(short.message, /2\. satırda 12 cevap bekleniyor/)
-
-  assert.ok(!previewAnswerFile(state, admin, id, 'ad;puan\n2026001;5\n').ok)
-
-  const row = '2026001;A;BBBDABCDABCD\n'
-  const duplicate = previewAnswerFile(state, admin, id, `${head}${row}${row}`)
-  assert.ok(!duplicate.ok)
-  assert.match(duplicate.message, /3\. satırda öğrenci yineleniyor/)
-
-  assert.ok(!previewAnswerFile(state, admin, id, '').ok)
+test('yapıştırılan metin 1 MB üstündeyse reddedilir (bayt olarak ölçülür)', () => {
+  assert.equal(answerTextProblem('a'.repeat(1024 * 1024)), null)
+  assert.match(answerTextProblem('a'.repeat(1024 * 1024 + 1)) ?? '', /1 MB/)
+  // Çok baytlı karakterler karakter sayısıyla değil bayt sayısıyla sayılır.
+  assert.match(answerTextProblem('ş'.repeat(600_000)) ?? '', /1 MB/)
 })
 
-test('bilinmeyen profil hata olur; öğretmen yalnız kendi dersini görür', () => {
+test('profil formu varsayılanları: yeni profil CSV ve okul numarası, düzenleme kayıttan', () => {
   const state = fresh()
+  const created = profileFormDefaults(undefined, 'exam-8-1')
+  assert.equal(created.examId, 'exam-8-1')
+  assert.equal(created.format, 'csv')
+  assert.equal(created.identifier, 'number')
+  assert.match(String(created.keyCsv), /^booklet;question;subjectId;topic;answer/)
   const profile = profileOf(state)
-  const missing = previewAnswerFile(state, admin, 'yok', 'student;booklet;answers\n')
-  assert.ok(!missing.ok)
-  assert.equal(missing.code, 'record_not_found')
-  const text = exampleOpticalFile(state, profile, teacher)
-  const own = previewAnswerFile(state, teacher, profile.id, text)
-  if (own.ok) assert.ok(own.rows.every((row) => row.subjectId === 'math'))
+  const edited = profileFormDefaults(profile, 'baska')
+  assert.equal(edited.examId, profile.examId)
+  assert.equal(edited.title, profile.title)
+  assert.equal(edited.keyCsv, profile.keyCsv)
+  // Varsayılan değerler core profil şemasından geçer (ek alan istenmez).
+  const parsed = automationSchemas.profile.safeParse({ ...created, title: 'Yeni profil' })
+  assert.ok(parsed.success)
+})
+
+test('sunucu alan yolu forma tek alan olarak bağlanır', () => {
+  assert.equal(formFieldOf('keyCsv.line.4'), 'keyCsv')
+  assert.equal(formFieldOf('title'), 'title')
 })
 
 test('kayıtlı analiz güncelken kullanılabilir; anahtar veya sonuç değişince eski sayılır', () => {

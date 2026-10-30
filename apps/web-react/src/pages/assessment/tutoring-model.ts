@@ -1,19 +1,18 @@
 // Otomatik etüt ekranının saf hesapları. Plan, çakışma ve kapsam kuralları core
-// `lib/assessment-automation.ts` ve `lib/tutor-conflicts.ts`'tedir; burada ikinci kopya yazılmaz.
-// Plan önizlemesi sunucuya yazmaz: aynı core `planTutoring` istemcide çalışır, son onayda
-// sunucu planı yeniden hesaplar.
-import { ZodError } from 'zod'
+// `lib/assessment-automation.ts` ve `lib/tutor-conflicts.ts`'tedir; plan önizlemesini ve onayını
+// sunucu hesaplar (`POST /assessment/plan[/preview]`). Burada ikinci kopya yazılmaz: yalnız form
+// değerleri, sunucu yanıtının ekran satırlarına çevrilmesi ve liste satırları bulunur.
+import type { ApiError } from '@kampus/api-client/errors.ts'
+import type { TutoringPlanPreview } from '@kampus/react-shared/use-assessment-commands.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import {
-  planTutoring,
+  automationSchemas,
   tutoringSessions,
   type AttendanceMark,
 } from '@kampus/school-core/lib/assessment-automation.ts'
 import type { Session } from '@kampus/school-core/lib/domain.ts'
-import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { sessionTeacherId } from '@kampus/school-core/lib/scope.ts'
-import { ASSESSMENT_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 import type { CollectionName } from '@kampus/school-core/modules/collection-modules.ts'
 
 /** Etüt listesi: tüm roller kendi kapsamında okur (sunucu daraltır). İlki ana koleksiyondur. */
@@ -24,13 +23,13 @@ export const TUTORING_LIST_SOURCES = [
 ] as const satisfies readonly CollectionName[]
 
 /**
- * Plan önizlemesinin okuduğu koleksiyonlar: core komut tablosundaki `plan` listesi (deneme,
- * optik analiz, uygunluk, ders/randevu/etkinlik çakışma kaynakları). İlki ana koleksiyondur.
+ * Plan formunun okuduğu koleksiyonlar: deneme listesi ve sunum adları (ders; öğretmen ve öğrenci
+ * adları kapsam kaynaklarından gelir). Plan hesabı için koleksiyon okunmaz. İlki ana koleksiyondur.
  */
-export const TUTORING_PLAN_SOURCES: readonly CollectionName[] = [
+export const TUTORING_PLAN_SOURCES = [
   'mockExams',
-  ...ASSESSMENT_COMMANDS.plan.collections,
-]
+  'subjects',
+] as const satisfies readonly CollectionName[]
 
 export const ATTENDANCE_MARKS = ['Geldi', 'Gelmedi', 'İzinli'] as const satisfies AttendanceMark[]
 
@@ -124,15 +123,6 @@ export function defaultPlanValues(now: string, examId = ''): PlanFormValues {
   }
 }
 
-export type PlanSummary = {
-  sessions: number
-  students: number
-  unresolvedGroups: number
-  unresolvedStudents: number
-  covered: number
-  evaluatedStudents: number
-}
-
 export type PlanSessionRow = {
   key: string
   title: string
@@ -141,128 +131,95 @@ export type PlanSessionRow = {
   room: string
   students: string
   capacity: string
+  /** Grup kapasiteye ulaştı (en küçük: grup üst sınırı, derslik kapasitesi). */
   full: boolean
 }
 
-export type PlanUnresolvedRow = { key: string; title: string; students: number; reason: string }
+export type PlanUnresolvedRow = {
+  key: string
+  title: string
+  students: string
+  studentCount: number
+  reason: string
+}
 
-type Plan = ReturnType<typeof planTutoring>
+export type PlanCoveredRow = { key: string; topic: string; students: string }
 
-export type PlanPreview =
-  | {
-      ok: true
-      /** Sunucuya `expectedPlan` olarak gönderilen metin (core planının JSON'u). */
-      signature: string
-      summary: PlanSummary
-      sessions: PlanSessionRow[]
-      unresolved: PlanUnresolvedRow[]
-      /** Kapasite ve zaman çakışması uyarıları. */
-      warnings: string[]
-    }
-  | { ok: false; message: string; fields: Partial<Record<keyof PlanFormValues, string>> }
+export type PlanView = {
+  sessions: PlanSessionRow[]
+  unresolved: PlanUnresolvedRow[]
+  covered: PlanCoveredRow[]
+  summary: {
+    sessions: number
+    students: number
+    unresolvedGroups: number
+    unresolvedStudents: number
+    covered: number
+    evaluatedStudents: number
+  }
+}
 
-export function planSummary(plan: Plan): PlanSummary {
+type Names = Pick<State, 'subjects' | 'teachers' | 'students'>
+
+/**
+ * Sunucu plan önizlemesini ekran satırlarına çevirir: öğretmen, ders ve öğrenci adları okunan
+ * koleksiyonlardan gelir (önizleme yalnız kimlik döner). Plan hesabı sunucudadır; burada
+ * yalnız sunum yapılır.
+ */
+export function planView(plan: TutoringPlanPreview, state: Names): PlanView {
+  const subject = (id: string) => state.subjects.find((item) => item.id === id)?.name ?? id
+  const teacher = (id: string) => state.teachers.find((item) => item.id === id)?.name ?? id
+  const names = (ids: readonly string[]) =>
+    ids.map((id) => state.students.find((item) => item.id === id)?.name ?? id).join(', ')
   return {
-    sessions: plan.sessions.length,
-    students: new Set(plan.sessions.flatMap((s) => s.studentIds)).size,
-    unresolvedGroups: plan.unresolved.length,
-    unresolvedStudents: plan.unresolved.reduce((sum, group) => sum + group.studentIds.length, 0),
-    covered: plan.covered.length,
-    evaluatedStudents: plan.evaluatedStudents,
+    sessions: plan.sessions.map((item, index) => ({
+      key: `${item.subjectId}:${item.topic}:${item.date}:${item.teacherId}:${item.roomClassId}:${index}`,
+      title: `${subject(item.subjectId)} · ${item.topic}`,
+      when: `${dateLabel(item.date)} ${timeLabel(item.date)}`,
+      teacher: teacher(item.teacherId),
+      room: item.room,
+      students: names(item.studentIds),
+      capacity: `${item.studentIds.length}/${item.capacity}`,
+      full: item.studentIds.length >= item.capacity,
+    })),
+    unresolved: plan.unresolved.map((item, index) => ({
+      key: `${item.subjectId}:${item.topic}:${index}`,
+      title: `${subject(item.subjectId)} · ${item.topic}`,
+      students: names(item.studentIds),
+      studentCount: item.studentIds.length,
+      reason: item.reason,
+    })),
+    covered: coveredRows(plan, names),
+    summary: {
+      sessions: plan.summary.sessionCount,
+      students: new Set(plan.sessions.flatMap((item) => item.studentIds)).size,
+      unresolvedGroups: plan.summary.unresolvedGroupCount,
+      unresolvedStudents: plan.summary.unresolvedStudentCount,
+      covered: plan.summary.coveredCount,
+      evaluatedStudents: plan.evaluatedStudents,
+    },
   }
 }
 
-const DATE_RANGE_CODES = new Set(['tutoring_date_range_invalid'])
-
-/**
- * Plan önizlemesi (saf; `planTutoring` kayıt oluşturmaz). Form hataları alan alan döner: Zod
- * maddeleri alan adıyla, core tarih/ders kuralı ilgili alana yazılır.
- */
-export function previewPlan(
-  state: State,
-  session: Session,
-  values: PlanFormValues,
-  now: string,
-): PlanPreview {
-  try {
-    const plan = planTutoring(state, session, values, now)
-    const subjectName = (id: string) => state.subjects.find((s) => s.id === id)?.name ?? id
-    const teacherName = (id: string) => state.teachers.find((t) => t.id === id)?.name ?? id
-    const sessions = plan.sessions.map((s, index) => ({
-      key: `${s.subjectId}:${s.topic}:${s.date}:${s.teacherId}:${s.roomClassId}:${index}`,
-      title: `${subjectName(s.subjectId)} · ${s.topic}`,
-      when: `${dateLabel(s.date)} ${timeLabel(s.date)}`,
-      teacher: teacherName(s.teacherId),
-      room: s.room,
-      students: s.studentIds
-        .map((id) => state.students.find((x) => x.id === id)?.name ?? id)
-        .join(', '),
-      capacity: `${s.studentIds.length}/${s.capacity}`,
-      full: s.studentIds.length >= s.capacity,
-    }))
-    const unresolved = plan.unresolved.map((group, index) => ({
-      key: `${group.subjectId}:${group.topic}:${index}`,
-      title: `${subjectName(group.subjectId)} · ${group.topic}`,
-      students: group.studentIds.length,
-      reason: group.reason,
-    }))
-    // Aynı uyarı birden çok grupta çıkabilir; tekrarlar tek satır olur.
-    const warnings = new Set([
-      ...sessions
-        .filter((row) => row.full)
-        .map((row) => `${row.title}: derslik kapasitesi doldu (${row.capacity}).`),
-      ...unresolved.map(
-        (row) => `${row.title}: ${row.students} öğrenci yerleşemedi. ${row.reason}`,
-      ),
-    ])
-    return {
-      ok: true,
-      signature: JSON.stringify(plan),
-      summary: planSummary(plan),
-      sessions,
-      unresolved,
-      warnings: [...warnings],
-    }
-  } catch (error) {
-    if (error instanceof ZodError) {
-      const fields: Partial<Record<keyof PlanFormValues, string>> = {}
-      for (const issue of error.issues) {
-        const key = issue.path[0]
-        if (typeof key === 'string' && key in values && !(key in fields))
-          fields[key as keyof PlanFormValues] = issue.message
-      }
-      return { ok: false, message: 'Plan bilgilerini kontrol edin.', fields }
-    }
-    if (error instanceof DomainError) {
-      const field: keyof PlanFormValues = DATE_RANGE_CODES.has(error.code)
-        ? 'fromDate'
-        : error.code === 'subject_out_of_scope'
-          ? 'subjectId'
-          : 'examId'
-      return { ok: false, message: error.message, fields: { [field]: error.message } }
-    }
-    throw error
+/** Zaten etütle karşılanan kazanımlar, kazanım başına öğrenci adlarıyla. */
+function coveredRows(
+  plan: TutoringPlanPreview,
+  names: (ids: readonly string[]) => string,
+): PlanCoveredRow[] {
+  const byTopic = new Map<string, string[]>()
+  for (const item of plan.covered) {
+    const list = byTopic.get(item.topic) ?? []
+    list.push(item.studentId)
+    byTopic.set(item.topic, list)
   }
+  return [...byTopic].map(([topic, ids]) => ({ key: topic, topic, students: names(ids) }))
 }
 
-/**
- * Onay sırasında sunucu planı değiştirdi (409): önceki ve güncel plan özeti kıyaslanır.
- * İki plan aynıysa `null` (fark yok).
- */
-export function planDifference(before: PlanSummary, after: PlanSummary): string | null {
-  const fields = [
-    'sessions',
-    'students',
-    'unresolvedGroups',
-    'unresolvedStudents',
-    'covered',
-  ] as const
-  if (fields.every((field) => before[field] === after[field])) return null
-  return `Önceki plan: ${before.sessions} etüt, ${before.students} öğrenci, ${before.unresolvedStudents} yerleşemeyen öğrenci. Güncel plan: ${after.sessions} etüt, ${after.students} öğrenci, ${after.unresolvedStudents} yerleşemeyen öğrenci.`
-}
+export type PlanFields = Partial<Record<keyof PlanFormValues, string>>
+export type PlanFailure = { message: string; fields: PlanFields }
 
-/** Plan onayı isteği: form değerleri (sayıya çevrilmiş) ve verilmişse önizlemedeki plan. */
-export function planRequest(values: PlanFormValues, signature: string | null) {
+/** Plan isteği: form değerleri sayıya çevrilir; bayat plan onayında `expectedPlan` eklenir. */
+export function planRequest(values: PlanFormValues, expectedPlan?: string) {
   return {
     examId: values.examId,
     threshold: Number(values.threshold),
@@ -272,15 +229,112 @@ export function planRequest(values: PlanFormValues, signature: string | null) {
     maxGroupSize: Number(values.maxGroupSize),
     branchId: values.branchId,
     subjectId: values.subjectId,
-    ...(signature === null ? {} : { expectedPlan: signature }),
+    ...(expectedPlan === undefined ? {} : { expectedPlan }),
   }
 }
 
+function fieldOf(path: readonly PropertyKey[], values: PlanFormValues) {
+  const key = path[0]
+  return typeof key === 'string' && key in values ? (key as keyof PlanFormValues) : undefined
+}
+
 /**
- * `expectedPlan` yalnız yöneticide gönderilir: öğretmenin okuduğu ders/randevu/etkinlik kayıtları
- * kendi kapsamına daraltıldığı için istemci planı sunucunun (tüm kurum) planından farklı çıkabilir
- * ve her onay "plan değişmiş" olurdu. Öğretmende sunucu planı yeniden hesaplayıp yazar.
+ * İstek göndermeden önce core Zod şemasıyla alan denetimi (sunucuyla aynı şema): geçerliyse
+ * istek, değilse alan alan Türkçe ileti. Karar yine sunucunundur.
  */
-export function sendsExpectedPlan(session: Pick<Session, 'role'>): boolean {
-  return session.role === 'yonetici'
+export function checkPlanForm(
+  values: PlanFormValues,
+): { ok: true; request: ReturnType<typeof planRequest> } | { ok: false; failure: PlanFailure } {
+  const request = planRequest(values)
+  const parsed = automationSchemas.plan.safeParse(request)
+  if (parsed.success) return { ok: true, request }
+  const fields: PlanFields = {}
+  for (const issue of parsed.error.issues) {
+    const field = fieldOf(issue.path, values)
+    if (field && !(field in fields)) fields[field] = issue.message
+  }
+  return { ok: false, failure: { message: 'Plan bilgilerini kontrol edin.', fields } }
+}
+
+const DATE_RANGE_CODES = new Set(['tutoring_date_range_invalid'])
+
+/**
+ * Sunucunun plan önizleme hatası (400 doğrulama maddeleri veya 422 iş kuralı) alan iletisine
+ * çevrilir: Zod maddeleri alan adıyla, tarih ve ders kuralları ilgili alana, diğerleri deneme
+ * alanına yazılır.
+ */
+export function planFailure(error: ApiError, values: PlanFormValues): PlanFailure {
+  const fields: PlanFields = {}
+  for (const issue of error.issues) {
+    const field = fieldOf(issue.path, values)
+    if (field && !(field in fields)) fields[field] = issue.message
+  }
+  if (Object.keys(fields).length > 0) return { message: 'Plan bilgilerini kontrol edin.', fields }
+  const field: keyof PlanFormValues = DATE_RANGE_CODES.has(error.code)
+    ? 'fromDate'
+    : error.code === 'subject_out_of_scope'
+      ? 'subjectId'
+      : 'examId'
+  return { message: error.message, fields: { [field]: error.message } }
+}
+
+// --- Öğretmen uygunluk saatleri ---------------------------------------------------------
+
+/** Uygunluk sayfasının okuduğu koleksiyonlar; ilki ana koleksiyondur. */
+export const AVAILABILITY_SOURCES = [
+  'availability',
+  'teachers',
+] as const satisfies readonly CollectionName[]
+
+export type AvailabilityRow = {
+  id: string
+  teacherId: string
+  teacher: string
+  date: string
+  when: string
+  duration: number
+  /** Kaldırma düğmesi: yönetici herkesin, öğretmen kendi saatini (sunucu da zorlar). */
+  manageable: boolean
+  past: boolean
+}
+
+export function availabilityRows(state: State, session: Session, now: string): AvailabilityRow[] {
+  const own = sessionTeacherId(state, session)
+  const admin = session.role === 'yonetici'
+  return state.availability
+    .map((slot) => ({
+      id: slot.id,
+      teacherId: slot.teacherId,
+      teacher: state.teachers.find((item) => item.id === slot.teacherId)?.name ?? slot.teacherId,
+      date: slot.date,
+      when: `${dateLabel(slot.date, { weekday: 'short', year: 'numeric' })} ${timeLabel(slot.date)}`,
+      duration: slot.duration,
+      manageable: admin || (own !== undefined && slot.teacherId === own),
+      past: Date.parse(slot.date) <= Date.parse(now),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+}
+
+export type SlotFormValues = { teacherId: string; date: string; duration: string }
+
+/**
+ * Formdaki yerel tarih-saat (`datetime-local`, Europe/Istanbul) ISO anına çevrilir; geçersiz
+ * değer olduğu gibi kalır ve şema "Geçerli bir tarih ve saat seçin." der.
+ */
+export function slotRequest(values: SlotFormValues) {
+  const local = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(values.date)
+  const iso = local ? new Date(`${values.date}:00+03:00`) : null
+  return {
+    teacherId: values.teacherId,
+    date: iso && Number.isFinite(iso.getTime()) ? iso.toISOString() : values.date,
+    duration: Number(values.duration),
+  }
+}
+
+/** Kaydedilebilir öğretmenler: yönetici aktif öğretmenlerden seçer, öğretmen yalnız kendisi. */
+export function slotTeachers(state: State, session: Session): { id: string; name: string }[] {
+  const own = sessionTeacherId(state, session)
+  return state.teachers
+    .filter((teacher) => teacher.isActive && (session.role === 'yonetici' || teacher.id === own))
+    .map((teacher) => ({ id: teacher.id, name: teacher.name }))
 }

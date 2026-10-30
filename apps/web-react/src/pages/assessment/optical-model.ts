@@ -1,16 +1,15 @@
-// Optik değerlendirme ekranının saf hesapları. Ayrıştırma, eşleştirme ve net hesabı core
-// `lib/assessment-automation.ts`'tedir; burada ikinci kopya yazılmaz, yalnız ekran satırları ve
-// ön kontrol sonucu türetilir.
-import { ZodError } from 'zod'
+// Optik değerlendirme ekranının saf hesapları. Ayrıştırma, eşleştirme ve net hesabı sunucuda
+// (core `lib/assessment-automation.ts`, `POST /assessment/evaluate/preview`) yapılır; burada
+// yalnız dosya hazırlığı (kodlama, boyut) ve ekran satırları türetilir.
+import type { z } from 'zod'
+import { FILE_TOO_LARGE_MESSAGE } from '@kampus/react-shared/assessment-feedback.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import {
   automationExams,
   currentEvaluations,
-  previewOptical,
-  type OpticalPreviewRow,
+  type automationSchemas,
 } from '@kampus/school-core/lib/assessment-automation.ts'
 import type { Session } from '@kampus/school-core/lib/domain.ts'
-import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import type { CollectionName } from '@kampus/school-core/modules/collection-modules.ts'
 
 /** Optik sayfasının okuduğu koleksiyonlar; ilki ana koleksiyondur. */
@@ -22,14 +21,40 @@ export const OPTICAL_SOURCES = [
   'subjects',
 ] as const satisfies readonly CollectionName[]
 
-/** Cevap dosyası sınırı (core şeması: en fazla 1 MB, `.csv`/`.dat`/`.txt`). */
+/** Cevap dosyası sınırı (sunucu: alan en fazla 1 MB UTF-8, `.csv`/`.dat`/`.txt`). */
 export const ANSWER_FILE_MAX_BYTES = 1024 * 1024
 
-/** Seçilen dosya uygun değilse kullanıcıya Türkçe ileti; uygunsa `null`. */
+export const FILE_TYPE_MESSAGE = 'En fazla 1 MB boyutunda CSV, DAT veya TXT dosyası seçin.'
+
+/**
+ * Seçilen dosya uygun değilse kullanıcıya Türkçe ileti; uygunsa `null`. 1 MB üstü dosya
+ * sunucuya gönderilmeden reddedilir.
+ */
 export function answerFileProblem(file: { name: string; size: number }): string | null {
-  return file.size > ANSWER_FILE_MAX_BYTES || !/\.(csv|dat|txt)$/i.test(file.name)
-    ? 'En fazla 1 MB boyutunda CSV, DAT veya TXT dosyası seçin.'
+  if (file.size > ANSWER_FILE_MAX_BYTES) return FILE_TOO_LARGE_MESSAGE
+  return /\.(csv|dat|txt)$/i.test(file.name) ? null : FILE_TYPE_MESSAGE
+}
+
+/** Metin alanı UTF-8 olarak 1 MB'ı aşıyorsa ileti (yapıştırılan içerik de sınırlıdır). */
+export function answerTextProblem(text: string): string | null {
+  return new TextEncoder().encode(text).length > ANSWER_FILE_MAX_BYTES
+    ? FILE_TOO_LARGE_MESSAGE
     : null
+}
+
+export type DecodedFile = { text: string; encoding: 'utf-8' | 'windows-1254' }
+
+/**
+ * Okuyucu dosyasını çözer: önce katı UTF-8 (geçersiz bayt varsa hata), olmazsa Windows-1254.
+ * Böylece UTF-8 dosyalar bozulmaz, eski Türkçe okuyucu çıktıları (ş, ğ, ı) doğru okunur.
+ */
+export function decodeAnswerFile(bytes: Uint8Array): DecodedFile {
+  try {
+    return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), encoding: 'utf-8' }
+  } catch {
+    // UTF-8 değil: Türkçe okuyucuların ortak kodlaması Windows-1254'tür.
+    return { text: new TextDecoder('windows-1254').decode(bytes), encoding: 'windows-1254' }
+  }
 }
 
 const FORMAT_LABELS = { csv: 'CSV', fixed: 'DAT/TXT (sabit alan)' } as const
@@ -48,7 +73,7 @@ export type ProfileRow = {
   gaps: string[]
 }
 
-type Profile = State['opticalProfiles'][number]
+export type Profile = State['opticalProfiles'][number]
 
 /**
  * Profilin anahtar/kazanım eksikleri: sınavın her dersinde her kitapçıkta iptal edilmemiş en az
@@ -95,49 +120,6 @@ export function examsWithoutProfile(
   return automationExams(state, session)
     .filter((exam) => !state.opticalProfiles.some((profile) => profile.examId === exam.id))
     .map((exam) => ({ id: exam.id, title: exam.title }))
-}
-
-export type PreviewSummary = {
-  students: number
-  results: number
-  /** Aynı sınav/öğrenci/ders için kayıtlı sonucu güncelleyecek satırlar. */
-  replacing: number
-  multiple: number
-}
-
-export type OpticalPreview =
-  | { ok: true; rows: OpticalPreviewRow[]; summary: PreviewSummary }
-  | { ok: false; message: string; code: string }
-
-export function previewSummary(rows: readonly OpticalPreviewRow[]): PreviewSummary {
-  return {
-    students: new Set(rows.map((row) => row.studentId)).size,
-    results: rows.length,
-    replacing: rows.filter((row) => row.replaces).length,
-    multiple: rows.reduce((sum, row) => sum + row.multiple, 0),
-  }
-}
-
-/**
- * Cevap dosyası ön kontrolü: core `previewOptical` ile (saf işlem, kayıt oluşturmaz). Core ilk
- * hatada durur; ileti satır numarasını taşır ("3. satırdaki öğrenci tekil eşleşmedi: …").
- * Kaydı sunucu yine doğrular.
- */
-export function previewAnswerFile(
-  state: State,
-  session: Session,
-  profileId: string,
-  text: string,
-): OpticalPreview {
-  try {
-    const rows = previewOptical(state, session, { profileId, text })
-    return { ok: true, rows, summary: previewSummary(rows) }
-  } catch (error) {
-    if (error instanceof DomainError) return { ok: false, message: error.message, code: error.code }
-    if (error instanceof ZodError)
-      return { ok: false, message: error.issues[0]?.message ?? 'Dosya geçersiz.', code: 'invalid' }
-    throw error
-  }
 }
 
 export type EvaluationRow = {
@@ -200,4 +182,55 @@ export function evaluationRows(state: State, session: Session): EvaluationRow[] 
         staleReason,
       }
     })
+}
+
+export type ProfileFormInput = z.input<typeof automationSchemas.profile>
+export type ProfileFormOutput = z.output<typeof automationSchemas.profile>
+
+/** Anahtar şablonunun başlığı; yönetici sınavın sorularını satır satır ekler. */
+export const KEY_TEMPLATE = 'booklet;question;subjectId;topic;answer\n'
+
+/**
+ * Profil formunun başlangıç değerleri. Düzenlemede kayıttan (anahtar CSV'si dahil), oluşturmada
+ * CSV biçimi ve okul numarasıyla eşleşen varsayılanlardan başlar. CSV biçiminde konum alanları
+ * kullanılmaz ama şema istediği için geçerli varsayılanlarla gönderilir.
+ */
+export function profileFormDefaults(
+  profile: Profile | undefined,
+  examId: string,
+): ProfileFormInput {
+  if (profile)
+    return {
+      examId: profile.examId,
+      title: profile.title,
+      format: profile.format === 'fixed' ? 'fixed' : 'csv',
+      identifier: profile.identifier === 'id' ? 'id' : 'number',
+      headerLines: profile.headerLines,
+      studentStart: profile.studentStart,
+      studentLength: profile.studentLength,
+      bookletStart: profile.bookletStart,
+      bookletLength: profile.bookletLength,
+      answersStart: profile.answersStart,
+      answersLength: profile.answersLength,
+      keyCsv: profile.keyCsv,
+    }
+  return {
+    examId,
+    title: '',
+    format: 'csv',
+    identifier: 'number',
+    headerLines: 0,
+    studentStart: 1,
+    studentLength: 7,
+    bookletStart: 8,
+    bookletLength: 1,
+    answersStart: 9,
+    answersLength: 12,
+    keyCsv: KEY_TEMPLATE,
+  }
+}
+
+/** Sunucu alan yolu (`keyCsv.line.4`) formda tek alana (`keyCsv`) bağlanır. */
+export function formFieldOf(name: string): string {
+  return name.split('.')[0] ?? name
 }

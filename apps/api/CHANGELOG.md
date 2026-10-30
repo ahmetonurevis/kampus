@@ -2,6 +2,14 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Kampüs, öğretmen ve sınıf kaydetme uçları
+
+- `POST /api/v1/branches`, `POST /api/v1/teachers`, `POST /api/v1/classes`: kayıt oluşturur, 201 + `Location` (`/api/v1/collections/<koleksiyon>/<id>`). Gövde core şemasıdır (`branchSchema`, `teacherSchema`, `classInputSchema`: sınıf bilgisi + `subjectTeachers` ders → branş öğretmeni); sınıf ve ders atamaları tek işlemde yazılır. `Idempotency-Key` zorunlu; `If-Match` 400 `if_match_not_supported`.
+- `PATCH /api/v1/branches/:branchId`, `/teachers/:teacherId`, `/classes/:classId`: kısmi gövde (`branchPatchSchema`, `teacherPatchSchema`, `classPatchSchema`) kaydın güncel değerleriyle birleşip core `updateBranch`/`updateTeacher`/`updateClass` ile doğrulanır. `If-Match` zorunlu (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`); arşivli, olmayan veya başka kurumun kaydı 404. Sınıf düzenlemesi aynı dersin ders atamasını yerinde günceller (kimlik ve sürüm korunur).
+- Yetki core `branch.save`, `teacher.save`, `class.save`: yalnız `yonetici` (DOM-YTK-001; ön büro sınıf ve kontenjanı yalnız okur). Diğer roller 403. Kontenjan, branş, derslik, ad/e-posta tekilliği ve program/etüt çakışmaları core kurallarıdır (422/409). Denetim kaydı `branches|teachers|classes.create|update`, `changes` yalnız alan adları. Kampüs, sınıf ve kadro çekirdek kayıttır; modül denetimi yoktur.
+- Öğretmen kaydı hesap ve `membership_links` açmaz; hesap kurum üyeleri ucunun işidir.
+- `commandHeadersSchema(…, { ifMatch: 'required' })` ve `requireIfMatch()` ön işleyicisi eklendi. OpenAPI ve `api-client` şeması yeniden üretildi; migration yok.
+
 ## Genel Bakış tek özet ucu
 
 - `GET /api/v1/dashboard` (beş rol): Genel Bakış'ın kartları, kısa listeleri ve mini grafik verisi tek yanıtta; yanıt `role` ayırıcılı. Web rol başına 6-17 `counts`/liste isteği yerine tek istek atar. Değerler `countCollection`/`listCollection` ile hesaplanır (rol/kurum kapsamı, alan ayıklama ve türetilmiş durum `counts` ucuyla aynıdır); sayım hâlâ bellekte (`TODO(perf)`).

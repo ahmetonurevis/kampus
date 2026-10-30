@@ -42,6 +42,9 @@ const ExamAnalysisPage = lazy(async () => ({
 const AcademicProgressPage = lazy(async () => ({
   default: (await import('./academic/AcademicProgressPage.tsx')).AcademicProgressPage,
 }))
+const ClassAnalysisPage = lazy(async () => ({
+  default: (await import('./academic/ClassAnalysisPage.tsx')).ClassAnalysisPage,
+}))
 const TeacherReviewsPage = lazy(async () => ({
   default: (await import('./academic/TeacherReviewsPage.tsx')).TeacherReviewsPage,
 }))
@@ -170,6 +173,8 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
     case 'ogrenci/seviye-takibi':
     case 'veli/seviye-takibi':
       return <AcademicProgressPage page={page} />
+    case 'ogretmen/sinif-analizi':
+      return <ClassAnalysisPage page={page} />
     case 'veli/ogretmen-degerlendirmeleri':
       return <TeacherReviewsPage page={page} />
     case 'ogretmen/odevler':

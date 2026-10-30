@@ -21,7 +21,6 @@ const KNOWN_PLACEHOLDERS: readonly string[] = [
   'onburo/deneme-dersi-takvimi',
   'onburo/kayit-islemleri',
   'ogretmen/sorular',
-  'ogretmen/sinif-analizi',
   'ogretmen/randevular',
   'ogrenci/videolar',
   'ogrenci/soru-sor',

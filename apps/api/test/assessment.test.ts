@@ -380,7 +380,24 @@ describe('optik değerlendirme ve etüt uçları', () => {
       const other = await institution()
       const outsider = await member(other.id, 'ogretmen', [{ kind: 'teacher', recordId: 't33' }])
       const denied = await post(`${BASE}/evaluate`, outsider, evaluate, key())
-      assertError(denied, 422, 'optical_student_out_of_scope')
+      assertError(denied, 422, 'optical_student_unmatched')
+      assert.equal(await count(other.id, 'opticalEvaluations'), 0)
+      // Kapsam dışı numara ile kurumda olmayan numara ayırt edilemez: aynı kod, ileti ve satır yolu.
+      const [first] = classStudents('c1')
+      const existing = first?.number
+      assert.ok(existing)
+      const probe = async (cookie: string, number: string, url = `${BASE}/evaluate/preview`) => {
+        const text = ['student;booklet;answers', `${number};A;BBBDABCDABCD`].join('\n')
+        const response = await post(url, cookie, { ...evaluate, text })
+        assertError(response, 422, 'optical_student_unmatched')
+        return response.json() as { message: string; issues: { path: unknown[]; code: string }[] }
+      }
+      const known = await probe(outsider, existing)
+      const missing = await probe(outsider, '9999999')
+      assert.equal(known.message, missing.message.replace('9999999', existing))
+      assert.deepEqual(known.issues[0]?.path, ['text', 'line', 2])
+      assert.deepEqual(known.issues[0]?.path, missing.issues[0]?.path)
+      assert.equal(known.issues[0]?.code, missing.issues[0]?.code)
       assert.equal(await count(other.id, 'opticalEvaluations'), 0)
     })
 
@@ -908,7 +925,7 @@ describe('optik değerlendirme ve etüt uçları', () => {
       return response.json().data as { id: string; record: Record<string, unknown> }[]
     }
 
-    test('opticalProfiles: öğrenci ve veli 403, öğretmen ve yönetici okur; başka kurumun profili yok', async () => {
+    test('opticalProfiles: öğrenci ve veli cevap anahtarsız okur, ön büro 403, öğretmen ve yönetici anahtarla okur; başka kurumun profili yok', async () => {
       const a = await institution()
       const b = await institution()
       await insertMissingRecords(
@@ -924,12 +941,18 @@ describe('optik değerlendirme ve etüt uçları', () => {
         FIXED_NOW,
       )
       const url = '/api/v1/collections/opticalProfiles'
+      assert.equal((await get(url, await member(a.id, 'onburo'))).statusCode, 403)
+      // Öğrenci ve veli profili yalnız güncel analizi eşlemek için okur: anahtar alanları gelmez.
       for (const cookie of [
         await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's1' }]),
         await member(a.id, 'veli', [{ kind: 'child', recordId: 's1' }]),
-        await member(a.id, 'onburo'),
-      ])
-        assert.equal((await get(url, cookie)).statusCode, 403)
+      ]) {
+        const [profile] = await rows(url, cookie)
+        assert.equal(profile?.id, 'optical-exam-7-1')
+        assert.equal(profile.record.revision, 1)
+        assert.equal('keyCsv' in profile.record, false)
+        assert.equal('keys' in profile.record, false)
+      }
       const teacher = await member(a.id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }])
       for (const cookie of [a.adminCookie, teacher]) {
         const list = await rows(url, cookie)
@@ -937,23 +960,40 @@ describe('optik değerlendirme ve etüt uçları', () => {
           list.map((item) => item.id),
           ['optical-exam-7-1'],
         )
+        assert.ok(typeof list[0]?.record.keyCsv === 'string')
       }
     })
 
-    test('opticalEvaluations: öğretmen yalnız kendi branşını görür; öğrenci ve veli şimdilik 403', async () => {
+    test('opticalEvaluations: öğretmen yalnız kendi branşını görür; öğrenci ve veli yalnız kendi/çocuğunun analizini görür', async () => {
       const a = await evaluated()
       const url = '/api/v1/collections/opticalEvaluations'
       const [s1, s2] = classStudents('c1')
       assert.ok(s1 && s2)
-      // TODO(core-optical-student-read): core satır kuralı öğrenci/veliye kendi analizini verir,
-      // ama `optical` modülünün rolleri (menü: yonetici, ogretmen) koleksiyon erişimini kapatır.
-      // Belge "öğrenci ve veli kendi soru analizini görür" der; karar sabaha bırakıldı (en az yetki).
-      for (const cookie of [
-        await member(a.id, 'ogrenci', [{ kind: 'student', recordId: s1.id }]),
-        await member(a.id, 'veli', [{ kind: 'child', recordId: s2.id }]),
-        await member(a.id, 'onburo'),
-      ])
-        assert.equal((await get(url, cookie)).statusCode, 403)
+      assert.equal((await get(url, await member(a.id, 'onburo'))).statusCode, 403)
+      // Öğrenci kendi, veli bağlı çocuğunun analizini görür; başkasının adı, sonucu ve kimliği gelmez.
+      const student = await member(a.id, 'ogrenci', [{ kind: 'student', recordId: s1.id }])
+      const parent = await member(a.id, 'veli', [{ kind: 'child', recordId: s2.id }])
+      for (const [cookie, own] of [
+        [student, s1.id],
+        [parent, s2.id],
+      ] as const) {
+        const list = await rows(`${url}?pageSize=100`, cookie)
+        assert.ok(list.length > 0)
+        assert.ok(list.every((item) => item.record.studentId === own))
+        const other = (await rows(`${url}?pageSize=100`, a.adminCookie)).find(
+          (item) => item.record.studentId !== own,
+        )
+        assert.ok(other)
+        assert.equal(
+          list.some((item) => item.id === other.id),
+          false,
+        )
+        assert.equal((await get(`${url}/${other.id}`, cookie)).statusCode, 404)
+        assert.equal((await get(`${url}/${list[0]!.id}`, cookie)).statusCode, 200)
+      }
+      // Bağlantısı olmayan öğrenci hiçbir analiz görmez.
+      const stranger = await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's2' }])
+      assert.deepEqual(await rows(url, stranger), [])
       const teacher = await member(a.id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }])
       const own = await rows(url, teacher)
       assert.ok(own.length > 0)

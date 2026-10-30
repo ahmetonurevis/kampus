@@ -23,51 +23,16 @@ const MIGRATED: Partial<Record<MemberRole, Partial<Record<string, ApiScreen>>>> 
   },
 }
 
-type CorePage = (typeof navigation)[MemberRole][number]
-
-const communicationPage = (path: string, title: string, icon: string, description: string) =>
-  ({
-    path,
-    title,
-    icon,
-    module: 'communication',
-    view: 'Communication',
-    description,
-    group: 'İLETİŞİM',
-  }) satisfies CorePage
-
 /**
- * Çekirdek menüsünde yalnız öğrenci ve veli iletişim sayfası taşır; web de aynı boşluğu kendi
- * listesiyle kapatır (`apps/web-react/src/lib/navigation.ts`, TODO(core-nav-communication)).
- * Mobilde mesaj yalnız öğretmen, öğrenci ve veli içindir; yönetici ve ön büro yalnız duyuru görür.
+ * Telefonda iletişim sayfaları web'den dar okunur: yönetici ve ön büro yalnız duyuru okur, mesaj
+ * yazmaz; metinler buna göre sadeleşir. Veli sayfası web'de randevu da içerir, telefonda yalnız
+ * mesajlar vardır.
  */
-const EXTRA_PAGES: Partial<Record<MemberRole, readonly CorePage[]>> = {
-  yonetici: [
-    communicationPage('duyurular', 'Duyurular', 'Megaphone', 'Kurum duyurularını okuyun.'),
-  ],
-  onburo: [communicationPage('duyurular', 'Duyurular', 'Megaphone', 'Kurum duyurularını okuyun.')],
-  ogretmen: [
-    communicationPage('duyurular', 'Duyurular', 'Megaphone', 'Kurumdan haberler ve duyurular.'),
-    communicationPage(
-      'mesajlar',
-      'Mesajlar',
-      'MessagesSquare',
-      'Öğrencileriniz ve velileriyle yazışın.',
-    ),
-  ],
-}
-
-/** Veli sayfası web'de randevu da içerir; telefonda yalnız mesajlar vardır. */
 const TITLE_OVERRIDES: Partial<Record<string, { title: string; description: string }>> = {
+  'yonetici/duyurular': { title: 'Duyurular', description: 'Kurum duyurularını okuyun.' },
+  'onburo/duyurular': { title: 'Duyurular', description: 'Kurum duyurularını okuyun.' },
+  'ogretmen/duyurular': { title: 'Duyurular', description: 'Kurumdan haberler ve duyurular.' },
   'veli/randevu-mesaj': { title: 'Mesajlar', description: 'Öğretmeninizle yazışın.' },
-}
-
-function rolePages(role: MemberRole): CorePage[] {
-  const core = navigation[role]
-  const extra = (EXTRA_PAGES[role] ?? []).filter(
-    (added) => !core.some((page) => page.path === added.path),
-  )
-  return [...core, ...extra]
 }
 
 export type ApiPage = {
@@ -82,7 +47,7 @@ export type ApiPage = {
 /** Rolün taşınmış ve kurumda açık sayfaları (menü sırası korunur). */
 export function apiPages(session: Pick<MobileSession, 'role' | 'modules'>): ApiPage[] {
   const migrated = MIGRATED[session.role] ?? {}
-  return rolePages(session.role).flatMap((page) => {
+  return navigation[session.role].flatMap((page) => {
     const screen = migrated[page.path]
     if (!screen || !isModuleOpen(session.modules, page.module)) return []
     const override = TITLE_OVERRIDES[`${session.role}/${page.path}`]

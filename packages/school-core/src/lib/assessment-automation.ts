@@ -428,16 +428,15 @@ export function previewOptical(
         (s) => String(s[profile.identifier === 'number' ? 'number' : 'id']) === identity,
       )
     const [student] = matches
-    if (matches.length !== 1 || !student)
+    // Kapsam dışı öğrenci "yok" gibi davranır: aynı kod ve ileti, numaranın kurumda var olup
+    // olmadığını sızdırmaz. Pasif ama kapsamdaki öğrenciyi aktör zaten görür; ayrı ileti alır.
+    if (matches.length !== 1 || !student || !scope.studentIds.has(student.id))
       throw new DomainError(
         'optical_student_unmatched',
         `${row.line}. satırdaki öğrenci tekil eşleşmedi: ${identity || 'boş kimlik'}.`,
       )
-    if (!student.isActive || !scope.studentIds.has(student.id))
-      throw new DomainError(
-        'optical_student_out_of_scope',
-        `${row.line}. satırdaki öğrenci pasif veya yetki kapsamınız dışında.`,
-      )
+    if (!student.isActive)
+      throw new DomainError('optical_student_out_of_scope', `${row.line}. satırdaki öğrenci pasif.`)
     if (state.classes.find((c) => c.id === student.classId)?.grade !== exam.grade)
       throw new DomainError(
         'optical_level_mismatch',
@@ -825,7 +824,9 @@ export function runAssessment(
     collection = 'opticalEvaluations'
   } else if (command === 'plan') {
     const plan = planTutoring(state, session, input, now)
-    if (input.expectedPlan && input.expectedPlan !== JSON.stringify(plan))
+    // Yalnız yokluk (undefined/null) denetimi atlar; boş metin verilmiş ama eşleşmeyen plandır.
+    const expected = input.expectedPlan
+    if (expected !== undefined && expected !== null && expected !== JSON.stringify(plan))
       throw new DomainError(
         'tutoring_plan_stale',
         'Etüt planı değişmiş. Güncel planı yeniden önizleyin.',

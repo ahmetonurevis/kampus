@@ -385,7 +385,7 @@ test('Deneme listesi yeni tarihten eskiye sıralanır; net hesabı, öneri ve ge
     {
       command: 'exam-result',
       label: 'Sonuç gir',
-      recordId: 'exam-8-1',
+      recordId: undefined,
       initial: { examId: 'exam-8-1' },
     },
   ])
@@ -1102,4 +1102,33 @@ test('Oluşturma eylemi tablosunda karşılığı olmayan modüller boş liste d
   for (const path of ['optik-degerlendirme', 'otomatik-etut'])
     for (const role of ['yonetici', 'ogretmen', 'ogrenci', 'veli'] as const)
       assert.deepEqual(workflowCreateActions(state, session(role), path), [], `${role} ${path}`)
+})
+
+test('Kimliksiz oluşturma komutları ayrıntıdan kayıt kimliği taşımaz, konu kayıt initial ile gelir', () => {
+  const state = seed()
+  const cases = [
+    { page: 'deneme-sinavlari', command: 'exam-result', subject: 'examId' },
+    { page: 'okul-servisi', command: 'transport-assign', subject: 'routeId' },
+    { page: 'kulupler', command: 'achievement', subject: 'clubId' },
+  ] as const
+  const admin = session('yonetici')
+  for (const { page, command, subject } of cases) {
+    let found = 0
+    for (const row of workflowRows(state, admin, page, now)) {
+      for (const item of workflowDetails(state, admin, row).actions) {
+        if (item.command !== command) continue
+        found++
+        assert.equal(item.recordId, undefined, `${command} kimlik taşımamalı`)
+        assert.equal(item.initial?.[subject], row.id, `${command} konu kaydı initial'da`)
+      }
+    }
+    assert.ok(found > 0, `${command} eylemi hiç üretilmedi`)
+  }
+  // Kayda bağlı diğer eylemler kayıt kimliğini taşımaya devam eder.
+  const [meal] = workflowRows(state, admin, 'yemek-menusu', now)
+  assert.ok(meal)
+  assert.deepEqual(
+    workflowDetails(state, admin, meal).actions.map((a) => a.recordId),
+    [meal.id],
+  )
 })

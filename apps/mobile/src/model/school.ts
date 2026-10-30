@@ -9,7 +9,11 @@ import {
   slaStatus,
   timeLabel,
 } from '@kampus/school-core/lib/format.ts'
-import { navigation, roles } from '@kampus/school-core/modules/full-navigation.ts'
+import {
+  navigation as coreNavigation,
+  roles,
+  type NavigationPage,
+} from '@kampus/school-core/modules/full-navigation.ts'
 import { subjectsForGrade } from '@kampus/school-core/data/curriculum.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import type { Session } from '@kampus/school-core/lib/domain.ts'
@@ -108,7 +112,11 @@ type PageKinds = {
 }
 export type PageRow<P extends string> = Row<P extends keyof PageKinds ? PageKinds[P] : RowKind>
 
-export { navigation, roles }
+// Çevrimdışı demo menüsü: `apiOnly` iletişim sayfaları API modundadır (`api/pages.ts`), demoda yoktur.
+export const navigation = Object.fromEntries(
+  Object.entries(coreNavigation).map(([role, pages]) => [role, pages.filter((p) => !p.apiOnly)]),
+) as Record<Role, NavigationPage[]>
+export { roles }
 export const teacherId = 't1'
 export const moduleNames = {
   academic: 'Akademik',

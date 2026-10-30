@@ -163,6 +163,35 @@ test('Optik aktarım hatalı kimlik, tekrar, kitapçık, cevap ve kapsam durumla
   state.students[0]!.isActive = false
   failsUnchanged(state, () => evaluate(state), /pasif/)
 })
+test('Kapsam dışı ve olmayan öğrenci numarası aynı kod ve aynı iletiyle reddedilir (varlık sızmaz)', () => {
+  const state = seed()
+  const message = (text: string, session: Session) => {
+    try {
+      previewOptical(state, session, { profileId: state.opticalProfiles[0]!.id, text })
+    } catch (error) {
+      assert.ok(isDomainError('optical_student_unmatched')(error), `beklenen kod: ${String(error)}`)
+      return (error as Error).message
+    }
+    throw new Error('ret beklenirdi')
+  }
+  // 2026009 kurumda var ama öğretmenin sınıfı dışında; 9999999 hiç yok. İkisi ayırt edilemez.
+  const outside = state.students.find((s) => s.number === '2026009')
+  assert.ok(outside)
+  const header = 'student;booklet;answers\n2026001;A;BBBDABCDABCD\n'
+  const known = message(`${header}2026009;A;BBBDABCDABCD`, teacher)
+  const missing = message(`${header}9999999;A;BBBDABCDABCD`, teacher)
+  assert.equal(known.replace('2026009', 'X'), missing.replace('9999999', 'X'))
+  assert.match(known, /^3\. satırdaki öğrenci tekil eşleşmedi: 2026009\.$/)
+  // Yönetici için kapsam dışı yoktur; aynı numara başka bir nedenle (düzey) reddedilebilir ama
+  // eşleşmeyen numara öğretmenle aynı iletiyi alır.
+  assert.equal(message(`${header}9999999;A;BBBDABCDABCD`, admin), missing)
+  // Pasif ama kapsamdaki öğrenci kendi iletisini korur (öğretmen o öğrenciyi zaten görür).
+  state.students.find((s) => s.number === '2026001')!.isActive = false
+  assert.throws(
+    () => evaluate(state, responses(), teacher),
+    isDomainError('optical_student_out_of_scope'),
+  )
+})
 test('Öğretmen yalnızca kendi sınıf ve branş sonuçlarını yazar; örnek dosya kapsamına uygundur', () => {
   const state = seed(),
     oldTurkish = structuredClone(
@@ -179,7 +208,7 @@ test('Öğretmen yalnızca kendi sınıf ve branş sonuçlarını yazar; örnek 
   failsUnchanged(
     state,
     () => evaluate(state, responses('ABCDABCDABCD', '2026009'), teacher),
-    /kapsam/,
+    isDomainError('optical_student_unmatched'),
   )
   assert.equal(
     previewOptical(state, teacher, {
@@ -380,6 +409,23 @@ test('Etüt planlayıcı öğretmen/öğrenci/derslik/randevu ve etkinlik çakı
     status: 'Planlandı',
   })
   assert.equal(planTutoring(state, admin, input, now).sessions.length, 0)
+})
+test('Boş expectedPlan "verilmedi" sayılmaz: bayatlık denetimi atlanmaz, yalnız yokluk (undefined/null) atlar', () => {
+  const state = seed()
+  evaluate(state)
+  const confirm = (extra: Record<string, unknown>) =>
+    runAssessment(state, admin, 'plan', { ...input, ...extra }, id, '', now)
+  // Boş veya yanlış metin hiçbir kaydı değiştirmeden 409 `tutoring_plan_stale` ile reddedilir.
+  for (const expectedPlan of ['', ' ', '{}'])
+    failsUnchanged(
+      state,
+      () => confirm({ expectedPlan }),
+      isDomainError('tutoring_plan_stale', 'conflict'),
+    )
+  assert.equal(state.tutorSessions.length, 0)
+  // Alan hiç gönderilmezse (veya null ise) denetim yoktur: plan güncel veriyle yazılır.
+  assert.ok(confirm({ expectedPlan: null }))
+  assert.ok(state.tutorSessions.length > 0)
 })
 test('Yerleşmeyen etüt grupları açıklanır; son onay güncel verileri ve eski önizlemeyi denetler', () => {
   const state = seed()

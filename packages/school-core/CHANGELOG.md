@@ -1,5 +1,17 @@
 # Değişiklikler
 
+## 2.8.0
+
+Bekleyen `TODO(core-*)` işleri çekirdeğe taşındı; tüketicilerdeki geçici listeler silindi.
+
+- Menü (`modules/full-navigation.ts`): yönetici (Duyurular, Mesajlar), ön büro (Duyurular) ve öğretmen (Duyurular, Mesajlar) iletişim sayfaları `communication` modülü ve `İLETİŞİM` kategorisiyle çekirdek menüsünde. Hesap grubu varsa ondan önce eklenir. Bu sayfalar `apiOnly: true` taşır (`NavigationPage`): Vue demosu ve mobil çevrimdışı demo menüsü bunları düşürür; yeni web ve mobil API modu kullanır. Öğrenci ve veli iletişim sayfaları temel menüde zaten vardı, değişmedi.
+- `workflowDetails` eylemleri (`add`): kimliksiz oluşturma komutları `exam-result`, `transport-assign` ve `achievement` artık `recordId` taşımaz (önceden açılan kaydın kimliğini veriyordu; API bu komutlara `:recordId` kabul etmez). Konu kayıt `initial` ile taşınmaya devam eder (`examId`, `routeId`, `clubId`). Web'deki `apiAction` düzeltmesi kalktı.
+- Kapsam (`lib/scope.ts`): öğrenci ve veli `opticalEvaluations`'ı kendi / bağlı çocuğunun satırlarıyla okur (satır kuralı zaten vardı; `optical` modülünün menü rolleri okumayı kapatıyordu, `READ_BEYOND_MODULE_ROLES` ile açıldı). `opticalProfiles` öğrenci ve veliye açıldı, `keyCsv` ve `keys` (cevap anahtarı) alanları gizli (`HiddenField` genişledi); analizi güncel revizyonla eşlemek için gerekir. Ön büro ve kapalı modül davranışı değişmedi. Vue demosu aynı analizi zaten Deneme Sınavları detayında gösteriyordu.
+- Yeni: `Scope.readsWhole(koleksiyon)` rolün koleksiyonu satır ayrımı olmadan (erişim açık, satır kuralı koşulsuz) okuyup okumadığını bildirir. API'deki elle rol tablosu (`WHOLE_COLLECTION_ROLES`) kalktı; duyuru koşullu olduğundan yönetici ve ön büro için bütün okuma sayılmaz (API zaten sayfada `canRead` sapmasında bellek yoluna dönüyordu, yanıt değişmedi).
+- **Güvenlik (R5):** optik değerlendirmede aktörün kapsamı dışındaki öğrenci numarası, kurumda olmayan numarayla aynı kod (`optical_student_unmatched`) ve aynı iletiyle reddedilir; numaranın kurumda var olduğu sızmaz. Satır numarası korunur. `optical_student_out_of_scope` artık yalnız kapsamdaki pasif öğrenci için döner (ileti "pasif").
+- **Davranış:** `plan` onayında boş (`''`) `expectedPlan` artık "verilmedi" sayılmaz; verilmiş ama eşleşmeyen plan gibi `tutoring_plan_stale` (409) olur. Yalnız alanın yokluğu (`undefined`/`null`) bayatlık denetimini atlar. API şeması boş metni ayrıca reddeder (paralel iş).
+- Tüketiciler `workspace:2.8.0` sürümüne sabitlendi.
+
 ## 2.7.0
 
 Yazışma mesajları ayrı kayıtlarda (ADR 0005). HTTP yanıt şekilleri değişmedi.

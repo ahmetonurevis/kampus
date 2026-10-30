@@ -200,21 +200,6 @@ export function assertReadable(ctx: ServiceContext, scope: Scope, collection: Co
   }
 }
 
-/**
- * Okuyabildiği her koleksiyonu bütünüyle okuyan roller: core kurallarında yönetici ve ön büro
- * için satır kuralı her koleksiyonda koşulsuzdur (`all`); kapsam yalnız koleksiyon erişimi ve
- * alan ayıklamasıdır. Bu bilgiyle süzgeçsiz liste sayfalaması SQL'e iner (`collection-reads.ts`).
- * Testler her okunabilir koleksiyonda bu rollerin rastgele kimlikli satırı da okuduğunu doğrular;
- * çalışma anında sayfadaki her satır yine `canRead`'den geçer, geçmeyen olursa bellek yoluna
- * dönülür.
- * TODO(core-full-scope): core "rol koleksiyonun tamamını okur" bilgisini verince tablo kalkar.
- */
-const WHOLE_COLLECTION_ROLES: ReadonlySet<Role> = new Set<Role>(['yonetici', 'onburo'])
-
-export function readsWholeCollection(scope: Scope, collection: CollectionName): boolean {
-  return WHOLE_COLLECTION_ROLES.has(scope.actor.role) && scope.access(collection).allowed
-}
-
 type ScopeKey = 'studentId' | 'classId'
 
 /**

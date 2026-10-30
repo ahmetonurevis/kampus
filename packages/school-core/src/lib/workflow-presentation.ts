@@ -1,6 +1,8 @@
-// @ts-nocheck — TODO(ts): tiplenecek (C2)
+import type { State } from '../data/seed.ts'
+import type { Role } from '../modules/navigation.ts'
 import { workflowPage } from '../modules/school-workflows.ts'
 import { currentEvaluations } from './assessment-automation.ts'
+import type { Session } from './domain.ts'
 import {
   workflowScope,
   mayRun,
@@ -12,31 +14,116 @@ import {
 import { dateLabel, money, timeLabel, dayKey } from './format.ts'
 import { subjectsForGrade } from '../data/curriculum.ts'
 
-const name = (state, collection, id) => state[collection].find((r) => r.id === id)?.name || '—'
-const subject = (state, id) => name(state, 'subjects', id)
-const labelDate = (value) => dateLabel(value, { year: 'numeric' })
-const row = (source, title, subtitle, body, status, kind) => ({
-  id: source.id,
-  source,
-  title,
-  subtitle,
-  body,
-  status,
-  kind,
-  meta: [],
-  date: source.dueDate || source.followUp || source.date || source.createdAt,
-})
+type Goal = State['studentGoals'][number]
+type GuidanceCase = State['guidanceCases'][number]
+// Veli ve öğrenciye dönen rehberlik kaydında iç notlar boşaltılır.
+type RedactedGuidanceCase = Omit<GuidanceCase, 'internalNote' | 'notes'> & {
+  internalNote: undefined
+  notes: undefined
+}
+type NamedCollection = 'subjects' | 'students' | 'classes' | 'teachers' | 'branches'
+type RowSource = {
+  id: string
+  dueDate?: string
+  followUp?: string
+  date?: string
+  createdAt?: string
+}
+type Line = string | false | null | undefined
+// Form değerleri arayüzden serbest gelir; yoklama işaretleri marks altında öğrenci kimliğiyle tutulur.
+export type FormValues = { [key: string]: unknown; marks?: Record<string, unknown> }
+export type FieldType =
+  'text' | 'textarea' | 'number' | 'date' | 'datetime' | 'select' | 'multi' | 'checkbox' | 'tel'
+export type FieldOption = { value: string; label: string }
+type FieldExtra = {
+  options?: FieldOption[]
+  min?: number
+  max?: number
+  step?: number | string
+  hint?: string
+  maxLength?: number
+}
+export type WorkflowField = { key: string; label: string; type: FieldType } & FieldExtra
+export type WorkflowForm = {
+  title: string
+  hint: string
+  initial: FormValues
+  fields: (values: FormValues) => WorkflowField[]
+}
+export type WorkflowAction = ReturnType<typeof action>
+export type WorkflowSection = { title: string; lines: string[] }
+export type WorkflowDocument = { type: 'contract'; id: string; studentId: string; title: string }
+export type WorkflowDetails = {
+  sections: WorkflowSection[]
+  actions: WorkflowAction[]
+  documents: WorkflowDocument[]
+}
+type RowOf<K extends string, T extends RowSource> = ReturnType<typeof row<K, T>>
+export type WorkflowRow =
+  | RowOf<'goal', Goal>
+  | RowOf<'guidance', GuidanceCase | RedactedGuidanceCase>
+  | RowOf<'exam', State['mockExams'][number]>
+  | RowOf<'renewal', State['renewals'][number]>
+  | RowOf<'lesson', State['schedule'][number]>
+  | RowOf<'study-task', State['studyTasks'][number]>
+  | RowOf<'event', State['schoolEvents'][number]>
+  | RowOf<'route', State['transportRoutes'][number]>
+  | RowOf<'meal', State['mealMenus'][number]>
+  | RowOf<'club', State['clubs'][number]>
 
-const netLabel = (value) => value.toLocaleString('tr-TR')
+// Eski sürüm eksik kayıt veya değerde alan okurken TypeError fırlatıyordu; aynı hata türü korunur.
+function present<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) throw new TypeError('Beklenen değer bulunamadı.')
+  return value
+}
+const name = (state: State, collection: NamedCollection, id: string | null | undefined) => {
+  const list: readonly { id: string; name: string }[] = state[collection]
+  return list.find((r) => r.id === id)?.name || '—'
+}
+const subject = (state: State, id: string | null | undefined) => name(state, 'subjects', id)
+const labelDate = (value: Parameters<typeof dateLabel>[0]) => dateLabel(value, { year: 'numeric' })
+function row<K extends string, T extends RowSource>(
+  source: T,
+  // İş akışıyla eklenen dersin adı boş olabilir; satır başlığı da boş kalır.
+  title: string | undefined,
+  subtitle: string,
+  body: string,
+  status: string,
+  kind: K,
+): {
+  id: string
+  source: T
+  title: string | undefined
+  subtitle: string
+  body: string
+  status: string
+  kind: K
+  meta: string[]
+  date: string | undefined
+} {
+  return {
+    id: source.id,
+    source,
+    title,
+    subtitle,
+    body,
+    status,
+    kind,
+    meta: [],
+    date: source.dueDate || source.followUp || source.date || source.createdAt,
+  }
+}
+
+const netLabel = (value: number) => value.toLocaleString('tr-TR')
 // Branş öğretmeni yalnızca kendi dersinin ve genel net hedeflerini görür.
-function goalVisibleToTeacher(state, session, goal) {
+function goalVisibleToTeacher(state: State, session: Session, goal: Goal) {
   return (
     session.role !== 'ogretmen' ||
     !goal.subjectId ||
     goal.subjectId === state.teachers.find((t) => t.id === 't1')?.subjectId
   )
 }
-export function workflowCsvReferences(state, session) {
+export function workflowCsvReferences(state: State, session: Session) {
   const scope = workflowScope(state, session)
   return [
     ...state.mockExams.map((e) => `examId: ${e.id} · ${e.title}`),
@@ -53,14 +140,18 @@ export function workflowCsvReferences(state, session) {
   ]
 }
 
-export function workflowRows(state, session, page) {
+export function workflowRows(
+  state: State,
+  session: Session,
+  page: string | undefined,
+): WorkflowRow[] {
   const definition = workflowPage(page)
   if (!definition || !definition.roles.includes(session.role) || !state.modules[definition.key])
     return []
   const scope = workflowScope(state, session),
-    own = (r) => scope.studentIds.has(r.studentId)
+    own = (r: { studentId: string }) => scope.studentIds.has(r.studentId)
   const studentClass = state.classes.find((c) => c.id === scope.student?.classId)
-  const allowedBranch = (id) =>
+  const allowedBranch = (id: string | null | undefined) =>
     scope.institution ||
     (session.role === 'ogretmen'
       ? state.teachers.find((t) => t.id === 't1')?.branchId === id
@@ -262,11 +353,20 @@ export function workflowRows(state, session, page) {
       })
   return []
 }
-const action = (command, label, recordId, initial) => ({ command, label, recordId, initial })
-export function workflowCreateActions(state, session, page) {
+const action = (command: string, label: string, recordId?: string, initial?: FormValues) => ({
+  command,
+  label,
+  recordId,
+  initial,
+})
+export function workflowCreateActions(
+  state: State,
+  session: Session,
+  page: string | undefined,
+): WorkflowAction[] {
   const definition = workflowPage(page)
   if (!definition || !state.modules[definition.key]) return []
-  const candidates = {
+  const candidates: Partial<Record<string, readonly (readonly [string, string])[]>> = {
     goals: [['goal', 'Hedef belirle']],
     guidance: [['guidance', 'Takip dosyası aç']],
     exams: [
@@ -285,25 +385,41 @@ export function workflowCreateActions(state, session, page) {
     meals: [['meal', 'Menü ekle']],
     clubs: [['club', 'Kulüp oluştur']],
   }
-  return candidates[definition.key]
+  return present(candidates[definition.key])
     .filter(([cmd]) => mayRun(session, cmd))
     .map(([cmd, label]) => action(cmd, label))
 }
-export function workflowDetails(state, session, entry) {
+const commentActors: Partial<Record<Role, string>> = {
+  veli: 'Veli',
+  ogretmen: 'Öğretmen',
+  yonetici: 'Yönetici',
+}
+export function workflowDetails(
+  state: State,
+  session: Session,
+  entry: { kind: string; id: string },
+): WorkflowDetails {
   const visible = workflowRows(state, session, workflowPageForKind(entry.kind)).find(
     (r) => r.id === entry.id,
   )
   if (!visible) return { sections: [], actions: [], documents: [] }
-  const record = visible.source,
-    scope = workflowScope(state, session),
-    actions = [],
-    sections = [],
-    documents = []
-  const add = (command, label, recordId = record.id, initial) => {
+  // Türün sayfasındaki satırların hepsi o türdendir; satırın türü kayıt tipini daraltır.
+  const { kind, source: record } = visible
+  const scope = workflowScope(state, session),
+    actions: WorkflowAction[] = [],
+    sections: WorkflowSection[] = [],
+    documents: WorkflowDocument[] = []
+  const add = (
+    command: string,
+    label: string,
+    recordId: string | undefined = record.id,
+    initial?: FormValues,
+  ) => {
     if (mayRun(session, command)) actions.push(action(command, label, recordId, initial))
   }
-  const section = (title, lines) => sections.push({ title, lines: lines.filter(Boolean) })
-  if (entry.kind === 'goal') {
+  const section = (title: string, lines: readonly Line[]) =>
+    sections.push({ title, lines: lines.filter((line): line is string => Boolean(line)) })
+  if (kind === 'goal') {
     const progress = goalProgress(state, record)
     section('Hedef ve ilerleme', [
       `${record.subjectId ? subject(state, record.subjectId) : 'Genel net (tüm dersler)'} · Hedef ${netLabel(record.targetNet)} net`,
@@ -330,8 +446,7 @@ export function workflowDetails(state, session, entry) {
     section(
       'Yorumlar',
       record.comments.map(
-        (c) =>
-          `${labelDate(c.date)} · ${{ veli: 'Veli', ogretmen: 'Öğretmen', yonetici: 'Yönetici' }[c.actor] || c.actor}: ${c.text}`,
+        (c) => `${labelDate(c.date)} · ${commentActors[c.actor] || c.actor}: ${c.text}`,
       ),
     )
     if (record.status === 'Onay bekliyor') add('goal-review', 'Hedefi değerlendir')
@@ -345,7 +460,7 @@ export function workflowDetails(state, session, entry) {
     }
     add('goal-comment', 'Yorum ekle')
   }
-  if (entry.kind === 'guidance') {
+  if (kind === 'guidance') {
     section('Paylaşılan destek planı', [
       record.plan,
       record.sharedNote,
@@ -354,12 +469,12 @@ export function workflowDetails(state, session, entry) {
     if (scope.institution || session.role === 'ogretmen') {
       section('Kurum içi görüşme notları', [
         record.internalNote,
-        ...record.notes.map((n) => `${labelDate(n.date)} · ${n.text}`),
+        ...present(record.notes).map((n) => `${labelDate(n.date)} · ${n.text}`),
       ])
       add('guidance-note', 'Görüşme / sonuç kaydet')
     }
   }
-  if (entry.kind === 'exam') {
+  if (kind === 'exam') {
     section('Net hesabı', [
       record.wrongPenalty
         ? `Net = doğru − yanlış / ${record.wrongPenalty}. Bu oran kurumun bu deneme için tanımladığı kuraldır.`
@@ -398,7 +513,7 @@ export function workflowDetails(state, session, entry) {
               multiple: 'Çoklu işaret',
               cancelled: 'İptal',
             }[question.outcome]
-            return `${name(state, 'students', evaluation.studentId)} · ${subject(state, evaluation.subjectId)} · ${question.number}. soru: ${status} · Cevap ${question.response.trim() || 'boş'} / Anahtar ${question.answer} · ${question.topic}`
+            return `${name(state, 'students', evaluation.studentId)} · ${subject(state, evaluation.subjectId)} · ${question.number}. soru: ${status} · Cevap ${present(question.response).trim() || 'boş'} / Anahtar ${question.answer} · ${question.topic}`
           }),
         ),
       )
@@ -418,7 +533,7 @@ export function workflowDetails(state, session, entry) {
     if (!scope.institution && session.role !== 'ogretmen')
       section(
         'Denemeler arası gelişim',
-        examProgress(state, scope.student.id).map(
+        examProgress(state, present(scope.student).id).map(
           (e) =>
             `${labelDate(e.date)} · ${e.title}: ${e.net.toLocaleString('tr-TR')} net${e.complete ? '' : ' (ders sonuçları eksik)'}`,
         ),
@@ -447,7 +562,7 @@ export function workflowDetails(state, session, entry) {
           )
       }
   }
-  if (entry.kind === 'renewal') {
+  if (kind === 'renewal') {
     section('Dönem geçişi', [
       `${record.year}–${record.year + 1}`,
       `${name(state, 'classes', record.fromClassId)} → ${record.mode === 'graduate' ? 'Mezuniyet' : name(state, 'classes', record.targetClassId)}`,
@@ -477,7 +592,7 @@ export function workflowDetails(state, session, entry) {
     }
     if (record.status === 'Planlandı') add('renewal-activate', 'Dönem geçişini uygula')
   }
-  if (entry.kind === 'lesson') {
+  if (kind === 'lesson') {
     section('Ders bilgileri', [
       `${name(state, 'classes', record.classId)} · ${record.title}`,
       `${labelDate(record.date)} ${timeLabel(record.date)} · ${record.duration} dk`,
@@ -493,7 +608,7 @@ export function workflowDetails(state, session, entry) {
       add('lesson-cancel', 'Dersi iptal et')
     }
   }
-  if (entry.kind === 'study-task') {
+  if (kind === 'study-task') {
     section('Çalışma ve geri bildirim', [
       record.instructions,
       `Öğretmen: ${name(state, 'teachers', record.teacherId)}`,
@@ -509,7 +624,7 @@ export function workflowDetails(state, session, entry) {
         record.status === 'Onay bekliyor' ? 'Planı onayla' : 'Çalışmayı değerlendir',
       )
   }
-  if (entry.kind === 'event') {
+  if (kind === 'event') {
     section('Etkinlik', [
       record.description,
       `${labelDate(record.date)} ${timeLabel(record.date)} – ${timeLabel(record.endDate)}`,
@@ -533,7 +648,7 @@ export function workflowDetails(state, session, entry) {
         add('event-cancel', 'Etkinliği iptal et')
     }
   }
-  if (entry.kind === 'route') {
+  if (kind === 'route') {
     section('Servis bilgileri', [
       `${record.plate} · ${record.driver} · ${record.phone}`,
       `Duraklar: ${record.stops.join(' → ')}`,
@@ -558,11 +673,11 @@ export function workflowDetails(state, session, entry) {
         assignment.id,
       )
   }
-  if (entry.kind === 'meal') {
+  if (kind === 'meal') {
     section('Menü', [record.title, `Alerjenler: ${record.allergens}`, record.description])
     add('meal', 'Menüyü düzenle')
   }
-  if (entry.kind === 'club') {
+  if (kind === 'club') {
     const members = state.clubMemberships.filter(
         (m) => m.clubId === record.id && m.status === 'Aktif',
       ),
@@ -608,8 +723,8 @@ export function workflowDetails(state, session, entry) {
   }
   return { sections, actions, documents }
 }
-export function workflowPageForKind(kind) {
-  return {
+export function workflowPageForKind(kind: string) {
+  const pages: Partial<Record<string, string>> = {
     goal: 'hedef-plani',
     guidance: 'rehberlik',
     exam: 'deneme-sinavlari',
@@ -620,16 +735,38 @@ export function workflowPageForKind(kind) {
     route: 'okul-servisi',
     meal: 'yemek-menusu',
     club: 'kulupler',
-  }[kind]
+  }
+  return pages[kind]
 }
 
-const field = (key, label, type = 'text', extra = {}) => ({ key, label, type, ...extra })
-const options = (items, label = (r) => r.name) =>
-  items.map((r) => ({ value: r.id, label: label(r) }))
-const choice = (key, label, items) => field(key, label, 'select', { options: items })
+const field = (
+  key: string,
+  label: string,
+  type: FieldType = 'text',
+  extra: FieldExtra = {},
+): WorkflowField => ({ key, label, type, ...extra })
+function options<T extends { id: string; name: string }>(items: readonly T[]): FieldOption[]
+function options<T extends { id: string }>(
+  items: readonly T[],
+  label: (item: T) => string,
+): FieldOption[]
+function options(
+  items: readonly { id: string; name?: string }[],
+  label = (r: { name?: string }) => r.name,
+) {
+  return items.map((r) => ({ value: r.id, label: label(r) }))
+}
+const choice = (key: string, label: string, items: FieldOption[]) =>
+  field(key, label, 'select', { options: items })
 export const csvTemplate =
   'examId;studentId;subjectId;correct;wrong;blank;weakTopics\nexam-7-1;s1;math;12;5;3;Denklemler'
-export function workflowForm(state, session, command, recordId, overrides = {}) {
+export function workflowForm(
+  state: State,
+  session: Session,
+  command: string,
+  recordId?: string,
+  overrides: FormValues = {},
+): WorkflowForm {
   const scope = workflowScope(state, session),
     today = dayKey(),
     future = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
@@ -641,38 +778,18 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
     branches = state.branches.filter((b) => b.isActive)
   const initialStudent = overrides.studentId || scope.students[0]?.id || ''
   const teacherSubjectId = state.teachers.find((t) => t.id === 't1')?.subjectId || ''
-  const recordCollections = {
-    'goal-review': 'studentGoals',
-    'goal-step': 'studentGoals',
-    'goal-step-done': 'studentGoals',
-    'goal-suggest': 'studentGoals',
-    'goal-comment': 'studentGoals',
-    'goal-close': 'studentGoals',
-    guidance: 'guidanceCases',
-    'guidance-note': 'guidanceCases',
-    'exam-result': 'mockExams',
-    renewal: 'renewals',
-    lesson: 'schedule',
-    substitute: 'schedule',
-    'study-complete': 'studyTasks',
-    'study-review': 'studyTasks',
-    consent: 'schoolEvents',
-    route: 'transportRoutes',
-    meal: 'mealMenus',
-    'club-enroll': 'clubs',
-    'club-attendance': 'clubs',
-  }
-  const record = recordId
-    ? state[recordCollections[command] || 'clubs']?.find((r) => r.id === recordId)
-    : null
-  const form = {
+  // Kayıt yalnız onu kullanan komutun koleksiyonunda aranır; kimlik yoksa null, bulunamazsa undefined.
+  const recordIn = <T extends { id: string }>(list: readonly T[] | undefined) =>
+    recordId ? list?.find((r) => r.id === recordId) : null
+  const form: WorkflowForm = {
     title: 'İşlemi onayla',
     hint: 'Bu işlem yerel okul kaydını günceller.',
     initial: {},
     fields: () => [],
   }
+  const assignForm = (patch: Partial<WorkflowForm>) => Object.assign(form, patch)
   if (command === 'goal')
-    Object.assign(form, {
+    assignForm({
       title: 'Hedef belirle',
       hint:
         session.role === 'ogrenci'
@@ -708,7 +825,7 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
       },
     })
   if (command === 'goal-review')
-    Object.assign(form, {
+    assignForm({
       title: 'Hedefi değerlendir',
       initial: { status: 'Aktif', feedback: '' },
       fields: () => [
@@ -720,7 +837,7 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
       ],
     })
   if (command === 'goal-step')
-    Object.assign(form, {
+    assignForm({
       title: 'Gelişim adımı ekle',
       initial: {
         title: '',
@@ -733,8 +850,9 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
         field('dueDate', 'Son tarih', 'date'),
       ],
     })
-  if (command === 'goal-step-done')
-    Object.assign(form, {
+  if (command === 'goal-step-done') {
+    const record = recordIn(state.studentGoals)
+    assignForm({
       title: 'Adımı tamamla',
       initial: { stepId: '' },
       fields: () => [
@@ -748,24 +866,25 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
         ),
       ],
     })
+  }
   if (command === 'goal-suggest')
-    Object.assign(form, {
+    assignForm({
       title: 'Zayıf konulardan adım öner',
       hint: 'Deneme sonuçlarındaki eksik konulardan en fazla dört haftalık adım eklenir. Mevcut adımlar değişmez.',
     })
   if (command === 'goal-comment')
-    Object.assign(form, {
+    assignForm({
       title: 'Yorum ekle',
       initial: { text: '' },
       fields: () => [field('text', 'Yorumunuz', 'textarea')],
     })
   if (command === 'goal-close')
-    Object.assign(form, {
+    assignForm({
       title: 'Hedefi kapat',
       hint: 'Kapatılan hedef üzerinde yeni adım eklenemez. Geçmiş ilerleme ve yorumlar korunur.',
     })
   if (command === 'guidance')
-    Object.assign(form, {
+    assignForm({
       title: 'Takip dosyası aç',
       initial: {
         studentId: initialStudent,
@@ -790,8 +909,9 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
         field('followUp', 'Sonraki takip tarihi', 'date'),
       ],
     })
-  if (command === 'guidance-note')
-    Object.assign(form, {
+  if (command === 'guidance-note') {
+    const record = present(recordIn(state.guidanceCases))
+    assignForm({
       title: 'Görüşme / sonuç kaydet',
       initial: {
         text: '',
@@ -810,8 +930,9 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
         ),
       ],
     })
+  }
   if (command === 'exam')
-    Object.assign(form, {
+    assignForm({
       title: 'Deneme oluştur',
       hint: 'Deneme türü ve yanlış götürme oranı kurum tarafından tanımlanır. Resmî sınav puanı hesaplanmaz.',
       initial: {
@@ -842,7 +963,7 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
       ],
     })
   if (command === 'exam-result')
-    Object.assign(form, {
+    assignForm({
       title: 'Ders sonucu gir',
       initial: {
         examId: recordId || state.mockExams[0]?.id || '',
@@ -890,14 +1011,14 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
       },
     })
   if (command === 'exam-import')
-    Object.assign(form, {
+    assignForm({
       title: 'CSV sonuç aktar',
       hint: 'Excel tablonuzu UTF-8 CSV olarak kaydedin. Yedi sütun, şablondaki sırayla olmalıdır. Mevcut aynı ders sonuçları güncellenir; tüm satırlar doğrulanmadan kayıt yapılmaz.',
       initial: { csv: csvTemplate },
       fields: () => [field('csv', 'CSV içeriği', 'textarea', { maxLength: 1024 * 1024 })],
     })
   if (command === 'renewal')
-    Object.assign(form, {
+    assignForm({
       title: 'Kayıt yenile',
       hint: 'Burs brüt eğitim bedelinden, sabit indirim burs sonrası tutardan düşülür. Onaydan sonra yeni sözleşme ve taksitler oluşur. Sınıf değişimi ayrı dönem geçişi işlemiyle uygulanır.',
       initial: {
@@ -931,7 +1052,9 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
                   'targetClassId',
                   'Yeni sınıf',
                   options(
-                    state.classes.filter((c) => c.isActive && c.grade === grade + 1),
+                    state.classes.filter(
+                      (c) => c.isActive && grade !== undefined && c.grade === grade + 1,
+                    ),
                     (c) => `${c.name} · ${name(state, 'branches', c.branchId)}`,
                   ),
                 ),
@@ -953,12 +1076,13 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
       },
     })
   if (command === 'renewal-activate')
-    Object.assign(form, {
+    assignForm({
       title: 'Dönem geçişini uygula',
       hint: 'Öğrencinin güncel sınıfı değişir veya mezuniyeti işlenir. Kampüs değişirse eski servis ataması kaldırılır ve eski kampüs kulüp üyeliği sonlandırılır; geçmiş kayıtlar korunur.',
     })
-  if (command === 'lesson')
-    Object.assign(form, {
+  if (command === 'lesson') {
+    const record = recordIn(state.schedule)
+    assignForm({
       title: record ? 'Dersi düzenle' : 'Ders planla',
       initial: {
         classId: record?.classId || 'c1',
@@ -995,8 +1119,10 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
         ]
       },
     })
-  if (command === 'substitute')
-    Object.assign(form, {
+  }
+  if (command === 'substitute') {
+    const record = recordIn(state.schedule)
+    assignForm({
       title: 'Geçici öğretmen ata',
       hint: 'Bu dersin öğretmeni değişir. Kalıcı branş ataması korunur. Uygun yedek yoksa önce Eğitim Kadrosu ekranından aynı branş ve kampüste öğretmen ekleyin.',
       initial: { teacherId: '', reason: '' },
@@ -1005,24 +1131,27 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
           'teacherId',
           'Geçici öğretmen',
           options(
-            teachers.filter(
-              (t) =>
-                t.id !== record.teacherId &&
-                t.subjectId === record.subjectId &&
-                t.branchId === state.classes.find((c) => c.id === record.classId)?.branchId,
-            ),
+            teachers.filter((t) => {
+              const lesson = present(record)
+              return (
+                t.id !== lesson.teacherId &&
+                t.subjectId === lesson.subjectId &&
+                t.branchId === state.classes.find((c) => c.id === lesson.classId)?.branchId
+              )
+            }),
           ),
         ),
         field('reason', 'Görevlendirme nedeni', 'textarea'),
       ],
     })
+  }
   if (command === 'lesson-cancel')
-    Object.assign(form, {
+    assignForm({
       title: 'Dersi iptal et',
       hint: 'Ders günlük programlardan kaldırılır. Yönetim ekranında iptal kaydı korunur.',
     })
   if (command === 'study-task')
-    Object.assign(form, {
+    assignForm({
       title: 'Çalışma görevi ekle',
       hint:
         session.role === 'ogrenci'
@@ -1062,13 +1191,14 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
       },
     })
   if (command === 'study-complete')
-    Object.assign(form, {
+    assignForm({
       title: 'Çalışmayı teslim et',
       initial: { completionNote: '' },
       fields: () => [field('completionNote', 'Çalışma sonucu / öğrenci notu', 'textarea')],
     })
-  if (command === 'study-review')
-    Object.assign(form, {
+  if (command === 'study-review') {
+    const record = present(recordIn(state.studyTasks))
+    assignForm({
       title: record.status === 'Onay bekliyor' ? 'Planı onayla' : 'Çalışmayı değerlendir',
       initial: {
         feedback: '',
@@ -1086,8 +1216,9 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
         field('feedback', 'Öğretmen geri bildirimi', 'textarea'),
       ],
     })
+  }
   if (command === 'event')
-    Object.assign(form, {
+    assignForm({
       title: 'Etkinlik oluştur',
       initial: {
         title: '',
@@ -1124,9 +1255,9 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
     })
   if (command === 'consent') {
     const old = state.eventConsents.find(
-      (c) => c.eventId === recordId && c.studentId === scope.student.id,
+      (c) => c.eventId === recordId && c.studentId === present(scope.student).id,
     )
-    Object.assign(form, {
+    assignForm({
       title: 'Veli onayı ver / güncelle',
       initial: { decision: old?.decision || 'Onaylandı', note: old?.note || '' },
       fields: () => [
@@ -1140,12 +1271,13 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
     })
   }
   if (command === 'event-cancel')
-    Object.assign(form, {
+    assignForm({
       title: 'Etkinliği iptal et',
       hint: 'Etkinlik iptal olarak görünür. Daha önce verilen veli onayları geçmişte korunur.',
     })
-  if (command === 'route')
-    Object.assign(form, {
+  if (command === 'route') {
+    const record = recordIn(state.transportRoutes)
+    assignForm({
       title: record ? 'Güzergâhı düzenle' : 'Güzergâh ekle',
       initial: {
         title: record?.title || '',
@@ -1168,8 +1300,9 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
         }),
       ],
     })
+  }
   if (command === 'transport-assign')
-    Object.assign(form, {
+    assignForm({
       title: 'Servise öğrenci ata',
       initial: { studentId: initialStudent, routeId: state.transportRoutes[0]?.id || '', stop: '' },
       fields: (values) => [
@@ -1192,17 +1325,18 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
       ],
     })
   if (command === 'route-archive')
-    Object.assign(form, {
+    assignForm({
       title: 'Güzergâhı arşivle',
       hint: 'Üzerinde öğrenci ataması bulunan güzergâh arşivlenemez.',
     })
   if (command === 'transport-remove')
-    Object.assign(form, {
+    assignForm({
       title: 'Servis atamasını kaldır',
       hint: 'Öğrencinin güncel servis ataması kaldırılır; işlem geçmişine kaydedilir.',
     })
-  if (command === 'meal')
-    Object.assign(form, {
+  if (command === 'meal') {
+    const record = recordIn(state.mealMenus)
+    assignForm({
       title: record ? 'Menüyü düzenle' : 'Menü ekle',
       initial: {
         branchId: record?.branchId || 'b1',
@@ -1221,8 +1355,9 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
         field('description', 'Menü açıklaması', 'textarea'),
       ],
     })
+  }
   if (command === 'club')
-    Object.assign(form, {
+    assignForm({
       title: 'Kulüp oluştur',
       initial: {
         title: '',
@@ -1250,8 +1385,9 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
         field('meeting', 'Toplantı günü / saati / yeri'),
       ],
     })
-  if (command === 'club-enroll')
-    Object.assign(form, {
+  if (command === 'club-enroll') {
+    const record = recordIn(state.clubs)
+    assignForm({
       title: 'Kulübe kaydol / öğrenci ekle',
       initial: { studentId: initialStudent },
       fields: () => [
@@ -1260,14 +1396,17 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
           'Öğrenci',
           options(
             scope.students.filter(
-              (s) => state.classes.find((c) => c.id === s.classId)?.branchId === record.branchId,
+              (s) =>
+                state.classes.find((c) => c.id === s.classId)?.branchId ===
+                present(record).branchId,
             ),
           ),
         ),
       ],
     })
+  }
   if (command === 'club-leave')
-    Object.assign(form, {
+    assignForm({
       title: 'Kulüp üyeliğini sonlandır',
       hint: 'Üyelik pasife alınır; geçmiş yoklama ve başarı kayıtları korunur.',
     })
@@ -1275,7 +1414,7 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
     const members = state.clubMemberships.filter(
       (m) => m.clubId === recordId && m.status === 'Aktif',
     )
-    Object.assign(form, {
+    assignForm({
       title: 'Kulüp yoklaması al',
       initial: {
         date: today,
@@ -1294,7 +1433,7 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
     })
   }
   if (command === 'achievement')
-    Object.assign(form, {
+    assignForm({
       title: 'Proje / başarı kaydet',
       initial: {
         studentId: initialStudent,
@@ -1331,18 +1470,18 @@ export function workflowForm(state, session, command, recordId, overrides = {}) 
       ],
     })
   if (command === 'club-archive')
-    Object.assign(form, {
+    assignForm({
       title: 'Kulübü arşivle',
       hint: 'Aktif üyelikler sonlandırılır; yoklama, proje ve başarı geçmişi korunur.',
     })
   form.initial = { ...form.initial, ...overrides }
   return form
 }
-export function readFormValue(values, key) {
+export function readFormValue(values: FormValues, key: string) {
   return key.startsWith('marks.') ? values.marks?.[key.slice(6)] : values[key]
 }
-export function changeFormValue(values, key, value) {
-  const next = { ...values }
+export function changeFormValue(values: FormValues, key: string, value: unknown) {
+  const next: FormValues = { ...values }
   if (key.startsWith('marks.')) next.marks = { ...values.marks, [key.slice(6)]: value }
   else next[key] = value
   if (key === 'grade') next.subjectIds = []
@@ -1351,14 +1490,17 @@ export function changeFormValue(values, key, value) {
   if (key === 'branchId') next.classId = ''
   return next
 }
-export function normalizeWorkflowInput(definition, values) {
-  const input = { ...values }
+export function normalizeWorkflowInput(
+  definition: { fields: (values: FormValues) => readonly { key: string; type: string }[] },
+  values: FormValues,
+) {
+  const input: FormValues = { ...values }
   for (const field of definition.fields(values)) {
-    if (field.type === 'datetime' && Number.isFinite(Date.parse(input[field.key])))
+    // TODO(ts): datetime alanı formdan metin gelir; Date.parse ve Date kurucusu eski sürümdeki gibi değeri olduğu gibi alır.
+    const value = input[field.key] as string
+    if (field.type === 'datetime' && Number.isFinite(Date.parse(value)))
       input[field.key] = new Date(
-        /^[0-9-]+T\d{2}:\d{2}$/.test(input[field.key])
-          ? `${input[field.key]}:00+03:00`
-          : input[field.key],
+        /^[0-9-]+T\d{2}:\d{2}$/.test(value) ? `${value}:00+03:00` : value,
       ).toISOString()
   }
   return input

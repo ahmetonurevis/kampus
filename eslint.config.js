@@ -38,7 +38,7 @@ export default [
   },
   prettier,
   {
-    files: ['apps/mobile/**/*.{js,jsx}'],
+    files: ['apps/mobile/**/*.{js,jsx,ts,tsx}'],
     plugins: { react },
     languageOptions: { parser: tseslint.parser, parserOptions: { ecmaFeatures: { jsx: true } } },
     rules: { 'react/no-missing-key': 'error', 'react/rules-of-hooks': 'error' },

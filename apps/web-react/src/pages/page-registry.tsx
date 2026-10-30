@@ -61,6 +61,11 @@ const StudentMaterialsPage = lazy(async () => ({
 const WorkflowPage = lazy(async () => ({
   default: (await import('./workflows/WorkflowPage.tsx')).WorkflowPage,
 }))
+// Optik değerlendirme ve otomatik etüt kendi ekranlarıdır (core modül kaydındaki yoldan).
+const OpticalPage = lazy(async () => ({
+  default: (await import('./assessment/OpticalPage.tsx')).OpticalPage,
+}))
+const ASSESSMENT_PATHS = new Set(['optik-degerlendirme'])
 /** Bağlanmış iş akışı sayfaları; kalanlar yer tutucudur (bkz. README geçiş durumu). */
 const WORKFLOW_PATHS = new Set([
   'yemek-menusu',
@@ -102,13 +107,14 @@ const MIGRATED = new Set([
 ])
 
 export function isMigratedPage(role: RoleKey, path: string): boolean {
-  return MIGRATED.has(`${role}/${path}`) || WORKFLOW_PATHS.has(path)
+  return MIGRATED.has(`${role}/${path}`) || WORKFLOW_PATHS.has(path) || ASSESSMENT_PATHS.has(path)
 }
 
 /** Taşınmış sayfayı çizer; `Suspense` içinde kullanılır. */
 export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
   if (page.path === 'dashboard') return <DashboardPage page={page} />
   // Menüde olmayan rol bu yola gelemez (`resolveShell`); modülün rolleri core kaydındadır.
+  if (page.path === 'optik-degerlendirme') return <OpticalPage page={page} />
   if (WORKFLOW_PATHS.has(page.path)) return <WorkflowPage page={page} />
   switch (`${role}/${page.path}`) {
     case 'yonetici/subeler':

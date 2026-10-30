@@ -60,6 +60,9 @@ export const MIGRATED = new Set([
   'veli/sinav-analizi',
   'veli/seviye-takibi',
   'veli/ogretmen-degerlendirmeleri',
+  'veli/sikayet-talep',
+  'veli/devamsizlik-bildirimi',
+  'onburo/talepler',
 ])
 // Duyurular beş rolün hepsinde aynı ekrandır; rol kapsamı sunucudadır.
 // TODO(web-randevu): öğretmen `randevular` ve öğrenci `randevu-talep` yer tutucu kalır.

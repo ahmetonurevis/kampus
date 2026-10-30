@@ -21,9 +21,9 @@ import { LEARNER, seedSkillChain } from './support/skills-sample.ts'
 const LATER = new Date(FIXED_NOW.getTime() + 60_000)
 
 /** Dışarıdan çözülen söz: kilit sahibini test adımlarına göre bekletmek için. */
-function gate() {
-  let open = () => {}
-  const opened = new Promise<void>((resolve) => {
+function gate<T = void>() {
+  let open: (value: T) => void = () => {}
+  const opened = new Promise<T>((resolve) => {
     open = resolve
   })
   return { open, opened }
@@ -47,13 +47,16 @@ describe('PostgreSQL 16: eşzamanlı taslak kaydı', { skip: PG_SKIP }, () => {
     await close()
   })
 
-  /** Bir bağlantı başka transaction'ın satır/benzersizlik kilidini bekleyene kadar yoklar. */
-  async function untilLockWait() {
+  /**
+   * Verilen arka uç (`pg_backend_pid()`) başka transaction'ın satır/benzersizlik kilidini bekleyene
+   * kadar yoklar. Süzgeç yalnız bu bağlantıdır: paralel test dosyalarının kilit beklemeleri sayılmaz.
+   */
+  async function untilLockWait(pid: number) {
     for (let attempt = 0; ; attempt += 1) {
       const [waiting] = await db
         .select({ n: count() })
         .from(sql`pg_locks`)
-        .where(sql`locktype = 'transactionid' and not granted`)
+        .where(sql`locktype = 'transactionid' and not granted and pid = ${pid}`)
       if ((waiting?.n ?? 0) > 0) return
       assert.ok(attempt < 300, 'ikinci yazma ilk transaction’ı beklemedi')
       await delay(10)
@@ -77,11 +80,16 @@ describe('PostgreSQL 16: eşzamanlı taslak kaydı', { skip: PG_SKIP }, () => {
       await release.opened
     })
     await held.opened
-    const second = db.transaction((tx) =>
-      saveDraft(tx, institutionId, assignmentId, draft(revision, 'İkinci pencere'), LATER),
-    )
+    const backend = gate<number>()
+    const second = db.transaction(async (tx) => {
+      const { rows } = (await tx.execute(sql`select pg_backend_pid() as pid`)) as unknown as {
+        rows: { pid: number }[]
+      }
+      backend.open(rows[0]!.pid)
+      return saveDraft(tx, institutionId, assignmentId, draft(revision, 'İkinci pencere'), LATER)
+    })
     try {
-      await untilLockWait()
+      await untilLockWait(await backend.opened)
     } finally {
       release.open()
       await first

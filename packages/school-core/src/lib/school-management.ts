@@ -138,6 +138,7 @@ export function saveClass(
   makeId: MakeId,
   recordId: string | null = null,
   now = new Date().toISOString(),
+  inherited: ReadonlySet<string> = new Set(),
 ) {
   const data = classSchema.parse(input)
   if (!active(state.branches, data.branchId))
@@ -183,7 +184,12 @@ export function saveClass(
     if (!teacher || teacher.subjectId !== subject.id)
       throw new DomainError(
         'subject_teacher_required',
-        `${subject.name} dersi için uygun branş öğretmeni seçin.`,
+        // Düzenlemede gönderilmeyen dersin mevcut öğretmeni pasifleşmiş olabilir; kullanıcıya
+        // göndermediği dersi suçlayan genel mesaj yerine durum açık söylenir.
+        inherited.has(subject.id)
+          ? `${subject.name} dersinin mevcut öğretmeni artık aktif değil; önce o dersin öğretmenini değiştirin.`
+          : `${subject.name} dersi için uygun branş öğretmeni seçin.`,
+        { path: ['subjectTeachers', subject.id] },
       )
     return { subjectId: subject.id, teacherId: teacher.id }
   })
@@ -291,7 +297,10 @@ export function saveClass(
     homework.teacherId =
       assignments.find((a) => a.subjectId === homework.subjectId)?.teacherId || data.teacherId
   }
-  for (const quiz of state.quizzes.filter((q) => q.classId === classId))
+  // Quizin tarihi yoktur; çözülmemiş (hiç deneme kaydı olmayan) quiz açıktır. Çözülmüş quiz
+  // notları üreten öğretmende kalır (ödevle aynı kural).
+  const attempted = new Set(state.quizAttempts.map((a) => a.quizId))
+  for (const quiz of state.quizzes.filter((q) => q.classId === classId && !attempted.has(q.id)))
     quiz.teacherId =
       assignments.find((a) => a.subjectId === quiz.subjectId)?.teacherId || data.teacherId
   for (const task of (state.studyTasks || []).filter(
@@ -383,6 +392,9 @@ export function updateClass(
   const current = Object.fromEntries(
     state.assignments.filter((a) => a.classId === recordId).map((a) => [a.subjectId, a.teacherId]),
   )
+  const inherited = new Set(
+    Object.keys(current).filter((subjectId) => !(subjectId in (subjectTeachers ?? {}))),
+  )
   return saveClass(
     state,
     { grade, section, branchId, teacherId, capacity, room, ...patch },
@@ -390,6 +402,7 @@ export function updateClass(
     makeId,
     recordId,
     now,
+    inherited,
   )
 }
 

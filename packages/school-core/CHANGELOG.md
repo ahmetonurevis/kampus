@@ -9,6 +9,7 @@ Kampüs, öğretmen ve sınıf kaydı API'ye hazırlandı (D12). Yetki yalnız y
 - `saveClass` düzenlemede aynı dersin ders atamasını yerinde günceller; kimlik ve kayıt sürümü korunur, düzeyde olmayan dersin ataması kalkar, yeni ders sona eklenir. Önceden her kayıtta bütün atamalar yeni kimlikle yeniden yazılıyordu.
 - Yeni şemalar: `subjectTeachersSchema`, `classInputSchema` (sınıf + `subjectTeachers`), kısmi düzenleme şemaları `branchPatchSchema`, `teacherPatchSchema`, `classPatchSchema`.
 - Yeni işlemler: `createClass(state, input, makeId, now)` tek gövdeden sınıf ve ders atamalarını açar; `updateBranch`, `updateTeacher`, `updateClass` kısmi gövdeyi kaydın güncel değerleriyle birleştirip `saveX` ile doğrular (arşivli/olmayan kayıt `*_not_found`, `not_found`). `updateClass` `subjectTeachers`'ı ders bazında mevcut atamalarla birleştirir. Rehberlik görevi (`guidanceCounselor`) bu yoldan değişmez.
+- R9 düzeltmeleri: sınıfın ders öğretmeni değişince quizler de ödev ve sorular gibi yalnız açıksa yeni öğretmene geçer; hiç deneme kaydı olan (çözülmüş) quiz eski öğretmende kalır (DOM-YTK-022). Önceden sınıfın bütün quizleri, geçmiş olanlar dahil, taşınıyordu. `updateClass`, gönderilmeyen dersin mevcut öğretmeni pasifse `subject_teacher_required` hatasını "<Ders> dersinin mevcut öğretmeni artık aktif değil; önce o dersin öğretmenini değiştirin." mesajıyla ve `path: ['subjectTeachers', <dersId>]` ile verir (ret davranışı aynı). `saveClass` isteğe bağlı son parametre `inherited` alır.
 - Tüketiciler `workspace:2.10.0` sürümüne sabitlendi.
 
 ## 2.9.1

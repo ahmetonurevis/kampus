@@ -157,6 +157,7 @@ export const OPERATION_COMMANDS = {
     'submissions',
     'questions',
     'quizzes',
+    'quizAttempts',
     'studyTasks',
     ...CONFLICTS,
   ]),

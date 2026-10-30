@@ -227,7 +227,6 @@ test('Sınıf düzenlemesi kısmi gövdeyi birleştirir; aynı dersin ataması k
   const before = state.assignments.filter((a) => a.classId === 'c1').map((a) => a.id)
   const math = state.assignments.find((a) => a.classId === 'c1' && a.subjectId === 'math')!
   const replacement = saveTeacher(state, NEW_TEACHER, id, null, now)
-  const quiz = state.quizzes.find((q) => q.classId === 'c1' && q.subjectId === 'math')!
   assert.equal(
     updateClass(state, 'c1', { room: '401', subjectTeachers: { math: replacement } }, id, now),
     'c1',
@@ -242,8 +241,6 @@ test('Sınıf düzenlemesi kısmi gövdeyi birleştirir; aynı dersin ataması k
   )
   assert.equal(math.teacherId, replacement)
   assert.equal(c1Teachers(state).turkish, 't2')
-  // Sınıfın quizleri yeni ders öğretmenine geçer.
-  assert.equal(quiz.teacherId, replacement)
   // Gelecek dersler yeni derslikte ve yeni öğretmendedir.
   for (const lesson of state.schedule.filter(
     (l) => l.classId === 'c1' && l.subjectId === 'math' && Date.parse(l.date) > Date.parse(now),
@@ -285,5 +282,146 @@ test('Kontenjan, düzey ve program çakışması düzenlemeyi atomik biçimde re
     (error) =>
       isDomainError('tutor_schedule_conflict', 'conflict')(error) ||
       isDomainError('teacher_schedule_conflict', 'conflict')(error),
+  )
+})
+
+/** c1 matematik dersi için açık/kapalı kayıt örnekleri; yeni matematik öğretmeni döner. */
+function handoverFixture(state: State) {
+  const replacement = saveTeacher(state, NEW_TEACHER, id, null, now)
+  const oldTeacher = c1Teachers(state).math!
+  const student = state.students.find((s) => s.isActive && s.classId === 'c1')!
+  const homework = state.homework.find((h) => h.classId === 'c1' && h.subjectId === 'math')!
+  const question = state.questions[0]!
+  const quiz = state.quizzes.find((q) => q.classId === 'c1' && q.subjectId === 'math')!
+  const mk = <T extends { id: string }>(base: T, name: string, patch: Partial<T> = {}) => ({
+    ...base,
+    ...patch,
+    id: `${name}-save-test`,
+    teacherId: oldTeacher,
+  })
+  const openHomework = mk(homework, 'hw-open', { dueDate: '2026-10-20' })
+  const pastHomework = mk(homework, 'hw-past', { dueDate: '2026-09-20' })
+  const gradedHomework = mk(homework, 'hw-graded', { dueDate: '2026-09-25' })
+  const pendingHomework = mk(homework, 'hw-pending', { dueDate: '2026-09-20' })
+  state.homework.push(openHomework, pastHomework, gradedHomework, pendingHomework)
+  state.submissions.push(
+    {
+      ...state.submissions[0]!,
+      id: 'sub-graded-save-test',
+      homeworkId: gradedHomework.id,
+      studentId: student.id,
+      score: 90,
+    },
+    {
+      ...state.submissions[0]!,
+      id: 'sub-pending-save-test',
+      homeworkId: pendingHomework.id,
+      studentId: student.id,
+      score: null,
+    },
+  )
+  const openQuestion = mk(question, 'q-open', {
+    studentId: student.id,
+    subjectId: 'math',
+    answeredAt: null,
+  })
+  const answeredQuestion = mk(question, 'q-answered', {
+    studentId: student.id,
+    subjectId: 'math',
+    answeredAt: '2026-10-01T10:00:00.000Z',
+  })
+  state.questions.push(openQuestion, answeredQuestion)
+  const openQuiz = mk(quiz, 'quiz-open')
+  const solvedQuiz = mk(quiz, 'quiz-solved')
+  state.quizzes.push(openQuiz, solvedQuiz)
+  state.quizAttempts = state.quizAttempts.filter((a) => a.quizId !== openQuiz.id)
+  state.quizAttempts.push({
+    ...state.quizAttempts[0]!,
+    id: 'attempt-save-test',
+    quizId: solvedQuiz.id,
+    studentId: student.id,
+  })
+  return {
+    replacement,
+    oldTeacher,
+    open: [openHomework, pendingHomework, openQuestion, openQuiz],
+    closed: [pastHomework, gradedHomework, answeredQuestion, solvedQuiz],
+  }
+}
+
+test('DOM-YTK-022: ders öğretmeni değişince yalnız açık ödev, soru ve quiz yeni öğretmene geçer', () => {
+  const state = seed()
+  const { replacement, oldTeacher, open, closed } = handoverFixture(state)
+  assert.notEqual(replacement, oldTeacher)
+  updateClass(state, 'c1', { subjectTeachers: { math: replacement } }, id, now)
+  // Gelecek teslim tarihli ödev, notu verilmemiş teslimi bekleyen ödev, cevapsız soru ve
+  // hiç çözülmemiş quiz yeni öğretmene geçer.
+  for (const record of open) assert.equal(record.teacherId, replacement, record.id)
+  // Teslim süresi geçmiş ve notlanmış ödev, cevaplanmış soru ve çözülmüş quiz eski öğretmende kalır.
+  for (const record of closed) assert.equal(record.teacherId, oldTeacher, record.id)
+})
+
+test('DOM-YTK-022: öğretmen devri reddedilirse açık kayıtlar eski öğretmende kalır', () => {
+  const state = seed()
+  const { replacement } = handoverFixture(state)
+  unchanged(
+    state,
+    () =>
+      updateClass(state, 'c1', { subjectTeachers: { math: replacement }, capacity: 9 }, id, now),
+    isDomainError('capacity_below_students'),
+  )
+})
+
+test('Arşivli kampüse sınıf açılamaz (campus_required); kayıt değişmez', () => {
+  const state = seed()
+  state.branches.find((b) => b.id === 'b2')!.isActive = false
+  unchanged(
+    state,
+    () =>
+      createClass(
+        state,
+        { ...NEW_CLASS, branchId: 'b2', subjectTeachers: c1Teachers(state) },
+        id,
+        now,
+      ),
+    isDomainError('campus_required'),
+  )
+})
+
+test('Derslikte gelecek etüt varken derslik değişmez (classroom_has_future_tutoring)', () => {
+  const state = seed()
+  state.tutorSessions.push({
+    ...state.tutorSessions[0]!,
+    id: 'tutor-room-save-test',
+    roomClassId: 'c1',
+    status: 'Planlandı',
+    date: '2026-10-20T13:00:00.000Z',
+  })
+  unchanged(
+    state,
+    () => updateClass(state, 'c1', { room: '401' }, id, now),
+    isDomainError('classroom_has_future_tutoring'),
+  )
+})
+
+test('Mevcut ders öğretmeni pasifse derslik değişikliği açık Türkçe mesajla reddedilir', () => {
+  const state = seed()
+  // Danışman t1 değil, Türkçe öğretmeni (t2) pasifleşir; ret dersin atamasından gelir.
+  state.teachers.find((t) => t.id === c1Teachers(state).turkish)!.isActive = false
+  unchanged(
+    state,
+    () => updateClass(state, 'c1', { room: '401' }, id, now),
+    (error) =>
+      isDomainError('subject_teacher_required')(error) &&
+      (error as Error).message.includes('mevcut öğretmeni artık aktif değil') &&
+      (error as Error).message.startsWith('Türkçe'),
+  )
+  // Öğretmeni değiştirilen ders için genel mesaj sürer.
+  unchanged(
+    state,
+    () => updateClass(state, 'c1', { subjectTeachers: { math: 't-yok' } }, id, now),
+    (error) =>
+      isDomainError('subject_teacher_required')(error) &&
+      (error as Error).message.includes('uygun branş öğretmeni seçin'),
   )
 })

@@ -111,7 +111,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Not verme yetkisi dersi okutma görevine bağlıdır.
 - **Kaynak:** OKY ve OİKY ölçme-değerlendirme hükümleri (dersin öğretmeni puan verir) — **doğrulanmalı**; ADR 0001 karar 7.
 - **Kurum türü:** ikisi (dil okulunda sınıf yerine grup)
-- **Kodda:** kısmen — sınıf kapsamı atamalardan gelir ama öğretmen sabit `t1` (`packages/school-core/src/lib/school-workflows.js:289-291`); deneme sonucunda branş denetimi var (`packages/school-core/src/lib/school-workflows.js:505`); sınıf rehber öğretmeni ayrımı yok.
+- **Kodda:** kısmen — sınıf kapsamı atamalardan gelir ama öğretmen sabit `t1` (`packages/school-core/src/lib/school-workflows.js:289-291`); deneme sonucunda branş denetimi var (`packages/school-core/src/lib/school-workflows.js:505`); sınıf rehber öğretmeni ayrımı yok. Sınıfın ders öğretmeni değişince (`updateClass`/`saveClass`, `packages/school-core/src/lib/school-management.ts`) yalnız açık kayıtlar yeni öğretmene geçer: teslim süresi geçmemiş ya da notu girilmemiş teslimi olan ödev, cevaplanmamış öğrenci sorusu ve hiç deneme kaydı olmayan quiz (quizin tarihi yoktur; çözülmüş quiz notlarını üreten öğretmende kalır), ayrıca gelecek dersler ve tamamlanmamış çalışma görevleri. Notlanmış ödev, cevaplanmış soru ve çözülmüş quiz eski öğretmende kalır. Mevcut ders öğretmeni pasifleşmişse yalnız derslik değişen düzenleme de `subject_teacher_required` ile reddedilir; mesaj dersi ve öğretmenin pasifliğini söyler.
 
 ### DOM-YTK-023 · Vekil öğretmen
 

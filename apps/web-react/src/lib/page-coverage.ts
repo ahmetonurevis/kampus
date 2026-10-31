@@ -53,6 +53,8 @@ export const MIGRATED = new Set([
   'ogretmen/mesajlar',
   'yonetici/mesajlar',
   'veli/randevu-mesaj',
+  'ogrenci/randevu-talep',
+  'ogretmen/randevular',
   'veli/finans',
   'veli/dekontlar',
   'veli/odeme-yap',
@@ -72,7 +74,6 @@ export const MIGRATED = new Set([
   'yonetici/sla-raporu',
 ])
 // Duyurular beş rolün hepsinde aynı ekrandır; rol kapsamı sunucudadır.
-// TODO(web-randevu): öğretmen `randevular` ve öğrenci `randevu-talep` yer tutucu kalır.
 export const ANNOUNCEMENT_PATH = 'duyurular'
 
 export function isMigratedPage(role: RoleKey, path: string): boolean {

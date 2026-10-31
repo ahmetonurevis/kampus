@@ -8,7 +8,7 @@ import {
   childScrollKey,
   resolveChildFrom,
   withChildNames,
-  withChildParam,
+  withChildSwitch,
 } from '@/lib/child-selection.ts'
 import { readView, writeView } from '@/lib/view-memory.ts'
 
@@ -42,7 +42,7 @@ export function useChildSelection(session: Session | null) {
     writeView(CHILD_VIEW_KEY, next)
     void Promise.resolve(
       navigate(
-        { search: withChildParam(window.location.search, next) },
+        { search: withChildSwitch(window.location.search, next) },
         { preventScrollReset: true },
       ),
     ).catch((error: unknown) => console.error('[çocuk] seçim yazılamadı', error))

@@ -116,6 +116,9 @@ const AnnouncementsPage = lazy(async () => ({
 const MessagesPage = lazy(async () => ({
   default: (await import('./communication/MessagesPage.tsx')).MessagesPage,
 }))
+const AppointmentsPage = lazy(async () => ({
+  default: (await import('./communication/AppointmentsPage.tsx')).AppointmentsPage,
+}))
 const ParentMessagesPage = lazy(async () => ({
   default: (await import('./communication/ParentMessagesPage.tsx')).ParentMessagesPage,
 }))
@@ -226,6 +229,10 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
     case 'ogretmen/mesajlar':
     case 'yonetici/mesajlar':
       return <MessagesPage page={page} />
+    case 'ogrenci/randevu-talep':
+      return <AppointmentsPage page={page} audience="student" />
+    case 'ogretmen/randevular':
+      return <AppointmentsPage page={page} audience="teacher" />
     case 'veli/randevu-mesaj':
       return <ParentMessagesPage page={page} />
     case 'veli/sikayet-talep':

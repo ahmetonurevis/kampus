@@ -625,6 +625,134 @@ test.describe('kapsam dışı randevu adresi', () => {
   })
 })
 
+test.describe('liste süzgeci', () => {
+  test('durum ve tür süzgeci listeyi daraltır; süzgeç değişince sayfa başa döner (DOM-ILT-104)', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    // Dokuz reddedilmiş ve en eskisi iptal edilmiş görüşme: sekiz satırlık sayfaya sığmaz.
+    const closed = (id: string, status: string, days: number, type: string) => ({
+      collection: 'appointments' as const,
+      data: {
+        id,
+        studentId: 's1',
+        teacherId: 't1',
+        date: at(days, 10),
+        duration: 30,
+        type,
+        note: `Konu ${id}`,
+        status,
+        requestedBy: { role: 'ogrenci', userId: 'e2e-baska-ogrenci' },
+        createdAt: new Date().toISOString(),
+      },
+    })
+    const school = await tenant({
+      roles: ['yonetici', 'ogretmen', 'ogrenci', 'veli'],
+      records: [
+        ...Array.from({ length: 9 }, (_, index) =>
+          closed(`e2e-apt-red-${index}`, 'Reddedildi', -3 - index, 'Bireysel etüt'),
+        ),
+        closed('e2e-apt-iptal', 'İptal', -30, 'Akademik danışmanlık'),
+      ],
+    })
+    await loginAs(school.user('ogrenci'))
+    await page.goto('/ogrenci/randevu-talep')
+    const table = page.getByRole('table', { name: STUDENT_TABLE })
+    await expect(table.locator('tbody tr')).toHaveCount(8)
+
+    // Son sayfaya geç: iki satır (en eski reddedilen ve iptal).
+    await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
+    await expect(table.locator('tbody tr')).toHaveCount(2)
+
+    // Durum süzgeci sayfayı başa alır; seçenekler satırlardan değil sabit listedendir.
+    await page.getByRole('button', { name: 'Filtreler' }).click()
+    const status = page.getByLabel('Durum', { exact: true })
+    await expect(status.locator('option')).toHaveText([
+      'Tümü',
+      'Bekliyor',
+      'Onaylandı',
+      'Reddedildi',
+      'İptal',
+      'Geri çekildi',
+    ])
+    await status.selectOption('İptal')
+    await expect(table.locator('tbody tr')).toHaveCount(1)
+    await expect(table.locator('tbody tr')).toContainText('Akademik danışmanlık')
+    await expect(page.getByRole('button', { name: '1. sayfa' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+
+    // Satırı olmayan durum boş sonuç söyler; tür süzgeci ayrıca çalışır.
+    await status.selectOption('Onaylandı')
+    await expect(page.getByText('Aramanızla eşleşen randevu bulunamadı.')).toBeVisible()
+    await status.selectOption('')
+    await page.getByLabel('Tür', { exact: true }).selectOption('Akademik danışmanlık')
+    await expect(table.locator('tbody tr')).toHaveCount(1)
+    await expect(table.locator('tbody tr')).toContainText('İptal')
+  })
+})
+
+test.describe('çocuk değişimi ve panel', () => {
+  test('veli çocuk değiştirince açık randevu paneli kapanır; adresteki başka çocuğun randevusu "bulunamadı" görünür (DOM-ILT-103)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await appointmentTenant(tenant)
+    const parent = await api(school.user('veli'))
+    const denizId = await book(parent, {
+      studentId: 's1',
+      slotId: 'slot-a',
+      type: 'Veli görüşmesi',
+    })
+    await book(parent, { studentId: 's2', slotId: 'slot-c2', type: 'Akademik danışmanlık' })
+
+    await loginAs(school.user('veli'))
+    await page.goto('/veli/randevu-mesaj?sekme=randevular&cocuk=s1')
+    await rowButton(page, 'Selin Kaya', '13:00').click()
+    const panel = page.getByRole('dialog', { name: 'Randevu ayrıntısı' })
+    await expect(panel.getByText(NOTE)).toBeVisible()
+    await expect(page).toHaveURL(new RegExp(`randevu=${denizId}`))
+
+    // Ece'ye geçince Deniz'in randevusu panelde kalmaz, adreste de silinir.
+    await page.getByLabel('Çocuk seç').selectOption({ label: 'Ece Yılmaz' })
+    await expect(page).toHaveURL(/[?&]cocuk=s2/)
+    await expect(page).not.toHaveURL(/randevu=/)
+    await expect(panel).toBeHidden()
+    await expect(page.getByText('Nilüfer Tan').first()).toBeVisible()
+
+    // Uyumsuz adres de Deniz'in randevusunu Ece'nin başlığı altında göstermez.
+    await page.goto(`/veli/randevu-mesaj?sekme=randevular&cocuk=s2&randevu=${denizId}`)
+    await expect(panel.getByText(/Kayıt bulunamadı/)).toBeVisible()
+    await expect(panel.getByText(NOTE)).toHaveCount(0)
+    await expect(panel.getByText('Selin Kaya')).toHaveCount(0)
+  })
+
+  test('öğretmen adları okunamazsa panel yüklemede kalmaz: Türkçe hata ve yeniden dene görünür', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await appointmentTenant(tenant)
+    const id = await book(await api(school.user('ogrenci')), SLOT_A)
+    await loginAs(school.user('ogrenci'))
+    await page.route('**/api/v1/collections/teachers**', (route) =>
+      route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }),
+    )
+    await page.goto(`/ogrenci/randevu-talep?randevu=${id}`)
+    const panel = page.getByRole('dialog', { name: 'Randevu ayrıntısı' })
+    await expect(
+      panel.getByText('Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.'),
+    ).toBeVisible({ timeout: 20_000 })
+    await expect(panel.getByRole('button', { name: 'Yeniden dene' })).toBeVisible()
+    await expect(panel.getByText(/500|Internal|stack/i)).toHaveCount(0)
+  })
+})
+
 test.describe('dar ekran', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 

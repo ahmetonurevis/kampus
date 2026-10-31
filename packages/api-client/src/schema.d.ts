@@ -2396,6 +2396,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/task-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Görev atamaları
+         * @description Arşivlenmemiş atamalar, en yeni önce, sayfalı (IST-034). Süzgeçler: içerik (`resourceId`; aynı içeriğin farklı son tarihli ayrı atamaları) ve görev türü. Bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün atamaları, `ogretmen` kendi atamaları, `ogrenci` kendisine hedeflenenler, `veli` çocuklarına hedeflenenler; ön büro 403. Öğrenci ve veli `learner` görünümünü alır: hedef listesi, puanlama ve rubrik sürümü, ikinci puanlama oranı ve atayan yoktur; cevap anahtarı hiçbir görünümde yoktur. Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun ataması 404.
+         */
+        get: operations["listTaskAssignments"];
+        put?: never;
+        /**
+         * Görev ata
+         * @description İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → kapsam dışı hedef 403 `target_scope_denied` → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Geçici sınırlar: dosyalı ve sesli teslim 422 `submission_kind_unavailable`, dinleme hakkı sayımı açılana kadar gönderilmeyen hak sınırsız (`null`) saklanır, 1 veya 2 seçilirse 422 `listening_plays_unavailable`. Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["createTaskAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-assignments/{assignmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Görev ataması ayrıntısı
+         * @description Atamanın sabitlenmiş içerik sürümü ve ayarları (DOM-KYN-032, DOM-BEC-041, 042). Roller: `yonetici` kurumun bütün atamaları, `ogretmen` kendi atamaları, `ogrenci` kendisine hedeflenenler, `veli` çocuklarına hedeflenenler; ön büro 403. Öğrenci ve veli `learner` görünümünü alır: hedef listesi, puanlama ve rubrik sürümü, ikinci puanlama oranı ve atayan yoktur; cevap anahtarı hiçbir görünümde yoktur. Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun ataması 404.
+         */
+        get: operations["getTaskAssignment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Görev atamasını değiştir
+         * @description Yalnız son teslim ve geç kabul süresi uzatılır (core `planAssignmentChange`; DOM-BEC-041, 042, 044): kısaltma 422 `deadline_shortened`; içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 `assignment_setting_frozen`. Değiştiren atayan veya yöneticidir; başka öğretmenin ataması 404. `If-Match` zorunlu: atamanın `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        patch: operations["updateTaskAssignment"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3401,6 +3449,186 @@ export interface components {
             rubric: components["schemas"]["RubricInput"];
             version: components["schemas"]["RubricVersionInput"];
         };
+        TaskAssignmentStaffInput: {
+            /** @constant */
+            view: "staff";
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            resourceId: string;
+            /**
+             * Format: uuid
+             * @description Atamada sabitlenen içerik sürümü (DOM-KYN-032)
+             */
+            resourceVersionId: string;
+            /** @description Atanan sürümün başlığı */
+            title: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            /**
+             * @description Otomatik puanlı veya öğretmen puanlı
+             * @enum {string}
+             */
+            scoringMode: "auto" | "teacher";
+            /** @enum {string} */
+            kind: "evaluation" | "practice";
+            /** @description Deneme hakkı ve sayım politikası (DOM-BEC-042) */
+            attempts: {
+                /** @constant */
+                kind: "evaluation";
+                /** @default 1 */
+                maxAttempts: number;
+                /**
+                 * @default first
+                 * @enum {string}
+                 */
+                countPolicy: "first" | "highest";
+            } | {
+                /** @constant */
+                kind: "practice";
+            };
+            /** @description Son teslim ve geç kabul (DOM-BEC-044) */
+            deadline: {
+                /** @default null */
+                dueAt: string | null;
+                /** @default 0 */
+                lateAcceptanceDays: number;
+            };
+            timeLimitMinutes: number | null;
+            /** @description Dinleme hakkı; boş: sınırsız veya dinleme görevi değil (DOM-BEC-005) */
+            listeningPlays: (1 | 2) | null;
+            showTranscript: boolean;
+            /** @description Öğretmen puanlı görevin teslim ayarı */
+            submission: ({
+                /** @constant */
+                submissionKind: "text";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default null */
+                minWords: number | null;
+                /** @default null */
+                maxWords: number | null;
+            } | {
+                /** @constant */
+                submissionKind: "file";
+                /** @default 3 */
+                maxVersions: number;
+            } | {
+                /** @constant */
+                submissionKind: "audio";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default 1 */
+                speakingAttempts: number;
+                /** @default 0 */
+                preparationSeconds: number;
+                speakingSeconds: number;
+            }) | null;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: uuid
+             * @description Puanlamanın okunduğu sürüm; başta içerik sürümüdür, yalnız yeniden puanlama değiştirir
+             */
+            scoringVersionId: string;
+            /** @description Sabitlenen yayındaki rubrik sürümü (DOM-BEC-022) */
+            rubricVersionId: string | null;
+            highStakes: boolean;
+            secondRatingPercent: number;
+            assignedByUserId: string;
+            /** @description Sınıf/şube, dil grubu veya öğrenci hedefleri */
+            targets: {
+                /** @enum {string} */
+                kind: "class" | "group" | "student";
+                id: string;
+            }[];
+            /** Format: date-time */
+            updatedAt: string;
+            archivedAt: string | null;
+            /** @description Atama satırının iyimser kilit sürümü (değişiklikte `If-Match`) */
+            rowVersion: number;
+        };
+        TaskAssignmentLearnerInput: {
+            /** @constant */
+            view: "learner";
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            resourceId: string;
+            /**
+             * Format: uuid
+             * @description Atamada sabitlenen içerik sürümü (DOM-KYN-032)
+             */
+            resourceVersionId: string;
+            /** @description Atanan sürümün başlığı */
+            title: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            /**
+             * @description Otomatik puanlı veya öğretmen puanlı
+             * @enum {string}
+             */
+            scoringMode: "auto" | "teacher";
+            /** @enum {string} */
+            kind: "evaluation" | "practice";
+            /** @description Deneme hakkı ve sayım politikası (DOM-BEC-042) */
+            attempts: {
+                /** @constant */
+                kind: "evaluation";
+                /** @default 1 */
+                maxAttempts: number;
+                /**
+                 * @default first
+                 * @enum {string}
+                 */
+                countPolicy: "first" | "highest";
+            } | {
+                /** @constant */
+                kind: "practice";
+            };
+            /** @description Son teslim ve geç kabul (DOM-BEC-044) */
+            deadline: {
+                /** @default null */
+                dueAt: string | null;
+                /** @default 0 */
+                lateAcceptanceDays: number;
+            };
+            timeLimitMinutes: number | null;
+            /** @description Dinleme hakkı; boş: sınırsız veya dinleme görevi değil (DOM-BEC-005) */
+            listeningPlays: (1 | 2) | null;
+            showTranscript: boolean;
+            /** @description Öğretmen puanlı görevin teslim ayarı */
+            submission: ({
+                /** @constant */
+                submissionKind: "text";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default null */
+                minWords: number | null;
+                /** @default null */
+                maxWords: number | null;
+            } | {
+                /** @constant */
+                submissionKind: "file";
+                /** @default 3 */
+                maxVersions: number;
+            } | {
+                /** @constant */
+                submissionKind: "audio";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default 1 */
+                speakingAttempts: number;
+                /** @default 0 */
+                preparationSeconds: number;
+                speakingSeconds: number;
+            }) | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Görevin hedeflediği kişinin kendisi veya velinin çocukları */
+            learnerIds: string[];
+        };
+        TaskAssignmentInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerInput"];
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -4402,6 +4630,186 @@ export interface components {
             rubric: components["schemas"]["Rubric"];
             version: components["schemas"]["RubricVersion"];
         };
+        TaskAssignmentStaff: {
+            /** @constant */
+            view: "staff";
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            resourceId: string;
+            /**
+             * Format: uuid
+             * @description Atamada sabitlenen içerik sürümü (DOM-KYN-032)
+             */
+            resourceVersionId: string;
+            /** @description Atanan sürümün başlığı */
+            title: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            /**
+             * @description Otomatik puanlı veya öğretmen puanlı
+             * @enum {string}
+             */
+            scoringMode: "auto" | "teacher";
+            /** @enum {string} */
+            kind: "evaluation" | "practice";
+            /** @description Deneme hakkı ve sayım politikası (DOM-BEC-042) */
+            attempts: {
+                /** @constant */
+                kind: "evaluation";
+                /** @default 1 */
+                maxAttempts: number;
+                /**
+                 * @default first
+                 * @enum {string}
+                 */
+                countPolicy: "first" | "highest";
+            } | {
+                /** @constant */
+                kind: "practice";
+            };
+            /** @description Son teslim ve geç kabul (DOM-BEC-044) */
+            deadline: {
+                /** @default null */
+                dueAt: string | null;
+                /** @default 0 */
+                lateAcceptanceDays: number;
+            };
+            timeLimitMinutes: number | null;
+            /** @description Dinleme hakkı; boş: sınırsız veya dinleme görevi değil (DOM-BEC-005) */
+            listeningPlays: (1 | 2) | null;
+            showTranscript: boolean;
+            /** @description Öğretmen puanlı görevin teslim ayarı */
+            submission: ({
+                /** @constant */
+                submissionKind: "text";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default null */
+                minWords: number | null;
+                /** @default null */
+                maxWords: number | null;
+            } | {
+                /** @constant */
+                submissionKind: "file";
+                /** @default 3 */
+                maxVersions: number;
+            } | {
+                /** @constant */
+                submissionKind: "audio";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default 1 */
+                speakingAttempts: number;
+                /** @default 0 */
+                preparationSeconds: number;
+                speakingSeconds: number;
+            }) | null;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: uuid
+             * @description Puanlamanın okunduğu sürüm; başta içerik sürümüdür, yalnız yeniden puanlama değiştirir
+             */
+            scoringVersionId: string;
+            /** @description Sabitlenen yayındaki rubrik sürümü (DOM-BEC-022) */
+            rubricVersionId: string | null;
+            highStakes: boolean;
+            secondRatingPercent: number;
+            assignedByUserId: string;
+            /** @description Sınıf/şube, dil grubu veya öğrenci hedefleri */
+            targets: {
+                /** @enum {string} */
+                kind: "class" | "group" | "student";
+                id: string;
+            }[];
+            /** Format: date-time */
+            updatedAt: string;
+            archivedAt: string | null;
+            /** @description Atama satırının iyimser kilit sürümü (değişiklikte `If-Match`) */
+            rowVersion: number;
+        };
+        TaskAssignmentLearner: {
+            /** @constant */
+            view: "learner";
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            resourceId: string;
+            /**
+             * Format: uuid
+             * @description Atamada sabitlenen içerik sürümü (DOM-KYN-032)
+             */
+            resourceVersionId: string;
+            /** @description Atanan sürümün başlığı */
+            title: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            /**
+             * @description Otomatik puanlı veya öğretmen puanlı
+             * @enum {string}
+             */
+            scoringMode: "auto" | "teacher";
+            /** @enum {string} */
+            kind: "evaluation" | "practice";
+            /** @description Deneme hakkı ve sayım politikası (DOM-BEC-042) */
+            attempts: {
+                /** @constant */
+                kind: "evaluation";
+                /** @default 1 */
+                maxAttempts: number;
+                /**
+                 * @default first
+                 * @enum {string}
+                 */
+                countPolicy: "first" | "highest";
+            } | {
+                /** @constant */
+                kind: "practice";
+            };
+            /** @description Son teslim ve geç kabul (DOM-BEC-044) */
+            deadline: {
+                /** @default null */
+                dueAt: string | null;
+                /** @default 0 */
+                lateAcceptanceDays: number;
+            };
+            timeLimitMinutes: number | null;
+            /** @description Dinleme hakkı; boş: sınırsız veya dinleme görevi değil (DOM-BEC-005) */
+            listeningPlays: (1 | 2) | null;
+            showTranscript: boolean;
+            /** @description Öğretmen puanlı görevin teslim ayarı */
+            submission: ({
+                /** @constant */
+                submissionKind: "text";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default null */
+                minWords: number | null;
+                /** @default null */
+                maxWords: number | null;
+            } | {
+                /** @constant */
+                submissionKind: "file";
+                /** @default 3 */
+                maxVersions: number;
+            } | {
+                /** @constant */
+                submissionKind: "audio";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default 1 */
+                speakingAttempts: number;
+                /** @default 0 */
+                preparationSeconds: number;
+                speakingSeconds: number;
+            }) | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Görevin hedeflediği kişinin kendisi veya velinin çocukları */
+            learnerIds: string[];
+        };
+        TaskAssignment: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearner"];
     };
     responses: never;
     parameters: never;
@@ -18473,6 +18881,463 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["RubricWriteResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTaskAssignments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Atanan içerik (aynı içeriğin ayrı atamaları, IST-034) */
+                resourceId?: string;
+                /** @description Görev türü: değerlendirme veya alıştırma */
+                kind?: "evaluation" | "practice";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAssignment"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTaskAssignment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    resourceVersionId: string;
+                    /** @default {} */
+                    settings?: {
+                        /**
+                         * @default {
+                         *       "kind": "evaluation"
+                         *     }
+                         */
+                        attempts?: {
+                            /** @enum {string} */
+                            kind: "evaluation";
+                            /** @default 1 */
+                            maxAttempts?: number;
+                            /**
+                             * @default first
+                             * @enum {string}
+                             */
+                            countPolicy?: "first" | "highest";
+                        } | {
+                            /** @enum {string} */
+                            kind: "practice";
+                        };
+                        /** @default {} */
+                        deadline?: {
+                            /** @default null */
+                            dueAt?: string | null;
+                            /** @default 0 */
+                            lateAcceptanceDays?: number;
+                        };
+                        timeLimitMinutes?: number | null;
+                        /**
+                         * @description Dinleme hakkı; gönderilmezse sınırsız. Dinleme sayımı açılana kadar yalnız sınırsız kabul edilir.
+                         * @default null
+                         */
+                        listeningPlays?: (1 | 2) | null;
+                        /** @default false */
+                        showTranscript?: boolean;
+                        /** @default null */
+                        submission?: ({
+                            /** @enum {string} */
+                            submissionKind: "text";
+                            /** @default 3 */
+                            maxVersions?: number;
+                            /** @default null */
+                            minWords?: number | null;
+                            /** @default null */
+                            maxWords?: number | null;
+                        } | {
+                            /** @enum {string} */
+                            submissionKind: "file";
+                            /** @default 3 */
+                            maxVersions?: number;
+                        } | {
+                            /** @enum {string} */
+                            submissionKind: "audio";
+                            /** @default 3 */
+                            maxVersions?: number;
+                            /** @default 1 */
+                            speakingAttempts?: number;
+                            /** @default 0 */
+                            preparationSeconds?: number;
+                            speakingSeconds: number;
+                        }) | null;
+                        /** @default false */
+                        highStakes?: boolean;
+                        secondRatingPercent?: number;
+                        /** @default null */
+                        rubricVersionId?: string | null;
+                    };
+                    targets: {
+                        /** @enum {string} */
+                        kind: "class" | "group" | "student";
+                        id: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAssignmentStaff"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTaskAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAssignment"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTaskAssignment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yeni son teslim ve geç kabul; yalnız uzatılabilir (DOM-BEC-044) */
+                    deadline?: {
+                        /** @default null */
+                        dueAt?: string | null;
+                        /** @default 0 */
+                        lateAcceptanceDays?: number;
+                    };
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAssignmentStaff"];
                     };
                 };
             };

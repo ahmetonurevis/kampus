@@ -8,7 +8,7 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { findAssignment, updateAssignmentDeadline } from '../src/db/skills.ts'
 import { AppError } from '../src/errors.ts'
-import { buildTestApp, createInstitution, FIXED_NOW } from './support/app.ts'
+import { buildTestApp, createInstitution, FIXED_NOW, signInAs, TEST_ORIGIN } from './support/app.ts'
 import { createPgDatabase, PG_SKIP } from './support/pg.ts'
 import { DUE_AT, seedSkillChain } from './support/skills-sample.ts'
 
@@ -97,5 +97,31 @@ describe('PostgreSQL 16: eşzamanlı atama değişikliği', { skip: PG_SKIP }, (
     )
     const stored = await findAssignment(db, institution.id, chain.assignmentId)
     assert.deepEqual([stored?.deadline.lateAcceptanceDays, stored?.rowVersion], [2, 2])
+  })
+
+  test('DOM-BEC-044, IST-034: uçtan eşzamanlı iki PATCH (If-Match "1"): biri 200, diğeri 409 version_conflict; satır sürümü 2', async () => {
+    const institution = await createInstitution(app)
+    const chain = await seedSkillChain(db, institution.id, institution.admin.id)
+    const cookie = await signInAs(app, institution.admin)
+    const dueAt = new Date(DUE_AT.getTime() + 7 * 24 * 60 * 60_000).toISOString()
+    const patch = (lateAcceptanceDays: number) =>
+      app.inject({
+        method: 'PATCH',
+        url: `/api/v1/task-assignments/${chain.assignmentId}`,
+        headers: {
+          origin: TEST_ORIGIN,
+          cookie,
+          'content-type': 'application/json',
+          'if-match': '"1"',
+        },
+        payload: JSON.stringify({ deadline: { dueAt, lateAcceptanceDays } }),
+      })
+    const responses = await Promise.all([patch(2), patch(5)])
+    assert.deepEqual(responses.map((r) => r.statusCode).sort(), [200, 409])
+    const loser = responses.find((r) => r.statusCode === 409)
+    assert.equal(loser?.json().code, 'version_conflict', loser?.body)
+    const winner = responses.find((r) => r.statusCode === 200)?.json().data
+    const stored = await findAssignment(db, institution.id, chain.assignmentId)
+    assert.deepEqual([stored?.deadline, stored?.rowVersion], [winner.deadline, 2])
   })
 })

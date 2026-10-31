@@ -735,6 +735,27 @@ export async function assignmentContentRefs(
   return new Map(rows.map(({ id, ...ref }) => [id, ref]))
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * İçerik sürümünün kaynağı (atama gövdesindeki `resourceVersionId`); yoksa veya başka kurumdaysa
+ * `null`. Core kimliği serbest metindir, kolon `uuid`'dir: uuid olmayan kimlik sorguya girmez.
+ */
+export async function resourceIdOfVersion(
+  db: Database,
+  institutionId: string,
+  versionId: string,
+): Promise<string | null> {
+  if (!UUID.test(versionId)) return null
+  const [row] = await db
+    .select({ resourceId: resourceVersions.resourceId })
+    .from(resourceVersions)
+    .where(
+      and(eq(resourceVersions.institutionId, institutionId), eq(resourceVersions.id, versionId)),
+    )
+  return row?.resourceId ?? null
+}
+
 /**
  * Atama listesinin süzgeçleri. Rol kapsamı servisten gelir: `assignedByUserId` öğretmenin kendi
  * atamaları, `learnerTargets` kursiyerin (veya velinin çocuklarının) hedeflendiği atamalar.

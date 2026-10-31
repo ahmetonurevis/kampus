@@ -425,6 +425,8 @@ describe('yazma uçları', () => {
         'POST /api/v1/branches',
         'POST /api/v1/teachers',
         'POST /api/v1/classes',
+        // Görev atama: sınıfa toplu dağıtım (routes/task-assignments.ts; IST-034).
+        'POST /api/v1/task-assignments',
         // Aday oluşturma (routes/prospects.ts; DOM-KAY-002).
         'POST /api/v1/prospects',
       ]

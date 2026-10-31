@@ -41,6 +41,7 @@ import { registerAppointmentRoutes } from './routes/appointments.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
 import { registerRubricRoutes } from './routes/rubrics.ts'
+import { registerTaskAssignmentRoutes } from './routes/task-assignments.ts'
 
 // Şemada özel mesajı olmayan Zod hataları da Türkçe döner.
 z.config(z.locales.tr())
@@ -244,6 +245,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerResourceRoutes(app)
   registerResourceCommandRoutes(app)
   registerRubricRoutes(app)
+  registerTaskAssignmentRoutes(app)
 
   return app
 }

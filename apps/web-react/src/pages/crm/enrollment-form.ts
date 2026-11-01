@@ -26,8 +26,9 @@ export function guardianModeFor(
 }
 
 /**
- * Aday değişince sıfırlanan alanlar: önceki adayın veli seçimi ve bilgisi yeni adaya taşınmaz.
- * Veli seçimi girilmiş doğum tarihine göre varsayılana döner.
+ * Aday değişince sıfırlanan alanlar: önceki adayın sınıfı, başka kampüs onayı, veli seçimi ve
+ * bilgisi yeni adaya taşınmaz (A'nın onayı B'ye `allowOtherCampus` olarak gitmez). Veli seçimi
+ * girilmiş doğum tarihine göre varsayılana döner.
  */
 export function prospectChangeValues(
   values: Pick<EnrollmentFormValues, 'birthDate'>,
@@ -35,6 +36,8 @@ export function prospectChangeValues(
   now: string | number | Date = new Date(),
 ): Pick<
   EnrollmentFormValues,
+  | 'classId'
+  | 'confirmOtherCampus'
   | 'existingParentId'
   | 'guardianName'
   | 'guardianPhone'
@@ -43,6 +46,8 @@ export function prospectChangeValues(
   | 'studentEmail'
 > {
   return {
+    classId: '',
+    confirmOtherCampus: false,
     existingParentId: '',
     guardianName: '',
     guardianPhone: '',

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  enrollmentFormToBody,
   GUARDIAN_NOT_APPLICABLE_FORM_MESSAGE,
   GUARDIAN_REQUIRED_FORM_MESSAGE,
   type EnrollmentFormValues,
@@ -37,8 +38,11 @@ const FORM: EnrollmentFormValues = {
   confirmOtherCampus: true,
 }
 
-test('DOM-KAY-013: aday değişince veli seçimi ve bilgisi sıfırlanır', () => {
-  assert.deepEqual(prospectChangeValues(FORM, 'school', NOW), {
+test('class_campus_mismatch, DOM-KAY-013: aday değişince sınıf, kampüs onayı ve veli seçimi sıfırlanır', () => {
+  const reset = prospectChangeValues(FORM, 'school', NOW)
+  assert.deepEqual(reset, {
+    classId: '',
+    confirmOtherCampus: false,
     existingParentId: '',
     guardianName: '',
     guardianPhone: '',
@@ -46,6 +50,9 @@ test('DOM-KAY-013: aday değişince veli seçimi ve bilgisi sıfırlanır', () =
     studentPhone: '',
     studentEmail: '',
   })
+  // A adayının başka kampüs onayı B adayının gövdesine `allowOtherCampus` olarak gitmez.
+  const next = { ...FORM, ...reset, prospectId: 'pr-b', classId: 'c1' }
+  assert.equal('allowOtherCampus' in enrollmentFormToBody(next, 'tarife'), false)
   // Girilmiş doğum tarihi yetişkin kursiyeri gösteriyorsa varsayılan "kendisi"dir (DOM-KAY-012).
   assert.equal(
     prospectChangeValues({ birthDate: ADULT }, 'language_school', NOW).guardianMode,

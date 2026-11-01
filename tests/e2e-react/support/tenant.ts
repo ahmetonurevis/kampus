@@ -188,6 +188,8 @@ export function createTenantFactory(): TenantFactory {
       academicYear: createSeed(now).academicYear,
     })
     const academicYear = createSeed(now).academicYear
+    // Dil okulunda tutar ders saati başınadır.
+    const tuitionCents = options.type === 'language_school' ? 50_000 : 100_000_000
     for (const which of options.tariffYears ?? [])
       await db.insert(feeTariffs).values({
         institutionId,
@@ -199,11 +201,11 @@ export function createTenantFactory(): TenantFactory {
           {
             kind: 'tuition',
             level: null,
-            amountCents: 100_000_000,
+            amountCents: tuitionCents,
             unit: options.type === 'language_school' ? 'lesson_hour' : 'year',
             vatBasisPoints: 1000,
             vatEffectiveDate: `${String(academicYear)}-01-01`,
-            announcedAmountCents: 100_000_000,
+            announcedAmountCents: tuitionCents,
           },
         ],
         announcedDate: `${String(academicYear)}-05-01`,

@@ -238,6 +238,79 @@ test.describe('Aday ekranları', () => {
     ).toHaveCount(0)
   })
 
+  test('DOM-DIL-030, DOM-FIN-006: dil okulunda deneme dersi veli onayı ister, kayıt ders saatiyle hesaplanır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const name = 'Kuzey Aday'
+    const school = await tenant({
+      type: 'language_school',
+      roles: ['onburo'],
+      collections: ['schedule'],
+      tariffYears: ['current'],
+      records: [
+        {
+          collection: 'prospects',
+          data: {
+            id: 'aday-dil-1',
+            name,
+            phone: '05551112233',
+            email: '',
+            interest: 'A2 İngilizce',
+            source: 'Web sitesi',
+            branchId: 'b1',
+            stage: 'Yeni aday',
+            minor: true,
+            guardianName: 'Kuzey Velisi',
+            studentId: null,
+            createdAt: new Date().toISOString(),
+            trialAt: null,
+            notes: [],
+          },
+        },
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    const client = await api(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await page.getByRole('button', { name: `${name} kartını aç` }).click()
+    const card = page.getByRole('dialog', { name: 'Aday kartı' })
+
+    const lesson = card.getByLabel('Ders', { exact: true })
+    await expect(lesson.getByRole('option').nth(1)).toBeAttached()
+    await lesson.selectOption({ index: 1 })
+    await card.getByRole('button', { name: 'Deneme dersini planla' }).click()
+    await expect(card.getByText('18 yaş altı adayın deneme dersi için veli onayı')).toBeVisible()
+    await card.getByRole('checkbox', { name: /Veli, deneme dersine/ }).click()
+    await card.getByRole('button', { name: 'Deneme dersini planla' }).click()
+    await expect(page.getByText('Deneme dersi planlandı.')).toBeVisible()
+    await expect(card.getByText('Planlanmış deneme dersi yok.')).toHaveCount(0)
+
+    await card.getByRole('link', { name: 'Kesin kayda dönüştür' }).click()
+    await expect(page).toHaveURL(/kayit-islemleri\?aday=/)
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    await page.getByLabel('Sınıf').selectOption({ index: 1 })
+    await proceed.click()
+    await page.getByLabel('Kimlik numarası').fill('10000000146')
+    await page.getByLabel('Doğum tarihi').fill('2013-03-01')
+    await page.getByLabel('Veli adı soyadı').fill('Kuzey Velisi')
+    await page.getByLabel('Veli telefonu').fill('05559990078')
+    await proceed.click()
+    await page.getByLabel('Paket ders saati').fill('40')
+    await page.getByLabel('Taksit sayısı').selectOption('2')
+    await proceed.click()
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+    await expect(page.getByRole('heading', { name: `${name} kaydedildi` })).toBeVisible()
+
+    const invoices = (await client.get('/api/v1/collections/invoices?pageSize=100')).body as {
+      data: { record: { amount: number; feeKind?: string } }[]
+    }
+    const total = invoices.data.reduce((sum, row) => sum + row.record.amount, 0)
+    expect(total).toBe(2_000_000)
+  })
+
   test('320 ve 390 px genişlikte aday sayfaları yatay taşmaz', async ({
     page,
     loginAs,

@@ -8,6 +8,8 @@ import {
   PROSPECT_PRIVACY_NOTICE_VERSION,
   prospectFormSchema,
   prospectFormToBody,
+  trialLessonOptions,
+  trialLessonUsed,
   upcomingMeetings,
   type ProspectFormValues,
 } from '../packages/school-core/src/lib/prospect-form.ts'
@@ -104,8 +106,54 @@ test('DOM-KAY-033: eski kayıtta görüşme anı trialAt alanındadır; süre ve
     '2026-10-06',
   )
   assert.deepEqual(list, [
-    { id: 'old', name: 'Eski', date: '2026-10-11T09:00:00.000Z', duration: null, room: null },
+    {
+      key: 'old-meeting',
+      kind: 'meeting',
+      id: 'old',
+      name: 'Eski',
+      date: '2026-10-11T09:00:00.000Z',
+      duration: null,
+      room: null,
+    },
   ])
   assert.equal(meetingSummary(list[0]!), null)
   assert.equal(meetingSummary({ duration: 45, room: 'Oda 1' }), '45 dk · Oda 1')
+})
+
+test('DOM-DIL-030: deneme dersi takvimde ayrı satırdır; iptal edilen ders listelenmez', () => {
+  const trial = { lessonId: 'l1', date: '2026-10-12T09:00:00.000Z', duration: 40 }
+  const list = upcomingMeetings([{ id: 'a', name: 'A', trialLesson: trial }], '2026-10-10')
+  assert.deepEqual(
+    list.map((row) => [row.key, row.kind, row.duration]),
+    [['a-trial', 'trial', 40]],
+  )
+  assert.deepEqual(
+    upcomingMeetings([{ id: 'a', name: 'A', trialLesson: trial }], '2026-10-10', new Set(['l1'])),
+    [],
+  )
+})
+
+test('DOM-DIL-030: seçenekler adayın kampüsündeki açık grupların gelecek dersleridir', () => {
+  const now = '2026-10-06T09:00:00.000Z'
+  const classes = [
+    { id: 'c1', name: 'A2 Akşam', branchId: 'b1', isActive: true },
+    { id: 'c2', name: 'Başka kampüs', branchId: 'b2', isActive: true },
+    { id: 'c3', name: 'Kapalı', branchId: 'b1', isActive: false },
+  ]
+  const lessons = [
+    { id: 'later', classId: 'c1', date: '2026-10-09T09:00:00.000Z' },
+    { id: 'soon', classId: 'c1', date: '2026-10-07T09:00:00.000Z' },
+    { id: 'past', classId: 'c1', date: '2026-10-05T09:00:00.000Z' },
+    { id: 'cancelled', classId: 'c1', date: '2026-10-08T09:00:00.000Z', cancelledAt: now },
+    { id: 'other', classId: 'c2', date: '2026-10-08T09:00:00.000Z' },
+    { id: 'closed', classId: 'c3', date: '2026-10-08T09:00:00.000Z' },
+  ]
+  assert.deepEqual(
+    trialLessonOptions(lessons, classes, 'b1', now).map((row) => row.id),
+    ['soon', 'later'],
+  )
+  assert.equal(trialLessonUsed({ lessonId: 'past' }, lessons, now), true)
+  assert.equal(trialLessonUsed({ lessonId: 'soon' }, lessons, now), false)
+  assert.equal(trialLessonUsed({ lessonId: 'gone' }, lessons, now), false)
+  assert.equal(trialLessonUsed(undefined, lessons, now), false)
 })

@@ -4,6 +4,7 @@ import { meetingSummary, upcomingMeetings } from '@kampus/school-core/lib/prospe
 import { EmptyState } from '@/components/EmptyState.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
+import { useAuth } from '@/auth/use-auth.ts'
 import { Button } from '@/components/ui/button'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
@@ -20,7 +21,13 @@ const TIME = { weekday: 'long', year: 'numeric', hour: '2-digit', minute: '2-dig
  */
 export function MeetingsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
+  const { session } = useAuth()
   const prospects = useCoreAll('prospects')
+  const schedule = useCoreAll(
+    'schedule',
+    {},
+    { enabled: session?.institution.type === 'language_school' },
+  )
   const detail = useDetailPanel('detay')
   const today = dayKey()
   const meetings = useMemo(
@@ -31,8 +38,9 @@ export function MeetingsPage({ page }: { page: NavPage }) {
           id: row.id,
         })),
         today,
+        new Set((schedule.data ?? []).filter((row) => row.record.cancelledAt).map((row) => row.id)),
       ),
-    [prospects.data, today],
+    [prospects.data, schedule.data, today],
   )
 
   return (
@@ -54,12 +62,13 @@ export function MeetingsPage({ page }: { page: NavPage }) {
               const summary = meetingSummary(meeting)
               return (
                 <li
-                  key={meeting.id}
+                  key={meeting.key}
                   className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 max-[650px]:px-4"
                 >
                   <div className="min-w-0">
                     <p className="font-semibold">{meeting.name}</p>
                     <p className="text-sm text-muted-foreground">
+                      {meeting.kind === 'trial' ? 'Deneme dersi · ' : ''}
                       {dateLabel(meeting.date, TIME)}
                       {summary ? ` · ${summary}` : ''}
                     </p>

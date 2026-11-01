@@ -10,11 +10,16 @@ import {
   type ProspectLostReason,
   type ProspectStage,
 } from '@kampus/school-core/lib/prospects.ts'
-import { meetingInstant } from '@kampus/school-core/lib/prospect-form.ts'
+import {
+  meetingInstant,
+  trialLessonOptions,
+  trialLessonUsed,
+} from '@kampus/school-core/lib/prospect-form.ts'
 import {
   useAddProspectNote,
   useChangeProspectStage,
   useScheduleProspectMeeting,
+  useScheduleTrialLesson,
 } from '@kampus/react-shared/use-prospect-commands.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { FormField } from '@/components/FormField.tsx'
@@ -22,6 +27,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
@@ -35,7 +41,8 @@ const DETAIL_TIME = { year: 'numeric', hour: '2-digit', minute: '2-digit' } as c
 /**
  * Aday kartı (DOM-KAY-005, -030…-033): aşama yalnız ileri gider, vazgeçme nedenle girilir, not
  * eklenir ve değişmez, görüşme planlanır. Komutlar okunan sürümü `If-Match` taşır; kart bayatsa
- * sunucu 409 verir, mesaj gösterilir ve kart tazelenir. Kesin kayıt ayrı sayfadadır.
+ * sunucu 409 verir, mesaj gösterilir ve kart tazelenir. Kesin kayıt ayrı sayfadadır. Dil okulunda
+ * deneme dersi de buradan planlanır (DOM-DIL-030).
  */
 export function ProspectPanel({
   prospectId,
@@ -123,6 +130,17 @@ function ProspectCard({ prospectId }: { prospectId: string }) {
         {!closed ? <MeetingForm prospectId={prospectId} version={version} /> : null}
       </section>
 
+      {institutionType === 'language_school' ? (
+        <TrialLessonSection
+          prospectId={prospectId}
+          version={version}
+          branchId={prospect.branchId ?? ''}
+          minor={prospect.minor !== false}
+          trial={prospect.trialLesson}
+          closed={closed}
+        />
+      ) : null}
+
       <section className="grid gap-3" aria-labelledby="aday-notlari">
         <h3 id="aday-notlari" className="font-semibold">
           İletişim geçmişi
@@ -144,6 +162,128 @@ function ProspectCard({ prospectId }: { prospectId: string }) {
         )}
       </section>
     </div>
+  )
+}
+
+/** Sunucu kuralları (kapasite, kampüs, çakışma) `scheduleTrialLesson`'dadır; liste yalnız ön süzgeç. */
+function TrialLessonSection({
+  prospectId,
+  version,
+  branchId,
+  minor,
+  trial,
+  closed,
+}: {
+  prospectId: string
+  version: number
+  branchId: string
+  minor: boolean
+  trial: { lessonId: string; date: string; duration: number } | undefined
+  closed: boolean
+}) {
+  const schedule = useCoreAll('schedule')
+  const classes = useCoreAll('classes')
+  const submit = useScheduleTrialLesson()
+  const [lessonId, setLessonId] = useState('')
+  const [consent, setConsent] = useState(false)
+  const [error, setError] = useState('')
+  // Kart açıkken sabit: seçenek listesi her çizimde değişmesin; son kararı sunucu verir.
+  const [now] = useState(() => new Date().toISOString())
+  const lessons = (schedule.data ?? []).map((row) => ({ ...row.record, id: row.id }))
+  const groups = (classes.data ?? []).map((row) => ({ ...row.record, id: row.id }))
+  const options = trialLessonOptions(lessons, groups, branchId, now)
+  const used = trialLessonUsed(trial, lessons, now)
+  const busy = submit.isPending
+  const loadError = schedule.error ?? classes.error
+
+  async function send() {
+    if (lessonId === '') {
+      setError('Deneme dersini seçin.')
+      return
+    }
+    setError('')
+    const outcome = await submit.submit(
+      {
+        prospectId,
+        version,
+        body: { lessonId, ...(minor ? { guardianConsent: consent } : {}) },
+      },
+      { setError: (_name, issue) => setError(issue.message) },
+    )
+    if (outcome.status === 'success') {
+      notify.success('Deneme dersi planlandı.')
+      setLessonId('')
+      setConsent(false)
+    }
+  }
+
+  return (
+    <section className="grid gap-3" aria-labelledby="aday-deneme">
+      <h3 id="aday-deneme" className="font-semibold">
+        Deneme dersi
+      </h3>
+      {trial ? (
+        <p className="text-sm">
+          {dateLabel(trial.date, DETAIL_TIME)} · {String(trial.duration)} dk
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground">Planlanmış deneme dersi yok.</p>
+      )}
+      {loadError ? (
+        <QueryError
+          error={loadError}
+          onRetry={() => {
+            void schedule.refetch()
+            void classes.refetch()
+          }}
+        />
+      ) : closed || used ? null : (
+        <form
+          noValidate
+          className="grid gap-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void send()
+          }}
+        >
+          <FormField
+            id="deneme-ders"
+            label="Ders"
+            error={error ? { message: error } : undefined}
+            description="Adayın kampüsündeki açık grupların yaklaşan dersleri."
+          >
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={lessonId}
+                disabled={busy}
+                onChange={(event) => setLessonId(event.target.value)}
+              >
+                <NativeSelectOption value="">Ders seçin</NativeSelectOption>
+                {options.map((option) => (
+                  <NativeSelectOption key={option.id} value={option.id}>
+                    {dateLabel(option.date, DETAIL_TIME)} · {option.className}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            )}
+          </FormField>
+          {minor ? (
+            <label className="flex min-h-6 items-center gap-2 text-sm">
+              <Checkbox
+                checked={consent}
+                disabled={busy}
+                onCheckedChange={(checked) => setConsent(checked === true)}
+              />
+              Veli, deneme dersine katılım için onay verdi
+            </label>
+          ) : null}
+          <Button type="submit" variant="secondary" disabled={busy} aria-busy={busy || undefined}>
+            Deneme dersini planla
+          </Button>
+        </form>
+      )}
+    </section>
   )
 }
 

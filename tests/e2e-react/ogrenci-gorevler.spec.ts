@@ -8,6 +8,7 @@ import {
   assignTask,
   expireAssignment,
   inHours,
+  markSecondRatingSampled,
   QUIZ_QUESTIONS,
   requestSecondRating,
   seedHomework,
@@ -411,6 +412,8 @@ test.describe('öğrenci görevleri: yazma', () => {
     await expect(page.getByRole('heading', { name: '1. sürüm' })).toBeVisible()
 
     const submission = await submissionOf(school.admin, assignmentId)
+    // Örneklemli değerlendirmede ilk puan örneklem çekilmeden 409 alır (DOM-BEC-024).
+    await markSecondRatingSampled(assignmentId)
     await requestSecondRating(school.tenant.institutionId, submission.id, school.ownerId)
     await post(
       school.admin,

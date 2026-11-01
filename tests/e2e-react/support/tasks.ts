@@ -217,6 +217,25 @@ export async function expireAssignment(assignmentId: string): Promise<void> {
   }
 }
 
+/**
+ * Örneklemli görevin örneklemini çekilmiş sayar (DOM-BEC-024). API örneklemi yalnız teslim penceresi
+ * kapanınca çeker ve o ana kadar ilk puanı 409 `second_rating_sample_pending` ile reddeder;
+ * pencere ancak zamanla kapandığından testte bu yolla kurulur.
+ */
+export async function markSecondRatingSampled(assignmentId: string): Promise<void> {
+  const client = new pg.Client({ connectionString: e2e.databaseUrl })
+  await client.connect()
+  try {
+    const result = await client.query(
+      'update task_assignments set second_rating_sampled_at = now(), version = version + 1 where id = $1',
+      [assignmentId],
+    )
+    expect(result.rowCount).toBe(1)
+  } finally {
+    await client.end()
+  }
+}
+
 /** İkinci puanlama isteği (DOM-BEC-024): ilk puan kesinleşmez, öğrenciye açılmaz. */
 export async function requestSecondRating(
   institutionId: string,

@@ -6,19 +6,24 @@ import { QueryClient } from '@tanstack/react-query'
 import { createKampusClient } from '@kampus/api-client/client.ts'
 
 import { invalidateInstitutionQueries } from '../src/commands.ts'
+import { institutionKey } from '../src/query-keys.ts'
 import {
   assignmentListTruncated,
   LEARNER_ASSIGNMENT_MAX_PAGES,
   nextAssignmentPage,
+  nextSummaryChange,
   learnerAttemptsQuery,
-  learnerProgressQueries,
   learnerSubmissionsQuery,
+  SUMMARY_REFRESH_DELAY_MS,
+  summaryRefreshDelay,
 } from '../src/use-learner-task-progress.ts'
+import { rubricVersionRequest } from '../src/use-rubrics.ts'
+import { TASK_ASSIGNMENTS_KEY } from '../src/use-task-assignments.ts'
 import { TASK_ATTEMPT_INVALIDATES } from '../src/use-task-attempts.ts'
 import { TASK_SUBMISSION_INVALIDATES } from '../src/use-task-submissions.ts'
 
-// Kursiyerin görev listesi ilerleme okuması (IST-051): atama başına bir sorgu, kurumlu anahtar,
-// deneme ve teslim yazmalarından sonra tazelenir.
+// Kursiyerin görev listesi (IST-051): durum özeti atama listesindedir (satır başına istek yok),
+// deneme ve teslim yazmalarından sonra tazelenir; rubrik sürümü kimlikle okunur (W22b).
 
 function fakeClient() {
   const urls: string[] = []
@@ -42,62 +47,30 @@ function fakeClient() {
   return { client, urls }
 }
 
-const targets = [
-  { id: 'a-1', scoringMode: 'auto' },
-  { id: 'a-2', scoringMode: 'teacher' },
-  { id: 'a-3', scoringMode: 'auto' },
-] as const
-
-describe('kursiyer görev ilerleme sorguları', () => {
-  test('otomatik puanlı atama denemeleri, öğretmen puanlı atama teslimi okur; hepsi atama kimlikli ve tek sayfa', async () => {
-    const { client, urls } = fakeClient()
-    const queries = learnerProgressQueries(client, 'inst-a', targets)
-    assert.deepEqual(
-      queries.auto.map((item) => item.id),
-      ['a-1', 'a-3'],
-    )
-    assert.deepEqual(
-      queries.written.map((item) => item.id),
-      ['a-2'],
-    )
-    const queryClient = new QueryClient()
-    for (const query of [...queries.attemptQueries, ...queries.submissionQueries])
-      await queryClient.fetchQuery({ queryKey: query.queryKey, queryFn: query.queryFn as never })
-    assert.deepEqual(urls.sort(), [
-      'GET /api/v1/task-attempts?assignmentId=a-1&pageSize=100',
-      'GET /api/v1/task-attempts?assignmentId=a-3&pageSize=100',
-      'GET /api/v1/task-submissions?assignmentId=a-2&pageSize=100',
-    ])
-  })
-
-  test('etkin kurum yokken sorgu kapalıdır', () => {
-    const { client } = fakeClient()
-    const queries = learnerProgressQueries(client, null, targets)
-    for (const query of [...queries.attemptQueries, ...queries.submissionQueries])
-      assert.equal(query.enabled, false)
-  })
-
-  test('deneme ve teslim yazmaları satır sorgularını tazeler, başka kurumunkini tazelemez', async () => {
-    const { client } = fakeClient()
-    const queries = learnerProgressQueries(client, 'inst-a', targets)
-    const queryClient = new QueryClient()
-    const attempts = queries.attemptQueries[0]!.queryKey
-    const submissions = queries.submissionQueries[0]!.queryKey
-    const otherInstitution = learnerProgressQueries(client, 'inst-b', targets).attemptQueries[0]!
-      .queryKey
-    for (const key of [attempts, submissions, otherInstitution])
-      await queryClient.fetchQuery({ queryKey: key, queryFn: () => 'x', staleTime: Infinity })
-    await invalidateInstitutionQueries(queryClient, 'inst-a', TASK_ATTEMPT_INVALIDATES)
-    assert.equal(queryClient.getQueryState(attempts)?.isInvalidated, true)
-    assert.equal(queryClient.getQueryState(submissions)?.isInvalidated, false)
-    assert.equal(queryClient.getQueryState(otherInstitution)?.isInvalidated, false)
-    await invalidateInstitutionQueries(queryClient, 'inst-a', TASK_SUBMISSION_INVALIDATES)
-    assert.equal(queryClient.getQueryState(submissions)?.isInvalidated, true)
-  })
-
-  test('sorgu gövdeleri ayrıntı ekranıyla aynıdır (önbellek paylaşımı)', () => {
+describe('kursiyer görev listesi (IST-051)', () => {
+  test('çalışma alanı sorgu gövdeleri deneme ve teslim listesiyle aynıdır (önbellek paylaşımı)', () => {
     assert.deepEqual(learnerAttemptsQuery('x'), { assignmentId: 'x', pageSize: 100 })
     assert.deepEqual(learnerSubmissionsQuery('x'), { assignmentId: 'x', pageSize: 100 })
+  })
+
+  test('deneme ve teslim yazmaları atama listesini (durum özeti) tazeler, başka kurumunkini tazelemez', async () => {
+    const queryClient = new QueryClient()
+    const list = institutionKey('inst-a', TASK_ASSIGNMENTS_KEY, 'learner-all')
+    const other = institutionKey('inst-b', TASK_ASSIGNMENTS_KEY, 'learner-all')
+    for (const invalidates of [TASK_ATTEMPT_INVALIDATES, TASK_SUBMISSION_INVALIDATES]) {
+      for (const key of [list, other])
+        await queryClient.fetchQuery({ queryKey: key, queryFn: () => 'x', staleTime: Infinity })
+      await invalidateInstitutionQueries(queryClient, 'inst-a', invalidates)
+      assert.equal(queryClient.getQueryState(list)?.isInvalidated, true)
+      assert.equal(queryClient.getQueryState(other)?.isInvalidated, false)
+      queryClient.clear()
+    }
+  })
+
+  test('rubrik sürümü kimlikle tek istekle okunur (W22b)', async () => {
+    const { client, urls } = fakeClient()
+    await rubricVersionRequest(client, 'rv-1')
+    assert.deepEqual(urls, ['GET /api/v1/rubric-versions/rv-1'])
   })
 })
 
@@ -124,5 +97,33 @@ describe('kursiyer atama sayfalama (W22a)', () => {
   test('tam yüklenen liste kesilmiş sayılmaz', () => {
     assert.equal(assignmentListTruncated(undefined), false)
     assert.equal(assignmentListTruncated([page(100, 230), page(100, 230), page(30, 230)]), false)
+  })
+})
+
+describe('kursiyer özetinin eskimesi (IST-051)', () => {
+  const learner = (id: string, ...until: (string | null)[]) =>
+    ({
+      id,
+      view: 'learner',
+      progress: until.map((actionableUntil) => ({ actionableUntil })),
+    }) as never
+  const now = Date.parse('2026-10-15T09:00:00.000Z')
+
+  test('en yakın gelecek eskime anı seçilir; geçmiş, boş ve personel satırı yok sayılır', () => {
+    const items = [
+      learner('a-1', '2026-10-15T08:00:00.000Z', null),
+      learner('a-2', '2026-10-15T09:10:00.000Z'),
+      learner('a-3', null, '2026-10-15T09:05:00.000Z'),
+      { id: 'a-4', view: 'staff' } as never,
+    ]
+    assert.equal(nextSummaryChange(items, now), Date.parse('2026-10-15T09:05:00.000Z'))
+    assert.equal(nextSummaryChange([learner('a-1', null)], now), null)
+    assert.equal(nextSummaryChange([], now), null)
+  })
+
+  test('tazeleme sınırdan kısa süre sonra; zamanlayıcı üst sınırını aşmaz', () => {
+    assert.equal(summaryRefreshDelay(now + 60_000, now), 60_000 + SUMMARY_REFRESH_DELAY_MS)
+    assert.equal(summaryRefreshDelay(now - 5, now), SUMMARY_REFRESH_DELAY_MS)
+    assert.equal(summaryRefreshDelay(now + 90 * 24 * 3_600_000, now), 2_147_483_647)
   })
 })

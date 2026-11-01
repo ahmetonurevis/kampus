@@ -377,13 +377,18 @@ test.describe('öğretmen görevleri: puanlama', () => {
     expect(assignmentId).toBeTruthy()
   })
 
-  test('atama revize edilmiş rubriğin eski sürümüne sabitliyse puanlama açılır; ayrıntı istekleri sırayla atılır (DOM-BEC-022)', async ({
+  test('atama revize edilmiş rubriğin eski sürümüne sabitliyse puanlama açılır; sürüm kimlikle tek çağrıda okunur (DOM-BEC-022)', async ({
     page,
     loginAs,
     api,
     tenant,
   }) => {
-    const { school, submissionId, admin } = await setUp(tenant, api)
+    const { school, submissionId, admin, assignmentId } = await setUp(tenant, api)
+    const assignment = await expectOk(
+      await admin.get(`/api/v1/task-assignments/${assignmentId}`),
+      200,
+    )
+    const pinnedVersionId = assignment.rubricVersionId as string
     const body = {
       title: 'Yazma rubriği',
       kind: 'analytic',
@@ -394,7 +399,7 @@ test.describe('öğretmen görevleri: puanlama', () => {
       ],
     }
     // Rubriğin v2'si yayımlanınca atamanın v1'i ne baş ne yayındaki sürümdür; ayrıca başka rubrikler
-    // vardır. Ekran sürümü yine de bulmalı (en çok bir ayrıntı isteği uçuşta).
+    // vardır. Ekran atamanın sabitlediği v1'i kimlikle okur.
     for (const title of ['Başka rubrik 1', 'Başka rubrik 2']) {
       await expectOk(await admin.post('/api/v1/rubrics', { ...body, title }, idempotent()))
     }
@@ -416,19 +421,12 @@ test.describe('öğretmen görevleri: puanlama', () => {
       200,
     )
 
-    let inFlight = 0
-    let maxInFlight = 0
-    const detailUrl = /\/api\/v1\/rubrics\/[0-9a-f-]{36}$/
+    // Sürüm kimlikle tek çağrıda okunur (`GET /rubric-versions/:id`); rubrik listesi taranmaz.
+    const rubricReads: string[] = []
     page.on('request', (request) => {
-      if (!detailUrl.test(request.url())) return
-      inFlight += 1
-      maxInFlight = Math.max(maxInFlight, inFlight)
+      const path = new URL(request.url()).pathname
+      if (/^\/api\/v1\/rubric(s|-versions)(\/|$)/.test(path)) rubricReads.push(path)
     })
-    const done = (request: { url(): string }) => {
-      if (detailUrl.test(request.url())) inFlight -= 1
-    }
-    page.on('requestfinished', done)
-    page.on('requestfailed', done)
 
     await loginAs(school.user('ogretmen'))
     await page.goto(`/ogretmen/odevler?sekme=puanlama&puanla=${submissionId}`)
@@ -438,7 +436,7 @@ test.describe('öğretmen görevleri: puanlama', () => {
     await dialog.getByLabel('Genel geri bildirim').fill('Sürüm 1 rubriğiyle puanlandı.')
     await dialog.getByRole('button', { name: 'Puanı kaydet' }).click()
     await expect(toasts(page).filter({ hasText: 'Puan kaydedildi.' })).toBeVisible()
-    expect(maxInFlight).toBeLessThanOrEqual(1)
+    expect(rubricReads).toEqual([`/api/v1/rubric-versions/${pinnedVersionId}`])
   })
 
   test('puan verilirken başka puan girilmişse 409 uyarısı çıkar ve güncel teslim yüklenir', async ({

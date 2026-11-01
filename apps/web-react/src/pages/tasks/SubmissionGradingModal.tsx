@@ -4,7 +4,7 @@ import {
   useTaskSubmission,
   type TaskSubmissionDetail,
 } from '@kampus/react-shared/use-task-submissions.ts'
-import type { RubricVersion } from '@kampus/react-shared/use-rubrics.ts'
+import { useRubricVersion, type RubricVersion } from '@kampus/react-shared/use-rubrics.ts'
 import type { TaskScore } from '@kampus/react-shared/use-task-grading.ts'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -19,7 +19,6 @@ import {
   staleNoticeText,
   submissionStatus,
 } from './task-model.ts'
-import { useRubricVersion } from './use-rubric-version.ts'
 import { useTaskLookups } from './use-task-lookups.ts'
 
 type Props = {
@@ -53,7 +52,14 @@ function GradingBody({ submissionId }: { submissionId: string }) {
   const assignmentQuery = useTaskAssignment(submission?.assignmentId ?? '')
   const assignment = assignmentQuery.data?.data
   const staff = assignment && isStaffAssignment(assignment) ? assignment : null
-  const rubric = useRubricVersion(staff?.rubricVersionId ?? null)
+  // Atamanın sabitlediği rubrik sürümü kimlikle tek çağrıda okunur (DOM-BEC-022); otomatik puanlı
+  // görevde ya da atama yüklenmeden istek atılmaz.
+  const rubricQuery = useRubricVersion(staff?.rubricVersionId ?? null)
+  const rubric: RubricState = {
+    version: rubricQuery.data?.data ?? null,
+    loading: rubricQuery.isLoading,
+    error: rubricQuery.error,
+  }
   const { names } = useTaskLookups()
   const [stale, setStale] = useState(false)
 
@@ -173,9 +179,11 @@ function GradingBody({ submissionId }: { submissionId: string }) {
   )
 }
 
+type RubricState = { version: RubricVersion | null; loading: boolean; error: unknown }
+
 type ScoringAreaProps = {
   submission: TaskSubmissionDetail
-  rubric: ReturnType<typeof useRubricVersion>
+  rubric: RubricState
   noRubric: boolean
   assignmentError: unknown
   assignmentPending: boolean

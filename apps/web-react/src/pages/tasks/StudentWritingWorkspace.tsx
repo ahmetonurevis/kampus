@@ -1,5 +1,3 @@
-import { useMemo } from 'react'
-import { useResourceDetail } from '@kampus/react-shared/use-resources.ts'
 import { learnerSubmissionsQuery } from '@kampus/react-shared/use-learner-task-progress.ts'
 import { useTaskAssignment } from '@kampus/react-shared/use-task-assignments.ts'
 import {
@@ -21,14 +19,13 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { Facts } from '../learning/LearningParts.tsx'
 import { SubmissionVersions } from './SubmissionVersions.tsx'
 import {
-  INSTRUCTIONS_FALLBACK,
   isLearnerAssignment,
   isNotFoundError,
   resubmissionPending,
   taskKindLabel,
   taskTypeLabel,
+  writingBrief,
   writingInitialBody,
-  writingInstructions,
   writingProgress,
 } from './student-task-model.ts'
 import { WritingEditor } from './WritingEditor.tsx'
@@ -38,7 +35,8 @@ export const WRITING_PARAM = 'yaz'
 const stamp = (iso: string) => `${dateLabel(iso, { year: 'numeric' })} ${timeLabel(iso)}`
 
 /**
- * Yazma görevi çalışma alanı (`?yaz=<atama>`): yönerge, metin editörü (taslak + teslim) ve
+ * Yazma görevi çalışma alanı (`?yaz=<atama>`): atamada sabitlenen sürümün yönergesi ve kaynak
+ * gösterimi (DOM-KYN-024, atama ayrıntısından), metin editörü (taslak + teslim) ve
  * gönderilen sürümler. Gönderebilirlik sunucunun `allowance`'ındandır; engel nedeni puanlamadan
  * bağımsız anlatılır (`locked` dahil). Puan ve geri bildirim açılmadıysa hiçbir iz yoktur
  * (DOM-BEC-045). Dosyalı ve sesli teslim F4b4'tedir; bu ekran metin teslimini açar.
@@ -63,13 +61,6 @@ export function StudentWritingWorkspace({
     assignmentQuery.data && isLearnerAssignment(assignmentQuery.data.data)
       ? assignmentQuery.data.data
       : undefined
-  const resourceQuery = useResourceDetail(assignment?.resourceId ?? '')
-  // Yönerge okunamazsa (paylaşılmamış ya da yeni sürüm yayımlanmış) açık metin gösterilir.
-  const instructions = useMemo(
-    () => writingInstructions(resourceQuery.data?.data, assignment),
-    [resourceQuery.data, assignment],
-  )
-  const instructionsSettled = resourceQuery.isSuccess || resourceQuery.isError
 
   const back = (
     <Button type="button" variant="secondary" onClick={workspace.close}>
@@ -125,6 +116,7 @@ export function StudentWritingWorkspace({
   // Yeniden teslimde editör son sürümle açılır; taslak yalnız son sürümden yeniyse önceliklidir.
   const initialBody = writingInitialBody(draft, detail, resubmissionPending(detail))
   const request = detail?.resubmission
+  const brief = writingBrief(assignment)
 
   return (
     <>
@@ -141,14 +133,34 @@ export function StudentWritingWorkspace({
           <h2 id="gorev-bilgisi" className="mb-3 text-lg font-semibold">
             Görev bilgileri
           </h2>
-          {instructions ? (
-            <p lang="en" className="mb-4 text-sm whitespace-pre-line [overflow-wrap:anywhere]">
-              {instructions}
-            </p>
-          ) : instructionsSettled ? (
+          {brief.instructions ? (
+            <div className="mb-4">
+              <h3 className="mb-1 text-sm font-semibold">Yönerge</h3>
+              <p lang="en" className="text-sm whitespace-pre-line [overflow-wrap:anywhere]">
+                {brief.instructions}
+              </p>
+            </div>
+          ) : null}
+          {brief.notice ? (
             <p role="note" className="mb-4 text-sm text-muted-foreground">
-              {INSTRUCTIONS_FALLBACK}
+              {brief.notice}
             </p>
+          ) : null}
+          {brief.attributions.length > 0 ? (
+            <section aria-label="Kaynak gösterimi" className="mb-4">
+              <h3 className="mb-1 text-sm font-semibold">Kaynak gösterimi</h3>
+              <ul className="grid gap-1 text-sm text-muted-foreground">
+                {brief.attributions.map((item) => (
+                  <li key={`${item.work}:${item.author}:${item.source}`}>
+                    <span lang="en" className="font-medium text-foreground">
+                      {item.work}
+                    </span>{' '}
+                    — {item.author}, {item.source}
+                    {item.year ? ` (${item.year})` : ''}
+                  </li>
+                ))}
+              </ul>
+            </section>
           ) : null}
           <Facts
             items={[

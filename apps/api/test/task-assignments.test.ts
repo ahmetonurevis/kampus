@@ -852,8 +852,27 @@ describe('görev atama uçları', () => {
       assert.equal(row.title, SECRET_TITLE)
       for (const field of internal) assert.ok(!(field in row), `${field} kursiyere gitti`)
       const detail = await ok(await call('GET', `/task-assignments/${toClass.id}`, cookie))
-      assert.deepEqual(detail, row)
-      for (const text of [t.rubricVersionId, t.teacher.id, 'answerKey', 's-2', '9-A'])
+      const { content, contentUnavailable, ...summary } = detail
+      assert.deepEqual(summary, row)
+      // Ayrıntı sabitlenen sürümün kursiyere dönük yönergesini taşır; ölçüt ve rubrik bağı yok.
+      assert.equal(contentUnavailable, null)
+      assert.equal(content.versionId, toClass.resourceVersionId)
+      assert.equal(content.body.instructions, 'Hafta sonunu anlatan kısa bir metin yaz.')
+      assert.deepEqual(Object.keys(content.body).sort(), [
+        'instructions',
+        'submissionKinds',
+        'type',
+      ])
+      for (const text of [
+        t.rubricVersionId,
+        t.teacher.id,
+        'answerKey',
+        's-2',
+        '9-A',
+        'Zaman ifadeleri',
+        'criteria',
+        'rubricId',
+      ])
         assert.ok(!JSON.stringify(detail).includes(text), `${text} kursiyere gitti`)
       fails(await call('GET', `/task-assignments/${toOther.id}`, cookie), 404, 'not_found')
     }

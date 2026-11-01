@@ -54,17 +54,22 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
   })
 
   function call(
-    method: 'POST' | 'PATCH',
+    method: 'GET' | 'POST' | 'PATCH',
     url: string,
     cookie: string,
-    payload: unknown,
-    headers: Record<string, string>,
+    payload?: unknown,
+    headers: Record<string, string> = {},
   ) {
     return app.inject({
       method,
       url: `/api/v1${url}`,
-      headers: { origin: TEST_ORIGIN, cookie, 'content-type': 'application/json', ...headers },
-      payload: JSON.stringify(payload),
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie,
+        ...(payload === undefined ? {} : { 'content-type': 'application/json' }),
+        ...headers,
+      },
+      ...(payload === undefined ? {} : { payload: JSON.stringify(payload) }),
     })
   }
   const key = () => ({ 'idempotency-key': randomUUID() })
@@ -190,7 +195,7 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
   })
 
   test('DOM-BEC-040: sürüm sınırı 1 iken eşzamanlı iki teslim: biri 201, diğeri 422 version_limit_reached; tek teslim ve tek sürüm', async () => {
-    const { institution, student, assignmentId } = await setup()
+    const { institution, student, parent, assignmentId } = await setup()
     const send = (body: string) =>
       call(
         'POST',
@@ -212,6 +217,16 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
     ])
     assert.equal(submissions.length, 1)
     assert.equal(versions.length, 1)
+    // IST-051: kursiyer ve velinin atama özeti toplu sorgularla (PostgreSQL 16) aynı teslimi okur.
+    for (const cookie of [student, parent]) {
+      const listed = await call('GET', '/task-assignments', cookie)
+      assert.equal(listed.statusCode, 200, listed.body)
+      const [progress] = listed.json().data[0].progress
+      assert.deepEqual(
+        [progress.submissionId, progress.used, progress.remaining, progress.blockedBy],
+        [submissions[0]!.id, 1, 0, 'limit'],
+      )
+    }
   })
 
   test('DOM-BEC-021: aynı teslim sürümüne eşzamanlı iki puan: biri 201, diğeri 409; tek puan satırı', async () => {

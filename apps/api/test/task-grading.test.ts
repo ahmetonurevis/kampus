@@ -328,7 +328,11 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     delete body.requestId
     return [response.statusCode, body]
   }
-  /** Kursiyer ve velinin teslim ayrıntısı ve listesi. */
+  /**
+   * Kursiyer ve velinin teslim ayrıntısı ve listesi; sonda (sıra bozulmasın diye) atama ayrıntısı
+   * ve listesindeki durum özetleri (IST-051): onlar da puanlamadan önceki ve sonraki hâliyle aynı
+   * kalmalı (DOM-BEC-045).
+   */
   async function learnerViews(t: Tenant, submissionId: string, assignmentId: string) {
     const views: Json[] = []
     for (const cookie of [t.cookies.student, t.cookies.parent])
@@ -336,7 +340,21 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
         await ok(await detail(submissionId, cookie)),
         await ok(await call('GET', `/task-submissions?assignmentId=${assignmentId}`, cookie)),
       )
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      views.push(...(await assignmentViews(cookie, assignmentId)))
     return views
+  }
+  /**
+   * Atama ayrıntısı ve listesindeki kursiyer durum özeti ve içerik (son tarih gibi atama ayarları
+   * uzatmayla meşru olarak değişir; özet değişmemeli).
+   */
+  async function assignmentViews(cookie: string, assignmentId: string) {
+    const detailed = await ok(await call('GET', `/task-assignments/${assignmentId}`, cookie))
+    const listed = await ok(await call('GET', '/task-assignments', cookie))
+    return [
+      { progress: detailed.progress, content: detailed.content },
+      listed.map((row: Json) => ({ id: row.id, progress: row.progress })),
+    ]
   }
   const afterDue = () => new Date(new Date(DUE).getTime() + 3_600_000)
   const queue = (cookie: string, extra = '') =>
@@ -601,6 +619,8 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
           await ok(await detail(id, cookie)),
           await ok(await call('GET', `/task-submissions?assignmentId=${assignmentId}`, cookie)),
         )
+      for (const cookie of [t.cookies.student, t.cookies.parent])
+        views.push(...(await assignmentViews(cookie, assignmentId)))
       return views
     }
     const before = await learnerViews()
@@ -811,6 +831,97 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       .from(submissionVersions)
       .where(eq(submissionVersions.institutionId, t.institution.id))
     assert.equal(versions.length, 2)
+  })
+
+  test('IST-051, DOM-BEC-040, DOM-BEC-045: kursiyer ve veli atama listesinde ve ayrıntısında kendi durum özetini görür (hak, son teslim, yeni sürüm hakkı, özetin eskiyeceği an, açılmış puan); veli yalnız kendi çocuğu, başka çocuğun ataması 404; özet satır sürümü taşımaz', async () => {
+    const t = await tenant()
+    cookieOf.student = t.cookies.student
+    const assignment = await ok(
+      await call(
+        'POST',
+        '/task-assignments',
+        t.cookies.admin,
+        {
+          resourceVersionId: t.homeworkId,
+          settings: {
+            deadline: { dueAt: DUE },
+            submission: { submissionKind: 'text', maxVersions: 2 },
+            rubricVersionId: t.rubricVersionId,
+          },
+          targets: [{ kind: 'class', id: '9-A' }],
+        },
+        key(),
+      ),
+      201,
+    )
+    const assignmentId = assignment.id as string
+    const progressOf = async (cookie: string) => {
+      const listed = await ok(await call('GET', '/task-assignments', cookie))
+      const detailed = await ok(await call('GET', `/task-assignments/${assignmentId}`, cookie))
+      assert.deepEqual(listed[0].progress, detailed.progress)
+      assert.equal(detailed.progress.length, 1)
+      return detailed.progress[0]
+    }
+    const fresh = await progressOf(t.cookies.student)
+    assert.deepEqual(fresh, {
+      learnerId: 's-1',
+      status: 'pending',
+      resubmissionRequested: false,
+      attemptId: null,
+      submissionId: null,
+      lastActivityAt: null,
+      used: 0,
+      limit: 2,
+      remaining: 2,
+      canAct: true,
+      // IST-051: yeni sürüm açıkken pencerenin kapanışı; istemci bu andan sonra yeniden okur.
+      actionableUntil: DUE,
+      blockedBy: null,
+      score: null,
+    })
+
+    const submission = await ok(await resubmit(assignmentId), 201)
+    const sent = await progressOf(t.cookies.student)
+    assert.deepEqual(
+      [sent.status, sent.used, sent.remaining, sent.canAct, sent.submissionId, sent.score],
+      ['submitted', 1, 1, true, submission.id, null],
+    )
+    assert.equal(sent.lastActivityAt, submission.versions[0].submittedAt)
+    assert.deepEqual(await progressOf(t.cookies.parent), sent)
+
+    // İkinci puanlama yok: ilk puan kesinleşir, geri bildirim açılır; hak "değerlendirildi" olur.
+    await ok(await score(submission.id, t.cookies.teacher, 1), 201)
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const graded = await progressOf(cookie)
+      assert.deepEqual(graded.score, { earned: 6, possible: 10, percent: 60 })
+      assert.deepEqual(
+        [graded.canAct, graded.blockedBy, graded.actionableUntil],
+        [false, 'graded', null],
+      )
+      assert.ok(!('rowVersion' in graded))
+    }
+    const dueAt = new Date(now.getTime() + 3 * 24 * 3_600_000).toISOString()
+    await ok(
+      await requestResubmission(submission.id, t.cookies.teacher, 2, { versionNumber: 1, dueAt }),
+      201,
+    )
+    const reopened = await progressOf(t.cookies.student)
+    // Yeniden teslim istendi: özet istenen son tarihte eskir (DOM-BEC-040).
+    assert.deepEqual(
+      [
+        reopened.resubmissionRequested,
+        reopened.canAct,
+        reopened.blockedBy,
+        reopened.actionableUntil,
+      ],
+      [true, true, null, dueAt],
+    )
+
+    // Başka çocuğun velisi ve başka öğrenci atamayı görmez (404), listesinde yoktur.
+    for (const cookie of [t.cookies.otherParent, t.cookies.otherStudent]) {
+      fails(await call('GET', `/task-assignments/${assignmentId}`, cookie), 404, 'not_found')
+      assert.deepEqual(await ok(await call('GET', '/task-assignments', cookie)), [])
+    }
   })
 
   test('DOM-YTK-028: puanlama kuyruğu atamayı görenlere: atayan olmayan ama atamayı gören öğretmen ve yönetici bekleyen teslimi görür, başka sınıfın öğretmeni görmez ve toplamına sayılmaz; puanlanınca düşer; atama süzgeci', async () => {

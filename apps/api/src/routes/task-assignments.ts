@@ -5,12 +5,8 @@ import type { Role } from '../auth.ts'
 import { AppError, MESSAGES } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
-import {
-  createTaskAssignment,
-  getTaskAssignment,
-  listTaskAssignments,
-  updateTaskAssignment,
-} from '../services/task-assignments.ts'
+import { createTaskAssignment, updateTaskAssignment } from '../services/task-assignments.ts'
+import { getTaskAssignment, listTaskAssignments } from '../services/task-progress.ts'
 import { idempotencyOf, ifMatchVersion } from './command-support.ts'
 import { requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'

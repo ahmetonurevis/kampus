@@ -17,6 +17,8 @@ export interface ApiQueryOptions<TResult extends ApiResult> {
   scope?: 'institution' | 'session'
   enabled?: boolean
   staleTime?: number
+  /** Açık ekranın tazeleme aralığı (ms); arka plan sekmesinde çalışmaz. */
+  refetchInterval?: number
 }
 
 /**
@@ -45,5 +47,6 @@ export function useApiQuery<TResult extends ApiResult>(
     queryFn: ({ signal }) => runRequest(() => options.request(client, signal)),
     enabled: scopeReady && (options.enabled ?? true),
     ...(options.staleTime !== undefined ? { staleTime: options.staleTime } : {}),
+    ...(options.refetchInterval !== undefined ? { refetchInterval: options.refetchInterval } : {}),
   })
 }

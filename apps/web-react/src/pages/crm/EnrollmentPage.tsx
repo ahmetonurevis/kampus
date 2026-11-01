@@ -9,6 +9,8 @@ import {
   ENROLLMENT_STEP_FIELDS,
   GUARDIAN_RELATIONSHIP_LABELS,
   GUARDIAN_RELATIONSHIPS,
+  OTHER_CAMPUS_CONFIRM_LABEL,
+  OTHER_CAMPUS_CONFIRM_MESSAGE,
   previewEnrollment,
   type EnrollmentFormValues,
   type EnrollmentTariff,
@@ -139,6 +141,7 @@ function EnrollmentForm({
   const [params] = useSearchParams()
   const prospects = useCoreAll('prospects')
   const classes = useCoreAll('classes')
+  const branches = useCoreAll('branches')
   const enroll = useEnrollProspect()
   const [step, setStep] = useState(0)
   const today = dayKey()
@@ -161,6 +164,8 @@ function EnrollmentForm({
       extras: [],
       installmentCount: '8',
       firstDueDate: today,
+      allCampuses: false,
+      confirmOtherCampus: false,
     },
   })
   const values = useWatch({ control: form.control }) as EnrollmentFormValues
@@ -172,15 +177,21 @@ function EnrollmentForm({
     OPEN_STAGES.includes(row.record.stage),
   )
   const prospect = openProspects.find((row) => row.id === values.prospectId)
-  // Aday kampüsündeki etkin sınıflar; kampüs değişince eski seçim listeden düşer.
+  // Aday kampüsündeki etkin sınıflar; kampüs değişince eski seçim listeden düşer. "Tüm kampüsler"
+  // başka kampüsün sınıfını da getirir; böyle bir sınıf ayrıca açık onay ister ve gövdeye
+  // `allowOtherCampus` yalnız bu onayla gider (yoksa 422 `class_campus_mismatch`).
   const branchId = prospect?.record.branchId
   const activeClasses = (classes.data ?? []).filter(
-    (row) => row.record.isActive !== false && (!branchId || row.record.branchId === branchId),
+    (row) =>
+      row.record.isActive !== false &&
+      (values.allCampuses || !branchId || row.record.branchId === branchId),
   )
+  const campusName = (id: string) => branches.data?.find((row) => row.id === id)?.record.name ?? ''
   const occupancy = useCoreCounts('students', OCCUPANCY_QUERY)
   const occupied = (classId: string) =>
     occupancy.data?.groups.find((group) => group.value === classId)?.count ?? 0
   const room = activeClasses.find((row) => row.id === values.classId)
+  const otherCampus = Boolean(room && branchId && room.record.branchId !== branchId)
   const preview = previewEnrollment(tariff, values, {
     institutionType,
     level:
@@ -202,6 +213,11 @@ function EnrollmentForm({
     }
     if (step === 0 && !room) {
       form.setError('classId', { type: 'branch', message: 'Adayın kampüsünden bir sınıf seçin.' })
+      return
+    }
+    if (step === 0 && otherCampus && !values.confirmOtherCampus) {
+      form.setError('confirmOtherCampus', { type: 'campus', message: OTHER_CAMPUS_CONFIRM_MESSAGE })
+      form.setFocus('confirmOtherCampus')
       return
     }
     // Veli alanları adaydan dolar; kullanıcı dilediğini değiştirir.
@@ -318,7 +334,16 @@ function EnrollmentForm({
               </FormField>
               <FormField id="kayit-sinif" label="Sınıf" error={errors.classId}>
                 {(control) => (
-                  <NativeSelect {...control} {...form.register('classId')}>
+                  <NativeSelect
+                    {...control}
+                    {...form.register('classId', {
+                      // Onay seçilen sınıfa özgüdür: sınıf değişince yeniden istenir.
+                      onChange: () => {
+                        form.setValue('confirmOtherCampus', false)
+                        form.clearErrors('confirmOtherCampus')
+                      },
+                    })}
+                  >
                     <NativeSelectOption value="">Sınıf seçin</NativeSelectOption>
                     {activeClasses.map((row) => (
                       <NativeSelectOption
@@ -326,12 +351,62 @@ function EnrollmentForm({
                         value={row.id}
                         disabled={occupied(row.id) >= row.record.capacity}
                       >
-                        {row.record.name} ({occupied(row.id)}/{row.record.capacity})
+                        {row.record.name}
+                        {values.allCampuses ? ` · ${campusName(row.record.branchId)}` : ''} (
+                        {occupied(row.id)}/{row.record.capacity})
                       </NativeSelectOption>
                     ))}
                   </NativeSelect>
                 )}
               </FormField>
+              <label className="flex min-h-6 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  {...form.register('allCampuses', {
+                    // Liste daralınca başka kampüsün seçili sınıfı formda kalmaz.
+                    onChange: () => {
+                      form.setValue('classId', '')
+                      form.setValue('confirmOtherCampus', false)
+                      form.clearErrors('confirmOtherCampus')
+                    },
+                  })}
+                />
+                Tüm kampüslerin sınıflarını göster
+              </label>
+              {otherCampus ? (
+                <div className="grid gap-2 rounded-card border bg-warning-soft p-4">
+                  <p id="kayit-kampus-onayi-aciklama" className="text-sm">
+                    Seçilen sınıf adayın kampüsünde ({campusName(branchId ?? '')}) değil.
+                  </p>
+                  <label className="flex min-h-6 items-center gap-2 text-sm font-medium">
+                    <input
+                      id="kayit-kampus-onayi"
+                      type="checkbox"
+                      className="size-4"
+                      aria-invalid={errors.confirmOtherCampus ? true : undefined}
+                      aria-describedby={
+                        errors.confirmOtherCampus
+                          ? 'kayit-kampus-onayi-aciklama kayit-kampus-onayi-hata'
+                          : 'kayit-kampus-onayi-aciklama'
+                      }
+                      {...form.register('confirmOtherCampus', {
+                        onChange: () => form.clearErrors('confirmOtherCampus'),
+                      })}
+                    />
+                    {OTHER_CAMPUS_CONFIRM_LABEL}
+                  </label>
+                  {errors.confirmOtherCampus ? (
+                    <p
+                      id="kayit-kampus-onayi-hata"
+                      role="alert"
+                      className="text-sm text-destructive"
+                    >
+                      {errors.confirmOtherCampus.message}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </>
           ) : null}
 

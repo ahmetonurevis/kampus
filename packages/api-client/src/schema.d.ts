@@ -20267,6 +20267,7 @@ export interface operations {
                         /** @enum {string} */
                         relationship: "mother" | "father" | "legal_guardian" | "other";
                     }) | null;
+                    allowOtherCampus?: boolean;
                 };
             };
         };

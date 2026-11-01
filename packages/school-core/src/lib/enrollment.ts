@@ -88,6 +88,8 @@ export const enrollProspectSchema = z.strictObject({
   identity: identitySchema,
   /** 18 yaş üstü kursiyerde boş olabilir; kursiyer kendisi ödeyicidir (DOM-KAY-012). */
   guardian: guardianSchema.nullable(),
+  /** Başka kampüsün sınıfı bilinçli seçildi; verilmezse sınıf adayın kampüsünde olmalıdır. */
+  allowOtherCampus: z.boolean().optional(),
 })
 export type EnrollProspectInput = z.input<typeof enrollProspectSchema>
 
@@ -386,6 +388,7 @@ export function enrollProspectWithTariff(
         payer: data.guardian === null ? 'student' : 'guardian',
       },
       minor: !adult,
+      ...(data.allowOtherCampus === undefined ? {} : { allowOtherCampus: data.allowOtherCampus }),
     },
     makeId,
     now,
@@ -398,6 +401,10 @@ export function enrollProspectWithTariff(
     supersededStudentId: context.identityHolderId,
   }
 }
+
+export const OTHER_CAMPUS_CONFIRM_LABEL = 'Başka kampüsün sınıfını bilerek seçiyorum'
+export const OTHER_CAMPUS_CONFIRM_MESSAGE =
+  'Seçilen sınıf adayın kampüsünde değil; devam etmek için onay kutusunu işaretleyin.'
 
 export const GUARDIAN_RELATIONSHIP_LABELS: Readonly<Record<GuardianRelationship, string>> = {
   mother: 'Anne',
@@ -425,6 +432,13 @@ export function enrollmentFormSchema(institutionType: InstitutionType) {
       extras: z.array(z.enum(FEE_ITEM_KINDS)),
       installmentCount: z.string().regex(/^([1-9]|1[0-2])$/, 'Taksit sayısını seçin.'),
       firstDueDate: daySchema,
+      /** "Tüm kampüslerin sınıflarını göster" listeleme seçimi; tek başına onay sayılmaz. */
+      allCampuses: z.boolean(),
+      /**
+       * "Başka kampüsün sınıfını bilerek seçiyorum" onayı; gövdeye `allowOtherCampus` olarak
+       * yalnız bu işaretliyken gider (yoksa 422 `class_campus_mismatch`).
+       */
+      confirmOtherCampus: z.boolean(),
     })
     .superRefine((value, context) => {
       const issue = (path: string, message: string) =>
@@ -451,7 +465,7 @@ export type EnrollmentFormValues = z.output<ReturnType<typeof enrollmentFormSche
 
 /** Adımın doğrulanacak alanları; son adım bütün formu doğrular. */
 export const ENROLLMENT_STEP_FIELDS: readonly (readonly (keyof EnrollmentFormValues)[])[] = [
-  ['prospectId', 'classId'],
+  ['prospectId', 'classId', 'allCampuses', 'confirmOtherCampus'],
   [
     'identityKind',
     'identityNumber',
@@ -478,6 +492,7 @@ export function enrollmentFormToBody(
     ...(lessonHours === null ? {} : { lessonHours }),
     discounts: values.discounts,
     extras: values.extras,
+    ...(values.confirmOtherCampus ? { allowOtherCampus: true } : {}),
     identity: {
       kind: values.identityKind,
       number: values.identityNumber,

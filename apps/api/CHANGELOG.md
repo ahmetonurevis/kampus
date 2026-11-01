@@ -7,6 +7,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 - Onur'un `feature/ogrenci-kaydi-finans` dalı birleştirildi; aşağıdaki "Bildirilmiş banka hesabı ve MEBBİS işareti" ile "Kesin kayıt ucu (kayıt ve finans dalı)" arasındaki bölümler o daldandır. Kayıt ve finansın temeli o dalın yapısıdır.
 - Migration'lar yeniden numaralandı (SQL aynı): `0014_create_payments` → `0016`, `0015_create_fee_tariffs` → `0017`, `0016_add_enrollment_terms` → `0018`, `0017_create_student_withdrawals` → `0019`, `0018_relax_identity_year` → `0020`, `0019_comment_finance_tables` → `0021`, `0020_bank_accounts_mebbis` → `0022`. Snapshot zinciri `0014_add_second_rating_sampled_at` ve `0015_create_files`'ı içerir; `db:generate` yeni migration üretmez.
 - Kesin kayıt ucu tarifeli gövdeyi kullanır (aşağıda "Tarifeli kesin kayıt"); "Kesin kayıt core takipleri (D16d)" bölümündeki `totalCents`, `nationalId`, `birthDate`, `guardianRelation`, `payer` ve `parentId` gövde alanları kalktı. Kimlik no ve doğum tarihi `records.data`'ya yazılmaz, `student_identities`'tedir.
+- Tarifeli kesin kayıt gövdesi isteğe bağlı `allowOtherCampus` (boolean) alır; sınıf adayın kampüsünden değilse ve onay yoksa 422 `class_campus_mismatch` (`issues` yolu `classId`, kontenjandan önce).
 - `POST /api/v1/invoices/:invoiceId/pay` kaldırıldı (`POST /api/v1/payments`); `commands.test.ts` içindeki eski ödeme testleri silindi, karşılıkları `payments.test.ts`'tedir.
 
 ## Bildirilmiş banka hesabı ve MEBBİS işareti

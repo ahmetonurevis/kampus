@@ -376,6 +376,62 @@ test('DOM-KAY-003: çevrimdışı demo kaydı yaş bilmez; öğrenci adayın ile
   assert.equal(result.student.phone, prospect.phone)
 })
 
+test('class_campus_mismatch: başka kampüsün sınıfı açık onaysız reddedilir (422, classId); onayla yazılır', () => {
+  const state = createSeed(new Date(NOW))
+  const prospect = state.prospects.find((item) => item.id === 'pr1')!
+  const other = state.classes.find(
+    (item) => item.branchId !== prospect.branchId && item.grade === 7 && item.isActive,
+  )!
+  const before = JSON.stringify(state)
+  for (const allowOtherCampus of [undefined, false]) {
+    assert.throws(
+      () =>
+        enroll(
+          { classId: other.id, ...(allowOtherCampus === undefined ? {} : { allowOtherCampus }) },
+          {},
+          state,
+        ),
+      (error: unknown) =>
+        isDomainError('class_campus_mismatch')(error) &&
+        JSON.stringify((error as { path?: unknown }).path) === JSON.stringify(['classId']),
+    )
+  }
+  assert.equal(JSON.stringify(state), before)
+  const { result } = enroll({ classId: other.id, allowOtherCampus: true })
+  assert.equal(result.student.classId, other.id)
+})
+
+test('class_campus_mismatch: kampüs denetimi kontenjandan önce çalışır', () => {
+  const state = createSeed(new Date(NOW))
+  const prospect = state.prospects.find((item) => item.id === 'pr1')!
+  const other = state.classes.find(
+    (item) => item.branchId !== prospect.branchId && item.grade === 7 && item.isActive,
+  )!
+  other.capacity = 0
+  assert.throws(
+    () => enroll({ classId: other.id }, {}, state),
+    isDomainError('class_campus_mismatch'),
+  )
+  assert.throws(
+    () => enroll({ classId: other.id, allowOtherCampus: true }, {}, state),
+    isDomainError('class_capacity_full'),
+  )
+})
+
+test('class_campus_mismatch: çevrimdışı demo her kampüsün sınıfını eski davranışla kabul eder', () => {
+  const state = createSeed(new Date(NOW))
+  const prospect = state.prospects.find((item) => item.id === 'pr1')!
+  const other = state.classes.find((item) => item.branchId !== prospect.branchId)!
+  let n = 0
+  const result = enrollProspect(
+    state,
+    { prospectId: 'pr1', classId: other.id, total: 1000, count: 2, startDate: '2026-11-15' },
+    (prefix) => `${prefix}-demo-${n++}`,
+    NOW,
+  )
+  assert.equal(result.student.classId, other.id)
+})
+
 test('DOM-KAY-012: veli adı, telefonu ve yakınlığı kaydedilir', () => {
   const { state, result } = enroll()
   const parent = state.parents.find((p) => p.id === result.student.parentId)
@@ -503,6 +559,8 @@ const FORM = {
   extras: [],
   installmentCount: '3',
   firstDueDate: '2026-11-15',
+  allCampuses: false,
+  confirmOtherCampus: false,
 } as const
 const formIssues = (values: unknown, type: 'school' | 'language_school' = 'school') => {
   const parsed = enrollmentFormSchema(type).safeParse(values)
@@ -552,6 +610,16 @@ test('DOM-KAY-012, -013: form gövdesi API şemasından geçer, veli türüne g�
   })
   assert.equal(self.guardian, null)
   assert.equal(self.lessonHours, 40)
+})
+
+test('class_campus_mismatch: form gövdesi allowOtherCampus yalnız açık onayla taşır; listeleme kutusu onay sayılmaz', () => {
+  const body = (values: Partial<Parameters<typeof enrollmentFormToBody>[0]>) =>
+    enrollmentFormToBody({ ...FORM, discounts: [], extras: [], ...values }, 'test-tariff')
+  assert.equal('allowOtherCampus' in body({}), false)
+  assert.equal('allowOtherCampus' in body({ allCampuses: true }), false)
+  const confirmed = body({ allCampuses: true, confirmOtherCampus: true })
+  assert.equal(confirmed.allowOtherCampus, true)
+  assert.equal(enrollProspectSchema.safeParse(confirmed).success, true)
 })
 
 test('DOM-FIN-020: önizleme sunucu kuralıyla hesaplar, reddi mesaj olarak döner', () => {

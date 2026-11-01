@@ -1414,6 +1414,30 @@ describe('aday uçları', () => {
     })
   })
 
+  test('class_campus_mismatch: başka kampüsün sınıfı açık onaysız 422 (classId); allowOtherCampus ile 201', async () => {
+    const otherClass = SEED.classes.find(
+      (item) => item.branchId !== PR1?.branchId && item.grade === 7,
+    )
+    assert.ok(otherClass)
+    const a = await institution({}, withRecords({ classes: [otherClass] }))
+    await publishTariff(a.adminCookie)
+    const cookie = await frontDesk(a.id)
+    const body = { ...ENROLLMENT, classId: otherClass.id }
+    const version = await versionOf(a.id, 'pr1')
+    for (const consent of [{}, { allowOtherCampus: false }]) {
+      await noEnrollment(a.id, 'pr1', async () => {
+        const refused = await enroll(cookie, 'pr1', { ...body, ...consent }, version)
+        assertError(refused, 422, 'class_campus_mismatch')
+        assert.deepEqual(refused.json().issues?.[0]?.path, ['classId'])
+      })
+    }
+    const accepted = await enroll(cookie, 'pr1', { ...body, allowOtherCampus: true }, version)
+    assert.equal(accepted.statusCode, 201, accepted.body)
+    const students = await loadRecords(db, a.id, ['students'])
+    const student = students.find((row) => row.data.classId === otherClass.id)
+    assert.ok(student, 'öğrenci başka kampüsün sınıfına yazılır')
+  })
+
   test('DOM-YTK-001: başka kurumun adayı ve sınıfı 404; öteki kurum değişmez', async () => {
     const a = await pricedInstitution()
     const b = await institution()

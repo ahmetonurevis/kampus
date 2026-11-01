@@ -287,6 +287,8 @@ type Enrollment = {
    * öğrenciye yazılmaz. Tarifeli kayıt verir; çevrimdışı demo vermez (`undefined`, eski davranış).
    */
   minor?: boolean
+  /** Başka kampüsün sınıfı bilinçli seçildi; yoksa 422 `class_campus_mismatch`. */
+  allowOtherCampus?: boolean
 }
 const SCHOOL_CONTRACT_TITLE = 'Özel okul eğitim sözleşmesi'
 
@@ -311,6 +313,8 @@ export function enrollProspect(
       count: data.count,
       startDate: data.startDate,
       contractTitle: SCHOOL_CONTRACT_TITLE,
+      // Demo formu her kampüsün sınıfını listeler; seçim bilinçli sayılır (eski davranış).
+      allowOtherCampus: true,
     },
     makeId,
     now,
@@ -339,6 +343,13 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
       'prospect_closed',
       'Yalnız açık aşamadaki aday kayda alınır; vazgeçen adayı önce yeniden açın.',
       { kind: 'conflict' },
+    )
+  // Aday bir kampüse başvurur; başka kampüsün sınıfı yalnız açık onayla seçilir.
+  if (cls.branchId !== prospect.branchId && data.allowOtherCampus !== true)
+    throw new DomainError(
+      'class_campus_mismatch',
+      'Seçilen sınıf adayın kampüsünde değil; başka kampüsün sınıfı için seçimi onaylayın.',
+      { path: ['classId'] },
     )
   if (state.students.filter((s) => s.classId === cls.id && s.isActive).length >= cls.capacity)
     throw new DomainError('class_capacity_full', 'Seçilen sınıfın kontenjanı dolu.')

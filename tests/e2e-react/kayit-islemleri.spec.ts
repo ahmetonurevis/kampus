@@ -187,10 +187,12 @@ test.describe('Kayıt İşlemleri', () => {
     await expect(page.getByLabel('Aday öğrenci')).toHaveValue('e2e-kyt-ok')
     const proceed = page.getByRole('button', { name: 'Devam et' })
     await proceed.click()
-    await expect(page.getByLabel('Sınıf')).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByLabel('Sınıf', { exact: true })).toHaveAttribute('aria-invalid', 'true')
     // Yalnız adayın kampüsünün sınıfları, doluluğuyla listelenir.
-    await expect(page.getByLabel('Sınıf').getByRole('option').nth(1)).toHaveText(/\(\d+\/\d+\)/)
-    await page.getByLabel('Sınıf').selectOption({ index: 1 })
+    await expect(page.getByLabel('Sınıf', { exact: true }).getByRole('option').nth(1)).toHaveText(
+      /\(\d+\/\d+\)/,
+    )
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
     await proceed.click()
 
     await page.getByLabel('Kimlik numarası').fill('10000000147')
@@ -242,6 +244,60 @@ test.describe('Kayıt İşlemleri', () => {
     await expect(page.getByRole('button', { name: 'Kesin kayda dönüştür' })).toBeDisabled()
   })
 
+  test('class_campus_mismatch: başka kampüsün sınıfı "tüm kampüsler" ve açık onay kutusuyla seçilir; onaysız sonraki adıma geçilmez', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const name = 'Kaan Kara'
+    const school = await tenant({
+      roles: ['onburo'],
+      tariffYears: ['current'],
+      records: [prospect('e2e-kyt-kampus', name)],
+    })
+    await loginAs(school.user('onburo'))
+    const client = await api(school.user('onburo'))
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-kampus`)
+    const classes = page.getByLabel('Sınıf', { exact: true })
+    // Varsayılan liste yalnız adayın kampüsüdür; başka kampüsün sınıfı yoktur.
+    await expect(classes.getByRole('option', { name: /Beşiktaş Kampüsü/ })).toHaveCount(0)
+    await page.getByLabel('Tüm kampüslerin sınıflarını göster').check()
+    const other = classes
+      .locator('option:not([disabled])', { hasText: '· Beşiktaş Kampüsü' })
+      .first()
+    const classId = (await other.getAttribute('value')) ?? ''
+    expect(classId).not.toBe('')
+    const confirm = page.getByLabel('Başka kampüsün sınıfını bilerek seçiyorum')
+    await expect(confirm).toHaveCount(0)
+    await classes.selectOption(classId)
+    await expect(confirm).not.toBeChecked()
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    await proceed.click()
+    await expect(
+      page.getByText('Seçilen sınıf adayın kampüsünde değil; devam etmek için onay kutusunu'),
+    ).toBeVisible()
+    await expect(confirm).toBeFocused()
+    await expect(confirm).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByLabel('Kimlik numarası')).toHaveCount(0)
+
+    await confirm.check()
+    await proceed.click()
+    await page.getByLabel('Kimlik numarası').fill('10000000146')
+    await page.getByLabel('Doğum tarihi').fill('2013-03-01')
+    await page.getByLabel('Veli adı soyadı').fill('Kampüs Velisi')
+    await page.getByLabel('Veli telefonu').fill('05559990079')
+    await proceed.click()
+    await page.getByLabel('Taksit sayısı').selectOption('2')
+    await proceed.click()
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+    await expect(page.getByRole('heading', { name: `${name} kaydedildi` })).toBeVisible()
+
+    const saved = await prospectOf(client, 'e2e-kyt-kampus')
+    const students = await list<{ classId: string }>(client, 'students?pageSize=100')
+    expect(students.find((row) => row.id === saved.record.studentId)?.record.classId).toBe(classId)
+  })
+
   test('DOM-DIL-030, DOM-FIN-006: dil okulunda deneme dersi veli onayı ister, kayıt ders saatiyle hesaplanır', async ({
     page,
     loginAs,
@@ -282,7 +338,7 @@ test.describe('Kayıt İşlemleri', () => {
     await page.getByRole('link', { name: 'Kesin kayda dönüştür' }).click()
     await expect(page).toHaveURL(/kayit-islemleri\?aday=e2e-kyt-dil/)
     const proceed = page.getByRole('button', { name: 'Devam et' })
-    await page.getByLabel('Sınıf').selectOption({ index: 1 })
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
     await proceed.click()
     await page.getByLabel('Kimlik numarası').fill('10000000146')
     await page.getByLabel('Doğum tarihi').fill('2013-03-01')

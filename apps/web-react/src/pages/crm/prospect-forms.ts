@@ -16,11 +16,12 @@ import {
   createProspectSchema,
   MEETING_DURATION,
   PROSPECT_LOST_REASONS,
+  PROSPECT_STAGES,
   PROSPECT_SOURCES,
   scheduleMeetingSchema,
-  type ProspectStage,
 } from '@kampus/school-core/lib/prospects.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
+import type { CoreRecord } from '@/hooks/use-core-collection.ts'
 import { slotLabel } from './prospect-rows.ts'
 
 /** Gösterilen aydınlatma metninin sürümü (DOM-KAY-003); metin deposu yoktur, sürüm sabittir. */
@@ -110,23 +111,21 @@ export function createBody(
 ): CreateProspectBody {
   const minor = isMinor(values.minor, type)
   const consent = { sms: values.sms, email: values.emailConsent, call: values.call }
+  const email = optional(values.email)
+  const referrerStudentId = optional(values.referrerStudentId)
+  const guardianName = optional(values.guardianName)
+  const siblingOfId = optional(values.siblingOfId)
   return {
     name: values.name,
     phone: values.phone,
-    ...(optional(values.email) ? { email: optional(values.email) as string } : {}),
+    ...(email ? { email } : {}),
     branchId: values.branchId,
     interest: values.interest,
     source: values.source,
-    ...(values.source === REFERRAL_SOURCE && optional(values.referrerStudentId)
-      ? { referrerStudentId: optional(values.referrerStudentId) as string }
-      : {}),
+    ...(values.source === REFERRAL_SOURCE && referrerStudentId ? { referrerStudentId } : {}),
     ...(type === 'language_school' ? { minor } : {}),
-    ...(minor && optional(values.guardianName)
-      ? { guardianName: optional(values.guardianName) as string }
-      : {}),
-    ...(optional(values.siblingOfId)
-      ? { siblingOfId: optional(values.siblingOfId) as string }
-      : {}),
+    ...(minor && guardianName ? { guardianName } : {}),
+    ...(siblingOfId ? { siblingOfId } : {}),
     privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
     marketingConsent: consent,
   }
@@ -162,8 +161,8 @@ export function stageBody(
 ):
   | { ok: true; body: ChangeProspectStageBody }
   | { ok: false; field: 'stage' | 'lostReason'; message: string } {
-  const stage = values.stage as ProspectStage
-  if (!values.stage) return { ok: false, field: 'stage', message: 'Aşamayı seçin.' }
+  const stage = PROSPECT_STAGES.find((item) => item === values.stage)
+  if (!stage) return { ok: false, field: 'stage', message: 'Aşamayı seçin.' }
   if (stage === 'Vazgeçti') {
     const reason = PROSPECT_LOST_REASONS.find((item) => item === values.lostReason)
     return reason
@@ -252,14 +251,10 @@ export const trialDefaults = (): TrialFormValues => ({ lessonId: '', guardianCon
 
 export type TrialLessonOption = { id: string; label: string }
 
-type LessonRecord = {
-  id: string
-  classId: string
-  date: string
-  duration: number
-  title?: string | undefined
-  cancelledAt?: string | null | undefined
-}
+type LessonRecord = Pick<
+  CoreRecord<'schedule'>,
+  'id' | 'classId' | 'date' | 'duration' | 'title' | 'cancelledAt'
+>
 
 /**
  * Seçilebilir dersler: gelecekteki, iptal edilmemiş ve adayın kampüsündeki açık grupların dersleri

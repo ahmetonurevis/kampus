@@ -16,7 +16,7 @@ import { Field, FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { useCoreAll, useCoreList, type CoreRecord } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, type CoreRecord } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
 import { FormActions, RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
@@ -204,13 +204,14 @@ function TrialForm({ prospect, version, onClose }: Omit<PanelProps, 'kind' | 'ca
     [classes.data],
   )
   const groupIds = [...groups.keys()]
-  const lessons = useCoreList(
+  // Sınıf süzgeci gönderilmez: API `classId` için en çok 20 değer alır ve tek sayfa 100 kayıttır.
+  // 3 haftalık iptal edilmemiş dersler bütün sayfalarıyla okunur; adayın kampüsündeki açık
+  // gruplara süzme `trialLessonOptions` içinde yapılır.
+  const lessons = useCoreAll(
     'schedule',
     {
-      pageSize: 100,
       sort: ['date'],
       filters: {
-        classId: groupIds,
         cancelled: 'false',
         dateFrom: dayKey(now),
         dateTo: dayKey(now + 21 * 86_400_000),
@@ -221,7 +222,7 @@ function TrialForm({ prospect, version, onClose }: Omit<PanelProps, 'kind' | 'ca
   const options = useMemo(
     () =>
       trialLessonOptions(
-        (lessons.data?.rows ?? []).map((item) => item.record),
+        (lessons.data ?? []).map((item) => item.record),
         groups,
         now,
       ),

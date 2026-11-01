@@ -29,7 +29,8 @@ export const STAGE_TONES = {
 } as const satisfies Record<ProspectStage, BadgeTone>
 
 export function stageTone(stage: string): BadgeTone {
-  return (STAGE_TONES as Record<string, BadgeTone>)[stage] ?? 'gray'
+  const known = PROSPECT_STAGES.find((item) => item === stage)
+  return known ? STAGE_TONES[known] : 'gray'
 }
 
 /** Aşama süzgeci: sabit seçenekler, dil okulunda görüşme aşaması seviye tespiti/deneme dersidir. */

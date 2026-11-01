@@ -158,7 +158,7 @@ export function ProspectStageForm({
                 ?.filter((item) => item.record.id !== prospectId)
                 .map((item) => (
                   <NativeSelectOption key={item.record.id} value={item.record.id}>
-                    {item.record.name} · {item.record.stage}
+                    {item.record.name} · {prospectStageLabel(item.record.stage, type)}
                   </NativeSelectOption>
                 ))}
             </NativeSelect>

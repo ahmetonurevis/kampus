@@ -3,7 +3,11 @@ import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import type { z } from 'zod'
 import { useCreateProspect } from '@kampus/react-shared/use-prospect-commands.ts'
-import { OPEN_PROSPECT_STAGES, PROSPECT_SOURCES } from '@kampus/school-core/lib/prospects.ts'
+import {
+  OPEN_PROSPECT_STAGES,
+  PROSPECT_SOURCES,
+  prospectStageLabel,
+} from '@kampus/school-core/lib/prospects.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { FormField } from '@/components/FormField.tsx'
@@ -330,7 +334,7 @@ function ProspectForm({
               </NativeSelectOption>
               {open.data?.map((item) => (
                 <NativeSelectOption key={item.record.id} value={item.record.id}>
-                  {item.record.name} · {item.record.stage}
+                  {item.record.name} · {prospectStageLabel(item.record.stage, type)}
                 </NativeSelectOption>
               ))}
             </NativeSelect>

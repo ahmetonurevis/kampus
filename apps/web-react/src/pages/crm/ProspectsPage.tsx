@@ -60,7 +60,7 @@ export function ProspectsPage({ page }: { page: NavPage }) {
   const { session } = useAuth()
   const role = session?.role ?? 'onburo'
   const type = session?.institution.type ?? 'school'
-  const list = useListState('adaylar', { urlFilters: URL_FILTERS })
+  const list = useListState('adaylar', { urlFilters: URL_FILTERS, searchInUrl: false })
   const search = useDebouncedValue(list.state.query)
   const branches = useCoreAll('branches')
   const lookups = useMemo(

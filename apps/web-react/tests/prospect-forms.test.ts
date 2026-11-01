@@ -147,6 +147,30 @@ test('DOM-KAY-034: deneme dersi seçenekleri gelecek, iptal edilmemiş ve kampü
   assert.match(options[0]?.label ?? '', /13:00 – 13:40 · A2 Akşam · Speaking$/)
 })
 
+test("DOM-KAY-034: 25 grup ve 100'den fazla ders sessizce düşmeden seçeneğe girer", () => {
+  const classes = new Map(Array.from({ length: 25 }, (_, i) => [`c${i}`, `Grup ${i}`] as const))
+  const lessons = Array.from({ length: 150 }, (_, i) => ({
+    id: `l${i}`,
+    classId: `c${i % 25}`,
+    date: new Date(NOW + (i + 1) * 3_600_000).toISOString(),
+    duration: 40,
+  }))
+  lessons.push({
+    id: 'l-yabanci',
+    classId: 'baska-kampus',
+    date: new Date(NOW + 3_600_000).toISOString(),
+    duration: 40,
+  })
+  const options = trialLessonOptions(lessons, classes, NOW)
+  assert.equal(options.length, 150)
+  assert.equal(options[0]?.id, 'l0')
+  assert.equal(options[149]?.id, 'l149')
+  assert.equal(
+    options.some((item) => item.id === 'l-yabanci'),
+    false,
+  )
+})
+
 test('DOM-DIL-030: veli onayı yalnız 18 yaş altında gövdeye girer', () => {
   assert.deepEqual(trialBody({ lessonId: 'l1', guardianConsent: true }, true), {
     lessonId: 'l1',

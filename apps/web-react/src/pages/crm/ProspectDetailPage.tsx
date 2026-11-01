@@ -103,7 +103,11 @@ function Detail({
   const plan = useDetailPanel('planlama')
   const branches = useCoreAll('branches')
   const branch = branches.data?.find((entry) => entry.record.id === prospect.branchId)?.record.name
-  const classes = useCoreAll('classes', { filters: { branchId: prospect.branchId } })
+  const classes = useCoreAll(
+    'classes',
+    { filters: { branchId: prospect.branchId } },
+    { enabled: type === 'language_school' },
+  )
   const groupName = classes.data?.find((entry) => entry.record.id === prospect.trialLesson?.classId)
     ?.record.name
   const open = isOpenStage(prospect.stage)

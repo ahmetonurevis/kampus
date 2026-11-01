@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { createSeed } from '../../../packages/school-core/src/data/seed.ts'
 
-import { createAuth, type Role } from '../../../apps/api/src/auth.ts'
+import { createAuth, type InstitutionType, type Role } from '../../../apps/api/src/auth.ts'
 import { loadConfig } from '../../../apps/api/src/config.ts'
 import { connectPostgres } from '../../../apps/api/src/db/client.ts'
 import {
@@ -61,6 +61,8 @@ const ROLE_LINKS: Record<RoleKey, readonly MembershipLinkInput[]> = {
 }
 
 export interface TenantOptions {
+  /** Kurum türü; verilmezse `school`. Dil okulu için `language_school`. */
+  type?: InstitutionType
   /** Yöneticiden başka hesabı açılacak roller; yönetici her kurumda vardır (kurumu o açar). */
   roles: readonly RoleKey[]
   /** Kuruma konacak öğrenci kimlikleri (ve kendi attendance/grades/invoices/contracts kayıtları). */
@@ -176,7 +178,7 @@ export function createTenantFactory(): TenantFactory {
     const { id: institutionId } = await ensureInstitution(auth, db, {
       name: `E2E Kurumu ${suffix}`,
       slug,
-      type: 'school',
+      type: options.type ?? 'school',
       creatorUserId: creator,
     })
     await ensureInstitutionSettings(db, institutionId, {

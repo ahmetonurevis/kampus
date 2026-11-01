@@ -1,0 +1,663 @@
+import { randomUUID } from 'node:crypto'
+
+import type { Page } from '@playwright/test'
+
+import type { ApiClient } from './support/api.ts'
+import { expect, test } from './support/fixtures.ts'
+import type { Tenant, TenantOptions, TenantUser } from './support/tenant.ts'
+import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
+
+// CRM aday ekranları: Aday Öğrenciler (`/onburo/adaylar`), aday detayı (`/:rol/aday/:id`) ve
+// Tanışma Görüşmeleri (`/onburo/deneme-dersi-takvimi`); DOM-KAY-005, -007, -009, -030…034,
+// DOM-DIL-030. Yazma uçları `POST /prospects`, `/prospects/:id/{stage,notes,meeting,trial-lesson}`.
+// Her test kendi kurumunu kurar; adaylar ve dersler kurulum kaydıyla gelir (UI'dan kurulum yok).
+// Saat dilimi sabit: 10:00Z İstanbul'da 13:00'tür.
+
+type Make = (options: TenantOptions) => Promise<Tenant>
+
+interface Fixtures {
+  page: Page
+  loginAs: (principal: TenantUser) => Promise<Page>
+  api: (principal: TenantUser) => Promise<ApiClient>
+  tenant: Make
+}
+
+const DAY = 86_400_000
+const at = (days: number, hour: number) => {
+  const base = new Date(Date.now() + days * DAY)
+  return new Date(
+    Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate(), hour),
+  ).toISOString()
+}
+/** `days` gün sonrasının İstanbul günü (`YYYY-MM-DD`); tarih alanına yazılır. */
+const istanbulDay = (days: number) =>
+  new Date(Date.now() + days * DAY + 3 * 3_600_000).toISOString().slice(0, 10)
+
+const LIST_URL = '/onburo/adaylar'
+const MEETINGS_URL = '/onburo/deneme-dersi-takvimi'
+const detailUrl = (role: string, id: string) => `/${role}/aday/${id}`
+const MODULE_CLOSED = 'Bu modül kurum ayarlarından kapatılmış.'
+const NOTE_NOTICE = 'Sağlık, engellilik veya aileye ait özel bilgileri aday notuna yazmayın.'
+const SAME_MESSAGE =
+  'Bu telefon veya e-postayla açık bir aday kaydı var; yeni temas için mevcut karta not ekleyin.'
+const SHARED_MESSAGE =
+  'Bu telefon veya e-posta başka bir açık adayda kayıtlı; kardeş adaysa kardeşini seçin.'
+const CONFLICT_MESSAGE =
+  'Bu kampüste seçilen saatte aynı oda veya görevli için başka bir görüşme var.'
+
+const tableOf = (page: Page, name: string) => page.getByRole('table', { name, exact: true })
+const bodyRows = (page: Page, name: string) => tableOf(page, name).locator('tbody tr')
+const resultCount = (page: Page) => page.locator('.result-count')
+const toast = (page: Page, text: string) =>
+  page.locator('[data-sonner-toast]').filter({ hasText: text })
+
+interface ProspectData {
+  id: string
+  name: string
+  phone: string
+  stage?: string
+  source?: string
+  interest?: string
+  branchId?: string
+  createdAt?: string
+  trialAt?: string | null
+  meeting?: object
+  trialLesson?: object
+  minor?: boolean
+  guardianName?: string
+  notes?: object[]
+}
+
+/** Kurulum kaydı; seed'deki aday biçimi (`notes` dizisi, kampüs b1). */
+const prospect = (data: ProspectData) => ({
+  collection: 'prospects' as const,
+  data: {
+    email: `${data.id}@kampus.example`,
+    branchId: 'b1',
+    interest: '7. Sınıf · Ortaokul',
+    source: 'Web sitesi',
+    stage: 'Yeni aday',
+    studentId: null,
+    createdAt: at(-1, 9),
+    trialAt: null,
+    notes: [],
+    ...data,
+  },
+})
+
+const lesson = (id: string, date: string) => ({
+  collection: 'schedule' as const,
+  data: {
+    id,
+    classId: 'c1',
+    teacherId: 't1',
+    subjectId: 'math',
+    date,
+    duration: 40,
+    title: 'Speaking',
+    room: '101',
+  },
+})
+
+interface ProspectItem {
+  id: string
+  version: number
+  record: { name: string; stage: string; siblingOfId?: string; notes: { text: string }[] }
+}
+
+async function prospectsOf(client: ApiClient): Promise<ProspectItem[]> {
+  const result = await client.get('/api/v1/collections/prospects?pageSize=100')
+  expect(result.status).toBe(200)
+  return (result.body as { data: ProspectItem[] }).data
+}
+
+interface ModuleSettings {
+  data: { version: number }
+}
+async function closeModule(client: ApiClient, moduleKey: string) {
+  const settings = await client.get('/api/v1/modules')
+  expect(settings.status).toBe(200)
+  const response = await client.context.patch(`/api/v1/modules/${moduleKey}`, {
+    data: { enabled: false },
+    headers: {
+      'if-match': `"${(settings.body as ModuleSettings).data.version}"`,
+      'idempotency-key': randomUUID(),
+    },
+  })
+  expect(response.status()).toBe(200)
+}
+
+/** İki aşama ve iki kaynak karışık 11 aday: 7 Yeni aday + 4 Teklif verildi; tek indeks Telefon. */
+const listRecords = () =>
+  Array.from({ length: 11 }, (_, index) => {
+    const n = index + 1
+    return prospect({
+      id: `e2e-pr-${String(n).padStart(2, '0')}`,
+      name: `Aday ${String(n).padStart(2, '0')}`,
+      phone: `0555030${String(n).padStart(4, '0')}`,
+      stage: n <= 7 ? 'Yeni aday' : 'Teklif verildi',
+      source: n % 2 === 1 ? 'Telefon' : 'Web sitesi',
+      createdAt: at(-n, 9),
+    })
+  })
+
+test.describe('Aday Öğrenciler listesi', () => {
+  test('liste aşama ve kaynakla süzülür, sayfalanır; süzgeç adreste kalır (DOM-KAY-007)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['onburo'], records: listRecords() })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await expect(page.getByRole('heading', { name: 'Aday Öğrenciler', level: 1 })).toBeVisible()
+    await expect(resultCount(page)).toContainText('1–8 / 11 kayıt')
+    await expect(bodyRows(page, 'Aday öğrenciler')).toHaveCount(8)
+
+    await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
+    await expect(page).toHaveURL(/[?&]sayfa=2/)
+    await expect(resultCount(page)).toContainText('9–11 / 11 kayıt')
+    await expect(bodyRows(page, 'Aday öğrenciler')).toHaveCount(3)
+
+    // Süzgeç değişince sayfa sıfırlanır.
+    await page.getByRole('button', { name: 'Filtreler' }).click()
+    await page.getByLabel('Aşama', { exact: true }).selectOption('Teklif verildi')
+    await expect(page).toHaveURL(/asama=/)
+    await expect(page).not.toHaveURL(/sayfa=/)
+    await expect(resultCount(page)).toContainText('1–4 / 4 kayıt')
+    await expectEveryRow(bodyRows(page, 'Aday öğrenciler'), 'Teklif verildi')
+
+    await page.getByLabel('Kaynak', { exact: true }).selectOption('Telefon')
+    await expect(page).toHaveURL(/kaynak=/)
+    await expect(resultCount(page)).toContainText('1–2 / 2 kayıt')
+    await expectEveryRow(bodyRows(page, 'Aday öğrenciler'), ['Teklif verildi', 'Telefon'])
+    await expect(bodyRows(page, 'Aday öğrenciler').filter({ hasText: 'Aday 09' })).toHaveCount(1)
+    await expect(bodyRows(page, 'Aday öğrenciler').filter({ hasText: 'Aday 11' })).toHaveCount(1)
+
+    // Adres yenilenince süzgeçler korunur.
+    await page.reload()
+    await expect(resultCount(page)).toContainText('1–2 / 2 kayıt')
+  })
+
+  test('aday adı detay sayfasını açar ve listeye dönüş bağlantısı vardır', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['onburo'], records: listRecords() })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await page.getByRole('link', { name: 'Aday 03', exact: true }).click()
+    await expect(page).toHaveURL(/\/onburo\/aday\/e2e-pr-03$/)
+    await expect(page.getByRole('heading', { name: 'Aday 03', level: 1 })).toBeVisible()
+    await page.getByRole('link', { name: 'Aday listesine dön' }).click()
+    await expect(page).toHaveURL(/\/onburo\/adaylar/)
+  })
+})
+
+test.describe('aday ekleme', () => {
+  test('ön büro aday ekler; eksik aydınlatma onayı sorulur, kayıt listeye düşer (DOM-KAY-003, DOM-KAY-009)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['onburo'] })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await expect(page.getByText('Henüz aday kaydı yok.')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Yeni aday ekle' }).click()
+    const form = page.getByRole('dialog', { name: 'Yeni aday ekle' })
+    await form.getByLabel('Aday adı soyadı').fill('Zeynep Arda')
+    // Okul adayı her zaman 18 yaş altıdır: veli adı ve veli telefonu istenir.
+    await form.getByLabel('Veli adı soyadı').fill('Hülya Arda')
+    await form.getByLabel('Veli telefonu').fill('0555 030 90 01')
+    await form.getByLabel('İlgilendiği program').fill('6. Sınıf · Ortaokul')
+    await form.getByRole('button', { name: 'Adayı ekle' }).click()
+    await expect(
+      form.getByText('Aydınlatma metninin adaya gösterildiğini onaylayın.'),
+    ).toBeVisible()
+
+    await form.getByLabel('Aydınlatma metni adaya gösterildi').check()
+    await form.getByRole('button', { name: 'Adayı ekle' }).click()
+    await expect(toast(page, 'Aday eklendi.')).toBeVisible()
+    await expect(form).toBeHidden()
+    await expect(bodyRows(page, 'Aday öğrenciler')).toHaveCount(1)
+    await expect(bodyRows(page, 'Aday öğrenciler').first()).toContainText('Zeynep Arda')
+    await expect(bodyRows(page, 'Aday öğrenciler').first()).toContainText('Yeni aday')
+
+    const saved = (await prospectsOf(await api(school.user('onburo')))).map((item) => item.record)
+    expect(saved).toHaveLength(1)
+    expect(saved[0]).toMatchObject({ name: 'Zeynep Arda', stage: 'Yeni aday' })
+  })
+
+  test('aynı telefon ve adla ikinci kayıt reddedilir; ileti eşleşen adayı göstermez (DOM-KAY-002)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect({ id: 'e2e-pr-mina', name: 'Mina Kaya', phone: '05550300001' })],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await page.getByRole('button', { name: 'Yeni aday ekle' }).click()
+    const form = page.getByRole('dialog', { name: 'Yeni aday ekle' })
+    await form.getByLabel('Aday adı soyadı').fill('mina  KAYA')
+    await form.getByLabel('Veli adı soyadı').fill('Ayten Kaya')
+    await form.getByLabel('Veli telefonu').fill('05550300001')
+    await form.getByLabel('İlgilendiği program').fill('7. Sınıf · Ortaokul')
+    await form.getByLabel('Aydınlatma metni adaya gösterildi').check()
+    await form.getByRole('button', { name: 'Adayı ekle' }).click()
+
+    await expect(form.getByText(SAME_MESSAGE)).toBeVisible()
+    await expect(form.getByText('Mina Kaya')).toHaveCount(0)
+    await expect(form.getByLabel('Kardeş aday')).toHaveCount(0)
+    expect(await prospectsOf(await api(school.user('onburo')))).toHaveLength(1)
+  })
+
+  test('iletişimi paylaşan farklı adlı aday reddedilince kardeş seçici açılır; ön büro kardeşi kendisi seçer (DOM-KAY-031)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect({ id: 'e2e-pr-mina', name: 'Mina Kaya', phone: '05550300001' })],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await page.getByRole('button', { name: 'Yeni aday ekle' }).click()
+    const form = page.getByRole('dialog', { name: 'Yeni aday ekle' })
+    await form.getByLabel('Aday adı soyadı').fill('Efe Kaya')
+    await form.getByLabel('Veli adı soyadı').fill('Ayten Kaya')
+    await form.getByLabel('Veli telefonu').fill('05550300001')
+    await form.getByLabel('İlgilendiği program').fill('5. Sınıf · Ortaokul')
+    await form.getByLabel('Aydınlatma metni adaya gösterildi').check()
+    await form.getByRole('button', { name: 'Adayı ekle' }).click()
+
+    // İleti eşleşen adı söylemez; seçici açılır ve seçim ön büroya bırakılır.
+    const sibling = form.getByLabel('Kardeş aday')
+    await expect(sibling).toBeVisible()
+    await expect(form.getByText(SHARED_MESSAGE)).toBeVisible()
+    await expect(sibling.locator('option').filter({ hasText: 'Mina Kaya' })).toHaveCount(1)
+
+    await form.getByRole('button', { name: 'Adayı ekle' }).click()
+    await expect(form.getByText(SHARED_MESSAGE)).toBeVisible()
+
+    await sibling.selectOption({ label: 'Mina Kaya · Yeni aday' })
+    await form.getByRole('button', { name: 'Adayı ekle' }).click()
+    await expect(toast(page, 'Aday eklendi.')).toBeVisible()
+
+    const saved = await prospectsOf(await api(school.user('onburo')))
+    const mina = saved.find((item) => item.record.name === 'Mina Kaya')
+    const efe = saved.find((item) => item.record.name === 'Efe Kaya')
+    expect(efe?.record.siblingOfId).toBe(mina?.id)
+  })
+})
+
+test.describe('aday detayı', () => {
+  test('aşama yalnız geçerli hedeflere değişir; vazgeçmede neden istenir, vazgeçen yeniden açılır (DOM-KAY-005, DOM-KAY-030)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect({ id: 'e2e-pr-stage', name: 'Mert Aksoy', phone: '05550300010' })],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-stage'))
+    const stage = page.getByLabel('Kayıt aşaması')
+    // Yeni aday: geri dönüş, planlama ve kesin kayıt aşamaları sunulmaz.
+    await expect(stage.locator('option')).toHaveText([
+      'Yeni aşamayı seçin',
+      'İletişime geçildi',
+      'Teklif verildi',
+      'Vazgeçti',
+    ])
+    // Okul kurumunda deneme dersi yoktur.
+    await expect(page.getByRole('button', { name: 'Deneme dersi planla' })).toHaveCount(0)
+
+    await stage.selectOption('Teklif verildi')
+    await page.getByRole('button', { name: 'Aşamayı güncelle' }).click()
+    await expect(toast(page, 'Aday aşaması güncellendi.')).toBeVisible()
+    await expect(page.getByLabel('Aday bilgileri').getByText('Teklif verildi')).toBeVisible()
+    await expect(stage.locator('option')).toHaveText(['Yeni aşamayı seçin', 'Vazgeçti'])
+
+    await stage.selectOption('Vazgeçti')
+    await page.getByRole('button', { name: 'Aşamayı güncelle' }).click()
+    await expect(page.getByText('Vazgeçme nedenini seçin.')).toBeVisible()
+    await page.getByLabel('Vazgeçme nedeni').selectOption({ label: 'Fiyat' })
+    await page.getByRole('button', { name: 'Aşamayı güncelle' }).click()
+    await expect(page.getByLabel('Aday bilgileri').getByText('Vazgeçti')).toBeVisible()
+    // Kapalı adaya görüşme ve not eklenmez (DOM-KAY-032).
+    await expect(page.getByRole('button', { name: 'Tanışma görüşmesi planla' })).toBeDisabled()
+    await expect(page.getByText('Kapalı adaya not eklenmez.')).toBeVisible()
+    await expect(page.getByLabel('Görüşme notu', { exact: true })).toHaveCount(0)
+    await expect(stage.locator('option')).toHaveText(['Yeni aşamayı seçin', 'İletişime geçildi'])
+
+    await stage.selectOption('İletişime geçildi')
+    await page.getByRole('button', { name: 'Aşamayı güncelle' }).click()
+    await expect(page.getByLabel('Aday bilgileri').getByText('İletişime geçildi')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Tanışma görüşmesi planla' })).toBeEnabled()
+
+    const saved = (await prospectsOf(await api(school.user('onburo')))).map((item) => item.record)
+    expect(saved[0]?.stage).toBe('İletişime geçildi')
+  })
+
+  test('not eklenir; özel nitelikli veri uyarısı görünür, boş not reddedilir (DOM-KAY-032)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect({ id: 'e2e-pr-note', name: 'Nehir Işık', phone: '05550300020' })],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-note'))
+    await expect(page.getByText(NOTE_NOTICE)).toBeVisible()
+    await expect(page.getByText('0 görüşme')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Notu kaydet' }).click()
+    await expect(page.getByLabel('Görüşme notu', { exact: true })).toBeFocused()
+    await expect(toast(page, 'Not eklendi.')).toHaveCount(0)
+
+    await page.getByLabel('Görüşme notu', { exact: true }).fill('Veli kampüsü gezmek istiyor.')
+    await page.getByRole('button', { name: 'Notu kaydet' }).click()
+    await expect(toast(page, 'Not eklendi.')).toBeVisible()
+    await expect(page.getByText('1 görüşme')).toBeVisible()
+    await expect(page.getByText('Veli kampüsü gezmek istiyor.')).toBeVisible()
+    await expect(page.getByLabel('Görüşme notu', { exact: true })).toHaveValue('')
+
+    const saved = await prospectsOf(await api(school.user('onburo')))
+    expect(saved[0]?.record.notes.map((note) => note.text)).toEqual([
+      'Veli kampüsü gezmek istiyor.',
+    ])
+  })
+
+  test('ön büro öğretmensiz görüşme planlar; geçmiş an ve aynı oda çakışması alan hatası verir (DOM-KAY-033)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({ id: 'e2e-pr-m1', name: 'Mira Demir', phone: '05550300031' }),
+        prospect({ id: 'e2e-pr-m2', name: 'Nil Soylu', phone: '05550300032' }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-m1'))
+    await page.getByRole('button', { name: 'Tanışma görüşmesi planla' }).click()
+    const panel = page.getByRole('dialog', { name: 'Tanışma görüşmesi planla' })
+    // Öğretmen listesi ön büroya kapalıdır: seçim yalnız yöneticide.
+    await expect(panel.getByLabel('Görevli öğretmen (isteğe bağlı)')).toHaveCount(0)
+
+    await panel.getByLabel('Görüşme günü').fill(istanbulDay(-2))
+    await panel.getByLabel('Başlangıç saati').fill('10:00')
+    await panel.getByLabel('Görüşme odası').fill('Oda 7')
+    await panel.getByRole('button', { name: 'Planla' }).click()
+    await expect(panel.getByText('Gelecek bir tarih ve saat seçin.')).toBeVisible()
+
+    await panel.getByLabel('Görüşme günü').fill(istanbulDay(5))
+    await panel.getByRole('button', { name: 'Planla' }).click()
+    await expect(toast(page, 'Tanışma görüşmesi planlandı.')).toBeVisible()
+    await expect(panel).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Tanışma görüşmesi planlandı' })).toBeVisible()
+    await expect(page.getByLabel('Aday bilgileri').getByText('Görüşme planlandı')).toBeVisible()
+
+    // Başka aday aynı gün, saat ve odayı isteyince çakışma tarih alanında görünür.
+    await page.goto(detailUrl('onburo', 'e2e-pr-m2'))
+    await page.getByRole('button', { name: 'Tanışma görüşmesi planla' }).click()
+    await panel.getByLabel('Görüşme günü').fill(istanbulDay(5))
+    await panel.getByLabel('Başlangıç saati').fill('10:00')
+    await panel.getByLabel('Görüşme odası').fill('oda 7')
+    await panel.getByRole('button', { name: 'Planla' }).click()
+    await expect(panel.getByText(CONFLICT_MESSAGE)).toBeVisible()
+    await panel.getByLabel('Başlangıç saati').fill('11:00')
+    await panel.getByRole('button', { name: 'Planla' }).click()
+    await expect(toast(page, 'Tanışma görüşmesi planlandı.')).toBeVisible()
+  })
+
+  test('yönetici görüşmeye görevli öğretmen seçebilir; aday detayı yönetici adresinde açılır', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      records: [prospect({ id: 'e2e-pr-y1', name: 'Selin Uçar', phone: '05550300041' })],
+    })
+    await loginAs(school.user('yonetici'))
+    await page.goto(detailUrl('yonetici', 'e2e-pr-y1'))
+    await expect(page.getByRole('heading', { name: 'Selin Uçar', level: 1 })).toBeVisible()
+    await page.getByRole('button', { name: 'Tanışma görüşmesi planla' }).click()
+    const panel = page.getByRole('dialog', { name: 'Tanışma görüşmesi planla' })
+    const teacher = panel.getByLabel('Görevli öğretmen (isteğe bağlı)')
+    await expect(teacher).toBeVisible()
+    await panel.getByLabel('Görüşme günü').fill(istanbulDay(6))
+    await panel.getByLabel('Görüşme odası').fill('Rehberlik odası')
+    await teacher.selectOption({ index: 1 })
+    await panel.getByRole('button', { name: 'Planla' }).click()
+    await expect(toast(page, 'Tanışma görüşmesi planlandı.')).toBeVisible()
+  })
+})
+
+test.describe('Tanışma Görüşmeleri', () => {
+  test('açık adayların görüşmeleri yaklaşan önce listelenir; kapalı aday ve görüşmesiz aday yoktur (DOM-KAY-033)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const meeting = (date: string) => ({
+      date,
+      duration: 30,
+      room: 'Oda 3',
+      teacherId: null,
+      scheduledAt: at(-5, 9),
+      by: { role: 'onburo', userId: 'u-onburo' },
+    })
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-pr-soon',
+          name: 'Yakın Aday',
+          phone: '05550300051',
+          stage: 'Görüşme planlandı',
+          trialAt: at(2, 10),
+          meeting: meeting(at(2, 10)),
+        }),
+        prospect({
+          id: 'e2e-pr-far',
+          name: 'Uzak Aday',
+          phone: '05550300052',
+          stage: 'Görüşme planlandı',
+          trialAt: at(9, 10),
+          meeting: meeting(at(9, 10)),
+        }),
+        prospect({
+          id: 'e2e-pr-past',
+          name: 'Geçmiş Aday',
+          phone: '05550300053',
+          stage: 'Görüşme planlandı',
+          trialAt: at(-3, 10),
+          meeting: meeting(at(-3, 10)),
+        }),
+        prospect({
+          id: 'e2e-pr-lost',
+          name: 'Vazgeçen Aday',
+          phone: '05550300054',
+          stage: 'Vazgeçti',
+          trialAt: at(3, 10),
+          meeting: meeting(at(3, 10)),
+        }),
+        prospect({ id: 'e2e-pr-none', name: 'Görüşmesiz Aday', phone: '05550300055' }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(MEETINGS_URL)
+    await expect(page.getByRole('heading', { name: 'Tanışma Görüşmeleri', level: 1 })).toBeVisible()
+    const rows = bodyRows(page, 'Planlanan görüşmeler')
+    await expect(rows).toHaveCount(3)
+    await expect(rows.nth(0)).toContainText('Yakın Aday')
+    await expect(rows.nth(0)).toContainText('13:00 – 13:30')
+    await expect(rows.nth(0)).toContainText('Oda 3')
+    await expect(rows.nth(1)).toContainText('Uzak Aday')
+    await expect(rows.nth(2)).toContainText('Geçmiş Aday')
+    await expect(page.getByText('Vazgeçen Aday')).toHaveCount(0)
+    await expect(page.getByText('Görüşmesiz Aday')).toHaveCount(0)
+
+    await page.getByRole('link', { name: 'Yakın Aday adayını aç' }).click()
+    await expect(page).toHaveURL(/\/onburo\/aday\/e2e-pr-soon$/)
+    await expect(page.getByRole('heading', { name: 'Tanışma görüşmesi planlandı' })).toBeVisible()
+  })
+
+  test('görüşme yoksa boş durum planlamayı aday detayına yönlendirir', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['onburo'] })
+    await loginAs(school.user('onburo'))
+    await page.goto(MEETINGS_URL)
+    await expect(
+      page.getByText('Planlanmış görüşme yok. Aday detayından tanışma görüşmesi planlayın.'),
+    ).toBeVisible()
+  })
+})
+
+test.describe('erişim', () => {
+  test('modül kapalıyken menü, doğrudan adresler ve API kapanır (DOM-KAY-007)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect({ id: 'e2e-pr-closed', name: 'Kapalı Aday', phone: '05550300060' })],
+    })
+    const admin = await api(school.user('yonetici'))
+    await closeModule(admin, 'crm')
+    await loginAs(school.user('onburo'))
+
+    await page.goto(LIST_URL)
+    await expect(page.getByText(MODULE_CLOSED)).toBeVisible()
+    await expect(page).toHaveURL(/\/onburo\/dashboard/)
+    await expect(page.getByRole('link', { name: 'Aday Öğrenciler' })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Tanışma Görüşmeleri' })).toHaveCount(0)
+
+    await page.goto(detailUrl('onburo', 'e2e-pr-closed'))
+    await expect(page).toHaveURL(/\/onburo\/dashboard/)
+    await page.goto(MEETINGS_URL)
+    await expect(page).toHaveURL(/\/onburo\/dashboard/)
+    expect((await admin.get('/api/v1/collections/prospects')).status).toBe(403)
+  })
+
+  test('öğretmen, veli ve öğrenci aday detayını açamaz; kendi ana sayfasına döner; API 403 verir', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo', 'ogretmen', 'ogrenci', 'veli'],
+      records: [prospect({ id: 'e2e-pr-guard', name: 'Korumalı Aday', phone: '05550300070' })],
+    })
+    for (const role of ['ogretmen', 'veli', 'ogrenci'] as const) {
+      await loginAs(school.user(role))
+      await page.goto(detailUrl(role, 'e2e-pr-guard'))
+      await expect(page).toHaveURL(new RegExp(`/${role}/dashboard`))
+      await expect(page.getByText('Korumalı Aday')).toHaveCount(0)
+      // Başka rolün adresi de kendi ana sayfasına yönlenir.
+      await page.goto(detailUrl('onburo', 'e2e-pr-guard'))
+      await expect(page).toHaveURL(new RegExp(`/${role}/dashboard`))
+      expect(
+        (await (await api(school.user(role))).get('/api/v1/collections/prospects')).status,
+      ).toBe(403)
+    }
+  })
+})
+
+test.describe('dil okulu deneme dersi', () => {
+  test('deneme dersi gelecek bir derse planlanır; 18 yaş altında veli onayı istenir; liste grubu gösterir (DOM-DIL-030, DOM-KAY-034)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      type: 'language_school',
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-pr-trial',
+          name: 'Deniz Akın',
+          phone: '05550300080',
+          interest: 'B1 genel İngilizce',
+          minor: true,
+          guardianName: 'Aylin Akın',
+        }),
+        lesson('e2e-lesson-1', at(3, 10)),
+        lesson('e2e-lesson-past', at(-3, 10)),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-trial'))
+    await page.getByRole('button', { name: 'Deneme dersi planla' }).click()
+    const panel = page.getByRole('dialog', { name: 'Deneme dersi planla' })
+    const choice = panel.getByLabel('Deneme dersi', { exact: true })
+    // Yalnız gelecekteki ders seçilebilir; geçmiş ders listede yoktur.
+    await expect(choice.locator('option')).toHaveCount(2)
+    await choice.selectOption({ index: 1 })
+    await panel.getByRole('button', { name: 'Planla' }).click()
+    await expect(
+      panel.getByText('18 yaş altı adayın deneme dersi için veli onayı gerekir.'),
+    ).toBeVisible()
+
+    await panel.getByLabel('Velinin deneme dersi için onay verdiğini kaydediyorum').check()
+    await panel.getByRole('button', { name: 'Planla' }).click()
+    await expect(toast(page, 'Deneme dersi planlandı.')).toBeVisible()
+    await expect(panel).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'Deneme dersi planlandı' })).toBeVisible()
+    await expect(page.getByText('13:00 – 13:40 · 7-A')).toBeVisible()
+
+    await page.goto(MEETINGS_URL)
+    const rows = bodyRows(page, 'Planlanan görüşmeler')
+    await expect(rows).toHaveCount(1)
+    await expect(rows.first()).toContainText('Deniz Akın')
+    await expect(rows.first()).toContainText('Deneme dersi')
+    await expect(rows.first()).toContainText('7-A')
+  })
+})
+
+test.describe('390 px genişlik', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('aday listesi, detayı ve görüşme listesi yatay taşmaz', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['onburo'], records: listRecords() })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await expect(page.getByRole('heading', { name: 'Aday Öğrenciler', level: 1 })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    await page.goto(detailUrl('onburo', 'e2e-pr-01'))
+    await expect(page.getByRole('heading', { name: 'Aday 01', level: 1 })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    await page.goto(MEETINGS_URL)
+    await expect(page.getByRole('heading', { name: 'Tanışma Görüşmeleri', level: 1 })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+  })
+})

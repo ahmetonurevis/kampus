@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, preValidationAsyncHookHandler } f
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
 import { WRITE_ACTION_ROLES, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
+import { enrollProspectSchema } from '@kampus/school-core/lib/domain.ts'
 import {
   addProspectNoteSchema,
   changeProspectStageSchema,
@@ -18,6 +19,7 @@ import {
   addProspectNoteCommand,
   changeProspectStageCommand,
   createProspectCommand,
+  enrollProspectCommand,
   scheduleProspectMeetingCommand,
   scheduleTrialLessonCommand,
 } from '../services/prospects.ts'
@@ -35,16 +37,13 @@ import { prospectParamsSchema } from './prospects.schemas.ts'
  *
  * Aday oluşturma `Idempotency-Key` ister, `If-Match` kabul etmez. Var olan adayı değiştiren
  * komutlar (aşama, not, görüşme, deneme dersi) `If-Match` ister: aynı adayın notu veya görüşmesi
- * bayat görüntüyle sessizce üzerine yazılmaz.
- *
- * TODO(api-prospect-enroll): kesin kayıt ucu (`prospect.enroll`, core `enrollProspect`) öğrenci,
- * veli, taksit ve sözleşme yazdığı için ayrı görevdir; önce `requireAuthorized(actor,
- * 'prospect.enroll', …)` çalıştırır (DOM-KAY-035) ve `Idempotency-Key` zorunludur.
+ * bayat görüntüyle sessizce üzerine yazılmaz. Kesin kayıt borç doğurduğu için ikisini de ister.
  */
 
 const response = { 200: commandResponseSchema, ...commandErrors }
 const created = { 201: commandResponseSchema, ...commandErrors }
-const location = (id: string) => `/api/v1/collections/prospects/${encodeURIComponent(id)}`
+const location = (id: string, collection = 'prospects') =>
+  `/api/v1/collections/${collection}/${encodeURIComponent(id)}`
 
 export function registerProspectRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
@@ -195,6 +194,37 @@ export function registerProspectRoutes(app: FastifyInstance) {
           options(request, 'optional'),
         ),
       ),
+  )
+
+  typed.post(
+    '/api/v1/prospects/:prospectId/enroll',
+    {
+      preValidation: guard('prospect.enroll', 'required'),
+      schema: {
+        operationId: 'enrollProspect',
+        tags: ['prospects'],
+        summary: 'Adayı kesin kayda al',
+        description: `Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday \`Kayıt oldu\` olur (core \`enrollProspectWithPlan\`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Tutar kuruştur (\`totalCents\`, 100 ₺–1.000.000 ₺), taksit sayısı 1–12; taksit toplamı kuruşu kuruşuna sözleşme tutarına eşittir (DOM-FIN-011). Gövde katıdır, bilinmeyen alan 400 \`validation_failed\`. Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 \`not_found\`; kayıtlı aday 409 \`prospect_already_enrolled\`, vazgeçmiş aday 409 \`prospect_closed\`; dolu sınıf 422 \`class_capacity_full\`. Kontenjan kurum kilidi altında sayılır. Modül \`crm\`. \`Idempotency-Key\` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. ${ifMatchNote} Başarı 201 ve \`Location\` (öğrenci kaydı). Roller: ${rolesOf('prospect.enroll')}.`,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        params: prospectParamsSchema,
+        body: enrollProspectSchema,
+        response: created,
+      },
+    },
+    async (request, reply) => {
+      const body = sendCommand(
+        reply,
+        await enrollProspectCommand(
+          contextOf(request),
+          request.params.prospectId,
+          input(request),
+          options(request, 'required'),
+        ),
+      )
+      const entity = body.data.entity
+      if (entity) reply.header('location', location(entity.id, 'students'))
+      return body
+    },
   )
 
   typed.post(

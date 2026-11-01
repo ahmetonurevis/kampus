@@ -228,11 +228,11 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Kesin kayıt borç ve sözleşme doğurur; vazgeçen adayın doğrudan kaydı yeniden açılıştaki tekillik denetimini (`DOM-KAY-002`) atlatır.
 - **Kaynak:** İşletme kuralı; yetki matrisi (`docs/domain/yetki-ve-kapsam.md`).
 - **Kurum türü:** ikisi
-- **Kodda:** var (core) — `packages/school-core/src/lib/domain.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). `enrollProspect` yetkiyi kendisi denetlemez (`payInvoice` gibi); API ucu henüz yok (`TODO(api-prospect-enroll)`, D16c); uç önce `requireAuthorized` çağıracak. Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`).
+- **Kodda:** var (core) — `packages/school-core/src/lib/domain.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). API `POST /api/v1/prospects/:prospectId/enroll` önce `requireAuthorized` çağırır, sonra core `enrollProspectWithPlan`'ı çalıştırır (`Idempotency-Key` ve `If-Match` zorunlu). Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`).
 
 ## API uygulama notları
 
-Aday uçları (`apps/api/src/routes/prospects.ts`) core işlemlerinin varsaydığı koşulları sunucuda sağlar; kesin kayıt maddesi D16c'de uygulanacak:
+Aday uçları (`apps/api/src/routes/prospects.ts`) core işlemlerinin varsaydığı koşulları sunucuda sağlar; kesin kayıt ucu da aynı düzendedir:
 
 - `loadScope` aday komutlarında kurumun bütün adaylarını kurum kilidi altında yükler. Tekillik (`DOM-KAY-002`, `-031`), kardeş doğrulaması, görüşme çakışması ve deneme katılımcı/kapasite sayımı bütün adaylara bakar; kısmi yükleme veya kilitsiz okuma eşzamanlı iki isteğin aynı denetimi geçmesine yol açar. State yalnız etkin kurumun kayıtlarını taşır; kardeş "aynı kurumda" şartı buna dayanır.
 - Not yazarının gösterilen adı (`authorName`) oturum kullanıcısından alınır; gövdeden okunmaz.

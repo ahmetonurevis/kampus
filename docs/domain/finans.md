@@ -78,7 +78,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Yenileme ile öğrencinin iki açık sözleşmesi olur.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/document-data.js:20-36`, `school-workflows.js:840`. Kesin kayıt sözleşmesinde `invoiceIds` yoktur (`domain.js:160-166`); belge bu durumda öğrencinin bütün taksitlerine düşer (`document-data.js:31-33`).
+- **Kodda:** var — `packages/school-core/src/lib/document-data.js:20-36`, `school-workflows.js:840`. Kesin kayıt sözleşmesi de `invoiceIds` taşır (`lib/domain.ts`); alanı olmayan eski kayıtlarda belge öğrencinin bütün taksitlerine düşer (`document-data.ts`).
 
 ### DOM-FIN-013 · Peşin ve süreli ödeme koşulu ilandadır
 

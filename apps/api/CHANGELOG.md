@@ -2,6 +2,12 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Kesin kayıt ucu
+
+- `POST /api/v1/prospects/:prospectId/enroll` eklendi (201 + `Location`; `Idempotency-Key` ve `If-Match` zorunlu; yalnız `yonetici` ve `onburo`, modül `crm`). Öğrenci, veli, taksit, sözleşme ve aday aşaması tek transaction'da yazılır (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035).
+- Tutar kuruş olarak alınır (`totalCents`, DOM-FIN-001). Tutar henüz serbest girilir; tarife gelince tarifeden hesaplanacak (`TODO(fee-tariff)`, DOM-FIN-002).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
 ## Rubrik uçları
 
 - `GET /api/v1/rubrics` (sayfalı; rubrik, son sürümün özeti ve yayındaki sürüm kimliği) ve `GET /api/v1/rubrics/:rubricId` (bütün sürümler, her biri atama ve puan kullanım sayısıyla); yalnız `yonetici` ve `ogretmen` (core `isContentStaff`, rubrik kurumundur, IST-048). Modül `learning`; kapalıysa 403 `module_disabled`.
@@ -19,7 +25,6 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 - Not yazarının gösterilen adı oturum kullanıcısından (`users.name`) okunur; gövdede `authorName` 400 `validation_failed`. Kullanıcı satırı bulunamazsa not boş yazarla yazılmaz: programlama hatası olarak düz `Error` fırlar (500 `internal_error`, ayrıntı yalnız logda).
 - Mükerrer reddi (`prospect_duplicate`, `prospect_contact_shared`) eşleşen adayın kimliğini, telefonunu, e-postasını ve adını taşımaz; yanıt yalnız kod, ileti ve alan yolu içerir, logda da kimlik yoktur.
 - Log gizleme listesine `phone` (üst düzey), `guardianName`, `*.guardianName`, `notes` ve `*.notes` eklendi (kvkk: K); `test/security-defaults.test.ts` gerçek logger yapılandırmasıyla doğrular. Denetim kaydına yalnız değişen alan adları yazılır.
-- Kesin kayıt ucu (`prospect.enroll`) açılmadı; öğrenci, fatura ve sözleşme yazdığı için ayrı görevdir (`TODO(api-prospect-enroll)`).
 - OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
 
 ## Alınabilir randevu saatleri okuma ucu

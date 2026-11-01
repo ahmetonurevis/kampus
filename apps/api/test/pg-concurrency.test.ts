@@ -21,6 +21,7 @@ import { executeWorkflowCommand, recordAttendanceCommand } from '../src/services
 import { sendMessageCommand } from '../src/services/communication.ts'
 import {
   createProspectCommand,
+  enrollProspectCommand,
   scheduleProspectMeetingCommand,
   scheduleTrialLessonCommand,
 } from '../src/services/prospects.ts'
@@ -684,6 +685,60 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     assert.equal(JSON.stringify(reason.issues ?? []).includes(createdId), false)
     assert.equal(reason.message.includes(createdId), false)
     assert.equal(await prospectCount(ctx.institutionId), 1)
+  })
+
+  test('DOM-KAY-010: son kontenjana eşzamanlı iki kesin kayıt: yalnız biri yazılır, öteki 422 class_capacity_full', async () => {
+    const ctx = await frontDeskContext()
+    const seed = createSeed(FIXED_NOW)
+    const seat = seed.classes.find((item) => item.id === 'c1')
+    const open = seed.prospects.filter((item) => item.stage === 'Yeni aday').slice(0, 2)
+    assert.ok(seat)
+    assert.equal(open.length, 2)
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        { collection: 'classes', id: seat.id, data: { ...seat, capacity: 1 } },
+        ...open.map((data) => ({
+          collection: 'prospects' as const,
+          id: data.id,
+          data: { ...data },
+        })),
+      ],
+      FIXED_NOW,
+    )
+    const enrollment = {
+      classId: seat.id,
+      totalCents: 100_000,
+      installmentCount: 2,
+      firstDueDate: '2026-11-15',
+    }
+    const outcomes = await Promise.allSettled(
+      open.map((item, index) =>
+        enrollProspectCommand(ctx, item.id, enrollment, keyed(`pg-enroll-000${String(index)}`)),
+      ),
+    )
+    assert.deepEqual(
+      outcomes.filter((item) => item.status === 'fulfilled').map((item) => item.value.statusCode),
+      [201],
+    )
+    const reason: unknown = outcomes.find((item) => item.status === 'rejected')?.reason
+    assert.ok(
+      reason instanceof AppError &&
+        reason.statusCode === 422 &&
+        reason.code === 'class_capacity_full',
+      String(reason),
+    )
+    const rows = await db
+      .select({ collection: records.collection, n: count() })
+      .from(records)
+      .where(eq(records.institutionId, ctx.institutionId))
+      .groupBy(records.collection)
+    const countOf = (name: string) => rows.find((row) => row.collection === name)?.n
+    assert.equal(countOf('students'), 1)
+    assert.equal(countOf('parents'), 1)
+    assert.equal(countOf('contracts'), 1)
+    assert.equal(countOf('invoices'), 2)
   })
 
   test('DOM-KAY-033: iki adaya aynı odada eşzamanlı görüşme: yalnız biri yazılır, öteki 409 meeting_conflict', async () => {

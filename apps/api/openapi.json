@@ -26243,6 +26243,188 @@
         }
       }
     },
+    "/api/v1/prospects/{prospectId}/enroll": {
+      "post": {
+        "operationId": "enrollProspect",
+        "summary": "Adayı kesin kayda al",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithPlan`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Tutar kuruştur (`totalCents`, 100 ₺–1.000.000 ₺), taksit sayısı 1–12; taksit toplamı kuruşu kuruşuna sözleşme tutarına eşittir (DOM-FIN-011). Gövde katıdır, bilinmeyen alan 400 `validation_failed`. Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. Kontenjan kurum kilidi altında sayılır. Modül `crm`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "classId": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000
+                  },
+                  "totalCents": {
+                    "type": "integer",
+                    "minimum": 10000,
+                    "maximum": 100000000
+                  },
+                  "installmentCount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "firstDueDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  }
+                },
+                "required": [
+                  "classId",
+                  "totalCents",
+                  "installmentCount",
+                  "firstDueDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "prospectId",
+            "required": true,
+            "description": "Aday kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/prospects/{prospectId}/trial-lessons": {
       "post": {
         "operationId": "scheduleTrialLesson",

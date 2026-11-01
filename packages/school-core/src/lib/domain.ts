@@ -5,7 +5,7 @@ import type { Role } from '../modules/navigation.ts'
 import { dayKey } from './format.ts'
 import type { ActorLink } from './scope.ts'
 import { DomainError } from './errors.ts'
-import { OPEN_PROSPECT_STAGES } from './prospects.ts'
+import { OPEN_PROSPECT_STAGES, type ProspectOptions } from './prospects.ts'
 
 z.config(z.locales.tr())
 
@@ -256,11 +256,37 @@ export function gradeQuiz(
   }
 }
 /**
- * Kesin kayıt: açık aşamadaki adayı öğrenci, veli, taksit ve sözleşmeyle birlikte kayda alır
- * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetkiyi kendisi denetlemez (`payInvoice` gibi); API
- * önce `requireAuthorized(actor, 'prospect.enroll', …)` çalıştırır.
+ * Kesin kayıt API gövdesi (DOM-FIN-001, DOM-KAY-035): tutar kuruştur, aday yoldan gelir, gövde
+ * katıdır. Sınırlar demo formuyla (`registrationSchema`, tam TL) aynıdır.
+ * TODO(fee-tariff): tutar serbest girilir; tarife gelince DOM-FIN-002 ile tarifeden hesaplanır.
+ */
+export const enrollProspectSchema = z.strictObject({
+  classId: requiredText,
+  totalCents: z
+    .number()
+    .int('Tutar kuruş cinsinden tam sayı olmalıdır.')
+    .min(10_000, 'Tutar en az 100 ₺ olmalıdır.')
+    .max(100_000_000, 'Tutar en fazla 1.000.000 ₺ olabilir.'),
+  installmentCount: z.number().int().min(1).max(12),
+  firstDueDate: daySchema,
+})
+export type EnrollProspectInput = z.input<typeof enrollProspectSchema>
+
+type Enrollment = {
+  prospectId: string
+  classId: string
+  totalCents: number
+  count: number
+  startDate: string
+  contractTitle: string
+}
+const SCHOOL_CONTRACT_TITLE = 'Özel okul eğitim sözleşmesi'
+const LANGUAGE_SCHOOL_CONTRACT_TITLE = 'Dil kursu eğitim sözleşmesi'
+
+/**
+ * Çevrimdışı demo girişi: `registrationSchema` (tam TL).
  * TODO(crm-enroll): çevrimdışı demo çağıranları (Vue `Crm.vue`, mobil `model/operations.ts`) yetki
- * denetlemez; demo kalıcılığı silinince kalkar. Kesin kayıt API ucu D16c'dedir (`TODO(api-prospect-enroll)`).
+ * denetlemez; demo kalıcılığı silinince kalkar.
  */
 export function enrollProspect(
   state: State,
@@ -269,6 +295,58 @@ export function enrollProspect(
   now = new Date().toISOString(),
 ) {
   const data = registrationSchema.parse(input)
+  return applyEnrollment(
+    state,
+    {
+      prospectId: data.prospectId,
+      classId: data.classId,
+      totalCents: data.total * 100,
+      count: data.count,
+      startDate: data.startDate,
+      contractTitle: SCHOOL_CONTRACT_TITLE,
+    },
+    makeId,
+    now,
+  )
+}
+
+/**
+ * API girişi: `enrollProspectSchema` (kuruş). Yetkiyi kendisi denetlemez (`payInvoice` gibi);
+ * API önce `requireAuthorized(actor, 'prospect.enroll', …)` çalıştırır (DOM-KAY-035).
+ */
+export function enrollProspectWithPlan(
+  state: State,
+  prospectId: string,
+  input: unknown,
+  makeId: MakeId,
+  now: string,
+  options: Pick<ProspectOptions, 'institutionType'> = {},
+) {
+  const data = enrollProspectSchema.parse(input)
+  return applyEnrollment(
+    state,
+    {
+      prospectId,
+      classId: data.classId,
+      totalCents: data.totalCents,
+      count: data.installmentCount,
+      startDate: data.firstDueDate,
+      contractTitle:
+        options.institutionType === 'language_school'
+          ? LANGUAGE_SCHOOL_CONTRACT_TITLE
+          : SCHOOL_CONTRACT_TITLE,
+    },
+    makeId,
+    now,
+  )
+}
+
+/**
+ * Kesin kayıt: açık aşamadaki adayı öğrenci, veli, taksit ve sözleşmeyle birlikte kayda alır
+ * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Sözleşme yalnız kendi taksitlerini listeler
+ * (`invoiceIds`, DOM-FIN-012).
+ */
+function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, now: string) {
   const prospect = state.prospects.find((p) => p.id === data.prospectId)
   const cls = state.classes.find((c) => c.id === data.classId && c.isActive)
   if (!prospect || !cls || !state.branches.some((b) => b.id === cls.branchId && b.isActive))
@@ -299,7 +377,7 @@ export function enrollProspect(
     isActive: true,
     progress: 0,
   }
-  const amounts = installmentAmounts(data.total * 100, data.count)
+  const amounts = installmentAmounts(data.totalCents, data.count)
   const start = new Date(`${data.startDate}T09:00:00.000Z`)
   if (Number.isNaN(+start) || dayKey(start) !== data.startDate)
     throw new DomainError('invalid_payment_date', 'Geçerli bir ödeme tarihi girin.')
@@ -337,8 +415,9 @@ export function enrollProspect(
     id: makeId('contract'),
     studentId: student.id,
     date: now,
-    amount: data.total * 100,
-    title: 'Özel okul eğitim sözleşmesi',
+    amount: data.totalCents,
+    title: data.contractTitle,
+    invoiceIds: invoices.map((invoice) => invoice.id),
   }
   state.contracts.push(contract)
   prospect.studentId = student.id

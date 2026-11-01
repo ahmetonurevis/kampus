@@ -1884,6 +1884,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/{prospectId}/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adayı kesin kayda al
+         * @description Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithPlan`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Tutar kuruştur (`totalCents`, 100 ₺–1.000.000 ₺), taksit sayısı 1–12; taksit toplamı kuruşu kuruşuna sözleşme tutarına eşittir (DOM-FIN-011). Gövde katıdır, bilinmeyen alan 400 `validation_failed`. Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. Kontenjan kurum kilidi altında sayılır. Modül `crm`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`.
+         */
+        post: operations["enrollProspect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/prospects/{prospectId}/trial-lessons": {
         parameters: {
             query?: never;
@@ -14911,6 +14931,117 @@ export interface operations {
         responses: {
             /** @description Default Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    enrollProspect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Aday kimliği */
+                prospectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    classId: string;
+                    totalCents: number;
+                    installmentCount: number;
+                    firstDueDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -1,5 +1,12 @@
 # Değişiklikler
 
+## 2.21.0
+
+Kesin kayıt API girişi eklendi (DOM-KAY-035, DOM-FIN-001, DOM-FIN-012).
+
+- `lib/domain.ts`: `enrollProspectSchema` (katı gövde; tutar kuruş) ve `enrollProspectWithPlan` eklendi. Dil okulunda sözleşme başlığı kurum türüne uyar. Demo girişi `enrollProspect` ve `registrationSchema` aynı kaldı.
+- Kesin kayıt sözleşmesi `invoiceIds` taşır; belge yalnız kendi taksitlerini çözümler (DOM-FIN-012).
+
 ## 2.20.0
 
 Veli ve öğrencinin randevu alabileceği saatleri okuyan saf kural eklendi (W20a; `docs/domain/iletisim-ve-veli.md` DOM-ILT-105). Uç ve kanca ayrı adımdadır, ekran W20b'dedir. Başka açık dal da 2.19.0 kullanıyor; birleştirmede sürüm çözülecek.

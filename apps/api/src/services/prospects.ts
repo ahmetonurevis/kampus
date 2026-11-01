@@ -1,7 +1,9 @@
 import { eq } from 'drizzle-orm'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
+import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
+import { enrollProspectWithPlan } from '@kampus/school-core/lib/domain.ts'
 import {
   addProspectNote,
   changeProspectStage,
@@ -42,8 +44,14 @@ import { runCommand, type CommandResponse, type OperationTools } from './operati
  */
 
 type ProspectAction =
-  'prospect.create' | 'prospect.stage' | 'prospect.note' | 'prospect.meeting' | 'prospect.trial'
-type Outcome = { id: string; statusCode: number }
+  | 'prospect.create'
+  | 'prospect.stage'
+  | 'prospect.note'
+  | 'prospect.meeting'
+  | 'prospect.trial'
+  | 'prospect.enroll'
+/** `collection` verilmezse sonucun konusu adaydır; kesin kayıtta oluşan öğrencidir. */
+type Outcome = { id: string; statusCode: number; collection?: CollectionName }
 
 interface ProspectRun {
   action: ProspectAction
@@ -90,7 +98,10 @@ function execute(
             ],
           }
         : {}),
-      entity: (outcome: Outcome) => ({ type: COLLECTION, id: outcome.id }),
+      entity: (outcome: Outcome) => ({
+        type: outcome.collection ?? COLLECTION,
+        id: outcome.id,
+      }),
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
         const by: Participant = { ...actor, userId: ctx.actor.userId }
@@ -105,7 +116,7 @@ function execute(
     },
     (outcome) =>
       commandBody(
-        { collection: COLLECTION, id: outcome.result.id },
+        { collection: outcome.result.collection ?? COLLECTION, id: outcome.result.id },
         outcome.changes,
         outcome.result.statusCode,
       ),
@@ -191,6 +202,42 @@ export function scheduleProspectMeetingCommand(
       run: (state, by, { now }, prospectOptions) => {
         scheduleProspectMeeting(state, by, prospectId, input, now, prospectOptions)
         return { id: prospectId, statusCode: 200 }
+      },
+    },
+    options,
+  )
+}
+
+/**
+ * Adayı kesin kayda alır: öğrenci, veli, taksitler, sözleşme ve aday aşaması tek transaction'da
+ * yazılır (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Kontenjan kurum kilidi altında sayılır. 201;
+ * sonucun konusu oluşan öğrencidir.
+ */
+export function enrollProspectCommand(
+  ctx: ServiceContext,
+  prospectId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  return execute(
+    ctx,
+    {
+      action: 'prospect.enroll',
+      subjectId: prospectId,
+      run: (state, by, { now, makeId }, prospectOptions) => {
+        requireAuthorized(by, 'prospect.enroll', {}, state, {
+          now,
+          institutionType: prospectOptions.institutionType,
+        })
+        const { student } = enrollProspectWithPlan(
+          state,
+          prospectId,
+          input,
+          makeId,
+          now,
+          prospectOptions,
+        )
+        return { id: student.id, statusCode: 201, collection: 'students' }
       },
     },
     options,

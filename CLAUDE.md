@@ -56,12 +56,12 @@ Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokun
 
 ## İki geliştiriciyle çalışma
 
-İki geliştirici (Oğuzhan, Onur) paralel çalışır. İlke: izin yok, görünürlük var; kendi alanında herkes sormadan yazar, birleştirir, gönderir. Yalnız sahiplik/kural değişikliği ve ürün-hukuk-maliyet kararları birlikte alınır. Alan haritası `.claude/alanlar.json`; ayrıntı `docs/muhendislik/git-ve-surum.md` §7 ve `.claude/rules/ortak-calisma.md`; skill'ler `is-baslat`, `entegre-et`.
+İki geliştirici (Oğuzhan, Onur) paralel çalışır. İlke: izin yok, görünürlük var; kendi alanında herkes sormadan yazar, birleştirir, gönderir; iş görev tablosunda görünür. Yalnız sahiplik/kural değişikliği ve ürün-hukuk-maliyet kararları birlikte alınır. Alan haritası `.claude/alanlar.json`; ayrıntı `docs/muhendislik/git-ve-surum.md` §7 ve `.claude/rules/ortak-calisma.md`; skill'ler `is-baslat`, `entegre-et`.
 
-- Görev dağılımı `docs/is-bolumu/`; kendi listen `<sahip>.md`, yalnız sahibi düzenler.
+- Görev tabloları `docs/is-bolumu/<sahip>.md` (ID'li, dalgalı), yalnız sahibi düzenler. Yeni makinede ve yeni klonda önce [ilk kurulum](docs/is-bolumu/ilk-kurulum.md).
 - Dal `onur/<konu>` veya `oguzhan/<konu>`, güncel `origin/feature/platform-gecisi`'nden açılır; oturum başında entegrasyon dala birleştirilir. Küçük birim yeşil olunca hemen entegrasyona; uzun yaşayan dal yok.
-- İş başlamadan `gh issue list --state open` ile çakışan iş aranır; varsa durulur, kullanıcıya sorulur. Sonra issue: `sahip:` + `durum:devam` etiketi, alan, dokunulacak dosyalar, gerekiyorsa başlıkta migration/ADR numarası (onay beklenmez). Commit/merge mesajı `#<no>` anar; birleştiren `gh issue close` ile kapatır.
-- Diğer geliştiricinin alanına yazılmaz (`alan-koruma` hook'u engeller); durmadan onun `sahip:` etiketiyle iş isteği issue'su açılır ve kendi taraf geçici veriyle yazılır. Ortak dosyada kendi bloğuna yazılır; blok dışına çıkılırsa `ortak-dosya` etiketi, beklenmez.
+- Görev durumu tabloda tutulur, issue'da değil (`bekliyor`, `çalışılıyor`, `revizyon`, `engelli`, `bitti`, `iptal`). Başlarken (`is-baslat`) satır `çalışılıyor` + dal adı, bitince (`entegre-et`) `bitti` + birleştirme hash'i; değişiklik entegrasyon dalında tek satırlık commit'tir ve gönderilir (Oğuzhan tarafında push'u kullanıcı yapar). Çakışan iş için karşı tablonun `çalışılıyor` satırlarına bakılır; varsa durulur, kullanıcıya sorulur. Migration/ADR numarası satırın Not'una (onay beklenmez). Commit/merge mesajı görev ID'sini anar.
+- Diğer geliştiricinin alanına yazılmaz (`alan-koruma` hook'u engeller); durmadan onun `sahip:` etiketiyle iş isteği issue'su açılır ve kendi taraf geçici veriyle yazılır. Ortak dosyada kendi bloğuna yazılır; blok dışına çıkılırsa görev satırının Not'una yazılır, beklenmez. Issue yalnız karşı taraftan iş isteği ve hata bildirimidir.
 - Entegrasyondan önce: fetch + entegrasyonu dala birleştir, `pnpm gen`, dokunulan paketlerin format/lint/typecheck ve ilgili birim/API testleri, `git merge-tree` ölçümü; birleştirme `--no-ff`. Tam set ve e2e CI'da; CI'ı kıran ilk iş düzeltir ya da geri alır.
 - Sürüm ve README test sayıları yalnız teslimde; davranış değişikliği `changes/<konu>.md` parçası yazar, iç paketler `workspace:*`.
 - Yasak: force push; gönderilmiş commit'te amend, rebase veya reset; `main`'e push (`push-kontrol` hook'u ve izin ayarı engeller).

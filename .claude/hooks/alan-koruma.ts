@@ -180,7 +180,9 @@ function runHook(raw: string): number {
   const map = readAreaMap()
   const result = classify(path, map)
   if (result.kind === 'shared') {
-    addContext(`Ortak dosya (${path}): kendi bloğuna yaz, issue'da duyur.`)
+    addContext(
+      `Ortak dosya (${path}): kendi bloğuna yaz; blok dışına çıkarsan görev satırının Not'una yaz.`,
+    )
     return 0
   }
   const owner = map.owners[result.owner]
@@ -195,7 +197,9 @@ function runHook(raw: string): number {
   if (result.owner === user) return 0
   const roots = [root, process.env.CLAUDE_PROJECT_DIR].filter((dir): dir is string => Boolean(dir))
   if (matchesAny(path, allowedGlobs(roots))) {
-    addContext(`${path} ${ownerName} alanında; .claude/alan-izni.local ile izinli. Issue'da duyur.`)
+    addContext(
+      `${path} ${ownerName} alanında; .claude/alan-izni.local ile izinli. Görev satırının Not'unda ve karşı tarafa açılan issue'da duyur.`,
+    )
     return 0
   }
   process.stderr.write(

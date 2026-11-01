@@ -86,7 +86,10 @@ describe('alan-koruma', () => {
   test('Ortak dosyada engel yok, hatırlatma çıkar', () => {
     const result = edit(repo('Ahmet Onur Evis'), 'packages/school-core/src/lib/scope.ts')
     assert.equal(result.status, 0)
-    assert.match(result.context, /Ortak dosya .*kendi bloğuna yaz, issue'da duyur/)
+    assert.match(
+      result.context,
+      /Ortak dosya .*kendi bloğuna yaz; blok dışına çıkarsan görev satırının Not'una yaz/,
+    )
   })
 
   test('alan-izni.local engeli açar (yol ve glob)', () => {

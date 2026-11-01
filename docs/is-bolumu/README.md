@@ -1,8 +1,8 @@
 # İş bölümü
 
-İki geliştirici (Oğuzhan Demirci ve Ahmet Onur Evis, bu belgede "Onur") Claude Code oturumlarıyla paralel çalışır. Bu belge her işin tek sahibini, iki tarafın birbirine sunduğu sözleşmeleri ve bağımlılıkları tanımlar. Kişisel iş listeleri [onur.md](onur.md) ve [oguzhan.md](oguzhan.md) dosyalarındadır.
+İki geliştirici (Oğuzhan Demirci ve Ahmet Onur Evis, bu belgede "Onur") Claude Code oturumlarıyla paralel çalışır. Bu belge her işin tek sahibini, iki tarafın birbirine sunduğu sözleşmeleri ve bağımlılıkları tanımlar. Kişisel görev tabloları [onur.md](onur.md) ve [oguzhan.md](oguzhan.md) dosyalarındadır; yeni makinede başlarken [ilk-kurulum.md](ilk-kurulum.md).
 
-Canlı durum (kim şu an ne yapıyor) bu dosyalarda değil, GitHub issue'larında tutulur. Tarih, süre ve son gün yoktur; sıra D1–D5 dalgalarıyla gösterilir.
+Canlı durum (kim ne üzerinde çalışıyor, neyi bitirdi, ne revizyonda) görev tablolarının Durum sütunundadır; oturumlar başlarken ve bitirirken yazar, oturum hook'u iki tabloyu özetler. Issue yalnız karşı taraftan iş isteği ve hata bildirimidir. Tarih, süre ve son gün yoktur; sıra D1–D5 dalgalarıyla gösterilir.
 
 Git, dal ve ortak dosya kuralları burada tekrarlanmaz: [.claude/rules/ortak-calisma.md](../../.claude/rules/ortak-calisma.md) ve [docs/muhendislik/git-ve-surum.md](../muhendislik/git-ve-surum.md) §7.
 
@@ -253,13 +253,13 @@ Kapanan iki soru: kayıt yenileme, sınıf geçişi ve mezuniyet işlemi K1'dedi
 
 ## Çalışma düzeni
 
-Kimse kendi alanındaki iş için karşı taraftan onay beklemez. Ayrı rapor, günlük not ya da sabit toplantı yoktur; açık `durum:devam` issue'ları kimin neyle uğraştığını gösterir. Görüşme gerektiğinde yapılır.
+Kimse kendi alanındaki iş için karşı taraftan onay beklemez. Ayrı rapor, günlük not ya da sabit toplantı yoktur; görev tablolarının Durum sütunu kimin neyle uğraştığını gösterir. Görüşme gerektiğinde yapılır.
 
 | Durum                                    | Ne yapılır                                                                                                                       | Karşı taraf beklenir mi |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Kendi alanında iş                        | Yazılır, doğrulanır, entegrasyona birleştirilir, gönderilir. İşin issue'su `durum:devam` etiketiyle açık durur, bitince kapanır. | Hayır                   |
-| Ortak dosya                              | Herkes kendi bloğuna yazar. Blok dışına çıkan, issue'ya `ortak-dosya` etiketi koyar.                                             | Hayır                   |
-| Migration, ADR, kural kimliği            | Numara issue başlığına yazılır ve kullanılır.                                                                                    | Hayır                   |
+| Kendi alanında iş                        | Satır `çalışılıyor` olur; yazılır, doğrulanır, entegrasyona birleştirilir, gönderilir; satır `bitti` ve birleştirme hash'i olur. | Hayır                   |
+| Ortak dosya                              | Herkes kendi bloğuna yazar. Blok dışına çıkan, görev satırının Not'una yazar.                                                    | Hayır                   |
+| Migration, ADR, kural kimliği            | Numara görev satırının Not'una yazılır ve kullanılır.                                                                            | Hayır                   |
 | Bağımlılık ekleme                        | Eklenir, commit mesajında belirtilir.                                                                                            | Hayır                   |
 | Karşı tarafın alanında bir şey gerekiyor | Onun `sahip:` etiketiyle issue açılır; o kendi sırasına koyar. Bu arada geçici veriyle kendi tarafı yazılır.                     | Yalnız o parça          |
 | Entegrasyonu kıran hata                  | Kıran düzeltir ya da geri alır. Sahibe ulaşılamıyorsa gören düzeltir, issue'ya not düşer.                                        | Hayır                   |

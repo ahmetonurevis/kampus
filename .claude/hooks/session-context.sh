@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # Oturum başında kısa durum: dal, commit edilmemiş değişiklikler, son commitler, varsa sıradaki gece
-# işleri; entegrasyon dalının gerisinde kalınıp kalınmadığı ve açık issue'lar (iki geliştiricili çalışma).
+# işleri; iki geliştiricili çalışmada görev tabloları (gorev-durumu.ts), entegrasyon dalının gerisinde
+# kalınıp kalınmadığı ve sahibe açılmış iş istekleri. Ağ işleri (fetch, gh) paralel ve en çok 3 sn.
+hook_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd "${CLAUDE_PROJECT_DIR:-$PWD}" || exit 0
+# İlk kurulum yalnız ana klonda sorulur; worktree'lerde (`.git` dosyadır) `.env` bulunmaması olağandır.
+if [[ -d .git ]] && [[ ! -f apps/api/.env || ! -d node_modules ]]; then
+  echo "İlk kurulum: docs/is-bolumu/ilk-kurulum.md (apps/api/.env ya da node_modules yok)."
+fi
 echo "Dal: $(git branch --show-current 2>/dev/null)"
 changes=$(git status --short 2>/dev/null | head -15)
 [[ -n "$changes" ]] && printf 'Commit edilmemiş değişiklikler:\n%s\n' "$changes"
@@ -35,15 +41,6 @@ if [[ "$owner" != onur && "$owner" != oguzhan ]]; then
     *) owner= ;;
   esac
 fi
-other=
-[[ "$owner" == onur ]] && other=oguzhan
-[[ "$owner" == oguzhan ]] && other=onur
-
-if [[ -n "$owner" && -f "docs/is-bolumu/$owner.md" ]]; then
-  tasks=$(grep -m5 -E '^[[:space:]]*- \[ \]' "docs/is-bolumu/$owner.md")
-  [[ -n "$tasks" ]] && printf 'Sıradaki işlerin (docs/is-bolumu/%s.md):\n%s\n' "$owner" "$tasks"
-fi
-
 # fetch ve gh paralel koşar; ikisi de en çok 3 sn, ağ yoksa sessiz geçilir.
 integration=feature/platform-gecisi
 has_origin=
@@ -53,12 +50,11 @@ if git remote get-url origin >/dev/null 2>&1; then
   fetch_pid=$!
 fi
 
-issues=
-if command -v gh >/dev/null 2>&1; then
-  # Satır biçimi: <durum:devam ise D, değilse -><TAB><sahip etiketleri><TAB>#no başlık
-  issues=$(with_timeout 3 gh issue list --state open --limit 50 --json number,title,labels \
-    --jq '.[] | [([.labels[].name] | if index("durum:devam") then "D" else "-" end), ([.labels[].name | select(startswith("sahip:"))] | join(",")), "#\(.number) \(.title)"] | @tsv' \
-    </dev/null 2>/dev/null)
+# Görev durumu tabloda, issue yalnız iş isteği ve hata bildirimi: sahibe açılmış olanlar gösterilir.
+requests=
+if [[ -n "$owner" ]] && command -v gh >/dev/null 2>&1; then
+  requests=$(with_timeout 3 gh issue list --state open --label "sahip:$owner" --limit 20 \
+    --json number,title --jq '.[] | "  #\(.number) \(.title)"' </dev/null 2>/dev/null)
 fi
 
 if [[ -n "$has_origin" ]]; then
@@ -69,12 +65,9 @@ if [[ -n "$has_origin" ]]; then
   fi
 fi
 
-if [[ -n "$issues" ]]; then
-  if [[ -n "$other" ]]; then
-    active=$(printf '%s\n' "$issues" | awk -F'\t' -v who="sahip:$other" '$1 == "D" && index($2, who) { print $3 }' | head -8)
-    [[ -n "$active" ]] && printf 'Karşı tarafın sürmekte olan işleri (durum:devam):\n%s\n' "$active"
-  fi
-  list=$(printf '%s\n' "$issues" | awk -F'\t' '{ print $3 " [" ($2 == "" ? "sahipsiz" : $2) "]" }' | head -8)
-  printf 'Açık issue'"'"'lar (çakışan iş var mı bak):\n%s\n' "$list"
+# Tablolar fetch'ten sonra okunur (origin/feature/platform-gecisi; yoksa yerel dosya).
+if [[ -n "$owner" ]] && command -v node >/dev/null 2>&1; then
+  with_timeout 2 node --no-warnings "$hook_dir/gorev-durumu.ts" "$owner" "$PWD" </dev/null 2>/dev/null
 fi
+[[ -n "$requests" ]] && printf 'Sana açılmış iş istekleri (sahip:%s):\n%s\n' "$owner" "$requests"
 exit 0

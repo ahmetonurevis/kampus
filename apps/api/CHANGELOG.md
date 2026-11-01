@@ -2,6 +2,24 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Dosya depolama inceleme düzeltmeleri (F3c2a)
+
+- İndirme ucu `Cross-Origin-Resource-Policy: cross-origin` gönderir: Helmet varsayılanı `same-origin` web'in başka kökenden `<img>`/`<audio>` ile açtığı bağlantıyı engellerdi. Yetki imzadadır; JSON uçları `same-origin`'de kalır.
+- Dosya okuma (`GET /files/:fileId`, `/url`) sırası kapsam → modüldür: modül kapalıyken kapsam dışı dosya 403 yerine 404 alır (varlık ipucu yok), 403 `module_disabled` yalnız dosyayı görebilecek kişiye döner.
+- Yüklemede tutulmayan nesnenin silme hatası asıl hatayı (413/422/veritabanı) örtmez; `file.discard_object_failed` olarak depo anahtarıyla loglanır (ad loga girmez). Satırsız kalan nesnelerin önek taraması `TODO(F3c2-orphans)`.
+- Bildirilen türün takma adları (`audio/x-m4a`, `audio/mp3`, `image/jpg`, `video/webm`, parametreli tür) core 2.24.0 `canonicalMimeType` ile çözülür; `react-shared` `checkFileBeforeUpload` aynı tabloyu kullanır, tanınmayan türde karar sunucuya kalır. Tüketiciler `workspace:2.24.0`. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Dosya depolama temeli (F3c2a)
+
+- ADR 0003'ün ilk dilimi. Migration `0015_create_files`: kurum kapsamlı `files` tablosu (içerik kolonları tetikleyiciyle değişmez, silme yalnız imha oturumunda) ve `institution_settings.storage_quota_bytes` (boşsa 50 GB).
+- Depolama arayüzü (`src/storage`) ve yalnız disk sürücüsü: `STORAGE_DRIVER=disk`, `STORAGE_DIR` (üretimde zorunlu, geliştirmede `var/storage`). S3 sürücüsü, ClamAV taraması ve uygulama düzeyi şifreleme TODO.
+- `POST /api/v1/files` (201 + `Location`; `multipart/form-data`, `Idempotency-Key` zorunlu): akışta SHA-256 ve boyut; amaç sınırı aşılınca akış kesilir, nesne silinir, 413 `file_too_large`; içerikten tür (`file_type_not_allowed`, `file_type_mismatch`, `file_empty` 422); kurum kotası kurum kilidi altında (`storage_quota_exceeded` 422); konuşma kaydı 403 `consent_required`; multipart olmayan gövde 415.
+- `GET /api/v1/files/:fileId` ve `GET /api/v1/files/:fileId/url`: bağlı kaydın okuma kapsamı (karar 6); bağlanmamış dosyayı yalnız yükleyen görür, ötekiler 404. Bağlantı HMAC imzalı ve süreli (5 dk; konuşma kaydı 2 dk); teslim ve konuşma kaydında denetime `file.access`.
+- `GET /api/v1/files/download?token=` (açık uç, disk sürücüsü): bozuk imza 403 `invalid_signature`, süresi geçmiş 403 `link_expired`.
+- Servisler: `attachFile` (bağlama; amaç ve kayıt türü kaydı `defineFileAttachment`), `recordFileCheck` (gelecekteki tarama işinin girişi), `purgeUnattachedFiles` (24 saatte bağlanmayan dosyaların temizliği; zamanlayıcı TODO).
+- Yeni paketler `@fastify/multipart` 10.1.6 ve `file-type` 22.2.0. Özgün dosya adı log ve denetim kaydına girmez. Core değişmedi (2.22.0). OpenAPI ve `api-client` şeması yeniden üretildi.
+- `react-shared`: `useFileUpload` (`use-file-upload.ts`) ve `checkFileBeforeUpload`; komut dosyalarındaki `JsonBody` tipi ilk multipart uçla uyumlu koşullu türe çevrildi.
+
 ## İkinci puanlayıcı, puanlama süresi ve itiraz uçları (F4b3b2a)
 
 - `POST /api/v1/task-assignments/:assignmentId/second-rating-sample` (201 + `Location` kuyruk `?assignmentId=…&awaiting=second`; `Idempotency-Key` ve `If-Match` zorunlu, `If-Match` atamanın `rowVersion`'ı): ikinci puanlama örneklemi (DOM-BEC-024; core `secondRatingQuota`, `pickSecondRatingSample`: en az %10 ve en az bir teslim, atama kimliğiyle tohumlu). Örneklem teslim penceresi kapanınca açık uçla bir kez çekilir; örneklemli görevde (`secondRatingPercent > 0`) çekilmeden ilk puan 409 `second_rating_sample_pending`. Karar `task_assignments.second_rating_sampled_at` kolonundadır.

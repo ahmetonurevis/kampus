@@ -12,9 +12,12 @@ import { useApiCommand } from './use-api-command.ts'
 // yanıt sınırı `text`) yalnız form alanında görünür, toast çıkmaz; yolsuz hata (ör. 403
 // `question_teacher_reassigned`) tek toast olur. Geri çekme formsuzdur: hata tek toast.
 
-type JsonBody<TOperation extends keyof operations> = NonNullable<
-  operations[TOperation]['requestBody']
->['content']['application/json']
+type JsonBody<TOperation extends keyof operations> =
+  NonNullable<operations[TOperation]['requestBody']> extends {
+    content: { 'application/json': infer TBody }
+  }
+    ? TBody
+    : never
 
 export type AskQuestionBody = JsonBody<'askQuestion'>
 export type AnswerQuestionBody = JsonBody<'answerQuestion'>

@@ -10,6 +10,7 @@ import { buildApp, type App, type Clock } from '../../src/app.ts'
 import type { InstitutionType, Role } from '../../src/auth.ts'
 import { loadConfig, type Config } from '../../src/config.ts'
 import { MIGRATIONS_FOLDER, schema, type Database } from '../../src/db/client.ts'
+import type { DiskStorage } from '../../src/storage/disk.ts'
 import {
   ensureInstitution,
   ensureInstitutionSettings,
@@ -56,6 +57,8 @@ export interface TestAppOptions {
   clock?: Clock
   /** Log satırlarını yakalar (redaksiyon testleri). */
   logs?: string[]
+  /** Dosya deposu (ör. geçici klasörde `DiskStorage`); verilmezse ortamın varsayılanı. */
+  storage?: DiskStorage
   /** `ready` öncesi yalnız teste özgü rota eklemek için. */
   extend?: (app: App) => void
 }
@@ -75,6 +78,7 @@ export async function buildTestApp(db: Database, options: TestAppOptions = {}): 
     config,
     db,
     clock: options.clock ?? (() => FIXED_NOW),
+    ...(options.storage ? { storage: options.storage } : {}),
     ...(logStream ? { logStream } : {}),
   })
   options.extend?.(app)

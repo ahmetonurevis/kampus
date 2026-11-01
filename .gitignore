@@ -9,6 +9,8 @@ playwright-report/
 __pycache__/
 *.pyc
 artifacts/
+# API disk deposu (STORAGE_DIR varsayılanı)
+apps/api/var/
 apklar/
 **/.expo/
 apps/mobile/android/

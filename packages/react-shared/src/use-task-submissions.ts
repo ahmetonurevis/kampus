@@ -30,9 +30,12 @@ export const TASK_SUBMISSION_INVALIDATES = [[TASK_SUBMISSIONS_KEY], [TASK_ASSIGN
 /** Otomatik taslak kaydı yalnız taslağı tazeler. */
 export const TASK_DRAFT_INVALIDATES = [[TASK_DRAFT_KEY]] as const
 
-type JsonBody<TOperation extends keyof operations> = NonNullable<
-  operations[TOperation]['requestBody']
->['content']['application/json']
+type JsonBody<TOperation extends keyof operations> =
+  NonNullable<operations[TOperation]['requestBody']> extends {
+    content: { 'application/json': infer TBody }
+  }
+    ? TBody
+    : never
 
 export type TaskSubmissionListQuery = NonNullable<
   operations['listTaskSubmissions']['parameters']['query']

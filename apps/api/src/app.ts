@@ -1,6 +1,7 @@
 import cookie from '@fastify/cookie'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
+import multipart from '@fastify/multipart'
 import rateLimit from '@fastify/rate-limit'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
@@ -27,6 +28,7 @@ import { registerAssessmentRoutes } from './routes/assessment.ts'
 import { registerCommandRoutes } from './routes/commands.ts'
 import { registerCommunicationRoutes } from './routes/communication.ts'
 import { registerDashboardRoutes } from './routes/dashboard.ts'
+import { registerFileRoutes } from './routes/files.ts'
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 import { registerHealthRoutes } from './routes/health.ts'
 import { registerMeRoutes } from './routes/me.ts'
@@ -44,6 +46,9 @@ import { registerRubricRoutes } from './routes/rubrics.ts'
 import { registerTaskAssignmentRoutes } from './routes/task-assignments.ts'
 import { registerTaskAttemptRoutes } from './routes/task-attempts.ts'
 import { registerTaskSubmissionRoutes } from './routes/task-submissions.ts'
+import { MAX_UPLOAD_BYTES } from './services/files.ts'
+import { createStorage } from './storage/create.ts'
+import type { DiskStorage } from './storage/disk.ts'
 
 // Şemada özel mesajı olmayan Zod hataları da Türkçe döner.
 z.config(z.locales.tr())
@@ -161,6 +166,8 @@ export interface BuildAppOptions {
   config: Config
   db: Database
   clock?: Clock
+  /** Dosya deposu; verilmezse ortamdan kurulur (`STORAGE_DRIVER`, `STORAGE_DIR`). */
+  storage?: DiskStorage
   /** Testlerde log çıktısını yakalamak için. */
   logStream?: NodeJS.WritableStream
 }
@@ -200,6 +207,11 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   })
   await app.register(cookie)
   await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' })
+  // Dosya yükleme (ADR 0003 karar 2): gövde belleğe alınmaz, rota akışı depoya aktarır. Sınırlar
+  // amaca göre rotada daraltılır; burada üst sınırdır.
+  await app.register(multipart, {
+    limits: { files: 1, fields: 2, parts: 3, fieldSize: 100, fileSize: MAX_UPLOAD_BYTES + 1 },
+  })
 
   const docs = isDevelopmentLike(config)
   await app.register(swagger, {
@@ -250,6 +262,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerTaskAssignmentRoutes(app)
   registerTaskAttemptRoutes(app)
   registerTaskSubmissionRoutes(app)
+  registerFileRoutes(app, options.storage ?? createStorage(config))
 
   return app
 }

@@ -16,9 +16,12 @@ import { useApiCommand } from './use-api-command.ts'
 // sürümü `If-Match` olarak taşır, sürüm yoksa istek atılmaz (`requireIfMatch`). Kesin kayıt
 // ikisini birden taşır: mükerrer öğrenci ve taksit üretilmez (DOM-KAY-011).
 
-type JsonBody<TOperation extends keyof operations> = NonNullable<
-  operations[TOperation]['requestBody']
->['content']['application/json']
+type JsonBody<TOperation extends keyof operations> =
+  NonNullable<operations[TOperation]['requestBody']> extends {
+    content: { 'application/json': infer TBody }
+  }
+    ? TBody
+    : never
 
 export type CreateProspectBody = JsonBody<'createProspect'>
 export type ChangeProspectStageBody = JsonBody<'changeProspectStage'>

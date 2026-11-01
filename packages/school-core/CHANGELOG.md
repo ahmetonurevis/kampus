@@ -1,5 +1,13 @@
 # Değişiklikler
 
+## 2.24.0
+
+Bildirilen dosya türü kanonik MIME'a çevrilir (F3c2a inceleme düzeltmesi; ADR 0003 karar 3; `docs/domain/kaynak-platformu.md` DOM-KYN-004).
+
+- `content/taxonomy.ts`: `MIME_ALIASES` takma ad tablosu (`audio/x-m4a`, `audio/m4a` → `audio/mp4`; `audio/x-wav`, `audio/wave`, `audio/vnd.wave` → `audio/wav`; `audio/mp3` → `audio/mpeg`; `image/jpg`, `image/pjpeg` → `image/jpeg`; `video/webm` → `audio/webm`) ve `canonicalMimeType`: parametreleri (`;codecs=opus`) atar, harfi küçültür, takma adı çözer; tanınmayan türde `null` döner.
+- Gerekçe: web kancası tarayıcının bildirdiği türü listeyle birebir karşılaştırıyordu; Windows Firefox'taki `.m4a` (`audio/x-m4a`) ya da tarayıcı kaydı (`audio/webm;codecs=opus`) istemcide reddediliyor, oysa sunucu kabul ediyordu. Web/mobil ön denetimi (`react-shared` `checkFileBeforeUpload`) ve API tutarlılık denetimi (`file-detection.ts`) artık aynı tabloyu kullanır; tanınmayan türde karar sunucuya kalır.
+- Tüketiciler `workspace:2.24.0` sürümüne sabitlendi. 2.23.0 başka dala ayrıldı; birleştirmede sürüm çözülecek.
+
 ## 2.22.0
 
 Rubrik puanının kriter satırı katı oldu (F4b3b1 inceleme düzeltmesi; `docs/domain/beceri-gelisimi.md` DOM-BEC-021; `docs/muhendislik/api-tasarimi.md` "gövde katı").

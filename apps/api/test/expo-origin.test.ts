@@ -19,6 +19,7 @@ const PRODUCTION = {
   NODE_ENV: 'production',
   BETTER_AUTH_URL: 'https://api.kampus.example',
   BETTER_AUTH_SECRET: 'b4Jx9-uretim-icin-uretilmis-rastgele-deger-Qm2',
+  STORAGE_DIR: '/srv/kampus/storage',
 }
 
 describe('mobil uygulama kökeni', () => {

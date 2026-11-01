@@ -67,7 +67,7 @@ describe('veri dönüştüren migration’lar', () => {
   test('0004–0005: mevcut sıra korunarak numaralanır; tohum sırayı veri ve sürüme dokunmadan core dizisine eşitler; core denetimi arşivlenir', async () => {
     const app = await buildTestApp(db)
     try {
-      const { id } = await createInstitution(app)
+      const { id } = await createInstitution(app, { academicYear: null })
       const items = stateRecords(demoState('akademi', FIXED_NOW)).filter(
         (item) => item.collection === 'students' || item.collection === 'invoices',
       )
@@ -156,7 +156,7 @@ describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
   test('tek veli hesabı olan öğrencinin eski yazışması o hesapla dolar; iki veya sıfır hesapta boş kalır', async () => {
     const app = await buildTestApp(db)
     try {
-      const { id } = await createInstitution(app)
+      const { id } = await createInstitution(app, { academicYear: null })
       const only = await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's1' }])
       await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's2' }])
       await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's2' }])
@@ -276,7 +276,7 @@ describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
   test('mesajlar kimlik ve sırayla bölünür, taraf anahtarlarını taşır; dizi kalkar, son mesaj anı yazılır; tekrar etkisiz; taşınamayan öğe veri kaybettirmez', async () => {
     const app = await buildTestApp(db)
     try {
-      const { id } = await createInstitution(app)
+      const { id } = await createInstitution(app, { academicYear: null })
       const message = (key: string, sender: string, date: string, extra = {}) => ({
         id: key,
         text: `Metin ${key}`,
@@ -703,7 +703,7 @@ describe('0013: beceri görevi tabloları', () => {
         await readFile(path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'),
       )
       assert.equal(first, journal.entries.length)
-      assert.equal(journal.entries.at(-1)?.tag, '0014_add_second_rating_sampled_at')
+      assert.equal(journal.entries.at(-1)?.tag, '0015_create_files')
       await migrate(fresh, { migrationsFolder: MIGRATIONS_FOLDER })
       assert.equal(await count(), first)
     } finally {

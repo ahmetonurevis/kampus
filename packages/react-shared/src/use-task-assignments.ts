@@ -25,9 +25,12 @@ export const TASK_ASSIGNMENTS_KEY = 'task-assignments'
 /** Atama rubrik sürümünün kullanım sayısını değiştirir; rubrik sorguları da tazelenir. */
 export const TASK_ASSIGNMENT_INVALIDATES = [[TASK_ASSIGNMENTS_KEY], [RUBRICS_KEY]] as const
 
-type JsonBody<TOperation extends keyof operations> = NonNullable<
-  operations[TOperation]['requestBody']
->['content']['application/json']
+type JsonBody<TOperation extends keyof operations> =
+  NonNullable<operations[TOperation]['requestBody']> extends {
+    content: { 'application/json': infer TBody }
+  }
+    ? TBody
+    : never
 
 export type TaskAssignmentListQuery = NonNullable<
   operations['listTaskAssignments']['parameters']['query']

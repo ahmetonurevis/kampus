@@ -9,6 +9,7 @@ import {
   decideTaskAppeal,
   drawSecondRatingSample,
   fileAppeal,
+  finalScoreTaskSubmission,
   listGradingQueue,
   requestSecondRating,
   requestTaskResubmission,
@@ -68,8 +69,10 @@ const APPELLANTS: readonly Role[] = ['ogrenci', 'veli']
 const GRADERS: readonly Role[] = ['yonetici', 'ogretmen']
 /** İtiraz kararı yalnız öğretmendedir (DOM-BEC-025); yönetici okur ama karar vermez. */
 const APPEAL_DECIDERS: readonly Role[] = ['ogretmen']
+/** Son puan yalnız koordinatör görevli öğretmendedir (DOM-YTK-027); yönetici koordinatör sayılmaz. */
+const FINALIZERS: readonly Role[] = ['ogretmen']
 const READ_ACCESS =
-  'Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz (DOM-BEC-023); puan öğretmenin rubrik puanıdır, her okumada kriter bantlarından hesaplanır. Kursiyer ve veli puanı ve geri bildirimi yalnız puan kesinleşip geri bildirim açılınca görür (DOM-BEC-045); öncesinde `score: null`, puanlanmamış sürümle aynı. Kesinleşmemiş puanı yalnız personel görür (öğretmen kendi puanını, yönetici hepsini). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.'
+  'Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz (DOM-BEC-023); puan öğretmenin rubrik puanıdır, her okumada kriter bantlarından hesaplanır. Kursiyer ve veli puanı ve geri bildirimi yalnız puan kesinleşip geri bildirim açılınca görür (DOM-BEC-045); öncesinde `score: null`, puanlanmamış sürümle aynı. Kesinleşmemiş puanı yalnız personel görür: öğretmen ve yönetici kendi puanını (kör puanlama, DOM-BEC-024); atanan içeriğin dersinin zümre başkanı veya seviyesinin akademik koordinatörü hepsini, ama sürümü kendisi puanladıysa yalnız kendininkini. Koordinatör atamayı görmese de alanındaki uyuşmazlıklı teslimi tek tek okur (DOM-YTK-027); teslim listesine erişimi yoktur. Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.'
 const GRADE_ACCESS =
   "Roller: `yonetici` ve atamayı gören `ogretmen` (atayan olmasa da kapsamındaki sınıf/öğrenci hedefi yüzünden gören; DOM-YTK-028); öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`."
 const WRITE_ACCESS =
@@ -95,6 +98,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
   const grade = [app.requireModule(MODULE), app.requireRole(GRADERS)]
   const appeal = [app.requireModule(MODULE), app.requireRole(APPELLANTS)]
   const appealDecider = [app.requireModule(MODULE), app.requireRole(APPEAL_DECIDERS)]
+  const finalizer = [app.requireModule(MODULE), app.requireRole(FINALIZERS)]
 
   typed.get(
     '/api/v1/task-submissions',
@@ -124,7 +128,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         operationId: 'listGradingQueue',
         tags: ['task-submissions'],
         summary: 'Puanlanmayı bekleyen teslimler',
-        description: `Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü ilk puanı veya istenmiş ikinci puanı (DOM-BEC-024) almamış teslimler ile iki puanı uyuşmayıp koordinatörü bekleyen teslimler, en eski gönderim önce, sayfalı; kişinin bir rolde puanladığı bekleyen sürüm listede yoktur (aynı kişi iki rolde puanlamaz), uyuşmazlıklı sürüm puanlayıcılara da görünür. Her kayıtta son sürümün özeti (metin yok) ve \`grading\`: bekleyen roller (\`awaiting\`; ikinci puan bekleyenler ayrı görünür), uyuşmazlık (\`awaitingResolution\`; yalnız iki puan da verilince), örneklem bekleniyor mu, puanlama süresi (\`dueAt\`: son teslim + 7 gün, core \`gradingDueAt\`; örneklemli görevde örneklem anından, örneklemden önce \`null\`) ve gecikme (\`overdue\`; DOM-BEC-025). Süzgeçler: \`assignmentId\`, \`awaiting=first|second\` (uyuşmazlıklı satırları dışarıda bırakır), \`overdue=true|false\`; bilinmeyen parametre 400. Roller: \`yonetici\` kurumun bütün, \`ogretmen\` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül \`learning\`; kapalıysa 403 \`module_disabled\`.`,
+        description: `Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü ilk puanı veya istenmiş ikinci puanı (DOM-BEC-024) almamış teslimler ile iki puanı uyuşmayıp koordinatörü bekleyen teslimler, en eski gönderim önce, sayfalı; kişinin bir rolde puanladığı bekleyen sürüm listede yoktur (aynı kişi iki rolde puanlamaz), uyuşmazlıklı sürüm puanlayıcılara da görünür. Her kayıtta son sürümün özeti (metin yok) ve \`grading\`: bekleyen roller (\`awaiting\`; ikinci puan bekleyenler ayrı görünür), uyuşmazlık (\`awaitingResolution\`; yalnız iki puan da verilince), örneklem bekleniyor mu, puanlama süresi (\`dueAt\`: son teslim + 7 gün, core \`gradingDueAt\`; örneklemli görevde örneklem anından, örneklemden önce \`null\`) ve gecikme (\`overdue\`; DOM-BEC-025). Süzgeçler: \`assignmentId\`, \`awaiting=first|second\` (uyuşmazlıklı satırları dışarıda bırakır), \`awaiting=resolution\` (yalnız koordinatörün son puanını bekleyen uyuşmazlıklar), \`overdue=true|false\`; bilinmeyen parametre 400. Roller: \`yonetici\` kurumun bütün, \`ogretmen\` gördüğü atamaların (DOM-YTK-028) teslimleri, zümre başkanı/akademik koordinatör ayrıca alanındaki (atanan içeriğin dersi/seviyesi; DOM-YTK-027) uyuşmazlıklı teslimleri; öğrenci, veli ve ön büro 403. Modül \`learning\`; kapalıysa 403 \`module_disabled\`.`,
         querystring: gradingQueueQuerySchema,
         response: { 200: gradingQueueResponseSchema, ...readErrors },
       },
@@ -306,7 +310,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         operationId: 'secondScoreTaskSubmission',
         tags: ['task-submissions'],
         summary: 'İkinci puanı ver',
-        description: `İkinci puanlayıcı son sürümü ilk puanı görmeden rubrikle puanlar (DOM-BEC-024; core \`planRubricScore\`, \`scoresVisibleToRater\`). Gövde ilk puanınkiyle aynıdır. Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında değilse 409 \`second_rating_not_requested\`; ilk puanı veren kişi 409 \`rater_not_independent\`; aynı sürümün ikinci ikinci puanı 409 \`rubric_score_exists\`. Herhangi bir kriterde iki puan arasında birden fazla bant fark varsa sonuç uyuşmazlıktır: son puan koordinatörle gelecek (F4b3b2b), o zamana kadar sonuç kursiyere ve veliye kapalıdır. Uyuşmazlık yoksa ilk puan geçerlidir ve geri bildirim açılır (DOM-BEC-045). ${GRADE_ACCESS}`,
+        description: `İkinci puanlayıcı son sürümü ilk puanı görmeden rubrikle puanlar (DOM-BEC-024; core \`planRubricScore\`, \`scoresVisibleToRater\`). Gövde ilk puanınkiyle aynıdır. Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında değilse 409 \`second_rating_not_requested\`; ilk puanı veren kişi 409 \`rater_not_independent\`; aynı sürümün ikinci ikinci puanı 409 \`rubric_score_exists\`. Herhangi bir kriterde iki puan arasında birden fazla bant fark varsa sonuç uyuşmazlıktır: son puanı kapsamındaki koordinatör verir (\`final-scores\`), o zamana kadar sonuç kursiyere ve veliye kapalıdır. Uyuşmazlık yoksa ilk puan geçerlidir ve geri bildirim açılır (DOM-BEC-045). ${GRADE_ACCESS}`,
         params: taskSubmissionParamsSchema,
         body: taskScoreBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
@@ -317,6 +321,38 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
       const expectedVersion = requiredVersion(request)
       const { versionNumber, ...score } = request.body
       const result = await secondScoreTaskSubmission(
+        contextOf(request),
+        { submissionId: request.params.submissionId, expectedVersion, versionNumber, score },
+        idempotencyOf(request, true),
+      )
+      const body = sendWith(reply, result, (value) =>
+        taskSubmissionDetailResponseSchema.parse(value),
+      )
+      reply.header('location', `/api/v1/task-submissions/${body.data.id}`)
+      return body
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-submissions/:submissionId/final-scores',
+    {
+      preValidation: [...finalizer, requireIfMatch()],
+      schema: {
+        operationId: 'finalScoreTaskSubmission',
+        tags: ['task-submissions'],
+        summary: 'Uyuşmazlıkta son puanı ver',
+        description:
+          "İlk ve ikinci puan herhangi bir kriterde birden fazla bant ayrıştığında (DOM-BEC-024) atamanın içerik dersinin zümre başkanı (`school`) veya seviyesinin akademik koordinatörü (`language_school`) son sürümü rubrikle puanlar (DOM-YTK-027; core `planRubricScore`, `final`). Gövde ilk puanınkiyle aynıdır. Son puan sonucu kesinleştirir; kursiyer ve veli puanı ve geri bildirimi DOM-BEC-045 kuralıyla görür. Uyuşmazlık yoksa veya son puan zaten verildiyse 409 `final_score_not_needed`; koordinatör o sürümün iki puanlayıcısından biriyse 409 `rater_not_independent`. Roller: yalnız `ogretmen`; yönetici koordinatör sayılmaz, öğrenci, veli ve ön büro 403. Sıra: başka kurumun, arşivli veya kapsam dışı teslim 404 (atamayı görmeyen ve alanının koordinatörü olmayan öğretmen) → atamayı gören ama dersin/seviyenin koordinatörü olmayan öğretmen 403 `coordinator_required` → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. Eşzamanlı iki son puandan yalnız biri yazılır. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        params: taskSubmissionParamsSchema,
+        body: taskScoreBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        response: { 201: taskSubmissionDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const expectedVersion = requiredVersion(request)
+      const { versionNumber, ...score } = request.body
+      const result = await finalScoreTaskSubmission(
         contextOf(request),
         { submissionId: request.params.submissionId, expectedVersion, versionNumber, score },
         idempotencyOf(request, true),

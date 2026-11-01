@@ -4,6 +4,7 @@ import { deadlineForVersion } from '@kampus/school-core/skills/assignment.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import {
   appealDeadline,
+  coordinatorCase,
   gradedVersionNumbers,
   gradingDueAt,
   gradingOverdue,
@@ -55,7 +56,7 @@ import { AppError, MESSAGES, NotFoundError, RuleViolationError } from '../errors
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { listMembershipLinks } from './memberships.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
-import { viewerOf, visible, type Viewer } from './task-assignments.ts'
+import { coordinates, viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
   auditWork,
   canReadLearner,
@@ -222,38 +223,80 @@ export async function loadGrading(
   }
 }
 
+const RATER_ORDER: Readonly<Record<RubricScoreRow['raterRole'], number>> = {
+  first: 0,
+  second: 1,
+  final: 2,
+}
+/** Puanlar rol sırasıyla (ilk, ikinci, son), aynı rolde eskiden yeniye. */
+const byRaterRole = (a: RubricScoreRow, b: RubricScoreRow) =>
+  RATER_ORDER[a.raterRole] - RATER_ORDER[b.raterRole] ||
+  Date.parse(a.scoredAt) - Date.parse(b.scoredAt) ||
+  a.id.localeCompare(b.id)
+
+/**
+ * Personelin gördüğü kesinleşmemiş puanlar (core `scoresVisibleToRater`): öğretmen ve yönetici
+ * kendi puanını ve kesinleşen puanı görür (kör puanlama; DOM-BEC-024); atamanın dersinin/seviyesinin
+ * koordinatörü ilk ve ikinci puan verildikten sonra bütün puanları görür, ama o sürümü kendisi
+ * puanladıysa kör kalır (DOM-YTK-027). İkinci puan beklenirken koordinatör de kördür; ikinci puanı
+ * kendisi verebilir. Yönetici koordinatör sayılmaz.
+ */
+function visibleScoresOf(
+  viewer: Viewer,
+  ctx: ServiceContext,
+  assignment: StoredAssignment,
+  grading: Grading,
+  version: VersionRow,
+) {
+  return scoresVisibleToRater({
+    scores: grading.scores.filter((score) => score.submissionVersionId === version.id),
+    viewer: { userId: ctx.actor.userId, coordinator: coordinates(viewer, assignment) },
+    secondRatingRequested: secondRatingFor(grading, version),
+  })
+}
+
 /**
  * Sürümün kişiye gösterilen puanı (DOM-BEC-021, 024, 045). Kesinleşmiş puan (core
- * `scoreResolution`) personele her zaman, kursiyer ve veliye yalnız geri bildirim açılınca
- * (`teacherFeedbackReleased`) görünür; açılmadan önce kursiyerin gördüğü, hiç puanlanmamış sürümle
- * aynıdır (`null`). Uyuşmazlıkta puan kesinleşmez, kursiyere kapalı kalır. Kesinleşmemiş puanı
- * yalnız personel görür, core `scoresVisibleToRater` ile: öğretmen ve yönetici yalnız kendi
- * puanını görür (kör puanlama; ikinci puanlayıcı ilk puanı görmez, DOM-BEC-024); yönetici
- * koordinatör sayılmaz, ikinci puanlayıcı olabilir.
+ * `scoreResolution`; koordinatörün son puanı dahil) personele her zaman, kursiyer ve veliye yalnız
+ * geri bildirim açılınca (`teacherFeedbackReleased`) görünür; açılmadan önce kursiyerin gördüğü,
+ * hiç puanlanmamış sürümle aynıdır (`null`). Uyuşmazlıkta puan kesinleşmez, kursiyere kapalı
+ * kalır. Kesinleşmemiş puanı yalnız personel görür (`visibleScoresOf`).
  */
-// TODO(F4b3b2b): Koordinatör (DOM-YTK-027) bütün puanları görür ve uyuşmazlıkta son puanı verir.
 function shownScore(
   viewer: Viewer,
   ctx: ServiceContext,
+  assignment: StoredAssignment,
   grading: Grading,
   version: VersionRow,
 ): { row: RubricScoreRow; settled: boolean } | null {
-  const scores = grading.scores.filter((score) => score.submissionVersionId === version.id)
-  const secondRatingRequested = secondRatingFor(grading, version)
-  const resolution = scoreResolution({ scores, secondRatingRequested })
+  const resolution = resolutionOf(grading, version)
   if (resolution.status === 'settled') {
     if (viewer.kind !== 'learner' || teacherFeedbackReleased(resolution.settledAt, ctx.now))
       return { row: resolution.score, settled: true }
     return null
   }
   if (viewer.kind === 'learner') return null
-  const visibleScores = scoresVisibleToRater({
-    scores,
-    viewer: { userId: ctx.actor.userId, coordinator: false },
-    secondRatingRequested,
-  })
-  const row = visibleScores.at(-1)
+  const row = visibleScoresOf(viewer, ctx, assignment, grading, version).at(-1)
   return row === undefined ? null : { row, settled: false }
+}
+
+/**
+ * Koordinatörün öğrenci bazında okuyabildiği teslim (DOM-YTK-027, DOM-BEC-024): atamanın
+ * dersinin/seviyesinin koordinatörüdür ve bir sürümde iki puan uyuşmuyor (son puan verilmiş
+ * olsa da). Atamayı görmeyen koordinatör yalnız bu teslimleri okur.
+ */
+export function coordinatorReaches(
+  viewer: Viewer,
+  assignment: StoredAssignment,
+  work: StoredSubmissionWork,
+  grading: Grading,
+): boolean {
+  return (
+    coordinates(viewer, assignment) &&
+    work.versions.some((version) =>
+      coordinatorCase(grading.scores.filter((score) => score.submissionVersionId === version.id)),
+    )
+  )
 }
 
 /** Puanın özeti: toplam her okumada kriter bantlarından hesaplanır, saklanmaz (DOM-BEC-021). */
@@ -332,7 +375,7 @@ function summaryView(
         : {
             ...versionView(assignment, work, latest),
             score: scoreBrief(
-              scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, latest)),
+              scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, assignment, grading, latest)),
             ),
           },
     resubmission: resubmissionOf(work),
@@ -460,7 +503,9 @@ export function learnerSubmissionProgress(
     score:
       latest === undefined
         ? null
-        : scoreBrief(scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, latest))),
+        : scoreBrief(
+            scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, assignment, grading, latest)),
+          ),
   }
 }
 
@@ -481,9 +526,9 @@ export async function detailView(
       ...versionView(assignment, work, version),
       body: version.body,
       score: scoreFeedback(
-        scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, version)),
+        scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, assignment, grading, version)),
       ),
-      grading: gradingView(ctx, viewer, assignment, work, grading, version),
+      grading: gradingView(ctx, viewer, assignment, work, grading, version, book.rubrics),
       appealDeadline: appealDeadlineOf(ctx, viewer, assignment, grading, version),
       appeal: appealView(viewer, grading, version),
     })),
@@ -504,11 +549,25 @@ function gradingView(
   work: StoredSubmissionWork,
   grading: Grading,
   version: VersionRow,
+  rubrics: RubricsById,
 ) {
   if (viewer.kind === 'learner') return null
   const resolution = resolutionOf(grading, version)
   const deadline = gradingDeadlineOf(assignment, work.submission, version.number)
+  const visibleScores = visibleScoresOf(viewer, ctx, assignment, grading, version)
   return {
+    // Kişinin görebildiği puanlar rolleriyle (kör puanlama `visibleScoresOf`); koordinatör
+    // uyuşmazlıkta iki puanı yan yana görür.
+    raterScores: [...visibleScores].sort(byRaterRole).flatMap((row) => {
+      const feedback = scoreFeedback(scoreSummary(ctx, rubrics, { row, settled: false }))
+      return feedback === null ? [] : [{ raterRole: row.raterRole, score: feedback }]
+    }),
+    // Son puanı bu kişi verebilir mi (DOM-BEC-024): uyuşmazlık var, kapsamındaki koordinatör ve
+    // iki puanlayıcıdan biri değil (`planRubricScore` aynı kuralı yazmada uygular).
+    canResolve:
+      resolution.status === 'disagreement' &&
+      coordinates(viewer, assignment) &&
+      ![resolution.first, resolution.second].some((row) => row.raterUserId === ctx.actor.userId),
     status: resolution.status,
     missing: resolution.status === 'pending' ? resolution.missing : null,
     secondRatingRequested: secondRatingFor(grading, version),
@@ -635,8 +694,14 @@ export async function getTaskSubmission(ctx: ServiceContext, submissionId: strin
   const work = await findSubmission(ctx.db, ctx.institutionId, submissionId)
   const assignment =
     work && (await findAssignment(ctx.db, ctx.institutionId, work.submission.assignmentId))
-  if (!work || !assignment || !canReadLearner(viewer, assignment, work.submission.learnerId))
-    throw new NotFoundError()
+  if (!work || !assignment) throw new NotFoundError()
+  if (!canReadLearner(viewer, assignment, work.submission.learnerId)) {
+    const grading = (await loadGrading(ctx.db, ctx, [work.submission.id])).bySubmission.get(
+      work.submission.id,
+    )
+    if (grading === undefined || !coordinatorReaches(viewer, assignment, work, grading))
+      throw new NotFoundError()
+  }
   return detailView(ctx.db, ctx, viewer, assignment, work)
 }
 

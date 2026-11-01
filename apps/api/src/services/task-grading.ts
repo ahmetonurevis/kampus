@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { seededRandom } from '@kampus/school-core/content/resource.ts'
+import { coordinatorScopeOf } from '@kampus/school-core/lib/coordinator-duties.ts'
 import {
   deadlineForVersion,
   planResubmissionRequest,
@@ -22,6 +23,7 @@ import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 import { versionAllowance } from '@kampus/school-core/skills/submission.ts'
 
 import type { Database } from '../db/client.ts'
+import { activeDutiesOf } from '../db/coordinator-duties.ts'
 import {
   decideAppeal,
   findAssignment,
@@ -48,9 +50,10 @@ import {
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { listMembershipLinks } from './memberships.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
-import { viewerOf, visible, type Viewer } from './task-assignments.ts'
+import { coordinates, viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
   APPEAL_HOLIDAYS,
+  coordinatorReaches,
   detailView,
   gradingDeadlineOf,
   listSummaries,
@@ -92,8 +95,8 @@ import { auditWork, canReadLearner } from './task-work.ts'
 
 // TODO(core-atama-yetki): "Atamayı gören öğretmen veya yönetici puanlar" kuralı core yetki
 // tablosunda (`lib/authorize.ts`) yok; web ve mobil aynı kuralı çalıştırsın diye core'a taşınır.
-// TODO(F4b3b2b): Koordinatör son puanı (DOM-YTK-027; uyuşmazlıkta), yeniden puanlama ve anahtar
-// düzeltmesi (DOM-BEC-011) ve not aktarımı bu servise eklenmedi.
+// TODO(beceri-yeniden-puanlama): Yeniden puanlama ve anahtar düzeltmesi (DOM-BEC-011) ve not
+// aktarımı bu servise eklenmedi.
 
 const ENTITY = 'task_submission'
 
@@ -144,6 +147,45 @@ async function gradableSubmission(
   assertGrader(viewer, assignment)
   if (work.submission.rowVersion !== expectedVersion) throw new ConflictError()
   return { work, assignment, grading: await gradingOf(tx, ctx, work.submission.id) }
+}
+
+const COORDINATOR_REQUIRED =
+  'Uyuşmazlıkta son puanı dersin zümre başkanı veya seviyenin akademik koordinatörü verir.'
+
+/**
+ * Son puanı verilecek teslim (DOM-BEC-024, DOM-YTK-027): yalnız öğretmen (yönetici koordinatör
+ * sayılmaz; rota da reddeder). Başka kurumun, arşivli veya olmayan teslim 404; atamayı görmeyen
+ * ve uyuşmazlıklı teslimine koordinatör olarak erişmeyen öğretmen 404; atamayı gören ama
+ * dersin/seviyenin koordinatörü olmayan öğretmen 403 `coordinator_required`; satır sürümü
+ * `If-Match`'ten farklıysa 409.
+ */
+async function resolvableSubmission(
+  tx: Database,
+  ctx: ServiceContext,
+  viewer: Viewer,
+  submissionId: string,
+  expectedVersion: number,
+): Promise<Graded & { viewer: Viewer }> {
+  if (viewer.kind !== 'teacher') throw new ForbiddenError()
+  // Kapsam kurum kilidinden sonra işlem içinde yeniden okunur: istekten önce okunan görev,
+  // eşzamanlı kaldırmayla bayatlamış olabilir (kaldırılmış göreve dayanan son puan yazılmaz).
+  viewer = {
+    ...viewer,
+    coordination: coordinatorScopeOf(
+      await activeDutiesOf(tx, ctx.institutionId, ctx.actor.membershipId),
+    ),
+  }
+  const work = await findSubmission(tx, ctx.institutionId, submissionId)
+  const assignment =
+    work && (await findAssignment(tx, ctx.institutionId, work.submission.assignmentId))
+  if (!work || !assignment || assignment.archivedAt !== null) throw new NotFoundError()
+  const grading = await gradingOf(tx, ctx, work.submission.id)
+  if (!visible(viewer, assignment) && !coordinatorReaches(viewer, assignment, work, grading))
+    throw new NotFoundError()
+  if (!coordinates(viewer, assignment))
+    throw new AppError(403, 'coordinator_required', COORDINATOR_REQUIRED)
+  if (work.submission.rowVersion !== expectedVersion) throw new ConflictError()
+  return { work, assignment, grading, viewer }
 }
 
 /** Gövdedeki sürüm numarasının sürümü; bilinmeyen numara 404 (core `submission_version_not_found`). */
@@ -243,16 +285,29 @@ export interface ScoreWriteInput {
  * `second_rating_not_requested`) ve ilk puanı vermeyen kişiden (409 `rater_not_independent`).
  * Puanlayıcı ilk puanı görmez (`scoresVisibleToRater`). Puan değişmez satırdır.
  */
+const SCORE_ACTIONS = {
+  first: 'task_submission.score',
+  second: 'task_submission.second_score',
+  final: 'task_submission.final_score',
+} as const satisfies Record<RaterRole, string>
+
 async function writeScore(
   ctx: ServiceContext,
-  role: Extract<RaterRole, 'first' | 'second'>,
+  role: RaterRole,
   input: ScoreWriteInput,
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   const viewer = await viewerOf(ctx)
   const out: { body?: unknown } = {}
-  type Score = Graded & { draft: RubricScoreDraft }
-  const action = role === 'first' ? 'task_submission.score' : 'task_submission.second_score'
+  type Score = Graded & { viewer: Viewer; draft: RubricScoreDraft }
+  const action = SCORE_ACTIONS[role]
+  const load = async (tx: Database): Promise<Graded & { viewer: Viewer }> =>
+    role === 'final'
+      ? resolvableSubmission(tx, ctx, viewer, input.submissionId, input.expectedVersion)
+      : {
+          ...(await gradableSubmission(tx, ctx, viewer, input.submissionId, input.expectedVersion)),
+          viewer,
+        }
   return runCommand<Score>(
     ctx,
     {
@@ -260,13 +315,7 @@ async function writeScore(
       collections: [],
       entity: { type: ENTITY, id: input.submissionId },
       load: async (tx) => {
-        const graded = await gradableSubmission(
-          tx,
-          ctx,
-          viewer,
-          input.submissionId,
-          input.expectedVersion,
-        )
+        const { viewer: current, ...graded } = await load(tx)
         const { work, assignment, grading } = graded
         const rubricVersionId = rubricOf(assignment)
         if (role === 'first') assertSampleDrawn(assignment)
@@ -277,13 +326,19 @@ async function writeScore(
         return {
           run: (_state, tools) => ({
             ...graded,
+            viewer: current,
             draft: planRubricScore({
               rubricVersion,
               assignmentRubricVersionId: rubricVersionId,
               versions: work.versions,
               submissionVersionId: version?.id ?? '',
               scores: grading.scores,
-              rater: { userId: ctx.actor.userId, coordinator: false },
+              // Koordinatör yalnız son puanda koordinatördür; ilk ve ikinci puanı sıradan
+              // puanlayıcı olarak verir (DOM-YTK-027 not yazma yetkisi vermez).
+              rater: {
+                userId: ctx.actor.userId,
+                coordinator: role === 'final' && coordinates(current, assignment),
+              },
               raterRole: role,
               secondRatingRequested: secondRatingFor(grading, version),
               input: input.score,
@@ -292,7 +347,7 @@ async function writeScore(
           }),
         }
       },
-      after: async (tx, { work, assignment, draft }) => {
+      after: async (tx, { work, assignment, draft, viewer: current }) => {
         await insertRubricScore(tx, ctx.institutionId, { id: randomUUID(), ...draft }, ctx.now)
         await touchSubmission(tx, ctx.institutionId, work.submission, ctx.now)
         await auditWork(tx, ctx, action, { type: ENTITY, id: work.submission.id }, [
@@ -300,7 +355,7 @@ async function writeScore(
           'overallComment',
           'scoredAt',
         ])
-        out.body = await readBack(tx, ctx, viewer, assignment, work.submission.id)
+        out.body = await readBack(tx, ctx, current, assignment, work.submission.id)
       },
     },
     written(out),
@@ -324,6 +379,21 @@ export function secondScoreTaskSubmission(
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   return writeScore(ctx, 'second', input, idempotency)
+}
+
+/**
+ * Uyuşmazlıkta son puan (DOM-BEC-024, DOM-YTK-027): atamanın dersinin zümre başkanı veya
+ * seviyesinin akademik koordinatörü, o sürümün iki puanlayıcısından biri değilse (409
+ * `rater_not_independent`) verir; uyuşmazlık yoksa 409 `final_score_not_needed`. Son puan sonucu
+ * kesinleştirir; kursiyere geri bildirim DOM-BEC-045 kuralıyla açılır. Eşzamanlı iki son puandan
+ * yalnız biri yazılır: kurum kilidi ve `If-Match` ikincisini 409 ile reddeder.
+ */
+export function finalScoreTaskSubmission(
+  ctx: ServiceContext,
+  input: ScoreWriteInput,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  return writeScore(ctx, 'final', input, idempotency)
 }
 
 export interface ResubmissionWriteInput {
@@ -786,7 +856,7 @@ export async function decideTaskAppeal(
 
 export interface GradingQueueInput {
   assignmentId?: string | undefined
-  awaiting?: 'first' | 'second' | undefined
+  awaiting?: 'first' | 'second' | 'resolution' | undefined
   overdue?: boolean | undefined
   page: number
   pageSize: number
@@ -812,6 +882,7 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
             studentIds: [...viewer.studentIds],
             classIds: [...viewer.classIds],
           },
+          coordination: viewer.coordination,
         }
       : {}
   const { rows, total } = await listAwaitingScore(ctx.db, ctx.institutionId, {
@@ -827,19 +898,28 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
   const assignments = new Map<string, StoredAssignment>()
   for (const assignmentId of new Set(rows.map((row) => row.submission.assignmentId))) {
     const assignment = await findAssignment(ctx.db, ctx.institutionId, assignmentId)
-    // Kapsam SQL'dedir (`assignmentScopeFilter`, `visible` ile aynı koşul: atayan veya arşivsiz
-    // hedefi öğretmenin sınıf/öğrencisi); `total` aynı koşulla sayılır. Satır yine kapsam
-    // kuralıyla doğrulanır; uyuşmazlık hatadır, satır düşer ve sayıdan da çıkar.
-    if (assignment && visible(viewer, assignment)) assignments.set(assignmentId, assignment)
+    if (assignment) assignments.set(assignmentId, assignment)
   }
-  const shown = rows.filter((row) => assignments.has(row.submission.assignmentId))
-  const dropped = rows.length - shown.length
-  if (dropped > 0) ctx.log.warn({ event: 'grading_queue.visibility_mismatch', dropped })
   const book = await loadGrading(
     ctx.db,
     ctx,
-    shown.map((row) => row.submission.id),
+    rows.map((row) => row.submission.id),
   )
+  // Kapsam SQL'dedir (`assignmentScopeFilter`, `visible` ile aynı koşul: atayan veya arşivsiz
+  // hedefi öğretmenin sınıf/öğrencisi; koordinatörde alanındaki uyuşmazlıklı teslim de);
+  // `total` aynı koşulla sayılır. Satır yine kapsam kuralıyla doğrulanır; uyuşmazlık hatadır,
+  // satır düşer ve sayıdan da çıkar.
+  const shown = rows.filter((row) => {
+    const assignment = assignments.get(row.submission.assignmentId)
+    const grading = book.bySubmission.get(row.submission.id)
+    return (
+      assignment !== undefined &&
+      grading !== undefined &&
+      (visible(viewer, assignment) || coordinatorReaches(viewer, assignment, row, grading))
+    )
+  })
+  const dropped = rows.length - shown.length
+  if (dropped > 0) ctx.log.warn({ event: 'grading_queue.visibility_mismatch', dropped })
   const summaries = await listSummaries(ctx.db, ctx, viewer, assignments, shown)
   return {
     total: total - dropped,

@@ -24,6 +24,9 @@ import {
   drawSecondRatingSampleRequest,
   fileTaskAppealCommand,
   fileTaskAppealRequest,
+  finalScoreTaskSubmissionCommand,
+  finalScoreTaskSubmissionRequest,
+  type GradingQueueQuery,
   requestSecondRatingCommand,
   requestSecondRatingRequest,
   requestTaskResubmissionCommand,
@@ -507,5 +510,93 @@ describe('ikinci puanlama ve itiraz komutları', () => {
       queryClient.clear()
     }
     assert.equal(drawSecondRatingSampleCommand.invalidates, SECOND_RATING_SAMPLE_INVALIDATES)
+  })
+})
+
+describe('uyuşmazlıkta son puan komutu', () => {
+  test('DOM-YTK-027, DOM-BEC-024: son puan …/final-scores yoluna POST eder; okunan sürümü If-Match, Idempotency-Key taşır', async () => {
+    const { client, sent } = fakeClient()
+    await runRequest(() =>
+      finalScoreTaskSubmissionRequest(
+        client,
+        { submissionId: 'ts 1', version: 8, score },
+        commandHeaders('key-final', 8),
+      ),
+    )
+    assert.deepEqual(
+      sent.map((s) => [
+        s.method,
+        s.path,
+        s.headers.get('if-match'),
+        s.headers.get('idempotency-key'),
+        s.body,
+      ]),
+      [['POST', '/api/v1/task-submissions/ts%201/final-scores', '"8"', 'key-final', score]],
+    )
+    assert.equal(finalScoreTaskSubmissionCommand.version({ version: 8 }), 8)
+  })
+
+  test('DOM-BEC-024: okunan sürüm yoksa son puan atılmaz', async () => {
+    const { client, sent } = fakeClient()
+    await assert.rejects(
+      () =>
+        runRequest(() =>
+          finalScoreTaskSubmissionRequest(
+            client,
+            { submissionId: 'ts-1', version: 8, score },
+            commandHeaders('key-final'),
+          ),
+        ),
+      isMissing,
+    )
+    assert.equal(sent.length, 0)
+  })
+
+  test('DOM-YTK-027, DOM-BEC-024: koordinatör ve uyuşmazlık hataları Türkçe; puanlayıcı-koordinatör bağımsızlık metniyle', () => {
+    const feedback = (code: string, status = 409) =>
+      commandFeedback(
+        new ApiError({ status, code, message: 'Sunucu mesajı.' }),
+        finalScoreTaskSubmissionCommand.messages,
+      ).message
+    assert.match(feedback('coordinator_required', 403) ?? '', /zümre başkanı/)
+    assert.match(feedback('final_score_not_needed') ?? '', /uyuşmazlık/)
+    assert.equal(
+      feedback('rater_not_independent'),
+      'Bu teslimi daha önce puanladınız; bağımsız bir öğretmen puanlamalı.',
+    )
+    assert.equal(feedback('version_conflict'), TASK_SUBMISSION_CHANGED_MESSAGE)
+  })
+
+  test('DOM-BEC-024: son puan eskimiş teslimde tazeler, 403 koordinatör hatasında tazelemez; teslim ve kuyruk tazelenir', async () => {
+    const conflict = new ApiError({ status: 409, code: 'final_score_not_needed', message: 'x' })
+    const forbidden = new ApiError({ status: 403, code: 'coordinator_required', message: 'x' })
+    assert.equal(finalScoreTaskSubmissionCommand.refreshOn(conflict), true)
+    assert.equal(finalScoreTaskSubmissionCommand.refreshOn(forbidden), false)
+    assert.equal(finalScoreTaskSubmissionCommand.exclusive, true)
+    assert.equal(finalScoreTaskSubmissionCommand.invalidates, TASK_GRADING_INVALIDATES)
+  })
+
+  test('DOM-BEC-024: kuyruk sorgusu uyuşmazlık süzgecini (awaiting=resolution) sorguya taşır', async () => {
+    const urls: string[] = []
+    const client = createKampusClient({
+      baseUrl: 'https://api.kampus.test',
+      credentials: 'include',
+      requestId: () => undefined,
+      fetch: async (input) => {
+        urls.push((input instanceof Request ? input : new Request(input)).url)
+        return new Response(JSON.stringify({ data: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      },
+    })
+    const query: GradingQueueQuery = { awaiting: 'resolution', overdue: 'true', page: 1 }
+    await runRequest(() =>
+      client.GET('/api/v1/task-submissions/grading-queue', { params: { query } }),
+    )
+    const url = new URL(urls[0] ?? '')
+    assert.equal(url.pathname, '/api/v1/task-submissions/grading-queue')
+    assert.equal(url.searchParams.get('awaiting'), 'resolution')
+    assert.equal(url.searchParams.get('overdue'), 'true')
   })
 })

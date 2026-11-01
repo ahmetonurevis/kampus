@@ -5371,6 +5371,322 @@
           "progress"
         ]
       },
+      "TaskAssignmentLearnerBodyInput": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "text"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fileId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Dosya kimliği"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "fileId"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "worksheet"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fileId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Dosya kimliği"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "fileId"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "reading_passage"
+              },
+              "body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "body"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "audio"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              },
+              "transcript": {
+                "description": "Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003)",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "captionsVtt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "fileId",
+              "transcript",
+              "captionsVtt"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "video"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              },
+              "transcript": {
+                "description": "Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003)",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "captionsVtt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "fileId",
+              "transcript",
+              "captionsVtt"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "file"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              }
+            },
+            "required": [
+              "type",
+              "fileId"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "link"
+              },
+              "url": {
+                "type": "string"
+              },
+              "provider": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "url",
+              "provider"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "book_reference"
+              },
+              "publisher": {
+                "type": "string"
+              },
+              "bookTitle": {
+                "type": "string"
+              },
+              "edition": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "isbn": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pages": {
+                "type": "string"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "publisher",
+              "bookTitle",
+              "edition",
+              "isbn",
+              "pages",
+              "note"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "question"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "quiz"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "exercise_set"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "homework_template"
+              },
+              "instructions": {
+                "type": "string"
+              },
+              "submissionKinds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "text",
+                    "audio"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "type",
+              "instructions",
+              "submissionKinds"
+            ]
+          }
+        ]
+      },
       "TaskAssignmentLearnerContentInput": {
         "type": "object",
         "properties": {
@@ -5384,12 +5700,7 @@
             "type": "string"
           },
           "body": {
-            "type": "object",
-            "propertyNames": {
-              "type": "string"
-            },
-            "additionalProperties": {},
-            "description": "Tür başına kursiyer içeriği (school-core `learnerView`; `type` türdür): yazma şablonunda yalnız `instructions` ve `submissionKinds` (değerlendirme ölçütü ve rubrik bağı yok); soru, quiz ve alıştırma setinde yalnız `questionCount` (sorular denemede gelir, süre denemeyle başlar); cevap anahtarı hiçbir türde yoktur; dinleme görevinde döküm atamanın `showTranscript` ayarına bağlıdır"
+            "$ref": "#/components/schemas/TaskAssignmentLearnerBodyInput"
           },
           "attributions": {
             "type": "array",
@@ -13541,6 +13852,334 @@
         ],
         "additionalProperties": false
       },
+      "TaskAssignmentLearnerBody": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "text"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fileId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Dosya kimliği"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "fileId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "worksheet"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fileId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Dosya kimliği"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "fileId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "reading_passage"
+              },
+              "body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "body"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "audio"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              },
+              "transcript": {
+                "description": "Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003)",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "captionsVtt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "fileId",
+              "transcript",
+              "captionsVtt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "video"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              },
+              "transcript": {
+                "description": "Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003)",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "captionsVtt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "fileId",
+              "transcript",
+              "captionsVtt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "file"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              }
+            },
+            "required": [
+              "type",
+              "fileId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "link"
+              },
+              "url": {
+                "type": "string"
+              },
+              "provider": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "url",
+              "provider"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "book_reference"
+              },
+              "publisher": {
+                "type": "string"
+              },
+              "bookTitle": {
+                "type": "string"
+              },
+              "edition": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "isbn": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pages": {
+                "type": "string"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "publisher",
+              "bookTitle",
+              "edition",
+              "isbn",
+              "pages",
+              "note"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "question"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "quiz"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "exercise_set"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "homework_template"
+              },
+              "instructions": {
+                "type": "string"
+              },
+              "submissionKinds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "text",
+                    "audio"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "type",
+              "instructions",
+              "submissionKinds"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
       "TaskAssignmentLearnerContent": {
         "type": "object",
         "properties": {
@@ -13554,12 +14193,7 @@
             "type": "string"
           },
           "body": {
-            "type": "object",
-            "propertyNames": {
-              "type": "string"
-            },
-            "additionalProperties": {},
-            "description": "Tür başına kursiyer içeriği (school-core `learnerView`; `type` türdür): yazma şablonunda yalnız `instructions` ve `submissionKinds` (değerlendirme ölçütü ve rubrik bağı yok); soru, quiz ve alıştırma setinde yalnız `questionCount` (sorular denemede gelir, süre denemeyle başlar); cevap anahtarı hiçbir türde yoktur; dinleme görevinde döküm atamanın `showTranscript` ayarına bağlıdır"
+            "$ref": "#/components/schemas/TaskAssignmentLearnerBody"
           },
           "attributions": {
             "type": "array",

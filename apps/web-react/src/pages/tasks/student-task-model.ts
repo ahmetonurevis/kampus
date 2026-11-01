@@ -393,9 +393,7 @@ export function writingBrief(detail: TaskAssignmentLearnerDetail): WritingBrief 
       notice: CONTENT_NOTICES[detail.contentUnavailable ?? 'unavailable'],
     }
   const instructions =
-    content.body.type === 'homework_template' && typeof content.body.instructions === 'string'
-      ? content.body.instructions.trim() || null
-      : null
+    content.body.type === 'homework_template' ? content.body.instructions.trim() || null : null
   return {
     instructions,
     attributions: content.attributions,

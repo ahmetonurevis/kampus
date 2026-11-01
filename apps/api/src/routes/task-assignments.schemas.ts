@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { CONTENT_TYPES, enumKeys } from '@kampus/school-core/content/taxonomy.ts'
+import { CONTENT_TYPES, enumKeys, SUBMISSION_KINDS } from '@kampus/school-core/content/taxonomy.ts'
 import {
   assignmentInputSchema,
   assignmentSettingsSchema,
@@ -178,15 +178,63 @@ const learnerShape = {
 
 const learnerAssignmentSchema = z.object(learnerShape).meta({ id: 'TaskAssignmentLearner' })
 
+const fileRef = z.string().describe('Dosya kimliği')
+const textBody = z.string()
+const questionCount = z.number().int().min(1).describe('Soru sayısı; sorular denemede gelir')
+const textLike = <T extends 'text' | 'worksheet'>(type: T) =>
+  z.object({ type: z.literal(type), body: textBody.nullable(), fileId: fileRef.nullable() })
+const media = <T extends 'audio' | 'video'>(type: T) =>
+  z.object({
+    type: z.literal(type),
+    fileId: fileRef,
+    transcript: textBody
+      .nullable()
+      .describe('Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003)'),
+    captionsVtt: textBody.nullable(),
+  })
+const counted = <T extends 'question' | 'quiz' | 'exercise_set'>(type: T) =>
+  z.object({ type: z.literal(type), questionCount })
+
+/**
+ * Tür başına kursiyer içeriği (school-core `learnerView`): her türün yalnız burada sayılan alanları
+ * yanıta girer, şemada olmayan alan (ileride eklenecek öğretmen notu gibi) süzülür. Cevap anahtarı
+ * hiçbir türde yoktur; yazma şablonunun değerlendirme ölçütü ve rubrik bağı çıkarılır; soru, quiz
+ * ve alıştırma setinde yalnız soru sayısı vardır (süre denemeyle başlar, DOM-BEC-043).
+ */
+const learnerBodySchema = z
+  .discriminatedUnion('type', [
+    textLike('text'),
+    textLike('worksheet'),
+    z.object({ type: z.literal('reading_passage'), body: textBody }),
+    media('audio'),
+    media('video'),
+    z.object({ type: z.literal('file'), fileId: fileRef }),
+    z.object({ type: z.literal('link'), url: z.string(), provider: z.string().nullable() }),
+    z.object({
+      type: z.literal('book_reference'),
+      publisher: z.string(),
+      bookTitle: z.string(),
+      edition: z.string().nullable(),
+      isbn: z.string().nullable(),
+      pages: z.string(),
+      note: z.string().nullable(),
+    }),
+    counted('question'),
+    counted('quiz'),
+    counted('exercise_set'),
+    z.object({
+      type: z.literal('homework_template'),
+      instructions: textBody,
+      submissionKinds: z.array(z.enum(enumKeys(SUBMISSION_KINDS))),
+    }),
+  ])
+  .meta({ id: 'TaskAssignmentLearnerBody' })
+
 const learnerContentSchema = z
   .object({
     versionId: id.describe('Atamada sabitlenen içerik sürümü'),
     title: z.string(),
-    body: z
-      .record(z.string(), z.unknown())
-      .describe(
-        'Tür başına kursiyer içeriği (school-core `learnerView`; `type` türdür): yazma şablonunda yalnız `instructions` ve `submissionKinds` (değerlendirme ölçütü ve rubrik bağı yok); soru, quiz ve alıştırma setinde yalnız `questionCount` (sorular denemede gelir, süre denemeyle başlar); cevap anahtarı hiçbir türde yoktur; dinleme görevinde döküm atamanın `showTranscript` ayarına bağlıdır',
-      ),
+    body: learnerBodySchema,
     attributions: z.array(attributionSchema).describe('Kaynak gösterimi (DOM-KYN-024)'),
     licenseKind,
   })

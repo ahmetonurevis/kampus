@@ -209,12 +209,40 @@ async function learnerContent(
 }
 
 /**
- * Kursiyere dönük içerik gövdesi. Yazma şablonunun değerlendirme ölçütü ve rubrik bağı öğretmenin
- * puanlama notudur, çıkarılır. Otomatik puanlı içeriğin soruları yalnız denemede gösterilir
- * (süre denemeyle başlar, DOM-BEC-043): burada yalnız soru sayısı vardır (süre atamanın ayarıdır).
+ * Kursiyere dönük içerik gövdesi; her tür açıkça eşlenir, sayılmayan alan (ileride eklenecek
+ * öğretmen notu gibi) yanıta girmez (yanıt şeması da süzer). Yazma şablonunun değerlendirme ölçütü
+ * ve rubrik bağı öğretmenin puanlama notudur, çıkarılır. Otomatik puanlı içeriğin soruları yalnız
+ * denemede gösterilir (süre denemeyle başlar, DOM-BEC-043): burada yalnız soru sayısı vardır.
  */
-function learnerBody(content: LearnerResourceView['content']): Record<string, unknown> {
+function learnerBody(content: LearnerResourceView['content']) {
   switch (content.type) {
+    case 'text':
+    case 'worksheet':
+      return { type: content.type, body: content.body, fileId: content.fileId }
+    case 'reading_passage':
+      return { type: content.type, body: content.body }
+    case 'audio':
+    case 'video':
+      return {
+        type: content.type,
+        fileId: content.fileId,
+        transcript: content.transcript,
+        captionsVtt: content.captionsVtt,
+      }
+    case 'file':
+      return { type: content.type, fileId: content.fileId }
+    case 'link':
+      return { type: content.type, url: content.url, provider: content.provider }
+    case 'book_reference':
+      return {
+        type: content.type,
+        publisher: content.publisher,
+        bookTitle: content.bookTitle,
+        edition: content.edition,
+        isbn: content.isbn,
+        pages: content.pages,
+        note: content.note,
+      }
     case 'homework_template':
       return {
         type: content.type,
@@ -227,7 +255,7 @@ function learnerBody(content: LearnerResourceView['content']): Record<string, un
     case 'exercise_set':
       return { type: content.type, questionCount: content.items.length }
     default:
-      return content
+      return content satisfies never
   }
 }
 

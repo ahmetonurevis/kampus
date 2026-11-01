@@ -4191,6 +4191,76 @@ export interface components {
             /** @description `learnerIds` sırasıyla her kişinin durumu */
             progress: components["schemas"]["TaskAssignmentLearnerProgressInput"][];
         };
+        TaskAssignmentLearnerBodyInput: {
+            /** @constant */
+            type: "text";
+            body: string | null;
+            fileId: string | null;
+        } | {
+            /** @constant */
+            type: "worksheet";
+            body: string | null;
+            fileId: string | null;
+        } | {
+            /** @constant */
+            type: "reading_passage";
+            body: string;
+        } | {
+            /** @constant */
+            type: "audio";
+            /** @description Dosya kimliği */
+            fileId: string;
+            /** @description Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003) */
+            transcript: string | null;
+            captionsVtt: string | null;
+        } | {
+            /** @constant */
+            type: "video";
+            /** @description Dosya kimliği */
+            fileId: string;
+            /** @description Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003) */
+            transcript: string | null;
+            captionsVtt: string | null;
+        } | {
+            /** @constant */
+            type: "file";
+            /** @description Dosya kimliği */
+            fileId: string;
+        } | {
+            /** @constant */
+            type: "link";
+            url: string;
+            provider: string | null;
+        } | {
+            /** @constant */
+            type: "book_reference";
+            publisher: string;
+            bookTitle: string;
+            edition: string | null;
+            isbn: string | null;
+            pages: string;
+            note: string | null;
+        } | {
+            /** @constant */
+            type: "question";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "quiz";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "exercise_set";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "homework_template";
+            instructions: string;
+            submissionKinds: ("file" | "text" | "audio")[];
+        };
         TaskAssignmentLearnerContentInput: {
             /**
              * Format: uuid
@@ -4198,10 +4268,7 @@ export interface components {
              */
             versionId: string;
             title: string;
-            /** @description Tür başına kursiyer içeriği (school-core `learnerView`; `type` türdür): yazma şablonunda yalnız `instructions` ve `submissionKinds` (değerlendirme ölçütü ve rubrik bağı yok); soru, quiz ve alıştırma setinde yalnız `questionCount` (sorular denemede gelir, süre denemeyle başlar); cevap anahtarı hiçbir türde yoktur; dinleme görevinde döküm atamanın `showTranscript` ayarına bağlıdır */
-            body: {
-                [key: string]: unknown;
-            };
+            body: components["schemas"]["TaskAssignmentLearnerBodyInput"];
             /** @description Kaynak gösterimi (DOM-KYN-024) */
             attributions: components["schemas"]["ResourceAttributionInput"][];
             licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
@@ -6077,6 +6144,76 @@ export interface components {
             /** @description `learnerIds` sırasıyla her kişinin durumu */
             progress: components["schemas"]["TaskAssignmentLearnerProgress"][];
         };
+        TaskAssignmentLearnerBody: {
+            /** @constant */
+            type: "text";
+            body: string | null;
+            fileId: string | null;
+        } | {
+            /** @constant */
+            type: "worksheet";
+            body: string | null;
+            fileId: string | null;
+        } | {
+            /** @constant */
+            type: "reading_passage";
+            body: string;
+        } | {
+            /** @constant */
+            type: "audio";
+            /** @description Dosya kimliği */
+            fileId: string;
+            /** @description Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003) */
+            transcript: string | null;
+            captionsVtt: string | null;
+        } | {
+            /** @constant */
+            type: "video";
+            /** @description Dosya kimliği */
+            fileId: string;
+            /** @description Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003) */
+            transcript: string | null;
+            captionsVtt: string | null;
+        } | {
+            /** @constant */
+            type: "file";
+            /** @description Dosya kimliği */
+            fileId: string;
+        } | {
+            /** @constant */
+            type: "link";
+            url: string;
+            provider: string | null;
+        } | {
+            /** @constant */
+            type: "book_reference";
+            publisher: string;
+            bookTitle: string;
+            edition: string | null;
+            isbn: string | null;
+            pages: string;
+            note: string | null;
+        } | {
+            /** @constant */
+            type: "question";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "quiz";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "exercise_set";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "homework_template";
+            instructions: string;
+            submissionKinds: ("file" | "text" | "audio")[];
+        };
         TaskAssignmentLearnerContent: {
             /**
              * Format: uuid
@@ -6084,10 +6221,7 @@ export interface components {
              */
             versionId: string;
             title: string;
-            /** @description Tür başına kursiyer içeriği (school-core `learnerView`; `type` türdür): yazma şablonunda yalnız `instructions` ve `submissionKinds` (değerlendirme ölçütü ve rubrik bağı yok); soru, quiz ve alıştırma setinde yalnız `questionCount` (sorular denemede gelir, süre denemeyle başlar); cevap anahtarı hiçbir türde yoktur; dinleme görevinde döküm atamanın `showTranscript` ayarına bağlıdır */
-            body: {
-                [key: string]: unknown;
-            };
+            body: components["schemas"]["TaskAssignmentLearnerBody"];
             /** @description Kaynak gösterimi (DOM-KYN-024) */
             attributions: components["schemas"]["ResourceAttribution"][];
             licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;

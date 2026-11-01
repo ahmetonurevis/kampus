@@ -606,7 +606,7 @@ describe('W22a inceleme düzeltmeleri', () => {
         content: {
           versionId: 'rv-1',
           title: 'Opinion essay',
-          body: { type: 'homework_template', instructions: '  ' },
+          body: { type: 'homework_template', instructions: '  ', submissionKinds: ['text'] },
           attributions: [],
           licenseKind: 'institution_original',
         },

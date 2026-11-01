@@ -22,6 +22,7 @@ import {
 } from '../src/db/schema/skills.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
+import { taskAssignmentDetailResponseSchema } from '../src/routes/task-assignments.schemas.ts'
 import {
   getTaskDraft,
   saveTaskDraft,
@@ -650,6 +651,27 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     } finally {
       now = FIXED_NOW
     }
+  })
+
+  test('IST-051: kursiyer içerik gövdesi tür başına yalnız izinli alanları taşır; yanıt şeması fazladan alanı (öğretmen notu, ölçüt, rubrik bağı) süzer', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    const detail = await ok(
+      await call('GET', `/task-assignments/${assignmentId}`, t.cookies.student),
+    )
+    assert.deepEqual(Object.keys(detail.content.body).sort(), [
+      'instructions',
+      'submissionKinds',
+      'type',
+    ])
+    const leaked = structuredClone(detail)
+    Object.assign(leaked.content.body, {
+      criteria: 'GIZLI-OLCUT',
+      rubricId: randomUUID(),
+      teacherNote: 'GIZLI-NOT',
+    })
+    const parsed = taskAssignmentDetailResponseSchema.parse({ data: leaked })
+    assert.deepEqual(parsed.data, detail)
   })
 
   test('DOM-KYN-025, DOM-KYN-051: kaynağın başka sürümü telif bildirimiyle incelemedeyse ya da kaynak kaldırıldıysa arşivli sürüme sabitlenen atamanın içeriği kursiyere ve veliye gösterilmez (taslak olsa da); ilk onaydaki yeni taslak etkilemez', async () => {

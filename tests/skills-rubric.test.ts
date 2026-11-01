@@ -28,6 +28,7 @@ import {
   planRubricScore,
   rubricScore,
   rubricVersionInputSchema,
+  releasesFeedback,
   scoreResolution,
   scoresVisibleToRater,
   secondRatingQuota,
@@ -562,6 +563,42 @@ describe('ikinci puanlayıcı (DOM-BEC-024)', () => {
     )
     const only = scoreResolution({ scores: [scoreRow()], secondRatingRequested: false })
     assert.equal(only.status === 'settled' && only.source, 'first')
+  })
+
+  test('DOM-BEC-045 geri bildirim yalnız puanı kesinleştiren yazmada açılır (bildirim anı)', () => {
+    const first = scoreRow()
+    const second = scoreRow({ raterRole: 'second', raterUserId: 'test-u-t2' })
+    const disagreeing = scoreRow({
+      raterRole: 'second',
+      raterUserId: 'test-u-t2',
+      ...goodScore({ gram: 1 }),
+    })
+    // İkinci puanlama istenmemişse ilk puan açar.
+    assert.equal(releasesFeedback({ scores: [], added: first, secondRatingRequested: false }), true)
+    // İstenmişse ilk puan açmaz, uyuşan ikinci puan açar; uyuşmazlık açmaz.
+    assert.equal(releasesFeedback({ scores: [], added: first, secondRatingRequested: true }), false)
+    assert.equal(
+      releasesFeedback({ scores: [first], added: second, secondRatingRequested: true }),
+      true,
+    )
+    assert.equal(
+      releasesFeedback({ scores: [first], added: disagreeing, secondRatingRequested: true }),
+      false,
+    )
+    // Zaten kesinleşmiş puandan sonraki yazma yeniden açmaz.
+    const final = scoreRow({ raterRole: 'final', raterUserId: 'test-u-k1' })
+    assert.equal(
+      releasesFeedback({ scores: [first], added: final, secondRatingRequested: false }),
+      false,
+    )
+    assert.equal(
+      releasesFeedback({
+        scores: [first, disagreeing],
+        added: final,
+        secondRatingRequested: true,
+      }),
+      true,
+    )
   })
 
   test('DOM-BEC-024 uyuşmazlıkta koordinatör son puanı verir, son puan önceliklidir', () => {

@@ -4,6 +4,7 @@ import { createSeed, type State } from '../packages/school-core/src/data/seed.ts
 import type { Participant } from '../packages/school-core/src/lib/communication.ts'
 import {
   canSeeNotification,
+  isMinorLearner,
   learnerIsMinor,
   markAllNotificationsRead,
   markNotificationRead,
@@ -272,6 +273,8 @@ test('DOM-ILT-052: okulda her öğrenci velili; dil okulunda doğum tarihi, yoks
   // Bilgi yoksa kesin kayıttaki varsayılan: 18 yaş altı.
   assert.equal(learnerIsMinor(state, 's-bilinmeyen', options), true)
   assert.equal(learnerIsMinor({ students: [] }, 's1', options), true)
+  assert.equal(isMinorLearner({ prospectMinor: true, birthDate: '2000-01-01' }, options), false)
+  assert.equal(isMinorLearner({}, { institutionType: 'school', now }), true)
 })
 
 test('bildirim koleksiyonları ve komutları iletişim modülündedir', () => {

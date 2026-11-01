@@ -143,22 +143,37 @@ export const notificationReadId = (notificationId: string, userId: string) =>
 
 export const notificationSpec = (kind: NotificationKind): KindSpec => NOTIFICATION_KINDS[kind]
 
+/** Öğrencinin yaşına dair bilinenler (`learnerIsMinor`). */
+export type LearnerAgeFacts = {
+  /** Öğrenci kaydındaki doğum tarihi (`YYYY-MM-DD`). */
+  birthDate?: string | undefined
+  /** Kesin kayda alınan adayın 18 yaş seçimi (dil okulu). */
+  prospectMinor?: boolean | undefined
+}
+
 /**
  * Öğrenci 18 yaş altında mı (bildirimin veliye gidip gitmeyeceği). Okulda her öğrenci velilidir.
  * Dil okulunda doğum tarihi, yoksa kesin kayda alınan adayın 18 yaş seçimi belirler; ikisi de
  * yoksa kesin kayıttaki varsayılan gibi 18 yaş altı sayılır (`lib/domain.ts` `enrollProspect`).
- * Dil okulunda `students` ve `prospects` okunur (yalnız öğrencinin kaydı ve adayı yeter).
  */
+export function isMinorLearner(
+  facts: LearnerAgeFacts,
+  options: { institutionType: InstitutionType; now: string },
+): boolean {
+  if (options.institutionType === 'school') return true
+  if (facts.birthDate !== undefined) return isUnderAdultAge(facts.birthDate, options.now)
+  return facts.prospectMinor ?? true
+}
+
+/** `isMinorLearner`, öğrenci kaydı ve adayı State'ten okunarak. */
 export function learnerIsMinor(
   state: Pick<State, 'students'> & Partial<Pick<State, 'prospects'>>,
   studentId: string,
   options: { institutionType: InstitutionType; now: string },
 ): boolean {
-  if (options.institutionType === 'school') return true
   const student = state.students.find((s) => s.id === studentId)
-  if (student?.birthDate !== undefined) return isUnderAdultAge(student.birthDate, options.now)
   const prospect = state.prospects?.find((p) => p.studentId === studentId)
-  return prospect?.minor ?? true
+  return isMinorLearner({ birthDate: student?.birthDate, prospectMinor: prospect?.minor }, options)
 }
 
 export type StudentEvent = {

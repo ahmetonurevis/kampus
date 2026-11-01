@@ -9,6 +9,7 @@ Uygulama içi bildirim merkezi (F6a; IST-065'in ilk parçası; `docs/domain/ilet
 - State'e iki koleksiyon: `notifications`, `notificationReads` (modül `communication`; örnek veri ve çevrimdışı demo boş başlar, demo bildirim üretmez). Kapsam kuralı `lib/scope.ts`'te; yönetici bu koleksiyonları okumaz.
 - Komutlar: `notification.read`, `notification.read_all` (modül `communication`, bütün roller); `prospect.enroll` `notifications` koleksiyonunu da yazar.
 - `lib/domain.ts` `enrollProspect` sonucu `minor` alanını da döndürür (kırıcı değil).
+- `skills/rubric.ts` `releasesFeedback`: yeni puan sürümün puanını kesinleştirip öğretmen geri bildirimini o anda açıyor mu (DOM-BEC-045); bildirim bu anda üretilir. `lib/notifications.ts` `isMinorLearner` State'siz aynı yaş kararını verir (API servisleri).
 - Tüketiciler `workspace:2.27.0` sürümüne sabitlendi. 2.25.0 ve 2.26.0 ayrı dallarda yayımlandı ve entegrasyonda bu sürümün altında yer alır.
 
 ## 2.24.0

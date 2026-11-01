@@ -4,6 +4,7 @@ import { seededRandom } from '../packages/school-core/src/content/resource.ts'
 import type { Actor } from '../packages/school-core/src/lib/scope.ts'
 import {
   APPEAL_BUSINESS_DAYS,
+  appealDecisionSchema,
   GRADING_DAYS,
   SECOND_RATING_MIN_PERCENT,
   addBusinessDays,
@@ -314,6 +315,21 @@ describe('rubrik puanı (DOM-BEC-021)', () => {
     )
     // Bant 3 yorum istemez.
     assert.equal(scorePlan().criteria[2]?.comment, null)
+  })
+
+  test('DOM-BEC-021 kriter satırı katıdır: istemcinin ağırlıklı puanı gibi fazladan alan reddedilir', () => {
+    const extra = goodScore()
+    extra.criteria[0] = { ...extra.criteria[0]!, weighted: 99 } as never
+    assert.throws(() => scorePlan({ input: extra }), ZodError)
+    assert.throws(
+      () =>
+        appealDecisionSchema.parse({
+          outcome: 'upheld',
+          reason: 'Bant yeniden değerlendirildi.',
+          score: extra,
+        }),
+      ZodError,
+    )
   })
 
   test('DOM-BEC-021 bilinmeyen, tekrarlanan veya eksik kriter reddedilir', () => {

@@ -543,11 +543,14 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     fails(await detail(created.id, t.cookies.otherTeacher), 404, 'not_found')
   })
 
-  test('DOM-BEC-045: geri bildirim açılmadan kursiyer ve veli puanlandığını göremez: blockedBy locked, yeni sürüm 409 submission_locked; personel graded görür; puan kesinleşince graded', async () => {
+  test('DOM-BEC-045: geri bildirim açılmadan kursiyer ve veli puanlandığını göremez: hak puanlamadan öncekiyle aynı, yeni sürüm genel 409 submission_locked; personel graded görür; puan kesinleşince graded', async () => {
     const t = await tenant()
     const assignmentId = await assign(t)
     const submitted = await ok(await submit(assignmentId, t.cookies.student), 201)
     const [version] = submitted.versions
+    const unscored = new Map<string, Json>()
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      unscored.set(cookie, (await ok(await detail(submitted.id, cookie))).allowance)
     const score = (raterRole: 'first' | 'second', band: number) => ({
       id: randomUUID(),
       submissionVersionId: version.id,
@@ -578,11 +581,11 @@ describe('yazma görevi taslak ve teslim uçları', () => {
       (await ok(await detail(submitted.id, cookie))).allowance
     for (const cookie of [t.cookies.student, t.cookies.parent]) {
       const allowance = await blockedBy(cookie)
-      assert.equal(allowance.blockedBy, 'locked')
-      assert.equal(allowance.canSubmit, false)
+      assert.deepEqual(allowance, unscored.get(cookie))
       assert.equal(allowance.resubmissionOpen, false)
       const body = (await detail(submitted.id, cookie)).body
-      for (const text of ['graded', 'GIZLI-GERI-BILDIRIM']) assert.ok(!body.includes(text), text)
+      for (const text of ['graded', '"locked"', 'GIZLI-GERI-BILDIRIM'])
+        assert.ok(!body.includes(text), text)
     }
     for (const cookie of [t.cookies.teacher, t.cookies.admin])
       assert.equal((await blockedBy(cookie)).blockedBy, 'graded')

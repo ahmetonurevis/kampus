@@ -4,10 +4,13 @@ import { deadlineForVersion } from '@kampus/school-core/skills/assignment.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import {
   gradedVersionNumbers,
+  rubricScore,
   scoreResolution,
+  scoresVisibleToRater,
   type RubricScoreRow,
+  type RubricVersionData,
 } from '@kampus/school-core/skills/rubric.ts'
-import { teacherFeedbackReleased } from '@kampus/school-core/skills/scoring.ts'
+import { isClosed, teacherFeedbackReleased } from '@kampus/school-core/skills/scoring.ts'
 import {
   canReadDraft,
   planDraftSave,
@@ -25,6 +28,7 @@ import {
 import type { Database } from '../db/client.ts'
 import {
   findAssignment,
+  findRubricVersion,
   findSubmission,
   insertSubmission,
   insertSubmissionVersion,
@@ -32,8 +36,10 @@ import {
   listSubmissions,
   loadDraft,
   loadSubmission,
+  loadScoresBySubmission,
   loadSubmissionScores,
   saveDraft,
+  secondRatingRequestedAmong,
   type StoredAssignment,
   type StoredSubmissionWork,
 } from '../db/skills.ts'
@@ -95,6 +101,123 @@ function versionView(
   }
 }
 
+// --- Puan ve geri bildirim görünümü ---------------------------------------------------------
+
+/** Teslimin puanlama durumu: bütün sürümlerin puanları ve ikinci puanlama isteği. */
+type Grading = { scores: readonly RubricScoreRow[]; secondRatingRequested: boolean }
+/** Puanların rubrik sürümleri (kimlik → kriterler); puan bunlarla hesaplanır (DOM-BEC-022). */
+type RubricsById = ReadonlyMap<string, RubricVersionData>
+type GradingBook = { bySubmission: ReadonlyMap<string, Grading>; rubrics: RubricsById }
+
+const NO_GRADING: Grading = { scores: [], secondRatingRequested: false }
+
+/** Teslimlerin puanları, ikinci puanlama istekleri ve puanların rubrik sürümleri (toplu). */
+async function loadGrading(
+  db: Database,
+  ctx: ServiceContext,
+  submissionIds: readonly string[],
+): Promise<GradingBook> {
+  const [scores, second] = await Promise.all([
+    loadScoresBySubmission(db, ctx.institutionId, submissionIds),
+    secondRatingRequestedAmong(db, ctx.institutionId, submissionIds),
+  ])
+  const rubricIds = [...new Set([...scores.values()].flat().map((score) => score.rubricVersionId))]
+  const rubrics = new Map<string, RubricVersionData>()
+  for (const version of await Promise.all(
+    rubricIds.map((id) => findRubricVersion(db, ctx.institutionId, id)),
+  ))
+    if (version !== null) rubrics.set(version.id, version)
+  return {
+    bySubmission: new Map(
+      submissionIds.map((id) => [
+        id,
+        { scores: scores.get(id) ?? [], secondRatingRequested: second.has(id) },
+      ]),
+    ),
+    rubrics,
+  }
+}
+
+/**
+ * Sürümün kişiye gösterilen puanı (DOM-BEC-021, 024, 045). Kesinleşmiş puan (core
+ * `scoreResolution`) personele her zaman, kursiyer ve veliye yalnız geri bildirim açılınca
+ * (`teacherFeedbackReleased`) görünür; açılmadan önce kursiyerin gördüğü, hiç puanlanmamış sürümle
+ * aynıdır (`null`). Kesinleşmemiş puanı yalnız personel görür, core `scoresVisibleToRater` ile:
+ * öğretmen ve yönetici yalnız kendi puanını görür (en yenisi gösterilir); yönetici koordinatör
+ * sayılmaz.
+ */
+// TODO(F4b3b2): Koordinatör rolü DOM-YTK-027 ile tanımlanınca açılır; yönetici ikinci puanlayıcı
+// olursa ilk puanı görmemeli (DOM-BEC-024).
+function shownScore(
+  viewer: Viewer,
+  ctx: ServiceContext,
+  grading: Grading,
+  versionId: string,
+): { row: RubricScoreRow; settled: boolean } | null {
+  const scores = grading.scores.filter((score) => score.submissionVersionId === versionId)
+  const resolution = scoreResolution({
+    scores,
+    secondRatingRequested: grading.secondRatingRequested,
+  })
+  if (resolution.status === 'settled') {
+    if (viewer.kind !== 'learner' || teacherFeedbackReleased(resolution.settledAt, ctx.now))
+      return { row: resolution.score, settled: true }
+    return null
+  }
+  if (viewer.kind === 'learner') return null
+  const visibleScores = scoresVisibleToRater({
+    scores,
+    viewer: { userId: ctx.actor.userId, coordinator: false },
+    secondRatingRequested: grading.secondRatingRequested,
+  })
+  const row = visibleScores.at(-1)
+  return row === undefined ? null : { row, settled: false }
+}
+
+/** Puanın özeti: toplam her okumada kriter bantlarından hesaplanır, saklanmaz (DOM-BEC-021). */
+function scoreSummary(
+  ctx: ServiceContext,
+  rubrics: RubricsById,
+  shown: { row: RubricScoreRow; settled: boolean } | null,
+) {
+  if (shown === null) return null
+  const rubric = rubrics.get(shown.row.rubricVersionId)
+  if (rubric === undefined) {
+    // Puanın rubrik sürümü yabancı anahtarla korunur; bulunamaması veri bütünlüğü sorunudur.
+    ctx.log.warn({ event: 'task_submission.rubric_missing' })
+    return null
+  }
+  const result = rubricScore(rubric, shown.row.criteria)
+  return { result, row: shown.row, settled: shown.settled }
+}
+
+function scoreBrief(summary: ReturnType<typeof scoreSummary>) {
+  if (summary === null) return null
+  return {
+    settled: summary.settled,
+    rubricVersionId: summary.row.rubricVersionId,
+    total: summary.result.total,
+    max: summary.result.max,
+    percent: summary.result.percent,
+    scoredAt: summary.row.scoredAt,
+  }
+}
+
+/** Puan ve geri bildirim: kriter bantları, ağırlıklar, kriter yorumları ve genel yorum. */
+function scoreFeedback(summary: ReturnType<typeof scoreSummary>) {
+  const brief = scoreBrief(summary)
+  if (summary === null || brief === null) return null
+  const comments = new Map(summary.row.criteria.map((c) => [c.criterionId, c.comment]))
+  return {
+    ...brief,
+    criteria: summary.result.criteria.map((criterion) => ({
+      ...criterion,
+      comment: comments.get(criterion.criterionId) ?? null,
+    })),
+    overallComment: summary.row.overallComment,
+  }
+}
+
 /** Teslimin durumu son sürümün kendi süresine göredir (yeniden teslim süresi dahil). */
 function statusOf(assignment: StoredAssignment, work: StoredSubmissionWork, now: Date) {
   const latest = work.versions.at(-1)
@@ -106,17 +229,46 @@ function statusOf(assignment: StoredAssignment, work: StoredSubmissionWork, now:
   return submissionStatus(work.versions, deadline, now)
 }
 
-function summaryView(assignment: StoredAssignment, work: StoredSubmissionWork, now: Date) {
+function summaryView(
+  viewer: Viewer,
+  ctx: ServiceContext,
+  book: GradingBook,
+  assignment: StoredAssignment,
+  work: StoredSubmissionWork,
+) {
   const latest = work.versions.at(-1)
+  const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
   return {
     id: work.submission.id,
     assignmentId: work.submission.assignmentId,
     learnerId: work.submission.learnerId,
-    status: statusOf(assignment, work, now),
+    status: statusOf(assignment, work, ctx.now),
     versionCount: work.versions.length,
-    latestVersion: latest === undefined ? null : versionView(assignment, work, latest),
-    rowVersion: work.submission.rowVersion,
+    latestVersion:
+      latest === undefined
+        ? null
+        : {
+            ...versionView(assignment, work, latest),
+            score: scoreBrief(
+              scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, latest.id)),
+            ),
+          },
+    resubmission: resubmissionOf(work),
+    // Puan ve yeniden teslim isteği teslimin satır sürümünü artırır; kursiyer ve veli sürümü
+    // görse geri bildirim açılmadan puanlandığını anlardı (DOM-BEC-045). Onların yazmaları
+    // (teslim, taslak) bu sürümü kullanmaz.
+    rowVersion: viewer.kind === 'learner' ? null : work.submission.rowVersion,
   }
+}
+
+/**
+ * Son yeniden teslim isteği (DOM-BEC-040). İstek yalnız kesinleşmiş puandan sonra açılır
+ * (`planResubmissionRequest`); kesinleşme anında geri bildirim de açıldığı için kursiyere
+ * gösterilmesi puanı erken sızdırmaz.
+ */
+function resubmissionOf(work: StoredSubmissionWork) {
+  const latest = work.resubmissions.at(-1)
+  return latest === undefined ? null : { versionNumber: latest.versionNumber, dueAt: latest.dueAt }
 }
 
 /**
@@ -130,51 +282,126 @@ async function feedbackReleased(
   work: Pick<StoredSubmissionWork, 'submission' | 'versions'>,
   scores: readonly RubricScoreRow[],
 ) {
+  return latestFeedbackReleased(
+    work,
+    {
+      scores,
+      secondRatingRequested: await isSecondRatingRequested(
+        db,
+        ctx.institutionId,
+        work.submission.id,
+      ),
+    },
+    ctx.now,
+  )
+}
+
+function latestFeedbackReleased(
+  work: Pick<StoredSubmissionWork, 'versions'>,
+  grading: Grading,
+  now: Date,
+) {
   const latest = work.versions.at(-1)
   if (latest === undefined) return false
   const resolution = scoreResolution({
-    scores: scores.filter((score) => score.submissionVersionId === latest.id),
-    secondRatingRequested: await isSecondRatingRequested(db, ctx.institutionId, work.submission.id),
+    scores: grading.scores.filter((score) => score.submissionVersionId === latest.id),
+    secondRatingRequested: grading.secondRatingRequested,
   })
-  return resolution.status === 'settled' && teacherFeedbackReleased(resolution.settledAt, ctx.now)
+  return resolution.status === 'settled' && teacherFeedbackReleased(resolution.settledAt, now)
 }
 
-/** Kursiyer ve veliye geri bildirim açılmadan puanlanmış teslimin nedeni genel `locked` döner. */
+/** Kursiyer ve veliye teslim penceresi kapanmışsa (puanlamadan bağımsız) genel `locked` döner. */
 type BlockedBy = VersionAllowance['blockedBy'] | 'locked'
+type Allowance = Omit<VersionAllowance, 'blockedBy'> & { blockedBy: BlockedBy }
+
+/**
+ * Yeni sürüm hakkı (core `versionAllowance`). Personel core sonucunu olduğu gibi görür. Kursiyer
+ * ve veli geri bildirimi açılmamış puanı hiçbir alandan çıkaramaz (DOM-BEC-045): son sürümün
+ * geri bildirimi açılmadıysa hak, sürüm hiç puanlanmamış gibi hesaplanır, yani yanıt
+ * puanlamadan öncekiyle birebir aynıdır. Onlara `locked` yalnız puanlamadan bağımsız koşulda
+ * döner: sıradaki sürümün teslim penceresi (geç kabul veya yeniden teslim süresi dahil) kapandı
+ * ve yeni sürüm başka nedenle zaten kapalı değil. Açılmamış puanlı teslime yeni sürüm yine
+ * reddedilir (genel 409 `submission_locked`; `submitTaskSubmission`).
+ */
+// TODO(F4b3b2): Sürüm hakkı kalan teslimde ikinci puanlama sürerken yeni sürüm denemesinin 409'u
+// puanlandığını hâlâ ele verir; domain kararı gerekir (ör. ikinci puanlama örneklemi teslim
+// penceresi kapanınca seçilir veya ilk puan pencere kapanmadan verilmez; DOM-BEC-024, 040, 045).
+function allowanceOf(
+  ctx: ServiceContext,
+  viewer: Viewer,
+  assignment: StoredAssignment,
+  work: StoredSubmissionWork,
+  grading: Grading,
+): Allowance | null {
+  const settings = settingsOf(assignment)
+  if (settings === null) return null
+  const graded = gradedVersionNumbers(work.versions, grading.scores)
+  if (viewer.kind !== 'learner')
+    return versionAllowance({
+      settings,
+      submission: work.submission,
+      versions: work.versions,
+      gradedVersionNumbers: graded,
+    })
+  const latest = work.versions.at(-1)
+  const hidden =
+    latest !== undefined && !latestFeedbackReleased(work, grading, ctx.now) ? latest.number : null
+  const allowance = versionAllowance({
+    settings,
+    submission: work.submission,
+    versions: work.versions,
+    gradedVersionNumbers: graded.filter((number) => number !== hidden),
+  })
+  const next = deadlineForVersion(assignment.deadline, work.submission, (latest?.number ?? 0) + 1)
+  return allowance.canSubmit && isClosed(next, ctx.now)
+    ? { ...allowance, canSubmit: false, blockedBy: 'locked' }
+    : allowance
+}
 const LOCKED_MESSAGE = 'Bu teslim için şu an yeni sürüm gönderilemez.'
 
-async function detailView(
+export async function detailView(
   db: Database,
   ctx: ServiceContext,
   viewer: Viewer,
   assignment: StoredAssignment,
   work: StoredSubmissionWork,
 ) {
-  const settings = settingsOf(assignment)
-  const scores = await loadSubmissionScores(db, ctx.institutionId, work.submission.id)
-  const computed =
-    settings === null
-      ? null
-      : versionAllowance({
-          settings,
-          submission: work.submission,
-          versions: work.versions,
-          gradedVersionNumbers: gradedVersionNumbers(work.versions, scores),
-        })
-  const masked =
-    computed?.blockedBy === 'graded' &&
-    viewer.kind === 'learner' &&
-    !(await feedbackReleased(db, ctx, work, scores))
-  const allowance: (Omit<VersionAllowance, 'blockedBy'> & { blockedBy: BlockedBy }) | null =
-    computed === null ? null : { ...computed, blockedBy: masked ? 'locked' : computed.blockedBy }
+  const book = await loadGrading(db, ctx, [work.submission.id])
+  const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
   return {
-    ...summaryView(assignment, work, ctx.now),
+    ...summaryView(viewer, ctx, book, assignment, work),
     versions: work.versions.map((version) => ({
       ...versionView(assignment, work, version),
       body: version.body,
+      score: scoreFeedback(
+        scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, version.id)),
+      ),
     })),
-    allowance,
+    allowance: allowanceOf(ctx, viewer, assignment, work, grading),
   }
+}
+
+/**
+ * Teslim özetleri (liste ve puanlama kuyruğu): puanlar tek seferde yüklenir. Her satırın ataması
+ * `assignments`'ta olmalıdır.
+ */
+export async function listSummaries(
+  db: Database,
+  ctx: ServiceContext,
+  viewer: Viewer,
+  assignments: ReadonlyMap<string, StoredAssignment>,
+  rows: readonly StoredSubmissionWork[],
+) {
+  const book = await loadGrading(
+    db,
+    ctx,
+    rows.map((work) => work.submission.id),
+  )
+  return rows.map((work) => {
+    const assignment = assignments.get(work.submission.assignmentId)
+    if (assignment === undefined) throw new Error('submission summary without its assignment')
+    return summaryView(viewer, ctx, book, assignment, work)
+  })
 }
 
 // --- Okuma --------------------------------------------------------------------------------
@@ -216,7 +443,10 @@ export async function listTaskSubmissions(ctx: ServiceContext, input: TaskSubmis
     page: input.page,
     pageSize: input.pageSize,
   })
-  return { total, items: rows.map((work) => summaryView(assignment, work, ctx.now)) }
+  return {
+    total,
+    items: await listSummaries(ctx.db, ctx, viewer, new Map([[assignment.id, assignment]]), rows),
+  }
 }
 
 /** Tek teslim ve bütün sürümleri (taslak asla); kapsam dışı veya başka kurumun kaydı 404. */

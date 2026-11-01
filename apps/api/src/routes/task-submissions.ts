@@ -1,9 +1,15 @@
-import type { FastifyInstance, FastifyReply } from 'fastify'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
 import type { Role } from '../auth.ts'
+import { AppError, MESSAGES } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
+import {
+  listGradingQueue,
+  requestTaskResubmission,
+  scoreTaskSubmission,
+} from '../services/task-grading.ts'
 import {
   getTaskDraft,
   getTaskSubmission,
@@ -12,9 +18,12 @@ import {
   submitTaskSubmission,
 } from '../services/task-submissions.ts'
 import { idempotencyOf, ifMatchVersion } from './command-support.ts'
+import { requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import { readErrors } from './communication.schemas.ts'
 import {
+  gradingQueueQuerySchema,
+  gradingQueueResponseSchema,
   taskDraftBodySchema,
   taskDraftReadResponseSchema,
   taskDraftResponseSchema,
@@ -24,6 +33,8 @@ import {
   taskSubmissionListQuerySchema,
   taskSubmissionListResponseSchema,
   taskSubmissionParamsSchema,
+  taskResubmissionBodySchema,
+  taskScoreBodySchema,
 } from './task-submissions.schemas.ts'
 
 /**
@@ -32,15 +43,26 @@ import {
  * modülüne bağlıdır. Teslim okuması yönetici, öğretmen, öğrenci ve velinindir (ön büro 403);
  * taslak yalnız öğrencinin kendisinindir; yazma yalnız öğrencinindir. Taslak ve teslim atamanın
  * altında yazılır, teslim üst düzey `task-submissions` kaynağıyla okunur (api-tasarimi.md §1).
+ * Öğretmen puanlaması, yeniden teslim isteği ve puanlama kuyruğu (F4b3b1; DOM-BEC-020…023, 040,
+ * 045) yönetici ve atamayı gören öğretmenindir; servis `services/task-grading.ts`.
  */
 
 const MODULE = 'learning'
 const READERS: readonly Role[] = ['yonetici', 'ogretmen', 'ogrenci', 'veli']
 const WRITERS: readonly Role[] = ['ogrenci']
+const GRADERS: readonly Role[] = ['yonetici', 'ogretmen']
 const READ_ACCESS =
-  'Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz; yanıtta puan alanı yoktur (rubrik puanlaması ayrı uçtadır). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.'
+  'Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz (DOM-BEC-023); puan öğretmenin rubrik puanıdır, her okumada kriter bantlarından hesaplanır. Kursiyer ve veli puanı ve geri bildirimi yalnız puan kesinleşip geri bildirim açılınca görür (DOM-BEC-045); öncesinde `score: null`, puanlanmamış sürümle aynı. Kesinleşmemiş puanı yalnız personel görür (öğretmen kendi puanını, yönetici hepsini). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.'
+const GRADE_ACCESS =
+  "Roller: `yonetici` ve atamayı gören `ogretmen` (atayan olmasa da kapsamındaki sınıf/öğrenci hedefi yüzünden gören; DOM-YTK-028); öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`."
 const WRITE_ACCESS =
   'Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.'
+
+function requiredVersion(request: FastifyRequest): number {
+  const version = ifMatchVersion(request)
+  if (version === null) throw new AppError(400, 'if_match_required', MESSAGES.if_match_required)
+  return version
+}
 
 function sendWith<T>(reply: FastifyReply, response: CommandResponse, parse: (body: unknown) => T) {
   if (response.replayed) reply.header('idempotent-replayed', 'true')
@@ -53,6 +75,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
   // Kimlik, modül ve rol şema doğrulamasından önce: oturumsuz istek geçersiz kimlikte de 401 alır.
   const read = [app.requireModule(MODULE), app.requireRole(READERS)]
   const write = [app.requireModule(MODULE), app.requireRole(WRITERS)]
+  const grade = [app.requireModule(MODULE), app.requireRole(GRADERS)]
 
   typed.get(
     '/api/v1/task-submissions',
@@ -70,6 +93,26 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
     async (request) => {
       const { page, pageSize } = request.query
       const result = await listTaskSubmissions(contextOf(request), request.query)
+      return { data: result.items, meta: { page, pageSize, total: result.total } }
+    },
+  )
+
+  typed.get(
+    '/api/v1/task-submissions/grading-queue',
+    {
+      preValidation: grade,
+      schema: {
+        operationId: 'listGradingQueue',
+        tags: ['task-submissions'],
+        summary: 'Puanlanmayı bekleyen teslimler',
+        description: `Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü henüz puanlanmamış teslimler, en eski gönderim önce, sayfalı; her kayıtta son sürümün özeti (metin yok). \`assignmentId\` isteğe bağlı süzgeçtir. Roller: \`yonetici\` kurumun bütün, \`ogretmen\` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül \`learning\`; kapalıysa 403 \`module_disabled\`.`,
+        querystring: gradingQueueQuerySchema,
+        response: { 200: gradingQueueResponseSchema, ...readErrors },
+      },
+    },
+    async (request) => {
+      const { page, pageSize } = request.query
+      const result = await listGradingQueue(contextOf(request), request.query)
       return { data: result.items, meta: { page, pageSize, total: result.total } }
     },
   )
@@ -162,6 +205,67 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         request.params.assignmentId,
         request.body,
         idempotency,
+      )
+      const body = sendWith(reply, result, (value) =>
+        taskSubmissionDetailResponseSchema.parse(value),
+      )
+      reply.header('location', `/api/v1/task-submissions/${body.data.id}`)
+      return body
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-submissions/:submissionId/scores',
+    {
+      preValidation: [...grade, requireIfMatch()],
+      schema: {
+        operationId: 'scoreTaskSubmission',
+        tags: ['task-submissions'],
+        summary: 'Teslimi rubrikle puanla',
+        description: `Öğretmen yazma teslimi sürümünü rubrikle puanlar ve geri bildirim yazar (DOM-BEC-020…023; core \`planRubricScore\`). Rubrik atamanın sabitlediği sürümdür (DOM-BEC-022), gövdede seçilmez; rubriksiz görev 422 \`rubric_not_assigned\`. Her kritere bir bant (0–5) verilir: eksik kriter 422 \`rubric_criterion_missing\`, rubrikte olmayan veya tekrar eden kriter 422 \`rubric_criterion_invalid\`, hedefin altındaki (0–2) bantta kriter yorumu yoksa 422 \`criterion_comment_required\`. Toplam ve yüzde sunucuda hesaplanır, saklanmaz; gövdedeki toplam/yüzde/rol 400. Yalnız son sürüm puanlanır (409 \`version_not_latest\`; bilinmeyen sürüm 404); aynı sürümün ikinci puanı 409 \`rubric_score_exists\` (puan değişmez; yeniden puanlama ve ikinci puanlayıcı ayrı iştir). Puan kesinleşince geri bildirim kursiyere ve veliye açılır (DOM-BEC-045). ${GRADE_ACCESS}`,
+        params: taskSubmissionParamsSchema,
+        body: taskScoreBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        response: { 201: taskSubmissionDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const expectedVersion = requiredVersion(request)
+      const { versionNumber, ...score } = request.body
+      const result = await scoreTaskSubmission(
+        contextOf(request),
+        { submissionId: request.params.submissionId, expectedVersion, versionNumber, score },
+        idempotencyOf(request, true),
+      )
+      const body = sendWith(reply, result, (value) =>
+        taskSubmissionDetailResponseSchema.parse(value),
+      )
+      reply.header('location', `/api/v1/task-submissions/${body.data.id}`)
+      return body
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-submissions/:submissionId/resubmission-requests',
+    {
+      preValidation: [...grade, requireIfMatch()],
+      schema: {
+        operationId: 'requestTaskResubmission',
+        tags: ['task-submissions'],
+        summary: 'Yeniden teslim iste',
+        description: `Öğretmen puanlanan son sürüm için kursiyerden yeni sürüm ister (DOM-BEC-040; core \`planResubmissionRequest\`). Son tarih ileri ve en çok 14 gün sonradır (422 \`resubmission_due_invalid\`), geç kabul yoktur. Son olmayan sürüm 409 \`version_not_latest\`, puanı kesinleşmemiş sürüm 409 \`resubmission_not_graded\`, aynı sürüme ikinci istek 409 \`resubmission_exists\`. Kursiyer sonra yeni sürüm gönderebilir; bu sürüm hakka sayılmaz. ${GRADE_ACCESS}`,
+        params: taskSubmissionParamsSchema,
+        body: taskResubmissionBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        response: { 201: taskSubmissionDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const expectedVersion = requiredVersion(request)
+      const result = await requestTaskResubmission(
+        contextOf(request),
+        { submissionId: request.params.submissionId, expectedVersion, request: request.body },
+        idempotencyOf(request, true),
       )
       const body = sendWith(reply, result, (value) =>
         taskSubmissionDetailResponseSchema.parse(value),

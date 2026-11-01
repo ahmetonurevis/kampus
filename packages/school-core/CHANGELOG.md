@@ -1,5 +1,12 @@
 # Değişiklikler
 
+## 2.22.0
+
+Rubrik puanının kriter satırı katı oldu (F4b3b1 inceleme düzeltmesi; `docs/domain/beceri-gelisimi.md` DOM-BEC-021; `docs/muhendislik/api-tasarimi.md` "gövde katı").
+
+- `skills/rubric.ts` `rubricScoreInputSchema`: `criteria[]` satırı `z.strictObject`'tir. Satırda `criterionId`, `band` ve `comment` dışındaki alan (ör. istemcinin `weighted: 99` ağırlıklı puanı) Zod hatasıyla reddedilir; önceden sessizce atılıyordu. Toplam ve ağırlık her zaman sunucuda kriter bantlarından hesaplanır. Aynı şemayı kullanan `appealDecisionSchema` (`upheld` kararının `score` alanı) da katılaştı.
+- Tüketiciler (API `POST /api/v1/task-submissions/:submissionId/scores`; mobil ve Vue demosu bu şemayı kullanmaz) `workspace:2.22.0` sürümüne sabitlendi.
+
 ## 2.21.0
 
 Anahtarı açılmış değerlendirmenin son teslimi uzatılamaz (F4b3a inceleme düzeltmesi; `docs/domain/beceri-gelisimi.md` DOM-BEC-045).

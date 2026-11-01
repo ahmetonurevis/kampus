@@ -9,6 +9,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import {
   rubrics,
+  rubricScores,
   rubricVersions,
   submissionDrafts,
   submissionVersions,
@@ -29,11 +30,12 @@ import { sampleRubricData } from './support/skills-sample.ts'
 /**
  * PostgreSQL 16: yazma taslağının ve teslim sürümünün eşzamanlı yazılması (IST-047, DOM-BEC-040;
  * ADR 0004 karar 6). Yazmalar kurum kilidi altında sıralanır: aynı revizyonla iki taslak kaydından
- * biri 409 `draft_conflict` alır; sürüm sınırı 1 iken iki eşzamanlı teslimden yalnız biri yazılır.
+ * biri 409 `draft_conflict` alır; sürüm sınırı 1 iken iki eşzamanlı teslimden yalnız biri yazılır;
+ * aynı sürüme eşzamanlı iki öğretmen puanından yalnız biri yazılır (F4b3b1, DOM-BEC-021).
  * PGlite tek bağlantılı olduğundan gerçek eşzamanlılık yalnız burada sınanır.
  */
 
-describe('PostgreSQL 16: eşzamanlı yazma taslağı ve teslimi', { skip: PG_SKIP }, () => {
+describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip: PG_SKIP }, () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
@@ -143,7 +145,7 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı ve teslimi', { skip: PG_SKI
       key(),
     )
     assert.equal(created.statusCode, 201, created.body)
-    return { institution, student, assignmentId: created.json().data.id as string }
+    return { institution, student, admin, assignmentId: created.json().data.id as string }
   }
 
   test('IST-047: aynı taslağa eşzamanlı iki kayıt: biri 200, diğeri 409 draft_conflict; eşzamanlı ilk kayıtta geride kalan 400; taslak kazananın metni', async () => {
@@ -194,5 +196,44 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı ve teslimi', { skip: PG_SKI
     ])
     assert.equal(submissions.length, 1)
     assert.equal(versions.length, 1)
+  })
+
+  test('DOM-BEC-021: aynı teslim sürümüne eşzamanlı iki puan: biri 201, diğeri 409; tek puan satırı', async () => {
+    const { institution, student, admin, assignmentId } = await setup()
+    const submitted = await call(
+      'POST',
+      `/task-assignments/${assignmentId}/submissions`,
+      student,
+      { submissionKind: 'text', body: 'Birinci metin.' },
+      key(),
+    )
+    assert.equal(submitted.statusCode, 201, submitted.body)
+    const submissionId = submitted.json().data.id as string
+    const score = (band: number) =>
+      call(
+        'POST',
+        `/task-submissions/${submissionId}/scores`,
+        admin,
+        {
+          versionNumber: 1,
+          criteria: [
+            { criterionId: 'task', band, comment: null },
+            { criterionId: 'grammar', band, comment: null },
+          ],
+          overallComment: 'Genel yorum yazıldı.',
+        },
+        { ...key(), 'if-match': '"1"' },
+      )
+    const responses = await Promise.all([score(3), score(4)])
+    assert.deepEqual(responses.map((r) => r.statusCode).sort(), [201, 409])
+    const loser = responses.find((r) => r.statusCode === 409)
+    assert.ok(['version_conflict', 'rubric_score_exists'].includes(loser?.json().code), loser?.body)
+    const rows = await db
+      .select({ criteria: rubricScores.criteria })
+      .from(rubricScores)
+      .where(eq(rubricScores.institutionId, institution.id))
+    assert.equal(rows.length, 1)
+    const winner = responses.find((r) => r.statusCode === 201)?.json().data
+    assert.equal(rows[0]?.criteria[0]?.band, winner.versions[0].score.criteria[0].band)
   })
 })

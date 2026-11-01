@@ -432,6 +432,9 @@ describe('yazma uçları', () => {
         'POST /api/v1/task-attempts/{attemptId}/submit',
         // Yazma görevi teslimi: yeni değişmez sürüm (routes/task-submissions.ts; DOM-BEC-040).
         'POST /api/v1/task-assignments/{assignmentId}/submissions',
+        // Öğretmen puanı ve yeniden teslim isteği (routes/task-submissions.ts; DOM-BEC-021, 040).
+        'POST /api/v1/task-submissions/{submissionId}/scores',
+        'POST /api/v1/task-submissions/{submissionId}/resubmission-requests',
         // Aday oluşturma (routes/prospects.ts; DOM-KAY-002).
         'POST /api/v1/prospects',
         // Kesin kayıt: öğrenci, taksit ve sözleşme oluşturur (DOM-KAY-011, DOM-KAY-035).

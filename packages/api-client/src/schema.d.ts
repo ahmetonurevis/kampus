@@ -2557,9 +2557,29 @@ export interface paths {
         };
         /**
          * Görev teslimleri
-         * @description Atamanın arşivlenmemiş teslim kayıtları (kursiyer başına bir), kursiyer sırasıyla, sayfalı; her kayıtta son sürümün özeti (metin yok). `assignmentId` zorunlu; `learnerId` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz; yanıtta puan alanı yoktur (rubrik puanlaması ayrı uçtadır). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
+         * @description Atamanın arşivlenmemiş teslim kayıtları (kursiyer başına bir), kursiyer sırasıyla, sayfalı; her kayıtta son sürümün özeti (metin yok). `assignmentId` zorunlu; `learnerId` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz (DOM-BEC-023); puan öğretmenin rubrik puanıdır, her okumada kriter bantlarından hesaplanır. Kursiyer ve veli puanı ve geri bildirimi yalnız puan kesinleşip geri bildirim açılınca görür (DOM-BEC-045); öncesinde `score: null`, puanlanmamış sürümle aynı. Kesinleşmemiş puanı yalnız personel görür (öğretmen kendi puanını, yönetici hepsini). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
          */
         get: operations["listTaskSubmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-submissions/grading-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Puanlanmayı bekleyen teslimler
+         * @description Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü henüz puanlanmamış teslimler, en eski gönderim önce, sayfalı; her kayıtta son sürümün özeti (metin yok). `assignmentId` isteğe bağlı süzgeçtir. Roller: `yonetici` kurumun bütün, `ogretmen` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listGradingQueue"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2577,7 +2597,7 @@ export interface paths {
         };
         /**
          * Görev teslimi ayrıntısı
-         * @description Teslim kaydı, değişmez sürümleri (eskiden yeniye, metinleriyle), her sürümün geç bayrağı ve sözcük sayısı (DOM-BEC-044, 046), teslim durumu ve yeni sürüm hakkı. Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz; yanıtta puan alanı yoktur (rubrik puanlaması ayrı uçtadır). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
+         * @description Teslim kaydı, değişmez sürümleri (eskiden yeniye, metinleriyle), her sürümün geç bayrağı ve sözcük sayısı (DOM-BEC-044, 046), teslim durumu ve yeni sürüm hakkı. Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz (DOM-BEC-023); puan öğretmenin rubrik puanıdır, her okumada kriter bantlarından hesaplanır. Kursiyer ve veli puanı ve geri bildirimi yalnız puan kesinleşip geri bildirim açılınca görür (DOM-BEC-045); öncesinde `score: null`, puanlanmamış sürümle aynı. Kesinleşmemiş puanı yalnız personel görür (öğretmen kendi puanını, yönetici hepsini). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
          */
         get: operations["getTaskSubmission"];
         put?: never;
@@ -2626,6 +2646,46 @@ export interface paths {
          * @description Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core `planSubmissionVersion`). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; önceki sürümler ve metinleri değişmez. Sürüm sınırı (`maxVersions`) dolunca 422 `version_limit_reached`; puanlanmış teslimde öğretmen yeniden teslim istemeden 409 `resubmission_not_requested` (geri bildirim açılmadan genel 409 `submission_locked`; DOM-BEC-045); teslim kapandıysa (geç kabul dahil) 422 `submission_closed`; son teslimden sonra geç kabul süresindeki sürüm `late`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 `submission_not_expected`; dosyalı ve sesli teslim 422 `submission_kind_unavailable`. Yazma otomatik puanlanmaz. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["submitTaskSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-submissions/{submissionId}/scores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Teslimi rubrikle puanla
+         * @description Öğretmen yazma teslimi sürümünü rubrikle puanlar ve geri bildirim yazar (DOM-BEC-020…023; core `planRubricScore`). Rubrik atamanın sabitlediği sürümdür (DOM-BEC-022), gövdede seçilmez; rubriksiz görev 422 `rubric_not_assigned`. Her kritere bir bant (0–5) verilir: eksik kriter 422 `rubric_criterion_missing`, rubrikte olmayan veya tekrar eden kriter 422 `rubric_criterion_invalid`, hedefin altındaki (0–2) bantta kriter yorumu yoksa 422 `criterion_comment_required`. Toplam ve yüzde sunucuda hesaplanır, saklanmaz; gövdedeki toplam/yüzde/rol 400. Yalnız son sürüm puanlanır (409 `version_not_latest`; bilinmeyen sürüm 404); aynı sürümün ikinci puanı 409 `rubric_score_exists` (puan değişmez; yeniden puanlama ve ikinci puanlayıcı ayrı iştir). Puan kesinleşince geri bildirim kursiyere ve veliye açılır (DOM-BEC-045). Roller: `yonetici` ve atamayı gören `ogretmen` (atayan olmasa da kapsamındaki sınıf/öğrenci hedefi yüzünden gören; DOM-YTK-028); öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["scoreTaskSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-submissions/{submissionId}/resubmission-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yeniden teslim iste
+         * @description Öğretmen puanlanan son sürüm için kursiyerden yeni sürüm ister (DOM-BEC-040; core `planResubmissionRequest`). Son tarih ileri ve en çok 14 gün sonradır (422 `resubmission_due_invalid`), geç kabul yoktur. Son olmayan sürüm 409 `version_not_latest`, puanı kesinleşmemiş sürüm 409 `resubmission_not_graded`, aynı sürüme ikinci istek 409 `resubmission_exists`. Kursiyer sonra yeni sürüm gönderebilir; bu sürüm hakka sayılmaz. Roller: `yonetici` ve atamayı gören `ogretmen` (atayan olmasa da kapsamındaki sınıf/öğrenci hedefi yüzünden gören; DOM-YTK-028); öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["requestTaskResubmission"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4068,6 +4128,51 @@ export interface components {
             /** @description Sözcük sınırı dışındaysa uyarı; teslim reddedilmez (DOM-BEC-046) */
             warning: string | null;
         };
+        TaskScoreBriefInput: {
+            /** @description Puan kesinleşti mi (core `scoreResolution`); kesinleşmemiş puanı yalnız personel görür */
+            settled: boolean;
+            /**
+             * Format: uuid
+             * @description Puanın verildiği rubrik sürümü (atamanın sabitlediği; DOM-BEC-022)
+             */
+            rubricVersionId: string;
+            /** @description Ağırlıklı bant toplamı; saklanmaz, okunurken */
+            total: number;
+            /** @description Azami ağırlıklı bant toplamı */
+            max: number;
+            /** @description 100 üzerinden puan (DOM-BEC-021) */
+            percent: number;
+            /** Format: date-time */
+            scoredAt: string;
+        };
+        TaskScoreInput: {
+            /** @description Puan kesinleşti mi (core `scoreResolution`); kesinleşmemiş puanı yalnız personel görür */
+            settled: boolean;
+            /**
+             * Format: uuid
+             * @description Puanın verildiği rubrik sürümü (atamanın sabitlediği; DOM-BEC-022)
+             */
+            rubricVersionId: string;
+            /** @description Ağırlıklı bant toplamı; saklanmaz, okunurken */
+            total: number;
+            /** @description Azami ağırlıklı bant toplamı */
+            max: number;
+            /** @description 100 üzerinden puan (DOM-BEC-021) */
+            percent: number;
+            /** Format: date-time */
+            scoredAt: string;
+            criteria: {
+                criterionId: string;
+                band: number;
+                weight: number;
+                weighted: number;
+                /** @enum {string} */
+                meaning: "below" | "target" | "above";
+                comment: string | null;
+            }[];
+            /** @description Öğretmenin genel geri bildirimi */
+            overallComment: string;
+        };
         TaskSubmissionInput: {
             /** Format: uuid */
             id: string;
@@ -4090,9 +4195,16 @@ export interface components {
                 late: boolean;
                 /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
                 wordCount: components["schemas"]["TaskWordCountInput"] | null;
+                score: components["schemas"]["TaskScoreBriefInput"] | null;
             } | null;
-            /** @description Teslim kaydının satır sürümü */
-            rowVersion: number;
+            /** @description Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040) */
+            resubmission: {
+                versionNumber: number;
+                /** Format: date-time */
+                dueAt: string;
+            } | null;
+            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
+            rowVersion: number | null;
         };
         TaskSubmissionDetailInput: {
             /** Format: uuid */
@@ -4116,9 +4228,16 @@ export interface components {
                 late: boolean;
                 /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
                 wordCount: components["schemas"]["TaskWordCountInput"] | null;
+                score: components["schemas"]["TaskScoreBriefInput"] | null;
             } | null;
-            /** @description Teslim kaydının satır sürümü */
-            rowVersion: number;
+            /** @description Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040) */
+            resubmission: {
+                versionNumber: number;
+                /** Format: date-time */
+                dueAt: string;
+            } | null;
+            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
+            rowVersion: number | null;
             /** @description Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez */
             versions: {
                 /** Format: uuid */
@@ -4132,6 +4251,7 @@ export interface components {
                 wordCount: components["schemas"]["TaskWordCountInput"] | null;
                 /** @description Gönderilen metin; değişmez */
                 body: string | null;
+                score: components["schemas"]["TaskScoreInput"] | null;
             }[];
             /** @description Yeni sürüm hakkı (core `versionAllowance`) */
             allowance: {
@@ -4140,7 +4260,7 @@ export interface components {
                 remaining: number;
                 resubmissionOpen: boolean;
                 canSubmit: boolean;
-                /** @description `canSubmit: false` ise neden. Kursiyer ve veli, öğretmen geri bildirimi açılmadan `graded` yerine genel `locked` alır (DOM-BEC-045) */
+                /** @description `canSubmit: false` ise neden. Kursiyer ve veli geri bildirimi açılmamış puanı görmez: hak, son sürüm puanlanmamış gibi hesaplanır (DOM-BEC-045); onlara `locked` yalnız sıradaki sürümün teslim penceresi kapandığında döner */
                 blockedBy: ("limit" | "graded" | "locked") | null;
             } | null;
         };
@@ -5585,6 +5705,51 @@ export interface components {
             /** @description Sözcük sınırı dışındaysa uyarı; teslim reddedilmez (DOM-BEC-046) */
             warning: string | null;
         };
+        TaskScoreBrief: {
+            /** @description Puan kesinleşti mi (core `scoreResolution`); kesinleşmemiş puanı yalnız personel görür */
+            settled: boolean;
+            /**
+             * Format: uuid
+             * @description Puanın verildiği rubrik sürümü (atamanın sabitlediği; DOM-BEC-022)
+             */
+            rubricVersionId: string;
+            /** @description Ağırlıklı bant toplamı; saklanmaz, okunurken */
+            total: number;
+            /** @description Azami ağırlıklı bant toplamı */
+            max: number;
+            /** @description 100 üzerinden puan (DOM-BEC-021) */
+            percent: number;
+            /** Format: date-time */
+            scoredAt: string;
+        };
+        TaskScore: {
+            /** @description Puan kesinleşti mi (core `scoreResolution`); kesinleşmemiş puanı yalnız personel görür */
+            settled: boolean;
+            /**
+             * Format: uuid
+             * @description Puanın verildiği rubrik sürümü (atamanın sabitlediği; DOM-BEC-022)
+             */
+            rubricVersionId: string;
+            /** @description Ağırlıklı bant toplamı; saklanmaz, okunurken */
+            total: number;
+            /** @description Azami ağırlıklı bant toplamı */
+            max: number;
+            /** @description 100 üzerinden puan (DOM-BEC-021) */
+            percent: number;
+            /** Format: date-time */
+            scoredAt: string;
+            criteria: {
+                criterionId: string;
+                band: number;
+                weight: number;
+                weighted: number;
+                /** @enum {string} */
+                meaning: "below" | "target" | "above";
+                comment: string | null;
+            }[];
+            /** @description Öğretmenin genel geri bildirimi */
+            overallComment: string;
+        };
         TaskSubmission: {
             /** Format: uuid */
             id: string;
@@ -5607,9 +5772,16 @@ export interface components {
                 late: boolean;
                 /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
                 wordCount: components["schemas"]["TaskWordCount"] | null;
+                score: components["schemas"]["TaskScoreBrief"] | null;
             } | null;
-            /** @description Teslim kaydının satır sürümü */
-            rowVersion: number;
+            /** @description Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040) */
+            resubmission: {
+                versionNumber: number;
+                /** Format: date-time */
+                dueAt: string;
+            } | null;
+            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
+            rowVersion: number | null;
         };
         TaskSubmissionDetail: {
             /** Format: uuid */
@@ -5633,9 +5805,16 @@ export interface components {
                 late: boolean;
                 /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
                 wordCount: components["schemas"]["TaskWordCount"] | null;
+                score: components["schemas"]["TaskScoreBrief"] | null;
             } | null;
-            /** @description Teslim kaydının satır sürümü */
-            rowVersion: number;
+            /** @description Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040) */
+            resubmission: {
+                versionNumber: number;
+                /** Format: date-time */
+                dueAt: string;
+            } | null;
+            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
+            rowVersion: number | null;
             /** @description Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez */
             versions: {
                 /** Format: uuid */
@@ -5649,6 +5828,7 @@ export interface components {
                 wordCount: components["schemas"]["TaskWordCount"] | null;
                 /** @description Gönderilen metin; değişmez */
                 body: string | null;
+                score: components["schemas"]["TaskScore"] | null;
             }[];
             /** @description Yeni sürüm hakkı (core `versionAllowance`) */
             allowance: {
@@ -5657,7 +5837,7 @@ export interface components {
                 remaining: number;
                 resubmissionOpen: boolean;
                 canSubmit: boolean;
-                /** @description `canSubmit: false` ise neden. Kursiyer ve veli, öğretmen geri bildirimi açılmadan `graded` yerine genel `locked` alır (DOM-BEC-045) */
+                /** @description `canSubmit: false` ise neden. Kursiyer ve veli geri bildirimi açılmamış puanı görmez: hak, son sürüm puanlanmamış gibi hesaplanır (DOM-BEC-045); onlara `locked` yalnız sıradaki sürümün teslim penceresi kapandığında döner */
                 blockedBy: ("limit" | "graded" | "locked") | null;
             } | null;
         };
@@ -21032,6 +21212,90 @@ export interface operations {
             };
         };
     };
+    listGradingQueue: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Atama süzgeci */
+                assignmentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmission"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getTaskSubmission: {
         parameters: {
             query?: never;
@@ -21328,6 +21592,232 @@ export interface operations {
                     /** @enum {string} */
                     submissionKind: "audio";
                     recordingFileId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmissionDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    scoreTaskSubmission: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Teslim kimliği */
+                submissionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Puanlanan sürüm; yalnız son sürüm puanlanır */
+                    versionNumber: number;
+                    criteria: {
+                        criterionId: string;
+                        band: number;
+                        /** @default null */
+                        comment?: string | null;
+                    }[];
+                    overallComment: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmissionDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    requestTaskResubmission: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Teslim kimliği */
+                submissionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    versionNumber: number;
+                    /** Format: date-time */
+                    dueAt: string;
                 };
             };
         };

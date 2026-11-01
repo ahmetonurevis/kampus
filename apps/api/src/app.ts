@@ -39,6 +39,7 @@ import { registerQuestionRoutes } from './routes/questions.ts'
 import { registerRequestRoutes } from './routes/requests.ts'
 import { registerAppointmentRoutes } from './routes/appointments.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
+import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
@@ -259,6 +260,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerRequestRoutes(app)
   registerAppointmentRoutes(app)
   registerFeeTariffRoutes(app)
+  registerFinanceExportRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)

@@ -8,6 +8,7 @@ Kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-00
 - Kesin kayıt sözleşmesi `invoiceIds` taşır; belge yalnız kendi taksitlerini çözümler (DOM-FIN-012).
 - `lib/payments.ts`: `recordPaymentSchema`, `reversePaymentSchema`, `paymentSettingsSchema`, `planPayment`, `reversePayment`, `openAmount` eklendi. Demo girişi `payInvoice` aynı kaldı.
 - `lib/authorize.ts` ve `modules/commands.ts`: `payment.reverse`, `tariff.manage` ve `student.withdraw` (yalnız yönetici), modül `finance`.
+- `lib/csv.ts`: `csvCell`, `CSV_SEPARATOR` web'den taşındı, `csvAmount` eklendi. `lib/finance-export.ts`: dönem doğrulaması, `paymentLines`, `refundLines`, `invoiceLines`, `financeSummary`, CSV üreticileri eklendi (IST-111).
 - `lib/withdrawals.ts`: `withdrawalQuoteSchema`, `withdrawStudentSchema`, `payRefundSchema`, `quoteWithdrawal`, `withdrawStudent`, `planRefundPayment`, `refundDueDate`, `payerNameOf`, `isValidTurkishIban` eklendi (DOM-FIN-040, -041, DOM-KAY-024).
 - `lib/fee-tariffs.ts`: `feeItemSchema`, `createFeeTariffSchema`, `updateFeeTariffSchema`, `publishFeeTariffSchema`, `feeDiscountSchema`, `planTariffCreate`, `planTariffUpdate`, `planTariffPublish` eklendi (DOM-FIN-002, -004, -006, -020).
 

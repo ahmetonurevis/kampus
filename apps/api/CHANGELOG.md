@@ -2,6 +2,11 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Muhasebe dışa aktarımı
+
+- `GET /api/v1/finance/summary` ve `GET /api/v1/finance/exports` eklendi (ADR 0006 karar 11, IST-111). Dosya tahsilat, ödenmiş iade veya taksit satırlarını CSV olarak döner; toplamı özetle aynı satırlardan üretilir. Migration yok.
+- OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Ayrılış ve iade uçları
 
 - `student_withdrawals` tablosu (migration `0017_create_student_withdrawals`) ile `POST /api/v1/students/:studentId/withdrawal-quote`, `POST /api/v1/students/:studentId/withdraw`, `GET /api/v1/withdrawals`, `GET /api/v1/withdrawals/:withdrawalId`, `POST /api/v1/withdrawals/:withdrawalId/pay-refund` eklendi (ADR 0006 karar 10, DOM-FIN-040, -041, DOM-KAY-024, IST-110).

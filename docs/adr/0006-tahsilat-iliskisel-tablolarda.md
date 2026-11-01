@@ -24,6 +24,8 @@ Tahsilat bugün taksit kaydının `paidAt` ve `method` alanlarıdır (`records`,
 
 10. **Ayrılış ve iade tek kayıttır.** `student_withdrawals` ayrılışı, hesap dökümünü (`breakdown`, karar anının kopyası) ve iade ödemesini tutar; sözleşme başına tek satır. Öğretim takvimi kaynağı olmadığı için görülen ve toplam birim yönetici tarafından girilir. Kesinti oranı `REFUND_DEDUCTION_BASIS_POINTS` sabitidir ve dökümde saklanır; kurum profili gelince parametre olur. Yuvarlama ödeyici lehinedir. Ayrılış ve iade ödemesi taze oturum ister. Açık taksitler arşivlenir, kısmi ödeme hesapta kalır; bedel kalırsa tek borç taksiti açılır.
 
+11. **Muhasebe aktarımı dönem satırlarıdır.** Tahsilat ödeme gününde artı, iptal gününde eksi satırdır; böylece önceki dönemde aktarılmış tahsilatın iptali sonraki dönemi düzeltir. Yalnız ödenmiş iade aktarılır, taksit vade gününe göre listelenir. Toplam ve dosya aynı satırlardan üretilir. Biçim CSV'dir (`;`, BOM, ondalık virgül); belirli bir muhasebe programının şablonu pilotla netleşince eklenir.
+
 ## Sonuçlar
 
 - Nakdi açmanın ÖÖKY md. 55/3 açısından sorumluluğu kuruma geçer; yasal uygunluk **doğrulanmalı**, pilot öncesi hukukçuya sorulacak.

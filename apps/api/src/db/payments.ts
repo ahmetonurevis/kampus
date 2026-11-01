@@ -1,5 +1,6 @@
-import { and, asc, count, desc, eq, inArray, isNull, max, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, inArray, isNull, lt, max, or, sql } from 'drizzle-orm'
 
+import type { ExportPayment } from '@kampus/school-core/lib/finance-export.ts'
 import type { PaymentAllocation, PaymentPlan } from '@kampus/school-core/lib/payments.ts'
 import type { PaymentMethod } from '@kampus/school-core/lib/domain.ts'
 
@@ -142,6 +143,65 @@ export async function paymentTotal(
       ),
     )
   return Number(row?.total ?? 0)
+}
+
+/** Kurumun bütün taksitlerine iptal edilmemiş tahsilatlardan dağıtılmış toplamlar. */
+export async function allocatedTotals(
+  db: Database,
+  institutionId: string,
+): Promise<Map<string, number>> {
+  const rows = await db
+    .select({
+      invoiceId: paymentAllocations.invoiceId,
+      total: sql<string>`sum(${paymentAllocations.amountCents})`,
+    })
+    .from(paymentAllocations)
+    .innerJoin(
+      payments,
+      and(
+        eq(payments.institutionId, paymentAllocations.institutionId),
+        eq(payments.id, paymentAllocations.paymentId),
+      ),
+    )
+    .where(and(eq(paymentAllocations.institutionId, institutionId), isNull(payments.reversedAt)))
+    .groupBy(paymentAllocations.invoiceId)
+  return new Map(rows.map((row) => [row.invoiceId, Number(row.total)]))
+}
+
+/** Ödeme veya iptal anı aralığa düşen tahsilatlar; kesin gün süzmesi core'dadır. */
+export async function paymentsTouchingPeriod(
+  db: Database,
+  institutionId: string,
+  fromInstant: Date,
+  toInstant: Date,
+): Promise<ExportPayment[]> {
+  const rows = await db
+    .select({
+      studentId: payments.studentId,
+      amountCents: payments.amountCents,
+      method: payments.method,
+      reference: payments.reference,
+      paidAt: payments.paidAt,
+      receiptYear: payments.receiptYear,
+      receiptNumber: payments.receiptNumber,
+      reversedAt: payments.reversedAt,
+    })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.institutionId, institutionId),
+        or(
+          and(gte(payments.paidAt, fromInstant), lt(payments.paidAt, toInstant)),
+          and(gte(payments.reversedAt, fromInstant), lt(payments.reversedAt, toInstant)),
+        ),
+      ),
+    )
+  return rows.map((row) => ({
+    ...row,
+    method: METHOD_LABELS[row.method] ?? '',
+    paidAt: row.paidAt.toISOString(),
+    reversedAt: row.reversedAt?.toISOString() ?? null,
+  }))
 }
 
 export async function isReferenceInUse(

@@ -1,5 +1,6 @@
-import { and, asc, count, eq, gt, isNotNull, isNull, sql, type SQL } from 'drizzle-orm'
+import { and, asc, count, eq, gt, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
+import type { ExportRefund } from '@kampus/school-core/lib/finance-export.ts'
 import type { WithdrawalBreakdown, WithdrawalReason } from '@kampus/school-core/lib/withdrawals.ts'
 
 import type { Database } from './client.ts'
@@ -149,6 +150,35 @@ export async function archiveStudentIdentity(
         eq(studentIdentities.studentId, studentId),
       ),
     )
+}
+
+/** Ödeme günü dönemde olan iadeler; IBAN yalnız maskeli çıkar (IST-111). */
+export async function refundsPaidInPeriod(
+  db: Database,
+  institutionId: string,
+  period: { from: string; to: string },
+): Promise<ExportRefund[]> {
+  const rows = await db
+    .select({
+      studentId: studentWithdrawals.studentId,
+      withdrawalDate: studentWithdrawals.withdrawalDate,
+      refundCents: studentWithdrawals.refundCents,
+      refundPaidDate: studentWithdrawals.refundPaidDate,
+      refundIban: studentWithdrawals.refundIban,
+      accountHolder: studentWithdrawals.refundAccountHolder,
+    })
+    .from(studentWithdrawals)
+    .where(
+      and(
+        eq(studentWithdrawals.institutionId, institutionId),
+        gte(studentWithdrawals.refundPaidDate, period.from),
+        lte(studentWithdrawals.refundPaidDate, period.to),
+      ),
+    )
+  return rows.map(({ refundIban, ...row }) => ({
+    ...row,
+    maskedIban: refundIban === null ? null : `TR** **** ${refundIban.slice(-4)}`,
+  }))
 }
 
 /** Yalnız ödenmemiş iade ve beklenen sürüm güncellenir; tutmazsa `false`. */

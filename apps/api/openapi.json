@@ -11420,6 +11420,31 @@
               ]
             },
             "in": "query",
+            "name": "source",
+            "required": false,
+            "description": "`source` eşitlik filtresi; çoklu değer parametre tekrarıyla"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              ]
+            },
+            "in": "query",
             "name": "category",
             "required": false,
             "description": "`category` eşitlik filtresi; çoklu değer parametre tekrarıyla"
@@ -12075,6 +12100,31 @@
               ]
             },
             "in": "query",
+            "name": "source",
+            "required": false,
+            "description": "`source` eşitlik filtresi; çoklu değer parametre tekrarıyla"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              ]
+            },
+            "in": "query",
             "name": "category",
             "required": false,
             "description": "`category` eşitlik filtresi; çoklu değer parametre tekrarıyla"
@@ -12147,6 +12197,7 @@
                 "videoId",
                 "status",
                 "stage",
+                "source",
                 "category",
                 "type",
                 "grade",

@@ -119,3 +119,26 @@ test('urlFilters geri/ileri ile döner; URL’de olmayan URL filtresi kaldırıl
   const same = applyListParams(state, new URLSearchParams('kampus=b2&sayfa=3'), '', urlFilters)
   assert.equal(same, state, 'aynı URL aynı nesneyi döndürür')
 })
+
+test('KVKK: searchInUrl=false iken arama metni URL’ye yazılmaz ve URL’den okunmaz; sayfa ve sıralama kalır', () => {
+  const state = {
+    ...initialListState(),
+    query: '0532 111 22 33',
+    page: 2,
+    sortKey: 'name',
+  }
+  const params = listStateToParams(state, '', new URLSearchParams('q=eski'), {}, false)
+  assert.equal(params.has('q'), false, 'eski bağlantıdaki arama da temizlenir')
+  assert.equal(params.toString(), 'sayfa=2&sirala=name')
+  const restored = listStateFromParams(
+    new URLSearchParams('q=Ay%C5%9Fe&sayfa=2'),
+    '',
+    { ...initialListState(), query: 'bellek' },
+    {},
+    false,
+  )
+  assert.equal(restored.query, 'bellek', 'URL’deki q yok sayılır, bellek korunur')
+  assert.equal(restored.page, 2)
+  const back = applyListParams(state, new URLSearchParams('sayfa=2&sirala=name'), '', {}, false)
+  assert.equal(back, state, 'URL’de q olmaması yazılan aramayı silmez')
+})

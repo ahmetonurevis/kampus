@@ -1,6 +1,8 @@
 // Liste durumunun paylaşılabilir kısmı (arama, sayfa, sıralama) URL arama parametresinde tutulur;
 // böylece yenileme ve geri/ileri durumu korur. Filtre değerleri ve kaydırma varsayılan olarak
-// yalnız bellektedir; liste `urlFilters` verirse o tekli filtreler de URL'ye yazılır.
+// yalnız bellektedir; liste `urlFilters` verirse o tekli filtreler de URL'ye yazılır. Kişisel veri
+// aranan listelerde (`searchInUrl = false`) arama metni hiç URL'ye yazılmaz ve okunmaz (KVKK:
+// telefon ve veli adı tarayıcı geçmişine girmesin).
 import type { FilterValues } from './list-query.ts'
 import type { ListState } from './list-state.ts'
 
@@ -21,6 +23,7 @@ export function listStateFromParams(
   prefix: string,
   base: ListState,
   urlFilters: UrlFilters = NO_URL_FILTERS,
+  searchInUrl = true,
 ): ListState {
   const key = keys(prefix)
   const query = params.get(key.query)
@@ -29,7 +32,7 @@ export function listStateFromParams(
   return {
     ...base,
     filters: filtersFromParams(params, prefix, base.filters, urlFilters),
-    query: query ?? base.query,
+    query: searchInUrl ? (query ?? base.query) : base.query,
     page: Number.isInteger(page) && page >= 1 ? page : params.has(key.page) ? 1 : base.page,
     sortKey: sort ?? base.sortKey,
     sortDirection: sort ? (params.get(key.direction) === 'azalan' ? -1 : 1) : base.sortDirection,
@@ -42,12 +45,13 @@ export function listStateToParams(
   prefix: string,
   current: URLSearchParams,
   urlFilters: UrlFilters = NO_URL_FILTERS,
+  searchInUrl = true,
 ): URLSearchParams {
   const key = keys(prefix)
   const next = new URLSearchParams(current)
   const set = (name: string, value: string | null) =>
     value === null ? next.delete(name) : next.set(name, value)
-  set(key.query, state.query.trim() ? state.query : null)
+  set(key.query, searchInUrl && state.query.trim() ? state.query : null)
   set(key.page, state.page > 1 ? String(state.page) : null)
   set(key.sort, state.sortKey || null)
   set(key.direction, state.sortKey && state.sortDirection === -1 ? 'azalan' : null)
@@ -123,14 +127,23 @@ export function applyListParams(
   params: URLSearchParams,
   prefix: string,
   urlFilters: UrlFilters = NO_URL_FILTERS,
+  searchInUrl = true,
 ): ListState {
   const filters = { ...state.filters }
   for (const filter of Object.keys(urlFilters)) delete filters[filter]
   const next = listStateFromParams(
     params,
     prefix,
-    { ...state, filters, query: '', page: 1, sortKey: '', sortDirection: 1 },
+    {
+      ...state,
+      filters,
+      query: searchInUrl ? '' : state.query,
+      page: 1,
+      sortKey: '',
+      sortDirection: 1,
+    },
     urlFilters,
+    searchInUrl,
   )
   if (sameUrlState(state, next, urlFilters)) return state
   return { ...next, scroll: { top: 0, left: state.scroll.left } }

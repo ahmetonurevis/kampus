@@ -75,6 +75,7 @@ export const FILTER_FIELDS = [
   'videoId',
   'status',
   'stage',
+  'source',
   'category',
   'type',
   'grade',

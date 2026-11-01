@@ -30,6 +30,11 @@ type Options = {
    * filtre bağlantıyla paylaşılır ve geri/ileri ile döner. Sabit nesne verin (modül düzeyi).
    */
   urlFilters?: UrlFilters
+  /**
+   * Arama metni URL'ye yazılsın mı (varsayılan evet). Kişisel veri aranan listelerde (telefon,
+   * veli adı) kapatılır: metin yalnız bileşen belleğinde kalır, tarayıcı geçmişine girmez.
+   */
+  searchInUrl?: boolean
 }
 
 const NO_URL_FILTERS: UrlFilters = {}
@@ -41,7 +46,13 @@ const NO_URL_FILTERS: UrlFilters = {}
  */
 export function useListState(
   key: string,
-  { pageSize = 8, urlPrefix = '', resetKey = '', urlFilters = NO_URL_FILTERS }: Options = {},
+  {
+    pageSize = 8,
+    urlPrefix = '',
+    resetKey = '',
+    urlFilters = NO_URL_FILTERS,
+    searchInUrl = true,
+  }: Options = {},
 ) {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -54,7 +65,7 @@ export function useListState(
   const urlScopeKey = `list-url-scope:${location.pathname}`
   const [state, dispatch] = useReducer(listReducer, undefined, () =>
     urlBelongsToScope(readView(urlScopeKey), scope)
-      ? listStateFromParams(params, urlPrefix, remembered(), urlFilters)
+      ? listStateFromParams(params, urlPrefix, remembered(), urlFilters, searchInUrl)
       : remembered(),
   )
 
@@ -67,7 +78,7 @@ export function useListState(
   // Anahtar değişince URL'deki değerler önceki listeye aittir; yalnız bellek kullanılır.
   if (sync === 'restore') dispatch({ type: 'replace', state: remembered() })
   if (sync === 'read-url') {
-    const next = applyListParams(state, params, urlPrefix, urlFilters)
+    const next = applyListParams(state, params, urlPrefix, urlFilters, searchInUrl)
     if (next !== state) dispatch({ type: 'replace', state: next })
   }
   const [seenReset, setSeenReset] = useState(resetKey)
@@ -87,13 +98,13 @@ export function useListState(
   useEffect(() => {
     writeView(urlScopeKey, scope)
     writeParams(
-      (current) => listStateToParams(state, urlPrefix, current, urlFilters),
+      (current) => listStateToParams(state, urlPrefix, current, urlFilters, searchInUrl),
       (search) =>
         void Promise.resolve(
           navigate({ search }, { replace: true, preventScrollReset: true }),
         ).catch((error: unknown) => console.error('[liste] adres güncellenemedi', error)),
     )
-  }, [state, urlPrefix, urlFilters, navigate, urlScopeKey, scope])
+  }, [state, urlPrefix, urlFilters, searchInUrl, navigate, urlScopeKey, scope])
 
   // İndirgeyici kaydırmayı sıfırladığında (filtre, sayfa, sıralama) alan başa döner.
   useEffect(() => {

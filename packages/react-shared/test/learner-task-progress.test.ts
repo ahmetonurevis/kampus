@@ -11,8 +11,11 @@ import {
   assignmentListTruncated,
   LEARNER_ASSIGNMENT_MAX_PAGES,
   nextAssignmentPage,
+  nextSummaryChange,
   learnerAttemptsQuery,
   learnerSubmissionsQuery,
+  SUMMARY_REFRESH_DELAY_MS,
+  summaryRefreshDelay,
 } from '../src/use-learner-task-progress.ts'
 import { rubricVersionRequest } from '../src/use-rubrics.ts'
 import { TASK_ASSIGNMENTS_KEY } from '../src/use-task-assignments.ts'
@@ -94,5 +97,33 @@ describe('kursiyer atama sayfalama (W22a)', () => {
   test('tam yüklenen liste kesilmiş sayılmaz', () => {
     assert.equal(assignmentListTruncated(undefined), false)
     assert.equal(assignmentListTruncated([page(100, 230), page(100, 230), page(30, 230)]), false)
+  })
+})
+
+describe('kursiyer özetinin eskimesi (IST-051)', () => {
+  const learner = (id: string, ...until: (string | null)[]) =>
+    ({
+      id,
+      view: 'learner',
+      progress: until.map((actionableUntil) => ({ actionableUntil })),
+    }) as never
+  const now = Date.parse('2026-10-15T09:00:00.000Z')
+
+  test('en yakın gelecek eskime anı seçilir; geçmiş, boş ve personel satırı yok sayılır', () => {
+    const items = [
+      learner('a-1', '2026-10-15T08:00:00.000Z', null),
+      learner('a-2', '2026-10-15T09:10:00.000Z'),
+      learner('a-3', null, '2026-10-15T09:05:00.000Z'),
+      { id: 'a-4', view: 'staff' } as never,
+    ]
+    assert.equal(nextSummaryChange(items, now), Date.parse('2026-10-15T09:05:00.000Z'))
+    assert.equal(nextSummaryChange([learner('a-1', null)], now), null)
+    assert.equal(nextSummaryChange([], now), null)
+  })
+
+  test('tazeleme sınırdan kısa süre sonra; zamanlayıcı üst sınırını aşmaz', () => {
+    assert.equal(summaryRefreshDelay(now + 60_000, now), 60_000 + SUMMARY_REFRESH_DELAY_MS)
+    assert.equal(summaryRefreshDelay(now - 5, now), SUMMARY_REFRESH_DELAY_MS)
+    assert.equal(summaryRefreshDelay(now + 90 * 24 * 3_600_000, now), 2_147_483_647)
   })
 })

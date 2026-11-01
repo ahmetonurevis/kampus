@@ -248,10 +248,14 @@ export function summaryBlockedReason(
   }
 }
 
+/** Özet eskidi (süre doldu); liste tazelenene kadar gösterilen neden. */
+export const LAPSED_REASON = 'Süre doldu; görev durumu güncelleniyor.'
+
 /**
  * Liste satırının durumu: atama görünümünün kursiyer özetinden (`progress`; IST-051), satır başına
  * deneme/teslim okuması yapılmaz. Sunucu özeti okuma anındadır; ekran açıkken teslim süresi dolan
- * başlanmamış görev yerelde "Teslim edilmedi"ye döner (son söz yine sunucunundur). Puan yalnız
+ * başlanmamış görev yerelde "Teslim edilmedi"ye döner; süren denemesi biten ya da yeniden teslim
+ * süresi dolan görevde (`actionableUntil` geçti) birincil işlem kalkar (son söz yine sunucunundur). Puan yalnız
  * sunucu açtıysa gelir (DOM-BEC-045). Özet yoksa `null` (satır "Okunamadı" gösterir).
  */
 export function summaryProgress(
@@ -266,6 +270,12 @@ export function summaryProgress(
   if (!entry) return null
   const mode: StudentTaskMode = assignment.scoringMode === 'auto' ? 'auto' : 'teacher'
   const expired = entry.status === 'pending' && taskClosed(assignment, now)
+  // Süren deneme bitti ya da yeni deneme/sürüm penceresi kapandı: liste yeniden okunana kadar
+  // birincil işlem gösterilmez (`actionableUntil`; kanca o an listeyi tazeler).
+  const lapsed =
+    !expired &&
+    entry.actionableUntil !== null &&
+    now.getTime() > new Date(entry.actionableUntil).getTime()
   const progress: LearnerTaskProgress = expired
     ? { ...entry, status: 'not_submitted', canAct: false, blockedBy: 'locked' }
     : entry
@@ -280,13 +290,17 @@ export function summaryProgress(
     mode === 'teacher' && progress.resubmissionRequested
       ? { status: 'Yeniden teslim istendi', tone: 'amber' as const }
       : (mode === 'auto' ? AUTO_STATUS : WRITING_STATUS)[progress.status]
-  const blockedReason = progress.canAct ? null : summaryBlockedReason(mode, progress)
+  const canAct = !lapsed && (progress.canAct || progress.blockedBy === 'in_progress')
   return {
     ...shown,
     rights,
     score: progress.status === 'in_progress' ? '—' : scoreLabel(progress.score?.percent),
-    canAct: progress.canAct || progress.blockedBy === 'in_progress',
-    blockedReason,
+    canAct,
+    blockedReason: lapsed
+      ? LAPSED_REASON
+      : progress.canAct
+        ? null
+        : summaryBlockedReason(mode, progress),
   }
 }
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query'
 
 import type { ApiError } from '@kampus/api-client/errors.ts'
@@ -55,6 +55,34 @@ export function assignmentListTruncated(pages: readonly AssignmentPage[] | undef
   return nextAssignmentPage(pages) === undefined && loaded < (pages.at(-1)?.meta.total ?? 0)
 }
 
+/** `setTimeout` üst sınırı (~24,8 gün); daha uzak an için zamanlayıcı erken kurulur, yeniden hesaplanır. */
+const MAX_TIMER_MS = 2_147_483_647
+/** Sunucu kapanış anını dahil sayar (`isClosed`); tazeleme sınırdan kısa süre sonra yapılır. */
+export const SUMMARY_REFRESH_DELAY_MS = 1_000
+
+/**
+ * Listedeki kursiyer özetlerinden en yakın gelecek "eskime" anı (`actionableUntil`; IST-051):
+ * süren denemenin bitişi ya da yeni deneme/sürüm penceresinin kapanışı. Yoksa `null`. Bu andan
+ * sonra özet eskidir; liste yeniden okunur (son söz sunucunundur).
+ */
+export function nextSummaryChange(items: readonly TaskAssignment[], nowMs: number): number | null {
+  let next: number | null = null
+  for (const item of items) {
+    if (item.view !== 'learner') continue
+    for (const entry of item.progress) {
+      if (entry.actionableUntil === null) continue
+      const at = Date.parse(entry.actionableUntil)
+      if (Number.isFinite(at) && at > nowMs && (next === null || at < next)) next = at
+    }
+  }
+  return next
+}
+
+/** Eskime anına kadar beklenecek süre (tazeleme gecikmesi dahil, zamanlayıcı üst sınırıyla). */
+export function summaryRefreshDelay(changeAt: number, nowMs: number): number {
+  return Math.min(Math.max(0, changeAt - nowMs) + SUMMARY_REFRESH_DELAY_MS, MAX_TIMER_MS)
+}
+
 /**
  * Kursiyerin atamaları: sayfalar sırayla, kendiliğinden çekilir (tek sayfaya sığmayan yıl boyu
  * görevler kaybolmaz). Anahtar `TASK_ASSIGNMENTS_KEY` altındadır; atama yazmaları listeyi tazeler.
@@ -88,14 +116,27 @@ export function useLearnerAssignments() {
   }, [hasNextPage, isFetchingNextPage, isError, fetchNextPage])
 
   const pages = query.data?.pages
-  const seen = new Set<string>()
-  const items: TaskAssignment[] = []
-  for (const page of pages ?? [])
-    for (const item of page.data)
-      if (!seen.has(item.id)) {
-        seen.add(item.id)
-        items.push(item)
-      }
+  const items = useMemo(() => {
+    const seen = new Set<string>()
+    const unique: TaskAssignment[] = []
+    for (const page of pages ?? [])
+      for (const item of page.data)
+        if (!seen.has(item.id)) {
+          seen.add(item.id)
+          unique.push(item)
+        }
+    return unique
+  }, [pages])
+
+  // Ekran açıkken süren deneme biter ya da pencere kapanırsa özet eskir: o an liste yeniden okunur.
+  const { refetch } = query
+  useEffect(() => {
+    const now = Date.now()
+    const changeAt = nextSummaryChange(items, now)
+    if (changeAt === null) return undefined
+    const timer = setTimeout(() => void refetch(), summaryRefreshDelay(changeAt, now))
+    return () => clearTimeout(timer)
+  }, [items, refetch])
   return {
     items,
     /** İlk sayfa geldi; sonrakiler arka planda sürebilir. */

@@ -25,6 +25,7 @@ import {
   resubmissionPending,
   splitGapStem,
   studentTaskRow,
+  LAPSED_REASON,
   summaryProgress,
   writingProgress,
   type AttemptQuestion,
@@ -129,6 +130,44 @@ const detail = (
 })
 
 describe('IST-051 liste satırı kursiyer özetinden (DOM-BEC-045)', () => {
+  test('IST-051, DOM-BEC-043: süren denemenin bitişi geçince birincil işlem kalkar, neden "süre doldu"', () => {
+    const endsAt = '2026-10-15T09:10:00.000Z'
+    const assignment = auto({
+      progress: [
+        entry({
+          status: 'in_progress',
+          used: 1,
+          canAct: false,
+          blockedBy: 'in_progress',
+          actionableUntil: endsAt,
+        }),
+      ],
+    })
+    const before = summaryProgress(assignment, new Date('2026-10-15T09:09:59.000Z'))
+    assert.deepEqual([before?.canAct, before?.blockedReason], [true, null])
+    const after = summaryProgress(assignment, new Date('2026-10-15T09:10:01.000Z'))
+    assert.deepEqual([after?.status, after?.canAct], ['Sürüyor', false])
+    assert.equal(after?.blockedReason, LAPSED_REASON)
+  })
+
+  test('IST-051, DOM-BEC-040: yeniden teslim süresi geçince "Yeni sürüm yaz" birincil kalmaz', () => {
+    const dueAt = '2026-10-16T20:59:00.000Z'
+    const assignment = writing({
+      progress: [
+        entry({
+          status: 'submitted',
+          used: 1,
+          resubmissionRequested: true,
+          actionableUntil: dueAt,
+        }),
+      ],
+    })
+    const open = summaryProgress(assignment, NOW)
+    assert.deepEqual([open?.status, open?.canAct], ['Yeniden teslim istendi', true])
+    const lapsed = summaryProgress(assignment, new Date('2026-10-16T21:00:00.000Z'))
+    assert.deepEqual([lapsed?.canAct, lapsed?.blockedReason], [false, LAPSED_REASON])
+  })
+
   test('otomatik puanlı: durum, hak ve yalnız açılmış puan', () => {
     const start = summaryProgress(auto({ progress: [entry()] }), NOW)
     assert.deepEqual(

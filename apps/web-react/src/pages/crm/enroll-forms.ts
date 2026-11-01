@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import type { EnrollProspectBody } from '@kampus/react-shared/use-prospect-commands.ts'
 import { installmentAmounts } from '@kampus/school-core/lib/domain.ts'
+import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 /** Tutar sınırı tam lira ve taksit sayısı sınırı (API: 10.000–100.000.000 kuruş, 1–12 taksit). */
 export const ENROLL_LIMITS = { minLira: 100, maxLira: 1_000_000, maxInstallments: 12 } as const
@@ -14,19 +15,27 @@ export const LIRA_RANGE_MESSAGE = 'Tutar 100 ile 1.000.000 ₺ arasında olmalı
 
 export type LiraResult = { ok: true; lira: number } | { ok: false; message: string }
 
+export const AMOUNT_FORMAT_MESSAGE = 'Geçerli bir tutar girin (ör. 12500 ya da 12.500).'
+
 /**
- * Kullanıcının yazdığı tam lirayı sayıya çevirir. `12500`, `12.500` (binlik ayraç) ve `12 500 ₺`
- * kabul edilir; virgül ya da tek/yarım ondalık (`12.5`, `12,50`) kuruş sayılır ve reddedilir.
+ * Kullanıcının yazdığı tam lirayı sayıya çevirir. `12500`, `12.500` (binlik ayraç), `12 500 ₺` ve
+ * `,00` ile biten tam lira (`1500,00`, `12.500,00`) kabul edilir; sıfırdan farklı kuruş
+ * (`12.5`, `12,50`) reddedilir, bozuk ayraç düzeni (`1.0000`) biçim hatası alır.
  */
 export function parseLira(input: string): LiraResult {
-  const text = input.replace(/[\s₺]/g, '')
-  if (text === '') return { ok: false, message: 'Eğitim bedelini girin.' }
-  const digits = /^\d{1,3}(\.\d{3})+$/.test(text) ? text.replaceAll('.', '') : text
-  if (!/^\d+$/.test(digits))
+  const cleaned = input.replace(/[\s₺]/g, '')
+  if (cleaned === '') return { ok: false, message: 'Eğitim bedelini girin.' }
+  const text = cleaned.replace(/(\d),00$/, '$1')
+  const grouped = /^\d{1,3}(\.\d{3})+$/.test(text)
+  const digits = grouped ? text.replaceAll('.', '') : text
+  if (!/^\d+$/.test(digits)) {
+    if (/^(\d+|\d{1,3}(\.\d{3})+)[.,]\d{1,2}$/.test(text))
+      return { ok: false, message: FRACTION_MESSAGE }
     return {
       ok: false,
-      message: /[.,]/.test(digits) ? FRACTION_MESSAGE : 'Tutarı yalnız rakamlarla yazın.',
+      message: /[.,]/.test(text) ? AMOUNT_FORMAT_MESSAGE : 'Tutarı yalnız rakamlarla yazın.',
     }
+  }
   const lira = Number(digits)
   if (lira < ENROLL_LIMITS.minLira || lira > ENROLL_LIMITS.maxLira)
     return { ok: false, message: LIRA_RANGE_MESSAGE }
@@ -66,11 +75,13 @@ export const enrollFormSchema = z.object({
 })
 export type EnrollFormValues = z.input<typeof enrollFormSchema>
 
-export const enrollDefaults = (): EnrollFormValues => ({
+/** Vue varsayılanları: 8 taksit, ilk vade bugün (Europe/Istanbul günü). */
+export const DEFAULT_INSTALLMENTS = 8
+export const enrollDefaults = (now: Date | number = Date.now()): EnrollFormValues => ({
   classId: '',
   total: '',
-  count: '1',
-  startDate: '',
+  count: String(DEFAULT_INSTALLMENTS),
+  startDate: dayKey(now),
 })
 
 /** Doğrulanmış form → API gövdesi; tutar yeniden ayrıştırılır, kuruşlu giriş buraya ulaşmaz. */
@@ -116,12 +127,19 @@ type ClassLike = {
   capacity: number
   isActive: boolean
 }
-export type ClassOption = { id: string; label: string; full: boolean; branchId: string }
+export type ClassOption = {
+  id: string
+  label: string
+  full: boolean
+  disabled: boolean
+  branchId: string
+}
 
 /**
- * Seçilebilir sınıflar: etkin sınıflar; varsayılan olarak yalnız adayın kampüsü, `allCampuses`
- * ile tüm kampüsler (kampüs eşleşmesinin sunucu kuralı D16d'dedir). Dolu sınıf listede kalır
- * ("Dolu" etiketli): seçilirse sunucu 422 `class_capacity_full` döner ve alanda gösterilir.
+ * Seçilebilir sınıflar: etkin kampüsteki etkin sınıflar (core `enrollProspect` pasif kampüsün
+ * sınıfını bulamaz); varsayılan olarak yalnız adayın kampüsü, `allCampuses` ile tüm kampüsler.
+ * Dolu sınıf "(dolu)" etiketiyle görünür ama seçilemez (`disabled`); Vue formu da dolu sınıfı
+ * engelliyordu. Sunucu yine de kontenjanı denetler (422 `class_capacity_full`).
  */
 export function classOptions(
   classes: readonly ClassLike[],
@@ -129,10 +147,16 @@ export function classOptions(
   branchNames: ReadonlyMap<string, string>,
   prospectBranchId: string,
   allCampuses: boolean,
+  activeBranchIds: ReadonlySet<string>,
 ): ClassOption[] {
   const collator = new Intl.Collator('tr', { numeric: true })
   return classes
-    .filter((item) => item.isActive && (allCampuses || item.branchId === prospectBranchId))
+    .filter(
+      (item) =>
+        item.isActive &&
+        activeBranchIds.has(item.branchId) &&
+        (allCampuses || item.branchId === prospectBranchId),
+    )
     .sort(
       (a, b) =>
         collator.compare(branchNames.get(a.branchId) ?? '', branchNames.get(b.branchId) ?? '') ||
@@ -146,7 +170,8 @@ export function classOptions(
         id: item.id,
         branchId: item.branchId,
         full,
-        label: `${item.name} · ${branch} · ${count}/${item.capacity}${full ? ' · Dolu' : ''}`,
+        disabled: full,
+        label: `${item.name} · ${branch} · ${count}/${item.capacity}${full ? ' (dolu)' : ''}`,
       }
     })
 }

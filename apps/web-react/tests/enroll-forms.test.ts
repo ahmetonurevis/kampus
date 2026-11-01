@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  AMOUNT_FORMAT_MESSAGE,
   classOptions,
   enrollBody,
   enrollDefaults,
@@ -27,9 +28,22 @@ test('DOM-KAY-035: tam lira kuruşa çevrilir, binlik ayraç ve ₺ işareti kab
 test('DOM-KAY-035: kuruşlu ya da sayı olmayan tutar formda engellenir', () => {
   for (const input of ['12500,50', '12500.5', '12.50', '99,9'])
     assert.deepEqual(parseLira(input), { ok: false, message: FRACTION_MESSAGE }, input)
+  assert.deepEqual(parseLira('1500,50'), { ok: false, message: FRACTION_MESSAGE })
+  assert.deepEqual(parseLira('12.500,50'), { ok: false, message: FRACTION_MESSAGE })
   assert.equal(parseLira('on bin').ok, false)
   assert.equal(parseLira('-500').ok, false)
   assert.deepEqual(parseLira(''), { ok: false, message: 'Eğitim bedelini girin.' })
+})
+
+test('DOM-KAY-035: ,00 ile biten tam lira kabul edilir, bozuk ayraç biçim hatası alır', () => {
+  assert.deepEqual(parseLira('1500,00'), { ok: true, lira: 1500 })
+  assert.deepEqual(parseLira('12.500,00'), { ok: true, lira: 12500 })
+  assert.deepEqual(parseLira('12 500,00 ₺'), { ok: true, lira: 12500 })
+  for (const input of ['1.0000', '1,0000', '12.5000', '1,5,00', ',00', '12,000'])
+    assert.equal(parseLira(input).ok, false, input)
+  for (const input of ['1.0000', '1,0000', '12.5000'])
+    assert.deepEqual(parseLira(input), { ok: false, message: AMOUNT_FORMAT_MESSAGE }, input)
+  assert.deepEqual(parseLira('50,00'), { ok: false, message: LIRA_RANGE_MESSAGE })
 })
 
 test('DOM-KAY-035: tutar 100–1.000.000 ₺ dışında reddedilir, sınırlar kabul edilir', () => {
@@ -52,6 +66,14 @@ test('DOM-KAY-035: form şeması sınıf, taksit sayısı ve ilk vadeyi doğrula
   assert.deepEqual(fields({ startDate: '' }), ['startDate'])
   assert.deepEqual(fields({ startDate: '2026-02-30' }), ['startDate'])
   assert.deepEqual(Object.keys(enrollDefaults()).sort(), ['classId', 'count', 'startDate', 'total'])
+})
+
+test('DOM-KAY-035: varsayılanlar Vue gibi 8 taksit ve Europe/Istanbul bugünüdür', () => {
+  // 31 Ekim 21:30 UTC, İstanbul'da 1 Kasım 00:30'dur.
+  const defaults = enrollDefaults(new Date('2026-10-31T21:30:00.000Z'))
+  assert.equal(defaults.count, '8')
+  assert.equal(defaults.startDate, '2026-11-01')
+  assert.equal(enrollDefaults(new Date('2026-10-31T20:59:00.000Z')).startDate, '2026-10-31')
 })
 
 test('DOM-KAY-011: gövde kuruş tamsayı ve sayısal taksit taşır', () => {
@@ -84,26 +106,30 @@ const classes = [
 const branches = new Map([
   ['b1', 'Kadıköy'],
   ['b2', 'Beşiktaş'],
+  ['b3', 'Kapalı Şube'],
 ])
+const activeBranches = new Set(['b1', 'b2'])
 const occupancy = new Map([
   ['c-b', 2],
   ['c-a', 5],
 ])
 
 test('DOM-KAY-035: sınıf seçici varsayılan olarak adayın kampüsünü, etkin sınıfları gösterir', () => {
-  const options = classOptions(classes, occupancy, branches, 'b1', false)
+  const options = classOptions(classes, occupancy, branches, 'b1', false, activeBranches)
   assert.deepEqual(
     options.map((option) => option.id),
     ['c-b', 'c-a'],
   )
-  assert.equal(options[0]?.label, '8-A · Kadıköy · 2/2 · Dolu')
+  assert.equal(options[0]?.label, '8-A · Kadıköy · 2/2 (dolu)')
   assert.equal(options[0]?.full, true)
+  assert.equal(options[0]?.disabled, true)
+  assert.equal(options[1]?.disabled, false)
   assert.equal(options[1]?.label, '10-A · Kadıköy · 5/24')
   assert.equal(options[1]?.full, false)
 })
 
 test('DOM-KAY-035: "tüm kampüsler" diğer kampüsün sınıflarını da getirir, pasif sınıf hiç gelmez', () => {
-  const options = classOptions(classes, occupancy, branches, 'b1', true)
+  const options = classOptions(classes, occupancy, branches, 'b1', true, activeBranches)
   assert.deepEqual(
     options.map((option) => option.id),
     ['c-x', 'c-b', 'c-a'],
@@ -113,6 +139,21 @@ test('DOM-KAY-035: "tüm kampüsler" diğer kampüsün sınıflarını da getiri
     options.some((option) => option.id === 'c-off'),
     false,
   )
+})
+
+test('DOM-KAY-035: pasif kampüsün etkin sınıfı seçeneklerde çıkmaz', () => {
+  const withInactiveBranch = [
+    ...classes,
+    { id: 'c-z', name: '5-A', branchId: 'b3', capacity: 24, isActive: true },
+  ]
+  for (const all of [false, true]) {
+    const options = classOptions(withInactiveBranch, occupancy, branches, 'b3', all, activeBranches)
+    assert.equal(
+      options.some((option) => option.id === 'c-z'),
+      false,
+      `tüm kampüsler=${all}`,
+    )
+  }
 })
 
 test('DOM-KAY-011: taksit önizlemesi kuruş farkını ilk taksitlere verir, toplam korunur', () => {

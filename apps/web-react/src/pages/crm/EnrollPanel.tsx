@@ -4,11 +4,12 @@ import { useForm, useWatch } from 'react-hook-form'
 import { Link } from 'react-router'
 import type { z } from 'zod'
 import { useEnrollProspect } from '@kampus/react-shared/use-prospect-commands.ts'
-import { money } from '@kampus/school-core/lib/format.ts'
+import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import { prospectStageLabel } from '@kampus/school-core/lib/prospects.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -22,6 +23,7 @@ import {
   useCoreItem,
   type CoreRecord,
 } from '@/hooks/use-core-collection.ts'
+import { isPageEnabled, findPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
 import { FormActions, RootError } from '../management/FormParts.tsx'
 import { studentCountsByClass } from '../management/management-rows.ts'
@@ -91,16 +93,23 @@ function Success({
 }) {
   const { session } = useAuth()
   const role = session?.role ?? 'onburo'
+  const modules = session?.modules ?? {}
   // Yönetici ve ön büro için ortak bir öğrenci sayfası yoktur: yönetici öğrenci özetini
-  // (Risk Listesi çekmecesi), ön büro ödeme planını (Tahsilat Takibi) açar.
+  // (Risk Listesi çekmecesi), ön büro ödeme planını (Tahsilat Takibi) açar. Kimlik yoksa ya da
+  // hedef sayfanın modülü kapalıysa bağlantı hiç gösterilmez (kapalı modül route'u açmaz).
   // TODO(web-student-page): öğrenci profil sayfası React'e taşınınca doğrudan oraya bağlanır.
-  const link =
+  const target =
     role === 'yonetici'
+      ? { path: 'risk-listesi', label: 'Öğrenci özetini aç', query: `?ogrenci=` }
+      : { path: 'tahsilat-takip', label: 'Ödeme planını aç', query: '' }
+  const page = findPage(role, target.path)
+  const link =
+    student.studentId !== '' && page && isPageEnabled(page, modules)
       ? {
-          to: `/yonetici/risk-listesi?ogrenci=${encodeURIComponent(student.studentId)}`,
-          label: 'Öğrenci özetini aç',
+          to: `/${role}/${target.path}${target.query ? target.query + encodeURIComponent(student.studentId) : ''}`,
+          label: target.label,
         }
-      : { to: '/onburo/tahsilat-takip', label: 'Ödeme planını aç' }
+      : null
   return (
     <div role="status" className="grid justify-items-start gap-4">
       <span className="grid size-12 place-items-center rounded-full bg-success-soft text-success">
@@ -112,17 +121,45 @@ function Success({
         aşamasına geçti.
       </p>
       <div className="flex flex-wrap gap-2">
-        <Button asChild>
-          <Link to={link.to}>
-            <Icon name="ArrowRight" size={16} aria-hidden="true" />
-            {link.label}
-          </Link>
-        </Button>
+        {link ? (
+          <Button asChild>
+            <Link to={link.to}>
+              <Icon name="ArrowRight" size={16} aria-hidden="true" />
+              {link.label}
+            </Link>
+          </Button>
+        ) : null}
+        <ContractButton studentId={student.studentId} />
         <Button variant="outline" onClick={onClose}>
           Kapat
         </Button>
       </div>
     </div>
+  )
+}
+
+/**
+ * "Sözleşmeyi görüntüle": kesin kayıt yanıtı yalnız öğrenciyi döner (`entity`), sözleşme kimliğini
+ * taşımaz; sözleşme öğrenci kimliğiyle sorgulanıp en yeni kayıt açılır (W10 `PdfButton`, şablon
+ * aynıdır). Sorgu henüz dönmediyse ya da okunamadıysa düğme gösterilmez, kayıt etkilenmez.
+ * TODO(web-enroll-contract): API yanıtına `contractId` eklenince ek sorgu kalkar.
+ */
+function ContractButton({ studentId }: { studentId: string }) {
+  const contracts = useCoreAll(
+    'contracts',
+    { filters: { studentId }, sort: ['-date'] },
+    { enabled: studentId !== '' },
+  )
+  const contract = contracts.data?.[0]?.record
+  if (!contract) return null
+  return (
+    <PdfButton
+      type="contract"
+      recordId={contract.id}
+      label="Sözleşmeyi görüntüle"
+      variant="outline"
+      size="default"
+    />
   )
 }
 
@@ -161,6 +198,13 @@ function EnrollForm({
     () => (counts.data ? studentCountsByClass(counts.data) : new Map<string, number>()),
     [counts.data],
   )
+  const activeBranchIds = useMemo(
+    () =>
+      new Set(
+        (branches.data ?? []).filter((row) => row.record.isActive).map((row) => row.record.id),
+      ),
+    [branches.data],
+  )
   const options = useMemo(
     () =>
       classOptions(
@@ -169,11 +213,15 @@ function EnrollForm({
         branchNames,
         prospect.branchId,
         allCampuses,
+        activeBranchIds,
       ),
-    [classes.data, occupancy, branchNames, prospect.branchId, allCampuses],
+    [classes.data, occupancy, branchNames, prospect.branchId, allCampuses, activeBranchIds],
   )
 
-  const [total, count] = useWatch({ control: form.control, name: ['total', 'count'] })
+  const [total, count, startDate] = useWatch({
+    control: form.control,
+    name: ['total', 'count', 'startDate'],
+  })
   const preview = useMemo(() => {
     const lira = parseLira(total)
     const installments = Number(count)
@@ -206,6 +254,9 @@ function EnrollForm({
   if (counts.error) return <QueryError error={counts.error} onRetry={() => void counts.refetch()} />
   if (!classes.data || !branches.data || !counts.data) return <SummaryLoading />
 
+  const firstDue = /^\d{4}-\d{2}-\d{2}$/.test(startDate)
+    ? ` · ilk vade ${dateLabel(`${startDate}T09:00:00.000Z`, { year: 'numeric' })}`
+    : ''
   const stageLabel = prospectStageLabel(prospect.stage, type)
   const campus = branchNames.get(prospect.branchId) ?? '—'
 
@@ -250,7 +301,7 @@ function EnrollForm({
               {options.length === 0 ? 'Bu kampüste sınıf yok' : 'Sınıf seçin'}
             </NativeSelectOption>
             {options.map((option) => (
-              <NativeSelectOption key={option.id} value={option.id}>
+              <NativeSelectOption key={option.id} value={option.id} disabled={option.disabled}>
                 {option.label}
               </NativeSelectOption>
             ))}
@@ -319,8 +370,8 @@ function EnrollForm({
       {preview ? (
         <p className="text-sm text-muted-foreground" aria-live="polite">
           {preview.count === 1
-            ? `Tek ödeme: ${money(preview.total)}`
-            : `${preview.count} taksit · ilk taksit ${money(preview.first)}, son taksit ${money(preview.last)} · toplam ${money(preview.total)}`}
+            ? `Tek ödeme: ${money(preview.total)}${firstDue}`
+            : `${preview.count} taksit · ilk taksit ${money(preview.first)}, son taksit ${money(preview.last)} · toplam ${money(preview.total)}${firstDue}`}
         </p>
       ) : null}
       <RootError message={errors.root?.server?.message} />

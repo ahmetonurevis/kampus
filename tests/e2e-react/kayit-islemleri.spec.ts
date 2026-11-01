@@ -266,7 +266,7 @@ test.describe('kesin kayıt', () => {
     expect((await prospectOf(client, 'e2e-kyt-tutar')).record.studentId).toBeNull()
   })
 
-  test('sınıf seçici adayın kampüsünü gösterir, "tüm kampüsler" genişletir; dolu sınıf alan hatası verir (DOM-KAY-035)', async ({
+  test('sınıf seçici adayın kampüsünü gösterir, "tüm kampüsler" genişletir; dolu sınıf seçilemez, sunucu da reddeder (DOM-KAY-035)', async ({
     page,
     loginAs,
     api,
@@ -282,9 +282,12 @@ test.describe('kesin kayıt', () => {
     const dialog = enrollDialog(page)
     const classes = dialog.getByLabel('Sınıf', { exact: true })
     await expect(classes.locator('option').filter({ hasText: 'Beşiktaş Kampüsü' })).toHaveCount(0)
-    await expect(
-      classes.locator('option').filter({ hasText: 'Dolu Sınıf · Kadıköy Kampüsü · 1/1 · Dolu' }),
-    ).toHaveCount(1)
+    const full = classes.locator('option').filter({
+      hasText: 'Dolu Sınıf · Kadıköy Kampüsü · 1/1 (dolu)',
+    })
+    await expect(full).toHaveCount(1)
+    await expect(full).toBeDisabled()
+    await expect(classes.locator('option[value="c1"]')).toBeEnabled()
 
     await dialog.getByLabel('Tüm kampüslerin sınıflarını göster').check()
     await expect(
@@ -292,12 +295,16 @@ test.describe('kesin kayıt', () => {
     ).toBeAttached()
     await dialog.getByLabel('Tüm kampüslerin sınıflarını göster').uncheck()
 
-    await fillForm(dialog, { classId: 'e2e-dolu', total: '18000', count: '3' })
-    await dialog.getByRole('button', { name: 'Kesin kaydı tamamla' }).click()
-    await expect(dialog.getByText('Seçilen sınıfın kontenjanı dolu.')).toBeVisible()
-
+    // Arayüz dolu sınıfı seçtirmez; sunucu kontenjanı yine de denetler.
     const client = await api(school.user('onburo'))
     const saved = await prospectOf(client, 'e2e-kyt-dolu')
+    const direct = await client.post(
+      '/api/v1/prospects/e2e-kyt-dolu/enroll',
+      { classId: 'e2e-dolu', totalCents: 1_800_000, count: 3, startDate: istanbulDay(10) },
+      { 'idempotency-key': randomUUID(), 'if-match': `"${saved.version}"` },
+    )
+    expect(direct.status).toBe(422)
+    expect((direct.body as { code: string }).code).toBe('class_capacity_full')
     expect(saved.record.stage).toBe('Yeni aday')
     expect(saved.record.studentId).toBeNull()
   })
@@ -353,9 +360,16 @@ test.describe('kesin kayıt', () => {
     await expect(page.getByText(MODULES_MESSAGE)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Mert Mutlu için kesin kayıt' })).toBeDisabled()
 
+    // Aday detayındaki düğme listedeki gibi devre dışıdır ve nedeni erişilebilir biçimde yazılır.
     await page.goto('/onburo/aday/e2e-kyt-mod')
-    await expect(page.getByRole('button', { name: 'Kesin kayda dönüştür' })).toBeEnabled()
-    await page.getByRole('button', { name: 'Kesin kayda dönüştür' }).click()
+    const convert = page.getByRole('button', { name: 'Kesin kayda dönüştür' })
+    await expect(convert).toBeDisabled()
+    await expect(convert).toHaveAttribute('title', /finans modüllerinin açık olması gerekir/)
+    await expect(convert).toHaveAccessibleDescription(/finans modüllerinin açık olması gerekir/)
+    await expect(page.getByRole('alert').filter({ hasText: MODULES_MESSAGE })).toBeVisible()
+
+    // Panel adresle açılırsa form yine de kapalıdır.
+    await page.goto('/onburo/aday/e2e-kyt-mod?kayit=e2e-kyt-mod')
     const dialog = enrollDialog(page)
     await expect(dialog.getByText(MODULES_MESSAGE)).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Kesin kaydı tamamla' })).toBeDisabled()
@@ -367,6 +381,221 @@ test.describe('kesin kayıt', () => {
       { 'idempotency-key': randomUUID(), 'if-match': `"${current.version}"` },
     )
     expect(direct.status).toBe(403)
+  })
+  test('varsayılanlar 8 taksit ve bugündür; önizleme ilk vadeyi yazar; ,00 ile biten tutar kabul edilir (DOM-KAY-035)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect('e2e-kyt-varsayilan', 'Varol Vural')],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await page.getByRole('button', { name: 'Varol Vural için kesin kayıt' }).click()
+    const dialog = enrollDialog(page)
+    await expect(dialog.getByLabel('Taksit sayısı')).toHaveValue('8')
+    const start = dialog.getByLabel('İlk vade')
+    const today = await start.inputValue()
+    expect(Math.abs(Date.parse(today) - Date.parse(istanbulDay(0)))).toBeLessThanOrEqual(DAY)
+    await dialog.getByLabel('Sınıf', { exact: true }).selectOption('c1')
+    await dialog.getByLabel('Toplam eğitim bedeli (₺)').fill('12.000,00')
+    await start.fill('2027-03-15')
+    await expect(
+      dialog.getByText(
+        '8 taksit · ilk taksit 1.500,00 ₺, son taksit 1.500,00 ₺ · toplam 12.000,00 ₺ · ilk vade 15 Mar 2027',
+      ),
+    ).toBeVisible()
+    await dialog.getByLabel('Toplam eğitim bedeli (₺)').fill('1500,50')
+    await dialog.getByRole('button', { name: 'Kesin kaydı tamamla' }).click()
+    await expect(dialog.getByText(FRACTION_MESSAGE)).toBeVisible()
+    await dialog.getByLabel('Toplam eğitim bedeli (₺)').fill('1.0000')
+    await dialog.getByRole('button', { name: 'Kesin kaydı tamamla' }).click()
+    await expect(dialog.getByText('Geçerli bir tutar girin')).toBeVisible()
+    await dialog.getByLabel('Toplam eğitim bedeli (₺)').fill('12.000,00')
+    await dialog.getByRole('button', { name: 'Kesin kaydı tamamla' }).click()
+    await expect(dialog.getByText('Varol Vural öğrenci olarak kaydedildi')).toBeVisible()
+
+    const client = await api(school.user('onburo'))
+    const studentId = (await prospectOf(client, 'e2e-kyt-varsayilan')).record.studentId
+    const invoices = await list<{ amount: number }>(
+      client,
+      `invoices?pageSize=100&studentId=${studentId}`,
+    )
+    expect(invoices).toHaveLength(8)
+    expect(invoices.reduce((sum, item) => sum + item.record.amount, 0)).toBe(1_200_000)
+  })
+
+  test('başarı ekranı sözleşmeyi görüntüler ve öğrenci bağlantısını gösterir (DOM-KAY-001)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['yonetici', 'onburo'],
+      records: [prospect('e2e-kyt-soz', 'Sena Sever')],
+    })
+    await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/aday/e2e-kyt-soz?kayit=e2e-kyt-soz')
+    const dialog = enrollDialog(page)
+    await fillForm(dialog, { classId: 'c1', total: '9000', count: '3' })
+    await dialog.getByRole('button', { name: 'Kesin kaydı tamamla' }).click()
+    await expect(dialog.getByText('Sena Sever öğrenci olarak kaydedildi')).toBeVisible()
+    await expect(dialog.getByRole('link', { name: 'Öğrenci özetini aç' })).toHaveAttribute(
+      'href',
+      /\/yonetici\/risk-listesi\?ogrenci=.+/,
+    )
+    await dialog.getByRole('button', { name: 'Sözleşmeyi görüntüle' }).click()
+    await expect(page.getByRole('dialog', { name: 'Eğitim sözleşmesi · Önizleme' })).toBeVisible()
+  })
+
+  test('yönetici: risk listesi (academic) modülü kapalıysa başarı ekranı ölü bağlantı göstermez (DOM-YTK-040)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      records: [prospect('e2e-kyt-baglanti', 'Bahar Bulut')],
+    })
+    await closeModule(await api(school.user('yonetici')), 'academic')
+    await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/aday/e2e-kyt-baglanti?kayit=e2e-kyt-baglanti')
+    const dialog = enrollDialog(page)
+    await fillForm(dialog, { classId: 'c1', total: '9000', count: '3' })
+    await dialog.getByRole('button', { name: 'Kesin kaydı tamamla' }).click()
+    await expect(dialog.getByText('Bahar Bulut öğrenci olarak kaydedildi')).toBeVisible()
+    await expect(dialog.getByRole('link')).toHaveCount(0)
+    await expect(dialog.getByRole('button', { name: 'Sözleşmeyi görüntüle' })).toBeVisible()
+  })
+
+  test('arama metni URL’ye ve geçmişe yazılmaz; arama sayfa içinde korunur (KVKK, DOM-KAY-035)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect('e2e-kyt-ara-1', 'Aranan Ada'), prospect('e2e-kyt-ara-2', 'Başka Bora')],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await expect(bodyRows(page)).toHaveCount(2)
+    await page.getByRole('searchbox').fill('Aranan')
+    await expect(bodyRows(page)).toHaveCount(1)
+    await page.getByRole('searchbox').fill('0555040')
+    await expect(bodyRows(page)).toHaveCount(2)
+    await page.getByRole('searchbox').fill('Aranan')
+    await expect(bodyRows(page)).toHaveCount(1)
+    expect(decodeURIComponent(page.url())).not.toContain('Aranan')
+    expect(page.url()).not.toContain('0555040')
+    expect(new URL(page.url()).searchParams.has('ara')).toBe(false)
+
+    // Panel açılıp kapanınca arama listede kalır ve URL yine temizdir.
+    await page.getByRole('button', { name: 'Aranan Ada için kesin kayıt' }).click()
+    await expect(enrollDialog(page)).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(bodyRows(page)).toHaveCount(1)
+    await expect(page.getByRole('searchbox')).toHaveValue('Aranan')
+    expect(decodeURIComponent(page.url())).not.toContain('Aranan')
+  })
+
+  test('başka kurumun adayı adresle açılınca bulunamadı gösterilir, teknik ayrıntı sızmaz (DOM-KAY-035)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const other = await tenant({
+      roles: ['onburo'],
+      records: [prospect('e2e-kyt-yabanci', 'Yabancı Aday')],
+    })
+    const school = await tenant({ roles: ['onburo'] })
+    expect(other.user('onburo').email).not.toBe(school.user('onburo').email)
+    await loginAs(school.user('onburo'))
+    await page.goto(`${LIST_URL}?kayit=e2e-kyt-yabanci`)
+    const dialog = enrollDialog(page)
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByText('Yabancı Aday')).toHaveCount(0)
+    await expect(dialog.getByRole('button', { name: 'Kesin kaydı tamamla' })).toHaveCount(0)
+    await expect(dialog.getByText(/bulunamadı/i)).toBeVisible()
+    for (const leak of [/404/, /not_found/i, /SQL/i, /stack/i, /at \w+ \(/]) {
+      await expect(dialog.getByText(leak)).toHaveCount(0)
+    }
+  })
+
+  test('sürüm çakışması (409) sonrası form değerleri korunur ve yeniden deneme kaydı tamamlar (DOM-KAY-035)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect('e2e-kyt-surum', 'Süreyya Sezer')],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await page.getByRole('button', { name: 'Süreyya Sezer için kesin kayıt' }).click()
+    const dialog = enrollDialog(page)
+    await fillForm(dialog, { classId: 'c1', total: '7.500', count: '5', startDate: '2027-02-10' })
+
+    // Panel açıkken başka bir oturum adayın aşamasını değiştirir; kart sürümü eskir.
+    const client = await api(school.user('onburo'))
+    const current = await prospectOf(client, 'e2e-kyt-surum')
+    const changed = await client.context.patch('/api/v1/prospects/e2e-kyt-surum', {
+      data: { stage: 'İletişime geçildi' },
+      headers: { 'if-match': `"${current.version}"`, 'idempotency-key': randomUUID() },
+    })
+    expect(changed.status()).toBe(200)
+
+    await dialog.getByRole('button', { name: 'Kesin kaydı tamamla' }).click()
+    await expect(
+      toast(page, 'Aday kartı başka biri tarafından güncellendi. Güncel hâlini yükleyip'),
+    ).toBeVisible()
+    await expect(dialog.getByLabel('Sınıf', { exact: true })).toHaveValue('c1')
+    await expect(dialog.getByLabel('Toplam eğitim bedeli (₺)')).toHaveValue('7.500')
+    await expect(dialog.getByLabel('Taksit sayısı')).toHaveValue('5')
+    await expect(dialog.getByLabel('İlk vade')).toHaveValue('2027-02-10')
+    await expect(dialog.getByText('Aşama: İletişime geçildi')).toBeVisible()
+
+    await dialog.getByRole('button', { name: 'Kesin kaydı tamamla' }).click()
+    await expect(dialog.getByText('Süreyya Sezer öğrenci olarak kaydedildi')).toBeVisible()
+    expect((await prospectOf(client, 'e2e-kyt-surum')).record.stage).toBe('Kayıt oldu')
+  })
+
+  test('sunucudan gelen amount_not_whole_lira hatası tutar alanına bağlanır (DOM-KAY-035)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect('e2e-kyt-sunucu', 'Selim Sönmez')],
+    })
+    await loginAs(school.user('onburo'))
+    await page.route('**/api/v1/prospects/e2e-kyt-sunucu/enroll', (route) =>
+      route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'amount_not_whole_lira',
+          message: 'Tutar tam lira olmalıdır.',
+          issues: [{ path: 'totalCents', message: 'Tutar tam lira olmalıdır.' }],
+        }),
+      }),
+    )
+    await page.goto(LIST_URL)
+    await page.getByRole('button', { name: 'Selim Sönmez için kesin kayıt' }).click()
+    const dialog = enrollDialog(page)
+    await fillForm(dialog, { classId: 'c1', total: '9000', count: '3' })
+    await dialog.getByRole('button', { name: 'Kesin kaydı tamamla' }).click()
+    const total = dialog.getByLabel('Toplam eğitim bedeli (₺)')
+    await expect(total).toHaveAttribute('aria-invalid', 'true')
+    await expect(dialog.getByText('Tutar tam lira olmalıdır.')).toBeVisible()
+    await expect(dialog.getByText('Selim Sönmez öğrenci olarak kaydedildi')).toHaveCount(0)
   })
 })
 

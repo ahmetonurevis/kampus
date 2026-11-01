@@ -7,6 +7,10 @@ Onur'un kayıt ve finans dalı (`feature/ogrenci-kaydi-finans`) birleştirildi; 
 - **Kırıcı (birleştirme):** 2.23.0'daki `lib/domain.ts` `enrollmentSchema`, `enrollmentFromRegistration`, `isValidNationalId`, `nationalIdSchema`, `birthDateSchema`, `GUARDIAN_RELATIONS`, `ENROLLMENT_PAYERS`, `ENROLLMENT_TOTAL_CENTS` kalktı. API kesin kaydı `lib/enrollment.ts` `enrollProspectWithTariff`'tir (tutar tarifeden); çevrimdışı demo `enrollProspect` yeniden `registrationSchema` (tam lira) alır, Vue `Crm.vue` ve mobil `model/operations.ts` onu doğrudan çağırır. Kimlik no doğrulayıcısı tektir: `lib/enrollment.ts` `isValidTurkishId`.
 - **Kırıcı (birleştirme, KVKK):** `State.students` `nationalId`, `birthDate`, `guardianRelation` alanlarını kaybetti; kimlik ve doğum tarihi `records.data`'ya yazılmaz, API'de `student_identities` tablosundadır (maskeli okuma `GET /students/:id/identity`). `lib/scope.ts` `maskNationalId` ve kimlik alanlarının arama dışı tutulması savunma olarak kalır.
 
+Birleştirmeden sonra bizim kesin kayıt kuralları Onur'un `enrollProspectWithTariff` / `applyEnrollment` koduna taşındı:
+
+- **Kırıcı:** veli yakınlığı `GUARDIAN_RELATIONSHIPS` `'guardian'` yerine `'legal_guardian'` (etiket "Vasi"); ödeyici değeri `'guardian'` ve gövdedeki `guardian` nesnesiyle karışmasın (DOM-KAY-012). Eski değer 400 alır.
+
 Onur'un dalındaki girdiler: kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-001, DOM-FIN-012, DOM-FIN-030…033).
 
 - `lib/fee-tariffs.ts`: `isOutsideAnnouncementPeriod`.

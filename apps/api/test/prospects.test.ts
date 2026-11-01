@@ -1382,7 +1382,7 @@ describe('aday uçları', () => {
     })
   })
 
-  test('DOM-KAY-012: başlıklar ve gövde doğrulanır; geçersiz kimlik, serbest tutar ve bilinmeyen alan 400', async () => {
+  test('DOM-KAY-012: başlıklar ve gövde doğrulanır; geçersiz kimlik, serbest tutar, eski yakınlık değeri ve bilinmeyen alan 400', async () => {
     const a = await pricedInstitution()
     const cookie = await frontDesk(a.id)
     const version = await versionOf(a.id, 'pr1')
@@ -1401,6 +1401,8 @@ describe('aday uçları', () => {
         { ...ENROLLMENT, firstDueDate: '2026-02-30' },
         { ...ENROLLMENT, identity: { ...ENROLLMENT.identity, number: '10000000147' } },
         { ...ENROLLMENT, guardian: { name: 'X', phone: '1', relationship: 'mother' } },
+        // Yasal vasi `legal_guardian`'dır; ödeyici adı `guardian` yakınlık değildir.
+        { ...ENROLLMENT, guardian: { ...ENROLLMENT.guardian, relationship: 'guardian' } },
         { ...ENROLLMENT, discounts: ['serbest'] },
       ])
         assertError(await enroll(cookie, 'pr1', body, version), 400, 'validation_failed')

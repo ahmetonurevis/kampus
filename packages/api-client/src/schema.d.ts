@@ -20265,7 +20265,7 @@ export interface operations {
                         name: string;
                         phone: string;
                         /** @enum {string} */
-                        relationship: "mother" | "father" | "guardian" | "other";
+                        relationship: "mother" | "father" | "legal_guardian" | "other";
                     }) | null;
                 };
             };

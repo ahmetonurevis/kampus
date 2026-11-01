@@ -9,6 +9,8 @@ import {
   enrollProspectSchema,
   enrollProspectWithTariff,
   findParentMatches,
+  GUARDIAN_RELATIONSHIP_LABELS,
+  GUARDIAN_RELATIONSHIPS,
   isValidTurkishId,
   previewEnrollment,
   priceEnrollment,
@@ -250,6 +252,25 @@ test('DOM-KAY-012: veli adı, telefonu ve yakınlığı kaydedilir', () => {
   assert.equal(parent?.name, 'Test Veli')
   assert.equal(parent?.phone, '05559990001')
   assert.equal(parent?.relationship, 'mother')
+})
+
+test('DOM-KAY-012: yasal vasi yakınlığı legal_guardian değeridir; ödeyici adı guardian yakınlık olarak reddedilir', () => {
+  const guardian = { ...INPUT.guardian, relationship: 'legal_guardian' }
+  const { state, result } = enroll({ guardian })
+  assert.equal(
+    state.parents.find((p) => p.id === result.student.parentId)?.relationship,
+    'legal_guardian',
+  )
+  assert.equal(result.contract.payer, 'guardian')
+  assert.equal(
+    enrollProspectSchema.safeParse({
+      ...INPUT,
+      guardian: { ...guardian, relationship: 'guardian' },
+    }).success,
+    false,
+  )
+  assert.equal(GUARDIAN_RELATIONSHIP_LABELS.legal_guardian, 'Vasi')
+  assert.deepEqual(Object.keys(GUARDIAN_RELATIONSHIP_LABELS), [...GUARDIAN_RELATIONSHIPS])
 })
 
 test('DOM-KAY-013, DOM-FIN-022: mevcut veliye bağlanır, yeni veli açılmaz; kardeş indirimi aktif kardeş ister', () => {

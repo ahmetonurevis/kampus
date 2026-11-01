@@ -25,7 +25,11 @@ export const DISCOUNT_CAP_BASIS_POINTS = 5_000
 const BASIS = 10_000
 const ADULT_AGE = 18
 
-export const GUARDIAN_RELATIONSHIPS = ['mother', 'father', 'guardian', 'other'] as const
+/**
+ * Velinin öğrenciye yakınlığı (DOM-KAY-012). Yasal vasi `legal_guardian`'dır; ödeyici değeri
+ * `'guardian'` (sözleşme `payer`) ve gövdedeki `guardian` nesnesiyle karışmasın diye ayrı addır.
+ */
+export const GUARDIAN_RELATIONSHIPS = ['mother', 'father', 'legal_guardian', 'other'] as const
 export type GuardianRelationship = (typeof GUARDIAN_RELATIONSHIPS)[number]
 
 const phoneSchema = z.string().regex(/^0\d{10}$/, 'Telefonu 05XXXXXXXXX biçiminde girin.')
@@ -367,7 +371,7 @@ export function enrollProspectWithTariff(
 export const GUARDIAN_RELATIONSHIP_LABELS: Readonly<Record<GuardianRelationship, string>> = {
   mother: 'Anne',
   father: 'Baba',
-  guardian: 'Vasi',
+  legal_guardian: 'Vasi',
   other: 'Diğer',
 }
 

@@ -102,7 +102,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** e-Okul/e-Özel kaydı ve sözleşmenin geçerliliği için yasal temsilci gerekir; reşit olmayanın sözleşmesini yasal temsilcisi yapar.
 - **Kaynak:** 4721 sayılı Türk Medeni Kanunu (ergin olmayanın temsili) — **doğrulanmalı**; ÖÖKY md. 53/1 (Bakanlıkça belirlenen tip sözleşme).
 - **Kurum türü:** ikisi
-- **Kodda:** var (API) — `lib/enrollment.ts`, `POST /api/v1/prospects/:prospectId/enroll`; kimlik `student_identities` tablosunda, `GET /api/v1/students/:studentId/identity` maskeli döner. Çevrimdışı demo `enrollProspect` eski davranıştadır.
+- **Kodda:** var (API) — `lib/enrollment.ts`, `POST /api/v1/prospects/:prospectId/enroll`; kimlik `student_identities` tablosunda, `GET /api/v1/students/:studentId/identity` maskeli döner. Yakınlık `GUARDIAN_RELATIONSHIPS`'tir (`mother`, `father`, `legal_guardian` (vasi), `other`); ödeyici değeri (`payer: 'guardian' | 'student'`) ayrı alandır. Çevrimdışı demo `enrollProspect` eski davranıştadır.
 
 ### DOM-KAY-013 · Mevcut veliye bağlama (kardeş)
 

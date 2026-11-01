@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import {
   emptyTariffForm,
@@ -11,6 +11,7 @@ import {
   FEE_UNIT_LABELS,
   FEE_UNITS,
   feeTariffFormSchema,
+  isOutsideAnnouncementPeriod,
   tariffFormToBody,
   tariffToForm,
   type FeeDiscount,
@@ -29,6 +30,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { useAuth } from '@/auth/use-auth.ts'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
@@ -577,6 +579,9 @@ function PublishModal({ tariff, onClose }: { tariff: TariffRecord; onClose: () =
   })
   const busy = publish.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
+  const { session } = useAuth()
+  const institutionType = session?.institution.type ?? 'school'
+  const announcedDate = useWatch({ control: form.control, name: 'announcedDate' })
 
   const onSubmit = form.handleSubmit(async ({ announcedDate, mebbisRecordedDate }) => {
     const outcome = await publish.submit(
@@ -621,6 +626,12 @@ function PublishModal({ tariff, onClose }: { tariff: TariffRecord; onClose: () =
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-4"
       >
+        {announcedDate && isOutsideAnnouncementPeriod(announcedDate, institutionType) ? (
+          <p role="status" className="rounded-card border bg-surface-soft px-4 py-3 text-sm">
+            İlan tarihi ocak–mayıs dönemi dışında. Okullarda ücret bu dönemde ilan edilir (5580 md.
+            13/1); yayımlamadan önce gerekçenizi kontrol edin.
+          </p>
+        ) : null}
         <FormField id="yayim-ilan" label="İlan tarihi" error={errors.announcedDate}>
           {(control) => (
             <Input

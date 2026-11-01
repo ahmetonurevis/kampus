@@ -3963,6 +3963,36 @@
           "available"
         ]
       },
+      "RevealedParentContactInput": {
+        "type": "object",
+        "properties": {
+          "parentId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "description": "Velisi açılan öğrenci (kapsamla denetlendi)"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "email"
+            ],
+            "description": "Açılan alan"
+          },
+          "value": {
+            "type": "string",
+            "description": "Alanın maskesiz değeri"
+          }
+        },
+        "required": [
+          "parentId",
+          "studentId",
+          "field",
+          "value"
+        ]
+      },
       "RubricInput": {
         "type": "object",
         "properties": {
@@ -11392,6 +11422,37 @@
           "duration",
           "subjectNames",
           "available"
+        ],
+        "additionalProperties": false
+      },
+      "RevealedParentContact": {
+        "type": "object",
+        "properties": {
+          "parentId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "description": "Velisi açılan öğrenci (kapsamla denetlendi)"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "email"
+            ],
+            "description": "Açılan alan"
+          },
+          "value": {
+            "type": "string",
+            "description": "Alanın maskesiz değeri"
+          }
+        },
+        "required": [
+          "parentId",
+          "studentId",
+          "field",
+          "value"
         ],
         "additionalProperties": false
       },
@@ -30569,6 +30630,149 @@
             }
           },
           "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/parents/{parentId}/reveal-contact": {
+      "post": {
+        "operationId": "revealParentContact",
+        "summary": "Veli iletişim bilgisini göster",
+        "tags": [
+          "communication"
+        ],
+        "description": "Öğretmenin, ders verdiği öğrencinin velisinin telefonunu veya e-postasını tam değeriyle açması (core `revealParentContact`, DOM-YTK-055, DOM-YTK-052). Listede (`GET /collections/parents`) öğretmen bu alanları maskeli görür (`0532 *** ** 12`, `a***@gmail.com`). Gövde `{ studentId, field }`, `field` `phone` veya `email`; bilinmeyen alan 400. Yalnız öğrencinin sınıfında dersi ya da sınıf rehberliği olan öğretmen, yalnız o öğrenciye bağlı veli için: kapsam dışı öğrenci, öğrenciye bağlı olmayan, olmayan veya başka kurumun velisi 404. Alan boşsa 422 `parent_contact_missing`. Her başarılı açılış `audit_log`'a `parent_contact.reveal` olarak yazılır (`entityType` `parents`, `entityId` veli, `changes.fields` alan adı, `changes.studentId` öğrenci); değer denetim kaydına ve loga yazılmaz. Yanıt `Cache-Control: no-store` taşır; istemci değeri yalnız bellekte tutar. Açılış kullanıcı ve kurum başına dakikada 10 ile sınırlıdır (geçersiz ve kapsam dışı denemeler dahil), aşılırsa 429 `rate_limited` ve `Retry-After`. `Idempotency-Key` kullanılmaz: işlem kayıt oluşturmaz, tekrar yalnız yeni bir denetim kaydıdır ve her açılışın kaydı istenir. Modül `communication`; kapalıysa 403 `module_disabled`. Roller: `ogretmen` (yönetici ve ön büro tam değeri listede görür; öğrenci ve veli hiç görmez).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "field": {
+                    "type": "string",
+                    "enum": [
+                      "phone",
+                      "email"
+                    ]
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "field"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "parentId",
+            "required": true,
+            "description": "Veli kaydının kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RevealedParentContact"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
             "description": "Default Response",
             "content": {
               "application/json": {

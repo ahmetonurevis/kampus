@@ -1,8 +1,11 @@
 import { useMemo } from 'react'
+import { useSearchParams } from 'react-router'
+import { useAuth } from '@/auth/use-auth.ts'
 import { dateLabel, dayKey, INVOICE_STATUS_LABELS, money } from '@kampus/school-core/lib/format.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { LineTabs } from '@/components/LineTabs.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -31,6 +34,7 @@ import {
 } from './finance-rows.ts'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 import { PaymentPanel } from './PaymentPanel.tsx'
+import { PaymentsSection } from './PaymentsSection.tsx'
 import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
 
 const INVOICE_URL_FILTERS = { status: 'durum' }
@@ -38,6 +42,12 @@ const SORTABLE = sortableColumns(INVOICE_LIST)
 const MOBILE_COLUMNS = ['installment', 'dueDate', 'amount', 'status']
 const CSV_NAME = 'finans-raporu'
 const ALL = 'all'
+const VIEW_PARAM = 'gorunum'
+const PAYMENTS_VIEW = 'tahsilatlar'
+const VIEW_OPTIONS = [
+  { value: 'invoices' as const, label: 'Taksitler' },
+  { value: 'payments' as const, label: 'Tahsilat geçmişi' },
+]
 const TOTALS_QUERY = { groupBy: 'status', sum: 'amount' } as const
 
 /**
@@ -49,6 +59,9 @@ const TOTALS_QUERY = { groupBy: 'status', sum: 'amount' } as const
  */
 export function FinancePage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
+  const { session } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const tab = params.get(VIEW_PARAM) === PAYMENTS_VIEW ? 'payments' : 'invoices'
   const list = useListState('taksitler', { urlFilters: INVOICE_URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
   const query = useMemo(() => invoiceListQuery(list.state, search), [list.state, search])
@@ -195,52 +208,64 @@ export function FinancePage({ page }: { page: NavPage }) {
           ]}
         />
       ) : null}
-      <section
-        aria-labelledby="taksit-tablosu"
-        className="panel overflow-hidden rounded-card border bg-surface"
-      >
-        <header className="panel-heading px-6 pt-6 pb-2">
-          <h2 id="taksit-tablosu" className="text-lg font-semibold">
-            Taksit ve tahsilat listesi
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {view.total} kayıt · Kurum genelinde ödeme hareketleri
-          </p>
-        </header>
-        <ServerDataTable
-          list={list}
-          rows={view.rows}
-          total={view.total}
-          sortable={SORTABLE}
-          columns={columns}
-          mobileColumns={MOBILE_COLUMNS}
-          caption="Taksit ve tahsilat listesi"
-          loading={loading}
-          fetching={active.isFetching && !active.isPending}
-          error={
-            error ? <QueryError error={error} onRetry={() => void active.refetch()} /> : undefined
-          }
-          onRowClick={(row) => openInvoice(row.id)}
-          externalActive={statusKey !== ''}
-          externalLabel={statusKey ? `Ödeme durumu: ${INVOICE_STATUS_LABELS[statusKey]}` : ''}
-          onReset={() => setStatus(ALL)}
-          toolbar={
-            <NativeSelect
-              aria-label="Ödeme durumu"
-              value={statusKey || ALL}
-              onChange={(event) => setStatus(event.target.value)}
-              className="min-h-9 text-sm"
-            >
-              <NativeSelectOption value={ALL}>Tüm durumlar</NativeSelectOption>
-              {INVOICE_STATUS_OPTIONS.map(({ key, label }) => (
-                <NativeSelectOption key={key} value={key}>
-                  {label}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          }
-        />
-      </section>
+      <LineTabs
+        label="Finans görünümü"
+        value={tab}
+        options={VIEW_OPTIONS}
+        onChange={(next) =>
+          setParams(next === 'payments' ? { [VIEW_PARAM]: PAYMENTS_VIEW } : new URLSearchParams())
+        }
+      />
+      {tab === 'payments' ? (
+        <PaymentsSection canReverse={session?.role === 'yonetici'} />
+      ) : (
+        <section
+          aria-labelledby="taksit-tablosu"
+          className="panel overflow-hidden rounded-card border bg-surface"
+        >
+          <header className="panel-heading px-6 pt-6 pb-2">
+            <h2 id="taksit-tablosu" className="text-lg font-semibold">
+              Taksit ve tahsilat listesi
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {view.total} kayıt · Kurum genelinde ödeme hareketleri
+            </p>
+          </header>
+          <ServerDataTable
+            list={list}
+            rows={view.rows}
+            total={view.total}
+            sortable={SORTABLE}
+            columns={columns}
+            mobileColumns={MOBILE_COLUMNS}
+            caption="Taksit ve tahsilat listesi"
+            loading={loading}
+            fetching={active.isFetching && !active.isPending}
+            error={
+              error ? <QueryError error={error} onRetry={() => void active.refetch()} /> : undefined
+            }
+            onRowClick={(row) => openInvoice(row.id)}
+            externalActive={statusKey !== ''}
+            externalLabel={statusKey ? `Ödeme durumu: ${INVOICE_STATUS_LABELS[statusKey]}` : ''}
+            onReset={() => setStatus(ALL)}
+            toolbar={
+              <NativeSelect
+                aria-label="Ödeme durumu"
+                value={statusKey || ALL}
+                onChange={(event) => setStatus(event.target.value)}
+                className="min-h-9 text-sm"
+              >
+                <NativeSelectOption value={ALL}>Tüm durumlar</NativeSelectOption>
+                {INVOICE_STATUS_OPTIONS.map(({ key, label }) => (
+                  <NativeSelectOption key={key} value={key}>
+                    {label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            }
+          />
+        </section>
+      )}
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}
         onClose={panel.close}

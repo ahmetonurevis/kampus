@@ -13,11 +13,13 @@ export const paymentParamsSchema = z.object({
 export const paymentListQuerySchema = z.strictObject({
   ...pageQuerySchema.shape,
   studentId: z.string().min(1).max(200).optional().describe('Yalnız bu öğrencinin tahsilatları'),
+  q: z.string().trim().min(2).max(100).optional().describe('Öğrenci adı veya işlem referansı'),
 })
 
 const paymentSchema = z.object({
   id: z.string(),
   studentId: z.string(),
+  studentName: z.string().nullable(),
   amountCents: z.number().int().describe('Tahsilat tutarı (kuruş)'),
   creditCents: z
     .number()

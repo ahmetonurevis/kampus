@@ -279,6 +279,48 @@ test.describe('Finans: tahsilat', () => {
     expect((await invoice(client, 'inv-s16-5')).method).toBe('Nakit')
   })
 
+  test('DOM-FIN-033: yönetici tahsilatı gerekçeyle iptal eder, taksit açılır, satır kalır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s17'] })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s17-5', 'Kredi kartı')
+
+    await page.goto(`${ADMIN_URL}?gorunum=tahsilatlar`)
+    const table = page.getByRole('table', { name: 'Tahsilat geçmişi' })
+    await expect(table).toContainText('Geçerli')
+    await page.getByRole('button', { name: /numaralı tahsilatı iptal et/ }).click()
+    const dialog = page.getByRole('dialog', { name: 'Tahsilatı iptal et' })
+    await dialog.getByRole('button', { name: 'Tahsilatı iptal et' }).click()
+    await expect(dialog.getByText(/gerekçesi en az 5/)).toBeVisible()
+    await dialog.getByLabel('İptal gerekçesi').fill('Yanlış öğrenciye girildi')
+    await dialog.getByRole('button', { name: 'Tahsilatı iptal et' }).click()
+    await expect(page.getByText('Tahsilat iptal edildi.')).toBeVisible()
+    await expect(dialog).toBeHidden()
+    await expect(table).toContainText('İptal edildi')
+    await expect(page.getByRole('button', { name: /numaralı tahsilatı iptal et/ })).toHaveCount(0)
+    expect((await invoice(client, 'inv-s17-5')).paidAt).toBeNull()
+  })
+
+  test('DOM-FIN-052: ön büro tahsilat geçmişini görür, iptal düğmesi yoktur', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s18'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s18-5', 'Kredi kartı')
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/tahsilat-takip?gorunum=tahsilatlar')
+    await expect(page.getByRole('table', { name: 'Tahsilat geçmişi' })).toContainText('Geçerli')
+    await expect(page.getByRole('button', { name: /numaralı tahsilatı iptal et/ })).toHaveCount(0)
+  })
+
   test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api, tenant }) => {
     const school = await tenant({ roles: ['onburo'], students: ['s12'] })
     await loginAs(school.user('onburo'))

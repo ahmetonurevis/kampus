@@ -17,6 +17,8 @@ export type PaymentMethodValue = RecordPaymentBody['method']
 
 /** Mükerrer ödeme (core `invoice_already_paid`, 409): liste aynı anda tazelenir. */
 export const ALREADY_PAID_MESSAGE = 'Bu taksit zaten ödenmiş. Liste güncellendi.'
+export const PAYMENT_CHANGED_MESSAGE =
+  'Tahsilat başka biri tarafından değiştirildi. Liste güncellendi.'
 export const PAYMENT_SETTINGS_CHANGED_MESSAGE =
   'Ayar başka biri tarafından değiştirildi. Güncel durum yüklendi.'
 
@@ -35,6 +37,14 @@ export function useStudentPayments(studentId: string) {
         params: { query: { studentId, page: 1, pageSize: STUDENT_PAYMENTS_PAGE_SIZE } },
         signal,
       }),
+  })
+}
+
+/** Tahsilat listesi: en yeni ödeme önce, sunucu sayfalı; `q` öğrenci adı ve referansta arar. */
+export function usePaymentList(query: { page: number; pageSize: number; q?: string }) {
+  return useApiQuery({
+    key: [...PAYMENTS_KEY, 'list', query],
+    request: (client, signal) => client.GET('/api/v1/payments', { params: { query }, signal }),
   })
 }
 
@@ -62,6 +72,24 @@ export function useRecordPayment(options: { onSuccess?: () => void | Promise<voi
     messages: { invoice_already_paid: ALREADY_PAID_MESSAGE },
     exclusive: true,
     ...(options.onSuccess ? { onSuccess: options.onSuccess } : {}),
+  })
+}
+
+/** Tahsilatı gerekçeyle iptal eder (yalnız yönetici); `If-Match` okunan tahsilat sürümüdür. */
+export function useReversePayment() {
+  return useApiCommand({
+    request: (client, input: { paymentId: string; version: number; reason: string }, headers) =>
+      client.POST('/api/v1/payments/{paymentId}/reverse', {
+        params: {
+          path: { paymentId: input.paymentId },
+          header: { ...headers, 'if-match': requireIfMatch(headers) },
+        },
+        body: { reason: input.reason },
+      }),
+    invalidates: [collectionKeyPrefix('invoices'), PAYMENTS_KEY],
+    version: (input) => input.version,
+    messages: { version_conflict: PAYMENT_CHANGED_MESSAGE },
+    exclusive: true,
   })
 }
 

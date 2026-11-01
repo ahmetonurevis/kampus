@@ -47,6 +47,7 @@ const STAFF_ROLES: ReadonlySet<string> = new Set(['yonetici', 'onburo'])
 export interface PaymentView {
   id: string
   studentId: string
+  studentName: string | null
   amountCents: number
   /** Taksitlere dağıtılmayan, iade alacağı olan kısım (DOM-FIN-030); saklanmaz. */
   creditCents: number
@@ -67,6 +68,7 @@ function paymentView(payment: StoredPayment, staff: boolean): PaymentView {
   return {
     id: payment.id,
     studentId: payment.studentId,
+    studentName: payment.studentName,
     amountCents: payment.amountCents,
     creditCents: payment.amountCents - allocated,
     method: payment.method,
@@ -233,7 +235,7 @@ async function visibleStudents(ctx: ServiceContext): Promise<readonly string[] |
 
 export async function listPaymentsFor(
   ctx: ServiceContext,
-  query: { studentId?: string | undefined; page: number; pageSize: number },
+  query: { studentId?: string | undefined; q?: string | undefined; page: number; pageSize: number },
 ): Promise<{ items: PaymentView[]; total: number }> {
   const studentIds = await visibleStudents(ctx)
   if (studentIds !== null && studentIds.length === 0) return { items: [], total: 0 }

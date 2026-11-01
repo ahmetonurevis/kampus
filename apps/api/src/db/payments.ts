@@ -5,6 +5,8 @@ import type { PaymentAllocation, PaymentPlan } from '@kampus/school-core/lib/pay
 import type { PaymentMethod } from '@kampus/school-core/lib/domain.ts'
 
 import type { Database } from './client.ts'
+import { records } from './schema/records.ts'
+import { foldSearch, foldSql } from './text-search.ts'
 import {
   PAYMENT_METHOD_KEYS,
   paymentAllocations,
@@ -17,6 +19,8 @@ import {
 export interface StoredPayment {
   id: string
   studentId: string
+  /** Arşivlenmemiş öğrenci kaydındaki ad; kayıt yoksa boş. */
+  studentName: string | null
   amountCents: number
   method: PaymentMethod
   reference: string | null
@@ -33,9 +37,17 @@ const METHOD_LABELS = Object.fromEntries(
   Object.entries(PAYMENT_METHOD_KEYS).map(([label, key]) => [key, label]),
 ) as Record<string, PaymentMethod>
 
+/** Tahsilatın öğrenci kaydı: ad ve arama içindir; kurum eşleşmesi zorunludur. */
+const STUDENT_JOIN = and(
+  eq(records.institutionId, payments.institutionId),
+  eq(records.collection, 'students'),
+  eq(records.id, payments.studentId),
+)
+
 const COLUMNS = {
   id: payments.id,
   studentId: payments.studentId,
+  studentName: sql<string | null>`${records.data} ->> 'name'`,
   amountCents: payments.amountCents,
   method: payments.method,
   reference: payments.reference,
@@ -49,6 +61,7 @@ const COLUMNS = {
 type Row = {
   id: string
   studentId: string
+  studentName: string | null
   amountCents: number
   method: string
   reference: string | null
@@ -272,6 +285,7 @@ export async function insertPayment(
   return {
     id,
     studentId: plan.studentId,
+    studentName: null,
     amountCents: plan.amountCents,
     method: plan.method,
     reference: plan.reference,
@@ -293,6 +307,7 @@ export async function findPayment(
   const rows = await db
     .select(COLUMNS)
     .from(payments)
+    .leftJoin(records, STUDENT_JOIN)
     .where(and(eq(payments.institutionId, institutionId), eq(payments.id, id)))
     .limit(1)
   const [found] = await withAllocations(db, institutionId, rows)
@@ -306,6 +321,7 @@ export async function listPayments(
   query: {
     studentId?: string | undefined
     studentIds: readonly string[] | null
+    q?: string | undefined
     page: number
     pageSize: number
   },
@@ -314,11 +330,19 @@ export async function listPayments(
     eq(payments.institutionId, institutionId),
     query.studentId === undefined ? undefined : eq(payments.studentId, query.studentId),
     query.studentIds === null ? undefined : inArray(payments.studentId, [...query.studentIds]),
+    query.q === undefined
+      ? undefined
+      : sql`(strpos(${foldSql(sql`${records.data} ->> 'name'`)}, ${foldSearch(query.q)}) > 0 or strpos(${foldSql(payments.reference)}, ${foldSearch(query.q)}) > 0)`,
   )
-  const [totalRow] = await db.select({ total: count() }).from(payments).where(where)
+  const [totalRow] = await db
+    .select({ total: count() })
+    .from(payments)
+    .leftJoin(records, STUDENT_JOIN)
+    .where(where)
   const rows = await db
     .select(COLUMNS)
     .from(payments)
+    .leftJoin(records, STUDENT_JOIN)
     .where(where)
     .orderBy(desc(payments.paidAt), desc(payments.receiptNumber))
     .limit(query.pageSize)

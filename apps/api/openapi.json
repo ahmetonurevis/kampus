@@ -27636,7 +27636,7 @@
         "tags": [
           "payments"
         ],
-        "description": "Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.",
+        "description": "Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız). Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.",
         "parameters": [
           {
             "schema": {
@@ -27672,6 +27672,17 @@
             "name": "studentId",
             "required": false,
             "description": "Yalnız bu öğrencinin tahsilatları"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Öğrenci adı veya işlem referansı"
           }
         ],
         "responses": {
@@ -27692,6 +27703,12 @@
                           },
                           "studentId": {
                             "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "amountCents": {
                             "type": "integer",
@@ -27782,6 +27799,7 @@
                         "required": [
                           "id",
                           "studentId",
+                          "studentName",
                           "amountCents",
                           "creditCents",
                           "method",
@@ -27978,6 +27996,12 @@
                         "studentId": {
                           "type": "string"
                         },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "amountCents": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -28067,6 +28091,7 @@
                       "required": [
                         "id",
                         "studentId",
+                        "studentName",
                         "amountCents",
                         "creditCents",
                         "method",
@@ -28211,6 +28236,12 @@
                         "studentId": {
                           "type": "string"
                         },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "amountCents": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -28300,6 +28331,7 @@
                       "required": [
                         "id",
                         "studentId",
+                        "studentName",
                         "amountCents",
                         "creditCents",
                         "method",
@@ -28485,6 +28517,12 @@
                         "studentId": {
                           "type": "string"
                         },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "amountCents": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -28574,6 +28612,7 @@
                       "required": [
                         "id",
                         "studentId",
+                        "studentName",
                         "amountCents",
                         "creditCents",
                         "method",

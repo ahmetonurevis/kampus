@@ -420,4 +420,31 @@ describe('tahsilat uçları', () => {
     assert.equal((await paymentRows(b.id))[0]?.reversedAt, null)
     assert.ok((await invoice(b.id, 'test-inv-1'))?.paidAt)
   })
+
+  test('liste öğrenci adı döner; q ad ve referansta Türkçe duyarsız arar, başka kurum eşleşmez', async () => {
+    const a = await institution()
+    const created = await record(a.adminCookie, payment(1_000, { reference: 'TR-ARAMA-1' }))
+    assert.equal(created.statusCode, 201, created.body)
+    const name = STUDENT?.name ?? ''
+    const list = await send('GET', '/api/v1/payments', a.adminCookie)
+    assert.equal(list.json().data[0].studentName, name)
+    const detail = await send(
+      'GET',
+      `/api/v1/payments/${String(created.json().data.id)}`,
+      a.adminCookie,
+    )
+    assert.equal(detail.json().data.studentName, name)
+
+    const total = async (q: string) =>
+      (await send('GET', `/api/v1/payments?q=${encodeURIComponent(q)}`, a.adminCookie)).json().meta
+        .total
+    assert.equal(await total('tr-arama'), 1)
+    assert.equal(await total(name.toLocaleUpperCase('tr').slice(0, 4)), 1)
+    assert.equal(await total('olmayan-kayit'), 0)
+    assertError(await send('GET', '/api/v1/payments?q=a', a.adminCookie), 400)
+
+    const b = await institution()
+    const other = await send('GET', '/api/v1/payments?q=tr-arama', b.adminCookie)
+    assert.equal(other.json().meta.total, 0)
+  })
 })

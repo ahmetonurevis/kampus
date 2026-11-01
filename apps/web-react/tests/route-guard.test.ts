@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { moduleKeys } from '../src/lib/navigation.ts'
-import { resolveShell, showsClosedNotice } from '../src/lib/route-guard.ts'
+import { resolveProspectDetail, resolveShell, showsClosedNotice } from '../src/lib/route-guard.ts'
 
 const modules = Object.fromEntries(moduleKeys().map((key) => [key, true]))
 const veli = { role: 'veli' as const, modules }
@@ -44,4 +44,30 @@ test('kapalı iş akışı sayfası kabukta bildirim gösterir, diğer sayfalar 
   assert.equal(showsClosedNotice({ path: 'hedef-plani' }), true)
   assert.equal(showsClosedNotice({ path: 'yemek-menusu' }), true)
   assert.equal(showsClosedNotice({ path: 'finans' }), false)
+})
+
+test('DOM-KAY-007: aday detayı yalnız kendi rolünde yönetici ve ön büroya açılır', () => {
+  const onburo = { role: 'onburo' as const, modules }
+  const yonetici = { role: 'yonetici' as const, modules }
+  const onburoDecision = resolveProspectDetail(onburo, 'onburo')
+  assert.equal(onburoDecision.kind, 'page')
+  assert.equal(onburoDecision.kind === 'page' && onburoDecision.page.title, 'Aday detayı')
+  assert.equal(resolveProspectDetail(yonetici, 'yonetici').kind, 'page')
+  assert.deepEqual(resolveProspectDetail(yonetici, 'onburo'), {
+    kind: 'redirect',
+    to: '/yonetici/dashboard',
+  })
+  assert.deepEqual(resolveProspectDetail(veli, 'veli'), {
+    kind: 'redirect',
+    to: '/veli/dashboard',
+  })
+})
+
+test('DOM-KAY-007: aday detayında oturum yoksa giriş, rol geçersizse kabuk dışı 404, crm kapalıysa uyarı', () => {
+  assert.deepEqual(resolveProspectDetail(null, 'onburo'), { kind: 'login' })
+  assert.deepEqual(resolveProspectDetail(null, 'olmayan'), { kind: 'not-found-outside' })
+  const closed = { role: 'onburo' as const, modules: { ...modules, crm: false } }
+  const decision = resolveProspectDetail(closed, 'onburo')
+  assert.equal(decision.kind, 'module-closed')
+  assert.equal(decision.kind === 'module-closed' && decision.to, '/onburo/dashboard')
 })

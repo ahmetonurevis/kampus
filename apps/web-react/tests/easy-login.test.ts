@@ -1,11 +1,22 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
-import { build, type Rolldown } from 'vite'
-import { DEV_ONLY_MARKERS, findDevOnlyLeaks } from '../dev-only-guard.ts'
+import { build, type Plugin, type Rolldown } from 'vite'
+import {
+  ALLOW_DEV_SECRETS_ENV,
+  DEV_ONLY_MARKERS,
+  devOnlyGuard,
+  devSecretsAllowed,
+  findDevOnlyLeaks,
+} from '../dev-only-guard.ts'
 import {
   DEFAULT_EASY_LOGIN_PASSWORD,
   EASY_LOGIN_ACCOUNTS,
+  EASY_LOGIN_MARKER,
   easyLoginPassword,
   groupEasyLoginAccounts,
   institutionToActivate,
@@ -108,22 +119,104 @@ test('seçilen kurum etkin kurum değilse girişten sonra o kuruma geçilir', ()
   )
 })
 
-test('geliştirme izi düz ve \\u kaçışlı biçimde bulunur', () => {
-  assert.deepEqual(findDevOnlyLeaks({ 'a.js': 'const x = "Giriş yap"' }), [])
-  assert.deepEqual(findDevOnlyLeaks({ 'a.js': 'label:"Kolay giriş"' }), [
-    { file: 'a.js', marker: 'Kolay giriş' },
+test('denetim Kolay giriş işaretine ve demo parolasına bağlıdır, genel metinlere değil', () => {
+  assert.deepEqual([...DEV_ONLY_MARKERS], [EASY_LOGIN_MARKER, 'Demo-Giris'])
+  // school-core örnek verisi ve api-client yorumu `kampus.example` kullanır: yanlış pozitif olmaz.
+  assert.deepEqual(
+    findDevOnlyLeaks({ 'seed.js': 'e="ogrenci1@kampus.example",t="Kolay giriş"' }),
+    [],
+  )
+  assert.deepEqual(findDevOnlyLeaks({ 'a.js': `data-dev-only="${EASY_LOGIN_MARKER}"` }), [
+    { file: 'a.js', marker: EASY_LOGIN_MARKER },
   ])
-  assert.deepEqual(findDevOnlyLeaks({ 'b.js': 'label:"Kolay giri\\u015F"' }), [
-    { file: 'b.js', marker: 'Kolay giriş' },
-  ])
-  assert.deepEqual(findDevOnlyLeaks({ 'c.js': 'e="ayse@kampus.example",p="Demo-Giris-2026!"' }), [
-    { file: 'c.js', marker: 'kampus.example' },
+  assert.deepEqual(findDevOnlyLeaks({ 'c.js': 'p="Demo-Giris-2026!"' }), [
     { file: 'c.js', marker: 'Demo-Giris' },
   ])
 })
 
+test('geliştirme izi düz ve \\u kaçışlı biçimde bulunur', () => {
+  assert.deepEqual(findDevOnlyLeaks({ 'a.js': 'const x = "Giriş yap"' }, ['Kolay giriş']), [])
+  assert.deepEqual(findDevOnlyLeaks({ 'b.js': 'label:"Kolay giri\\u015F"' }, ['Kolay giriş']), [
+    { file: 'b.js', marker: 'Kolay giriş' },
+  ])
+})
+
+/** Eklentinin `generateBundle` kancasını sahte bağlamla çalıştırır; hata/uyarı metnini döndürür. */
+function runGuard(env: Record<string, string | undefined>, code: string) {
+  const plugin: Plugin = devOnlyGuard(env)
+  const messages: { error: string[]; warn: string[] } = { error: [], warn: [] }
+  const context = {
+    error(message: string): never {
+      messages.error.push(message)
+      throw new Error(message)
+    },
+    warn(message: string) {
+      messages.warn.push(message)
+    },
+  }
+  const hook = plugin.generateBundle as unknown as (
+    this: typeof context,
+    options: unknown,
+    bundle: Record<string, { type: 'chunk'; code: string }>,
+  ) => void
+  try {
+    hook.call(context, {}, { 'assets/x.js': { type: 'chunk', code } })
+  } catch {
+    // Hata metni `messages.error` içinde.
+  }
+  return messages
+}
+
+test('denetim her derlemede (kipten bağımsız) çalışır ve iz bulursa derlemeyi durdurur', () => {
+  assert.equal(devOnlyGuard({}).apply, 'build')
+  const leak = runGuard({}, `x="${EASY_LOGIN_MARKER}"`)
+  assert.equal(leak.error.length, 1)
+  assert.match(leak.error[0]!, new RegExp(EASY_LOGIN_MARKER))
+  assert.match(leak.error[0]!, new RegExp(`${ALLOW_DEV_SECRETS_ENV}=1`))
+  assert.deepEqual(runGuard({}, 'x="Giriş yap"'), { error: [], warn: [] })
+})
+
+test(`${ALLOW_DEV_SECRETS_ENV}=1 bilerek yapılan geliştirme derlemesinde durdurmak yerine uyarır`, () => {
+  assert.equal(devSecretsAllowed({ [ALLOW_DEV_SECRETS_ENV]: '1' }), true)
+  assert.equal(devSecretsAllowed({ [ALLOW_DEV_SECRETS_ENV]: 'true' }), false)
+  assert.equal(devSecretsAllowed({}), false)
+  const allowed = runGuard({ [ALLOW_DEV_SECRETS_ENV]: '1' }, `x="${EASY_LOGIN_MARKER}"`)
+  assert.equal(allowed.error.length, 0)
+  assert.equal(allowed.warn.length, 1)
+  assert.match(allowed.warn[0]!, /yayımlanmamalı/)
+})
+
+const webRoot = fileURLToPath(new URL('..', import.meta.url))
+
+test('geliştirme kipinde derleme (NODE_ENV=development) atlama değişkeni olmadan durur', () => {
+  const outDir = mkdtempSync(join(tmpdir(), 'kampus-dev-build-'))
+  try {
+    // `import.meta.env.DEV` NODE_ENV'den türer; ayrı süreçte derlenir ki bu sürecin ortamı değişmesin.
+    const env: NodeJS.ProcessEnv = { ...process.env, NODE_ENV: 'development' }
+    delete env[ALLOW_DEV_SECRETS_ENV]
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(webRoot, 'node_modules/vite/bin/vite.js'),
+        'build',
+        '--mode',
+        'development',
+        '--outDir',
+        outDir,
+        '--emptyOutDir',
+      ],
+      { cwd: webRoot, env, encoding: 'utf8' },
+    )
+    assert.equal(result.status, 1, result.stdout + result.stderr)
+    assert.match(result.stderr, new RegExp(`EasyLogin-[^ ]+ → "${EASY_LOGIN_MARKER}"`))
+    assert.match(result.stderr, /"Demo-Giris"/)
+  } finally {
+    rmSync(outDir, { recursive: true, force: true })
+  }
+})
+
 test('üretim derlemesinde Kolay giriş, demo hesapları ve parola yoktur', async () => {
-  const root = fileURLToPath(new URL('..', import.meta.url))
+  const root = webRoot
   // Denetim eklentisi iz bulursa derleme hata verir; çıktı ayrıca burada da taranır.
   const result = await build({
     root,

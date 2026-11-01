@@ -7,6 +7,14 @@
 // eşitliğini `tests/easy-login-accounts.test.ts` denetler: tohuma hesap eklenince test kırılır.
 import type { RoleKey } from '../../lib/navigation.ts'
 
+/**
+ * Yalnız bu modüle ait, başka hiçbir yerde geçmeyen işaret. `EasyLogin.tsx` pencereyi bu
+ * dizgiyle işaretler (`data-dev-only`); `dev-only-guard.ts` paket çıktısında onu (ve demo
+ * parolasını) arar. E-posta alan adı (`kampus.example`) school-core örnek verisinde de geçtiği
+ * için işaret olarak kullanılmaz.
+ */
+export const EASY_LOGIN_MARKER = 'KAMPUS_YALNIZ_GELISTIRME_KOLAY_GIRIS'
+
 /** Pencerede kurumların sırası (tohumdaki `DEMO_INSTITUTIONS` sırası). */
 export const EASY_LOGIN_INSTITUTIONS = ['Akademi Özel Okulları', 'Kampüs Dil Akademisi'] as const
 export type EasyLoginInstitution = (typeof EASY_LOGIN_INSTITUTIONS)[number]

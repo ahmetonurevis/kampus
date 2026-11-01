@@ -1,10 +1,27 @@
-// Üretim derlemesi denetimi: yalnız geliştirmede yüklenen kodun (Kolay giriş penceresi, demo
-// hesapları ve parolası) izleri paket çıktısında bulunursa derleme hata verir. Her `vite build`
-// (CI `pnpm build`, React e2e kurulumu) bu denetimden geçer.
+// Derleme denetimi: yalnız geliştirmede yüklenen kodun (Kolay giriş penceresi, demo hesapları ve
+// parolası) izleri paket çıktısında bulunursa derleme hata verir. Kipten bağımsız her `vite build`
+// taranır: `import.meta.env.DEV` `NODE_ENV`/kipten türediği için `vite build --mode development` ya
+// da `NODE_ENV=staging vite build` çıktısına geliştirme kodu girer; denetim bunları da durdurur
+// (CI `pnpm build`, React e2e kurulumu dahil).
+//
+// Yayımlanmayacak bir geliştirme derlemesi bilerek isteniyorsa `KAMPUS_ALLOW_DEV_SECRETS=1`
+// verilir; denetim yine tarar, iz bulursa durdurmak yerine uyarı yazar.
 import type { Plugin } from 'vite'
+import { EASY_LOGIN_MARKER } from './src/pages/dev/easy-login-accounts.ts'
 
-/** Üretim çıktısında geçmemesi gereken metinler. */
-export const DEV_ONLY_MARKERS = ['Kolay giriş', 'kampus.example', 'Demo-Giris'] as const
+/**
+ * Paket çıktısında geçmemesi gereken metinler: Kolay giriş modülünün benzersiz işareti ve demo
+ * parolası. Genel metinler (`kampus.example`, düğme adı) school-core verisinde de geçebildiği için
+ * işaret olarak kullanılmaz.
+ */
+export const DEV_ONLY_MARKERS = [EASY_LOGIN_MARKER, 'Demo-Giris'] as const
+
+/** Bilerek yapılan geliştirme derlemesinde denetimin durdurmasını kapatan ortam değişkeni. */
+export const ALLOW_DEV_SECRETS_ENV = 'KAMPUS_ALLOW_DEV_SECRETS'
+
+export function devSecretsAllowed(env: Readonly<Record<string, string | undefined>>): boolean {
+  return env[ALLOW_DEV_SECRETS_ENV] === '1'
+}
 
 /** Paketleyici ASCII dışı karakteri `\uXXXX` kaçışıyla da yazabilir; iki biçim de aranır. */
 function variants(marker: string): string[] {
@@ -30,28 +47,33 @@ export function findDevOnlyLeaks(
   return leaks
 }
 
-export function devOnlyGuard(): Plugin {
-  let production = false
+export function devOnlyGuard(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Plugin {
+  const allowed = devSecretsAllowed(env)
   return {
     name: 'kampus-dev-only-guard',
     apply: 'build',
-    configResolved(config) {
-      production = config.isProduction
-    },
     generateBundle(_options, bundle) {
-      if (!production) return
       const files: Record<string, string> = {}
       for (const [name, output] of Object.entries(bundle)) {
         if (output.type === 'chunk') files[name] = output.code
         else if (typeof output.source === 'string') files[name] = output.source
       }
       const leaks = findDevOnlyLeaks(files)
-      if (leaks.length)
-        this.error(
-          `Üretim paketinde yalnız geliştirmeye ait metin var: ${leaks
-            .map((leak) => `${leak.file} → "${leak.marker}"`)
-            .join(', ')}`,
+      if (!leaks.length) return
+      const found = leaks.map((leak) => `${leak.file} → "${leak.marker}"`).join(', ')
+      if (allowed) {
+        this.warn(
+          `${ALLOW_DEV_SECRETS_ENV}=1: paket yalnız geliştirmeye ait metin içeriyor, yayımlanmamalı (${found}).`,
         )
+        return
+      }
+      this.error(
+        `Pakette yalnız geliştirmeye ait metin var: ${found}. Üretim derlemesi varsayılan kipte ` +
+          `(\`vite build\`, NODE_ENV boş ya da production) yapılır; yayımlanmayacak bir geliştirme ` +
+          `derlemesi için ${ALLOW_DEV_SECRETS_ENV}=1 verin.`,
+      )
     },
   }
 }

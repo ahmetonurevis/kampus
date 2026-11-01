@@ -51,6 +51,8 @@ export function LoginPage() {
   if (status === 'loading' && !isSubmitting && !easyLoginPending) return <SessionPending />
 
   const onSubmit = handleSubmit(async (values) => {
+    // Kolay giriş sürerken ikinci bir giriş başlatılmaz (düğme de kilitli; Enter ile gönderim dahil).
+    if (easyLoginPending) return
     try {
       const result = await signIn(values)
       if (result.ok) return
@@ -129,7 +131,7 @@ export function LoginPage() {
             </FormField>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || easyLoginPending}
               className="min-h-[47px] justify-between rounded-lg bg-brand px-5 text-base text-on-brand hover:bg-brand-hover"
             >
               {isSubmitting ? 'Giriş yapılıyor…' : 'Giriş yap'}

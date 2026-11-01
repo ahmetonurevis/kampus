@@ -2,6 +2,13 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Dosya depolama inceleme düzeltmeleri (F3c2a)
+
+- İndirme ucu `Cross-Origin-Resource-Policy: cross-origin` gönderir: Helmet varsayılanı `same-origin` web'in başka kökenden `<img>`/`<audio>` ile açtığı bağlantıyı engellerdi. Yetki imzadadır; JSON uçları `same-origin`'de kalır.
+- Dosya okuma (`GET /files/:fileId`, `/url`) sırası kapsam → modüldür: modül kapalıyken kapsam dışı dosya 403 yerine 404 alır (varlık ipucu yok), 403 `module_disabled` yalnız dosyayı görebilecek kişiye döner.
+- Yüklemede tutulmayan nesnenin silme hatası asıl hatayı (413/422/veritabanı) örtmez; `file.discard_object_failed` olarak depo anahtarıyla loglanır (ad loga girmez). Satırsız kalan nesnelerin önek taraması `TODO(F3c2-orphans)`.
+- Bildirilen türün takma adları (`audio/x-m4a`, `audio/mp3`, `image/jpg`, `video/webm`, parametreli tür) core 2.24.0 `canonicalMimeType` ile çözülür; `react-shared` `checkFileBeforeUpload` aynı tabloyu kullanır, tanınmayan türde karar sunucuya kalır. Tüketiciler `workspace:2.24.0`. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Dosya depolama temeli (F3c2a)
 
 - ADR 0003'ün ilk dilimi. Migration `0015_create_files`: kurum kapsamlı `files` tablosu (içerik kolonları tetikleyiciyle değişmez, silme yalnız imha oturumunda) ve `institution_settings.storage_quota_bytes` (boşsa 50 GB).

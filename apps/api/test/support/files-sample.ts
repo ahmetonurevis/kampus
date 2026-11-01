@@ -76,10 +76,24 @@ export function uploadParts(
 
 export const TEST_SECRET = 'test-secret-test-secret-test-secret-0123'
 
+/** Silme hatası benzetilebilen disk deposu (`failDeletes`; yetim nesne ve hata örtme denemeleri). */
+export class FlakyDiskStorage extends DiskStorage {
+  failDeletes = false
+
+  override async delete(key: string): Promise<void> {
+    if (this.failDeletes) throw new Error('EIO: simulated delete failure')
+    return super.delete(key)
+  }
+}
+
 /** Geçici klasörde disk deposu; `files()` kökteki bütün dosyaları (geçici dahil) listeler. */
 export async function tempStorage(baseUrl = 'http://localhost:3000') {
   const root = await mkdtemp(join(tmpdir(), 'kampus-files-'))
-  const storage = new DiskStorage({ root, baseUrl, signingKey: storageSigningKey(TEST_SECRET) })
+  const storage = new FlakyDiskStorage({
+    root,
+    baseUrl,
+    signingKey: storageSigningKey(TEST_SECRET),
+  })
   return {
     root,
     storage,

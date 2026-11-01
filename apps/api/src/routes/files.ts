@@ -142,7 +142,7 @@ export function registerFileRoutes(app: FastifyInstance, storage: DiskStorage) {
         tags: ['files'],
         summary: 'İmzalı indirme (disk sürücüsü)',
         description:
-          '`disk` sürücüsünde `GET /api/v1/files/{fileId}/url` bağlantısının hedefi; oturum istemez, yetki HMAC imzasındadır. Süresi geçmiş bağlantı 403 `link_expired`, bozuk veya değiştirilmiş bağlantı 403 `invalid_signature`, silinmiş nesne 404. Yanıt dosyanın kendisidir (`Cache-Control: no-store`).',
+          '`disk` sürücüsünde `GET /api/v1/files/{fileId}/url` bağlantısının hedefi; oturum istemez, yetki HMAC imzasındadır. Süresi geçmiş bağlantı 403 `link_expired`, bozuk veya değiştirilmiş bağlantı 403 `invalid_signature`, silinmiş nesne 404. Yanıt dosyanın kendisidir (`Cache-Control: no-store`); `Cross-Origin-Resource-Policy: cross-origin` ile web başka kökenden `<img>`/`<audio>` olarak gömebilir.',
         querystring: fileDownloadQuerySchema,
         response: {
           200: z.unknown().describe('Dosya içeriği (ikili; türü `Content-Type` başlığında)'),
@@ -160,7 +160,11 @@ export function registerFileRoutes(app: FastifyInstance, storage: DiskStorage) {
       const { object } = check
       const opened = await storage.open(object.key)
       if (!opened) throw new AppError(404, 'not_found', MESSAGES.not_found)
+      // Helmet varsayılanı `Cross-Origin-Resource-Policy: same-origin`; bağlantı API kökeninde
+      // üretilir, web başka kökenden `<img>`/`<audio>` ile açar. Yetki imzadadır (S3 ön imzalı
+      // bağlantısı da CORP göndermez); CORP burada yalnız gömmeyi engellerdi.
       reply
+        .header('cross-origin-resource-policy', 'cross-origin')
         .header('content-type', object.contentType)
         .header('content-length', String(opened.byteSize))
         .header('content-disposition', contentDisposition(object.disposition, object.fileName))

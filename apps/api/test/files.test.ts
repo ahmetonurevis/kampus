@@ -8,6 +8,7 @@ import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { institutions } from '../src/db/schema/auth.ts'
 import { files } from '../src/db/schema/files.ts'
 import { institutionSettings } from '../src/db/schema/institution-settings.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
@@ -245,6 +246,49 @@ describe('dosya uçları', () => {
     assert.equal((await store.files()).length, before)
   })
 
+  test('DOM-KYN-004 bildirilen tür takma ad veya parametreli olabilir; çelişki yine 422', async () => {
+    const t = await tenant()
+    for (const type of ['audio/mp3', 'audio/mpeg; charset=binary', 'AUDIO/MPEG']) {
+      const response = await upload(t.teacher.cookie, uploadParts('material', MP3, 'ses', type))
+      assert.equal(response.statusCode, 201, `${type}: ${response.body}`)
+      assert.equal(response.json().data.contentType, 'audio/mpeg')
+    }
+    const mismatch = await upload(
+      t.teacher.cookie,
+      uploadParts('material', MP3, 'ses', 'audio/x-m4a'),
+    )
+    assert.equal(mismatch.statusCode, 422)
+    assert.equal(mismatch.json().code, 'file_type_mismatch')
+  })
+
+  test('nesne silinemezse asıl hata (422, 413) döner, silme hatası loglanır; ad loga girmez', async () => {
+    const t = await tenant()
+    store.storage.failDeletes = true
+    try {
+      const wrongType = await upload(
+        t.student.cookie,
+        uploadParts('submission', TEXT, 'Deniz Yılmaz rehberlik.pdf', 'application/pdf'),
+      )
+      assert.equal(wrongType.statusCode, 422, wrongType.body)
+      assert.equal(wrongType.json().code, 'file_type_not_allowed')
+      const tooBig = await upload(
+        t.teacher.cookie,
+        uploadParts('question_image', png(2 * 1024 * 1024 + 1), 'Deniz Yılmaz.png', 'image/png'),
+      )
+      assert.equal(tooBig.statusCode, 413, tooBig.body)
+    } finally {
+      store.storage.failDeletes = false
+    }
+    const failures = logs.filter((line) => line.includes('file.discard_object_failed'))
+    assert.ok(failures.length >= 2, 'silme hatası loglanır')
+    assert.ok(failures.every((line) => line.includes(`"storageKey":"${t.institution.id}/`)))
+    assert.equal(
+      logs.some((line) => line.includes('Deniz Yılmaz')),
+      false,
+    )
+    assert.equal((await rowsOf(t.institution.id)).length, 0)
+  })
+
   test('DOM-KYN-004 boyut sınırı: soru görseli 2 MB üstü 413, akış kesilir, nesne silinir', async () => {
     const t = await tenant()
     const before = (await store.files()).length
@@ -339,6 +383,30 @@ describe('dosya uçları', () => {
     assert.equal(anonymous.statusCode, 401)
   })
 
+  test('modül kapalıyken kapsam önce gelir: kapsam dışı ve olmayan dosya 404, yalnız yükleyen 403 module_disabled', async () => {
+    const t = await tenant()
+    const other = await tenant()
+    const id: string = (await upload(t.student.cookie, uploadParts('submission', PDF))).json().data
+      .id
+    await db
+      .update(institutions)
+      .set({ enabledModules: { learning: false } })
+      .where(eq(institutions.id, t.institution.id))
+    for (const path of [`/api/v1/files/${id}`, `/api/v1/files/${id}/url`]) {
+      const owner = await get(t.student.cookie, path)
+      assert.equal(owner.statusCode, 403, owner.body)
+      assert.equal(owner.json().code, 'module_disabled')
+      for (const cookie of [t.otherStudent.cookie, t.teacher.cookie, other.student.cookie]) {
+        assert.equal((await get(cookie, path)).statusCode, 404, path)
+      }
+    }
+    assert.equal(
+      (await get(t.otherStudent.cookie, `/api/v1/files/00000000-0000-4000-8000-000000000000/url`))
+        .statusCode,
+      404,
+    )
+  })
+
   test('imzalı bağlantı: içerik ve başlıklar doğru; süresi geçince 403 link_expired, bozuk imza 403', async () => {
     const t = await tenant()
     const id: string = (
@@ -357,6 +425,14 @@ describe('dosya uçları', () => {
     assert.deepEqual(download.rawPayload, PDF)
     assert.equal(download.headers['content-type'], 'application/pdf')
     assert.equal(download.headers['cache-control'], 'no-store')
+    // Web başka kökenden `<img>`/`<audio>` ile gömer; JSON uçları Helmet varsayılanında kalır.
+    assert.equal(download.headers['cross-origin-resource-policy'], 'cross-origin')
+    assert.equal(
+      (await get(t.student.cookie, `/api/v1/files/${id}/url`)).headers[
+        'cross-origin-resource-policy'
+      ],
+      'same-origin',
+    )
     assert.equal(
       download.headers['content-disposition'],
       `attachment; filename="_dev 1.pdf"; filename*=UTF-8''%C3%96dev%201.pdf`,

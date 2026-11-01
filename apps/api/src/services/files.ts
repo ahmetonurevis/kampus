@@ -160,18 +160,39 @@ export interface UploadInput {
   path: string
 }
 
+/**
+ * Yüklemede tutulmayacak nesneyi siler. Silme hatası asıl hatayı (413, 422, veritabanı hatası)
+ * örtmez; anahtarla loglanır (anahtar kişisel veri taşımaz, karar 4) ve nesne satırsız kalır.
+ * TODO(F3c2-orphans): satırsız nesneler (silme hatası ya da nesne yazımıyla satır yazımı arasında
+ * süreç çökmesi) yalnız satırları tarayan `purgeUnattachedFiles` ile bulunmaz. Sürücüye
+ * `list(prefix)` eklenip kurum öneki (`<kurum>/`) altında satırı olmayan ve 24 saatten eski
+ * nesneler periyodik işte silinir (karar 5); KVKK silme başvurusu da bu taramaya dayanır.
+ */
+async function discardObject(storage: StorageDriver, key: string, log: FastifyBaseLogger) {
+  try {
+    await storage.delete(key)
+  } catch (error) {
+    log.error({ event: 'file.discard_object_failed', storageKey: key, err: error })
+  }
+}
+
 /** Akışı depoya yazar; sınır aşılırsa yarım nesne kalmaz ve 413 döner. */
-async function storeStream(storage: StorageDriver, key: string, input: UploadInput) {
+async function storeStream(
+  storage: StorageDriver,
+  key: string,
+  input: UploadInput,
+  log: FastifyBaseLogger,
+) {
   const metered = meterUpload(input.stream, uploadLimitBytes(input.purpose))
   try {
     await storage.put(key, metered.stream, { contentType: 'application/octet-stream' })
   } catch (error) {
-    await storage.delete(key)
+    await discardObject(storage, key, log)
     if (error instanceof StreamLimitError) throw new FileTooLargeError()
     throw error
   }
   if (input.truncated()) {
-    await storage.delete(key)
+    await discardObject(storage, key, log)
     throw new FileTooLargeError()
   }
   return metered.result()
@@ -198,7 +219,7 @@ export async function uploadFile(
     fileId,
     now: ctx.now,
   })
-  const stored = await storeStream(storage, storageKey, input)
+  const stored = await storeStream(storage, storageKey, input, ctx.log)
   let keep = false
   try {
     if (stored.byteSize === 0) throw new RuleViolationError('file_empty', FILE_MESSAGES.file_empty)
@@ -283,7 +304,7 @@ export async function uploadFile(
     })
     return response
   } finally {
-    if (!keep) await storage.delete(storageKey)
+    if (!keep) await discardObject(storage, storageKey, ctx.log)
   }
 }
 
@@ -310,6 +331,8 @@ async function audit(
  * Kişinin görebildiği dosya (karar 6). Bağlı dosya bağlı kaydın okuma kuralından geçer
  * (`FileAttachmentKind.canRead`); bağlanmamış dosyayı yalnız yükleyen görür. Yok, başka kurum,
  * silinmiş/reddedilmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.
+ * Sıra kapsam → modüldür: modül kapalıyken de kapsam dışı dosya 404 alır, 403 yalnız dosyayı
+ * görebilecek kişiye döner (varlık ipucu verilmez).
  */
 async function readableFile(
   tx: Database,
@@ -318,18 +341,18 @@ async function readableFile(
 ): Promise<StoredFile> {
   const row = await findFile(tx, ctx.institutionId, fileId)
   if (!row || row.status === 'deleted' || row.status === 'rejected') throw new NotFoundError()
-  // İşlemin bağlantısıyla: PGlite tek bağlantılıdır, `ctx.db` burada beklerdi.
-  await assertPurposeModule(tx, ctx, row.purpose)
   if (row.attachedType === null || row.attachedId === null) {
     if (row.uploadedByUserId !== ctx.actor.userId) throw new NotFoundError()
-    return row
+  } else {
+    const kind = fileAttachmentKind(row.attachedType)
+    if (!kind || !kind.purposes.includes(row.purpose)) {
+      ctx.log.error({ event: 'file.unknown_attachment', attachedType: row.attachedType })
+      throw new NotFoundError()
+    }
+    if (!(await kind.canRead(tx, ctx, row.attachedId))) throw new NotFoundError()
   }
-  const kind = fileAttachmentKind(row.attachedType)
-  if (!kind || !kind.purposes.includes(row.purpose)) {
-    ctx.log.error({ event: 'file.unknown_attachment', attachedType: row.attachedType })
-    throw new NotFoundError()
-  }
-  if (!(await kind.canRead(tx, ctx, row.attachedId))) throw new NotFoundError()
+  // İşlemin bağlantısıyla: PGlite tek bağlantılıdır, `ctx.db` burada beklerdi.
+  await assertPurposeModule(tx, ctx, row.purpose)
   return row
 }
 

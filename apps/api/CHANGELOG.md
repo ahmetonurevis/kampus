@@ -2,6 +2,13 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Uygulama içi bildirim merkezi (F6a)
+
+- `GET /api/v1/notifications` (imleçli: `cursor`, `limit` ≤ 100, `unread`; `meta.nextCursor`, toplam yok), `GET /api/v1/notifications/unread-count`, `POST /api/v1/notifications/:notificationId/read` ve `POST /api/v1/notifications/read-all` (`Idempotency-Key` isteğe bağlı, `If-Match` 400). Modül `communication`; kapalıysa 403 `module_disabled`. Öğrenci kendi, veli bağlı çocuğunun veli bildirimini görür; görülemeyen bildirim 404, imleci 400 (DOM-ILT-073). Okundu kullanıcıya özeldir.
+- Kayıtlar `records` tabanlıdır (`notifications`, `notificationReads`; migration yok) ve genel koleksiyon okumasına kapalıdır. Bildirim serbest metin taşımaz; başlık şablondan üretilir, log ve denetime yalnız alan adları girer (DOM-ILT-023).
+- Üretim olayın transaction'ında: kesin kayıt `enrollment_completed` (18 yaş altında veliye, yetişkin kursiyere; DOM-KAY-011), puanı kesinleştirip geri bildirimi açan öğretmen puanı `feedback_released` öğrenciye ve 18 yaş altında veliye (DOM-BEC-045). Kesin kayıt yanıtının `changes.inserted` sayısı bir artar; puan yazması denetime bildirim kaydı için ayrı satır ekler.
+- Core 2.27.0 (`lib/notifications.ts`, `skills/rubric.ts` `releasesFeedback`, `isMinorLearner`). `react-shared`: `use-notifications.ts` (`useNotifications` imleçli, `useUnreadNotificationCount`, `useReadNotification`, `useReadAllNotifications`); `useApiQuery` isteğe bağlı `refetchInterval` alır. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Dosya depolama inceleme düzeltmeleri (F3c2a)
 
 - İndirme ucu `Cross-Origin-Resource-Policy: cross-origin` gönderir: Helmet varsayılanı `same-origin` web'in başka kökenden `<img>`/`<audio>` ile açtığı bağlantıyı engellerdi. Yetki imzadadır; JSON uçları `same-origin`'de kalır.

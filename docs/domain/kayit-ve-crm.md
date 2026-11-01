@@ -94,7 +94,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Mükerrer öğrenci = mükerrer borç.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `packages/school-core/src/lib/domain.ts` (`enrollProspect`, aday bazında 409 `prospect_already_enrolled`); API `POST /api/v1/prospects/:prospectId/enroll` `If-Match` ve `Idempotency-Key` ister, aynı adayı eşzamanlı kayda alan iki istekten biri 409 alır (`test:pg`). Kimlik numarası isteğe bağlı alınır (`DOM-KAY-012`) ama kişi bazlı tekillik (aynı kimlik no ile ikinci kayıt) yok.
+- **Kodda:** kısmen — `packages/school-core/src/lib/domain.ts` (`enrollProspect`, aday bazında 409 `prospect_already_enrolled`); API `POST /api/v1/prospects/:prospectId/enroll` `If-Match` ve `Idempotency-Key` ister, aynı adayı eşzamanlı kayda alan iki istekten biri 409 alır (`test:pg`). Kimlik numarası isteğe bağlı alınır (`DOM-KAY-012`) ama kişi bazlı tekillik (aynı kimlik no ile ikinci kayıt) yok. İletişim modülü açıksa kesin kayıt aynı işlemde `enrollment_completed` uygulama içi bildirimi yazar: 18 yaş altında veliye, dil okulunda yetişkin kursiyere (F6a, core `lib/notifications.ts`).
 
 ### DOM-KAY-012 · Kimlik ve yasal temsilci zorunlu alanları
 

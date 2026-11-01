@@ -23,7 +23,7 @@ import type {
   RubricVersionData,
   RubricVersionRow,
 } from '@kampus/school-core/skills/rubric.ts'
-import type { AttemptRow, AttemptRules } from '@kampus/school-core/skills/scoring.ts'
+import type { Answers, AttemptRow, AttemptRules } from '@kampus/school-core/skills/scoring.ts'
 import type { DraftRow, VersionRow } from '@kampus/school-core/skills/submission.ts'
 
 import {
@@ -913,6 +913,21 @@ export function insertAttempt(
   )
 }
 
+type TaskAttemptDbRow = typeof taskAttempts.$inferSelect
+
+function toAttempt(row: TaskAttemptDbRow): StoredAttempt {
+  return {
+    id: row.id,
+    assignmentId: row.assignmentId,
+    learnerId: row.learnerId,
+    attemptNumber: row.attemptNumber,
+    startedAt: iso(row.startedAt),
+    submittedAt: isoOrNull(row.submittedAt),
+    answers: row.answers,
+    rowVersion: row.version,
+  }
+}
+
 /** Kursiyerin bu atamadaki arşivlenmemiş denemeleri, numara sırasıyla. */
 export async function loadAttempts(
   db: Database,
@@ -932,16 +947,168 @@ export async function loadAttempts(
       ),
     )
     .orderBy(asc(taskAttempts.attemptNumber))
-  return rows.map((row) => ({
-    id: row.id,
-    assignmentId: row.assignmentId,
-    learnerId: row.learnerId,
-    attemptNumber: row.attemptNumber,
-    startedAt: iso(row.startedAt),
-    submittedAt: isoOrNull(row.submittedAt),
-    answers: row.answers,
-    rowVersion: row.version,
-  }))
+  return rows.map(toAttempt)
+}
+
+/** Arşivlenmemiş deneme; yoksa, arşivliyse veya başka kurumdaysa `null`. */
+export async function findAttempt(
+  db: Database,
+  institutionId: string,
+  attemptId: string,
+): Promise<StoredAttempt | null> {
+  if (!UUID.test(attemptId)) return null
+  const [row] = await db
+    .select()
+    .from(taskAttempts)
+    .where(
+      and(
+        eq(taskAttempts.institutionId, institutionId),
+        eq(taskAttempts.id, attemptId),
+        isNull(taskAttempts.archivedAt),
+      ),
+    )
+  return row === undefined ? null : toAttempt(row)
+}
+
+/**
+ * Atamanın denemeleri ve teslimlerinin süzgeci. `learnerIds` rol kapsamıdır (servisten): verilmezse
+ * atamanın bütün kursiyerleri (yönetici, atayan öğretmen), boş liste hiçbir satır vermez.
+ */
+export interface LearnerWorkQuery {
+  assignmentId: string
+  learnerIds?: readonly string[] | undefined
+  page: number
+  pageSize: number
+}
+
+function learnerFilter(column: typeof taskAttempts.learnerId | typeof taskSubmissions.learnerId) {
+  return (learnerIds: readonly string[] | undefined) =>
+    learnerIds === undefined
+      ? undefined
+      : learnerIds.length === 0
+        ? sql`false`
+        : inArray(column, [...learnerIds])
+}
+
+/**
+ * Atamanın arşivlenmemiş denemeleri, kursiyer ve deneme numarası sırasıyla, sayfalı (DOM-BEC-042).
+ * Süzgeç `task_attempts_assignment_learner_number_key` indeksinin önekidir.
+ */
+export async function listAttempts(
+  db: Database,
+  institutionId: string,
+  query: LearnerWorkQuery,
+): Promise<{ rows: StoredAttempt[]; total: number }> {
+  const where = and(
+    eq(taskAttempts.institutionId, institutionId),
+    eq(taskAttempts.assignmentId, query.assignmentId),
+    isNull(taskAttempts.archivedAt),
+    learnerFilter(taskAttempts.learnerId)(query.learnerIds),
+  )
+  const [rows, [totals]] = await Promise.all([
+    db
+      .select()
+      .from(taskAttempts)
+      .where(where)
+      .orderBy(asc(taskAttempts.learnerId), asc(taskAttempts.attemptNumber))
+      .limit(query.pageSize)
+      .offset((query.page - 1) * query.pageSize),
+    db.select({ total: count() }).from(taskAttempts).where(where),
+  ])
+  return { rows: rows.map(toAttempt), total: totals?.total ?? 0 }
+}
+
+/**
+ * Verilen kursiyerlerin bu atamadaki bütün arşivlenmemiş denemeleri. Sayılan deneme
+ * (`countedAttempt`) kursiyerin bütün denemelerinden seçildiği için sayfadaki satırlara eklenir.
+ */
+export async function loadLearnersAttempts(
+  db: Database,
+  institutionId: string,
+  assignmentId: string,
+  learnerIds: readonly string[],
+): Promise<StoredAttempt[]> {
+  if (learnerIds.length === 0) return []
+  const rows = await db
+    .select()
+    .from(taskAttempts)
+    .where(
+      and(
+        eq(taskAttempts.institutionId, institutionId),
+        eq(taskAttempts.assignmentId, assignmentId),
+        inArray(taskAttempts.learnerId, [...new Set(learnerIds)]),
+        isNull(taskAttempts.archivedAt),
+      ),
+    )
+    .orderBy(asc(taskAttempts.learnerId), asc(taskAttempts.attemptNumber))
+  return rows.map(toAttempt)
+}
+
+/** Yazılacak deneme: kimlik ve okunduğu satır sürümü (iyimser kilit). */
+type LockedAttempt = Pick<StoredAttempt, 'id' | 'rowVersion'>
+
+/**
+ * Süren denemenin cevapları (`planAnswerSave` çıktısı, bütün küme). Yalnız teslim edilmemiş ve
+ * beklenen satır sürümündeki deneme yazılır; 0 satır → 409 `version_conflict`. Teslim edilmiş
+ * denemenin cevabı bu fonksiyonla değişmez (DOM-BEC-010: puan cevaplardan hesaplanır). Yeni satır
+ * sürümü döner.
+ */
+export async function saveAttemptAnswers(
+  tx: Database,
+  institutionId: string,
+  attempt: LockedAttempt,
+  answers: Answers,
+  now: Date,
+): Promise<number> {
+  const [row] = await tx
+    .update(taskAttempts)
+    .set({ answers, updatedAt: now, version: sql`${taskAttempts.version} + 1` })
+    .where(
+      and(
+        eq(taskAttempts.institutionId, institutionId),
+        eq(taskAttempts.id, attempt.id),
+        eq(taskAttempts.version, attempt.rowVersion),
+        isNull(taskAttempts.submittedAt),
+        isNull(taskAttempts.archivedAt),
+      ),
+    )
+    .returning({ version: taskAttempts.version })
+  if (row === undefined) throw new ConflictError()
+  return row.version
+}
+
+/**
+ * Deneme teslimi (`planAttemptSubmit` çıktısı; DOM-BEC-043): cevaplar ve teslim anı birlikte, yalnız
+ * teslim edilmemiş ve beklenen satır sürümündeki denemeye yazılır; 0 satır → 409 `version_conflict`.
+ * Puan saklanmaz (DOM-BEC-010). Teslimden sonra cevap ve teslim anı bu depoda değişmez.
+ */
+export async function submitAttempt(
+  tx: Database,
+  institutionId: string,
+  attempt: LockedAttempt,
+  plan: { answers: Answers; submittedAt: string },
+  now: Date,
+): Promise<number> {
+  const [row] = await tx
+    .update(taskAttempts)
+    .set({
+      answers: plan.answers,
+      submittedAt: new Date(plan.submittedAt),
+      updatedAt: now,
+      version: sql`${taskAttempts.version} + 1`,
+    })
+    .where(
+      and(
+        eq(taskAttempts.institutionId, institutionId),
+        eq(taskAttempts.id, attempt.id),
+        eq(taskAttempts.version, attempt.rowVersion),
+        isNull(taskAttempts.submittedAt),
+        isNull(taskAttempts.archivedAt),
+      ),
+    )
+    .returning({ version: taskAttempts.version })
+  if (row === undefined) throw new ConflictError()
+  return row.version
 }
 
 // --- Teslim -------------------------------------------------------------------------------
@@ -1051,6 +1218,77 @@ export function insertResubmissionRequest(
   )
 }
 
+type StoredSubmissionWork = {
+  submission: StoredSubmission
+  versions: VersionRow[]
+  resubmissions: ResubmissionRequestRow[]
+}
+
+/** Teslim satırlarına değişmez sürümleri ve yeniden teslim isteklerini ekler (iki toplu sorgu). */
+async function withVersions(
+  db: Database,
+  institutionId: string,
+  rows: readonly (typeof taskSubmissions.$inferSelect)[],
+): Promise<StoredSubmissionWork[]> {
+  if (rows.length === 0) return []
+  const ids = rows.map((row) => row.id)
+  const [versions, requests] = await Promise.all([
+    db
+      .select()
+      .from(submissionVersions)
+      .where(
+        and(
+          eq(submissionVersions.institutionId, institutionId),
+          inArray(submissionVersions.submissionId, ids),
+          isNull(submissionVersions.archivedAt),
+        ),
+      )
+      .orderBy(asc(submissionVersions.submissionId), asc(submissionVersions.versionNumber)),
+    db
+      .select()
+      .from(resubmissionRequests)
+      .where(
+        and(
+          eq(resubmissionRequests.institutionId, institutionId),
+          inArray(resubmissionRequests.submissionId, ids),
+          isNull(resubmissionRequests.archivedAt),
+        ),
+      )
+      .orderBy(asc(resubmissionRequests.submissionId), asc(resubmissionRequests.versionNumber)),
+  ])
+  return rows.map((row) => {
+    const resubmissions = requests
+      .filter((r) => r.submissionId === row.id)
+      .map((r) => ({
+        versionNumber: r.versionNumber,
+        dueAt: iso(r.dueAt),
+        requestedByUserId: r.requestedByUserId,
+        requestedAt: iso(r.requestedAt),
+      }))
+    const latest = resubmissions.at(-1) ?? null
+    return {
+      submission: {
+        id: row.id,
+        assignmentId: row.assignmentId,
+        learnerId: row.learnerId,
+        resubmissionRequestedForVersion: latest?.versionNumber ?? null,
+        resubmissionDueAt: latest?.dueAt ?? null,
+        rowVersion: row.version,
+      },
+      versions: versions
+        .filter((v) => v.submissionId === row.id)
+        .map((v) => ({
+          id: v.id,
+          number: v.versionNumber,
+          submittedAt: iso(v.submittedAt),
+          body: v.body,
+          fileIds: [],
+        })),
+      resubmissions,
+    }
+  })
+}
+
 /**
  * Kursiyerin arşivlenmemiş teslim kaydı, değişmez sürümleri (eskiden yeniye) ve yeniden teslim
  * istekleri; teslim yoksa veya arşivliyse `null`. Taslak ayrıdır (`loadDraft`).
@@ -1060,12 +1298,8 @@ export async function loadSubmission(
   institutionId: string,
   assignmentId: string,
   learnerId: string,
-): Promise<{
-  submission: StoredSubmission
-  versions: VersionRow[]
-  resubmissions: ResubmissionRequestRow[]
-} | null> {
-  const [row] = await db
+): Promise<StoredSubmissionWork | null> {
+  const rows = await db
     .select()
     .from(taskSubmissions)
     .where(
@@ -1076,54 +1310,57 @@ export async function loadSubmission(
         isNull(taskSubmissions.archivedAt),
       ),
     )
-  if (row === undefined) return null
-  const versions = await db
+  const [work] = await withVersions(db, institutionId, rows)
+  return work ?? null
+}
+
+/** Teslim kaydı kimliğiyle (arşivli, başka kurumun veya olmayan kimlik `null`). */
+export async function findSubmission(
+  db: Database,
+  institutionId: string,
+  submissionId: string,
+): Promise<StoredSubmissionWork | null> {
+  if (!UUID.test(submissionId)) return null
+  const rows = await db
     .select()
-    .from(submissionVersions)
+    .from(taskSubmissions)
     .where(
       and(
-        eq(submissionVersions.institutionId, institutionId),
-        eq(submissionVersions.submissionId, row.id),
-        isNull(submissionVersions.archivedAt),
+        eq(taskSubmissions.institutionId, institutionId),
+        eq(taskSubmissions.id, submissionId),
+        isNull(taskSubmissions.archivedAt),
       ),
     )
-    .orderBy(asc(submissionVersions.versionNumber))
-  const requests = await db
-    .select()
-    .from(resubmissionRequests)
-    .where(
-      and(
-        eq(resubmissionRequests.institutionId, institutionId),
-        eq(resubmissionRequests.submissionId, row.id),
-        isNull(resubmissionRequests.archivedAt),
-      ),
-    )
-    .orderBy(asc(resubmissionRequests.versionNumber))
-  const resubmissions = requests.map((r) => ({
-    versionNumber: r.versionNumber,
-    dueAt: iso(r.dueAt),
-    requestedByUserId: r.requestedByUserId,
-    requestedAt: iso(r.requestedAt),
-  }))
-  const latest = resubmissions.at(-1) ?? null
-  return {
-    submission: {
-      id: row.id,
-      assignmentId: row.assignmentId,
-      learnerId: row.learnerId,
-      resubmissionRequestedForVersion: latest?.versionNumber ?? null,
-      resubmissionDueAt: latest?.dueAt ?? null,
-      rowVersion: row.version,
-    },
-    versions: versions.map((v) => ({
-      id: v.id,
-      number: v.versionNumber,
-      submittedAt: iso(v.submittedAt),
-      body: v.body,
-      fileIds: [],
-    })),
-    resubmissions,
-  }
+  const [work] = await withVersions(db, institutionId, rows)
+  return work ?? null
+}
+
+/**
+ * Atamanın arşivlenmemiş teslimleri, kursiyer sırasıyla, sayfalı (DOM-BEC-040). Süzgeç
+ * `task_submissions_assignment_learner_key` indeksinin önekidir.
+ */
+export async function listSubmissions(
+  db: Database,
+  institutionId: string,
+  query: LearnerWorkQuery,
+): Promise<{ rows: StoredSubmissionWork[]; total: number }> {
+  const where = and(
+    eq(taskSubmissions.institutionId, institutionId),
+    eq(taskSubmissions.assignmentId, query.assignmentId),
+    isNull(taskSubmissions.archivedAt),
+    learnerFilter(taskSubmissions.learnerId)(query.learnerIds),
+  )
+  const [rows, [totals]] = await Promise.all([
+    db
+      .select()
+      .from(taskSubmissions)
+      .where(where)
+      .orderBy(asc(taskSubmissions.learnerId))
+      .limit(query.pageSize)
+      .offset((query.page - 1) * query.pageSize),
+    db.select({ total: count() }).from(taskSubmissions).where(where),
+  ])
+  return { rows: await withVersions(db, institutionId, rows), total: totals?.total ?? 0 }
 }
 
 // --- Taslak -------------------------------------------------------------------------------

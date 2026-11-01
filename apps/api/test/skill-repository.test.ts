@@ -556,6 +556,21 @@ describe('beceri görevi deposu', () => {
       ids: [],
       total: 0,
     })
+    // DOM-YTK-028: öğretmen süzgeci "veya"dır: kendi ataması veya kapsamındaki hedef.
+    assert.deepEqual(
+      await ids({
+        assignedByUserId: 'test-teacher-a',
+        learnerTargets: { studentIds: [], classIds: ['test-c1'] },
+      }),
+      { ids: [toOther, toClass, toStudent], total: 3 },
+    )
+    assert.deepEqual(
+      await ids({
+        assignedByUserId: 'test-teacher-x',
+        learnerTargets: { studentIds: [], classIds: [] },
+      }),
+      { ids: [], total: 0 },
+    )
     assert.deepEqual(await ids({ kind: 'evaluation' }), { ids: [c.assignmentId], total: 1 })
     assert.deepEqual((await ids({ resourceId: foreign.resourceId })).total, 0)
 

@@ -2405,7 +2405,7 @@ export interface paths {
         };
         /**
          * Görev atamaları
-         * @description Arşivlenmemiş atamalar, en yeni önce, sayfalı (IST-034). Süzgeçler: içerik (`resourceId`; aynı içeriğin farklı son tarihli ayrı atamaları) ve görev türü. Bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün atamaları, `ogretmen` kendi atamaları, `ogrenci` kendisine hedeflenenler, `veli` çocuklarına hedeflenenler; ön büro 403. Öğrenci ve veli `learner` görünümünü alır: hedef listesi, puanlama ve rubrik sürümü, ikinci puanlama oranı ve atayan yoktur; cevap anahtarı hiçbir görünümde yoktur. Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun ataması 404.
+         * @description Arşivlenmemiş atamalar, en yeni önce, sayfalı (IST-034). Süzgeçler: içerik (`resourceId`; aynı içeriğin farklı son tarihli ayrı atamaları) ve görev türü. Bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün atamaları; `ogretmen` kendi atamaları, kapsamındaki (ders verdiği veya sınıf rehber öğretmeni olduğu) sınıfı/grubu hedefleyenler ve o sınıfların güncel öğrencilerine hedeflenenler (DOM-YTK-028; atayan değilse `targets` yalnız kendi kapsamındaki hedefleri içerir); `ogrenci` kendisine hedeflenenler, `veli` çocuklarına hedeflenenler; ön büro 403. Öğrenci ve veli `learner` görünümünü alır: hedef listesi, puanlama ve rubrik sürümü, ikinci puanlama oranı ve atayan yoktur; cevap anahtarı hiçbir görünümde yoktur. Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun ataması 404.
          */
         get: operations["listTaskAssignments"];
         put?: never;
@@ -2429,7 +2429,7 @@ export interface paths {
         };
         /**
          * Görev ataması ayrıntısı
-         * @description Atamanın sabitlenmiş içerik sürümü ve ayarları (DOM-KYN-032, DOM-BEC-041, 042). Roller: `yonetici` kurumun bütün atamaları, `ogretmen` kendi atamaları, `ogrenci` kendisine hedeflenenler, `veli` çocuklarına hedeflenenler; ön büro 403. Öğrenci ve veli `learner` görünümünü alır: hedef listesi, puanlama ve rubrik sürümü, ikinci puanlama oranı ve atayan yoktur; cevap anahtarı hiçbir görünümde yoktur. Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun ataması 404.
+         * @description Atamanın sabitlenmiş içerik sürümü ve ayarları (DOM-KYN-032, DOM-BEC-041, 042). Roller: `yonetici` kurumun bütün atamaları; `ogretmen` kendi atamaları, kapsamındaki (ders verdiği veya sınıf rehber öğretmeni olduğu) sınıfı/grubu hedefleyenler ve o sınıfların güncel öğrencilerine hedeflenenler (DOM-YTK-028; atayan değilse `targets` yalnız kendi kapsamındaki hedefleri içerir); `ogrenci` kendisine hedeflenenler, `veli` çocuklarına hedeflenenler; ön büro 403. Öğrenci ve veli `learner` görünümünü alır: hedef listesi, puanlama ve rubrik sürümü, ikinci puanlama oranı ve atayan yoktur; cevap anahtarı hiçbir görünümde yoktur. Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun ataması 404.
          */
         get: operations["getTaskAssignment"];
         put?: never;
@@ -2439,7 +2439,7 @@ export interface paths {
         head?: never;
         /**
          * Görev atamasını değiştir
-         * @description Yalnız son teslim ve geç kabul süresi uzatılır (core `planAssignmentChange`; DOM-BEC-041, 042, 044): kısaltma 422 `deadline_shortened`; içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 `assignment_setting_frozen`. Değiştiren atayan veya yöneticidir; başka öğretmenin ataması 404. `If-Match` zorunlu: atamanın `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Yalnız son teslim ve geç kabul süresi uzatılır (core `planAssignmentChange`; DOM-BEC-041, 042, 044): kısaltma 422 `deadline_shortened`; içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 `assignment_setting_frozen`. Değiştiren yalnız atayan veya yöneticidir (DOM-YTK-028). Sıra: kapsam dışı atama 404 → görünür ama atayan olmayan öğretmen 403 `forbidden` → sürüm. `If-Match` zorunlu: atamanın `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         patch: operations["updateTaskAssignment"];
         trace?: never;

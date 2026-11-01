@@ -26,6 +26,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 | Sağlık ve acil bilgi       | O                        | O (yalnız acil müdahale satırı) | O (sınıf rehber, etkinlik sorumlusu)                                                         | —                                            | Y (çocuk)                                         |
 | Kaynak platformu içeriği   | Y; onay                  | —                               | Y (kendi), O (kapsamdaki); zümre başkanı onay                                                | O (kapsamındaki yayında)                     | O (çocuğun gördüğü)                               |
 | Ödev, quiz                 | O                        | —                               | Y (kendi sınıfları)                                                                          | teslim/çözer (kendi)                         | O (çocuk)                                         |
+| Görev ataması              | Y (kurum)                | —                               | Y (kendi ataması); O (kendi sınıflarına hedeflenen; `DOM-YTK-028`)                           | O kendi                                      | O (çocuk)                                         |
 | Öğretmenime Sor            | O                        | —                               | Y yanıt (kendisine atanan soru; ek yanıt derse atanmışken)                                   | Y soru, geri çekme (kendi; ders öğretmenine) | O (çocuk)                                         |
 | Duyuru                     | Y (her kapsam)           | Y (idari, kurum/kampüs)         | Y (kendi sınıfları)                                                                          | O                                            | O                                                 |
 | Birebir mesaj              | Y (kendi konuşmaları)    | Y (kayıt/ödeme konulu, veliyle) | Y (ders verdiği öğrenci ve velisi)                                                           | Y (ders veren öğretmen, rehber öğretmen)     | Y (çocuğun öğretmenleri, idare)                   |
@@ -154,6 +155,14 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Kaynak:** İşletme kuralı; zümre öğretmenler kurulu hükümleri **doğrulanmalı**.
 - **Kurum türü:** ikisi
 - **Kodda:** yok.
+
+### DOM-YTK-028 · Görev atamasını sınıfın öğretmeni de görür, yalnız atayan değiştirir
+
+- **Kural:** Görev atamasını (ödev, quiz, beceri görevi) yönetici kurumda; öğretmen kendi yaptığı atamaları, kapsamındaki sınıfı/grubu hedefleyen atamaları ve o sınıfların güncel öğrencilerine hedeflenmiş atamaları görür. Öğretmen kapsamı `DOM-YTK-022`'dir (ders verdiği ve sınıf rehber öğretmeni olduğu sınıflar). Atayan olmayan öğretmen atamanın hedef listesinde yalnız kendi kapsamındaki sınıf ve öğrencileri görür. Atamayı yalnız atayan kişi ve yönetici değiştirir; atamayı gören ama atayan olmayan öğretmenin değişikliği reddedilir. Öğrenci kendisine, veli çocuklarına hedeflenen atamayı görür.
+- **Gerekçe:** Teslimi sınıfın ders öğretmeni puanlar; başka öğretmenin veya yöneticinin o sınıfa verdiği görevi göremeyen öğretmen puanlayamaz. Ayarları değiştirmek ise görevi verenin sorumluluğudur.
+- **Kaynak:** İşletme kuralı; ADR 0004 karar 4.
+- **Kurum türü:** ikisi (dil okulunda sınıf yerine grup)
+- **Kodda:** var — API `apps/api/src/services/task-assignments.ts` (`visible`, `listFilter`; öğretmen kapsamı `read-scope.ts` `readScope`: `scope.classIds`, `scope.studentIds`); `PATCH /api/v1/task-assignments/:assignmentId` kapsam dışına 404, görünür ama atayan olmayan öğretmene 403 `forbidden`, ardından sürüm 409. Kural henüz core'da değil (`TODO(core-atama-yetki)`).
 
 ## Yaş ve veli erişimi
 

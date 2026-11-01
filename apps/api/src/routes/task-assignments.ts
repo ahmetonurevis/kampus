@@ -29,8 +29,8 @@ import {
  * Görev atama uçları (ADR 0004 karar 4; docs/domain/beceri-gelisimi.md DOM-BEC-041, 042, 044;
  * kaynak-platformu.md DOM-KYN-032; IST-034). Ödev, quiz ve beceri görevi aynı uçla atanır.
  * `learning` modülüne bağlıdır. Okuma yönetici, öğretmen, öğrenci ve velinindir (ön büro 403);
- * yazma core `ASSIGNING_ROLES`'tur (yönetici, öğretmen). Olmayan, kapsam dışı veya başka kurumun
- * ataması 404. Yeniden puanlama (`TODO(F4b-rescore)`) ve arşiv (`TODO(F4b-atama-arsiv)`) açılmadı;
+ * yazma core `ASSIGNING_ROLES`'tur (yönetici, öğretmen); değiştirme yalnız atayan ve yöneticidir
+ * (DOM-YTK-028). Olmayan, kapsam dışı veya başka kurumun ataması 404. Yeniden puanlama (`TODO(F4b-rescore)`) ve arşiv (`TODO(F4b-atama-arsiv)`) açılmadı;
  * gerekçe `services/task-assignments.ts`'te.
  */
 
@@ -38,7 +38,7 @@ const MODULE = 'learning'
 const READERS: readonly Role[] = ['yonetici', 'ogretmen', 'ogrenci', 'veli']
 const WRITERS: readonly Role[] = ['yonetici', 'ogretmen']
 const READ_ACCESS =
-  'Roller: `yonetici` kurumun bütün atamaları, `ogretmen` kendi atamaları, `ogrenci` kendisine hedeflenenler, `veli` çocuklarına hedeflenenler; ön büro 403. Öğrenci ve veli `learner` görünümünü alır: hedef listesi, puanlama ve rubrik sürümü, ikinci puanlama oranı ve atayan yoktur; cevap anahtarı hiçbir görünümde yoktur. Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun ataması 404.'
+  'Roller: `yonetici` kurumun bütün atamaları; `ogretmen` kendi atamaları, kapsamındaki (ders verdiği veya sınıf rehber öğretmeni olduğu) sınıfı/grubu hedefleyenler ve o sınıfların güncel öğrencilerine hedeflenenler (DOM-YTK-028; atayan değilse `targets` yalnız kendi kapsamındaki hedefleri içerir); `ogrenci` kendisine hedeflenenler, `veli` çocuklarına hedeflenenler; ön büro 403. Öğrenci ve veli `learner` görünümünü alır: hedef listesi, puanlama ve rubrik sürümü, ikinci puanlama oranı ve atayan yoktur; cevap anahtarı hiçbir görünümde yoktur. Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun ataması 404.'
 const WRITE_ACCESS =
   'Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.'
 
@@ -124,7 +124,7 @@ export function registerTaskAssignmentRoutes(app: FastifyInstance) {
         operationId: 'updateTaskAssignment',
         tags: ['task-assignments'],
         summary: 'Görev atamasını değiştir',
-        description: `Yalnız son teslim ve geç kabul süresi uzatılır (core \`planAssignmentChange\`; DOM-BEC-041, 042, 044): kısaltma 422 \`deadline_shortened\`; içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 \`assignment_setting_frozen\`. Değiştiren atayan veya yöneticidir; başka öğretmenin ataması 404. \`If-Match\` zorunlu: atamanın \`rowVersion\`'ı (yoksa 400 \`if_match_required\`, tutmazsa 409 \`version_conflict\`). ${WRITE_ACCESS}`,
+        description: `Yalnız son teslim ve geç kabul süresi uzatılır (core \`planAssignmentChange\`; DOM-BEC-041, 042, 044): kısaltma 422 \`deadline_shortened\`; içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 \`assignment_setting_frozen\`. Değiştiren yalnız atayan veya yöneticidir (DOM-YTK-028). Sıra: kapsam dışı atama 404 → görünür ama atayan olmayan öğretmen 403 \`forbidden\` → sürüm. \`If-Match\` zorunlu: atamanın \`rowVersion\`'ı (yoksa 400 \`if_match_required\`, tutmazsa 409 \`version_conflict\`). ${WRITE_ACCESS}`,
         params: taskAssignmentParamsSchema,
         body: taskAssignmentPatchSchema,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),

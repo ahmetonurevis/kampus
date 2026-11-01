@@ -53,10 +53,16 @@ import { contentReader } from './resources.ts'
  * içerik sürümü 404; görünür içerikte kapsam dışı hedef 403 (core `target_scope_denied`); yayında
  * olmayan veya güncel olmayan sürüm 409 (core `resource_version_not_assignable`), taslak veya
  * arşivli rubrik sürümü 409 (core `rubric_version_not_assignable`). Değişiklikte görünmeyen atama
- * 404, sürüm 409.
+ * 404, görünür ama atayan olmayan öğretmen 403, sürüm 409.
  *
- * Okuma kapsamı: yönetici kurumun bütün atamalarını, öğretmen kendi atamalarını, öğrenci kendisine
- * (öğrenci hedefi veya güncel sınıfı/grubu) hedeflenenleri, veli çocuklarına hedeflenenleri görür.
+ * Okuma kapsamı (yetki-ve-kapsam.md DOM-YTK-028): yönetici kurumun bütün atamalarını; öğretmen
+ * kendi atamalarını, kapsamındaki (ders verdiği veya rehberi olduğu) sınıfı/grubu hedefleyenleri
+ * ve o sınıfların güncel öğrencilerine hedeflenenleri (F4b3'te teslimi sınıfın öğretmeni puanlar);
+ * öğrenci kendisine (öğrenci hedefi veya güncel sınıfı/grubu) hedeflenenleri, veli çocuklarına
+ * hedeflenenleri görür.
+ * Öğretmen kapsamı `readScope` (`scope.classIds`, `scope.studentIds`; DOM-YTK-022) ile gelir.
+ * Atayan olmayan öğretmen hedef listesinde yalnız kendi kapsamındaki hedefleri görür. Değiştirme
+ * yalnız atayan ve yöneticidedir: görünür ama atayan olmayan öğretmen 403 alır.
  * Öğrenci ve veli görünümünde hedef listesi, puanlama ve rubrik sürümü, ikinci puanlama oranı,
  * atayan ve satır sürümü yoktur; cevap anahtarı hiçbir atama yanıtında yoktur (DOM-BEC-045).
  *
@@ -82,7 +88,13 @@ const CLASS_TARGETS = new Set(['class', 'group'])
 
 type Viewer =
   | { kind: 'admin' }
-  | { kind: 'teacher'; userId: string }
+  | {
+      kind: 'teacher'
+      userId: string
+      /** Öğretmen kapsamı (`readScope`): ders verdiği sınıflar ve onların güncel öğrencileri. */
+      classIds: ReadonlySet<string>
+      studentIds: ReadonlySet<string>
+    }
   | {
       kind: 'learner'
       /** Kapsamdaki öğrenci → güncel sınıf/grup (öğrencide kendisi, velide çocukları). */
@@ -94,8 +106,10 @@ async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
   switch (role) {
     case 'yonetici':
       return { kind: 'admin' }
-    case 'ogretmen':
-      return { kind: 'teacher', userId }
+    case 'ogretmen': {
+      const scope = await readScope(ctx)
+      return { kind: 'teacher', userId, classIds: scope.classIds, studentIds: scope.studentIds }
+    }
     case 'ogrenci':
     case 'veli': {
       const [scope, source] = await Promise.all([readScope(ctx), readSource(ctx)])
@@ -133,12 +147,25 @@ function targetedLearners(classOf: ReadonlyMap<string, string>, assignment: Stor
     .sort()
 }
 
+/** Hedef öğretmenin kapsamında mı: sınıf/grup hedefi kapsamdaki sınıf, öğrenci hedefi öğrencisi. */
+function teacherReaches(
+  viewer: Extract<Viewer, { kind: 'teacher' }>,
+  target: StoredAssignment['targets'][number],
+): boolean {
+  return CLASS_TARGETS.has(target.kind)
+    ? viewer.classIds.has(target.id)
+    : viewer.studentIds.has(target.id)
+}
+
 function visible(viewer: Viewer, assignment: StoredAssignment): boolean {
   switch (viewer.kind) {
     case 'admin':
       return true
     case 'teacher':
-      return assignment.assignedByUserId === viewer.userId
+      return (
+        assignment.assignedByUserId === viewer.userId ||
+        assignment.targets.some((target) => teacherReaches(viewer, target))
+      )
     case 'learner':
       return (
         assignment.archivedAt === null && targetedLearners(viewer.classOf, assignment).length > 0
@@ -155,7 +182,11 @@ function listFilter(
     case 'admin':
       return {}
     case 'teacher':
-      return { assignedByUserId: viewer.userId }
+      // Depo iki koşulu "veya" ile birleştirir: kendi ataması veya kapsamdaki hedef.
+      return {
+        assignedByUserId: viewer.userId,
+        learnerTargets: { studentIds: [...viewer.studentIds], classIds: [...viewer.classIds] },
+      }
     case 'learner':
       return {
         learnerTargets: {
@@ -209,7 +240,13 @@ function staffView(assignment: StoredAssignment, content: AssignmentContentRef) 
 }
 
 function viewOf(viewer: Viewer, assignment: StoredAssignment, content: AssignmentContentRef) {
-  if (viewer.kind !== 'learner') return staffView(assignment, content)
+  if (viewer.kind === 'admin') return staffView(assignment, content)
+  if (viewer.kind === 'teacher') {
+    if (assignment.assignedByUserId === viewer.userId) return staffView(assignment, content)
+    // Atayan olmayan öğretmen kapsamı dışındaki sınıf ve öğrenci kimliklerini görmez (DOM-YTK-022).
+    const targets = assignment.targets.filter((target) => teacherReaches(viewer, target))
+    return staffView({ ...assignment, targets }, content)
+  }
   return {
     view: 'learner' as const,
     ...sharedView(assignment, content),
@@ -467,7 +504,8 @@ export async function createTaskAssignment(
 /**
  * Atama değişikliği (core `planAssignmentChange`; DOM-BEC-041, 042, 044): yalnız son teslim ve geç
  * kabul uzar; sabitlenen sürüm ve ayarlar 409 `assignment_setting_frozen`. Değiştiren atayan veya
- * yöneticidir; başkasının ataması öğretmene görünmez (404). `If-Match` atamanın `rowVersion`'ıdır.
+ * yöneticidir (DOM-YTK-028): kapsam dışı atama 404, ders verdiği sınıfı hedeflediği için görünen
+ * ama başkasının ataması 403, ardından sürüm 409. `If-Match` atamanın `rowVersion`'ıdır.
  */
 export async function updateTaskAssignment(
   ctx: ServiceContext,

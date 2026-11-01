@@ -92,8 +92,9 @@ describe('görev atama uçları', () => {
   })
 
   /**
-   * Okul: `t-eng` (İngilizce) 9-A'da ders verir; `t-mat` (matematik) 9-B'de. Deniz (`s-1`) ve Ece
-   * (`s-2`) 9-A'da, Can (`s-3`) 9-B'de. Veli Deniz'in velisidir.
+   * Okul: `t-eng` (İngilizce) 9-A'da ders verir ve rehberidir; `t-mat` (matematik) 9-B'de. `t-fiz`
+   * hiçbir sınıfta ders vermez. Deniz (`s-1`) ve Ece (`s-2`) 9-A'da, Can (`s-3`) 9-B'de. Veli
+   * Deniz'in velisidir.
    */
   async function tenant() {
     const institution = await createInstitution(app)
@@ -112,9 +113,14 @@ describe('görev atama uçları', () => {
           data: { id: 't-mat', name: 'Murat Demir', subjectId: 'matematik', branchId: 'b-1' },
         },
         {
+          collection: 'teachers',
+          id: 't-fiz',
+          data: { id: 't-fiz', name: 'Leyla Şahin', subjectId: 'fizik', branchId: 'b-1' },
+        },
+        {
           collection: 'classes',
           id: '9-A',
-          data: { id: '9-A', grade: 9, level: '9', branchId: 'b-1', teacherId: 't-mat' },
+          data: { id: '9-A', grade: 9, level: '9', branchId: 'b-1', teacherId: 't-eng' },
         },
         {
           collection: 'classes',
@@ -149,6 +155,9 @@ describe('görev atama uçları', () => {
     const otherTeacher = await createMember(app, institution.id, 'ogretmen', [
       { kind: 'teacher', recordId: 't-mat' },
     ])
+    const outsideTeacher = await createMember(app, institution.id, 'ogretmen', [
+      { kind: 'teacher', recordId: 't-fiz' },
+    ])
     const student = await createMember(app, institution.id, 'ogrenci', [
       { kind: 'student', recordId: 's-1' },
     ])
@@ -163,6 +172,7 @@ describe('görev atama uçları', () => {
       admin: await signInAs(app, institution.admin),
       teacher: await signInAs(app, teacher),
       otherTeacher: await signInAs(app, otherTeacher),
+      outsideTeacher: await signInAs(app, outsideTeacher),
       student: await signInAs(app, student),
       otherStudent: await signInAs(app, otherStudent),
       parent: await signInAs(app, parent),
@@ -601,7 +611,7 @@ describe('görev atama uçları', () => {
     )
   })
 
-  test('IST-034: rol × kapsam: yönetici hepsini, öğretmen kendi atamalarını, öğrenci kendisine, veli çocuğuna hedeflenenleri görür; kursiyer görünümünde iç alan ve anahtar yok', async () => {
+  test('IST-034, DOM-YTK-028: rol × kapsam: yönetici hepsini, öğretmen kendi atamalarını ve kapsamındaki hedefleri, öğrenci kendisine, veli çocuğuna hedeflenenleri görür; kursiyer görünümünde iç alan ve anahtar yok', async () => {
     const t = await tenant()
     const toClass = await ok(await create(t.cookies.teacher, writing(t)), 201)
     const toOther = await ok(
@@ -623,7 +633,9 @@ describe('görev atama uçları', () => {
     const ordered = newestFirst(toClass, toOther).map((row) => row.id)
     assert.deepEqual((await ids(t.cookies.admin)).ids, ordered)
     assert.deepEqual((await ids(t.cookies.teacher)).ids, [toClass.id])
-    assert.deepEqual((await ids(t.cookies.otherTeacher)).ids, [])
+    // Matematik öğretmeni 9-B'de ders verir: Can'a hedeflenen atamayı görür, 9-A'nınkini görmez.
+    assert.deepEqual((await ids(t.cookies.otherTeacher)).ids, [toOther.id])
+    assert.deepEqual((await ids(t.cookies.outsideTeacher)).ids, [])
     assert.deepEqual((await ids(t.cookies.otherStudent)).ids, [toOther.id])
     assert.deepEqual((await ids(t.cookies.admin, '?pageSize=1&page=2')).ids, [ordered[1]])
     assert.equal((await ids(t.cookies.admin, '?pageSize=1')).total, 2)
@@ -658,12 +670,9 @@ describe('görev atama uçları', () => {
         assert.ok(!JSON.stringify(detail).includes(text), `${text} kursiyere gitti`)
       fails(await call('GET', `/task-assignments/${toOther.id}`, cookie), 404, 'not_found')
     }
-    // Başka öğretmenin ataması 404; yönetici her atamayı görür.
-    fails(
-      await call('GET', `/task-assignments/${toClass.id}`, t.cookies.otherTeacher),
-      404,
-      'not_found',
-    )
+    // Kapsam dışındaki başka öğretmenin ataması 404; yönetici her atamayı görür.
+    for (const cookie of [t.cookies.otherTeacher, t.cookies.outsideTeacher])
+      fails(await call('GET', `/task-assignments/${toClass.id}`, cookie), 404, 'not_found')
     assert.equal(
       (await ok(await call('GET', `/task-assignments/${toOther.id}`, t.cookies.admin))).view,
       'staff',
@@ -703,6 +712,57 @@ describe('görev atama uçları', () => {
     for (const cookie of [t.cookies.student, t.cookies.parent])
       assert.deepEqual(await seen(cookie), [toB.id])
     fails(await call('GET', `/task-assignments/${toA.id}`, t.cookies.student), 404, 'not_found')
+  })
+
+  test('DOM-YTK-028: öğretmen ders verdiği sınıfı ve o sınıfın öğrencilerini hedefleyen atamayı görür, hedef listesinde yalnız kendi kapsamı; atayan değilse değiştiremez: kapsam dışı 404 → yetkisiz 403 → sürüm 409', async () => {
+    const t = await tenant()
+    const mixed = await ok(
+      await create(
+        t.cookies.admin,
+        writing(t, {
+          targets: [
+            { kind: 'class', id: '9-A' },
+            { kind: 'student', id: 's-3' },
+          ],
+        }),
+      ),
+      201,
+    )
+    const url = `/task-assignments/${mixed.id}`
+    const seen = async (cookie: string) =>
+      (await ok(await call('GET', '/task-assignments', cookie))).map((row: Json) => [
+        row.id,
+        row.targets,
+      ])
+    // Sınıf hedefi üzerinden İngilizce öğretmeni, öğrenci hedefi üzerinden matematik öğretmeni görür.
+    assert.deepEqual(await seen(t.cookies.teacher), [[mixed.id, [{ kind: 'class', id: '9-A' }]]])
+    assert.deepEqual(await seen(t.cookies.otherTeacher), [
+      [mixed.id, [{ kind: 'student', id: 's-3' }]],
+    ])
+    assert.deepEqual(await seen(t.cookies.outsideTeacher), [])
+    const detail = await ok(await call('GET', url, t.cookies.otherTeacher))
+    assert.equal(detail.view, 'staff')
+    assert.equal(detail.assignedByUserId, t.institution.admin.id)
+    assert.deepEqual(detail.targets, [{ kind: 'student', id: 's-3' }])
+    assert.deepEqual((await ok(await call('GET', url, t.cookies.admin))).targets, mixed.targets)
+    fails(await call('GET', url, t.cookies.outsideTeacher), 404, 'not_found')
+
+    const before = await snapshot(t.institution.id)
+    const extend = { deadline: { dueAt: LATER_DUE } }
+    for (const version of [1, 9]) {
+      // Kapsam: atamayı göremeyen öğretmen sürümden bağımsız 404.
+      fails(await change(mixed.id, t.cookies.outsideTeacher, extend, version), 404, 'not_found')
+      // Yetki: görebilen ama atayan olmayan öğretmen sürümden bağımsız 403.
+      for (const cookie of [t.cookies.teacher, t.cookies.otherTeacher])
+        fails(await change(mixed.id, cookie, extend, version), 403, 'forbidden')
+    }
+    // Sürüm: yetkili yönetici yanlış sürümle 409.
+    fails(await change(mixed.id, t.cookies.admin, extend, 9), 409, 'version_conflict')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    assert.deepEqual(
+      (await ok(await change(mixed.id, t.cookies.admin, extend, 1))).deadline.dueAt,
+      LATER_DUE,
+    )
   })
 
   test('DOM-BEC-041, 042, 044: değişiklik yalnız son teslimi uzatır; If-Match zorunlu ve sürüm 409; kısaltma 422; sabit alan 409; başka öğretmen 404; kayıt değişmez', async () => {

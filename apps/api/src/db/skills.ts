@@ -758,8 +758,10 @@ export async function resourceIdOfVersion(
 
 /**
  * Atama listesinin süzgeçleri. Rol kapsamı servisten gelir: `assignedByUserId` öğretmenin kendi
- * atamaları, `learnerTargets` kursiyerin (veya velinin çocuklarının) hedeflendiği atamalar.
- * İkisi de yoksa kurumun bütün atamaları (yönetici).
+ * atamaları, `learnerTargets` kursiyerin (veya velinin çocuklarının) ya da öğretmenin kapsamındaki
+ * sınıf ve öğrencilerin hedeflendiği atamalar. İkisi birlikte verilirse "veya" ile birleşir
+ * (öğretmen: kendi ataması veya kapsamındaki hedef; DOM-YTK-028). İkisi de yoksa kurumun bütün
+ * atamaları (yönetici).
  */
 export interface AssignmentListQuery {
   page: number
@@ -784,7 +786,7 @@ export async function listAssignments(
   const a = taskAssignments
   const t = taskAssignmentTargets
   const learnerFilter = (() => {
-    if (query.learnerTargets === undefined) return []
+    if (query.learnerTargets === undefined) return undefined
     const { studentIds, classIds } = query.learnerTargets
     const matches = [
       ...(studentIds.length > 0
@@ -794,32 +796,35 @@ export async function listAssignments(
         ? [and(inArray(t.targetKind, ['class', 'group']), inArray(t.targetId, [...classIds]))]
         : []),
     ]
-    if (matches.length === 0) return [sql`false`]
-    return [
-      exists(
-        db
-          .select({ one: sql`1` })
-          .from(t)
-          .where(
-            and(
-              eq(t.institutionId, a.institutionId),
-              eq(t.assignmentId, a.id),
-              isNull(t.archivedAt),
-              or(...matches),
-            ),
+    if (matches.length === 0) return sql`false`
+    return exists(
+      db
+        .select({ one: sql`1` })
+        .from(t)
+        .where(
+          and(
+            eq(t.institutionId, a.institutionId),
+            eq(t.assignmentId, a.id),
+            isNull(t.archivedAt),
+            or(...matches),
           ),
-      ),
-    ]
+        ),
+    )
   })()
+  const ownerFilter =
+    query.assignedByUserId === undefined
+      ? undefined
+      : eq(a.assignedByUserId, query.assignedByUserId)
+  const scopeFilter =
+    ownerFilter !== undefined && learnerFilter !== undefined
+      ? or(ownerFilter, learnerFilter)
+      : (ownerFilter ?? learnerFilter)
   const where = and(
     eq(a.institutionId, institutionId),
     isNull(a.archivedAt),
-    ...(query.assignedByUserId === undefined
-      ? []
-      : [eq(a.assignedByUserId, query.assignedByUserId)]),
+    ...(scopeFilter === undefined ? [] : [scopeFilter]),
     ...(query.resourceId === undefined ? [] : [eq(a.resourceId, query.resourceId)]),
     ...(query.kind === undefined ? [] : [eq(a.kind, query.kind)]),
-    ...learnerFilter,
   )
   const [rows, [totals]] = await Promise.all([
     db

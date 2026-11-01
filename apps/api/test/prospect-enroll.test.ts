@@ -586,12 +586,48 @@ describe('kesin kayıt ucu', () => {
     assert.equal(response.statusCode, 201, response.body)
     assert.equal(await count(a.id, 'parents'), parents)
     const parent = await findRecord(db, a.id, 'parents', 'test-p-a')
+    // İletişimi olmayan seçilmiş veliye 18 yaş altı adayın telefonu ve e-postası yazılır.
     assert.deepEqual(parent?.data, {
       id: 'test-p-a',
       name: 'A Veli',
       studentIds: [response.json().data.entity.id],
+      phone: PR1?.phone,
+      email: PR1?.email,
     })
     assert.deepEqual(await snapshot(b.id), bBefore)
+  })
+
+  test('DOM-KAY-013, DOM-KAY-003: dil okulunda yetişkin kardeşin yer tutucu velisi 18 yaş altı kardeşe verilmez; seçilirse 422', async () => {
+    const adult = { ...SEED.prospects[3], minor: false }
+    const young = { ...PR1, minor: true, guardianName: 'Gül Güven', siblingOfId: adult.id }
+    const a = await institution(
+      { type: 'language_school' },
+      { ...SAMPLE, prospects: [young, adult] },
+    )
+    const cookie = await frontDesk(a.id)
+    const grown = await enroll({ cookie, prospectId: 'pr4' })
+    assert.equal(grown.statusCode, 201, grown.body)
+    const grownStudent = await findRecord(db, a.id, 'students', grown.json().data.entity.id)
+    const placeholderId = String(grownStudent?.data.parentId)
+    await unchanged(a.id, async () => {
+      assertError(
+        await enroll({ cookie, body: { ...REGISTRATION, parentId: placeholderId } }),
+        422,
+        'parent_not_guardian',
+      )
+    })
+    const parents = await count(a.id, 'parents')
+    const minor = await enroll({ cookie })
+    assert.equal(minor.statusCode, 201, minor.body)
+    assert.equal(await count(a.id, 'parents'), parents + 1)
+    const minorStudent = await findRecord(db, a.id, 'students', minor.json().data.entity.id)
+    assert.notEqual(minorStudent?.data.parentId, placeholderId)
+    const guardian = await findRecord(db, a.id, 'parents', String(minorStudent?.data.parentId))
+    assert.equal(guardian?.data.name, 'Gül Güven')
+    assert.equal(guardian?.data.phone, PR1?.phone)
+    const placeholder = await findRecord(db, a.id, 'parents', placeholderId)
+    assert.deepEqual(placeholder?.data.studentIds, [grownStudent?.data.id])
+    assert.equal(placeholder?.version, 1)
   })
 
   test('DOM-KAY-012: kimlik no, doğum tarihi ve yakınlık öğrenciye yazılır; geçersiz kimlik no 400; 18 yaş altında ödeyici öğrenci 422', async () => {

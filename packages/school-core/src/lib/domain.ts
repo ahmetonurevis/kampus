@@ -3,7 +3,7 @@ import type { questionBank } from '../data/question-bank.ts'
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import type { Role } from '../modules/navigation.ts'
-import { ADULT_AGE, ageOn, isCalendarDay } from './age.ts'
+import { ADULT_AGE, ageOn, isCalendarDay, isUnderAdultAge } from './age.ts'
 import { dayKey } from './format.ts'
 import type { ActorLink } from './scope.ts'
 import { DomainError } from './errors.ts'
@@ -352,14 +352,34 @@ export function enrollmentFromRegistration(input: unknown): EnrollmentInput {
   }
 }
 
-/** Kardeş adayın (DOM-KAY-031) kayıtlı öğrencisinin velisi; iki yönde de aranır. */
-function siblingParent(state: State, prospect: State['prospects'][number]) {
+type Parent = State['parents'][number]
+
+/**
+ * Yetişkin kursiyer için açılan iletişimsiz "<ad> velisi" yer tutucusu mu: velinin telefonu ve
+ * e-postası yoktur ve bütün öğrencileri yetişkin kaydıdır (adayı 18 yaş üstü seçilmiş ya da doğum
+ * tarihine göre 18 yaşını doldurmuş). Yer tutucu gerçek veli değildir; 18 yaş altı kardeş ona
+ * bağlanırsa öğrencinin ulaşılabilir velisi kalmaz (DOM-KAY-003, DOM-KAY-013).
+ */
+function isAdultPlaceholder(state: State, parent: Parent, now: string): boolean {
+  if (parent.phone || parent.email || parent.studentIds.length === 0) return false
+  return parent.studentIds.every((studentId) => {
+    const student = state.students.find((s) => s.id === studentId)
+    if (student?.birthDate !== undefined && !isUnderAdultAge(student.birthDate, now)) return true
+    return state.prospects.some((p) => p.studentId === studentId && p.minor === false)
+  })
+}
+
+/**
+ * Kardeş adayın (DOM-KAY-031) kayıtlı öğrencisinin velisi; iki yönde de aranır. Yetişkin kardeşin
+ * yer tutucu velisi kullanılmaz (`isAdultPlaceholder`); o durumda yeni veli açılır.
+ */
+function siblingParent(state: State, prospect: State['prospects'][number], now: string) {
   for (const other of state.prospects) {
     if (other.id === prospect.id || !other.studentId) continue
     if (other.id !== prospect.siblingOfId && other.siblingOfId !== prospect.id) continue
     const sibling = state.students.find((s) => s.id === other.studentId)
     const parent = sibling && state.parents.find((p) => p.id === sibling.parentId)
-    if (parent) return parent
+    if (parent && !isAdultPlaceholder(state, parent, now)) return parent
   }
   return undefined
 }
@@ -374,7 +394,9 @@ function siblingParent(state: State, prospect: State['prospects'][number]) {
  *   18 yaş altıdır; `language_school`'da adayın seçimi, seçimi olmayan eski adayda doğum tarihi.
  * - Kardeş kaydında (DOM-KAY-013) yeni veli açılmaz: açıkça seçilen veli (`parentId`) ya da kardeş
  *   adayın (DOM-KAY-031) kayıtlı öğrencisinin velisi kullanılır; iletişim eşleşmesiyle otomatik
- *   birleştirilmez.
+ *   birleştirilmez. Yetişkin kardeşin iletişimsiz yer tutucu velisi gerçek veli sayılmaz: kardeşte
+ *   atlanır (yeni veli açılır), açıkça seçilirse 422 `parent_not_guardian`. Mevcut velinin eksik
+ *   telefonu ve e-postası adayınkiyle tamamlanır; var olan değer değişmez.
  * - Sınıf adayın kampüsünden değilse 422 `class_campus_mismatch`; `allowOtherCampus` bilinçli
  *   seçimdir.
  * - DOM-KAY-012 alanları (kimlik no, doğum tarihi, yakınlık, ödeyici) şimdilik isteğe bağlıdır.
@@ -453,7 +475,7 @@ export function enrollProspect(
   const existingParent =
     data.parentId === undefined
       ? minor
-        ? siblingParent(state, prospect)
+        ? siblingParent(state, prospect, now)
         : undefined
       : state.parents.find((p) => p.id === data.parentId)
   if (data.parentId !== undefined && !existingParent)
@@ -461,6 +483,16 @@ export function enrollProspect(
       kind: 'not_found',
       path: ['parentId'],
     })
+  if (
+    data.parentId !== undefined &&
+    existingParent &&
+    isAdultPlaceholder(state, existingParent, now)
+  )
+    throw new DomainError(
+      'parent_not_guardian',
+      'Seçilen kayıt yetişkin kursiyer için açılmış, iletişimsiz bir veli kaydı; öğrencinin velisini seçin.',
+      { path: ['parentId'] },
+    )
 
   const studentId = makeId('s')
   const student: State['students'][number] = {
@@ -516,6 +548,12 @@ export function enrollProspect(
     ...(minor && prospect.email ? { email: prospect.email } : {}),
   }
   parent.studentIds = [...parent.studentIds, student.id]
+  // Mevcut velide eksik iletişim adayınkiyle tamamlanır (DOM-KAY-003); var olan telefon, e-posta ve
+  // ad değiştirilmez, adayın kendi kaydında kalır (ör. diğer ebeveynin telefonu).
+  if (existingParent) {
+    if (!existingParent.phone && prospect.phone) existingParent.phone = prospect.phone
+    if (!existingParent.email && prospect.email) existingParent.email = prospect.email
+  }
   if (!existingParent) state.parents.push(parent)
   state.students.push(student)
   state.invoices.push(...invoices)

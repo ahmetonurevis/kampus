@@ -341,7 +341,7 @@ test('DOM-KAY-013: kardeş ilişkisi ters yönde de bulunur (önce kardeşi işa
   assert.equal(second.student.parentId, first.student.parentId)
 })
 
-test('DOM-KAY-013: açıkça seçilen mevcut veliye bağlanır; veli verisi değişmez; olmayan veli 404', () => {
+test('DOM-KAY-013: açıkça seçilen mevcut veliye bağlanır; eksik iletişimi tamamlanır, adı değişmez; olmayan veli 404', () => {
   const state = seed()
   unchangedOnFailure(
     state,
@@ -355,9 +355,87 @@ test('DOM-KAY-013: açıkça seçilen mevcut veliye bağlanır; veli verisi değ
   const { student } = enrollProspect(state, enrollment('pr1', { parentId: 'p1' }), id, now)
   assert.equal(state.parents.length, parents)
   const ayse = parentOf(state, 'p1')
-  assert.deepEqual(ayse, { id: 'p1', name: 'Ayşe Yılmaz', studentIds: ['s1', 's2', student.id] })
+  const pr1 = prospectOf(state, 'pr1')
+  // Telefonu ve e-postası olmayan veliye 18 yaş altı adayın iletişimi yazılır (DOM-KAY-003).
+  assert.deepEqual(ayse, {
+    id: 'p1',
+    name: 'Ayşe Yılmaz',
+    studentIds: ['s1', 's2', student.id],
+    phone: pr1.phone,
+    email: pr1.email,
+  })
   assert.equal(student.parentId, 'p1')
   assert.equal(student.phone, '')
+})
+
+test('DOM-KAY-003, DOM-KAY-013: mevcut velinin var olan iletişimi ve adı korunur; aday kaydı kendininkini tutar', () => {
+  const state = seed()
+  const ayse = parentOf(state, 'p1')
+  Object.assign(ayse, { phone: '05320000001' })
+  const pr1 = prospectOf(state, 'pr1')
+  pr1.guardianName = 'Mehmet Yılmaz'
+  enrollProspect(state, enrollment('pr1', { parentId: 'p1' }), id, now)
+  assert.equal(ayse.phone, '05320000001')
+  assert.equal(ayse.email, pr1.email)
+  assert.equal(ayse.name, 'Ayşe Yılmaz')
+  assert.notEqual(pr1.phone, ayse.phone)
+})
+
+test('DOM-KAY-013: dil okulunda yetişkin kardeşin yer tutucu velisi 18 yaş altı kardeşe verilmez', () => {
+  const state = seed()
+  const adult = prospectOf(state, 'pr4')
+  adult.minor = false
+  const young = prospectOf(state, 'pr1')
+  Object.assign(young, { minor: true, guardianName: 'Gül Güven', siblingOfId: 'pr4' })
+  const grown = enrollProspect(state, enrollment('pr4'), id, now, language)
+  const placeholder = parentOf(state, grown.student.parentId)
+  assert.equal(placeholder.name, `${adult.name} velisi`)
+  // Açıkça seçilen yer tutucu reddedilir; hiçbir kayıt değişmez.
+  unchangedOnFailure(
+    state,
+    () => enrollProspect(state, enrollment('pr1', { parentId: placeholder.id }), id, now, language),
+    codeIs('parent_not_guardian', 'parentId'),
+  )
+  const parents = state.parents.length
+  const minorEnrolled = enrollProspect(state, enrollment('pr1'), id, now, language)
+  assert.notEqual(minorEnrolled.student.parentId, placeholder.id)
+  assert.equal(state.parents.length, parents + 1)
+  assert.deepEqual(parentOf(state, minorEnrolled.student.parentId), {
+    id: minorEnrolled.student.parentId,
+    name: 'Gül Güven',
+    studentIds: [minorEnrolled.student.id],
+    phone: young.phone,
+    email: young.email,
+  })
+  assert.deepEqual(placeholder.studentIds, [grown.student.id])
+})
+
+test('DOM-KAY-013: doğum tarihine göre yetişkin olan eski adayın yer tutucusu da kardeşe verilmez', () => {
+  const state = seed()
+  const adult = prospectOf(state, 'pr4')
+  delete adult.minor
+  const grown = enrollProspect(
+    state,
+    enrollment('pr4', { birthDate: '2000-01-01', payer: 'student' }),
+    id,
+    now,
+    language,
+  )
+  const young = prospectOf(state, 'pr1')
+  Object.assign(young, { minor: true, siblingOfId: 'pr4' })
+  const minorEnrolled = enrollProspect(state, enrollment('pr1'), id, now, language)
+  assert.notEqual(minorEnrolled.student.parentId, grown.student.parentId)
+})
+
+test('DOM-KAY-013: 18 yaş altı kardeşin iletişimli velisi dil okulunda da kullanılır', () => {
+  const state = seed()
+  const first = prospectOf(state, 'pr1')
+  Object.assign(first, { minor: true, guardianName: 'Gül Güven' })
+  const second = prospectOf(state, 'pr4')
+  Object.assign(second, { minor: true, siblingOfId: 'pr1' })
+  const older = enrollProspect(state, enrollment('pr1'), id, now, language)
+  const younger = enrollProspect(state, enrollment('pr4'), id, now, language)
+  assert.equal(younger.student.parentId, older.student.parentId)
 })
 
 test('DOM-KAY-013: iletişim eşleşmesi otomatik birleştirmez; kardeş işareti yoksa yeni veli açılır', () => {

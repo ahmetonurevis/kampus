@@ -128,7 +128,7 @@ function Detail({
                 {listLabel}
               </Link>
             </Button>
-            <Button onClick={() => plan.open('gorusme')} disabled={!open}>
+            <Button variant="secondary" onClick={() => plan.open('gorusme')} disabled={!open}>
               <Icon name="CalendarDays" size={17} aria-hidden="true" />
               Tanışma görüşmesi planla
             </Button>

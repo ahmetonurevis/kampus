@@ -18,6 +18,7 @@ Tahsilat bugün taksit kaydının `paidAt` ve `method` alanlarıdır (`records`,
 5. **Düzeltme.** Tahsilat silinmez, tutarı değişmez. İptal gerekçeyle aynı satıra yazılır, dağılımları hesaptan düşer. Referans benzersizliği yalnız iptal edilmemiş satırlara uygulanır; doğru tahsilat aynı banka referansıyla yeniden girilebilir (DOM-FIN-033).
 6. **Dekont numarası.** Kurum ve yıl (Europe/Istanbul, kayıt anı) içinde kurum kilidi altında ardışık üretilir, benzersiz indeksle korunur.
 7. **Nakit kurum ayarıdır.** `payment_settings.cash_payments_enabled` varsayılan kapalıdır (satır yoksa kapalı, sürüm 1); yalnız yönetici değiştirir, değişiklik denetim kaydına yazılır. Kapalıyken nakit tahsilat 422 `cash_payment_disabled` alır. Ayar öğrenim ücreti ile ek hizmeti ayırmaz: tarife gelene kadar tahsilatta kalem bilgisi yoktur.
+8. **Tarife sürümlüdür.** `fee_tariffs` eğitim yılı başına sürüm tutar; kalemler core şemasıyla doğrulanan `items` jsonb'dir. Yılda tek açık taslak ve tek yayındaki sürüm kısmi benzersiz indekslerle korunur. Yayımlanan satır değişmez, yeni sürüm önceki sürümü `superseded` yapar; KDV oranı kalemde tarihli tutulduğu için geçmiş kayıtlar eski oranla kalır (IST-104).
 
 ## Sonuçlar
 

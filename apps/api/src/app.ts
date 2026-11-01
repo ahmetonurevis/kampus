@@ -38,6 +38,7 @@ import { registerResourceCommandRoutes } from './routes/resource-commands.ts'
 import { registerQuestionRoutes } from './routes/questions.ts'
 import { registerRequestRoutes } from './routes/requests.ts'
 import { registerAppointmentRoutes } from './routes/appointments.ts'
+import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
@@ -244,6 +245,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerCommunicationRoutes(app)
   registerRequestRoutes(app)
   registerAppointmentRoutes(app)
+  registerFeeTariffRoutes(app)
   registerPaymentRoutes(app)
   registerProspectRoutes(app)
   registerQuestionRoutes(app)

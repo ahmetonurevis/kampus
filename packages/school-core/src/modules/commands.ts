@@ -122,6 +122,7 @@ export type AssessmentCommand = keyof typeof ASSESSMENT_COMMANDS
 export const OPERATION_COMMANDS = {
   'invoice.pay': spec('finance', [...SCOPE, 'invoices']),
   'payment.reverse': spec('finance', [...SCOPE, 'invoices']),
+  'tariff.manage': spec('finance', [...SCOPE]),
   // Ödeme sağlayıcısı bağlanınca okuyacağı koleksiyonlar; şimdilik işlem çağırmaz (authorize.ts).
   'invoice.payOnline': spec('finance', [...SCOPE, 'invoices']),
   'attendance.record': spec('academic', [...SCOPE, 'attendance']),

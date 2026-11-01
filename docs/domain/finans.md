@@ -20,7 +20,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kurum ilan etmeden ücret tahsil edemez ve ilan ettiği ücretin üzerinde ücret isteyemez.
 - **Kaynak:** 5580 md. 13/1 (ocak–mayıs ilanı); ÖÖKY md. 54/1-a, c, ç, d ve 54/2.
 - **Kurum türü:** ikisi (dil okulunda ders saati ücreti, `DOM-FIN-006`)
-- **Kodda:** yok — kayıt tutarı serbest girilir, 100–1.000.000 TL arası her değer kabul edilir (`packages/school-core/src/lib/domain.js:22-26`; yenilemede `school-workflows.js:117-126`).
+- **Kodda:** kısmen — tarife sürümü, ilan ve MEBBİS tarihi var (`lib/fee-tariffs.ts`, `POST /api/v1/fee-tariffs`, ADR 0006 karar 8). Sözleşme henüz tarifeye bağlanmaz; kayıt tutarı serbest girilir (`TODO(fee-tariff)`, `lib/domain.ts`; yenileme `lib/school-workflows.ts`). İlan dönemi denetimi yok.
 
 ### DOM-FIN-003 · Ek hizmetler ayrı kalemdir ve isteğe bağlıdır
 
@@ -36,7 +36,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Yönetmelik ilan edilenler dışında hiçbir ad altında ücret alınmasını yasaklar.
 - **Kaynak:** ÖÖKY md. 54/1-b, 55/4.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — kalem türü kavramı yok.
+- **Kodda:** kısmen — tarife kalem türü sabit listedir (`FEE_ITEM_KINDS`, `lib/fee-tariffs.ts`). Taksitin kalem türü henüz yok.
 
 ### DOM-FIN-005 · Devam eden öğrenciye artış sınırı
 
@@ -52,7 +52,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** İade ve indirim tabanı ücret birimine bağlıdır.
 - **Kaynak:** ÖÖKY md. 55/1-a, c. Dil kursunun MEB lisanslı "özel öğretim kursu" olması varsayılmıştır; lisanssız (ticari) dil okulu için ÖÖKY uygulanmaz ve bu kurum için **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — kurum türü kavramı yok; tutar her zaman tek toplamdır.
+- **Kodda:** kısmen — tarife yayımı öğrenim ücreti birimini kurum türüyle denetler (`planTariffPublish`). Paket ve iade hesabı yok.
 
 ## Sözleşme ve taksit
 
@@ -277,7 +277,6 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 | Kural       | Fark                                                                                                                                                            |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | DOM-FIN-001 | Kayıt tutarı tam TL, yenileme tutarı iki ondalık alır; iki giriş kuralı farklı (`packages/school-core/src/lib/domain.js:22-26`, `school-workflows.js:117-126`). |
-| DOM-FIN-002 | Ücret tarifesi yok; sözleşme tutarı serbest girilir (`packages/school-core/src/lib/domain.js:22-26`).                                                           |
 | DOM-FIN-005 | Yenilemede ÜFE/TÜFE+5 artış tavanı denetlenmez (`packages/school-core/src/lib/school-workflows.js:435-450`).                                                    |
 | DOM-FIN-020 | İndirim serbest TL tutarıdır, tür ve koşul tutulmaz (`packages/school-core/src/lib/school-workflows.js:128-135`).                                               |
 | DOM-FIN-021 | %50 indirim tavanı yok; %100 burs + sınırsız indirim yalnız 100 TL alt sınırına takılır (`packages/school-core/src/lib/school-workflows.js:441`).               |

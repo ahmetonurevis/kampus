@@ -7,7 +7,8 @@ Kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-00
 - `lib/domain.ts`: `enrollProspectSchema` (katı gövde; tutar kuruş) ve `enrollProspectWithPlan` eklendi. Dil okulunda sözleşme başlığı kurum türüne uyar. Demo girişi `enrollProspect` ve `registrationSchema` aynı kaldı.
 - Kesin kayıt sözleşmesi `invoiceIds` taşır; belge yalnız kendi taksitlerini çözümler (DOM-FIN-012).
 - `lib/payments.ts`: `recordPaymentSchema`, `reversePaymentSchema`, `paymentSettingsSchema`, `planPayment`, `reversePayment`, `openAmount` eklendi. Demo girişi `payInvoice` aynı kaldı.
-- `lib/authorize.ts` ve `modules/commands.ts`: `payment.reverse` (yalnız yönetici), modül `finance`.
+- `lib/authorize.ts` ve `modules/commands.ts`: `payment.reverse` ve `tariff.manage` (yalnız yönetici), modül `finance`.
+- `lib/fee-tariffs.ts`: `feeItemSchema`, `createFeeTariffSchema`, `updateFeeTariffSchema`, `publishFeeTariffSchema`, `planTariffCreate`, `planTariffUpdate`, `planTariffPublish` eklendi (DOM-FIN-002, -004, -006).
 
 ## 2.20.0
 

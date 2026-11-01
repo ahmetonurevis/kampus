@@ -91,7 +91,7 @@ update records
 
 ## 4. Normalleştirme ölçütü
 
-Tahsilat bu ölçütle `payments`, `payment_allocations` ve `payment_settings` tablolarındadır (ADR 0006, migration `0014_create_payments`); taksit ve sözleşme şimdilik `records`'tadır.
+Tahsilat bu ölçütle `payments`, `payment_allocations` ve `payment_settings` tablolarındadır (ADR 0006, migration `0014_create_payments`); ücret tarifesi `fee_tariffs`'tedir (migration `0015_create_fee_tariffs`); taksit ve sözleşme şimdilik `records`'tadır.
 
 Bir koleksiyon aşağıdakilerden **biri** doğrulanınca kendi tablosuna taşınır (her biri ayrı ADR):
 

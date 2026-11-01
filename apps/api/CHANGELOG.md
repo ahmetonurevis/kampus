@@ -2,6 +2,11 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Ücret tarifesi uçları
+
+- `fee_tariffs` tablosu ve `GET`/`POST /api/v1/fee-tariffs`, `GET`/`PATCH /api/v1/fee-tariffs/:tariffId`, `POST /api/v1/fee-tariffs/:tariffId/publish` eklendi (ADR 0006 karar 8, DOM-FIN-002, -004, -006, IST-104). Migration `0015_create_fee_tariffs`.
+- Sözleşme ve tahsilat henüz tarifeye bağlı değildir. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Tahsilat uçları
 
 - `payments`, `payment_allocations` ve `payment_settings` tabloları eklendi (ADR 0006, migration `0014_create_payments`).

@@ -6,7 +6,9 @@ import type { Readable } from 'node:stream'
  *
  * Sürücüler: `disk` (bugün; `STORAGE_DIR`, imzalı bağlantıyı API'nin kendi ucu üretir) ve
  * TODO(F3c2-s3): `s3` (`@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner`; tek kova, kurum
- * öneki; `signedGetUrl` S3 ön imzalı GET'i ve `response-content-*` parametrelerini döndürür).
+ * öneki; `signedGetUrl` S3 ön imzalı GET'i ve `response-content-type`/`-disposition`
+ * parametrelerini döndürür). Özgün ad bağlantıya girmez (KVKK: URL vekil loguna ve tarayıcı
+ * geçmişine düşer); S3'te adlı `Content-Disposition` yüklemede nesne meta verisine yazılır.
  * TODO(F3c2-encryption): Ö sınıfı dosya gelirse (karar 12) uygulama düzeyi AES-256-GCM ile
  * şifrelenir ve imzalı bağlantı verilmez; bu arayüze akışla okuma sürücüsü eklenir.
  */
@@ -21,17 +23,19 @@ export interface StorageDriver {
   head(key: string): Promise<{ byteSize: number } | null>
   /** Nesneyi siler; olmayan nesne hata değildir (temizlik yeniden denenebilir). */
   delete(key: string): Promise<void>
-  /** Kısa ömürlü, imzalı GET bağlantısı (karar 6); tür ve `Content-Disposition` imzaya dahildir. */
+  /**
+   * Kısa ömürlü, imzalı GET bağlantısı (karar 6); disposition imzaya dahildir. Bağlantı özgün adı
+   * taşımaz (KVKK); ad ve tür indirmede `files` satırından gelir.
+   */
   signedGetUrl(key: string, options: SignedGetOptions): Promise<string>
 }
 
 export interface SignedGetOptions {
+  institutionId: string
+  fileId: string
   expiresAt: Date
-  contentType: string
   /** Belge `attachment`, ses/görüntü/görsel `inline` (karar 6). */
   disposition: 'inline' | 'attachment'
-  /** İndirmede gösterilecek ad; kişisel veri olabilir, loglanmaz. */
-  fileName: string | null
 }
 
 /** Nesne anahtarı biçimi: `<kurum>/<amaç>/<yyyy>/<mm>/<uuid>`; yol geçişine izin vermez. */

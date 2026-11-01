@@ -3281,7 +3281,7 @@ export interface paths {
         };
         /**
          * İmzalı indirme (disk sürücüsü)
-         * @description `disk` sürücüsünde `GET /api/v1/files/{fileId}/url` bağlantısının hedefi; oturum istemez, yetki HMAC imzasındadır. Süresi geçmiş bağlantı 403 `link_expired`, bozuk veya değiştirilmiş bağlantı 403 `invalid_signature`, silinmiş nesne 404. Yanıt dosyanın kendisidir (`Cache-Control: no-store`); `Cross-Origin-Resource-Policy: cross-origin` ile web başka kökenden `<img>`/`<audio>` olarak gömebilir.
+         * @description `disk` sürücüsünde `GET /api/v1/files/{fileId}/url` bağlantısının hedefi; oturum istemez, yetki HMAC imzasındadır. Süresi geçmiş bağlantı 403 `link_expired`, bozuk veya değiştirilmiş bağlantı 403 `invalid_signature`, silinmiş veya reddedilmiş dosya ve silinmiş nesne 404. Bağlantı özgün adı taşımaz (KVKK: URL vekil loguna ve tarayıcı geçmişine girer); ad ve tür dosya kaydından okunur. Yanıt dosyanın kendisidir (`Cache-Control: no-store`); `Cross-Origin-Resource-Policy: cross-origin` ile web başka kökenden `<img>`/`<audio>` olarak gömebilir.
          */
         get: operations["downloadFile"];
         put?: never;

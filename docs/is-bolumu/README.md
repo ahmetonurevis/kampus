@@ -2,7 +2,7 @@
 
 İki geliştirici (Oğuzhan Demirci ve Ahmet Onur Evis, bu belgede "Onur") Claude Code oturumlarıyla paralel çalışır. Bu belge her işin tek sahibini, iki tarafın birbirine sunduğu sözleşmeleri ve bağımlılıkları tanımlar. Kişisel görev tabloları [onur.md](onur.md) ve [oguzhan.md](oguzhan.md) dosyalarındadır; yeni makinede başlarken [ilk-kurulum.md](ilk-kurulum.md).
 
-Canlı durum (kim ne üzerinde çalışıyor, neyi bitirdi, ne revizyonda) görev tablolarının Durum sütunundadır; oturumlar başlarken ve bitirirken yazar, oturum hook'u iki tabloyu özetler. Issue yalnız karşı taraftan iş isteği ve hata bildirimidir. Tarih, süre ve son gün yoktur; sıra D1–D5 dalgalarıyla gösterilir.
+Canlı durum (kim ne üzerinde çalışıyor, neyi bitirdi, ne revizyonda) görev tablolarının Durum sütunundadır; oturumlar başlarken ve bitirirken yazar, oturum hook'u iki tabloyu özetler. Issue yalnız karşı taraftan iş isteği ve hata bildirimidir. Tarih, süre ve son gün yoktur; sıra dalgalarla gösterilir: D1 temel, D2 ilk yayın, D3 pilot okul, D4 mağaza ve yıl sonu, D5 yeni öğretim yılı; genişleme kataloğundan D6 ders egzersizleri, D7 LMS genişlemesi, D8 ERP genişlemesi, D9 entegrasyon ve ekosistem; en son "Sonra".
 
 Git, dal ve ortak dosya kuralları burada tekrarlanmaz: [.claude/rules/ortak-calisma.md](../../.claude/rules/ortak-calisma.md) ve [docs/muhendislik/git-ve-surum.md](../muhendislik/git-ve-surum.md) §7.
 
@@ -17,23 +17,42 @@ Git, dal ve ortak dosya kuralları burada tekrarlanmaz: [.claude/rules/ortak-cal
 
 ## Kümeler
 
-140 ister maddesi on alan kümesine ve platforma dağıtıldı. Her kümenin modülleri, IST kimlikleri, dizinleri, PDF ve bildirimleri ile alan belgesi aynı kişidedir. IST sütunundaki sayılar madde sayısıdır.
+140 ister maddesi on alan kümesine ve platforma dağıtıldı. K11–K29 genişleme kataloğundan gelir; ister listesinde karşılıkları olmadığı için IST sütunları boştur. Her kümenin modülleri, IST kimlikleri, dizinleri, PDF ve bildirimleri ile alan belgesi aynı kişidedir. IST sütunundaki sayılar madde sayısıdır.
 
-| Küme                                 | Sahip   | Ana konu                                            | IST |
-| ------------------------------------ | ------- | --------------------------------------------------- | --- |
-| K1 Kayıt ve CRM                      | Onur    | Aday, kesin kayıt, yenileme, sınıf geçişi           | 12  |
-| K2 Finans                            | Onur    | Tarife, tahsilat, iade, paket, muhasebe             | 16  |
-| K3 Kurum yapısı ve ders planı        | Oğuzhan | Kampüs, sınıf, kur, grup, kadro, program            | 10  |
-| K4 Akademik değerlendirme ve devam   | Oğuzhan | Yoklama, not, karne, geçme kararı                   | 9   |
-| K5 Ölçme ve öğrenci gelişimi         | Oğuzhan | Deneme, optik, etüt, rehberlik, hedef               | 5   |
-| K6 İngilizce becerileri ve CEFR      | Oğuzhan | Görev, rubrik, seviye tespiti, CEFR                 | 24  |
-| K7 İçerik ve kaynak havuzu           | Oğuzhan | Havuz, taksonomi, soru bankası, telif               | 13  |
-| K8 İletişim ve veli                  | Oğuzhan | Duyuru, mesaj, randevu, veli onayı                  | 8   |
-| K9 Ön büro ve okul yaşamı            | Onur    | Talep, takvim, servis, yemek, kulüp                 | 3   |
-| K10 Yayın, işletim ve kurum kurulumu | Oğuzhan | Sunucu, yedek, operatör paneli, mağaza              | 3   |
-| Platform                             | Oğuzhan | Kimlik, yetki, KVKK, bildirim, dosya, PDF, kabuklar | 41  |
+| Küme                                                 | Sahip   | Ana konu                                              | IST |
+| ---------------------------------------------------- | ------- | ----------------------------------------------------- | --- |
+| K1 Kayıt ve CRM                                      | Onur    | Aday, kesin kayıt, yenileme, sınıf geçişi             | 12  |
+| K2 Finans                                            | Onur    | Tarife, tahsilat, iade, paket, muhasebe               | 16  |
+| K3 Kurum yapısı ve ders planı                        | Oğuzhan | Kampüs, sınıf, kur, grup, kadro, program              | 10  |
+| K4 Akademik değerlendirme ve devam                   | Oğuzhan | Yoklama, not, karne, geçme kararı                     | 9   |
+| K5 Ölçme ve öğrenci gelişimi                         | Oğuzhan | Deneme, optik, etüt, rehberlik, hedef                 | 5   |
+| K6 İngilizce becerileri ve CEFR                      | Oğuzhan | Görev, rubrik, seviye tespiti, CEFR                   | 24  |
+| K7 İçerik ve kaynak havuzu                           | Oğuzhan | Havuz, taksonomi, soru bankası, telif                 | 13  |
+| K8 İletişim ve veli                                  | Oğuzhan | Duyuru, mesaj, randevu, veli onayı                    | 8   |
+| K9 Ön büro ve okul yaşamı                            | Onur    | Talep, takvim, servis, yemek, kulüp                   | 3   |
+| K10 Yayın, işletim ve kurum kurulumu                 | Oğuzhan | Sunucu, yedek, operatör paneli, mağaza                | 3   |
+| K11 Soru motoru ve genel soru türleri                | Oğuzhan | Soru türü kaydı, kısmi puan, ortak editör ve oynatıcı |     |
+| K12 Matematik ve fen egzersizleri                    | Oğuzhan | Formül, sayısal cevap, geometri, grafik, deney        |     |
+| K13 Sözel, dil, sanat ve bilişim egzersizleri        | Oğuzhan | Türkçe, sosyal, diğer diller, kodlama, sanat          |     |
+| K14 Sınav hazırlık ve kurs kurumları                 | Oğuzhan | `course_center`, LGS/YKS/KPSS, deneme, koçluk         |     |
+| K15 Ders oluşturucu, öğrenme yolları ve oyunlaştırma | Oğuzhan | Ders ve ünite, öğrenme yolu, ustalık, oyunlaştırma    |     |
+| K16 Proje, portfolyo, işbirliği ve özgünlük          | Oğuzhan | Portfolyo, proje ödevi, grup, intihal                 |     |
+| K17 Birlikte çalışabilirlik ve içerik pazarı         | Oğuzhan | QTI, H5P, SCORM, xAPI, LTI, içerik pazarı             |     |
+| K18 Yapay zekâ destekli öğretim                      | Oğuzhan | Soru üretimi, geri bildirim, YZ ağ geçidi             |     |
+| K19 Öğrenme analitiği ve müdahale                    | Oğuzhan | Madde analizi, ısı haritası, risk ve müdahale         |     |
+| K20 İnsan kaynakları ve özlük                        | Onur    | Özlük, işe alım, izin, puantaj                        |     |
+| K21 Bordro ve personel ödemeleri                     | Onur    | Ek ders, bordro ön hesabı, banka dosyası              |     |
+| K22 Performans ve mesleki gelişim                    | Onur    | Ders gözlemi, performans dönemi, mesleki gelişim      |     |
+| K23 Satın alma, stok ve demirbaş                     | Onur    | Talep, sipariş, stok, demirbaş, zimmet                |     |
+| K24 Bütçe, maliyet merkezi ve konsolide rapor        | Onur    | Bütçe, maliyet merkezi, nakit akışı, grup raporu      |     |
+| K25 Kütüphane                                        | Oğuzhan | Katalog, ödünç ve iade, e-kitap                       |     |
+| K26 Mezunlar ve kurumsal ilişkiler                   | Onur    | Mezun profili, etkinlik, burs fonu                    |     |
+| K27 Belge, e-imza, form ve iş akışı oluşturucu       | Oğuzhan | Belge deposu, e-imza, form ve iş akışı                |     |
+| K28 Çizelgeleme ve görevlendirme                     | Oğuzhan | Program optimizasyonu, sınav takvimi, nöbet           |     |
+| K29 Entegrasyon ve ekosistem                         | Oğuzhan | e-Okul, Google ve Microsoft, SSO, takvim, kanallar    |     |
+| Platform                                             | Oğuzhan | Kimlik, yetki, KVKK, bildirim, dosya, PDF, kabuklar   | 41  |
 
-K9 Onur'a, K10 Oğuzhan'a verildi (kullanıcı kararı, 2 Kasım).
+K9 Onur'a, K10 Oğuzhan'a verildi; ERP kümeleri (K20–K24, K26) Onur'da, K25 ve kalan genişleme kümeleri Oğuzhan'dadır (kullanıcı kararı, 2 Kasım). K11–K29'un görevleri kişisel tabloların D5–D9 bölümlerinde küme alt başlıklarıyla durur. Yeni küme modülü açılırken yolu `.claude/alanlar.json`'a sahibiyle eklenir; kodu olmayan kümeye tahmini yol yazılmaz.
 
 ### K1 · Kayıt ve CRM (Onur, kesin)
 
@@ -166,7 +185,7 @@ Platform bileşenleri (DataTable, form alanları, sağ panel, PDF önizleme) ala
 
 ## Sözleşmeler
 
-Sözleşme, sahibin diğer tarafa sunduğu uç, kanca, servis fonksiyonu ya da bileşendir. Dalga sütunu sözleşmenin hangi iş sırasında hazır olacağını gösterir (D1–D5; bkz. kişisel listeler). Uçların hepsi `/api/v1` altındadır.
+Sözleşme, sahibin diğer tarafa sunduğu uç, kanca, servis fonksiyonu ya da bileşendir. Dalga sütunu sözleşmenin hangi iş sırasında hazır olacağını gösterir (D1–D9; bkz. kişisel listeler). Uçların hepsi `/api/v1` altındadır.
 
 Değişiklik isteği izin değil, iş isteğidir ve yalnız karşı tarafın alanında bir şey gerektiğinde açılır. İsteyen, alan sahibinin `sahip:` etiketiyle bir issue açar (ne gerekiyor, neden, örnek çağrı). Sahip isteği kendi sırasına koyar; karşı tarafı bekleten istek öne alınır. Kırıcı değişiklikte eski uç ya da alan, tüketen taraf geçene kadar korunur. Hata bildirimi aynı yoldan gelir, ek etiketi `bug` olur.
 

@@ -10,7 +10,7 @@ Ayrıntı: `docs/muhendislik/api-tasarimi.md`, `docs/muhendislik/kod-yazim.md`. 
 
 - Fastify 5 + TypeScript (strict), Node 24 tür ayıklamasıyla doğrudan `.ts` çalışır. Uygulama `buildApp(options)` fabrikasıyla kurulur; test ve sunucu aynısını kullanır.
 - Hazır paket önce (ADR 0002): resmi `@fastify/*` eklentileri (helmet, cors, cookie, rate-limit, multipart, swagger), Better Auth, Drizzle, `pg-boss`, `nodemailer`; aynı işi yapan ara katman elle yazılmaz.
-- Katmanlar: `src/routes` (HTTP, şema, kimlik), `src/services` (iş akışı; school-core kurallarını çağırır), `src/db` (Drizzle şeması, kurum kapsamlı depo), `src/jobs` (pg-boss). Route içinde SQL veya iş kuralı yazılmaz. Servis `request` almaz; `{ db, institutionId, actor, now, log }` bağlamı alır.
+- Katmanlar: `src/routes` (HTTP, şema, kimlik), `src/services` (iş akışı; school-core kurallarını çağırır), `src/db` (Drizzle şeması, kurum kapsamlı depo), `src/storage` (dosya deposu arayüzü ve sürücüleri; ADR 0003), `src/jobs` (pg-boss). Route içinde SQL veya iş kuralı yazılmaz. Servis `request` almaz; `{ db, institutionId, actor, now, log }` bağlamı alır.
 - Yollar `/api/v1/<çoğul-kebab-case>`; komut `POST /<kaynak>/:id/<fiil>`; `PUT` yok, `PATCH` kısmi; `DELETE` arşivler. `/api/v1/auth/*` Better Auth'undur: zarf kuralları ona uygulanmaz, aynı işi yapan ikinci uç yazılmaz.
 - Her rota `params`/`querystring`/`body` ve **`response`** şeması taşır (`fastify-type-provider-zod`). Gövde şeması school-core işlem şemasıdır; yanıt/sorgu şemaları `routes/<alan>.schemas.ts`. Şemada olmayan alan istemciye gitmez.
 - Başarı `{ data, meta? }`; hata `{ code, message, issues?, requestId }`. `code` İngilizce snake_case, `message` Türkçe ve teknik ayrıntısız.

@@ -42,7 +42,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Yükleme, kötü amaçlı dosyanın öğrencilere dağıtılması için en kısa yoldur; doğrudan dosya bağlantısı kapsam denetimini atlatır.
 - **Kaynak:** İşletme kuralı; ADR 0001 karar 8.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — yalnız uzantıya bakılır (`apps/web/src/views/Learning.vue:281-285`); dosya içeriği saklanmaz, yalnız ad ve boyut kaydedilir. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/taxonomy.ts` (`FILE_PURPOSES`, `assertFileAllowed`); içerikten tür tespiti API'de.
+- **Kodda:** çelişiyor — yalnız uzantıya bakılır (`apps/web/src/views/Learning.vue:281-285`); dosya içeriği saklanmaz, yalnız ad ve boyut kaydedilir. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/taxonomy.ts` (`FILE_PURPOSES`, `assertFileAllowed`). API (F3c2a, ADR 0003): `POST /api/v1/files` türü içerikten (sihirli bayt, `file-type`) bulur, amaç sınırında akışı keser (413), kurum kotasını kurum kilidi altında sayar (`institution_settings.storage_quota_bytes`, boşsa 50 GB); dosya depolama arayüzünün (`apps/api/src/storage`, disk sürücüsü) arkasındadır ve `GET /api/v1/files/:fileId/url` kapsam denetimli, HMAC imzalı ve süreli bağlantı verir (`apps/api/src/services/files.ts`). Web istemcisi yüklemeden önce aynı core tablosuyla uyarır (`packages/react-shared/src/use-file-upload.ts`). Eksik: makro/parola korumalı Office ve virüs taraması (ClamAV, `TODO(F3c2-scan)`), tür başına sınırın kurum ayarı olması, ekran.
 
 ## Etiketler
 

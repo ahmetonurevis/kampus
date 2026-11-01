@@ -67,6 +67,7 @@ form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 ```
 
 - `unsafe-eval` yok. Radix/shadcn bileşenlerinin konumlandırma için yazdığı satır içi `style` öznitelikleri gerekiyorsa yalnız `style-src-attr 'unsafe-inline'` eklenir; `script-src`'ye satır içi izin verilmez. CSP önce `Content-Security-Policy-Report-Only` ile denenir.
+- Dosya indirme (ADR 0003 karar 6): disk sürücüsünde imzalı bağlantı API kökenindedir; web API'yi ayrı kökende sunarsa `img-src`/`media-src`/`frame-src`'ye API kökeni eklenir. S3 sürücüsünde `STORAGE_PUBLIC_URL` kökeni eklenir (`TODO(F3c2-csp)`, S3 ile birlikte).
 - `Permissions-Policy: camera=(), geolocation=(), microphone=(self)` (konuşma becerisi kaydı için yalnız kendi kaynağımız).
 
 ## 6. Kiracı izolasyonu
@@ -118,7 +119,7 @@ form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 - Her koleksiyon/tablo için saklama süresi ve imha yöntemi bir saklama ve imha tablosunda tutulur; tablo hukuk onayıyla `docs/muhendislik/saklama-imha.md` olarak yazılacak (açık soru). Mühendislik varsayılanı: arşivlenen kayıt süre dolana kadar saklanır, sonra silinir veya anonimleştirilir.
 - İmha işi zamanlanmış çalışır; periyodik imha aralığı 6 ayı geçmez (Kişisel Verilerin Silinmesi, Yok Edilmesi veya Anonim Hale Getirilmesi Hakkında Yönetmelik). Her imha `audit_log`'a ve imha tutanağına yazılır.
 - Anonimleştirme geri döndürülemez olmalıdır: ad, iletişim, kimlik alanları silinir; istatistik için yalnız toplu değerler kalır.
-- Teknik kayıtlar: Better Auth `sessions` ve `verifications` süresi dolunca 7 gün sonra, `idempotency_keys` 24 saat sonra, uygulama logları 90 gün sonra silinir. `audit_log` saklama süresi hukukçu onayıyla belirlenir (öneri 2 yıl, **doğrulanmalı**).
+- Teknik kayıtlar: Better Auth `sessions` ve `verifications` süresi dolunca 7 gün sonra, `idempotency_keys` 24 saat sonra, uygulama logları 90 gün sonra silinir. Bir kayda bağlanmayan veya reddedilen yüklenmiş dosya (`files`) 24 saat sonra depodan silinir, satırı `deleted` kalır (zamanlayıcı `TODO(jobs)`); bağlı dosyanın saklama süresi (`retention_until`) saklama ve imha tablosuyla belirlenecek (`TODO(F3c2-retention)`). `audit_log` saklama süresi hukukçu onayıyla belirlenir (öneri 2 yıl, **doğrulanmalı**).
 - Yedekler aynı saklama süresine uyar; silinen veri yedek dönüşü sonunda yedekten de çıkar.
 - Kurum sözleşmesi bitince kurum verisi dışa aktarılıp teslim edilir, sonra sözleşmedeki sürede silinir.
 
@@ -152,6 +153,7 @@ form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 - Bütün girdi Zod ile doğrulanır; nesne şemaları bilinmeyen anahtarı atar (`__proto__` dahil).
 - SQL yalnız Drizzle sorgu kurucusu veya `sql` şablonuyla (parametreli); kullanıcı girdisiyle `sql.raw` yasak. jsonb yolu kullanıcı girdisinden kurulmaz.
 - Dosya yükleme: boyut sınırı, içerikten tür tespiti (uzantıya güvenilmez), izinli türler listesi, dosya adı sunucuda üretilir. İndirme `Content-Disposition: attachment` ve `nosniff` ile.
+- Dosya deposu (ADR 0003; `apps/api/src/storage`, `services/files.ts`): yükleme akışla depoya yazılır, boyut ve SHA-256 aynı geçişte ölçülür; amacın sınırı aşılınca akış kesilir ve yarım nesne silinir (413). Tür `file-type` ile sihirli bayttan bulunur; bildirilen tür veya ad uzantısı içerikle çelişirse 422. Depo anahtarı kurum önekli ve rastgeledir, özgün ad anahtara, loga ve denetim kaydına girmez. İndirme bağlantısı API'nin kendi ucudur (`GET /api/v1/files/download?token=`): belirteç HMAC-SHA256 ile imzalı ve süreli (varsayılan 5 dk, konuşma kaydı 2 dk), anahtar `BETTER_AUTH_SECRET`'tan türetilir; süresi geçmiş veya bozuk imza 403. İstek logu sorgu dizesini yazmadığı için belirteç loga düşmez. Bağlantı üretimi bağlı kaydın okuma kapsamından geçer; teslim ve konuşma kaydında `audit_log`'a `file.access` yazılır. Virüs taraması (ClamAV), S3 sürücüsü ve uygulama düzeyi şifreleme `TODO(F3c2-scan)`, `TODO(F3c2-s3)`.
 - CSV dışa aktarmada formül enjeksiyonu önlenir ([api-tasarimi.md](api-tasarimi.md#3-sayfalama-filtre-ve-sıralama)).
 - React'te `dangerouslySetInnerHTML` yasak; zengin metin gerekirse ADR ve temizleyici kitaplık.
 

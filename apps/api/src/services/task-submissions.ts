@@ -233,8 +233,9 @@ const byRaterRole = (a: RubricScoreRow, b: RubricScoreRow) =>
 /**
  * Personelin gördüğü kesinleşmemiş puanlar (core `scoresVisibleToRater`): öğretmen ve yönetici
  * kendi puanını ve kesinleşen puanı görür (kör puanlama; DOM-BEC-024); atamanın dersinin/seviyesinin
- * koordinatörü bütün puanları görür, ama o sürümü kendisi puanladıysa kör kalır (DOM-YTK-027).
- * Yönetici koordinatör sayılmaz.
+ * koordinatörü ilk ve ikinci puan verildikten sonra bütün puanları görür, ama o sürümü kendisi
+ * puanladıysa kör kalır (DOM-YTK-027). İkinci puan beklenirken koordinatör de kördür; ikinci puanı
+ * kendisi verebilir. Yönetici koordinatör sayılmaz.
  */
 function visibleScoresOf(
   viewer: Viewer,

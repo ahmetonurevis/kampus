@@ -731,9 +731,11 @@ export function planRubricScore(input: RubricScorePlanInput): RubricScoreDraft {
 
 /**
  * Puanlayıcının görebildiği puanlar (DOM-BEC-024: ikinci puanlayıcı ilk puanı görmeden puanlar).
- * Kapsamındaki koordinatör (`coordinator: true`, DOM-YTK-027) bir sürümün bütün puanlarını görür;
- * ama o sürümün ilk veya ikinci puanlayıcısıysa kör puanlama ona da uygulanır. Diğer öğretmen
- * kendi puanlarını ve kesinleşmiş son puanı görür.
+ * Kapsamındaki koordinatör (`coordinator: true`, DOM-YTK-027) bir sürümün bütün puanlarını yalnız
+ * ilk ve ikinci puanın ikisi de verildikten sonra görür; öncesinde (ikinci puan beklenirken) sıradan
+ * puanlayıcı gibi kördür, çünkü ikinci puanı kendisi verebilir. O sürümün ilk veya ikinci
+ * puanlayıcısıysa kör puanlama ona her zaman uygulanır. Diğer öğretmen kendi puanlarını ve
+ * kesinleşmiş son puanı görür.
  */
 export function scoresVisibleToRater(input: {
   scores: readonly RubricScoreRow[]
@@ -746,7 +748,9 @@ export function scoresVisibleToRater(input: {
     const rated = scores.some(
       (s) => s.raterUserId === input.viewer.userId && s.raterRole !== 'final',
     )
-    if (input.viewer.coordinator && !rated) {
+    const bothRated =
+      scores.some((s) => s.raterRole === 'first') && scores.some((s) => s.raterRole === 'second')
+    if (input.viewer.coordinator && !rated && bothRated) {
       for (const s of scores) shown.add(s.id)
       continue
     }

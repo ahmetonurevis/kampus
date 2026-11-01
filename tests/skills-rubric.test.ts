@@ -670,7 +670,7 @@ describe('ikinci puanlayıcı (DOM-BEC-024)', () => {
     assert.doesNotThrow(() => scorePlan({ scores: [scoreRow({ submissionVersionId: 'test-v1' })] }))
   })
 
-  test('DOM-BEC-024, DOM-YTK-027 ikinci puanlayıcı ilk puanı görmez; koordinatör hepsini görür, puanlayıcıysa kör kalır', () => {
+  test('DOM-BEC-024, DOM-YTK-027 ikinci puanlayıcı ilk puanı görmez; koordinatör iki puan verilince hepsini görür, puanlayıcıysa kör kalır', () => {
     const first = scoreRow()
     const scores = [first]
     assert.deepEqual(
@@ -681,9 +681,19 @@ describe('ikinci puanlayıcı (DOM-BEC-024)', () => {
       scoresVisibleToRater({ scores, viewer: firstRater, secondRatingRequested: true }),
       [first],
     )
+    // DOM-BEC-024: ikinci puan beklenirken koordinatör de kördür; ikinci puanı kendisi verebilir.
     assert.deepEqual(
       scoresVisibleToRater({ scores, viewer: coordinator, secondRatingRequested: true }),
-      [first],
+      [],
+    )
+    const awaited = scoreRow({ raterRole: 'second', raterUserId: 'test-u-t2' })
+    assert.deepEqual(
+      scoresVisibleToRater({
+        scores: [first, { ...awaited, criteria: goodScore({ task: 1 }).criteria }],
+        viewer: coordinator,
+        secondRatingRequested: true,
+      }).map((s) => s.raterRole),
+      ['first', 'second'],
     )
     // DOM-YTK-027: koordinatör o sürümün puanlayıcısıysa kör puanlama ona da uygulanır.
     const ratingCoordinator = { userId: 'test-u-t1', coordinator: true }
@@ -708,11 +718,11 @@ describe('ikinci puanlayıcı (DOM-BEC-024)', () => {
     const otherVersion = scoreRow({ submissionVersionId: 'test-v1', raterUserId: 'test-u-k1' })
     assert.deepEqual(
       scoresVisibleToRater({
-        scores: [otherVersion, first],
+        scores: [otherVersion, first, awaited],
         viewer: coordinator,
         secondRatingRequested: true,
       }).map((s) => s.id),
-      [otherVersion.id, first.id],
+      [otherVersion.id, first.id, awaited.id],
     )
     // Kesinleşen puan puanlayıcılara açılır.
     const second = scoreRow({ raterRole: 'second', raterUserId: 'test-u-t2' })

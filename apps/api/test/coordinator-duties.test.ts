@@ -553,6 +553,73 @@ describe('zümre başkanı ve akademik koordinatör', () => {
     assert.equal(finals.length, 1)
   })
 
+  test('DOM-BEC-024, DOM-YTK-027: atamayı gören koordinatör ikinci puan beklenirken ilk puanı kuyrukta ve ayrıntıda görmez; ikinci puanı verince de kör kalır, son puanı veremez', async () => {
+    const t = await tenant()
+    // Zümre başkanı aynı zamanda 9-A'nın öğretmeni (`t-eng`): atamayı görür.
+    await ok(
+      await assign(t.cookies.admin, {
+        membershipId: t.users.colleague.membershipId,
+        scopeId: 'ingilizce',
+      }),
+      201,
+    )
+    const assignment = await ok(
+      await call(
+        'POST',
+        '/task-assignments',
+        t.cookies.admin,
+        {
+          resourceVersionId: t.homeworkId,
+          settings: {
+            deadline: { dueAt: DUE },
+            submission: { submissionKind: 'text', maxVersions: 1 },
+            rubricVersionId: t.rubricVersionId,
+          },
+          targets: [{ kind: 'class', id: '9-A' }],
+        },
+        key(),
+      ),
+      201,
+    )
+    const id = (
+      await ok(
+        await call(
+          'POST',
+          `/task-assignments/${assignment.id}/submissions`,
+          t.cookies.student,
+          { submissionKind: 'text', body: SECRET_TEXT },
+          key(),
+        ),
+        201,
+      )
+    ).id as string
+    const post = (path: string, cookie: string, version: number, body: unknown) =>
+      call('POST', `/task-submissions/${id}/${path}`, cookie, body, { ...match(version), ...key() })
+    await ok(await post('second-rating-requests', t.cookies.admin, 1, { versionNumber: 1 }), 201)
+    await ok(await post('scores', t.cookies.teacher, 2, scoreBody()), 201)
+
+    const blindRow = async () => {
+      const rows = await ok(await queue(t.cookies.colleague))
+      return rows.find((row: Json) => row.id === id)
+    }
+    assert.equal((await blindRow()).latestVersion.score, null)
+    const pending = (await ok(await detail(id, t.cookies.colleague))).versions[0]
+    assert.deepEqual(
+      [pending.score, pending.grading.raterScores, pending.grading.canResolve],
+      [null, [], false],
+    )
+    assert.ok(!JSON.stringify(pending).includes('GIZLI-GERI-BILDIRIM'), 'ilk puan sızdı')
+
+    // İkinci puanı kendisi verir; o sürümün puanlayıcısı olduğu için kör kalır.
+    await ok(await post('second-scores', t.cookies.colleague, 3, disagreeing()), 201)
+    const rated = (await ok(await detail(id, t.cookies.colleague))).versions[0].grading
+    assert.deepEqual(
+      [rated.status, rated.canResolve, rated.raterScores.map((row: Json) => row.raterRole)],
+      ['disagreement', false, ['second']],
+    )
+    fails(await finalScore(id, t.cookies.colleague, 4), 409, 'rater_not_independent')
+  })
+
   test('DOM-YTK-027: görev öğrenci bazında not yazma yetkisi vermez: atamayı görmeyen koordinatör ilk ve ikinci puan veremez (404); log ve denetimde metin yok; başka kurum 404; modül kapalı 403', async () => {
     const t = await tenant()
     await ok(

@@ -903,4 +903,24 @@ describe('aday uçları', () => {
       await logged.close()
     }
   })
+
+  test('DOM-KAY-007: aday listesi kaynak eşitlik süzgeciyle daraltılır; bilinmeyen kaynak boş döner', async () => {
+    const a = await institution()
+    const cookie = await frontDesk(a.id)
+    const sources = SEED.prospects.slice(0, 5).map((item) => item.source)
+    const expected = sources.filter((source) => source === sources[0]).length
+    const list = (query: string) =>
+      app.inject({
+        method: 'GET',
+        url: `/api/v1/collections/prospects?${query}`,
+        headers: { origin: TEST_ORIGIN, cookie },
+      })
+    const matched = await list(`source=${encodeURIComponent(String(sources[0]))}`)
+    assert.equal(matched.statusCode, 200, matched.body)
+    assert.equal(matched.json().meta.total, expected)
+    for (const item of matched.json().data) assert.equal(item.record.source, sources[0])
+    const none = await list('source=Olmayan%20kaynak')
+    assert.equal(none.statusCode, 200)
+    assert.equal(none.json().meta.total, 0)
+  })
 })

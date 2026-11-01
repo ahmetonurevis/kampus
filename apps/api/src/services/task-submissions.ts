@@ -2,8 +2,14 @@ import { randomUUID } from 'node:crypto'
 
 import { deadlineForVersion } from '@kampus/school-core/skills/assignment.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
-import { gradedVersionNumbers } from '@kampus/school-core/skills/rubric.ts'
 import {
+  gradedVersionNumbers,
+  scoreResolution,
+  type RubricScoreRow,
+} from '@kampus/school-core/skills/rubric.ts'
+import { teacherFeedbackReleased } from '@kampus/school-core/skills/scoring.ts'
+import {
+  canReadDraft,
   planDraftSave,
   planSubmissionVersion,
   submissionStatus,
@@ -12,6 +18,7 @@ import {
   wordCountCheck,
   type DraftRow,
   type SubmissionSettings,
+  type VersionAllowance,
   type VersionRow,
 } from '@kampus/school-core/skills/submission.ts'
 
@@ -21,6 +28,7 @@ import {
   findSubmission,
   insertSubmission,
   insertSubmissionVersion,
+  isSecondRatingRequested,
   listSubmissions,
   loadDraft,
   loadSubmission,
@@ -31,26 +39,32 @@ import {
 } from '../db/skills.ts'
 import { AppError, MESSAGES, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { listMembershipLinks } from './memberships.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
   auditWork,
   canReadLearner,
+  learnerFilter,
+  ownedLearners,
   ownLearner,
   readableLearners,
   targetedLearner,
+  type ReadableLearners,
 } from './task-work.ts'
 
 /**
  * Yazma görevinin taslağı ve teslimi (F4b3a; ADR 0004 karar 6; docs/domain/beceri-gelisimi.md
  * DOM-BEC-023, 040, 044, 046; IST-047, IST-051; yetki-ve-kapsam.md DOM-YTK-028).
  *
- * Kurallar core `skills/submission.ts`'tedir; burada kapsam, sıra (kapsam 404 → rol 403 rotada →
- * sürüm → core kuralı) ve tek transaction vardır. Kursiyer × atama başına tek teslim kaydı açılır;
- * her gönderim değişmez bir sürüm ekler (tetikleyici metni korur), sınır `maxVersions`'tır. Yazma
- * otomatik puanlanmaz: yanıtta puan alanı yoktur, rubrik puanlaması F4b3b'dedir. Taslak yalnız
- * kursiyerin kendisine görünür (core `canReadDraft`: rol rotada `ogrenci`, sahiplik burada);
- * teslim okumasında taslak hiç dönmez. Taslak kaydı sık ve otomatik olduğu için denetime yazılmaz;
+ * Kurallar core `skills/submission.ts`'tedir; burada kapsam, sıra (kapsam 404 → rol 403, rotada ve
+ * serviste → sürüm → core kuralı) ve tek transaction vardır. Kursiyer × atama başına tek teslim
+ * kaydı açılır; her gönderim değişmez bir sürüm ekler (tetikleyici metni korur), sınır
+ * `maxVersions`'tır. Yazma otomatik puanlanmaz: yanıtta puan alanı yoktur, rubrik puanlaması
+ * F4b3b'dedir. Kursiyer ve veli, öğretmen geri bildirimi açılmadan teslimin puanlandığını
+ * göremez (DOM-BEC-045): `blockedBy: 'graded'` ve `resubmission_not_requested` onlara genel
+ * `locked` / 409 `submission_locked` olarak döner. Taslak yalnız kursiyerin kendisine görünür
+ * (`getTaskDraft` core `canReadDraft`'ı uygular); teslim okumasında taslak hiç dönmez. Taslak kaydı sık ve otomatik olduğu için denetime yazılmaz;
  * teslim denetime yalnız alan adlarıyla yazılır. Metin ve öğrenci kimliği hiçbir logda yoktur.
  */
 
@@ -105,15 +119,40 @@ function summaryView(assignment: StoredAssignment, work: StoredSubmissionWork, n
   }
 }
 
+/**
+ * Son sürümün öğretmen geri bildirimi kursiyere açık mı (DOM-BEC-045; core `scoreResolution`,
+ * `teacherFeedbackReleased`): puan kesinleşmiş (ikinci puanlama veya koordinatör beklenmiyor) ve
+ * kesinleşme anı geçmiş.
+ */
+async function feedbackReleased(
+  db: Database,
+  ctx: ServiceContext,
+  work: Pick<StoredSubmissionWork, 'submission' | 'versions'>,
+  scores: readonly RubricScoreRow[],
+) {
+  const latest = work.versions.at(-1)
+  if (latest === undefined) return false
+  const resolution = scoreResolution({
+    scores: scores.filter((score) => score.submissionVersionId === latest.id),
+    secondRatingRequested: await isSecondRatingRequested(db, ctx.institutionId, work.submission.id),
+  })
+  return resolution.status === 'settled' && teacherFeedbackReleased(resolution.settledAt, ctx.now)
+}
+
+/** Kursiyer ve veliye geri bildirim açılmadan puanlanmış teslimin nedeni genel `locked` döner. */
+type BlockedBy = VersionAllowance['blockedBy'] | 'locked'
+const LOCKED_MESSAGE = 'Bu teslim için şu an yeni sürüm gönderilemez.'
+
 async function detailView(
   db: Database,
   ctx: ServiceContext,
+  viewer: Viewer,
   assignment: StoredAssignment,
   work: StoredSubmissionWork,
 ) {
   const settings = settingsOf(assignment)
   const scores = await loadSubmissionScores(db, ctx.institutionId, work.submission.id)
-  const allowance =
+  const computed =
     settings === null
       ? null
       : versionAllowance({
@@ -122,6 +161,12 @@ async function detailView(
           versions: work.versions,
           gradedVersionNumbers: gradedVersionNumbers(work.versions, scores),
         })
+  const masked =
+    computed?.blockedBy === 'graded' &&
+    viewer.kind === 'learner' &&
+    !(await feedbackReleased(db, ctx, work, scores))
+  const allowance: (Omit<VersionAllowance, 'blockedBy'> & { blockedBy: BlockedBy }) | null =
+    computed === null ? null : { ...computed, blockedBy: masked ? 'locked' : computed.blockedBy }
   return {
     ...summaryView(assignment, work, ctx.now),
     versions: work.versions.map((version) => ({
@@ -142,10 +187,10 @@ async function assertLearnerReach(
   ctx: ServiceContext,
   viewer: Viewer,
   assignment: StoredAssignment,
-  learners: readonly string[] | undefined,
+  readable: ReadableLearners,
 ) {
   if (viewer.kind !== 'learner' || visible(viewer, assignment)) return
-  for (const learnerId of learners ?? [])
+  for (const learnerId of ownedLearners(readable))
     if (await loadSubmission(ctx.db, ctx.institutionId, assignment.id, learnerId)) return
   throw new NotFoundError()
 }
@@ -163,17 +208,11 @@ export async function listTaskSubmissions(ctx: ServiceContext, input: TaskSubmis
   const assignment = await findAssignment(ctx.db, ctx.institutionId, input.assignmentId)
   if (!assignment) throw new NotFoundError()
   const readable = readableLearners(viewer, assignment)
-  if (readable === null) throw new NotFoundError()
+  if (readable.kind === 'none') throw new NotFoundError()
   await assertLearnerReach(ctx, viewer, assignment, readable)
-  const learnerIds =
-    input.learnerId === undefined
-      ? readable
-      : readable === undefined || readable.includes(input.learnerId)
-        ? [input.learnerId]
-        : []
   const { rows, total } = await listSubmissions(ctx.db, ctx.institutionId, {
     assignmentId: assignment.id,
-    learnerIds,
+    learnerIds: learnerFilter(readable, input.learnerId),
     page: input.page,
     pageSize: input.pageSize,
   })
@@ -188,7 +227,7 @@ export async function getTaskSubmission(ctx: ServiceContext, submissionId: strin
     work && (await findAssignment(ctx.db, ctx.institutionId, work.submission.assignmentId))
   if (!work || !assignment || !canReadLearner(viewer, assignment, work.submission.learnerId))
     throw new NotFoundError()
-  return detailView(ctx.db, ctx, assignment, work)
+  return detailView(ctx.db, ctx, viewer, assignment, work)
 }
 
 function draftView(assignment: StoredAssignment, draft: DraftRow) {
@@ -203,7 +242,8 @@ function draftView(assignment: StoredAssignment, draft: DraftRow) {
 
 /**
  * Öğrencinin kendi taslağı (IST-047); taslak yoksa `null`. Atama artık öğrenciyi hedeflemiyorsa
- * (sınıf değişimi) taslak varken okunur, yoksa 404.
+ * (sınıf değişimi) taslak varken okunur, yoksa 404. Veli 403 (`ownLearner`); taslağın sahibi core
+ * `canReadDraft` ile de denetlenir (yalnız `ogrenci` ve kendi taslağı; ADR 0004 karar 6).
  */
 export async function getTaskDraft(ctx: ServiceContext, assignmentId: string) {
   const viewer = await viewerOf(ctx)
@@ -215,6 +255,9 @@ export async function getTaskDraft(ctx: ServiceContext, assignmentId: string) {
     if (!visible(viewer, assignment)) throw new NotFoundError()
     return null
   }
+  const links = await listMembershipLinks(ctx.db, ctx.institutionId, ctx.actor.membershipId)
+  if (!canReadDraft({ role: ctx.actor.role, links, userId: ctx.actor.userId }, draft))
+    throw new NotFoundError()
   return draftView(assignment, draft)
 }
 
@@ -357,13 +400,12 @@ export async function submitTaskSubmission(
           )
         const work = await loadSubmission(tx, ctx.institutionId, assignment.id, learnerId)
         const versions = work?.versions ?? []
-        const graded =
-          work === null
-            ? []
-            : gradedVersionNumbers(
-                versions,
-                await loadSubmissionScores(tx, ctx.institutionId, work.submission.id),
-              )
+        const scores =
+          work === null ? [] : await loadSubmissionScores(tx, ctx.institutionId, work.submission.id)
+        const graded = gradedVersionNumbers(versions, scores)
+        // Geri bildirim açılmadan "puanlandı" sızmasın (DOM-BEC-045): ret nedeni genel kalır.
+        const released =
+          work !== null && graded.length > 0 && (await feedbackReleased(tx, ctx, work, scores))
         const nextNumber = (versions.at(-1)?.number ?? 0) + 1
         const deadline = deadlineForVersion(
           assignment.deadline,
@@ -371,21 +413,33 @@ export async function submitTaskSubmission(
           nextNumber,
         )
         return {
-          run: (_state, tools) => ({
-            assignment,
-            learnerId,
-            work,
-            plan: planSubmissionVersion({
-              settings,
-              deadline,
-              submission: work?.submission ?? null,
-              versions,
-              gradedVersionNumbers: graded,
-              input: body,
-              files: [],
-              now: tools.now,
-            }),
-          }),
+          run: (_state, tools) => {
+            try {
+              return {
+                assignment,
+                learnerId,
+                work,
+                plan: planSubmissionVersion({
+                  settings,
+                  deadline,
+                  submission: work?.submission ?? null,
+                  versions,
+                  gradedVersionNumbers: graded,
+                  input: body,
+                  files: [],
+                  now: tools.now,
+                }),
+              }
+            } catch (error) {
+              if (
+                !released &&
+                error instanceof DomainError &&
+                error.code === 'resubmission_not_requested'
+              )
+                throw new DomainError('submission_locked', LOCKED_MESSAGE, { kind: 'conflict' })
+              throw error
+            }
+          },
         }
       },
       after: async (tx, { assignment, learnerId, work, plan }) => {
@@ -413,7 +467,7 @@ export async function submitTaskSubmission(
         ])
         const saved = await findSubmission(tx, ctx.institutionId, submissionId)
         if (!saved) throw new Error('task submission disappeared after write')
-        out.body = { data: await detailView(tx, ctx, assignment, saved) }
+        out.body = { data: await detailView(tx, ctx, viewer, assignment, saved) }
       },
     },
     written(out, 201),

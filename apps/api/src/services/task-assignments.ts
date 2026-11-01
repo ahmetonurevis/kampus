@@ -102,6 +102,8 @@ export type Viewer =
     }
   | {
       kind: 'learner'
+      /** Okuma ikisinde aynıdır; deneme ve teslim yazması yalnız `ogrenci`'dedir. */
+      role: 'ogrenci' | 'veli'
       /** Kapsamdaki öğrenci → güncel sınıf/grup (öğrencide kendisi, velide çocukları). */
       classOf: ReadonlyMap<string, string>
     }
@@ -120,6 +122,7 @@ export async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
       const [scope, source] = await Promise.all([readScope(ctx), readSource(ctx)])
       return {
         kind: 'learner',
+        role,
         classOf: new Map(
           source.students
             .filter((student) => scope.studentIds.has(student.id))
@@ -139,8 +142,9 @@ export async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
  * hedefli atama o sınıfın güncel öğrencilerine görünür: sınıf değiştiren öğrenci yeni sınıfının
  * atamalarını görür, eski sınıfınınkini görmez (ADR 0004 karar 4 uygulama notu, F4b2b). Eski
  * sınıfta yaptığı denemeyi, teslimi ve puanı görmeye devam eder: deneme ve teslim okuması hedefe
- * değil kayıt sahipliğine bakar (`services/task-work.ts` `readableLearners`, F4b3a). Yeni deneme
- * ve teslim yalnız hedeflenen kursiyere açıktır.
+ * değil kayıt sahipliğine bakar; personel atamayı görüyorsa atamanın bütün deneme ve teslimlerini
+ * görür (`services/task-work.ts` `readableLearners`, F4b3a). Yeni deneme ve teslim yalnız
+ * hedeflenen kursiyere açıktır.
  */
 export function targetedLearners(
   classOf: ReadonlyMap<string, string>,

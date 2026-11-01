@@ -894,8 +894,8 @@ describe('görev atama uçları', () => {
           eq(records.id, 's-1'),
         ),
       )
-    // TODO(F4b3-sinif-degisimi): eski sınıfta teslim etmiş öğrenci kendi teslimini F4b3 deneme ve
-    // teslim uçlarında görür; atama listesi yalnız güncel hedefi izler.
+    // Atama listesi yalnız güncel hedefi izler; eski sınıfta yapılan deneme ve teslim deneme/teslim
+    // uçlarında görünür (F4b3a; test/task-attempts.test.ts, test/task-submissions.test.ts).
     for (const cookie of [t.cookies.student, t.cookies.parent])
       assert.deepEqual(await seen(cookie), [toB.id])
     fails(await call('GET', `/task-assignments/${toA.id}`, t.cookies.student), 404, 'not_found')

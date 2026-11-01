@@ -1,4 +1,5 @@
 import { learnerView, seededRandom } from '@kampus/school-core/content/resource.ts'
+import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { scoringItemsFor, type QuestionVersionRef } from '@kampus/school-core/skills/assignment.ts'
 import type { AttemptTiming, ScoringItem } from '@kampus/school-core/skills/scoring.ts'
@@ -7,7 +8,7 @@ import type { Database } from '../db/client.ts'
 import { asCoreVersion, loadVersionPairs, type StoredResourceVersion } from '../db/resources.ts'
 import type { StoredAssignment } from '../db/skills.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
-import { NotFoundError } from '../errors.ts'
+import { AppError, ForbiddenError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { mapOperationError } from './operation-runner.ts'
 import { targetedLearners, visible, type Viewer } from './task-assignments.ts'
@@ -16,69 +17,110 @@ import { targetedLearners, visible, type Viewer } from './task-assignments.ts'
  * Deneme ve teslim uçlarının ortak kapsamı ve puanlama bağlamı (F4b3a; ADR 0004 karar 5, 6;
  * docs/domain/beceri-gelisimi.md DOM-BEC-010, 040…046; yetki-ve-kapsam.md DOM-YTK-028).
  *
- * Okuma kapsamı atama okumasıyla aynıdır (`services/task-assignments.ts` `visible`): yönetici
- * kurumun bütün kursiyerlerini; atayan öğretmen atamanın bütün kursiyerlerini; atamayı kapsamındaki
- * sınıf veya öğrenci hedefi yüzünden gören öğretmen yalnız kapsamındaki (güncel) öğrencilerini
- * görür. Öğrenci kendi, veli çocuklarının denemesini ve teslimini görür: bu kayıt sahipliğidir,
- * hedefe bakmaz; sınıf değiştiren öğrenci eski sınıfta yaptığı denemeyi, teslimi ve puanı görmeye
- * devam eder (F4b2b `TODO(F4b3-sinif-degisimi)` kapandı). Yazma (deneme başlatma, teslim) yalnız
- * atamanın şu an hedeflediği öğrenciye açıktır.
+ * Görünürlük atamayı izler (DOM-YTK-028): atamayı gören personel (yönetici; atayan öğretmen;
+ * atamayı kapsamındaki sınıf veya öğrenci hedefi yüzünden gören öğretmen, `visible`) o atamaya
+ * yapılmış bütün deneme ve teslimleri görür; kursiyerin güncel sınıfına bakılmaz. Sınıf değiştiren
+ * öğrencinin eski sınıftaki teslimini eski sınıfı gören öğretmen görmeye devam eder; yeni sınıfın
+ * öğretmeni, yeni sınıfı hedeflemeyen atamayı (ve teslimlerini) görmez. Öğrenci kendi, veli
+ * çocuklarının denemesini ve teslimini görür: bu kayıt sahipliğidir, hedefe bakmaz; sınıf
+ * değiştiren öğrenci eski sınıfta yaptığı denemeyi, teslimi ve puanı görmeye devam eder.
+ * Yazma (deneme başlatma, cevap, teslim, taslak) yalnız `ogrenci` rolündedir; rota ve servis ayrı
+ * ayrı denetler (veli okur, yazamaz). Yeni deneme ve teslim yalnız atamanın şu an hedeflediği
+ * öğrenciye açıktır.
  */
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/** Atamada kişinin okuyabildiği kursiyerler. */
+export type ReadableLearners =
+  /** Atamanın bütün kursiyerleri (yönetici, atamayı gören öğretmen). */
+  | { kind: 'all' }
+  /** Yalnız bu kursiyerler (öğrencide kendisi, velide çocukları; sahiplik). */
+  | { kind: 'some'; ids: readonly string[] }
+  /** Atama kişiye kapalı (404). */
+  | { kind: 'none' }
+
 /**
- * Atamada kişinin okuyabildiği kursiyerler: `undefined` bütün kursiyerler, liste yalnız onlar,
- * `null` atama kişiye kapalı (404). Öğrenci ve velide liste kendisi veya çocuklarıdır; atamanın
- * görünür olması gerekmez (sahiplik), varlık sızıntısını çağıran `assertReadable` ile önler.
+ * Atamada kişinin okuyabildiği kursiyerler. Personelde atamayı görmek yeterlidir (görünürlük
+ * atamayı izler, DOM-YTK-028). Öğrenci ve velide atamanın görünür olması gerekmez (sahiplik);
+ * varlık sızıntısını çağıranın `assertLearnerReach`'i önler.
  */
-export function readableLearners(
-  viewer: Viewer,
-  assignment: StoredAssignment,
-): readonly string[] | undefined | null {
+export function readableLearners(viewer: Viewer, assignment: StoredAssignment): ReadableLearners {
   switch (viewer.kind) {
     case 'admin':
-      return undefined
+      return { kind: 'all' }
     case 'teacher':
-      if (!visible(viewer, assignment)) return null
-      return assignment.assignedByUserId === viewer.userId ? undefined : [...viewer.studentIds]
+      return visible(viewer, assignment) ? { kind: 'all' } : { kind: 'none' }
     case 'learner':
-      return [...viewer.classOf.keys()]
+      return { kind: 'some', ids: [...viewer.classOf.keys()] }
     default:
       return viewer satisfies never
   }
 }
 
-/**
- * Kişi atamanın kursiyerinin kaydını okuyabilir mi. Öğrenci ve veli kendi/çocuğunun kaydını
- * atama görünmese de okur (sınıf değişimi); öğretmen `readableLearners` kapsamında.
- */
+/** Kişi atamanın bu kursiyerinin kaydını okuyabilir mi (`readableLearners`). */
 export function canReadLearner(
   viewer: Viewer,
   assignment: StoredAssignment,
   learnerId: string,
 ): boolean {
-  const learners = readableLearners(viewer, assignment)
-  return learners !== null && (learners === undefined || learners.includes(learnerId))
+  const readable = readableLearners(viewer, assignment)
+  return readable.kind === 'all' || (readable.kind === 'some' && readable.ids.includes(learnerId))
+}
+
+/**
+ * Liste sorgusunun kursiyer süzgeci: `undefined` atamanın bütün kursiyerleri. İstenen kursiyer
+ * okuma kapsamı dışındaysa boş liste (sonuç boş döner, varlık sızmaz).
+ */
+export function learnerFilter(
+  readable: Exclude<ReadableLearners, { kind: 'none' }>,
+  requested: string | undefined,
+): readonly string[] | undefined {
+  if (readable.kind === 'all') return requested === undefined ? undefined : [requested]
+  if (requested === undefined) return readable.ids
+  return readable.ids.includes(requested) ? [requested] : []
+}
+
+/** Okuma kapsamındaki öğrenci/veli kursiyerleri (`assertLearnerReach` için); personelde boş. */
+export const ownedLearners = (readable: ReadableLearners): readonly string[] =>
+  readable.kind === 'some' ? readable.ids : []
+
+/**
+ * Yazan kişi yalnız öğrencidir (rol rotada da denetlenir; servis tek başına güvenli olsun diye
+ * burada da). Kapsam denetiminden sonra çağrılır: sıra kapsam 404 → rol 403.
+ */
+function assertStudent(viewer: Extract<Viewer, { kind: 'learner' }>) {
+  if (viewer.role !== 'ogrenci') throw new ForbiddenError()
 }
 
 /**
  * Yazan öğrencinin kendi kaydı: atama arşivlenmemiş ve öğrenciyi şu an hedefliyorsa öğrenci
- * kimliği, değilse 404 (kapsam; varlık sızmaz). Rol denetimi (yalnız `ogrenci`) rotadadır.
+ * kimliği, değilse 404 (kapsam; varlık sızmaz). Veli 403 (yalnız `ogrenci` yazar).
  */
 export function targetedLearner(viewer: Viewer, assignment: StoredAssignment | null): string {
   if (!assignment || viewer.kind !== 'learner' || !visible(viewer, assignment))
     throw new NotFoundError()
   const [learnerId] = targetedLearners(viewer.classOf, assignment)
   if (learnerId === undefined) throw new NotFoundError()
+  assertStudent(viewer)
   return learnerId
 }
 
-/** Öğrencinin kendi kimliği (öğrenci görünümünde tek kursiyer); yoksa 404. */
+/**
+ * Öğrencinin kendi kaydı: öğrenci/veli değilse 404; kaydın kursiyeri kapsamında değilse 404; veli
+ * 403 (yalnız `ogrenci` yazar).
+ */
+export function ownRecord(viewer: Viewer, learnerId: string): void {
+  if (viewer.kind !== 'learner' || !viewer.classOf.has(learnerId)) throw new NotFoundError()
+  assertStudent(viewer)
+}
+
+/** Öğrencinin kendi kimliği (öğrenci görünümünde tek kursiyer); yoksa 404, veli 403. */
 export function ownLearner(viewer: Viewer): string {
   if (viewer.kind !== 'learner') throw new NotFoundError()
   const [learnerId] = viewer.classOf.keys()
   if (learnerId === undefined) throw new NotFoundError()
+  assertStudent(viewer)
   return learnerId
 }
 
@@ -101,6 +143,8 @@ export interface ScoringContext {
   items: ScoringItem[]
   /** Soru sürümü kimliği → sürüm satırı; öğrenci görünümü `questionsFor` ile üretilir. */
   versions: ReadonlyMap<string, StoredResourceVersion>
+  /** Puanlama sürümü ve soruların lisansları (DOM-KYN-021; `assertLicenseActive`). */
+  licenses: readonly StoredResourceVersion['license'][]
 }
 
 /**
@@ -155,10 +199,26 @@ export async function scoringContext(
     return {
       items: scoringItemsFor({ parentTags: scoring.tags, items: entries, questions: refs }),
       versions,
+      licenses: [scoring.license, ...[...versions.values()].map((version) => version.license)],
     }
   } catch (error) {
     throw mapOperationError(error)
   }
+}
+
+/**
+ * Lisansı dolmuş içerikte yeni deneme başlamaz (DOM-KYN-021; core `licenseExpired`, bitiş günü
+ * dahil geçerli): puanlama sürümünün veya sorularından birinin lisansı dolduysa 409
+ * `resource_license_expired`. Süren deneme kaydedilir ve teslim edilir (kursiyerin başladığı iş
+ * kaybolmaz); bu denetim yalnız başlatmadadır.
+ */
+export function assertLicenseActive(context: ScoringContext, now: Date) {
+  if (context.licenses.some((license) => licenseExpired(license, now)))
+    throw new AppError(
+      409,
+      'resource_license_expired',
+      'Bu içeriğin lisans süresi dolmuş; yeni deneme başlatılamaz.',
+    )
 }
 
 /**

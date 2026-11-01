@@ -32,21 +32,26 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
+  assertLicenseActive,
   auditWork,
   canReadLearner,
+  learnerFilter,
+  ownedLearners,
+  ownRecord,
   questionsFor,
   readableLearners,
   scoringContext,
   targetedLearner,
   timingOf,
+  type ReadableLearners,
   type ScoringContext,
 } from './task-work.ts'
 
 /**
  * Otomatik puanlı görev denemeleri: başlatma, cevap kaydı, teslim ve okuma (F4b3a; ADR 0004
  * karar 5, 6; docs/domain/beceri-gelisimi.md DOM-BEC-010, 042…045; yetki-ve-kapsam.md DOM-YTK-028).
- * Kurallar core `skills/scoring.ts`'tedir; burada kapsam, sıra (kapsam 404 → rol 403 rotada →
- * sürüm 409 → core kuralı) ve tek transaction vardır. Puan saklanmaz: her okumada cevaplardan ve
+ * Kurallar core `skills/scoring.ts`'tedir; burada kapsam, sıra (kapsam 404 → rol 403, rotada ve
+ * serviste → sürüm 409 → core kuralı) ve tek transaction vardır. Puan saklanmaz: her okumada cevaplardan ve
  * puanlama sürümünün anahtarından hesaplanır (DOM-BEC-010). Yazmalar `runCommand` ile kurum
  * kilidi altında çalışır; eşzamanlı iki başlatma hakkı aşamaz, eşzamanlı iki tesliminden biri 409
  * alır. Denetime yalnız başlatma ve teslim yazılır, yalnız alan adlarıyla; cevap kaydı sık ve
@@ -173,10 +178,15 @@ async function assertLearnerReach(
   ctx: ServiceContext,
   viewer: Viewer,
   assignment: StoredAssignment,
-  learners: readonly string[] | undefined,
+  readable: ReadableLearners,
 ) {
   if (viewer.kind !== 'learner' || visible(viewer, assignment)) return
-  const own = await loadLearnersAttempts(ctx.db, ctx.institutionId, assignment.id, learners ?? [])
+  const own = await loadLearnersAttempts(
+    ctx.db,
+    ctx.institutionId,
+    assignment.id,
+    ownedLearners(readable),
+  )
   if (own.length === 0) throw new NotFoundError()
 }
 
@@ -193,17 +203,11 @@ export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptLi
   const assignment = await findAssignment(ctx.db, ctx.institutionId, input.assignmentId)
   if (!assignment) throw new NotFoundError()
   const readable = readableLearners(viewer, assignment)
-  if (readable === null) throw new NotFoundError()
+  if (readable.kind === 'none') throw new NotFoundError()
   await assertLearnerReach(ctx, viewer, assignment, readable)
-  const learnerIds =
-    input.learnerId === undefined
-      ? readable
-      : readable === undefined || readable.includes(input.learnerId)
-        ? [input.learnerId]
-        : []
   const { rows, total } = await listAttempts(ctx.db, ctx.institutionId, {
     assignmentId: assignment.id,
-    learnerIds,
+    learnerIds: learnerFilter(readable, input.learnerId),
     page: input.page,
     pageSize: input.pageSize,
   })
@@ -265,8 +269,9 @@ async function readBack(
 
 /**
  * Deneme başlatır (DOM-BEC-042, 043, 044; core `planAttemptStart`). Yalnız atamanın şu an
- * hedeflediği öğrenci başlatır (rol rotada); hakkı biten 422 `attempt_limit_reached`, süren deneme
- * varken 409 `attempt_in_progress`, teslim kapandıysa 422 `submission_closed`.
+ * hedeflediği öğrenci başlatır (veli 403); lisansı dolmuş içerik 409 `resource_license_expired`
+ * (DOM-KYN-021), hakkı biten 422 `attempt_limit_reached`, süren deneme varken 409
+ * `attempt_in_progress`, teslim kapandıysa 422 `submission_closed`.
  */
 export async function startTaskAttempt(
   ctx: ServiceContext,
@@ -293,7 +298,8 @@ export async function startTaskAttempt(
         if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
         const learnerId = targetedLearner(viewer, assignment)
         // Otomatik puanlanmayan görev (yazma) 422 `not_auto_scored`.
-        await scoringContext(tx, ctx.institutionId, assignment)
+        const context = await scoringContext(tx, ctx.institutionId, assignment)
+        assertLicenseActive(context, ctx.now)
         const attempts = await loadAttempts(tx, ctx.institutionId, assignment.id, learnerId)
         return {
           run: (_state, tools) => ({
@@ -337,8 +343,9 @@ export async function startTaskAttempt(
 type Owned = { attempt: StoredAttempt; assignment: StoredAssignment; context: ScoringContext }
 
 /**
- * Yazılacak deneme: öğrencinin kendi denemesi ve arşivsiz atama; değilse 404 (kapsam). Teslim ve
- * cevap kaydı hedefe bakmaz: sınıf değiştiren öğrenci başlattığı denemeyi bitirebilir.
+ * Yazılacak deneme: öğrencinin kendi denemesi ve arşivsiz atama; değilse 404 (kapsam), veli 403.
+ * Teslim ve cevap kaydı hedefe ve lisansa bakmaz: sınıf değiştiren öğrenci ve lisansı bu arada
+ * dolan içerikte süren deneme bitirilebilir.
  */
 async function ownedAttempt(
   tx: Database,
@@ -347,10 +354,10 @@ async function ownedAttempt(
   attemptId: string,
 ): Promise<Owned> {
   const attempt = await findAttempt(tx, ctx.institutionId, attemptId)
-  if (!attempt || viewer.kind !== 'learner' || !viewer.classOf.has(attempt.learnerId))
-    throw new NotFoundError()
+  if (!attempt) throw new NotFoundError()
   const assignment = await findAssignment(tx, ctx.institutionId, attempt.assignmentId)
   if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
+  ownRecord(viewer, attempt.learnerId)
   return { attempt, assignment, context: await scoringContext(tx, ctx.institutionId, assignment) }
 }
 

@@ -11,6 +11,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
+import { insertRubricScore, insertSecondRatingRequest } from '../src/db/skills.ts'
 import {
   rubrics,
   rubricVersions,
@@ -18,6 +19,13 @@ import {
   submissionVersions,
   taskSubmissions,
 } from '../src/db/schema/skills.ts'
+import { AppError } from '../src/errors.ts'
+import type { ServiceContext } from '../src/plugins/authenticate.ts'
+import {
+  getTaskDraft,
+  saveTaskDraft,
+  submitTaskSubmission,
+} from '../src/services/task-submissions.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -533,6 +541,91 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     fails(await submit(assignmentId, t.cookies.student), 404, 'not_found')
     fails(await saveDraft(assignmentId, t.cookies.student, 'x'), 404, 'not_found')
     fails(await detail(created.id, t.cookies.otherTeacher), 404, 'not_found')
+  })
+
+  test('DOM-BEC-045: geri bildirim açılmadan kursiyer ve veli puanlandığını göremez: blockedBy locked, yeni sürüm 409 submission_locked; personel graded görür; puan kesinleşince graded', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    const submitted = await ok(await submit(assignmentId, t.cookies.student), 201)
+    const [version] = submitted.versions
+    const score = (raterRole: 'first' | 'second', band: number) => ({
+      id: randomUUID(),
+      submissionVersionId: version.id,
+      rubricVersionId: t.rubricVersionId,
+      raterUserId: t.institution.admin.id,
+      raterRole,
+      criteria: [
+        { criterionId: 'task', band, comment: null },
+        { criterionId: 'grammar', band, comment: null },
+      ],
+      overallComment: 'GIZLI-GERI-BILDIRIM',
+      scoredAt: now.toISOString(),
+    })
+    // İkinci puanlama istendi, ilk puan verildi: puanlama sürüyor, geri bildirim kapalı.
+    await insertSecondRatingRequest(
+      db,
+      t.institution.id,
+      {
+        submissionId: submitted.id,
+        source: 'manual',
+        requestedByUserId: t.institution.admin.id,
+        requestedAt: now.toISOString(),
+      },
+      now,
+    )
+    await insertRubricScore(db, t.institution.id, score('first', 3), now)
+    const blockedBy = async (cookie: string) =>
+      (await ok(await detail(submitted.id, cookie))).allowance
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const allowance = await blockedBy(cookie)
+      assert.equal(allowance.blockedBy, 'locked')
+      assert.equal(allowance.canSubmit, false)
+      assert.equal(allowance.resubmissionOpen, false)
+      const body = (await detail(submitted.id, cookie)).body
+      for (const text of ['graded', 'GIZLI-GERI-BILDIRIM']) assert.ok(!body.includes(text), text)
+    }
+    for (const cookie of [t.cookies.teacher, t.cookies.admin])
+      assert.equal((await blockedBy(cookie)).blockedBy, 'graded')
+    const before = await storedRows(t.institution.id)
+    const locked = await submit(assignmentId, t.cookies.student)
+    fails(locked, 409, 'submission_locked')
+    assert.ok(!locked.body.includes('puanlandı'))
+    assert.deepEqual(await storedRows(t.institution.id), before)
+    // İkinci puan uyuşur: puan kesinleşir, geri bildirim açılır; neden artık gizlenmez.
+    await insertRubricScore(db, t.institution.id, score('second', 3), now)
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.equal((await blockedBy(cookie)).blockedBy, 'graded')
+    fails(await submit(assignmentId, t.cookies.student), 409, 'resubmission_not_requested')
+  })
+
+  test('DOM-YTK-028, IST-047: servis de yalnız öğrenciye yazdırır: veli çocuğunun taslağını okuyamaz ve kaydedemez, teslim gönderemez (403); kayıt değişmez', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    await ok(await saveDraft(assignmentId, t.cookies.student, 'Taslak'))
+    const parent = await createMember(app, t.institution.id, 'veli', [
+      { kind: 'child', recordId: 's-1' } as never,
+    ])
+    const ctx: ServiceContext = {
+      db,
+      institutionId: t.institution.id,
+      actor: { userId: parent.id, role: 'veli', membershipId: parent.membershipId },
+      now,
+      log: app.log,
+    }
+    const forbidden = (error: unknown) =>
+      error instanceof AppError && error.statusCode === 403 && error.code === 'forbidden'
+    const before = await storedRows(t.institution.id)
+    await assert.rejects(getTaskDraft(ctx, assignmentId), forbidden)
+    await assert.rejects(
+      saveTaskDraft(ctx, { assignmentId, body: 'Veli yazdı', expectedRevision: 1 }, null),
+      forbidden,
+    )
+    await assert.rejects(
+      submitTaskSubmission(ctx, assignmentId, { submissionKind: 'text', body: 'Veli' }, null),
+      forbidden,
+    )
+    assert.deepEqual(await storedRows(t.institution.id), before)
+    assert.equal((await ok(await readDraft(assignmentId, t.cookies.student))).body, 'Taslak')
   })
 
   test('DOM-BEC-040: log ve denetimde metin ve öğrenci kimliği yok; denetime yalnız teslim, alan adlarıyla', async () => {

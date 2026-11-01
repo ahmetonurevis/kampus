@@ -105,7 +105,12 @@ const taskSubmissionDetailSchema = z
         remaining: z.number().int().min(0),
         resubmissionOpen: z.boolean(),
         canSubmit: z.boolean(),
-        blockedBy: z.enum(['limit', 'graded']).nullable(),
+        blockedBy: z
+          .enum(['limit', 'graded', 'locked'])
+          .nullable()
+          .describe(
+            '`canSubmit: false` ise neden. Kursiyer ve veli, öğretmen geri bildirimi açılmadan `graded` yerine genel `locked` alır (DOM-BEC-045)',
+          ),
       })
       .nullable()
       .describe('Yeni sürüm hakkı (core `versionAllowance`)'),

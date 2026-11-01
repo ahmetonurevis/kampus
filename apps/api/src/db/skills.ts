@@ -972,7 +972,7 @@ export async function findAttempt(
 
 /**
  * Atamanın denemeleri ve teslimlerinin süzgeci. `learnerIds` rol kapsamıdır (servisten): verilmezse
- * atamanın bütün kursiyerleri (yönetici, atayan öğretmen), boş liste hiçbir satır vermez.
+ * atamanın bütün kursiyerleri (yönetici, atamayı gören öğretmen), boş liste hiçbir satır vermez.
  */
 export interface LearnerWorkQuery {
   assignmentId: string

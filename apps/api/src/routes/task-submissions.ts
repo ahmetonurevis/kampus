@@ -38,9 +38,9 @@ const MODULE = 'learning'
 const READERS: readonly Role[] = ['yonetici', 'ogretmen', 'ogrenci', 'veli']
 const WRITERS: readonly Role[] = ['ogrenci']
 const READ_ACCESS =
-  'Roller: `yonetici` kurumun bütün teslimlerini; atayan `ogretmen` atamanın bütün teslimlerini, atamayı kapsamındaki sınıf/öğrenci hedefi yüzünden gören öğretmen yalnız kapsamındaki öğrencilerinkini (DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz; yanıtta puan alanı yoktur (rubrik puanlaması ayrı uçtadır). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.'
+  'Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz; yanıtta puan alanı yoktur (rubrik puanlaması ayrı uçtadır). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.'
 const WRITE_ACCESS =
-  'Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.'
+  'Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.'
 
 function sendWith<T>(reply: FastifyReply, response: CommandResponse, parse: (body: unknown) => T) {
   if (response.replayed) reply.header('idempotent-replayed', 'true')
@@ -147,7 +147,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         operationId: 'submitTaskSubmission',
         tags: ['task-submissions'],
         summary: 'Yazma görevini teslim et',
-        description: `Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core \`planSubmissionVersion\`). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; önceki sürümler ve metinleri değişmez. Sürüm sınırı (\`maxVersions\`) dolunca 422 \`version_limit_reached\`; puanlanmış teslimde öğretmen yeniden teslim istemeden 409 \`resubmission_not_requested\`; teslim kapandıysa (geç kabul dahil) 422 \`submission_closed\`; son teslimden sonra geç kabul süresindeki sürüm \`late\`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 \`submission_not_expected\`; dosyalı ve sesli teslim 422 \`submission_kind_unavailable\`. Yazma otomatik puanlanmaz. \`Idempotency-Key\` zorunlu; \`If-Match\` desteklenmez (400 \`if_match_not_supported\`). Başarı 201 ve teslim kaydının \`Location\`'ı. ${WRITE_ACCESS}`,
+        description: `Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core \`planSubmissionVersion\`). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; önceki sürümler ve metinleri değişmez. Sürüm sınırı (\`maxVersions\`) dolunca 422 \`version_limit_reached\`; puanlanmış teslimde öğretmen yeniden teslim istemeden 409 \`resubmission_not_requested\` (geri bildirim açılmadan genel 409 \`submission_locked\`; DOM-BEC-045); teslim kapandıysa (geç kabul dahil) 422 \`submission_closed\`; son teslimden sonra geç kabul süresindeki sürüm \`late\`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 \`submission_not_expected\`; dosyalı ve sesli teslim 422 \`submission_kind_unavailable\`. Yazma otomatik puanlanmaz. \`Idempotency-Key\` zorunlu; \`If-Match\` desteklenmez (400 \`if_match_not_supported\`). Başarı 201 ve teslim kaydının \`Location\`'ı. ${WRITE_ACCESS}`,
         params: taskSubmissionAssignmentParamsSchema,
         body: taskSubmissionBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: false }),

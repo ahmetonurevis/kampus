@@ -12,6 +12,13 @@ import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
 import { taskAttempts } from '../src/db/schema/skills.ts'
+import { AppError } from '../src/errors.ts'
+import type { ServiceContext } from '../src/plugins/authenticate.ts'
+import {
+  saveTaskAttemptAnswers,
+  startTaskAttempt,
+  submitTaskAttempt,
+} from '../src/services/task-attempts.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -234,6 +241,49 @@ describe('görev deneme uçları', () => {
     })
   const list = (assignmentId: string, cookie: string, extra = '') =>
     call('GET', `/task-attempts?assignmentId=${assignmentId}${extra}`, cookie)
+
+  /** Öğrencinin sınıfını doğrudan değiştirir (geçiş ucu bu testlerin konusu değil). */
+  async function moveStudent(institutionId: string, studentId: string, classId: string) {
+    await db
+      .update(records)
+      .set({
+        data: sql`jsonb_set(${records.data}, '{classId}', ${JSON.stringify(classId)}::jsonb)`,
+        version: sql`${records.version} + 1`,
+      })
+      .where(
+        and(
+          eq(records.institutionId, institutionId),
+          eq(records.collection, 'students'),
+          eq(records.id, studentId),
+        ),
+      )
+  }
+
+  /** Yönetici atar (atayan olmayan öğretmenin görünürlüğü için). */
+  async function assignAsAdmin(
+    t: Tenant,
+    targets: unknown[],
+    settings: Record<string, unknown> = {},
+  ) {
+    const data = await ok(
+      await call(
+        'POST',
+        '/task-assignments',
+        t.cookies.admin,
+        {
+          resourceVersionId: t.questionId,
+          settings: { deadline: { dueAt: DUE }, ...settings },
+          targets,
+        },
+        key(),
+      ),
+      201,
+    )
+    return data.id as string
+  }
+
+  const learnersOf = async (assignmentId: string, cookie: string) =>
+    (await ok(await list(assignmentId, cookie))).map((row: Json) => row.learnerId).sort()
 
   async function attemptRows(institutionId: string) {
     return db
@@ -538,6 +588,217 @@ describe('görev deneme uçları', () => {
       await call('GET', `/task-attempts/${attempt.id}`, t.cookies.otherTeacher),
       404,
       'not_found',
+    )
+  })
+
+  test('DOM-YTK-028: görünürlük atamayı izler: atamayı gören atayan olmayan öğretmen sınıf değiştiren öğrencinin denemesini görür; yeni sınıfın öğretmeni görmez; hedef listesi daraltılır, deneme listesi daraltılmaz', async () => {
+    const t = await tenant()
+    // Yönetici 9-A'ya ve Can'a (9-B) atar: İngilizce öğretmeni 9-A, matematik öğretmeni Can hedefi
+    // yüzünden görür; ikisi de atayan değildir.
+    const mixed = await assignAsAdmin(t, [
+      { kind: 'class', id: '9-A' },
+      { kind: 'student', id: 's-3' },
+    ])
+    const deniz = await ok(await start(mixed, t.cookies.student), 201)
+    const can = await ok(await start(mixed, t.cookies.otherStudent), 201)
+    // Atayan olmayan öğretmenin hedef listesi kendi kapsamına daralır…
+    const seenTargets = async (cookie: string) =>
+      (await ok(await call('GET', `/task-assignments/${mixed}`, cookie))).targets
+    assert.deepEqual(await seenTargets(t.cookies.teacher), [{ kind: 'class', id: '9-A' }])
+    assert.deepEqual(await seenTargets(t.cookies.otherTeacher), [{ kind: 'student', id: 's-3' }])
+    // …ama atamayı gördüğü için atamanın bütün denemelerini görür.
+    for (const cookie of [t.cookies.admin, t.cookies.teacher, t.cookies.otherTeacher])
+      assert.deepEqual(await learnersOf(mixed, cookie), ['s-1', 's-3'])
+    assert.deepEqual(
+      (await ok(await list(mixed, t.cookies.otherTeacher, '&learnerId=s-1'))).map(
+        (row: Json) => row.id,
+      ),
+      [deniz.id],
+    )
+    assert.equal(
+      (await ok(await call('GET', `/task-attempts/${can.id}`, t.cookies.teacher))).learnerId,
+      's-3',
+    )
+  })
+
+  test("DOM-YTK-028: Deniz 9-A'dan 9-B'ye geçince 9-A atamasındaki denemesini 9-A öğretmeni görmeye devam eder; 9-B öğretmeni 9-B'yi hedeflemeyen atamayı ve denemeyi görmez", async () => {
+    const t = await tenant()
+    const assignmentId = await assignAsAdmin(t, [{ kind: 'class', id: '9-A' }])
+    const attempt = await ok(await start(assignmentId, t.cookies.student), 201)
+    await ok(
+      await submit(attempt.id, t.cookies.student, { answers: { [t.questionId]: choice('b') } }, 1),
+    )
+    await moveStudent(t.institution.id, 's-1', '9-B')
+    // 9-A öğretmeni (atayan değil) atamayı sınıf hedefinden görür; Deniz artık 9-B'de.
+    assert.deepEqual(await learnersOf(assignmentId, t.cookies.teacher), ['s-1'])
+    assert.equal(
+      (await ok(await call('GET', `/task-attempts/${attempt.id}`, t.cookies.teacher))).result
+        .percent,
+      100,
+    )
+    // 9-B öğretmeni Deniz'in güncel öğretmeni olsa da 9-B'yi hedeflemeyen atamayı görmez.
+    fails(await list(assignmentId, t.cookies.otherTeacher), 404, 'not_found')
+    fails(
+      await call('GET', `/task-attempts/${attempt.id}`, t.cookies.otherTeacher),
+      404,
+      'not_found',
+    )
+  })
+
+  test('DOM-YTK-028, DOM-YTK-025: aynı atamada üç öğrencinin denemesi varken öğrenci ve veli yalnız kendi kaydını, iki çocuklu veli iki çocuğununkini görür', async () => {
+    const t = await tenant()
+    await insertMissingRecords(
+      db,
+      t.institution.id,
+      [
+        ['s-2', 'Ece Yılmaz'],
+        ['s-4', 'Mert Öz'],
+      ].map(([id, name]) => ({
+        collection: 'students' as const,
+        id: id!,
+        data: { id, name, classId: '9-A', isActive: true },
+      })),
+      FIXED_NOW,
+    )
+    const signIn = async (role: 'ogrenci' | 'veli', links: { kind: string; recordId: string }[]) =>
+      signInAs(app, await createMember(app, t.institution.id, role, links as never))
+    const ece = await signIn('ogrenci', [{ kind: 'student', recordId: 's-2' }])
+    const mert = await signIn('ogrenci', [{ kind: 'student', recordId: 's-4' }])
+    const twoChildren = await signIn('veli', [
+      { kind: 'child', recordId: 's-1' },
+      { kind: 'child', recordId: 's-2' },
+    ])
+    const assignmentId = await assign(t)
+    const ids = new Map<string, string>()
+    for (const [learner, cookie] of [
+      ['s-1', t.cookies.student],
+      ['s-2', ece],
+      ['s-4', mert],
+    ] as const)
+      ids.set(learner, (await ok(await start(assignmentId, cookie), 201)).id)
+
+    for (const [cookie, expected] of [
+      [t.cookies.student, ['s-1']],
+      [t.cookies.parent, ['s-1']],
+      [mert, ['s-4']],
+      [twoChildren, ['s-1', 's-2']],
+      [t.cookies.teacher, ['s-1', 's-2', 's-4']],
+    ] as const) {
+      assert.deepEqual(await learnersOf(assignmentId, cookie), expected)
+      const page = await list(assignmentId, cookie)
+      assert.equal(page.json().meta.total, expected.length)
+    }
+    // Başka kursiyerin süzgeci boş döner; ayrıntısı 404 (varlık sızmaz).
+    for (const cookie of [t.cookies.student, t.cookies.parent, twoChildren]) {
+      assert.deepEqual(await ok(await list(assignmentId, cookie, '&learnerId=s-4')), [])
+      fails(await call('GET', `/task-attempts/${ids.get('s-4')}`, cookie), 404, 'not_found')
+    }
+    assert.equal(
+      (await ok(await call('GET', `/task-attempts/${ids.get('s-2')}`, twoChildren))).learnerId,
+      's-2',
+    )
+    fails(await call('GET', `/task-attempts/${ids.get('s-2')}`, t.cookies.parent), 404, 'not_found')
+  })
+
+  test('DOM-BEC-045: alıştırmada deneme bitince personel de madde sonuçlarını ve anahtarı görür; değerlendirmede kapanışa kadar görmez', async () => {
+    const t = await tenant()
+    const practice = await assign(t, { attempts: { kind: 'practice' } })
+    const attempt = await ok(await start(practice, t.cookies.student), 201)
+    await ok(
+      await submit(attempt.id, t.cookies.student, { answers: { [t.questionId]: choice('a') } }, 1),
+    )
+    for (const cookie of [t.cookies.teacher, t.cookies.admin]) {
+      const { result } = await ok(await call('GET', `/task-attempts/${attempt.id}`, cookie))
+      assert.equal(result.percent, 0)
+      assert.equal(result.items.length, 1)
+      assert.equal(result.answerKey[0].questionVersionId, t.questionId)
+      assert.equal(result.answerKey[0].answerKey.correctOptionId, 'b')
+    }
+    const evaluation = await assign(t, {}, await t.seed(question('Second question?', 'd')))
+    const graded = await ok(await start(evaluation, t.cookies.student), 201)
+    await ok(await submit(graded.id, t.cookies.student, {}, 1))
+    const { result } = await ok(await call('GET', `/task-attempts/${graded.id}`, t.cookies.teacher))
+    assert.equal(result.items.length, 1)
+    assert.equal(result.answerKey, null)
+  })
+
+  test('DOM-KYN-021: lisansı dolmuş içerikte yeni deneme 409 resource_license_expired; süren deneme kaydedilir ve teslim edilir', async () => {
+    const t = await tenant()
+    const license = {
+      kind: 'licensed_publication' as const,
+      publisher: 'Örnek Yayınevi',
+      contractNumber: 'SZ-2026-01',
+      coverage: 'Kurumun bütün öğrencileri',
+      expiryDate: '2026-10-06',
+      restrictedToBookOwners: false,
+    }
+    const licensed = await t.seed({ ...question('Licensed question?', 'c'), license })
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, licensed)
+    // Bitiş günü dahil geçerlidir: deneme başlar.
+    const running = await ok(await start(assignmentId, t.cookies.student), 201)
+    at(24 * 60 * MINUTE)
+    try {
+      // Lisans core kuralından önce denetlenir: süren deneme varken de lisans hatası gelir.
+      fails(await start(assignmentId, t.cookies.student), 409, 'resource_license_expired')
+      const saved = await ok(
+        await save(running.id, t.cookies.student, { [licensed]: choice('c') }, 1),
+      )
+      const done = await ok(await submit(running.id, t.cookies.student, {}, saved.rowVersion))
+      assert.equal(done.result.percent, 100)
+      const before = await attemptRows(t.institution.id)
+      fails(await start(assignmentId, t.cookies.student), 409, 'resource_license_expired')
+      assert.deepEqual(await attemptRows(t.institution.id), before)
+    } finally {
+      at(0)
+    }
+  })
+
+  test('DOM-YTK-028: servis de yalnız öğrenciye yazdırır: veli çocuğunun denemesini başlatamaz, cevaplayamaz, teslim edemez (403); kayıt değişmez', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    const attempt = await ok(await start(assignmentId, t.cookies.student), 201)
+    const parent = await createMember(app, t.institution.id, 'veli', [
+      { kind: 'child', recordId: 's-1' } as never,
+    ])
+    const ctx: ServiceContext = {
+      db,
+      institutionId: t.institution.id,
+      actor: { userId: parent.id, role: 'veli', membershipId: parent.membershipId },
+      now,
+      log: app.log,
+    }
+    const forbidden = (error: unknown) =>
+      error instanceof AppError && error.statusCode === 403 && error.code === 'forbidden'
+    const before = await attemptRows(t.institution.id)
+    await assert.rejects(startTaskAttempt(ctx, assignmentId, null), forbidden)
+    await assert.rejects(
+      saveTaskAttemptAnswers(
+        ctx,
+        {
+          attemptId: attempt.id,
+          answers: { [t.questionId]: { questionType: 'multiple_choice', optionId: 'b' } },
+          expectedVersion: 1,
+        },
+        null,
+      ),
+      forbidden,
+    )
+    await assert.rejects(
+      submitTaskAttempt(ctx, { attemptId: attempt.id, expectedVersion: 1 }, null),
+      forbidden,
+    )
+    assert.deepEqual(await attemptRows(t.institution.id), before)
+    // Kapsam rolden önce: velinin çocuğu olmayan kursiyerin denemesi 404.
+    const other = await createMember(app, t.institution.id, 'veli', [
+      { kind: 'child', recordId: 's-3' } as never,
+    ])
+    await assert.rejects(
+      submitTaskAttempt(
+        { ...ctx, actor: { userId: other.id, role: 'veli', membershipId: other.membershipId } },
+        { attemptId: attempt.id, expectedVersion: 1 },
+        null,
+      ),
+      (error: unknown) => error instanceof AppError && error.statusCode === 404,
     )
   })
 

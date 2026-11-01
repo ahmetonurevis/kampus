@@ -113,6 +113,12 @@ export type Scope = {
   readsWhole(collection: string): boolean
   canRead(collection: string, row: object): boolean
   hiddenFields(collection: string): readonly string[]
+  /**
+   * Serbest metin aramasına girmeyen üst düzey alanlar: ayıklananlar (`hiddenFields`) ve görünse
+   * de aranmayan kişisel kimlik alanları (`UNSEARCHABLE_FIELDS`; ör. kimlik no istek adresine ve
+   * loga düşmesin diye aranamaz).
+   */
+  searchExcludedFields(collection: string): readonly string[]
   redact<T extends object>(collection: string, row: T): Redacted<T>
   read<T extends object>(collection: string, rows: readonly T[]): Redacted<T>[]
 }
@@ -407,6 +413,10 @@ const CORRECTION_HISTORY: readonly string[] = ['corrections']
 const ANSWER_KEY_FIELDS: readonly string[] = ['keyCsv', 'keys']
 const MESSAGE_HIDDEN_FIELDS: readonly string[] = ['senderUserId', 'parentUserId']
 const personal = (c: Context) => c.role === 'ogrenci' || c.role === 'veli'
+// kvkk: Ç — kimlik no yalnız yönetici ve ön büroya, maskeli döner; doğum tarihini öğretmen görmez.
+const STUDENT_IDENTITY: readonly string[] = ['nationalId', 'birthDate']
+const STUDENT_NATIONAL_ID: readonly string[] = ['nationalId']
+const FRONT_OFFICE_STUDENT: readonly string[] = ['progress']
 /**
  * Alan ayıklama: rol satırı görse de bu alanları hiç almaz (yanıt, arama, sıralama dahil).
  * Ön büro öğrencinin akademik ilerlemesini görmez (DOM-YTK-021); öğrenci ve veli öğretmenin
@@ -416,7 +426,16 @@ const personal = (c: Context) => c.role === 'ogrenci' || c.role === 'veli'
  * DOM-AKD-051).
  */
 const HIDDEN_FIELDS: Partial<Record<CollectionName, (context: Context) => readonly string[]>> = {
-  students: (c) => (c.role === 'onburo' ? ['progress'] : NONE),
+  // Kimlik no (kvkk Ç) yalnız yönetici ve ön büroya döner, o da maskeli (`maskNationalId`);
+  // öğretmen kimlik no ve doğum tarihini, öğrenci ve veli kimlik noyu görmez (guvenlik-kvkk.md §8).
+  students: (c) =>
+    c.role === 'yonetici'
+      ? NONE
+      : c.role === 'onburo'
+        ? FRONT_OFFICE_STUDENT
+        : c.role === 'ogretmen'
+          ? STUDENT_IDENTITY
+          : STUDENT_NATIONAL_ID,
   teachers: (c) => (personal(c) ? TEACHER_PRIVATE : NONE),
   grades: (c) => (personal(c) ? CORRECTION_HISTORY : NONE),
   attendance: (c) => (personal(c) ? CORRECTION_HISTORY : NONE),
@@ -435,6 +454,27 @@ const HIDDEN_FIELDS: Partial<Record<CollectionName, (context: Context) => readon
 }
 const HIDDEN: Readonly<Record<string, ((context: Context) => readonly string[]) | undefined>> =
   HIDDEN_FIELDS
+
+/**
+ * Rol görse de serbest metin aramasına girmeyen alanlar (`Scope.searchExcludedFields`). Kimlik no
+ * ve doğum tarihi aranırsa değer istek adresine (`?q=`) ve istek loguna düşer; maskeli değerin son
+ * dört hanesiyle eşleşme de kimlik noyu tahmin ettirir.
+ */
+export const UNSEARCHABLE_FIELDS: Partial<Record<CollectionName, readonly string[]>> = {
+  students: STUDENT_IDENTITY,
+}
+
+/** Listelerde gösterilen kimlik no: yalnız son dört hane (`*******1234`, guvenlik-kvkk.md §8). */
+export function maskNationalId(value: string): string {
+  return `${'*'.repeat(Math.max(value.length - 4, 0))}${value.slice(-4)}`
+}
+
+/** Yönetici ve ön büroya dönen öğrencide kimlik no maskelenir; tam değer hiçbir okumada dönmez. */
+function maskStudent(row: Record<string, unknown>) {
+  return typeof row.nationalId === 'string'
+    ? { ...row, nationalId: maskNationalId(row.nationalId) }
+    : row
+}
 
 /**
  * Değer daraltma: grup kaydında öğrenci ve veli yalnız kendi satırını görür (DOM-YTK-024);
@@ -594,8 +634,9 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
       Object.entries(row).filter(([key]) => !hidden.includes(key)),
     )
     if (collection === 'tutorSessions') copy = narrowTutorSession(context, copy)
+    if (collection === 'students') copy = maskStudent(copy)
     if (collection === 'announcements') copy = narrowAnnouncement(viewerOf(context), row, copy)
-    // Kopya yalnız gizli alanları eksik, diğer alanları aynı kayıttır.
+    // Kopya gizli alanları eksik, maskeli alanı (kimlik no) değiştirilmiş aynı kayıttır.
     return copy as Redacted<T>
   }
   return {
@@ -609,6 +650,11 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     readsWhole,
     canRead,
     hiddenFields,
+    searchExcludedFields(collection: string) {
+      const unsearchable = (isCollectionName(collection) && UNSEARCHABLE_FIELDS[collection]) || NONE
+      const hidden = hiddenFields(collection)
+      return [...hidden, ...unsearchable.filter((field) => !hidden.includes(field))]
+    },
     redact,
     read<T extends object>(collection: string, rows: readonly T[]) {
       if (!access(collection).allowed) return []

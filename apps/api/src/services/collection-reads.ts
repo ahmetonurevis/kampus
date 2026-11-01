@@ -353,9 +353,16 @@ function searchable(value: unknown): string[] {
   return []
 }
 
-export function matchesSearch(record: RecordData, needle: string): boolean {
-  return Object.values(record).some((value) =>
-    searchable(value).some((text) => searchKey(text).includes(needle)),
+/** `exclude` aramaya girmeyen üst düzey alanlardır (core `scope.searchExcludedFields`). */
+export function matchesSearch(
+  record: RecordData,
+  needle: string,
+  exclude: readonly string[] = [],
+): boolean {
+  return Object.entries(record).some(
+    ([field, value]) =>
+      !exclude.includes(field) &&
+      searchable(value).some((text) => searchKey(text).includes(needle)),
   )
 }
 
@@ -545,6 +552,8 @@ async function readRows(
   const filters = await listFilters(ctx, scope, collection, query)
   if (filters === null) return null
   const needle = query.q ? searchKey(query.q) : null
+  // Ayıklanan ve kişisel kimlik alanları (kimlik no, doğum tarihi) aramaya girmez.
+  const unsearchable = scope.searchExcludedFields(collection)
   const narrowed = filters.length > 0 || needle !== null
   // Arama bağlı alanlarda da çalışır (`collection-joins.ts`).
   const joinedSearch = needle !== null && joinable.length > 0
@@ -567,7 +576,7 @@ async function readRows(
   const matches = (item: VisibleRow) =>
     passes(item.record) &&
     (needle === null ||
-      matchesSearch(item.record, needle) ||
+      matchesSearch(item.record, needle, unsearchable) ||
       (joinedSearch && joinedMatch(item.joined ?? {})))
   const prefilter = scopePrefilter(scope, collection)
   const search = sqlSearch()
@@ -577,7 +586,7 @@ async function readRows(
       joinedSearch && joiner ? joiner.relatedKeys((value) => keyOf(value).includes(needle)) : []
     if (keys.reduce((total, key) => total + key.values.length, 0) > MAX_SQL_SEARCH_KEYS)
       return undefined
-    return { needle, exclude: scope.hiddenFields(collection), keys }
+    return { needle, exclude: unsearchable, keys }
   }
   const loaded = await loadRecords(ctx.db, ctx.institutionId, [collection], {
     includeArchived: query.archived !== undefined,
@@ -590,7 +599,7 @@ async function readRows(
   const candidate = (record: RecordData) =>
     passes(record) &&
     (needle === null ||
-      matchesSearch(record, needle) ||
+      matchesSearch(record, needle, unsearchable) ||
       (joinedSearch && joiner !== null && joinedMatch(joiner.values(record))))
   const rows = loaded.filter(
     (row) =>

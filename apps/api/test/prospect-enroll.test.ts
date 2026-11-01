@@ -678,6 +678,58 @@ describe('kesin kayıt ucu', () => {
       assert.equal(audit.includes(value), false, `denetimde: ${value}`)
   })
 
+  test('guvenlik-kvkk §8, DOM-KAY-012: kimlik no listede yalnız yönetici ve ön büroya maskeli döner; öğretmen kimlik no ve doğum tarihini, veli kimlik noyu görmez; ikisi aranmaz', async () => {
+    const a = await institution()
+    const cookie = await frontDesk(a.id)
+    const response = await enroll({
+      cookie,
+      body: { ...REGISTRATION, nationalId: NATIONAL_ID, birthDate: '2013-04-12' },
+    })
+    assert.equal(response.statusCode, 201, response.body)
+    const studentId: string = response.json().data.entity.id
+    const read = (url: string, as: string) =>
+      app.inject({ method: 'GET', url, headers: { origin: TEST_ORIGIN, cookie: as } })
+    const recordOf = async (as: string) => {
+      const list = await read('/api/v1/collections/students?pageSize=100', as)
+      assert.equal(list.statusCode, 200, list.body)
+      assert.equal(list.body.includes(NATIONAL_ID), false)
+      const items: { id: string; record: Record<string, unknown> }[] = list.json().data
+      const item = items.find((entry) => entry.id === studentId)
+      assert.ok(item)
+      const one = await read(`/api/v1/collections/students/${studentId}`, as)
+      assert.equal(one.statusCode, 200, one.body)
+      assert.equal(one.body.includes(NATIONAL_ID), false)
+      return item.record
+    }
+    const admin = a.adminCookie
+    for (const as of [admin, cookie]) {
+      const record = await recordOf(as)
+      assert.equal(record.nationalId, '*******0146')
+      assert.equal(record.birthDate, '2013-04-12')
+    }
+    const teacher = await recordOf((await member(a.id, 'ogretmen')).cookie)
+    assert.equal('nationalId' in teacher, false)
+    assert.equal('birthDate' in teacher, false)
+    const guardian = await createMember(app, a.id, 'veli', [{ kind: 'child', recordId: studentId }])
+    const parentRecord = await recordOf(await signInAs(app, guardian))
+    assert.equal('nationalId' in parentRecord, false)
+    assert.equal(parentRecord.birthDate, '2013-04-12')
+    // Kimlik no, son dört hanesi ve doğum tarihi aramada eşleşmez; ad araması çalışır.
+    for (const q of [NATIONAL_ID, '0146', '2013-04-12']) {
+      const search = await read(`/api/v1/collections/students?q=${q}`, admin)
+      assert.equal(search.statusCode, 200, search.body)
+      assert.equal(search.json().meta.total, 0, q)
+    }
+    const byName = await read(
+      `/api/v1/collections/students?q=${encodeURIComponent(String(PR1?.name))}`,
+      admin,
+    )
+    assert.deepEqual(
+      byName.json().data.map((item: { id: string }) => item.id),
+      [studentId],
+    )
+  })
+
   test('DOM-KAY-003, DOM-KAY-012: dil okulunda yetişkin kursiyerin iletişimi kendisine yazılır, ödeyici kendisidir, sözleşme dil kursu başlığı taşır', async () => {
     const adult = { ...PR1, minor: false }
     const a = await institution({ type: 'language_school' }, { ...SAMPLE, prospects: [adult] })

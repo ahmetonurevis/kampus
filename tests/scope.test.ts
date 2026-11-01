@@ -478,3 +478,48 @@ test('API oturumu bağlantılarıyla iş akışı başka öğretmen adına çal�
   }
   assert.deepEqual([...workflowScope(state, parentSession).studentIds], ['s9'])
 })
+
+test('guvenlik-kvkk §8, DOM-KAY-012: öğrencinin kimlik nosu yalnız yönetici ve ön büroya maskeli döner; doğum tarihini öğretmen görmez; ikisi aranmaz', () => {
+  const state = seed()
+  const target = state.students.find((s) => s.id === 's1')
+  assert.ok(target)
+  Object.assign(target, { nationalId: '10000000146', birthDate: '2013-04-12' })
+  const rowOf = (actor: Actor) => {
+    const row = visibleRecords(state, actor, 'students').find((s) => s.id === 's1')
+    assert.ok(row, actor.role)
+    return row as Record<string, unknown>
+  }
+  const teacherId = state.classes.find((c) => c.id === target.classId)?.teacherId
+  assert.ok(teacherId)
+  for (const actor of [admin, frontOffice]) {
+    const row = rowOf(actor)
+    assert.equal(row.nationalId, '*******0146', actor.role)
+    assert.equal(row.birthDate, '2013-04-12', actor.role)
+  }
+  const teacherRow = rowOf(teacher(teacherId))
+  assert.equal('nationalId' in teacherRow, false)
+  assert.equal('birthDate' in teacherRow, false)
+  for (const actor of [student('s1'), parent('s1')]) {
+    const row = rowOf(actor)
+    assert.equal('nationalId' in row, false, actor.role)
+    assert.equal(row.birthDate, '2013-04-12', actor.role)
+  }
+  // Ham kayıt değişmez; tam değer hiçbir okumada dönmez.
+  assert.equal(target.nationalId, '10000000146')
+  assert.equal(redactRecord(state, admin, 'students', target)?.nationalId, '*******0146')
+  for (const actor of [admin, frontOffice, teacher(teacherId), student('s1'), parent('s1')]) {
+    const excluded = scopeFor(state, actor).searchExcludedFields('students')
+    assert.ok(excluded.includes('nationalId') && excluded.includes('birthDate'), actor.role)
+    assert.equal(new Set(excluded).size, excluded.length, actor.role)
+  }
+  assert.deepEqual(scopeFor(state, frontOffice).searchExcludedFields('students'), [
+    'progress',
+    'nationalId',
+    'birthDate',
+  ])
+  assert.deepEqual(scopeFor(state, admin).searchExcludedFields('grades'), [])
+  // Kimlik nosu olmayan eski kayıt olduğu gibi döner.
+  assert.equal('nationalId' in rowOf(admin), true)
+  const other = visibleRecords(state, admin, 'students').find((s) => s.id === 's2')
+  assert.equal(other && 'nationalId' in other, false)
+})

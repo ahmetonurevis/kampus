@@ -115,21 +115,48 @@ export type MeetingProspect = {
   name: string
   stage?: string
   meeting?: ProspectMeeting
+  /** Eski kayıtların görüşme anı; süre ve oda taşımaz (`createProspect` öncesi veri). */
+  trialAt?: string | null
+}
+
+export type UpcomingMeeting = {
+  id: string
+  name: string
+  date: string
+  duration: number | null
+  room: string | null
 }
 
 /** Bugünden itibaren planlı görüşmeler, en yakını önce. Kapalı aday listelenmez. */
 export function upcomingMeetings(
   prospects: readonly MeetingProspect[],
   today: string,
-): (ProspectMeeting & { id: string; name: string })[] {
+): UpcomingMeeting[] {
   return prospects
-    .flatMap((prospect) =>
-      prospect.meeting &&
-      prospect.stage !== 'Vazgeçti' &&
-      prospect.stage !== 'Kayıt oldu' &&
-      dayKey(prospect.meeting.date) >= today
-        ? [{ ...prospect.meeting, id: prospect.id, name: prospect.name }]
-        : [],
-    )
+    .flatMap((prospect): UpcomingMeeting[] => {
+      const date = prospect.meeting?.date ?? prospect.trialAt
+      if (!date || prospect.stage === 'Vazgeçti' || prospect.stage === 'Kayıt oldu') return []
+      if (dayKey(date) < today) return []
+      return [
+        {
+          id: prospect.id,
+          name: prospect.name,
+          date,
+          duration: prospect.meeting?.duration ?? null,
+          room: prospect.meeting?.room ?? null,
+        },
+      ]
+    })
     .sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/** Süre ve oda metni; eski kayıtta yoktur. */
+export function meetingSummary(meeting: {
+  duration: number | null
+  room: string | null
+}): string | null {
+  if (meeting.duration === null && meeting.room === null) return null
+  return [meeting.duration === null ? null : `${String(meeting.duration)} dk`, meeting.room]
+    .filter(Boolean)
+    .join(' · ')
 }

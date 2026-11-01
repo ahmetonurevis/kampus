@@ -140,6 +140,102 @@ test.describe('Aday ekranları', () => {
     await expect(page.getByRole('dialog', { name: 'Aday kartı' })).toContainText(name)
   })
 
+  test('DOM-FIN-002: yayımlanmış tarife yokken kayıt formu açılmaz', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], collections: ['prospects'] })
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/kayit-islemleri')
+    await expect(
+      page.getByRole('heading', { name: 'Yayımlanmış ücret tarifesi yok' }),
+    ).toBeVisible()
+    await expect(page.getByLabel('Aday öğrenci')).toHaveCount(0)
+  })
+
+  test('DOM-KAY-035, DOM-FIN-011: yönetici tarifeyi yayımlar, ön büro adayı adım adım kaydeder', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], collections: ['prospects'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/finans?gorunum=tarife')
+    await page.getByRole('button', { name: 'Yeni tarife' }).click()
+    const editor = page.getByRole('dialog', { name: 'Yeni tarife' })
+    await editor.getByLabel('Tutar (₺)', { exact: true }).fill('100.000,01')
+    await editor.getByLabel('MEBBİS onaylı tutar (₺)').fill('100.000,01')
+    await editor.getByRole('button', { name: 'İndirim ekle' }).click()
+    await editor.getByLabel('Değer').fill('10')
+    await editor.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(page.getByText('Tarife kaydedildi.')).toBeVisible()
+    await page.getByRole('button', { name: /tarifesini yayımla/ }).click()
+    const publish = page.getByRole('dialog', { name: 'Tarifeyi yayımla' })
+    await publish.getByRole('button', { name: 'Tarifeyi yayımla' }).click()
+    await expect(page.getByText('Tarife yayımlandı.')).toBeVisible()
+
+    await loginAs(school.user('onburo'))
+    const client = await api(school.user('onburo'))
+    await page.goto(`${LIST_URL}?asama=${encodeURIComponent('Yeni aday')}`)
+    await page
+      .getByRole('button', { name: /kartını aç/ })
+      .first()
+      .click()
+    const card = page.getByRole('dialog', { name: 'Aday kartı' })
+    const name = await card.getByRole('heading', { level: 3 }).first().innerText()
+    await card.getByRole('link', { name: 'Kesin kayda dönüştür' }).click()
+
+    await expect(page).toHaveURL(/kayit-islemleri\?aday=/)
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    await proceed.click()
+    await expect(page.getByLabel('Sınıf')).toHaveAttribute('aria-invalid', 'true')
+    await page.getByLabel('Sınıf').selectOption({ index: 1 })
+    await proceed.click()
+
+    await page.getByLabel('Kimlik numarası').fill('10000000147')
+    await proceed.click()
+    await expect(page.getByText('Geçerli bir T.C. kimlik numarası girin.')).toBeVisible()
+    await page.getByLabel('Kimlik numarası').fill('10000000146')
+    await page.getByLabel('Doğum tarihi').fill('2013-03-01')
+    await page.getByLabel('Veli adı soyadı').fill('Test Kayıt Velisi')
+    await page.getByLabel('Veli telefonu').fill('05559990077')
+    await proceed.click()
+
+    await page.getByLabel('Taksit sayısı').selectOption('3')
+    await page.getByLabel('Kardeş').check()
+    await expect(page.getByRole('heading', { name: 'Ödeme planı önizlemesi' })).toBeVisible()
+    await expect(page.getByText(/-10\.000,00/)).toBeVisible()
+    await proceed.click()
+    await expect(
+      page.getByText('Kardeş indirimi için aynı veliye bağlı aktif bir öğrenci gerekir.'),
+    ).toHaveCount(0)
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+    await expect(
+      page.getByText('Kardeş indirimi için aynı veliye bağlı aktif bir öğrenci gerekir.'),
+    ).toBeVisible()
+
+    await page.getByRole('button', { name: 'Geri' }).click()
+    await page.getByLabel('Kardeş').uncheck()
+    await proceed.click()
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+    await expect(page.getByRole('heading', { name: `${name} kaydedildi` })).toBeVisible()
+    await expect(page.getByRole('button', { name: `${name} sözleşmesini görüntüle` })).toBeVisible()
+
+    const invoices = (await client.get('/api/v1/collections/invoices?pageSize=100')).body as {
+      data: { record: { amount: number; studentId: string } }[]
+    }
+    const mine = invoices.data.filter((row) => row.record.amount > 3_000_000)
+    expect(mine.reduce((sum, row) => sum + row.record.amount, 0)).toBe(10_000_001)
+    const body = JSON.stringify(invoices)
+    expect(body).not.toContain('10000000146')
+    await page.goto('/onburo/kayit-islemleri')
+    await expect(
+      page.getByLabel('Aday öğrenci').getByRole('option', { name: new RegExp(name) }),
+    ).toHaveCount(0)
+  })
+
   test('320 ve 390 px genişlikte aday sayfaları yatay taşmaz', async ({
     page,
     loginAs,
@@ -153,7 +249,14 @@ test.describe('Aday ekranları', () => {
       await expect(page.getByRole('heading', { name: 'Aday listesi' })).toBeVisible()
       await expectNoHorizontalOverflow(page)
       await page.goto('/onburo/deneme-dersi-takvimi')
-      await expect(page.getByRole('heading', { name: 'Yaklaşan görüşmeler' })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { name: /Yaklaşan görüşmeler|Planlı görüşme yok/ }),
+      ).toBeVisible()
+      await expectNoHorizontalOverflow(page)
+      await page.goto('/onburo/kayit-islemleri')
+      await expect(
+        page.getByRole('heading', { name: 'Yayımlanmış ücret tarifesi yok' }),
+      ).toBeVisible()
       await expectNoHorizontalOverflow(page)
     }
   })

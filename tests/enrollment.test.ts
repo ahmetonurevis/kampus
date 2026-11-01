@@ -3,9 +3,13 @@ import test from 'node:test'
 
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import {
+  enrollmentFormSchema,
+  enrollmentFormToBody,
+  enrollProspectSchema,
   enrollProspectWithTariff,
   findParentMatches,
   isValidTurkishId,
+  previewEnrollment,
   priceEnrollment,
   type EnrollmentContext,
   type EnrollmentTariff,
@@ -310,4 +314,91 @@ test('DOM-FIN-006: dil okulunda fiyat sınıfın CEFR düzeyinden gelir', () => 
     seed,
   )
   assert.equal(result.contract.grossCents, 700_000)
+})
+
+const FORM = {
+  prospectId: 'pr1',
+  classId: 'c1',
+  identityKind: 'tc',
+  identityNumber: '10000000146',
+  birthDate: '2013-03-01',
+  guardianMode: 'new',
+  guardianName: 'Test Veli',
+  guardianPhone: '05559990001',
+  relationship: 'mother',
+  existingParentId: '',
+  lessonHours: '',
+  discounts: [],
+  extras: [],
+  installmentCount: '3',
+  firstDueDate: '2026-11-15',
+} as const
+const formIssues = (values: unknown, type: 'school' | 'language_school' = 'school') => {
+  const parsed = enrollmentFormSchema(type).safeParse(values)
+  return parsed.success ? [] : parsed.error.issues.map((issue) => issue.path.join('.'))
+}
+
+test('DOM-KAY-012: kayıt formu kimlik, veli ve dil okulunda saat ister', () => {
+  assert.deepEqual(formIssues(FORM), [])
+  assert.deepEqual(formIssues({ ...FORM, identityNumber: '10000000147' }), ['identityNumber'])
+  assert.deepEqual(formIssues({ ...FORM, identityKind: 'foreign', identityNumber: 'P1' }), [
+    'identityNumber',
+  ])
+  assert.deepEqual(formIssues({ ...FORM, guardianName: '', guardianPhone: '1' }), [
+    'guardianName',
+    'guardianPhone',
+  ])
+  assert.deepEqual(formIssues({ ...FORM, guardianMode: 'existing' }), ['existingParentId'])
+  assert.deepEqual(formIssues(FORM, 'language_school'), ['lessonHours'])
+  assert.deepEqual(formIssues({ ...FORM, lessonHours: '40' }, 'language_school'), [])
+  assert.deepEqual(formIssues({ ...FORM, installmentCount: '13' }), ['installmentCount'])
+})
+
+test('DOM-KAY-012, -013: form gövdesi API şemasından geçer, veli türüne göre değişir', () => {
+  const parse = (values: Parameters<typeof enrollmentFormToBody>[0]) => {
+    const body = enrollmentFormToBody(values)
+    assert.equal(enrollProspectSchema.safeParse(body).success, true)
+    return body
+  }
+  const fresh = parse({ ...FORM, discounts: [], extras: [] })
+  assert.deepEqual(fresh.guardian, {
+    name: 'Test Veli',
+    phone: '05559990001',
+    relationship: 'mother',
+  })
+  assert.equal('lessonHours' in fresh, false)
+  assert.deepEqual(
+    parse({ ...FORM, discounts: [], extras: [], guardianMode: 'existing', existingParentId: 'p1' })
+      .guardian,
+    { existingParentId: 'p1' },
+  )
+  const self = parse({
+    ...FORM,
+    discounts: [],
+    extras: [],
+    guardianMode: 'self',
+    lessonHours: '40',
+  })
+  assert.equal(self.guardian, null)
+  assert.equal(self.lessonHours, 40)
+})
+
+test('DOM-FIN-020: önizleme sunucu kuralıyla hesaplar, reddi mesaj olarak döner', () => {
+  const school = { institutionType: 'school', level: '7' } as const
+  const ok = previewEnrollment(
+    TARIFF,
+    { lessonHours: '', discounts: ['early_payment'], extras: [] },
+    school,
+  )
+  assert.equal(ok.ok && ok.price.netCents, 18_000_000)
+  const capped = previewEnrollment(
+    TARIFF,
+    { lessonHours: '', discounts: ['sibling', 'referral'], extras: [] },
+    school,
+  )
+  assert.equal(capped.ok, false)
+  assert.equal(!capped.ok && capped.message.includes('%50'), true)
+  assert.throws(() =>
+    previewEnrollment(null as never, { lessonHours: '', discounts: [], extras: [] }, school),
+  )
 })

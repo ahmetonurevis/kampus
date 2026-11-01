@@ -4,7 +4,7 @@
 
 Kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-001, DOM-FIN-012, DOM-FIN-030…033).
 
-- `lib/enrollment.ts`: `enrollProspectSchema`, `enrollProspectWithTariff`, `priceEnrollment`, `findParentMatches`, `isValidTurkishId` eklendi; kesin kayıt tutarı tarifeden hesaplanır (DOM-FIN-002, -003, -020…-022, DOM-KAY-011…-013). Demo girişi `enrollProspect` ve `registrationSchema` aynı kaldı.
+- `lib/enrollment.ts`: `enrollmentFormSchema`, `enrollmentFormToBody`, `previewEnrollment`, `ENROLLMENT_STEP_FIELDS`, `enrollProspectSchema`, `enrollProspectWithTariff`, `priceEnrollment`, `findParentMatches`, `isValidTurkishId` eklendi; kesin kayıt tutarı tarifeden hesaplanır (DOM-FIN-002, -003, -020…-022, DOM-KAY-011…-013). Demo girişi `enrollProspect` ve `registrationSchema` aynı kaldı.
 - `reversePayment` ayrılış kaydı olan öğrenciyi reddeder; `quoteWithdrawal` iade ve borcu netleştirir; `planTariffUpdate` verilmeyen alanı korur; `lib/scope.ts` veli telefonunu öğretmen ve öğrenciden gizler.
 - Kesin kayıt sözleşmesi `invoiceIds` taşır; belge yalnız kendi taksitlerini çözümler (DOM-FIN-012).
 - `lib/payments.ts`: `recordPaymentSchema`, `reversePaymentSchema`, `paymentSettingsSchema`, `planPayment`, `reversePayment`, `openAmount` eklendi. Demo girişi `payInvoice` aynı kaldı.

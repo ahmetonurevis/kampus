@@ -21,7 +21,7 @@ export const FEE_TARIFF_CHANGED_MESSAGE =
 const FEE_TARIFFS_KEY = ['fee-tariffs'] as const
 const MESSAGES = { version_conflict: FEE_TARIFF_CHANGED_MESSAGE }
 
-export function useFeeTariffs(query: { page: number; pageSize: number }) {
+export function useFeeTariffs(query: { page: number; pageSize: number; academicYear?: number }) {
   return useApiQuery({
     key: [...FEE_TARIFFS_KEY, query],
     request: (client, signal) => client.GET('/api/v1/fee-tariffs', { params: { query }, signal }),

@@ -4,6 +4,7 @@ import type { operations } from '@kampus/api-client/schema.d.ts'
 import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
+import { useApiQuery } from './use-api-query.ts'
 
 // Aday/CRM yazma komutları (`POST /prospects`, `PATCH /prospects/:id`,
 // `POST /prospects/:id/{notes,meetings,trial-lessons}`; core `prospect.create` `prospect.stage`
@@ -13,7 +14,6 @@ import { useApiCommand } from './use-api-command.ts'
 // `date`, veli onayı `guardianConsent`) yalnız form alanında görünür, toast çıkmaz; yolsuz hata
 // tek toast olur. Aday ekleme `Idempotency-Key` taşır; var olan adayı değiştiren komutlar okunan
 // sürümü `If-Match` olarak taşır, sürüm yoksa istek atılmaz (`requireIfMatch`).
-// TODO(api-prospect-enroll): kesin kayıt kancası uç açılınca eklenir (DOM-KAY-035).
 
 type JsonBody<TOperation extends keyof operations> = NonNullable<
   operations[TOperation]['requestBody']
@@ -24,6 +24,7 @@ export type ChangeProspectStageBody = JsonBody<'changeProspectStage'>
 export type AddProspectNoteBody = JsonBody<'addProspectNote'>
 export type ScheduleProspectMeetingBody = JsonBody<'scheduleProspectMeeting'>
 export type ScheduleTrialLessonBody = JsonBody<'scheduleTrialLesson'>
+export type EnrollProspectBody = JsonBody<'enrollProspect'>
 
 /** Var olan adayı değiştiren komut: okunan sürüm `If-Match` olarak zorunludur. */
 interface ProspectCommandInput<TBody> {
@@ -35,6 +36,7 @@ export type ChangeProspectStageInput = ProspectCommandInput<ChangeProspectStageB
 export type AddProspectNoteInput = ProspectCommandInput<AddProspectNoteBody>
 export type ScheduleProspectMeetingInput = ProspectCommandInput<ScheduleProspectMeetingBody>
 export type ScheduleTrialLessonInput = ProspectCommandInput<ScheduleTrialLessonBody>
+export type EnrollProspectInput = ProspectCommandInput<EnrollProspectBody>
 
 /** Aday bu arada başka biri tarafından güncellendi (`If-Match` tutmadı): güncel kart yüklenir. */
 export const PROSPECT_CHANGED_MESSAGE =
@@ -172,6 +174,41 @@ export function useScheduleTrialLesson(options: CommandOptions = {}) {
     request: scheduleTrialLessonRequest,
     version: versionOf<ScheduleTrialLessonBody>,
     invalidates: PROSPECT_INVALIDATES,
+    messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}
+
+/** Adayın telefonuyla eşleşen veliler; öneridir, birleştirmez (DOM-KAY-013). */
+export function useGuardianMatches(prospectId: string) {
+  return useApiQuery({
+    key: ['prospects', prospectId, 'guardian-matches'],
+    enabled: prospectId !== '',
+    request: (client, signal) =>
+      client.GET('/api/v1/prospects/{prospectId}/guardian-matches', {
+        params: { path: { prospectId } },
+        signal,
+      }),
+  })
+}
+
+/** Kesin kayıt: öğrenci, veli, taksit ve sözleşme tek işlemde yazılır (DOM-KAY-035). */
+export function useEnrollProspect(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: (client, { prospectId, body }: EnrollProspectInput, headers: CommandHeaders) =>
+      client.POST('/api/v1/prospects/{prospectId}/enroll', {
+        params: { path: { prospectId }, header: versioned(headers) },
+        body,
+      }),
+    invalidates: [
+      ...PROSPECT_INVALIDATES,
+      collectionKeyPrefix('students'),
+      collectionKeyPrefix('parents'),
+      collectionKeyPrefix('invoices'),
+      collectionKeyPrefix('contracts'),
+    ],
+    version: versionOf,
     messages: PROSPECT_MESSAGES,
     exclusive: true,
     ...success(options),

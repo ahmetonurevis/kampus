@@ -34,6 +34,7 @@ const LOST: ProspectStage = 'Vazgeçti'
 const DETAIL_TIME = { year: 'numeric', hour: '2-digit', minute: '2-digit' } as const
 
 type Prospect = ProspectFields & {
+  trialAt?: string | null
   name: string
   phone: string
   email?: string
@@ -78,6 +79,8 @@ function ProspectCard({ prospectId }: { prospectId: string }) {
   const enrolled = prospect.stage === 'Kayıt oldu'
   const closed = enrolled || prospect.stage === LOST
   const meeting = prospect.meeting
+  // Eski kayıtta görüşme anı `trialAt`'tedir; süre ve oda yoktur.
+  const meetingDate = meeting?.date ?? prospect.trialAt
 
   return (
     <div className="grid gap-6">
@@ -121,9 +124,10 @@ function ProspectCard({ prospectId }: { prospectId: string }) {
         <h3 id="aday-gorusme" className="font-semibold">
           Tanışma görüşmesi
         </h3>
-        {meeting ? (
+        {meetingDate ? (
           <p className="text-sm">
-            {dateLabel(meeting.date, DETAIL_TIME)} · {meeting.duration} dk · {meeting.room}
+            {dateLabel(meetingDate, DETAIL_TIME)}
+            {meeting ? ` · ${String(meeting.duration)} dk · ${meeting.room}` : ''}
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">Planlanmış görüşme yok.</p>

@@ -347,3 +347,123 @@ export function enrollProspectWithTariff(
     supersededStudentId: context.identityHolderId,
   }
 }
+
+export const GUARDIAN_RELATIONSHIP_LABELS: Readonly<Record<GuardianRelationship, string>> = {
+  mother: 'Anne',
+  father: 'Baba',
+  guardian: 'Vasi',
+  other: 'Diğer',
+}
+
+/** Kesin kayıt formu (web): adımlar arası metin değerleri; gönderimde API gövdesine çevrilir. */
+export function enrollmentFormSchema(institutionType: InstitutionType) {
+  return z
+    .object({
+      prospectId: z.string().min(1, 'Aday seçin.'),
+      classId: z.string().min(1, 'Sınıf seçin.'),
+      identityKind: z.enum(['tc', 'foreign']),
+      identityNumber: z.string().trim(),
+      birthDate: daySchema,
+      guardianMode: z.enum(['new', 'existing', 'self']),
+      guardianName: z.string().trim().max(80),
+      guardianPhone: z.string().trim(),
+      relationship: z.enum(GUARDIAN_RELATIONSHIPS),
+      existingParentId: z.string(),
+      lessonHours: z.string().trim(),
+      discounts: z.array(z.enum(FEE_DISCOUNT_KINDS)),
+      extras: z.array(z.enum(FEE_ITEM_KINDS)),
+      installmentCount: z.string().regex(/^([1-9]|1[0-2])$/, 'Taksit sayısını seçin.'),
+      firstDueDate: daySchema,
+    })
+    .superRefine((value, context) => {
+      const issue = (path: string, message: string) =>
+        context.addIssue({ code: 'custom', path: [path], message })
+      if (value.identityKind === 'tc' && !isValidTurkishId(value.identityNumber))
+        issue('identityNumber', 'Geçerli bir T.C. kimlik numarası girin.')
+      if (value.identityKind === 'foreign' && !/^.{5,20}$/.test(value.identityNumber))
+        issue('identityNumber', 'Kimlik numarasını girin (5–20 karakter).')
+      if (value.guardianMode === 'new') {
+        if (value.guardianName.length < 2) issue('guardianName', 'Veli adını girin.')
+        if (!/^0\d{10}$/.test(value.guardianPhone))
+          issue('guardianPhone', 'Telefonu 05XXXXXXXXX biçiminde girin.')
+      }
+      if (value.guardianMode === 'existing' && value.existingParentId === '')
+        issue('existingParentId', 'Veli seçin.')
+      if (
+        institutionType === 'language_school' &&
+        !(Number.isInteger(Number(value.lessonHours)) && Number(value.lessonHours) >= 1)
+      )
+        issue('lessonHours', 'Paket ders saatini girin.')
+    })
+}
+export type EnrollmentFormValues = z.output<ReturnType<typeof enrollmentFormSchema>>
+
+/** Adımın doğrulanacak alanları; son adım bütün formu doğrular. */
+export const ENROLLMENT_STEP_FIELDS: readonly (readonly (keyof EnrollmentFormValues)[])[] = [
+  ['prospectId', 'classId'],
+  [
+    'identityKind',
+    'identityNumber',
+    'birthDate',
+    'guardianMode',
+    'guardianName',
+    'guardianPhone',
+    'relationship',
+    'existingParentId',
+  ],
+  ['lessonHours', 'discounts', 'extras', 'installmentCount', 'firstDueDate'],
+]
+
+export function enrollmentFormToBody(values: EnrollmentFormValues): EnrollProspectInput {
+  const lessonHours = values.lessonHours === '' ? null : Number(values.lessonHours)
+  return {
+    classId: values.classId,
+    installmentCount: Number(values.installmentCount),
+    firstDueDate: values.firstDueDate,
+    ...(lessonHours === null ? {} : { lessonHours }),
+    discounts: values.discounts,
+    extras: values.extras,
+    identity: {
+      kind: values.identityKind,
+      number: values.identityNumber,
+      birthDate: values.birthDate,
+    },
+    guardian:
+      values.guardianMode === 'self'
+        ? null
+        : values.guardianMode === 'existing'
+          ? { existingParentId: values.existingParentId }
+          : {
+              name: values.guardianName,
+              phone: values.guardianPhone,
+              relationship: values.relationship,
+            },
+  }
+}
+
+/** Form önizlemesi: sunucuyla aynı fiyat kuralı. Reddi hata fırlatmaz, mesaj döner. */
+export function previewEnrollment(
+  tariff: EnrollmentTariff,
+  values: Pick<EnrollmentFormValues, 'lessonHours' | 'discounts' | 'extras'>,
+  options: { institutionType: InstitutionType; level: string },
+): { ok: true; price: EnrollmentPrice } | { ok: false; message: string } {
+  try {
+    const hours = Number(values.lessonHours)
+    return {
+      ok: true,
+      price: priceEnrollment(tariff, {
+        level: options.level,
+        institutionType: options.institutionType,
+        lessonHours:
+          options.institutionType === 'language_school' && hours >= 1 ? hours : undefined,
+        discounts: values.discounts ?? [],
+        extras: values.extras ?? [],
+        // Yönetici onayı sunucuda denetlenir; önizleme ön büroya aynı kuralla konuşur.
+        canApproveCapException: false,
+      }),
+    }
+  } catch (error) {
+    if (error instanceof DomainError) return { ok: false, message: error.message }
+    throw error
+  }
+}

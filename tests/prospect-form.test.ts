@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   emptyProspectForm,
   meetingInstant,
+  meetingSummary,
   PROSPECT_PRIVACY_NOTICE_VERSION,
   prospectFormSchema,
   prospectFormToBody,
@@ -91,4 +92,20 @@ test('DOM-KAY-033: yaklaşan görüşmeler sıralı; geçmiş, kapalı ve görü
     list.map((item) => item.id),
     ['a', 'b'],
   )
+})
+
+test('DOM-KAY-033: eski kayıtta görüşme anı trialAt alanındadır; süre ve oda boş kalır', () => {
+  const list = upcomingMeetings(
+    [
+      { id: 'old', name: 'Eski', trialAt: '2026-10-11T09:00:00.000Z' },
+      { id: 'past', name: 'Geçmiş', trialAt: '2026-10-01T09:00:00.000Z' },
+      { id: 'empty', name: 'Yok', trialAt: null },
+    ],
+    '2026-10-06',
+  )
+  assert.deepEqual(list, [
+    { id: 'old', name: 'Eski', date: '2026-10-11T09:00:00.000Z', duration: null, room: null },
+  ])
+  assert.equal(meetingSummary(list[0]!), null)
+  assert.equal(meetingSummary({ duration: 45, room: 'Oda 1' }), '45 dk · Oda 1')
 })

@@ -1,6 +1,10 @@
 import { useMemo } from 'react'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
-import { upcomingMeetings, type MeetingProspect } from '@kampus/school-core/lib/prospect-form.ts'
+import {
+  meetingSummary,
+  upcomingMeetings,
+  type MeetingProspect,
+} from '@kampus/school-core/lib/prospect-form.ts'
 import { EmptyState } from '@/components/EmptyState.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -38,53 +42,46 @@ export function MeetingsPage({ page }: { page: NavPage }) {
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
-      <section
-        aria-labelledby="gorusme-listesi"
-        aria-busy={prospects.isPending || undefined}
-        className="panel rounded-card border bg-surface"
-      >
-        <h2 id="gorusme-listesi" className="px-6 pt-6 pb-3 text-lg font-semibold">
-          Yaklaşan görüşmeler
-        </h2>
-        {prospects.error ? (
-          <div className="p-6">
-            <QueryError error={prospects.error} onRetry={() => void prospects.refetch()} />
-          </div>
-        ) : !prospects.data ? (
-          <div className="p-6">
-            <SummaryLoading />
-          </div>
-        ) : meetings.length === 0 ? (
-          <EmptyState
-            title="Planlı görüşme yok"
-            description="Görüşmeyi aday kartından planlayın."
-          />
-        ) : (
+      {prospects.error ? (
+        <QueryError error={prospects.error} onRetry={() => void prospects.refetch()} />
+      ) : !prospects.data ? (
+        <SummaryLoading />
+      ) : meetings.length === 0 ? (
+        <EmptyState title="Planlı görüşme yok" description="Görüşmeyi aday kartından planlayın." />
+      ) : (
+        <section aria-labelledby="gorusme-listesi" className="panel rounded-card border bg-surface">
+          <h2 id="gorusme-listesi" className="px-6 pt-6 pb-3 text-lg font-semibold">
+            Yaklaşan görüşmeler
+          </h2>
           <ul className="divide-y">
-            {meetings.map((meeting) => (
-              <li
-                key={meeting.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 max-[650px]:px-4"
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold">{meeting.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {dateLabel(meeting.date, TIME)} · {meeting.duration} dk · {meeting.room}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  aria-label={`${meeting.name} kartını aç`}
-                  onClick={() => detail.open(meeting.id)}
+            {meetings.map((meeting) => {
+              const summary = meetingSummary(meeting)
+              return (
+                <li
+                  key={meeting.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 max-[650px]:px-4"
                 >
-                  Kartı aç
-                </Button>
-              </li>
-            ))}
+                  <div className="min-w-0">
+                    <p className="font-semibold">{meeting.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {dateLabel(meeting.date, TIME)}
+                      {summary ? ` · ${summary}` : ''}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    aria-label={`${meeting.name} kartını aç`}
+                    onClick={() => detail.open(meeting.id)}
+                  >
+                    Kartı aç
+                  </Button>
+                </li>
+              )
+            })}
           </ul>
-        )}
-      </section>
+        </section>
+      )}
       <ProspectPanel prospectId={detail.selectedId} onClose={detail.close} />
     </>
   )

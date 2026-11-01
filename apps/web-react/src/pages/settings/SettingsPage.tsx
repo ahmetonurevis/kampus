@@ -5,6 +5,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { AuditSection } from './AuditSection.tsx'
 import { ModuleSettingsSection } from './ModuleSettingsSection.tsx'
+import { PaymentSettingsSection } from './PaymentSettingsSection.tsx'
 import { SETTINGS_TABS, settingsTab, type SettingsTab } from './settings-tabs.ts'
 import { UsersSection } from './UsersSection.tsx'
 
@@ -37,6 +38,7 @@ export function SettingsPage({ page }: { page: NavPage }) {
           onChange={select}
         />
         {tab === 'general' ? <ModuleSettingsSection /> : null}
+        {tab === 'general' ? <PaymentSettingsSection /> : null}
         {tab === 'users' ? <UsersSection /> : null}
         {tab === 'activity' ? <AuditSection /> : null}
       </div>

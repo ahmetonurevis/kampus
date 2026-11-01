@@ -241,7 +241,7 @@ Veli ekranlarında seçili çocuk adreste `?cocuk=<öğrenci kimliği>` taşın�
 
 ### API'li yazma kalıbı (react-shared + web-react)
 
-Yazma uçları (`POST /invoices/:id/pay`, iş akışı komutları; api-tasarimi.md §1, §7) `@kampus/react-shared/use-api-command.ts` `useApiCommand` ile çağrılır; saf mantık `commands.ts`'tedir ve `node:test` ile sınanır. Örnek: `use-invoice-commands.ts` `usePayInvoice`, ekran `pages/finance/PaymentPanel.tsx`.
+Yazma uçları (`POST /payments`, iş akışı komutları; api-tasarimi.md §1, §7) `@kampus/react-shared/use-api-command.ts` `useApiCommand` ile çağrılır; saf mantık `commands.ts`'tedir ve `node:test` ile sınanır. Örnek: `use-invoice-commands.ts` `usePayInvoice`, ekran `pages/finance/PaymentPanel.tsx`.
 
 - **İstek anahtarı:** her kullanıcı eylemi `crypto.randomUUID()` ile yeni `Idempotency-Key` alır. Sonucu belirsiz hatadan (ağ, 5xx, `idempotency_in_progress`) sonra aynı gövdenin yeniden gönderimi aynı anahtarı taşır; sunucu işlemişse ilk yanıtı tekrarlar. Başarı, kesin hata veya gövde değişikliği anahtarı bırakır.
 - **Sürüm:** `version(variables)` verilirse `If-Match: "<version>"` gider (form düzenlemeleri); tutmazsa 409 `version_conflict`. Core'un ikinci işlemi kendisi reddettiği komutlarda (ödeme) gönderilmez.
@@ -250,7 +250,7 @@ Yazma uçları (`POST /invoices/:id/pay`, iş akışı komutları; api-tasarimi.
 - **Hata:** `ApiError.issues` alanlara `setError` ile, mesaj `KampusProvider` `notifyError`'ı ile (web'de sonner toast) gider; 401'de bildirim yoktur (oturum katmanı yönlendirir). Koda özgü metin `messages` ile verilir (`invoice_already_paid`). `exclusive: true` seçeneği (içerik havuzu kancaları) formun açık tercihidir ve hatayı tek yerde gösterir: `issues` maddeleri 400 ve 422/409/403'te alana yazılır, alan maddesi varsa toast çıkmaz, yoksa tek toast çıkar; `exclusive` yoksa D13 geçerlidir (yalnız 400 kendiliğinden alana gider, 422/409/403 toast'tır) ve alana bağlama için ikinci mekanizma `routeCommandErrors`'un `fieldFor`'udur. `submit` hata fırlatmaz; `success | failed | busy` sonucu döner.
 
 ```tsx
-const pay = usePayInvoice({ onSuccess: () => notify.success('Tahsilat kaydedildi.') })
+const pay = useRecordPayment({ onSuccess: () => notify.success('Tahsilat kaydedildi.') })
 const form = useForm<PaymentForm>({ resolver: zodResolver(paymentSchema) })
 const onSubmit = form.handleSubmit(async (values) => {
   const outcome = await pay.submit({ invoiceId, ...values }, { setError: form.setError })

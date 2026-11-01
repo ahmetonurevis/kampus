@@ -41,4 +41,4 @@ Referans: hedef & gelişim planı modülü — `git show f88815c --stat`. Aynı 
 
 ## 6. Doküman ve commit
 
-`docs/sayfalar.md`, README kısa bölüm, gerekiyorsa `docs/<modul>.md`; school-core `CHANGELOG.md` + sürüm; CLAUDE.md'ye 1–3 satır kalıcı kural. `dogrula` sonrası commit: "<Modül adı> modülünü ekle".
+`docs/sayfalar.md`, README kısa bölüm, gerekiyorsa `docs/<modul>.md`; school-core `changes/<konu>.md` parçası (sürüm ve CHANGELOG teslimde); CLAUDE.md'ye 1–3 satır kalıcı kural. `dogrula` sonrası commit: "<Modül adı> modülünü ekle".

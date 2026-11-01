@@ -109,9 +109,9 @@ test.describe('DOM-FIN-052 veli: Finans, Dekontlar ve Ödeme Yap', () => {
     )
 
     const client = await api('veli')
-    const response = await client.context.fetch('/api/v1/invoices/inv-s1-4/pay', {
+    const response = await client.context.fetch('/api/v1/payments', {
       method: 'POST',
-      data: { method: 'Nakit' },
+      data: { studentId: 's1', amountCents: 100, method: 'Banka havalesi', reference: 'E2E-VELI' },
       headers: { 'idempotency-key': randomUUID() },
       failOnStatusCode: false,
     })

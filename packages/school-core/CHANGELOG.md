@@ -1,13 +1,38 @@
 # Değişiklikler
 
-## 2.26.0
+## 2.25.0
 
-Zümre başkanı ve akademik koordinatör ek görevi; uyuşmazlıkta son puan (F4b3b2b; `docs/domain/yetki-ve-kapsam.md` DOM-YTK-027, `docs/domain/beceri-gelisimi.md` DOM-BEC-024).
+Onur'un kayıt ve finans dalı (`feature/ogrenci-kaydi-finans`) birleştirildi; o dalda 2.21.0 olarak yazılan girdiler bu sürümdedir. Birleştirmede kesin kayıt ve finansın temeli o dalın yapısıdır (tarife, tahsilat, ayrılış/iade, muhasebe aktarımı, `enrollProspectWithTariff`).
 
-- Yeni `lib/coordinator-duties.ts`: `COORDINATOR_DUTY_KINDS` (`subject_head` `school`'da, `academic_coordinator` `language_school`'da), `dutyKindFor`, `coordinatorDutyInputSchema` (`membershipId`, `scopeId`), `planCoordinatorDuty` (yalnız öğretmene `duty_requires_teacher`; `school`'da öğretmenin kendi branşı `duty_outside_branch`, kadro kaydı yoksa `teacher_record_required`; dil okulunda CEFR seviyesi `invalid_cefr_level`; aynı görev `coordinator_duty_exists` 409), `coordinatorScopeOf`, `isCoordinator`, `coordinatesArea` (ders veya seviye eşleşmesi; etiketsiz alan kapsam dışı).
-- `skills/rubric.ts` `scoresVisibleToRater`: koordinatör bir sürümün bütün puanlarını yalnız ilk ve ikinci puanın ikisi de verildikten sonra görür; ikinci puan beklenirken sıradan puanlayıcı gibi kördür (ikinci puanı kendisi verebilir; inceleme düzeltmesi, DOM-BEC-024). O sürümün ilk veya ikinci puanlayıcısıysa kör puanlama ona her zaman uygulanır (önceden koordinatör her durumda hepsini görüyordu). Yeni `coordinatorCase`: ilk ve ikinci puan bir kriterde uyuşmuyor mu (son puan verilse de `true`; koordinatörün öğrenci bazında okuma erişimi buna dayanır).
-- `TODO(beceri-koordinator-bagimsiz)` kapandı: koordinatör o sürümün iki puanlayıcısından biri olamaz (`planRubricScore` `final`, 409 `rater_not_independent`); kural DOM-BEC-024'e yazıldı.
-- Tüketiciler `workspace:2.26.0` sürümüne sabitlendi. 2.25.0 ayrı dalda yayımlandı ve entegrasyonda bu sürümün altında yer alır.
+- **Kırıcı (birleştirme):** 2.23.0'daki `lib/domain.ts` `enrollmentSchema`, `enrollmentFromRegistration`, `isValidNationalId`, `nationalIdSchema`, `birthDateSchema`, `GUARDIAN_RELATIONS`, `ENROLLMENT_PAYERS`, `ENROLLMENT_TOTAL_CENTS` kalktı. API kesin kaydı `lib/enrollment.ts` `enrollProspectWithTariff`'tir (tutar tarifeden); çevrimdışı demo `enrollProspect` yeniden `registrationSchema` (tam lira) alır, Vue `Crm.vue` ve mobil `model/operations.ts` onu doğrudan çağırır. Kimlik no doğrulayıcısı tektir: `lib/enrollment.ts` `isValidTurkishId`.
+- **Kırıcı (birleştirme, KVKK):** `State.students` `nationalId`, `birthDate`, `guardianRelation` alanlarını kaybetti; kimlik ve doğum tarihi `records.data`'ya yazılmaz, API'de `student_identities` tablosundadır (maskeli okuma `GET /students/:id/identity`). `lib/scope.ts` `maskNationalId` ve kimlik alanlarının arama dışı tutulması savunma olarak kalır.
+
+Birleştirmeden sonra bizim kesin kayıt kuralları Onur'un `enrollProspectWithTariff` / `applyEnrollment` koduna taşındı:
+
+- **Kırıcı:** veli yakınlığı `GUARDIAN_RELATIONSHIPS` `'guardian'` yerine `'legal_guardian'` (etiket "Vasi"); ödeyici değeri `'guardian'` ve gövdedeki `guardian` nesnesiyle karışmasın (DOM-KAY-012). Eski değer 400 alır.
+- 18 yaş doğum tarihinden `lib/age.ts` `ageOn(birthDate, now)` ile (Europe/Istanbul günü) hesaplanır; `lib/enrollment.ts`'teki yerel `ageOn`/`ADULT_AGE` kalktı. Dil okulunda adayın yaş grubu seçimi (`minor`) doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (`path: ['identity', 'birthDate']`). Ödeyici: yetişkin kursiyere veli verilirse 422 `guardian_not_applicable` (`path: ['guardian']`), 18 yaş altında veli yoksa `guardian_required`; okulda veli her yaşta zorunludur (DOM-KAY-012).
+- DOM-KAY-003: `applyEnrollment` `minor` alanı (tarifeli kayıt verir, demo vermez): 18 yaş altında öğrencinin e-postası ve telefonu boş kalır, yeni veliye adayın e-postası yazılır, mevcut velinin eksik telefonu ve e-postası adayınkiyle tamamlanır (var olan değişmez). `lib/scope.ts` veli e-postasını da öğretmen ve öğrenciden gizler. Öğrenci telefonu boş kaldığı için `findParentMatches` isteğe bağlı `prospects` alır ve veliyi, öğrencisine dönüşmüş kardeş adayın aile telefonuyla da önerir (DOM-KAY-013).
+- Kesin kayıtta sınıf adayın kampüsünden değilse 422 `class_campus_mismatch` (`path: ['classId']`, kontenjandan önce); `enrollProspectSchema` ve `applyEnrollment` isteğe bağlı `allowOtherCampus` alır, yalnız `true` açık onaydır. Demo `enrollProspect` onayı kendisi verir (eski davranış). Kayıt formu şemasına `allCampuses` (listeleme) ve `confirmOtherCampus` (onay) eklendi; `enrollmentFormToBody` `allowOtherCampus`'u yalnız onayla yazar. `OTHER_CAMPUS_CONFIRM_LABEL`, `OTHER_CAMPUS_CONFIRM_MESSAGE` eklendi.
+- DOM-KAY-013: yetişkin kursiyerin kendi veli satırı `relationship: 'self'` (`SELF_RELATIONSHIP`) ile yazılır. `isNotGuardian` bu satırı ve eski yer tutucuyu (telefonsuz, e-postasız, bütün adayları `minor === false`) ayırır; `findParentMatches` bunları önermez, `enrollProspectWithTariff` seçilirse 422 `parent_not_guardian` (`path: ['guardian']`) verir. `findParentMatches` velide `email` ve `relationship`, adayda `minor` alanını okur.
+- DOM-KAY-012 (kullanıcı kararı, 2 Kasım 2026): veli okulda (`school`) her yaşta zorunludur, doğum tarihi 18 yaşı gösterse de; bu türde `guardian_not_applicable` dönmez, `birth_date_minor_mismatch` denetlenmez. Kurs türlerinde (`isCourse`: `school` dışındaki her tür) 18 yaş ve üstü kursiyer kendi ödeyicisidir. `guardianRequired(institutionType, birthDate, now)` ve `isCourse` eklendi. `applyEnrollment`'ın `minor` alanı `guardianContact` oldu (okulda 18 yaş üstünde de `true`). `enrollProspectSchema` isteğe bağlı `studentContact` (`phone`, `email`) alır; verilen alan öğrenciye yazılır, adayın iletişimi velide kalır.
+- DOM-KAY-012: kayıt formu şeması (`enrollmentFormSchema(institutionType, now?)`) veli kuralını sunucuyla aynı uygular; yetişkin kursiyere veli ve veli zorunluyken "kendisi" `guardianMode` alanında reddedilir. `allowedGuardianModes`, `GUARDIAN_MODES`, `GUARDIAN_REQUIRED_FORM_MESSAGE`, `GUARDIAN_NOT_APPLICABLE_FORM_MESSAGE` eklendi; forma isteğe bağlı `studentPhone`, `studentEmail` geldi, `enrollmentFormToBody` bunları yalnız "kendisi" seçiliyken `studentContact` olarak yazar.
+
+Onur'un dalındaki girdiler: kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-001, DOM-FIN-012, DOM-FIN-030…033).
+
+- `lib/fee-tariffs.ts`: `isOutsideAnnouncementPeriod`.
+- `lib/prospect-form.ts`: `trialLessonOptions`, `trialLessonUsed`; `upcomingMeetings` deneme dersini de döndürür.
+- `lib/payments.ts`: `bankAccountSchema`, `bankAccountLabel`, `paymentMebbisSchema`, `assertMebbisChangeAllowed`; `PaymentContext.bankAccountIds`, `PaymentPlan.bankAccountId`.
+- `lib/enrollment.ts`: `assertRenewalWithinTariff`, `enrollmentFormSchema`, `enrollmentFormToBody`, `previewEnrollment`, `ENROLLMENT_STEP_FIELDS`, `enrollProspectSchema`, `enrollProspectWithTariff`, `priceEnrollment`, `findParentMatches`, `isValidTurkishId` eklendi; kesin kayıt tutarı tarifeden hesaplanır (DOM-FIN-002, -003, -020…-022, DOM-KAY-011…-013). Demo girişi `enrollProspect` ve `registrationSchema` aynı kaldı.
+- `reversePayment` ayrılış kaydı olan öğrenciyi reddeder; `quoteWithdrawal` iade ve borcu netleştirir; `planTariffUpdate` verilmeyen alanı korur; `lib/scope.ts` veli telefonunu öğretmen ve öğrenciden gizler.
+- Kesin kayıt sözleşmesi `invoiceIds` taşır; belge yalnız kendi taksitlerini çözümler (DOM-FIN-012).
+- `lib/payments.ts`: `recordPaymentSchema`, `reversePaymentSchema`, `paymentSettingsSchema`, `planPayment`, `reversePayment`, `openAmount` eklendi. Demo girişi `payInvoice` aynı kaldı.
+- `lib/authorize.ts` ve `modules/commands.ts`: `payment.reverse`, `tariff.manage` ve `student.withdraw` (yalnız yönetici), modül `finance`.
+- `lib/csv.ts`: `csvCell`, `CSV_SEPARATOR` web'den taşındı, `csvAmount` eklendi. `lib/finance-export.ts`: dönem doğrulaması, `paymentLines`, `refundLines`, `invoiceLines`, `financeSummary`, CSV üreticileri eklendi (IST-111).
+- `lib/payments.ts`: `paymentFormSchema`, `parseAmountInput`, `amountInputValue` eklendi; geçici `referenceOptional` kaldırıldı.
+- `lib/prospect-form.ts`: aday formu şeması, API gövdesine çevirme, görüşme anı ve yaklaşan görüşmeler eklendi; aydınlatma sürümü `PROSPECT_PRIVACY_NOTICE_VERSION`.
+- `lib/finance-export.ts`: `financeTotals` eklendi.
+- `lib/withdrawals.ts`: `withdrawalFormSchema`, `WITHDRAWAL_REASON_LABELS`, `withdrawalQuoteSchema`, `withdrawStudentSchema`, `payRefundSchema`, `quoteWithdrawal`, `withdrawStudent`, `planRefundPayment`, `refundDueDate`, `payerNameOf`, `isValidTurkishIban` eklendi (DOM-FIN-040, -041, DOM-KAY-024).
+- `lib/fee-tariffs.ts`: `feeItemSchema`, `createFeeTariffSchema`, `updateFeeTariffSchema`, `publishFeeTariffSchema`, `feeDiscountSchema`, `planTariffCreate`, `planTariffUpdate`, `planTariffPublish` eklendi (DOM-FIN-002, -004, -006, -020).
 
 ## 2.24.0
 

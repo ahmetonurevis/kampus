@@ -818,11 +818,9 @@ test('Tanınmayan eski aşama değiştirilemez; dil okulu görüşme aşamasın�
 const registration = (prospectId: string) => ({
   prospectId,
   classId: 'c1',
-  totalCents: 12_000_000,
+  total: 120000,
   count: 3,
   startDate: '2026-11-01',
-  // Örnek adaylar üç kampüse dağılır; bu testler aşama kuralını sınar (DOM-KAY-035).
-  allowOtherCampus: true,
 })
 
 test('DOM-KAY-035: kesin kayıt yetkisi yalnız yönetici ve ön büroda, CRM modülüne bağlı', () => {

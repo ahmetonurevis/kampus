@@ -82,7 +82,7 @@ test('Kesin kayıt tüm ilişkileri ve sözleşme toplamını birlikte oluşturu
   let n = 0
   const result = enrollProspect(
     s,
-    { prospectId: 'pr1', classId: 'c1', totalCents: 2_850_100, count: 6, startDate: '2026-01-31' },
+    { prospectId: 'pr1', classId: 'c1', total: 28501, count: 6, startDate: '2026-01-31' },
     (p) => `${p}-test-${n++}`,
   )
   assert.equal(s.students.length, 241)
@@ -100,16 +100,23 @@ test('Kesin kayıt tüm ilişkileri ve sözleşme toplamını birlikte oluşturu
     () =>
       enrollProspect(
         s,
-        {
-          prospectId: 'pr1',
-          classId: 'c1',
-          totalCents: 1_000_000,
-          count: 2,
-          startDate: '2026-01-01',
-        },
+        { prospectId: 'pr1', classId: 'c1', total: 10000, count: 2, startDate: '2026-01-01' },
         (p) => p,
       ),
     /zaten/,
+  )
+})
+test('DOM-FIN-012: kesin kayıt sözleşmesi yalnız kendi taksitlerini listeler', () => {
+  const s = createSeed()
+  let n = 0
+  const { student, contract } = enrollProspect(
+    s,
+    { prospectId: 'pr1', classId: 'c1', total: 1000, count: 3, startDate: '2026-01-31' },
+    (p) => `${p}-test-${n++}`,
+  )
+  assert.deepEqual(
+    contract.invoiceIds,
+    s.invoices.filter((i) => i.studentId === student.id).map((i) => i.id),
   )
 })
 test('Dolu sınıfa veya geçersiz tarihle kayıt kısmi veri oluşturmaz', () => {
@@ -120,13 +127,7 @@ test('Dolu sınıfa veya geçersiz tarihle kayıt kısmi veri oluşturmaz', () =
     () =>
       enrollProspect(
         s,
-        {
-          prospectId: 'pr1',
-          classId: 'c1',
-          totalCents: 1_000_000,
-          count: 2,
-          startDate: '2026-01-01',
-        },
+        { prospectId: 'pr1', classId: 'c1', total: 10000, count: 2, startDate: '2026-01-01' },
         (p) => p,
       ),
     /kontenjanı dolu/,
@@ -138,13 +139,7 @@ test('Dolu sınıfa veya geçersiz tarihle kayıt kısmi veri oluşturmaz', () =
     () =>
       enrollProspect(
         s,
-        {
-          prospectId: 'pr1',
-          classId: 'c1',
-          totalCents: 1_000_000,
-          count: 2,
-          startDate: '2026-02-31',
-        },
+        { prospectId: 'pr1', classId: 'c1', total: 10000, count: 2, startDate: '2026-02-31' },
         (p) => p,
       ),
     /Geçerli bir ödeme/,

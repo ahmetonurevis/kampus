@@ -2,6 +2,7 @@ import { dayKey } from '@kampus/school-core/lib/format.ts'
 import type { Scope } from '@kampus/school-core/lib/scope.ts'
 
 import type { CollectionName, RecordData } from '../db/collections.ts'
+import { allocatedForInvoices } from '../db/payments.ts'
 import {
   findRecord,
   INVOICE_STATUS_LABELS,
@@ -326,6 +327,27 @@ function toItem({ row, record }: VisibleRow, names?: JoinedNames): CollectionIte
  * Sayfanın satırları yanıt kaydına çevrilir; bağlı adlar yalnız sayfadaki kimliklerden çözülür
  * (aktörün kapsamından ve ayıklanmış kimlikten, `loadPageNames`).
  */
+/**
+ * Açık taksite iptal edilmemiş tahsilatlardan dağıtılan tutar (DOM-FIN-030). Saklanmaz, okunurken
+ * eklenir; kapsam taksitin kendisine uygulandığı için ayrıca süzülmez.
+ */
+async function withPaidAmounts(
+  ctx: ServiceContext,
+  items: CollectionItem[],
+): Promise<CollectionItem[]> {
+  const allocated = await allocatedForInvoices(
+    ctx.db,
+    ctx.institutionId,
+    items.map((item) => item.id),
+  )
+  return items.map((item) => {
+    const paidCents = allocated.get(item.id)
+    return paidCents === undefined || item.record.paidAt
+      ? item
+      : { ...item, record: { ...item.record, paidCents } }
+  })
+}
+
 async function toItems(
   ctx: ServiceContext,
   scope: Scope,
@@ -338,7 +360,8 @@ async function toItems(
     collection,
     page.map((item) => item.record),
   )
-  return page.map((item, index) => toItem(item, names?.[index]))
+  const items = page.map((item, index) => toItem(item, names?.[index]))
+  return collection === 'invoices' ? withPaidAmounts(ctx, items) : items
 }
 
 /** Türkçe büyük/küçük harf ve aksan duyarsız karşılaştırma biçimi (api-tasarimi.md §3). */

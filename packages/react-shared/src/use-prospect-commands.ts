@@ -4,6 +4,7 @@ import type { operations } from '@kampus/api-client/schema.d.ts'
 import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
+import { useApiQuery } from './use-api-query.ts'
 
 // Aday/CRM yazma komutları (`POST /prospects`, `PATCH /prospects/:id`,
 // `POST /prospects/:id/{notes,meetings,trial-lessons,enroll}`; core `prospect.create`
@@ -28,7 +29,6 @@ export type ChangeProspectStageBody = JsonBody<'changeProspectStage'>
 export type AddProspectNoteBody = JsonBody<'addProspectNote'>
 export type ScheduleProspectMeetingBody = JsonBody<'scheduleProspectMeeting'>
 export type ScheduleTrialLessonBody = JsonBody<'scheduleTrialLesson'>
-/** Kesin kayıt gövdesi; tutar kuruş tamsayıdır (`totalCents`, şimdilik 100'ün katı). */
 export type EnrollProspectBody = JsonBody<'enrollProspect'>
 
 /** Var olan adayı değiştiren komut: okunan sürüm `If-Match` olarak zorunludur. */
@@ -220,11 +220,24 @@ export function useScheduleTrialLesson(options: CommandOptions = {}) {
   })
 }
 
+/** Adayın telefonuyla eşleşen veliler; öneridir, birleştirmez (DOM-KAY-013). */
+export function useGuardianMatches(prospectId: string) {
+  return useApiQuery({
+    key: ['prospects', prospectId, 'guardian-matches'],
+    enabled: prospectId !== '',
+    request: (client, signal) =>
+      client.GET('/api/v1/prospects/{prospectId}/guardian-matches', {
+        params: { path: { prospectId } },
+        signal,
+      }),
+  })
+}
+
 /**
  * Adayı kesin kayda alır (201; `entity` yeni öğrenci): okunan aday sürümü `If-Match`, her eylem
  * `Idempotency-Key` taşır (DOM-KAY-011, DOM-KAY-035). Modül kapalıysa toast
- * `ENROLL_MODULE_DISABLED_MESSAGE`; 400 ve 422 `issues` alanlara yazılır (`totalCents`, `classId`).
- * Yanıt oluşturulan sözleşmenin kimliğini (`contractId`) taşır.
+ * `ENROLL_MODULE_DISABLED_MESSAGE`; 400 ve 422 `issues` alanlara yazılır (`classId`, `identity`,
+ * `guardian`, `discounts`). Tutar gövdede yoktur, yayımlanmış tarifeden hesaplanır (DOM-FIN-002).
  */
 export function useEnrollProspect(options: CommandOptions = {}) {
   return useApiCommand({

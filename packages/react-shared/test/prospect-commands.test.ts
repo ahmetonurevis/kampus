@@ -258,7 +258,14 @@ describe('kesin kayıt komutu', () => {
   const enrollment: EnrollProspectInput = {
     prospectId: 'pr 1',
     version: 3,
-    body: { classId: 'c1', totalCents: 3_600_000, count: 3, startDate: '2026-11-15' },
+    body: {
+      classId: 'c1',
+      tariffId: 'tarife-1',
+      installmentCount: 3,
+      firstDueDate: '2026-11-15',
+      identity: { kind: 'tc', number: '10000000146', birthDate: '2013-03-01' },
+      guardian: { name: 'Ayşe Yılmaz', phone: '05551112233', relationship: 'mother' },
+    },
   }
   const created = {
     data: {
@@ -282,7 +289,7 @@ describe('kesin kayıt komutu', () => {
     }
   }
 
-  test('DOM-KAY-035, DOM-KAY-011: kesin kayıt alt yola If-Match ve Idempotency-Key ile, tutarı kuruş olarak gönderir', async () => {
+  test('DOM-KAY-035, DOM-KAY-011: kesin kayıt alt yola If-Match ve Idempotency-Key ile, tarifeli gövdeyi olduğu gibi gönderir', async () => {
     const { client, sent } = fakeClient(201, created)
     const outcome = await runCommand(
       createCommandSession(() => 'key-enroll-1'),
@@ -295,7 +302,7 @@ describe('kesin kayıt komutu', () => {
     assert.equal(`${sent[0]?.method} ${sent[0]?.path}`, 'POST /api/v1/prospects/pr%201/enroll')
     assert.equal(sent[0]?.headers.get('if-match'), '"3"')
     assert.equal(sent[0]?.headers.get('idempotency-key'), 'key-enroll-1')
-    // Aday kimliği yalnız yolda; gövde kuruş tamsayıdır.
+    // Aday kimliği yalnız yolda; tutar gövdede yoktur, sunucu tarifeden hesaplar (DOM-FIN-002).
     assert.deepEqual(sent[0]?.body, enrollment.body)
   })
 
@@ -331,12 +338,12 @@ describe('kesin kayıt komutu', () => {
     assert.deepEqual(fields, [])
   })
 
-  test('DOM-KAY-011: 100’ün katı olmayan tutarın 422 iletisi totalCents alanına yazılır, toast çıkmaz', async () => {
-    const message = 'Tutar şimdilik tam lira olmalıdır; kuruşlu tutar girilemez.'
+  test('DOM-FIN-021: indirim tavanı aşımının 422 iletisi discounts alanına yazılır, toast çıkmaz', async () => {
+    const message = "Toplam indirim ilan ücretinin %50'sini aşamaz."
     const { client } = fakeClient(422, {
-      code: 'amount_not_whole_lira',
+      code: 'discount_cap_exceeded',
       message,
-      issues: [{ path: ['totalCents'], code: 'amount_not_whole_lira', message }],
+      issues: [{ path: ['discounts'], code: 'discount_cap_exceeded', message }],
       requestId: 'req-2',
     })
     const notified: string[] = []
@@ -344,14 +351,14 @@ describe('kesin kayıt komutu', () => {
     const outcome = await runCommand(
       createCommandSession(() => 'key-enroll-3'),
       enrollCommand(client, async () => assert.fail('422 tazeleme istemez')),
-      { ...enrollment, body: { ...enrollment.body, totalCents: 3_600_050 } },
+      { ...enrollment, body: { ...enrollment.body, discounts: ['sibling', 'referral'] } },
       {
         notifyError: (text) => notified.push(text),
         setError: (name, error) => fields.push({ name, ...error }),
       },
     )
     assert.equal(outcome.status, 'failed')
-    assert.deepEqual(fields, [{ name: 'totalCents', type: 'amount_not_whole_lira', message }])
+    assert.deepEqual(fields, [{ name: 'discounts', type: 'discount_cap_exceeded', message }])
     assert.deepEqual(notified, [])
   })
 

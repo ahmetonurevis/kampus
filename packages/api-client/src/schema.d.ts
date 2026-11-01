@@ -1852,6 +1852,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kurum geneli finans toplamları
+         * @description Finans ekranı kartları: toplam, tahsil edilen (kısmi ödemeler dahil), kalan ve gecikmiş tutar (DOM-FIN-030). Gecikmiş tutar yalnız kalan kısımdır. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getFinanceTotals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/summary": {
         parameters: {
             query?: never;
@@ -15481,6 +15501,105 @@ export interface operations {
             };
         };
     };
+    getFinanceTotals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            totalCents: number;
+                            paidCents: number;
+                            remainingCents: number;
+                            overdueCents: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getFinanceSummary: {
         parameters: {
             query: {
@@ -16467,7 +16586,8 @@ export interface operations {
                         data: {
                             contractId: string;
                             breakdown: {
-                                institutionType: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
                                 withdrawalDate: string;
                                 termStartDate: string;
                                 /** @description Ayrılış dönem başladıktan sonra mı */
@@ -16621,7 +16741,8 @@ export interface operations {
                             reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
-                                institutionType: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
                                 withdrawalDate: string;
                                 termStartDate: string;
                                 /** @description Ayrılış dönem başladıktan sonra mı */
@@ -16773,7 +16894,8 @@ export interface operations {
                             reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
-                                institutionType: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
                                 withdrawalDate: string;
                                 termStartDate: string;
                                 /** @description Ayrılış dönem başladıktan sonra mı */
@@ -16921,7 +17043,8 @@ export interface operations {
                             reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
-                                institutionType: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
                                 withdrawalDate: string;
                                 termStartDate: string;
                                 /** @description Ayrılış dönem başladıktan sonra mı */
@@ -17081,7 +17204,8 @@ export interface operations {
                             reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
-                                institutionType: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
                                 withdrawalDate: string;
                                 termStartDate: string;
                                 /** @description Ayrılış dönem başladıktan sonra mı */

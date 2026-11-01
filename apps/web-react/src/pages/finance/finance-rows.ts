@@ -46,6 +46,8 @@ export const INVOICE_LIST = {
   defaultSort: ['dueDate', 'id'],
 } satisfies CollectionListConfig
 
+export const PARTIAL_STATUS = 'Kısmi ödendi'
+
 export type InvoiceRow = {
   id: string
   version: number
@@ -61,12 +63,17 @@ export type InvoiceRow = {
   amount: number
   paidAt: string | null
   method: string | null
-  status: InvoiceStatus
+  /** Vadesi gelmemiş, kısmen ödenmiş taksit `Kısmi ödendi`; gecikmiş olan gecikmiş kalır. */
+  status: InvoiceStatus | typeof PARTIAL_STATUS
+  /** Açık taksite dağıtılmış tutar; kuruş. */
+  paidCents: number
 }
 
 /** `today` Europe/Istanbul günüdür (`dayKey()`); durum vadesi geçmiş ödenmemiş taksitte "Gecikmiş". */
 export function invoiceRow(item: CoreRow<'invoices'>, today: string): InvoiceRow {
   const invoice = item.record
+  const key = invoiceStatusKey(invoice, today)
+  const paidCents = invoice.paidCents ?? 0
   return {
     id: invoice.id,
     version: item.version,
@@ -79,7 +86,8 @@ export function invoiceRow(item: CoreRow<'invoices'>, today: string): InvoiceRow
     amount: invoice.amount,
     paidAt: invoice.paidAt ?? null,
     method: invoice.method ?? null,
-    status: INVOICE_STATUS_LABELS[invoiceStatusKey(invoice, today)],
+    status: key === 'yaklasan' && paidCents > 0 ? PARTIAL_STATUS : INVOICE_STATUS_LABELS[key],
+    paidCents,
   }
 }
 

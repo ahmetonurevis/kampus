@@ -282,3 +282,31 @@ export function invoicesCsv(lines: readonly InvoiceLine[]): string {
     ]),
   )
 }
+
+export interface FinanceTotals {
+  totalCents: number
+  /** Tam ödenen taksitler ve açık taksitlere dağıtılmış kısmi ödemeler (DOM-FIN-030). */
+  paidCents: number
+  remainingCents: number
+  overdueCents: number
+}
+
+/** Finans ekranı kartları: kurum geneli; gecikmiş tutar kalan kısımdır, taksitin tamamı değil. */
+export function financeTotals(
+  invoices: readonly Pick<State['invoices'][number], 'id' | 'amount' | 'paidAt' | 'dueDate'>[],
+  allocated: ReadonlyMap<string, number>,
+  today: string,
+): FinanceTotals {
+  let totalCents = 0
+  let paidCents = 0
+  let overdueCents = 0
+  for (const invoice of invoices) {
+    const paid = invoice.paidAt
+      ? invoice.amount
+      : Math.min(allocated.get(invoice.id) ?? 0, invoice.amount)
+    totalCents += invoice.amount
+    paidCents += paid
+    if (dayKey(invoice.dueDate) < today) overdueCents += invoice.amount - paid
+  }
+  return { totalCents, paidCents, remainingCents: totalCents - paidCents, overdueCents }
+}

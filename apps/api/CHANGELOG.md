@@ -2,6 +2,12 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Kısmi ödeme gösterimi
+
+- `GET /api/v1/finance/totals` eklendi: finans kartları kısmi ödemeyi sayar, gecikmiş tutar kalan kısımdır (DOM-FIN-030).
+- Taksit okuması (`/collections/invoices`) açık taksitte `record.paidCents` döner; saklanmaz, okunurken eklenir.
+- Benzersizlik ihlali 500 yerine 409 `conflict` döner. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Ayrılış listesinde öğrenci adı
 
 - `GET /api/v1/withdrawals` ve `GET /api/v1/withdrawals/:withdrawalId` yanıtına `studentName` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
@@ -59,7 +65,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 ## Kesin kayıt ucu
 
 - `POST /api/v1/prospects/:prospectId/enroll` eklendi (201 + `Location`; `Idempotency-Key` ve `If-Match` zorunlu; yalnız `yonetici` ve `onburo`, modül `crm`). Öğrenci, veli, taksit, sözleşme ve aday aşaması tek transaction'da yazılır (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035).
-- Tutar kuruş olarak alınır (`totalCents`, DOM-FIN-001). Tutar henüz serbest girilir; tarife gelince tarifeden hesaplanacak (`TODO(fee-tariff)`, DOM-FIN-002).
+- İlk sürümde tutar `totalCents` ile alındı; "Tarifeli kesin kayıt" değişikliğiyle kaldırıldı.
 - OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
 
 ## Rubrik uçları

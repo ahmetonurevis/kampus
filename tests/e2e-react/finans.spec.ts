@@ -214,6 +214,15 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByText('Tahsilat kaydedildi.')).toBeVisible()
     expect((await invoice(client, 'inv-s14-5')).paidAt).toBeNull()
 
+    // Liste kısmi durumu, kartlar kısmi tutarı gösterir.
+    await page.goto(ADMIN_URL)
+    await page.getByLabel('Tabloda ara').fill('s14')
+    await expect(page.getByLabel('Kurum geneli ödeme toplamları')).toContainText('Tahsil edilen')
+    const totals = (await client.get('/api/v1/finance/totals')).body as {
+      data: { paidCents: number }
+    }
+    expect(totals.data.paidCents % 100).toBe(50)
+
     await page.goto(`${ADMIN_URL}?tahsilat=inv-s14-5`)
     await expect(dialog.getByText(/Ödenen .*Kalan/)).toBeVisible()
     const remaining = total - 10_050
@@ -519,8 +528,6 @@ test.describe('Finans: tahsilat', () => {
   })
 })
 
-type StatusCounts = { data: { value: string | null; sum?: number }[]; meta: { sum?: number } }
-
 /** Kartın kuruş değeri: "24.500,00 ₺" biçimindeki metnin rakamları. */
 const cents = (text: string | null) => Number((text ?? '').replace(/\D/g, ''))
 
@@ -538,14 +545,17 @@ test.describe('Finans: liste', () => {
     // Kartlar kendi yanıtından gelir; API her denemede yeniden okunur ve ikisi yakınsayana dek beklenir.
     await expect
       .poll(async () => {
-        const result = await client.get(
-          '/api/v1/collections/invoices/counts?groupBy=status&sum=amount',
-        )
+        const result = await client.get('/api/v1/finance/totals')
         expect(result.status).toBe(200)
-        const { data, meta } = result.body as StatusCounts
-        const sumOf = (status: string) => data.find((group) => group.value === status)?.sum ?? 0
-        const total = meta.sum ?? 0
-        const expected = [total, sumOf('Ödendi'), total - sumOf('Ödendi'), sumOf('Gecikmiş')]
+        const { data } = result.body as {
+          data: {
+            totalCents: number
+            paidCents: number
+            remainingCents: number
+            overdueCents: number
+          }
+        }
+        const expected = [data.totalCents, data.paidCents, data.remainingCents, data.overdueCents]
         const shown = await Promise.all(
           ['Toplam eğitim bedeli', 'Tahsil edilen', 'Kalan bakiye', 'Gecikmiş tutar'].map(
             async (name) => cents(await card(name).textContent()),
@@ -746,15 +756,10 @@ test.describe('Finans: liste', () => {
     test(`${width} px genişlikte büyük tutarlar toplam kartının içinde kalır`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
       // Gerçek yanıtın tutarları ×1000: "51.840.000.000,00 ₺" düzeyinde en kötü durum.
-      await page.route(/\/collections\/invoices\/counts\?.*groupBy=status/, async (route) => {
+      await page.route(/\/api\/v1\/finance\/totals$/, async (route) => {
         const response = await route.fetch()
-        const body = (await response.json()) as {
-          data: { sum?: number }[]
-          meta: { sum?: number }
-        }
-        const scale = (value?: number) => (value === undefined ? value : value * 1000)
-        body.meta.sum = scale(body.meta.sum)
-        for (const group of body.data) group.sum = scale(group.sum)
+        const body = (await response.json()) as { data: Record<string, number> }
+        for (const key of Object.keys(body.data)) body.data[key] = (body.data[key] ?? 0) * 1000
         // Gerçek yanıtın başlıkları (içerik uzunluğu, sıkıştırma) değişen gövdeyle uyuşmaz.
         await route.fulfill({ status: response.status(), json: body })
       })

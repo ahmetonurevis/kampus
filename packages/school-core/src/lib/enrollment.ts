@@ -196,7 +196,10 @@ function ageOn(birthDate: string, day: string): number {
 
 /** Telefonu eşleşen veliler; ön büroya önerilir, otomatik birleştirilmez (DOM-KAY-013). */
 export function findParentMatches(
-  state: Pick<State, 'parents' | 'students'>,
+  state: {
+    parents: readonly { id: string; name: string; studentIds: readonly string[]; phone?: string }[]
+    students: readonly { id: string; phone?: string }[]
+  },
   phone: string,
 ): { parentId: string; name: string; studentCount: number }[] {
   if (phone === '') return []

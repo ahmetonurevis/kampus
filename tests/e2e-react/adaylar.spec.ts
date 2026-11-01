@@ -191,6 +191,8 @@ test.describe('Aday ekranları', () => {
     const proceed = page.getByRole('button', { name: 'Devam et' })
     await proceed.click()
     await expect(page.getByLabel('Sınıf')).toHaveAttribute('aria-invalid', 'true')
+    // Yalnız adayın kampüsünün sınıfları, doluluğuyla listelenir.
+    await expect(page.getByLabel('Sınıf').getByRole('option').nth(1)).toHaveText(/\(\d+\/\d+\)/)
     await page.getByLabel('Sınıf').selectOption({ index: 1 })
     await proceed.click()
 

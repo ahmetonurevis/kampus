@@ -1,6 +1,8 @@
+import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   assertFinancePeriod,
   financeSummary,
+  financeTotals,
   invoiceLines,
   invoicesCsv,
   paymentLines,
@@ -11,6 +13,7 @@ import {
   type FinanceExportKind,
   type FinancePeriod,
   type FinanceSummary,
+  type FinanceTotals,
 } from '@kampus/school-core/lib/finance-export.ts'
 
 import { allocatedTotals, paymentsTouchingPeriod } from '../db/payments.ts'
@@ -56,6 +59,18 @@ function linesOf(ctx: ServiceContext, period: FinancePeriod) {
           }
         },
       }
+    },
+  })
+}
+
+/** Finans ekranı kartları: kurum geneli, kısmi ödemeler dahil (DOM-FIN-030). */
+export function financeTotalsFor(ctx: ServiceContext): Promise<FinanceTotals> {
+  return runReadOnly(ctx, {
+    action: 'finance.totals',
+    collections: ['invoices'],
+    load: async (tx) => {
+      const allocated = await allocatedTotals(tx, ctx.institutionId)
+      return { run: (state) => financeTotals(state.invoices, allocated, dayKey(ctx.now)) }
     },
   })
 }

@@ -27285,6 +27285,146 @@
         }
       }
     },
+    "/api/v1/finance/totals": {
+      "get": {
+        "operationId": "getFinanceTotals",
+        "summary": "Kurum geneli finans toplamları",
+        "tags": [
+          "finance-exports"
+        ],
+        "description": "Finans ekranı kartları: toplam, tahsil edilen (kısmi ödemeler dahil), kalan ve gecikmiş tutar (DOM-FIN-030). Gecikmiş tutar yalnız kalan kısımdır. Roller: `yonetici`, `onburo`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "totalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "paidCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "remainingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "overdueCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "totalCents",
+                        "paidCents",
+                        "remainingCents",
+                        "overdueCents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/summary": {
       "get": {
         "operationId": "getFinanceSummary",
@@ -29094,7 +29234,11 @@
                           "type": "object",
                           "properties": {
                             "institutionType": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "school",
+                                "language_school"
+                              ]
                             },
                             "withdrawalDate": {
                               "type": "string"
@@ -29473,7 +29617,11 @@
                           "type": "object",
                           "properties": {
                             "institutionType": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "school",
+                                "language_school"
+                              ]
                             },
                             "withdrawalDate": {
                               "type": "string"
@@ -29866,7 +30014,11 @@
                             "type": "object",
                             "properties": {
                               "institutionType": {
-                                "type": "string"
+                                "type": "string",
+                                "enum": [
+                                  "school",
+                                  "language_school"
+                                ]
                               },
                               "withdrawalDate": {
                                 "type": "string"
@@ -30234,7 +30386,11 @@
                           "type": "object",
                           "properties": {
                             "institutionType": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "school",
+                                "language_school"
+                              ]
                             },
                             "withdrawalDate": {
                               "type": "string"
@@ -30647,7 +30803,11 @@
                           "type": "object",
                           "properties": {
                             "institutionType": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "school",
+                                "language_school"
+                              ]
                             },
                             "withdrawalDate": {
                               "type": "string"

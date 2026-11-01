@@ -34,7 +34,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, useCoreCounts } from '@/hooks/use-core-collection.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
@@ -43,6 +43,7 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 const STEPS = ['Aday ve sınıf', 'Kimlik ve veli', 'Ücret ve taksit', 'Kontrol'] as const
 const TARIFF_PAGE_SIZE = 100
 const OPEN_STAGES: readonly (string | undefined)[] = OPEN_PROSPECT_STAGES
+const OCCUPANCY_QUERY = { groupBy: 'classId', isActive: true } as const
 
 type Done = { studentName: string; contractId: string | null }
 
@@ -163,27 +164,26 @@ function EnrollmentForm({
   const errors = form.formState.errors
   const busy = enroll.isPending || form.formState.isSubmitting
 
-  const openProspects = useMemo(
-    () => (prospects.data ?? []).filter((row) => OPEN_STAGES.includes(row.record.stage)),
-    [prospects.data],
-  )
-  const activeClasses = useMemo(
-    () => (classes.data ?? []).filter((row) => row.record.isActive !== false),
-    [classes.data],
+  const openProspects = (prospects.data ?? []).filter((row) =>
+    OPEN_STAGES.includes(row.record.stage),
   )
   const prospect = openProspects.find((row) => row.id === values.prospectId)
-  const room = activeClasses.find((row) => row.id === values.classId)
-  const preview = useMemo(
-    () =>
-      previewEnrollment(tariff, values, {
-        institutionType,
-        level:
-          institutionType === 'language_school'
-            ? (room?.record.level ?? '')
-            : String(room?.record.grade ?? ''),
-      }),
-    [tariff, values, institutionType, room],
+  // Aday kampüsündeki etkin sınıflar; kampüs değişince eski seçim listeden düşer.
+  const branchId = prospect?.record.branchId
+  const activeClasses = (classes.data ?? []).filter(
+    (row) => row.record.isActive !== false && (!branchId || row.record.branchId === branchId),
   )
+  const occupancy = useCoreCounts('students', OCCUPANCY_QUERY)
+  const occupied = (classId: string) =>
+    occupancy.data?.groups.find((group) => group.value === classId)?.count ?? 0
+  const room = activeClasses.find((row) => row.id === values.classId)
+  const preview = previewEnrollment(tariff, values, {
+    institutionType,
+    level:
+      institutionType === 'language_school'
+        ? (room?.record.level ?? '')
+        : String(room?.record.grade ?? ''),
+  })
   const plan =
     preview.ok && Number(values.installmentCount) >= 1
       ? installmentAmounts(preview.price.netCents, Number(values.installmentCount))
@@ -192,6 +192,10 @@ function EnrollmentForm({
   async function next() {
     const valid = await form.trigger(ENROLLMENT_STEP_FIELDS[step] ?? [])
     if (!valid) return
+    if (step === 0 && !room) {
+      form.setError('classId', { type: 'branch', message: 'Adayın kampüsünden bir sınıf seçin.' })
+      return
+    }
     // Veli alanları adaydan dolar; kullanıcı dilediğini değiştirir.
     if (step === 0 && prospect) {
       if (!form.getValues('guardianName'))
@@ -286,8 +290,12 @@ function EnrollmentForm({
                   <NativeSelect {...control} {...form.register('classId')}>
                     <NativeSelectOption value="">Sınıf seçin</NativeSelectOption>
                     {activeClasses.map((row) => (
-                      <NativeSelectOption key={row.id} value={row.id}>
-                        {row.record.name} (kapasite {row.record.capacity})
+                      <NativeSelectOption
+                        key={row.id}
+                        value={row.id}
+                        disabled={occupied(row.id) >= row.record.capacity}
+                      >
+                        {row.record.name} ({occupied(row.id)}/{row.record.capacity})
                       </NativeSelectOption>
                     ))}
                   </NativeSelect>

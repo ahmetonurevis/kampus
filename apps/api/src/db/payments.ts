@@ -181,6 +181,37 @@ export async function allocatedTotals(
   return new Map(rows.map((row) => [row.invoiceId, Number(row.total)]))
 }
 
+/** Verilen taksitlere iptal edilmemiş tahsilatlardan dağıtılmış toplamlar. */
+export async function allocatedForInvoices(
+  db: Database,
+  institutionId: string,
+  invoiceIds: readonly string[],
+): Promise<Map<string, number>> {
+  if (invoiceIds.length === 0) return new Map()
+  const rows = await db
+    .select({
+      invoiceId: paymentAllocations.invoiceId,
+      total: sql<string>`sum(${paymentAllocations.amountCents})`,
+    })
+    .from(paymentAllocations)
+    .innerJoin(
+      payments,
+      and(
+        eq(payments.institutionId, paymentAllocations.institutionId),
+        eq(payments.id, paymentAllocations.paymentId),
+      ),
+    )
+    .where(
+      and(
+        eq(paymentAllocations.institutionId, institutionId),
+        inArray(paymentAllocations.invoiceId, [...invoiceIds]),
+        isNull(payments.reversedAt),
+      ),
+    )
+    .groupBy(paymentAllocations.invoiceId)
+  return new Map(rows.map((row) => [row.invoiceId, Number(row.total)]))
+}
+
 /** Ödeme veya iptal anı aralığa düşen tahsilatlar; kesin gün süzmesi core'dadır. */
 export async function paymentsTouchingPeriod(
   db: Database,

@@ -8,6 +8,7 @@ import {
   WITHDRAWAL_REASONS,
   withdrawalFormSchema,
   type PayRefundInput,
+  type PayRefundOutput,
   type WithdrawalBreakdown,
   type WithdrawalFormValues,
   type WithdrawalReason,
@@ -82,7 +83,7 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
         refundStatus: item.refundStatus,
         statusLabel: STATUS_LABELS[item.refundStatus],
         maskedIban: item.maskedIban,
-        breakdown: item.breakdown as WithdrawalBreakdown,
+        breakdown: item.breakdown,
         version: item.version,
       })),
     [withdrawals.data],
@@ -276,7 +277,7 @@ function StartModal({ onClose }: { onClose: () => void }) {
       },
       fields,
     )
-    if (outcome.status === 'success') setPreview(outcome.data.data.breakdown as WithdrawalBreakdown)
+    if (outcome.status === 'success') setPreview(outcome.data.data.breakdown)
   })
 
   async function confirm() {
@@ -469,14 +470,14 @@ function RefundModal({ row, onClose }: { row: WithdrawalRow; onClose: () => void
   const pay = usePayRefund()
   const today = dayKey()
   const [reauth, setReauth] = useState(false)
-  const form = useForm<PayRefundInput, unknown, PayRefundInput>({
-    resolver: zodResolver(payRefundSchema) as never,
+  const form = useForm<PayRefundInput, unknown, PayRefundOutput>({
+    resolver: zodResolver(payRefundSchema),
     defaultValues: { paidDate: today, iban: '', accountHolder: '' },
   })
   const busy = pay.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
 
-  async function send(values: PayRefundInput) {
+  async function send(values: PayRefundOutput) {
     const outcome = await pay.submit(
       { withdrawalId: row.id, version: row.version, body: values },
       {

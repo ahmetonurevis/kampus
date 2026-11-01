@@ -1,10 +1,6 @@
 import { useMemo } from 'react'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
-import {
-  meetingSummary,
-  upcomingMeetings,
-  type MeetingProspect,
-} from '@kampus/school-core/lib/prospect-form.ts'
+import { meetingSummary, upcomingMeetings } from '@kampus/school-core/lib/prospect-form.ts'
 import { EmptyState } from '@/components/EmptyState.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -31,7 +27,7 @@ export function MeetingsPage({ page }: { page: NavPage }) {
     () =>
       upcomingMeetings(
         (prospects.data ?? []).map((row) => ({
-          ...(row.record as unknown as MeetingProspect),
+          ...row.record,
           id: row.id,
         })),
         today,

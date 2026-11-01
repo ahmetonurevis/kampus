@@ -7,7 +7,6 @@ import {
   PROSPECT_LOST_REASON_LABELS,
   PROSPECT_LOST_REASONS,
   prospectStageLabel,
-  type ProspectFields,
   type ProspectLostReason,
   type ProspectStage,
 } from '@kampus/school-core/lib/prospects.ts'
@@ -32,18 +31,6 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 
 const LOST: ProspectStage = 'Vazgeçti'
 const DETAIL_TIME = { year: 'numeric', hour: '2-digit', minute: '2-digit' } as const
-
-type Prospect = ProspectFields & {
-  trialAt?: string | null
-  name: string
-  phone: string
-  email?: string
-  interest: string
-  source: string
-  stage: string
-  studentId?: string | null
-  notes?: readonly { id: string; text: string; date: string; author: string }[]
-}
 
 /**
  * Aday kartı (DOM-KAY-005, -030…-033): aşama yalnız ileri gider, vazgeçme nedenle girilir, not
@@ -74,7 +61,7 @@ function ProspectCard({ prospectId }: { prospectId: string }) {
   const item = useCoreItem('prospects', prospectId)
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
-  const prospect = item.data.record as unknown as Prospect
+  const prospect = item.data.record
   const version = item.data.version
   const enrolled = prospect.stage === 'Kayıt oldu'
   const closed = enrolled || prospect.stage === LOST
@@ -107,7 +94,7 @@ function ProspectCard({ prospectId }: { prospectId: string }) {
         <StageForm
           prospectId={prospectId}
           version={version}
-          stage={prospect.stage}
+          stage={prospect.stage ?? ''}
           key={prospect.stage}
         />
       ) : null}

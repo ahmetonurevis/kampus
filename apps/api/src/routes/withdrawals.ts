@@ -32,7 +32,7 @@ import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.
 const STAFF = ['yonetici', 'onburo'] as const
 
 const breakdownSchema = z.object({
-  institutionType: z.string(),
+  institutionType: z.enum(['school', 'language_school']),
   withdrawalDate: z.string(),
   termStartDate: z.string(),
   started: z.boolean().describe('Ayrılış dönem başladıktan sonra mı'),

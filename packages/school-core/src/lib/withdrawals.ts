@@ -89,6 +89,7 @@ export const payRefundSchema = z.strictObject({
   accountHolder: requiredText.max(120),
 })
 export type PayRefundInput = z.input<typeof payRefundSchema>
+export type PayRefundOutput = z.output<typeof payRefundSchema>
 
 export interface WithdrawalExtraLine {
   invoiceId: string

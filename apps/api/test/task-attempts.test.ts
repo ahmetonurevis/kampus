@@ -11,6 +11,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
+import { resourceVersions } from '../src/db/schema/resources.ts'
 import { taskAttempts } from '../src/db/schema/skills.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
@@ -859,6 +860,49 @@ describe('görev deneme uçları', () => {
       ),
       (error: unknown) => error instanceof AppError && error.statusCode === 404,
     )
+  })
+
+  test('IST-051: puanlama bağlamı kurulamayan atama için uyarı istek başına bir kez ve yalnız atama kimliğiyle loglanır (kursiyer sayısından bağımsız); özet unavailable', async () => {
+    const t = await tenant()
+    const assignmentId = await assignAsAdmin(t, [
+      { kind: 'class', id: '9-A' },
+      { kind: 'class', id: '9-B' },
+    ])
+    const twins = await signInAs(
+      app,
+      await createMember(app, t.institution.id, 'veli', [
+        { kind: 'child', recordId: 's-1' },
+        { kind: 'child', recordId: 's-3' },
+      ] as never),
+    )
+    // Veri bütünlüğü bozulur: puanlama sürümünün içeriği yok (bağlam kurulamaz).
+    await db
+      .update(resourceVersions)
+      .set({ status: 'removed', content: null, answerKey: null, removedAt: FIXED_NOW })
+      .where(
+        and(
+          eq(resourceVersions.institutionId, t.institution.id),
+          eq(resourceVersions.id, t.questionId),
+        ),
+      )
+    const from = logs.length
+    const [row] = (await ok(await call('GET', '/task-assignments', twins))).filter(
+      (item: Json) => item.id === assignmentId,
+    )
+    assert.deepEqual(
+      row.progress.map((item: Json) => [item.learnerId, item.blockedBy]),
+      [
+        ['s-1', 'unavailable'],
+        ['s-3', 'unavailable'],
+      ],
+    )
+    const warnings = logs
+      .slice(from)
+      .filter((line) => line.includes('task_progress.scoring_unavailable'))
+    assert.equal(warnings.length, 1)
+    assert.ok(warnings[0]!.includes(assignmentId), 'atama kimliği yok')
+    for (const text of ['s-1', 's-3', SECRET_STEM])
+      assert.ok(!warnings[0]!.includes(text), `${text} loglandı`)
   })
 
   test('DOM-BEC-043: log ve denetimde cevap ve öğrenci kimliği yok; denetime yalnız başlatma ve teslim, alan adlarıyla', async () => {

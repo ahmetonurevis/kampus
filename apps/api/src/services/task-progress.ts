@@ -83,6 +83,11 @@ async function loadWork(
     ),
     scoringContexts(ctx.db, ctx.institutionId, auto),
   ])
+  // Bağlam veri bütünlüğü sorunuyla kurulamadı: atama başına bir uyarı, yalnız atama kimliğiyle
+  // (kişisel veri ve içerik loglanmaz). Özet bu atamada `unavailable` döner.
+  for (const [assignmentId, context] of contexts)
+    if (context instanceof Error)
+      ctx.log.warn({ event: 'task_progress.scoring_unavailable', assignmentId })
   const grading = await loadGrading(
     ctx.db,
     ctx,
@@ -100,8 +105,6 @@ function progressOf(
   return targetedLearners(viewer.classOf, assignment).map((learnerId) => {
     if (assignment.scoringMode === 'auto') {
       const context = book.contexts.get(assignment.id) ?? new Error('scoring context missing')
-      // Bağlam veri bütünlüğü sorunuyla kurulamadı; kimlik ve içerik loglanmaz.
-      if (context instanceof Error) ctx.log.warn({ event: 'task_progress.scoring_unavailable' })
       const own = book.attempts.filter(
         (attempt) => attempt.assignmentId === assignment.id && attempt.learnerId === learnerId,
       )

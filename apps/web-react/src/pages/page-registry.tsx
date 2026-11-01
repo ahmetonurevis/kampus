@@ -85,8 +85,8 @@ const StudentPaymentsPage = lazy(async () => ({
   default: (await import('./finance/FamilyFinancePages.tsx')).StudentPaymentsPage,
 }))
 
-const TeacherHomeworkPage = lazy(async () => ({
-  default: (await import('./learning/TeacherHomeworkPage.tsx')).TeacherHomeworkPage,
+const TeacherTasksPage = lazy(async () => ({
+  default: (await import('./tasks/TeacherTasksPage.tsx')).TeacherTasksPage,
 }))
 const TeacherMaterialsPage = lazy(async () => ({
   default: (await import('./learning/TeacherMaterialsPage.tsx')).TeacherMaterialsPage,
@@ -220,7 +220,7 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
     case 'veli/ogretmen-degerlendirmeleri':
       return <TeacherReviewsPage page={page} />
     case 'ogretmen/odevler':
-      return <TeacherHomeworkPage page={page} />
+      return <TeacherTasksPage page={page} />
     case 'ogretmen/materyal-yukle':
       return <TeacherMaterialsPage page={page} />
     case 'ogretmen/quiz-olustur':

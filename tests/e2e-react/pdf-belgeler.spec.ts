@@ -187,7 +187,8 @@ test.describe('PDF: sözleşme', () => {
     const preview = page.getByRole('dialog', { name: 'Eğitim sözleşmesi · Önizleme' })
     await expect(preview.getByRole('img', { name: 'Eğitim sözleşmesi, sayfa 1' })).toBeVisible()
     const viewer = preview.getByLabel('PDF sayfa görünümü')
-    await expect(viewer).toContainText('Özel okul eğitim sözleşmesi')
+    // Başlık sözleşmenin kendi adıdır (DOM-FIN-010).
+    await expect(viewer).toContainText('eğitim sözleşmesi')
     await expect(viewer).toContainText('Arda Çelik')
     await expect(preview.getByRole('status').filter({ hasText: 'Sayfa 1 / 2' })).toBeVisible()
 

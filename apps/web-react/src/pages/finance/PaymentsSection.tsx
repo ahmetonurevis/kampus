@@ -7,6 +7,7 @@ import { usePaymentList, useReversePayment } from '@kampus/react-shared/use-paym
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Modal } from '@/components/Modal.tsx'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
@@ -93,25 +94,30 @@ export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
         ),
       },
       { key: 'status', label: 'Durum', cell: (row) => <StatusBadge text={row.status} /> },
-      ...(canReverse
-        ? [
-            {
-              key: ACTIONS_KEY,
-              label: 'İşlemler',
-              cell: (row: PaymentRow) =>
-                row.reversed ? null : (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    aria-label={`${row.receipt} numaralı tahsilatı iptal et`}
-                    onClick={() => setReversing(row)}
-                  >
-                    İptal et
-                  </Button>
-                ),
-            },
-          ]
-        : []),
+      {
+        key: ACTIONS_KEY,
+        label: 'İşlemler',
+        cell: (row: PaymentRow) => (
+          <span className="flex flex-wrap gap-2">
+            <PdfButton
+              type="payment-receipt"
+              recordId={row.id}
+              label="Dekont"
+              ariaLabel={`${row.receipt} numaralı dekontu görüntüle`}
+            />
+            {canReverse && !row.reversed ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`${row.receipt} numaralı tahsilatı iptal et`}
+                onClick={() => setReversing(row)}
+              >
+                İptal et
+              </Button>
+            ) : null}
+          </span>
+        ),
+      },
     ],
     [canReverse],
   )

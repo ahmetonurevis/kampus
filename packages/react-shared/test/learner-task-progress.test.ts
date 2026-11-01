@@ -7,6 +7,9 @@ import { createKampusClient } from '@kampus/api-client/client.ts'
 
 import { invalidateInstitutionQueries } from '../src/commands.ts'
 import {
+  assignmentListTruncated,
+  LEARNER_ASSIGNMENT_MAX_PAGES,
+  nextAssignmentPage,
   learnerAttemptsQuery,
   learnerProgressQueries,
   learnerSubmissionsQuery,
@@ -95,5 +98,31 @@ describe('kursiyer görev ilerleme sorguları', () => {
   test('sorgu gövdeleri ayrıntı ekranıyla aynıdır (önbellek paylaşımı)', () => {
     assert.deepEqual(learnerAttemptsQuery('x'), { assignmentId: 'x', pageSize: 100 })
     assert.deepEqual(learnerSubmissionsQuery('x'), { assignmentId: 'x', pageSize: 100 })
+  })
+})
+
+describe('kursiyer atama sayfalama (W22a)', () => {
+  const page = (count: number, total: number) => ({
+    data: Array.from({ length: count }, (_, i) => ({ id: `a-${i}` })) as never[],
+    meta: { total },
+  })
+
+  test('IST-051 yüklenen kayıt toplama ulaşana kadar sıradaki sayfa istenir', () => {
+    assert.equal(nextAssignmentPage([page(100, 230)]), 2)
+    assert.equal(nextAssignmentPage([page(100, 230), page(100, 230)]), 3)
+    assert.equal(nextAssignmentPage([page(100, 230), page(100, 230), page(30, 230)]), undefined)
+    assert.equal(nextAssignmentPage([page(40, 40)]), undefined)
+  })
+
+  test('boş son sayfa ya da sayfa üst sınırı sonsuz istek atmaz', () => {
+    assert.equal(nextAssignmentPage([page(100, 500), page(0, 500)]), undefined)
+    const many = Array.from({ length: LEARNER_ASSIGNMENT_MAX_PAGES }, () => page(100, 5000))
+    assert.equal(nextAssignmentPage(many), undefined)
+    assert.equal(assignmentListTruncated(many), true)
+  })
+
+  test('tam yüklenen liste kesilmiş sayılmaz', () => {
+    assert.equal(assignmentListTruncated(undefined), false)
+    assert.equal(assignmentListTruncated([page(100, 230), page(100, 230), page(30, 230)]), false)
   })
 })

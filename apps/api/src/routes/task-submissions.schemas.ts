@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { resubmissionRequestSchema } from '@kampus/school-core/skills/assignment.ts'
+import { BAND_MEANINGS, rubricScoreInputSchema } from '@kampus/school-core/skills/rubric.ts'
 import { SUBMISSION_TEXT_MAX } from '@kampus/school-core/skills/submission.ts'
 
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
@@ -8,7 +10,8 @@ import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts
  * Yazma görevinin taslak ve teslim şemaları (ADR 0004 karar 6; DOM-BEC-023, 040, 044, 046;
  * IST-047, IST-051). Gövde core `submissionVersionInputSchema` ve `draftInputSchema` biçimidir;
  * katıdır: istemcinin gönderdiği puan, sürüm numarası veya teslim anı 400 alır. Yazma otomatik
- * puanlanmaz; yanıtlarda puan alanı yoktur (rubrik puanlaması F4b3b).
+ * puanlanmaz (DOM-BEC-023); puan öğretmenin rubrik puanıdır (F4b3b1), her okumada kriter
+ * bantlarından hesaplanır ve kursiyere geri bildirim açılınca görünür (DOM-BEC-045).
  */
 
 const id = z.uuid()
@@ -65,6 +68,48 @@ const wordCountSchema = z
   })
   .meta({ id: 'TaskWordCount' })
 
+const scoreBriefShape = {
+  settled: z
+    .boolean()
+    .describe(
+      'Puan kesinleşti mi (core `scoreResolution`); kesinleşmemiş puanı yalnız personel görür',
+    ),
+  rubricVersionId: id.describe(
+    'Puanın verildiği rubrik sürümü (atamanın sabitlediği; DOM-BEC-022)',
+  ),
+  total: z.number().int().min(0).describe('Ağırlıklı bant toplamı; saklanmaz, okunurken'),
+  max: z.number().int().min(1).describe('Azami ağırlıklı bant toplamı'),
+  percent: z.number().int().min(0).max(100).describe('100 üzerinden puan (DOM-BEC-021)'),
+  scoredAt: instant,
+}
+
+const taskScoreBriefSchema = z
+  .object(scoreBriefShape)
+  .meta({ id: 'TaskScoreBrief' })
+  .describe(
+    'Son sürümün puan özeti; kursiyer ve veliye geri bildirim açılmadan `null` (DOM-BEC-045)',
+  )
+
+const taskScoreSchema = z
+  .object({
+    ...scoreBriefShape,
+    criteria: z.array(
+      z.object({
+        criterionId: z.string(),
+        band: z.number().int().min(0).max(5),
+        weight: z.number().int().min(1),
+        weighted: z.number().int().min(0),
+        meaning: z.enum(Object.keys(BAND_MEANINGS) as [keyof typeof BAND_MEANINGS]),
+        comment: z.string().nullable(),
+      }),
+    ),
+    overallComment: z.string().describe('Öğretmenin genel geri bildirimi'),
+  })
+  .meta({ id: 'TaskScore' })
+  .describe(
+    'Sürümün rubrik puanı ve geri bildirimi; puanlanmamışsa ya da kursiyer ve veliye henüz açılmadıysa `null` (DOM-BEC-045)',
+  )
+
 const versionShape = {
   id,
   number: z.number().int().min(1),
@@ -81,8 +126,16 @@ const summaryShape = {
     .enum(['pending', 'submitted', 'late', 'not_submitted'])
     .describe('Son sürüme göre teslim durumu (DOM-BEC-044)'),
   versionCount: z.number().int().min(0),
-  latestVersion: z.object(versionShape).nullable(),
-  rowVersion: z.number().int().min(1).describe('Teslim kaydının satır sürümü'),
+  latestVersion: z.object({ ...versionShape, score: taskScoreBriefSchema.nullable() }).nullable(),
+  resubmission: z
+    .object({ versionNumber: z.number().int().min(1), dueAt: instant })
+    .nullable()
+    .describe('Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040)'),
+  rowVersion: z
+    .number()
+    .int()
+    .min(1)
+    .describe('Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`'),
 }
 
 const taskSubmissionSchema = z.object(summaryShape).meta({ id: 'TaskSubmission' })
@@ -95,6 +148,7 @@ const taskSubmissionDetailSchema = z
         z.object({
           ...versionShape,
           body: z.string().nullable().describe('Gönderilen metin; değişmez'),
+          score: taskScoreSchema.nullable(),
         }),
       )
       .describe('Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez'),
@@ -131,7 +185,25 @@ const taskDraftSchema = z
   })
   .meta({ id: 'TaskDraft' })
 
+/**
+ * Rubrik puanı gövdesi (DOM-BEC-021): core `rubricScoreInputSchema` ve puanlanan sürüm numarası.
+ * Katıdır: istemcinin toplamı, yüzdesi, rubrik sürümü veya puanlayıcı rolü 400 alır; kriter
+ * satırındaki fazladan alan (ör. `weighted`) yok sayılır. Toplam sunucuda hesaplanır.
+ */
+export const taskScoreBodySchema = z.strictObject({
+  versionNumber: z.number().int().min(1).describe('Puanlanan sürüm; yalnız son sürüm puanlanır'),
+  ...rubricScoreInputSchema.shape,
+})
+
+/** Yeniden teslim isteği gövdesi: core `resubmissionRequestSchema` (DOM-BEC-040), katı. */
+export const taskResubmissionBodySchema = z.strictObject({ ...resubmissionRequestSchema.shape })
+
+export const gradingQueueQuerySchema = pageQuerySchema
+  .extend({ assignmentId: id.optional().describe('Atama süzgeci') })
+  .strict()
+
 export const taskSubmissionListResponseSchema = pageResponse(taskSubmissionSchema)
+export const gradingQueueResponseSchema = pageResponse(taskSubmissionSchema)
 export const taskSubmissionDetailResponseSchema = dataResponse(taskSubmissionDetailSchema)
 export const taskDraftResponseSchema = dataResponse(taskDraftSchema)
 export const taskDraftReadResponseSchema = dataResponse(

@@ -774,15 +774,13 @@ export interface AssignmentListQuery {
 }
 
 /**
- * Kurumun arşivlenmemiş atamaları, en yeni önce (IST-034). Kursiyer süzgeci arşivlenmemiş hedefler
- * üzerinde `exists` alt sorgusudur (`task_assignment_targets_target_idx`); boş kimlik listesi hiçbir
- * satır vermez. Sayım aynı koşulla ayrı sorgudur.
+ * Atama listesinin rol kapsamı süzgeci (`assignedByUserId` veya `learnerTargets`, ikisi "veya" ile);
+ * ikisi de yoksa `undefined` (yönetici). Atama listesi ve puanlama kuyruğu ortak kullanır.
  */
-export async function listAssignments(
+function assignmentScopeFilter(
   db: Database,
-  institutionId: string,
-  query: AssignmentListQuery,
-): Promise<{ rows: StoredAssignment[]; total: number }> {
+  query: Pick<AssignmentListQuery, 'assignedByUserId' | 'learnerTargets'>,
+) {
   const a = taskAssignments
   const t = taskAssignmentTargets
   const learnerFilter = (() => {
@@ -815,10 +813,23 @@ export async function listAssignments(
     query.assignedByUserId === undefined
       ? undefined
       : eq(a.assignedByUserId, query.assignedByUserId)
-  const scopeFilter =
-    ownerFilter !== undefined && learnerFilter !== undefined
-      ? or(ownerFilter, learnerFilter)
-      : (ownerFilter ?? learnerFilter)
+  return ownerFilter !== undefined && learnerFilter !== undefined
+    ? or(ownerFilter, learnerFilter)
+    : (ownerFilter ?? learnerFilter)
+}
+
+/**
+ * Kurumun arşivlenmemiş atamaları, en yeni önce (IST-034). Kursiyer süzgeci arşivlenmemiş hedefler
+ * üzerinde `exists` alt sorgusudur (`task_assignment_targets_target_idx`); boş kimlik listesi hiçbir
+ * satır vermez. Sayım aynı koşulla ayrı sorgudur.
+ */
+export async function listAssignments(
+  db: Database,
+  institutionId: string,
+  query: AssignmentListQuery,
+): Promise<{ rows: StoredAssignment[]; total: number }> {
+  const a = taskAssignments
+  const scopeFilter = assignmentScopeFilter(db, query)
   const where = and(
     eq(a.institutionId, institutionId),
     isNull(a.archivedAt),
@@ -1363,6 +1374,101 @@ export async function listSubmissions(
   return { rows: await withVersions(db, institutionId, rows), total: totals?.total ?? 0 }
 }
 
+/**
+ * Teslim kaydının satır sürümünü artırır: puan ve yeniden teslim isteği teslimi değiştirir, böylece
+ * `If-Match` ile gelen eşzamanlı ikinci istek 409 `version_conflict` alır. Sürümler, puanlar ve
+ * istekler ayrı değişmez satırlardır; bu kolon yalnız iyimser kilittir.
+ */
+export async function touchSubmission(
+  tx: Database,
+  institutionId: string,
+  submission: Pick<StoredSubmission, 'id' | 'rowVersion'>,
+  now: Date,
+): Promise<number> {
+  const [row] = await tx
+    .update(taskSubmissions)
+    .set({ updatedAt: now, version: sql`${taskSubmissions.version} + 1` })
+    .where(
+      and(
+        eq(taskSubmissions.institutionId, institutionId),
+        eq(taskSubmissions.id, submission.id),
+        eq(taskSubmissions.version, submission.rowVersion),
+        isNull(taskSubmissions.archivedAt),
+      ),
+    )
+    .returning({ version: taskSubmissions.version })
+  if (row === undefined) throw new ConflictError()
+  return row.version
+}
+
+/** Puanlama kuyruğunun süzgeçleri; rol kapsamı servisten gelir (`AssignmentListQuery` ile aynı). */
+export interface GradingQueueQuery extends Pick<
+  AssignmentListQuery,
+  'assignedByUserId' | 'learnerTargets'
+> {
+  assignmentId?: string | undefined
+  page: number
+  pageSize: number
+}
+
+/**
+ * Puanlanmayı bekleyen teslimler (F4b3b1; DOM-BEC-021, 040): arşivlenmemiş, rubrikli atamanın
+ * teslimi ve son sürümünün ilk puanı yok. En eski son gönderim önce (bekleyen önce puanlanır).
+ * Kapsam süzgeci atama listesininkidir; servis satırları yine `visible` ile doğrular.
+ */
+// TODO(F4b3b2): İkinci puanlayıcı ve koordinatör kuyruğu (DOM-BEC-024) ile puanlama süresi
+// (DOM-BEC-025, `gradingOverdue`) bu listeye eklenmedi.
+export async function listAwaitingScore(
+  db: Database,
+  institutionId: string,
+  query: GradingQueueQuery,
+): Promise<{ rows: StoredSubmissionWork[]; total: number }> {
+  const s = taskSubmissions
+  const a = taskAssignments
+  const scopeFilter = assignmentScopeFilter(db, query)
+  const latestNumber = sql`(select max(lv.version_number) from ${submissionVersions} lv
+    where lv.institution_id = ${s.institutionId} and lv.submission_id = ${s.id}
+      and lv.archived_at is null)`
+  const latestSubmittedAt = sql`(select max(lv.submitted_at) from ${submissionVersions} lv
+    where lv.institution_id = ${s.institutionId} and lv.submission_id = ${s.id}
+      and lv.archived_at is null)`
+  const unscored = sql`not exists (select 1 from ${rubricScores} rs
+    join ${submissionVersions} sv
+      on sv.institution_id = rs.institution_id and sv.id = rs.submission_version_id
+    where rs.institution_id = ${s.institutionId} and sv.submission_id = ${s.id}
+      and rs.rater_role = 'first' and sv.version_number = ${latestNumber})`
+  const where = and(
+    eq(s.institutionId, institutionId),
+    isNull(s.archivedAt),
+    isNull(a.archivedAt),
+    sql`${a.rubricVersionId} is not null`,
+    sql`${latestNumber} is not null`,
+    unscored,
+    ...(scopeFilter === undefined ? [] : [scopeFilter]),
+    ...(query.assignmentId === undefined ? [] : [eq(s.assignmentId, query.assignmentId)]),
+  )
+  const joinAssignment = and(eq(a.institutionId, s.institutionId), eq(a.id, s.assignmentId))
+  const [rows, [totals]] = await Promise.all([
+    db
+      .select({ submission: s })
+      .from(s)
+      .innerJoin(a, joinAssignment)
+      .where(where)
+      .orderBy(asc(latestSubmittedAt), asc(s.id))
+      .limit(query.pageSize)
+      .offset((query.page - 1) * query.pageSize),
+    db.select({ total: count() }).from(s).innerJoin(a, joinAssignment).where(where),
+  ])
+  return {
+    rows: await withVersions(
+      db,
+      institutionId,
+      rows.map((row) => row.submission),
+    ),
+    total: totals?.total ?? 0,
+  }
+}
+
 // --- Taslak -------------------------------------------------------------------------------
 
 /** Core `planDraftSave`'in çakışma mesajı (`draft_conflict`). */
@@ -1513,8 +1619,19 @@ export async function loadSubmissionScores(
   institutionId: string,
   submissionId: string,
 ): Promise<RubricScoreRow[]> {
+  return (await loadScoresBySubmission(db, institutionId, [submissionId])).get(submissionId) ?? []
+}
+
+/** Teslimlerin puanları tek sorguda: teslim kimliği → puanlar (puanlama sırasıyla). */
+export async function loadScoresBySubmission(
+  db: Database,
+  institutionId: string,
+  submissionIds: readonly string[],
+): Promise<Map<string, RubricScoreRow[]>> {
+  const bySubmission = new Map<string, RubricScoreRow[]>()
+  if (submissionIds.length === 0) return bySubmission
   const rows = await db
-    .select({ score: rubricScores })
+    .select({ score: rubricScores, submissionId: submissionVersions.submissionId })
     .from(rubricScores)
     .innerJoin(
       submissionVersions,
@@ -1526,20 +1643,25 @@ export async function loadSubmissionScores(
     .where(
       and(
         eq(rubricScores.institutionId, institutionId),
-        eq(submissionVersions.submissionId, submissionId),
+        inArray(submissionVersions.submissionId, [...submissionIds]),
       ),
     )
     .orderBy(asc(rubricScores.scoredAt), asc(rubricScores.id))
-  return rows.map(({ score }) => ({
-    id: score.id,
-    submissionVersionId: score.submissionVersionId,
-    rubricVersionId: score.rubricVersionId,
-    raterUserId: score.raterUserId,
-    raterRole: score.raterRole,
-    criteria: score.criteria,
-    overallComment: score.overallComment,
-    scoredAt: iso(score.scoredAt),
-  }))
+  for (const { score, submissionId } of rows) {
+    const list = bySubmission.get(submissionId) ?? []
+    list.push({
+      id: score.id,
+      submissionVersionId: score.submissionVersionId,
+      rubricVersionId: score.rubricVersionId,
+      raterUserId: score.raterUserId,
+      raterRole: score.raterRole,
+      criteria: score.criteria,
+      overallComment: score.overallComment,
+      scoredAt: iso(score.scoredAt),
+    })
+    bySubmission.set(submissionId, list)
+  }
+  return bySubmission
 }
 
 /**
@@ -1579,17 +1701,27 @@ export async function isSecondRatingRequested(
   institutionId: string,
   submissionId: string,
 ): Promise<boolean> {
-  const [row] = await db
-    .select({ n: count() })
+  return (await secondRatingRequestedAmong(db, institutionId, [submissionId])).has(submissionId)
+}
+
+/** Teslimlerden arşivlenmemiş ikinci puanlama isteği olanlar (tek sorgu). */
+export async function secondRatingRequestedAmong(
+  db: Database,
+  institutionId: string,
+  submissionIds: readonly string[],
+): Promise<Set<string>> {
+  if (submissionIds.length === 0) return new Set()
+  const rows = await db
+    .select({ submissionId: secondRatingRequests.submissionId })
     .from(secondRatingRequests)
     .where(
       and(
         eq(secondRatingRequests.institutionId, institutionId),
-        eq(secondRatingRequests.submissionId, submissionId),
+        inArray(secondRatingRequests.submissionId, [...submissionIds]),
         isNull(secondRatingRequests.archivedAt),
       ),
     )
-  return (row?.n ?? 0) > 0
+  return new Set(rows.map((row) => row.submissionId))
 }
 
 // --- İtiraz -------------------------------------------------------------------------------

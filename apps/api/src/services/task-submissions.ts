@@ -4,8 +4,11 @@ import { deadlineForVersion } from '@kampus/school-core/skills/assignment.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import {
   gradedVersionNumbers,
+  rubricScore,
   scoreResolution,
+  scoresVisibleToRater,
   type RubricScoreRow,
+  type RubricVersionData,
 } from '@kampus/school-core/skills/rubric.ts'
 import { teacherFeedbackReleased } from '@kampus/school-core/skills/scoring.ts'
 import {
@@ -25,6 +28,7 @@ import {
 import type { Database } from '../db/client.ts'
 import {
   findAssignment,
+  findRubricVersion,
   findSubmission,
   insertSubmission,
   insertSubmissionVersion,
@@ -32,8 +36,10 @@ import {
   listSubmissions,
   loadDraft,
   loadSubmission,
+  loadScoresBySubmission,
   loadSubmissionScores,
   saveDraft,
+  secondRatingRequestedAmong,
   type StoredAssignment,
   type StoredSubmissionWork,
 } from '../db/skills.ts'
@@ -95,6 +101,122 @@ function versionView(
   }
 }
 
+// --- Puan ve geri bildirim görünümü ---------------------------------------------------------
+
+/** Teslimin puanlama durumu: bütün sürümlerin puanları ve ikinci puanlama isteği. */
+type Grading = { scores: readonly RubricScoreRow[]; secondRatingRequested: boolean }
+/** Puanların rubrik sürümleri (kimlik → kriterler); puan bunlarla hesaplanır (DOM-BEC-022). */
+type RubricsById = ReadonlyMap<string, RubricVersionData>
+type GradingBook = { bySubmission: ReadonlyMap<string, Grading>; rubrics: RubricsById }
+
+const NO_GRADING: Grading = { scores: [], secondRatingRequested: false }
+
+/** Teslimlerin puanları, ikinci puanlama istekleri ve puanların rubrik sürümleri (toplu). */
+async function loadGrading(
+  db: Database,
+  ctx: ServiceContext,
+  submissionIds: readonly string[],
+): Promise<GradingBook> {
+  const [scores, second] = await Promise.all([
+    loadScoresBySubmission(db, ctx.institutionId, submissionIds),
+    secondRatingRequestedAmong(db, ctx.institutionId, submissionIds),
+  ])
+  const rubricIds = [...new Set([...scores.values()].flat().map((score) => score.rubricVersionId))]
+  const rubrics = new Map<string, RubricVersionData>()
+  for (const version of await Promise.all(
+    rubricIds.map((id) => findRubricVersion(db, ctx.institutionId, id)),
+  ))
+    if (version !== null) rubrics.set(version.id, version)
+  return {
+    bySubmission: new Map(
+      submissionIds.map((id) => [
+        id,
+        { scores: scores.get(id) ?? [], secondRatingRequested: second.has(id) },
+      ]),
+    ),
+    rubrics,
+  }
+}
+
+/**
+ * Sürümün kişiye gösterilen puanı (DOM-BEC-021, 024, 045). Kesinleşmiş puan (core
+ * `scoreResolution`) personele her zaman, kursiyer ve veliye yalnız geri bildirim açılınca
+ * (`teacherFeedbackReleased`) görünür; açılmadan önce kursiyerin gördüğü, hiç puanlanmamış sürümle
+ * aynıdır (`null`). Kesinleşmemiş puanı yalnız personel görür, core `scoresVisibleToRater` ile:
+ * öğretmen kendi puanını, yönetici bütün puanları (en yenisi gösterilir).
+ */
+// TODO(F4b3b2): Yöneticinin koordinatör sayılması geçicidir; akademik koordinatör yetkisi
+// (DOM-YTK-027) üyelikte tanımlanınca `coordinator` oradan okunur.
+function shownScore(
+  viewer: Viewer,
+  ctx: ServiceContext,
+  grading: Grading,
+  versionId: string,
+): { row: RubricScoreRow; settled: boolean } | null {
+  const scores = grading.scores.filter((score) => score.submissionVersionId === versionId)
+  const resolution = scoreResolution({
+    scores,
+    secondRatingRequested: grading.secondRatingRequested,
+  })
+  if (resolution.status === 'settled') {
+    if (viewer.kind !== 'learner' || teacherFeedbackReleased(resolution.settledAt, ctx.now))
+      return { row: resolution.score, settled: true }
+    return null
+  }
+  if (viewer.kind === 'learner') return null
+  const visibleScores = scoresVisibleToRater({
+    scores,
+    viewer: { userId: ctx.actor.userId, coordinator: viewer.kind === 'admin' },
+    secondRatingRequested: grading.secondRatingRequested,
+  })
+  const row = visibleScores.at(-1)
+  return row === undefined ? null : { row, settled: false }
+}
+
+/** Puanın özeti: toplam her okumada kriter bantlarından hesaplanır, saklanmaz (DOM-BEC-021). */
+function scoreSummary(
+  ctx: ServiceContext,
+  rubrics: RubricsById,
+  shown: { row: RubricScoreRow; settled: boolean } | null,
+) {
+  if (shown === null) return null
+  const rubric = rubrics.get(shown.row.rubricVersionId)
+  if (rubric === undefined) {
+    // Puanın rubrik sürümü yabancı anahtarla korunur; bulunamaması veri bütünlüğü sorunudur.
+    ctx.log.warn({ event: 'task_submission.rubric_missing' })
+    return null
+  }
+  const result = rubricScore(rubric, shown.row.criteria)
+  return { result, row: shown.row, settled: shown.settled }
+}
+
+function scoreBrief(summary: ReturnType<typeof scoreSummary>) {
+  if (summary === null) return null
+  return {
+    settled: summary.settled,
+    rubricVersionId: summary.row.rubricVersionId,
+    total: summary.result.total,
+    max: summary.result.max,
+    percent: summary.result.percent,
+    scoredAt: summary.row.scoredAt,
+  }
+}
+
+/** Puan ve geri bildirim: kriter bantları, ağırlıklar, kriter yorumları ve genel yorum. */
+function scoreFeedback(summary: ReturnType<typeof scoreSummary>) {
+  const brief = scoreBrief(summary)
+  if (summary === null || brief === null) return null
+  const comments = new Map(summary.row.criteria.map((c) => [c.criterionId, c.comment]))
+  return {
+    ...brief,
+    criteria: summary.result.criteria.map((criterion) => ({
+      ...criterion,
+      comment: comments.get(criterion.criterionId) ?? null,
+    })),
+    overallComment: summary.row.overallComment,
+  }
+}
+
 /** Teslimin durumu son sürümün kendi süresine göredir (yeniden teslim süresi dahil). */
 function statusOf(assignment: StoredAssignment, work: StoredSubmissionWork, now: Date) {
   const latest = work.versions.at(-1)
@@ -106,17 +228,43 @@ function statusOf(assignment: StoredAssignment, work: StoredSubmissionWork, now:
   return submissionStatus(work.versions, deadline, now)
 }
 
-function summaryView(assignment: StoredAssignment, work: StoredSubmissionWork, now: Date) {
+function summaryView(
+  viewer: Viewer,
+  ctx: ServiceContext,
+  book: GradingBook,
+  assignment: StoredAssignment,
+  work: StoredSubmissionWork,
+) {
   const latest = work.versions.at(-1)
+  const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
   return {
     id: work.submission.id,
     assignmentId: work.submission.assignmentId,
     learnerId: work.submission.learnerId,
-    status: statusOf(assignment, work, now),
+    status: statusOf(assignment, work, ctx.now),
     versionCount: work.versions.length,
-    latestVersion: latest === undefined ? null : versionView(assignment, work, latest),
+    latestVersion:
+      latest === undefined
+        ? null
+        : {
+            ...versionView(assignment, work, latest),
+            score: scoreBrief(
+              scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, latest.id)),
+            ),
+          },
+    resubmission: resubmissionOf(work),
     rowVersion: work.submission.rowVersion,
   }
+}
+
+/**
+ * Son yeniden teslim isteği (DOM-BEC-040). İstek yalnız kesinleşmiş puandan sonra açılır
+ * (`planResubmissionRequest`); kesinleşme anında geri bildirim de açıldığı için kursiyere
+ * gösterilmesi puanı erken sızdırmaz.
+ */
+function resubmissionOf(work: StoredSubmissionWork) {
+  const latest = work.resubmissions.at(-1)
+  return latest === undefined ? null : { versionNumber: latest.versionNumber, dueAt: latest.dueAt }
 }
 
 /**
@@ -143,7 +291,7 @@ async function feedbackReleased(
 type BlockedBy = VersionAllowance['blockedBy'] | 'locked'
 const LOCKED_MESSAGE = 'Bu teslim için şu an yeni sürüm gönderilemez.'
 
-async function detailView(
+export async function detailView(
   db: Database,
   ctx: ServiceContext,
   viewer: Viewer,
@@ -151,7 +299,9 @@ async function detailView(
   work: StoredSubmissionWork,
 ) {
   const settings = settingsOf(assignment)
-  const scores = await loadSubmissionScores(db, ctx.institutionId, work.submission.id)
+  const book = await loadGrading(db, ctx, [work.submission.id])
+  const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
+  const scores = grading.scores
   const computed =
     settings === null
       ? null
@@ -168,13 +318,39 @@ async function detailView(
   const allowance: (Omit<VersionAllowance, 'blockedBy'> & { blockedBy: BlockedBy }) | null =
     computed === null ? null : { ...computed, blockedBy: masked ? 'locked' : computed.blockedBy }
   return {
-    ...summaryView(assignment, work, ctx.now),
+    ...summaryView(viewer, ctx, book, assignment, work),
     versions: work.versions.map((version) => ({
       ...versionView(assignment, work, version),
       body: version.body,
+      score: scoreFeedback(
+        scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, version.id)),
+      ),
     })),
     allowance,
   }
+}
+
+/**
+ * Teslim özetleri (liste ve puanlama kuyruğu): puanlar tek seferde yüklenir. Her satırın ataması
+ * `assignments`'ta olmalıdır.
+ */
+export async function listSummaries(
+  db: Database,
+  ctx: ServiceContext,
+  viewer: Viewer,
+  assignments: ReadonlyMap<string, StoredAssignment>,
+  rows: readonly StoredSubmissionWork[],
+) {
+  const book = await loadGrading(
+    db,
+    ctx,
+    rows.map((work) => work.submission.id),
+  )
+  return rows.map((work) => {
+    const assignment = assignments.get(work.submission.assignmentId)
+    if (assignment === undefined) throw new Error('submission summary without its assignment')
+    return summaryView(viewer, ctx, book, assignment, work)
+  })
 }
 
 // --- Okuma --------------------------------------------------------------------------------
@@ -216,7 +392,10 @@ export async function listTaskSubmissions(ctx: ServiceContext, input: TaskSubmis
     page: input.page,
     pageSize: input.pageSize,
   })
-  return { total, items: rows.map((work) => summaryView(assignment, work, ctx.now)) }
+  return {
+    total,
+    items: await listSummaries(ctx.db, ctx, viewer, new Map([[assignment.id, assignment]]), rows),
+  }
 }
 
 /** Tek teslim ve bütün sürümleri (taslak asla); kapsam dışı veya başka kurumun kaydı 404. */

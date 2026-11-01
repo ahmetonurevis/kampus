@@ -31,8 +31,9 @@ import { runCommand, type CommandResponse, type LoadScope } from './operation-ru
  * `student`, veli bağlı çocuğunun `parent` bildirimini görür; personelin bildirimi yoktur (boş
  * liste). Kapsam üyelik bağlantılarındandır; istemcinin gönderdiği kimlik okunmaz.
  *
- * Okuma SQL'dedir (`db/notifications.ts`): sayfa, toplam ve okunmamış sayısı kurumun bütün
- * bildirimleri uygulamaya çekilmeden hesaplanır; başlık core şablonundan yalnız sayfadaki
+ * Okuma SQL'dedir (`db/notifications.ts`): imleçli sayfa (`limit + 1` satır, `meta.nextCursor`;
+ * toplam dönmez) ve ayrı uçtaki okunmamış sayısı kurumun bütün bildirimleri uygulamaya
+ * çekilmeden hesaplanır; başlık core şablonundan yalnız sayfadaki
  * öğrencilerin adıyla üretilir. Okundu işaretleri yalnız aktörün gördüğü bildirimleri ve kendi
  * işaretlerini yükler; kapsam kaynağı yalnız yetki (modül, rol) içindir, yüklenmez.
  *

@@ -1,6 +1,6 @@
 # Demo sayfaları
 
-Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’una yönlenir.
+Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’una yönlenir. Geliştirmede giriş ekranında Kolay giriş penceresi; üretimde yok.
 
 React web (`apps/web-react`, `pnpm dev:react`) sayfaları API'den okur; taşınmayan sayfalar yer tutucudur. Taşınan sayfalar finans, akademik yazma ve okul iş akışları dışında yalnız okuma yapar: sunucu sayfalı tablo, arama/filtre/sıralama/sayfa ve sağ panel URL'dedir, CSV tüm filtrelenmiş sonucu içerir. Kapsam sunucuda uygulanır; kapsam dışı ayrıntı adresi "Kayıt bulunamadı" görünümüne düşer (API 404).
 

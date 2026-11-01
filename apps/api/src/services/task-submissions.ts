@@ -503,7 +503,9 @@ export function learnerSubmissionProgress(
     score:
       latest === undefined
         ? null
-        : scoreBrief(scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, latest))),
+        : scoreBrief(
+            scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, assignment, grading, latest)),
+          ),
   }
 }
 

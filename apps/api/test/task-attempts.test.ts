@@ -480,8 +480,16 @@ describe('görev deneme uçları', () => {
     }
     const fresh = (await progressOf(assignmentId, t.cookies.student)).progress[0]
     assert.deepEqual(
-      [fresh.status, fresh.used, fresh.limit, fresh.remaining, fresh.canAct, fresh.score],
-      ['pending', 0, 2, 2, true, null],
+      [
+        fresh.status,
+        fresh.used,
+        fresh.limit,
+        fresh.remaining,
+        fresh.canAct,
+        fresh.actionableUntil,
+        fresh.score,
+      ],
+      ['pending', 0, 2, 2, true, DUE, null],
     )
     const wrong = await answer('a')
     const right = await answer('b')
@@ -501,6 +509,7 @@ describe('görev deneme uçları', () => {
         limit: 2,
         remaining: 0,
         canAct: false,
+        actionableUntil: null,
         blockedBy: 'limit',
         score: { earned: 1, possible: 1, percent: 100 },
       })
@@ -523,10 +532,16 @@ describe('görev deneme uçları', () => {
     assert.deepEqual(both.map((r) => r.statusCode).sort(), [201, 409])
   })
 
-  test('DOM-BEC-043: süre dolunca cevap kaydı 422; deneme kaydedilmiş cevaplarla otomatik teslim sayılır; teslim gönderilen cevabı almaz', async () => {
+  test('DOM-BEC-043, IST-051: özet süren denemenin bitişini verir; süre dolunca cevap kaydı 422; deneme kaydedilmiş cevaplarla otomatik teslim sayılır; teslim gönderilen cevabı almaz', async () => {
     const t = await tenant()
     const assignmentId = await assign(t, { timeLimitMinutes: 10 })
     const attempt = await ok(await start(assignmentId, t.cookies.student), 201)
+    // IST-051: süren denemenin özeti deneme bitişinde eskir (süre dolunca istemci yeniden okur).
+    const running = (await progressOf(assignmentId, t.cookies.student)).progress[0]
+    assert.deepEqual(
+      [running.status, running.actionableUntil],
+      ['in_progress', new Date(FIXED_NOW.getTime() + 10 * MINUTE).toISOString()],
+    )
     at(5 * MINUTE)
     const saved = await ok(
       await save(attempt.id, t.cookies.student, { [t.questionId]: choice('b') }, 1),

@@ -4100,6 +4100,8 @@ export interface components {
             remaining: number | null;
             /** @description Şu an yeni deneme başlatılabilir veya yeni sürüm gönderilebilir */
             canAct: boolean;
+            /** @description Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045) */
+            actionableUntil: string | null;
             /** @description `canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
             blockedBy: ("in_progress" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
             /** @description Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045) */
@@ -6053,6 +6055,8 @@ export interface components {
             remaining: number | null;
             /** @description Şu an yeni deneme başlatılabilir veya yeni sürüm gönderilebilir */
             canAct: boolean;
+            /** @description Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045) */
+            actionableUntil: string | null;
             /** @description `canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
             blockedBy: ("in_progress" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
             /** @description Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045) */

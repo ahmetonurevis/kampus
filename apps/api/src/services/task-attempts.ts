@@ -11,6 +11,7 @@ import {
   planAttemptStart,
   planAttemptSubmit,
   scoreAttempt,
+  submissionWindow,
   type Answers,
   type CompletedAttempt,
 } from '@kampus/school-core/skills/scoring.ts'
@@ -228,6 +229,12 @@ export function learnerAttemptProgress(
     remaining: limit === null ? null : Math.max(0, limit - attempts.length),
     canAct: blockedBy === null,
     blockedBy,
+    // Süren deneme bitince ya da (yeni deneme açıkken) pencere kapanınca özet değişir.
+    actionableUntil: running
+      ? running.state.endsAt
+      : blockedBy === null
+        ? submissionWindow(assignment.deadline).closesAt
+        : null,
     score:
       score === null
         ? null

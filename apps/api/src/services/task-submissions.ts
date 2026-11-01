@@ -15,7 +15,11 @@ import {
   type RubricVersionData,
   type ScoreResolution,
 } from '@kampus/school-core/skills/rubric.ts'
-import { isClosed, teacherFeedbackReleased } from '@kampus/school-core/skills/scoring.ts'
+import {
+  isClosed,
+  submissionWindow,
+  teacherFeedbackReleased,
+} from '@kampus/school-core/skills/scoring.ts'
 import {
   canReadDraft,
   planDraftSave,
@@ -436,6 +440,14 @@ export function learnerSubmissionProgress(
     latest?.number ?? 1,
   )
   const resubmission = work === null ? null : resubmissionOf(work)
+  const allowance = allowanceOf(ctx, viewer, assignment, work, grading)
+  // Yeni sürüm açıkken bir sonraki sürümün penceresi (istenen yeniden teslim dahil) kapanınca
+  // özet değişir. Geri bildirimin açılma anı verilmez (DOM-BEC-045).
+  const next = deadlineForVersion(
+    assignment.deadline,
+    work?.submission ?? null,
+    (latest?.number ?? 0) + 1,
+  )
   return {
     submissionId: work?.submission.id ?? null,
     status: submissionStatus(work?.versions ?? [], deadline, ctx.now),
@@ -443,7 +455,8 @@ export function learnerSubmissionProgress(
     // İstek kesinleşmiş puandan sonra açılır ve o an geri bildirim de açıktır (`resubmissionOf`).
     resubmissionRequested:
       resubmission !== null && latest !== undefined && latest.number <= resubmission.versionNumber,
-    allowance: allowanceOf(ctx, viewer, assignment, work, grading),
+    allowance,
+    actionableUntil: allowance?.canSubmit ? submissionWindow(next).closesAt : null,
     score:
       latest === undefined
         ? null

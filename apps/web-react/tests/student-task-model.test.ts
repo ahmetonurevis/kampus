@@ -113,6 +113,7 @@ const entry = (overrides: Partial<LearnerTaskProgress> = {}): LearnerTaskProgres
   limit: 2,
   remaining: 2,
   canAct: true,
+  actionableUntil: null,
   blockedBy: null,
   score: null,
   ...overrides,

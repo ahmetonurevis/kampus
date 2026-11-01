@@ -833,7 +833,7 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     assert.equal(versions.length, 2)
   })
 
-  test('IST-051, DOM-BEC-040, DOM-BEC-045: kursiyer ve veli atama listesinde ve ayrıntısında kendi durum özetini görür (hak, son teslim, yeni sürüm hakkı, açılmış puan); veli yalnız kendi çocuğu, başka çocuğun ataması 404; özet satır sürümü taşımaz', async () => {
+  test('IST-051, DOM-BEC-040, DOM-BEC-045: kursiyer ve veli atama listesinde ve ayrıntısında kendi durum özetini görür (hak, son teslim, yeni sürüm hakkı, özetin eskiyeceği an, açılmış puan); veli yalnız kendi çocuğu, başka çocuğun ataması 404; özet satır sürümü taşımaz', async () => {
     const t = await tenant()
     cookieOf.student = t.cookies.student
     const assignment = await ok(
@@ -874,6 +874,8 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       limit: 2,
       remaining: 2,
       canAct: true,
+      // IST-051: yeni sürüm açıkken pencerenin kapanışı; istemci bu andan sonra yeniden okur.
+      actionableUntil: DUE,
       blockedBy: null,
       score: null,
     })
@@ -892,7 +894,10 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     for (const cookie of [t.cookies.student, t.cookies.parent]) {
       const graded = await progressOf(cookie)
       assert.deepEqual(graded.score, { earned: 6, possible: 10, percent: 60 })
-      assert.deepEqual([graded.canAct, graded.blockedBy], [false, 'graded'])
+      assert.deepEqual(
+        [graded.canAct, graded.blockedBy, graded.actionableUntil],
+        [false, 'graded', null],
+      )
       assert.ok(!('rowVersion' in graded))
     }
     const dueAt = new Date(now.getTime() + 3 * 24 * 3_600_000).toISOString()
@@ -901,9 +906,15 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       201,
     )
     const reopened = await progressOf(t.cookies.student)
+    // Yeniden teslim istendi: özet istenen son tarihte eskir (DOM-BEC-040).
     assert.deepEqual(
-      [reopened.resubmissionRequested, reopened.canAct, reopened.blockedBy],
-      [true, true, null],
+      [
+        reopened.resubmissionRequested,
+        reopened.canAct,
+        reopened.blockedBy,
+        reopened.actionableUntil,
+      ],
+      [true, true, null, dueAt],
     )
 
     // Başka çocuğun velisi ve başka öğrenci atamayı görmez (404), listesinde yoktur.

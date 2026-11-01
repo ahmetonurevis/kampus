@@ -135,6 +135,7 @@ function progressOf(
       remaining: allowance?.remaining ?? null,
       canAct: allowance?.canSubmit ?? false,
       blockedBy: allowance === null ? ('unavailable' as const) : allowance.blockedBy,
+      actionableUntil: progress.actionableUntil,
       score:
         progress.score === null
           ? null

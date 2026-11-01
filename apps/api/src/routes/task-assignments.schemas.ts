@@ -148,6 +148,11 @@ const learnerProgressSchema = z
     limit: z.number().int().min(1).nullable().describe('Deneme veya sürüm hakkı; `null` sınırsız'),
     remaining: z.number().int().min(0).nullable().describe('Kalan hak; `null` sınırsız'),
     canAct: z.boolean().describe('Şu an yeni deneme başlatılabilir veya yeni sürüm gönderilebilir'),
+    actionableUntil: instant
+      .nullable()
+      .describe(
+        'Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045)',
+      ),
     blockedBy: z
       .enum(['in_progress', 'license_expired', 'locked', 'limit', 'graded', 'unavailable'])
       .nullable()

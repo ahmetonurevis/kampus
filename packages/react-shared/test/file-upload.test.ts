@@ -106,8 +106,30 @@ describe('yüklemeden önce amaç kuralı (ADR 0003 karar 3)', () => {
     assert.match(checkFileBeforeUpload('question_image', big) ?? '', /en fazla 2 MB/)
   })
 
-  test('tarayıcı türü bildirmezse karar sunucuya kalır', () => {
+  test('tarayıcı türü bildirmezse ya da tür tanınmazsa karar sunucuya kalır', () => {
     const unknown = new File(['x'], 'kayit', { type: '' })
     assert.equal(checkFileBeforeUpload('speaking_recording', unknown), null)
+    const octet = new File(['x'], 'kayit.bin', { type: 'application/octet-stream' })
+    assert.equal(checkFileBeforeUpload('listening_audio', octet), null)
+  })
+
+  test('DOM-KYN-004 takma ad ve parametreli tür kanonik türe çevrilip kabul edilir', () => {
+    const cases: [Parameters<typeof checkFileBeforeUpload>[0], string][] = [
+      ['listening_audio', 'audio/x-m4a'],
+      ['listening_audio', 'audio/x-wav'],
+      ['listening_audio', 'audio/mp3'],
+      ['listening_audio', 'video/webm'],
+      ['listening_audio', 'audio/webm;codecs=opus'],
+      ['listening_audio', 'Audio/MPEG'],
+      ['question_image', 'image/jpg'],
+      ['material', 'audio/x-m4a'],
+    ]
+    for (const [purpose, type] of cases) {
+      const file = new File(['x'], 'dosya', { type })
+      assert.equal(checkFileBeforeUpload(purpose, file), null, `${purpose} ${type}`)
+    }
+    // Takma ad çözülse de amaçta olmayan tür yine reddedilir.
+    const jpg = new File(['x'], 'foto.jpg', { type: 'image/jpg' })
+    assert.match(checkFileBeforeUpload('document', jpg) ?? '', /bu dosya türü kabul edilmez/)
   })
 })

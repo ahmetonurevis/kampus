@@ -1,11 +1,12 @@
 import { fileTypeFromBuffer } from 'file-type'
 
-import type { AllowedMimeType } from '@kampus/school-core/content/taxonomy.ts'
+import { canonicalMimeType, type AllowedMimeType } from '@kampus/school-core/content/taxonomy.ts'
 
 /**
  * İçerikten tür tespiti (ADR 0003 karar 3, DOM-KYN-004). Tür `file-type` ile sihirli baytlardan
  * bulunur; uzantı ve istemcinin bildirdiği `Content-Type` yalnız tutarlılık denetimidir.
- * Her tür tek kanonik MIME ile saklanır (core `FILE_PURPOSES` listesindeki değer).
+ * Her tür tek kanonik MIME ile saklanır (core `FILE_PURPOSES` listesindeki değer); istemcinin
+ * bildirdiği takma adlar core `canonicalMimeType` ile çözülür (web/mobil ön denetimiyle aynı tablo).
  *
  * TODO(F3c2-scan): makrosuz OOXML ve parola korumalı PDF/Office reddi ClamAV taramasıyla
  * (`AlertOLE2Macros`, `AlertEncrypted`; karar 8) gelir. Makrolu OOXML (`.docm` vb.) burada
@@ -18,59 +19,39 @@ type FileKind = {
   detected: readonly string[]
   /** Dosya adında aynı türü gösteren uzantılar. */
   extensions: readonly string[]
-  /** İstemcilerin bu tür için gönderdiği MIME adları. */
-  aliases: readonly string[]
 }
 
 const KINDS: readonly FileKind[] = [
-  { mime: 'application/pdf', detected: ['pdf'], extensions: ['pdf'], aliases: [] },
-  {
-    mime: 'image/jpeg',
-    detected: ['jpg'],
-    extensions: ['jpg', 'jpeg', 'jpe'],
-    aliases: ['image/jpg', 'image/pjpeg'],
-  },
-  { mime: 'image/png', detected: ['png'], extensions: ['png'], aliases: [] },
-  { mime: 'image/webp', detected: ['webp'], extensions: ['webp'], aliases: [] },
+  { mime: 'application/pdf', detected: ['pdf'], extensions: ['pdf'] },
+  { mime: 'image/jpeg', detected: ['jpg'], extensions: ['jpg', 'jpeg', 'jpe'] },
+  { mime: 'image/png', detected: ['png'], extensions: ['png'] },
+  { mime: 'image/webp', detected: ['webp'], extensions: ['webp'] },
   {
     mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     detected: ['docx'],
     extensions: ['docx'],
-    aliases: [],
   },
   {
     mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     detected: ['pptx'],
     extensions: ['pptx'],
-    aliases: [],
   },
   {
     mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     detected: ['xlsx'],
     extensions: ['xlsx'],
-    aliases: [],
   },
-  { mime: 'audio/mpeg', detected: ['mp3'], extensions: ['mp3'], aliases: ['audio/mp3'] },
-  {
-    mime: 'audio/mp4',
-    detected: ['m4a'],
-    extensions: ['m4a'],
-    aliases: ['audio/x-m4a', 'audio/m4a'],
-  },
-  {
-    mime: 'audio/wav',
-    detected: ['wav'],
-    extensions: ['wav'],
-    aliases: ['audio/x-wav', 'audio/wave', 'audio/vnd.wave'],
-  },
+  { mime: 'audio/mpeg', detected: ['mp3'], extensions: ['mp3'] },
+  { mime: 'audio/mp4', detected: ['m4a'], extensions: ['m4a'] },
+  { mime: 'audio/wav', detected: ['wav'], extensions: ['wav'] },
   // Tarayıcı kayıtları WebM/Opus gelir; `file-type` her WebM'i `video/webm` sayar.
-  { mime: 'audio/webm', detected: ['webm'], extensions: ['webm'], aliases: ['video/webm'] },
-  { mime: 'video/mp4', detected: ['mp4'], extensions: ['mp4'], aliases: [] },
+  { mime: 'audio/webm', detected: ['webm'], extensions: ['webm'] },
+  { mime: 'video/mp4', detected: ['mp4'], extensions: ['mp4'] },
 ]
 
 function kindOfMime(mime: string): FileKind | undefined {
-  const normalized = mime.split(';')[0]?.trim().toLowerCase() ?? ''
-  return KINDS.find((kind) => kind.mime === normalized || kind.aliases.includes(normalized))
+  const canonical = canonicalMimeType(mime)
+  return canonical ? KINDS.find((kind) => kind.mime === canonical) : undefined
 }
 
 function kindOfExtension(fileName: string | null): FileKind | undefined {

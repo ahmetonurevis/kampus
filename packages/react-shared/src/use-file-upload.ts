@@ -1,6 +1,10 @@
 import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { components } from '@kampus/api-client/schema.d.ts'
-import { assertFileAllowed, type FilePurpose } from '@kampus/school-core/content/taxonomy.ts'
+import {
+  assertFileAllowed,
+  canonicalMimeType,
+  type FilePurpose,
+} from '@kampus/school-core/content/taxonomy.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 
 import type { CommandHeaders } from './commands.ts'
@@ -37,13 +41,16 @@ export function fileIdentity(file: Blob): string {
 }
 
 /**
- * Yüklemeden önce amaç kuralı: uymayan dosyanın Türkçe iletisi, uyan dosyada `null`. Tarayıcı türü
- * boş bildirirse karar sunucuya bırakılır (içerikten tespit eder).
+ * Yüklemeden önce amaç kuralı: uymayan dosyanın Türkçe iletisi, uyan dosyada `null`. Tarayıcının
+ * bildirdiği tür core `canonicalMimeType` ile sadeleşir (parametre atılır, `audio/x-m4a` gibi takma
+ * ad kanonik ada çevrilir; sunucuyla aynı tablo). Tür boş veya tanınmıyorsa karar sunucuya bırakılır
+ * (içerikten tespit eder).
  */
 export function checkFileBeforeUpload(purpose: FilePurpose, file: Blob): string | null {
-  if (file.type === '') return null
+  const contentType = canonicalMimeType(file.type)
+  if (contentType === null) return null
   try {
-    assertFileAllowed(purpose, { contentType: file.type, byteSize: file.size })
+    assertFileAllowed(purpose, { contentType, byteSize: file.size })
     return null
   } catch (error) {
     if (error instanceof DomainError) return error.message

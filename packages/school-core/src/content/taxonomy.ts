@@ -267,6 +267,35 @@ export const MIME = {
 } as const
 export type AllowedMimeType = (typeof MIME)[keyof typeof MIME]
 
+/**
+ * İstemcilerin aynı tür için bildirdiği takma adlar (tarayıcı ve işletim sistemi farkı; ör. Windows
+ * Firefox `.m4a` için `audio/x-m4a`, tarayıcı kaydı `video/webm` bildirir). Web/mobil ön denetimi ve
+ * API'nin tutarlılık denetimi aynı tabloyu kullanır (ADR 0003 karar 3).
+ */
+export const MIME_ALIASES: Readonly<Record<string, AllowedMimeType>> = {
+  'image/jpg': MIME.jpeg,
+  'image/pjpeg': MIME.jpeg,
+  'audio/mp3': MIME.mp3,
+  'audio/x-m4a': MIME.m4a,
+  'audio/m4a': MIME.m4a,
+  'audio/x-wav': MIME.wav,
+  'audio/wave': MIME.wav,
+  'audio/vnd.wave': MIME.wav,
+  'video/webm': MIME.webmAudio,
+}
+
+const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set(Object.values(MIME))
+
+/**
+ * Bildirilen türün kanonik MIME'ı: parametreler (`;codecs=opus`) atılır, büyük/küçük harf
+ * sadeleşir, takma ad kanonik ada çevrilir. Tanınmayan tür `null` (karar sunucuya kalır).
+ */
+export function canonicalMimeType(declared: string): AllowedMimeType | null {
+  const base = declared.split(';')[0]?.trim().toLowerCase() ?? ''
+  if (Object.hasOwn(MIME_ALIASES, base)) return MIME_ALIASES[base] ?? null
+  return ALLOWED_MIME_TYPES.has(base) ? (base as AllowedMimeType) : null
+}
+
 export type FilePurposeRule = {
   readonly label: string
   /** İçerikten (sihirli bayt) tespit edilen türler; uzantı yalnız tutarlılık denetimidir. */

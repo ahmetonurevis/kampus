@@ -13,6 +13,7 @@ import {
   SHARE_SCOPES,
   SKILLS,
   assertFileAllowed,
+  canonicalMimeType,
   enumKeys,
 } from '../packages/school-core/src/content/taxonomy.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -131,6 +132,25 @@ test('Dosya amacı yanlış türü, büyük dosyayı ve uzun kaydı reddeder', (
       durationSeconds: null,
     }),
   )
+})
+
+test("DOM-KYN-004 bildirilen tür kanonik MIME'a çevrilir: takma ad, parametre ve harf farkı", () => {
+  assert.equal(canonicalMimeType('audio/x-m4a'), MIME.m4a)
+  assert.equal(canonicalMimeType('audio/m4a'), MIME.m4a)
+  assert.equal(canonicalMimeType('audio/x-wav'), MIME.wav)
+  assert.equal(canonicalMimeType('audio/mp3'), MIME.mp3)
+  assert.equal(canonicalMimeType('image/jpg'), MIME.jpeg)
+  assert.equal(canonicalMimeType('video/webm'), MIME.webmAudio)
+  assert.equal(canonicalMimeType('audio/webm;codecs=opus'), MIME.webmAudio)
+  assert.equal(canonicalMimeType(' Application/PDF ; charset=binary'), MIME.pdf)
+  assert.equal(canonicalMimeType('application/octet-stream'), null)
+  assert.equal(canonicalMimeType('constructor'), null)
+  assert.equal(canonicalMimeType(''), null)
+  // Her takma ad izinli bir kanonik türe gider.
+  for (const type of ['audio/x-m4a', 'audio/x-wav', 'audio/mp3', 'image/jpg', 'video/webm']) {
+    const canonical = canonicalMimeType(type)
+    assert.ok(canonical !== null && Object.values(MIME).includes(canonical), type)
+  }
 })
 
 test('DOM-KYN-020: telif beyanı kullanma hakkını ve incelemeyi anlatır', () => {

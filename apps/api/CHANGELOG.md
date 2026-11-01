@@ -10,6 +10,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 - `POST …/attempts`: puanlama sürümünün veya sorularından birinin lisansı dolduysa 409 `resource_license_expired` (DOM-KYN-021); süren deneme kaydedilir ve teslim edilir.
 - Yazma teslimi: kursiyer ve veli, öğretmen geri bildirimi açılmadan (`scoreResolution` kesinleşmemiş) puanlandığını göremez; `allowance.blockedBy` `graded` yerine `locked`, yeni sürüm `resubmission_not_requested` yerine genel 409 `submission_locked` (DOM-BEC-045). Personel `graded` görür.
 - OpenAPI ve `api-client` şeması yeniden üretildi (`blockedBy` `locked` değeri, rota açıklamaları). Migration yok.
+- `react-shared`: taslak kaydı 400 `if_match_required` alınca (taslak başka pencerede ilk kez kaydedildi) taslağı yeniden çeker ve "Taslak başka bir pencerede kaydedildi, son hâli yüklendi." gösterir; cevap kaydı ve teslim 422'de (ör. `attempt_time_over`) denemeyi tazeler, `attempt_time_over` mesajı sunucuyla uyumludur ("Süre doldu; son cevaplarınız kaydedilmedi."). `submission_locked` Türkçe mesajı eklendi. Komut altyapısına isteğe bağlı `refreshOn` (409 dışında tazeleme) eklendi.
 
 ## Yazma görevi taslak ve teslim uçları
 

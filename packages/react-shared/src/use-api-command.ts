@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import type { KampusClient } from '@kampus/api-client/client.ts'
+import type { ApiError } from '@kampus/api-client/errors.ts'
 
 import type { ApiResult, DataOf } from './api-result.ts'
 import {
@@ -33,6 +34,8 @@ export interface ApiCommandOptions<TVariables, TResult extends ApiResult> {
   invalidates: readonly (readonly unknown[])[]
   /** Konu kaydın okunan sürümü; verilirse `If-Match` gönderilir, tutmazsa 409 `version_conflict`. */
   version?: (variables: TVariables) => number | null | undefined
+  /** 409 dışında sorguları tazeleyen hata (`CommandSteps.refreshOn`). */
+  refreshOn?: (error: ApiError) => boolean
   /** Koda özgü kullanıcı mesajı (ör. `invoice_already_paid`); yoksa sunucunun mesajı. */
   messages?: CommandMessages
   /** Formun açık tercihi: yollu `issues` (400 ve 422/409/403) yalnız alanda, alan maddesi yoksa tek toast. */
@@ -77,6 +80,7 @@ export function useApiCommand<TVariables, TResult extends ApiResult>(
         version: options.version,
         refresh: () =>
           invalidateInstitutionQueries(queryClient, institutionId, options.invalidates),
+        refreshOn: options.refreshOn,
         messages: options.messages,
         exclusive: options.exclusive,
       },

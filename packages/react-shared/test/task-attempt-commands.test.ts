@@ -10,8 +10,10 @@ import { runRequest } from '../src/api-result.ts'
 import {
   commandFeedback,
   commandHeaders,
+  createCommandSession,
   IF_MATCH_MISSING_CODE,
   invalidateInstitutionQueries,
+  runCommand,
 } from '../src/commands.ts'
 import { institutionKey } from '../src/query-keys.ts'
 import {
@@ -34,6 +36,7 @@ import {
   submitTaskSubmissionRequest,
   TASK_DRAFT_CHANGED_MESSAGE,
   TASK_DRAFT_INVALIDATES,
+  TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE,
   TASK_DRAFT_KEY,
   TASK_SUBMISSION_INVALIDATES,
   TASK_SUBMISSIONS_KEY,
@@ -213,8 +216,98 @@ describe('yazma taslağı ve teslim komutları', () => {
       feedback('version_limit_reached', 422, 'En fazla 3 sürüm gönderebilirsiniz.'),
       'En fazla 3 sürüm gönderebilirsiniz.',
     )
-    assert.equal(saveTaskDraftCommand.messages, submitTaskSubmissionCommand.messages)
+    assert.equal(
+      feedback('submission_locked', 409),
+      'Bu teslim için şu an yeni sürüm gönderilemez.',
+    )
+    for (const [code, message] of Object.entries(submitTaskSubmissionCommand.messages))
+      assert.equal(
+        saveTaskDraftCommand.messages[code as keyof typeof saveTaskDraftCommand.messages],
+        message,
+      )
     assert.equal(saveTaskDraftCommand.exclusive, true)
+  })
+})
+
+describe('eskimiş ekran verisinin tazelenmesi', () => {
+  /**
+   * `useApiCommand`'in yürüttüğü adımlar (React'siz): istek verilen hatayla düşer; tazeleme komutun
+   * önekleriyle etkin kurumun sorgularını geçersiz kılar, mesaj toast'a gider.
+   */
+  async function failWith(
+    command: {
+      invalidates: readonly (readonly unknown[])[]
+      refreshOn?: (error: ApiError) => boolean
+      messages: Readonly<Partial<Record<string, string>>>
+      exclusive: boolean
+    },
+    error: ApiError,
+  ) {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const keys = [
+      institutionKey('inst-a', TASK_DRAFT_KEY, 'as-1'),
+      institutionKey('inst-a', TASK_ATTEMPTS_KEY, 'detail', 'at-1'),
+    ]
+    for (const queryKey of keys)
+      await queryClient.fetchQuery({ queryKey, queryFn: () => 'x', staleTime: Infinity })
+    const toasts: string[] = []
+    const outcome = await runCommand(
+      createCommandSession(),
+      {
+        execute: () => Promise.reject(error),
+        refresh: () => invalidateInstitutionQueries(queryClient, 'inst-a', command.invalidates),
+        refreshOn: command.refreshOn,
+        messages: command.messages,
+        exclusive: command.exclusive,
+      },
+      {},
+      { notifyError: (message) => toasts.push(message) },
+    )
+    const [draft, attempt] = keys.map((key) => queryClient.getQueryState(key)?.isInvalidated)
+    return { status: outcome.status, toasts, draft, attempt }
+  }
+
+  test('IST-047: taslak başka pencerede ilk kez kaydedildiyse (400 if_match_required) taslak yeniden çekilir ve Türkçe mesaj gösterilir', async () => {
+    const result = await failWith(
+      saveTaskDraftCommand,
+      new ApiError({ status: 400, code: 'if_match_required', message: 'If-Match gerekli.' }),
+    )
+    assert.deepEqual(result, {
+      status: 'failed',
+      toasts: [TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE],
+      draft: true,
+      attempt: false,
+    })
+    assert.equal(
+      TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE,
+      'Taslak başka bir pencerede kaydedildi, son hâli yüklendi.',
+    )
+    // Başka 400 (doğrulama) ekranı eskitmez.
+    const invalid = await failWith(
+      saveTaskDraftCommand,
+      new ApiError({ status: 400, code: 'validation_failed', message: 'Metin çok uzun.' }),
+    )
+    assert.equal(invalid.draft, false)
+  })
+
+  test('DOM-BEC-043: süre dolunca (422 attempt_time_over) mesaj sunucuyla uyumlu ve deneme tazelenir; cevap kaydında da teslimde de', async () => {
+    const timeOver = new ApiError({
+      status: 422,
+      code: 'attempt_time_over',
+      message: 'Süre doldu; cevaplar kaydedilmedi.',
+    })
+    for (const command of [saveTaskAttemptAnswersCommand, submitTaskAttemptCommand]) {
+      const result = await failWith(command, timeOver)
+      assert.equal(result.attempt, true)
+      assert.equal(result.draft, false)
+      assert.deepEqual(result.toasts, ['Süre doldu; son cevaplarınız kaydedilmedi.'])
+    }
+    // Başlatmanın 422'si (hak doldu) ekrandaki denemeyi eskitmez.
+    const limit = await failWith(
+      startTaskAttemptCommand,
+      new ApiError({ status: 422, code: 'attempt_limit_reached', message: 'Hak doldu.' }),
+    )
+    assert.equal(limit.attempt, false)
   })
 })
 

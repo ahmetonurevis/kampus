@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import type { KampusClient } from '@kampus/api-client/client.ts'
+import type { ApiError } from '@kampus/api-client/errors.ts'
 import type { components, operations } from '@kampus/api-client/schema.d.ts'
 
 import { runRequest } from './api-result.ts'
@@ -48,10 +49,16 @@ export const TASK_ATTEMPT_MESSAGES = {
   attempt_limit_reached: 'Bu görev için deneme hakkınız doldu.',
   attempt_in_progress: 'Süren bir denemeniz var; ona devam edin.',
   attempt_already_submitted: 'Bu deneme zaten teslim edildi.',
-  attempt_time_over: 'Süre doldu; deneme kaydedilmiş cevaplarınızla teslim edildi.',
+  attempt_time_over: 'Süre doldu; son cevaplarınız kaydedilmedi.',
   submission_closed: 'Bu görevin teslim süresi doldu.',
   not_auto_scored: 'Bu görev deneme olarak çözülmez; teslim ekranını kullanın.',
 } as const satisfies CommandMessages
+
+/**
+ * Kural hatası (422: süre doldu, teslim kapandı, geçersiz cevap) denemenin ekrandaki durumunu
+ * eskitir: süre dolan deneme sunucuda kaydedilmiş cevaplarla teslim sayılır. Deneme tazelenir.
+ */
+export const attemptStale = (error: ApiError) => error.status === 422
 
 /** Atamanın denemeleri (rol kapsamlı, sayfalı); sorgu değişirken önceki sayfa ekranda kalır. */
 export function useTaskAttempts(query: TaskAttemptListQuery) {
@@ -152,6 +159,7 @@ export const saveTaskAttemptAnswersCommand = {
   request: saveTaskAttemptAnswersRequest,
   version: versionOf,
   invalidates: TASK_ATTEMPT_ANSWER_INVALIDATES,
+  refreshOn: attemptStale,
   messages: TASK_ATTEMPT_MESSAGES,
   exclusive: true,
 } as const
@@ -159,6 +167,7 @@ export const submitTaskAttemptCommand = {
   request: submitTaskAttemptRequest,
   version: versionOf,
   invalidates: TASK_ATTEMPT_INVALIDATES,
+  refreshOn: attemptStale,
   messages: TASK_ATTEMPT_MESSAGES,
   exclusive: true,
 } as const

@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import type { KampusClient } from '@kampus/api-client/client.ts'
+import type { ApiError } from '@kampus/api-client/errors.ts'
 import type { components, operations } from '@kampus/api-client/schema.d.ts'
 
 import { runRequest } from './api-result.ts'
@@ -17,7 +18,8 @@ import { TASK_ASSIGNMENTS_KEY } from './use-task-assignments.ts'
  * atamanın altında; ADR 0004 karar 6; DOM-BEC-023, 040, 044, 046; IST-047, IST-051). Sürüm sınırı,
  * pencere ve sözcük sayısı sunucudadır; burada çağrı, önbellek tazeleme ve Türkçe hata metni
  * vardır. Taslak kaydı `If-Match` olarak taslağın okunan `revision`'ını taşır; yalnız henüz taslak
- * yokken (`revision: null`) başlıksız gider, sunucu taslak varken başlıksız isteği 400 ile reddeder.
+ * yokken (`revision: null`) başlıksız gider, sunucu taslak varken başlıksız isteği 400 ile reddeder;
+ * bu durumda taslak başka pencerede kaydedilmiştir: taslak yeniden çekilir (revizyon tazelenir).
  * Teslim `If-Match` kabul etmez ve `Idempotency-Key` zorunludur. Yazma otomatik puanlanmaz.
  */
 
@@ -44,6 +46,13 @@ export type TaskSubmissionBody = JsonBody<'submitTaskSubmission'>
 export const TASK_DRAFT_CHANGED_MESSAGE =
   'Taslak başka bir pencerede değişti. Güncel hâli yüklendi; yeniden deneyin.'
 
+/**
+ * Taslak yokken açılan ekranda başka pencere taslağı kaydetti (400 `if_match_required`): taslak
+ * yeniden çekilir, sonraki kayıt güncel revizyonu taşır.
+ */
+export const TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE =
+  'Taslak başka bir pencerede kaydedildi, son hâli yüklendi.'
+
 /** `version_limit_reached` sunucunun mesajıyla gelir (sınır sayısını içerir). */
 export const TASK_SUBMISSION_MESSAGES = {
   not_found: 'Görev bulunamadı.',
@@ -54,7 +63,18 @@ export const TASK_SUBMISSION_MESSAGES = {
   draft_not_supported: 'Taslak yalnız yazma görevinde tutulur.',
   resubmission_not_requested:
     'Teslim puanlandı; yeni sürüm için öğretmenin yeniden teslim istemesi gerekir.',
+  submission_locked: 'Bu teslim için şu an yeni sürüm gönderilemez.',
 } as const satisfies CommandMessages
+
+/** Taslak kaydının mesajları: teslim mesajları ve başka pencerede ilk kayıt. */
+export const TASK_DRAFT_MESSAGES = {
+  ...TASK_SUBMISSION_MESSAGES,
+  if_match_required: TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE,
+} as const satisfies CommandMessages
+
+/** Taslak başka pencerede ilk kez kaydedildi: ekrandaki "taslak yok" bilgisi eskidi. */
+export const draftSavedElsewhere = (error: ApiError) =>
+  error.status === 400 && error.code === 'if_match_required'
 
 /** Atamanın teslimleri (rol kapsamlı, sayfalı); sorgu değişirken önceki sayfa ekranda kalır. */
 export function useTaskSubmissions(query: TaskSubmissionListQuery) {
@@ -151,7 +171,8 @@ export const saveTaskDraftCommand = {
   request: saveTaskDraftRequest,
   version: (input: SaveTaskDraftInput) => input.revision,
   invalidates: TASK_DRAFT_INVALIDATES,
-  messages: TASK_SUBMISSION_MESSAGES,
+  refreshOn: draftSavedElsewhere,
+  messages: TASK_DRAFT_MESSAGES,
   exclusive: true,
 } as const
 export const submitTaskSubmissionCommand = {
@@ -161,7 +182,10 @@ export const submitTaskSubmissionCommand = {
   exclusive: true,
 } as const
 
-/** Taslağı kaydeder (`PATCH /task-assignments/:id/draft`); 409'da güncel taslak yüklenir. */
+/**
+ * Taslağı kaydeder (`PATCH /task-assignments/:id/draft`); 409 `draft_conflict` ve 400
+ * `if_match_required`'da güncel taslak yüklenir.
+ */
 export function useSaveTaskDraft(options: CommandOptions = {}) {
   return useApiCommand({ ...saveTaskDraftCommand, ...withSuccess(options) })
 }

@@ -19,21 +19,21 @@ Git, dal ve ortak dosya kuralları burada tekrarlanmaz: [.claude/rules/ortak-cal
 
 140 ister maddesi on alan kümesine ve platforma dağıtıldı. Her kümenin modülleri, IST kimlikleri, dizinleri, PDF ve bildirimleri ile alan belgesi aynı kişidedir. IST sütunundaki sayılar madde sayısıdır.
 
-| Küme                                 | Sahip                          | Ana konu                                            | IST |
-| ------------------------------------ | ------------------------------ | --------------------------------------------------- | --- |
-| K1 Kayıt ve CRM                      | Onur                           | Aday, kesin kayıt, yenileme, sınıf geçişi           | 12  |
-| K2 Finans                            | Onur                           | Tarife, tahsilat, iade, paket, muhasebe             | 16  |
-| K3 Kurum yapısı ve ders planı        | Oğuzhan                        | Kampüs, sınıf, kur, grup, kadro, program            | 10  |
-| K4 Akademik değerlendirme ve devam   | Oğuzhan                        | Yoklama, not, karne, geçme kararı                   | 9   |
-| K5 Ölçme ve öğrenci gelişimi         | Oğuzhan                        | Deneme, optik, etüt, rehberlik, hedef               | 5   |
-| K6 İngilizce becerileri ve CEFR      | Oğuzhan                        | Görev, rubrik, seviye tespiti, CEFR                 | 24  |
-| K7 İçerik ve kaynak havuzu           | Oğuzhan                        | Havuz, taksonomi, soru bankası, telif               | 13  |
-| K8 İletişim ve veli                  | Oğuzhan                        | Duyuru, mesaj, randevu, veli onayı                  | 8   |
-| K9 Ön büro ve okul yaşamı            | Onur (öneri B, karar bekliyor) | Talep, takvim, servis, yemek, kulüp                 | 3   |
-| K10 Yayın, işletim ve kurum kurulumu | Onur (öneri A, karar bekliyor) | Sunucu, yedek, operatör paneli, mağaza              | 3   |
-| Platform                             | Oğuzhan                        | Kimlik, yetki, KVKK, bildirim, dosya, PDF, kabuklar | 41  |
+| Küme                                 | Sahip   | Ana konu                                            | IST |
+| ------------------------------------ | ------- | --------------------------------------------------- | --- |
+| K1 Kayıt ve CRM                      | Onur    | Aday, kesin kayıt, yenileme, sınıf geçişi           | 12  |
+| K2 Finans                            | Onur    | Tarife, tahsilat, iade, paket, muhasebe             | 16  |
+| K3 Kurum yapısı ve ders planı        | Oğuzhan | Kampüs, sınıf, kur, grup, kadro, program            | 10  |
+| K4 Akademik değerlendirme ve devam   | Oğuzhan | Yoklama, not, karne, geçme kararı                   | 9   |
+| K5 Ölçme ve öğrenci gelişimi         | Oğuzhan | Deneme, optik, etüt, rehberlik, hedef               | 5   |
+| K6 İngilizce becerileri ve CEFR      | Oğuzhan | Görev, rubrik, seviye tespiti, CEFR                 | 24  |
+| K7 İçerik ve kaynak havuzu           | Oğuzhan | Havuz, taksonomi, soru bankası, telif               | 13  |
+| K8 İletişim ve veli                  | Oğuzhan | Duyuru, mesaj, randevu, veli onayı                  | 8   |
+| K9 Ön büro ve okul yaşamı            | Onur    | Talep, takvim, servis, yemek, kulüp                 | 3   |
+| K10 Yayın, işletim ve kurum kurulumu | Oğuzhan | Sunucu, yedek, operatör paneli, mağaza              | 3   |
+| Platform                             | Oğuzhan | Kimlik, yetki, KVKK, bildirim, dosya, PDF, kabuklar | 41  |
 
-K9 ve K10 karar çıkana kadar Oğuzhan'dadır.
+K9 Onur'a, K10 Oğuzhan'a verildi (kullanıcı kararı, 2 Kasım).
 
 ### K1 · Kayıt ve CRM (Onur, kesin)
 
@@ -108,7 +108,7 @@ K9 ve K10 karar çıkana kadar Oğuzhan'dadır.
 - **Dizinler:** core `lib/{communication,communication-access,appointments,questions}.ts`; API `routes/{communication,appointments,questions}.ts`; web `pages/communication/`; mobil `Conversations.tsx`.
 - **Belge:** `iletisim-ve-veli.md` (DOM-ILT; talep bölümü K9 ile gider), ADR 0005.
 
-### K9 · Ön büro ve okul yaşamı (Onur, öneri B, karar bekliyor)
+### K9 · Ön büro ve okul yaşamı (Onur)
 
 - **Kapsam:** şikayet ve talep, okul takvimi ve etkinlikler, okul servisi, yemek menüsü, kulüpler, giriş-çıkış ve teslim yetkisi, revir ve ilaç onayı.
 - **Menü:** OKUL YAŞAMI kategorisi (Okul Takvimi, Okul Servisi, Yemek Menüsü, Kulüpler & Sosyal Gelişim), Şikayet & Talep, Şikayet & Talepler.
@@ -116,32 +116,30 @@ K9 ve K10 karar çıkana kadar Oğuzhan'dadır.
 - **Dizinler:** `calendar`, `transport`, `meals`, `clubs` blokları; `requests.ts` talep kısmı (mazeret ayrı dosyaya ayrılır); web `requests/Request*`.
 - **Belge:** `iletisim-ve-veli.md` Talep ve şikayet (DOM-ILT-080), DOM-ILT-051.
 - **Gerekçe:** servis, yemek ve kulüp tarifede ek hizmet kalemidir (DOM-FIN-003); servis kaydı açılınca ek hizmet taksiti doğar. Ön büro menüsünün tamamı tek sahipte toplanır. Velinin talepleri çoğunlukla kayıt ve ödemeyle ilgilidir.
-- **Şimdilik:** karar çıkana kadar Oğuzhan'da. Kabul edilirse D4'te Onur'a geçer.
+- **Karar:** Onur'a verildi (kullanıcı kararı, 2 Kasım); Oğuzhan'daki eski satırlar `iptal`dir.
 
-### K10 · Yayın, işletim ve kurum kurulumu (Onur, öneri A, karar bekliyor)
+### K10 · Yayın, işletim ve kurum kurulumu (Oğuzhan)
 
 - **Kapsam:** sunucu, alan adı ve TLS, dağıtım ve CI yayın işi, PostgreSQL yedeği ve geri dönüş provası, izleme ve log, güvenlik olayı kaydı, Türkiye'de barındırma, operatör paneli, yeni kurum kurulumu ve pilot verisinin aktarımı, Android ve iOS derleme, imzalama ve mağaza yayını.
 - **IST:** Faz 1: 024. Faz 2: 012, 029. 124 ve 128'in yayın kısmı.
 - **Dizinler:** `deploy/`, `scripts/{deploy,build-android}.sh`, `compose.yaml`, `.github/workflows/`, `docs/mobile-release.md`, yeni `docs/isletim/`.
-- **Gerekçe:** demo.onurevis.com ve sunucusu Onur'dadır. İlk API yayını yaklaşıyor ve pilot kurulumu kayıt ile finans verisini taşır. Oğuzhan'ın makinesinde Android SDK yok. Kod üretimi paralel ajanlarla sürerken yayının ayrı ve sakin bir elde olması riski azaltır.
-- **Şimdilik:** karar bekliyor. Kabul edilirse Onur sunucu hazırlığına D2'de başlar.
+- **Karar:** Oğuzhan'da kaldı (kullanıcı kararı, 2 Kasım); Onur'daki öneri satırları `iptal`dir. Oğuzhan'ın makinesinde Android SDK yok; derleme EAS bulutunda ya da Onur'un makinesinde yapılır.
 
 ### Değerlendirilen ama önerilmeyen adaylar
 
 - **Kurum ayarları:** önerilmez. Modül açma ve kapama, roller ve akademik yıl her kümenin dayandığı platform sözleşmesidir. Onur'un kendi ayar sekmesi (ödeme, banka) zaten ondadır.
-- **İnsan kaynakları:** şimdilik önerilmez. Kadro, sınıf ve ders programı arşivde birlikte taşınır (K3). Hakediş dökümü K2'dedir. Personel özlüğü ve izin D5'te yeniden değerlendirilir.
 
 ## Bölünen IST maddeleri
 
 Beş madde iki farklı veriyi kapsar. Her parça kendi verisinin sahibine gider; parçalar arasında sözleşme vardır.
 
-| IST      | Onur'daki parça                                    | Oğuzhan'daki parça                         |
-| -------- | -------------------------------------------------- | ------------------------------------------ |
-| 007      | Öğrenci ve veli toplu aktarımı (K1)                | Davet ve personel aktarımı (platform)      |
-| 084      | Kayıt dondurma (K1)                                | Telafi ve grup değişikliği (K3)            |
-| 134      | e-Okul'dan öğrenci aktarımı (K1)                   | Not ve devamsızlık şablonu (K4)            |
-| 116      | Finans ve kayıt pano kartları, yuvaya takılır      | Pano kabuğu, akademik ve iletişim kartları |
-| 124, 128 | Mağaza derlemesi ve yayını (K10, A kabul edilirse) | Uygulama ve mobil kabuk                    |
+| IST      | Onur'daki parça                               | Oğuzhan'daki parça                         |
+| -------- | --------------------------------------------- | ------------------------------------------ |
+| 007      | Öğrenci ve veli toplu aktarımı (K1)           | Davet ve personel aktarımı (platform)      |
+| 084      | Kayıt dondurma (K1)                           | Telafi ve grup değişikliği (K3)            |
+| 134      | e-Okul'dan öğrenci aktarımı (K1)              | Not ve devamsızlık şablonu (K4)            |
+| 116      | Finans ve kayıt pano kartları, yuvaya takılır | Pano kabuğu, akademik ve iletişim kartları |
+| 124, 128 | Mağaza derlemesi ve yayını (K10)              | Uygulama ve mobil kabuk                    |
 
 ## Platform
 
@@ -203,7 +201,7 @@ Değişiklik isteği izin değil, iş isteğidir ve yalnız karşı tarafın ala
 | Kayıt durumu ve olayları: öğrencinin `enrollmentStatus` alanı (aktif, dondurulmuş, ayrıldı, mezun) ve geçiş olayları | Sınıf listeleri, yoklama, görev hedefleri, mesaj kapsamı, bildirim alıcıları | D2    |
 | Kimlik okuma: `GET /students/:id/identity` (maskeli, yetkili, denetimli)                                             | İlgili kişi başvurusu dökümü (IST-022), e-Okul şablonu                       | D3    |
 | Paket bakiyesi: `GET /students/:id/package-balance`                                                                  | Birebir ders planlama (IST-083), kursiyer ana sayfası                        | D4    |
-| Ek hizmet aboneliği: `student_services` (servis, yemek, kulüp kalemi)                                                | K9 Oğuzhan'da kalırsa okul yaşamı ekranları                                  | D4    |
+| Ek hizmet aboneliği: `student_services` (servis, yemek, kulüp kalemi)                                                | Okul yaşamı ekranları; K9 Onur'da olduğu için iç kullanım                    | D4    |
 
 ## Bağımlılıklar
 
@@ -234,20 +232,18 @@ Kritik yollar: rıza → kayıt formu → pilot; bildirim → SMS → gecikme ha
 
 Kararlar birlikte alınır. Sağ sütun kararın hangi işi beklettiğini gösterir.
 
-| Konu                                                      | Öneri                                                                                           | Bekleyen iş                      |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------- |
-| Platformun sahibi                                         | Oğuzhan. Onur'un onayı gerekiyor.                                                               | Bu belgenin yürürlüğe girmesi    |
-| Ek küme A: Yayın, işletim ve kurum kurulumu               | Onur'a verilsin. Gerekçe K10'da.                                                                | Sunucu hazırlığı (D2)            |
-| İlk yayının türü                                          | Örnek kurumlarla kapalı yayın, gerçek kişisel veri yok. Gerçek veri pilotla gelir.              | İlk yayın (D2)                   |
-| `main`'e PR akışı ve CODEOWNERS                           | Vue kaldırıldığında başlasın; PR'ı alanın sahibi birleştirsin.                                  | Vue'nun kaldırılması (D2)        |
-| Pilot kurumlar                                            | Önce özel okul, bir dönem başında; sonra dil okulu, bir kur başında. İster listesi 7.1'e uygun. | Pilot (D3)                       |
-| Ödeme sağlayıcısı                                         | ADR olarak yazılsın; ADR 0001'deki "dış SaaS eklenmez" kararıyla uzlaşması gerekçelendirilsin.  | Çevrim içi ödeme (D4)            |
-| Android derleme ve imzalama                               | A kabul edilirse Onur'un makinesi; değilse EAS bulut derlemesi. İmza anahtarı repoya girmez.    | Mağaza sürümü (D4)               |
-| Nakit tahsilat ve iade tabanı                             | ADR 0006'daki doğrulanmalı maddeler pilot öncesi hukukçuya sorulsun.                            | Pilot (D3)                       |
-| Kampüs'ün KVKK rolü, ses kaydı, push'ta yurt dışı aktarım | Aynı hukukçu görüşmesinde sorulsun.                                                             | Pilot (D3)                       |
-| Mobilde çevrim içi ödeme                                  | Web'de çalıştıktan sonra; öğrenci ödemeleri telefonda yine gösterilmez.                         | Mobil veli finans ekranları (D4) |
-| Ek küme B: Ön büro ve okul yaşamı                         | Onur'a verilsin. Gerekçe K9'da.                                                                 | Talep ve okul yaşamı işleri (D4) |
-| İnsan kaynakları kümesi                                   | Şimdilik yok. D5'te yeniden bakılsın.                                                           | —                                |
+| Konu                                                      | Öneri                                                                                                              | Bekleyen iş                      |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
+| İlk yayının türü                                          | Örnek kurumlarla kapalı yayın, gerçek kişisel veri yok. Gerçek veri pilotla gelir.                                 | İlk yayın (D2)                   |
+| `main`'e PR akışı ve CODEOWNERS                           | Vue kaldırıldığında başlasın; PR'ı alanın sahibi birleştirsin.                                                     | Vue'nun kaldırılması (D2)        |
+| Pilot kurumlar                                            | Önce özel okul, bir dönem başında; sonra dil okulu, bir kur başında. İster listesi 7.1'e uygun.                    | Pilot (D3)                       |
+| Ödeme sağlayıcısı                                         | ADR olarak yazılsın; ADR 0001'deki "dış SaaS eklenmez" kararıyla uzlaşması gerekçelendirilsin.                     | Çevrim içi ödeme (D4)            |
+| Android derleme ve imzalama                               | K10 Oğuzhan'da; makinede Android SDK yok, EAS bulut derlemesi ya da Onur'un makinesi. İmza anahtarı repoya girmez. | Mağaza sürümü (D4)               |
+| Nakit tahsilat ve iade tabanı                             | ADR 0006'daki doğrulanmalı maddeler pilot öncesi hukukçuya sorulsun.                                               | Pilot (D3)                       |
+| Kampüs'ün KVKK rolü, ses kaydı, push'ta yurt dışı aktarım | Aynı hukukçu görüşmesinde sorulsun.                                                                                | Pilot (D3)                       |
+| Mobilde çevrim içi ödeme                                  | Web'de çalıştıktan sonra; öğrenci ödemeleri telefonda yine gösterilmez.                                            | Mobil veli finans ekranları (D4) |
+
+Kullanıcı kararıyla kapananlar (2 Kasım): platform Oğuzhan'da; ek küme A (K10) Oğuzhan'da, ek küme B (K9) Onur'da; ERP kümeleri (K20–K24, K26) Onur'da; okul dışı kursta 18 yaş üstü kursiyere veli zorunlu değil, ödeyici ayrı eklenir, veli erişimi kursiyerin rızasıyla verilir.
 
 Kapanan iki soru: kayıt yenileme, sınıf geçişi ve mezuniyet işlemi K1'dedir, geçme kararı K4'tedir. Kimlik tablosu K1'dedir; maskeleme ve dışa aktarım yetkisi platformdadır (IST-028).
 

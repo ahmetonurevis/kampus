@@ -108,7 +108,7 @@ export function createFeeTariffCommand(
       },
       after: async (tx, plan) => {
         await insertFeeTariff(tx, ctx.institutionId, { id, ...plan, now: ctx.now })
-        await audit(tx, ctx, 'tariff.create', id, ['academicYear', 'items'])
+        await audit(tx, ctx, 'tariff.create', id, ['academicYear', 'items', 'discounts'])
         result = await reload(tx, ctx, id)
       },
     },
@@ -143,10 +143,11 @@ export function updateFeeTariffCommand(
           id,
           expectedVersion,
           items: plan.items,
+          discounts: plan.discounts,
           now: ctx.now,
         })
         if (!saved) throw new ConflictError()
-        await audit(tx, ctx, 'tariff.update', id, ['items'])
+        await audit(tx, ctx, 'tariff.update', id, ['items', 'discounts'])
         result = await reload(tx, ctx, id)
       },
     },

@@ -113,6 +113,13 @@
       "when": 1793552520059,
       "tag": "0015_create_fee_tariffs",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793552840037,
+      "tag": "0016_add_enrollment_terms",
+      "breakpoints": true
     }
   ]
 }

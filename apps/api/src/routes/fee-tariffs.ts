@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { WRITE_ACTION_ROLES } from '@kampus/school-core/lib/authorize.ts'
 import {
   createFeeTariffSchema,
+  feeDiscountSchema,
   feeItemSchema,
   publishFeeTariffSchema,
   updateFeeTariffSchema,
@@ -34,6 +35,7 @@ const tariffSchema = z.object({
   versionNumber: z.number().int().describe('Yıl içinde tarife sürümü'),
   status: z.enum(['draft', 'published', 'superseded']),
   items: z.array(feeItemSchema),
+  discounts: z.array(feeDiscountSchema),
   announcedDate: z.string().nullable().describe('İlan günü (YYYY-MM-DD)'),
   mebbisRecordedDate: z.string().nullable().describe("MEBBİS'e işlendiği gün (YYYY-MM-DD)"),
   publishedAt: z.string().nullable().describe('Yayım anı (ISO 8601 UTC)'),

@@ -3,7 +3,12 @@ import { eq } from 'drizzle-orm'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
-import { enrollProspectWithPlan } from '@kampus/school-core/lib/domain.ts'
+import {
+  enrollProspectSchema,
+  enrollProspectWithTariff,
+  findParentMatches,
+} from '@kampus/school-core/lib/enrollment.ts'
+import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   addProspectNote,
   changeProspectStage,
@@ -16,7 +21,16 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
+import { findPublishedTariff } from '../db/fee-tariffs.ts'
+import { findRecord, loadRecords } from '../db/records.ts'
 import { users } from '../db/schema/auth.ts'
+import { institutionSettings } from '../db/schema/institution-settings.ts'
+import {
+  findStudentIdentity,
+  insertStudentIdentity,
+  isIdentityInUse,
+} from '../db/student-identities.ts'
+import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
@@ -44,14 +58,8 @@ import { runCommand, type CommandResponse, type OperationTools } from './operati
  */
 
 type ProspectAction =
-  | 'prospect.create'
-  | 'prospect.stage'
-  | 'prospect.note'
-  | 'prospect.meeting'
-  | 'prospect.trial'
-  | 'prospect.enroll'
-/** `collection` verilmezse sonucun konusu adaydır; kesin kayıtta oluşan öğrencidir. */
-type Outcome = { id: string; statusCode: number; collection?: CollectionName }
+  'prospect.create' | 'prospect.stage' | 'prospect.note' | 'prospect.meeting' | 'prospect.trial'
+type Outcome = { id: string; statusCode: number }
 
 interface ProspectRun {
   action: ProspectAction
@@ -98,10 +106,7 @@ function execute(
             ],
           }
         : {}),
-      entity: (outcome: Outcome) => ({
-        type: outcome.collection ?? COLLECTION,
-        id: outcome.id,
-      }),
+      entity: (outcome: Outcome) => ({ type: COLLECTION, id: outcome.id }),
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
         const by: Participant = { ...actor, userId: ctx.actor.userId }
@@ -116,7 +121,7 @@ function execute(
     },
     (outcome) =>
       commandBody(
-        { collection: outcome.result.collection ?? COLLECTION, id: outcome.result.id },
+        { collection: COLLECTION, id: outcome.result.id },
         outcome.changes,
         outcome.result.statusCode,
       ),
@@ -209,9 +214,9 @@ export function scheduleProspectMeetingCommand(
 }
 
 /**
- * Adayı kesin kayda alır: öğrenci, veli, taksitler, sözleşme ve aday aşaması tek transaction'da
- * yazılır (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Kontenjan kurum kilidi altında sayılır. 201;
- * sonucun konusu oluşan öğrencidir.
+ * Adayı kesin kayda alır: tutar yayımlanmış tarifeden hesaplanır; öğrenci, veli, taksit, sözleşme,
+ * aday aşaması ve kimlik satırı tek transaction'da yazılır (DOM-FIN-002, DOM-KAY-001, -011, -012,
+ * -035). Kontenjan ve kimlik tekilliği kurum kilidi altında denetlenir. 201; konu öğrencidir.
  */
 export function enrollProspectCommand(
   ctx: ServiceContext,
@@ -219,29 +224,99 @@ export function enrollProspectCommand(
   input: unknown,
   options: CommandOptions,
 ): Promise<CommandResponse> {
-  return execute(
+  const spec = OPERATION_COMMANDS['prospect.enroll']
+  const identity = enrollProspectSchema.parse(input).identity
+  return runCommand(
     ctx,
     {
       action: 'prospect.enroll',
-      subjectId: prospectId,
-      run: (state, by, { now, makeId }, prospectOptions) => {
-        requireAuthorized(by, 'prospect.enroll', {}, state, {
-          now,
-          institutionType: prospectOptions.institutionType,
-        })
-        const { student } = enrollProspectWithPlan(
-          state,
-          prospectId,
-          input,
-          makeId,
-          now,
-          prospectOptions,
+      collections: spec.collections,
+      ...(options.expectedVersion !== null
+        ? {
+            expectedVersions: [
+              { collection: COLLECTION, id: prospectId, version: options.expectedVersion },
+            ],
+          }
+        : {}),
+      entity: (result: { student: { id: string } }) => ({
+        type: 'students',
+        id: result.student.id,
+      }),
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        const [settings] = await tx
+          .select({ academicYear: institutionSettings.academicYear })
+          .from(institutionSettings)
+          .where(eq(institutionSettings.institutionId, ctx.institutionId))
+          .limit(1)
+        const academicYear = settings?.academicYear ?? Number(dayKey(ctx.now).slice(0, 4))
+        const tariff = await findPublishedTariff(tx, ctx.institutionId, academicYear)
+        const identityInUse = await isIdentityInUse(
+          tx,
+          ctx.institutionId,
+          academicYear,
+          identity.number,
         )
-        return { id: student.id, statusCode: 201, collection: 'students' }
+        return {
+          scalars,
+          run: (state, { now, makeId }) => {
+            requireAuthorized(actor, 'prospect.enroll', {}, state, { now, institutionType })
+            return enrollProspectWithTariff(state, prospectId, input, makeId, now, {
+              institutionType,
+              tariff,
+              academicYear,
+              identityInUse,
+              approvedByUserId: ctx.actor.userId,
+              canApproveCapException: ctx.actor.role === 'yonetici',
+              today: dayKey(ctx.now),
+            })
+          },
+        }
+      },
+      after: async (tx, result) => {
+        await insertStudentIdentity(tx, ctx.institutionId, {
+          studentId: result.student.id,
+          academicYear: result.academicYear,
+          kind: result.identity.kind,
+          number: result.identity.number,
+          birthDate: result.identity.birthDate,
+          now: ctx.now,
+        })
       },
     },
-    options,
+    (outcome) =>
+      commandBody({ collection: 'students', id: outcome.result.student.id }, outcome.changes, 201),
+    options.idempotency,
   )
+}
+
+/** Adayın telefonuyla eşleşen veliler; ön büroya öneridir, birleştirmez (DOM-KAY-013). */
+export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string) {
+  const prospect = await findRecord(ctx.db, ctx.institutionId, 'prospects', prospectId)
+  if (prospect === null) throw new NotFoundError()
+  const phone = typeof prospect.data.phone === 'string' ? prospect.data.phone : ''
+  const rows = await loadRecords(ctx.db, ctx.institutionId, ['parents', 'students'])
+  const source = (collection: string) =>
+    rows.filter((row) => row.collection === collection).map((row) => row.data)
+  return findParentMatches(
+    { parents: source('parents'), students: source('students') } as unknown as Pick<
+      State,
+      'parents' | 'students'
+    >,
+    phone,
+  )
+}
+
+/** Kimlik yalnız personele ve maskeli döner (guvenlik-kvkk.md Ç sınıfı). */
+export async function studentIdentityFor(ctx: ServiceContext, studentId: string) {
+  const row = await findStudentIdentity(ctx.db, ctx.institutionId, studentId)
+  if (row === null) throw new NotFoundError()
+  return {
+    kind: row.kind,
+    maskedNumber: `*******${row.number.slice(-4)}`,
+    birthDate: row.birthDate,
+    academicYear: row.academicYear,
+  }
 }
 
 /** Dil okulunda deneme dersi planlar (DOM-DIL-030, DOM-KAY-034). 200. */

@@ -11,7 +11,6 @@ import {
   PAYMENT_METHOD_LABELS,
   paymentInputSchema,
 } from '../apps/web/src/lib/domain.js'
-import { enrollProspectWithPlan } from '../packages/school-core/src/lib/domain.ts'
 import { dayKey } from '../apps/web/src/lib/format.js'
 import { isDomainError } from './support/domain-error.ts'
 
@@ -119,49 +118,6 @@ test('DOM-FIN-012: kesin kayıt sözleşmesi yalnız kendi taksitlerini listeler
     contract.invoiceIds,
     s.invoices.filter((i) => i.studentId === student.id).map((i) => i.id),
   )
-})
-test('DOM-FIN-001, DOM-FIN-011: API kaydı kuruşla çalışır, taksit toplamı kuruşu kuruşuna eşittir', () => {
-  const s = createSeed()
-  let n = 0
-  const { student, contract } = enrollProspectWithPlan(
-    s,
-    'pr1',
-    { classId: 'c1', totalCents: 10_000_001, installmentCount: 3, firstDueDate: '2026-01-31' },
-    (p) => `${p}-test-${n++}`,
-    '2026-01-01T09:00:00.000Z',
-  )
-  const invoices = s.invoices.filter((i) => i.studentId === student.id)
-  assert.deepEqual(
-    invoices.map((i) => i.amount),
-    [3_333_334, 3_333_334, 3_333_333],
-  )
-  assert.equal(contract.amount, 10_000_001)
-  assert.equal(contract.title, 'Özel okul eğitim sözleşmesi')
-})
-test('DOM-KAY-035: API kaydı dil okulu başlığı kullanır, geçersiz girdide kayıt değişmez', () => {
-  const s = createSeed()
-  let n = 0
-  const makeId = (p: string) => `${p}-test-${n++}`
-  const now = '2026-01-01T09:00:00.000Z'
-  const before = JSON.stringify(s)
-  for (const input of [
-    { classId: 'c1', totalCents: 9_999, installmentCount: 3, firstDueDate: '2026-01-31' },
-    { classId: 'c1', totalCents: 10_000.5, installmentCount: 3, firstDueDate: '2026-01-31' },
-    { classId: 'c1', totalCents: 10_000, installmentCount: 13, firstDueDate: '2026-01-31' },
-    { classId: 'c1', totalCents: 10_000, installmentCount: 3, firstDueDate: '2026-02-30' },
-    { classId: 'c1', totalCents: 10_000, installmentCount: 3, firstDueDate: '2026-01-31', x: 1 },
-  ])
-    assert.throws(() => enrollProspectWithPlan(s, 'pr1', input, makeId, now))
-  assert.equal(JSON.stringify(s), before)
-  const { contract } = enrollProspectWithPlan(
-    s,
-    'pr1',
-    { classId: 'c1', totalCents: 10_000, installmentCount: 1, firstDueDate: '2026-01-31' },
-    makeId,
-    now,
-    { institutionType: 'language_school' },
-  )
-  assert.equal(contract.title, 'Dil kursu eğitim sözleşmesi')
 })
 test('Dolu sınıfa veya geçersiz tarihle kayıt kısmi veri oluşturmaz', () => {
   const s = createSeed()

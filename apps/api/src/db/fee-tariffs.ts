@@ -1,6 +1,6 @@
 import { and, count, desc, eq, sql } from 'drizzle-orm'
 
-import type { FeeItem, FeeTariffStatus } from '@kampus/school-core/lib/fee-tariffs.ts'
+import type { FeeDiscount, FeeItem, FeeTariffStatus } from '@kampus/school-core/lib/fee-tariffs.ts'
 
 import type { Database } from './client.ts'
 import { feeTariffs } from './schema/fee-tariffs.ts'
@@ -13,6 +13,7 @@ export interface StoredFeeTariff {
   versionNumber: number
   status: FeeTariffStatus
   items: FeeItem[]
+  discounts: FeeDiscount[]
   announcedDate: string | null
   mebbisRecordedDate: string | null
   publishedAt: Date | null
@@ -25,6 +26,7 @@ const COLUMNS = {
   versionNumber: feeTariffs.versionNumber,
   status: feeTariffs.status,
   items: feeTariffs.items,
+  discounts: feeTariffs.discounts,
   announcedDate: feeTariffs.announcedDate,
   mebbisRecordedDate: feeTariffs.mebbisRecordedDate,
   publishedAt: feeTariffs.publishedAt,
@@ -90,6 +92,7 @@ export async function insertFeeTariff(
     academicYear: number
     versionNumber: number
     items: FeeItem[]
+    discounts: FeeDiscount[]
     now: Date
   },
 ): Promise<void> {
@@ -100,6 +103,7 @@ export async function insertFeeTariff(
     versionNumber: input.versionNumber,
     status: 'draft',
     items: input.items,
+    discounts: input.discounts,
     createdAt: input.now,
     updatedAt: input.now,
   })
@@ -109,11 +113,22 @@ export async function insertFeeTariff(
 export async function updateFeeTariffItems(
   tx: Database,
   institutionId: string,
-  input: { id: string; expectedVersion: number; items: FeeItem[]; now: Date },
+  input: {
+    id: string
+    expectedVersion: number
+    items: FeeItem[]
+    discounts: FeeDiscount[]
+    now: Date
+  },
 ): Promise<boolean> {
   const rows = await tx
     .update(feeTariffs)
-    .set({ items: input.items, version: sql`${feeTariffs.version} + 1`, updatedAt: input.now })
+    .set({
+      items: input.items,
+      discounts: input.discounts,
+      version: sql`${feeTariffs.version} + 1`,
+      updatedAt: input.now,
+    })
     .where(
       and(
         eq(feeTariffs.institutionId, institutionId),
@@ -175,4 +190,24 @@ export async function applyFeeTariffPublish(
     )
     .returning({ id: feeTariffs.id })
   return rows.length === 1
+}
+
+/** Eğitim yılının yayındaki tarifesi; yoksa `null` (DOM-FIN-002). */
+export async function findPublishedTariff(
+  db: Database,
+  institutionId: string,
+  academicYear: number,
+): Promise<StoredFeeTariff | null> {
+  const [row] = await db
+    .select(COLUMNS)
+    .from(feeTariffs)
+    .where(
+      and(
+        eq(feeTariffs.institutionId, institutionId),
+        eq(feeTariffs.academicYear, academicYear),
+        eq(feeTariffs.status, 'published'),
+      ),
+    )
+    .limit(1)
+  return row ? stored(row) : null
 }

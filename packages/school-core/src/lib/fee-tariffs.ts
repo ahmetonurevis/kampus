@@ -45,15 +45,42 @@ export const feeItemSchema = z.strictObject({
 })
 export type FeeItem = z.output<typeof feeItemSchema>
 
+/** Yalnız ilan edilen türden indirim uygulanır; serbest tutar yoktur (DOM-FIN-020). */
+export const FEE_DISCOUNT_KINDS = [
+  'sibling',
+  'early_payment',
+  'early_registration',
+  'referral',
+  'corporate',
+  'staff_child',
+] as const
+export type FeeDiscountKind = (typeof FEE_DISCOUNT_KINDS)[number]
+
+export const feeDiscountSchema = z
+  .strictObject({
+    kind: z.enum(FEE_DISCOUNT_KINDS, 'İndirim türünü seçin.'),
+    percentBasisPoints: z.number().int().min(1).max(10_000).nullable(),
+    amountCents: z.number().int().positive().max(100_000_000).nullable(),
+  })
+  .refine((value) => (value.percentBasisPoints === null) !== (value.amountCents === null), {
+    message: 'İndirim için oran veya tutardan yalnız birini girin.',
+  })
+export type FeeDiscount = z.output<typeof feeDiscountSchema>
+const feeDiscountsSchema = z.array(feeDiscountSchema).max(20).default([])
+
 const feeItemsSchema = z.array(feeItemSchema).min(1, 'En az bir ücret kalemi girin.').max(100)
 
 export const createFeeTariffSchema = z.strictObject({
   academicYear: z.number().int().min(2000).max(2100),
   items: feeItemsSchema,
+  discounts: feeDiscountsSchema,
 })
 export type CreateFeeTariffInput = z.input<typeof createFeeTariffSchema>
 
-export const updateFeeTariffSchema = z.strictObject({ items: feeItemsSchema })
+export const updateFeeTariffSchema = z.strictObject({
+  items: feeItemsSchema,
+  discounts: feeDiscountsSchema,
+})
 export type UpdateFeeTariffInput = z.input<typeof updateFeeTariffSchema>
 
 export const publishFeeTariffSchema = z.strictObject({
@@ -89,7 +116,7 @@ function assertUniqueItems(items: readonly FeeItem[]): void {
 export function planTariffCreate(
   input: unknown,
   existing: readonly Pick<FeeTariffRow, 'versionNumber' | 'status'>[],
-): { academicYear: number; versionNumber: number; items: FeeItem[] } {
+): { academicYear: number; versionNumber: number; items: FeeItem[]; discounts: FeeDiscount[] } {
   const data = createFeeTariffSchema.parse(input)
   assertUniqueItems(data.items)
   if (existing.some((row) => row.status === 'draft'))
@@ -97,7 +124,12 @@ export function planTariffCreate(
       kind: 'conflict',
     })
   const last = existing.reduce((highest, row) => Math.max(highest, row.versionNumber), 0)
-  return { academicYear: data.academicYear, versionNumber: last + 1, items: data.items }
+  return {
+    academicYear: data.academicYear,
+    versionNumber: last + 1,
+    items: data.items,
+    discounts: data.discounts,
+  }
 }
 
 function assertDraft(row: Pick<FeeTariffRow, 'status'>): void {
@@ -112,11 +144,11 @@ function assertDraft(row: Pick<FeeTariffRow, 'status'>): void {
 export function planTariffUpdate(
   row: Pick<FeeTariffRow, 'status'>,
   input: unknown,
-): { items: FeeItem[] } {
+): { items: FeeItem[]; discounts: FeeDiscount[] } {
   assertDraft(row)
   const data = updateFeeTariffSchema.parse(input)
   assertUniqueItems(data.items)
-  return { items: data.items }
+  return { items: data.items, discounts: data.discounts }
 }
 
 /**

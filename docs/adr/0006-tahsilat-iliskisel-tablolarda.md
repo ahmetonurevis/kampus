@@ -20,6 +20,8 @@ Tahsilat bugün taksit kaydının `paidAt` ve `method` alanlarıdır (`records`,
 7. **Nakit kurum ayarıdır.** `payment_settings.cash_payments_enabled` varsayılan kapalıdır (satır yoksa kapalı, sürüm 1); yalnız yönetici değiştirir, değişiklik denetim kaydına yazılır. Kapalıyken nakit tahsilat 422 `cash_payment_disabled` alır. Ayar öğrenim ücreti ile ek hizmeti ayırmaz: tarife gelene kadar tahsilatta kalem bilgisi yoktur.
 8. **Tarife sürümlüdür.** `fee_tariffs` eğitim yılı başına sürüm tutar; kalemler core şemasıyla doğrulanan `items` jsonb'dir. Yılda tek açık taslak ve tek yayındaki sürüm kısmi benzersiz indekslerle korunur. Yayımlanan satır değişmez, yeni sürüm önceki sürümü `superseded` yapar; KDV oranı kalemde tarihli tutulduğu için geçmiş kayıtlar eski oranla kalır (IST-104).
 
+9. **Kesin kayıt tarifeye bağlıdır, kimlik ayrı tablodadır.** Tutar girdi değildir; eğitim yılının yayımlanmış tarifesinden, ilan ücreti üzerinden hesaplanan indirimlerle üretilir ve sözleşmeye karar anının kopyası olarak yazılır (`tariffId`, `grossCents`, `discounts`, `netCents`). T.C. kimlik no ve doğum tarihi `student_identities` tablosundadır: `records.data`'ya girmediği için genel okuma ve kapsam kodu bu alanlara ulaşmaz, aynı yıl tekilliği benzersiz indeksle korunur. Yenileme işlemi şimdilik tarifeye bağlı değildir.
+
 ## Sonuçlar
 
 - Nakdi açmanın ÖÖKY md. 55/3 açısından sorumluluğu kuruma geçer; yasal uygunluk **doğrulanmalı**, pilot öncesi hukukçuya sorulacak.

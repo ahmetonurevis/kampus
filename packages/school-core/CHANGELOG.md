@@ -4,11 +4,11 @@
 
 Kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-001, DOM-FIN-012, DOM-FIN-030…033).
 
-- `lib/domain.ts`: `enrollProspectSchema` (katı gövde; tutar kuruş) ve `enrollProspectWithPlan` eklendi. Dil okulunda sözleşme başlığı kurum türüne uyar. Demo girişi `enrollProspect` ve `registrationSchema` aynı kaldı.
+- `lib/enrollment.ts`: `enrollProspectSchema`, `enrollProspectWithTariff`, `priceEnrollment`, `findParentMatches`, `isValidTurkishId` eklendi; kesin kayıt tutarı tarifeden hesaplanır (DOM-FIN-002, -003, -020…-022, DOM-KAY-011…-013). Demo girişi `enrollProspect` ve `registrationSchema` aynı kaldı.
 - Kesin kayıt sözleşmesi `invoiceIds` taşır; belge yalnız kendi taksitlerini çözümler (DOM-FIN-012).
 - `lib/payments.ts`: `recordPaymentSchema`, `reversePaymentSchema`, `paymentSettingsSchema`, `planPayment`, `reversePayment`, `openAmount` eklendi. Demo girişi `payInvoice` aynı kaldı.
 - `lib/authorize.ts` ve `modules/commands.ts`: `payment.reverse` ve `tariff.manage` (yalnız yönetici), modül `finance`.
-- `lib/fee-tariffs.ts`: `feeItemSchema`, `createFeeTariffSchema`, `updateFeeTariffSchema`, `publishFeeTariffSchema`, `planTariffCreate`, `planTariffUpdate`, `planTariffPublish` eklendi (DOM-FIN-002, -004, -006).
+- `lib/fee-tariffs.ts`: `feeItemSchema`, `createFeeTariffSchema`, `updateFeeTariffSchema`, `publishFeeTariffSchema`, `feeDiscountSchema`, `planTariffCreate`, `planTariffUpdate`, `planTariffPublish` eklendi (DOM-FIN-002, -004, -006, -020).
 
 ## 2.20.0
 

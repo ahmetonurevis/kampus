@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
@@ -13,6 +14,7 @@ import { conversationMessagePage } from '../src/db/conversation-messages.ts'
 import { tryLockIdempotencyKey } from '../src/db/idempotency.ts'
 import { insertMissingRecords, lockInstitution, writeRecords } from '../src/db/records.ts'
 import { institutions } from '../src/db/schema/auth.ts'
+import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
 import { paymentAllocations, payments } from '../src/db/schema/payments.ts'
 import { records } from '../src/db/schema/records.ts'
 import { AppError } from '../src/errors.ts'
@@ -709,15 +711,43 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       ],
       FIXED_NOW,
     )
-    const enrollment = {
+    await db.insert(feeTariffs).values({
+      institutionId: ctx.institutionId,
+      id: randomUUID(),
+      academicYear: FIXED_NOW.getUTCFullYear(),
+      versionNumber: 1,
+      status: 'published',
+      items: [
+        {
+          kind: 'tuition',
+          level: null,
+          amountCents: 100_000,
+          unit: 'year',
+          vatBasisPoints: 1000,
+          vatEffectiveDate: '2026-01-01',
+          announcedAmountCents: 100_000,
+        },
+      ],
+      announcedDate: '2026-05-01',
+      publishedByUserId: ctx.actor.userId,
+      publishedAt: FIXED_NOW,
+    })
+    const enrollment = (number: string) => ({
       classId: seat.id,
-      totalCents: 100_000,
       installmentCount: 2,
       firstDueDate: '2026-11-15',
-    }
+      identity: { kind: 'tc', number, birthDate: '2013-03-01' },
+      guardian: { name: 'Test Veli', phone: '05559990123', relationship: 'mother' },
+    })
+    const numbers = ['10000000146', '11111111110']
     const outcomes = await Promise.allSettled(
       open.map((item, index) =>
-        enrollProspectCommand(ctx, item.id, enrollment, keyed(`pg-enroll-000${String(index)}`)),
+        enrollProspectCommand(
+          ctx,
+          item.id,
+          enrollment(numbers[index] ?? ''),
+          keyed(`pg-enroll-000${String(index)}`),
+        ),
       ),
     )
     assert.deepEqual(

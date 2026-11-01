@@ -20,7 +20,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kurum ilan etmeden ücret tahsil edemez ve ilan ettiği ücretin üzerinde ücret isteyemez.
 - **Kaynak:** 5580 md. 13/1 (ocak–mayıs ilanı); ÖÖKY md. 54/1-a, c, ç, d ve 54/2.
 - **Kurum türü:** ikisi (dil okulunda ders saati ücreti, `DOM-FIN-006`)
-- **Kodda:** kısmen — tarife sürümü, ilan ve MEBBİS tarihi var (`lib/fee-tariffs.ts`, `POST /api/v1/fee-tariffs`, ADR 0006 karar 8). Sözleşme henüz tarifeye bağlanmaz; kayıt tutarı serbest girilir (`TODO(fee-tariff)`, `lib/domain.ts`; yenileme `lib/school-workflows.ts`). İlan dönemi denetimi yok.
+- **Kodda:** kısmen — tarife sürümü, ilan ve MEBBİS tarihi var (`lib/fee-tariffs.ts`, `POST /api/v1/fee-tariffs`, ADR 0006 karar 8). Kesin kayıt tutarı yayımlanmış tarifeden hesaplanır (`lib/enrollment.ts`). Yenileme (`lib/school-workflows.ts`) ve çevrimdışı demo tutarı henüz serbesttir; ilan dönemi denetimi yok.
 
 ### DOM-FIN-003 · Ek hizmetler ayrı kalemdir ve isteğe bağlıdır
 
@@ -28,7 +28,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat bu hizmetleri ayrı tespit ve ilan ettirir; hizmetten talep eden veli yararlanır.
 - **Kaynak:** ÖÖKY md. 53/5, 54/1-a son cümle.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — taksit kaydının kalem türü yoktur (`packages/school-core/src/lib/domain.js:142-151`).
+- **Kodda:** var (API, kesin kayıt) — ek hizmet ayrı taksit kaydıdır (`feeKind`, `lib/domain.ts`). Yenileme henüz kalem ayırmaz.
 
 ### DOM-FIN-004 · İlan dışı ad altında tahsilat yok
 
@@ -96,7 +96,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat kurumca belirlenecek indirimlerin ilanda belirtilmesini ister. Serbest indirim ilan dışı uygulama ve kayıt dışı pazarlık riski taşır.
 - **Kaynak:** ÖÖKY md. 54/1-a.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — `packages/school-core/src/lib/school-workflows.js:128-135` serbest TL indirim alır, tür ve koşul tutmaz.
+- **Kodda:** var (API, kesin kayıt) — `priceEnrollment` (`lib/enrollment.ts`). Yenilemede indirim henüz serbest tutardır (`lib/school-workflows.ts`).
 
 ### DOM-FIN-021 · Toplam indirim tavanı
 
@@ -104,7 +104,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat indirim oranını sınırlar; sınırsız indirim haksız rekabet ve ilanın anlamsızlaşması demektir.
 - **Kaynak:** ÖÖKY md. 54/1-a. Burs ve ücretsiz okutmanın %50 tavanına dahil olmadığı yorumu ÖÖKY md. 62/4'e (burslu oranı ücretsiz oranının dışında tutulur) ve bursun ayrı bölümde düzenlenmesine dayanır; **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — `packages/school-core/src/lib/school-workflows.js:435-450` %0–100 burs ve sınırsız TL indirimi toplar, yalnız net tutarın 100 TL altına düşmesini engeller (`441`).
+- **Kodda:** var (API, kesin kayıt) — `DISCOUNT_CAP_BASIS_POINTS`, 422 `discount_cap_exceeded`; personel çocuğu istisnası yönetici onayıyla. Personel kaydına bağlama ve yenileme henüz yok.
 
 ### DOM-FIN-022 · Kardeş indirimi
 
@@ -112,7 +112,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kardeş indirimi aile bağına dayanır; bağ yanlış kurulursa indirim haksız uygulanır.
 - **Kaynak:** İşletme kuralı; ilan zorunluluğu ÖÖKY md. 54/1-a.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — kardeş bağı yok, her kayıt yeni veli açar (`packages/school-core/src/lib/domain.js:119`).
+- **Kodda:** kısmen — aynı veliye bağlı aktif kardeş denetlenir (`enrollProspectWithTariff`). "İkinci çocuk" seçimi ve yıl denetimi yok.
 
 ### DOM-FIN-023 · İndirim koşulu kalkınca
 
@@ -278,9 +278,6 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | DOM-FIN-001 | Kayıt tutarı tam TL, yenileme tutarı iki ondalık alır; iki giriş kuralı farklı (`packages/school-core/src/lib/domain.js:22-26`, `school-workflows.js:117-126`). |
 | DOM-FIN-005 | Yenilemede ÜFE/TÜFE+5 artış tavanı denetlenmez (`packages/school-core/src/lib/school-workflows.js:435-450`).                                                    |
-| DOM-FIN-020 | İndirim serbest TL tutarıdır, tür ve koşul tutulmaz (`packages/school-core/src/lib/school-workflows.js:128-135`).                                               |
-| DOM-FIN-021 | %50 indirim tavanı yok; %100 burs + sınırsız indirim yalnız 100 TL alt sınırına takılır (`packages/school-core/src/lib/school-workflows.js:441`).               |
-| DOM-FIN-022 | Kardeş bağı ve kardeş indirimi yok; her kayıt yeni veli açar (`packages/school-core/src/lib/domain.js:119`).                                                    |
 | DOM-FIN-035 | Hatırlatma gerçek ileti göndermez, sıklık sınırı yok (`apps/web/src/views/Finance.vue:89-95`).                                                                  |
 | DOM-FIN-040 | Ayrılış ve iade hesabı yok.                                                                                                                                     |
 | DOM-FIN-050 | Dekont numarası taksit kimliğidir; ardışık numara yok (`packages/school-core/src/lib/document-data.js:18`).                                                     |

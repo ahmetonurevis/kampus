@@ -25641,6 +25641,55 @@
                               "additionalProperties": false
                             }
                           },
+                          "discounts": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "sibling",
+                                    "early_payment",
+                                    "early_registration",
+                                    "referral",
+                                    "corporate",
+                                    "staff_child"
+                                  ]
+                                },
+                                "percentBasisPoints": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 10000
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "amountCents": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "exclusiveMinimum": 0,
+                                      "maximum": 100000000
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "percentBasisPoints",
+                                "amountCents"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
                           "announcedDate": {
                             "description": "İlan günü (YYYY-MM-DD)",
                             "type": [
@@ -25675,6 +25724,7 @@
                           "versionNumber",
                           "status",
                           "items",
+                          "discounts",
                           "announcedDate",
                           "mebbisRecordedDate",
                           "publishedAt",
@@ -25876,6 +25926,57 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "discounts": {
+                    "default": [],
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "sibling",
+                            "early_payment",
+                            "early_registration",
+                            "referral",
+                            "corporate",
+                            "staff_child"
+                          ]
+                        },
+                        "percentBasisPoints": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 10000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "amountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 100000000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "percentBasisPoints",
+                        "amountCents"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [
@@ -26011,6 +26112,55 @@
                             "additionalProperties": false
                           }
                         },
+                        "discounts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "sibling",
+                                  "early_payment",
+                                  "early_registration",
+                                  "referral",
+                                  "corporate",
+                                  "staff_child"
+                                ]
+                              },
+                              "percentBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 10000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "amountCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 100000000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "percentBasisPoints",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "announcedDate": {
                           "description": "İlan günü (YYYY-MM-DD)",
                           "type": [
@@ -26045,6 +26195,7 @@
                         "versionNumber",
                         "status",
                         "items",
+                        "discounts",
                         "announcedDate",
                         "mebbisRecordedDate",
                         "publishedAt",
@@ -26276,6 +26427,55 @@
                             "additionalProperties": false
                           }
                         },
+                        "discounts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "sibling",
+                                  "early_payment",
+                                  "early_registration",
+                                  "referral",
+                                  "corporate",
+                                  "staff_child"
+                                ]
+                              },
+                              "percentBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 10000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "amountCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 100000000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "percentBasisPoints",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "announcedDate": {
                           "description": "İlan günü (YYYY-MM-DD)",
                           "type": [
@@ -26310,6 +26510,7 @@
                         "versionNumber",
                         "status",
                         "items",
+                        "discounts",
                         "announcedDate",
                         "mebbisRecordedDate",
                         "publishedAt",
@@ -26501,6 +26702,57 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "discounts": {
+                    "default": [],
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "sibling",
+                            "early_payment",
+                            "early_registration",
+                            "referral",
+                            "corporate",
+                            "staff_child"
+                          ]
+                        },
+                        "percentBasisPoints": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 10000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "amountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 100000000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "percentBasisPoints",
+                        "amountCents"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [
@@ -26655,6 +26907,55 @@
                             "additionalProperties": false
                           }
                         },
+                        "discounts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "sibling",
+                                  "early_payment",
+                                  "early_registration",
+                                  "referral",
+                                  "corporate",
+                                  "staff_child"
+                                ]
+                              },
+                              "percentBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 10000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "amountCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 100000000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "percentBasisPoints",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "announcedDate": {
                           "description": "İlan günü (YYYY-MM-DD)",
                           "type": [
@@ -26689,6 +26990,7 @@
                         "versionNumber",
                         "status",
                         "items",
+                        "discounts",
                         "announcedDate",
                         "mebbisRecordedDate",
                         "publishedAt",
@@ -26972,6 +27274,55 @@
                             "additionalProperties": false
                           }
                         },
+                        "discounts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "sibling",
+                                  "early_payment",
+                                  "early_registration",
+                                  "referral",
+                                  "corporate",
+                                  "staff_child"
+                                ]
+                              },
+                              "percentBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 10000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "amountCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 100000000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "percentBasisPoints",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
                         "announcedDate": {
                           "description": "İlan günü (YYYY-MM-DD)",
                           "type": [
@@ -27006,6 +27357,7 @@
                         "versionNumber",
                         "status",
                         "items",
+                        "discounts",
                         "announcedDate",
                         "mebbisRecordedDate",
                         "publishedAt",
@@ -29219,7 +29571,7 @@
         "tags": [
           "prospects"
         ],
-        "description": "Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithPlan`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Tutar kuruştur (`totalCents`, 100 ₺–1.000.000 ₺), taksit sayısı 1–12; taksit toplamı kuruşu kuruşuna sözleşme tutarına eşittir (DOM-FIN-011). Gövde katıdır, bilinmeyen alan 400 `validation_failed`. Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. Kontenjan kurum kilidi altında sayılır. Modül `crm`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`.",
+        "description": "Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithTariff`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002): tarife yoksa 422 `tariff_not_published`, düzeyin ücreti yoksa 422 `tariff_tuition_missing`. Dil okulunda `lessonHours` zorunlu (422 `lesson_hours_required`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 `discount_not_in_tariff`, toplam %50'yi aşarsa 422 `discount_cap_exceeded`, personel çocuğu istisnası yalnız yönetici (422 `discount_approval_required`), kardeş indirimi mevcut veli ve aktif kardeş ister (422 `sibling_discount_ineligible`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 `extra_not_in_tariff` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aynı yıl aynı kimlik 409 `student_identity_duplicate`. Veli zorunlu (422 `guardian_required`); dil okulunda 18 yaş üstü kursiyerde `guardian: null` kursiyeri ödeyici yapar. `existingParentId` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. Modül `crm`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -29232,11 +29584,6 @@
                     "minLength": 2,
                     "maxLength": 2000
                   },
-                  "totalCents": {
-                    "type": "integer",
-                    "minimum": 10000,
-                    "maximum": 100000000
-                  },
                   "installmentCount": {
                     "type": "integer",
                     "minimum": 1,
@@ -29245,13 +29592,134 @@
                   "firstDueDate": {
                     "type": "string",
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "lessonHours": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2000
+                  },
+                  "discounts": {
+                    "default": [],
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "sibling",
+                        "early_payment",
+                        "early_registration",
+                        "referral",
+                        "corporate",
+                        "staff_child"
+                      ]
+                    }
+                  },
+                  "extras": {
+                    "default": [],
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "tuition",
+                        "breakfast",
+                        "meal",
+                        "transport",
+                        "dormitory",
+                        "stationery",
+                        "uniform",
+                        "tutoring"
+                      ]
+                    }
+                  },
+                  "identity": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "tc",
+                          "foreign"
+                        ]
+                      },
+                      "number": {
+                        "type": "string",
+                        "minLength": 5,
+                        "maxLength": 20
+                      },
+                      "birthDate": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "number",
+                      "birthDate"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "guardian": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "existingParentId": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 2000
+                              }
+                            },
+                            "required": [
+                              "existingParentId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 80
+                              },
+                              "phone": {
+                                "type": "string",
+                                "pattern": "^0\\d{10}$"
+                              },
+                              "relationship": {
+                                "type": "string",
+                                "enum": [
+                                  "mother",
+                                  "father",
+                                  "guardian",
+                                  "other"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "phone",
+                              "relationship"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
                   "classId",
-                  "totalCents",
                   "installmentCount",
-                  "firstDueDate"
+                  "firstDueDate",
+                  "identity",
+                  "guardian"
                 ],
                 "additionalProperties": false
               }
@@ -29301,6 +29769,299 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/{prospectId}/guardian-matches": {
+      "get": {
+        "operationId": "listGuardianMatches",
+        "summary": "Adayla eşleşen velileri öner",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Adayın telefonuyla eşleşen mevcut velileri önerir; ön büro seçerse `existingParentId` ile bağlanır, otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon taşımaz. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "prospectId",
+            "required": true,
+            "description": "Aday kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "parentId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "studentCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "parentId",
+                          "name",
+                          "studentCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{studentId}/identity": {
+      "get": {
+        "operationId": "getStudentIdentity",
+        "summary": "Öğrencinin kimlik özeti",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Kimlik numarası yalnız maskeli döner (`*******1234`). Kaydı olmayan veya başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string"
+                        },
+                        "maskedNumber": {
+                          "type": "string"
+                        },
+                        "birthDate": {
+                          "type": "string"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "maskedNumber",
+                        "birthDate",
+                        "academicYear"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [

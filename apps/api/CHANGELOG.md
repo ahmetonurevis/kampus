@@ -2,6 +2,12 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Tarifeli kesin kayıt
+
+- **Kırıcı:** `POST /api/v1/prospects/:prospectId/enroll` gövdesi değişti: `totalCents` kalktı; tutar yayımlanmış tarifeden hesaplanır. `identity` ve `guardian` zorunlu, `discounts`, `extras`, `lessonHours` eklendi.
+- `fee_tariffs.discounts` ve `student_identities` eklendi (migration `0016_add_enrollment_terms`). `GET /api/v1/prospects/:prospectId/guardian-matches` ve `GET /api/v1/students/:studentId/identity` eklendi.
+- Log gizleme listesine `identity`, `identityNumber`, `birthDate` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Ücret tarifesi uçları
 
 - `fee_tariffs` tablosu ve `GET`/`POST /api/v1/fee-tariffs`, `GET`/`PATCH /api/v1/fee-tariffs/:tariffId`, `POST /api/v1/fee-tariffs/:tariffId/publish` eklendi (ADR 0006 karar 8, DOM-FIN-002, -004, -006, IST-104). Migration `0015_create_fee_tariffs`.

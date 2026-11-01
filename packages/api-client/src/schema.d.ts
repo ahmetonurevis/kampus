@@ -2051,9 +2051,49 @@ export interface paths {
         put?: never;
         /**
          * Adayı kesin kayda al
-         * @description Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithPlan`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Tutar kuruştur (`totalCents`, 100 ₺–1.000.000 ₺), taksit sayısı 1–12; taksit toplamı kuruşu kuruşuna sözleşme tutarına eşittir (DOM-FIN-011). Gövde katıdır, bilinmeyen alan 400 `validation_failed`. Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. Kontenjan kurum kilidi altında sayılır. Modül `crm`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`.
+         * @description Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithTariff`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002): tarife yoksa 422 `tariff_not_published`, düzeyin ücreti yoksa 422 `tariff_tuition_missing`. Dil okulunda `lessonHours` zorunlu (422 `lesson_hours_required`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 `discount_not_in_tariff`, toplam %50'yi aşarsa 422 `discount_cap_exceeded`, personel çocuğu istisnası yalnız yönetici (422 `discount_approval_required`), kardeş indirimi mevcut veli ve aktif kardeş ister (422 `sibling_discount_ineligible`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 `extra_not_in_tariff` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aynı yıl aynı kimlik 409 `student_identity_duplicate`. Veli zorunlu (422 `guardian_required`); dil okulunda 18 yaş üstü kursiyerde `guardian: null` kursiyeri ödeyici yapar. `existingParentId` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. Modül `crm`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`.
          */
         post: operations["enrollProspect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/{prospectId}/guardian-matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Adayla eşleşen velileri öner
+         * @description Adayın telefonuyla eşleşen mevcut velileri önerir; ön büro seçerse `existingParentId` ile bağlanır, otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon taşımaz. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listGuardianMatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/students/{studentId}/identity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrencinin kimlik özeti
+         * @description Kimlik numarası yalnız maskeli döner (`*******1234`). Kaydı olmayan veya başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getStudentIdentity"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -14760,6 +14800,12 @@ export interface operations {
                                 vatEffectiveDate: string;
                                 announcedAmountCents: number | null;
                             }[];
+                            discounts: {
+                                /** @enum {string} */
+                                kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
+                                percentBasisPoints: number | null;
+                                amountCents: number | null;
+                            }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
                             /** @description MEBBİS'e işlendiği gün (YYYY-MM-DD) */
@@ -14872,6 +14918,13 @@ export interface operations {
                         vatEffectiveDate: string;
                         announcedAmountCents: number | null;
                     }[];
+                    /** @default [] */
+                    discounts?: {
+                        /** @enum {string} */
+                        kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
+                        percentBasisPoints: number | null;
+                        amountCents: number | null;
+                    }[];
                 };
             };
         };
@@ -14901,6 +14954,12 @@ export interface operations {
                                 vatBasisPoints: number;
                                 vatEffectiveDate: string;
                                 announcedAmountCents: number | null;
+                            }[];
+                            discounts: {
+                                /** @enum {string} */
+                                kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
+                                percentBasisPoints: number | null;
+                                amountCents: number | null;
                             }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
@@ -15025,6 +15084,12 @@ export interface operations {
                                 vatEffectiveDate: string;
                                 announcedAmountCents: number | null;
                             }[];
+                            discounts: {
+                                /** @enum {string} */
+                                kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
+                                percentBasisPoints: number | null;
+                                amountCents: number | null;
+                            }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
                             /** @description MEBBİS'e işlendiği gün (YYYY-MM-DD) */
@@ -15139,6 +15204,13 @@ export interface operations {
                         vatEffectiveDate: string;
                         announcedAmountCents: number | null;
                     }[];
+                    /** @default [] */
+                    discounts?: {
+                        /** @enum {string} */
+                        kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
+                        percentBasisPoints: number | null;
+                        amountCents: number | null;
+                    }[];
                 };
             };
         };
@@ -15168,6 +15240,12 @@ export interface operations {
                                 vatBasisPoints: number;
                                 vatEffectiveDate: string;
                                 announcedAmountCents: number | null;
+                            }[];
+                            discounts: {
+                                /** @enum {string} */
+                                kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
+                                percentBasisPoints: number | null;
+                                amountCents: number | null;
                             }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
@@ -15303,6 +15381,12 @@ export interface operations {
                                 vatBasisPoints: number;
                                 vatEffectiveDate: string;
                                 announcedAmountCents: number | null;
+                            }[];
+                            discounts: {
+                                /** @enum {string} */
+                                kind: "sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child";
+                                percentBasisPoints: number | null;
+                                amountCents: number | null;
                             }[];
                             /** @description İlan günü (YYYY-MM-DD) */
                             announcedDate: string | null;
@@ -16598,9 +16682,27 @@ export interface operations {
             content: {
                 "application/json": {
                     classId: string;
-                    totalCents: number;
                     installmentCount: number;
                     firstDueDate: string;
+                    lessonHours?: number;
+                    /** @default [] */
+                    discounts?: ("sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child")[];
+                    /** @default [] */
+                    extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
+                    identity: {
+                        /** @enum {string} */
+                        kind: "tc" | "foreign";
+                        number: string;
+                        birthDate: string;
+                    };
+                    guardian: ({
+                        existingParentId: string;
+                    } | {
+                        name: string;
+                        phone: string;
+                        /** @enum {string} */
+                        relationship: "mother" | "father" | "guardian" | "other";
+                    }) | null;
                 };
             };
         };
@@ -16613,6 +16715,209 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGuardianMatches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Aday kimliği */
+                prospectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            parentId: string;
+                            name: string;
+                            studentCount: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStudentIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            kind: string;
+                            maskedNumber: string;
+                            birthDate: string;
+                            academicYear: number;
+                        };
                     };
                 };
             };

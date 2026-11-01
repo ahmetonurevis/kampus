@@ -1,3 +1,4 @@
+import type { ContractTerms } from '../lib/domain.ts'
 import { questionBank } from './question-bank.ts'
 import { subjects, subjectsForGrade, subjectById } from './curriculum.ts'
 import { gradeQuiz, type AttendanceCorrection } from '../lib/domain.ts'
@@ -869,12 +870,15 @@ type StatePatches = {
   grades: (Item<'grades'> & Partial<OfficialGradeFields>)[]
   // Düzeltme geçmişi; ilk kez alınan yoklama ve örnek veri taşımaz (DOM-AKD-035).
   attendance: (Item<'attendance'> & { corrections?: AttendanceCorrection[] })[]
-  invoices: (Item<'invoices'> & Timestamps & { contractId?: string; academicYear?: number })[]
+  invoices: (Item<'invoices'> &
+    Timestamps & { feeKind?: string; contractId?: string; academicYear?: number })[]
+  // kvkk: K (veli telefonu)
+  parents: (Item<'parents'> & { phone?: string; relationship?: string })[]
   contracts: (Item<'contracts'> & {
     classId?: string
     academicYear?: number
     invoiceIds?: string[]
-  })[]
+  } & Partial<ContractTerms>)[]
   // İş akışıyla eklenen dersin adı ders listesinden okunur; listede yoksa boş kalır. Eski
   // kayıtlarda ders adı `subject` alanındadır.
   schedule: (Patch<Item<'schedule'>, { title?: string; subject?: string }> &

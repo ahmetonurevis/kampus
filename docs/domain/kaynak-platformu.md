@@ -134,7 +134,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** İhlal iddiasında yayına devam etmek zararı ve sorumluluğu büyütür.
 - **Kaynak:** İşletme kuralı; FSEK md. 66-68 (tecavüzün ref'i ve men'i) — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planVersionTransition` `report`: bildirimi yalnız kaynağı okuyabilen personel yapar, `staffCanReadVersion`; bildirilen içeriği yalnız yönetici yeniden onaylar; kaldırma `planResourceRemoval`); bildirim kaydı yok. API: `POST /api/v1/resources/:id/versions/:versionId/report` yayındaki sürümü incelemeye alır, `POST /api/v1/resources/:id/remove` (yalnız yönetici, gerekçeli) kaldırır; bildirim gerekçesi saklanmaz (`TODO(content-report-log)`).
+- **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planVersionTransition` `report`: bildirimi yalnız kaynağı okuyabilen personel yapar, `staffCanReadVersion`; bildirilen içeriği yalnız yönetici yeniden onaylar; kaldırma `planResourceRemoval`); bildirim kaydı yok. API: `POST /api/v1/resources/:id/versions/:versionId/report` yayındaki sürümü incelemeye alır, `POST /api/v1/resources/:id/remove` (yalnız yönetici, gerekçeli) kaldırır; bildirim gerekçesi saklanmaz (`TODO(content-report-log)`). Öğrenci ve veli atama ayrıntısı (`apps/api/src/services/task-progress.ts` `withdrawnFromLearners`) kaynağın herhangi bir sürümü bildirimle incelemede veya kaldırılmışsa, eski sürüme sabitlenen atamada da içeriği göstermez (`contentUnavailable: 'unavailable'`).
 
 ### DOM-KYN-026 · Öğrenci eseri kaynak havuzuna alınmaz
 

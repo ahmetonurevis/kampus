@@ -2,6 +2,14 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Görev görünüm uçları inceleme düzeltmeleri (W22api)
+
+- Kursiyer atama içeriği kaynak düzeyinde süzülür (DOM-KYN-025, 051): kaynağın herhangi bir sürümü telif bildirimiyle incelemedeyse (yayın geçmişi olan `in_review`) ya da kaldırılmışsa, arşivli eski sürüme sabitlenen atamada da `content: null`, `contentUnavailable: 'unavailable'` döner (süren iş olsa da). İlk onay sürecindeki yeni taslak etkilemez.
+- `TaskAssignmentLearnerContent.body` artık serbest kayıt değil, tür başına izinli alanları sayan `TaskAssignmentLearnerBody` (`type` ayrımlı birleşim); servis her türü açıkça eşler, yanıt şeması fazladan alanı süzer.
+- `TaskAssignmentLearnerProgress.actionableUntil`: özetin yalnız zamanla değişeceği an (süren denemenin bitişi; yoksa `canAct` iken bir sonraki deneme/sürüm penceresinin kapanışı, yeniden teslim son tarihi dahil). Puan veya geri bildirimin açılma anı verilmez (DOM-BEC-045). `react-shared` `useLearnerAssignments` bu andan kısa süre sonra listeyi kendiliğinden yeniden okur (`nextSummaryChange`, `summaryRefreshDelay`).
+- Puanlama bağlamı kurulamayan otomatik puanlı atama için `task_progress.scoring_unavailable` uyarısı istek başına atama başına bir kez ve yalnız `assignmentId` ile loglanır.
+- Core değişmedi. Migration yok. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Görev görünüm uçları (W22api)
 
 - `GET /api/v1/task-assignments` ve `GET /api/v1/task-assignments/:assignmentId`: öğrenci ve veli (`learner`) görünümüne `progress` eklendi: her hedeflenen kişi (velide yalnız kendi çocukları) için `status`, `resubmissionRequested`, `attemptId`/`submissionId`, `lastActivityAt`, `used`/`limit`/`remaining`, `canAct`, `blockedBy` (`in_progress`, `license_expired`, `locked`, `limit`, `graded`, `unavailable`) ve açılmış `score`. Deneme ve teslim uçlarının aynı fonksiyonlarıyla hesaplanır (`services/task-progress.ts`; `learnerAttemptProgress`, `learnerSubmissionProgress`), açılmamış puan, ikinci puanlama, örneklem, uyuşmazlık ve itiraz durumu çıkarılamaz, satır sürümü yoktur (DOM-BEC-045). Liste satır başına istek gerektirmez: denemeler, teslimler, puanlar ve puanlama bağlamları toplu okunur (`loadAttemptsAmong`, `loadSubmissionsAmong`, `scoringContexts`).

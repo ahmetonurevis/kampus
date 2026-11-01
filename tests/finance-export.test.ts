@@ -6,6 +6,7 @@ import { csvAmount, csvCell } from '../packages/school-core/src/lib/csv.ts'
 import {
   assertFinancePeriod,
   financeSummary,
+  financeTotals,
   invoiceLines,
   invoicesCsv,
   paymentLines,
@@ -163,4 +164,31 @@ test('IST-111: kaydı olmayan öğrenci boş hücre verir, satır kaybolmaz', ()
   const lines = paymentLines([payment({ studentId: 'silinmis' })], students, PERIOD)
   assert.equal(lines[0]?.studentName, '')
   assert.equal(lines[0]?.amountCents, 123_456)
+})
+
+test('DOM-FIN-030: kartlar kısmi ödemeyi sayar; gecikmiş tutar kalan kısımdır', () => {
+  const invoice = (id: string, dueDate: string, paidAt: string | null = null) => ({
+    id,
+    amount: 10_000,
+    dueDate,
+    paidAt,
+  })
+  const totals = financeTotals(
+    [
+      invoice('late', '2026-09-01T09:00:00.000Z'),
+      invoice('next', '2026-11-01T09:00:00.000Z'),
+      invoice('done', '2026-09-01T09:00:00.000Z', '2026-09-01T09:00:00.000Z'),
+    ],
+    new Map([
+      ['late', 2_500],
+      ['next', 1_000],
+    ]),
+    '2026-10-06',
+  )
+  assert.deepEqual(totals, {
+    totalCents: 30_000,
+    paidCents: 13_500,
+    remainingCents: 16_500,
+    overdueCents: 7_500,
+  })
 })

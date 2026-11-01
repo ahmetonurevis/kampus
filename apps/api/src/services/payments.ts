@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto'
 
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import {
+  assertMebbisChangeAllowed,
+  bankAccountSchema,
+  paymentMebbisSchema,
   planPayment,
   recordPaymentSchema,
   reversePayment,
@@ -14,13 +18,18 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 import type { Database } from '../db/client.ts'
 import {
   allocatedByInvoice,
+  archiveBankAccount,
   findPayment,
+  insertBankAccount,
   insertPayment,
   isReferenceInUse,
+  listBankAccounts,
   listPayments,
   loadPaymentSettings,
   markPaymentReversed,
   savePaymentSettings,
+  setPaymentMebbis,
+  type StoredBankAccount,
   type StoredPayment,
   type StoredPaymentSettings,
 } from '../db/payments.ts'
@@ -59,6 +68,9 @@ export interface PaymentView {
   reversedAt: string | null
   /** İptal gerekçesi personel içindir; veli ve öğrenciye gitmez. */
   reversalReason: string | null
+  bankAccountLabel: string | null
+  /** MEBBİS takibi personel içindir; veli ve öğrenciye gitmez. */
+  mebbisRecordedAt: string | null
   version: number
   allocations: StoredPayment['allocations']
 }
@@ -78,6 +90,8 @@ function paymentView(payment: StoredPayment, staff: boolean): PaymentView {
     receiptNumber: payment.receiptNumber,
     reversedAt: payment.reversedAt?.toISOString() ?? null,
     reversalReason: staff ? payment.reversalReason : null,
+    bankAccountLabel: payment.bankAccountLabel,
+    mebbisRecordedAt: staff ? (payment.mebbisRecordedAt?.toISOString() ?? null) : null,
     version: payment.version,
     allocations: payment.allocations,
   }
@@ -127,6 +141,8 @@ export function recordPaymentCommand(
         )
         const referenceInUse =
           reference !== null && (await isReferenceInUse(tx, ctx.institutionId, reference))
+        const accounts = await listBankAccounts(tx, ctx.institutionId)
+        const bankAccountIds = accounts.map((account) => account.id)
         return {
           scalars,
           run: (state, { now }) => {
@@ -134,12 +150,18 @@ export function recordPaymentCommand(
               now,
               institutionType,
             })
-            return planPayment(state, data, { allocated, cashEnabled, referenceInUse, now })
+            return planPayment(state, data, {
+              allocated,
+              cashEnabled,
+              referenceInUse,
+              bankAccountIds,
+              now,
+            })
           },
         }
       },
       after: async (tx, plan) => {
-        stored = await insertPayment(tx, ctx.institutionId, {
+        await insertPayment(tx, ctx.institutionId, {
           id,
           plan,
           receiptYear: Number(dayKey(ctx.now).slice(0, 4)),
@@ -150,9 +172,11 @@ export function recordPaymentCommand(
           'amountCents',
           'method',
           'reference',
+          'bankAccountId',
           'paidAt',
           'allocations',
         ])
+        stored = (await findPayment(tx, ctx.institutionId, id)) ?? undefined
       },
     },
     () => {
@@ -227,6 +251,142 @@ export function reversePaymentCommand(
   )
 }
 
+/** Tahsilatın MEBBİS'e işlendiğini işaretler veya işareti kaldırır (DOM-FIN-032). */
+export function setPaymentMebbisCommand(
+  ctx: ServiceContext,
+  paymentId: string,
+  input: unknown,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const { recorded } = paymentMebbisSchema.parse(input)
+  let view: PaymentView | undefined
+  return runCommand(
+    ctx,
+    {
+      action: 'payment.mebbis',
+      collections: [],
+      entity: { type: 'payments', id: paymentId },
+      load: async (tx) => {
+        const payment = await findPayment(tx, ctx.institutionId, paymentId)
+        if (payment === null) throw new NotFoundError()
+        if (payment.version !== expectedVersion) throw new ConflictError()
+        return {
+          run: () =>
+            assertMebbisChangeAllowed({
+              reversedAt: payment.reversedAt?.toISOString() ?? null,
+            }),
+        }
+      },
+      after: async (tx) => {
+        const updated = await setPaymentMebbis(tx, ctx.institutionId, {
+          id: paymentId,
+          expectedVersion,
+          recordedByUserId: recorded ? ctx.actor.userId : null,
+          now: ctx.now,
+        })
+        if (updated === null) throw new ConflictError()
+        await audit(tx, ctx, 'payment.mebbis', { type: 'payments', id: paymentId }, [
+          'mebbisRecordedAt',
+        ])
+        const payment = await findPayment(tx, ctx.institutionId, paymentId)
+        if (payment === null) throw new NotFoundError()
+        view = paymentView(payment, true)
+      },
+    },
+    () => {
+      if (view === undefined) throw new Error('payment mebbis mark was not written')
+      return { statusCode: 200, body: { data: view } }
+    },
+    idempotency,
+  )
+}
+
+export function getBankAccounts(db: Database, institutionId: string): Promise<StoredBankAccount[]> {
+  return listBankAccounts(db, institutionId)
+}
+
+/** Bildirilmiş hesap ekler; aynı IBAN iki kez eklenmez (DOM-FIN-032). */
+export function createBankAccountCommand(
+  ctx: ServiceContext,
+  input: unknown,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const data = bankAccountSchema.parse(input)
+  const id = randomUUID()
+  let stored: StoredBankAccount | undefined
+  return runCommand(
+    ctx,
+    {
+      action: 'bank_account.create',
+      collections: [],
+      entity: { type: 'bank_accounts', id },
+      load: async (tx) => {
+        const accounts = await listBankAccounts(tx, ctx.institutionId)
+        return {
+          run: () => {
+            if (accounts.some((account) => account.iban === data.iban))
+              throw new DomainError('bank_account_exists', 'Bu IBAN zaten tanımlı.', {
+                kind: 'conflict',
+                path: ['iban'],
+              })
+          },
+        }
+      },
+      after: async (tx) => {
+        stored = await insertBankAccount(tx, ctx.institutionId, { id, ...data, now: ctx.now })
+        await audit(tx, ctx, 'bank_account.create', { type: 'bank_accounts', id }, [
+          'bankName',
+          'iban',
+          'accountHolder',
+        ])
+      },
+    },
+    () => {
+      if (stored === undefined) throw new Error('bank account was not written')
+      return { statusCode: 201, body: { data: stored } }
+    },
+    idempotency,
+  )
+}
+
+/** Hesabı arşivler: yeni tahsilatta seçilmez, geçmiş tahsilat bağı korunur. */
+export function archiveBankAccountCommand(
+  ctx: ServiceContext,
+  bankAccountId: string,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  return runCommand(
+    ctx,
+    {
+      action: 'bank_account.archive',
+      collections: [],
+      entity: { type: 'bank_accounts', id: bankAccountId },
+      load: async (tx) => {
+        const accounts = await listBankAccounts(tx, ctx.institutionId)
+        const account = accounts.find((item) => item.id === bankAccountId)
+        if (account === undefined) throw new NotFoundError()
+        if (account.version !== expectedVersion) throw new ConflictError()
+        return { run: () => undefined }
+      },
+      after: async (tx) => {
+        const archived = await archiveBankAccount(tx, ctx.institutionId, {
+          id: bankAccountId,
+          expectedVersion,
+          now: ctx.now,
+        })
+        if (archived === null) throw new ConflictError()
+        await audit(tx, ctx, 'bank_account.archive', { type: 'bank_accounts', id: bankAccountId }, [
+          'archivedAt',
+        ])
+      },
+    },
+    () => ({ statusCode: 200, body: { data: { id: bankAccountId } } }),
+    idempotency,
+  )
+}
+
 /** Personel kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür (DOM-FIN-052). */
 async function visibleStudents(ctx: ServiceContext): Promise<readonly string[] | null> {
   if (STAFF_ROLES.has(ctx.actor.role)) return null
@@ -235,11 +395,22 @@ async function visibleStudents(ctx: ServiceContext): Promise<readonly string[] |
 
 export async function listPaymentsFor(
   ctx: ServiceContext,
-  query: { studentId?: string | undefined; q?: string | undefined; page: number; pageSize: number },
+  query: {
+    studentId?: string | undefined
+    q?: string | undefined
+    mebbis?: 'pending' | undefined
+    page: number
+    pageSize: number
+  },
 ): Promise<{ items: PaymentView[]; total: number }> {
   const studentIds = await visibleStudents(ctx)
   if (studentIds !== null && studentIds.length === 0) return { items: [], total: 0 }
-  const { items, total } = await listPayments(ctx.db, ctx.institutionId, { ...query, studentIds })
+  const { items, total } = await listPayments(ctx.db, ctx.institutionId, {
+    ...query,
+    studentIds,
+    // MEBBİS takibi personelindir: veli ve öğrencide süzgeç bilgi sızdırmasın diye yok sayılır.
+    mebbisPending: query.mebbis === 'pending' && studentIds === null,
+  })
   return { items: items.map((item) => paymentView(item, studentIds === null)), total }
 }
 

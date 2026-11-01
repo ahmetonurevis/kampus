@@ -3,13 +3,19 @@ import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import { reversePaymentSchema } from '@kampus/school-core/lib/payments.ts'
-import { usePaymentList, useReversePayment } from '@kampus/react-shared/use-payment-commands.ts'
+import {
+  usePaymentList,
+  useReversePayment,
+  useSetPaymentMebbis,
+} from '@kampus/react-shared/use-payment-commands.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Modal } from '@/components/Modal.tsx'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
@@ -23,6 +29,8 @@ type PaymentRow = {
   studentName: string
   method: string
   reference: string
+  bankAccount: string
+  mebbisRecordedAt: string | null
   amountCents: number
   creditCents: number
   status: string
@@ -40,12 +48,15 @@ const FORM_ID = 'tahsilat-iptal-formu'
  * iptal edilen satır silinmez, "İptal edildi" olarak kalır.
  */
 export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
+  const setMebbis = useSetPaymentMebbis()
   const list = useListState('tahsilatlar')
   const search = useDebouncedValue(list.state.query)
+  const mebbisPending = list.state.filters.mebbis === 'pending'
   const payments = usePaymentList({
     page: list.state.page,
     pageSize: list.state.pageSize,
     ...(search.trim().length >= 2 ? { q: search.trim() } : {}),
+    ...(mebbisPending ? { mebbis: 'pending' as const } : {}),
   })
   const [reversing, setReversing] = useState<PaymentRow | null>(null)
 
@@ -58,6 +69,8 @@ export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
         studentName: payment.studentName ?? '—',
         method: payment.method,
         reference: payment.reference ?? '—',
+        bankAccount: payment.bankAccountLabel ?? '—',
+        mebbisRecordedAt: payment.mebbisRecordedAt,
         amountCents: payment.amountCents,
         creditCents: payment.creditCents,
         status: payment.reversedAt === null ? 'Geçerli' : 'İptal edildi',
@@ -78,6 +91,17 @@ export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
       { key: 'studentName', label: 'Öğrenci' },
       { key: 'method', label: 'Yöntem' },
       { key: 'reference', label: 'İşlem referansı' },
+      { key: 'bankAccount', label: 'Banka hesabı' },
+      {
+        key: 'mebbisRecordedAt',
+        label: 'MEBBİS',
+        cell: (row) =>
+          row.reversed
+            ? '—'
+            : row.mebbisRecordedAt === null
+              ? 'İşlenmedi'
+              : dateLabel(row.mebbisRecordedAt, { year: 'numeric' }),
+      },
       {
         key: 'amountCents',
         label: 'Tutar',
@@ -93,27 +117,49 @@ export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
         ),
       },
       { key: 'status', label: 'Durum', cell: (row) => <StatusBadge text={row.status} /> },
-      ...(canReverse
-        ? [
-            {
-              key: ACTIONS_KEY,
-              label: 'İşlemler',
-              cell: (row: PaymentRow) =>
-                row.reversed ? null : (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    aria-label={`${row.receipt} numaralı tahsilatı iptal et`}
-                    onClick={() => setReversing(row)}
-                  >
-                    İptal et
-                  </Button>
-                ),
-            },
-          ]
-        : []),
+      {
+        key: ACTIONS_KEY,
+        label: 'İşlemler',
+        cell: (row: PaymentRow) => (
+          <span className="flex flex-wrap gap-2">
+            <PdfButton
+              type="payment-receipt"
+              recordId={row.id}
+              label="Dekont"
+              ariaLabel={`${row.receipt} numaralı dekontu görüntüle`}
+            />
+            {row.reversed ? null : (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={setMebbis.isPending}
+                aria-label={`${row.receipt} numaralı tahsilatın MEBBİS işaretini değiştir`}
+                onClick={() =>
+                  void setMebbis.submit({
+                    paymentId: row.id,
+                    version: row.version,
+                    recorded: row.mebbisRecordedAt === null,
+                  })
+                }
+              >
+                {row.mebbisRecordedAt === null ? "MEBBİS'e işlendi" : 'İşareti kaldır'}
+              </Button>
+            )}
+            {canReverse && !row.reversed ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`${row.receipt} numaralı tahsilatı iptal et`}
+                onClick={() => setReversing(row)}
+              >
+                İptal et
+              </Button>
+            ) : null}
+          </span>
+        ),
+      },
     ],
-    [canReverse],
+    [canReverse, setMebbis],
   )
 
   const total = payments.data?.meta.total ?? 0
@@ -127,6 +173,22 @@ export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
           Tahsilat geçmişi
         </h2>
         <p className="text-sm text-muted-foreground">{total} kayıt · En yeni ödeme önce</p>
+        <label className="mt-3 grid max-w-xs gap-1 text-sm font-medium">
+          MEBBİS durumu
+          <NativeSelect
+            value={mebbisPending ? 'pending' : 'all'}
+            onChange={(event) =>
+              list.dispatch({
+                type: 'filter',
+                key: 'mebbis',
+                value: event.target.value === 'pending' ? 'pending' : '',
+              })
+            }
+          >
+            <NativeSelectOption value="all">Tümü</NativeSelectOption>
+            <NativeSelectOption value="pending">İşlenmemiş</NativeSelectOption>
+          </NativeSelect>
+        </label>
       </header>
       <ServerDataTable
         list={list}

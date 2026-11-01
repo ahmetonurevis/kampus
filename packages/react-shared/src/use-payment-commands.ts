@@ -14,6 +14,7 @@ type JsonBody<TOperation extends keyof operations> = NonNullable<
 
 export type RecordPaymentBody = JsonBody<'recordPayment'>
 export type PaymentMethodValue = RecordPaymentBody['method']
+export type BankAccountBody = JsonBody<'createBankAccount'>
 
 /** Mükerrer ödeme (core `invoice_already_paid`, 409): liste aynı anda tazelenir. */
 export const ALREADY_PAID_MESSAGE = 'Bu taksit zaten ödenmiş. Liste güncellendi.'
@@ -24,6 +25,7 @@ export const PAYMENT_SETTINGS_CHANGED_MESSAGE =
 
 const PAYMENTS_KEY = ['payments'] as const
 const PAYMENT_SETTINGS_KEY = ['payment-settings'] as const
+const BANK_ACCOUNTS_KEY = ['bank-accounts'] as const
 /** Bir öğrencinin tahsilatları sayfaya sığar; uç sınırı 100'dür. */
 const STUDENT_PAYMENTS_PAGE_SIZE = 100
 
@@ -41,7 +43,12 @@ export function useStudentPayments(studentId: string) {
 }
 
 /** Tahsilat listesi: en yeni ödeme önce, sunucu sayfalı; `q` öğrenci adı ve referansta arar. */
-export function usePaymentList(query: { page: number; pageSize: number; q?: string }) {
+export function usePaymentList(query: {
+  page: number
+  pageSize: number
+  q?: string
+  mebbis?: 'pending'
+}) {
   return useApiQuery({
     key: [...PAYMENTS_KEY, 'list', query],
     request: (client, signal) => client.GET('/api/v1/payments', { params: { query }, signal }),
@@ -116,6 +123,57 @@ export function useSetCashPayments() {
         body: { cashPaymentsEnabled: input.enabled },
       }),
     invalidates: [PAYMENT_SETTINGS_KEY],
+    version: (input) => input.version,
+    messages: { version_conflict: PAYMENT_SETTINGS_CHANGED_MESSAGE },
+  })
+}
+
+/** Tahsilatın MEBBİS işaretini değiştirir (yönetici ve ön büro; DOM-FIN-032). */
+export function useSetPaymentMebbis() {
+  return useApiCommand({
+    request: (client, input: { paymentId: string; version: number; recorded: boolean }, headers) =>
+      client.POST('/api/v1/payments/{paymentId}/mebbis-record', {
+        params: {
+          path: { paymentId: input.paymentId },
+          header: { ...headers, 'if-match': requireIfMatch(headers) },
+        },
+        body: { recorded: input.recorded },
+      }),
+    invalidates: [PAYMENTS_KEY],
+    version: (input) => input.version,
+    messages: { version_conflict: PAYMENT_CHANGED_MESSAGE },
+  })
+}
+
+/** Kurumun bildirilmiş banka hesapları; yönetici ve ön büro okur (DOM-FIN-032). */
+export function useBankAccounts() {
+  return useApiQuery({
+    key: BANK_ACCOUNTS_KEY,
+    request: (client, signal) => client.GET('/api/v1/bank-accounts', { signal }),
+  })
+}
+
+/** Bildirilmiş hesap ekler; yalnız yönetici. */
+export function useCreateBankAccount() {
+  return useApiCommand({
+    request: (client, body: BankAccountBody, headers) =>
+      client.POST('/api/v1/bank-accounts', { params: { header: headers }, body }),
+    invalidates: [BANK_ACCOUNTS_KEY],
+    exclusive: true,
+  })
+}
+
+/** Hesabı arşivler; yalnız yönetici. `If-Match` listedeki sürümdür. */
+export function useArchiveBankAccount() {
+  return useApiCommand({
+    request: (client, input: { id: string; version: number }, headers) =>
+      client.DELETE('/api/v1/bank-accounts/{bankAccountId}', {
+        params: {
+          path: { bankAccountId: input.id },
+          header: { ...headers, 'if-match': requireIfMatch(headers) },
+        },
+      }),
+    invalidates: [BANK_ACCOUNTS_KEY],
     version: (input) => input.version,
     messages: { version_conflict: PAYMENT_SETTINGS_CHANGED_MESSAGE },
   })

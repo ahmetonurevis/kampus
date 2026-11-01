@@ -2,6 +2,26 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Bildirilmiş banka hesabı ve MEBBİS işareti
+
+- `GET|POST /api/v1/bank-accounts`, `DELETE /api/v1/bank-accounts/:bankAccountId`, `POST /api/v1/payments/:paymentId/mebbis-record`; `GET /api/v1/payments?mebbis=pending` (DOM-FIN-032).
+- **Kırıcı:** Kurumda hesap tanımlıysa nakit dışı `POST /api/v1/payments` `bankAccountId` ister (422 `bank_account_required`, `bank_account_invalid`).
+- Migration: `bank_accounts` tablosu; `payments.bank_account_id`, `mebbis_recorded_at`, `mebbis_recorded_by_user_id`.
+
+## Yenilemede tarife denetimi
+
+- **Kırıcı:** `POST /api/v1/workflows/renewal` hedef yılın yayımlanmış tarifesini ister (422 `tariff_not_published`); öğrenim ücreti ilanı aşamaz (422 `renewal_above_tariff`), indirim %50 tavanındadır (DOM-FIN-002, -021). Artış tavanı (DOM-FIN-005) ÜFE/TÜFE verisi bekliyor.
+
+## Kesin kayıtta tarife doğrulaması
+
+- **Kırıcı:** `POST /api/v1/prospects/:prospectId/enroll` gövdesinde `tariffId` zorunludur; yayımdaki tarife değiştiyse 409 `tariff_changed`. Aynı ek hizmet iki kez seçilirse 422 `extra_duplicate`. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Kısmi ödeme gösterimi
+
+- `GET /api/v1/finance/totals` eklendi: finans kartları kısmi ödemeyi sayar, gecikmiş tutar kalan kısımdır (DOM-FIN-030).
+- Taksit okuması (`/collections/invoices`) açık taksitte `record.paidCents` döner; saklanmaz, okunurken eklenir.
+- Benzersizlik ihlali 500 yerine 409 `conflict` döner. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Ayrılış listesinde öğrenci adı
 
 - `GET /api/v1/withdrawals` ve `GET /api/v1/withdrawals/:withdrawalId` yanıtına `studentName` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
@@ -59,7 +79,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 ## Kesin kayıt ucu
 
 - `POST /api/v1/prospects/:prospectId/enroll` eklendi (201 + `Location`; `Idempotency-Key` ve `If-Match` zorunlu; yalnız `yonetici` ve `onburo`, modül `crm`). Öğrenci, veli, taksit, sözleşme ve aday aşaması tek transaction'da yazılır (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035).
-- Tutar kuruş olarak alınır (`totalCents`, DOM-FIN-001). Tutar henüz serbest girilir; tarife gelince tarifeden hesaplanacak (`TODO(fee-tariff)`, DOM-FIN-002).
+- İlk sürümde tutar `totalCents` ile alındı; "Tarifeli kesin kayıt" değişikliğiyle kaldırıldı.
 - OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
 
 ## Rubrik uçları

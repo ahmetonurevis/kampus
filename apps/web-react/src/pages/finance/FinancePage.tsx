@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useFinanceTotals } from '@kampus/react-shared/use-finance-exports.ts'
 import { useSearchParams } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
 import { dateLabel, dayKey, INVOICE_STATUS_LABELS, money } from '@kampus/school-core/lib/format.ts'
@@ -12,7 +13,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { useCoreCounts, useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
+import { useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
@@ -28,7 +29,6 @@ import {
   invoiceExportQuery,
   invoiceListQuery,
   invoiceRow,
-  invoiceTotals,
   isInvoiceStatusKey,
   type InvoiceRow,
 } from './finance-rows.ts'
@@ -45,7 +45,6 @@ const SORTABLE = sortableColumns(INVOICE_LIST)
 const MOBILE_COLUMNS = ['installment', 'dueDate', 'amount', 'status']
 const CSV_NAME = 'finans-raporu'
 const ALL = 'all'
-const TOTALS_QUERY = { groupBy: 'status', sum: 'amount' } as const
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
   invoices: { label: 'Taksitler', param: '' },
@@ -67,7 +66,7 @@ const viewOf = (param: string | null): FinanceView =>
  * Finans & Tahsilat (yönetici `/finans`, ön büro `/tahsilat-takip`; Vue `Finance.vue`): kurumun
  * taksitleri sunucu sayfalı; öğrenci adı/numarası/sınıf araması, ödeme durumu filtresi,
  * öğrenci/vade/tutar/taksit sıralaması sunucuda uygulanır. Toplam kartları kurum geneli
- * `counts?groupBy=status&sum=amount` yanıtından gelir (liste araması ve durumundan bağımsız).
+ * `GET /finance/totals` yanıtından gelir; kısmi ödemeleri sayar (liste araması ve durumundan bağımsız).
  * Öğrenci adı, okul numarası ve sınıf adı satırın `joined` alanından gelir; ayrı öğrenci/sınıf listesi çekilmez.
  */
 export function FinancePage({ page }: { page: NavPage }) {
@@ -80,11 +79,8 @@ export function FinancePage({ page }: { page: NavPage }) {
   const search = useDebouncedValue(list.state.query)
   const query = useMemo(() => invoiceListQuery(list.state, search), [list.state, search])
   const active = useCoreList('invoices', query)
-  const totalsQuery = useCoreCounts('invoices', TOTALS_QUERY)
-  const totals = useMemo(
-    () => (totalsQuery.data ? invoiceTotals(totalsQuery.data) : null),
-    [totalsQuery.data],
-  )
+  const totalsQuery = useFinanceTotals()
+  const totals = totalsQuery.data?.data
 
   const today = dayKey()
   const view = useMemo(
@@ -211,16 +207,16 @@ export function FinancePage({ page }: { page: NavPage }) {
           items={[
             {
               label: 'Toplam eğitim bedeli',
-              value: money(totals.total),
+              value: money(totals.totalCents),
               note: 'Tüm ödeme planları',
             },
-            { label: 'Tahsil edilen', value: money(totals.paid) },
+            { label: 'Tahsil edilen', value: money(totals.paidCents) },
             {
               label: 'Kalan bakiye',
-              value: money(totals.remaining),
+              value: money(totals.remainingCents),
               note: 'Gelecek ve gecikmiş taksitler',
             },
-            { label: 'Gecikmiş tutar', value: money(totals.overdue) },
+            { label: 'Gecikmiş tutar', value: money(totals.overdueCents) },
           ]}
         />
       ) : null}

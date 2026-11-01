@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
@@ -288,19 +289,28 @@ export function enrollProspectCommand(
   )
 }
 
+const PARENT_MATCH = z.object({
+  id: z.string(),
+  name: z.string(),
+  studentIds: z.array(z.string()),
+  phone: z.string().optional(),
+})
+const STUDENT_MATCH = z.object({ id: z.string(), phone: z.string().optional() })
+
 /** Adayın telefonuyla eşleşen veliler; ön büroya öneridir, birleştirmez (DOM-KAY-013). */
 export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string) {
   const prospect = await findRecord(ctx.db, ctx.institutionId, 'prospects', prospectId)
   if (prospect === null) throw new NotFoundError()
   const phone = typeof prospect.data.phone === 'string' ? prospect.data.phone : ''
   const rows = await loadRecords(ctx.db, ctx.institutionId, ['parents', 'students'])
-  const source = (collection: string) =>
-    rows.filter((row) => row.collection === collection).map((row) => row.data)
+  const only = <T>(collection: CollectionName, schema: z.ZodType<T>): T[] =>
+    rows.flatMap((row) => {
+      if (row.collection !== collection) return []
+      const parsed = schema.safeParse(row.data)
+      return parsed.success ? [parsed.data] : []
+    })
   return findParentMatches(
-    { parents: source('parents'), students: source('students') } as unknown as Pick<
-      State,
-      'parents' | 'students'
-    >,
+    { parents: only('parents', PARENT_MATCH), students: only('students', STUDENT_MATCH) },
     phone,
   )
 }

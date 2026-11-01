@@ -1852,6 +1852,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kurum geneli finans toplamları
+         * @description Finans ekranı kartları: toplam, tahsil edilen (kısmi ödemeler dahil), kalan ve gecikmiş tutar (DOM-FIN-030). Gecikmiş tutar yalnız kalan kısımdır. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getFinanceTotals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/summary": {
         parameters: {
             query?: never;
@@ -1901,13 +1921,13 @@ export interface paths {
         };
         /**
          * Tahsilatları listele
-         * @description Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız). Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.
+         * @description Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.
          */
         get: operations["listPayments"];
         put?: never;
         /**
          * Tahsilat kaydet
-         * @description Tahsilatı ayrı kayıt olarak yazar ve önce `invoiceId` ile seçilen taksite, sonra en eski vadeye dağıtır; kısmi ödeme kabul edilir, açık taksitleri aşan kısım `creditCents` olarak iade alacağıdır (DOM-FIN-030). Açık taksit yoksa 409 `no_open_installments`, ödenmiş taksit seçilirse 409 `invoice_already_paid`. Nakit dışı yöntemde `reference` zorunlu (422 `payment_reference_required`); kullanılmış referans 409 `payment_reference_used` (DOM-FIN-031). Nakit kurumda kapalıysa 422 `cash_payment_disabled` (DOM-FIN-032). İleri tarih 422 `payment_date_in_future`. Olmayan veya başka kurumun öğrencisi 404. Gövde katıdır. `Idempotency-Key` zorunludur: aynı anahtar ikinci tahsilat açmaz, ilk yanıtı döner. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         * @description Tahsilatı ayrı kayıt olarak yazar ve önce `invoiceId` ile seçilen taksite, sonra en eski vadeye dağıtır; kısmi ödeme kabul edilir, açık taksitleri aşan kısım `creditCents` olarak iade alacağıdır (DOM-FIN-030). Açık taksit yoksa 409 `no_open_installments`, ödenmiş taksit seçilirse 409 `invoice_already_paid`. Nakit dışı yöntemde `reference` zorunlu (422 `payment_reference_required`); kullanılmış referans 409 `payment_reference_used` (DOM-FIN-031). Nakit kurumda kapalıysa 422 `cash_payment_disabled`. Kurumda bildirilmiş hesap varsa nakit dışı tahsilat `bankAccountId` ister (422 `bank_account_required`), arşivli veya başka kurumun hesabı 422 `bank_account_invalid` (DOM-FIN-032). İleri tarih 422 `payment_date_in_future`. Olmayan veya başka kurumun öğrencisi 404. Gövde katıdır. `Idempotency-Key` zorunludur: aynı anahtar ikinci tahsilat açmaz, ilk yanıtı döner. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
          */
         post: operations["recordPayment"];
         delete?: never;
@@ -1951,6 +1971,70 @@ export interface paths {
          */
         post: operations["reversePayment"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{paymentId}/mebbis-record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tahsilatı MEBBİS'e işlendi olarak işaretle
+         * @description `recorded: true` tahsilatı MEBBİS'e işlendi olarak işaretler, `false` işareti kaldırır (DOM-FIN-032). Platform MEBBİS'e bağlanmaz; işlemi kurum yapar, burada yalnız takip edilir. İptal edilmiş tahsilat 409 `payment_already_reversed`. `If-Match` ve `Idempotency-Key` zorunludur. Olmayan veya başka kurumun tahsilatı 404. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["setPaymentMebbis"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bank-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bildirilmiş banka hesapları
+         * @description Kurumun arşivlenmemiş bildirilmiş banka hesapları, ilk eklenen önce (DOM-FIN-032). Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listBankAccounts"];
+        put?: never;
+        /**
+         * Bildirilmiş banka hesabı ekle
+         * @description Kurumun bildirilmiş banka hesabını ekler (DOM-FIN-032). IBAN mod 97 ile doğrulanır; aynı IBAN 409 `bank_account_exists`. `Idempotency-Key` zorunludur. Başarı 201. Rol: `yonetici`.
+         */
+        post: operations["createBankAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bank-accounts/{bankAccountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Banka hesabını arşivle
+         * @description Hesap yeni tahsilatta seçilemez, geçmiş tahsilatlar hesabı göstermeyi sürdürür (DOM-FIN-032). `If-Match` ve `Idempotency-Key` zorunludur. Olmayan veya başka kurumun hesabı 404. Rol: `yonetici`.
+         */
+        delete: operations["archiveBankAccount"];
         options?: never;
         head?: never;
         patch?: never;
@@ -15481,6 +15565,105 @@ export interface operations {
             };
         };
     };
+    getFinanceTotals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            totalCents: number;
+                            paidCents: number;
+                            remainingCents: number;
+                            overdueCents: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getFinanceSummary: {
         parameters: {
             query: {
@@ -15702,6 +15885,8 @@ export interface operations {
                 studentId?: string;
                 /** @description Öğrenci adı veya işlem referansı */
                 q?: string;
+                /** @description Yalnız MEBBİS'e işlenmemiş geçerli tahsilatlar (personel) */
+                mebbis?: "pending";
             };
             header?: never;
             path?: never;
@@ -15738,6 +15923,10 @@ export interface operations {
                             reversedAt: string | null;
                             /** @description İptal gerekçesi; yalnız personele döner */
                             reversalReason: string | null;
+                            /** @description Tahsilatın yapıldığı hesabın kısa adı */
+                            bankAccountLabel: string | null;
+                            /** @description MEBBİS'e işlendiği an (ISO 8601 UTC); yalnız personele döner */
+                            mebbisRecordedAt: string | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             allocations: {
@@ -15844,6 +16033,7 @@ export interface operations {
                     reference?: string;
                     paidDate?: string;
                     invoiceId?: string;
+                    bankAccountId?: string;
                 };
             };
         };
@@ -15877,6 +16067,10 @@ export interface operations {
                             reversedAt: string | null;
                             /** @description İptal gerekçesi; yalnız personele döner */
                             reversalReason: string | null;
+                            /** @description Tahsilatın yapıldığı hesabın kısa adı */
+                            bankAccountLabel: string | null;
+                            /** @description MEBBİS'e işlendiği an (ISO 8601 UTC); yalnız personele döner */
+                            mebbisRecordedAt: string | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             allocations: {
@@ -16003,6 +16197,10 @@ export interface operations {
                             reversedAt: string | null;
                             /** @description İptal gerekçesi; yalnız personele döner */
                             reversalReason: string | null;
+                            /** @description Tahsilatın yapıldığı hesabın kısa adı */
+                            bankAccountLabel: string | null;
+                            /** @description MEBBİS'e işlendiği an (ISO 8601 UTC); yalnız personele döner */
+                            mebbisRecordedAt: string | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             allocations: {
@@ -16140,6 +16338,10 @@ export interface operations {
                             reversedAt: string | null;
                             /** @description İptal gerekçesi; yalnız personele döner */
                             reversalReason: string | null;
+                            /** @description Tahsilatın yapıldığı hesabın kısa adı */
+                            bankAccountLabel: string | null;
+                            /** @description MEBBİS'e işlendiği an (ISO 8601 UTC); yalnız personele döner */
+                            mebbisRecordedAt: string | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                             allocations: {
@@ -16147,6 +16349,470 @@ export interface operations {
                                 /** @description Taksite dağıtılan tutar (kuruş) */
                                 amountCents: number;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setPaymentMebbis: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Tahsilat kimliği */
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    recorded: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Tahsilat tutarı (kuruş) */
+                            amountCents: number;
+                            /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
+                            creditCents: number;
+                            /** @enum {string} */
+                            method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                            /** @description Banka veya POS işlem referansı */
+                            reference: string | null;
+                            /** @description Ödeme anı (ISO 8601 UTC) */
+                            paidAt: string;
+                            /** @description Dekont yılı */
+                            receiptYear: number;
+                            /** @description Kurum ve yıl içinde ardışık dekont numarası */
+                            receiptNumber: number;
+                            /** @description İptal anı; iptal edilmediyse boş */
+                            reversedAt: string | null;
+                            /** @description İptal gerekçesi; yalnız personele döner */
+                            reversalReason: string | null;
+                            /** @description Tahsilatın yapıldığı hesabın kısa adı */
+                            bankAccountLabel: string | null;
+                            /** @description MEBBİS'e işlendiği an (ISO 8601 UTC); yalnız personele döner */
+                            mebbisRecordedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            allocations: {
+                                invoiceId: string;
+                                /** @description Taksite dağıtılan tutar (kuruş) */
+                                amountCents: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listBankAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Banka adı */
+                            bankName: string;
+                            /** @description Kurum hesabının IBAN numarası */
+                            iban: string;
+                            /** @description Hesap sahibi */
+                            accountHolder: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createBankAccount: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    bankName: string;
+                    iban: string;
+                    accountHolder: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Banka adı */
+                            bankName: string;
+                            /** @description Kurum hesabının IBAN numarası */
+                            iban: string;
+                            /** @description Hesap sahibi */
+                            accountHolder: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveBankAccount: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Banka hesabı kimliği */
+                bankAccountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
                         };
                     };
                 };
@@ -16467,7 +17133,8 @@ export interface operations {
                         data: {
                             contractId: string;
                             breakdown: {
-                                institutionType: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
                                 withdrawalDate: string;
                                 termStartDate: string;
                                 /** @description Ayrılış dönem başladıktan sonra mı */
@@ -16621,7 +17288,8 @@ export interface operations {
                             reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
-                                institutionType: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
                                 withdrawalDate: string;
                                 termStartDate: string;
                                 /** @description Ayrılış dönem başladıktan sonra mı */
@@ -16773,7 +17441,8 @@ export interface operations {
                             reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
-                                institutionType: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
                                 withdrawalDate: string;
                                 termStartDate: string;
                                 /** @description Ayrılış dönem başladıktan sonra mı */
@@ -16921,7 +17590,8 @@ export interface operations {
                             reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
-                                institutionType: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
                                 withdrawalDate: string;
                                 termStartDate: string;
                                 /** @description Ayrılış dönem başladıktan sonra mı */
@@ -17081,7 +17751,8 @@ export interface operations {
                             reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
                             targetSchool: string | null;
                             breakdown: {
-                                institutionType: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
                                 withdrawalDate: string;
                                 termStartDate: string;
                                 /** @description Ayrılış dönem başladıktan sonra mı */
@@ -17671,6 +18342,7 @@ export interface operations {
             content: {
                 "application/json": {
                     classId: string;
+                    tariffId: string;
                     installmentCount: number;
                     firstDueDate: string;
                     lessonHours?: number;

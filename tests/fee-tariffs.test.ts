@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   emptyTariffForm,
   feeTariffFormSchema,
+  isOutsideAnnouncementPeriod,
   planTariffCreate,
   planTariffPublish,
   planTariffUpdate,
@@ -173,4 +174,12 @@ test('IST-104: tarife formu geçersiz tutar, oran ve yılı reddeder', () => {
     true,
   )
   assert.equal(feeTariffFormSchema.safeParse({ ...valid, academicYear: '26' }).success, false)
+})
+
+test('DOM-FIN-002: okulda ilan dönemi ocak–mayıstır, dil okulu bağlı değildir', () => {
+  assert.equal(isOutsideAnnouncementPeriod('2026-01-01', 'school'), false)
+  assert.equal(isOutsideAnnouncementPeriod('2026-05-31', 'school'), false)
+  assert.equal(isOutsideAnnouncementPeriod('2026-06-01', 'school'), true)
+  assert.equal(isOutsideAnnouncementPeriod('2026-12-31', 'school'), true)
+  assert.equal(isOutsideAnnouncementPeriod('2026-12-31', 'language_school'), false)
 })

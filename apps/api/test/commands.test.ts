@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
 import { and, asc, eq } from 'drizzle-orm'
@@ -15,6 +16,7 @@ import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
 import { records } from '../src/db/schema/records.ts'
 import { ASSESSMENT_ROUTES } from '../src/routes/assessment.schemas.ts'
 import { WORKFLOW_ROUTES } from '../src/routes/workflows.schemas.ts'
@@ -205,6 +207,85 @@ describe('yazma uçları', () => {
   }
 
   // --- İş akışı köprüsü -------------------------------------------------------------------
+
+  describe('POST /workflows/renewal (DOM-FIN-002, -021)', () => {
+    const body = {
+      studentId: 's3',
+      targetClassId: 'c1',
+      year: 2027,
+      mode: 'renew',
+      total: 28_500,
+      scholarship: 0,
+      discount: 0,
+      count: 8,
+      startDate: '2026-11-15',
+    }
+    const renew = (cookie: string, input: unknown = body) =>
+      post('/api/v1/workflows/renewal', cookie, input, { 'idempotency-key': randomUUID() })
+
+    async function publishTuition(
+      institutionId: string,
+      academicYear: number,
+      amountCents: number,
+    ) {
+      await db.insert(feeTariffs).values({
+        institutionId,
+        id: randomUUID(),
+        academicYear,
+        versionNumber: 1,
+        status: 'published',
+        items: [
+          {
+            kind: 'tuition',
+            level: null,
+            amountCents,
+            unit: 'year',
+            vatBasisPoints: 1000,
+            vatEffectiveDate: '2026-01-01',
+            announcedAmountCents: amountCents,
+          },
+        ],
+        announcedDate: '2026-05-01',
+        publishedByUserId: 'test',
+        publishedAt: FIXED_NOW,
+      })
+    }
+
+    test('hedef yılın tarifesi olmadan yenileme reddedilir, kayıt açılmaz', async () => {
+      const a = await institution()
+      await publishTuition(a.id, 2026, 2_850_000)
+      const before = await count(a.id, 'renewals')
+      assertError(await renew(a.adminCookie), 422, 'tariff_not_published')
+      assert.equal(await count(a.id, 'renewals'), before)
+    })
+
+    test('ilanı veya indirim tavanını aşan yenileme reddedilir; tarifeye uyan açılır', async () => {
+      const a = await institution()
+      await publishTuition(a.id, 2027, 2_850_000)
+      const before = await count(a.id, 'renewals')
+      assertError(
+        await renew(a.adminCookie, { ...body, total: 28_501 }),
+        422,
+        'renewal_above_tariff',
+      )
+      assertError(
+        await renew(a.adminCookie, { ...body, discount: 14_251 }),
+        422,
+        'discount_cap_exceeded',
+      )
+      assert.equal(await count(a.id, 'renewals'), before)
+      const created = await renew(a.adminCookie)
+      assert.equal(created.statusCode, 200, created.body)
+      assert.equal(await count(a.id, 'renewals'), before + 1)
+    })
+
+    test('başka kurumun tarifesi geçerli sayılmaz', async () => {
+      const a = await institution()
+      const other = await institution()
+      await publishTuition(other.id, 2027, 2_850_000)
+      assertError(await renew(a.adminCookie), 422, 'tariff_not_published')
+    })
+  })
 
   describe('POST /workflows/:command (DOM hedef ve gelişim planı)', () => {
     const goal = {
@@ -429,8 +510,11 @@ describe('yazma uçları', () => {
         'POST /api/v1/prospects/{prospectId}/enroll',
         // Tahsilat, iptal ve nakit ayarı (routes/payments.ts; DOM-FIN-031, DOM-FIN-033).
         'POST /api/v1/payments',
+        'POST /api/v1/payments/{paymentId}/mebbis-record',
         'POST /api/v1/payments/{paymentId}/reverse',
         'PATCH /api/v1/payment-settings',
+        'POST /api/v1/bank-accounts',
+        'DELETE /api/v1/bank-accounts/{bankAccountId}',
         // Ayrılış ve iade (routes/withdrawals.ts; DOM-FIN-041).
         'POST /api/v1/students/{studentId}/withdraw',
         'POST /api/v1/withdrawals/{withdrawalId}/pay-refund',

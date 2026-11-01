@@ -277,4 +277,40 @@ describe('muhasebe dışa aktarımı', () => {
       assert.equal((await exportCsv(a.cookie, 'refunds')).statusCode, 200)
     assertError(await exportCsv(`${a.cookie}; x=1`, 'refunds'), 429, 'rate_limited')
   })
+
+  test('DOM-FIN-030: kurum geneli toplamlar kısmi ödemeyi sayar; iptal düşer', async () => {
+    assertError(await get(null, '/api/v1/finance/totals'), 401)
+    const a = await institution()
+    const url = '/api/v1/finance/totals'
+    const desk = await member(a.id, 'onburo')
+    assert.equal((await get(desk, url)).statusCode, 200)
+    assertError(await get(await member(a.id, 'veli'), url), 403, 'forbidden')
+
+    const created = await pay(a.cookie, 1_250, 'TR-T1')
+    assert.equal(created.statusCode, 201, created.body)
+    const partial = (await get(a.cookie, url)).json().data
+    assert.equal(partial.totalCents, NET)
+    assert.equal(partial.paidCents, 1_250)
+    assert.equal(partial.remainingCents, NET - 1_250)
+    const { id, version } = created.json().data
+    assert.equal((await reverse(a.cookie, id, version)).statusCode, 200)
+    assert.equal((await get(a.cookie, url)).json().data.paidCents, 0)
+
+    const closed = await institution({ enabledModules: { finance: false } })
+    assertError(await get(closed.cookie, url), 403, 'module_disabled')
+  })
+
+  test('DOM-FIN-030: taksit okuması ödenen kısmi tutarı taşır; iptalde düşer', async () => {
+    const a = await institution()
+    const url = '/api/v1/collections/invoices/test-inv-1'
+    assert.equal((await get(a.cookie, url)).json().data.record.paidCents, undefined)
+    const created = await pay(a.cookie, 1_250, 'TR-K1')
+    assert.equal((await get(a.cookie, url)).json().data.record.paidCents, 1_250)
+    const list = (await get(a.cookie, '/api/v1/collections/invoices?pageSize=10')).json().data
+    const row = list.find((item: { id: string }) => item.id === 'test-inv-1')
+    assert.equal(row.record.paidCents, 1_250)
+    const { id, version } = created.json().data
+    await reverse(a.cookie, id, version)
+    assert.equal((await get(a.cookie, url)).json().data.record.paidCents, undefined)
+  })
 })

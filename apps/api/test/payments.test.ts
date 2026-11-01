@@ -92,7 +92,7 @@ describe('tahsilat uçları', () => {
     return signInAs(app, user)
   }
   function send(
-    method: 'GET' | 'POST' | 'PATCH',
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
     url: string,
     cookie: string | null,
     body?: unknown,
@@ -144,6 +144,120 @@ describe('tahsilat uçları', () => {
   }
 
   // --- Kimlik, rol, modül ----------------------------------------------------------------------
+
+  const ACCOUNT = {
+    bankName: 'Örnek Bankası',
+    iban: 'TR33 0006 1005 1978 6457 8413 26',
+    accountHolder: 'Akademi Özel Okulları',
+  }
+  const addAccount = (cookie: string | null, body: unknown = ACCOUNT) =>
+    send('POST', '/api/v1/bank-accounts', cookie, body, key())
+
+  test('DOM-FIN-032: banka hesabı yönetici ekler ve arşivler; kurum dışına ve role kapalı', async () => {
+    const a = await institution()
+    const b = await institution()
+    assertError(await addAccount(null), 401)
+    assertError(await addAccount(await member(a.id, 'onburo')), 403)
+    assertError(await addAccount(a.adminCookie, { ...ACCOUNT, iban: 'TR00' }), 400)
+    const created = await addAccount(a.adminCookie, { ...ACCOUNT, institutionId: b.id })
+    assertError(created, 400)
+    const added = await addAccount(a.adminCookie)
+    assert.equal(added.statusCode, 201, added.body)
+    const account = added.json().data
+    assert.equal(account.iban, 'TR330006100519786457841326')
+    assertError(await addAccount(a.adminCookie), 409, 'bank_account_exists')
+
+    const seenByOther = await send('GET', '/api/v1/bank-accounts', b.adminCookie)
+    assert.deepEqual(seenByOther.json().data, [])
+    const url = `/api/v1/bank-accounts/${String(account.id)}`
+    const remove = (cookie: string, version: number) =>
+      send('DELETE', url, cookie, undefined, { ...ifMatch(version), ...key() })
+    assertError(await remove(b.adminCookie, account.version), 404)
+    assertError(await remove(a.adminCookie, account.version + 5), 409, 'version_conflict')
+    assert.equal((await remove(a.adminCookie, account.version)).statusCode, 200)
+    const listed = await send('GET', '/api/v1/bank-accounts', a.adminCookie)
+    assert.deepEqual(listed.json().data, [])
+    const audits = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'bank_account.archive')))
+    assert.equal(audits.length, 1)
+  })
+
+  test('DOM-FIN-032: hesap tanımlıysa tahsilat hesaba bağlanır; arşivli hesap seçilemez, geçmişte görünür', async () => {
+    const a = await institution()
+    const b = await institution()
+    const foreign = (await addAccount(b.adminCookie)).json().data
+    const account = (await addAccount(a.adminCookie)).json().data
+    assertError(await record(a.adminCookie, payment(1_000)), 422, 'bank_account_required')
+    assertError(
+      await record(a.adminCookie, payment(1_000, { bankAccountId: foreign.id })),
+      422,
+      'bank_account_invalid',
+    )
+    await nothingWritten(a.id)
+    const paid = await record(a.adminCookie, payment(1_000, { bankAccountId: account.id }))
+    assert.equal(paid.statusCode, 201, paid.body)
+    assert.equal(paid.json().data.bankAccountLabel, 'Örnek Bankası · 1326')
+
+    await send('DELETE', `/api/v1/bank-accounts/${String(account.id)}`, a.adminCookie, undefined, {
+      ...ifMatch(account.version),
+      ...key(),
+    })
+    assertError(
+      await record(
+        a.adminCookie,
+        payment(1_000, { reference: 'TR-0002', bankAccountId: account.id }),
+      ),
+      422,
+      'bank_account_invalid',
+    )
+    const read = await send('GET', `/api/v1/payments/${String(paid.json().data.id)}`, a.adminCookie)
+    assert.equal(read.json().data.bankAccountLabel, 'Örnek Bankası · 1326')
+  })
+
+  test('DOM-FIN-032: MEBBİS işareti personelde; veli görmez, iptal edilende değişmez', async () => {
+    const a = await institution()
+    const b = await institution()
+    const paid = (await record(a.adminCookie, payment(1_000))).json().data
+    const url = `/api/v1/payments/${String(paid.id)}/mebbis-record`
+    const mark = (cookie: string | null, version: number, recorded = true) =>
+      send('POST', url, cookie, { recorded }, { ...ifMatch(version), ...key() })
+
+    assertError(await mark(null, paid.version), 401)
+    assertError(await mark(await member(a.id, 'veli'), paid.version), 403)
+    assertError(await mark(b.adminCookie, paid.version), 404)
+    assertError(await mark(a.adminCookie, paid.version + 5), 409, 'version_conflict')
+    const pending = await send('GET', '/api/v1/payments?mebbis=pending', a.adminCookie)
+    assert.equal(pending.json().meta.total, 1)
+
+    const marked = await mark(await member(a.id, 'onburo'), paid.version)
+    assert.equal(marked.statusCode, 200, marked.body)
+    assert.equal(marked.json().data.mebbisRecordedAt, FIXED_NOW.toISOString())
+    const none = await send('GET', '/api/v1/payments?mebbis=pending', a.adminCookie)
+    assert.equal(none.json().meta.total, 0)
+    const parent = await send(
+      'GET',
+      `/api/v1/payments/${String(paid.id)}`,
+      await member(a.id, 'veli'),
+    )
+    assert.equal(parent.json().data.mebbisRecordedAt, null)
+
+    const cleared = await mark(a.adminCookie, marked.json().data.version, false)
+    assert.equal(cleared.json().data.mebbisRecordedAt, null)
+    const reversed = await reverse(a.adminCookie, paid.id, cleared.json().data.version)
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    assertError(
+      await mark(a.adminCookie, reversed.json().data.version),
+      409,
+      'payment_already_reversed',
+    )
+    const audits = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'payment.mebbis')))
+    assert.equal(audits.length, 2)
+  })
 
   test('DOM-FIN-052: oturumsuz 401; öğretmen okuyamaz, veli ve öğrenci kaydedemez; ön büro iptal edemez', async () => {
     assertError(await record(null, payment(100)), 401)

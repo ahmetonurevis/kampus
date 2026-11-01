@@ -81,7 +81,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Deneme dersi satışın ana aracıdır ama derslikteki yasal mevcudu ve kayıtlı kursiyerin ders kalitesini bozmamalıdır. İlan edilmeyen ücret alınamayacağı için ücretli deneme dersi ancak ücret ilanında yer alırsa mümkündür; platform bunu desteklemez.
 - **Kaynak:** İşletme kuralı (bir kez, en fazla iki katılımcı); ÖÖKY md. 48/2 (mevcut), md. 54/1-b ve c (ilan dışı ücret yasağı).
 - **Kurum türü:** `language_school`
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleTrialLesson`; ayrıntı `DOM-KAY-034`): gerçek ders, aday başına bir kez, derse en fazla 2, kapasite en fazla 18, 18 yaş altında veli onayı; yoklamaya yazılmaz. Seviye/yaş bandı uygunluğu denetlenmez (`TODO(crm-trial-level)`). API `POST /api/v1/prospects/:prospectId/trial-lessons` (`apps/api/src/routes/prospects.ts`; okul kurumunda 404).
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleTrialLesson`; ayrıntı `DOM-KAY-034`): gerçek ders, aday başına bir kez, derse en fazla 2, kapasite en fazla 18, 18 yaş altında veli onayı; yoklamaya yazılmaz. Seviye/yaş bandı uygunluğu denetlenmez (`TODO(crm-trial-level)`). Web aday kartı (`ProspectPanel`, deneme dersi takvimi); API `POST /api/v1/prospects/:prospectId/trial-lessons` (`apps/api/src/routes/prospects.ts`; okul kurumunda 404).
 
 ### DOM-DIL-031 · Deneme dersi sonucu adayı kaydetmez
 

@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import {
+  assertRenewalWithinTariff,
   enrollmentFormSchema,
   enrollmentFormToBody,
   enrollProspectSchema,
@@ -62,6 +63,7 @@ const CONTEXT: EnrollmentContext = {
 }
 const INPUT = {
   classId: 'c1',
+  tariffId: 'test-tariff',
   installmentCount: 3,
   firstDueDate: '2026-11-15',
   identity: { kind: 'tc', number: '10000000146', birthDate: '2013-03-01' },
@@ -356,7 +358,7 @@ test('DOM-KAY-012: kayıt formu kimlik, veli ve dil okulunda saat ister', () => 
 
 test('DOM-KAY-012, -013: form gövdesi API şemasından geçer, veli türüne göre değişir', () => {
   const parse = (values: Parameters<typeof enrollmentFormToBody>[0]) => {
-    const body = enrollmentFormToBody(values)
+    const body = enrollmentFormToBody(values, 'test-tariff')
     assert.equal(enrollProspectSchema.safeParse(body).success, true)
     return body
   }
@@ -400,5 +402,54 @@ test('DOM-FIN-020: önizleme sunucu kuralıyla hesaplar, reddi mesaj olarak dön
   assert.equal(!capped.ok && capped.message.includes('%50'), true)
   assert.throws(() =>
     previewEnrollment(null as never, { lessonHours: '', discounts: [], extras: [] }, school),
+  )
+})
+
+test('DOM-FIN-010: form açıkken tarife değiştiyse kayıt yazılmaz (409)', () => {
+  rejectsUnchanged({ tariffId: 'eski-tarife' }, {}, 'tariff_changed', 'conflict')
+})
+
+test('DOM-FIN-003: aynı ek hizmet iki kez borç açmaz', () => {
+  rejectsUnchanged({ extras: ['meal', 'meal'] }, {}, 'extra_duplicate')
+})
+
+const RENEWAL = {
+  studentId: 's1',
+  targetClassId: 'c1',
+  year: 2027,
+  mode: 'renew',
+  total: 200_000,
+  discount: 0,
+  scholarship: 0,
+  count: 3,
+  startDate: '2027-09-15',
+}
+
+test('DOM-FIN-002, -021: yenileme yayımlı tarife ister, ilanı ve indirim tavanını aşamaz', () => {
+  const state = createSeed(new Date(NOW))
+  const check = (input: object, tariff: EnrollmentTariff | null = TARIFF) =>
+    assertRenewalWithinTariff(state, input, tariff, 'school')
+  assert.doesNotThrow(() => check(RENEWAL))
+  assert.throws(() => check(RENEWAL, null), isDomainError('tariff_not_published'))
+  assert.throws(
+    () => check(RENEWAL, { ...TARIFF, items: [item({ kind: 'meal' })] }),
+    isDomainError('tariff_tuition_missing'),
+  )
+  assert.throws(() => check({ ...RENEWAL, total: 200_001 }), isDomainError('renewal_above_tariff'))
+  assert.throws(
+    () => check({ ...RENEWAL, discount: 100_001 }),
+    isDomainError('discount_cap_exceeded'),
+  )
+  assert.doesNotThrow(() => check({ ...RENEWAL, discount: 100_000 }))
+})
+
+test('DOM-KAY-022: mezuniyet ve biçimsiz girdi tarife denetimine takılmaz; dil okulu tutarı serbest', () => {
+  const state = createSeed(new Date(NOW))
+  assert.doesNotThrow(() =>
+    assertRenewalWithinTariff(state, { ...RENEWAL, mode: 'graduate' }, null, 'school'),
+  )
+  assert.doesNotThrow(() => assertRenewalWithinTariff(state, { year: 'x' }, null, 'school'))
+  assert.doesNotThrow(() =>
+    assertRenewalWithinTariff(state, { ...RENEWAL, total: 999_999 }, TARIFF, 'language_school'),
   )
 })

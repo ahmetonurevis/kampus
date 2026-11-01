@@ -871,7 +871,13 @@ type StatePatches = {
   // Düzeltme geçmişi; ilk kez alınan yoklama ve örnek veri taşımaz (DOM-AKD-035).
   attendance: (Item<'attendance'> & { corrections?: AttendanceCorrection[] })[]
   invoices: (Item<'invoices'> &
-    Timestamps & { feeKind?: string; contractId?: string; academicYear?: number })[]
+    Timestamps & {
+      /** Okunurken eklenen kısmi ödeme tutarı (API, DOM-FIN-030); saklanmaz. */
+      paidCents?: number
+      feeKind?: string
+      contractId?: string
+      academicYear?: number
+    })[]
   // kvkk: K (veli telefonu)
   parents: (Item<'parents'> & { phone?: string; relationship?: string })[]
   contracts: (Item<'contracts'> & {

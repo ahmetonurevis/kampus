@@ -1,13 +1,21 @@
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { bankAccountSchema, type BankAccountInput } from '@kampus/school-core/lib/payments.ts'
 import { IF_MATCH_MISSING_MESSAGE } from '@kampus/react-shared/commands.ts'
 import { useModuleSettings } from '@kampus/react-shared/use-module-settings.ts'
 import {
+  useArchiveBankAccount,
+  useBankAccounts,
+  useCreateBankAccount,
   usePaymentSettings,
   useSetCashPayments,
 } from '@kampus/react-shared/use-payment-commands.ts'
+import { FormField } from '@/components/FormField.tsx'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { notify } from '@/lib/notify.ts'
 
@@ -23,7 +31,124 @@ export function PaymentSettingsSection() {
   const modules = useModuleSettings()
   const financeOpen = modules.rows.some((row) => row.key === 'finance' && row.enabled)
   if (!financeOpen) return null
-  return <CashSetting />
+  return (
+    <>
+      <CashSetting />
+      <BankAccountsSetting />
+    </>
+  )
+}
+
+const EMPTY_ACCOUNT: BankAccountInput = { bankName: '', iban: '', accountHolder: '' }
+
+/**
+ * Bildirilmiş banka hesapları (DOM-FIN-032). Hesap tanımlıysa nakit dışı tahsilat bu hesaplardan
+ * birine bağlanır. Arşivlenen hesap yeni tahsilatta seçilmez, geçmiş tahsilatlarda görünür.
+ */
+function BankAccountsSetting() {
+  const accounts = useBankAccounts()
+  const create = useCreateBankAccount()
+  const archive = useArchiveBankAccount()
+  const form = useForm<BankAccountInput>({
+    resolver: zodResolver(bankAccountSchema),
+    defaultValues: EMPTY_ACCOUNT,
+  })
+  const busy = create.isPending || form.formState.isSubmitting
+  const errors = form.formState.errors
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    const outcome = await create.submit(values, {
+      setError: (name, error) => {
+        if (name === 'bankName' || name === 'iban' || name === 'accountHolder')
+          form.setError(name, error)
+      },
+    })
+    if (outcome.status === 'success') {
+      notify.success('Banka hesabı eklendi.')
+      form.reset(EMPTY_ACCOUNT)
+    }
+  })
+
+  async function remove(account: { id: string; version: number }) {
+    const outcome = await archive.submit({ id: account.id, version: account.version })
+    if (outcome.status === 'success') notify.success('Banka hesabı arşivlendi.')
+  }
+
+  const rows = accounts.data?.data ?? []
+  return (
+    <section
+      aria-labelledby="banka-hesaplari"
+      aria-busy={accounts.isPending || undefined}
+      className="panel rounded-card border bg-surface"
+    >
+      <div className="border-b px-6 py-5 max-[650px]:px-4">
+        <h2 id="banka-hesaplari" className="text-lg font-semibold">
+          Bildirilmiş banka hesapları
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Hesap tanımlıysa havale ve kart tahsilatı bu hesaplardan birine bağlanır.
+        </p>
+      </div>
+      {accounts.error ? (
+        <div className="px-6 py-4 max-[650px]:px-4">
+          <QueryError error={accounts.error} onRetry={() => void accounts.refetch()} />
+        </div>
+      ) : (
+        <ul aria-label="Banka hesapları" className="divide-y">
+          {rows.map((account) => (
+            <li
+              key={account.id}
+              className="flex flex-wrap items-center gap-4 px-6 py-4 max-[650px]:px-4"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{account.bankName}</p>
+                <p className="text-sm break-all text-muted-foreground">
+                  {account.iban} · {account.accountHolder}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={archive.isPending}
+                aria-label={`${account.bankName} hesabını arşivle`}
+                onClick={() => void remove(account)}
+              >
+                Arşivle
+              </Button>
+            </li>
+          ))}
+          {rows.length === 0 && !accounts.isPending ? (
+            <li className="px-6 py-4 text-sm text-muted-foreground max-[650px]:px-4">
+              Henüz banka hesabı tanımlanmadı.
+            </li>
+          ) : null}
+        </ul>
+      )}
+      <form
+        noValidate
+        aria-label="Banka hesabı ekle"
+        onSubmit={(event) => void onSubmit(event)}
+        className="grid gap-4 border-t px-6 py-5 max-[650px]:px-4"
+      >
+        <FormField id="hesap-banka" label="Banka adı" error={errors.bankName}>
+          {(control) => <Input {...control} {...form.register('bankName')} disabled={busy} />}
+        </FormField>
+        <FormField id="hesap-iban" label="IBAN" error={errors.iban}>
+          {(control) => (
+            <Input {...control} {...form.register('iban')} autoComplete="off" disabled={busy} />
+          )}
+        </FormField>
+        <FormField id="hesap-sahibi" label="Hesap sahibi" error={errors.accountHolder}>
+          {(control) => <Input {...control} {...form.register('accountHolder')} disabled={busy} />}
+        </FormField>
+        <div>
+          <Button type="submit" disabled={busy} aria-busy={busy || undefined}>
+            Hesabı ekle
+          </Button>
+        </div>
+      </form>
+    </section>
+  )
 }
 
 function CashSetting() {

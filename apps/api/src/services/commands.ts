@@ -21,8 +21,13 @@ import {
   updateTeacher,
   type ArchiveKind,
 } from '@kampus/school-core/lib/school-management.ts'
+import { assertRenewalWithinTariff } from '@kampus/school-core/lib/enrollment.ts'
 import { recordGrade, updateGrade } from '@kampus/school-core/lib/grades.ts'
-import { runWorkflow, type WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
+import {
+  runWorkflow,
+  workflowSchemas,
+  type WorkflowCommand,
+} from '@kampus/school-core/lib/school-workflows.ts'
 import type { Actor } from '@kampus/school-core/lib/scope.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import {
@@ -33,6 +38,7 @@ import {
 } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
+import { findPublishedTariff } from '../db/fee-tariffs.ts'
 import { isRecordCollection, type CollectionName, type ScalarStateKey } from '../db/collections.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
 import { NotFoundError } from '../errors.ts'
@@ -154,6 +160,12 @@ export interface WorkflowInput {
   childId: string | undefined
 }
 
+/** Yenilemenin hedef yılı; biçim hatasını iş akışının kendi doğrulaması raporlar. */
+function renewalYear(input: unknown): number | null {
+  const parsed = workflowSchemas.renewal.safeParse(input)
+  return parsed.success ? parsed.data.year : null
+}
+
 /** `runWorkflow` köprüsü (api-tasarimi.md §1 geçiş köprüsü). */
 export async function executeWorkflowCommand(
   ctx: ServiceContext,
@@ -171,15 +183,19 @@ export async function executeWorkflowCommand(
         : {}),
       entity: auditEntity(recordId ?? command),
       load: async (tx) => {
-        const { session, scalars } = await environment(
+        const { session, scalars, institutionType } = await environment(
           tx,
           ctx,
           WORKFLOW_COMMANDS[command],
           workflow.childId,
         )
+        const year = command === 'renewal' ? renewalYear(input) : null
+        const tariff = year === null ? null : await findPublishedTariff(tx, ctx.institutionId, year)
         return {
           scalars,
           run: (state, { now, makeId }) => {
+            if (command === 'renewal')
+              assertRenewalWithinTariff(state, input, tariff, institutionType)
             runWorkflow(state, session, command, input, makeId, recordId, now)
             return auditedEntity(state, command)
           },

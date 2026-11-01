@@ -3,11 +3,22 @@
 // Dekont ve sözleşme ayrı şablondur; ortak olan yalnız sayfa iskeleti (`DocumentLayout`).
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
+import {
+  FEE_DISCOUNT_KIND_LABELS,
+  FEE_ITEM_KIND_LABELS,
+} from '@kampus/school-core/lib/fee-tariffs.ts'
 import { COLORS, date, DocumentLayout, type PdfDocument, type TextMeasurer } from './layout.ts'
 
 /** Web'de PDF olarak üretilen belge türleri. */
 export type PdfDocumentType =
-  'receipt' | 'contract' | 'material' | 'payment-plan' | 'homework' | 'submission'
+  | 'receipt'
+  | 'contract'
+  | 'material'
+  | 'payment-plan'
+  | 'homework'
+  | 'submission'
+  | 'payment-receipt'
+  | 'refund-statement'
 
 export type TemplateOptions = {
   institution: string
@@ -15,6 +26,11 @@ export type TemplateOptions = {
 }
 
 type Fields = Parameters<DocumentLayout['fields']>[0]
+
+const LABELS: Readonly<Record<string, string>> = { ...FEE_ITEM_KIND_LABELS }
+const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...FEE_DISCOUNT_KIND_LABELS }
+const extraLabel = (kind: string) => LABELS[kind] ?? kind
+const discountLabel = (kind: string) => DISCOUNT_LABELS[kind] ?? kind
 
 /** Önizleme başlığında kullanılan Türkçe adlar. */
 export const DOCUMENT_TITLES = {
@@ -24,6 +40,8 @@ export const DOCUMENT_TITLES = {
   'payment-plan': 'Taksit taahhütnamesi',
   homework: 'Ödev çalışma kâğıdı',
   submission: 'Ödev değerlendirme formu',
+  'payment-receipt': 'Tahsilat dekontu',
+  'refund-statement': 'İade hesap kırılımı',
 } as const satisfies Record<PdfDocumentType, string>
 
 const FILE_PREFIXES = {
@@ -33,6 +51,8 @@ const FILE_PREFIXES = {
   'payment-plan': 'taksit-plani',
   homework: 'odev',
   submission: 'odev-degerlendirme',
+  'payment-receipt': 'dekont',
+  'refund-statement': 'iade-kirilimi',
 } as const satisfies Record<PdfDocumentType, string>
 
 /** İndirilen dosya adı: kayıt kimliği güvenli karakterlere indirilir, `.pdf` ile biter. */
@@ -124,7 +144,7 @@ export function contractDocument(
     footerNote:
       'Örnek sözleşme metnidir; kurumun imzalı sözleşmesi veya hukuki belge yerine geçmez.',
   })
-  doc.heading('Özel okul eğitim sözleşmesi', `Sözleşme tarihi: ${date(contract.date)}`)
+  doc.heading(contract.title, `Sözleşme tarihi: ${date(contract.date)}`)
   doc.section('01 / Taraflar ve öğrenci bilgileri')
   doc.fields(studentFields(data))
   doc.paragraph(
@@ -140,6 +160,22 @@ export function contractDocument(
     'Ders programı ve akademik takvim okul yönetimi tarafından paylaşılır. Veli, duyuru ve gelişim raporlarını portal üzerinden takip eder. Yemek, servis ve ek etkinlikler bu eğitim bedeline dahil edilmemiştir.',
   )
   doc.section('03 / Eğitim bedeli ve bilgilendirme')
+  // Tarifeli sözleşme karar anının kopyasını taşır (DOM-FIN-010); eski kayıtta yoktur.
+  if (contract.grossCents !== undefined)
+    doc.fields([
+      ['İlan ücreti', money(contract.grossCents)],
+      ...(contract.discounts ?? []).map((line): [string, string] => [
+        `${discountLabel(line.kind)} indirimi`,
+        `-${money(line.amountCents)}`,
+      ]),
+      ['Net öğrenim ücreti', money(contract.netCents ?? contract.amount)],
+      ...(contract.extras ?? []).map((line): [string, string] => [
+        extraLabel(line.kind),
+        money(line.amountCents),
+      ]),
+      ['Tarife sürümü', String(contract.tariffVersion ?? '—')],
+      ['Ödeyici', contract.payer === 'student' ? 'Öğrenci' : 'Veli'],
+    ])
   doc.paragraph(
     `Toplam eğitim bedeli ${money(contract.amount)} olarak kaydedilmiştir. ${data.invoices.length} taksitlik güncel ödeme takvimi bu belgenin Ek 1 bölümünde yer alır.`,
   )

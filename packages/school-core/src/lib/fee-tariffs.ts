@@ -111,6 +111,20 @@ export const updateFeeTariffSchema = z.strictObject({
 })
 export type UpdateFeeTariffInput = z.input<typeof updateFeeTariffSchema>
 
+/**
+ * Okulda ücret ocak başı–mayıs sonu arasında ilan edilir (DOM-FIN-002, 5580 md. 13/1). Dönem dışı
+ * yayım engellenmez: ek sınıf veya yeni kurum gibi meşru durumlar vardır, ekran uyarır. Dil okulu
+ * bu kurala bağlı değildir.
+ */
+export function isOutsideAnnouncementPeriod(
+  announcedDate: string,
+  institutionType: InstitutionType,
+): boolean {
+  if (institutionType !== 'school') return false
+  const month = Number(announcedDate.slice(5, 7))
+  return month < 1 || month > 5
+}
+
 export const publishFeeTariffSchema = z.strictObject({
   announcedDate: daySchema,
   mebbisRecordedDate: daySchema.nullable(),

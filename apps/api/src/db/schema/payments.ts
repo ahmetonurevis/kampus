@@ -20,6 +20,30 @@ import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
 
 /**
+ * Kurumun bildirilmiş banka hesapları (DOM-FIN-032). Arşivlenen hesap yeni tahsilatta seçilmez,
+ * geçmiş tahsilat bağını korur.
+ */
+export const bankAccounts = pgTable(
+  'bank_accounts',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    id: uuid('id').notNull(),
+    bankName: text('bank_name').notNull(),
+    iban: text('iban').notNull(),
+    accountHolder: text('account_holder').notNull(),
+    ...requiredColumns(),
+  },
+  (table) => [
+    primaryKey({ name: 'bank_accounts_pkey', columns: [table.institutionId, table.id] }),
+    uniqueIndex('bank_accounts_iban_key')
+      .on(table.institutionId, table.iban)
+      .where(sql`${table.archivedAt} is null`),
+  ],
+)
+
+/**
  * Tahsilat (ADR 0006; DOM-FIN-030…033, DOM-FIN-050). Satır silinmez, tutarı değişmez; iptal aynı
  * satıra gerekçeyle yazılır. `student_id` `records` kimliğidir, yabancı anahtar değildir.
  */
@@ -38,6 +62,7 @@ export const payments = pgTable(
     method: text('method').notNull(),
     // kvkk: Ç
     reference: text('reference'),
+    bankAccountId: uuid('bank_account_id'),
     paidAt: timestamp('paid_at', { withTimezone: true }).notNull(),
     receiptYear: integer('receipt_year').notNull(),
     receiptNumber: integer('receipt_number').notNull(),
@@ -48,10 +73,23 @@ export const payments = pgTable(
     reversedByUserId: text('reversed_by_user_id'),
     // kvkk: Ç
     reversalReason: text('reversal_reason'),
+    mebbisRecordedAt: timestamp('mebbis_recorded_at', { withTimezone: true }),
+    // kvkk: K
+    mebbisRecordedByUserId: text('mebbis_recorded_by_user_id'),
     ...requiredColumns(),
   },
   (table) => [
     primaryKey({ name: 'payments_pkey', columns: [table.institutionId, table.id] }),
+    foreignKey({
+      name: 'payments_bank_account_fkey',
+      columns: [table.institutionId, table.bankAccountId],
+      foreignColumns: [bankAccounts.institutionId, bankAccounts.id],
+    }).onDelete('restrict'),
+    check(
+      'payments_mebbis_check',
+      sql`(${table.mebbisRecordedAt} is null) = (${table.mebbisRecordedByUserId} is null)`,
+    ),
+    index('payments_bank_account_idx').on(table.institutionId, table.bankAccountId),
     check('payments_amount_cents_check', sql`${table.amountCents} > 0`),
     check('payments_currency_check', sql`${table.currency} = 'TRY'`),
     check('payments_method_check', oneOf(table.method, ['bank_transfer', 'cash', 'card'])),

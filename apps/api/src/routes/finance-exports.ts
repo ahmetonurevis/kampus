@@ -8,7 +8,11 @@ import {
 } from '@kampus/school-core/lib/finance-export.ts'
 
 import { contextOf } from '../plugins/authenticate.ts'
-import { financeExportFor, financeSummaryFor } from '../services/finance-exports.ts'
+import {
+  financeExportFor,
+  financeSummaryFor,
+  financeTotalsFor,
+} from '../services/finance-exports.ts'
 import { commandErrors } from './commands.schemas.ts'
 import { dataResponse } from './common.schemas.ts'
 
@@ -36,6 +40,32 @@ function exportRateKey(request: FastifyRequest): string {
 export function registerFinanceExportRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
   const finance = app.requireModule('finance')
+
+  typed.get(
+    '/api/v1/finance/totals',
+    {
+      preValidation: [app.authenticate, finance, app.requireRole(['yonetici', 'onburo'])],
+      schema: {
+        operationId: 'getFinanceTotals',
+        tags: ['finance-exports'],
+        summary: 'Kurum geneli finans toplamları',
+        description:
+          'Finans ekranı kartları: toplam, tahsil edilen (kısmi ödemeler dahil), kalan ve gecikmiş tutar (DOM-FIN-030). Gecikmiş tutar yalnız kalan kısımdır. Roller: `yonetici`, `onburo`.',
+        response: {
+          200: dataResponse(
+            z.object({
+              totalCents: z.number().int(),
+              paidCents: z.number().int(),
+              remainingCents: z.number().int(),
+              overdueCents: z.number().int(),
+            }),
+          ),
+          ...commandErrors,
+        },
+      },
+    },
+    async (request) => ({ data: await financeTotalsFor(contextOf(request)) }),
+  )
 
   typed.get(
     '/api/v1/finance/summary',

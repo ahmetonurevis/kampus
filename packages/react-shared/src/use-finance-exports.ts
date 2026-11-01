@@ -18,6 +18,14 @@ export function useFinanceSummary(period: FinancePeriod, options: { enabled?: bo
   })
 }
 
+/** Finans ekranı kartları: kurum geneli, kısmi ödemeler dahil. Ödeme sonrası tazelenir. */
+export function useFinanceTotals() {
+  return useApiQuery({
+    key: ['payments', 'finance-totals'],
+    request: (client, signal) => client.GET('/api/v1/finance/totals', { signal }),
+  })
+}
+
 /** Dosyayı metin olarak alır; yazma değildir, sorgu tazelenmez. Hata mesajı toast olur. */
 export function useFinanceExport() {
   return useApiCommand({

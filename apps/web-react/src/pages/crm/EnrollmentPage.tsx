@@ -16,6 +16,7 @@ import {
 import {
   FEE_DISCOUNT_KIND_LABELS,
   FEE_ITEM_KIND_LABELS,
+  FEE_ITEM_KINDS,
 } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { OPEN_PROSPECT_STAGES } from '@kampus/school-core/lib/prospects.ts'
@@ -34,7 +35,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, useCoreCounts } from '@/hooks/use-core-collection.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
@@ -43,6 +44,7 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 const STEPS = ['Aday ve sınıf', 'Kimlik ve veli', 'Ücret ve taksit', 'Kontrol'] as const
 const TARIFF_PAGE_SIZE = 100
 const OPEN_STAGES: readonly (string | undefined)[] = OPEN_PROSPECT_STAGES
+const OCCUPANCY_QUERY = { groupBy: 'classId', isActive: true } as const
 
 type Done = { studentName: string; contractId: string | null }
 
@@ -54,6 +56,7 @@ type Done = { studentName: string; contractId: string | null }
  */
 export function EnrollmentPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
+  const [, setParams] = useSearchParams()
   const { session } = useAuth()
   const institutionType = session?.institution.type ?? 'school'
   const year = session?.institution.academicYear ?? Number(dayKey().slice(0, 4))
@@ -104,6 +107,8 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
               onClick={() => {
                 setDone(null)
                 setRound((value) => value + 1)
+                // Kayda alınan aday adreste kalmaz.
+                setParams({}, { replace: true })
               }}
             >
               Yeni kayıt
@@ -163,27 +168,26 @@ function EnrollmentForm({
   const errors = form.formState.errors
   const busy = enroll.isPending || form.formState.isSubmitting
 
-  const openProspects = useMemo(
-    () => (prospects.data ?? []).filter((row) => OPEN_STAGES.includes(row.record.stage)),
-    [prospects.data],
-  )
-  const activeClasses = useMemo(
-    () => (classes.data ?? []).filter((row) => row.record.isActive !== false),
-    [classes.data],
+  const openProspects = (prospects.data ?? []).filter((row) =>
+    OPEN_STAGES.includes(row.record.stage),
   )
   const prospect = openProspects.find((row) => row.id === values.prospectId)
-  const room = activeClasses.find((row) => row.id === values.classId)
-  const preview = useMemo(
-    () =>
-      previewEnrollment(tariff, values, {
-        institutionType,
-        level:
-          institutionType === 'language_school'
-            ? (room?.record.level ?? '')
-            : String(room?.record.grade ?? ''),
-      }),
-    [tariff, values, institutionType, room],
+  // Aday kampüsündeki etkin sınıflar; kampüs değişince eski seçim listeden düşer.
+  const branchId = prospect?.record.branchId
+  const activeClasses = (classes.data ?? []).filter(
+    (row) => row.record.isActive !== false && (!branchId || row.record.branchId === branchId),
   )
+  const occupancy = useCoreCounts('students', OCCUPANCY_QUERY)
+  const occupied = (classId: string) =>
+    occupancy.data?.groups.find((group) => group.value === classId)?.count ?? 0
+  const room = activeClasses.find((row) => row.id === values.classId)
+  const preview = previewEnrollment(tariff, values, {
+    institutionType,
+    level:
+      institutionType === 'language_school'
+        ? (room?.record.level ?? '')
+        : String(room?.record.grade ?? ''),
+  })
   const plan =
     preview.ok && Number(values.installmentCount) >= 1
       ? installmentAmounts(preview.price.netCents, Number(values.installmentCount))
@@ -192,6 +196,14 @@ function EnrollmentForm({
   async function next() {
     const valid = await form.trigger(ENROLLMENT_STEP_FIELDS[step] ?? [])
     if (!valid) return
+    if (step === 0 && !prospect) {
+      form.setError('prospectId', { type: 'closed', message: 'Kaydı açık bir aday seçin.' })
+      return
+    }
+    if (step === 0 && !room) {
+      form.setError('classId', { type: 'branch', message: 'Adayın kampüsünden bir sınıf seçin.' })
+      return
+    }
     // Veli alanları adaydan dolar; kullanıcı dilediğini değiştirir.
     if (step === 0 && prospect) {
       if (!form.getValues('guardianName'))
@@ -210,7 +222,11 @@ function EnrollmentForm({
   const onSubmit = form.handleSubmit(async (data) => {
     if (!prospect) return
     const outcome = await enroll.submit(
-      { prospectId: prospect.id, version: prospect.version, body: enrollmentFormToBody(data) },
+      {
+        prospectId: prospect.id,
+        version: prospect.version,
+        body: enrollmentFormToBody(data, tariff.id),
+      },
       { setError: (_name, error) => form.setError('root.server', error) },
     )
     if (outcome.status === 'success') {
@@ -233,7 +249,15 @@ function EnrollmentForm({
     )
   if (!prospects.data || !classes.data) return <SummaryLoading />
 
-  const extraItems = tariff.items.filter((item) => item.kind !== 'tuition')
+  // Her ek hizmet bir kez: sınıf düzeyinin kalemi, yoksa genel kalem (sunucu kuralıyla aynı).
+  const classLevel =
+    institutionType === 'language_school' ? room?.record.level : String(room?.record.grade ?? '')
+  const extraItems = FEE_ITEM_KINDS.filter((kind) => kind !== 'tuition').flatMap((kind) => {
+    const item =
+      tariff.items.find((row) => row.kind === kind && row.level === classLevel) ??
+      tariff.items.find((row) => row.kind === kind && row.level === null)
+    return item ? [item] : []
+  })
   const summary: readonly [string, string][] = [
     ['Aday', prospect?.record.name ?? '—'],
     ['Sınıf', room?.record.name ?? '—'],
@@ -271,7 +295,18 @@ function EnrollmentForm({
             <>
               <FormField id="kayit-aday" label="Aday öğrenci" error={errors.prospectId}>
                 {(control) => (
-                  <NativeSelect {...control} {...form.register('prospectId')}>
+                  <NativeSelect
+                    {...control}
+                    {...form.register('prospectId', {
+                      // Başka adayın veli seçimi ve bilgisi yeni adaya taşınmaz.
+                      onChange: () => {
+                        form.setValue('existingParentId', '')
+                        form.setValue('guardianName', '')
+                        form.setValue('guardianPhone', '')
+                        form.setValue('guardianMode', 'new')
+                      },
+                    })}
+                  >
                     <NativeSelectOption value="">Aday seçin</NativeSelectOption>
                     {openProspects.map((row) => (
                       <NativeSelectOption key={row.id} value={row.id}>
@@ -286,8 +321,12 @@ function EnrollmentForm({
                   <NativeSelect {...control} {...form.register('classId')}>
                     <NativeSelectOption value="">Sınıf seçin</NativeSelectOption>
                     {activeClasses.map((row) => (
-                      <NativeSelectOption key={row.id} value={row.id}>
-                        {row.record.name} (kapasite {row.record.capacity})
+                      <NativeSelectOption
+                        key={row.id}
+                        value={row.id}
+                        disabled={occupied(row.id) >= row.record.capacity}
+                      >
+                        {row.record.name} ({occupied(row.id)}/{row.record.capacity})
                       </NativeSelectOption>
                     ))}
                   </NativeSelect>

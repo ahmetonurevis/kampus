@@ -153,6 +153,7 @@ test.describe('PDF: sözleşme', () => {
       roles: ['yonetici'],
       students: ['s4'],
       collections: ['renewals'],
+      tariffYears: ['current', 'next'],
     })
     const client = await api(school.user('yonetici'))
     const startDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(
@@ -187,7 +188,8 @@ test.describe('PDF: sözleşme', () => {
     const preview = page.getByRole('dialog', { name: 'Eğitim sözleşmesi · Önizleme' })
     await expect(preview.getByRole('img', { name: 'Eğitim sözleşmesi, sayfa 1' })).toBeVisible()
     const viewer = preview.getByLabel('PDF sayfa görünümü')
-    await expect(viewer).toContainText('Özel okul eğitim sözleşmesi')
+    // Başlık sözleşmenin kendi adıdır (DOM-FIN-010).
+    await expect(viewer).toContainText('eğitim sözleşmesi')
     await expect(viewer).toContainText('Arda Çelik')
     await expect(preview.getByRole('status').filter({ hasText: 'Sayfa 1 / 2' })).toBeVisible()
 

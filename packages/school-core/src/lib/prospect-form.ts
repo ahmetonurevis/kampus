@@ -117,9 +117,14 @@ export type MeetingProspect = {
   meeting?: ProspectMeeting
   /** Eski kayıtların görüşme anı; süre ve oda taşımaz (`createProspect` öncesi veri). */
   trialAt?: string | null
+  /** Dil okulunda planlanmış deneme dersi (DOM-DIL-030). */
+  trialLesson?: { lessonId: string; date: string; duration: number }
 }
 
 export type UpcomingMeeting = {
+  /** Aynı adayın görüşmesi ve deneme dersi ayrı satırdır. */
+  key: string
+  kind: 'meeting' | 'trial'
   id: string
   name: string
   date: string
@@ -127,27 +132,89 @@ export type UpcomingMeeting = {
   room: string | null
 }
 
-/** Bugünden itibaren planlı görüşmeler, en yakını önce. Kapalı aday listelenmez. */
+/**
+ * Bugünden itibaren planlı görüşme ve deneme dersleri, en yakını önce. Kapalı aday listelenmez;
+ * iptal edilen derse bağlı deneme yapılmamış sayılır (DOM-DIL-030).
+ */
 export function upcomingMeetings(
   prospects: readonly MeetingProspect[],
   today: string,
+  cancelledLessonIds: ReadonlySet<string> = new Set(),
 ): UpcomingMeeting[] {
   return prospects
     .flatMap((prospect): UpcomingMeeting[] => {
+      if (prospect.stage === 'Vazgeçti' || prospect.stage === 'Kayıt oldu') return []
+      const rows: UpcomingMeeting[] = []
       const date = prospect.meeting?.date ?? prospect.trialAt
-      if (!date || prospect.stage === 'Vazgeçti' || prospect.stage === 'Kayıt oldu') return []
-      if (dayKey(date) < today) return []
-      return [
-        {
+      if (date && dayKey(date) >= today)
+        rows.push({
+          key: `${prospect.id}-meeting`,
+          kind: 'meeting',
           id: prospect.id,
           name: prospect.name,
           date,
           duration: prospect.meeting?.duration ?? null,
           room: prospect.meeting?.room ?? null,
-        },
-      ]
+        })
+      const trial = prospect.trialLesson
+      if (trial && dayKey(trial.date) >= today && !cancelledLessonIds.has(trial.lessonId))
+        rows.push({
+          key: `${prospect.id}-trial`,
+          kind: 'trial',
+          id: prospect.id,
+          name: prospect.name,
+          date: trial.date,
+          duration: trial.duration,
+          room: null,
+        })
+      return rows
     })
     .sort((a, b) => a.date.localeCompare(b.date))
+}
+
+type TrialScheduleLesson = {
+  id: string
+  classId: string
+  date: string
+  cancelledAt?: string | null
+}
+type TrialClass = { id: string; name: string; branchId: string; isActive: boolean }
+
+/** Seçim listesi uzamasın: en yakın dersler yeterlidir. */
+const TRIAL_OPTION_LIMIT = 40
+
+/** Adayın kampüsündeki açık grupların iptal edilmemiş gelecek dersleri, en yakını önce. */
+export function trialLessonOptions(
+  lessons: readonly TrialScheduleLesson[],
+  classes: readonly TrialClass[],
+  branchId: string,
+  now: string,
+): { id: string; date: string; className: string }[] {
+  const open = new Map(
+    classes
+      .filter((item) => item.isActive && item.branchId === branchId)
+      .map((item) => [item.id, item.name]),
+  )
+  return lessons
+    .flatMap((lesson) => {
+      const className = open.get(lesson.classId)
+      if (className === undefined || lesson.cancelledAt) return []
+      if (Date.parse(lesson.date) <= Date.parse(now)) return []
+      return [{ id: lesson.id, date: lesson.date, className }]
+    })
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, TRIAL_OPTION_LIMIT)
+}
+
+/** Geçmiş ve iptal edilmemiş derse bağlı deneme kullanılmıştır, yeniden planlanmaz. */
+export function trialLessonUsed(
+  trial: { lessonId: string } | undefined,
+  lessons: readonly TrialScheduleLesson[],
+  now: string,
+): boolean {
+  if (trial === undefined) return false
+  const lesson = lessons.find((item) => item.id === trial.lessonId)
+  return lesson !== undefined && !lesson.cancelledAt && Date.parse(lesson.date) <= Date.parse(now)
 }
 
 /** Süre ve oda metni; eski kayıtta yoktur. */

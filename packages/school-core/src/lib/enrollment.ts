@@ -4,6 +4,7 @@ import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { applyEnrollment, daySchema, requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
+import { renewalQuote, workflowSchemas } from './school-workflows.ts'
 import {
   FEE_DISCOUNT_KINDS,
   FEE_ITEM_KINDS,
@@ -71,6 +72,8 @@ const guardianSchema = z.union([
 
 export const enrollProspectSchema = z.strictObject({
   classId: requiredText,
+  /** Formun hesapladığı tarife; yayımdaki sürüm değiştiyse kayıt yazılmaz. */
+  tariffId: requiredText,
   installmentCount: z.number().int().min(1).max(12),
   firstDueDate: daySchema,
   /** Dil okulunda paket saati (DOM-FIN-006); okulda verilmez. */
@@ -169,7 +172,7 @@ export function priceEnrollment(
   if (!exempt && total * BASIS > grossCents * DISCOUNT_CAP_BASIS_POINTS)
     throw new DomainError(
       'discount_cap_exceeded',
-      'Toplam indirim ilan ücretinin %50sini aşamaz.',
+      "Toplam indirim ilan ücretinin %50'sini aşamaz.",
       {
         path: ['discounts'],
       },
@@ -177,6 +180,10 @@ export function priceEnrollment(
   if (total >= grossCents)
     throw new DomainError('discount_exceeds_gross', 'İndirim öğrenim ücretini karşılayamaz.', {
       path: ['discounts'],
+    })
+  if (new Set(request.extras).size !== request.extras.length)
+    throw new DomainError('extra_duplicate', 'Aynı ek hizmet iki kez seçilemez.', {
+      path: ['extras'],
     })
   const extras = request.extras.map((kind): ExtraLine => {
     const item = kind === 'tuition' ? undefined : itemFor(tariff.items, kind, request.level)
@@ -196,7 +203,10 @@ function ageOn(birthDate: string, day: string): number {
 
 /** Telefonu eşleşen veliler; ön büroya önerilir, otomatik birleştirilmez (DOM-KAY-013). */
 export function findParentMatches(
-  state: Pick<State, 'parents' | 'students'>,
+  state: {
+    parents: readonly { id: string; name: string; studentIds: readonly string[]; phone?: string }[]
+    students: readonly { id: string; phone?: string }[]
+  },
   phone: string,
 ): { parentId: string; name: string; studentCount: number }[] {
   if (phone === '') return []
@@ -243,6 +253,12 @@ export function enrollProspectWithTariff(
     throw new DomainError(
       'tariff_not_published',
       'Bu eğitim yılı için yayımlanmış ücret tarifesi yok.',
+    )
+  if (data.tariffId !== context.tariff.id)
+    throw new DomainError(
+      'tariff_changed',
+      'Ücret tarifesi değişti. Ödeme planını yeniden kontrol edin.',
+      { kind: 'conflict' },
     )
   // Aktif öğrenci ikinci kayıt alamaz; pasif veya silinmiş kaydın kimliği yeniden kullanılır.
   if (state.students.find((student) => student.id === context.identityHolderId)?.isActive)
@@ -414,10 +430,14 @@ export const ENROLLMENT_STEP_FIELDS: readonly (readonly (keyof EnrollmentFormVal
   ['lessonHours', 'discounts', 'extras', 'installmentCount', 'firstDueDate'],
 ]
 
-export function enrollmentFormToBody(values: EnrollmentFormValues): EnrollProspectInput {
+export function enrollmentFormToBody(
+  values: EnrollmentFormValues,
+  tariffId: string,
+): EnrollProspectInput {
   const lessonHours = values.lessonHours === '' ? null : Number(values.lessonHours)
   return {
     classId: values.classId,
+    tariffId,
     installmentCount: Number(values.installmentCount),
     firstDueDate: values.firstDueDate,
     ...(lessonHours === null ? {} : { lessonHours }),
@@ -466,4 +486,45 @@ export function previewEnrollment(
     if (error instanceof DomainError) return { ok: false, message: error.message }
     throw error
   }
+}
+
+/**
+ * Yenilemenin tarife denetimi (API; DOM-FIN-002, -021, DOM-KAY-020): hedef yılın yayımlanmış
+ * tarifesi olmadan sözleşme açılmaz, öğrenim ücreti ilanı aşamaz, indirim tavanı %50'dir (burs
+ * tavana dahil değildir). Dil okulunda tutar saat paketiyle değiştiği için üst sınır denetlenmez.
+ * Artış tavanı (DOM-FIN-005) ÜFE/TÜFE verisi gerektirdiği için burada yoktur. Mezuniyet borç açmaz.
+ */
+export function assertRenewalWithinTariff(
+  state: Pick<State, 'classes'>,
+  input: unknown,
+  tariff: Pick<EnrollmentTariff, 'items'> | null,
+  institutionType: InstitutionType,
+): void {
+  const data = workflowSchemas.renewal.safeParse(input)
+  // Biçim hatasını iş akışının kendi doğrulaması raporlar.
+  if (!data.success || data.data.mode === 'graduate') return
+  if (tariff === null)
+    throw new DomainError(
+      'tariff_not_published',
+      'Bu eğitim yılı için yayımlanmış ücret tarifesi yok.',
+    )
+  const { gross, discountAmount } = renewalQuote(input)
+  const target = state.classes.find((item) => item.id === data.data.targetClassId)
+  const level = institutionType === 'language_school' ? target?.level : String(target?.grade ?? '')
+  const tuition = itemFor(tariff.items, 'tuition', level ?? '')
+  if (!tuition)
+    throw new DomainError('tariff_tuition_missing', 'Tarifede bu düzey için öğrenim ücreti yok.')
+  if (institutionType === 'language_school') return
+  if (gross > tuition.amountCents)
+    throw new DomainError('renewal_above_tariff', 'Eğitim bedeli ilan edilen ücreti aşamaz.', {
+      path: ['total'],
+    })
+  if (discountAmount * BASIS > tuition.amountCents * DISCOUNT_CAP_BASIS_POINTS)
+    throw new DomainError(
+      'discount_cap_exceeded',
+      "Toplam indirim ilan ücretinin %50'sini aşamaz.",
+      {
+        path: ['discount'],
+      },
+    )
 }

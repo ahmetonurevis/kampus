@@ -945,6 +945,7 @@ describe('aday uçları', () => {
     })
     assert.equal(created.statusCode, 201, created.body)
     const { id, version } = created.json().data
+    tariffId = id
     const published = await send(
       'POST',
       `/api/v1/fee-tariffs/${String(id)}/publish`,
@@ -960,6 +961,7 @@ describe('aday uçları', () => {
       items: [TUITION],
     })
     assert.equal(draft.statusCode, 201, draft.body)
+    tariffId = draft.json().data.id
     const published = await send(
       'POST',
       `/api/v1/fee-tariffs/${String(draft.json().data.id)}/publish`,
@@ -978,17 +980,25 @@ describe('aday uçları', () => {
     await publishTariff(created.adminCookie, tariff, unit)
     return created
   }
+  /** Son yayımlanan tarifenin kimliği; gövdede verilmeyen testler için. */
+  let tariffId = '00000000-0000-4000-8000-000000000000'
   const enroll = (
     cookie: string | null,
     id: string,
-    body: unknown,
+    body: Record<string, unknown>,
     version: number | null,
     headers: Record<string, string> = key(),
   ) =>
-    send('POST', `/api/v1/prospects/${id}/enroll`, cookie, body, {
-      ...ifMatch(version),
-      ...headers,
-    })
+    send(
+      'POST',
+      `/api/v1/prospects/${id}/enroll`,
+      cookie,
+      { tariffId, ...body },
+      {
+        ...ifMatch(version),
+        ...headers,
+      },
+    )
   const enrollmentRows = async (institutionId: string) => ({
     parents: await loadRecords(db, institutionId, ['parents']),
     invoices: await loadRecords(db, institutionId, ['invoices']),
@@ -1245,6 +1255,23 @@ describe('aday uçları', () => {
       await a_get((await member(a.id, 'veli')).cookie, `/api/v1/prospects/pr2/guardian-matches`),
       403,
     )
+  })
+
+  test('DOM-FIN-010: form açıkken tarife değiştiyse 409 tariff_changed; kayıt yazılmaz', async () => {
+    const a = await pricedInstitution()
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(
+          a.adminCookie,
+          'pr1',
+          { ...ENROLLMENT, tariffId: crypto.randomUUID() },
+          version,
+        ),
+        409,
+        'tariff_changed',
+      )
+    })
   })
 
   test('DOM-FIN-031: aynı Idempotency-Key ikinci borç açmaz, ilk yanıtı döner', async () => {

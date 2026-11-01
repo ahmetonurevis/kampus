@@ -246,6 +246,75 @@ test('DOM-KAY-012: okulda veli zorunlu; dil okulunda 18 yaş üstü kursiyer ken
   )
 })
 
+/** Dil okulu kaydı; `minor` verilirse aday pr1'in yaş grubu seçimi olur. */
+function languageEnroll(
+  overrides: Record<string, unknown>,
+  options: { minor?: boolean; now?: string } = {},
+) {
+  const state = createSeed(new Date(NOW))
+  const prospect = state.prospects.find((item) => item.id === 'pr1')!
+  if (options.minor !== undefined) prospect.minor = options.minor
+  const before = JSON.stringify(state)
+  let n = 0
+  const run = () =>
+    enrollProspectWithTariff(
+      state,
+      'pr1',
+      { ...INPUT, lessonHours: 10, ...overrides },
+      (prefix) => `${prefix}-test-${n++}`,
+      options.now ?? NOW,
+      { ...CONTEXT, institutionType: 'language_school' },
+    )
+  return { state, before, run }
+}
+
+test('DOM-KAY-012: 18 yaş doğum tarihinden ve işlem anının Europe/Istanbul gününden hesaplanır', () => {
+  const adultBirthday = { identity: { ...INPUT.identity, birthDate: '2008-10-06' }, guardian: null }
+  // 5 Ekim 22:30 UTC İstanbul'da 6 Ekim'dir: 18. doğum günü gelmiştir.
+  const midnight = languageEnroll(adultBirthday, { now: '2026-10-05T22:30:00.000Z' })
+  assert.equal(midnight.run().contract.payer, 'student')
+  // 5 Ekim 20:30 UTC İstanbul'da hâlâ 5 Ekim'dir: kursiyer 18 yaş altıdır, veli gerekir.
+  const evening = languageEnroll(adultBirthday, { now: '2026-10-05T20:30:00.000Z' })
+  assert.throws(evening.run, isDomainError('guardian_required'))
+  assert.equal(JSON.stringify(evening.state), evening.before)
+})
+
+test('DOM-KAY-012, DOM-KAY-003: dil okulunda adayın yaş grubu seçimi doğum tarihiyle uyuşmalıdır', () => {
+  const adult = { identity: { ...INPUT.identity, birthDate: '2000-01-01' }, guardian: null }
+  for (const [overrides, minor] of [
+    [adult, true],
+    [{ identity: { ...INPUT.identity, birthDate: '2013-03-01' } }, false],
+  ] as const) {
+    const attempt = languageEnroll(overrides, { minor })
+    assert.throws(attempt.run, (error: unknown) => {
+      assert.ok(isDomainError('birth_date_minor_mismatch')(error))
+      assert.deepEqual((error as { path?: unknown }).path, ['identity', 'birthDate'])
+      return true
+    })
+    assert.equal(JSON.stringify(attempt.state), attempt.before)
+  }
+  // Seçim doğum tarihiyle uyuşuyorsa ya da eski adayda seçim yoksa kayıt yazılır.
+  assert.equal(languageEnroll(adult, { minor: false }).run().contract.payer, 'student')
+  assert.equal(languageEnroll(adult).run().contract.payer, 'student')
+  assert.equal(languageEnroll({}, { minor: true }).run().contract.payer, 'guardian')
+})
+
+test('DOM-KAY-012: yetişkin kursiyerde veli alınmaz (guardian_not_applicable); okulda öğrenci her zaman 18 yaş altıdır', () => {
+  const adultIdentity = { ...INPUT.identity, birthDate: '2000-01-01' }
+  for (const guardian of [INPUT.guardian, { existingParentId: 'p1' }]) {
+    const attempt = languageEnroll({ identity: adultIdentity, guardian })
+    assert.throws(attempt.run, (error: unknown) => {
+      assert.ok(isDomainError('guardian_not_applicable')(error))
+      assert.deepEqual((error as { path?: unknown }).path, ['guardian'])
+      return true
+    })
+    assert.equal(JSON.stringify(attempt.state), attempt.before)
+  }
+  // Okulda doğum tarihi ne olursa olsun ödeyici velidir; veli verilmezse kayıt yazılmaz.
+  rejectsUnchanged({ identity: adultIdentity, guardian: null }, {}, 'guardian_required')
+  assert.equal(enroll({ identity: adultIdentity }).result.contract.payer, 'guardian')
+})
+
 test('DOM-KAY-012: veli adı, telefonu ve yakınlığı kaydedilir', () => {
   const { state, result } = enroll()
   const parent = state.parents.find((p) => p.id === result.student.parentId)

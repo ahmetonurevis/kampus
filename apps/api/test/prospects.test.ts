@@ -1459,6 +1459,39 @@ describe('aday uçları', () => {
     assert.equal(contract?.data.payer, 'student')
   })
 
+  test('DOM-KAY-012: dil okulunda yetişkin kursiyere veli verilmez (422); yaş grubu seçimiyle uyuşmayan doğum tarihi 422', async () => {
+    const a = await pricedInstitution(
+      { type: 'language_school' },
+      {
+        items: [
+          { ...TUITION, unit: 'lesson_hour', amountCents: 50_000, announcedAmountCents: null },
+        ],
+      },
+    )
+    const cookie = await frontDesk(a.id)
+    const adult = {
+      ...ENROLLMENT,
+      lessonHours: 10,
+      identity: { ...ENROLLMENT.identity, birthDate: '2000-01-01' },
+    }
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      const refused = await enroll(cookie, 'pr1', adult, version)
+      assertError(refused, 422, 'guardian_not_applicable')
+      assert.deepEqual(refused.json().issues?.[0]?.path, ['guardian'])
+    })
+    // Ön büro adayı 18 yaş altı olarak açtı; yetişkin doğum tarihi uyuşmaz.
+    const minor = await created(cookie, { ...PROSPECT, name: 'Test Küçük Kursiyer', minor: true })
+    await noEnrollment(a.id, minor.id, async () => {
+      const mismatch = await enroll(cookie, minor.id, { ...adult, guardian: null }, minor.version)
+      assertError(mismatch, 422, 'birth_date_minor_mismatch')
+      assert.deepEqual(mismatch.json().issues?.[0]?.path, ['identity', 'birthDate'])
+    })
+    const done = await enroll(cookie, minor.id, { ...ENROLLMENT, lessonHours: 10 }, minor.version)
+    assert.equal(done.statusCode, 201, done.body)
+    assert.equal((await enrollmentRows(a.id)).contracts.at(-1)?.data.payer, 'guardian')
+  })
+
   test('DOM-YTK-040: crm modülü kapalıyken kimlik özeti 403 module_disabled', async () => {
     const closed = await institution({ enabledModules: { crm: false } })
     assertError(

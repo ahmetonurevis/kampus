@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
+import { ADULT_AGE, ageOn } from './age.ts'
 import { applyEnrollment, daySchema, requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { renewalQuote, workflowSchemas } from './school-workflows.ts'
@@ -23,7 +24,6 @@ import {
 /** Toplam indirim tavanı (DOM-FIN-021): %50, on binde birlik. */
 export const DISCOUNT_CAP_BASIS_POINTS = 5_000
 const BASIS = 10_000
-const ADULT_AGE = 18
 
 /**
  * Velinin öğrenciye yakınlığı (DOM-KAY-012). Yasal vasi `legal_guardian`'dır; ödeyici değeri
@@ -200,11 +200,6 @@ export function priceEnrollment(
   return { grossCents, discounts, netCents: grossCents - total, extras }
 }
 
-function ageOn(birthDate: string, day: string): number {
-  const years = Number(day.slice(0, 4)) - Number(birthDate.slice(0, 4))
-  return day.slice(5) >= birthDate.slice(5) ? years : years - 1
-}
-
 /** Telefonu eşleşen veliler; ön büroya önerilir, otomatik birleştirilmez (DOM-KAY-013). */
 export function findParentMatches(
   state: {
@@ -275,11 +270,34 @@ export function enrollProspectWithTariff(
     throw new DomainError('birth_date_invalid', 'Doğum tarihi geçmiş bir gün olmalıdır.', {
       path: ['identity', 'birthDate'],
     })
+  // 18 yaş doğum tarihinden, Europe/Istanbul gününe göre hesaplanır (`lib/age.ts`, CEFR
+  // bildirimiyle ortak). Okul öğrencisi her zaman 18 yaş altıdır; yalnız dil okulunda kursiyer
+  // sözleşmenin tarafı ve ödeyicisi olabilir (DOM-KAY-012).
   const adult =
     context.institutionType === 'language_school' &&
-    ageOn(data.identity.birthDate, context.today) >= ADULT_AGE
+    ageOn(data.identity.birthDate, now) >= ADULT_AGE
+  const prospect = state.prospects.find((item) => item.id === prospectId)
+  // Dil okulu adayında ön büronun seçtiği yaş grubu (`minor`) doğum tarihiyle uyuşmalıdır; uyuşmazsa
+  // yanlış doğum tarihiyle veli kuralı atlanmış olur (DOM-KAY-003, DOM-KAY-012).
+  if (
+    context.institutionType === 'language_school' &&
+    prospect?.minor !== undefined &&
+    prospect.minor === adult
+  )
+    throw new DomainError(
+      'birth_date_minor_mismatch',
+      'Doğum tarihi adayın 18 yaş durumuyla uyuşmuyor; doğum tarihini kontrol edin.',
+      { path: ['identity', 'birthDate'] },
+    )
+  // 18 yaş altında sözleşmeyi ve ödemeyi veli üstlenir; yetişkin kursiyer kendisi ödeyicidir.
   if (data.guardian === null && !adult)
     throw new DomainError('guardian_required', 'Veli bilgisi zorunludur.', { path: ['guardian'] })
+  if (data.guardian !== null && adult)
+    throw new DomainError(
+      'guardian_not_applicable',
+      '18 yaş ve üstü kursiyer sözleşmenin tarafı ve ödeyicisidir; veli bilgisi alınmaz.',
+      { path: ['guardian'] },
+    )
   const existingParentId =
     data.guardian !== null && 'existingParentId' in data.guardian
       ? data.guardian.existingParentId

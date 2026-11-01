@@ -10,6 +10,7 @@ Onur'un kayıt ve finans dalı (`feature/ogrenci-kaydi-finans`) birleştirildi; 
 Birleştirmeden sonra bizim kesin kayıt kuralları Onur'un `enrollProspectWithTariff` / `applyEnrollment` koduna taşındı:
 
 - **Kırıcı:** veli yakınlığı `GUARDIAN_RELATIONSHIPS` `'guardian'` yerine `'legal_guardian'` (etiket "Vasi"); ödeyici değeri `'guardian'` ve gövdedeki `guardian` nesnesiyle karışmasın (DOM-KAY-012). Eski değer 400 alır.
+- 18 yaş doğum tarihinden `lib/age.ts` `ageOn(birthDate, now)` ile (Europe/Istanbul günü) hesaplanır; `lib/enrollment.ts`'teki yerel `ageOn`/`ADULT_AGE` kalktı. Dil okulunda adayın yaş grubu seçimi (`minor`) doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (`path: ['identity', 'birthDate']`). Ödeyici: yetişkin kursiyere veli verilirse 422 `guardian_not_applicable` (`path: ['guardian']`), 18 yaş altında veli yoksa `guardian_required`; okul öğrencisi her zaman 18 yaş altıdır (DOM-KAY-012).
 
 Onur'un dalındaki girdiler: kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-001, DOM-FIN-012, DOM-FIN-030…033).
 

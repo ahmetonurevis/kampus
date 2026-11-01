@@ -102,7 +102,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** e-Okul/e-Özel kaydı ve sözleşmenin geçerliliği için yasal temsilci gerekir; reşit olmayanın sözleşmesini yasal temsilcisi yapar.
 - **Kaynak:** 4721 sayılı Türk Medeni Kanunu (ergin olmayanın temsili) — **doğrulanmalı**; ÖÖKY md. 53/1 (Bakanlıkça belirlenen tip sözleşme).
 - **Kurum türü:** ikisi
-- **Kodda:** var (API) — `lib/enrollment.ts`, `POST /api/v1/prospects/:prospectId/enroll`; kimlik `student_identities` tablosunda, `GET /api/v1/students/:studentId/identity` maskeli döner. Yakınlık `GUARDIAN_RELATIONSHIPS`'tir (`mother`, `father`, `legal_guardian` (vasi), `other`); ödeyici değeri (`payer: 'guardian' | 'student'`) ayrı alandır. Çevrimdışı demo `enrollProspect` eski davranıştadır.
+- **Kodda:** var (API) — `lib/enrollment.ts`, `POST /api/v1/prospects/:prospectId/enroll`; kimlik `student_identities` tablosunda, `GET /api/v1/students/:studentId/identity` maskeli döner. Yakınlık `GUARDIAN_RELATIONSHIPS`'tir (`mother`, `father`, `legal_guardian` (vasi), `other`); ödeyici değeri (`payer: 'guardian' | 'student'`) ayrı alandır. 18 yaş doğum tarihinden, işlem anının Europe/Istanbul gününe göre hesaplanır (`lib/age.ts`, CEFR bildirimiyle ortak). Okulda öğrenci her zaman 18 yaş altıdır. Dil okulunda yetişkin kursiyer ödeyicidir (`guardian: null`); veli verilirse 422 `guardian_not_applicable`, 18 yaş altında veli yoksa 422 `guardian_required`; adayın yaş grubu seçimi (`minor`) doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch`. Çevrimdışı demo `enrollProspect` eski davranıştadır.
 
 ### DOM-KAY-013 · Mevcut veliye bağlama (kardeş)
 

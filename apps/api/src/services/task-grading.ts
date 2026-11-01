@@ -263,7 +263,10 @@ async function writeScore(
     ctx,
     {
       action,
-      // Bildirim yalnız eklenir; var olan bildirimler yüklenmez (F6a).
+      // Bildirim yalnız eklenir; var olan bildirimler yüklenmez (F6a). Puanın denetim satırı
+      // `after`'dadır; farktaki bildirim kaydı ayrı eylemle yazılır ki puan iki kez yazılmış
+      // görünmesin.
+      auditAction: 'notification.create',
       collections: ['notifications'],
       loadScope: { notifications: { ids: [] } },
       entity: { type: ENTITY, id: input.submissionId },

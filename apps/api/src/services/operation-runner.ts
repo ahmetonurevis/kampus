@@ -101,6 +101,12 @@ interface OperationBase<R> {
   /** Denetim kaydı eylemi, ör. `invoice.pay`. */
   action: string
   /**
+   * Çalıştırıcının koleksiyon farkından yazdığı denetim satırının eylemi; verilmezse `action`.
+   * Asıl kaydını `after`'da kendi denetimiyle yazan işlem, farktaki yan kaydı (ör. puanla açılan
+   * bildirim, `notification.create`) ana eylemin ikinci satırı gibi göstermesin diye ayrı ad verir.
+   */
+  auditAction?: string
+  /**
    * İşlemin okuduğu ve yazabileceği koleksiyonlar; yüklenmeyen koleksiyona erişim 500'dür.
    * Core `audit` her zaman boş verilir ve yazılmaz; listede olması gerekmez.
    */
@@ -497,7 +503,7 @@ async function applyOperation<R>(
       institutionId: ctx.institutionId,
       actorUserId: ctx.actor.userId,
       actorRole: ctx.actor.role,
-      action: request.action,
+      action: request.auditAction ?? request.action,
       entityType: entity.type,
       entityId: entity.id,
       changes: auditChanges(fields, changes),

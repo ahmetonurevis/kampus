@@ -914,7 +914,7 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     assert.deepEqual(await storedRows(t.institution.id), before)
   })
 
-  test('DOM-BEC-021: log ve denetimde geri bildirim metni ve öğrenci kimliği yok; denetime yalnız alan adları', async () => {
+  test('DOM-BEC-021, DOM-BEC-045: log ve denetimde geri bildirim metni ve öğrenci kimliği yok; denetime yalnız alan adları; puanın tek score satırı var, bildirim ayrı notification.create eylemiyle', async () => {
     const { t, submission } = await setup()
     const id = submission.id as string
     const from = logs.length
@@ -946,9 +946,10 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       audits.filter((row) => row.action !== 'task_submission.submit'),
       [
         // Geri bildirimi açan puan bildirim kaydı da ekler (F6a, DOM-BEC-045); işlem
-        // çalıştırıcısı bunu yalnız alan adlarıyla ayrı satıra yazar, metin ve alıcı yoktur.
+        // çalıştırıcısı bunu yalnız alan adlarıyla, puandan ayrı `notification.create` eylemiyle
+        // yazar; metin ve alıcı yoktur. Puanın tek `task_submission.score` satırı vardır.
         {
-          action: 'task_submission.score',
+          action: 'notification.create',
           entityId: id,
           changes: { fields: ['audience', 'createdAt', 'id', 'kind', 'studentId', 'subject'] },
         },

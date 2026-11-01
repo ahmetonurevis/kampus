@@ -2,6 +2,10 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Bildirim merkezi inceleme düzeltmeleri (F6a)
+
+- Geri bildirimi açan öğretmen puanında bildirim kaydının denetim satırı `notification.create` eylemiyle yazılır (`runCommand` `auditAction`); puanın tek `task_submission.score`/`second_score` satırı kalır.
+
 ## Uygulama içi bildirim merkezi (F6a)
 
 - `GET /api/v1/notifications` (imleçli: `cursor`, `limit` ≤ 100, `unread`; `meta.nextCursor`, toplam yok), `GET /api/v1/notifications/unread-count`, `POST /api/v1/notifications/:notificationId/read` ve `POST /api/v1/notifications/read-all` (`Idempotency-Key` isteğe bağlı, `If-Match` 400). Modül `communication`; kapalıysa 403 `module_disabled`. Öğrenci kendi, veli bağlı çocuğunun veli bildirimini görür; görülemeyen bildirim 404, imleci 400 (DOM-ILT-073). Okundu kullanıcıya özeldir.

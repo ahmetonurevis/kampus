@@ -32,7 +32,7 @@ Kampüs platformunun kod, test, API, veri, güvenlik, erişilebilirlik ve sürü
 
 **Erişilebilirlik ve performans.** WCAG 2.2 AA (2.4.11, 2.5.7, 2.5.8, 3.3.7, 3.3.8 dahil); mobilde 48 dp. Cam yalnız yüzen katmanda, en kötü zeminde AA kontrast, azaltılmış saydamlıkta opak. LCP ≤ 2,5 sn, INP ≤ 200 ms, ilk JS ≤ 200 KB gzip; API p95 okuma 200 ms / yazma 400 ms; mobil soğuk açılış ≤ 2,5 sn.
 
-**Git.** `feature/ fix/ docs/ chore/`; Türkçe emir kipi başlık, tek mantıksal değişiklik, her commit yeşil; doğrusal geçmiş (rebase). Davranış değişikliği sürüm + CHANGELOG + `workspace:x.y.z` sabitlemesiyle aynı committe.
+**Git.** `feature/ fix/ docs/ chore/`; Türkçe emir kipi başlık, tek mantıksal değişiklik, her commit yeşil; doğrusal geçmiş (rebase). Davranış değişikliği aynı committe `changes/<konu>.md` parçası yazar; sürüm ve CHANGELOG yalnız teslimde, iç paketler `workspace:*`. İki geliştiricili entegrasyon (`onur/`, `oguzhan/` dalları, `--no-ff`) git-ve-surum §7.
 
 ## Araç zinciri önerileri
 

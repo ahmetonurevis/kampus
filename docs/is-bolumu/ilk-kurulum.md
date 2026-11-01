@@ -52,7 +52,7 @@ pnpm test
 ## 3. Kontroller
 
 - Git kimliği alan haritasıyla eşleşmeli: `git config user.name` çıktısı `.claude/alanlar.json`'daki `gitName` ile aynı olmalı (Onur: `Ahmet Onur Evis`, Oğuzhan: `Oguzhan Demirci`). Farklı bir ad kullanılıyorsa `git config kampus.sahip onur` (ya da `oguzhan`).
-- Hook'lar çalışıyor mu: `pnpm test:hooks` yeşil olmalı. Bir yolun sahibi: `echo apps/api/src/services/payments.ts | node .claude/hooks/alan-koruma.ts --classify`.
+- Hook'lar çalışıyor mu: `pnpm test:hooks` yeşil olmalı; `git config core.hooksPath` çıktısı `.githooks` olmalı (`pnpm install` kurar, kurmadıysa `pnpm run prepare`). Commit mesajı standardı: [git-ve-surum §2](../muhendislik/git-ve-surum.md#2-commit-kuralları). Bir yolun sahibi: `echo apps/api/src/services/payments.ts | node .claude/hooks/alan-koruma.ts --classify`.
 - GitHub CLI giriş yapmış olmalı: `gh auth status`. Oturum hook'u iş isteklerini `gh` ile okur.
 
 ## 4. Claude oturumunun ilk açılışı

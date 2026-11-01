@@ -14,7 +14,7 @@ Kurallar: `docs/muhendislik/git-ve-surum.md` §7.3. Geçmiş yeniden yazılmaz: 
    - Ortak dosyada (`page-registry`, `page-coverage`, `commands.test.ts`, `app.ts`) iki bloğu da koru. Görev tablosunda çakışma olursa iki tarafın satırlarını koru; sahibi olmadığın tablonun satırını değiştirme.
    - Kalan çakışmayı ölç: `git merge-tree --write-tree origin/feature/platform-gecisi HEAD`.
 3. **Hızlı kontroller** (yalnız dokunulan paketler): `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, ilgili `node --test tests/<dosya>.test.ts` ve API değiştiyse `pnpm --filter @kampus/api test`. Tam set ve e2e CI'da; yerelde tam e2e yalnız ekran/akış değiştiyse ya da CI kırmızıysa.
-4. **Birleştir:** `git switch feature/platform-gecisi && git merge --ff-only origin/feature/platform-gecisi && git merge --no-ff <dal> -m "Merge branch '<dal>' into feature/platform-gecisi" -m "OG-012"`.
+4. **Birleştir:** `git switch feature/platform-gecisi && git merge --ff-only origin/feature/platform-gecisi && git merge --no-ff <dal> -m "Merge branch '<dal>' into feature/platform-gecisi" -m "OG-012: <bir satır özet>"`. Mesaj standardı git-ve-surum §2; `commit-msg` hook'u ID'siz merge'i reddeder.
 5. **Görevi kapat:** hemen arkasından görev satırında Durum `bitti`, Dal / commit birleştirme commit'inin kısa hash'i (`git rev-parse --short HEAD`):
    ```sh
    git commit -m "Görev durumunu güncelle: OG-012 bitti" -- docs/is-bolumu/<sahip>.md

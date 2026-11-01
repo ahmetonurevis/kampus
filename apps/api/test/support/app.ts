@@ -8,7 +8,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator'
 
 import { buildApp, type App, type Clock } from '../../src/app.ts'
 import type { InstitutionType, Role } from '../../src/auth.ts'
-import { loadConfig, type Config } from '../../src/config.ts'
+import { parseConfig, type Config } from '../../src/config.ts'
 import { MIGRATIONS_FOLDER, schema, type Database } from '../../src/db/client.ts'
 import type { DiskStorage } from '../../src/storage/disk.ts'
 import {
@@ -24,8 +24,13 @@ export const TEST_ORIGIN = 'http://localhost:5173'
 export const TEST_PASSWORD = 'Sinama-Parolasi-42!'
 export const FIXED_NOW = new Date('2026-10-06T09:00:00.000Z')
 
+/**
+ * Test ortamı ayarı. Şema doğrulaması `parseConfig`'tedir: üretim güvenlik varsayılanlarını sınayan
+ * testler `NODE_ENV=production` ile uygulama kurar; disk deposunun üretimde reddi başlangıç
+ * denetimidir (`loadConfig`) ve ayrıca `config.test.ts`'te sınanır.
+ */
 export function testConfig(overrides: Record<string, string> = {}): Config {
-  return loadConfig({
+  return parseConfig({
     NODE_ENV: 'test',
     LOG_LEVEL: 'silent',
     DATABASE_URL: 'postgres://test@localhost:5432/test',

@@ -3,8 +3,10 @@ import { describe, test } from 'node:test'
 
 import {
   DEFAULT_STORAGE_DIR,
+  DISK_STORAGE_IN_PRODUCTION_MESSAGE,
   isDevelopmentLike,
   loadConfig,
+  parseConfig,
   storageDir,
   useSecureCookies,
 } from '../src/config.ts'
@@ -42,11 +44,10 @@ describe('ortam yapılandırması', () => {
     NODE_ENV: 'production',
     BETTER_AUTH_URL: 'https://api.kampus.example',
     BETTER_AUTH_SECRET: 'b4Jx9-uretim-icin-uretilmis-rastgele-deger-Qm2',
-    STORAGE_DIR: '/srv/kampus/storage',
   }
 
   test('üretimde örnek veya bilinen gizli anahtar reddedilir', () => {
-    assert.equal(loadConfig(production).BETTER_AUTH_SECRET, production.BETTER_AUTH_SECRET)
+    assert.equal(parseConfig(production).BETTER_AUTH_SECRET, production.BETTER_AUTH_SECRET)
     for (const secret of [
       'CHANGE_ME-openssl-rand-base64-32-ile-uretin',
       'change_me_ama_kucuk_harfle_yazilmis_deger',
@@ -54,7 +55,7 @@ describe('ortam yapılandırması', () => {
       'test-secret-test-secret-test-secret-0123',
     ]) {
       assert.throws(
-        () => loadConfig({ ...production, BETTER_AUTH_SECRET: secret }),
+        () => parseConfig({ ...production, BETTER_AUTH_SECRET: secret }),
         (error: Error) =>
           error.message.includes('BETTER_AUTH_SECRET') && !error.message.includes(secret),
         secret,
@@ -65,9 +66,9 @@ describe('ortam yapılandırması', () => {
   })
 
   test('Secure çerez üretimde ve https dış adreste her zaman açıktır', () => {
-    assert.equal(useSecureCookies(loadConfig(production)), true)
+    assert.equal(useSecureCookies(parseConfig(production)), true)
     assert.equal(
-      useSecureCookies(loadConfig({ ...production, BETTER_AUTH_URL: 'http://api.ic' })),
+      useSecureCookies(parseConfig({ ...production, BETTER_AUTH_URL: 'http://api.ic' })),
       true,
     )
     assert.equal(
@@ -81,7 +82,7 @@ describe('ortam yapılandırması', () => {
   test('geliştirme kolaylıkları yalnız development ve test ortamında açılır', () => {
     assert.equal(isDevelopmentLike(loadConfig(base)), true)
     assert.equal(isDevelopmentLike(loadConfig({ ...base, NODE_ENV: 'test' })), true)
-    assert.equal(isDevelopmentLike(loadConfig(production)), false)
+    assert.equal(isDevelopmentLike(parseConfig(production)), false)
   })
 
   test('TRUST_PROXY hop sayısı veya vekil IP/CIDR listesi kabul eder, true reddedilir', () => {
@@ -97,15 +98,27 @@ describe('ortam yapılandırması', () => {
       assert.throws(() => trust(invalid), /TRUST_PROXY/, invalid)
   })
 
-  test('ADR 0003: disk sürücüsü üretimde STORAGE_DIR ister; geliştirmede varsayılan klasör', () => {
-    const withoutDir: Record<string, string> = { ...production }
-    delete withoutDir.STORAGE_DIR
-    assert.throws(() => loadConfig(withoutDir), /STORAGE_DIR/)
-    assert.throws(() => loadConfig({ ...production, STORAGE_DRIVER: 's3' }), /STORAGE_DRIVER/)
+  test('ADR 0003 karar 1: disk sürücüsü üretimde açık bir hatayla başlangıçta reddedilir; STORAGE_DIR üretimde zorunlu değil', () => {
+    // Şema üretimde STORAGE_DIR istemez; disk sürücüsü üretimde hiç kullanılmaz.
+    assert.equal(parseConfig(production).STORAGE_DRIVER, 'disk')
+    assert.equal(parseConfig(production).STORAGE_DIR, undefined)
+    for (const env of [production, { ...production, STORAGE_DIR: '/srv/kampus/storage' }])
+      assert.throws(
+        () => loadConfig(env),
+        (error: Error) =>
+          error.message === DISK_STORAGE_IN_PRODUCTION_MESSAGE &&
+          error.message.includes('STORAGE_DRIVER=disk') &&
+          error.message.includes('ADR 0003'),
+      )
+    assert.throws(() => parseConfig({ ...production, STORAGE_DRIVER: 's3' }), /STORAGE_DRIVER/)
+  })
+
+  test('ADR 0003: geliştirme ve testte disk sürücüsü varsayılan klasörle çalışır', () => {
     const development = loadConfig(base)
     assert.equal(development.STORAGE_DRIVER, 'disk')
     assert.equal(storageDir(development), DEFAULT_STORAGE_DIR)
-    assert.equal(storageDir(loadConfig(production)), '/srv/kampus/storage')
+    const testing = loadConfig({ ...base, NODE_ENV: 'test', STORAGE_DIR: '/tmp/kampus-depo' })
+    assert.equal(storageDir(testing), '/tmp/kampus-depo')
   })
 
   test('hata mesajı değişken adlarını verir, değerleri sızdırmaz', () => {

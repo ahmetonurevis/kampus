@@ -143,6 +143,7 @@ export function RegistrationsPage({ page }: { page: NavPage }) {
             mobileColumns={MOBILE_COLUMNS}
             filters={filters}
             searchKeys={['name', 'phone', 'interest', 'branch']}
+            searchInUrl={false}
             caption="Kesin kayda hazır adaylar"
             empty="Kesin kayda hazır aday yok. Önce Aday Öğrenciler sayfasından aday ekleyin."
             emptyFiltered="Bu süzgece uyan aday yok."

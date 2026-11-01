@@ -1,6 +1,7 @@
+import type { LearnerTaskProgress } from '@kampus/react-shared/use-learner-task-progress.ts'
 import type {
-  TaskAssignment,
   TaskAssignmentLearner,
+  TaskAssignmentLearnerDetail,
 } from '@kampus/react-shared/use-task-assignments.ts'
 import type {
   TaskAttempt,
@@ -24,8 +25,10 @@ import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 export type StudentTaskMode = 'auto' | 'teacher'
 
-export const isLearnerAssignment = (item: TaskAssignment): item is TaskAssignmentLearner =>
-  item.view === 'learner'
+/** Kursiyer görünümü mü (liste satırı ya da ayrıntı). */
+export const isLearnerAssignment = <T extends { view: string }>(
+  item: T,
+): item is Extract<T, { view: 'learner' }> => item.view === 'learner'
 
 const CONTENT_LABELS: Record<TaskAssignmentLearner['contentType'], string> = {
   quiz: 'Quiz',
@@ -82,15 +85,6 @@ export const runningAttempt = (attempts: readonly TaskAttempt[]) =>
     .sort(byNumber)
     .reverse()
     .find((attempt) => attempt.status === 'in_progress')
-
-export const NOT_LOADED: TaskProgress = {
-  status: 'Yükleniyor',
-  tone: 'gray',
-  rights: '—',
-  score: '—',
-  canAct: false,
-  blockedReason: null,
-}
 
 /** Otomatik puanlı görevin durumu: denemelerden (DOM-BEC-042, 044). */
 export function autoProgress(
@@ -205,6 +199,97 @@ export function writingProgress(
     : { status: 'Teslim edildi', tone: 'green', rights, score, canAct, blockedReason }
 }
 
+type ProgressStatus = LearnerTaskProgress['status']
+
+const AUTO_STATUS: Record<ProgressStatus, Pick<TaskProgress, 'status' | 'tone'>> = {
+  pending: { status: 'Başlanmadı', tone: 'gray' },
+  in_progress: { status: 'Sürüyor', tone: 'amber' },
+  submitted: { status: 'Tamamlandı', tone: 'green' },
+  late: { status: 'Geç tamamlandı', tone: 'amber' },
+  not_submitted: { status: 'Teslim edilmedi', tone: 'red' },
+}
+
+const WRITING_STATUS: Record<ProgressStatus, Pick<TaskProgress, 'status' | 'tone'>> = {
+  pending: { status: 'Bekliyor', tone: 'amber' },
+  in_progress: { status: 'Bekliyor', tone: 'amber' },
+  submitted: { status: 'Teslim edildi', tone: 'green' },
+  late: { status: 'Geç teslim edildi', tone: 'amber' },
+  not_submitted: { status: 'Teslim edilmedi', tone: 'red' },
+}
+
+/** Özetteki `blockedBy` için neden metni; puanlamadan bağımsız (DOM-BEC-045). */
+export function summaryBlockedReason(
+  mode: StudentTaskMode,
+  progress: Pick<LearnerTaskProgress, 'blockedBy' | 'used'>,
+): string | null {
+  switch (progress.blockedBy) {
+    case null:
+    case 'in_progress':
+      // Süren deneme yeni deneme açmaz ama sürdürülebilir; engel sayılmaz.
+      return null
+    case 'license_expired':
+      return mode === 'auto'
+        ? 'İçeriğin kullanım lisansının süresi doldu; yeni deneme başlatılamaz.'
+        : 'İçeriğin kullanım lisansının süresi doldu; yeni sürüm gönderilemez.'
+    case 'unavailable':
+      return 'Görev içeriği şu an kullanılamıyor; öğretmeninize danışın.'
+    case 'limit':
+      return mode === 'auto' ? 'Deneme hakkınız doldu.' : blockedByMessage('limit')
+    case 'graded':
+      return blockedByMessage('graded')
+    case 'locked':
+      return mode === 'auto'
+        ? 'Teslim süresi doldu; yeni deneme başlatılamaz.'
+        : progress.used > 0
+          ? blockedByMessage('locked')
+          : 'Teslim süresi doldu.'
+    default:
+      return progress.blockedBy satisfies never
+  }
+}
+
+/**
+ * Liste satırının durumu: atama görünümünün kursiyer özetinden (`progress`; IST-051), satır başına
+ * deneme/teslim okuması yapılmaz. Sunucu özeti okuma anındadır; ekran açıkken teslim süresi dolan
+ * başlanmamış görev yerelde "Teslim edilmedi"ye döner (son söz yine sunucunundur). Puan yalnız
+ * sunucu açtıysa gelir (DOM-BEC-045). Özet yoksa `null` (satır "Okunamadı" gösterir).
+ */
+export function summaryProgress(
+  assignment: TaskAssignmentLearner,
+  now: Date,
+  learnerId?: string,
+): TaskProgress | null {
+  const entry =
+    learnerId === undefined
+      ? assignment.progress[0]
+      : assignment.progress.find((item) => item.learnerId === learnerId)
+  if (!entry) return null
+  const mode: StudentTaskMode = assignment.scoringMode === 'auto' ? 'auto' : 'teacher'
+  const expired = entry.status === 'pending' && taskClosed(assignment, now)
+  const progress: LearnerTaskProgress = expired
+    ? { ...entry, status: 'not_submitted', canAct: false, blockedBy: 'locked' }
+    : entry
+  const unit = mode === 'auto' ? 'deneme' : 'sürüm'
+  const rights =
+    progress.limit === null
+      ? mode === 'auto'
+        ? 'Sınırsız'
+        : '—'
+      : `${progress.used} / ${progress.limit} ${unit}`
+  const shown =
+    mode === 'teacher' && progress.resubmissionRequested
+      ? { status: 'Yeniden teslim istendi', tone: 'amber' as const }
+      : (mode === 'auto' ? AUTO_STATUS : WRITING_STATUS)[progress.status]
+  const blockedReason = progress.canAct ? null : summaryBlockedReason(mode, progress)
+  return {
+    ...shown,
+    rights,
+    score: progress.status === 'in_progress' ? '—' : scoreLabel(progress.score?.percent),
+    canAct: progress.canAct || progress.blockedBy === 'in_progress',
+    blockedReason,
+  }
+}
+
 export type StudentTaskRow = {
   id: string
   title: string
@@ -215,11 +300,9 @@ export type StudentTaskRow = {
   tone: BadgeTone
   rights: string
   score: string
-  /** Satırın ilerlemesi okunmadı (yükleniyor ya da hata). */
-  pending: boolean
 }
 
-/** Satırın deneme/teslim okuması başarısız oldu; diğer satırlar etkilenmez. */
+/** Satırın özeti yok (sunucu kursiyer özetini döndürmedi); diğer satırlar etkilenmez. */
 export const FAILED: TaskProgress = {
   status: 'Okunamadı',
   tone: 'red',
@@ -232,9 +315,8 @@ export const FAILED: TaskProgress = {
 export function studentTaskRow(
   assignment: TaskAssignmentLearner,
   progress: TaskProgress | null,
-  failed = false,
 ): StudentTaskRow {
-  const shown = progress ?? (failed ? FAILED : NOT_LOADED)
+  const shown = progress ?? FAILED
   return {
     id: assignment.id,
     title: assignment.title,
@@ -245,7 +327,6 @@ export function studentTaskRow(
     tone: shown.tone,
     rights: shown.rights,
     score: shown.score,
-    pending: progress === null,
   }
 }
 
@@ -276,29 +357,51 @@ export function writingInitialBody(
   return resubmissionOpen && latest ? (latest.body ?? '') : ''
 }
 
-/**
- * Yönerge, öğrencinin okuyabildiği kaynak sürümünden gelir. Kaynak paylaşılmamışsa ya da atamadan
- * sonra yeni sürüm yayımlandıysa okunamaz (null); ekran bunu açık bir metinle söyler.
- * TODO(W22a, API): görev ataması/teslim yanıtı sabitlenen sürümün yönergesini taşımalı
- * (openQuestions: DOM-KYN-024 kapsamını etkileyen karar).
- */
-export function writingInstructions(
-  resource:
-    | { view: string; version?: { id: string; content: { type?: string; instructions?: unknown } } }
-    | undefined,
-  assignment: { resourceVersionId: string } | undefined,
-): string | null {
-  if (!assignment || !resource || resource.view !== 'learner' || !resource.version) return null
-  if (resource.version.id !== assignment.resourceVersionId) return null
-  const content = resource.version.content
-  return content.type === 'homework_template' && typeof content.instructions === 'string'
-    ? content.instructions
-    : null
+export type LearnerAttribution = NonNullable<
+  TaskAssignmentLearnerDetail['content']
+>['attributions'][number]
+
+export type WritingBrief = {
+  /** Sabitlenen içerik sürümünün öğrenciye dönük yönergesi; yoksa `null`. */
+  instructions: string | null
+  /** Kaynak gösterimi (DOM-KYN-024); içerik okunamadıysa boş. */
+  attributions: readonly LearnerAttribution[]
+  /** İçerik gösterilemiyorsa neden (DOM-KYN-021); gösteriliyorsa `null`. */
+  notice: string | null
 }
 
-/** Yönerge okunamadığında gösterilen metin. */
-export const INSTRUCTIONS_FALLBACK =
-  'Yönerge bu ekranda gösterilemiyor; ne yazacağınızı öğretmeninizden öğrenin.'
+const CONTENT_NOTICES: Record<
+  NonNullable<TaskAssignmentLearnerDetail['contentUnavailable']>,
+  string
+> = {
+  license_expired: 'Bu içeriğin kullanım lisansının süresi doldu; yönerge artık gösterilemiyor.',
+  unavailable: 'Görev içeriği şu an gösterilemiyor; ne yazacağınızı öğretmeninizden öğrenin.',
+}
+
+/**
+ * Yazma görevinin yönergesi ve kaynak gösterimi: atama ayrıntısı, atamada sabitlenen içerik
+ * sürümünün öğrenciye dönük görünümünü taşır (DOM-KYN-024). Değerlendirme ölçütü, cevap anahtarı
+ * ve öğretmen notu sunucudan hiç gelmez. Lisansı dolmuş içerik yalnız süren işi olana gösterilir
+ * (DOM-KYN-021); gösterilmiyorsa neden açık metinle söylenir.
+ */
+export function writingBrief(detail: TaskAssignmentLearnerDetail): WritingBrief {
+  const content = detail.content
+  if (!content)
+    return {
+      instructions: null,
+      attributions: [],
+      notice: CONTENT_NOTICES[detail.contentUnavailable ?? 'unavailable'],
+    }
+  const instructions =
+    content.body.type === 'homework_template' && typeof content.body.instructions === 'string'
+      ? content.body.instructions.trim() || null
+      : null
+  return {
+    instructions,
+    attributions: content.attributions,
+    notice: instructions ? null : 'Bu görev için yazılı yönerge eklenmemiş.',
+  }
+}
 
 // --- Cevaplar -----------------------------------------------------------------------------
 

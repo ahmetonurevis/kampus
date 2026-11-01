@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
-import type { TaskAssignmentLearner } from '@kampus/react-shared/use-task-assignments.ts'
+import type { LearnerTaskProgress } from '@kampus/react-shared/use-learner-task-progress.ts'
+import type {
+  TaskAssignmentLearner,
+  TaskAssignmentLearnerDetail,
+} from '@kampus/react-shared/use-task-assignments.ts'
 import type { TaskAttempt } from '@kampus/react-shared/use-task-attempts.ts'
 import type { TaskSubmission } from '@kampus/react-shared/use-task-submissions.ts'
 import {
@@ -12,15 +16,16 @@ import {
   describeResponse,
   formatRemaining,
   FAILED,
-  INSTRUCTIONS_FALLBACK,
   isAnswered,
+  isLearnerAssignment,
   newerRowVersion,
+  writingBrief,
   writingInitialBody,
-  writingInstructions,
   releasedScore,
   resubmissionPending,
   splitGapStem,
   studentTaskRow,
+  summaryProgress,
   writingProgress,
   type AttemptQuestion,
 } from '../src/pages/tasks/student-task-model.ts'
@@ -95,6 +100,142 @@ const submission = (overrides: Partial<TaskSubmission> = {}): TaskSubmission => 
   resubmission: null,
   rowVersion: null,
   ...overrides,
+})
+
+const entry = (overrides: Partial<LearnerTaskProgress> = {}): LearnerTaskProgress => ({
+  learnerId: 's-1',
+  status: 'pending',
+  resubmissionRequested: false,
+  attemptId: null,
+  submissionId: null,
+  lastActivityAt: null,
+  used: 0,
+  limit: 2,
+  remaining: 2,
+  canAct: true,
+  blockedBy: null,
+  score: null,
+  ...overrides,
+})
+
+const detail = (
+  overrides: Partial<TaskAssignmentLearnerDetail> = {},
+): TaskAssignmentLearnerDetail => ({
+  ...writing(),
+  content: null,
+  contentUnavailable: 'unavailable',
+  ...overrides,
+})
+
+describe('IST-051 liste satırı kursiyer özetinden (DOM-BEC-045)', () => {
+  test('otomatik puanlı: durum, hak ve yalnız açılmış puan', () => {
+    const start = summaryProgress(auto({ progress: [entry()] }), NOW)
+    assert.deepEqual(
+      [start?.status, start?.rights, start?.score, start?.canAct],
+      ['Başlanmadı', '0 / 2 deneme', '—', true],
+    )
+    const running = summaryProgress(
+      auto({
+        progress: [
+          entry({ status: 'in_progress', used: 1, canAct: false, blockedBy: 'in_progress' }),
+        ],
+      }),
+      NOW,
+    )
+    // Süren deneme sürdürülebilir: engel metni yok, işlem açık.
+    assert.equal(running?.status, 'Sürüyor')
+    assert.equal(running?.canAct, true)
+    assert.equal(running?.blockedReason, null)
+    const done = summaryProgress(
+      auto({
+        progress: [
+          entry({
+            status: 'late',
+            used: 2,
+            remaining: 0,
+            canAct: false,
+            blockedBy: 'limit',
+            score: { earned: 3, possible: 4, percent: 75 },
+          }),
+        ],
+      }),
+      NOW,
+    )
+    assert.equal(done?.status, 'Geç tamamlandı')
+    assert.equal(done?.score, '75 / 100')
+    assert.equal(done?.blockedReason, 'Deneme hakkınız doldu.')
+    const unlimited = summaryProgress(
+      auto({ kind: 'practice', progress: [entry({ limit: null, remaining: null })] }),
+      NOW,
+    )
+    assert.equal(unlimited?.rights, 'Sınırsız')
+  })
+
+  test('öğretmen puanlı: sürüm hakkı, yeniden teslim ve engel nedenleri', () => {
+    const waiting = summaryProgress(writing({ progress: [entry({ limit: 3, remaining: 3 })] }), NOW)
+    assert.deepEqual([waiting?.status, waiting?.rights], ['Bekliyor', '0 / 3 sürüm'])
+    const asked = summaryProgress(
+      writing({
+        progress: [entry({ status: 'submitted', used: 1, limit: 3, resubmissionRequested: true })],
+      }),
+      NOW,
+    )
+    assert.equal(asked?.status, 'Yeniden teslim istendi')
+    const graded = summaryProgress(
+      writing({
+        progress: [
+          entry({
+            status: 'submitted',
+            used: 1,
+            limit: 3,
+            canAct: false,
+            blockedBy: 'graded',
+            score: { earned: 8, possible: 10, percent: 80 },
+          }),
+        ],
+      }),
+      NOW,
+    )
+    assert.equal(graded?.status, 'Teslim edildi')
+    assert.equal(graded?.score, '80 / 100')
+    assert.equal(graded?.blockedReason, blockedByMessage('graded'))
+    const expired = summaryProgress(
+      writing({ progress: [entry({ canAct: false, blockedBy: 'license_expired' })] }),
+      NOW,
+    )
+    assert.match(expired?.blockedReason ?? '', /lisans/)
+  })
+
+  test('açılmamış puan hiçbir alana sızmaz: score null iken yalnız —', () => {
+    const progress = summaryProgress(
+      writing({ progress: [entry({ status: 'submitted', used: 1, score: null })] }),
+      NOW,
+    )
+    assert.equal(progress?.score, '—')
+    assert.doesNotMatch(JSON.stringify(progress), /puanlan|değerlendiril|ikinci|itiraz/i)
+  })
+
+  test('DOM-BEC-044 ekran açıkken süresi dolan başlanmamış görev Teslim edilmedi olur', () => {
+    const progress = summaryProgress(
+      auto({ deadline: { dueAt: PAST, lateAcceptanceDays: 0 }, progress: [entry()] }),
+      NOW,
+    )
+    assert.equal(progress?.status, 'Teslim edilmedi')
+    assert.equal(progress?.canAct, false)
+    assert.match(progress?.blockedReason ?? '', /süresi doldu/)
+  })
+
+  test('veli: özet çocuk kimliğiyle seçilir', () => {
+    const assignment = auto({
+      learnerIds: ['c-1', 'c-2'],
+      progress: [
+        entry({ learnerId: 'c-1' }),
+        entry({ learnerId: 'c-2', status: 'submitted', used: 1 }),
+      ],
+    })
+    assert.equal(summaryProgress(assignment, NOW, 'c-2')?.status, 'Tamamlandı')
+    assert.equal(summaryProgress(assignment, NOW, 'c-3'), null)
+  })
 })
 
 describe('öğrenci quiz durumu (DOM-BEC-042, 044)', () => {
@@ -264,14 +405,11 @@ describe('öğrenci yazma görevi durumu (DOM-BEC-040, 044, 045)', () => {
   })
 })
 
-test('IST-051: satır, ilerleme okunmadıysa beklemede işaretlenir', () => {
-  const row = studentTaskRow(auto(), null)
-  assert.equal(row.pending, true)
+test('IST-051: satır türü ve amacı atamadan, durumu özetten gelir', () => {
+  const row = studentTaskRow(auto(), autoProgress(auto(), [], NOW))
   assert.equal(row.type, 'Quiz')
   assert.equal(row.kind, 'Değerlendirme')
-  const loaded = studentTaskRow(auto(), autoProgress(auto(), [], NOW))
-  assert.equal(loaded.pending, false)
-  assert.equal(loaded.status, 'Başlanmadı')
+  assert.equal(row.status, 'Başlanmadı')
 })
 
 const question = (body: AttemptQuestion['question']): AttemptQuestion => ({
@@ -417,12 +555,11 @@ describe('cevap yardımcıları', () => {
 })
 
 describe('W22a inceleme düzeltmeleri', () => {
-  test('IST-051 satır okuması başarısızsa yalnız o satır Okunamadı olur, diğerleri etkilenmez', () => {
-    const failed = studentTaskRow(auto(), null, true)
+  test('IST-051 özeti olmayan satır yalnız kendisi Okunamadı olur, diğerleri etkilenmez', () => {
+    const failed = studentTaskRow(auto(), summaryProgress(auto(), NOW))
     assert.equal(failed.status, FAILED.status)
     assert.equal(failed.tone, 'red')
-    assert.equal(studentTaskRow(auto(), null).status, 'Yükleniyor')
-    const ok = studentTaskRow(auto(), autoProgress(auto(), [], NOW), false)
+    const ok = studentTaskRow(auto(), summaryProgress(auto({ progress: [entry()] }), NOW))
     assert.equal(ok.status, 'Başlanmadı')
   })
 
@@ -444,17 +581,53 @@ describe('W22a inceleme düzeltmeleri', () => {
     assert.equal(writingInitialBody(null, null, false), '')
   })
 
-  test('DOM-KYN-024 yönerge yalnız sabitlenen sürümle okunabilir; aksi hâlde boş (yedek metin gösterilir)', () => {
-    const resource = (id: string, instructions: unknown = 'Write 100 words.') => ({
-      view: 'learner',
-      version: { id, content: { type: 'homework_template', instructions } },
-    })
-    const assignment = { resourceVersionId: 'rv-1' }
-    assert.equal(writingInstructions(resource('rv-1'), assignment), 'Write 100 words.')
-    assert.equal(writingInstructions(resource('rv-2'), assignment), null)
-    assert.equal(writingInstructions(resource('rv-1', 5), assignment), null)
-    assert.equal(writingInstructions({ view: 'staff' }, assignment), null)
-    assert.equal(writingInstructions(undefined, assignment), null)
-    assert.match(INSTRUCTIONS_FALLBACK, /öğretmeninizden/)
+  test('DOM-KYN-024 yönerge ve kaynak gösterimi atama ayrıntısındaki sabitlenen sürümden gelir', () => {
+    const attributions = [{ work: 'The Lake', author: 'A. Writer', source: 'Penguin', year: 2001 }]
+    const brief = writingBrief(
+      detail({
+        content: {
+          versionId: 'rv-1',
+          title: 'Opinion essay',
+          body: {
+            type: 'homework_template',
+            instructions: 'Write 100 words.',
+            submissionKinds: [],
+          },
+          attributions,
+          licenseKind: 'licensed_publication',
+        },
+      }),
+    )
+    assert.equal(brief.instructions, 'Write 100 words.')
+    assert.deepEqual(brief.attributions, attributions)
+    assert.equal(brief.notice, null)
+    const empty = writingBrief(
+      detail({
+        content: {
+          versionId: 'rv-1',
+          title: 'Opinion essay',
+          body: { type: 'homework_template', instructions: '  ' },
+          attributions: [],
+          licenseKind: 'institution_original',
+        },
+      }),
+    )
+    assert.equal(empty.instructions, null)
+    assert.match(empty.notice ?? '', /yönerge eklenmemiş/)
+  })
+
+  test('DOM-KYN-021 lisansı dolmuş ya da kaldırılmış içerikte yönerge yerine neden gösterilir', () => {
+    const expired = writingBrief(detail({ content: null, contentUnavailable: 'license_expired' }))
+    assert.equal(expired.instructions, null)
+    assert.deepEqual(expired.attributions, [])
+    assert.match(expired.notice ?? '', /lisans/)
+    const gone = writingBrief(detail({ content: null, contentUnavailable: 'unavailable' }))
+    assert.match(gone.notice ?? '', /öğretmeninizden/)
+  })
+
+  test('IST-051 kursiyer görünümü hem liste satırını hem ayrıntıyı tanır', () => {
+    assert.equal(isLearnerAssignment(auto()), true)
+    assert.equal(isLearnerAssignment(detail()), true)
+    assert.equal(isLearnerAssignment({ view: 'staff' }), false)
   })
 })

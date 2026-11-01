@@ -1,8 +1,5 @@
 import { useMemo } from 'react'
-import {
-  useLearnerAssignments,
-  useLearnerTaskProgress,
-} from '@kampus/react-shared/use-learner-task-progress.ts'
+import { useLearnerAssignments } from '@kampus/react-shared/use-learner-task-progress.ts'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -16,12 +13,11 @@ import { QUIZ_PARAM } from './StudentQuizWorkspace.tsx'
 import { WRITING_PARAM } from './StudentWritingWorkspace.tsx'
 import {
   FAILED,
-  autoProgress,
   isLearnerAssignment,
   studentTaskRow,
+  summaryProgress,
   taskKindLabel,
   taskTypeLabel,
-  writingProgress,
   type StudentTaskMode,
   type StudentTaskRow,
 } from './student-task-model.ts'
@@ -50,8 +46,12 @@ const COPY = {
 const dueLabel = (iso: string | null) =>
   iso ? `${dateLabel(iso, { year: 'numeric' })} ${timeLabel(iso)}` : '—'
 
-/** Durum metnine göre panel düğmesi: ana işlem görünür, sonuç/ayrıntı sakin kalır. */
-function actionLabel(status: string): { text: string; primary: boolean } {
+/**
+ * Durum metnine göre panel düğmesi: ana işlem görünür, sonuç/ayrıntı sakin kalır. İşlem şu an
+ * yapılamıyorsa (hak, süre, lisans) düğme yalnız ayrıntıyı açar.
+ */
+function actionLabel(status: string, canAct: boolean): { text: string; primary: boolean } {
+  if (!canAct) return { text: 'Ayrıntıyı aç', primary: false }
   switch (status) {
     case 'Sürüyor':
       return { text: 'Denemeye devam et', primary: true }
@@ -69,8 +69,8 @@ function actionLabel(status: string): { text: string; primary: boolean } {
 /**
  * Öğrencinin atanmış görevleri (IST-051; ADR 0004 karar 10): `mode` otomatik puanlı (quiz) ya da
  * öğretmen puanlı (yazma ödevi) görevleri ayırır. Kapsamı sunucu uygular; öğrenci yalnız kendisine
- * hedeflenenleri görür. Durum, hak ve açılmış puan satır başına deneme/teslim okumasından gelir;
- * satır sağ panelde özetlenir, çalışma alanı ayrı görünümde açılır.
+ * hedeflenenleri görür. Durum, hak ve açılmış puan atama listesinin kursiyer özetinden (`progress`)
+ * gelir; satır başına istek atılmaz. Satır sağ panelde özetlenir, çalışma alanı ayrı görünümde açılır.
  */
 export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
   const copy = COPY[mode]
@@ -79,24 +79,11 @@ export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
     () => assignments.items.filter(isLearnerAssignment).filter((item) => item.scoringMode === mode),
     [assignments.items, mode],
   )
-  const progress = useLearnerTaskProgress(learners)
   const nowMs = useNow(true, 30_000)
   const now = new Date(nowMs)
-
-  const progressOf = (assignment: (typeof learners)[number]) => {
-    if (assignment.scoringMode === 'auto') {
-      const attempts = progress.attempts.get(assignment.id)
-      return attempts ? autoProgress(assignment, attempts, now) : null
-    }
-    if (!progress.submissions.has(assignment.id)) return null
-    return writingProgress(assignment, progress.submissions.get(assignment.id) ?? null, now)
-  }
   const rows = assignments.isReady
-    ? learners.map((assignment) =>
-        studentTaskRow(assignment, progressOf(assignment), progress.errors.has(assignment.id)),
-      )
+    ? learners.map((assignment) => studentTaskRow(assignment, summaryProgress(assignment, now)))
     : undefined
-  const failedCount = progress.errors.size
 
   const panel = useDetailPanel(PANEL_PARAM)
   const workspace = useDetailPanel(copy.workspace)
@@ -147,10 +134,10 @@ export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
   )
 
   const selected = learners.find((item) => item.id === panel.selectedId)
-  const selectedProgress = selected
-    ? (progressOf(selected) ?? (progress.errors.has(selected.id) ? FAILED : null))
+  const selectedProgress = selected ? (summaryProgress(selected, now) ?? FAILED) : null
+  const action = selectedProgress
+    ? actionLabel(selectedProgress.status, selectedProgress.canAct)
     : null
-  const action = selectedProgress ? actionLabel(selectedProgress.status) : null
 
   return (
     <>
@@ -178,14 +165,6 @@ export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
               <p role="status" className="px-6 pb-3 text-sm text-muted-foreground">
                 Görev sayınız çok fazla; yalnız en yeni kayıtlar gösteriliyor.
               </p>
-            ) : null}
-            {failedCount > 0 ? (
-              <div role="status" className="flex flex-wrap items-center gap-3 px-6 pb-3 text-sm">
-                <span>{failedCount} görevin durumu okunamadı.</span>
-                <Button type="button" variant="secondary" size="sm" onClick={progress.refetch}>
-                  Yeniden dene
-                </Button>
-              </div>
             ) : null}
             <DataTable
               listKey={copy.listKey}

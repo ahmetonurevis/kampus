@@ -11,8 +11,8 @@
     "test": "node --test 'test/**/*.test.ts'"
   },
   "dependencies": {
-    "@kampus/api-client": "workspace:0.1.0",
-    "@kampus/school-core": "workspace:2.27.0",
+    "@kampus/api-client": "workspace:*",
+    "@kampus/school-core": "workspace:*",
     "zod": "4.6.5"
   },
   "peerDependencies": {

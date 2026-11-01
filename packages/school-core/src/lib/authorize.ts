@@ -35,6 +35,9 @@ export const WRITE_ACTIONS = Object.keys(OPERATION_COMMANDS) as readonly WriteAc
 /** Eylem başına yetkinin dayandığı hedef bilgisi; kimlikler istemciden gelse de kapsamla denetlenir. */
 export type WriteTargets = {
   'invoice.pay': { studentId: string }
+  'payment.reverse': Record<string, never>
+  'tariff.manage': Record<string, never>
+  'student.withdraw': Record<string, never>
   'invoice.payOnline': { studentId: string }
   /** `reason`: yönetici düzeltmesinin gerekçesi (DOM-AKD-035). */
   'attendance.record': { classId: string; date: string; reason?: string }
@@ -123,6 +126,12 @@ export const WRITE_ACTION_ROLES = {
   // Tahsilat kaydı (taksiti "ödendi" işaretler) yalnız yönetici ve ön büroda; veli ve öğrenci
   // tahsilat kaydedemez, öğretmenin finans erişimi yoktur (DOM-FIN-052, yetki matrisi).
   'invoice.pay': ['yonetici', 'onburo'],
+  // Tahsilat iptali yöneticidedir; onay ile kayıt aynı kişide toplanmaz (DOM-FIN-033, DOM-FIN-052).
+  'payment.reverse': ['yonetici'],
+  // Tarife yöneticidedir, ön büro yalnız görür (DOM-FIN-052).
+  'tariff.manage': ['yonetici'],
+  // Ayrılış onayı ve iade yöneticidedir (DOM-FIN-052, IST-110).
+  'student.withdraw': ['yonetici'],
   // Çevrim içi ödeme: veli yalnız bağlı çocuğunun taksiti için başlatır (DOM-FIN-052, DOM-YTK-025).
   'invoice.payOnline': ['veli'],
   // Yoklama: öğretmen ders verdiği sınıfta aynı gün; yönetici gerekçeyle düzeltir (DOM-YTK-022,
@@ -292,6 +301,9 @@ function decide(
   const classOf = (studentId: string) => source.students.find((s) => s.id === studentId)?.classId
   switch (request.action) {
     case 'invoice.pay':
+    case 'payment.reverse':
+    case 'tariff.manage':
+    case 'student.withdraw':
       return ALLOWED
     case 'invoice.payOnline': {
       // Veli yalnız bağlı çocuğunun taksiti için ödeme başlatır (DOM-YTK-025, DOM-FIN-052).

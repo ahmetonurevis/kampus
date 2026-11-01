@@ -1,10 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
+import { runRequest } from '@kampus/react-shared/api-result.ts'
 import { useKampusClient } from '@kampus/react-shared/kampus-context.ts'
 import { institutionKey } from '@kampus/react-shared/query-keys.ts'
 import { useActiveInstitutionId } from '@kampus/react-shared/use-active-institution.ts'
 import { documentData } from '@kampus/school-core/lib/document-data.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { documentErrorMessage, loadDocumentState } from '@/lib/pdf/document-state.ts'
+import {
+  paymentReceiptDocument,
+  receiptNumberLabel,
+  refundStatementDocument,
+} from '@/lib/pdf/finance-templates.ts'
 import { homeworkDocument, submissionDocument } from '@/lib/pdf/homework-templates.ts'
 import {
   contractDocument,
@@ -51,13 +57,37 @@ export function useDocumentPdf(
     refetchOnReconnect: false,
     queryFn: async ({ signal }) => {
       try {
+        const options = { institution }
+        const { renderPdf } = await import('@/lib/pdf/render.ts')
+        if (type === 'payment-receipt') {
+          const { data } = await runRequest(() =>
+            client.GET('/api/v1/payments/{paymentId}', {
+              params: { path: { paymentId: recordId } },
+              signal,
+            }),
+          )
+          const { blob, pages } = await renderPdf((measurer) =>
+            paymentReceiptDocument(measurer, data, options),
+          )
+          return { blob, pages, filename: documentFilename(type, receiptNumberLabel(data)) }
+        }
+        if (type === 'refund-statement') {
+          const { data } = await runRequest(() =>
+            client.GET('/api/v1/withdrawals/{withdrawalId}', {
+              params: { path: { withdrawalId: recordId } },
+              signal,
+            }),
+          )
+          const { blob, pages } = await renderPdf((measurer) =>
+            refundStatementDocument(measurer, data, options),
+          )
+          return { blob, pages, filename: documentFilename(type, recordId) }
+        }
         const state = await loadDocumentState(
           client,
           { type, recordId, ...(studentId ? { studentId } : {}) },
           signal,
         )
-        const options = { institution }
-        const { renderPdf } = await import('@/lib/pdf/render.ts')
         const { blob, pages } = await renderPdf((measurer) => {
           switch (type) {
             case 'receipt':

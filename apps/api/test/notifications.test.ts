@@ -22,8 +22,8 @@ import {
 /**
  * Uygulama içi bildirim merkezi uçları (F6a; core `lib/notifications.ts`;
  * docs/domain/iletisim-ve-veli.md DOM-ILT-020, -023, -073). Bildirimler örnek kayıt olarak
- * yazılır; üretimi kesin kayıt (`prospect-enroll.test.ts`) ve öğretmen puanı
- * (`task-grading.test.ts`) testlerindedir. Rol × kapsam, iki velinin ayrı okundu bilgisi, başka
+ * yazılır; üretimi öğretmen puanı (`task-grading.test.ts`) testlerindedir (kesin kayıt
+ * bildirimi henüz üretilmiyor: TODO(onur-istek): kesin kayıt bildirimi). Rol × kapsam, iki velinin ayrı okundu bilgisi, başka
  * kurum, modül kapalı, `If-Match` reddi ve logda başlık/ad olmaması denetlenir.
  */
 

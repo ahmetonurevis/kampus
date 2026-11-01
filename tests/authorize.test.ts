@@ -37,6 +37,9 @@ const code = (decision: WriteDecision) => (decision.allowed ? 'allowed' : decisi
 test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
   assert.deepEqual(WRITE_ACTION_ROLES, {
     'invoice.pay': ['yonetici', 'onburo'],
+    'payment.reverse': ['yonetici'],
+    'tariff.manage': ['yonetici'],
+    'student.withdraw': ['yonetici'],
     'invoice.payOnline': ['veli'],
     'attendance.record': ['yonetici', 'ogretmen'],
     'grade.record': ['ogretmen'],

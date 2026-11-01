@@ -78,7 +78,7 @@ importers:
         specifier: 6.1.2
         version: 6.1.2
       '@kampus/school-core':
-        specifier: workspace:2.27.0
+        specifier: workspace:*
         version: link:../../packages/school-core
       better-auth:
         specifier: 1.7.10
@@ -121,13 +121,13 @@ importers:
         specifier: 1.7.10
         version: 1.7.10(b2ec4697331cf5ef63002e6cd5b2356e)
       '@kampus/api-client':
-        specifier: workspace:0.1.0
+        specifier: workspace:*
         version: link:../../packages/api-client
       '@kampus/react-shared':
-        specifier: workspace:0.1.0
+        specifier: workspace:*
         version: link:../../packages/react-shared
       '@kampus/school-core':
-        specifier: workspace:2.27.0
+        specifier: workspace:*
         version: link:../../packages/school-core
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
@@ -236,7 +236,7 @@ importers:
         specifier: 5.3.0
         version: 5.3.0
       '@kampus/school-core':
-        specifier: workspace:2.27.0
+        specifier: workspace:*
         version: link:../../packages/school-core
       '@lucide/vue':
         specifier: 1.48.0
@@ -273,13 +273,13 @@ importers:
         specifier: 5.9.1
         version: 5.9.1(@sinclair/typebox@0.27.12)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.2.18)(react@19.2.3))(zod@4.6.5)
       '@kampus/api-client':
-        specifier: workspace:0.1.0
+        specifier: workspace:*
         version: link:../../packages/api-client
       '@kampus/react-shared':
-        specifier: workspace:0.1.0
+        specifier: workspace:*
         version: link:../../packages/react-shared
       '@kampus/school-core':
-        specifier: workspace:2.27.0
+        specifier: workspace:*
         version: link:../../packages/school-core
       '@tanstack/react-query':
         specifier: 5.105.0
@@ -374,10 +374,10 @@ importers:
   packages/react-shared:
     dependencies:
       '@kampus/api-client':
-        specifier: workspace:0.1.0
+        specifier: workspace:*
         version: link:../api-client
       '@kampus/school-core':
-        specifier: workspace:2.27.0
+        specifier: workspace:*
         version: link:../school-core
       zod:
         specifier: 4.6.5

@@ -104,7 +104,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Mevcut müşteriye satış iletisi de ticari ileti onayına tabi olabilir.
 - **Kaynak:** 6563 sayılı Kanun md. 6 ve Ticari İletişim ve Ticari Elektronik İletiler Hakkında Yönetmelik — **doğrulanmalı** (mevcut müşteri istisnası ve uygulama içi bildirimin kapsamı).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/notifications.ts` her türü `service`/`commercial` sınıfıyla kaydeder; bugünkü iki tür (`feedback_released`, `enrollment_completed`) hizmet bildirimidir, ticari tür ileti onayı denetimi gelmeden eklenmez.
+- **Kodda:** kısmen — core `lib/notifications.ts` her türü `service`/`commercial` sınıfıyla kaydeder; bugünkü iki tür (`feedback_released`, `enrollment_completed`) hizmet bildirimidir, ticari tür ileti onayı denetimi gelmeden eklenmez. `enrollment_completed` türü kayıtlıdır ama kesin kayıt henüz üretmiyor (`TODO(onur-istek)`: kesin kayıt bildirimi).
 
 ### DOM-ILT-023 · Bildirim gövdesinde kişisel ayrıntı yok
 
@@ -112,7 +112,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Kilit ekranı, paylaşılan cihaz ve SMS sağlayıcısı veri sorumlusunun denetimi dışındadır.
 - **Kaynak:** KVKK md. 12/1 (veri güvenliği için uygun güvenlik düzeyi); içerik sınırı işletme kuralıdır.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — uygulama içi bildirim kaydı katı şemadır (`notificationRecordSchema`: tür, kitle, öğrenci, konu kaydı, an); serbest metin, puan, tutar veya geri bildirim saklanmaz. Başlık okumada türün sabit şablonundan öğrencinin ilk adıyla üretilir (`notificationTitle`); log ve denetim kaydına yalnız alan adları yazılır (`apps/api/test/notifications.test.ts`, `task-grading.test.ts`, `prospect-enroll.test.ts`). E-posta/SMS/anlık bildirim gövdesi henüz yok.
+- **Kodda:** kısmen — uygulama içi bildirim kaydı katı şemadır (`notificationRecordSchema`: tür, kitle, öğrenci, konu kaydı, an); serbest metin, puan, tutar veya geri bildirim saklanmaz. Başlık okumada türün sabit şablonundan öğrencinin ilk adıyla üretilir (`notificationTitle`); log ve denetim kaydına yalnız alan adları yazılır (`apps/api/test/notifications.test.ts`, `task-grading.test.ts`). E-posta/SMS/anlık bildirim gövdesi henüz yok.
 
 ### DOM-ILT-024 · Mesajda okundu bilgisi
 

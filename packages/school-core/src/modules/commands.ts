@@ -121,6 +121,18 @@ export type AssessmentCommand = keyof typeof ASSESSMENT_COMMANDS
  */
 export const OPERATION_COMMANDS = {
   'invoice.pay': spec('finance', [...SCOPE, 'invoices']),
+  'payment.reverse': spec('finance', [...SCOPE, 'invoices']),
+  'tariff.manage': spec('finance', [...SCOPE]),
+  'student.withdraw': spec('finance', [
+    ...SCOPE,
+    'parents',
+    'invoices',
+    'contracts',
+    'renewals',
+    'transportAssignments',
+    'clubMemberships',
+    'tutorSessions',
+  ]),
   // Ödeme sağlayıcısı bağlanınca okuyacağı koleksiyonlar; şimdilik işlem çağırmaz (authorize.ts).
   'invoice.payOnline': spec('finance', [...SCOPE, 'invoices']),
   'attendance.record': spec('academic', [...SCOPE, 'attendance']),
@@ -205,8 +217,6 @@ export const OPERATION_COMMANDS = {
   'prospect.meeting': spec('crm', [...SCOPE, 'branches', 'prospects', ...CONFLICTS]),
   'prospect.trial': spec('crm', [...SCOPE, 'prospects', 'schedule']),
   // Kesin kayıt (`enrollProspect`, `lib/domain.ts`): öğrenci, veli, taksit ve sözleşmeyi yazar.
-  // API iletişim modülü açıksa veliye (yetişkinde kursiyere) uygulama içi bildirim de ekler
-  // (`lib/notifications.ts`); bildirimleri okumaz, yalnız ekler.
   'prospect.enroll': spec('crm', [
     ...SCOPE,
     'branches',
@@ -214,7 +224,6 @@ export const OPERATION_COMMANDS = {
     'parents',
     'invoices',
     'contracts',
-    'notifications',
   ]),
   // Uygulama içi bildirimin okundu işareti (`lib/notifications.ts`, DOM-ILT-020, -073). Görünürlük
   // üyelik bağlantılarındandır; kapsam kaynağı yalnız yetki (modül, rol) için okunur. API yalnız

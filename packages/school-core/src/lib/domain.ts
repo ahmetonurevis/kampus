@@ -1,12 +1,11 @@
 import { z } from 'zod'
 import type { questionBank } from '../data/question-bank.ts'
 import type { State } from '../data/seed.ts'
-import type { InstitutionType } from '../modules/collection-modules.ts'
 import type { Role } from '../modules/navigation.ts'
-import { ADULT_AGE, ageOn, isCalendarDay, isUnderAdultAge } from './age.ts'
 import { dayKey } from './format.ts'
 import type { ActorLink } from './scope.ts'
 import { DomainError } from './errors.ts'
+import type { FeeItemKind } from './fee-tariffs.ts'
 import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 
 z.config(z.locales.tr())
@@ -36,6 +35,17 @@ export const registrationSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'İlk ödeme tarihini seçin.'),
 })
 export type MakeId = (prefix: string) => string
+/** Tarifeli sözleşmenin karar anı kopyası (DOM-FIN-010). */
+export interface ContractTerms {
+  tariffId: string
+  tariffVersion: number
+  grossCents: number
+  netCents: number
+  discounts: readonly { kind: string; amountCents: number }[]
+  extras: readonly { kind: string; amountCents: number }[]
+  approvedByUserId: string
+  payer: 'guardian' | 'student'
+}
 // Oturum: rol ve velinin seçili çocuğu. API oturumu üyelik bağlantılarını (`links`) da taşır;
 // çevrimdışı demoda bağlantılar sabit demo kimliklerinden türetilir (`lib/scope.ts`).
 export type Session = { role: Role; childId?: string; links?: readonly ActorLink[] }
@@ -257,162 +267,69 @@ export function gradeQuiz(
     topicScores,
   }
 }
-// --- Kesin kayıt ------------------------------------------------------------------------------
-
-/** Kesin kayıt tutarının sınırları (kuruş): 100–1.000.000 ₺. */
-export const ENROLLMENT_TOTAL_CENTS = { min: 10_000, max: 100_000_000 } as const
-/** Velinin öğrenciye yakınlık derecesi (DOM-KAY-012). */
-export const GUARDIAN_RELATIONS = ['mother', 'father', 'legal_guardian', 'other'] as const
-export type GuardianRelation = (typeof GUARDIAN_RELATIONS)[number]
-export const GUARDIAN_RELATION_LABELS = {
-  mother: 'Anne',
-  father: 'Baba',
-  legal_guardian: 'Vasi',
-  other: 'Diğer',
-} as const satisfies Record<GuardianRelation, string>
-/** Sözleşmenin ödeyicisi: veli ya da öğrencinin kendisi (DOM-KAY-012). */
-export const ENROLLMENT_PAYERS = ['guardian', 'student'] as const
-export type EnrollmentPayer = (typeof ENROLLMENT_PAYERS)[number]
-export const ENROLLMENT_PAYER_LABELS = {
-  guardian: 'Veli',
-  student: 'Öğrencinin kendisi',
-} as const satisfies Record<EnrollmentPayer, string>
-/** Kurum türüne göre kesin kayıt sözleşmesinin başlığı. */
-export const ENROLLMENT_CONTRACT_TITLES = {
-  school: 'Özel okul eğitim sözleşmesi',
-  language_school: 'Dil kursu eğitim sözleşmesi',
-} as const satisfies Record<InstitutionType, string>
-
-/**
- * T.C. kimlik numarası (yabancı uyruklu kimlik numarası da aynı algoritmayı kullanır): 11 hane,
- * ilk hane sıfır değil; 10. hane tek ve çift sıradaki hanelerden, 11. hane ilk on hanenin
- * toplamından türetilir.
- */
-export function isValidNationalId(value: string): boolean {
-  if (!/^[1-9]\d{10}$/.test(value)) return false
-  const d = [...value].map(Number)
-  const odd = d[0]! + d[2]! + d[4]! + d[6]! + d[8]!
-  const even = d[1]! + d[3]! + d[5]! + d[7]!
-  const tenth = (((odd * 7 - even) % 10) + 10) % 10
-  const eleventh = d.slice(0, 10).reduce((sum, digit) => sum + digit, 0) % 10
-  return d[9] === tenth && d[10] === eleventh
+type Enrollment = {
+  prospectId: string
+  classId: string
+  totalCents: number
+  count: number
+  startDate: string
+  contractTitle: string
+  /** Tarifeli kayıtta dolu (`lib/enrollment.ts`); çevrimdışı demo vermez. */
+  academicYear?: number
+  extras?: readonly { kind: FeeItemKind; amountCents: number }[]
+  guardian?:
+    | { kind: 'self' }
+    | { kind: 'existing'; parentId: string }
+    | { kind: 'new'; name: string; phone: string; relationship: string }
+  terms?: ContractTerms
+  /**
+   * Veli zorunlu mu (DOM-KAY-003, DOM-KAY-012; okulda her yaşta, kursta 18 yaş altında): `true` ise
+   * adayın telefonu ve e-postası velinindir, öğrenciye yazılmaz. Tarifeli kayıt verir; çevrimdışı
+   * demo vermez (`undefined`, eski davranış).
+   */
+  guardianContact?: boolean
+  /** Öğrencinin kendi iletişimi (isteğe bağlı); verilen alan öğrenciye yazılır. */
+  studentContact?: { phone?: string | undefined; email?: string | undefined }
+  /** Başka kampüsün sınıfı bilinçli seçildi; yoksa 422 `class_campus_mismatch`. */
+  allowOtherCampus?: boolean
 }
-// kvkk: Ç — T.C. veya yabancı uyruklu kimlik numarası; loglanmaz, listelerde maskelenir.
-export const nationalIdSchema = z
-  .string()
-  .trim()
-  .regex(/^\d{11}$/, { message: 'Kimlik numarası 11 haneli olmalıdır.', abort: true })
-  .refine(isValidNationalId, 'Geçerli bir kimlik numarası girin.')
-// kvkk: Ç — öğrencinin doğum tarihi (`YYYY-MM-DD`).
-export const birthDateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Doğum tarihini seçin.', abort: true })
-  .refine(isCalendarDay, 'Geçerli bir doğum tarihi seçin.')
+const SCHOOL_CONTRACT_TITLE = 'Özel okul eğitim sözleşmesi'
 
 /**
- * Kesin kayıt girdisi: para kuruş cinsinden tamsayıdır (`totalCents`). İsteğe bağlı alanlar:
- * başka kampüsün sınıfı için bilinçli onay (`allowOtherCampus`), kardeşin mevcut velisi
- * (`parentId`, DOM-KAY-013), kimlik no, doğum tarihi, yakınlık ve ödeyici (DOM-KAY-012).
- * TODO(enroll-required-fields): DOM-KAY-012 alanları web formu gelince `school`'da zorunlu olur.
- */
-export const enrollmentSchema = z.object({
-  prospectId: requiredText,
-  classId: requiredText,
-  totalCents: z
-    .number('Tutar sayı olmalıdır.')
-    .int('Tutar kuruş cinsinden tam sayı olmalıdır.')
-    .min(ENROLLMENT_TOTAL_CENTS.min, 'Tutar en az 100 ₺ olmalıdır.')
-    .max(ENROLLMENT_TOTAL_CENTS.max, 'Tutar en fazla 1.000.000 ₺ olabilir.'),
-  count: z.number().int().min(1).max(12),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'İlk ödeme tarihini seçin.'),
-  allowOtherCampus: z.boolean().optional(),
-  parentId: requiredText.optional(),
-  nationalId: nationalIdSchema.optional(),
-  birthDate: birthDateSchema.optional(),
-  guardianRelation: z.enum(GUARDIAN_RELATIONS, 'Yakınlık derecesini seçin.').optional(),
-  payer: z.enum(ENROLLMENT_PAYERS, 'Ödeyiciyi seçin.').optional(),
-})
-export type EnrollmentInput = z.input<typeof enrollmentSchema>
-export type EnrollmentOptions = { institutionType?: InstitutionType }
-
-/**
- * Çevrimdışı demo formu (`registrationSchema`, tam lira) → core kesin kayıt girdisi (kuruş).
- * Demo formları kampüs onayı sormaz ve her kampüsün sınıfını listeler; davranışları korunur
- * (`allowOtherCampus`). TODO(crm-enroll): demo kalıcılığı silinince kalkar.
- */
-export function enrollmentFromRegistration(input: unknown): EnrollmentInput {
-  const data = registrationSchema.parse(input)
-  return {
-    prospectId: data.prospectId,
-    classId: data.classId,
-    totalCents: data.total * 100,
-    count: data.count,
-    startDate: data.startDate,
-    allowOtherCampus: true,
-  }
-}
-
-type Parent = State['parents'][number]
-
-/**
- * Yetişkin kursiyer için açılan iletişimsiz "<ad> velisi" yer tutucusu mu: velinin telefonu ve
- * e-postası yoktur ve bütün öğrencileri yetişkin kaydıdır (adayı 18 yaş üstü seçilmiş ya da doğum
- * tarihine göre 18 yaşını doldurmuş). Yer tutucu gerçek veli değildir; 18 yaş altı kardeş ona
- * bağlanırsa öğrencinin ulaşılabilir velisi kalmaz (DOM-KAY-003, DOM-KAY-013).
- */
-function isAdultPlaceholder(state: State, parent: Parent, now: string): boolean {
-  if (parent.phone || parent.email || parent.studentIds.length === 0) return false
-  return parent.studentIds.every((studentId) => {
-    const student = state.students.find((s) => s.id === studentId)
-    if (student?.birthDate !== undefined && !isUnderAdultAge(student.birthDate, now)) return true
-    return state.prospects.some((p) => p.studentId === studentId && p.minor === false)
-  })
-}
-
-/**
- * Kardeş adayın (DOM-KAY-031) kayıtlı öğrencisinin velisi; iki yönde de aranır. Yetişkin kardeşin
- * yer tutucu velisi kullanılmaz (`isAdultPlaceholder`); o durumda yeni veli açılır.
- */
-function siblingParent(state: State, prospect: State['prospects'][number], now: string) {
-  for (const other of state.prospects) {
-    if (other.id === prospect.id || !other.studentId) continue
-    if (other.id !== prospect.siblingOfId && other.siblingOfId !== prospect.id) continue
-    const sibling = state.students.find((s) => s.id === other.studentId)
-    const parent = sibling && state.parents.find((p) => p.id === sibling.parentId)
-    if (parent && !isAdultPlaceholder(state, parent, now)) return parent
-  }
-  return undefined
-}
-
-/**
- * Kesin kayıt: açık aşamadaki adayı öğrenci, veli, taksit ve sözleşmeyle birlikte kayda alır
- * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetkiyi kendisi denetlemez (`payInvoice` gibi); API
- * önce `requireAuthorized(actor, 'prospect.enroll', …)` çalıştırır.
- *
- * - 18 yaş altında (DOM-KAY-003, DOM-KAY-009) adayın telefonu ve e-postası velinindir: veliye
- *   yazılır, öğrenciye yazılmaz; veli adı adayın `guardianName`'idir. `school` öğrencisi her zaman
- *   18 yaş altıdır; `language_school`'da adayın seçimi, seçimi olmayan eski adayda doğum tarihi.
- * - Kardeş kaydında (DOM-KAY-013) yeni veli açılmaz: açıkça seçilen veli (`parentId`) ya da kardeş
- *   adayın (DOM-KAY-031) kayıtlı öğrencisinin velisi kullanılır; iletişim eşleşmesiyle otomatik
- *   birleştirilmez. Yetişkin kardeşin iletişimsiz yer tutucu velisi gerçek veli sayılmaz: kardeşte
- *   atlanır (yeni veli açılır), açıkça seçilirse 422 `parent_not_guardian`. Mevcut velinin eksik
- *   telefonu ve e-postası adayınkiyle tamamlanır; var olan değer değişmez.
- * - Sınıf adayın kampüsünden değilse 422 `class_campus_mismatch`; `allowOtherCampus` bilinçli
- *   seçimdir.
- * - DOM-KAY-012 alanları (kimlik no, doğum tarihi, yakınlık, ödeyici) şimdilik isteğe bağlıdır.
- *
+ * Çevrimdışı demo girişi: `registrationSchema` (tam TL).
  * TODO(crm-enroll): çevrimdışı demo çağıranları (Vue `Crm.vue`, mobil `model/operations.ts`) yetki
- * denetlemez; demo kalıcılığı silinince kalkar. API ucu `POST /api/v1/prospects/:prospectId/enroll`.
+ * denetlemez; demo kalıcılığı silinince kalkar.
  */
 export function enrollProspect(
   state: State,
   input: unknown,
   makeId: MakeId,
   now = new Date().toISOString(),
-  options: EnrollmentOptions = {},
 ) {
-  const data = enrollmentSchema.parse(input)
-  const institutionType = options.institutionType ?? 'school'
+  const data = registrationSchema.parse(input)
+  return applyEnrollment(
+    state,
+    {
+      prospectId: data.prospectId,
+      classId: data.classId,
+      totalCents: data.total * 100,
+      count: data.count,
+      startDate: data.startDate,
+      contractTitle: SCHOOL_CONTRACT_TITLE,
+      // Demo formu her kampüsün sınıfını listeler; seçim bilinçli sayılır (eski davranış).
+      allowOtherCampus: true,
+    },
+    makeId,
+    now,
+  )
+}
+
+/**
+ * Kesin kayıt: açık aşamadaki adayı öğrenci, veli, taksit ve sözleşmeyle birlikte kayda alır
+ * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Sözleşme yalnız kendi taksitlerini listeler
+ * (`invoiceIds`, DOM-FIN-012).
+ */
+export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, now: string) {
   const prospect = state.prospects.find((p) => p.id === data.prospectId)
   const cls = state.classes.find((c) => c.id === data.classId && c.isActive)
   if (!prospect || !cls || !state.branches.some((b) => b.id === cls.branchId && b.isActive))
@@ -430,6 +347,7 @@ export function enrollProspect(
       'Yalnız açık aşamadaki aday kayda alınır; vazgeçen adayı önce yeniden açın.',
       { kind: 'conflict' },
     )
+  // Aday bir kampüse başvurur; başka kampüsün sınıfı yalnız açık onayla seçilir.
   if (cls.branchId !== prospect.branchId && data.allowOtherCampus !== true)
     throw new DomainError(
       'class_campus_mismatch',
@@ -438,79 +356,23 @@ export function enrollProspect(
     )
   if (state.students.filter((s) => s.classId === cls.id && s.isActive).length >= cls.capacity)
     throw new DomainError('class_capacity_full', 'Seçilen sınıfın kontenjanı dolu.')
-
-  const age = data.birthDate === undefined ? undefined : ageOn(data.birthDate, now)
-  if (age !== undefined && age < 0)
-    throw new DomainError('invalid_birth_date', 'Doğum tarihi bugünden sonra olamaz.', {
-      path: ['birthDate'],
-    })
-  const minor =
-    institutionType === 'school' ? true : (prospect.minor ?? (age === undefined || age < ADULT_AGE))
-  if (institutionType === 'language_school' && age !== undefined && age < ADULT_AGE !== minor)
-    throw new DomainError(
-      'birth_date_minor_mismatch',
-      'Doğum tarihi adayın 18 yaş durumuyla uyuşmuyor; doğum tarihini kontrol edin.',
-      { path: ['birthDate'] },
-    )
-  const payer = data.payer ?? (minor ? 'guardian' : 'student')
-  if (minor && payer !== 'guardian')
-    throw new DomainError(
-      'payer_must_be_guardian',
-      '18 yaş altı öğrencinin sözleşmesini ve ödemesini veli üstlenir.',
-      { path: ['payer'] },
-    )
-  if (!minor && payer !== 'student')
-    throw new DomainError(
-      'payer_must_be_student',
-      '18 yaş ve üstü kursiyer sözleşmenin tarafı ve ödeyicisidir.',
-      { path: ['payer'] },
-    )
-  for (const field of ['parentId', 'guardianRelation'] as const)
-    if (!minor && data[field] !== undefined)
-      throw new DomainError(
-        'guardian_not_applicable',
-        '18 yaş ve üstü kursiyer için veli bilgisi alınmaz.',
-        { path: [field] },
-      )
+  const guardian = data.guardian
   const existingParent =
-    data.parentId === undefined
-      ? minor
-        ? siblingParent(state, prospect, now)
-        : undefined
-      : state.parents.find((p) => p.id === data.parentId)
-  if (data.parentId !== undefined && !existingParent)
-    throw new DomainError('parent_not_found', 'Seçilen veli bulunamadı.', {
-      kind: 'not_found',
-      path: ['parentId'],
-    })
-  if (
-    data.parentId !== undefined &&
-    existingParent &&
-    isAdultPlaceholder(state, existingParent, now)
-  )
-    throw new DomainError(
-      'parent_not_guardian',
-      'Seçilen kayıt yetişkin kursiyer için açılmış, iletişimsiz bir veli kaydı; öğrencinin velisini seçin.',
-      { path: ['parentId'] },
-    )
-
-  const studentId = makeId('s')
-  const student: State['students'][number] = {
-    id: studentId,
+    guardian?.kind === 'existing'
+      ? state.parents.find((p) => p.id === guardian.parentId)
+      : undefined
+  const student = {
+    id: makeId('s'),
     name: prospect.name,
     classId: cls.id,
     parentId: existingParent?.id ?? makeId('p'),
-    // 18 yaş altında iletişim bilgisi velinindir; öğrenciye yazılmaz (DOM-KAY-003).
-    email: minor ? '' : prospect.email,
-    phone: minor ? '' : prospect.phone,
+    // Veli zorunluyken adayın iletişimi velinindir; öğrenciye yazılmaz (DOM-KAY-003). Öğrencinin
+    // kendi iletişimi istenirse ayrıca verilir (DOM-KAY-012).
+    email: data.studentContact?.email ?? (data.guardianContact === true ? '' : prospect.email),
+    phone: data.studentContact?.phone ?? (data.guardianContact === true ? '' : prospect.phone),
     joinedAt: now,
     isActive: true,
     progress: 0,
-    ...(data.nationalId === undefined ? {} : { nationalId: data.nationalId }),
-    ...(data.birthDate === undefined ? {} : { birthDate: data.birthDate }),
-    ...(minor && data.guardianRelation !== undefined
-      ? { guardianRelation: data.guardianRelation }
-      : {}),
   }
   const amounts = installmentAmounts(data.totalCents, data.count)
   const start = new Date(`${data.startDate}T09:00:00.000Z`)
@@ -537,38 +399,66 @@ export function enrollProspect(
       paidAt: null,
       method: null,
       reminderAt: null,
+      ...(data.terms ? { feeKind: 'tuition' as const } : {}),
+      ...(data.academicYear === undefined ? {} : { academicYear: data.academicYear }),
     }
   })
-  const parent = existingParent ?? {
-    id: student.parentId,
-    name: minor && prospect.guardianName ? prospect.guardianName : `${student.name} velisi`,
-    studentIds: [] as string[],
-    // kvkk: K — 18 yaş altı öğrencinin velisinin iletişim bilgisi (DOM-KAY-003).
-    ...(minor ? { phone: prospect.phone } : {}),
-    ...(minor && prospect.email ? { email: prospect.email } : {}),
-  }
-  parent.studentIds = [...parent.studentIds, student.id]
-  // Mevcut velide eksik iletişim adayınkiyle tamamlanır (DOM-KAY-003); var olan telefon, e-posta ve
-  // ad değiştirilmez, adayın kendi kaydında kalır (ör. diğer ebeveynin telefonu).
+  // Ek hizmetler ayrı borç kalemidir, öğrenim ücretine gömülmez (DOM-FIN-003).
+  const extraInvoices = (data.extras ?? []).map((extra, i) => ({
+    id: makeId('inv'),
+    studentId: student.id,
+    installment: amounts.length + i + 1,
+    amount: extra.amountCents,
+    dueDate: start.toISOString(),
+    paidAt: null,
+    method: null,
+    reminderAt: null,
+    feeKind: extra.kind,
+    ...(data.academicYear === undefined ? {} : { academicYear: data.academicYear }),
+  }))
   if (existingParent) {
-    if (!existingParent.phone && prospect.phone) existingParent.phone = prospect.phone
-    if (!existingParent.email && prospect.email) existingParent.email = prospect.email
-  }
-  if (!existingParent) state.parents.push(parent)
+    existingParent.studentIds.push(student.id)
+    // Mevcut velinin eksik iletişimi adayınkiyle tamamlanır; var olan telefon, e-posta ve ad
+    // değişmez, adayın kendi kaydında kalır (ör. diğer ebeveynin telefonu) (DOM-KAY-003).
+    if (data.guardianContact === true) {
+      if (!existingParent.phone && prospect.phone) existingParent.phone = prospect.phone
+      if (!existingParent.email && prospect.email) existingParent.email = prospect.email
+    }
+  } else
+    state.parents.push({
+      id: student.parentId,
+      name:
+        guardian?.kind === 'new'
+          ? guardian.name
+          : guardian?.kind === 'self'
+            ? student.name
+            : `${student.name} velisi`,
+      studentIds: [student.id],
+      ...(guardian?.kind === 'new'
+        ? { phone: guardian.phone, relationship: guardian.relationship }
+        : {}),
+      // Yetişkin kursiyerin kendi satırı veli değildir; kardeşe önerilmez (DOM-KAY-013).
+      ...(guardian?.kind === 'self' ? { relationship: 'self' } : {}),
+      // kvkk: K — 18 yaş altı adayın e-postası velinindir (DOM-KAY-003).
+      ...(guardian?.kind === 'new' && data.guardianContact === true && prospect.email
+        ? { email: prospect.email }
+        : {}),
+    })
   state.students.push(student)
-  state.invoices.push(...invoices)
+  const allInvoices = [...invoices, ...extraInvoices]
+  state.invoices.push(...allInvoices)
   const contract = {
     id: makeId('contract'),
     studentId: student.id,
     date: now,
-    amount: data.totalCents,
-    title: ENROLLMENT_CONTRACT_TITLES[institutionType],
-    payer,
+    amount: allInvoices.reduce((sum, invoice) => sum + invoice.amount, 0),
+    title: data.contractTitle,
+    invoiceIds: allInvoices.map((invoice) => invoice.id),
+    ...(data.academicYear === undefined ? {} : { academicYear: data.academicYear }),
+    ...(data.terms ?? {}),
   }
   state.contracts.push(contract)
   prospect.studentId = student.id
   prospect.stage = 'Kayıt oldu'
-  // `minor`: öğrencinin velili kaydı mı; kesin kayıt bildiriminin alıcısını belirler
-  // (`lib/notifications.ts`, yetişkin kursiyerde kendisi).
-  return { student, contract, parent, minor }
+  return { student, contract }
 }

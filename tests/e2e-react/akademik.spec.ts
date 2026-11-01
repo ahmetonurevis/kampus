@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 
 import type { Download, Page } from '@playwright/test'
 
+import { dayKey } from '../../packages/school-core/src/lib/format.ts'
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
@@ -424,6 +425,13 @@ test.describe('veli: Çocuklarım ve Akademik Takip', () => {
   })
 })
 
+/** Gün anahtarının (YYYY-AA-GG) ait olduğu haftanın pazartesisi. */
+function mondayOf(key: string): string {
+  const day = new Date(`${key}T12:00:00.000Z`)
+  day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7))
+  return day.toISOString().slice(0, 10)
+}
+
 test.describe('ders programı: iptal edilen dersler görünmez', () => {
   for (const [role, path] of [
     ['ogrenci', '/ogrenci/ders-programi'],
@@ -449,15 +457,16 @@ test.describe('ders programı: iptal edilen dersler görünmez', () => {
       const mondayCount = await monday(page).getByRole('button', { name: /dk/ }).count()
       expect(before).toBeGreaterThan(mondayCount)
 
-      // API iptal edilmiş dersleri de döndürür (geçmiş korunur); en erken günün (haftanın
-      // pazartesisi) bütün dersleri iptal edilmiş gibi işaretlenir. Seed iptal ders içermez.
+      // API iptal edilmiş dersleri de döndürür (geçmiş korunur); ekranın gösterdiği haftanın
+      // pazartesisindeki bütün dersler iptal edilmiş gibi işaretlenir. Seed iptal ders içermez.
+      // Gün İstanbul saatine göre hesaplanır: seed haftası UTC pazartesisinden başlar, bu yüzden
+      // pazartesi 00.00–03.00 arasında yanıtın en erken günü önceki haftadadır.
+      const shownMonday = mondayOf(dayKey())
       await page.route(/\/api\/v1\/collections\/schedule\?/, async (route) => {
         const response = await route.fetch()
         const body = (await response.json()) as CollectionPage
-        const days = body.data.map((row) => String(row.record.date).slice(0, 10)).sort()
-        const first = days[0]
         for (const row of body.data)
-          if (String(row.record.date).startsWith(first ?? '-'))
+          if (dayKey(String(row.record.date)) === shownMonday)
             row.record.cancelledAt = '2026-01-01T00:00:00.000Z'
         await route.fulfill({ response, json: body })
       })

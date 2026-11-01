@@ -13,7 +13,6 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { prospectStageLabel } from '@kampus/school-core/lib/prospects.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
-import { EnrollPanel, ENROLL_MODULES_CLOSED_MESSAGE } from './EnrollPanel.tsx'
 import { ProspectNoteForm } from './ProspectNoteForm.tsx'
 import { ProspectPlanPanel } from './ProspectPlanPanel.tsx'
 import { ProspectStageForm } from './ProspectStageForm.tsx'
@@ -50,6 +49,10 @@ function Section({
   )
 }
 
+/** Kesin kayıt taksit ve sözleşme yazar: `crm` ve `finance` birlikte açık olmalıdır (DOM-YTK-040). */
+export const ENROLL_MODULES_CLOSED_MESSAGE =
+  'Kesin kayıt için aday (CRM) ve finans modüllerinin açık olması gerekir. Modülleri yönetici Ayarlar sayfasından açar.'
+
 /**
  * Aday detayı (`/onburo/aday/:id`, `/yonetici/aday/:id`; Vue `Crm.vue` aday kartı): iletişim ve
  * aşama kartı, görüşme notu, değişmez iletişim geçmişi, planlanan görüşme ve (dil okulunda) deneme
@@ -82,6 +85,7 @@ export function ProspectDetailPage({ page }: { page: NavPage }) {
       listHref={listHref}
       listLabel={role === 'onburo' ? 'Aday listesine dön' : 'Panele dön'}
       canPickTeacher={role === 'yonetici'}
+      canEnroll={role === 'onburo'}
     />
   )
 }
@@ -92,19 +96,21 @@ function Detail({
   listHref,
   listLabel,
   canPickTeacher,
+  canEnroll,
 }: {
   prospect: Prospect
   version: number
   listHref: string
   listLabel: string
   canPickTeacher: boolean
+  /** Kesin kayıt formu ön büronun Kayıt İşlemleri sayfasındadır (tarifeli, adımlı form). */
+  canEnroll: boolean
 }) {
   const { session } = useAuth()
   const type = session?.institution.type ?? 'school'
   // Kesin kayıt taksit ve sözleşme yazar: `crm` ve `finance` birlikte açık olmalıdır (liste ile aynı).
   const enrollModulesOpen = session?.modules.crm === true && session.modules.finance === true
   const plan = useDetailPanel('planlama')
-  const enroll = useDetailPanel('kayit')
   const branches = useCoreAll('branches')
   const branch = branches.data?.find((entry) => entry.record.id === prospect.branchId)?.record.name
   const classes = useCoreAll(
@@ -140,19 +146,29 @@ function Detail({
                 Deneme dersi planla
               </Button>
             ) : null}
-            <Button
-              onClick={() => enroll.open(prospect.id)}
-              disabled={!open || !enrollModulesOpen}
-              title={enrollModulesOpen ? undefined : ENROLL_MODULES_CLOSED_MESSAGE}
-              aria-describedby={enrollModulesOpen ? undefined : 'kayit-modul-kapali'}
-            >
-              <Icon name="UserRoundPlus" size={17} aria-hidden="true" />
-              Kesin kayda dönüştür
-            </Button>
+            {canEnroll ? (
+              open && enrollModulesOpen ? (
+                <Button asChild>
+                  <Link to={`/onburo/kayit-islemleri?aday=${encodeURIComponent(prospect.id)}`}>
+                    <Icon name="UserRoundPlus" size={17} aria-hidden="true" />
+                    Kesin kayda dönüştür
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  disabled
+                  title={enrollModulesOpen ? undefined : ENROLL_MODULES_CLOSED_MESSAGE}
+                  aria-describedby={enrollModulesOpen ? undefined : 'kayit-modul-kapali'}
+                >
+                  <Icon name="UserRoundPlus" size={17} aria-hidden="true" />
+                  Kesin kayda dönüştür
+                </Button>
+              )
+            ) : null}
           </>
         }
       />
-      {enrollModulesOpen ? null : (
+      {enrollModulesOpen || !canEnroll ? null : (
         <p
           id="kayit-modul-kapali"
           role="alert"
@@ -291,7 +307,6 @@ function Detail({
         canPickTeacher={canPickTeacher}
         onClose={plan.close}
       />
-      <EnrollPanel prospectId={enroll.selectedId} onClose={enroll.close} />
     </>
   )
 }

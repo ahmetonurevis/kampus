@@ -680,7 +680,7 @@ test('Aday/CRM işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır
   )
   enrollProspect(
     operation(state, 'prospect.enroll'),
-    { prospectId: 'pr1', classId: 'c1', totalCents: 12_000_000, count: 3, startDate: '2026-11-01' },
+    { prospectId: 'pr1', classId: 'c1', total: 120000, count: 3, startDate: '2026-11-01' },
     id,
     now,
   )

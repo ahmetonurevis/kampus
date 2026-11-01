@@ -145,7 +145,7 @@ export const notificationSpec = (kind: NotificationKind): KindSpec => NOTIFICATI
 
 /** Öğrencinin yaşına dair bilinenler (`learnerIsMinor`). */
 export type LearnerAgeFacts = {
-  /** Öğrenci kaydındaki doğum tarihi (`YYYY-MM-DD`). */
+  /** Öğrencinin doğum tarihi (`YYYY-MM-DD`; API'de `student_identities`, State'te yok). */
   birthDate?: string | undefined
   /** Kesin kayda alınan adayın 18 yaş seçimi (dil okulu). */
   prospectMinor?: boolean | undefined
@@ -165,15 +165,18 @@ export function isMinorLearner(
   return facts.prospectMinor ?? true
 }
 
-/** `isMinorLearner`, öğrenci kaydı ve adayı State'ten okunarak. */
+/**
+ * `isMinorLearner`, kesin kayda alınan adayı State'ten okunarak. Doğum tarihi State'te tutulmaz
+ * (kimlik bilgisi API'de `student_identities` tablosundadır, ADR 0006 karar 9); State'te yalnız
+ * adayın 18 yaş seçimi vardır ve kesin kayıt onu doğum tarihiyle uyumlu ister.
+ */
 export function learnerIsMinor(
-  state: Pick<State, 'students'> & Partial<Pick<State, 'prospects'>>,
+  state: Partial<Pick<State, 'prospects'>>,
   studentId: string,
   options: { institutionType: InstitutionType; now: string },
 ): boolean {
-  const student = state.students.find((s) => s.id === studentId)
   const prospect = state.prospects?.find((p) => p.studentId === studentId)
-  return isMinorLearner({ birthDate: student?.birthDate, prospectMinor: prospect?.minor }, options)
+  return isMinorLearner({ prospectMinor: prospect?.minor }, options)
 }
 
 export type StudentEvent = {

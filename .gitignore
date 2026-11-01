@@ -22,3 +22,6 @@ apps/mobile/ios/
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/worktrees/
+
+# İki geliştiricili çalışma: kullanıcının verdiği yerel alan izinleri (.claude/hooks/alan-koruma.ts)
+.claude/alan-izni.local

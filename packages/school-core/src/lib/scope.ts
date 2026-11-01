@@ -422,6 +422,8 @@ const NONE: readonly string[] = []
 const GUIDANCE_INTERNAL: readonly string[] = ['internalNote', 'notes']
 const TEACHER_PRIVATE: readonly string[] = ['email', 'phone', 'attendanceRate', 'homeworkRate']
 const CORRECTION_HISTORY: readonly string[] = ['corrections']
+// Veli iletişimi ve yakınlığı öğretmen ve öğrenciye dönmez (DOM-YTK-020, DOM-KAY-003).
+const PARENT_PRIVATE: readonly string[] = ['phone', 'email', 'relationship']
 const ANSWER_KEY_FIELDS: readonly string[] = ['keyCsv', 'keys']
 const MESSAGE_HIDDEN_FIELDS: readonly string[] = ['senderUserId', 'parentUserId']
 const personal = (c: Context) => c.role === 'ogrenci' || c.role === 'veli'
@@ -449,6 +451,8 @@ const HIDDEN_FIELDS: Partial<Record<CollectionName, (context: Context) => readon
           ? STUDENT_IDENTITY
           : STUDENT_NATIONAL_ID,
   teachers: (c) => (personal(c) ? TEACHER_PRIVATE : NONE),
+  // Velinin iletişim bilgisi öğretmen ve öğrenciye gitmez; yönetici, ön büro ve veli görür.
+  parents: (c) => (c.role === 'ogretmen' || c.role === 'ogrenci' ? PARENT_PRIVATE : NONE),
   grades: (c) => (personal(c) ? CORRECTION_HISTORY : NONE),
   attendance: (c) => (personal(c) ? CORRECTION_HISTORY : NONE),
   // İç not yalnız rehberlik görevli öğretmene döner; yönetici, ön büro, görevsiz öğretmen, öğrenci

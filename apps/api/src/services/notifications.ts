@@ -17,6 +17,7 @@ import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
 import { notificationPage, unreadNotificationTotal, type AudienceIds } from '../db/notifications.ts'
 import { loadRecords, loadRecordsByIds } from '../db/records.ts'
+import { findStudentIdentity } from '../db/student-identities.ts'
 import { ValidationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
@@ -226,8 +227,9 @@ export interface StudentNotice {
 
 /**
  * İşlemin transaction'ında öğrencinin bildirim kararını okur (State dışı işlemler için; ADR 0004
- * karar 2). Okulda yalnız modül haritası okunur; dil okulunda öğrencinin kaydı ve gerekirse
- * kesin kayda alınan adayı (doğum tarihi yoksa 18 yaş seçimi) okunur. Kişisel veri loglanmaz.
+ * karar 2). Okulda yalnız modül haritası okunur; dil okulunda öğrencinin kimlik satırındaki doğum
+ * tarihi (`student_identities`, ADR 0006 karar 9), yoksa kesin kayda alınan adayın 18 yaş seçimi
+ * okunur. Kişisel veri loglanmaz.
  */
 export async function studentNotice(
   tx: Database,
@@ -240,9 +242,9 @@ export async function studentNotice(
   const options = { institutionType, now: ctx.now.toISOString() }
   if (!enabled || institutionType === 'school')
     return { enabled, minor: isMinorLearner({}, options) }
-  const [student] = await loadRecordsByIds(tx, ctx.institutionId, 'students', [studentId])
-  const birthDate = typeof student?.data.birthDate === 'string' ? student.data.birthDate : undefined
-  if (birthDate !== undefined) return { enabled, minor: isMinorLearner({ birthDate }, options) }
+  const identity = await findStudentIdentity(tx, ctx.institutionId, studentId)
+  if (identity !== null)
+    return { enabled, minor: isMinorLearner({ birthDate: identity.birthDate }, options) }
   const [prospect] = await loadRecords(tx, ctx.institutionId, ['prospects'], {
     match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
   })

@@ -374,14 +374,29 @@ export async function getFileUrl(ctx: ServiceContext, storage: StorageDriver, fi
     const access = FILE_PURPOSE_ACCESS[row.purpose]
     const expiresAt = new Date(ctx.now.getTime() + access.linkTtlSeconds * 1000)
     const url = await storage.signedGetUrl(row.storageKey, {
+      institutionId: row.institutionId,
+      fileId: row.id,
       expiresAt,
-      contentType: row.contentType,
       disposition: dispositionFor(row.contentType),
-      fileName: row.originalName,
     })
     if (access.auditAccess) await audit(tx, ctx, 'file.access', row.id, [])
     return { url, expiresAt: expiresAt.toISOString() }
   })
+}
+
+/**
+ * İmzalı indirmenin hedefi (`disk` sürücüsü): belirteç yalnız kurum, dosya kimliği, bitiş ve
+ * disposition taşır; ad ve tür buradan, `files` satırından okunur. Silinmiş veya reddedilmiş
+ * dosya bulunmaz (404): bağlantı süresi içinde olsa da silinen dosya indirilemez.
+ */
+export async function findDownloadableFile(
+  db: Database,
+  institutionId: string,
+  fileId: string,
+): Promise<StoredFile | null> {
+  const row = await findFile(db, institutionId, fileId)
+  if (!row || row.status === 'deleted' || row.status === 'rejected') return null
+  return row
 }
 
 export const ATTACH_MESSAGES = {

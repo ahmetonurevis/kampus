@@ -9,6 +9,7 @@ import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { institutions } from '../src/db/schema/auth.ts'
+import { markFileDeleted } from '../src/db/files.ts'
 import { files } from '../src/db/schema/files.ts'
 import { institutionSettings } from '../src/db/schema/institution-settings.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
@@ -443,7 +444,7 @@ describe('dosya uçları', () => {
     const forged = Buffer.from(
       JSON.stringify({
         ...JSON.parse(Buffer.from(payload, 'base64url').toString()),
-        k: `${t.institution.id}/submission/2026/10/00000000-0000-4000-8000-000000000000`,
+        f: '00000000-0000-4000-8000-000000000000',
       }),
     ).toString('base64url')
     for (const bad of [`${forged}.${signature}`, `${payload}.x${signature}`, 'bozuk']) {
@@ -533,6 +534,59 @@ describe('dosya uçları', () => {
       ),
       { code: 'file_purpose_mismatch' },
     )
+  })
+
+  test('KVKK: belirteç özgün adı ve türü taşımaz; ad ve tür indirmede dosya kaydından okunur', async () => {
+    const t = await tenant()
+    const id: string = (
+      await upload(
+        t.student.cookie,
+        uploadParts('submission', PDF, 'Deniz Yılmaz karne.pdf', 'application/pdf'),
+      )
+    ).json().data.id
+    const url = new URL((await get(t.student.cookie, `/api/v1/files/${id}/url`)).json().data.url)
+    assert.equal(url.href.includes('Deniz'), false)
+    const [payload = ''] = (url.searchParams.get('token') ?? '').split('.')
+    const decoded = Buffer.from(payload, 'base64url').toString('utf8')
+    assert.deepEqual(Object.keys(JSON.parse(decoded)).sort(), ['d', 'e', 'f', 'i'])
+    for (const value of ['Deniz', 'karne', 'pdf', 'application'])
+      assert.equal(decoded.toLowerCase().includes(value.toLowerCase()), false, value)
+    const download = await app.inject({ method: 'GET', url: url.pathname + url.search })
+    assert.equal(download.statusCode, 200)
+    assert.equal(download.headers['content-type'], 'application/pdf')
+    assert.match(
+      String(download.headers['content-disposition']),
+      /Deniz%20Y%C4%B1lmaz%20karne\.pdf/,
+    )
+  })
+
+  test('imzalı bağlantı süresi içinde olsa da silinmiş veya reddedilmiş dosya 404 not_found', async () => {
+    const t = await tenant()
+    const linkOf = async () => {
+      const id: string = (await upload(t.student.cookie, uploadParts('submission', PDF))).json()
+        .data.id
+      const url = new URL((await get(t.student.cookie, `/api/v1/files/${id}/url`)).json().data.url)
+      return { id, path: url.pathname + url.search }
+    }
+    const rejected = await linkOf()
+    await recordFileCheck(db, store.storage, {
+      institutionId: t.institution.id,
+      fileId: rejected.id,
+      outcome: 'rejected',
+      now,
+    })
+    const deleted = await linkOf()
+    const [row] = await db
+      .select()
+      .from(files)
+      .where(and(eq(files.institutionId, t.institution.id), eq(files.id, deleted.id)))
+    assert.ok(row)
+    assert.ok(await markFileDeleted(db, t.institution.id, row, now))
+    for (const link of [rejected, deleted]) {
+      const response = await app.inject({ method: 'GET', url: link.path })
+      assert.equal(response.statusCode, 404, response.body)
+      assert.equal(response.json().code, 'not_found')
+    }
   })
 
   test('reddedilen dosyanın nesnesi silinir ve görünmez', async () => {

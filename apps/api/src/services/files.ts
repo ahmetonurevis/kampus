@@ -448,14 +448,24 @@ export async function attachFile(
 
 /**
  * Denetim sonucu (karar 7, 8): `pending`/`processing` dosya `ready` olur ya da reddedilir;
- * reddedilen dosyanın nesnesi silinir. TODO(F3c2-scan): `pg-boss` `file.scan` işi (ClamAV) ve
- * `sharp` meta veri temizliği bu fonksiyonu çağırır; o gelene kadar tarama yoktur ve dosya
- * `pending` kalır (yalnız yükleyen okur, bağlanamaz).
+ * reddedilen dosyanın nesnesi silinir. Ret kaydı nesne silinmeden önce yazılır; nesne silinemezse
+ * satır `rejected` kalır (indirilemez, kotaya sayılmaz), hata `file.reject_object_failed` olarak
+ * yalnız kimliklerle loglanır ve asıl hata olduğu gibi fırlatılır (yutulmaz; çağıran iş hatayı
+ * görür). Kalan nesne `TODO(F3c2-orphans)` taramasıyla silinir.
+ * TODO(F3c2-scan): `pg-boss` `file.scan` işi (ClamAV) ve `sharp` meta veri temizliği bu
+ * fonksiyonu çağırır; o gelene kadar tarama yoktur ve dosya `pending` kalır (yalnız yükleyen
+ * okur, bağlanamaz).
  */
 export async function recordFileCheck(
   db: Database,
   storage: StorageDriver,
-  input: { institutionId: string; fileId: string; outcome: 'ready' | 'rejected'; now: Date },
+  input: {
+    institutionId: string
+    fileId: string
+    outcome: 'ready' | 'rejected'
+    now: Date
+    log: FastifyBaseLogger
+  },
 ): Promise<StoredFile> {
   const row = await db.transaction(async (tx) => {
     const current = await findFile(tx, input.institutionId, input.fileId, { lock: true })
@@ -474,7 +484,20 @@ export async function recordFileCheck(
     })
     return updated
   })
-  if (row.status === 'rejected') await storage.delete(row.storageKey)
+  if (row.status === 'rejected') {
+    try {
+      await storage.delete(row.storageKey)
+    } catch (error) {
+      // Dosya adı ve içerik loglanmaz; kimlikler kişisel veri taşımaz.
+      input.log.error({
+        event: 'file.reject_object_failed',
+        institutionId: row.institutionId,
+        fileId: row.id,
+        err: error,
+      })
+      throw error
+    }
+  }
   return row
 }
 

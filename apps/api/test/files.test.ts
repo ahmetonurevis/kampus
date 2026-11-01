@@ -487,6 +487,7 @@ describe('dosya uçları', () => {
       fileId: id,
       outcome: 'ready',
       now,
+      log: app.log,
     })
     // Başkasının dosyası ayırt edilmez.
     await assert.rejects(attach(id, contextFor(t.institution.id, t.otherStudent, 'ogrenci')), {
@@ -522,6 +523,7 @@ describe('dosya uçları', () => {
       fileId: id,
       outcome: 'ready',
       now,
+      log: app.log,
     })
     await assert.rejects(
       db.transaction((tx) =>
@@ -574,6 +576,7 @@ describe('dosya uçları', () => {
       fileId: rejected.id,
       outcome: 'rejected',
       now,
+      log: app.log,
     })
     const deleted = await linkOf()
     const [row] = await db
@@ -589,6 +592,43 @@ describe('dosya uçları', () => {
     }
   })
 
+  test('ret sonrası nesne silinemezse hata yutulmaz: kimlikle loglanır, asıl hata fırlar, dosya reddedilmiş kalır; ad loga girmez', async () => {
+    const t = await tenant()
+    const id: string = (
+      await upload(
+        t.student.cookie,
+        uploadParts('submission', PDF, 'Deniz Yılmaz sağlık raporu.pdf', 'application/pdf'),
+      )
+    ).json().data.id
+    const before = logs.length
+    store.storage.failDeletes = true
+    try {
+      await assert.rejects(
+        recordFileCheck(db, store.storage, {
+          institutionId: t.institution.id,
+          fileId: id,
+          outcome: 'rejected',
+          now,
+          log: app.log,
+        }),
+        /EIO: simulated delete failure/,
+      )
+    } finally {
+      store.storage.failDeletes = false
+    }
+    const failures = logs.slice(before).filter((line) => line.includes('file.reject_object_failed'))
+    assert.equal(failures.length, 1)
+    assert.ok(failures[0]?.includes(`"fileId":"${id}"`))
+    assert.ok(failures[0]?.includes('EIO: simulated delete failure'))
+    assert.equal(
+      logs.slice(before).some((line) => line.includes('Deniz Yılmaz') || line.includes('sağlık')),
+      false,
+    )
+    const [row] = (await rowsOf(t.institution.id)).filter((file) => file.id === id)
+    assert.equal(row?.status, 'rejected')
+    assert.equal((await get(t.student.cookie, `/api/v1/files/${id}/url`)).statusCode, 404)
+  })
+
   test('reddedilen dosyanın nesnesi silinir ve görünmez', async () => {
     const t = await tenant()
     const id: string = (await upload(t.student.cookie, uploadParts('submission', PDF))).json().data
@@ -598,6 +638,7 @@ describe('dosya uçları', () => {
       fileId: id,
       outcome: 'rejected',
       now,
+      log: app.log,
     })
     assert.equal(await store.storage.head(row.storageKey), null)
     assert.equal((await get(t.student.cookie, `/api/v1/files/${id}/url`)).statusCode, 404)
@@ -614,6 +655,7 @@ describe('dosya uçları', () => {
       fileId: kept,
       outcome: 'ready',
       now,
+      log: app.log,
     })
     await db.transaction((tx) =>
       attachFile(tx, contextFor(t.institution.id, t.student, 'ogrenci'), {

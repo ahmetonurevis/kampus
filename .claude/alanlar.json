@@ -56,6 +56,7 @@
     "docs/adr/**",
     "docs/muhendislik/**",
     "docs/is-bolumu/README.md",
+    "docs/is-bolumu/ilk-kurulum.md",
     "**/CHANGELOG.md",
     "packages/*/changes/**",
     "apps/*/changes/**",

@@ -140,6 +140,7 @@ describe('alan-koruma', () => {
     assert.equal(owner('apps/api/package.json'), 'ortak')
     assert.equal(owner('packages/school-core/changes/odeme-iadesi.md'), 'ortak')
     assert.equal(owner('docs/is-bolumu/README.md'), 'ortak')
+    assert.equal(owner('docs/is-bolumu/ilk-kurulum.md'), 'ortak')
     assert.equal(owner('docs/is-bolumu/onur.md'), 'onur')
     assert.equal(owner('docs/is-bolumu/oguzhan.md'), 'oguzhan')
   })

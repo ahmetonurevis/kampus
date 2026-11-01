@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
+import { ageOn } from '../packages/school-core/src/lib/age.ts'
 import {
   ENROLLMENT_CONTRACT_TITLES,
-  ageOn,
   enrollProspect,
   enrollmentFromRegistration,
   isValidNationalId,

@@ -3,6 +3,7 @@ import type { questionBank } from '../data/question-bank.ts'
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import type { Role } from '../modules/navigation.ts'
+import { ADULT_AGE, ageOn, isCalendarDay } from './age.ts'
 import { dayKey } from './format.ts'
 import type { ActorLink } from './scope.ts'
 import { DomainError } from './errors.ts'
@@ -302,21 +303,11 @@ export const nationalIdSchema = z
   .trim()
   .regex(/^\d{11}$/, { message: 'Kimlik numarası 11 haneli olmalıdır.', abort: true })
   .refine(isValidNationalId, 'Geçerli bir kimlik numarası girin.')
-function isCalendarDay(value: string): boolean {
-  const date = new Date(`${value}T00:00:00.000Z`)
-  return !Number.isNaN(+date) && date.toISOString().slice(0, 10) === value
-}
 // kvkk: Ç — öğrencinin doğum tarihi (`YYYY-MM-DD`).
 export const birthDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Doğum tarihini seçin.', abort: true })
   .refine(isCalendarDay, 'Geçerli bir doğum tarihi seçin.')
-/** `birthDate` doğumlu kişinin `now` anındaki (Europe/Istanbul günü) tam yaşı. */
-export function ageOn(birthDate: string, now: string | Date = new Date()): number {
-  const today = dayKey(now)
-  const years = Number(today.slice(0, 4)) - Number(birthDate.slice(0, 4))
-  return today.slice(5) < birthDate.slice(5) ? years - 1 : years
-}
 
 /**
  * Kesin kayıt girdisi: para kuruş cinsinden tamsayıdır (`totalCents`). İsteğe bağlı alanlar:
@@ -432,8 +423,8 @@ export function enrollProspect(
       path: ['birthDate'],
     })
   const minor =
-    institutionType === 'school' ? true : (prospect.minor ?? (age === undefined || age < 18))
-  if (institutionType === 'language_school' && age !== undefined && age < 18 !== minor)
+    institutionType === 'school' ? true : (prospect.minor ?? (age === undefined || age < ADULT_AGE))
+  if (institutionType === 'language_school' && age !== undefined && age < ADULT_AGE !== minor)
     throw new DomainError(
       'birth_date_minor_mismatch',
       'Doğum tarihi adayın 18 yaş durumuyla uyuşmuyor; doğum tarihini kontrol edin.',

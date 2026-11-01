@@ -4,6 +4,7 @@
 // (kontenjan, aday aşaması, ödeme tarihi).
 import { z } from 'zod'
 import type { EnrollProspectBody } from '@kampus/react-shared/use-prospect-commands.ts'
+import { isCalendarDay } from '@kampus/school-core/lib/age.ts'
 import { installmentAmounts } from '@kampus/school-core/lib/domain.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
@@ -44,15 +45,6 @@ export function parseLira(input: string): LiraResult {
 
 /** Tam lira → kuruş (`totalCents`); para her yerde tamsayı kuruştur. */
 export const liraToCents = (lira: number) => lira * 100
-
-/** `YYYY-MM-DD` gerçek bir takvim günü mü (30 Şubat gibi taşan tarihler geçersizdir). */
-function isCalendarDay(value: string): boolean {
-  const [year = 0, month = 0, day = 0] = value.split('-').map(Number)
-  const date = new Date(Date.UTC(year, month - 1, day))
-  return (
-    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
-  )
-}
 
 const dateField = z
   .string()

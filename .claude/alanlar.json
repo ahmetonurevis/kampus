@@ -1,0 +1,61 @@
+{
+  "description": "İki geliştiricinin alan haritası. Yollar repo köküne göre glob'dur (büyük-küçük harf duyarsız; bir klasörle eşleşen desen altındaki her dosyayı kapsar). Önce 'shared' denetlenir, sonra sahiplerin 'paths' listeleri; hiçbirine uymayan yol 'defaultOwner' sahibindir. Kurallar: .claude/rules/ortak-calisma.md, docs/muhendislik/git-ve-surum.md §7.",
+  "defaultOwner": "oguzhan",
+  "owners": {
+    "onur": {
+      "name": "Onur",
+      "possessive": "Onur'un",
+      "gitName": "Ahmet Onur Evis",
+      "area": "Kayıt (aday/CRM, kesin kayıt, öğrenci kimliği, yenileme) ve finans (tarife, tahsilat, fatura/taksit/sözleşme, ayrılış/iade, muhasebe, banka hesabı)",
+      "paths": [
+        "**/prospect*",
+        "**/enrollment*",
+        "**/registration*",
+        "**/renewal*",
+        "**/student-identit*",
+        "**/payment*",
+        "**/fee-tariff*",
+        "**/invoice*",
+        "**/contract*",
+        "**/installment*",
+        "**/withdrawal*",
+        "**/refund*",
+        "**/finance*",
+        "**/bank-account*",
+        "**/use-{prospect,enrollment,registration,renewal,payment,fee-tariff,invoice,contract,installment,withdrawal,refund,finance,bank-account}*",
+        "apps/web-react/src/pages/crm/**",
+        "apps/web-react/src/pages/finance/**",
+        "tests/e2e-react/{adaylar,kayit-islemleri,finans,odemeler-aile,is-akislari-yenileme}.spec.ts",
+        "docs/domain/kayit-ve-crm.md",
+        "docs/domain/finans.md"
+      ]
+    },
+    "oguzhan": {
+      "name": "Oğuzhan",
+      "possessive": "Oğuzhan'ın",
+      "gitName": "Oguzhan Demirci",
+      "area": "Onur'un alanı dışındaki her şey; platform altyapısı (kimlik, rol/kapsam, bildirim, dosya, PDF, KVKK, tasarım sistemi, kabuk, mobil) dahil",
+      "paths": []
+    }
+  },
+  "shared": [
+    "packages/school-core/src/lib/{domain,authorize,scope,school-workflows}.ts",
+    "packages/school-core/src/modules/*",
+    "packages/school-core/src/data/seed.ts",
+    "apps/api/src/app.ts",
+    "apps/api/drizzle/**",
+    "apps/api/openapi.json",
+    "packages/api-client/src/schema.d.ts",
+    "apps/web-react/src/pages/page-registry.tsx",
+    "apps/web-react/src/lib/page-coverage.ts",
+    "apps/api/test/commands.test.ts",
+    "README.md",
+    "CLAUDE.md",
+    ".claude/**",
+    "docs/adr/**",
+    "docs/muhendislik/**",
+    "**/CHANGELOG.md",
+    "**/package.json",
+    "pnpm-lock.yaml"
+  ]
+}

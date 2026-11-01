@@ -54,6 +54,17 @@ Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokun
 - Girişin 3B hareketi ve okunaklı KAMPÜS yazısı korunur; azaltılmış hareket/görünmeyen sekme desteklenir.
 - Erişilebilir etiket, klavye odağı, azaltılmış hareket, dar/yatay ekran zorunludur. Mobil dokunma hedefi en az 48 dp; büyük yazı ve klavye açıkken alan/işlem görünür kalır.
 
+## İki geliştiriciyle çalışma
+
+İki geliştirici (Oğuzhan, Onur) paralel çalışır; alan haritası `.claude/alanlar.json`. Ayrıntı: `docs/muhendislik/git-ve-surum.md` §7 ve `.claude/rules/ortak-calisma.md`.
+
+- Dal `onur/<konu>` veya `oguzhan/<konu>`; kısa ömürlü, güncel `origin/feature/platform-gecisi`'nden açılır. Oturum başında entegrasyon dalı çalışılan dala birleştirilir.
+- İzin yok, görünürlük var: kendi alanında herkes sormadan yazar, birleştirir, gönderir. Yalnız sahiplik/kural değişikliği ve ürün-hukuk-maliyet kararları birlikte alınır.
+- İş başlamadan `gh issue list --state open` ile çakışan iş aranır; varsa durulur, kullanıcıya sorulur. Sonra issue açılır: sahip etiketi (`sahip:onur`/`sahip:oguzhan`), alan, dokunulacak dosyalar, gerekiyorsa başlıkta migration/ADR numarası (`migration` etiketi; onay beklenmez). Commit gövdesi veya merge mesajı issue'ya `#<no>` ile bağlanır; issue birleştirmede kapanır.
+- Diğer geliştiricinin alanına yazılmaz (`alan-koruma` hook'u engeller): durulur, kullanıcıya sorulur; gerekirse alan sahibinin `sahip:` etiketiyle iş isteği issue'su açılır (izin değil) ve bu arada kendi taraf geçici veriyle yazılır. Ortak dosyada kendi bloğuna yazılır; blok dışına çıkılırsa issue'ya `ortak-dosya` etiketi konur, beklenmez. Entegrasyonu kıran, düzeltir ya da geri alır.
+- Entegrasyona birleştirmeden önce: `git fetch` + entegrasyonu dala birleştir, hızlı testler (format, lint, typecheck, birim, API), `git merge-tree` ile çakışma ölçümü; birleştirme `--no-ff`.
+- Yasak: force push; gönderilmiş commit'te amend, rebase veya reset; `main`'e push (`push-kontrol` hook'u ve izin ayarı engeller).
+
 ## Claude Code ile çalışma
 
 - İş başlamadan kapsam, adımlar ve etkilenecek dosyalar belirlenir. Tamamlanmış geçici planlar bu dosyada biriktirilmez; kalıcı kararlar ADR'ye, kurallar `.claude/rules/`'a yazılır.

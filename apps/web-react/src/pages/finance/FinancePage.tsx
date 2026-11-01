@@ -189,15 +189,17 @@ export function FinancePage({ page }: { page: NavPage }) {
         title={page.title}
         description={page.description}
         actions={
-          <Button
-            variant="secondary"
-            onClick={download}
-            disabled={csv.busy}
-            aria-busy={csv.busy || undefined}
-          >
-            <Icon name="Download" size={17} aria-hidden="true" />
-            Raporu indir
-          </Button>
+          tab !== 'invoices' ? undefined : (
+            <Button
+              variant="secondary"
+              onClick={download}
+              disabled={csv.busy}
+              aria-busy={csv.busy || undefined}
+            >
+              <Icon name="Download" size={17} aria-hidden="true" />
+              Raporu indir
+            </Button>
+          )
         }
       />
       {totalsQuery.error ? (

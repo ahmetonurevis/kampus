@@ -21,7 +21,6 @@ import {
 } from '@kampus/react-shared/use-withdrawals.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
-import { Icon } from '@/components/Icon.tsx'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -106,7 +105,11 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
         cell: (row) =>
           row.refundStatus === 'pending' ? dateLabel(row.refundDueDate, { year: 'numeric' }) : '—',
       },
-      { key: 'statusLabel', label: 'İade', cell: (row) => <StatusBadge text={row.statusLabel} /> },
+      {
+        key: 'statusLabel',
+        label: 'İade durumu',
+        cell: (row) => <StatusBadge text={row.statusLabel} />,
+      },
       {
         key: ACTIONS_KEY,
         label: 'İşlemler',
@@ -151,12 +154,7 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
             {total} kayıt · İade, ayrılıştan en geç bir ay sonra yapılır.
           </p>
         </div>
-        {canManage ? (
-          <Button onClick={() => setStarting(true)}>
-            <Icon name="UserMinus" size={17} aria-hidden="true" />
-            Ayrılış başlat
-          </Button>
-        ) : null}
+        {canManage ? <Button onClick={() => setStarting(true)}>Ayrılış başlat</Button> : null}
       </header>
       <ServerDataTable
         list={list}

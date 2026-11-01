@@ -9,6 +9,15 @@ export { isMigratedPage }
 const DashboardPage = lazy(async () => ({
   default: (await import('./dashboard/DashboardPage.tsx')).DashboardPage,
 }))
+const EnrollmentPage = lazy(async () => ({
+  default: (await import('./crm/EnrollmentPage.tsx')).EnrollmentPage,
+}))
+const ProspectsPage = lazy(async () => ({
+  default: (await import('./crm/ProspectsPage.tsx')).ProspectsPage,
+}))
+const MeetingsPage = lazy(async () => ({
+  default: (await import('./crm/MeetingsPage.tsx')).MeetingsPage,
+}))
 const CampusesPage = lazy(async () => ({
   default: (await import('./management/CampusesPage.tsx')).CampusesPage,
 }))
@@ -157,6 +166,12 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
     case 'yonetici/icerik-havuzu':
     case 'ogretmen/icerik-havuzu':
       return <ContentPoolPage page={page} />
+    case 'onburo/adaylar':
+      return <ProspectsPage page={page} />
+    case 'onburo/kayit-islemleri':
+      return <EnrollmentPage page={page} />
+    case 'onburo/deneme-dersi-takvimi':
+      return <MeetingsPage page={page} />
     case 'yonetici/kayit-raporlari':
       return <EnrollmentReportsPage page={page} />
     case 'yonetici/risk-listesi':

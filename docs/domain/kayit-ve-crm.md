@@ -94,7 +94,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Mükerrer öğrenci = mükerrer borç.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `packages/school-core/src/lib/domain.js:111-112` (aday bazında); kimlik numarası alanı ve kişi bazlı tekillik yok.
+- **Kodda:** var (API) — aday bazında `lib/domain.ts`, kişi bazında `student_identities_number_key` ve 409 `student_identity_duplicate`. Kural yıl der; yenilemede öğrenci kaydı aynı kaldığı için tekillik arşivlenmemiş kimliğe uygulanır, pasif kaydın kimliği yeniden kullanılır. Dil okulunda farklı programlara aynı anda kayıt (DOM-DIL) bu nedenle henüz yapılamaz.
 
 ### DOM-KAY-012 · Kimlik ve yasal temsilci zorunlu alanları
 
@@ -102,7 +102,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** e-Okul/e-Özel kaydı ve sözleşmenin geçerliliği için yasal temsilci gerekir; reşit olmayanın sözleşmesini yasal temsilcisi yapar.
 - **Kaynak:** 4721 sayılı Türk Medeni Kanunu (ergin olmayanın temsili) — **doğrulanmalı**; ÖÖKY md. 53/1 (Bakanlıkça belirlenen tip sözleşme).
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — `packages/school-core/src/lib/domain.js:115-125,153-157` kimlik/doğum tarihi tutmaz ve her kayıtta "<ad> velisi" adlı yeni veli üretir.
+- **Kodda:** var (API) — `lib/enrollment.ts`, `POST /api/v1/prospects/:prospectId/enroll`; kimlik `student_identities` tablosunda, `GET /api/v1/students/:studentId/identity` maskeli döner. Çevrimdışı demo `enrollProspect` eski davranıştadır.
 
 ### DOM-KAY-013 · Mevcut veliye bağlama (kardeş)
 
@@ -110,7 +110,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Kardeş indirimi, tek veli hesabı ve tek bildirim akışı aile bağına dayanır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — `packages/school-core/src/lib/domain.js:119,153-157` her kayıtta yeni `parentId` üretir.
+- **Kodda:** var (API) — `GET /api/v1/prospects/:prospectId/guardian-matches` önerir, `guardian.existingParentId` bağlar. Eşleşme yalnız telefonladır. Çevrimdışı demo her kayıtta yeni veli açar.
 
 ### DOM-KAY-014 · Düzeye uygun sınıf
 
@@ -168,7 +168,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Ücret iadesi ayrılış tarihine göre hesaplanır; neden verisi kayıp analizi için gerekir.
 - **Kaynak:** ÖÖKY md. 56/3.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — ayrılış/iade işlemi yok; yalnız mezuniyet `isActive=false` yapar (`packages/school-core/src/lib/school-workflows.js:885`).
+- **Kodda:** var (API, ayrılış) — `withdrawStudent` (`lib/withdrawals.ts`), `POST /api/v1/students/:studentId/withdraw`. Dil okulunda kayıt dondurma yok.
 
 ### DOM-KAY-025 · Borçlu öğrencinin kaydı yenilenmeyebilir
 
@@ -228,11 +228,11 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Kesin kayıt borç ve sözleşme doğurur; vazgeçen adayın doğrudan kaydı yeniden açılıştaki tekillik denetimini (`DOM-KAY-002`) atlatır.
 - **Kaynak:** İşletme kuralı; yetki matrisi (`docs/domain/yetki-ve-kapsam.md`).
 - **Kurum türü:** ikisi
-- **Kodda:** var (core) — `packages/school-core/src/lib/domain.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). `enrollProspect` yetkiyi kendisi denetlemez (`payInvoice` gibi); API ucu henüz yok (`TODO(api-prospect-enroll)`, D16c); uç önce `requireAuthorized` çağıracak. Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`).
+- **Kodda:** var (core) — `packages/school-core/src/lib/domain.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). API `POST /api/v1/prospects/:prospectId/enroll` önce `requireAuthorized` çağırır, sonra core `enrollProspectWithTariff`'ı çalıştırır (`Idempotency-Key` ve `If-Match` zorunlu). Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`).
 
 ## API uygulama notları
 
-Aday uçları (`apps/api/src/routes/prospects.ts`) core işlemlerinin varsaydığı koşulları sunucuda sağlar; kesin kayıt maddesi D16c'de uygulanacak:
+Aday uçları (`apps/api/src/routes/prospects.ts`) core işlemlerinin varsaydığı koşulları sunucuda sağlar; kesin kayıt ucu da aynı düzendedir:
 
 - `loadScope` aday komutlarında kurumun bütün adaylarını kurum kilidi altında yükler. Tekillik (`DOM-KAY-002`, `-031`), kardeş doğrulaması, görüşme çakışması ve deneme katılımcı/kapasite sayımı bütün adaylara bakar; kısmi yükleme veya kilitsiz okuma eşzamanlı iki isteğin aynı denetimi geçmesine yol açar. State yalnız etkin kurumun kayıtlarını taşır; kardeş "aynı kurumda" şartı buna dayanır.
 - Not yazarının gösterilen adı (`authorName`) oturum kullanıcısından alınır; gövdeden okunmaz.
@@ -247,7 +247,5 @@ Aday uçları (`apps/api/src/routes/prospects.ts`) core işlemlerinin varsaydı�
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | DOM-KAY-006 | Çevrimdışı demoda tanışma görüşmesi çakışması yalnız aynı başlangıç anını yakalar (`apps/web/src/views/Crm.vue:198-203`); core (`lib/prospects.ts`) süreyi ve oda/görevliyi denetler.                                     |
 | DOM-KAY-010 | Sınıf kapasitesi 40'a kadar girilebilir (`packages/school-core/src/lib/school-management.js:23`), ÖÖKY tavanı 30; kesin kayıt planlanmış yenilemeleri kontenjandan düşmez (`packages/school-core/src/lib/domain.js:113`). |
-| DOM-KAY-012 | Kimlik no, doğum tarihi, yakınlık, ödeyici tutulmaz; veli adı "<öğrenci> velisi" olarak üretilir (`packages/school-core/src/lib/domain.js:153-157`).                                                                      |
-| DOM-KAY-013 | Kardeş kaydı mevcut veliye bağlanmaz, her kayıt yeni veli açar (`packages/school-core/src/lib/domain.js:119`).                                                                                                            |
 | DOM-KAY-021 | Sınıf tekrarı için aynı düzeyde yenileme yapılamaz (`packages/school-core/src/lib/school-workflows.js:779`).                                                                                                              |
 | DOM-KAY-022 | 8. sınıf çıkışı/mezuniyeti tanımlı değil (`packages/school-core/src/lib/school-workflows.js:758`).                                                                                                                        |

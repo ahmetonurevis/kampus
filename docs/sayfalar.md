@@ -174,17 +174,14 @@ React web (`apps/web-react`) menüsünde olup henüz kendi ekranı bulunmayan sa
 
 Öncelik ölçüsü: P1 veli/öğrenci günlük kullanımı ve para (ödeme sayfaları W13'te, akademik analiz sayfaları W15'te, izin/mazeret ve şikayet/talep sayfaları W16'da, öğretmen Sınıf Analizi ile yönetici Risk Listesi ve Kayıt Raporları W17'de, yönetici SLA Raporu ile öğrenci Ders Videoları W18'de, öğrenci Öğretmenime Sor ile öğretmen Soru Kuyruğu W19'da, öğrenci Etüt Randevusu, öğretmen Etüt & Görüşmeler ve veli Randevular sekmesi W20'de taşındı; İçerik Havuzu yeni sayfa olarak doğrudan React'te eklendi; P1 boş), P2 veli/öğrenci akademik ve iletişim, P3 öğretmen günlük işi, P4 yönetim ve ön büro raporları.
 
-| Öncelik | Rol     | Sayfa (yol)                                  | Vue karşılığı |
-| ------- | ------- | -------------------------------------------- | ------------- |
-| P4      | Ön büro | Aday Öğrenciler (`adaylar`)                  | `Crm.vue`     |
-| P4      | Ön büro | Kayıt İşlemleri (`kayit-islemleri`)          | `Crm.vue`     |
-| P4      | Ön büro | Tanışma Görüşmeleri (`deneme-dersi-takvimi`) | `Crm.vue`     |
+| Öncelik | Rol | Sayfa (yol) | Vue karşılığı |
+| ------- | --- | ----------- | ------------- |
 
 Rol başına yer tutucu sayısı: yönetici 0, ön büro 3, öğretmen 0, öğrenci 0, veli 0 (toplam 3).
 
 Yer tutucu kalanların gerekçesi (W17 ve W18 seçimi: yalnız mevcut API okuma uçlarıyla tam karşılanabilenler taşındı):
 
-- Aday Öğrenciler (`adaylar`), Kayıt İşlemleri (`kayit-islemleri`) ve Tanışma Görüşmeleri (`deneme-dersi-takvimi`): aday ekleme, aşama değiştirme, not ve görüşme planlama yazma gerektirir. Yazma uçları ve kancalar hazır, ekranlar W21'de taşınır: `POST /api/v1/prospects` (aday ekle, `Idempotency-Key` zorunlu), `PATCH /api/v1/prospects/:prospectId` (aşama), `POST /api/v1/prospects/:prospectId/notes`, `…/meetings` ve dil okulunda `…/trial-lessons` (`If-Match` zorunlu); core `lib/prospects.ts`, yetki `prospect.*` yalnız yönetici ve ön büro, modül `crm` (DOM-KAY-009, DOM-KAY-030…034); kancalar `react-shared` `use-prospect-commands.ts` (`useCreateProspect`, `useChangeProspectStage`, `useAddProspectNote`, `useScheduleProspectMeeting`, `useScheduleTrialLesson`). Not formu `PROSPECT_NOTE_NOTICE` uyarısını gösterir; mükerrer ret (`prospect_duplicate`, `prospect_contact_shared`) eşleşen adayı göstermez. Kesin kayıt ucu (`enrollProspect`, `prospect.enroll`) D16c'dedir (`TODO(api-prospect-enroll)`); Kayıt İşlemleri sayfası ona bağlıdır.
+- Aday Öğrenciler (`adaylar`), Tanışma Görüşmeleri (`deneme-dersi-takvimi`) ve Kayıt İşlemleri (`kayit-islemleri`): React'e taşındı (`pages/crm/`). Vue'dan farklar: aday kartı adres parametresiyle sağ panelde açılır (`?detay=`), aşama süzgeci sekme yerine seçim kutusudur, görüşmeler takvim yerine sıralı listedir. Kesin kayıt tutarı tarifeden hesaplanır; yayımlanmış tarife yoksa form açılmaz. Dil okulu deneme dersi ekranı henüz yoktur.
 - Öğretmenime Sor (`soru-sor`) ve Soru Kuyruğu (`sorular`): W19'da React'e taşındı (`TODO(api-question-write)` kapandı; yazma uçları ve kancalar kullanılıyor). Ekran davranışı aşağıdaki not ve `DOM-ILT-090…093` içindedir.
 - Etüt Randevusu (`randevu-talep`) ve Etüt & Görüşmeler (`randevular`): W20'de React'e taşındı (`TODO(web-randevu)` ve `TODO(randevu-w20)` kapandı). Ekran davranışı aşağıdaki not ve `DOM-ILT-100…105` içindedir.
 

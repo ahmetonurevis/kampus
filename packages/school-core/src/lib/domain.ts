@@ -5,6 +5,7 @@ import type { Role } from '../modules/navigation.ts'
 import { dayKey } from './format.ts'
 import type { ActorLink } from './scope.ts'
 import { DomainError } from './errors.ts'
+import type { FeeItemKind } from './fee-tariffs.ts'
 import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 
 z.config(z.locales.tr())
@@ -34,6 +35,17 @@ export const registrationSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'İlk ödeme tarihini seçin.'),
 })
 export type MakeId = (prefix: string) => string
+/** Tarifeli sözleşmenin karar anı kopyası (DOM-FIN-010). */
+export interface ContractTerms {
+  tariffId: string
+  tariffVersion: number
+  grossCents: number
+  netCents: number
+  discounts: readonly { kind: string; amountCents: number }[]
+  extras: readonly { kind: string; amountCents: number }[]
+  approvedByUserId: string
+  payer: 'guardian' | 'student'
+}
 // Oturum: rol ve velinin seçili çocuğu. API oturumu üyelik bağlantılarını (`links`) da taşır;
 // çevrimdışı demoda bağlantılar sabit demo kimliklerinden türetilir (`lib/scope.ts`).
 export type Session = { role: Role; childId?: string; links?: readonly ActorLink[] }
@@ -255,12 +267,28 @@ export function gradeQuiz(
     topicScores,
   }
 }
+type Enrollment = {
+  prospectId: string
+  classId: string
+  totalCents: number
+  count: number
+  startDate: string
+  contractTitle: string
+  /** Tarifeli kayıtta dolu (`lib/enrollment.ts`); çevrimdışı demo vermez. */
+  academicYear?: number
+  extras?: readonly { kind: FeeItemKind; amountCents: number }[]
+  guardian?:
+    | { kind: 'self' }
+    | { kind: 'existing'; parentId: string }
+    | { kind: 'new'; name: string; phone: string; relationship: string }
+  terms?: ContractTerms
+}
+const SCHOOL_CONTRACT_TITLE = 'Özel okul eğitim sözleşmesi'
+
 /**
- * Kesin kayıt: açık aşamadaki adayı öğrenci, veli, taksit ve sözleşmeyle birlikte kayda alır
- * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetkiyi kendisi denetlemez (`payInvoice` gibi); API
- * önce `requireAuthorized(actor, 'prospect.enroll', …)` çalıştırır.
+ * Çevrimdışı demo girişi: `registrationSchema` (tam TL).
  * TODO(crm-enroll): çevrimdışı demo çağıranları (Vue `Crm.vue`, mobil `model/operations.ts`) yetki
- * denetlemez; demo kalıcılığı silinince kalkar. Kesin kayıt API ucu D16c'dedir (`TODO(api-prospect-enroll)`).
+ * denetlemez; demo kalıcılığı silinince kalkar.
  */
 export function enrollProspect(
   state: State,
@@ -269,6 +297,27 @@ export function enrollProspect(
   now = new Date().toISOString(),
 ) {
   const data = registrationSchema.parse(input)
+  return applyEnrollment(
+    state,
+    {
+      prospectId: data.prospectId,
+      classId: data.classId,
+      totalCents: data.total * 100,
+      count: data.count,
+      startDate: data.startDate,
+      contractTitle: SCHOOL_CONTRACT_TITLE,
+    },
+    makeId,
+    now,
+  )
+}
+
+/**
+ * Kesin kayıt: açık aşamadaki adayı öğrenci, veli, taksit ve sözleşmeyle birlikte kayda alır
+ * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Sözleşme yalnız kendi taksitlerini listeler
+ * (`invoiceIds`, DOM-FIN-012).
+ */
+export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, now: string) {
   const prospect = state.prospects.find((p) => p.id === data.prospectId)
   const cls = state.classes.find((c) => c.id === data.classId && c.isActive)
   if (!prospect || !cls || !state.branches.some((b) => b.id === cls.branchId && b.isActive))
@@ -288,18 +337,23 @@ export function enrollProspect(
     )
   if (state.students.filter((s) => s.classId === cls.id && s.isActive).length >= cls.capacity)
     throw new DomainError('class_capacity_full', 'Seçilen sınıfın kontenjanı dolu.')
+  const guardian = data.guardian
+  const existingParent =
+    guardian?.kind === 'existing'
+      ? state.parents.find((p) => p.id === guardian.parentId)
+      : undefined
   const student = {
     id: makeId('s'),
     name: prospect.name,
     classId: cls.id,
-    parentId: makeId('p'),
+    parentId: existingParent?.id ?? makeId('p'),
     email: prospect.email,
     phone: prospect.phone,
     joinedAt: now,
     isActive: true,
     progress: 0,
   }
-  const amounts = installmentAmounts(data.total * 100, data.count)
+  const amounts = installmentAmounts(data.totalCents, data.count)
   const start = new Date(`${data.startDate}T09:00:00.000Z`)
   if (Number.isNaN(+start) || dayKey(start) !== data.startDate)
     throw new DomainError('invalid_payment_date', 'Geçerli bir ödeme tarihi girin.')
@@ -324,21 +378,50 @@ export function enrollProspect(
       paidAt: null,
       method: null,
       reminderAt: null,
+      ...(data.terms ? { feeKind: 'tuition' as const } : {}),
+      ...(data.academicYear === undefined ? {} : { academicYear: data.academicYear }),
     }
   })
-  state.parents.push({
-    id: student.parentId,
-    name: `${student.name} velisi`,
-    studentIds: [student.id],
-  })
+  // Ek hizmetler ayrı borç kalemidir, öğrenim ücretine gömülmez (DOM-FIN-003).
+  const extraInvoices = (data.extras ?? []).map((extra, i) => ({
+    id: makeId('inv'),
+    studentId: student.id,
+    installment: amounts.length + i + 1,
+    amount: extra.amountCents,
+    dueDate: start.toISOString(),
+    paidAt: null,
+    method: null,
+    reminderAt: null,
+    feeKind: extra.kind,
+    ...(data.academicYear === undefined ? {} : { academicYear: data.academicYear }),
+  }))
+  if (existingParent) existingParent.studentIds.push(student.id)
+  else
+    state.parents.push({
+      id: student.parentId,
+      name:
+        guardian?.kind === 'new'
+          ? guardian.name
+          : guardian?.kind === 'self'
+            ? student.name
+            : `${student.name} velisi`,
+      studentIds: [student.id],
+      ...(guardian?.kind === 'new'
+        ? { phone: guardian.phone, relationship: guardian.relationship }
+        : {}),
+    })
   state.students.push(student)
-  state.invoices.push(...invoices)
+  const allInvoices = [...invoices, ...extraInvoices]
+  state.invoices.push(...allInvoices)
   const contract = {
     id: makeId('contract'),
     studentId: student.id,
     date: now,
-    amount: data.total * 100,
-    title: 'Özel okul eğitim sözleşmesi',
+    amount: allInvoices.reduce((sum, invoice) => sum + invoice.amount, 0),
+    title: data.contractTitle,
+    invoiceIds: allInvoices.map((invoice) => invoice.id),
+    ...(data.academicYear === undefined ? {} : { academicYear: data.academicYear }),
+    ...(data.terms ?? {}),
   }
   state.contracts.push(contract)
   prospect.studentId = student.id

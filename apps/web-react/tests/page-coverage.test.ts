@@ -13,11 +13,7 @@ import { isMigratedPage } from '../src/lib/page-coverage.ts'
  * taşınınca buradan silinir, yeni menü sayfası React karşılığı olmadan eklenirse test kırılır.
  * Ayrıntı ve öncelik: docs/sayfalar.md "React'te henüz yer tutucu".
  */
-const KNOWN_PLACEHOLDERS: readonly string[] = [
-  'onburo/adaylar',
-  'onburo/deneme-dersi-takvimi',
-  'onburo/kayit-islemleri',
-]
+const KNOWN_PLACEHOLDERS: readonly string[] = []
 
 /** Kurum türünde bulunan menü sayfaları: modülü o türde açılabilen ya da modülsüz olanlar. */
 function pagesFor(role: RoleKey, type: (typeof INSTITUTION_TYPES)[number]) {

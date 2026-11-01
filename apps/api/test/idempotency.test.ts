@@ -297,7 +297,7 @@ describe('Idempotency-Key (api-tasarimi.md §7, DOM-FIN aynı ödeme iki kez iş
 
     test('zorunlu uçta anahtar yoksa 400 idempotency_key_required; kayıt değişmez', async () => {
       const { created, cookie } = await signedIn()
-      const response = await post(cookie, first.id, { method: 'Nakit' })
+      const response = await post(cookie, first.id, { method: 'Banka havalesi' })
       assert.equal(response.statusCode, 400)
       assert.equal(response.json().code, 'idempotency_key_required')
       const row = await findRecord(db, created.id, 'invoices', first.id)
@@ -309,7 +309,7 @@ describe('Idempotency-Key (api-tasarimi.md §7, DOM-FIN aynı ödeme iki kez iş
       const response = await post(
         cookie,
         first.id,
-        { method: 'Nakit' },
+        { method: 'Banka havalesi' },
         { 'idempotency-key': 'kısa' },
       )
       assert.equal(response.statusCode, 400)
@@ -319,10 +319,10 @@ describe('Idempotency-Key (api-tasarimi.md §7, DOM-FIN aynı ödeme iki kez iş
     test('tekrar aynı yanıtı Idempotent-Replayed başlığıyla döner; farklı gövde 422', async () => {
       const { cookie } = await signedIn()
       const headers = { 'idempotency-key': key(7) }
-      const firstResponse = await post(cookie, first.id, { method: 'Nakit' }, headers)
+      const firstResponse = await post(cookie, first.id, { method: 'Banka havalesi' }, headers)
       assert.equal(firstResponse.statusCode, 200)
       assert.equal(firstResponse.headers['idempotent-replayed'], undefined)
-      const replay = await post(cookie, first.id, { method: 'Nakit' }, headers)
+      const replay = await post(cookie, first.id, { method: 'Banka havalesi' }, headers)
       assert.equal(replay.statusCode, 200)
       assert.equal(replay.headers['idempotent-replayed'], 'true')
       assert.deepEqual(replay.json(), firstResponse.json())

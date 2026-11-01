@@ -18,6 +18,9 @@ export const WORKFLOW_PATHS = new Set([
 ])
 
 export const MIGRATED = new Set([
+  'onburo/adaylar',
+  'onburo/deneme-dersi-takvimi',
+  'onburo/kayit-islemleri',
   'yonetici/dashboard',
   'onburo/dashboard',
   'ogretmen/dashboard',

@@ -33,7 +33,6 @@ import {
   archiveCommand,
   executeTutoringCommand,
   executeWorkflowCommand,
-  payInvoiceCommand,
   recordGradeCommand,
   recordAttendanceCommand,
   restoreCommand,
@@ -52,8 +51,6 @@ import {
   commandHeadersSchema,
   commandResponseSchema,
   gradeParamsSchema,
-  invoiceParamsSchema,
-  payInvoiceBodySchema,
   teacherParamsSchema,
   tutorAttendanceBodySchema,
   tutorCancelBodySchema,
@@ -238,35 +235,6 @@ export function registerCommandRoutes(app: FastifyInstance) {
     WRITE_ACTION_ROLES[action].map((role) => `\`${role}\``).join(', ')
 
   // --- Ödeme --------------------------------------------------------------------------------
-  // Tahsilat kaydı yalnız yönetici ve ön büronundur (core `invoice.pay`, DOM-FIN-052). Velinin
-  // çevrim içi ödemesi (`invoice.payOnline`) ödeme sağlayıcısını bekler; uç yoktur.
-  // TODO(payment-provider): sağlayıcı seçilince `invoice.payOnline` ucu eklenir.
-  typed.post(
-    '/api/v1/invoices/:invoiceId/pay',
-    {
-      preValidation: operationGuard('invoice.pay'),
-      schema: {
-        operationId: 'payInvoice',
-        tags: ['invoices'],
-        summary: 'Taksiti öde',
-        description: `Taksiti ödenmiş işaretler (core \`payInvoice\`); yetki core \`authorize('invoice.pay')\` (DOM-FIN-052). \`Idempotency-Key\` zorunludur; ödenmiş taksit 409 \`invoice_already_paid\`. Roller: ${rolesOf('invoice.pay')}.`,
-        headers: commandHeadersSchema('required'),
-        params: invoiceParamsSchema,
-        body: payInvoiceBodySchema,
-        response,
-      },
-    },
-    async (request, reply) =>
-      sendCommand(
-        reply,
-        await payInvoiceCommand(
-          contextOf(request),
-          request.params.invoiceId,
-          request.body.method,
-          options(request, 'required'),
-        ),
-      ),
-  )
 
   // --- Yoklama ------------------------------------------------------------------------------
   // Yetki core `attendance.record`: öğretmen ders verdiği sınıfta aynı gün, yönetici gerekçeyle.

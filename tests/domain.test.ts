@@ -106,6 +106,19 @@ test('Kesin kayıt tüm ilişkileri ve sözleşme toplamını birlikte oluşturu
     /zaten/,
   )
 })
+test('DOM-FIN-012: kesin kayıt sözleşmesi yalnız kendi taksitlerini listeler', () => {
+  const s = createSeed()
+  let n = 0
+  const { student, contract } = enrollProspect(
+    s,
+    { prospectId: 'pr1', classId: 'c1', total: 1000, count: 3, startDate: '2026-01-31' },
+    (p) => `${p}-test-${n++}`,
+  )
+  assert.deepEqual(
+    contract.invoiceIds,
+    s.invoices.filter((i) => i.studentId === student.id).map((i) => i.id),
+  )
+})
 test('Dolu sınıfa veya geçersiz tarihle kayıt kısmi veri oluşturmaz', () => {
   const s = createSeed()
   s.classes[0]!.capacity = 4

@@ -99,6 +99,41 @@
       "when": 1793395893262,
       "tag": "0013_create_skill_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793552022390,
+      "tag": "0014_create_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793552520059,
+      "tag": "0015_create_fee_tariffs",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793552840037,
+      "tag": "0016_add_enrollment_terms",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793553850415,
+      "tag": "0017_create_student_withdrawals",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793555343403,
+      "tag": "0018_relax_identity_year",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,20 @@
 # Değişiklikler
 
+## 2.21.0
+
+Kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-001, DOM-FIN-012, DOM-FIN-030…033).
+
+- `lib/enrollment.ts`: `enrollmentFormSchema`, `enrollmentFormToBody`, `previewEnrollment`, `ENROLLMENT_STEP_FIELDS`, `enrollProspectSchema`, `enrollProspectWithTariff`, `priceEnrollment`, `findParentMatches`, `isValidTurkishId` eklendi; kesin kayıt tutarı tarifeden hesaplanır (DOM-FIN-002, -003, -020…-022, DOM-KAY-011…-013). Demo girişi `enrollProspect` ve `registrationSchema` aynı kaldı.
+- `reversePayment` ayrılış kaydı olan öğrenciyi reddeder; `quoteWithdrawal` iade ve borcu netleştirir; `planTariffUpdate` verilmeyen alanı korur; `lib/scope.ts` veli telefonunu öğretmen ve öğrenciden gizler.
+- Kesin kayıt sözleşmesi `invoiceIds` taşır; belge yalnız kendi taksitlerini çözümler (DOM-FIN-012).
+- `lib/payments.ts`: `recordPaymentSchema`, `reversePaymentSchema`, `paymentSettingsSchema`, `planPayment`, `reversePayment`, `openAmount` eklendi. Demo girişi `payInvoice` aynı kaldı.
+- `lib/authorize.ts` ve `modules/commands.ts`: `payment.reverse`, `tariff.manage` ve `student.withdraw` (yalnız yönetici), modül `finance`.
+- `lib/csv.ts`: `csvCell`, `CSV_SEPARATOR` web'den taşındı, `csvAmount` eklendi. `lib/finance-export.ts`: dönem doğrulaması, `paymentLines`, `refundLines`, `invoiceLines`, `financeSummary`, CSV üreticileri eklendi (IST-111).
+- `lib/payments.ts`: `paymentFormSchema`, `parseAmountInput`, `amountInputValue` eklendi; geçici `referenceOptional` kaldırıldı.
+- `lib/prospect-form.ts`: aday formu şeması, API gövdesine çevirme, görüşme anı ve yaklaşan görüşmeler eklendi; aydınlatma sürümü `PROSPECT_PRIVACY_NOTICE_VERSION`.
+- `lib/withdrawals.ts`: `withdrawalFormSchema`, `WITHDRAWAL_REASON_LABELS`, `withdrawalQuoteSchema`, `withdrawStudentSchema`, `payRefundSchema`, `quoteWithdrawal`, `withdrawStudent`, `planRefundPayment`, `refundDueDate`, `payerNameOf`, `isValidTurkishIban` eklendi (DOM-FIN-040, -041, DOM-KAY-024).
+- `lib/fee-tariffs.ts`: `feeItemSchema`, `createFeeTariffSchema`, `updateFeeTariffSchema`, `publishFeeTariffSchema`, `feeDiscountSchema`, `planTariffCreate`, `planTariffUpdate`, `planTariffPublish` eklendi (DOM-FIN-002, -004, -006, -020).
+
 ## 2.20.0
 
 Veli ve öğrencinin randevu alabileceği saatleri okuyan saf kural eklendi (W20a; `docs/domain/iletisim-ve-veli.md` DOM-ILT-105). Uç ve kanca ayrı adımdadır, ekran W20b'dedir. Başka açık dal da 2.19.0 kullanıyor; birleştirmede sürüm çözülecek.

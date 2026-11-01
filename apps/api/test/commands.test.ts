@@ -105,8 +105,7 @@ function rows(sample: Partial<Record<CollectionName, readonly Record<string, unk
 }
 
 const UNPAID = SEED.invoices.find((item) => item.studentId === 's1' && !item.paidAt)
-const PAID = SEED.invoices.find((item) => item.studentId === 's1' && item.paidAt)
-if (!UNPAID || !PAID) throw new Error('örnek veride s1 taksitleri eksik')
+if (!UNPAID) throw new Error('örnek veride s1 taksitleri eksik')
 
 /** c1'de sonucu girilmemiş öğrenci (sınav düzeyi c1'in düzeyidir). */
 const RESULTLESS = classStudents('c1').find(
@@ -406,7 +405,6 @@ describe('yazma uçları', () => {
         ...Object.entries(ASSESSMENT_ROUTES)
           .filter(([, route]) => route.idempotency === 'required')
           .map(([command]) => `POST /api/v1/assessment/${command}`),
-        'POST /api/v1/invoices/{invoiceId}/pay',
         'POST /api/v1/grades',
         // İletişim (routes/communication.ts): oluşturma ve mesaj gönderimi.
         'POST /api/v1/announcements',
@@ -427,6 +425,15 @@ describe('yazma uçları', () => {
         'POST /api/v1/classes',
         // Aday oluşturma (routes/prospects.ts; DOM-KAY-002).
         'POST /api/v1/prospects',
+        // Kesin kayıt borç doğurur (routes/prospects.ts; DOM-KAY-035).
+        'POST /api/v1/prospects/{prospectId}/enroll',
+        // Tahsilat, iptal ve nakit ayarı (routes/payments.ts; DOM-FIN-031, DOM-FIN-033).
+        'POST /api/v1/payments',
+        'POST /api/v1/payments/{paymentId}/reverse',
+        'PATCH /api/v1/payment-settings',
+        // Ayrılış ve iade (routes/withdrawals.ts; DOM-FIN-041).
+        'POST /api/v1/students/{studentId}/withdraw',
+        'POST /api/v1/withdrawals/{withdrawalId}/pay-refund',
       ]
       assert.deepEqual(required.sort(), expected.sort())
     })
@@ -621,117 +628,6 @@ describe('yazma uçları', () => {
   })
 
   // --- Ödeme --------------------------------------------------------------------------------
-
-  describe('POST /invoices/:invoiceId/pay (DOM-FIN aynı ödeme iki kez işlenmez)', () => {
-    const url = `/api/v1/invoices/${UNPAID.id}/pay`
-    const key = (n: number) => ({ 'idempotency-key': `test-pay-${String(n).padStart(4, '0')}` })
-
-    test('DOM-FIN-052: ön büro taksiti öder; tekrar aynı yanıtı Idempotent-Replayed ile döner', async () => {
-      const a = await institution()
-      const desk = await member(a.id, 'onburo')
-      const first = await post(url, desk, { method: 'Kredi kartı' }, key(1))
-      assert.equal(first.statusCode, 200, first.body)
-      assert.deepEqual(first.json().data.entity, { collection: 'invoices', id: UNPAID.id })
-      const stored = await findRecord(db, a.id, 'invoices', UNPAID.id)
-      assert.equal(stored?.data.paidAt, FIXED_NOW.toISOString())
-      assert.equal(stored?.data.method, 'Kredi kartı')
-      const replay = await post(url, desk, { method: 'Kredi kartı' }, key(1))
-      assert.equal(replay.headers['idempotent-replayed'], 'true')
-      assert.deepEqual(replay.json(), first.json())
-      assert.equal(await version(a.id, 'invoices', UNPAID.id), 2)
-    })
-
-    test('başka anahtarla mükerrer ödeme 409 invoice_already_paid; kayıt değişmez', async () => {
-      const a = await institution()
-      assert.equal((await post(url, a.adminCookie, { method: 'Nakit' }, key(2))).statusCode, 200)
-      assertError(
-        await post(url, a.adminCookie, { method: 'Nakit' }, key(3)),
-        409,
-        'invoice_already_paid',
-      )
-      assertError(
-        await post(`/api/v1/invoices/${PAID.id}/pay`, a.adminCookie, { method: 'Nakit' }, key(4)),
-        409,
-        'invoice_already_paid',
-      )
-      assert.equal(await version(a.id, 'invoices', UNPAID.id), 2)
-      assert.equal(await version(a.id, 'invoices', PAID.id), 1)
-    })
-
-    test('anahtarsız 400 idempotency_key_required, geçersiz gövde 400; kayıt değişmez', async () => {
-      const a = await institution()
-      assertError(
-        await post(url, a.adminCookie, { method: 'Nakit' }),
-        400,
-        'idempotency_key_required',
-      )
-      const invalid = await post(url, a.adminCookie, { method: '' }, key(5))
-      assertError(invalid, 400, 'validation_failed')
-      // Yöntem listesi core `paymentInputSchema`'sındadır; listede olmayan değer (demo yöntemi
-      // dahil) 400 ve Türkçe alan mesajı verir.
-      for (const [index, method] of ['Çek', 'Demo Sanal POS'].entries()) {
-        const rejected = await post(url, a.adminCookie, { method }, key(20 + index))
-        assertError(rejected, 400, 'validation_failed')
-        assert.equal(rejected.json().issues[0].path[0], 'method')
-        assert.equal(rejected.json().issues[0].message, 'Ödeme yöntemini seçin.')
-      }
-      assert.equal(await version(a.id, 'invoices', UNPAID.id), 1)
-    })
-
-    test('DOM-FIN-052: tahsilat kaydı yalnız yönetici ve ön büroda; öğretmen, veli ve öğrenci 403', async () => {
-      const a = await institution()
-      for (const [role, links] of [
-        ['ogretmen', [{ kind: 'teacher', recordId: 't1' }]],
-        ['veli', [{ kind: 'child', recordId: 's1' }]],
-        ['ogrenci', [{ kind: 'student', recordId: 's1' }]],
-      ] as const) {
-        const cookie = await member(a.id, role, [...links])
-        assertError(await post(url, cookie, { method: 'Nakit' }, key(6)), 403, 'forbidden')
-      }
-      assert.equal(await version(a.id, 'invoices', UNPAID.id), 1)
-    })
-
-    test('olmayan taksit 404; başka kurumun taksiti 404 ve B değişmez', async () => {
-      const a = await institution()
-      const b = await institution()
-      const foreign = { ...UNPAID, id: 'test-inv-b-only' }
-      await insertMissingRecords(
-        db,
-        b.id,
-        [{ collection: 'invoices', id: foreign.id, data: foreign }],
-        FIXED_NOW,
-      )
-      assertError(
-        await post('/api/v1/invoices/test-inv-yok/pay', a.adminCookie, { method: 'Nakit' }, key(7)),
-        404,
-        'not_found',
-      )
-      assertError(
-        await post(
-          `/api/v1/invoices/${foreign.id}/pay`,
-          a.adminCookie,
-          { method: 'Nakit' },
-          key(8),
-        ),
-        404,
-        'not_found',
-      )
-      const stored = await findRecord(db, b.id, 'invoices', foreign.id)
-      assert.equal(stored?.version, 1)
-      assert.equal(stored?.data.paidAt, null)
-    })
-
-    test('finans modülü kapalı 403; oturumsuz 401', async () => {
-      const a = await institution({ enabledModules: { ...SEED.modules, finance: false } })
-      assertError(
-        await post(url, a.adminCookie, { method: 'Nakit' }, key(9)),
-        403,
-        'module_disabled',
-      )
-      assertError(await post(url, null, { method: 'Nakit' }, key(9)), 401)
-      assert.equal(await version(a.id, 'invoices', UNPAID.id), 1)
-    })
-  })
 
   // --- Sınıf yoklaması ----------------------------------------------------------------------
 
@@ -1068,7 +964,12 @@ describe('yazma uçları', () => {
       const student = await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
       const key = { 'idempotency-key': 'test-ogrenci-0001' }
       assertError(
-        await post(`/api/v1/invoices/${UNPAID.id}/pay`, student, { method: 'Nakit' }, key),
+        await post(
+          '/api/v1/payments',
+          student,
+          { studentId: 's1', amountCents: 100, method: 'Banka havalesi', reference: 'TR-X' },
+          key,
+        ),
         403,
       )
       assertError(

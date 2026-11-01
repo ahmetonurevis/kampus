@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
@@ -13,7 +14,10 @@ import { conversationMessagePage } from '../src/db/conversation-messages.ts'
 import { tryLockIdempotencyKey } from '../src/db/idempotency.ts'
 import { insertMissingRecords, lockInstitution, writeRecords } from '../src/db/records.ts'
 import { institutions } from '../src/db/schema/auth.ts'
+import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
+import { paymentAllocations, payments } from '../src/db/schema/payments.ts'
 import { records } from '../src/db/schema/records.ts'
+import { studentWithdrawals } from '../src/db/schema/withdrawals.ts'
 import { AppError } from '../src/errors.ts'
 import { bookAppointmentCommand } from '../src/services/appointments.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
@@ -21,9 +25,12 @@ import { executeWorkflowCommand, recordAttendanceCommand } from '../src/services
 import { sendMessageCommand } from '../src/services/communication.ts'
 import {
   createProspectCommand,
+  enrollProspectCommand,
   scheduleProspectMeetingCommand,
   scheduleTrialLessonCommand,
 } from '../src/services/prospects.ts'
+import { recordPaymentCommand } from '../src/services/payments.ts'
+import { withdrawStudentCommand } from '../src/services/withdrawals.ts'
 import { answerQuestionCommand } from '../src/services/questions.ts'
 import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, createMember, FIXED_NOW } from './support/app.ts'
@@ -684,6 +691,217 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     assert.equal(JSON.stringify(reason.issues ?? []).includes(createdId), false)
     assert.equal(reason.message.includes(createdId), false)
     assert.equal(await prospectCount(ctx.institutionId), 1)
+  })
+
+  test('DOM-KAY-010: son kontenjana eşzamanlı iki kesin kayıt: yalnız biri yazılır, öteki 422 class_capacity_full', async () => {
+    const ctx = await frontDeskContext()
+    const seed = createSeed(FIXED_NOW)
+    const seat = seed.classes.find((item) => item.id === 'c1')
+    const open = seed.prospects.filter((item) => item.stage === 'Yeni aday').slice(0, 2)
+    assert.ok(seat)
+    assert.equal(open.length, 2)
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        { collection: 'classes', id: seat.id, data: { ...seat, capacity: 1 } },
+        ...open.map((data) => ({
+          collection: 'prospects' as const,
+          id: data.id,
+          data: { ...data },
+        })),
+      ],
+      FIXED_NOW,
+    )
+    await db.insert(feeTariffs).values({
+      institutionId: ctx.institutionId,
+      id: randomUUID(),
+      academicYear: FIXED_NOW.getUTCFullYear(),
+      versionNumber: 1,
+      status: 'published',
+      items: [
+        {
+          kind: 'tuition',
+          level: null,
+          amountCents: 100_000,
+          unit: 'year',
+          vatBasisPoints: 1000,
+          vatEffectiveDate: '2026-01-01',
+          announcedAmountCents: 100_000,
+        },
+      ],
+      announcedDate: '2026-05-01',
+      publishedByUserId: ctx.actor.userId,
+      publishedAt: FIXED_NOW,
+    })
+    const enrollment = (number: string) => ({
+      classId: seat.id,
+      installmentCount: 2,
+      firstDueDate: '2026-11-15',
+      identity: { kind: 'tc', number, birthDate: '2013-03-01' },
+      guardian: { name: 'Test Veli', phone: '05559990123', relationship: 'mother' },
+    })
+    const numbers = ['10000000146', '11111111110']
+    const outcomes = await Promise.allSettled(
+      open.map((item, index) =>
+        enrollProspectCommand(
+          ctx,
+          item.id,
+          enrollment(numbers[index] ?? ''),
+          keyed(`pg-enroll-000${String(index)}`),
+        ),
+      ),
+    )
+    assert.deepEqual(
+      outcomes.filter((item) => item.status === 'fulfilled').map((item) => item.value.statusCode),
+      [201],
+    )
+    const reason: unknown = outcomes.find((item) => item.status === 'rejected')?.reason
+    assert.ok(
+      reason instanceof AppError &&
+        reason.statusCode === 422 &&
+        reason.code === 'class_capacity_full',
+      String(reason),
+    )
+    const rows = await db
+      .select({ collection: records.collection, n: count() })
+      .from(records)
+      .where(eq(records.institutionId, ctx.institutionId))
+      .groupBy(records.collection)
+    const countOf = (name: string) => rows.find((row) => row.collection === name)?.n
+    assert.equal(countOf('students'), 1)
+    assert.equal(countOf('parents'), 1)
+    assert.equal(countOf('contracts'), 1)
+    assert.equal(countOf('invoices'), 2)
+  })
+
+  test('DOM-FIN-031, DOM-FIN-050: eşzamanlı tahsilat: aynı referansla biri yazılır, dekont numarası ardışıktır', async () => {
+    const ctx = await frontDeskContext()
+    const invoice = (id: string, installment: number) => ({
+      id,
+      studentId: 's1',
+      installment,
+      amount: 10_000,
+      dueDate: `2026-1${String(installment)}-15T09:00:00.000Z`,
+      paidAt: null,
+      method: null,
+      reminderAt: null,
+    })
+    const student = createSeed(FIXED_NOW).students.find((item) => item.id === 's1')
+    assert.ok(student)
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        { collection: 'students', id: 's1', data: { ...student } },
+        { collection: 'invoices', id: 'pg-inv-0', data: invoice('pg-inv-0', 0) },
+        { collection: 'invoices', id: 'pg-inv-1', data: invoice('pg-inv-1', 1) },
+      ],
+      FIXED_NOW,
+    )
+    const pay = (reference: string, amountCents: number, key: string) =>
+      recordPaymentCommand(
+        ctx,
+        { studentId: 's1', amountCents, method: 'Banka havalesi', reference },
+        keyed(key),
+      )
+    const sameReference = await Promise.allSettled([
+      pay('TR-AYNI', 1_000, 'pg-pay-0001'),
+      pay('TR-AYNI', 1_000, 'pg-pay-0002'),
+    ])
+    assert.equal(sameReference.filter((item) => item.status === 'fulfilled').length, 1)
+    const reason: unknown = sameReference.find((item) => item.status === 'rejected')?.reason
+    assert.ok(
+      reason instanceof AppError && reason.code === 'payment_reference_used',
+      String(reason),
+    )
+
+    const results = await Promise.all([
+      pay('TR-A', 1_000, 'pg-pay-0003'),
+      pay('TR-B', 1_000, 'pg-pay-0004'),
+      pay('TR-C', 1_000, 'pg-pay-0005'),
+    ])
+    assert.equal(results.length, 3)
+    const rows = await db
+      .select({ receiptNumber: payments.receiptNumber })
+      .from(payments)
+      .where(eq(payments.institutionId, ctx.institutionId))
+    assert.deepEqual(rows.map((row) => row.receiptNumber).sort(), [1, 2, 3, 4])
+    const [allocated] = await db
+      .select({ total: sql<string>`sum(${paymentAllocations.amountCents})` })
+      .from(paymentAllocations)
+      .where(eq(paymentAllocations.institutionId, ctx.institutionId))
+    assert.equal(Number(allocated?.total), 4_000)
+  })
+
+  test('DOM-FIN-041: eşzamanlı iki ayrılış: yalnız biri yazılır, öteki 409 student_already_withdrawn', async () => {
+    const base = await frontDeskContext()
+    const admin = await createMember(app, base.institutionId, 'yonetici')
+    const ctx: ServiceContext = {
+      ...base,
+      actor: { userId: admin.id, role: 'yonetici', membershipId: admin.membershipId },
+    }
+    const student = createSeed(FIXED_NOW).students.find((item) => item.id === 's1')
+    assert.ok(student)
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        { collection: 'students', id: 's1', data: { ...student } },
+        {
+          collection: 'contracts',
+          id: 'pg-contract',
+          data: {
+            id: 'pg-contract',
+            studentId: 's1',
+            date: '2026-01-01T09:00:00.000Z',
+            amount: 10_000,
+            title: 'Sözleşme',
+            invoiceIds: ['pg-wd-inv'],
+          },
+        },
+        {
+          collection: 'invoices',
+          id: 'pg-wd-inv',
+          data: {
+            id: 'pg-wd-inv',
+            studentId: 's1',
+            installment: 1,
+            amount: 10_000,
+            dueDate: '2026-09-15T09:00:00.000Z',
+            paidAt: null,
+            method: null,
+            reminderAt: null,
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const input = {
+      withdrawalDate: '2026-10-01',
+      termStartDate: '2026-09-07',
+      attendedUnits: 18,
+      totalUnits: 180,
+      reason: 'relocation',
+    }
+    const outcomes = await Promise.allSettled([
+      withdrawStudentCommand(ctx, 's1', input, keyed('pg-withdraw-1')),
+      withdrawStudentCommand(ctx, 's1', input, keyed('pg-withdraw-2')),
+    ])
+    assert.deepEqual(
+      outcomes.filter((item) => item.status === 'fulfilled').map((item) => item.value.statusCode),
+      [201],
+    )
+    const reason: unknown = outcomes.find((item) => item.status === 'rejected')?.reason
+    assert.ok(
+      reason instanceof AppError && reason.code === 'student_already_withdrawn',
+      String(reason),
+    )
+    const rows = await db
+      .select({ id: studentWithdrawals.id })
+      .from(studentWithdrawals)
+      .where(eq(studentWithdrawals.institutionId, ctx.institutionId))
+    assert.equal(rows.length, 1)
   })
 
   test('DOM-KAY-033: iki adaya aynı odada eşzamanlı görüşme: yalnız biri yazılır, öteki 409 meeting_conflict', async () => {

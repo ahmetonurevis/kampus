@@ -70,6 +70,7 @@ export const MIGRATED = new Set([
   'onburo/talepler',
   'onburo/adaylar',
   'onburo/deneme-dersi-takvimi',
+  'onburo/kayit-islemleri',
   // Menüde olmayan aday detayı (`/<rol>/aday/:id`, `resolveProspectDetail`).
   'onburo/aday',
   'yonetici/aday',

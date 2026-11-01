@@ -150,6 +150,9 @@ const ProspectDetailPage = lazy(async () => ({
 const MeetingsPage = lazy(async () => ({
   default: (await import('./crm/MeetingsPage.tsx')).MeetingsPage,
 }))
+const RegistrationsPage = lazy(async () => ({
+  default: (await import('./crm/RegistrationsPage.tsx')).RegistrationsPage,
+}))
 /** Taşınmış sayfayı çizer; `Suspense` içinde kullanılır. */
 export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
   if (page.path === 'dashboard') return <DashboardPage page={page} />
@@ -252,6 +255,8 @@ export function MigratedPage({ role, page }: { role: RoleKey; page: NavPage }) {
       return <ProspectsPage page={page} />
     case 'onburo/deneme-dersi-takvimi':
       return <MeetingsPage page={page} />
+    case 'onburo/kayit-islemleri':
+      return <RegistrationsPage page={page} />
     case 'onburo/aday':
     case 'yonetici/aday':
       return <ProspectDetailPage page={page} />

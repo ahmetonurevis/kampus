@@ -13,6 +13,7 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { prospectStageLabel } from '@kampus/school-core/lib/prospects.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { EnrollPanel } from './EnrollPanel.tsx'
 import { ProspectNoteForm } from './ProspectNoteForm.tsx'
 import { ProspectPlanPanel } from './ProspectPlanPanel.tsx'
 import { ProspectStageForm } from './ProspectStageForm.tsx'
@@ -101,6 +102,7 @@ function Detail({
   const { session } = useAuth()
   const type = session?.institution.type ?? 'school'
   const plan = useDetailPanel('planlama')
+  const enroll = useDetailPanel('kayit')
   const branches = useCoreAll('branches')
   const branch = branches.data?.find((entry) => entry.record.id === prospect.branchId)?.record.name
   const classes = useCoreAll(
@@ -136,6 +138,10 @@ function Detail({
                 Deneme dersi planla
               </Button>
             ) : null}
+            <Button onClick={() => enroll.open(prospect.id)} disabled={!open}>
+              <Icon name="UserRoundPlus" size={17} aria-hidden="true" />
+              Kesin kayda dönüştür
+            </Button>
           </>
         }
       />
@@ -269,6 +275,7 @@ function Detail({
         canPickTeacher={canPickTeacher}
         onClose={plan.close}
       />
+      <EnrollPanel prospectId={enroll.selectedId} onClose={enroll.close} />
     </>
   )
 }

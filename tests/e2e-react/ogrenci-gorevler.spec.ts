@@ -307,6 +307,8 @@ test.describe('öğrenci görevleri: yazma', () => {
     await expect(taskTable(page, 'Atanan yazma ödevleri')).toContainText('Hafta sonu yazısı')
     await openFromList(page, 'Hafta sonu yazısı', 'Yazmaya başla')
     await expect(page).toHaveURL(new RegExp(`yaz=${assignmentId}`))
+    // Kaynak öğrenciyle paylaşılmadığı için yönerge okunamaz: açık yedek metin görünür (DOM-KYN-024).
+    await expect(page.getByText(/Yönerge bu ekranda gösterilemiyor/)).toBeVisible()
 
     const editor = page.getByLabel('Metniniz')
     await editor.fill('Too short text.')

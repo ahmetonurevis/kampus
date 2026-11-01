@@ -1684,6 +1684,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/parents/{parentId}/reveal-contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Veli iletişim bilgisini göster
+         * @description Öğretmenin, ders verdiği öğrencinin velisinin telefonunu veya e-postasını tam değeriyle açması (core `revealParentContact`, DOM-YTK-055, DOM-YTK-052). Listede (`GET /collections/parents`) öğretmen bu alanları maskeli görür (`0532 *** ** 12`, `a***@gmail.com`). Gövde `{ studentId, field }`, `field` `phone` veya `email`; bilinmeyen alan 400. Yalnız öğrencinin sınıfında dersi ya da sınıf rehberliği olan öğretmen, yalnız o öğrenciye bağlı veli için: kapsam dışı öğrenci, öğrenciye bağlı olmayan, olmayan veya başka kurumun velisi 404. Alan boşsa 422 `parent_contact_missing`. Her başarılı açılış `audit_log`'a `parent_contact.reveal` olarak yazılır (`entityType` `parents`, `entityId` veli, `changes.fields` alan adı, `changes.studentId` öğrenci); değer denetim kaydına ve loga yazılmaz. Yanıt `Cache-Control: no-store` taşır; istemci değeri yalnız bellekte tutar. Açılış kullanıcı ve kurum başına dakikada 10 ile sınırlıdır (geçersiz ve kapsam dışı denemeler dahil), aşılırsa 429 `rate_limited` ve `Retry-After`. `Idempotency-Key` kullanılmaz: işlem kayıt oluşturmaz, tekrar yalnız yeni bir denetim kaydıdır ve her açılışın kaydı istenir. Modül `communication`; kapalıysa 403 `module_disabled`. Roller: `ogretmen` (yönetici ve ön büro tam değeri listede görür; öğrenci ve veli hiç görmez).
+         */
+        post: operations["revealParentContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/requests": {
         parameters: {
             query?: never;
@@ -3829,6 +3849,18 @@ export interface components {
             /** @description `false`: saat dolu ("Dolu"); neden hiçbir durumda bildirilmez (DOM-ILT-073) */
             available: boolean;
         };
+        RevealedParentContactInput: {
+            parentId: string;
+            /** @description Velisi açılan öğrenci (kapsamla denetlendi) */
+            studentId: string;
+            /**
+             * @description Açılan alan
+             * @enum {string}
+             */
+            field: "phone" | "email";
+            /** @description Alanın maskesiz değeri */
+            value: string;
+        };
         EnrollProspectResultInput: {
             /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
             entity: {
@@ -5579,6 +5611,18 @@ export interface components {
             subjectNames: string[];
             /** @description `false`: saat dolu ("Dolu"); neden hiçbir durumda bildirilmez (DOM-ILT-073) */
             available: boolean;
+        };
+        RevealedParentContact: {
+            parentId: string;
+            /** @description Velisi açılan öğrenci (kapsamla denetlendi) */
+            studentId: string;
+            /**
+             * @description Açılan alan
+             * @enum {string}
+             */
+            field: "phone" | "email";
+            /** @description Alanın maskesiz değeri */
+            value: string;
         };
         EnrollProspectResult: {
             /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
@@ -15860,6 +15904,102 @@ export interface operations {
             };
             /** @description Default Response */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revealParentContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Veli kaydının kimliği */
+                parentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    /** @enum {string} */
+                    field: "phone" | "email";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RevealedParentContact"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

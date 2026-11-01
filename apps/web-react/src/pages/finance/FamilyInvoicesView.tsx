@@ -28,6 +28,7 @@ import {
   type FamilyScope,
   type InvoiceRow,
 } from './finance-rows.ts'
+import { FamilyPaymentsHistory } from './FamilyPaymentsHistory.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 
 const URL_FILTERS = { status: 'durum' }
@@ -226,6 +227,7 @@ export function FamilyInvoicesView({ audience, studentId, receiptsOnly = false, 
           }
         />
       </TableSection>
+      <FamilyPaymentsHistory studentId={studentId} />
       <InvoiceSummaryPanel invoiceId={panel.selectedId} onClose={panel.close} />
     </>
   )

@@ -20,7 +20,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kurum ilan etmeden ücret tahsil edemez ve ilan ettiği ücretin üzerinde ücret isteyemez.
 - **Kaynak:** 5580 md. 13/1 (ocak–mayıs ilanı); ÖÖKY md. 54/1-a, c, ç, d ve 54/2.
 - **Kurum türü:** ikisi (dil okulunda ders saati ücreti, `DOM-FIN-006`)
-- **Kodda:** yok — kayıt tutarı serbest girilir, 100–1.000.000 TL arası her değer kabul edilir (`packages/school-core/src/lib/domain.js:22-26`; yenilemede `school-workflows.js:117-126`).
+- **Kodda:** kısmen — tarife sürümü, ilan ve MEBBİS tarihi var (`lib/fee-tariffs.ts`, `POST /api/v1/fee-tariffs`, ADR 0006 karar 8). Kesin kayıt tutarı yayımlanmış tarifeden hesaplanır (`lib/enrollment.ts`). Yenileme de yayımlı tarife ister, ilanı aşamaz (API, `assertRenewalWithinTariff`); çevrimdışı demo tutarı serbesttir. İlan dönemi dışındaki yayımda yayım penceresi uyarır, engellemez (`isOutsideAnnouncementPeriod`).
 
 ### DOM-FIN-003 · Ek hizmetler ayrı kalemdir ve isteğe bağlıdır
 
@@ -28,7 +28,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat bu hizmetleri ayrı tespit ve ilan ettirir; hizmetten talep eden veli yararlanır.
 - **Kaynak:** ÖÖKY md. 53/5, 54/1-a son cümle.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — taksit kaydının kalem türü yoktur (`packages/school-core/src/lib/domain.js:142-151`).
+- **Kodda:** var (API, kesin kayıt) — ek hizmet ayrı taksit kaydıdır (`feeKind`, `lib/domain.ts`). Yenileme henüz kalem ayırmaz.
 
 ### DOM-FIN-004 · İlan dışı ad altında tahsilat yok
 
@@ -36,7 +36,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Yönetmelik ilan edilenler dışında hiçbir ad altında ücret alınmasını yasaklar.
 - **Kaynak:** ÖÖKY md. 54/1-b, 55/4.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — kalem türü kavramı yok.
+- **Kodda:** kısmen — tarife kalem türü sabit listedir (`FEE_ITEM_KINDS`, `lib/fee-tariffs.ts`). Taksitin kalem türü henüz yok.
 
 ### DOM-FIN-005 · Devam eden öğrenciye artış sınırı
 
@@ -52,7 +52,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** İade ve indirim tabanı ücret birimine bağlıdır.
 - **Kaynak:** ÖÖKY md. 55/1-a, c. Dil kursunun MEB lisanslı "özel öğretim kursu" olması varsayılmıştır; lisanssız (ticari) dil okulu için ÖÖKY uygulanmaz ve bu kurum için **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — kurum türü kavramı yok; tutar her zaman tek toplamdır.
+- **Kodda:** kısmen — tarife yayımı öğrenim ücreti birimini kurum türüyle denetler (`planTariffPublish`). Paket yok; iade hesabı `quoteWithdrawal`'dadır.
 
 ## Sözleşme ve taksit
 
@@ -78,7 +78,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Yenileme ile öğrencinin iki açık sözleşmesi olur.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/document-data.js:20-36`, `school-workflows.js:840`. Kesin kayıt sözleşmesinde `invoiceIds` yoktur (`domain.js:160-166`); belge bu durumda öğrencinin bütün taksitlerine düşer (`document-data.js:31-33`).
+- **Kodda:** var — `packages/school-core/src/lib/document-data.js:20-36`, `school-workflows.js:840`. Kesin kayıt sözleşmesi de `invoiceIds` taşır (`lib/domain.ts`); alanı olmayan eski kayıtlarda belge öğrencinin bütün taksitlerine düşer (`document-data.ts`).
 
 ### DOM-FIN-013 · Peşin ve süreli ödeme koşulu ilandadır
 
@@ -96,7 +96,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat kurumca belirlenecek indirimlerin ilanda belirtilmesini ister. Serbest indirim ilan dışı uygulama ve kayıt dışı pazarlık riski taşır.
 - **Kaynak:** ÖÖKY md. 54/1-a.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — `packages/school-core/src/lib/school-workflows.js:128-135` serbest TL indirim alır, tür ve koşul tutmaz.
+- **Kodda:** var (API, kesin kayıt) — `priceEnrollment` (`lib/enrollment.ts`). Yenilemede indirim henüz serbest tutardır (`lib/school-workflows.ts`).
 
 ### DOM-FIN-021 · Toplam indirim tavanı
 
@@ -104,7 +104,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat indirim oranını sınırlar; sınırsız indirim haksız rekabet ve ilanın anlamsızlaşması demektir.
 - **Kaynak:** ÖÖKY md. 54/1-a. Burs ve ücretsiz okutmanın %50 tavanına dahil olmadığı yorumu ÖÖKY md. 62/4'e (burslu oranı ücretsiz oranının dışında tutulur) ve bursun ayrı bölümde düzenlenmesine dayanır; **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — `packages/school-core/src/lib/school-workflows.js:435-450` %0–100 burs ve sınırsız TL indirimi toplar, yalnız net tutarın 100 TL altına düşmesini engeller (`441`).
+- **Kodda:** var (API, kesin kayıt) — `DISCOUNT_CAP_BASIS_POINTS`, 422 `discount_cap_exceeded`; personel çocuğu istisnası yönetici onayıyla. Personel kaydına bağlama ve yenileme henüz yok.
 
 ### DOM-FIN-022 · Kardeş indirimi
 
@@ -112,7 +112,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kardeş indirimi aile bağına dayanır; bağ yanlış kurulursa indirim haksız uygulanır.
 - **Kaynak:** İşletme kuralı; ilan zorunluluğu ÖÖKY md. 54/1-a.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — kardeş bağı yok, her kayıt yeni veli açar (`packages/school-core/src/lib/domain.js:119`).
+- **Kodda:** kısmen — aynı veliye bağlı aktif kardeş denetlenir (`enrollProspectWithTariff`). "İkinci çocuk" seçimi ve yıl denetimi yok.
 
 ### DOM-FIN-023 · İndirim koşulu kalkınca
 
@@ -160,7 +160,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Gerçek tahsilatta taksit tutarı ile ödeme tutarı her zaman eşleşmez; durum alanını elle tutmak tutarsızlık üretir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — `packages/school-core/src/lib/domain.js:42-49` (`payInvoice`) taksiti yalnız tam ödenmiş işaretler; tahsilat kaydı yok, yöntem taksite yazılır.
+- **Kodda:** kısmen — API `POST /api/v1/payments` ayrı kayıt, kısmi ödeme ve mahsup yapar (`lib/payments.ts`, ADR 0006). Taksitin `paidAt` alanı geçiş önbelleğidir; liste durumu henüz `Kısmi` üretmez, kısmi tutar `GET /api/v1/payments` dağılımından okunur. Çevrimdışı demo `payInvoice` ile tam ödeme işaretler.
 
 ### DOM-FIN-031 · Mükerrer tahsilat engeli
 
@@ -168,15 +168,15 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Çift tıklama, ağ yeniden denemesi ve POS tekrar bildirimleri en sık mükerrer ödeme nedenidir.
 - **Kaynak:** İşletme kuralı; ADR 0001 (atomik yazım, sunucuda kural).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `packages/school-core/src/lib/domain.js:45` yalnız ödenmiş taksite ikinci ödemeyi engeller; idempotency anahtarı ve işlem referansı yok; çevrim içi ödeme sabit `'Demo Sanal POS'` yazar (`apps/web/src/views/Finance.vue:117`).
+- **Kodda:** var (API) — `Idempotency-Key` zorunlu, referans kurum içinde benzersiz (`payments_reference_key`, iptal edilenler hariç), yazım tek transaction'da. Çevrimdışı demo çevrim içi ödemede sabit `'Demo Sanal POS'` yazar (`apps/web/src/views/Finance.vue`).
 
 ### DOM-FIN-032 · Tahsilat kanalı banka hesabıdır
 
-- **Kural:** Öğrenim ücreti, kurum adına açılmış ve Bakanlığa/valiliğe bildirilmiş banka hesabına havale/EFT ya da o hesaba bağlı POS ile tahsil edilir. Kurum ayarında bildirilmiş hesaplar tutulur; tahsilat bu hesaplardan birine bağlanır. Öğrenim ücreti için `Nakit` yöntemi sunulmaz. Ek hizmetlerde nakdin kabul edilip edilmeyeceği **doğrulanmalı**; doğrulanana kadar onlar için de nakit kapalıdır. Tahsilatlar MEBBİS modülüne işlendi olarak işaretlenir.
+- **Kural:** Öğrenim ücreti, kurum adına açılmış ve Bakanlığa/valiliğe bildirilmiş banka hesabına havale/EFT ya da o hesaba bağlı POS ile tahsil edilir. Kurum ayarında bildirilmiş hesaplar tutulur; tahsilat bu hesaplardan birine bağlanır. Nakit tahsilat kurum ayarıdır (`cash_payments_enabled`), varsayılan kapalıdır ve yalnız yönetici açar (ADR 0006 karar 7, proje sahibinin kararı). ÖÖKY md. 55/3 ile uyumu **doğrulanmalı**; açmanın sorumluluğu kurumdadır. Tahsilatlar MEBBİS modülüne işlendi olarak işaretlenir.
 - **Gerekçe:** Mevzuat eğitim ücretinin bildirilmiş banka hesabına yatırılarak tahsilini ve MEBBİS'e işlenmesini ister.
 - **Kaynak:** ÖÖKY md. 55/3.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — tahsilat formunda `Nakit` seçeneği var (`apps/web/src/views/Finance.vue:566-569`); örnek veri nakit ödeme üretir (`packages/school-core/src/data/seed.js:260-267`).
+- **Kodda:** kısmen — API nakdi kurum ayarıyla denetler (`lib/payments.ts`, 422 `cash_payment_disabled`; `PATCH /api/v1/payment-settings`). Bildirilmiş hesaplar `/api/v1/bank-accounts` ile tutulur; hesap tanımlıysa nakit dışı tahsilat bir hesaba bağlanır (422 `bank_account_required`), hiç hesap tanımlanmadıysa tahsilat engellenmez. MEBBİS işareti `POST /api/v1/payments/:paymentId/mebbis-record` ile elle tutulur; MEBBİS'e bağlantı yoktur. Çevrimdışı demo formu ayarı bilmez (`apps/web/src/views/Finance.vue`).
 
 ### DOM-FIN-033 · Tahsilat silinmez, ters kayıtla düzeltilir
 
@@ -184,7 +184,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mali kayıt değiştirilirse mutabakat ve denetim imkânsızlaşır.
 - **Kaynak:** İşletme kuralı. Ticari defter ve belge saklama süresi (VUK) **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — ödeme geri alma veya iptal işlemi yok.
+- **Kodda:** var (API) — `POST /api/v1/payments/:paymentId/reverse` (yalnız `yonetici`, gerekçe ve `If-Match` zorunlu). `İptal edildi` ibareli dekont belgesi henüz yok.
 
 ### DOM-FIN-034 · Gecikme durumu ve gecikme bedeli
 
@@ -220,7 +220,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** İade mevzuatla belirlenmiş bir hesaptır; elle yapılırsa her ayrılışta uyuşmazlık doğar.
 - **Kaynak:** ÖÖKY md. 56/3-a, b, c ve 56/4; md. 62/5. Net ücret tabanı, gün sayım esası (takvim günü mü, ders günü mü) ve ek hizmet iadesi **doğrulanmamış**; mevzuat metni bunları açıkça belirtmez.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — ayrılış ve iade işlemi yok.
+- **Kodda:** var (API) — `lib/withdrawals.ts` (`quoteWithdrawal`), `POST /api/v1/students/:studentId/withdrawal-quote`; görülen ve toplam birim elle girilir, kesinti oranı sabittir (`REFUND_DEDUCTION_BASIS_POINTS`). Burslu istisnası, çalışma takvimi ve kurum profili yok.
 
 ### DOM-FIN-041 · İade kaydı ve atomikliği
 
@@ -228,7 +228,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kısmi yazım, iade edilmiş ama hâlâ borçlu görünen veli üretir.
 - **Kaynak:** İşletme kuralı; ADR 0001 (tek veritabanı işlemi).
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** var (API) — `POST /api/v1/students/:studentId/withdraw` ve `POST /api/v1/withdrawals/:withdrawalId/pay-refund` (`student_withdrawals`, ADR 0006 karar 10).
 
 ### DOM-FIN-042 · Uzaktan satışta cayma hakkı
 
@@ -246,7 +246,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Veli ödediğini kanıtlayabilmeli; ardışık numara eksik veya mükerrer belgeyi görünür kılar.
 - **Kaynak:** İşletme kuralı. Eğitim hizmetinde fatura/e-arşiv zorunluluğu ve KDV oranı **doğrulanmamış**; sistem bu değerleri hesaplamaz.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `packages/school-core/src/lib/document-data.js:15-18` yalnız ödenmiş taksite dekont üretir; belge referansı taksit kimliğidir, ardışık numara ve tahsilat kaydı yok.
+- **Kodda:** kısmen — API tahsilata kurum ve yıl içinde ardışık numara verir (`receiptYear`, `receiptNumber`). Belge kodu (`lib/document-data.ts`) henüz taksit kimliğini kullanır.
 
 ### DOM-FIN-051 · Sözleşme ve ödeme planı belgesi
 
@@ -277,15 +277,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 | Kural       | Fark                                                                                                                                                            |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | DOM-FIN-001 | Kayıt tutarı tam TL, yenileme tutarı iki ondalık alır; iki giriş kuralı farklı (`packages/school-core/src/lib/domain.js:22-26`, `school-workflows.js:117-126`). |
-| DOM-FIN-002 | Ücret tarifesi yok; sözleşme tutarı serbest girilir (`packages/school-core/src/lib/domain.js:22-26`).                                                           |
 | DOM-FIN-005 | Yenilemede ÜFE/TÜFE+5 artış tavanı denetlenmez (`packages/school-core/src/lib/school-workflows.js:435-450`).                                                    |
-| DOM-FIN-020 | İndirim serbest TL tutarıdır, tür ve koşul tutulmaz (`packages/school-core/src/lib/school-workflows.js:128-135`).                                               |
-| DOM-FIN-021 | %50 indirim tavanı yok; %100 burs + sınırsız indirim yalnız 100 TL alt sınırına takılır (`packages/school-core/src/lib/school-workflows.js:441`).               |
-| DOM-FIN-022 | Kardeş bağı ve kardeş indirimi yok; her kayıt yeni veli açar (`packages/school-core/src/lib/domain.js:119`).                                                    |
-| DOM-FIN-030 | Tahsilat ayrı kayıt değil; yalnız tam ödeme işaretlenir, kısmi ödeme yok (`packages/school-core/src/lib/domain.js:42-49`).                                      |
-| DOM-FIN-031 | İdempotency ve işlem referansı yok; yalnız ödenmiş taksit engeli var (`packages/school-core/src/lib/domain.js:45`).                                             |
-| DOM-FIN-032 | Öğrenim ücreti için `Nakit` yöntemi sunuluyor (`apps/web/src/views/Finance.vue:566-569`).                                                                       |
 | DOM-FIN-035 | Hatırlatma gerçek ileti göndermez, sıklık sınırı yok (`apps/web/src/views/Finance.vue:89-95`).                                                                  |
-| DOM-FIN-040 | Ayrılış ve iade hesabı yok.                                                                                                                                     |
 | DOM-FIN-050 | Dekont numarası taksit kimliğidir; ardışık numara yok (`packages/school-core/src/lib/document-data.js:18`).                                                     |
 | DOM-FIN-053 | Denetim izi 200 kayıtla kesilir (`packages/school-core/src/lib/school-workflows.js:1334`).                                                                      |

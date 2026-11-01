@@ -4,6 +4,7 @@ import { createSeed } from '../../../packages/school-core/src/data/seed.ts'
 
 import { createAuth, type InstitutionType, type Role } from '../../../apps/api/src/auth.ts'
 import { loadConfig } from '../../../apps/api/src/config.ts'
+import { feeTariffs } from '../../../apps/api/src/db/schema/fee-tariffs.ts'
 import { connectPostgres } from '../../../apps/api/src/db/client.ts'
 import {
   recordKey,
@@ -76,6 +77,8 @@ export interface TenantOptions {
    * yazan uç yoksa doğrudan veritabanına konur. Kimlik `recordKey` kuralıyla (`id`) belirlenir.
    */
   records?: readonly { collection: CollectionName; data: RecordData }[]
+  /** Bu eğitim yıllarına yayımlanmış tarife konur (yenileme ve kesin kayıt önkoşulu). */
+  tariffYears?: readonly ('current' | 'next')[]
 }
 
 export interface TenantUser {
@@ -184,6 +187,31 @@ export function createTenantFactory(): TenantFactory {
     await ensureInstitutionSettings(db, institutionId, {
       academicYear: createSeed(now).academicYear,
     })
+    const academicYear = createSeed(now).academicYear
+    // Dil okulunda tutar ders saati başınadır.
+    const tuitionCents = options.type === 'language_school' ? 50_000 : 100_000_000
+    for (const which of options.tariffYears ?? [])
+      await db.insert(feeTariffs).values({
+        institutionId,
+        id: randomUUID(),
+        academicYear: which === 'current' ? academicYear : academicYear + 1,
+        versionNumber: 1,
+        status: 'published',
+        items: [
+          {
+            kind: 'tuition',
+            level: null,
+            amountCents: tuitionCents,
+            unit: options.type === 'language_school' ? 'lesson_hour' : 'year',
+            vatBasisPoints: 1000,
+            vatEffectiveDate: `${String(academicYear)}-01-01`,
+            announcedAmountCents: tuitionCents,
+          },
+        ],
+        announcedDate: `${String(academicYear)}-05-01`,
+        publishedByUserId: creator,
+        publishedAt: now,
+      })
 
     for (const role of options.roles.filter((item) => item !== 'yonetici')) {
       const userId = await provision(role)

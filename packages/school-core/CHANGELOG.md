@@ -1,5 +1,29 @@
 # Değişiklikler
 
+## 2.25.0
+
+Onur'un kayıt ve finans dalı (`feature/ogrenci-kaydi-finans`) birleştirildi; o dalda 2.21.0 olarak yazılan girdiler bu sürümdedir. Birleştirmede kesin kayıt ve finansın temeli o dalın yapısıdır (tarife, tahsilat, ayrılış/iade, muhasebe aktarımı, `enrollProspectWithTariff`).
+
+- **Kırıcı (birleştirme):** 2.23.0'daki `lib/domain.ts` `enrollmentSchema`, `enrollmentFromRegistration`, `isValidNationalId`, `nationalIdSchema`, `birthDateSchema`, `GUARDIAN_RELATIONS`, `ENROLLMENT_PAYERS`, `ENROLLMENT_TOTAL_CENTS` kalktı. API kesin kaydı `lib/enrollment.ts` `enrollProspectWithTariff`'tir (tutar tarifeden); çevrimdışı demo `enrollProspect` yeniden `registrationSchema` (tam lira) alır, Vue `Crm.vue` ve mobil `model/operations.ts` onu doğrudan çağırır. Kimlik no doğrulayıcısı tektir: `lib/enrollment.ts` `isValidTurkishId`.
+- **Kırıcı (birleştirme, KVKK):** `State.students` `nationalId`, `birthDate`, `guardianRelation` alanlarını kaybetti; kimlik ve doğum tarihi `records.data`'ya yazılmaz, API'de `student_identities` tablosundadır (maskeli okuma `GET /students/:id/identity`). `lib/scope.ts` `maskNationalId` ve kimlik alanlarının arama dışı tutulması savunma olarak kalır.
+
+Onur'un dalındaki girdiler: kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-001, DOM-FIN-012, DOM-FIN-030…033).
+
+- `lib/fee-tariffs.ts`: `isOutsideAnnouncementPeriod`.
+- `lib/prospect-form.ts`: `trialLessonOptions`, `trialLessonUsed`; `upcomingMeetings` deneme dersini de döndürür.
+- `lib/payments.ts`: `bankAccountSchema`, `bankAccountLabel`, `paymentMebbisSchema`, `assertMebbisChangeAllowed`; `PaymentContext.bankAccountIds`, `PaymentPlan.bankAccountId`.
+- `lib/enrollment.ts`: `assertRenewalWithinTariff`, `enrollmentFormSchema`, `enrollmentFormToBody`, `previewEnrollment`, `ENROLLMENT_STEP_FIELDS`, `enrollProspectSchema`, `enrollProspectWithTariff`, `priceEnrollment`, `findParentMatches`, `isValidTurkishId` eklendi; kesin kayıt tutarı tarifeden hesaplanır (DOM-FIN-002, -003, -020…-022, DOM-KAY-011…-013). Demo girişi `enrollProspect` ve `registrationSchema` aynı kaldı.
+- `reversePayment` ayrılış kaydı olan öğrenciyi reddeder; `quoteWithdrawal` iade ve borcu netleştirir; `planTariffUpdate` verilmeyen alanı korur; `lib/scope.ts` veli telefonunu öğretmen ve öğrenciden gizler.
+- Kesin kayıt sözleşmesi `invoiceIds` taşır; belge yalnız kendi taksitlerini çözümler (DOM-FIN-012).
+- `lib/payments.ts`: `recordPaymentSchema`, `reversePaymentSchema`, `paymentSettingsSchema`, `planPayment`, `reversePayment`, `openAmount` eklendi. Demo girişi `payInvoice` aynı kaldı.
+- `lib/authorize.ts` ve `modules/commands.ts`: `payment.reverse`, `tariff.manage` ve `student.withdraw` (yalnız yönetici), modül `finance`.
+- `lib/csv.ts`: `csvCell`, `CSV_SEPARATOR` web'den taşındı, `csvAmount` eklendi. `lib/finance-export.ts`: dönem doğrulaması, `paymentLines`, `refundLines`, `invoiceLines`, `financeSummary`, CSV üreticileri eklendi (IST-111).
+- `lib/payments.ts`: `paymentFormSchema`, `parseAmountInput`, `amountInputValue` eklendi; geçici `referenceOptional` kaldırıldı.
+- `lib/prospect-form.ts`: aday formu şeması, API gövdesine çevirme, görüşme anı ve yaklaşan görüşmeler eklendi; aydınlatma sürümü `PROSPECT_PRIVACY_NOTICE_VERSION`.
+- `lib/finance-export.ts`: `financeTotals` eklendi.
+- `lib/withdrawals.ts`: `withdrawalFormSchema`, `WITHDRAWAL_REASON_LABELS`, `withdrawalQuoteSchema`, `withdrawStudentSchema`, `payRefundSchema`, `quoteWithdrawal`, `withdrawStudent`, `planRefundPayment`, `refundDueDate`, `payerNameOf`, `isValidTurkishIban` eklendi (DOM-FIN-040, -041, DOM-KAY-024).
+- `lib/fee-tariffs.ts`: `feeItemSchema`, `createFeeTariffSchema`, `updateFeeTariffSchema`, `publishFeeTariffSchema`, `feeDiscountSchema`, `planTariffCreate`, `planTariffUpdate`, `planTariffPublish` eklendi (DOM-FIN-002, -004, -006, -020).
+
 ## 2.24.0
 
 Bildirilen dosya türü kanonik MIME'a çevrilir (F3c2a inceleme düzeltmesi; ADR 0003 karar 3; `docs/domain/kaynak-platformu.md` DOM-KYN-004).

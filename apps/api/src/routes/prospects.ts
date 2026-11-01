@@ -1,7 +1,9 @@
 import type { FastifyInstance, FastifyRequest, preValidationAsyncHookHandler } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
+import { z } from 'zod'
 
 import { WRITE_ACTION_ROLES, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
+import { enrollProspectSchema } from '@kampus/school-core/lib/enrollment.ts'
 import {
   addProspectNoteSchema,
   changeProspectStageSchema,
@@ -19,17 +21,16 @@ import {
   changeProspectStageCommand,
   createProspectCommand,
   enrollProspectCommand,
+  guardianMatchesFor,
   scheduleProspectMeetingCommand,
   scheduleTrialLessonCommand,
+  studentIdentityFor,
 } from '../services/prospects.ts'
 import { sendCommand } from './command-support.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema, commandResponseSchema } from './commands.schemas.ts'
-import {
-  enrollProspectBodySchema,
-  enrollProspectResponseSchema,
-  prospectParamsSchema,
-} from './prospects.schemas.ts'
+import { dataResponse } from './common.schemas.ts'
+import { prospectParamsSchema } from './prospects.schemas.ts'
 
 /**
  * Aday/CRM yazma uçları (docs/domain/kayit-ve-crm.md DOM-KAY-001…011, DOM-KAY-030…035; deneme
@@ -44,8 +45,9 @@ import {
  *
  * Kesin kayıt (`POST /prospects/:id/enroll`) öğrenci, veli, taksit ve sözleşme oluşturduğu için
  * hem `If-Match` hem `Idempotency-Key` ister ve 201 + öğrenciye `Location` döner (api-tasarimi.md
- * §1 alan komutu; yeni kaynak doğduğu için 201). Yetki core `requireAuthorized(…,
- * 'prospect.enroll', …)` ile serviste ayrıca denetlenir (DOM-KAY-035).
+ * §1 alan komutu; yeni kaynak doğduğu için 201). Tutar yayımlanmış tarifeden hesaplanır
+ * (`enrollProspectWithTariff`); yetki core `requireAuthorized(…, 'prospect.enroll', …)` ile
+ * serviste ayrıca denetlenir (DOM-KAY-035).
  */
 
 /**
@@ -57,6 +59,7 @@ const EXTRA_MODULES: Partial<Record<WriteAction, readonly string[]>> = {
   'prospect.enroll': ['finance'],
 }
 
+const STAFF = ['yonetici', 'onburo'] as const
 const response = { 200: commandResponseSchema, ...commandErrors }
 const created = { 201: commandResponseSchema, ...commandErrors }
 const location = (id: string, collection: 'prospects' | 'students' = 'prospects') =>
@@ -218,6 +221,96 @@ export function registerProspectRoutes(app: FastifyInstance) {
   )
 
   typed.post(
+    '/api/v1/prospects/:prospectId/enroll',
+    {
+      preValidation: guard('prospect.enroll', 'required'),
+      schema: {
+        operationId: 'enrollProspect',
+        tags: ['prospects'],
+        summary: 'Adayı kesin kayda al',
+        description: `Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday \`Kayıt oldu\` olur (core \`enrollProspectWithTariff\`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002): tarife yoksa 422 \`tariff_not_published\`, düzeyin ücreti yoksa 422 \`tariff_tuition_missing\`. Dil okulunda \`lessonHours\` zorunlu (422 \`lesson_hours_required\`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 \`discount_not_in_tariff\`, toplam %50'yi aşarsa 422 \`discount_cap_exceeded\`, personel çocuğu istisnası yalnız yönetici (422 \`discount_approval_required\`), kardeş indirimi mevcut veli ve aktif kardeş ister (422 \`sibling_discount_ineligible\`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 \`extra_not_in_tariff\` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aktif öğrencide kayıtlı kimlik 409 \`student_identity_duplicate\`, pasif kaydın kimliği yeniden kullanılır. Veli zorunlu (422 \`guardian_required\`); dil okulunda 18 yaş üstü kursiyerde \`guardian: null\` kursiyeri ödeyici yapar. \`existingParentId\` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 \`not_found\`; kayıtlı aday 409 \`prospect_already_enrolled\`, vazgeçmiş aday 409 \`prospect_closed\`; dolu sınıf 422 \`class_capacity_full\`. İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Modüller \`crm\` ve \`finance\` (taksit ve sözleşme yazılır); biri kapalıysa 403 \`module_disabled\`. \`Idempotency-Key\` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. ${ifMatchNote} Başarı 201 ve \`Location\` (öğrenci kaydı). Roller: ${rolesOf('prospect.enroll')}.`,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        params: prospectParamsSchema,
+        body: enrollProspectSchema,
+        response: created,
+      },
+    },
+    async (request, reply) => {
+      const body = sendCommand(
+        reply,
+        await enrollProspectCommand(
+          contextOf(request),
+          request.params.prospectId,
+          input(request),
+          options(request, 'required'),
+        ),
+      )
+      const entity = body.data.entity
+      if (entity) reply.header('location', location(entity.id, 'students'))
+      return body
+    },
+  )
+
+  typed.get(
+    '/api/v1/prospects/:prospectId/guardian-matches',
+    {
+      preValidation: [app.authenticate, app.requireModule('crm'), app.requireRole(STAFF)],
+      schema: {
+        operationId: 'listGuardianMatches',
+        tags: ['prospects'],
+        summary: 'Adayla eşleşen velileri öner',
+        description:
+          'Adayın telefonuyla eşleşen mevcut velileri önerir; ön büro seçerse `existingParentId` ile bağlanır, otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon taşımaz. Roller: `yonetici`, `onburo`.',
+        params: prospectParamsSchema,
+        response: {
+          200: dataResponse(
+            z.array(
+              z.object({
+                parentId: z.string(),
+                name: z.string(),
+                studentCount: z.number().int(),
+              }),
+            ),
+          ),
+          ...commandErrors,
+        },
+      },
+    },
+    async (request) => ({
+      data: await guardianMatchesFor(contextOf(request), request.params.prospectId),
+    }),
+  )
+
+  typed.get(
+    '/api/v1/students/:studentId/identity',
+    {
+      preValidation: [app.authenticate, app.requireModule('crm'), app.requireRole(STAFF)],
+      schema: {
+        operationId: 'getStudentIdentity',
+        tags: ['prospects'],
+        summary: 'Öğrencinin kimlik özeti',
+        description:
+          'Kimlik numarası yalnız maskeli döner (`*******1234`). Kaydı olmayan veya başka kurumun öğrencisi 404. Modül `crm`. Roller: `yonetici`, `onburo`.',
+        params: z.object({ studentId: z.string().min(1).max(200).describe('Öğrenci kimliği') }),
+        response: {
+          200: dataResponse(
+            z.object({
+              kind: z.string(),
+              maskedNumber: z.string(),
+              birthDate: z.string(),
+              academicYear: z.number().int(),
+            }),
+          ),
+          ...commandErrors,
+        },
+      },
+    },
+    async (request) => ({
+      data: await studentIdentityFor(contextOf(request), request.params.studentId),
+    }),
+  )
+
+  typed.post(
     '/api/v1/prospects/:prospectId/trial-lessons',
     {
       preValidation: guard('prospect.trial', 'required'),
@@ -242,37 +335,5 @@ export function registerProspectRoutes(app: FastifyInstance) {
           options(request, 'optional'),
         ),
       ),
-  )
-
-  typed.post(
-    '/api/v1/prospects/:prospectId/enroll',
-    {
-      preValidation: guard('prospect.enroll', 'required'),
-      schema: {
-        operationId: 'enrollProspect',
-        tags: ['prospects'],
-        summary: 'Adayı kesin kayda al',
-        description: `Açık aşamadaki adayı kesin kayda alır: öğrenci, veli, taksit planı ve sözleşme oluşturulur, aday \`Kayıt oldu\` olur; hepsi tek işlemde yazılır, hata olursa hiçbir kayıt değişmez (core \`enrollProspect\`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetki core \`prospect.enroll\` işlemden önce ayrıca denetlenir. Gövde: \`classId\`, \`totalCents\` (eğitim bedeli, kuruş, tamsayı, 10.000–100.000.000; core'a olduğu gibi geçer), \`count\` (1–12 taksit), \`startDate\` (ilk vade, \`YYYY-MM-DD\`); isteğe bağlı \`allowOtherCampus\`, \`parentId\`, \`nationalId\`, \`birthDate\`, \`guardianRelation\`, \`payer\`. Sayısal alanlar metin olarak gelirse, aday kimliği gövdede olursa veya bilinmeyen alan varsa 400 \`validation_failed\`; geçersiz kimlik numarası (11 hane ve denetim haneleri) 400. 18 yaş altında (\`school\` her zaman; \`language_school\`'da adayın seçimi) adayın telefonu, e-postası ve veli adı veliye yazılır, öğrenciye yazılmaz (DOM-KAY-003). Kardeş kaydında yeni veli açılmaz: \`parentId\` ile seçilen veli ya da kardeş adayın kayıtlı öğrencisinin velisi kullanılır (DOM-KAY-013); olmayan veya başka kurumun velisi 404. Yetişkin kursiyer için açılan iletişimsiz veli kaydı gerçek veli sayılmaz: kardeşte atlanır (yeni veli açılır), \`parentId\` ile seçilirse 422 \`parent_not_guardian\`. Mevcut velinin eksik telefonu ve e-postası adayınkiyle tamamlanır; var olan değer ve ad değişmez. Sınıf adayın kampüsünden değilse 422 \`class_campus_mismatch\` (\`issues\` yolu \`classId\`); \`allowOtherCampus: true\` bilinçli seçimdir. DOM-KAY-012: doğum tarihi gelecekte 422 \`invalid_birth_date\`, dil okulunda adayın 18 yaş seçimiyle uyuşmazsa 422 \`birth_date_minor_mismatch\`; 18 yaş altında ödeyici veli (422 \`payer_must_be_guardian\`), yetişkin kursiyerde kendisi (422 \`payer_must_be_student\`), yetişkinde veli alanı 422 \`guardian_not_applicable\`. Sözleşme başlığı kurum türüne göredir (dil okulunda \`Dil kursu eğitim sözleşmesi\`). Olmayan veya başka kurumun aday ya da sınıfı 404; dolu sınıf 422 \`class_capacity_full\`, geçersiz ilk vade 422 \`invalid_payment_date\`. Kayıtlı aday 409 \`prospect_already_enrolled\`, vazgeçmiş veya tanınmayan aşamadaki aday 409 \`prospect_closed\` (önce \`İletişime geçildi\` ile yeniden açılır). İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Aday telefonu, e-postası, veli adı, kimlik numarası ve doğum tarihi loglanmaz; denetim kaydına yalnız alan adları ve kimlikler yazılır. Modüller \`crm\` ve \`finance\` (taksit ve sözleşme yazılır); biri kapalıysa 403 \`module_disabled\`. \`Idempotency-Key\` zorunludur (mükerrer öğrenci ve taksit üretilmez). ${ifMatchNote} Başarı 201; \`entity\` yeni öğrencidir, \`Location\` öğrenci kaydını gösterir ve \`contractId\` oluşturulan sözleşmedir. Roller: ${rolesOf('prospect.enroll')}.`,
-        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
-        params: prospectParamsSchema,
-        body: enrollProspectBodySchema,
-        response: { 201: enrollProspectResponseSchema, ...commandErrors },
-      },
-    },
-    async (request, reply) => {
-      const body = sendCommand(
-        reply,
-        await enrollProspectCommand(
-          contextOf(request),
-          request.params.prospectId,
-          request.body,
-          options(request, 'required'),
-        ),
-        enrollProspectResponseSchema,
-      )
-      const entity = body.data.entity
-      if (entity) reply.header('location', location(entity.id, 'students'))
-      return body
-    },
   )
 }

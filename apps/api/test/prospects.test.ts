@@ -11,6 +11,9 @@ import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { institutionSettings } from '../src/db/schema/institution-settings.ts'
+import { records } from '../src/db/schema/records.ts'
+import { studentIdentities } from '../src/db/schema/student-identities.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { addProspectNoteCommand } from '../src/services/prospects.ts'
@@ -142,6 +145,12 @@ describe('aday uçları', () => {
       payload: JSON.stringify(body),
     })
   }
+  const a_get = (cookie: string | null, url: string) =>
+    app.inject({
+      method: 'GET',
+      url,
+      headers: { origin: TEST_ORIGIN, ...(cookie === null ? {} : { cookie }) },
+    })
   const create = (
     cookie: string | null,
     body: unknown = PROSPECT,
@@ -967,5 +976,565 @@ describe('aday uçları', () => {
       )?.count,
       3,
     )
+  })
+
+  // --- Kesin kayıt -------------------------------------------------------------------------------
+
+  const TUITION = {
+    kind: 'tuition',
+    level: null,
+    amountCents: 10_000_001,
+    unit: 'year',
+    vatBasisPoints: 1000,
+    vatEffectiveDate: '2026-01-01',
+    announcedAmountCents: 10_000_001,
+  }
+  const TC = '10000000146'
+  const ENROLLMENT = {
+    classId: 'c1',
+    installmentCount: 3,
+    firstDueDate: '2026-11-15',
+    identity: { kind: 'tc', number: TC, birthDate: '2013-03-01' },
+    guardian: { name: 'Test Kayıt Velisi', phone: '05559990009', relationship: 'mother' },
+  }
+  /** Eğitim yılının tarifesini yönetici yayımlar; kurum tarifesiz başlar (DOM-FIN-002). */
+  async function publishTariff(
+    cookie: string,
+    tariff: { items?: unknown[]; discounts?: unknown[] } = {},
+    unit = 'year',
+  ) {
+    const created = await send('POST', '/api/v1/fee-tariffs', cookie, {
+      academicYear: FIXED_NOW.getUTCFullYear(),
+      items: tariff.items ?? [{ ...TUITION, unit }],
+      discounts: tariff.discounts ?? [],
+    })
+    assert.equal(created.statusCode, 201, created.body)
+    const { id, version } = created.json().data
+    tariffId = id
+    const published = await send(
+      'POST',
+      `/api/v1/fee-tariffs/${String(id)}/publish`,
+      cookie,
+      { announcedDate: '2026-05-01', mebbisRecordedDate: null },
+      ifMatch(version),
+    )
+    assert.equal(published.statusCode, 200, published.body)
+  }
+  async function publishTariffForYear(cookie: string, academicYear: number) {
+    const draft = await send('POST', '/api/v1/fee-tariffs', cookie, {
+      academicYear,
+      items: [TUITION],
+    })
+    assert.equal(draft.statusCode, 201, draft.body)
+    tariffId = draft.json().data.id
+    const published = await send(
+      'POST',
+      `/api/v1/fee-tariffs/${String(draft.json().data.id)}/publish`,
+      cookie,
+      { announcedDate: '2026-05-01', mebbisRecordedDate: null },
+      ifMatch(draft.json().data.version),
+    )
+    assert.equal(published.statusCode, 200, published.body)
+  }
+  async function pricedInstitution(
+    overrides: Partial<InstitutionOverrides> = {},
+    tariff: { items?: unknown[]; discounts?: unknown[] } = {},
+    unit = 'year',
+  ) {
+    const created = await institution(overrides)
+    await publishTariff(created.adminCookie, tariff, unit)
+    return created
+  }
+  /** Son yayımlanan tarifenin kimliği; gövdede verilmeyen testler için. */
+  let tariffId = '00000000-0000-4000-8000-000000000000'
+  const enroll = (
+    cookie: string | null,
+    id: string,
+    body: Record<string, unknown>,
+    version: number | null,
+    headers: Record<string, string> = key(),
+  ) =>
+    send(
+      'POST',
+      `/api/v1/prospects/${id}/enroll`,
+      cookie,
+      { tariffId, ...body },
+      {
+        ...ifMatch(version),
+        ...headers,
+      },
+    )
+  const enrollmentRows = async (institutionId: string) => ({
+    parents: await loadRecords(db, institutionId, ['parents']),
+    invoices: await loadRecords(db, institutionId, ['invoices']),
+    contracts: await loadRecords(db, institutionId, ['contracts']),
+    students: await loadRecords(db, institutionId, ['students']),
+    identities: await db
+      .select()
+      .from(studentIdentities)
+      .where(eq(studentIdentities.institutionId, institutionId)),
+  })
+  /** Reddedilen kesin kayıttan sonra aday değişmez, borç, öğrenci ve kimlik oluşmaz. */
+  async function noEnrollment(institutionId: string, id: string, action: () => Promise<void>) {
+    const before = await enrollmentRows(institutionId)
+    await unchanged(institutionId, id, action)
+    assert.deepEqual(await enrollmentRows(institutionId), before)
+  }
+
+  test('DOM-KAY-035: kesin kayıt oturumsuz 401, yetkisiz rol 403, modül kapalı 403; kayıt oluşmaz', async () => {
+    assertError(await enroll(null, 'pr1', ENROLLMENT, 1), 401)
+    const a = await pricedInstitution()
+    await noEnrollment(a.id, 'pr1', async () => {
+      for (const role of ['ogretmen', 'ogrenci', 'veli'] as const) {
+        const { cookie } = await member(a.id, role)
+        assertError(await enroll(cookie, 'pr1', ENROLLMENT, 1), 403, 'forbidden')
+      }
+    })
+    const closed = await institution({ type: 'language_school', enabledModules: { crm: false } })
+    await noEnrollment(closed.id, 'pr1', async () => {
+      assertError(await enroll(closed.adminCookie, 'pr1', ENROLLMENT, 1), 403, 'module_disabled')
+    })
+  })
+
+  test('DOM-FIN-002: yayımlanmış tarife yoksa kesin kayıt 422; yalnız taslak yetmez', async () => {
+    const a = await institution()
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(a.adminCookie, 'pr1', ENROLLMENT, version),
+        422,
+        'tariff_not_published',
+      )
+    })
+    const draft = await send('POST', '/api/v1/fee-tariffs', a.adminCookie, {
+      academicYear: FIXED_NOW.getUTCFullYear(),
+      items: [TUITION],
+    })
+    assert.equal(draft.statusCode, 201, draft.body)
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(a.adminCookie, 'pr1', ENROLLMENT, version),
+        422,
+        'tariff_not_published',
+      )
+    })
+  })
+
+  test('DOM-KAY-001, DOM-FIN-010, DOM-FIN-011, DOM-FIN-012: ön büro kesin kayıt yapar; tutar tarifeden, taksit toplamı nete eşit', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    const response = await enroll(cookie, 'pr1', ENROLLMENT, version)
+    assert.equal(response.statusCode, 201, response.body)
+    const studentId = response.json().data.entity.id as string
+    assert.equal(response.json().data.entity.collection, 'students')
+    assert.equal(response.headers.location, `/api/v1/collections/students/${studentId}`)
+    assert.equal(response.body.includes(TC), false)
+
+    const prospect = await findRecord(db, a.id, 'prospects', 'pr1')
+    assert.equal(prospect?.data.stage, 'Kayıt oldu')
+    assert.equal(prospect?.data.studentId, studentId)
+    const student = await findRecord(db, a.id, 'students', studentId)
+    assert.equal(student?.data.classId, 'c1')
+
+    const { invoices, contracts, parents } = await enrollmentRows(a.id)
+    const mine = invoices.filter((row) => row.data.studentId === studentId)
+    assert.equal(mine.length, 3)
+    assert.equal(
+      mine.reduce((sum, row) => sum + Number(row.data.amount), 0),
+      TUITION.amountCents,
+    )
+    const contract = contracts.find((row) => row.data.studentId === studentId)
+    assert.equal(contract?.data.amount, TUITION.amountCents)
+    assert.equal(contract?.data.grossCents, TUITION.amountCents)
+    assert.equal(contract?.data.tariffVersion, 1)
+    assert.equal(contract?.data.title, 'Özel okul eğitim sözleşmesi')
+    assert.deepEqual(
+      contract?.data.invoiceIds,
+      mine.map((row) => row.id),
+    )
+    const parent = parents.find((row) => row.id === student?.data.parentId)
+    assert.equal(parent?.data.name, ENROLLMENT.guardian.name)
+    assert.equal(parent?.data.relationship, 'mother')
+
+    const audit = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'prospect.enroll')))
+    assert.equal(audit.length, 1)
+    assert.equal(audit[0]?.entityId, studentId)
+    const text = JSON.stringify(audit[0])
+    assert.equal(text.includes(String(prospect?.data.phone)), false)
+    assert.equal(text.includes(TC), false)
+  })
+
+  test('DOM-KAY-012, DOM-YTK-020: kimlik genel okumada yok; yalnız personele maskeli döner', async () => {
+    const a = await pricedInstitution()
+    const response = await enroll(a.adminCookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(response.statusCode, 201, response.body)
+    const studentId = response.json().data.entity.id as string
+
+    const stored = await findRecord(db, a.id, 'students', studentId)
+    assert.equal(JSON.stringify(stored?.data).includes(TC), false)
+    const read = await a_get(a.adminCookie, `/api/v1/collections/students/${studentId}`)
+    assert.equal(read.statusCode, 200, read.body)
+    assert.equal(read.body.includes(TC), false)
+
+    const url = `/api/v1/students/${studentId}/identity`
+    const identity = await a_get(await frontDesk(a.id), url)
+    assert.equal(identity.statusCode, 200, identity.body)
+    assert.equal(identity.json().data.maskedNumber, '*******0146')
+    assert.equal(identity.json().data.birthDate, '2013-03-01')
+    assert.equal(identity.body.includes(TC), false)
+    for (const role of ['ogretmen', 'ogrenci', 'veli'] as const)
+      assertError(await a_get((await member(a.id, role)).cookie, url), 403, 'forbidden')
+    assertError(await a_get(null, url), 401)
+    const b = await institution()
+    assertError(await a_get(b.adminCookie, url), 404)
+  })
+
+  test('DOM-KAY-011: aynı kimlikle ikinci aday aynı yıl kayda alınamaz (409), yanıt kimlik taşımaz', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const first = await enroll(cookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(first.statusCode, 201, first.body)
+    const { id, version } = await created(cookie)
+    await noEnrollment(a.id, id, async () => {
+      const second = await enroll(cookie, id, ENROLLMENT, version)
+      assertError(second, 409, 'student_identity_duplicate')
+      assert.equal(second.body.includes(TC), false)
+    })
+  })
+
+  test('DOM-FIN-020, DOM-FIN-021: indirim ilan ücretinden düşer; ilansız ve tavanı aşan reddedilir', async () => {
+    const a = await pricedInstitution(
+      {},
+      {
+        items: [{ ...TUITION, amountCents: 20_000_000, announcedAmountCents: 20_000_000 }],
+        discounts: [
+          { kind: 'early_payment', percentBasisPoints: 1_000, amountCents: null },
+          { kind: 'corporate', percentBasisPoints: 4_500, amountCents: null },
+        ],
+      },
+    )
+    const cookie = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(cookie, 'pr1', { ...ENROLLMENT, discounts: ['referral'] }, version),
+        422,
+        'discount_not_in_tariff',
+      )
+      assertError(
+        await enroll(
+          cookie,
+          'pr1',
+          { ...ENROLLMENT, discounts: ['early_payment', 'corporate'] },
+          version,
+        ),
+        422,
+        'discount_cap_exceeded',
+      )
+    })
+    const done = await enroll(
+      cookie,
+      'pr1',
+      { ...ENROLLMENT, discounts: ['early_payment'] },
+      version,
+    )
+    assert.equal(done.statusCode, 201, done.body)
+    const { contracts } = await enrollmentRows(a.id)
+    const contract = contracts.at(-1)
+    assert.equal(contract?.data.grossCents, 20_000_000)
+    assert.equal(contract?.data.netCents, 18_000_000)
+    assert.deepEqual(contract?.data.discounts, [{ kind: 'early_payment', amountCents: 2_000_000 }])
+  })
+
+  test('DOM-FIN-003: ek hizmet ayrı borç kalemidir', async () => {
+    const meal = {
+      ...TUITION,
+      kind: 'meal',
+      amountCents: 1_000_000,
+      announcedAmountCents: null,
+    }
+    const a = await pricedInstitution({}, { items: [TUITION, meal] })
+    const done = await enroll(
+      a.adminCookie,
+      'pr1',
+      { ...ENROLLMENT, extras: ['meal'] },
+      await versionOf(a.id, 'pr1'),
+    )
+    assert.equal(done.statusCode, 201, done.body)
+    const { invoices, contracts } = await enrollmentRows(a.id)
+    const extra = invoices.find((row) => row.data.feeKind === 'meal')
+    assert.equal(extra?.data.amount, 1_000_000)
+    assert.equal(contracts.at(-1)?.data.amount, TUITION.amountCents + 1_000_000)
+  })
+
+  test('DOM-KAY-013, DOM-FIN-022: mevcut veli önerilir ve bağlanır; kardeş indirimi uygulanır', async () => {
+    const a = await pricedInstitution(
+      {},
+      { discounts: [{ kind: 'sibling', percentBasisPoints: 1_000, amountCents: null }] },
+    )
+    const cookie = await frontDesk(a.id)
+    const phone = String((await findRecord(db, a.id, 'prospects', 'pr1'))?.data.phone)
+    const sibling = await created(cookie, {
+      ...PROSPECT,
+      name: 'Test Kardeş',
+      phone,
+      email: '',
+      siblingOfId: 'pr1',
+    })
+    const first = await enroll(cookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(first.statusCode, 201, first.body)
+    const elder = await findRecord(db, a.id, 'students', first.json().data.entity.id)
+    const parentId = String(elder?.data.parentId)
+    const matches = await a_get(cookie, `/api/v1/prospects/${sibling.id}/guardian-matches`)
+    assert.equal(matches.statusCode, 200, matches.body)
+    assert.deepEqual(
+      matches.json().data.map((item: { parentId: string }) => item.parentId),
+      [parentId],
+    )
+    assert.equal(matches.body.includes(phone), false)
+
+    const parentsBefore = (await enrollmentRows(a.id)).parents.length
+    const body = {
+      ...ENROLLMENT,
+      identity: { ...ENROLLMENT.identity, number: '11111111110' },
+      guardian: { existingParentId: parentId },
+      discounts: ['sibling'],
+    }
+    const second = await enroll(cookie, sibling.id, body, sibling.version)
+    assert.equal(second.statusCode, 201, second.body)
+    const { parents, contracts } = await enrollmentRows(a.id)
+    assert.equal(parents.length, parentsBefore)
+    assert.equal(
+      (parents.find((row) => row.id === parentId)?.data.studentIds as string[]).length,
+      2,
+    )
+    assert.deepEqual(contracts.at(-1)?.data.discounts, [
+      { kind: 'sibling', amountCents: Math.floor(TUITION.amountCents / 10) },
+    ])
+    assertError(await a_get(cookie, '/api/v1/prospects/yok/guardian-matches'), 404)
+    assertError(
+      await a_get((await member(a.id, 'veli')).cookie, `/api/v1/prospects/pr2/guardian-matches`),
+      403,
+    )
+  })
+
+  test('DOM-FIN-010: form açıkken tarife değiştiyse 409 tariff_changed; kayıt yazılmaz', async () => {
+    const a = await pricedInstitution()
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(
+          a.adminCookie,
+          'pr1',
+          { ...ENROLLMENT, tariffId: crypto.randomUUID() },
+          version,
+        ),
+        409,
+        'tariff_changed',
+      )
+    })
+  })
+
+  test('DOM-FIN-031: aynı Idempotency-Key ikinci borç açmaz, ilk yanıtı döner', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    const headers = key()
+    const first = await enroll(cookie, 'pr1', ENROLLMENT, version, headers)
+    assert.equal(first.statusCode, 201, first.body)
+    const counts = await enrollmentRows(a.id)
+    const second = await enroll(cookie, 'pr1', ENROLLMENT, version, headers)
+    assert.equal(second.statusCode, 201, second.body)
+    assert.deepEqual(second.json().data, first.json().data)
+    assert.deepEqual(await enrollmentRows(a.id), counts)
+  })
+
+  test('DOM-KAY-035: kayıtlı ve vazgeçmiş aday 409; dolu sınıf 422', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const first = await enroll(cookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(first.statusCode, 201, first.body)
+    const other = { ...ENROLLMENT, identity: { ...ENROLLMENT.identity, number: '11111111110' } }
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(await enroll(cookie, 'pr1', other, version), 409, 'prospect_already_enrolled')
+    })
+    const pr5 = await versionOf(a.id, 'pr5')
+    await noEnrollment(a.id, 'pr5', async () => {
+      assertError(await enroll(cookie, 'pr5', other, pr5), 409, 'prospect_closed')
+    })
+
+    const students = SAMPLE.students ?? []
+    const full = SAMPLE.classes?.map((item) => ({ ...item, capacity: students.length }))
+    const b = await institution({}, { ...SAMPLE, classes: full ?? [] })
+    await publishTariff(b.adminCookie)
+    const fullVersion = await versionOf(b.id, 'pr1')
+    await noEnrollment(b.id, 'pr1', async () => {
+      assertError(
+        await enroll(b.adminCookie, 'pr1', ENROLLMENT, fullVersion),
+        422,
+        'class_capacity_full',
+      )
+    })
+  })
+
+  test('DOM-KAY-012: başlıklar ve gövde doğrulanır; geçersiz kimlik, serbest tutar ve bilinmeyen alan 400', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(await enroll(cookie, 'pr1', ENROLLMENT, null), 400, 'if_match_required')
+      assertError(
+        await enroll(cookie, 'pr1', ENROLLMENT, version, {}),
+        400,
+        'idempotency_key_required',
+      )
+      assertError(await enroll(cookie, 'pr1', ENROLLMENT, version + 1), 409, 'version_conflict')
+      for (const body of [
+        { ...ENROLLMENT, institutionId: 'baska' },
+        { ...ENROLLMENT, totalCents: 10_000 },
+        { ...ENROLLMENT, installmentCount: 13 },
+        { ...ENROLLMENT, firstDueDate: '2026-02-30' },
+        { ...ENROLLMENT, identity: { ...ENROLLMENT.identity, number: '10000000147' } },
+        { ...ENROLLMENT, guardian: { name: 'X', phone: '1', relationship: 'mother' } },
+        { ...ENROLLMENT, discounts: ['serbest'] },
+      ])
+        assertError(await enroll(cookie, 'pr1', body, version), 400, 'validation_failed')
+      assertError(
+        await enroll(cookie, 'pr1', { ...ENROLLMENT, guardian: null }, version),
+        422,
+        'guardian_required',
+      )
+    })
+  })
+
+  test('DOM-YTK-001: başka kurumun adayı ve sınıfı 404; öteki kurum değişmez', async () => {
+    const a = await pricedInstitution()
+    const b = await institution()
+    const cookie = await frontDesk(a.id)
+    const { id } = await created(b.adminCookie)
+    await noEnrollment(b.id, id, async () => {
+      assertError(await enroll(cookie, id, ENROLLMENT, 1), 404, 'not_found')
+    })
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(cookie, 'pr1', { ...ENROLLMENT, classId: 'yok' }, version),
+        404,
+        'not_found',
+      )
+    })
+  })
+
+  test('DOM-FIN-006, DOM-KAY-012: dil okulunda saat paketi; 18 yaş üstü kursiyer ödeyicidir', async () => {
+    const a = await pricedInstitution(
+      { type: 'language_school' },
+      {
+        items: [
+          { ...TUITION, unit: 'lesson_hour', amountCents: 50_000, announcedAmountCents: null },
+        ],
+      },
+    )
+    const cookie = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    const adult = {
+      ...ENROLLMENT,
+      identity: { ...ENROLLMENT.identity, birthDate: '2000-01-01' },
+      guardian: null,
+    }
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(await enroll(cookie, 'pr1', adult, version), 422, 'lesson_hours_required')
+    })
+    const done = await enroll(cookie, 'pr1', { ...adult, lessonHours: 40 }, version)
+    assert.equal(done.statusCode, 201, done.body)
+    const contract = (await enrollmentRows(a.id)).contracts.at(-1)
+    assert.equal(contract?.data.title, 'Dil kursu eğitim sözleşmesi')
+    assert.equal(contract?.data.grossCents, 2_000_000)
+    assert.equal(contract?.data.payer, 'student')
+  })
+
+  test('DOM-YTK-040: crm modülü kapalıyken kimlik özeti 403 module_disabled', async () => {
+    const closed = await institution({ enabledModules: { crm: false } })
+    assertError(
+      await a_get(closed.adminCookie, '/api/v1/students/s1/identity'),
+      403,
+      'module_disabled',
+    )
+  })
+
+  test('DOM-YTK-020: veli telefonu öğrenciye gitmez; yönetici ve velinin kendisi görür', async () => {
+    const a = await pricedInstitution()
+    const done = await enroll(a.adminCookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(done.statusCode, 201, done.body)
+    const studentId = String(done.json().data.entity.id)
+    const student = await findRecord(db, a.id, 'students', studentId)
+    const url = `/api/v1/collections/parents/${String(student?.data.parentId)}`
+    const phone = ENROLLMENT.guardian.phone
+
+    const own = await signInAs(
+      app,
+      await createMember(app, a.id, 'ogrenci', [{ kind: 'student', recordId: studentId }]),
+    )
+    const hidden = await a_get(own, url)
+    assert.equal(hidden.statusCode, 200, hidden.body)
+    assert.equal(hidden.body.includes(phone), false)
+    assert.equal(hidden.body.includes('mother'), false)
+
+    const admin = await a_get(a.adminCookie, url)
+    assert.equal(admin.statusCode, 200, admin.body)
+    assert.equal(admin.body.includes(phone), true)
+    const parent = await signInAs(
+      app,
+      await createMember(app, a.id, 'veli', [{ kind: 'child', recordId: studentId }]),
+    )
+    assert.equal((await a_get(parent, url)).body.includes(phone), true)
+  })
+
+  test('DOM-KAY-011: kimlik tekilliği yıla bağlı değildir; pasif kaydın kimliği yeniden kullanılır', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const first = await enroll(cookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(first.statusCode, 201, first.body)
+    const elderId = String(first.json().data.entity.id)
+
+    // Eğitim yılı ilerlese de aynı kişi aktifken ikinci kayıt açılamaz.
+    await db
+      .update(institutionSettings)
+      .set({ academicYear: FIXED_NOW.getUTCFullYear() + 1 })
+      .where(eq(institutionSettings.institutionId, a.id))
+    await publishTariffForYear(a.adminCookie, FIXED_NOW.getUTCFullYear() + 1)
+    const next = await created(cookie)
+    await noEnrollment(a.id, next.id, async () => {
+      assertError(
+        await enroll(cookie, next.id, ENROLLMENT, next.version),
+        409,
+        'student_identity_duplicate',
+      )
+    })
+
+    // Öğrenci pasifleşince (mezuniyet) aynı kimlik yeniden kayıt olur, eski satır arşivlenir.
+    const elder = await findRecord(db, a.id, 'students', elderId)
+    await db
+      .update(records)
+      .set({ data: { ...elder?.data, isActive: false } })
+      .where(
+        and(
+          eq(records.institutionId, a.id),
+          eq(records.collection, 'students'),
+          eq(records.id, elderId),
+        ),
+      )
+    const again = await enroll(cookie, next.id, ENROLLMENT, next.version)
+    assert.equal(again.statusCode, 201, again.body)
+    const rows = await db
+      .select({ studentId: studentIdentities.studentId, archivedAt: studentIdentities.archivedAt })
+      .from(studentIdentities)
+      .where(eq(studentIdentities.institutionId, a.id))
+    assert.equal(rows.length, 2)
+    assert.ok(rows.find((row) => row.studentId === elderId)?.archivedAt)
   })
 })

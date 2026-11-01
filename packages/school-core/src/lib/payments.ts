@@ -1,0 +1,295 @@
+import { z } from 'zod'
+
+import type { State } from '../data/seed.ts'
+import { csvAmount } from './csv.ts'
+import { PAYMENT_METHODS, daySchema, requiredText, type PaymentMethod } from './domain.ts'
+import { DomainError } from './errors.ts'
+import { dayKey } from './format.ts'
+import { isValidTurkishIban } from './withdrawals.ts'
+
+/**
+ * Tahsilat kuralları (docs/domain/finans.md DOM-FIN-030…033, ADR 0006). Tahsilat ve dağılımı API
+ * tablolarındadır; bu dosya dağılımı hesaplar ve taksitin `paidAt` geçiş önbelleğini günceller.
+ * Yetkiyi kendisi denetlemez (`payInvoice` gibi); API önce `requireAuthorized` çalıştırır.
+ */
+
+const CASH: PaymentMethod = 'Nakit'
+/** Saklanan öğle öncesi saat, gün değerinin Europe/Istanbul'da aynı güne düşmesi içindir. */
+const DAY_TIME = 'T09:00:00.000Z'
+
+export const recordPaymentSchema = z.strictObject({
+  studentId: requiredText,
+  amountCents: z
+    .number()
+    .int('Tutar kuruş cinsinden tam sayı olmalıdır.')
+    .positive('Tutar sıfırdan büyük olmalıdır.')
+    .max(100_000_000, 'Tutar en fazla 1.000.000 ₺ olabilir.'),
+  method: z.enum(PAYMENT_METHODS, 'Ödeme yöntemini seçin.'),
+  // kvkk: Ç
+  reference: z
+    .string()
+    .trim()
+    .min(3, 'İşlem referansı en az 3 karakter olmalıdır.')
+    .max(100)
+    .optional(),
+  paidDate: daySchema.optional(),
+  invoiceId: requiredText.optional(),
+  bankAccountId: requiredText.optional(),
+})
+export type RecordPaymentInput = z.input<typeof recordPaymentSchema>
+
+export const reversePaymentSchema = z.strictObject({
+  // kvkk: Ç
+  reason: z
+    .string()
+    .trim()
+    .min(5, 'İptal gerekçesi en az 5 karakter olmalıdır.')
+    .max(500, 'İptal gerekçesi en fazla 500 karakter olabilir.'),
+})
+export type ReversePaymentInput = z.input<typeof reversePaymentSchema>
+
+export const paymentSettingsSchema = z.strictObject({ cashPaymentsEnabled: z.boolean() })
+export type PaymentSettingsInput = z.input<typeof paymentSettingsSchema>
+
+/** Kurumun bildirilmiş banka hesabı (DOM-FIN-032); kişi verisi değil, kurum hesabıdır. */
+export const bankAccountSchema = z.strictObject({
+  bankName: z
+    .string()
+    .trim()
+    .min(2, 'Banka adını girin.')
+    .max(100, 'Banka adı en fazla 100 karakter olabilir.'),
+  iban: z
+    .string()
+    .transform((value) => value.replace(/\s/g, '').toUpperCase())
+    .refine(isValidTurkishIban, 'Geçerli bir IBAN girin.'),
+  accountHolder: z
+    .string()
+    .trim()
+    .min(2, 'Hesap sahibini girin.')
+    .max(200, 'Hesap sahibi en fazla 200 karakter olabilir.'),
+})
+export type BankAccountInput = z.input<typeof bankAccountSchema>
+
+/** Listede ve dekontta hesabın kısa adı: IBAN'ın son dört hanesi ayırt etmeye yeter. */
+export function bankAccountLabel(account: { bankName: string; iban: string }): string {
+  return `${account.bankName} · ${account.iban.slice(-4)}`
+}
+
+export const paymentMebbisSchema = z.strictObject({ recorded: z.boolean() })
+
+/** İptal edilen tahsilat MEBBİS takibinden çıkar; işareti değişmez (DOM-FIN-032, -033). */
+export function assertMebbisChangeAllowed(payment: { reversedAt: string | null }): void {
+  if (payment.reversedAt !== null)
+    throw new DomainError('payment_already_reversed', 'Bu tahsilat iptal edilmiş.', {
+      kind: 'conflict',
+    })
+}
+
+const MAX_AMOUNT_CENTS = 100_000_000
+
+/**
+ * Kullanıcı tutarını kuruşa çevirir: `1.234,56`, `1234,56`, `1234.5`. En fazla iki ondalık kabul
+ * edilir, hesap metin üzerindendir (DOM-FIN-001). Geçersiz, sıfır veya üst sınır üstü `null`.
+ */
+export function parseAmountInput(text: string): number | null {
+  const value = text.trim()
+  const grouped = /^[1-9]\d{0,2}(?:\.\d{3})+(?:,\d{1,2})?$/.test(value)
+  if (!grouped && !/^\d+(?:[.,]\d{1,2})?$/.test(value)) return null
+  const [whole = '', fraction = ''] = (grouped ? value.replaceAll('.', '') : value).split(/[.,]/)
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'))
+  return Number.isSafeInteger(cents) && cents > 0 && cents <= MAX_AMOUNT_CENTS ? cents : null
+}
+
+/** Kuruşu form alanına yazılacak metne çevirir (`1234,56`). */
+export const amountInputValue = csvAmount
+
+/** Tahsilat formu (web): tutar metindir, gönderimde kuruşa çevrilir. */
+export const paymentFormSchema = z
+  .object({
+    amount: z.string().refine((value) => parseAmountInput(value) !== null, {
+      message: 'Tutarı 1.234,56 biçiminde girin (en fazla 1.000.000 ₺).',
+    }),
+    method: z.enum(PAYMENT_METHODS, 'Ödeme yöntemini seçin.'),
+    reference: z.string().trim().max(100),
+    paidDate: daySchema,
+    bankAccountId: z.string(),
+  })
+  .superRefine((value, context) => {
+    if (value.method !== CASH && value.reference.length < 3)
+      context.addIssue({
+        code: 'custom',
+        path: ['reference'],
+        message: 'İşlem referansını girin (en az 3 karakter).',
+      })
+  })
+export type PaymentFormValues = z.output<typeof paymentFormSchema>
+
+export type PaymentAllocation = { invoiceId: string; amountCents: number }
+
+export interface PaymentContext {
+  /** Taksit kimliği → iptal edilmemiş tahsilatlardan dağıtılmış tutar. */
+  allocated: ReadonlyMap<string, number>
+  cashEnabled: boolean
+  /** Referans başka bir iptal edilmemiş tahsilatta kullanılmış mı. */
+  referenceInUse: boolean
+  /** Kurumun arşivlenmemiş bildirilmiş hesapları. */
+  bankAccountIds: readonly string[]
+  now: string
+}
+
+export interface PaymentPlan {
+  studentId: string
+  amountCents: number
+  method: PaymentMethod
+  reference: string | null
+  bankAccountId: string | null
+  paidAt: string
+  allocations: PaymentAllocation[]
+}
+
+type Invoice = State['invoices'][number]
+
+/** Taksitin açık tutarı. Tahsilat kaydı olmadan ödenmiş eski taksit tam ödenmiş sayılır. */
+export function openAmount(invoice: Invoice, allocated: ReadonlyMap<string, number>): number {
+  if (invoice.paidAt) return 0
+  return Math.max(invoice.amount - (allocated.get(invoice.id) ?? 0), 0)
+}
+
+function paidAtOf(paidDate: string | undefined, now: string): string {
+  if (paidDate === undefined) return now
+  if (paidDate > dayKey(now))
+    throw new DomainError('payment_date_in_future', 'Ödeme tarihi ileri bir gün olamaz.', {
+      path: ['paidDate'],
+    })
+  return `${paidDate}${DAY_TIME}`
+}
+
+/** Önce seçilen taksit, sonra en eski vade (DOM-FIN-030). */
+function allocationOrder(invoices: readonly Invoice[], invoiceId: string | undefined): Invoice[] {
+  const byDue = [...invoices].sort(
+    (a, b) => a.dueDate.localeCompare(b.dueDate) || a.installment - b.installment,
+  )
+  if (invoiceId === undefined) return byDue
+  return [
+    ...byDue.filter((invoice) => invoice.id === invoiceId),
+    ...byDue.filter((invoice) => invoice.id !== invoiceId),
+  ]
+}
+
+/**
+ * Tahsilatı açık taksitlere dağıtır; tam kapanan taksitin `paidAt` ve `method` alanını yazar.
+ * Açık taksitleri aşan kısım dağıtılmaz, iade alacağı olur (DOM-FIN-030). Reddedilen istekte
+ * State değişmez. Sıra: nakit ayarı, referans, öğrenci, seçilen taksit, açık taksit.
+ */
+/**
+ * Hesap tanımlıysa nakit dışı tahsilat bu hesaplardan birine bağlanır (DOM-FIN-032). Hiç hesap
+ * tanımlamamış kurum tahsilat alabilir; ayarlar ekranı eksik hesabı uyarır.
+ */
+function resolveBankAccount(
+  data: { bankAccountId?: string | undefined },
+  context: PaymentContext,
+): string | null {
+  const id = data.bankAccountId ?? null
+  if (id === null && context.bankAccountIds.length > 0)
+    throw new DomainError('bank_account_required', 'Tahsilatın yapıldığı banka hesabını seçin.', {
+      path: ['bankAccountId'],
+    })
+  if (id !== null && !context.bankAccountIds.includes(id))
+    throw new DomainError('bank_account_invalid', 'Seçilen banka hesabı kullanılamıyor.', {
+      path: ['bankAccountId'],
+    })
+  return id
+}
+
+export function planPayment(state: State, input: unknown, context: PaymentContext): PaymentPlan {
+  const data = recordPaymentSchema.parse(input)
+  const reference = data.reference ?? null
+  if (data.method === CASH && !context.cashEnabled)
+    throw new DomainError('cash_payment_disabled', 'Bu kurumda nakit tahsilat kapalıdır.', {
+      path: ['method'],
+    })
+  if (reference === null && data.method !== CASH)
+    throw new DomainError('payment_reference_required', 'İşlem referansını girin.', {
+      path: ['reference'],
+    })
+  const bankAccountId = data.method === CASH ? null : resolveBankAccount(data, context)
+  if (reference !== null && context.referenceInUse)
+    throw new DomainError('payment_reference_used', 'Bu işlem referansı daha önce kaydedilmiş.', {
+      kind: 'conflict',
+      path: ['reference'],
+    })
+  const paidAt = paidAtOf(data.paidDate, context.now)
+  if (!state.students.some((student) => student.id === data.studentId))
+    throw new DomainError('student_not_found', 'Öğrenci bulunamadı.', { kind: 'not_found' })
+  const invoices = state.invoices.filter((invoice) => invoice.studentId === data.studentId)
+  if (data.invoiceId !== undefined) {
+    const target = invoices.find((invoice) => invoice.id === data.invoiceId)
+    if (!target)
+      throw new DomainError('invoice_not_found', 'Ödeme kaydı bulunamadı.', { kind: 'not_found' })
+    if (openAmount(target, context.allocated) === 0)
+      throw new DomainError('invoice_already_paid', 'Bu taksit zaten ödenmiş.', {
+        kind: 'conflict',
+      })
+  }
+  const allocations: PaymentAllocation[] = []
+  let remaining = data.amountCents
+  for (const invoice of allocationOrder(invoices, data.invoiceId)) {
+    if (remaining === 0) break
+    const open = openAmount(invoice, context.allocated)
+    if (open === 0) continue
+    const amountCents = Math.min(open, remaining)
+    allocations.push({ invoiceId: invoice.id, amountCents })
+    remaining -= amountCents
+    if (amountCents === open) {
+      invoice.paidAt = paidAt
+      invoice.method = data.method
+    }
+  }
+  if (allocations.length === 0)
+    throw new DomainError('no_open_installments', 'Bu öğrencinin açık taksiti bulunmuyor.', {
+      kind: 'conflict',
+    })
+  return {
+    studentId: data.studentId,
+    amountCents: data.amountCents,
+    method: data.method,
+    reference,
+    bankAccountId,
+    paidAt,
+    allocations,
+  }
+}
+
+/**
+ * Tahsilat iptali: dağıtıldığı taksitleri yeniden açar (DOM-FIN-033). Dağılım taksit tutarını
+ * aşmadığı için iptalden sonra taksit tam ödenmiş kalamaz.
+ */
+export function reversePayment(
+  state: State,
+  payment: {
+    reversedAt: string | null
+    allocations: readonly PaymentAllocation[]
+    /** Ayrılış kaydı var: iade hesabı bu tahsilata dayanır (DOM-FIN-041). */
+    studentWithdrawn?: boolean
+  },
+  input: unknown,
+): { reason: string } {
+  const { reason } = reversePaymentSchema.parse(input)
+  if (payment.reversedAt !== null)
+    throw new DomainError('payment_already_reversed', 'Bu tahsilat zaten iptal edilmiş.', {
+      kind: 'conflict',
+    })
+  if (payment.studentWithdrawn === true)
+    throw new DomainError(
+      'payment_student_withdrawn',
+      'Ayrılış kaydı olan öğrencinin tahsilatı iptal edilemez.',
+      { kind: 'conflict' },
+    )
+  const ids = new Set(payment.allocations.map((allocation) => allocation.invoiceId))
+  for (const invoice of state.invoices)
+    if (ids.has(invoice.id)) {
+      invoice.paidAt = null
+      invoice.method = null
+    }
+  return { reason }
+}

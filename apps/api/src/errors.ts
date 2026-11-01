@@ -28,6 +28,7 @@ export const MESSAGES = {
   bad_request: 'İstek okunamadı. Bilgileri kontrol edip yeniden deneyin.',
   unauthenticated: 'Oturum açmanız gerekiyor.',
   forbidden: 'Bu işlem için yetkiniz yok.',
+  reauthentication_required: 'Bu işlem için parolanızı yeniden girmeniz gerekiyor.',
   module_disabled: 'Bu modül kurumunuzda kapalı.',
   no_active_institution: 'Etkin bir kurum üyeliğiniz bulunmuyor.',
   csrf_rejected: 'İstek güvenilmeyen bir kaynaktan geldi.',
@@ -147,7 +148,7 @@ export function databaseErrorInfo(error: unknown): { code: string; constraint?: 
 
 /**
  * Kullanıcıya anlamlı veritabanı hatalarını uygulama hatasına çevirir (boyut kısıtı 422,
- * kilitlenme/serileştirme 409 `conflict`); ötekiler aynen döner
+ * kilitlenme, serileştirme ve benzersizlik 409 `conflict`); ötekiler aynen döner
  * (500, ayrıntı yalnız logda). `records_data_size_check`: jsonb'nin ikili boyutu JSON metninden
  * büyük olabildiği için uygulamanın metin denetimi geçse de kısıt reddedebilir.
  */
@@ -156,7 +157,8 @@ export function mapDatabaseError(error: unknown): Error {
   const info = databaseErrorInfo(error)
   if (info?.code === '23514' && info.constraint === 'records_data_size_check')
     return new RuleViolationError('record_too_large', MESSAGES.record_too_large, { cause: error })
-  if (info?.code === '40P01' || info?.code === '40001')
+  // Benzersizlik kurum kilidinin dışından gelen yazmayla çakıştı: istek yenilenebilir.
+  if (info?.code === '40P01' || info?.code === '40001' || info?.code === '23505')
     return new TransientConflictError({ cause: error })
   if (error instanceof Error) return error
   return new AppError(500, 'internal_error', MESSAGES.internal_error, { cause: error })

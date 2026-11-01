@@ -1,17 +1,11 @@
 // CSV dışa aktarma (Vue `exportCsv`): Excel uyumu için `;` ayırıcı, CRLF satır sonu ve UTF-8
 // BOM. Formül enjeksiyonuna karşı `= + - @` (baştaki boşluklardan sonra da) veya sekme/satır
 // başıyla başlayan metin hücreleri `'` ile kaçılır; sayılar olduğu gibi yazılır.
+import { CSV_SEPARATOR, csvCell } from '@kampus/school-core/lib/csv.ts'
+
 import type { ListColumn } from './list-view.ts'
 
-export const CSV_SEPARATOR = ';'
-const FORMULA = /^(?:[\t\r]|\s*[=+\-@])/
-
-export function csvCell(value: unknown): string {
-  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : ''
-  const text = value === null || value === undefined ? '' : String(value)
-  const safe = FORMULA.test(text) ? `'${text}` : text
-  return `"${safe.replaceAll('"', '""')}"`
-}
+export { CSV_SEPARATOR, csvCell }
 
 /** Başlık satırı + verilen sırayla tüm satırlar; BOM içermez (indirirken eklenir). */
 export function toCsv(

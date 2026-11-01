@@ -1,10 +1,6 @@
 import { z } from 'zod'
 
-import {
-  attendanceInputSchema,
-  PAYMENT_METHODS,
-  paymentInputSchema,
-} from '@kampus/school-core/lib/domain.ts'
+import { attendanceInputSchema } from '@kampus/school-core/lib/domain.ts'
 
 import { errorResponseSchema } from '../errors.ts'
 import { authenticatedErrors } from './common.schemas.ts'
@@ -140,18 +136,6 @@ export const commandErrors = {
 } as const
 
 const recordId = (description: string) => z.string().min(1).max(200).describe(description)
-
-export const invoiceParamsSchema = z.object({ invoiceId: recordId('Taksit kimliği') })
-
-/**
- * Ödeme gövdesi: core `paymentInputSchema` (yöntem listesi core'dadır); burada yalnız OpenAPI
- * açıklaması eklenir.
- */
-export const payInvoiceBodySchema = paymentInputSchema.extend({
-  method: paymentInputSchema.shape.method.describe(
-    `Ödeme yöntemi: ${PAYMENT_METHODS.map((method) => `\`${method}\``).join(', ')}`,
-  ),
-})
 
 export const classParamsSchema = z.object({ classId: recordId('Sınıf kimliği') })
 

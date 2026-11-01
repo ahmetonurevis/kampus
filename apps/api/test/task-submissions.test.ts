@@ -11,6 +11,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
+import { resourceVersions } from '../src/db/schema/resources.ts'
 import { insertRubricScore, insertSecondRatingRequest } from '../src/db/skills.ts'
 import {
   rubrics,
@@ -649,6 +650,69 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     } finally {
       now = FIXED_NOW
     }
+  })
+
+  test('DOM-KYN-025, DOM-KYN-051: kaynağın başka sürümü telif bildirimiyle incelemedeyse ya da kaynak kaldırıldıysa arşivli sürüme sabitlenen atamanın içeriği kursiyere ve veliye gösterilmez (taslak olsa da); ilk onaydaki yeni taslak etkilemez', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    await ok(await saveDraft(assignmentId, t.cookies.student, 'İlk taslak'))
+    const [pinned] = await db
+      .select()
+      .from(resourceVersions)
+      .where(
+        and(
+          eq(resourceVersions.institutionId, t.institution.id),
+          eq(resourceVersions.id, t.homeworkId),
+        ),
+      )
+    const nextId = randomUUID()
+    // v2 ilk onay sürecinde (yayın geçmişi yok): sabitlenen v1 gösterilmeye devam eder.
+    await db.insert(resourceVersions).values({
+      ...pinned!,
+      id: nextId,
+      versionNumber: 2,
+      status: 'in_review',
+      publishedAt: null,
+      submittedAt: FIXED_NOW,
+    })
+    const contentOf = async (cookie: string) => {
+      const seen = await ok(await call('GET', `/task-assignments/${assignmentId}`, cookie))
+      return [seen.contentUnavailable, seen.content?.versionId ?? null]
+    }
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await contentOf(cookie), [null, t.homeworkId])
+    const setStatus = (versionId: string, values: Partial<typeof resourceVersions.$inferInsert>) =>
+      db
+        .update(resourceVersions)
+        .set(values)
+        .where(
+          and(
+            eq(resourceVersions.institutionId, t.institution.id),
+            eq(resourceVersions.id, versionId),
+          ),
+        )
+    // v2 yayımlanır, v1 arşive geçer: atama arşivli v1'i göstermeye devam eder.
+    await setStatus(t.homeworkId, { status: 'archived', archivedAt: FIXED_NOW })
+    await setStatus(nextId, { status: 'published', publishedAt: FIXED_NOW })
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await contentOf(cookie), [null, t.homeworkId])
+    // v2'ye telif bildirimi: kaynak öğrenci ve veliye görünmez, v1 de gösterilmez.
+    await setStatus(nextId, { status: 'in_review' })
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await contentOf(cookie), ['unavailable', null])
+    // Yönetici yeniden yayına alır: içerik geri gelir; kaynak kaldırılırsa yine gösterilmez.
+    await setStatus(nextId, { status: 'published' })
+    assert.deepEqual(await contentOf(t.cookies.student), [null, t.homeworkId])
+    // Kaldırma kaynak düzeyindedir; burada yalnız v2 işaretlenir, sabitlenen v1'in içeriği dursa da.
+    await setStatus(nextId, {
+      status: 'removed',
+      content: null,
+      answerKey: null,
+      removedAt: FIXED_NOW,
+      removalReason: 'Telif',
+    })
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await contentOf(cookie), ['unavailable', null])
   })
 
   test('DOM-YTK-028, IST-047: servis de yalnız öğrenciye yazdırır: veli çocuğunun taslağını okuyamaz ve kaydedemez, teslim gönderemez (403); kayıt değişmez', async () => {

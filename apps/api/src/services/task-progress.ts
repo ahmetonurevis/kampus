@@ -5,7 +5,7 @@ import {
 } from '@kampus/school-core/content/resource.ts'
 import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
 
-import { asCoreVersion, loadVersionPairs } from '../db/resources.ts'
+import { asCoreVersion, listResourceVersions, loadVersionPairs } from '../db/resources.ts'
 import {
   loadAttemptsAmong,
   loadDraft,
@@ -44,7 +44,8 @@ import { scoringContexts, type ScoringContext } from './task-work.ts'
  * `learnerView`): cevap anahtarı ve lisans ayrıntısı yoktur, kaynak gösterimi korunur (DOM-KYN-024),
  * yazma şablonunun değerlendirme ölçütü ve rubrik bağı (puanlama notu) çıkarılır, otomatik puanlı
  * içeriğin soru metinleri yalnız denemede görünür (burada soru sayısı). Kaldırılmış veya
- * yayın geçmişi olmayan sürüm `unavailable`. Lisansı dolmuş içerik (DOM-KYN-021; deneme uçlarındaki
+ * yayın geçmişi olmayan sürüm ve herhangi bir sürümü telif bildirimiyle incelemede olan kaynak
+ * (DOM-KYN-025; süren iş olsa da) `unavailable`. Lisansı dolmuş içerik (DOM-KYN-021; deneme uçlarındaki
  * kural) yeni iş başlatmaz ama süren iş biter: süren denemesi, teslimi ya da taslağı olan kursiyere
  * içerik gösterilir, olmayana `license_expired` döner.
  */
@@ -157,14 +158,34 @@ async function hasWork(ctx: ServiceContext, assignment: StoredAssignment, progre
 /** Yayın geçmişi olan sürüm (yayında veya yerini yeni sürüme bırakmış) kursiyere gösterilir. */
 const SHOWN_STATUSES = new Set(['published', 'archived'])
 
+/**
+ * Kaynak kursiyerden çekildi mi (DOM-KYN-025, 051): bir sürümü telif bildirimiyle incelemede
+ * (yayın geçmişi olan `in_review`; ilk onay sürecindeki yeni taslak sayılmaz) ya da kaynak
+ * kaldırılmış. Bildirim kaynak düzeyindedir: atamanın sabitlendiği eski sürüm de gösterilmez.
+ */
+function withdrawnFromLearners(
+  versions: readonly { status: string; publishedAt: string | null }[],
+) {
+  return versions.some(
+    (version) =>
+      version.status === 'removed' ||
+      (version.status === 'in_review' && version.publishedAt !== null),
+  )
+}
+
 async function learnerContent(
   ctx: ServiceContext,
   assignment: StoredAssignment,
   progress: Progress[],
 ) {
   const pairs = await loadVersionPairs(ctx.db, ctx.institutionId, [assignment.resourceVersionId])
-  const version = pairs.get(assignment.resourceVersionId)?.version
-  if (!version || version.content === null || !SHOWN_STATUSES.has(version.status))
+  const pair = pairs.get(assignment.resourceVersionId)
+  const version = pair?.version
+  if (!pair || !version || version.content === null || !SHOWN_STATUSES.has(version.status))
+    return { content: null, contentUnavailable: 'unavailable' as const }
+  if (
+    withdrawnFromLearners(await listResourceVersions(ctx.db, ctx.institutionId, pair.resource.id))
+  )
     return { content: null, contentUnavailable: 'unavailable' as const }
   if (licenseExpired(version.license, ctx.now) && !(await hasWork(ctx, assignment, progress)))
     return { content: null, contentUnavailable: 'license_expired' as const }

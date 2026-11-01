@@ -260,7 +260,7 @@ export function gradeQuiz(
  * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetkiyi kendisi denetlemez (`payInvoice` gibi); API
  * önce `requireAuthorized(actor, 'prospect.enroll', …)` çalıştırır.
  * TODO(crm-enroll): çevrimdışı demo çağıranları (Vue `Crm.vue`, mobil `model/operations.ts`) yetki
- * denetlemez; demo kalıcılığı silinince kalkar. Kesin kayıt API ucu D16c'dedir (`TODO(api-prospect-enroll)`).
+ * denetlemez; demo kalıcılığı silinince kalkar. API ucu `POST /api/v1/prospects/:prospectId/enroll`.
  */
 export function enrollProspect(
   state: State,

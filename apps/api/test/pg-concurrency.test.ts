@@ -21,6 +21,7 @@ import { executeWorkflowCommand, recordAttendanceCommand } from '../src/services
 import { sendMessageCommand } from '../src/services/communication.ts'
 import {
   createProspectCommand,
+  enrollProspectCommand,
   scheduleProspectMeetingCommand,
   scheduleTrialLessonCommand,
 } from '../src/services/prospects.ts'
@@ -838,5 +839,69 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       (row) => (row.data.trialLesson as { lessonId?: string } | undefined)?.lessonId === lesson.id,
     )
     assert.equal(onLesson.length, 2)
+  })
+  test('DOM-KAY-011, DOM-KAY-035: aynı adayı eşzamanlı iki kesin kayıt: yalnız biri yazılır, öteki 409; tek öğrenci, tek taksit planı', async () => {
+    const ctx = await frontDeskContext()
+    const seed = createSeed(FIXED_NOW)
+    const target = seed.classes.find((item) => item.id === 'c1')
+    const prospect = seed.prospects.find((item) => item.id === 'pr1')
+    assert.ok(target && prospect)
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        { collection: 'classes' as const, id: target.id, data: { ...target } },
+        { collection: 'prospects' as const, id: prospect.id, data: { ...prospect } },
+      ],
+      FIXED_NOW,
+    )
+    const body = { classId: target.id, totalCents: 3_600_000, count: 3, startDate: '2026-11-15' }
+    const versioned = (key: string) => ({
+      idempotency: { key, fingerprint: key },
+      expectedVersion: 1,
+    })
+    // Kurum kilidi tutulurken iki istek de kilitte bekler; bırakılınca sırayla işlenir ve ikincisi
+    // birincinin yazdığı `Kayıt oldu` adayı (yeni sürüm) görür.
+    const held = gate()
+    const release = gate()
+    const holder = db.transaction(async (tx) => {
+      await lockInstitution(tx, ctx.institutionId)
+      held.open()
+      await release.opened
+    })
+    await held.opened
+    const outcomes = Promise.allSettled([
+      enrollProspectCommand(ctx, prospect.id, body, versioned('pg-enroll-0001')),
+      enrollProspectCommand(ctx, prospect.id, body, versioned('pg-enroll-0002')),
+    ])
+    try {
+      await untilLockWait('advisory', 2)
+    } finally {
+      release.open()
+      await holder
+    }
+    const settled = await outcomes
+    const fulfilled = settled.filter((item) => item.status === 'fulfilled')
+    assert.deepEqual(
+      fulfilled.map((item) => item.value.statusCode),
+      [201],
+    )
+    const rejected = settled.filter((item) => item.status === 'rejected')
+    assert.equal(rejected.length, 1)
+    const reason: unknown = rejected[0]?.reason
+    assert.ok(reason instanceof AppError && reason.statusCode === 409, String(reason))
+    const written = async (collection: string) => {
+      const [row] = await db
+        .select({ n: count() })
+        .from(records)
+        .where(
+          and(eq(records.institutionId, ctx.institutionId), eq(records.collection, collection)),
+        )
+      return row?.n
+    }
+    assert.equal(await written('students'), 1)
+    assert.equal(await written('parents'), 1)
+    assert.equal(await written('invoices'), 3)
+    assert.equal(await written('contracts'), 1)
   })
 })

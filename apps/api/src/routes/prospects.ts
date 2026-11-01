@@ -18,33 +18,45 @@ import {
   addProspectNoteCommand,
   changeProspectStageCommand,
   createProspectCommand,
+  enrollProspectCommand,
   scheduleProspectMeetingCommand,
   scheduleTrialLessonCommand,
 } from '../services/prospects.ts'
 import { sendCommand } from './command-support.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema, commandResponseSchema } from './commands.schemas.ts'
-import { prospectParamsSchema } from './prospects.schemas.ts'
+import { enrollProspectBodySchema, prospectParamsSchema } from './prospects.schemas.ts'
 
 /**
- * Aday/CRM yazma uçları (docs/domain/kayit-ve-crm.md DOM-KAY-001…009, DOM-KAY-030…034; deneme
+ * Aday/CRM yazma uçları (docs/domain/kayit-ve-crm.md DOM-KAY-001…011, DOM-KAY-030…035; deneme
  * dersi docs/domain/dil-okulu.md DOM-DIL-030). Okuma genel koleksiyon ucundadır
  * (`GET /collections/prospects`). Roller yalnız `yonetici` ve `onburo` (core `WRITE_ACTION_ROLES`),
- * modül `crm`. Sıra komut uçlarıyla aynıdır: 401 → 403 `module_disabled` → (deneme dersinde okulda
+ * modül `crm` (kesin kayıtta ayrıca `finance`). Sıra komut uçlarıyla aynıdır: 401 → 403 `module_disabled` → (deneme dersinde okulda
  * 404) → 403 `forbidden` → `If-Match` → 400 gövde → işlem (404, 409 sürüm, 422, 409).
  *
  * Aday oluşturma `Idempotency-Key` ister, `If-Match` kabul etmez. Var olan adayı değiştiren
- * komutlar (aşama, not, görüşme, deneme dersi) `If-Match` ister: aynı adayın notu veya görüşmesi
- * bayat görüntüyle sessizce üzerine yazılmaz.
+ * komutlar (aşama, not, görüşme, deneme dersi, kesin kayıt) `If-Match` ister: aynı adayın notu
+ * veya görüşmesi bayat görüntüyle sessizce üzerine yazılmaz.
  *
- * TODO(api-prospect-enroll): kesin kayıt ucu (`prospect.enroll`, core `enrollProspect`) öğrenci,
- * veli, taksit ve sözleşme yazdığı için ayrı görevdir; önce `requireAuthorized(actor,
- * 'prospect.enroll', …)` çalıştırır (DOM-KAY-035) ve `Idempotency-Key` zorunludur.
+ * Kesin kayıt (`POST /prospects/:id/enroll`) öğrenci, veli, taksit ve sözleşme oluşturduğu için
+ * hem `If-Match` hem `Idempotency-Key` ister ve 201 + öğrenciye `Location` döner (api-tasarimi.md
+ * §1 alan komutu; yeni kaynak doğduğu için 201). Yetki core `requireAuthorized(…,
+ * 'prospect.enroll', …)` ile serviste ayrıca denetlenir (DOM-KAY-035).
  */
+
+/**
+ * Core komut tablosunun tek modülüne ek olarak istenen modüller (DOM-YTK-040: modül kapanınca
+ * ilgili uçlar reddeder). Kesin kayıt taksit ve sözleşme, yani finans kaydı yazar: `finance`
+ * kapalıysa `crm` açık olsa da 403 `module_disabled`, hiçbir kayıt yazılmaz.
+ */
+const EXTRA_MODULES: Partial<Record<WriteAction, readonly string[]>> = {
+  'prospect.enroll': ['finance'],
+}
 
 const response = { 200: commandResponseSchema, ...commandErrors }
 const created = { 201: commandResponseSchema, ...commandErrors }
-const location = (id: string) => `/api/v1/collections/prospects/${encodeURIComponent(id)}`
+const location = (id: string, collection: 'prospects' | 'students' = 'prospects') =>
+  `/api/v1/collections/${collection}/${encodeURIComponent(id)}`
 
 export function registerProspectRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
@@ -62,7 +74,10 @@ export function registerProspectRoutes(app: FastifyInstance) {
     }
   }
 
-  /** Kimlik → modül (core komut tablosu) → [kurum türü] → rol → `If-Match` → ham gövde. */
+  /**
+   * Kimlik → modül (core komut tablosu, sonra `EXTRA_MODULES`) → [kurum türü] → rol → `If-Match`
+   * → ham gövde.
+   */
   function guard(
     action: WriteAction,
     ifMatch: 'reject' | 'required',
@@ -71,6 +86,7 @@ export function registerProspectRoutes(app: FastifyInstance) {
     return [
       app.authenticate,
       ...(module === null ? [] : [app.requireModule(module)]),
+      ...(EXTRA_MODULES[action] ?? []).map((extra) => app.requireModule(extra)),
       ...(action === 'prospect.trial' ? [requireLanguageSchool()] : []),
       app.requireRole(WRITE_ACTION_ROLES[action]),
       ifMatch === 'reject' ? rejectIfMatch() : requireIfMatch(),
@@ -222,5 +238,36 @@ export function registerProspectRoutes(app: FastifyInstance) {
           options(request, 'optional'),
         ),
       ),
+  )
+
+  typed.post(
+    '/api/v1/prospects/:prospectId/enroll',
+    {
+      preValidation: guard('prospect.enroll', 'required'),
+      schema: {
+        operationId: 'enrollProspect',
+        tags: ['prospects'],
+        summary: 'Adayı kesin kayda al',
+        description: `Açık aşamadaki adayı kesin kayda alır: öğrenci, veli, taksit planı ve sözleşme oluşturulur, aday \`Kayıt oldu\` olur; hepsi tek işlemde yazılır, hata olursa hiçbir kayıt değişmez (core \`enrollProspect\`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetki core \`prospect.enroll\` işlemden önce ayrıca denetlenir. Gövde: \`classId\`, \`totalCents\` (eğitim bedeli, kuruş, tamsayı, 10.000–100.000.000), \`count\` (1–12 taksit), \`startDate\` (ilk vade, \`YYYY-MM-DD\`); sayısal alanlar metin olarak gelirse, aday kimliği gövdede olursa veya bilinmeyen alan varsa 400 \`validation_failed\`. Tutar şimdilik tam lira olmalıdır: 100'ün katı olmayan \`totalCents\` 422 \`amount_not_whole_lira\` (\`issues\` yolu \`totalCents\`). Olmayan veya başka kurumun aday ya da sınıfı 404; dolu sınıf 422 \`class_capacity_full\`, geçersiz ilk vade 422 \`invalid_payment_date\`. Kayıtlı aday 409 \`prospect_already_enrolled\`, vazgeçmiş veya tanınmayan aşamadaki aday 409 \`prospect_closed\` (önce \`İletişime geçildi\` ile yeniden açılır). İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Aday telefonu, e-postası ve veli adı loglanmaz; denetim kaydına yalnız alan adları ve kimlikler yazılır. Modüller \`crm\` ve \`finance\` (taksit ve sözleşme yazılır); biri kapalıysa 403 \`module_disabled\`. \`Idempotency-Key\` zorunludur (mükerrer öğrenci ve taksit üretilmez). ${ifMatchNote} Başarı 201; \`entity\` yeni öğrencidir ve \`Location\` öğrenci kaydını gösterir. Roller: ${rolesOf('prospect.enroll')}.`,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        params: prospectParamsSchema,
+        body: enrollProspectBodySchema,
+        response: created,
+      },
+    },
+    async (request, reply) => {
+      const body = sendCommand(
+        reply,
+        await enrollProspectCommand(
+          contextOf(request),
+          request.params.prospectId,
+          request.body,
+          options(request, 'required'),
+        ),
+      )
+      const entity = body.data.entity
+      if (entity) reply.header('location', location(entity.id, 'students'))
+      return body
+    },
   )
 }

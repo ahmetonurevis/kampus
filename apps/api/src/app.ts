@@ -83,7 +83,11 @@ export const REDACTED_PATHS = [
   '*.phone',
   'guardianName',
   '*.guardianName',
+  // kvkk: Ç — kesin kayıtta öğrencinin kimlik numarası ve doğum tarihi (DOM-KAY-012).
+  'nationalId',
   '*.nationalId',
+  'birthDate',
+  '*.birthDate',
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
   // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).

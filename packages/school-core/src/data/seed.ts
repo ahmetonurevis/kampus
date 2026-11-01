@@ -1,6 +1,11 @@
 import { questionBank } from './question-bank.ts'
 import { subjects, subjectsForGrade, subjectById } from './curriculum.ts'
-import { gradeQuiz, type AttendanceCorrection } from '../lib/domain.ts'
+import {
+  gradeQuiz,
+  type AttendanceCorrection,
+  type EnrollmentPayer,
+  type GuardianRelation,
+} from '../lib/domain.ts'
 import { createSchoolWorkflows } from './school-workflows.ts'
 import { createAssessmentAutomation } from './assessment-automation.ts'
 import type {
@@ -864,13 +869,28 @@ type Timestamps = { createdAt?: string; updatedAt?: string }
 export type State = Omit<SeedState, keyof StatePatches> & StatePatches
 type StatePatches = {
   // Arayüzden kaydedilen öğrenciye okul numarası verilmez.
-  students: (Patch<Item<'students'>, { number?: string }> & { academicYear?: number })[]
+  // Kesin kayıt alanları (lib/domain.ts `enrollProspect`, DOM-KAY-012); örnek veri ve eski
+  // kayıtlar taşımaz.
+  students: (Patch<Item<'students'>, { number?: string }> & {
+    academicYear?: number
+    // kvkk: Ç — T.C. veya yabancı uyruklu kimlik numarası; loglanmaz, listelerde maskelenir.
+    nationalId?: string
+    // kvkk: Ç — doğum tarihi (`YYYY-MM-DD`).
+    birthDate?: string
+    // kvkk: K — velinin öğrenciye yakınlık derecesi.
+    guardianRelation?: GuardianRelation
+  })[]
+  // 18 yaş altı öğrencinin velisinin iletişim bilgisi (DOM-KAY-003); örnek veri taşımaz.
+  // kvkk: K — veli telefonu ve e-postası.
+  parents: (Item<'parents'> & { phone?: string; email?: string })[]
   // Not girişinin alanları; örnek veri ve eski kayıtlar bunları taşımaz (lib/grades.ts).
   grades: (Item<'grades'> & Partial<OfficialGradeFields>)[]
   // Düzeltme geçmişi; ilk kez alınan yoklama ve örnek veri taşımaz (DOM-AKD-035).
   attendance: (Item<'attendance'> & { corrections?: AttendanceCorrection[] })[]
   invoices: (Item<'invoices'> & Timestamps & { contractId?: string; academicYear?: number })[]
   contracts: (Item<'contracts'> & {
+    /** Kesin kayıtta ödeyici (DOM-KAY-012); eski kayıtlar taşımaz. */
+    payer?: EnrollmentPayer
     classId?: string
     academicYear?: number
     invoiceIds?: string[]

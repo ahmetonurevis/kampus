@@ -3,8 +3,7 @@ import { eq } from 'drizzle-orm'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
-import { enrollProspect } from '@kampus/school-core/lib/domain.ts'
-import { DomainError } from '@kampus/school-core/lib/errors.ts'
+import { enrollProspect, type EnrollmentInput } from '@kampus/school-core/lib/domain.ts'
 import {
   addProspectNote,
   changeProspectStage,
@@ -66,6 +65,8 @@ type Outcome = {
   statusCode: number
   /** Yanıtın konusu (`entity`) adaydan başkaysa: kesin kayıtta oluşturulan öğrenci. */
   created?: { collection: CollectionName; id: string }
+  /** Yanıt verisine eklenen alanlar (kesin kayıtta `contractId`). */
+  extra?: Record<string, string>
 }
 
 interface ProspectRun {
@@ -134,6 +135,7 @@ function execute(
         outcome.result.created ?? { collection: COLLECTION, id: outcome.result.id },
         outcome.changes,
         outcome.result.statusCode,
+        outcome.result.extra,
       ),
     options.idempotency,
   )
@@ -245,32 +247,26 @@ export function scheduleTrialLessonCommand(
 }
 
 /**
- * Kesin kayıtta yalnız eklenen koleksiyonlar: core `enrollProspect` veliyi, taksitleri ve
- * sözleşmeyi okumaz, yalnız ekler. Kurumun bütün faturalarını yüklemek gereksizdir; yeni kayıtlar
- * koleksiyonun sonuna eklenir. Mevcut veliye bağlama (DOM-KAY-013) gelince `parents` bütünüyle
- * yüklenmelidir.
+ * Kesin kayıtta yalnız eklenen koleksiyonlar: core `enrollProspect` taksitleri ve sözleşmeyi
+ * okumaz, yalnız ekler. Kurumun bütün faturalarını yüklemek gereksizdir; yeni kayıtlar
+ * koleksiyonun sonuna eklenir. Veliler bütünüyle yüklenir: kardeş kaydında mevcut veliye bağlanır
+ * (DOM-KAY-013).
  */
 const APPEND_ONLY: LoadScope = { ids: [] }
 
 /** Kesin kayıt gövdesi (rota şeması `enrollProspectBodySchema` doğrulamıştır); tutar kuruş. */
-export interface EnrollProspectInput {
-  classId: string
-  totalCents: number
-  count: number
-  startDate: string
-}
+export type EnrollProspectInput = Omit<EnrollmentInput, 'prospectId'>
 
 /**
  * Adayı kesin kayda alır: öğrenci, veli, taksitler ve sözleşme yazılır, aday `Kayıt oldu` olur
- * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetki core `prospect.enroll` (yönetici, ön büro; modül
- * `crm`) işlemden önce açıkça denetlenir; `finance` modülü rotada ayrıca istenir. Kapalı veya
- * kayıtlı aday 409 (`prospect_closed`, `prospect_already_enrolled`); aynı adayı eşzamanlı iki istek
- * kayda alırsa kurum kilidi altında ikincisi 409 alır (`test:pg`). Gövdede aday kimliği yoktur;
- * yol parametresinden eklenir. 201, yanıtın konusu yeni öğrencidir; denetim kaydı adaya bağlanır.
- *
- * Tutar API'de kuruştur (`totalCents`); core `registrationSchema` tam lira ister. 100'ün katı
- * olmayan tutar core'a yuvarlanarak gitmez: 422 `amount_not_whole_lira` (`issues` yolu
- * `totalCents`). Kural yetki denetiminden sonra, işlemin içinde çalışır; bayat sürümle 409 olur.
+ * (DOM-KAY-001, DOM-KAY-003, DOM-KAY-011, DOM-KAY-012, DOM-KAY-013, DOM-KAY-035). Yetki core
+ * `prospect.enroll` (yönetici, ön büro; modül `crm`) işlemden önce açıkça denetlenir; `finance`
+ * modülü rotada ayrıca istenir. Kapalı veya kayıtlı aday 409 (`prospect_closed`,
+ * `prospect_already_enrolled`); aynı adayı eşzamanlı iki istek kayda alırsa kurum kilidi altında
+ * ikincisi 409 alır (`test:pg`). Gövdede aday kimliği yoktur; yol parametresinden eklenir. 201,
+ * yanıtın konusu yeni öğrencidir, yanıt sözleşme kimliğini (`contractId`) de taşır; denetim kaydı
+ * adaya bağlanır. Tutar kuruştur ve core'a olduğu gibi geçer. Kimlik no ve doğum tarihi
+ * loglanmaz (`REDACTED_PATHS`); denetim kaydına yalnız alan adları yazılır.
  */
 export function enrollProspectCommand(
   ctx: ServiceContext,
@@ -283,32 +279,24 @@ export function enrollProspectCommand(
     {
       action: 'prospect.enroll',
       subjectId: prospectId,
-      loadScope: { parents: APPEND_ONLY, invoices: APPEND_ONLY, contracts: APPEND_ONLY },
+      loadScope: { invoices: APPEND_ONLY, contracts: APPEND_ONLY },
       run: (state, by, { now, makeId }, { institutionType }) => {
         requireAuthorized(by, 'prospect.enroll', {}, state, {
           now,
           ...(institutionType === undefined ? {} : { institutionType }),
         })
-        if (input.totalCents % 100 !== 0)
-          throw new DomainError(
-            'amount_not_whole_lira',
-            'Tutar şimdilik tam lira olmalıdır; kuruşlu tutar girilemez.',
-            { path: ['totalCents'] },
-          )
-        // TODO(core-kurus): core `registrationSchema` kuruşa geçince `totalCents` doğrudan geçer ve
-        // 100'ün katı şartı kalkar.
-        const core = {
-          prospectId,
-          classId: input.classId,
-          total: input.totalCents / 100,
-          count: input.count,
-          startDate: input.startDate,
-        }
-        const { student } = enrollProspect(state, core, makeId, now)
+        const { student, contract } = enrollProspect(
+          state,
+          { ...input, prospectId },
+          makeId,
+          now,
+          institutionType === undefined ? {} : { institutionType },
+        )
         return {
           id: prospectId,
           statusCode: 201,
           created: { collection: 'students', id: student.id },
+          extra: { contractId: contract.id },
         }
       },
     },

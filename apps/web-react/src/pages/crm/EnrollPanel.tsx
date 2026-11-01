@@ -70,7 +70,7 @@ export function EnrollPanel({ prospectId, onClose }: { prospectId: string; onClo
 
 function PanelBody({ prospectId, onClose }: { prospectId: string; onClose: () => void }) {
   const item = useCoreItem('prospects', prospectId)
-  const [created, setCreated] = useState<{ studentId: string; name: string } | null>(null)
+  const [created, setCreated] = useState<CreatedEnrollment | null>(null)
   if (created) return <Success student={created} onClose={onClose} />
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
@@ -79,18 +79,14 @@ function PanelBody({ prospectId, onClose }: { prospectId: string; onClose: () =>
       prospect={item.data.record}
       version={item.data.version}
       onClose={onClose}
-      onCreated={(studentId) => setCreated({ studentId, name: item.data.record.name })}
+      onCreated={(ids) => setCreated({ ...ids, name: item.data.record.name })}
     />
   )
 }
 
-function Success({
-  student,
-  onClose,
-}: {
-  student: { studentId: string; name: string }
-  onClose: () => void
-}) {
+type CreatedEnrollment = { studentId: string; contractId: string; name: string }
+
+function Success({ student, onClose }: { student: CreatedEnrollment; onClose: () => void }) {
   const { session } = useAuth()
   const role = session?.role ?? 'onburo'
   const modules = session?.modules ?? {}
@@ -129,37 +125,20 @@ function Success({
             </Link>
           </Button>
         ) : null}
-        <ContractButton studentId={student.studentId} />
+        {student.contractId ? (
+          <PdfButton
+            type="contract"
+            recordId={student.contractId}
+            label="Sözleşmeyi görüntüle"
+            variant="outline"
+            size="default"
+          />
+        ) : null}
         <Button variant="outline" onClick={onClose}>
           Kapat
         </Button>
       </div>
     </div>
-  )
-}
-
-/**
- * "Sözleşmeyi görüntüle": kesin kayıt yanıtı yalnız öğrenciyi döner (`entity`), sözleşme kimliğini
- * taşımaz; sözleşme öğrenci kimliğiyle sorgulanıp en yeni kayıt açılır (W10 `PdfButton`, şablon
- * aynıdır). Sorgu henüz dönmediyse ya da okunamadıysa düğme gösterilmez, kayıt etkilenmez.
- * TODO(web-enroll-contract): API yanıtına `contractId` eklenince ek sorgu kalkar.
- */
-function ContractButton({ studentId }: { studentId: string }) {
-  const contracts = useCoreAll(
-    'contracts',
-    { filters: { studentId }, sort: ['-date'] },
-    { enabled: studentId !== '' },
-  )
-  const contract = contracts.data?.[0]?.record
-  if (!contract) return null
-  return (
-    <PdfButton
-      type="contract"
-      recordId={contract.id}
-      label="Sözleşmeyi görüntüle"
-      variant="outline"
-      size="default"
-    />
   )
 }
 
@@ -172,7 +151,7 @@ function EnrollForm({
   prospect: Prospect
   version: number
   onClose: () => void
-  onCreated: (studentId: string) => void
+  onCreated: (ids: { studentId: string; contractId: string }) => void
 }) {
   const { session } = useAuth()
   const type = session?.institution.type ?? 'school'
@@ -232,7 +211,15 @@ function EnrollForm({
 
   const onSubmit = form.handleSubmit(async (values) => {
     const outcome = await enroll.submit(
-      { prospectId: prospect.id, version, body: enrollBody(values) },
+      {
+        prospectId: prospect.id,
+        version,
+        body: enrollBody(values, {
+          otherCampus: options.some(
+            (item) => item.id === values.classId && item.branchId !== prospect.branchId,
+          ),
+        }),
+      },
       {
         setError: (name, error) => {
           const field: EnrollField | undefined = enrollFieldOfPath(name)
@@ -244,7 +231,10 @@ function EnrollForm({
     )
     if (outcome.status !== 'success') return
     notify.success('Kesin kayıt, sözleşme ve taksit planı oluşturuldu.')
-    onCreated(outcome.data.data.entity?.id ?? '')
+    onCreated({
+      studentId: outcome.data.data.entity?.id ?? '',
+      contractId: outcome.data.data.contractId,
+    })
   })
 
   if (classes.error)

@@ -4,6 +4,7 @@
 // (kontenjan, aday aşaması, ödeme tarihi).
 import { z } from 'zod'
 import type { EnrollProspectBody } from '@kampus/react-shared/use-prospect-commands.ts'
+import { isCalendarDay } from '@kampus/school-core/lib/age.ts'
 import { installmentAmounts } from '@kampus/school-core/lib/domain.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
@@ -45,15 +46,6 @@ export function parseLira(input: string): LiraResult {
 /** Tam lira → kuruş (`totalCents`); para her yerde tamsayı kuruştur. */
 export const liraToCents = (lira: number) => lira * 100
 
-/** `YYYY-MM-DD` gerçek bir takvim günü mü (30 Şubat gibi taşan tarihler geçersizdir). */
-function isCalendarDay(value: string): boolean {
-  const [year = 0, month = 0, day = 0] = value.split('-').map(Number)
-  const date = new Date(Date.UTC(year, month - 1, day))
-  return (
-    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
-  )
-}
-
 const dateField = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'İlk vade tarihini seçin.', abort: true })
@@ -84,8 +76,17 @@ export const enrollDefaults = (now: Date | number = Date.now()): EnrollFormValue
   startDate: dayKey(now),
 })
 
-/** Doğrulanmış form → API gövdesi; tutar yeniden ayrıştırılır, kuruşlu giriş buraya ulaşmaz. */
-export function enrollBody(values: z.output<typeof enrollFormSchema>): EnrollProspectBody {
+/**
+ * Doğrulanmış form → API gövdesi; tutar yeniden ayrıştırılır, kuruşlu giriş buraya ulaşmaz.
+ * Başka kampüsün sınıfı yalnız "tüm kampüsler" açıkken seçilebilir; bu bilinçli seçimdir ve
+ * gövdeye `allowOtherCampus` olarak gider (yoksa sunucu 422 `class_campus_mismatch`).
+ * TODO(web-enroll-fields): DOM-KAY-012 alanları (kimlik no, doğum tarihi, yakınlık, ödeyici) ve
+ * kardeşin mevcut velisi (`parentId`, DOM-KAY-013) forma eklenince gövdeye yazılır.
+ */
+export function enrollBody(
+  values: z.output<typeof enrollFormSchema>,
+  { otherCampus = false }: { otherCampus?: boolean } = {},
+): EnrollProspectBody {
   const total = parseLira(values.total)
   if (!total.ok) throw new Error(total.message)
   return {
@@ -93,6 +94,7 @@ export function enrollBody(values: z.output<typeof enrollFormSchema>): EnrollPro
     totalCents: liraToCents(total.lira),
     count: Number(values.count),
     startDate: values.startDate,
+    ...(otherCampus ? { allowOtherCampus: true } : {}),
   }
 }
 
@@ -107,10 +109,10 @@ const PATH_FIELDS: Readonly<Record<string, EnrollField>> = {
   count: 'count',
   startDate: 'startDate',
 }
-/** Yolsuz gelen iş kuralı kodu → form alanı (kontenjan, ödeme tarihi). */
+/** Yolsuz gelen iş kuralı kodu → form alanı (kontenjan, kampüs, ödeme tarihi). */
 const CODE_FIELDS: Readonly<Record<string, EnrollField>> = {
   class_capacity_full: 'classId',
-  amount_not_whole_lira: 'total',
+  class_campus_mismatch: 'classId',
   invalid_payment_date: 'startDate',
   invalid_installment: 'count',
 }

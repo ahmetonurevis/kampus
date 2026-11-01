@@ -6,7 +6,22 @@ Bildirilen dosya türü kanonik MIME'a çevrilir (F3c2a inceleme düzeltmesi; AD
 
 - `content/taxonomy.ts`: `MIME_ALIASES` takma ad tablosu (`audio/x-m4a`, `audio/m4a` → `audio/mp4`; `audio/x-wav`, `audio/wave`, `audio/vnd.wave` → `audio/wav`; `audio/mp3` → `audio/mpeg`; `image/jpg`, `image/pjpeg` → `image/jpeg`; `video/webm` → `audio/webm`) ve `canonicalMimeType`: parametreleri (`;codecs=opus`) atar, harfi küçültür, takma adı çözer; tanınmayan türde `null` döner.
 - Gerekçe: web kancası tarayıcının bildirdiği türü listeyle birebir karşılaştırıyordu; Windows Firefox'taki `.m4a` (`audio/x-m4a`) ya da tarayıcı kaydı (`audio/webm;codecs=opus`) istemcide reddediliyor, oysa sunucu kabul ediyordu. Web/mobil ön denetimi (`react-shared` `checkFileBeforeUpload`) ve API tutarlılık denetimi (`file-detection.ts`) artık aynı tabloyu kullanır; tanınmayan türde karar sunucuya kalır.
-- Tüketiciler `workspace:2.24.0` sürümüne sabitlendi. 2.23.0 başka dala ayrıldı; birleştirmede sürüm çözülecek.
+- Tüketiciler `workspace:2.24.0` sürümüne sabitlendi. 2.23.0 (D16d) ayrı dalda yayımlandı ve entegrasyonda bu sürümün altında yer alır.
+
+## 2.23.0
+
+Kesin kayıt core takipleri (D16d; `docs/domain/kayit-ve-crm.md` DOM-KAY-003, DOM-KAY-012, DOM-KAY-013).
+
+- **Kırıcı:** `lib/domain.ts` `enrollProspect` girdisi kuruştur: yeni `enrollmentSchema` (`totalCents` tamsayı, 10.000–100.000.000) eski `total` (tam lira) alanının yerini aldı (`TODO(core-kurus)` kapandı). Çevrimdışı demo formları (`registrationSchema`, lira) sınırda `enrollmentFromRegistration` ile çevrilir; Vue `Crm.vue` ve mobil `model/operations.ts` bunu çağırır, demo davranışı (her kampüsün sınıfı seçilebilir) korunur.
+- Sınıf adayın kampüsünden değilse 422 `class_campus_mismatch` (`path: ['classId']`); `allowOtherCampus: true` bilinçli seçimdir.
+- 18 yaş altında (`school` her zaman; `language_school`'da adayın seçimi, seçimi olmayan eski adayda doğum tarihi) adayın telefonu ve e-postası veliye yazılır, öğrenciye boş yazılır; veli adı `guardianName`'dir (DOM-KAY-003). Yetişkin kursiyerin iletişimi kendisinde kalır.
+- Kardeş kaydında yeni veli açılmaz (DOM-KAY-013): `parentId` ile seçilen veli ya da kardeş adayın (`siblingOfId`, iki yönde) kayıtlı öğrencisinin velisi kullanılır; olmayan veli `parent_not_found` (`not_found`). İletişim eşleşmesi otomatik birleştirmez.
+- İnceleme düzeltmesi (DOM-KAY-013): yetişkin kursiyerin iletişimsiz yer tutucu velisi (telefon ve e-posta yok, bütün öğrencileri yetişkin: aday `minor: false` ya da doğum tarihine göre 18+) gerçek veli sayılmaz; kardeş aramasında atlanır, `parentId` ile seçilirse `parent_not_guardian`. Mevcut velide eksik telefon/e-posta adayınkiyle tamamlanır, var olan değer ve ad değişmez.
+- DOM-KAY-012 alanları şimdilik isteğe bağlıdır: `nationalId` (`nationalIdSchema`, `isValidNationalId` denetim haneleri; kvkk Ç), `birthDate` (`birthDateSchema`, `ageOn`; kvkk Ç), `guardianRelation` (`GUARDIAN_RELATIONS`), `payer` (`ENROLLMENT_PAYERS`). Gelecek doğum tarihi `invalid_birth_date`, dil okulunda 18 yaş seçimiyle uyuşmazlık `birth_date_minor_mismatch`; 18 yaş altında ödeyici veli (`payer_must_be_guardian`), yetişkinde kendisi (`payer_must_be_student`); yetişkinde veli alanı `guardian_not_applicable`.
+- Sözleşme başlığı kurum türüne göredir (`ENROLLMENT_CONTRACT_TITLES`; dil okulunda "Dil kursu eğitim sözleşmesi") ve sözleşme `payer` taşır. İşlev beşinci parametre olarak `{ institutionType }` alır ve `{ student, contract, parent }` döndürür.
+- 18 yaş sınırı ve takvim günü denetimi tek yerde: yeni `lib/age.ts` (`ADULT_AGE`, `isCalendarDay`, `ageOn`, `isUnderAdultAge`); `lib/domain.ts` ve `cefr/progression.ts` `isMinorOn` bunu kullanır. `ageOn` artık `lib/domain.ts`'ten değil `lib/age.ts`'ten içe aktarılır.
+- KVKK inceleme düzeltmesi (`lib/scope.ts`, guvenlik-kvkk.md §8): öğrencinin `nationalId`'si yalnız yönetici ve ön büroya, maskeli döner (`maskNationalId`, `*******1234`; tam değer hiçbir okumada dönmez); öğretmen `nationalId` ve `birthDate`'i, öğrenci ve veli `nationalId`'yi görmez. Yeni `UNSEARCHABLE_FIELDS` ve `Scope.searchExcludedFields`: kimlik no ve doğum tarihi serbest metin aramasına girmez.
+- `State`: `students` `nationalId`, `birthDate`, `guardianRelation`; `parents` `phone`, `email`; `contracts` `payer` isteğe bağlı alanlarını kazandı. Tüketiciler `workspace:2.23.0` sürümüne sabitlendi.
 
 ## 2.22.0
 

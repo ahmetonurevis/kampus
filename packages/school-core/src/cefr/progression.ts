@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { DomainError } from '../lib/errors.ts'
-import { dayKey } from '../lib/format.ts'
+import { isCalendarDay, isUnderAdultAge } from '../lib/age.ts'
 import type { Role } from '../modules/navigation.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { enumKeys, type CefrLevel } from '../content/taxonomy.ts'
@@ -266,12 +266,6 @@ export type AbsenceNoticeDue = {
   totalHours: number
 }
 
-/** Gerçek takvim günü mü (`YYYY-MM-DD`; 2008-02-30 değildir). */
-const isCalendarDay = (value: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-  Number.isFinite(Date.parse(`${value}T09:00:00Z`)) &&
-  new Date(`${value}T09:00:00Z`).toISOString().slice(0, 10) === value
-
 /**
  * Kayıt gününde değil, bildirim anında reşit mi (DOM-DIL-091, 092): yaş Europe/Istanbul gününe
  * göre hesaplanır. 29 Şubat doğumlu artık olmayan yılda 1 Mart'ta 18'ine girer (veli daha uzun
@@ -283,9 +277,7 @@ export function isMinorOn(birthDate: string, now: Instant): boolean {
       path: ['birthDate'],
     })
   }
-  const today = dayKey(toMs(now))
-  const years = Number(today.slice(0, 4)) - Number(birthDate.slice(0, 4))
-  return (today.slice(5) < birthDate.slice(5) ? years - 1 : years) < 18
+  return isUnderAdultAge(birthDate, toMs(now))
 }
 
 /**

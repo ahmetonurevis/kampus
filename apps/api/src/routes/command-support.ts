@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { z } from 'zod'
 
 import { AppError, MESSAGES, ValidationError } from '../errors.ts'
 import { requestFingerprint } from '../services/idempotency.ts'
@@ -71,8 +72,19 @@ export function ifMatchVersion(request: FastifyRequest, supported = true): numbe
  * Komut yanıtını yazar ve gövdeyi döndürür. Tekrarlanan yanıt veritabanından geldiği için
  * gövde yanıt şemasıyla yeniden okunur; biçim dışı saklı yanıt 500 olur, istemciye gitmez.
  */
-export function sendCommand(reply: FastifyReply, response: CommandResponse): CommandResponseBody {
+export function sendCommand(reply: FastifyReply, response: CommandResponse): CommandResponseBody
+export function sendCommand<T extends CommandResponseBody>(
+  reply: FastifyReply,
+  response: CommandResponse,
+  /** Uca özgü yanıt şeması (ek alanlı komut sonucu, ör. kesin kayıtta `contractId`). */
+  schema: z.ZodType<T>,
+): T
+export function sendCommand(
+  reply: FastifyReply,
+  response: CommandResponse,
+  schema: z.ZodType<CommandResponseBody> = commandResponseSchema,
+): CommandResponseBody {
   if (response.replayed) reply.header('idempotent-replayed', 'true')
   reply.status(response.statusCode)
-  return commandResponseSchema.parse(response.body)
+  return schema.parse(response.body)
 }

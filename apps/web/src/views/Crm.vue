@@ -9,6 +9,7 @@ import {
   prospectSchema,
   registrationSchema,
   enrollProspect,
+  enrollmentFromRegistration,
   requiredText,
   installmentAmounts,
 } from '../lib/domain.js'
@@ -224,7 +225,7 @@ function register() {
     return
   }
   const result = action(
-    () => enrollProspect(state, registrationSchema.parse(registration), id),
+    () => enrollProspect(state, enrollmentFromRegistration(registration), id),
     'Kesin kayıt, sözleşme ve taksit planı oluşturuldu.',
   )
   if (result) createdRegistration.value = result

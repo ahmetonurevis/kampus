@@ -201,7 +201,7 @@ describe('üretim güvenlik varsayılanları', () => {
     }
   })
 
-  test('DOM-ILT-100, DOM-ILT-102, DOM-ILT-092, DOM-KAY-003, DOM-KAY-032: log gizleme üst düzey, iç içe ve geçmiş dizisindeki serbest metni yazmaz', async () => {
+  test('DOM-ILT-100, DOM-ILT-102, DOM-ILT-092, DOM-KAY-003, DOM-KAY-012, DOM-KAY-032: log gizleme üst düzey, iç içe ve geçmiş dizisindeki serbest metni yazmaz', async () => {
     const logs: string[] = []
     const texts = {
       note: 'Gizli görüşme konusu.',
@@ -221,6 +221,10 @@ describe('üretim güvenlik varsayılanları', () => {
       recordGuardianName: 'Kayıttaki Gizli Veli',
       prospectNote: 'Gizli aday görüşme notu.',
       recordProspectNote: 'Kayıttaki gizli aday notu.',
+      nationalId: '10000000146',
+      birthDate: '2012-03-04',
+      recordNationalId: '10000000078',
+      recordBirthDate: '2011-05-06',
     }
     // Uygulamanın gerçek logger yapılandırması (`REDACTED_PATHS`); hem uygulama hem istek logu.
     const app = await buildTestApp(db, {
@@ -252,6 +256,8 @@ describe('üretim güvenlik varsayılanları', () => {
           phone: texts.phone,
           guardianName: texts.guardianName,
           notes: [{ text: texts.prospectNote }],
+          nationalId: texts.nationalId,
+          birthDate: texts.birthDate,
         },
         'aday',
       )
@@ -262,6 +268,8 @@ describe('üretim güvenlik varsayılanları', () => {
             email: texts.recordEmail,
             guardianName: texts.recordGuardianName,
             notes: [{ text: texts.recordProspectNote, author: 'Ön Büro' }],
+            nationalId: texts.recordNationalId,
+            birthDate: texts.recordBirthDate,
           },
         },
         'aday kaydı',

@@ -433,6 +433,9 @@ describe('yazma uçları', () => {
         'POST /api/v1/payments',
         'POST /api/v1/payments/{paymentId}/reverse',
         'PATCH /api/v1/payment-settings',
+        // Ayrılış ve iade (routes/withdrawals.ts; DOM-FIN-041).
+        'POST /api/v1/students/{studentId}/withdraw',
+        'POST /api/v1/withdrawals/{withdrawalId}/pay-refund',
       ]
       assert.deepEqual(required.sort(), expected.sort())
     })

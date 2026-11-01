@@ -125,6 +125,25 @@ export async function allocatedByInvoice(
   return new Map(rows.map((row) => [row.invoiceId, Number(row.total)]))
 }
 
+/** Öğrencinin iptal edilmemiş tahsilatlarının toplamı. */
+export async function paymentTotal(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+): Promise<number> {
+  const [row] = await db
+    .select({ total: sql<string | null>`sum(${payments.amountCents})` })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.institutionId, institutionId),
+        eq(payments.studentId, studentId),
+        isNull(payments.reversedAt),
+      ),
+    )
+  return Number(row?.total ?? 0)
+}
+
 export async function isReferenceInUse(
   db: Database,
   institutionId: string,

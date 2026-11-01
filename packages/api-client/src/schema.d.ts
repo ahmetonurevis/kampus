@@ -1960,6 +1960,106 @@ export interface paths {
         patch: operations["setPaymentSettings"];
         trace?: never;
     };
+    "/api/v1/students/{studentId}/withdrawal-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ayrılış ve iade hesabını önizle
+         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["quoteWithdrawal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/students/{studentId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğrencinin ayrılışını onayla
+         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
+         */
+        post: operations["withdrawStudent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ayrılış ve iadeleri listele
+         * @description Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listWithdrawals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/withdrawals/{withdrawalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ayrılış ve iade ayrıntısı
+         * @description Hesap dökümüyle birlikte döner; IBAN maskelidir. Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getWithdrawal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/withdrawals/{withdrawalId}/pay-refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İadeyi ödenmiş işaretle
+         * @description Ödeme tarihi, IBAN ve hesap sahibini yazar; ödenen iade değiştirilemez (DOM-FIN-041). Geçersiz IBAN 400; hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`; iade yoksa 409 `refund_not_due`; ödenmişse 409 `refund_already_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `If-Match` ve `Idempotency-Key` zorunludur. Rol: `yonetici`.
+         */
+        post: operations["payRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/prospects": {
         parameters: {
             query?: never;
@@ -16132,6 +16232,768 @@ export interface operations {
                             /** @description Bu kurumda nakit tahsilat açık mı */
                             cashPaymentsEnabled: boolean;
                             /** @description `If-Match` için ayar sürümü; hiç değişmediyse 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    quoteWithdrawal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    withdrawalDate: string;
+                    termStartDate: string;
+                    attendedUnits: number;
+                    totalUnits: number;
+                    /** @default false */
+                    publicSchoolExemption?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            contractId: string;
+                            breakdown: {
+                                institutionType: string;
+                                withdrawalDate: string;
+                                termStartDate: string;
+                                /** @description Ayrılış dönem başladıktan sonra mı */
+                                started: boolean;
+                                attendedUnits: number;
+                                totalUnits: number;
+                                publicSchoolExemption: boolean;
+                                /** @description Kesinti oranı, on binde birlik */
+                                deductionBasisPoints: number;
+                                /** @description Hesap tabanı: sözleşmenin net ücreti (kuruş) */
+                                baseCents: number;
+                                deductionCents: number;
+                                usageCents: number;
+                                /** @description Kurumun hak ettiği tutar; tabanı aşamaz */
+                                entitledCents: number;
+                                paidCents: number;
+                                /** @description Taksitlere dağıtılmamış tahsilat */
+                                creditCents: number;
+                                extras: {
+                                    invoiceId: string;
+                                    kind: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    usedCents: number;
+                                }[];
+                                refundCents: number;
+                                debtCents: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    withdrawStudent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    withdrawalDate: string;
+                    termStartDate: string;
+                    attendedUnits: number;
+                    totalUnits: number;
+                    /** @default false */
+                    publicSchoolExemption?: boolean;
+                    /** @enum {string} */
+                    reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                    /** @default null */
+                    targetSchool?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            contractId: string;
+                            withdrawalDate: string;
+                            /** @enum {string} */
+                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            targetSchool: string | null;
+                            breakdown: {
+                                institutionType: string;
+                                withdrawalDate: string;
+                                termStartDate: string;
+                                /** @description Ayrılış dönem başladıktan sonra mı */
+                                started: boolean;
+                                attendedUnits: number;
+                                totalUnits: number;
+                                publicSchoolExemption: boolean;
+                                /** @description Kesinti oranı, on binde birlik */
+                                deductionBasisPoints: number;
+                                /** @description Hesap tabanı: sözleşmenin net ücreti (kuruş) */
+                                baseCents: number;
+                                deductionCents: number;
+                                usageCents: number;
+                                /** @description Kurumun hak ettiği tutar; tabanı aşamaz */
+                                entitledCents: number;
+                                paidCents: number;
+                                /** @description Taksitlere dağıtılmamış tahsilat */
+                                creditCents: number;
+                                extras: {
+                                    invoiceId: string;
+                                    kind: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    usedCents: number;
+                                }[];
+                                refundCents: number;
+                                debtCents: number;
+                            };
+                            refundCents: number;
+                            debtCents: number;
+                            /** @description İadenin son günü: ayrılıştan bir ay sonra */
+                            refundDueDate: string;
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listWithdrawals: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description İade durumu */
+                refundStatus?: "none" | "pending" | "paid";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            contractId: string;
+                            withdrawalDate: string;
+                            /** @enum {string} */
+                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            targetSchool: string | null;
+                            breakdown: {
+                                institutionType: string;
+                                withdrawalDate: string;
+                                termStartDate: string;
+                                /** @description Ayrılış dönem başladıktan sonra mı */
+                                started: boolean;
+                                attendedUnits: number;
+                                totalUnits: number;
+                                publicSchoolExemption: boolean;
+                                /** @description Kesinti oranı, on binde birlik */
+                                deductionBasisPoints: number;
+                                /** @description Hesap tabanı: sözleşmenin net ücreti (kuruş) */
+                                baseCents: number;
+                                deductionCents: number;
+                                usageCents: number;
+                                /** @description Kurumun hak ettiği tutar; tabanı aşamaz */
+                                entitledCents: number;
+                                paidCents: number;
+                                /** @description Taksitlere dağıtılmamış tahsilat */
+                                creditCents: number;
+                                extras: {
+                                    invoiceId: string;
+                                    kind: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    usedCents: number;
+                                }[];
+                                refundCents: number;
+                                debtCents: number;
+                            };
+                            refundCents: number;
+                            debtCents: number;
+                            /** @description İadenin son günü: ayrılıştan bir ay sonra */
+                            refundDueDate: string;
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getWithdrawal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                withdrawalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            contractId: string;
+                            withdrawalDate: string;
+                            /** @enum {string} */
+                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            targetSchool: string | null;
+                            breakdown: {
+                                institutionType: string;
+                                withdrawalDate: string;
+                                termStartDate: string;
+                                /** @description Ayrılış dönem başladıktan sonra mı */
+                                started: boolean;
+                                attendedUnits: number;
+                                totalUnits: number;
+                                publicSchoolExemption: boolean;
+                                /** @description Kesinti oranı, on binde birlik */
+                                deductionBasisPoints: number;
+                                /** @description Hesap tabanı: sözleşmenin net ücreti (kuruş) */
+                                baseCents: number;
+                                deductionCents: number;
+                                usageCents: number;
+                                /** @description Kurumun hak ettiği tutar; tabanı aşamaz */
+                                entitledCents: number;
+                                paidCents: number;
+                                /** @description Taksitlere dağıtılmamış tahsilat */
+                                creditCents: number;
+                                extras: {
+                                    invoiceId: string;
+                                    kind: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    usedCents: number;
+                                }[];
+                                refundCents: number;
+                                debtCents: number;
+                            };
+                            refundCents: number;
+                            debtCents: number;
+                            /** @description İadenin son günü: ayrılıştan bir ay sonra */
+                            refundDueDate: string;
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    payRefund: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                withdrawalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    paidDate: string;
+                    iban: string;
+                    accountHolder: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            contractId: string;
+                            withdrawalDate: string;
+                            /** @enum {string} */
+                            reason: "transfer" | "relocation" | "health" | "financial" | "dissatisfaction" | "other";
+                            targetSchool: string | null;
+                            breakdown: {
+                                institutionType: string;
+                                withdrawalDate: string;
+                                termStartDate: string;
+                                /** @description Ayrılış dönem başladıktan sonra mı */
+                                started: boolean;
+                                attendedUnits: number;
+                                totalUnits: number;
+                                publicSchoolExemption: boolean;
+                                /** @description Kesinti oranı, on binde birlik */
+                                deductionBasisPoints: number;
+                                /** @description Hesap tabanı: sözleşmenin net ücreti (kuruş) */
+                                baseCents: number;
+                                deductionCents: number;
+                                usageCents: number;
+                                /** @description Kurumun hak ettiği tutar; tabanı aşamaz */
+                                entitledCents: number;
+                                paidCents: number;
+                                /** @description Taksitlere dağıtılmamış tahsilat */
+                                creditCents: number;
+                                extras: {
+                                    invoiceId: string;
+                                    kind: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    usedCents: number;
+                                }[];
+                                refundCents: number;
+                                debtCents: number;
+                            };
+                            refundCents: number;
+                            debtCents: number;
+                            /** @description İadenin son günü: ayrılıştan bir ay sonra */
+                            refundDueDate: string;
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            /** @description `If-Match` için kayıt sürümü */
                             version: number;
                         };
                     };

@@ -2,6 +2,12 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Ayrılış ve iade uçları
+
+- `student_withdrawals` tablosu (migration `0017_create_student_withdrawals`) ile `POST /api/v1/students/:studentId/withdrawal-quote`, `POST /api/v1/students/:studentId/withdraw`, `GET /api/v1/withdrawals`, `GET /api/v1/withdrawals/:withdrawalId`, `POST /api/v1/withdrawals/:withdrawalId/pay-refund` eklendi (ADR 0006 karar 10, DOM-FIN-040, -041, DOM-KAY-024, IST-110).
+- `requireFreshSession` eklendi; ayrılış ve iade ödemesi eski oturumda 403 `reauthentication_required` alır.
+- Log gizleme listesine `iban`, `accountHolder`, `targetSchool` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Tarifeli kesin kayıt
 
 - **Kırıcı:** `POST /api/v1/prospects/:prospectId/enroll` gövdesi değişti: `totalCents` kalktı; tutar yayımlanmış tarifeden hesaplanır. `identity` ve `guardian` zorunlu, `discounts`, `extras`, `lessonHours` eklendi.

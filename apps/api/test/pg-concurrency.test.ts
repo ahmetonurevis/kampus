@@ -17,6 +17,7 @@ import { institutions } from '../src/db/schema/auth.ts'
 import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
 import { paymentAllocations, payments } from '../src/db/schema/payments.ts'
 import { records } from '../src/db/schema/records.ts'
+import { studentWithdrawals } from '../src/db/schema/withdrawals.ts'
 import { AppError } from '../src/errors.ts'
 import { bookAppointmentCommand } from '../src/services/appointments.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
@@ -29,6 +30,7 @@ import {
   scheduleTrialLessonCommand,
 } from '../src/services/prospects.ts'
 import { recordPaymentCommand } from '../src/services/payments.ts'
+import { withdrawStudentCommand } from '../src/services/withdrawals.ts'
 import { answerQuestionCommand } from '../src/services/questions.ts'
 import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, createMember, FIXED_NOW } from './support/app.ts'
@@ -830,6 +832,76 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       .from(paymentAllocations)
       .where(eq(paymentAllocations.institutionId, ctx.institutionId))
     assert.equal(Number(allocated?.total), 4_000)
+  })
+
+  test('DOM-FIN-041: eşzamanlı iki ayrılış: yalnız biri yazılır, öteki 409 student_already_withdrawn', async () => {
+    const base = await frontDeskContext()
+    const admin = await createMember(app, base.institutionId, 'yonetici')
+    const ctx: ServiceContext = {
+      ...base,
+      actor: { userId: admin.id, role: 'yonetici', membershipId: admin.membershipId },
+    }
+    const student = createSeed(FIXED_NOW).students.find((item) => item.id === 's1')
+    assert.ok(student)
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        { collection: 'students', id: 's1', data: { ...student } },
+        {
+          collection: 'contracts',
+          id: 'pg-contract',
+          data: {
+            id: 'pg-contract',
+            studentId: 's1',
+            date: '2026-01-01T09:00:00.000Z',
+            amount: 10_000,
+            title: 'Sözleşme',
+            invoiceIds: ['pg-wd-inv'],
+          },
+        },
+        {
+          collection: 'invoices',
+          id: 'pg-wd-inv',
+          data: {
+            id: 'pg-wd-inv',
+            studentId: 's1',
+            installment: 1,
+            amount: 10_000,
+            dueDate: '2026-09-15T09:00:00.000Z',
+            paidAt: null,
+            method: null,
+            reminderAt: null,
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const input = {
+      withdrawalDate: '2026-10-01',
+      termStartDate: '2026-09-07',
+      attendedUnits: 18,
+      totalUnits: 180,
+      reason: 'relocation',
+    }
+    const outcomes = await Promise.allSettled([
+      withdrawStudentCommand(ctx, 's1', input, keyed('pg-withdraw-1')),
+      withdrawStudentCommand(ctx, 's1', input, keyed('pg-withdraw-2')),
+    ])
+    assert.deepEqual(
+      outcomes.filter((item) => item.status === 'fulfilled').map((item) => item.value.statusCode),
+      [201],
+    )
+    const reason: unknown = outcomes.find((item) => item.status === 'rejected')?.reason
+    assert.ok(
+      reason instanceof AppError && reason.code === 'student_already_withdrawn',
+      String(reason),
+    )
+    const rows = await db
+      .select({ id: studentWithdrawals.id })
+      .from(studentWithdrawals)
+      .where(eq(studentWithdrawals.institutionId, ctx.institutionId))
+    assert.equal(rows.length, 1)
   })
 
   test('DOM-KAY-033: iki adaya aynı odada eşzamanlı görüşme: yalnız biri yazılır, öteki 409 meeting_conflict', async () => {

@@ -220,7 +220,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** İade mevzuatla belirlenmiş bir hesaptır; elle yapılırsa her ayrılışta uyuşmazlık doğar.
 - **Kaynak:** ÖÖKY md. 56/3-a, b, c ve 56/4; md. 62/5. Net ücret tabanı, gün sayım esası (takvim günü mü, ders günü mü) ve ek hizmet iadesi **doğrulanmamış**; mevzuat metni bunları açıkça belirtmez.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — ayrılış ve iade işlemi yok.
+- **Kodda:** var (API) — `lib/withdrawals.ts` (`quoteWithdrawal`), `POST /api/v1/students/:studentId/withdrawal-quote`; görülen ve toplam birim elle girilir, kesinti oranı sabittir (`REFUND_DEDUCTION_BASIS_POINTS`). Burslu istisnası, çalışma takvimi ve kurum profili yok.
 
 ### DOM-FIN-041 · İade kaydı ve atomikliği
 
@@ -228,7 +228,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kısmi yazım, iade edilmiş ama hâlâ borçlu görünen veli üretir.
 - **Kaynak:** İşletme kuralı; ADR 0001 (tek veritabanı işlemi).
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** var (API) — `POST /api/v1/students/:studentId/withdraw` ve `POST /api/v1/withdrawals/:withdrawalId/pay-refund` (`student_withdrawals`, ADR 0006 karar 10).
 
 ### DOM-FIN-042 · Uzaktan satışta cayma hakkı
 
@@ -279,6 +279,5 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 | DOM-FIN-001 | Kayıt tutarı tam TL, yenileme tutarı iki ondalık alır; iki giriş kuralı farklı (`packages/school-core/src/lib/domain.js:22-26`, `school-workflows.js:117-126`). |
 | DOM-FIN-005 | Yenilemede ÜFE/TÜFE+5 artış tavanı denetlenmez (`packages/school-core/src/lib/school-workflows.js:435-450`).                                                    |
 | DOM-FIN-035 | Hatırlatma gerçek ileti göndermez, sıklık sınırı yok (`apps/web/src/views/Finance.vue:89-95`).                                                                  |
-| DOM-FIN-040 | Ayrılış ve iade hesabı yok.                                                                                                                                     |
 | DOM-FIN-050 | Dekont numarası taksit kimliğidir; ardışık numara yok (`packages/school-core/src/lib/document-data.js:18`).                                                     |
 | DOM-FIN-053 | Denetim izi 200 kayıtla kesilir (`packages/school-core/src/lib/school-workflows.js:1334`).                                                                      |

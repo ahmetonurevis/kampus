@@ -22,9 +22,12 @@ Tahsilat bugün taksit kaydının `paidAt` ve `method` alanlarıdır (`records`,
 
 9. **Kesin kayıt tarifeye bağlıdır, kimlik ayrı tablodadır.** Tutar girdi değildir; eğitim yılının yayımlanmış tarifesinden, ilan ücreti üzerinden hesaplanan indirimlerle üretilir ve sözleşmeye karar anının kopyası olarak yazılır (`tariffId`, `grossCents`, `discounts`, `netCents`). T.C. kimlik no ve doğum tarihi `student_identities` tablosundadır: `records.data`'ya girmediği için genel okuma ve kapsam kodu bu alanlara ulaşmaz, aynı yıl tekilliği benzersiz indeksle korunur. Yenileme işlemi şimdilik tarifeye bağlı değildir.
 
+10. **Ayrılış ve iade tek kayıttır.** `student_withdrawals` ayrılışı, hesap dökümünü (`breakdown`, karar anının kopyası) ve iade ödemesini tutar; sözleşme başına tek satır. Öğretim takvimi kaynağı olmadığı için görülen ve toplam birim yönetici tarafından girilir. Kesinti oranı `REFUND_DEDUCTION_BASIS_POINTS` sabitidir ve dökümde saklanır; kurum profili gelince parametre olur. Yuvarlama ödeyici lehinedir. Ayrılış ve iade ödemesi taze oturum ister. Açık taksitler arşivlenir, kısmi ödeme hesapta kalır; bedel kalırsa tek borç taksiti açılır.
+
 ## Sonuçlar
 
 - Nakdi açmanın ÖÖKY md. 55/3 açısından sorumluluğu kuruma geçer; yasal uygunluk **doğrulanmalı**, pilot öncesi hukukçuya sorulacak.
+- İade hesabının tabanı (net ücret), gün sayımı ve ek hizmet iadesi mevzuatta açık değildir; **doğrulanmalı**, pilot öncesi hukukçuya sorulacak.
 - Tahsilatın bildirilmiş banka hesabına bağlanması (DOM-FIN-032) kurum hesap ayarı gelene kadar yapılmaz.
 - `POST /invoices/:id/pay` React ekranı yeni uca geçene kadar kalır; taksitin kalan tutarını referanssız tahsilat olarak yazar.
 

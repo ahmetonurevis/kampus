@@ -91,7 +91,7 @@ update records
 
 ## 4. Normalleştirme ölçütü
 
-Tahsilat bu ölçütle `payments`, `payment_allocations` ve `payment_settings` tablolarındadır (ADR 0006, migration `0014_create_payments`); ücret tarifesi `fee_tariffs`'te (migration `0015_create_fee_tariffs`), öğrenci kimliği `student_identities`'tedir (migration `0016_add_enrollment_terms`); taksit ve sözleşme şimdilik `records`'tadır.
+Tahsilat bu ölçütle `payments`, `payment_allocations` ve `payment_settings` tablolarındadır (ADR 0006, migration `0014_create_payments`); ücret tarifesi `fee_tariffs`'te (migration `0015_create_fee_tariffs`), öğrenci kimliği `student_identities`'te (migration `0016_add_enrollment_terms`), ayrılış ve iade `student_withdrawals`'tadır (migration `0017_create_student_withdrawals`); taksit ve sözleşme şimdilik `records`'tadır.
 
 Bir koleksiyon aşağıdakilerden **biri** doğrulanınca kendi tablosuna taşınır (her biri ayrı ADR):
 

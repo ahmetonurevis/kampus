@@ -28803,6 +28803,1904 @@
         }
       }
     },
+    "/api/v1/students/{studentId}/withdrawal-quote": {
+      "post": {
+        "operationId": "quoteWithdrawal",
+        "summary": "Ayrılış ve iade hesabını önizle",
+        "tags": [
+          "withdrawals"
+        ],
+        "description": "Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "withdrawalDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "termStartDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "attendedUnits": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000
+                  },
+                  "totalUnits": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000
+                  },
+                  "publicSchoolExemption": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "withdrawalDate",
+                  "termStartDate",
+                  "attendedUnits",
+                  "totalUnits"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contractId": {
+                          "type": "string"
+                        },
+                        "breakdown": {
+                          "type": "object",
+                          "properties": {
+                            "institutionType": {
+                              "type": "string"
+                            },
+                            "withdrawalDate": {
+                              "type": "string"
+                            },
+                            "termStartDate": {
+                              "type": "string"
+                            },
+                            "started": {
+                              "type": "boolean",
+                              "description": "Ayrılış dönem başladıktan sonra mı"
+                            },
+                            "attendedUnits": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "totalUnits": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "publicSchoolExemption": {
+                              "type": "boolean"
+                            },
+                            "deductionBasisPoints": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kesinti oranı, on binde birlik"
+                            },
+                            "baseCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Hesap tabanı: sözleşmenin net ücreti (kuruş)"
+                            },
+                            "deductionCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "usageCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "entitledCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kurumun hak ettiği tutar; tabanı aşamaz"
+                            },
+                            "paidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "creditCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taksitlere dağıtılmamış tahsilat"
+                            },
+                            "extras": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "invoiceId": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string"
+                                  },
+                                  "amountCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usedCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "invoiceId",
+                                  "kind",
+                                  "amountCents",
+                                  "paidCents",
+                                  "usedCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "refundCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "debtCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "institutionType",
+                            "withdrawalDate",
+                            "termStartDate",
+                            "started",
+                            "attendedUnits",
+                            "totalUnits",
+                            "publicSchoolExemption",
+                            "deductionBasisPoints",
+                            "baseCents",
+                            "deductionCents",
+                            "usageCents",
+                            "entitledCents",
+                            "paidCents",
+                            "creditCents",
+                            "extras",
+                            "refundCents",
+                            "debtCents"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "contractId",
+                        "breakdown"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{studentId}/withdraw": {
+      "post": {
+        "operationId": "withdrawStudent",
+        "summary": "Öğrencinin ayrılışını onayla",
+        "tags": [
+          "withdrawals"
+        ],
+        "description": "Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "withdrawalDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "termStartDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "attendedUnits": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000
+                  },
+                  "totalUnits": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000
+                  },
+                  "publicSchoolExemption": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "transfer",
+                      "relocation",
+                      "health",
+                      "financial",
+                      "dissatisfaction",
+                      "other"
+                    ]
+                  },
+                  "targetSchool": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "withdrawalDate",
+                  "termStartDate",
+                  "attendedUnits",
+                  "totalUnits",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "contractId": {
+                          "type": "string"
+                        },
+                        "withdrawalDate": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "transfer",
+                            "relocation",
+                            "health",
+                            "financial",
+                            "dissatisfaction",
+                            "other"
+                          ]
+                        },
+                        "targetSchool": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "breakdown": {
+                          "type": "object",
+                          "properties": {
+                            "institutionType": {
+                              "type": "string"
+                            },
+                            "withdrawalDate": {
+                              "type": "string"
+                            },
+                            "termStartDate": {
+                              "type": "string"
+                            },
+                            "started": {
+                              "type": "boolean",
+                              "description": "Ayrılış dönem başladıktan sonra mı"
+                            },
+                            "attendedUnits": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "totalUnits": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "publicSchoolExemption": {
+                              "type": "boolean"
+                            },
+                            "deductionBasisPoints": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kesinti oranı, on binde birlik"
+                            },
+                            "baseCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Hesap tabanı: sözleşmenin net ücreti (kuruş)"
+                            },
+                            "deductionCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "usageCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "entitledCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kurumun hak ettiği tutar; tabanı aşamaz"
+                            },
+                            "paidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "creditCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taksitlere dağıtılmamış tahsilat"
+                            },
+                            "extras": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "invoiceId": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string"
+                                  },
+                                  "amountCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usedCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "invoiceId",
+                                  "kind",
+                                  "amountCents",
+                                  "paidCents",
+                                  "usedCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "refundCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "debtCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "institutionType",
+                            "withdrawalDate",
+                            "termStartDate",
+                            "started",
+                            "attendedUnits",
+                            "totalUnits",
+                            "publicSchoolExemption",
+                            "deductionBasisPoints",
+                            "baseCents",
+                            "deductionCents",
+                            "usageCents",
+                            "entitledCents",
+                            "paidCents",
+                            "creditCents",
+                            "extras",
+                            "refundCents",
+                            "debtCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "refundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "debtCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "refundDueDate": {
+                          "type": "string",
+                          "description": "İadenin son günü: ayrılıştan bir ay sonra"
+                        },
+                        "refundPaidDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIban": {
+                          "description": "Yalnız son dört hane",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundAccountHolder": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundStatus": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "pending",
+                            "paid"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "contractId",
+                        "withdrawalDate",
+                        "reason",
+                        "targetSchool",
+                        "breakdown",
+                        "refundCents",
+                        "debtCents",
+                        "refundDueDate",
+                        "refundPaidDate",
+                        "maskedIban",
+                        "refundAccountHolder",
+                        "refundStatus",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/withdrawals": {
+      "get": {
+        "operationId": "listWithdrawals",
+        "summary": "Ayrılış ve iadeleri listele",
+        "tags": [
+          "withdrawals"
+        ],
+        "description": "Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "none",
+                "pending",
+                "paid"
+              ]
+            },
+            "in": "query",
+            "name": "refundStatus",
+            "required": false,
+            "description": "İade durumu"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "contractId": {
+                            "type": "string"
+                          },
+                          "withdrawalDate": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "transfer",
+                              "relocation",
+                              "health",
+                              "financial",
+                              "dissatisfaction",
+                              "other"
+                            ]
+                          },
+                          "targetSchool": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "breakdown": {
+                            "type": "object",
+                            "properties": {
+                              "institutionType": {
+                                "type": "string"
+                              },
+                              "withdrawalDate": {
+                                "type": "string"
+                              },
+                              "termStartDate": {
+                                "type": "string"
+                              },
+                              "started": {
+                                "type": "boolean",
+                                "description": "Ayrılış dönem başladıktan sonra mı"
+                              },
+                              "attendedUnits": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "totalUnits": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "publicSchoolExemption": {
+                                "type": "boolean"
+                              },
+                              "deductionBasisPoints": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kesinti oranı, on binde birlik"
+                              },
+                              "baseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hesap tabanı: sözleşmenin net ücreti (kuruş)"
+                              },
+                              "deductionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "usageCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "entitledCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kurumun hak ettiği tutar; tabanı aşamaz"
+                              },
+                              "paidCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "creditCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Taksitlere dağıtılmamış tahsilat"
+                              },
+                              "extras": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "invoiceId": {
+                                      "type": "string"
+                                    },
+                                    "kind": {
+                                      "type": "string"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "paidCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "usedCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "invoiceId",
+                                    "kind",
+                                    "amountCents",
+                                    "paidCents",
+                                    "usedCents"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "refundCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "debtCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "institutionType",
+                              "withdrawalDate",
+                              "termStartDate",
+                              "started",
+                              "attendedUnits",
+                              "totalUnits",
+                              "publicSchoolExemption",
+                              "deductionBasisPoints",
+                              "baseCents",
+                              "deductionCents",
+                              "usageCents",
+                              "entitledCents",
+                              "paidCents",
+                              "creditCents",
+                              "extras",
+                              "refundCents",
+                              "debtCents"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "refundCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "debtCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "refundDueDate": {
+                            "type": "string",
+                            "description": "İadenin son günü: ayrılıştan bir ay sonra"
+                          },
+                          "refundPaidDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "maskedIban": {
+                            "description": "Yalnız son dört hane",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "refundAccountHolder": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "refundStatus": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "pending",
+                              "paid"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "studentId",
+                          "contractId",
+                          "withdrawalDate",
+                          "reason",
+                          "targetSchool",
+                          "breakdown",
+                          "refundCents",
+                          "debtCents",
+                          "refundDueDate",
+                          "refundPaidDate",
+                          "maskedIban",
+                          "refundAccountHolder",
+                          "refundStatus",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/withdrawals/{withdrawalId}": {
+      "get": {
+        "operationId": "getWithdrawal",
+        "summary": "Ayrılış ve iade ayrıntısı",
+        "tags": [
+          "withdrawals"
+        ],
+        "description": "Hesap dökümüyle birlikte döner; IBAN maskelidir. Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "withdrawalId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "contractId": {
+                          "type": "string"
+                        },
+                        "withdrawalDate": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "transfer",
+                            "relocation",
+                            "health",
+                            "financial",
+                            "dissatisfaction",
+                            "other"
+                          ]
+                        },
+                        "targetSchool": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "breakdown": {
+                          "type": "object",
+                          "properties": {
+                            "institutionType": {
+                              "type": "string"
+                            },
+                            "withdrawalDate": {
+                              "type": "string"
+                            },
+                            "termStartDate": {
+                              "type": "string"
+                            },
+                            "started": {
+                              "type": "boolean",
+                              "description": "Ayrılış dönem başladıktan sonra mı"
+                            },
+                            "attendedUnits": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "totalUnits": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "publicSchoolExemption": {
+                              "type": "boolean"
+                            },
+                            "deductionBasisPoints": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kesinti oranı, on binde birlik"
+                            },
+                            "baseCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Hesap tabanı: sözleşmenin net ücreti (kuruş)"
+                            },
+                            "deductionCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "usageCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "entitledCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kurumun hak ettiği tutar; tabanı aşamaz"
+                            },
+                            "paidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "creditCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taksitlere dağıtılmamış tahsilat"
+                            },
+                            "extras": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "invoiceId": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string"
+                                  },
+                                  "amountCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usedCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "invoiceId",
+                                  "kind",
+                                  "amountCents",
+                                  "paidCents",
+                                  "usedCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "refundCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "debtCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "institutionType",
+                            "withdrawalDate",
+                            "termStartDate",
+                            "started",
+                            "attendedUnits",
+                            "totalUnits",
+                            "publicSchoolExemption",
+                            "deductionBasisPoints",
+                            "baseCents",
+                            "deductionCents",
+                            "usageCents",
+                            "entitledCents",
+                            "paidCents",
+                            "creditCents",
+                            "extras",
+                            "refundCents",
+                            "debtCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "refundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "debtCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "refundDueDate": {
+                          "type": "string",
+                          "description": "İadenin son günü: ayrılıştan bir ay sonra"
+                        },
+                        "refundPaidDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIban": {
+                          "description": "Yalnız son dört hane",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundAccountHolder": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundStatus": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "pending",
+                            "paid"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "contractId",
+                        "withdrawalDate",
+                        "reason",
+                        "targetSchool",
+                        "breakdown",
+                        "refundCents",
+                        "debtCents",
+                        "refundDueDate",
+                        "refundPaidDate",
+                        "maskedIban",
+                        "refundAccountHolder",
+                        "refundStatus",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/withdrawals/{withdrawalId}/pay-refund": {
+      "post": {
+        "operationId": "payRefund",
+        "summary": "İadeyi ödenmiş işaretle",
+        "tags": [
+          "withdrawals"
+        ],
+        "description": "Ödeme tarihi, IBAN ve hesap sahibini yazar; ödenen iade değiştirilemez (DOM-FIN-041). Geçersiz IBAN 400; hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`; iade yoksa 409 `refund_not_due`; ödenmişse 409 `refund_already_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `If-Match` ve `Idempotency-Key` zorunludur. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paidDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "iban": {
+                    "type": "string"
+                  },
+                  "accountHolder": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "paidDate",
+                  "iban",
+                  "accountHolder"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "withdrawalId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "contractId": {
+                          "type": "string"
+                        },
+                        "withdrawalDate": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "transfer",
+                            "relocation",
+                            "health",
+                            "financial",
+                            "dissatisfaction",
+                            "other"
+                          ]
+                        },
+                        "targetSchool": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "breakdown": {
+                          "type": "object",
+                          "properties": {
+                            "institutionType": {
+                              "type": "string"
+                            },
+                            "withdrawalDate": {
+                              "type": "string"
+                            },
+                            "termStartDate": {
+                              "type": "string"
+                            },
+                            "started": {
+                              "type": "boolean",
+                              "description": "Ayrılış dönem başladıktan sonra mı"
+                            },
+                            "attendedUnits": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "totalUnits": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "publicSchoolExemption": {
+                              "type": "boolean"
+                            },
+                            "deductionBasisPoints": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kesinti oranı, on binde birlik"
+                            },
+                            "baseCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Hesap tabanı: sözleşmenin net ücreti (kuruş)"
+                            },
+                            "deductionCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "usageCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "entitledCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kurumun hak ettiği tutar; tabanı aşamaz"
+                            },
+                            "paidCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "creditCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Taksitlere dağıtılmamış tahsilat"
+                            },
+                            "extras": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "invoiceId": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string"
+                                  },
+                                  "amountCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usedCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "invoiceId",
+                                  "kind",
+                                  "amountCents",
+                                  "paidCents",
+                                  "usedCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "refundCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "debtCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "institutionType",
+                            "withdrawalDate",
+                            "termStartDate",
+                            "started",
+                            "attendedUnits",
+                            "totalUnits",
+                            "publicSchoolExemption",
+                            "deductionBasisPoints",
+                            "baseCents",
+                            "deductionCents",
+                            "usageCents",
+                            "entitledCents",
+                            "paidCents",
+                            "creditCents",
+                            "extras",
+                            "refundCents",
+                            "debtCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "refundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "debtCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "refundDueDate": {
+                          "type": "string",
+                          "description": "İadenin son günü: ayrılıştan bir ay sonra"
+                        },
+                        "refundPaidDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIban": {
+                          "description": "Yalnız son dört hane",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundAccountHolder": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundStatus": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "pending",
+                            "paid"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "contractId",
+                        "withdrawalDate",
+                        "reason",
+                        "targetSchool",
+                        "breakdown",
+                        "refundCents",
+                        "debtCents",
+                        "refundDueDate",
+                        "refundPaidDate",
+                        "maskedIban",
+                        "refundAccountHolder",
+                        "refundStatus",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/prospects": {
       "post": {
         "operationId": "createProspect",

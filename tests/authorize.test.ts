@@ -39,6 +39,7 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'invoice.pay': ['yonetici', 'onburo'],
     'payment.reverse': ['yonetici'],
     'tariff.manage': ['yonetici'],
+    'student.withdraw': ['yonetici'],
     'invoice.payOnline': ['veli'],
     'attendance.record': ['yonetici', 'ogretmen'],
     'grade.record': ['ogretmen'],

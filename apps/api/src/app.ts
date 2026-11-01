@@ -40,6 +40,7 @@ import { registerRequestRoutes } from './routes/requests.ts'
 import { registerAppointmentRoutes } from './routes/appointments.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
+import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
 import { registerRubricRoutes } from './routes/rubrics.ts'
@@ -80,6 +81,12 @@ export const REDACTED_PATHS = [
   '*.reference',
   'identity',
   '*.identity',
+  'iban',
+  '*.iban',
+  'accountHolder',
+  '*.accountHolder',
+  'targetSchool',
+  '*.targetSchool',
   'identityNumber',
   '*.identityNumber',
   'birthDate',
@@ -253,6 +260,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerAppointmentRoutes(app)
   registerFeeTariffRoutes(app)
   registerPaymentRoutes(app)
+  registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
   registerQuestionRoutes(app)
   registerResourceRoutes(app)

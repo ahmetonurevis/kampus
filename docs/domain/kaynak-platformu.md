@@ -126,7 +126,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Kaynak göstermeksizin alıntı ve yanıltıcı kaynak gösterme suçtur.
 - **Kaynak:** FSEK md. 71/1-3 ve 71/1-5 (kaynak göstermeksizin iktibas; yetersiz, yanlış veya aldatıcı kaynak gösterme).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen. Core kuralı (ADR 0004): `packages/school-core/src/content/resource.ts` (`attributionSchema`, `assertLineagePreserved`, `learnerView`). API: öğrenci ve veli atama ayrıntısı (`GET /api/v1/task-assignments/:assignmentId`, `content.attributions`; `apps/api/src/services/task-progress.ts`) sabitlenen sürümün kaynak gösterimini taşır. PDF çıktısı yok.
+- **Kodda:** kısmen. Core kuralı (ADR 0004): `packages/school-core/src/content/resource.ts` (`attributionSchema`, `assertLineagePreserved`, `learnerView`). API: öğrenci ve veli atama ayrıntısı (`GET /api/v1/task-assignments/:assignmentId`, `content.attributions`; `apps/api/src/services/task-progress.ts`) sabitlenen sürümün kaynak gösterimini taşır. Web: öğrencinin yazma çalışma alanı (`apps/web-react/src/pages/tasks/StudentWritingWorkspace.tsx`, `student-task-model.ts` `writingBrief`) yönergenin altında kaynak gösterimini listeler. PDF çıktısı yok.
 
 ### DOM-KYN-025 · Telif bildirimi ve yayından kaldırma
 

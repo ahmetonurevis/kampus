@@ -134,6 +134,13 @@
       "when": 1793555343403,
       "tag": "0018_relax_identity_year",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793561929985,
+      "tag": "0019_comment_finance_tables",
+      "breakpoints": true
     }
   ]
 }

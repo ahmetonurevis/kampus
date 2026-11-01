@@ -620,7 +620,9 @@ test.describe('kesin kayıt', () => {
         body: JSON.stringify({
           code: 'validation_failed',
           message: 'Tutar tam lira olmalıdır.',
-          issues: [{ path: 'totalCents', message: 'Tutar tam lira olmalıdır.' }],
+          issues: [
+            { path: ['totalCents'], code: 'too_small', message: 'Tutar tam lira olmalıdır.' },
+          ],
         }),
       }),
     )

@@ -41,7 +41,7 @@ const id = z.uuid()
 const instant = z.iso.datetime()
 const contentType = z.enum(enumKeys(CONTENT_TYPES))
 const status = z.enum(enumKeys(RESOURCE_STATUSES))
-const licenseKind = z.enum(enumKeys(LICENSE_KINDS)).nullable()
+export const licenseKind = z.enum(enumKeys(LICENSE_KINDS)).nullable()
 
 export const resourceParamsSchema = z.object({
   resourceId: id.describe('Kaynak kimliği'),
@@ -111,7 +111,7 @@ const tagsSchema = z
   })
   .meta({ id: 'ResourceTags' })
 
-const attributionSchema = z
+export const attributionSchema = z
   .object({
     work: z.string(),
     author: z.string(),

@@ -144,6 +144,7 @@ describe('rubrik uçları', () => {
     const requests = [
       (cookie?: string) => call('GET', '/rubrics', cookie),
       (cookie?: string) => call('GET', `/rubrics/${data.rubric.id}`, cookie),
+      (cookie?: string) => call('GET', `/rubric-versions/${data.version.id}`, cookie),
       (cookie?: string) => post('/rubrics', cookie, body()),
       (cookie?: string) => post(`/rubrics/${data.rubric.id}/versions`, cookie, body()),
       (cookie?: string) => patch(version, cookie, { title: 'Değişti' }, 1),
@@ -166,6 +167,7 @@ describe('rubrik uçları', () => {
       post('/rubrics', admin, body()),
       call('GET', '/rubrics', admin),
       call('GET', `/rubrics/${id}`, admin),
+      call('GET', `/rubric-versions/${id}`, admin),
       post(`/rubrics/${id}/versions`, admin, body()),
       patch(closedVersion, admin, { title: 'Değişti' }, 1),
       command(`${closedVersion}/publish`, admin, 1),
@@ -470,6 +472,34 @@ describe('rubrik uçları', () => {
     const archived = await ok(await command(`${url}/archive`, t.cookies.teacher, 1))
     assert.equal(archived.version.status, 'archived')
     assert.deepEqual(archived.version.usage, { assignmentCount: 1, scoreCount: 0 })
+  })
+
+  test('DOM-BEC-022: rubrik sürümü kimlikle okunur (atamanın sabitlediği sürüm); yönetici ve öğretmen okur, arşivlenen sürüm okunmaya devam eder; başka kurumun ve olmayan sürüm 404; geçersiz kimlik 400', async () => {
+    const t = await tenant()
+    const chain = await seedSkillChain(db, t.institution.id, t.teacher.id)
+    const url = `/rubric-versions/${chain.rubricVersionId}`
+    const library = await ok(await call('GET', `/rubrics/${chain.rubricId}`, t.cookies.teacher))
+    for (const cookie of [t.cookies.teacher, t.cookies.otherTeacher, t.cookies.admin])
+      assert.deepEqual(await ok(await call('GET', url, cookie)), library.versions[0])
+    await ok(
+      await command(
+        `/rubrics/${chain.rubricId}/versions/${chain.rubricVersionId}/archive`,
+        t.cookies.teacher,
+        1,
+      ),
+    )
+    const archived = await ok(await call('GET', url, t.cookies.teacher))
+    assert.equal(archived.status, 'archived')
+    assert.deepEqual(archived.usage, { assignmentCount: 1, scoreCount: 0 })
+
+    const other = await tenant()
+    fails(await call('GET', url, other.cookies.admin), 404, 'not_found')
+    fails(
+      await call('GET', '/rubric-versions/00000000-0000-4000-8000-000000000009', t.cookies.admin),
+      404,
+      'not_found',
+    )
+    fails(await call('GET', '/rubric-versions/yok', t.cookies.admin), 400, 'validation_failed')
   })
 
   test('IST-048: liste sayfalı ve baş sürüme göre süzülür; sahip süzgeci; bilinmeyen parametre 400', async () => {

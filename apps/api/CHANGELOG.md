@@ -2,6 +2,14 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Görev görünüm uçları (W22api)
+
+- `GET /api/v1/task-assignments` ve `GET /api/v1/task-assignments/:assignmentId`: öğrenci ve veli (`learner`) görünümüne `progress` eklendi: her hedeflenen kişi (velide yalnız kendi çocukları) için `status`, `resubmissionRequested`, `attemptId`/`submissionId`, `lastActivityAt`, `used`/`limit`/`remaining`, `canAct`, `blockedBy` (`in_progress`, `license_expired`, `locked`, `limit`, `graded`, `unavailable`) ve açılmış `score`. Deneme ve teslim uçlarının aynı fonksiyonlarıyla hesaplanır (`services/task-progress.ts`; `learnerAttemptProgress`, `learnerSubmissionProgress`), açılmamış puan, ikinci puanlama, örneklem, uyuşmazlık ve itiraz durumu çıkarılamaz, satır sürümü yoktur (DOM-BEC-045). Liste satır başına istek gerektirmez: denemeler, teslimler, puanlar ve puanlama bağlamları toplu okunur (`loadAttemptsAmong`, `loadSubmissionsAmong`, `scoringContexts`).
+- Kursiyer atama ayrıntısına `content` ve `contentUnavailable`: sabitlenen sürümün core `learnerView` hâli (kaynak gösterimi korunur, DOM-KYN-024); yazma şablonunda yalnız yönerge ve teslim türleri (değerlendirme ölçütü ve rubrik bağı yok), soru/quiz/alıştırma setinde yalnız soru sayısı (sorular denemede gelir). Lisansı dolmuş içerik yalnız süren işi olana (deneme, teslim, öğrencinin taslağı) gösterilir (DOM-KYN-021); kaldırılmış veya yayın geçmişi olmayan sürüm `unavailable`. Yeni OpenAPI bileşenleri `TaskAssignmentLearnerProgress`, `TaskAssignmentLearnerContent`, `TaskAssignmentLearnerDetail`, `TaskAssignmentDetail` (ayrıntı yanıtı).
+- `GET /api/v1/rubric-versions/:versionId` (`getRubricVersion`): tek rubrik sürümü kimlikle (DOM-BEC-022); yönetici ve öğretmen, öğrenci/veli/ön büro 403, başka kurum 404, modül kapalı 403. Rubrik arşivlense de sürüm okunur. Personel atama görünümü zaten `rubricVersionId` taşıyordu.
+- Core değişmedi. Migration yok. OpenAPI ve `api-client` şeması yeniden üretildi.
+- `react-shared`: `useRubricVersion`/`rubricVersionRequest` (`use-rubrics.ts`), `TaskAssignmentDetail` ve `TaskAssignmentLearnerDetail` tipleri (`use-task-assignments.ts`).
+
 ## Dosya depolama inceleme düzeltmeleri (F3c2a)
 
 - İndirme ucu `Cross-Origin-Resource-Policy: cross-origin` gönderir: Helmet varsayılanı `same-origin` web'in başka kökenden `<img>`/`<audio>` ile açtığı bağlantıyı engellerdi. Yetki imzadadır; JSON uçları `same-origin`'de kalır.

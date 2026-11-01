@@ -4,6 +4,7 @@ import {
   answerKeyReleased,
   attemptState,
   countedAttempt,
+  isClosed,
   isLate,
   learnerResultLevel,
   planAnswerSave,
@@ -41,6 +42,7 @@ import {
   questionsFor,
   readableLearners,
   scoringContext,
+  scoringLicenseExpired,
   targetedLearner,
   timingOf,
   type ReadableLearners,
@@ -147,6 +149,89 @@ function attemptView(
                 : null,
           },
     rowVersion: attempt.rowVersion,
+  }
+}
+
+/** Kursiyerin yeni deneme başlatamama nedeni; puanlamadan bağımsızdır (DOM-BEC-045). */
+type StartBlock = 'in_progress' | 'license_expired' | 'locked' | 'limit' | 'unavailable'
+
+/**
+ * Kursiyerin bir otomatik puanlı görevdeki durumu (atama listesi ve ayrıntısındaki özet;
+ * `services/task-progress.ts`, IST-051). Deneme uçlarıyla aynı kuralları kullanır: gösterilen
+ * deneme sayılan deneme (DOM-BEC-042), alıştırmada ya da sayılan yoksa son tamamlanan; puan core
+ * `learnerResultLevel` izin verdiğinde (tamamlanınca toplam; DOM-BEC-045). Başlatma engeli
+ * `startTaskAttempt` sırasıyla aynıdır, yalnız süren deneme önce gelir (kursiyer ona devam eder).
+ * Puanlama bağlamı kurulamadıysa (`Error`; veri bütünlüğü) puan yoktur ve başlatma kapalıdır.
+ */
+export function learnerAttemptProgress(
+  assignment: StoredAssignment,
+  context: ScoringContext | Error,
+  attempts: readonly StoredAttempt[],
+  now: Date,
+) {
+  const at = now.toISOString()
+  const timing = timingOf(assignment)
+  const states = attempts
+    .map((attempt) => ({ attempt, state: attemptState(attempt, timing, at) }))
+    .sort((a, b) => a.attempt.attemptNumber - b.attempt.attemptNumber)
+  const running = states.findLast(({ state }) => state.status === 'in_progress')
+  const completed = states.filter(({ state }) => state.completedAt !== null)
+  const scorable = !(context instanceof Error)
+  const counted = scorable
+    ? countedAttempt(assignment.attempts, completedOf(assignment, context, attempts, at))
+    : null
+  const shown =
+    completed.find(({ attempt }) => attempt.id === counted?.id) ?? completed.at(-1) ?? null
+  const limit = assignment.attempts.kind === 'evaluation' ? assignment.attempts.maxAttempts : null
+  const closed = isClosed(assignment.deadline, at)
+  const blockedBy: StartBlock | null = running
+    ? 'in_progress'
+    : !scorable
+      ? 'unavailable'
+      : scoringLicenseExpired(context, now)
+        ? 'license_expired'
+        : closed
+          ? 'locked'
+          : limit !== null && attempts.length >= limit
+            ? 'limit'
+            : null
+  const level =
+    shown === null
+      ? 'none'
+      : learnerResultLevel({
+          kind: assignment.kind,
+          deadline: assignment.deadline,
+          attempt: shown.state,
+          now: at,
+        })
+  const score =
+    scorable && shown !== null && level !== 'none'
+      ? scoreAttempt(context.items, shown.attempt.answers)
+      : null
+  const latest = running ?? shown
+  const late =
+    shown?.state.completedAt != null && isLate(shown.state.completedAt, assignment.deadline)
+  return {
+    attemptId: latest?.attempt.id ?? null,
+    status: running
+      ? ('in_progress' as const)
+      : shown !== null
+        ? late
+          ? ('late' as const)
+          : ('submitted' as const)
+        : closed
+          ? ('not_submitted' as const)
+          : ('pending' as const),
+    lastActivityAt: shown?.state.completedAt ?? null,
+    used: attempts.length,
+    limit,
+    remaining: limit === null ? null : Math.max(0, limit - attempts.length),
+    canAct: blockedBy === null,
+    blockedBy,
+    score:
+      score === null
+        ? null
+        : { earned: score.earned, possible: score.possible, percent: score.percent },
   }
 }
 

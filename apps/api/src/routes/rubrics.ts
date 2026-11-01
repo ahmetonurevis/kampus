@@ -9,6 +9,7 @@ import {
   archiveRubricVersion,
   createRubric,
   getRubric,
+  getRubricVersion,
   listRubricLibrary,
   openRubricVersion,
   publishRubricVersion,
@@ -26,7 +27,9 @@ import {
   rubricListQuerySchema,
   rubricListResponseSchema,
   rubricParamsSchema,
+  rubricVersionIdParamsSchema,
   rubricVersionParamsSchema,
+  rubricVersionResponseSchema,
   rubricWriteResponseSchema,
 } from './rubrics.schemas.ts'
 
@@ -103,6 +106,24 @@ export function registerRubricRoutes(app: FastifyInstance) {
       },
     },
     async (request) => ({ data: await getRubric(contextOf(request), request.params.rubricId) }),
+  )
+
+  typed.get(
+    '/api/v1/rubric-versions/:versionId',
+    {
+      preValidation,
+      schema: {
+        operationId: 'getRubricVersion',
+        tags: ['rubrics'],
+        summary: 'Rubrik sürümü',
+        description: `Tek rubrik sürümü kimliğiyle (DOM-BEC-022): atamanın \`rubricVersionId\`'si rubrik aranmadan okunur. Kriterler, bantlar, tanımlayıcı eşlemesi ve kullanım. Rubrik sonradan arşivlense de sürüm okunur. ${ACCESS} Olmayan veya başka kurumun sürümü 404.`,
+        params: rubricVersionIdParamsSchema,
+        response: { 200: rubricVersionResponseSchema, ...readErrors },
+      },
+    },
+    async (request) => ({
+      data: await getRubricVersion(contextOf(request), request.params.versionId),
+    }),
   )
 
   typed.post(

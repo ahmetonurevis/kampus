@@ -74,6 +74,29 @@ export function useRubricDetail(rubricId: string) {
   })
 }
 
+/**
+ * Tek rubrik sürümü kimliğiyle (`GET /rubric-versions/:id`): atamanın `rubricVersionId`'si rubrik
+ * aranmadan okunur (puanlama paneli). Kimlik yokken (`null`, otomatik puanlı görev) istek atılmaz.
+ */
+export function useRubricVersion(versionId: string | null) {
+  return useApiQuery({
+    key: [RUBRICS_KEY, 'version', versionId],
+    request: (client, signal) => rubricVersionRequest(client, versionId ?? '', signal),
+    enabled: versionId !== null && versionId !== '',
+  })
+}
+
+export function rubricVersionRequest(
+  client: KampusClient,
+  versionId: string,
+  signal?: AbortSignal,
+) {
+  return client.GET('/api/v1/rubric-versions/{versionId}', {
+    params: { path: { versionId } },
+    ...(signal ? { signal } : {}),
+  })
+}
+
 /** Oluşturma uçları `If-Match` kabul etmez (sunucu 400 `if_match_not_supported`). */
 const unversioned = (headers: CommandHeaders) => ({
   'idempotency-key': headers['idempotency-key'],

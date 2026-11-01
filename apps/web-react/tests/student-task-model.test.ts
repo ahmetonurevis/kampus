@@ -46,6 +46,7 @@ const auto = (overrides: Partial<TaskAssignmentLearner> = {}): TaskAssignmentLea
   submission: null,
   createdAt: '2026-10-01T09:00:00.000Z',
   learnerIds: ['s-1'],
+  progress: [],
   ...overrides,
 })
 

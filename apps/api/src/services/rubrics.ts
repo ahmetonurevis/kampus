@@ -135,6 +135,20 @@ export async function getRubric(ctx: ServiceContext, rubricId: string) {
   }
 }
 
+/**
+ * Tek rubrik sürümü, kimliğiyle (DOM-BEC-022): atama yalnız sürüm kimliğini sabitler, puanlama
+ * paneli rubriği aramadan bu sürümü okur. Kütüphaneyle aynı kapsam: içerik personeli (yönetici,
+ * öğretmen; atamayı gören öğretmen bunun içindedir), diğerleri 403. Rubrik sonradan arşivlense de
+ * sürüm okunur (sabitlenmiş atamanın puanlaması sürer); olmayan veya başka kurumun sürümü 404.
+ */
+export async function getRubricVersion(ctx: ServiceContext, versionId: string) {
+  staffActor(ctx)
+  const version = await findRubricVersion(ctx.db, ctx.institutionId, versionId)
+  if (!version) throw new NotFoundError()
+  const usage = await rubricUsageByVersion(ctx.db, ctx.institutionId, [version.id])
+  return versionView(version, usage.get(version.id))
+}
+
 // --- Yazma --------------------------------------------------------------------------------
 
 interface WriteOutcome {

@@ -239,6 +239,15 @@ describe('görev deneme uçları', () => {
       ...key(),
       ...version(rowVersion),
     })
+  /** Atama ayrıntısındaki kursiyer durum özeti; listedeki satırla aynı olmalı (IST-051). */
+  const progressOf = async (assignmentId: string, cookie: string) => {
+    const detail = await ok(await call('GET', `/task-assignments/${assignmentId}`, cookie))
+    const row = (await ok(await call('GET', '/task-assignments', cookie))).find(
+      (item: Json) => item.id === assignmentId,
+    )
+    assert.deepEqual(row.progress, detail.progress)
+    return detail
+  }
   const list = (assignmentId: string, cookie: string, extra = '') =>
     call('GET', `/task-attempts?assignmentId=${assignmentId}${extra}`, cookie)
 
@@ -468,10 +477,33 @@ describe('görev deneme uçları', () => {
         ),
       )
     }
+    const fresh = (await progressOf(assignmentId, t.cookies.student)).progress[0]
+    assert.deepEqual(
+      [fresh.status, fresh.used, fresh.limit, fresh.remaining, fresh.canAct, fresh.score],
+      ['pending', 0, 2, 2, true, null],
+    )
     const wrong = await answer('a')
     const right = await answer('b')
     assert.equal(right.attemptNumber, 2)
     fails(await start(assignmentId, t.cookies.student), 422, 'attempt_limit_reached')
+    // IST-051: özet sayılan denemeyi (en yüksek) ve hakkın dolduğunu gösterir; veli de aynısını.
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const [done] = (await progressOf(assignmentId, cookie)).progress
+      assert.deepEqual(done, {
+        learnerId: 's-1',
+        status: 'submitted',
+        resubmissionRequested: false,
+        attemptId: right.id,
+        submissionId: null,
+        lastActivityAt: right.completedAt,
+        used: 2,
+        limit: 2,
+        remaining: 0,
+        canAct: false,
+        blockedBy: 'limit',
+        score: { earned: 1, possible: 1, percent: 100 },
+      })
+    }
     const rows = await ok(await list(assignmentId, t.cookies.teacher))
     assert.deepEqual(
       rows.map((row: Json) => [row.id, row.counted, row.result.percent]),
@@ -697,6 +729,18 @@ describe('görev deneme uçları', () => {
       (await ok(await call('GET', `/task-attempts/${ids.get('s-2')}`, twoChildren))).learnerId,
       's-2',
     )
+    // IST-051: atama özeti de kendi kapsamındadır; iki çocuklu veli her çocuğun durumunu ayrı görür.
+    for (const [cookie, expected] of [
+      [t.cookies.student, ['s-1']],
+      [t.cookies.parent, ['s-1']],
+      [twoChildren, ['s-1', 's-2']],
+    ] as const) {
+      const { progress } = await progressOf(assignmentId, cookie)
+      assert.deepEqual(
+        progress.map((row: Json) => [row.learnerId, row.status, row.attemptId, row.blockedBy]),
+        expected.map((learner) => [learner, 'in_progress', ids.get(learner), 'in_progress']),
+      )
+    }
     fails(await call('GET', `/task-attempts/${ids.get('s-2')}`, t.cookies.parent), 404, 'not_found')
   })
 
@@ -740,6 +784,14 @@ describe('görev deneme uçları', () => {
     try {
       // Lisans core kuralından önce denetlenir: süren deneme varken de lisans hatası gelir.
       fails(await start(assignmentId, t.cookies.student), 409, 'resource_license_expired')
+      // Süren iş biter: içerik gösterilir, özet süren denemeyi gösterir.
+      const ongoing = await progressOf(assignmentId, t.cookies.student)
+      assert.deepEqual([ongoing.contentUnavailable, ongoing.content.versionId], [null, licensed])
+      assert.equal(ongoing.content.licenseKind, 'licensed_publication')
+      assert.deepEqual(ongoing.content.body, { type: 'question', questionCount: 1 })
+      for (const text of ['SZ-2026-01', 'answerKey', 'Örnek Yayınevi'])
+        assert.ok(!JSON.stringify(ongoing).includes(text), text)
+      assert.equal(ongoing.progress[0].blockedBy, 'in_progress')
       const saved = await ok(
         await save(running.id, t.cookies.student, { [licensed]: choice('c') }, 1),
       )
@@ -748,6 +800,13 @@ describe('görev deneme uçları', () => {
       const before = await attemptRows(t.institution.id)
       fails(await start(assignmentId, t.cookies.student), 409, 'resource_license_expired')
       assert.deepEqual(await attemptRows(t.institution.id), before)
+      // Süren iş kalmadı: yeni deneme lisans yüzünden kapalı, içerik gösterilmez (DOM-KYN-021).
+      const expired = await progressOf(assignmentId, t.cookies.student)
+      assert.deepEqual(
+        [expired.content, expired.contentUnavailable, expired.progress[0].blockedBy],
+        [null, 'license_expired', 'license_expired'],
+      )
+      assert.equal(expired.progress[0].score.percent, 100)
     } finally {
       at(0)
     }

@@ -102,7 +102,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Ders kitabı alınmış olması, içeriğin dijital ortamda çoğaltılması ve umuma iletimi için izin değildir.
 - **Kaynak:** FSEK md. 22 (çoğaltma), md. 25 (umuma iletim), md. 52; md. 34/1 son cümlesi ("bu serbestlik, hak sahibinin meşru menfaatlerine haklı bir sebep olmadan zarar verir veya eserden normal yararlanma ile çelişir şekilde kullanılamaz"). Eğitim amaçlı piyasaya sürülen yayınlar için md. 34 serbestisine dayanılamayacağı işletme yorumudur — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (bitiş günü), `packages/school-core/src/content/visibility.ts` (kitap sahibi sınırı, `isAssignable`), `packages/school-core/src/content/copy.ts` (uyarlama izni, süresi dolmuş lisansın kopyası); otomatik arşiv işi yok. API: `POST /api/v1/task-assignments` lisansı dolmuş içeriği core planından önce 409 `resource_license_expired` ile reddeder (bitiş günü dahil atanabilir); `POST /api/v1/task-assignments/:assignmentId/attempts` lisansı dolmuş içerikte (puanlama sürümü veya sorularından biri) yeni denemeyi aynı kodla reddeder, süren deneme kaydedilir ve teslim edilir (`services/task-work.ts` `assertLicenseActive`).
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (bitiş günü), `packages/school-core/src/content/visibility.ts` (kitap sahibi sınırı, `isAssignable`), `packages/school-core/src/content/copy.ts` (uyarlama izni, süresi dolmuş lisansın kopyası); otomatik arşiv işi yok. API: `POST /api/v1/task-assignments` lisansı dolmuş içeriği core planından önce 409 `resource_license_expired` ile reddeder (bitiş günü dahil atanabilir); `POST /api/v1/task-assignments/:assignmentId/attempts` lisansı dolmuş içerikte (puanlama sürümü veya sorularından biri) yeni denemeyi aynı kodla reddeder, süren deneme kaydedilir ve teslim edilir (`services/task-work.ts` `assertLicenseActive`). Öğrenci ve veli atama ayrıntısı lisansı dolmuş içeriği yalnız süren işi (deneme, teslim veya öğrencinin taslağı) olana gösterir, ötekine `contentUnavailable: 'license_expired'`; durum özeti yeni denemeyi `blockedBy: 'license_expired'` ile kapatır (`services/task-progress.ts`).
 
 ### DOM-KYN-022 · Alıntı sınırı ve biçimi
 
@@ -126,7 +126,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Kaynak göstermeksizin alıntı ve yanıltıcı kaynak gösterme suçtur.
 - **Kaynak:** FSEK md. 71/1-3 ve 71/1-5 (kaynak göstermeksizin iktibas; yetersiz, yanlış veya aldatıcı kaynak gösterme).
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`attributionSchema`, `assertLineagePreserved`, `learnerView`).
+- **Kodda:** kısmen. Core kuralı (ADR 0004): `packages/school-core/src/content/resource.ts` (`attributionSchema`, `assertLineagePreserved`, `learnerView`). API: öğrenci ve veli atama ayrıntısı (`GET /api/v1/task-assignments/:assignmentId`, `content.attributions`; `apps/api/src/services/task-progress.ts`) sabitlenen sürümün kaynak gösterimini taşır. PDF çıktısı yok.
 
 ### DOM-KYN-025 · Telif bildirimi ve yayından kaldırma
 

@@ -187,6 +187,7 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     return {
       institution,
       cookies,
+      seed,
       homeworkId: await seed(homework()),
       otherHomeworkId: await seed(homework()),
       questionId: await seed(question()),
@@ -599,6 +600,55 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     for (const cookie of [t.cookies.student, t.cookies.parent])
       assert.equal((await blockedBy(cookie)).blockedBy, 'graded')
     fails(await submit(assignmentId, t.cookies.student), 409, 'resubmission_not_requested')
+  })
+
+  test('DOM-KYN-024, DOM-KYN-021, IST-051: atama ayrıntısı sabitlenen yönergeyi ve kaynak gösterimini kursiyere verir (ölçüt yok); lisansı dolmuş içerikte taslak veya teslim yoksa içerik yok, taslak varsa yönerge görünür', async () => {
+    const t = await tenant()
+    const attribution = {
+      work: 'Short Stories',
+      author: 'A. Writer',
+      source: 'Örnek Yayınevi, s. 12',
+      year: 2020,
+    }
+    const quoted = await t.seed({
+      ...homework(),
+      license: {
+        kind: 'licensed_publication',
+        publisher: 'Örnek Yayınevi',
+        contractNumber: 'SZ-2026-02',
+        coverage: 'Kurumun bütün öğrencileri',
+        expiryDate: '2026-10-06',
+        restrictedToBookOwners: false,
+      },
+      attributions: [attribution],
+    })
+    const assignmentId = await assign(t, {}, quoted)
+    const read = (cookie: string) => call('GET', `/task-assignments/${assignmentId}`, cookie)
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const seen = await ok(await read(cookie))
+      assert.equal(seen.contentUnavailable, null)
+      assert.equal(seen.content.body.instructions, 'Hafta sonunu anlatan kısa bir metin yaz.')
+      assert.deepEqual(seen.content.attributions, [attribution])
+      for (const text of ['Zaman ifadeleri', 'SZ-2026-02', 'criteria'])
+        assert.ok(!JSON.stringify(seen).includes(text), text)
+    }
+    // Personel görünümünde içerik eki yoktur (içeriği kaynak uçlarından okur).
+    assert.ok(!('content' in (await ok(await read(t.cookies.teacher)))))
+
+    // Lisans bitiş gününden sonra: süren iş yoksa içerik gösterilmez.
+    now = new Date('2026-10-07T09:00:00.000Z')
+    try {
+      for (const cookie of [t.cookies.student, t.cookies.parent]) {
+        const expired = await ok(await read(cookie))
+        assert.deepEqual([expired.content, expired.contentUnavailable], [null, 'license_expired'])
+      }
+      // Öğrencinin taslağı varsa süren iş sayılır: yönerge görünür (veli taslağı göremez).
+      await ok(await saveDraft(assignmentId, t.cookies.student, 'İlk taslak'))
+      assert.equal((await ok(await read(t.cookies.student))).contentUnavailable, null)
+      assert.equal((await ok(await read(t.cookies.parent))).contentUnavailable, 'license_expired')
+    } finally {
+      now = FIXED_NOW
+    }
   })
 
   test('DOM-YTK-028, IST-047: servis de yalnız öğrenciye yazdırır: veli çocuğunun taslağını okuyamaz ve kaydedemez, teslim gönderemez (403); kayıt değişmez', async () => {

@@ -103,7 +103,11 @@ export const configSchema = z
      * `S3_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_URL` doğrulaması.
      */
     STORAGE_DRIVER: z.enum(['disk']).default('disk'),
-    /** `disk` sürücüsünün kök klasörü (göreliyse API'nin çalışma klasörüne göre); üretimde zorunlu. */
+    /**
+     * `disk` sürücüsünün kök klasörü (göreliyse API'nin çalışma klasörüne göre); verilmezse
+     * `var/storage`. Disk sürücüsü üretimde kullanılmadığından (`assertStorageForEnvironment`)
+     * üretimde zorunlu değildir.
+     */
     STORAGE_DIR: optional(z.string().min(1)),
   })
   .superRefine((config, ctx) => {
@@ -112,8 +116,6 @@ export const configSchema = z
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_URL'], message: 'required' })
     if (isPlaceholderSecret(config.BETTER_AUTH_SECRET))
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_SECRET'], message: 'placeholder' })
-    if (config.STORAGE_DRIVER === 'disk' && !config.STORAGE_DIR)
-      ctx.addIssue({ code: 'custom', path: ['STORAGE_DIR'], message: 'required' })
   })
 
 export type Config = z.infer<typeof configSchema>
@@ -124,10 +126,32 @@ function failure(error: z.ZodError): Error {
   return new Error(`Geçersiz veya eksik ortam değişkenleri: ${names.join(', ')}`)
 }
 
-export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
+/** Ortamı yalnız şemayla doğrular; başlangıç denetimleri `loadConfig`'tedir. */
+export function parseConfig(env: Record<string, string | undefined> = process.env): Config {
   const parsed = configSchema.safeParse(env)
   if (!parsed.success) throw failure(parsed.error)
   return parsed.data
+}
+
+export const DISK_STORAGE_IN_PRODUCTION_MESSAGE =
+  'STORAGE_DRIVER=disk üretimde kullanılmaz (ADR 0003 karar 1: disk yalnız test ve yerel geliştirme içindir). S3 sürücüsü gelene kadar API üretim ortamında başlatılamaz.'
+
+/**
+ * ADR 0003 karar 1: `disk` sürücüsü yalnız test ve yerel geliştirme içindir; üretimde seçiliyse
+ * süreç başlangıçta açık bir hatayla durur. Bugün tek sürücü disk olduğundan API üretimde
+ * başlamaz. TODO(F3c2-s3): S3 sürücüsü gelince üretimde `s3` zorunlu olur ve bu denetim onun
+ * ortam değişkenlerini ister.
+ */
+export function assertStorageForEnvironment(config: Config): void {
+  if (config.NODE_ENV === 'production' && config.STORAGE_DRIVER === 'disk')
+    throw new Error(DISK_STORAGE_IN_PRODUCTION_MESSAGE)
+}
+
+/** Süreç başlangıcı (sunucu, tohum): şema doğrulaması ve ortam denetimleri. */
+export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
+  const config = parseConfig(env)
+  assertStorageForEnvironment(config)
+  return config
 }
 
 /** Migration betiği yalnız bağlantı adresine ihtiyaç duyar. */
@@ -156,7 +180,7 @@ export function publicUrl(config: Config): string {
 /** Yerel geliştirme ve testte `STORAGE_DIR` verilmezse kullanılan klasör (git'e girmez). */
 export const DEFAULT_STORAGE_DIR = 'var/storage'
 
-/** Disk deposunun kök klasörü: verilen değer veya üretim dışı varsayılan. */
+/** Disk deposunun kök klasörü: verilen değer veya varsayılan (disk üretimde kullanılmaz). */
 export function storageDir(config: Config): string {
   return config.STORAGE_DIR ?? DEFAULT_STORAGE_DIR
 }

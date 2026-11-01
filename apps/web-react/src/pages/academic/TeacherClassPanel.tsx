@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { useAuth } from '@/auth/use-auth.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
@@ -12,6 +13,7 @@ import {
   SummarySection,
 } from '../management/SummaryParts.tsx'
 import { ROLE_HOMEROOM, type AcademicLookups } from './academic-rows.ts'
+import { ParentContactSection } from './ParentContactSection.tsx'
 
 type StudentRow = { id: string; name: string; number: string }
 const STUDENT_COLUMNS: DataColumn<StudentRow>[] = [
@@ -28,7 +30,8 @@ type Props = {
 
 /**
  * Sınıf özeti (Vue "Öğrenci listesi" bölümü): sınıf tek kayıt ucundan okunur; öğretmenin
- * kapsamı dışındaki sınıf 404 olur ve "bulunamadı" gösterilir. Öğrenciler yalnız kapsamdakilerdir.
+ * kapsamı dışındaki sınıf 404 olur ve "bulunamadı" gösterilir. Öğrenciler yalnız kapsamdakilerdir;
+ * velilerin iletişim bilgisi maskeli gelir, "Göster" ile denetimli açılır (DOM-YTK-055).
  */
 export function TeacherClassPanel({ classId, teacherId, lookups, onClose }: Props) {
   return (
@@ -44,6 +47,7 @@ export function TeacherClassPanel({ classId, teacherId, lookups, onClose }: Prop
 
 function ClassSummary({ classId, teacherId, lookups }: Omit<Props, 'onClose'>) {
   const item = useCoreItem('classes', classId)
+  const { session } = useAuth()
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
   const record = item.data.record
@@ -83,6 +87,10 @@ function ClassSummary({ classId, teacherId, lookups }: Omit<Props, 'onClose'>) {
           />
         </div>
       </SummarySection>
+      <ParentContactSection
+        students={students}
+        canReveal={session?.modules.communication === true}
+      />
       <Button asChild variant="secondary">
         <Link to={`?sekme=notlar&not-sinif=${encodeURIComponent(record.id)}`}>
           Bu sınıfın notlarını aç

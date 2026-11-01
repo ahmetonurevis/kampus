@@ -1712,6 +1712,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/parents/{parentId}/reveal-contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Veli iletişim bilgisini göster
+         * @description Öğretmenin, ders verdiği öğrencinin velisinin telefonunu veya e-postasını tam değeriyle açması (core `revealParentContact`, DOM-YTK-055, DOM-YTK-052). Listede (`GET /collections/parents`) öğretmen bu alanları maskeli görür (`0532 *** ** 12`, `a***@gmail.com`). Gövde `{ studentId, field }`, `field` `phone` veya `email`; bilinmeyen alan 400. Yalnız öğrencinin sınıfında dersi ya da sınıf rehberliği olan öğretmen, yalnız o öğrenciye bağlı veli için: kapsam dışı öğrenci, öğrenciye bağlı olmayan, olmayan veya başka kurumun velisi 404. Alan boşsa 422 `parent_contact_missing`. Her başarılı açılış `audit_log`'a `parent_contact.reveal` olarak yazılır (`entityType` `parents`, `entityId` veli, `changes.fields` alan adı, `changes.studentId` öğrenci); değer denetim kaydına ve loga yazılmaz. Yanıt `Cache-Control: no-store` taşır; istemci değeri yalnız bellekte tutar. Açılış kullanıcı ve kurum başına dakikada 10 ile sınırlıdır (geçersiz ve kapsam dışı denemeler dahil), aşılırsa 429 `rate_limited` ve `Retry-After`. `Idempotency-Key` kullanılmaz: işlem kayıt oluşturmaz, tekrar yalnız yeni bir denetim kaydıdır ve her açılışın kaydı istenir. Modül `communication`; kapalıysa 403 `module_disabled`. Roller: `ogretmen` (yönetici ve ön büro tam değeri listede görür; öğrenci ve veli hiç görmez).
+         */
+        post: operations["revealParentContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/requests": {
         parameters: {
             query?: never;
@@ -2784,6 +2804,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rubric-versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rubrik sürümü
+         * @description Tek rubrik sürümü kimliğiyle (DOM-BEC-022): atamanın `rubricVersionId`'si rubrik aranmadan okunur. Kriterler, bantlar, tanımlayıcı eşlemesi ve kullanım. Rubrik sonradan arşivlense de sürüm okunur. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404. Olmayan veya başka kurumun sürümü 404.
+         */
+        get: operations["getRubricVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rubrics/{rubricId}/versions": {
         parameters: {
             query?: never;
@@ -3329,7 +3369,7 @@ export interface paths {
         };
         /**
          * İmzalı indirme (disk sürücüsü)
-         * @description `disk` sürücüsünde `GET /api/v1/files/{fileId}/url` bağlantısının hedefi; oturum istemez, yetki HMAC imzasındadır. Süresi geçmiş bağlantı 403 `link_expired`, bozuk veya değiştirilmiş bağlantı 403 `invalid_signature`, silinmiş nesne 404. Yanıt dosyanın kendisidir (`Cache-Control: no-store`); `Cross-Origin-Resource-Policy: cross-origin` ile web başka kökenden `<img>`/`<audio>` olarak gömebilir.
+         * @description `disk` sürücüsünde `GET /api/v1/files/{fileId}/url` bağlantısının hedefi; oturum istemez, yetki HMAC imzasındadır. Süresi geçmiş bağlantı 403 `link_expired`, bozuk veya değiştirilmiş bağlantı 403 `invalid_signature`, silinmiş veya reddedilmiş dosya ve silinmiş nesne 404. Bağlantı özgün adı taşımaz (KVKK: URL vekil loguna ve tarayıcı geçmişine girer); ad ve tür dosya kaydından okunur. Yanıt dosyanın kendisidir (`Cache-Control: no-store`); `Cross-Origin-Resource-Policy: cross-origin` ile web başka kökenden `<img>`/`<audio>` olarak gömebilir.
          */
         get: operations["downloadFile"];
         put?: never;
@@ -4316,6 +4356,18 @@ export interface components {
             /** @description `false`: saat dolu ("Dolu"); neden hiçbir durumda bildirilmez (DOM-ILT-073) */
             available: boolean;
         };
+        RevealedParentContactInput: {
+            parentId: string;
+            /** @description Velisi açılan öğrenci (kapsamla denetlendi) */
+            studentId: string;
+            /**
+             * @description Açılan alan
+             * @enum {string}
+             */
+            field: "phone" | "email";
+            /** @description Alanın maskesiz değeri */
+            value: string;
+        };
         RubricInput: {
             /** Format: uuid */
             id: string;
@@ -4516,6 +4568,40 @@ export interface components {
             /** @description Atama satırının iyimser kilit sürümü (değişiklikte `If-Match`) */
             rowVersion: number;
         };
+        TaskAssignmentLearnerProgressInput: {
+            learnerId: string;
+            /**
+             * @description Başlanmadı/teslim bekleniyor, süren deneme, zamanında veya geç tamamlandı/teslim edildi, pencere kapandı ve yapılmadı (DOM-BEC-044)
+             * @enum {string}
+             */
+            status: "pending" | "in_progress" | "submitted" | "late" | "not_submitted";
+            /** @description Öğretmen yeniden teslim istedi ve yeni sürüm henüz gelmedi (DOM-BEC-040) */
+            resubmissionRequested: boolean;
+            /** @description Otomatik puanlı: süren deneme, yoksa gösterilen (sayılan veya son) deneme */
+            attemptId: string | null;
+            /** @description Öğretmen puanlı: teslim kaydı */
+            submissionId: string | null;
+            /** @description Gösterilen denemenin tamamlandığı veya son sürümün gönderildiği an */
+            lastActivityAt: string | null;
+            /** @description Kullanılan deneme veya gönderilen sürüm sayısı */
+            used: number;
+            /** @description Deneme veya sürüm hakkı; `null` sınırsız */
+            limit: number | null;
+            /** @description Kalan hak; `null` sınırsız */
+            remaining: number | null;
+            /** @description Şu an yeni deneme başlatılabilir veya yeni sürüm gönderilebilir */
+            canAct: boolean;
+            /** @description Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045) */
+            actionableUntil: string | null;
+            /** @description `canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
+            blockedBy: ("in_progress" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
+            /** @description Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045) */
+            score: {
+                earned: number;
+                possible: number;
+                percent: number;
+            } | null;
+        };
         TaskAssignmentLearnerInput: {
             /** @constant */
             view: "learner";
@@ -4595,8 +4681,178 @@ export interface components {
             createdAt: string;
             /** @description Görevin hedeflediği kişinin kendisi veya velinin çocukları */
             learnerIds: string[];
+            /** @description `learnerIds` sırasıyla her kişinin durumu */
+            progress: components["schemas"]["TaskAssignmentLearnerProgressInput"][];
+        };
+        TaskAssignmentLearnerBodyInput: {
+            /** @constant */
+            type: "text";
+            body: string | null;
+            fileId: string | null;
+        } | {
+            /** @constant */
+            type: "worksheet";
+            body: string | null;
+            fileId: string | null;
+        } | {
+            /** @constant */
+            type: "reading_passage";
+            body: string;
+        } | {
+            /** @constant */
+            type: "audio";
+            /** @description Dosya kimliği */
+            fileId: string;
+            /** @description Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003) */
+            transcript: string | null;
+            captionsVtt: string | null;
+        } | {
+            /** @constant */
+            type: "video";
+            /** @description Dosya kimliği */
+            fileId: string;
+            /** @description Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003) */
+            transcript: string | null;
+            captionsVtt: string | null;
+        } | {
+            /** @constant */
+            type: "file";
+            /** @description Dosya kimliği */
+            fileId: string;
+        } | {
+            /** @constant */
+            type: "link";
+            url: string;
+            provider: string | null;
+        } | {
+            /** @constant */
+            type: "book_reference";
+            publisher: string;
+            bookTitle: string;
+            edition: string | null;
+            isbn: string | null;
+            pages: string;
+            note: string | null;
+        } | {
+            /** @constant */
+            type: "question";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "quiz";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "exercise_set";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "homework_template";
+            instructions: string;
+            submissionKinds: ("file" | "text" | "audio")[];
+        };
+        TaskAssignmentLearnerContentInput: {
+            /**
+             * Format: uuid
+             * @description Atamada sabitlenen içerik sürümü
+             */
+            versionId: string;
+            title: string;
+            body: components["schemas"]["TaskAssignmentLearnerBodyInput"];
+            /** @description Kaynak gösterimi (DOM-KYN-024) */
+            attributions: components["schemas"]["ResourceAttributionInput"][];
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+        };
+        TaskAssignmentLearnerDetailInput: {
+            /** @constant */
+            view: "learner";
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            resourceId: string;
+            /**
+             * Format: uuid
+             * @description Atamada sabitlenen içerik sürümü (DOM-KYN-032)
+             */
+            resourceVersionId: string;
+            /** @description Atanan sürümün başlığı */
+            title: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            /**
+             * @description Otomatik puanlı veya öğretmen puanlı
+             * @enum {string}
+             */
+            scoringMode: "auto" | "teacher";
+            /** @enum {string} */
+            kind: "evaluation" | "practice";
+            /** @description Deneme hakkı ve sayım politikası (DOM-BEC-042) */
+            attempts: {
+                /** @constant */
+                kind: "evaluation";
+                /** @default 1 */
+                maxAttempts: number;
+                /**
+                 * @default first
+                 * @enum {string}
+                 */
+                countPolicy: "first" | "highest";
+            } | {
+                /** @constant */
+                kind: "practice";
+            };
+            /** @description Son teslim ve geç kabul (DOM-BEC-044) */
+            deadline: {
+                /** @default null */
+                dueAt: string | null;
+                /** @default 0 */
+                lateAcceptanceDays: number;
+            };
+            timeLimitMinutes: number | null;
+            /** @description Dinleme hakkı; boş: sınırsız veya dinleme görevi değil (DOM-BEC-005) */
+            listeningPlays: (1 | 2) | null;
+            showTranscript: boolean;
+            /** @description Öğretmen puanlı görevin teslim ayarı */
+            submission: ({
+                /** @constant */
+                submissionKind: "text";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default null */
+                minWords: number | null;
+                /** @default null */
+                maxWords: number | null;
+            } | {
+                /** @constant */
+                submissionKind: "file";
+                /** @default 3 */
+                maxVersions: number;
+            } | {
+                /** @constant */
+                submissionKind: "audio";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default 1 */
+                speakingAttempts: number;
+                /** @default 0 */
+                preparationSeconds: number;
+                speakingSeconds: number;
+            }) | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Görevin hedeflediği kişinin kendisi veya velinin çocukları */
+            learnerIds: string[];
+            /** @description `learnerIds` sırasıyla her kişinin durumu */
+            progress: components["schemas"]["TaskAssignmentLearnerProgressInput"][];
+            content: components["schemas"]["TaskAssignmentLearnerContentInput"] | null;
+            /** @description `content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil */
+            contentUnavailable: ("license_expired" | "unavailable") | null;
         };
         TaskAssignmentInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerInput"];
+        TaskAssignmentDetailInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerDetailInput"];
         TaskAttemptItemScoreInput: {
             questionVersionId: string;
             parts: number;
@@ -6070,6 +6326,18 @@ export interface components {
             /** @description `false`: saat dolu ("Dolu"); neden hiçbir durumda bildirilmez (DOM-ILT-073) */
             available: boolean;
         };
+        RevealedParentContact: {
+            parentId: string;
+            /** @description Velisi açılan öğrenci (kapsamla denetlendi) */
+            studentId: string;
+            /**
+             * @description Açılan alan
+             * @enum {string}
+             */
+            field: "phone" | "email";
+            /** @description Alanın maskesiz değeri */
+            value: string;
+        };
         Rubric: {
             /** Format: uuid */
             id: string;
@@ -6270,6 +6538,40 @@ export interface components {
             /** @description Atama satırının iyimser kilit sürümü (değişiklikte `If-Match`) */
             rowVersion: number;
         };
+        TaskAssignmentLearnerProgress: {
+            learnerId: string;
+            /**
+             * @description Başlanmadı/teslim bekleniyor, süren deneme, zamanında veya geç tamamlandı/teslim edildi, pencere kapandı ve yapılmadı (DOM-BEC-044)
+             * @enum {string}
+             */
+            status: "pending" | "in_progress" | "submitted" | "late" | "not_submitted";
+            /** @description Öğretmen yeniden teslim istedi ve yeni sürüm henüz gelmedi (DOM-BEC-040) */
+            resubmissionRequested: boolean;
+            /** @description Otomatik puanlı: süren deneme, yoksa gösterilen (sayılan veya son) deneme */
+            attemptId: string | null;
+            /** @description Öğretmen puanlı: teslim kaydı */
+            submissionId: string | null;
+            /** @description Gösterilen denemenin tamamlandığı veya son sürümün gönderildiği an */
+            lastActivityAt: string | null;
+            /** @description Kullanılan deneme veya gönderilen sürüm sayısı */
+            used: number;
+            /** @description Deneme veya sürüm hakkı; `null` sınırsız */
+            limit: number | null;
+            /** @description Kalan hak; `null` sınırsız */
+            remaining: number | null;
+            /** @description Şu an yeni deneme başlatılabilir veya yeni sürüm gönderilebilir */
+            canAct: boolean;
+            /** @description Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045) */
+            actionableUntil: string | null;
+            /** @description `canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
+            blockedBy: ("in_progress" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
+            /** @description Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045) */
+            score: {
+                earned: number;
+                possible: number;
+                percent: number;
+            } | null;
+        };
         TaskAssignmentLearner: {
             /** @constant */
             view: "learner";
@@ -6349,8 +6651,178 @@ export interface components {
             createdAt: string;
             /** @description Görevin hedeflediği kişinin kendisi veya velinin çocukları */
             learnerIds: string[];
+            /** @description `learnerIds` sırasıyla her kişinin durumu */
+            progress: components["schemas"]["TaskAssignmentLearnerProgress"][];
+        };
+        TaskAssignmentLearnerBody: {
+            /** @constant */
+            type: "text";
+            body: string | null;
+            fileId: string | null;
+        } | {
+            /** @constant */
+            type: "worksheet";
+            body: string | null;
+            fileId: string | null;
+        } | {
+            /** @constant */
+            type: "reading_passage";
+            body: string;
+        } | {
+            /** @constant */
+            type: "audio";
+            /** @description Dosya kimliği */
+            fileId: string;
+            /** @description Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003) */
+            transcript: string | null;
+            captionsVtt: string | null;
+        } | {
+            /** @constant */
+            type: "video";
+            /** @description Dosya kimliği */
+            fileId: string;
+            /** @description Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003) */
+            transcript: string | null;
+            captionsVtt: string | null;
+        } | {
+            /** @constant */
+            type: "file";
+            /** @description Dosya kimliği */
+            fileId: string;
+        } | {
+            /** @constant */
+            type: "link";
+            url: string;
+            provider: string | null;
+        } | {
+            /** @constant */
+            type: "book_reference";
+            publisher: string;
+            bookTitle: string;
+            edition: string | null;
+            isbn: string | null;
+            pages: string;
+            note: string | null;
+        } | {
+            /** @constant */
+            type: "question";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "quiz";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "exercise_set";
+            /** @description Soru sayısı; sorular denemede gelir */
+            questionCount: number;
+        } | {
+            /** @constant */
+            type: "homework_template";
+            instructions: string;
+            submissionKinds: ("file" | "text" | "audio")[];
+        };
+        TaskAssignmentLearnerContent: {
+            /**
+             * Format: uuid
+             * @description Atamada sabitlenen içerik sürümü
+             */
+            versionId: string;
+            title: string;
+            body: components["schemas"]["TaskAssignmentLearnerBody"];
+            /** @description Kaynak gösterimi (DOM-KYN-024) */
+            attributions: components["schemas"]["ResourceAttribution"][];
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+        };
+        TaskAssignmentLearnerDetail: {
+            /** @constant */
+            view: "learner";
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            resourceId: string;
+            /**
+             * Format: uuid
+             * @description Atamada sabitlenen içerik sürümü (DOM-KYN-032)
+             */
+            resourceVersionId: string;
+            /** @description Atanan sürümün başlığı */
+            title: string;
+            /** @enum {string} */
+            contentType: "text" | "reading_passage" | "audio" | "video" | "worksheet" | "file" | "link" | "book_reference" | "question" | "quiz" | "exercise_set" | "homework_template";
+            /**
+             * @description Otomatik puanlı veya öğretmen puanlı
+             * @enum {string}
+             */
+            scoringMode: "auto" | "teacher";
+            /** @enum {string} */
+            kind: "evaluation" | "practice";
+            /** @description Deneme hakkı ve sayım politikası (DOM-BEC-042) */
+            attempts: {
+                /** @constant */
+                kind: "evaluation";
+                /** @default 1 */
+                maxAttempts: number;
+                /**
+                 * @default first
+                 * @enum {string}
+                 */
+                countPolicy: "first" | "highest";
+            } | {
+                /** @constant */
+                kind: "practice";
+            };
+            /** @description Son teslim ve geç kabul (DOM-BEC-044) */
+            deadline: {
+                /** @default null */
+                dueAt: string | null;
+                /** @default 0 */
+                lateAcceptanceDays: number;
+            };
+            timeLimitMinutes: number | null;
+            /** @description Dinleme hakkı; boş: sınırsız veya dinleme görevi değil (DOM-BEC-005) */
+            listeningPlays: (1 | 2) | null;
+            showTranscript: boolean;
+            /** @description Öğretmen puanlı görevin teslim ayarı */
+            submission: ({
+                /** @constant */
+                submissionKind: "text";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default null */
+                minWords: number | null;
+                /** @default null */
+                maxWords: number | null;
+            } | {
+                /** @constant */
+                submissionKind: "file";
+                /** @default 3 */
+                maxVersions: number;
+            } | {
+                /** @constant */
+                submissionKind: "audio";
+                /** @default 3 */
+                maxVersions: number;
+                /** @default 1 */
+                speakingAttempts: number;
+                /** @default 0 */
+                preparationSeconds: number;
+                speakingSeconds: number;
+            }) | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Görevin hedeflediği kişinin kendisi veya velinin çocukları */
+            learnerIds: string[];
+            /** @description `learnerIds` sırasıyla her kişinin durumu */
+            progress: components["schemas"]["TaskAssignmentLearnerProgress"][];
+            content: components["schemas"]["TaskAssignmentLearnerContent"] | null;
+            /** @description `content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil */
+            contentUnavailable: ("license_expired" | "unavailable") | null;
         };
         TaskAssignment: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearner"];
+        TaskAssignmentDetail: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearnerDetail"];
         TaskAttemptItemScore: {
             questionVersionId: string;
             parts: number;
@@ -16618,6 +17090,102 @@ export interface operations {
             };
         };
     };
+    revealParentContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Veli kaydının kimliği */
+                parentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    /** @enum {string} */
+                    field: "phone" | "email";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RevealedParentContact"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     openRequest: {
         parameters: {
             query?: never;
@@ -24129,6 +24697,85 @@ export interface operations {
             };
         };
     };
+    getRubricVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Rubrik sürümü kimliği */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RubricVersion"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     createRubricVersion: {
         parameters: {
             query?: never;
@@ -24901,7 +25548,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["TaskAssignment"];
+                        data: components["schemas"]["TaskAssignmentDetail"];
                     };
                 };
             };

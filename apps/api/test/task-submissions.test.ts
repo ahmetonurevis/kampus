@@ -11,6 +11,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
+import { resourceVersions } from '../src/db/schema/resources.ts'
 import { insertRubricScore, insertSecondRatingRequest } from '../src/db/skills.ts'
 import {
   rubrics,
@@ -21,6 +22,7 @@ import {
 } from '../src/db/schema/skills.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
+import { taskAssignmentDetailResponseSchema } from '../src/routes/task-assignments.schemas.ts'
 import {
   getTaskDraft,
   saveTaskDraft,
@@ -187,6 +189,7 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     return {
       institution,
       cookies,
+      seed,
       homeworkId: await seed(homework()),
       otherHomeworkId: await seed(homework()),
       questionId: await seed(question()),
@@ -599,6 +602,139 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     for (const cookie of [t.cookies.student, t.cookies.parent])
       assert.equal((await blockedBy(cookie)).blockedBy, 'graded')
     fails(await submit(assignmentId, t.cookies.student), 409, 'resubmission_not_requested')
+  })
+
+  test('DOM-KYN-024, DOM-KYN-021, IST-051: atama ayrıntısı sabitlenen yönergeyi ve kaynak gösterimini kursiyere verir (ölçüt yok); lisansı dolmuş içerikte taslak veya teslim yoksa içerik yok, taslak varsa yönerge görünür', async () => {
+    const t = await tenant()
+    const attribution = {
+      work: 'Short Stories',
+      author: 'A. Writer',
+      source: 'Örnek Yayınevi, s. 12',
+      year: 2020,
+    }
+    const quoted = await t.seed({
+      ...homework(),
+      license: {
+        kind: 'licensed_publication',
+        publisher: 'Örnek Yayınevi',
+        contractNumber: 'SZ-2026-02',
+        coverage: 'Kurumun bütün öğrencileri',
+        expiryDate: '2026-10-06',
+        restrictedToBookOwners: false,
+      },
+      attributions: [attribution],
+    })
+    const assignmentId = await assign(t, {}, quoted)
+    const read = (cookie: string) => call('GET', `/task-assignments/${assignmentId}`, cookie)
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const seen = await ok(await read(cookie))
+      assert.equal(seen.contentUnavailable, null)
+      assert.equal(seen.content.body.instructions, 'Hafta sonunu anlatan kısa bir metin yaz.')
+      assert.deepEqual(seen.content.attributions, [attribution])
+      for (const text of ['Zaman ifadeleri', 'SZ-2026-02', 'criteria'])
+        assert.ok(!JSON.stringify(seen).includes(text), text)
+    }
+    // Personel görünümünde içerik eki yoktur (içeriği kaynak uçlarından okur).
+    assert.ok(!('content' in (await ok(await read(t.cookies.teacher)))))
+
+    // Lisans bitiş gününden sonra: süren iş yoksa içerik gösterilmez.
+    now = new Date('2026-10-07T09:00:00.000Z')
+    try {
+      for (const cookie of [t.cookies.student, t.cookies.parent]) {
+        const expired = await ok(await read(cookie))
+        assert.deepEqual([expired.content, expired.contentUnavailable], [null, 'license_expired'])
+      }
+      // Öğrencinin taslağı varsa süren iş sayılır: yönerge görünür (veli taslağı göremez).
+      await ok(await saveDraft(assignmentId, t.cookies.student, 'İlk taslak'))
+      assert.equal((await ok(await read(t.cookies.student))).contentUnavailable, null)
+      assert.equal((await ok(await read(t.cookies.parent))).contentUnavailable, 'license_expired')
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
+  test('IST-051: kursiyer içerik gövdesi tür başına yalnız izinli alanları taşır; yanıt şeması fazladan alanı (öğretmen notu, ölçüt, rubrik bağı) süzer', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    const detail = await ok(
+      await call('GET', `/task-assignments/${assignmentId}`, t.cookies.student),
+    )
+    assert.deepEqual(Object.keys(detail.content.body).sort(), [
+      'instructions',
+      'submissionKinds',
+      'type',
+    ])
+    const leaked = structuredClone(detail)
+    Object.assign(leaked.content.body, {
+      criteria: 'GIZLI-OLCUT',
+      rubricId: randomUUID(),
+      teacherNote: 'GIZLI-NOT',
+    })
+    const parsed = taskAssignmentDetailResponseSchema.parse({ data: leaked })
+    assert.deepEqual(parsed.data, detail)
+  })
+
+  test('DOM-KYN-025, DOM-KYN-051: kaynağın başka sürümü telif bildirimiyle incelemedeyse ya da kaynak kaldırıldıysa arşivli sürüme sabitlenen atamanın içeriği kursiyere ve veliye gösterilmez (taslak olsa da); ilk onaydaki yeni taslak etkilemez', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    await ok(await saveDraft(assignmentId, t.cookies.student, 'İlk taslak'))
+    const [pinned] = await db
+      .select()
+      .from(resourceVersions)
+      .where(
+        and(
+          eq(resourceVersions.institutionId, t.institution.id),
+          eq(resourceVersions.id, t.homeworkId),
+        ),
+      )
+    const nextId = randomUUID()
+    // v2 ilk onay sürecinde (yayın geçmişi yok): sabitlenen v1 gösterilmeye devam eder.
+    await db.insert(resourceVersions).values({
+      ...pinned!,
+      id: nextId,
+      versionNumber: 2,
+      status: 'in_review',
+      publishedAt: null,
+      submittedAt: FIXED_NOW,
+    })
+    const contentOf = async (cookie: string) => {
+      const seen = await ok(await call('GET', `/task-assignments/${assignmentId}`, cookie))
+      return [seen.contentUnavailable, seen.content?.versionId ?? null]
+    }
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await contentOf(cookie), [null, t.homeworkId])
+    const setStatus = (versionId: string, values: Partial<typeof resourceVersions.$inferInsert>) =>
+      db
+        .update(resourceVersions)
+        .set(values)
+        .where(
+          and(
+            eq(resourceVersions.institutionId, t.institution.id),
+            eq(resourceVersions.id, versionId),
+          ),
+        )
+    // v2 yayımlanır, v1 arşive geçer: atama arşivli v1'i göstermeye devam eder.
+    await setStatus(t.homeworkId, { status: 'archived', archivedAt: FIXED_NOW })
+    await setStatus(nextId, { status: 'published', publishedAt: FIXED_NOW })
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await contentOf(cookie), [null, t.homeworkId])
+    // v2'ye telif bildirimi: kaynak öğrenci ve veliye görünmez, v1 de gösterilmez.
+    await setStatus(nextId, { status: 'in_review' })
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await contentOf(cookie), ['unavailable', null])
+    // Yönetici yeniden yayına alır: içerik geri gelir; kaynak kaldırılırsa yine gösterilmez.
+    await setStatus(nextId, { status: 'published' })
+    assert.deepEqual(await contentOf(t.cookies.student), [null, t.homeworkId])
+    // Kaldırma kaynak düzeyindedir; burada yalnız v2 işaretlenir, sabitlenen v1'in içeriği dursa da.
+    await setStatus(nextId, {
+      status: 'removed',
+      content: null,
+      answerKey: null,
+      removedAt: FIXED_NOW,
+      removalReason: 'Telif',
+    })
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await contentOf(cookie), ['unavailable', null])
   })
 
   test('DOM-YTK-028, IST-047: servis de yalnız öğrenciye yazdırır: veli çocuğunun taslağını okuyamaz ve kaydedemez, teslim gönderemez (403); kayıt değişmez', async () => {

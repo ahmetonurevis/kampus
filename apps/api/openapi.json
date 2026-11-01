@@ -4022,6 +4022,36 @@
           "available"
         ]
       },
+      "RevealedParentContactInput": {
+        "type": "object",
+        "properties": {
+          "parentId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "description": "Velisi açılan öğrenci (kapsamla denetlendi)"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "email"
+            ],
+            "description": "Açılan alan"
+          },
+          "value": {
+            "type": "string",
+            "description": "Alanın maskesiz değeri"
+          }
+        },
+        "required": [
+          "parentId",
+          "studentId",
+          "field",
+          "value"
+        ]
+      },
       "RubricInput": {
         "type": "object",
         "properties": {
@@ -4850,6 +4880,178 @@
           "rowVersion"
         ]
       },
+      "TaskAssignmentLearnerProgressInput": {
+        "type": "object",
+        "properties": {
+          "learnerId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "submitted",
+              "late",
+              "not_submitted"
+            ],
+            "description": "Başlanmadı/teslim bekleniyor, süren deneme, zamanında veya geç tamamlandı/teslim edildi, pencere kapandı ve yapılmadı (DOM-BEC-044)"
+          },
+          "resubmissionRequested": {
+            "type": "boolean",
+            "description": "Öğretmen yeniden teslim istedi ve yeni sürüm henüz gelmedi (DOM-BEC-040)"
+          },
+          "attemptId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Otomatik puanlı: süren deneme, yoksa gösterilen (sayılan veya son) deneme"
+          },
+          "submissionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğretmen puanlı: teslim kaydı"
+          },
+          "lastActivityAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Gösterilen denemenin tamamlandığı veya son sürümün gönderildiği an"
+          },
+          "used": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Kullanılan deneme veya gönderilen sürüm sayısı"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deneme veya sürüm hakkı; `null` sınırsız"
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kalan hak; `null` sınırsız"
+          },
+          "canAct": {
+            "type": "boolean",
+            "description": "Şu an yeni deneme başlatılabilir veya yeni sürüm gönderilebilir"
+          },
+          "actionableUntil": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045)"
+          },
+          "blockedBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "in_progress",
+                  "license_expired",
+                  "locked",
+                  "limit",
+                  "graded",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "earned": {
+                    "type": "number"
+                  },
+                  "possible": {
+                    "type": "number"
+                  },
+                  "percent": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "earned",
+                  "possible",
+                  "percent"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045)"
+          }
+        },
+        "required": [
+          "learnerId",
+          "status",
+          "resubmissionRequested",
+          "attemptId",
+          "submissionId",
+          "lastActivityAt",
+          "used",
+          "limit",
+          "remaining",
+          "canAct",
+          "actionableUntil",
+          "blockedBy",
+          "score"
+        ]
+      },
       "TaskAssignmentLearnerInput": {
         "type": "object",
         "properties": {
@@ -5133,6 +5335,13 @@
               "type": "string"
             },
             "description": "Görevin hedeflediği kişinin kendisi veya velinin çocukları"
+          },
+          "progress": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskAssignmentLearnerProgressInput"
+            },
+            "description": "`learnerIds` sırasıyla her kişinin durumu"
           }
         },
         "required": [
@@ -5151,7 +5360,713 @@
           "showTranscript",
           "submission",
           "createdAt",
-          "learnerIds"
+          "learnerIds",
+          "progress"
+        ]
+      },
+      "TaskAssignmentLearnerBodyInput": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "text"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fileId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Dosya kimliği"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "fileId"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "worksheet"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fileId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Dosya kimliği"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "fileId"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "reading_passage"
+              },
+              "body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "body"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "audio"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              },
+              "transcript": {
+                "description": "Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003)",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "captionsVtt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "fileId",
+              "transcript",
+              "captionsVtt"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "video"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              },
+              "transcript": {
+                "description": "Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003)",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "captionsVtt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "fileId",
+              "transcript",
+              "captionsVtt"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "file"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              }
+            },
+            "required": [
+              "type",
+              "fileId"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "link"
+              },
+              "url": {
+                "type": "string"
+              },
+              "provider": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "url",
+              "provider"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "book_reference"
+              },
+              "publisher": {
+                "type": "string"
+              },
+              "bookTitle": {
+                "type": "string"
+              },
+              "edition": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "isbn": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pages": {
+                "type": "string"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "publisher",
+              "bookTitle",
+              "edition",
+              "isbn",
+              "pages",
+              "note"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "question"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "quiz"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "exercise_set"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "homework_template"
+              },
+              "instructions": {
+                "type": "string"
+              },
+              "submissionKinds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "text",
+                    "audio"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "type",
+              "instructions",
+              "submissionKinds"
+            ]
+          }
+        ]
+      },
+      "TaskAssignmentLearnerContentInput": {
+        "type": "object",
+        "properties": {
+          "versionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Atamada sabitlenen içerik sürümü"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "$ref": "#/components/schemas/TaskAssignmentLearnerBodyInput"
+          },
+          "attributions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceAttributionInput"
+            },
+            "description": "Kaynak gösterimi (DOM-KYN-024)"
+          },
+          "licenseKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "institution_original",
+                  "contains_quotation",
+                  "platform_derived",
+                  "open_license",
+                  "public_domain",
+                  "licensed_publication",
+                  "external_reference"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "versionId",
+          "title",
+          "body",
+          "attributions",
+          "licenseKind"
+        ]
+      },
+      "TaskAssignmentLearnerDetailInput": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "learner"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "resourceVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Atamada sabitlenen içerik sürümü (DOM-KYN-032)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Atanan sürümün başlığı"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "reading_passage",
+              "audio",
+              "video",
+              "worksheet",
+              "file",
+              "link",
+              "book_reference",
+              "question",
+              "quiz",
+              "exercise_set",
+              "homework_template"
+            ]
+          },
+          "scoringMode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "teacher"
+            ],
+            "description": "Otomatik puanlı veya öğretmen puanlı"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "evaluation",
+              "practice"
+            ]
+          },
+          "attempts": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "evaluation"
+                  },
+                  "maxAttempts": {
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3
+                  },
+                  "countPolicy": {
+                    "default": "first",
+                    "type": "string",
+                    "enum": [
+                      "first",
+                      "highest"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "practice"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            ],
+            "description": "Deneme hakkı ve sayım politikası (DOM-BEC-042)"
+          },
+          "deadline": {
+            "type": "object",
+            "properties": {
+              "dueAt": {
+                "default": null,
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lateAcceptanceDays": {
+                "default": 0,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 7
+              }
+            },
+            "description": "Son teslim ve geç kabul (DOM-BEC-044)"
+          },
+          "timeLimitMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listeningPlays": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "const": 1
+                  },
+                  {
+                    "type": "number",
+                    "const": 2
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dinleme hakkı; boş: sınırsız veya dinleme görevi değil (DOM-BEC-005)"
+          },
+          "showTranscript": {
+            "type": "boolean"
+          },
+          "submission": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "submissionKind": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "maxVersions": {
+                        "default": 3,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5
+                      },
+                      "minWords": {
+                        "default": null,
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5000
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "maxWords": {
+                        "default": null,
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5000
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "submissionKind"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "submissionKind": {
+                        "type": "string",
+                        "const": "file"
+                      },
+                      "maxVersions": {
+                        "default": 3,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5
+                      }
+                    },
+                    "required": [
+                      "submissionKind"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "submissionKind": {
+                        "type": "string",
+                        "const": "audio"
+                      },
+                      "maxVersions": {
+                        "default": 3,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5
+                      },
+                      "speakingAttempts": {
+                        "default": 1,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 3
+                      },
+                      "preparationSeconds": {
+                        "default": 0,
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 600
+                      },
+                      "speakingSeconds": {
+                        "type": "integer",
+                        "minimum": 10,
+                        "maximum": 600
+                      }
+                    },
+                    "required": [
+                      "submissionKind",
+                      "speakingSeconds"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğretmen puanlı görevin teslim ayarı"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "learnerIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Görevin hedeflediği kişinin kendisi veya velinin çocukları"
+          },
+          "progress": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskAssignmentLearnerProgressInput"
+            },
+            "description": "`learnerIds` sırasıyla her kişinin durumu"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskAssignmentLearnerContentInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contentUnavailable": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "license_expired",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil"
+          }
+        },
+        "required": [
+          "view",
+          "id",
+          "resourceId",
+          "resourceVersionId",
+          "title",
+          "contentType",
+          "scoringMode",
+          "kind",
+          "attempts",
+          "deadline",
+          "timeLimitMinutes",
+          "listeningPlays",
+          "showTranscript",
+          "submission",
+          "createdAt",
+          "learnerIds",
+          "progress",
+          "content",
+          "contentUnavailable"
         ]
       },
       "TaskAssignmentInput": {
@@ -5161,6 +6076,16 @@
           },
           {
             "$ref": "#/components/schemas/TaskAssignmentLearnerInput"
+          }
+        ]
+      },
+      "TaskAssignmentDetailInput": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/TaskAssignmentStaffInput"
+          },
+          {
+            "$ref": "#/components/schemas/TaskAssignmentLearnerDetailInput"
           }
         ]
       },
@@ -11546,6 +12471,37 @@
         ],
         "additionalProperties": false
       },
+      "RevealedParentContact": {
+        "type": "object",
+        "properties": {
+          "parentId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "description": "Velisi açılan öğrenci (kapsamla denetlendi)"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "email"
+            ],
+            "description": "Açılan alan"
+          },
+          "value": {
+            "type": "string",
+            "description": "Alanın maskesiz değeri"
+          }
+        },
+        "required": [
+          "parentId",
+          "studentId",
+          "field",
+          "value"
+        ],
+        "additionalProperties": false
+      },
       "Rubric": {
         "type": "object",
         "properties": {
@@ -12406,6 +13362,180 @@
         ],
         "additionalProperties": false
       },
+      "TaskAssignmentLearnerProgress": {
+        "type": "object",
+        "properties": {
+          "learnerId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "submitted",
+              "late",
+              "not_submitted"
+            ],
+            "description": "Başlanmadı/teslim bekleniyor, süren deneme, zamanında veya geç tamamlandı/teslim edildi, pencere kapandı ve yapılmadı (DOM-BEC-044)"
+          },
+          "resubmissionRequested": {
+            "type": "boolean",
+            "description": "Öğretmen yeniden teslim istedi ve yeni sürüm henüz gelmedi (DOM-BEC-040)"
+          },
+          "attemptId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Otomatik puanlı: süren deneme, yoksa gösterilen (sayılan veya son) deneme"
+          },
+          "submissionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğretmen puanlı: teslim kaydı"
+          },
+          "lastActivityAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Gösterilen denemenin tamamlandığı veya son sürümün gönderildiği an"
+          },
+          "used": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Kullanılan deneme veya gönderilen sürüm sayısı"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deneme veya sürüm hakkı; `null` sınırsız"
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kalan hak; `null` sınırsız"
+          },
+          "canAct": {
+            "type": "boolean",
+            "description": "Şu an yeni deneme başlatılabilir veya yeni sürüm gönderilebilir"
+          },
+          "actionableUntil": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045)"
+          },
+          "blockedBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "in_progress",
+                  "license_expired",
+                  "locked",
+                  "limit",
+                  "graded",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "earned": {
+                    "type": "number"
+                  },
+                  "possible": {
+                    "type": "number"
+                  },
+                  "percent": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "earned",
+                  "possible",
+                  "percent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045)"
+          }
+        },
+        "required": [
+          "learnerId",
+          "status",
+          "resubmissionRequested",
+          "attemptId",
+          "submissionId",
+          "lastActivityAt",
+          "used",
+          "limit",
+          "remaining",
+          "canAct",
+          "actionableUntil",
+          "blockedBy",
+          "score"
+        ],
+        "additionalProperties": false
+      },
       "TaskAssignmentLearner": {
         "type": "object",
         "properties": {
@@ -12708,6 +13838,13 @@
               "type": "string"
             },
             "description": "Görevin hedeflediği kişinin kendisi veya velinin çocukları"
+          },
+          "progress": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskAssignmentLearnerProgress"
+            },
+            "description": "`learnerIds` sırasıyla her kişinin durumu"
           }
         },
         "required": [
@@ -12726,7 +13863,746 @@
           "showTranscript",
           "submission",
           "createdAt",
-          "learnerIds"
+          "learnerIds",
+          "progress"
+        ],
+        "additionalProperties": false
+      },
+      "TaskAssignmentLearnerBody": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "text"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fileId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Dosya kimliği"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "fileId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "worksheet"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fileId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Dosya kimliği"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "fileId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "reading_passage"
+              },
+              "body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "body"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "audio"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              },
+              "transcript": {
+                "description": "Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003)",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "captionsVtt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "fileId",
+              "transcript",
+              "captionsVtt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "video"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              },
+              "transcript": {
+                "description": "Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003)",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "captionsVtt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "fileId",
+              "transcript",
+              "captionsVtt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "file"
+              },
+              "fileId": {
+                "type": "string",
+                "description": "Dosya kimliği"
+              }
+            },
+            "required": [
+              "type",
+              "fileId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "link"
+              },
+              "url": {
+                "type": "string"
+              },
+              "provider": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "url",
+              "provider"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "book_reference"
+              },
+              "publisher": {
+                "type": "string"
+              },
+              "bookTitle": {
+                "type": "string"
+              },
+              "edition": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "isbn": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pages": {
+                "type": "string"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "publisher",
+              "bookTitle",
+              "edition",
+              "isbn",
+              "pages",
+              "note"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "question"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "quiz"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "exercise_set"
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "Soru sayısı; sorular denemede gelir"
+              }
+            },
+            "required": [
+              "type",
+              "questionCount"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "homework_template"
+              },
+              "instructions": {
+                "type": "string"
+              },
+              "submissionKinds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "text",
+                    "audio"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "type",
+              "instructions",
+              "submissionKinds"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "TaskAssignmentLearnerContent": {
+        "type": "object",
+        "properties": {
+          "versionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Atamada sabitlenen içerik sürümü"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "$ref": "#/components/schemas/TaskAssignmentLearnerBody"
+          },
+          "attributions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceAttribution"
+            },
+            "description": "Kaynak gösterimi (DOM-KYN-024)"
+          },
+          "licenseKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "institution_original",
+                  "contains_quotation",
+                  "platform_derived",
+                  "open_license",
+                  "public_domain",
+                  "licensed_publication",
+                  "external_reference"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "versionId",
+          "title",
+          "body",
+          "attributions",
+          "licenseKind"
+        ],
+        "additionalProperties": false
+      },
+      "TaskAssignmentLearnerDetail": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "learner"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "resourceVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Atamada sabitlenen içerik sürümü (DOM-KYN-032)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Atanan sürümün başlığı"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "reading_passage",
+              "audio",
+              "video",
+              "worksheet",
+              "file",
+              "link",
+              "book_reference",
+              "question",
+              "quiz",
+              "exercise_set",
+              "homework_template"
+            ]
+          },
+          "scoringMode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "teacher"
+            ],
+            "description": "Otomatik puanlı veya öğretmen puanlı"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "evaluation",
+              "practice"
+            ]
+          },
+          "attempts": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "evaluation"
+                  },
+                  "maxAttempts": {
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3
+                  },
+                  "countPolicy": {
+                    "default": "first",
+                    "type": "string",
+                    "enum": [
+                      "first",
+                      "highest"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "maxAttempts",
+                  "countPolicy"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "practice"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            ],
+            "description": "Deneme hakkı ve sayım politikası (DOM-BEC-042)"
+          },
+          "deadline": {
+            "type": "object",
+            "properties": {
+              "dueAt": {
+                "default": null,
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lateAcceptanceDays": {
+                "default": 0,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 7
+              }
+            },
+            "required": [
+              "dueAt",
+              "lateAcceptanceDays"
+            ],
+            "additionalProperties": false,
+            "description": "Son teslim ve geç kabul (DOM-BEC-044)"
+          },
+          "timeLimitMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listeningPlays": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "const": 1
+                  },
+                  {
+                    "type": "number",
+                    "const": 2
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dinleme hakkı; boş: sınırsız veya dinleme görevi değil (DOM-BEC-005)"
+          },
+          "showTranscript": {
+            "type": "boolean"
+          },
+          "submission": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "submissionKind": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "maxVersions": {
+                        "default": 3,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5
+                      },
+                      "minWords": {
+                        "default": null,
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5000
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "maxWords": {
+                        "default": null,
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5000
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "submissionKind",
+                      "maxVersions",
+                      "minWords",
+                      "maxWords"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "submissionKind": {
+                        "type": "string",
+                        "const": "file"
+                      },
+                      "maxVersions": {
+                        "default": 3,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5
+                      }
+                    },
+                    "required": [
+                      "submissionKind",
+                      "maxVersions"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "submissionKind": {
+                        "type": "string",
+                        "const": "audio"
+                      },
+                      "maxVersions": {
+                        "default": 3,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5
+                      },
+                      "speakingAttempts": {
+                        "default": 1,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 3
+                      },
+                      "preparationSeconds": {
+                        "default": 0,
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 600
+                      },
+                      "speakingSeconds": {
+                        "type": "integer",
+                        "minimum": 10,
+                        "maximum": 600
+                      }
+                    },
+                    "required": [
+                      "submissionKind",
+                      "maxVersions",
+                      "speakingAttempts",
+                      "preparationSeconds",
+                      "speakingSeconds"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğretmen puanlı görevin teslim ayarı"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "learnerIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Görevin hedeflediği kişinin kendisi veya velinin çocukları"
+          },
+          "progress": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskAssignmentLearnerProgress"
+            },
+            "description": "`learnerIds` sırasıyla her kişinin durumu"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskAssignmentLearnerContent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contentUnavailable": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "license_expired",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil"
+          }
+        },
+        "required": [
+          "view",
+          "id",
+          "resourceId",
+          "resourceVersionId",
+          "title",
+          "contentType",
+          "scoringMode",
+          "kind",
+          "attempts",
+          "deadline",
+          "timeLimitMinutes",
+          "listeningPlays",
+          "showTranscript",
+          "submission",
+          "createdAt",
+          "learnerIds",
+          "progress",
+          "content",
+          "contentUnavailable"
         ],
         "additionalProperties": false
       },
@@ -12737,6 +14613,16 @@
           },
           {
             "$ref": "#/components/schemas/TaskAssignmentLearner"
+          }
+        ]
+      },
+      "TaskAssignmentDetail": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/TaskAssignmentStaff"
+          },
+          {
+            "$ref": "#/components/schemas/TaskAssignmentLearnerDetail"
           }
         ]
       },
@@ -31314,6 +33200,149 @@
         }
       }
     },
+    "/api/v1/parents/{parentId}/reveal-contact": {
+      "post": {
+        "operationId": "revealParentContact",
+        "summary": "Veli iletişim bilgisini göster",
+        "tags": [
+          "communication"
+        ],
+        "description": "Öğretmenin, ders verdiği öğrencinin velisinin telefonunu veya e-postasını tam değeriyle açması (core `revealParentContact`, DOM-YTK-055, DOM-YTK-052). Listede (`GET /collections/parents`) öğretmen bu alanları maskeli görür (`0532 *** ** 12`, `a***@gmail.com`). Gövde `{ studentId, field }`, `field` `phone` veya `email`; bilinmeyen alan 400. Yalnız öğrencinin sınıfında dersi ya da sınıf rehberliği olan öğretmen, yalnız o öğrenciye bağlı veli için: kapsam dışı öğrenci, öğrenciye bağlı olmayan, olmayan veya başka kurumun velisi 404. Alan boşsa 422 `parent_contact_missing`. Her başarılı açılış `audit_log`'a `parent_contact.reveal` olarak yazılır (`entityType` `parents`, `entityId` veli, `changes.fields` alan adı, `changes.studentId` öğrenci); değer denetim kaydına ve loga yazılmaz. Yanıt `Cache-Control: no-store` taşır; istemci değeri yalnız bellekte tutar. Açılış kullanıcı ve kurum başına dakikada 10 ile sınırlıdır (geçersiz ve kapsam dışı denemeler dahil), aşılırsa 429 `rate_limited` ve `Retry-After`. `Idempotency-Key` kullanılmaz: işlem kayıt oluşturmaz, tekrar yalnız yeni bir denetim kaydıdır ve her açılışın kaydı istenir. Modül `communication`; kapalıysa 403 `module_disabled`. Roller: `ogretmen` (yönetici ve ön büro tam değeri listede görür; öğrenci ve veli hiç görmez).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "field": {
+                    "type": "string",
+                    "enum": [
+                      "phone",
+                      "email"
+                    ]
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "field"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "parentId",
+            "required": true,
+            "description": "Veli kaydının kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RevealedParentContact"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/requests": {
       "post": {
         "operationId": "openRequest",
@@ -47349,6 +49378,110 @@
         }
       }
     },
+    "/api/v1/rubric-versions/{versionId}": {
+      "get": {
+        "operationId": "getRubricVersion",
+        "summary": "Rubrik sürümü",
+        "tags": [
+          "rubrics"
+        ],
+        "description": "Tek rubrik sürümü kimliğiyle (DOM-BEC-022): atamanın `rubricVersionId`'si rubrik aranmadan okunur. Kriterler, bantlar, tanımlayıcı eşlemesi ve kullanım. Rubrik sonradan arşivlense de sürüm okunur. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan veya başka kurumun rubriği 404. Olmayan veya başka kurumun sürümü 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "description": "Rubrik sürümü kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RubricVersion"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rubrics/{rubricId}/versions": {
       "post": {
         "operationId": "createRubricVersion",
@@ -48936,7 +51069,7 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/TaskAssignment"
+                      "$ref": "#/components/schemas/TaskAssignmentDetail"
                     }
                   },
                   "required": [
@@ -53104,7 +55237,7 @@
         "tags": [
           "files"
         ],
-        "description": "`disk` sürücüsünde `GET /api/v1/files/{fileId}/url` bağlantısının hedefi; oturum istemez, yetki HMAC imzasındadır. Süresi geçmiş bağlantı 403 `link_expired`, bozuk veya değiştirilmiş bağlantı 403 `invalid_signature`, silinmiş nesne 404. Yanıt dosyanın kendisidir (`Cache-Control: no-store`); `Cross-Origin-Resource-Policy: cross-origin` ile web başka kökenden `<img>`/`<audio>` olarak gömebilir.",
+        "description": "`disk` sürücüsünde `GET /api/v1/files/{fileId}/url` bağlantısının hedefi; oturum istemez, yetki HMAC imzasındadır. Süresi geçmiş bağlantı 403 `link_expired`, bozuk veya değiştirilmiş bağlantı 403 `invalid_signature`, silinmiş veya reddedilmiş dosya ve silinmiş nesne 404. Bağlantı özgün adı taşımaz (KVKK: URL vekil loguna ve tarayıcı geçmişine girer); ad ve tür dosya kaydından okunur. Yanıt dosyanın kendisidir (`Cache-Control: no-store`); `Cross-Origin-Resource-Policy: cross-origin` ile web başka kökenden `<img>`/`<audio>` olarak gömebilir.",
         "parameters": [
           {
             "schema": {

@@ -160,22 +160,74 @@ export async function scoringContext(
 ): Promise<ScoringContext> {
   const pairs = await loadVersionPairs(db, institutionId, [assignment.scoringVersionId])
   const scoring = pairs.get(assignment.scoringVersionId)?.version
+  const questions = await loadVersionPairs(db, institutionId, questionIdsOf(scoring))
+  return buildScoringContext(scoring, questions)
+}
+
+/**
+ * Birden çok atamanın puanlama bağlamı, iki toplu okumayla (kursiyerin görev listesindeki durum
+ * özeti; `services/task-progress.ts`). Bağlamı kurulamayan atama (okunamayan sürüm, otomatik
+ * puanlanmayan içerik, anahtarsız soru) haritada `Error` olarak durur; listenin geri kalanı
+ * etkilenmez.
+ */
+export async function scoringContexts(
+  db: Database,
+  institutionId: string,
+  assignments: readonly StoredAssignment[],
+): Promise<Map<string, ScoringContext | Error>> {
+  const pairs = await loadVersionPairs(
+    db,
+    institutionId,
+    assignments.map((assignment) => assignment.scoringVersionId),
+  )
+  const questions = await loadVersionPairs(
+    db,
+    institutionId,
+    [...pairs.values()].flatMap(({ version }) => questionIdsOf(version)),
+  )
+  const contexts = new Map<string, ScoringContext | Error>()
+  for (const assignment of assignments) {
+    try {
+      contexts.set(
+        assignment.id,
+        buildScoringContext(pairs.get(assignment.scoringVersionId)?.version, questions),
+      )
+    } catch (error) {
+      contexts.set(assignment.id, error instanceof Error ? error : new Error('scoring context'))
+    }
+  }
+  return contexts
+}
+
+/** Quiz ve alıştırma setinin soru sürümleri; diğer türlerde soru okunmaz. */
+function questionIdsOf(scoring: StoredResourceVersion | undefined): string[] {
+  const content = scoring?.content ?? null
+  return content?.type === 'quiz' || content?.type === 'exercise_set'
+    ? content.items.map((item) => item.questionVersionId)
+    : []
+}
+
+function buildScoringContext(
+  scoring: StoredResourceVersion | undefined,
+  questionPairs: ReadonlyMap<string, { version: StoredResourceVersion }>,
+): ScoringContext {
   const content = scoring?.content ?? null
   if (!scoring || content === null) throw new NotFoundError()
   let entries: { questionVersionId: string; points: number }[]
-  let questionPairs = pairs
+  let versions: Map<string, StoredResourceVersion>
   switch (content.type) {
     case 'question':
       entries = [{ questionVersionId: scoring.id, points: 1 }]
+      versions = new Map([[scoring.id, scoring]])
       break
     case 'quiz':
     case 'exercise_set':
       entries = content.items
-      questionPairs = await loadVersionPairs(
-        db,
-        institutionId,
-        content.items.map((item) => item.questionVersionId),
-      )
+      versions = new Map()
+      for (const item of content.items) {
+        const version = questionPairs.get(item.questionVersionId)?.version
+        if (version !== undefined) versions.set(version.id, version)
+      }
       break
     default:
       throw mapOperationError(
@@ -185,7 +237,6 @@ export async function scoringContext(
         ),
       )
   }
-  const versions = new Map([...questionPairs.values()].map(({ version }) => [version.id, version]))
   const refs = new Map<string, QuestionVersionRef>()
   for (const version of versions.values())
     if (version.content !== null)
@@ -206,6 +257,10 @@ export async function scoringContext(
   }
 }
 
+/** Puanlama sürümünün veya sorularından birinin lisansı doldu mu (bitiş günü dahil geçerli). */
+export const scoringLicenseExpired = (context: ScoringContext, now: Date) =>
+  context.licenses.some((license) => licenseExpired(license, now))
+
 /**
  * Lisansı dolmuş içerikte yeni deneme başlamaz (DOM-KYN-021; core `licenseExpired`, bitiş günü
  * dahil geçerli): puanlama sürümünün veya sorularından birinin lisansı dolduysa 409
@@ -213,7 +268,7 @@ export async function scoringContext(
  * kaybolmaz); bu denetim yalnız başlatmadadır.
  */
 export function assertLicenseActive(context: ScoringContext, now: Date) {
-  if (context.licenses.some((license) => licenseExpired(license, now)))
+  if (scoringLicenseExpired(context, now))
     throw new AppError(
       409,
       'resource_license_expired',

@@ -16,7 +16,11 @@ import {
   type RubricVersionData,
   type ScoreResolution,
 } from '@kampus/school-core/skills/rubric.ts'
-import { isClosed, teacherFeedbackReleased } from '@kampus/school-core/skills/scoring.ts'
+import {
+  isClosed,
+  submissionWindow,
+  teacherFeedbackReleased,
+} from '@kampus/school-core/skills/scoring.ts'
 import {
   canReadDraft,
   planDraftSave,
@@ -119,7 +123,7 @@ export type Grading = {
 }
 /** Puanların rubrik sürümleri (kimlik → kriterler); puan bunlarla hesaplanır (DOM-BEC-022). */
 type RubricsById = ReadonlyMap<string, RubricVersionData>
-type GradingBook = { bySubmission: ReadonlyMap<string, Grading>; rubrics: RubricsById }
+export type GradingBook = { bySubmission: ReadonlyMap<string, Grading>; rubrics: RubricsById }
 
 const NO_GRADING: Grading = { scores: [], secondRatingRequestedAt: null, appeals: [] }
 
@@ -431,33 +435,78 @@ function allowanceOf(
   ctx: ServiceContext,
   viewer: Viewer,
   assignment: StoredAssignment,
-  work: StoredSubmissionWork,
+  work: StoredSubmissionWork | null,
   grading: Grading,
 ): Allowance | null {
   const settings = settingsOf(assignment)
   if (settings === null) return null
-  const graded = gradedVersionNumbers(work.versions, grading.scores)
+  const versions = work?.versions ?? []
+  const submission = work?.submission ?? null
+  const graded = gradedVersionNumbers(versions, grading.scores)
   if (viewer.kind !== 'learner')
-    return versionAllowance({
-      settings,
-      submission: work.submission,
-      versions: work.versions,
-      gradedVersionNumbers: graded,
-    })
-  const latest = work.versions.at(-1)
+    return versionAllowance({ settings, submission, versions, gradedVersionNumbers: graded })
+  const latest = versions.at(-1)
   const hidden =
-    latest !== undefined && !latestFeedbackReleased(work, grading, ctx.now) ? latest.number : null
+    latest !== undefined && !latestFeedbackReleased({ versions }, grading, ctx.now)
+      ? latest.number
+      : null
   const allowance = versionAllowance({
     settings,
-    submission: work.submission,
-    versions: work.versions,
+    submission,
+    versions,
     gradedVersionNumbers: graded.filter((number) => number !== hidden),
   })
-  const next = deadlineForVersion(assignment.deadline, work.submission, (latest?.number ?? 0) + 1)
+  const next = deadlineForVersion(assignment.deadline, submission, (latest?.number ?? 0) + 1)
   return allowance.canSubmit && isClosed(next, ctx.now)
     ? { ...allowance, canSubmit: false, blockedBy: 'locked' }
     : allowance
 }
+
+/**
+ * Kursiyerin bir yazma görevindeki durumu (atama listesi ve ayrıntısındaki özet;
+ * `services/task-progress.ts`, IST-051). Teslim uçlarıyla aynı kuralları kullanır, dolayısıyla
+ * aynı gizlemeyi taşır (DOM-BEC-045): puan yalnız geri bildirim açılınca (`shownScore`), hak
+ * puanlama yokmuş gibi (`allowanceOf`), satır sürümü, ikinci puanlama, örneklem ve itiraz yok.
+ */
+export function learnerSubmissionProgress(
+  ctx: ServiceContext,
+  viewer: Viewer,
+  book: GradingBook,
+  assignment: StoredAssignment,
+  work: StoredSubmissionWork | null,
+) {
+  const grading = (work && book.bySubmission.get(work.submission.id)) ?? NO_GRADING
+  const latest = work?.versions.at(-1)
+  const deadline = deadlineForVersion(
+    assignment.deadline,
+    work?.submission ?? null,
+    latest?.number ?? 1,
+  )
+  const resubmission = work === null ? null : resubmissionOf(work)
+  const allowance = allowanceOf(ctx, viewer, assignment, work, grading)
+  // Yeni sürüm açıkken bir sonraki sürümün penceresi (istenen yeniden teslim dahil) kapanınca
+  // özet değişir. Geri bildirimin açılma anı verilmez (DOM-BEC-045).
+  const next = deadlineForVersion(
+    assignment.deadline,
+    work?.submission ?? null,
+    (latest?.number ?? 0) + 1,
+  )
+  return {
+    submissionId: work?.submission.id ?? null,
+    status: submissionStatus(work?.versions ?? [], deadline, ctx.now),
+    latest: work === null || latest === undefined ? null : versionView(assignment, work, latest),
+    // İstek kesinleşmiş puandan sonra açılır ve o an geri bildirim de açıktır (`resubmissionOf`).
+    resubmissionRequested:
+      resubmission !== null && latest !== undefined && latest.number <= resubmission.versionNumber,
+    allowance,
+    actionableUntil: allowance?.canSubmit ? submissionWindow(next).closesAt : null,
+    score:
+      latest === undefined
+        ? null
+        : scoreBrief(scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, latest))),
+  }
+}
+
 const LOCKED_MESSAGE = 'Bu teslim için şu an yeni sürüm gönderilemez.'
 
 export async function detailView(

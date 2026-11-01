@@ -1098,6 +1098,36 @@ export async function loadLearnersAttempts(
   return rows.map(toAttempt)
 }
 
+/**
+ * Verilen kursiyerlerin verilen atamalardaki arşivlenmemiş denemeleri, tek sorguda (kursiyerin
+ * görev listesindeki durum özeti; `services/task-progress.ts`).
+ */
+export async function loadAttemptsAmong(
+  db: Database,
+  institutionId: string,
+  assignmentIds: readonly string[],
+  learnerIds: readonly string[],
+): Promise<StoredAttempt[]> {
+  if (assignmentIds.length === 0 || learnerIds.length === 0) return []
+  const rows = await db
+    .select()
+    .from(taskAttempts)
+    .where(
+      and(
+        eq(taskAttempts.institutionId, institutionId),
+        inArray(taskAttempts.assignmentId, [...new Set(assignmentIds)]),
+        inArray(taskAttempts.learnerId, [...new Set(learnerIds)]),
+        isNull(taskAttempts.archivedAt),
+      ),
+    )
+    .orderBy(
+      asc(taskAttempts.assignmentId),
+      asc(taskAttempts.learnerId),
+      asc(taskAttempts.attemptNumber),
+    )
+  return rows.map(toAttempt)
+}
+
 /** Yazılacak deneme: kimlik ve okunduğu satır sürümü (iyimser kilit). */
 type LockedAttempt = Pick<StoredAttempt, 'id' | 'rowVersion'>
 
@@ -1415,6 +1445,32 @@ export async function listSubmissions(
     db.select({ total: count() }).from(taskSubmissions).where(where),
   ])
   return { rows: await withVersions(db, institutionId, rows), total: totals?.total ?? 0 }
+}
+
+/**
+ * Verilen kursiyerlerin verilen atamalardaki arşivlenmemiş teslimleri, sürümleri ve yeniden teslim
+ * istekleriyle (üç sorgu; kursiyerin görev listesindeki durum özeti).
+ */
+export async function loadSubmissionsAmong(
+  db: Database,
+  institutionId: string,
+  assignmentIds: readonly string[],
+  learnerIds: readonly string[],
+): Promise<StoredSubmissionWork[]> {
+  if (assignmentIds.length === 0 || learnerIds.length === 0) return []
+  const rows = await db
+    .select()
+    .from(taskSubmissions)
+    .where(
+      and(
+        eq(taskSubmissions.institutionId, institutionId),
+        inArray(taskSubmissions.assignmentId, [...new Set(assignmentIds)]),
+        inArray(taskSubmissions.learnerId, [...new Set(learnerIds)]),
+        isNull(taskSubmissions.archivedAt),
+      ),
+    )
+    .orderBy(asc(taskSubmissions.assignmentId), asc(taskSubmissions.learnerId))
+  return withVersions(db, institutionId, rows)
 }
 
 /**

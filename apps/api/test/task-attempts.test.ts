@@ -11,6 +11,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
+import { resourceVersions } from '../src/db/schema/resources.ts'
 import { taskAttempts } from '../src/db/schema/skills.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
@@ -239,6 +240,15 @@ describe('görev deneme uçları', () => {
       ...key(),
       ...version(rowVersion),
     })
+  /** Atama ayrıntısındaki kursiyer durum özeti; listedeki satırla aynı olmalı (IST-051). */
+  const progressOf = async (assignmentId: string, cookie: string) => {
+    const detail = await ok(await call('GET', `/task-assignments/${assignmentId}`, cookie))
+    const row = (await ok(await call('GET', '/task-assignments', cookie))).find(
+      (item: Json) => item.id === assignmentId,
+    )
+    assert.deepEqual(row.progress, detail.progress)
+    return detail
+  }
   const list = (assignmentId: string, cookie: string, extra = '') =>
     call('GET', `/task-attempts?assignmentId=${assignmentId}${extra}`, cookie)
 
@@ -468,10 +478,42 @@ describe('görev deneme uçları', () => {
         ),
       )
     }
+    const fresh = (await progressOf(assignmentId, t.cookies.student)).progress[0]
+    assert.deepEqual(
+      [
+        fresh.status,
+        fresh.used,
+        fresh.limit,
+        fresh.remaining,
+        fresh.canAct,
+        fresh.actionableUntil,
+        fresh.score,
+      ],
+      ['pending', 0, 2, 2, true, DUE, null],
+    )
     const wrong = await answer('a')
     const right = await answer('b')
     assert.equal(right.attemptNumber, 2)
     fails(await start(assignmentId, t.cookies.student), 422, 'attempt_limit_reached')
+    // IST-051: özet sayılan denemeyi (en yüksek) ve hakkın dolduğunu gösterir; veli de aynısını.
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const [done] = (await progressOf(assignmentId, cookie)).progress
+      assert.deepEqual(done, {
+        learnerId: 's-1',
+        status: 'submitted',
+        resubmissionRequested: false,
+        attemptId: right.id,
+        submissionId: null,
+        lastActivityAt: right.completedAt,
+        used: 2,
+        limit: 2,
+        remaining: 0,
+        canAct: false,
+        actionableUntil: null,
+        blockedBy: 'limit',
+        score: { earned: 1, possible: 1, percent: 100 },
+      })
+    }
     const rows = await ok(await list(assignmentId, t.cookies.teacher))
     assert.deepEqual(
       rows.map((row: Json) => [row.id, row.counted, row.result.percent]),
@@ -490,10 +532,16 @@ describe('görev deneme uçları', () => {
     assert.deepEqual(both.map((r) => r.statusCode).sort(), [201, 409])
   })
 
-  test('DOM-BEC-043: süre dolunca cevap kaydı 422; deneme kaydedilmiş cevaplarla otomatik teslim sayılır; teslim gönderilen cevabı almaz', async () => {
+  test('DOM-BEC-043, IST-051: özet süren denemenin bitişini verir; süre dolunca cevap kaydı 422; deneme kaydedilmiş cevaplarla otomatik teslim sayılır; teslim gönderilen cevabı almaz', async () => {
     const t = await tenant()
     const assignmentId = await assign(t, { timeLimitMinutes: 10 })
     const attempt = await ok(await start(assignmentId, t.cookies.student), 201)
+    // IST-051: süren denemenin özeti deneme bitişinde eskir (süre dolunca istemci yeniden okur).
+    const running = (await progressOf(assignmentId, t.cookies.student)).progress[0]
+    assert.deepEqual(
+      [running.status, running.actionableUntil],
+      ['in_progress', new Date(FIXED_NOW.getTime() + 10 * MINUTE).toISOString()],
+    )
     at(5 * MINUTE)
     const saved = await ok(
       await save(attempt.id, t.cookies.student, { [t.questionId]: choice('b') }, 1),
@@ -697,6 +745,18 @@ describe('görev deneme uçları', () => {
       (await ok(await call('GET', `/task-attempts/${ids.get('s-2')}`, twoChildren))).learnerId,
       's-2',
     )
+    // IST-051: atama özeti de kendi kapsamındadır; iki çocuklu veli her çocuğun durumunu ayrı görür.
+    for (const [cookie, expected] of [
+      [t.cookies.student, ['s-1']],
+      [t.cookies.parent, ['s-1']],
+      [twoChildren, ['s-1', 's-2']],
+    ] as const) {
+      const { progress } = await progressOf(assignmentId, cookie)
+      assert.deepEqual(
+        progress.map((row: Json) => [row.learnerId, row.status, row.attemptId, row.blockedBy]),
+        expected.map((learner) => [learner, 'in_progress', ids.get(learner), 'in_progress']),
+      )
+    }
     fails(await call('GET', `/task-attempts/${ids.get('s-2')}`, t.cookies.parent), 404, 'not_found')
   })
 
@@ -740,6 +800,14 @@ describe('görev deneme uçları', () => {
     try {
       // Lisans core kuralından önce denetlenir: süren deneme varken de lisans hatası gelir.
       fails(await start(assignmentId, t.cookies.student), 409, 'resource_license_expired')
+      // Süren iş biter: içerik gösterilir, özet süren denemeyi gösterir.
+      const ongoing = await progressOf(assignmentId, t.cookies.student)
+      assert.deepEqual([ongoing.contentUnavailable, ongoing.content.versionId], [null, licensed])
+      assert.equal(ongoing.content.licenseKind, 'licensed_publication')
+      assert.deepEqual(ongoing.content.body, { type: 'question', questionCount: 1 })
+      for (const text of ['SZ-2026-01', 'answerKey', 'Örnek Yayınevi'])
+        assert.ok(!JSON.stringify(ongoing).includes(text), text)
+      assert.equal(ongoing.progress[0].blockedBy, 'in_progress')
       const saved = await ok(
         await save(running.id, t.cookies.student, { [licensed]: choice('c') }, 1),
       )
@@ -748,6 +816,13 @@ describe('görev deneme uçları', () => {
       const before = await attemptRows(t.institution.id)
       fails(await start(assignmentId, t.cookies.student), 409, 'resource_license_expired')
       assert.deepEqual(await attemptRows(t.institution.id), before)
+      // Süren iş kalmadı: yeni deneme lisans yüzünden kapalı, içerik gösterilmez (DOM-KYN-021).
+      const expired = await progressOf(assignmentId, t.cookies.student)
+      assert.deepEqual(
+        [expired.content, expired.contentUnavailable, expired.progress[0].blockedBy],
+        [null, 'license_expired', 'license_expired'],
+      )
+      assert.equal(expired.progress[0].score.percent, 100)
     } finally {
       at(0)
     }
@@ -800,6 +875,49 @@ describe('görev deneme uçları', () => {
       ),
       (error: unknown) => error instanceof AppError && error.statusCode === 404,
     )
+  })
+
+  test('IST-051: puanlama bağlamı kurulamayan atama için uyarı istek başına bir kez ve yalnız atama kimliğiyle loglanır (kursiyer sayısından bağımsız); özet unavailable', async () => {
+    const t = await tenant()
+    const assignmentId = await assignAsAdmin(t, [
+      { kind: 'class', id: '9-A' },
+      { kind: 'class', id: '9-B' },
+    ])
+    const twins = await signInAs(
+      app,
+      await createMember(app, t.institution.id, 'veli', [
+        { kind: 'child', recordId: 's-1' },
+        { kind: 'child', recordId: 's-3' },
+      ] as never),
+    )
+    // Veri bütünlüğü bozulur: puanlama sürümünün içeriği yok (bağlam kurulamaz).
+    await db
+      .update(resourceVersions)
+      .set({ status: 'removed', content: null, answerKey: null, removedAt: FIXED_NOW })
+      .where(
+        and(
+          eq(resourceVersions.institutionId, t.institution.id),
+          eq(resourceVersions.id, t.questionId),
+        ),
+      )
+    const from = logs.length
+    const [row] = (await ok(await call('GET', '/task-assignments', twins))).filter(
+      (item: Json) => item.id === assignmentId,
+    )
+    assert.deepEqual(
+      row.progress.map((item: Json) => [item.learnerId, item.blockedBy]),
+      [
+        ['s-1', 'unavailable'],
+        ['s-3', 'unavailable'],
+      ],
+    )
+    const warnings = logs
+      .slice(from)
+      .filter((line) => line.includes('task_progress.scoring_unavailable'))
+    assert.equal(warnings.length, 1)
+    assert.ok(warnings[0]!.includes(assignmentId), 'atama kimliği yok')
+    for (const text of ['s-1', 's-3', SECRET_STEM])
+      assert.ok(!warnings[0]!.includes(text), `${text} loglandı`)
   })
 
   test('DOM-BEC-043: log ve denetimde cevap ve öğrenci kimliği yok; denetime yalnız başlatma ve teslim, alan adlarıyla', async () => {

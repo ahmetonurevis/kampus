@@ -45,6 +45,7 @@ import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
+import { registerParentRoutes } from './routes/parents.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
 import { registerRubricRoutes } from './routes/rubrics.ts'
@@ -277,6 +278,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerAssessmentRoutes(app)
   // Komut uçlarından sonra: ham gövde süsü (`commandInput`) orada tanımlanır.
   registerCommunicationRoutes(app)
+  registerParentRoutes(app)
   registerRequestRoutes(app)
   registerAppointmentRoutes(app)
   registerFeeTariffRoutes(app)

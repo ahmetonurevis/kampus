@@ -40,6 +40,9 @@ export type TaskAssignmentPatch = JsonBody<'updateTaskAssignment'>
 export type TaskAssignment = components['schemas']['TaskAssignment']
 export type TaskAssignmentStaff = components['schemas']['TaskAssignmentStaff']
 export type TaskAssignmentLearner = components['schemas']['TaskAssignmentLearner']
+/** Ayrıntı: kursiyer görünümünde durum özetine ek olarak sabitlenen sürümün kursiyer içeriği. */
+export type TaskAssignmentDetail = components['schemas']['TaskAssignmentDetail']
+export type TaskAssignmentLearnerDetail = components['schemas']['TaskAssignmentLearnerDetail']
 
 /** Atama bu arada değiştirildi (`If-Match` tutmadı): güncel hâli yüklenir. */
 export const TASK_ASSIGNMENT_CHANGED_MESSAGE =

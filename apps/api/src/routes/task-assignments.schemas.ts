@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { CONTENT_TYPES, enumKeys } from '@kampus/school-core/content/taxonomy.ts'
+import { CONTENT_TYPES, enumKeys, SUBMISSION_KINDS } from '@kampus/school-core/content/taxonomy.ts'
 import {
   assignmentInputSchema,
   assignmentSettingsSchema,
@@ -14,6 +14,7 @@ import {
 import { submissionSettingsSchema } from '@kampus/school-core/skills/submission.ts'
 
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
+import { attributionSchema, licenseKind } from './resources.schemas.ts'
 
 /**
  * Görev atama uçlarının şemaları (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042, 044;
@@ -120,20 +121,151 @@ const staffAssignmentSchema = z
   })
   .meta({ id: 'TaskAssignmentStaff' })
 
-const learnerAssignmentSchema = z
+/**
+ * Kursiyerin (öğrencide kendisi, velide her çocuğu) görevdeki durumu (IST-051). Deneme ve teslim
+ * uçlarının kurallarıyla hesaplanır; açılmamış puan, ikinci puanlama, örneklem, uyuşmazlık ve
+ * itiraz durumu hiçbir alandan çıkarılamaz, satır sürümü yoktur (DOM-BEC-045).
+ */
+const learnerProgressSchema = z
   .object({
-    view: z.literal('learner'),
-    ...sharedShape,
-    learnerIds: z
-      .array(z.string())
-      .describe('Görevin hedeflediği kişinin kendisi veya velinin çocukları'),
+    learnerId: z.string(),
+    status: z
+      .enum(['pending', 'in_progress', 'submitted', 'late', 'not_submitted'])
+      .describe(
+        'Başlanmadı/teslim bekleniyor, süren deneme, zamanında veya geç tamamlandı/teslim edildi, pencere kapandı ve yapılmadı (DOM-BEC-044)',
+      ),
+    resubmissionRequested: z
+      .boolean()
+      .describe('Öğretmen yeniden teslim istedi ve yeni sürüm henüz gelmedi (DOM-BEC-040)'),
+    attemptId: id
+      .nullable()
+      .describe('Otomatik puanlı: süren deneme, yoksa gösterilen (sayılan veya son) deneme'),
+    submissionId: id.nullable().describe('Öğretmen puanlı: teslim kaydı'),
+    lastActivityAt: instant
+      .nullable()
+      .describe('Gösterilen denemenin tamamlandığı veya son sürümün gönderildiği an'),
+    used: z.number().int().min(0).describe('Kullanılan deneme veya gönderilen sürüm sayısı'),
+    limit: z.number().int().min(1).nullable().describe('Deneme veya sürüm hakkı; `null` sınırsız'),
+    remaining: z.number().int().min(0).nullable().describe('Kalan hak; `null` sınırsız'),
+    canAct: z.boolean().describe('Şu an yeni deneme başlatılabilir veya yeni sürüm gönderilebilir'),
+    actionableUntil: instant
+      .nullable()
+      .describe(
+        'Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045)',
+      ),
+    blockedBy: z
+      .enum(['in_progress', 'license_expired', 'locked', 'limit', 'graded', 'unavailable'])
+      .nullable()
+      .describe(
+        '`canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor',
+      ),
+    score: z
+      .object({
+        earned: z.number(),
+        possible: z.number(),
+        percent: z.number(),
+      })
+      .nullable()
+      .describe(
+        'Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045)',
+      ),
   })
-  .meta({ id: 'TaskAssignmentLearner' })
+  .meta({ id: 'TaskAssignmentLearnerProgress' })
+
+const learnerShape = {
+  view: z.literal('learner'),
+  ...sharedShape,
+  learnerIds: z
+    .array(z.string())
+    .describe('Görevin hedeflediği kişinin kendisi veya velinin çocukları'),
+  progress: z.array(learnerProgressSchema).describe('`learnerIds` sırasıyla her kişinin durumu'),
+}
+
+const learnerAssignmentSchema = z.object(learnerShape).meta({ id: 'TaskAssignmentLearner' })
+
+const fileRef = z.string().describe('Dosya kimliği')
+const textBody = z.string()
+const questionCount = z.number().int().min(1).describe('Soru sayısı; sorular denemede gelir')
+const textLike = <T extends 'text' | 'worksheet'>(type: T) =>
+  z.object({ type: z.literal(type), body: textBody.nullable(), fileId: fileRef.nullable() })
+const media = <T extends 'audio' | 'video'>(type: T) =>
+  z.object({
+    type: z.literal(type),
+    fileId: fileRef,
+    transcript: textBody
+      .nullable()
+      .describe('Dinleme görevinde atamanın `showTranscript` ayarına bağlıdır (DOM-KYN-003)'),
+    captionsVtt: textBody.nullable(),
+  })
+const counted = <T extends 'question' | 'quiz' | 'exercise_set'>(type: T) =>
+  z.object({ type: z.literal(type), questionCount })
+
+/**
+ * Tür başına kursiyer içeriği (school-core `learnerView`): her türün yalnız burada sayılan alanları
+ * yanıta girer, şemada olmayan alan (ileride eklenecek öğretmen notu gibi) süzülür. Cevap anahtarı
+ * hiçbir türde yoktur; yazma şablonunun değerlendirme ölçütü ve rubrik bağı çıkarılır; soru, quiz
+ * ve alıştırma setinde yalnız soru sayısı vardır (süre denemeyle başlar, DOM-BEC-043).
+ */
+const learnerBodySchema = z
+  .discriminatedUnion('type', [
+    textLike('text'),
+    textLike('worksheet'),
+    z.object({ type: z.literal('reading_passage'), body: textBody }),
+    media('audio'),
+    media('video'),
+    z.object({ type: z.literal('file'), fileId: fileRef }),
+    z.object({ type: z.literal('link'), url: z.string(), provider: z.string().nullable() }),
+    z.object({
+      type: z.literal('book_reference'),
+      publisher: z.string(),
+      bookTitle: z.string(),
+      edition: z.string().nullable(),
+      isbn: z.string().nullable(),
+      pages: z.string(),
+      note: z.string().nullable(),
+    }),
+    counted('question'),
+    counted('quiz'),
+    counted('exercise_set'),
+    z.object({
+      type: z.literal('homework_template'),
+      instructions: textBody,
+      submissionKinds: z.array(z.enum(enumKeys(SUBMISSION_KINDS))),
+    }),
+  ])
+  .meta({ id: 'TaskAssignmentLearnerBody' })
+
+const learnerContentSchema = z
+  .object({
+    versionId: id.describe('Atamada sabitlenen içerik sürümü'),
+    title: z.string(),
+    body: learnerBodySchema,
+    attributions: z.array(attributionSchema).describe('Kaynak gösterimi (DOM-KYN-024)'),
+    licenseKind,
+  })
+  .meta({ id: 'TaskAssignmentLearnerContent' })
+
+const learnerAssignmentDetailSchema = z
+  .object({
+    ...learnerShape,
+    content: learnerContentSchema.nullable(),
+    contentUnavailable: z
+      .enum(['license_expired', 'unavailable'])
+      .nullable()
+      .describe(
+        '`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil',
+      ),
+  })
+  .meta({ id: 'TaskAssignmentLearnerDetail' })
 
 const taskAssignmentSchema = z
   .discriminatedUnion('view', [staffAssignmentSchema, learnerAssignmentSchema])
   .meta({ id: 'TaskAssignment' })
 
+const taskAssignmentDetailSchema = z
+  .discriminatedUnion('view', [staffAssignmentSchema, learnerAssignmentDetailSchema])
+  .meta({ id: 'TaskAssignmentDetail' })
+
 export const taskAssignmentListResponseSchema = pageResponse(taskAssignmentSchema)
-export const taskAssignmentDetailResponseSchema = dataResponse(taskAssignmentSchema)
+export const taskAssignmentDetailResponseSchema = dataResponse(taskAssignmentDetailSchema)
 export const taskAssignmentWriteResponseSchema = dataResponse(staffAssignmentSchema)

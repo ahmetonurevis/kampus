@@ -374,14 +374,29 @@ export async function getFileUrl(ctx: ServiceContext, storage: StorageDriver, fi
     const access = FILE_PURPOSE_ACCESS[row.purpose]
     const expiresAt = new Date(ctx.now.getTime() + access.linkTtlSeconds * 1000)
     const url = await storage.signedGetUrl(row.storageKey, {
+      institutionId: row.institutionId,
+      fileId: row.id,
       expiresAt,
-      contentType: row.contentType,
       disposition: dispositionFor(row.contentType),
-      fileName: row.originalName,
     })
     if (access.auditAccess) await audit(tx, ctx, 'file.access', row.id, [])
     return { url, expiresAt: expiresAt.toISOString() }
   })
+}
+
+/**
+ * İmzalı indirmenin hedefi (`disk` sürücüsü): belirteç yalnız kurum, dosya kimliği, bitiş ve
+ * disposition taşır; ad ve tür buradan, `files` satırından okunur. Silinmiş veya reddedilmiş
+ * dosya bulunmaz (404): bağlantı süresi içinde olsa da silinen dosya indirilemez.
+ */
+export async function findDownloadableFile(
+  db: Database,
+  institutionId: string,
+  fileId: string,
+): Promise<StoredFile | null> {
+  const row = await findFile(db, institutionId, fileId)
+  if (!row || row.status === 'deleted' || row.status === 'rejected') return null
+  return row
 }
 
 export const ATTACH_MESSAGES = {
@@ -433,18 +448,33 @@ export async function attachFile(
 
 /**
  * Denetim sonucu (karar 7, 8): `pending`/`processing` dosya `ready` olur ya da reddedilir;
- * reddedilen dosyanın nesnesi silinir. TODO(F3c2-scan): `pg-boss` `file.scan` işi (ClamAV) ve
- * `sharp` meta veri temizliği bu fonksiyonu çağırır; o gelene kadar tarama yoktur ve dosya
- * `pending` kalır (yalnız yükleyen okur, bağlanamaz).
+ * reddedilen dosyanın nesnesi silinir. Ret kaydı nesne silinmeden önce yazılır; nesne silinemezse
+ * satır `rejected` kalır (indirilemez, kotaya sayılmaz), hata `file.reject_object_failed` olarak
+ * yalnız kimliklerle loglanır ve asıl hata olduğu gibi fırlatılır (yutulmaz; çağıran iş hatayı
+ * görür). Aynı dosya için ret yeniden bildirilirse (iş yeniden denemesi) durum ve denetim
+ * değişmeden yalnız nesne silme yeniden çalışır; `ready` bildirimi 409 `file_already_checked`
+ * kalır. Hiç yeniden denenmeyen nesne `TODO(F3c2-orphans)` taramasıyla silinir.
+ * TODO(F3c2-scan): `pg-boss` `file.scan` işi (ClamAV) ve `sharp` meta veri temizliği bu
+ * fonksiyonu çağırır; o gelene kadar tarama yoktur ve dosya `pending` kalır (yalnız yükleyen
+ * okur, bağlanamaz).
  */
 export async function recordFileCheck(
   db: Database,
   storage: StorageDriver,
-  input: { institutionId: string; fileId: string; outcome: 'ready' | 'rejected'; now: Date },
+  input: {
+    institutionId: string
+    fileId: string
+    outcome: 'ready' | 'rejected'
+    now: Date
+    log: FastifyBaseLogger
+  },
 ): Promise<StoredFile> {
   const row = await db.transaction(async (tx) => {
     const current = await findFile(tx, input.institutionId, input.fileId, { lock: true })
     if (!current) throw new NotFoundError()
+    // Yeniden deneme: önceki ret kaydı yazılmış ama nesne silinememişse durum ve denetim
+    // değişmez, yalnız nesne silme yeniden çalışır (silme idempotenttir).
+    if (current.status === 'rejected' && input.outcome === 'rejected') return current
     if (current.status !== 'pending' && current.status !== 'processing')
       throw new AppError(409, 'file_already_checked', 'Dosya zaten denetlendi.')
     const updated = await setFileStatus(tx, input.institutionId, current, input.outcome, input.now)
@@ -459,7 +489,20 @@ export async function recordFileCheck(
     })
     return updated
   })
-  if (row.status === 'rejected') await storage.delete(row.storageKey)
+  if (row.status === 'rejected') {
+    try {
+      await storage.delete(row.storageKey)
+    } catch (error) {
+      // Dosya adı ve içerik loglanmaz; kimlikler kişisel veri taşımaz.
+      input.log.error({
+        event: 'file.reject_object_failed',
+        institutionId: row.institutionId,
+        fileId: row.id,
+        err: error,
+      })
+      throw error
+    }
+  }
   return row
 }
 

@@ -17,6 +17,7 @@ import {
 } from './communication-access.ts'
 import type { Session } from './domain.ts'
 import { DomainError } from './errors.ts'
+import { maskParentContact, PARENT_CONTACT_FIELDS } from './parent-contact.ts'
 
 /**
  * Kişiye göre kayıt kapsamı (docs/domain/yetki-ve-kapsam.md). Rol işlem türünü, kapsam hangi
@@ -417,6 +418,8 @@ const personal = (c: Context) => c.role === 'ogrenci' || c.role === 'veli'
 const STUDENT_IDENTITY: readonly string[] = ['nationalId', 'birthDate']
 const STUDENT_NATIONAL_ID: readonly string[] = ['nationalId']
 const FRONT_OFFICE_STUDENT: readonly string[] = ['progress']
+// kvkk: K — velinin telefonu ve e-postası (DOM-YTK-055).
+const PARENT_CONTACT: readonly string[] = PARENT_CONTACT_FIELDS
 /**
  * Alan ayıklama: rol satırı görse de bu alanları hiç almaz (yanıt, arama, sıralama dahil).
  * Ön büro öğrencinin akademik ilerlemesini görmez (DOM-YTK-021); öğrenci ve veli öğretmenin
@@ -437,6 +440,9 @@ const HIDDEN_FIELDS: Partial<Record<CollectionName, (context: Context) => readon
           ? STUDENT_IDENTITY
           : STUDENT_NATIONAL_ID,
   teachers: (c) => (personal(c) ? TEACHER_PRIVATE : NONE),
+  // Öğrenci ve veli hiçbir velinin (kendi bağlı çocuğunun diğer velisi dahil) telefonunu ve
+  // e-postasını görmez (DOM-YTK-055, DOM-ILT-073); öğretmen maskeli görür (`MASKED_FIELDS`).
+  parents: (c) => (personal(c) ? PARENT_CONTACT : NONE),
   grades: (c) => (personal(c) ? CORRECTION_HISTORY : NONE),
   attendance: (c) => (personal(c) ? CORRECTION_HISTORY : NONE),
   // İç not yalnız rehberlik görevli öğretmene döner; yönetici, ön büro, görevsiz öğretmen, öğrenci
@@ -454,6 +460,18 @@ const HIDDEN_FIELDS: Partial<Record<CollectionName, (context: Context) => readon
 }
 const HIDDEN: Readonly<Record<string, ((context: Context) => readonly string[]) | undefined>> =
   HIDDEN_FIELDS
+
+/**
+ * Değeri maskeli dönen alanlar (rol görür ama tam değeri görmez). Maskeli alan serbest metin
+ * aramasına da girmez: ham değerde eşleşme maskelenen haneleri tahmin ettirir. Öğretmen ders
+ * verdiği öğrencinin velisinin iletişimini maskeli görür, tam değeri ayrı ve denetim kaydına
+ * düşen "Göster" işlemiyle açar (DOM-YTK-055, `lib/parent-contact.ts`).
+ */
+const MASKED_FIELDS: Partial<Record<CollectionName, (context: Context) => readonly string[]>> = {
+  parents: (c) => (c.role === 'ogretmen' ? PARENT_CONTACT : NONE),
+}
+const MASKED: Readonly<Record<string, ((context: Context) => readonly string[]) | undefined>> =
+  MASKED_FIELDS
 
 /**
  * Rol görse de serbest metin aramasına girmeyen alanlar (`Scope.searchExcludedFields`). Kimlik no
@@ -628,6 +646,9 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
   function hiddenFields(collection: string) {
     return (isCollectionName(collection) && HIDDEN[collection]?.(context)) || NONE
   }
+  function maskedFields(collection: string) {
+    return (isCollectionName(collection) && MASKED[collection]?.(context)) || NONE
+  }
   function redact<T extends object>(collection: string, row: T): Redacted<T> {
     const hidden = hiddenFields(collection)
     let copy: Record<string, unknown> = Object.fromEntries(
@@ -635,8 +656,11 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     )
     if (collection === 'tutorSessions') copy = narrowTutorSession(context, copy)
     if (collection === 'students') copy = maskStudent(copy)
+    if (collection === 'parents' && maskedFields(collection).length > 0)
+      copy = maskParentContact(copy)
     if (collection === 'announcements') copy = narrowAnnouncement(viewerOf(context), row, copy)
-    // Kopya gizli alanları eksik, maskeli alanı (kimlik no) değiştirilmiş aynı kayıttır.
+    // Kopya gizli alanları eksik, maskeli alanları (kimlik no, öğretmene veli iletişimi)
+    // değiştirilmiş aynı kayıttır.
     return copy as Redacted<T>
   }
   return {
@@ -651,7 +675,10 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     canRead,
     hiddenFields,
     searchExcludedFields(collection: string) {
-      const unsearchable = (isCollectionName(collection) && UNSEARCHABLE_FIELDS[collection]) || NONE
+      const unsearchable = [
+        ...((isCollectionName(collection) && UNSEARCHABLE_FIELDS[collection]) || NONE),
+        ...maskedFields(collection),
+      ]
       const hidden = hiddenFields(collection)
       return [...hidden, ...unsearchable.filter((field) => !hidden.includes(field))]
     },

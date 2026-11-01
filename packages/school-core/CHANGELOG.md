@@ -1,5 +1,12 @@
 # Değişiklikler
 
+## Yayımlanmamış (KV1)
+
+Velinin iletişim bilgisi öğretmene maskeli gösterilir (KV1; `docs/domain/yetki-ve-kapsam.md` DOM-YTK-055). Sürüm birleştirmede verilecek.
+
+- Yeni `lib/parent-contact.ts`: `maskPhone` (`0532 *** ** 12`; `+90`/`90` önekli ve sıfırsız GSM numarası 11 haneye çevrilir), `maskEmail` (`a***@gmail.com`), `maskParentContact`, `revealParentContactSchema` (`{ studentId, field: 'phone' | 'email' }`, katı), `parentContactDecision` ve `revealParentContact`. Göster yalnız öğretmene açıktır (diğer roller `permission_denied`, `forbidden`); ders vermediği öğrenci, öğrenciye bağlı olmayan veli ve olmayan veli `parent_not_found` (`not_found`); boş alan `parent_contact_missing` (`rule`).
+- `lib/scope.ts` `parents` alan kapsamı değişti: öğretmen `phone` ve `email`'i maskeli alır ve bu alanlar onun için serbest metin aramasına girmez (`searchExcludedFields`); öğrenci ve veli iki alanı hiç almaz (önceden bağlı çocuğun velisinin tam iletişimini görüyordu, DOM-ILT-073). Yönetici ve ön büro değişmedi.
+
 ## 2.24.0
 
 Bildirilen dosya türü kanonik MIME'a çevrilir (F3c2a inceleme düzeltmesi; ADR 0003 karar 3; `docs/domain/kaynak-platformu.md` DOM-KYN-004).

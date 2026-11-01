@@ -18,6 +18,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "node --test tests/*.test.ts apps/web-react/tests/*.test.ts",
+    "test:hooks": "node --test tests/hooks/*.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:react": "playwright test -c playwright.react.config.ts",
     "mobile": "pnpm --filter @kampus/mobile start",

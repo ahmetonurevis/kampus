@@ -33,7 +33,6 @@ import {
   archiveCommand,
   executeTutoringCommand,
   executeWorkflowCommand,
-  payInvoiceCommand,
   recordGradeCommand,
   recordAttendanceCommand,
   restoreCommand,
@@ -42,6 +41,7 @@ import {
   type CommandOptions,
   type TutoringCommand,
 } from '../services/commands.ts'
+import { payInvoiceCommand } from '../services/payments.ts'
 import { idempotencyOf, ifMatchVersion, sendCommand } from './command-support.ts'
 import {
   archiveQuerySchema,

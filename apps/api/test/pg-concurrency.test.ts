@@ -13,6 +13,7 @@ import { conversationMessagePage } from '../src/db/conversation-messages.ts'
 import { tryLockIdempotencyKey } from '../src/db/idempotency.ts'
 import { insertMissingRecords, lockInstitution, writeRecords } from '../src/db/records.ts'
 import { institutions } from '../src/db/schema/auth.ts'
+import { paymentAllocations, payments } from '../src/db/schema/payments.ts'
 import { records } from '../src/db/schema/records.ts'
 import { AppError } from '../src/errors.ts'
 import { bookAppointmentCommand } from '../src/services/appointments.ts'
@@ -25,6 +26,7 @@ import {
   scheduleProspectMeetingCommand,
   scheduleTrialLessonCommand,
 } from '../src/services/prospects.ts'
+import { recordPaymentCommand } from '../src/services/payments.ts'
 import { answerQuestionCommand } from '../src/services/questions.ts'
 import { runCommand, runOperation, type OperationTools } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, createMember, FIXED_NOW } from './support/app.ts'
@@ -739,6 +741,65 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     assert.equal(countOf('parents'), 1)
     assert.equal(countOf('contracts'), 1)
     assert.equal(countOf('invoices'), 2)
+  })
+
+  test('DOM-FIN-031, DOM-FIN-050: eşzamanlı tahsilat: aynı referansla biri yazılır, dekont numarası ardışıktır', async () => {
+    const ctx = await frontDeskContext()
+    const invoice = (id: string, installment: number) => ({
+      id,
+      studentId: 's1',
+      installment,
+      amount: 10_000,
+      dueDate: `2026-1${String(installment)}-15T09:00:00.000Z`,
+      paidAt: null,
+      method: null,
+      reminderAt: null,
+    })
+    const student = createSeed(FIXED_NOW).students.find((item) => item.id === 's1')
+    assert.ok(student)
+    await insertMissingRecords(
+      db,
+      ctx.institutionId,
+      [
+        { collection: 'students', id: 's1', data: { ...student } },
+        { collection: 'invoices', id: 'pg-inv-0', data: invoice('pg-inv-0', 0) },
+        { collection: 'invoices', id: 'pg-inv-1', data: invoice('pg-inv-1', 1) },
+      ],
+      FIXED_NOW,
+    )
+    const pay = (reference: string, amountCents: number, key: string) =>
+      recordPaymentCommand(
+        ctx,
+        { studentId: 's1', amountCents, method: 'Banka havalesi', reference },
+        keyed(key),
+      )
+    const sameReference = await Promise.allSettled([
+      pay('TR-AYNI', 1_000, 'pg-pay-0001'),
+      pay('TR-AYNI', 1_000, 'pg-pay-0002'),
+    ])
+    assert.equal(sameReference.filter((item) => item.status === 'fulfilled').length, 1)
+    const reason: unknown = sameReference.find((item) => item.status === 'rejected')?.reason
+    assert.ok(
+      reason instanceof AppError && reason.code === 'payment_reference_used',
+      String(reason),
+    )
+
+    const results = await Promise.all([
+      pay('TR-A', 1_000, 'pg-pay-0003'),
+      pay('TR-B', 1_000, 'pg-pay-0004'),
+      pay('TR-C', 1_000, 'pg-pay-0005'),
+    ])
+    assert.equal(results.length, 3)
+    const rows = await db
+      .select({ receiptNumber: payments.receiptNumber })
+      .from(payments)
+      .where(eq(payments.institutionId, ctx.institutionId))
+    assert.deepEqual(rows.map((row) => row.receiptNumber).sort(), [1, 2, 3, 4])
+    const [allocated] = await db
+      .select({ total: sql<string>`sum(${paymentAllocations.amountCents})` })
+      .from(paymentAllocations)
+      .where(eq(paymentAllocations.institutionId, ctx.institutionId))
+    assert.equal(Number(allocated?.total), 4_000)
   })
 
   test('DOM-KAY-033: iki adaya aynı odada eşzamanlı görüşme: yalnız biri yazılır, öteki 409 meeting_conflict', async () => {

@@ -5,7 +5,6 @@ import type { State } from '@kampus/school-core/data/seed.ts'
 import { runAssessment } from '@kampus/school-core/lib/assessment-automation.ts'
 import { requireAuthorized, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
 import {
-  payInvoice,
   recordAttendance,
   type attendanceInputSchema,
   type MakeId,
@@ -221,50 +220,6 @@ export async function executeTutoringCommand(
           run: (state, { now, makeId }) => {
             runAssessment(state, session, command, input, makeId, recordId ?? '', now)
             return recordId === undefined ? null : { collection: 'tutorSessions', id: recordId }
-          },
-        }
-      },
-    },
-    options,
-  )
-}
-
-/**
- * Taksit ödemesi (tahsilat kaydı). Yetki core `invoice.pay`'dir: yalnız yönetici ve ön büro
- * (DOM-FIN-052). Aynı ödeme iki kez işlenmez (core `invoice_already_paid` 409).
- * TODO(payment-provider): velinin çevrim içi ödemesi (`invoice.payOnline`) ödeme sağlayıcısı
- * seçilince ayrı uçla bağlanır; o zamana kadar uç yoktur.
- */
-export async function payInvoiceCommand(
-  ctx: ServiceContext,
-  invoiceId: string,
-  method: string,
-  options: CommandOptions,
-): Promise<CommandResponse> {
-  return execute(
-    ctx,
-    {
-      action: 'invoice.pay',
-      collections: OPERATION_COMMANDS['invoice.pay'].collections,
-      ...(options.expectedVersion !== null
-        ? {
-            expectedVersions: [
-              { collection: 'invoices', id: invoiceId, version: options.expectedVersion },
-            ],
-          }
-        : {}),
-      entity: { type: 'invoices', id: invoiceId },
-      load: async (tx) => {
-        const spec = OPERATION_COMMANDS['invoice.pay']
-        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
-        return {
-          scalars,
-          run: (state, { now }) => {
-            // Olmayan taksitte hedef boştur: yetki reddi kayıt aramasından önce döner.
-            const studentId = state.invoices.find((item) => item.id === invoiceId)?.studentId ?? ''
-            requireAuthorized(actor, 'invoice.pay', { studentId }, state, { now, institutionType })
-            payInvoice(state, invoiceId, method, now)
-            return { collection: 'invoices', id: invoiceId }
           },
         }
       },

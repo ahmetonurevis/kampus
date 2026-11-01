@@ -1804,6 +1804,94 @@ export interface paths {
         patch: operations["updateAppointment"];
         trace?: never;
     };
+    "/api/v1/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tahsilatları listele
+         * @description Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.
+         */
+        get: operations["listPayments"];
+        put?: never;
+        /**
+         * Tahsilat kaydet
+         * @description Tahsilatı ayrı kayıt olarak yazar ve önce `invoiceId` ile seçilen taksite, sonra en eski vadeye dağıtır; kısmi ödeme kabul edilir, açık taksitleri aşan kısım `creditCents` olarak iade alacağıdır (DOM-FIN-030). Açık taksit yoksa 409 `no_open_installments`, ödenmiş taksit seçilirse 409 `invoice_already_paid`. Nakit dışı yöntemde `reference` zorunlu (422 `payment_reference_required`); kullanılmış referans 409 `payment_reference_used` (DOM-FIN-031). Nakit kurumda kapalıysa 422 `cash_payment_disabled` (DOM-FIN-032). İleri tarih 422 `payment_date_in_future`. Olmayan veya başka kurumun öğrencisi 404. Gövde katıdır. `Idempotency-Key` zorunludur: aynı anahtar ikinci tahsilat açmaz, ilk yanıtı döner. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["recordPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{paymentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tahsilat ayrıntısı
+         * @description Tek tahsilat ve dağılımı. Başka kurumun veya kapsam dışı öğrencinin tahsilatı 404.
+         */
+        get: operations["getPayment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{paymentId}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tahsilatı iptal et
+         * @description Tahsilat silinmez ve tutarı değişmez; gerekçeyle iptal edilir, dağıtıldığı taksitler yeniden açılır (DOM-FIN-033). İptal edilmiş tahsilat 409 `payment_already_reversed`. `If-Match` zorunludur (tahsilatın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. `Idempotency-Key` zorunludur. Olmayan veya başka kurumun tahsilatı 404. Rol: `yonetici`.
+         */
+        post: operations["reversePayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tahsilat ayarları
+         * @description Kurumda nakit tahsilatın açık olup olmadığı ve ayar sürümü.
+         */
+        get: operations["getPaymentSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Nakit tahsilatı aç veya kapat
+         * @description Kurumda nakit tahsilatı açar veya kapatır; varsayılan kapalıdır (ADR 0006, DOM-FIN-032). Değişiklik denetim kaydına yazılır, geçmiş tahsilatlar değişmez. `If-Match` (`GET` yanıtındaki sürüm; ayar hiç değişmediyse 1) ve `Idempotency-Key` zorunludur. Rol: `yonetici`.
+         */
+        patch: operations["setPaymentSettings"];
+        trace?: never;
+    };
     "/api/v1/prospects": {
         parameters: {
             query?: never;
@@ -14485,6 +14573,743 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPayments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Yalnız bu öğrencinin tahsilatları */
+                studentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            /** @description Tahsilat tutarı (kuruş) */
+                            amountCents: number;
+                            /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
+                            creditCents: number;
+                            /** @enum {string} */
+                            method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                            /** @description Banka veya POS işlem referansı */
+                            reference: string | null;
+                            /** @description Ödeme anı (ISO 8601 UTC) */
+                            paidAt: string;
+                            /** @description Dekont yılı */
+                            receiptYear: number;
+                            /** @description Kurum ve yıl içinde ardışık dekont numarası */
+                            receiptNumber: number;
+                            /** @description İptal anı; iptal edilmediyse boş */
+                            reversedAt: string | null;
+                            /** @description İptal gerekçesi; yalnız personele döner */
+                            reversalReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            allocations: {
+                                invoiceId: string;
+                                /** @description Taksite dağıtılan tutar (kuruş) */
+                                amountCents: number;
+                            }[];
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordPayment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    amountCents: number;
+                    /** @enum {string} */
+                    method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                    reference?: string;
+                    paidDate?: string;
+                    invoiceId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            /** @description Tahsilat tutarı (kuruş) */
+                            amountCents: number;
+                            /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
+                            creditCents: number;
+                            /** @enum {string} */
+                            method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                            /** @description Banka veya POS işlem referansı */
+                            reference: string | null;
+                            /** @description Ödeme anı (ISO 8601 UTC) */
+                            paidAt: string;
+                            /** @description Dekont yılı */
+                            receiptYear: number;
+                            /** @description Kurum ve yıl içinde ardışık dekont numarası */
+                            receiptNumber: number;
+                            /** @description İptal anı; iptal edilmediyse boş */
+                            reversedAt: string | null;
+                            /** @description İptal gerekçesi; yalnız personele döner */
+                            reversalReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            allocations: {
+                                invoiceId: string;
+                                /** @description Taksite dağıtılan tutar (kuruş) */
+                                amountCents: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tahsilat kimliği */
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            /** @description Tahsilat tutarı (kuruş) */
+                            amountCents: number;
+                            /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
+                            creditCents: number;
+                            /** @enum {string} */
+                            method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                            /** @description Banka veya POS işlem referansı */
+                            reference: string | null;
+                            /** @description Ödeme anı (ISO 8601 UTC) */
+                            paidAt: string;
+                            /** @description Dekont yılı */
+                            receiptYear: number;
+                            /** @description Kurum ve yıl içinde ardışık dekont numarası */
+                            receiptNumber: number;
+                            /** @description İptal anı; iptal edilmediyse boş */
+                            reversedAt: string | null;
+                            /** @description İptal gerekçesi; yalnız personele döner */
+                            reversalReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            allocations: {
+                                invoiceId: string;
+                                /** @description Taksite dağıtılan tutar (kuruş) */
+                                amountCents: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reversePayment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Tahsilat kimliği */
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            /** @description Tahsilat tutarı (kuruş) */
+                            amountCents: number;
+                            /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
+                            creditCents: number;
+                            /** @enum {string} */
+                            method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                            /** @description Banka veya POS işlem referansı */
+                            reference: string | null;
+                            /** @description Ödeme anı (ISO 8601 UTC) */
+                            paidAt: string;
+                            /** @description Dekont yılı */
+                            receiptYear: number;
+                            /** @description Kurum ve yıl içinde ardışık dekont numarası */
+                            receiptNumber: number;
+                            /** @description İptal anı; iptal edilmediyse boş */
+                            reversedAt: string | null;
+                            /** @description İptal gerekçesi; yalnız personele döner */
+                            reversalReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            allocations: {
+                                invoiceId: string;
+                                /** @description Taksite dağıtılan tutar (kuruş) */
+                                amountCents: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPaymentSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Bu kurumda nakit tahsilat açık mı */
+                            cashPaymentsEnabled: boolean;
+                            /** @description `If-Match` için ayar sürümü; hiç değişmediyse 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setPaymentSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    cashPaymentsEnabled: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Bu kurumda nakit tahsilat açık mı */
+                            cashPaymentsEnabled: boolean;
+                            /** @description `If-Match` için ayar sürümü; hiç değişmediyse 1 */
+                            version: number;
+                        };
                     };
                 };
             };

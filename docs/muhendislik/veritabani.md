@@ -91,6 +91,8 @@ update records
 
 ## 4. Normalleştirme ölçütü
 
+Tahsilat bu ölçütle `payments`, `payment_allocations` ve `payment_settings` tablolarındadır (ADR 0006, migration `0014_create_payments`); taksit ve sözleşme şimdilik `records`'tadır.
+
 Bir koleksiyon aşağıdakilerden **biri** doğrulanınca kendi tablosuna taşınır (her biri ayrı ADR):
 
 1. Bir kurumda 20.000 kaydı geçer veya bir yılda geçmesi beklenir (yoklama, not, ödeme, mesaj bu sınıftadır).

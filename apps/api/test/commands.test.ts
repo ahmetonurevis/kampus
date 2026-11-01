@@ -429,6 +429,10 @@ describe('yazma uçları', () => {
         'POST /api/v1/prospects',
         // Kesin kayıt borç doğurur (routes/prospects.ts; DOM-KAY-035).
         'POST /api/v1/prospects/{prospectId}/enroll',
+        // Tahsilat, iptal ve nakit ayarı (routes/payments.ts; DOM-FIN-031, DOM-FIN-033).
+        'POST /api/v1/payments',
+        'POST /api/v1/payments/{paymentId}/reverse',
+        'PATCH /api/v1/payment-settings',
       ]
       assert.deepEqual(required.sort(), expected.sort())
     })
@@ -645,14 +649,22 @@ describe('yazma uçları', () => {
 
     test('başka anahtarla mükerrer ödeme 409 invoice_already_paid; kayıt değişmez', async () => {
       const a = await institution()
-      assert.equal((await post(url, a.adminCookie, { method: 'Nakit' }, key(2))).statusCode, 200)
+      assert.equal(
+        (await post(url, a.adminCookie, { method: 'Banka havalesi' }, key(2))).statusCode,
+        200,
+      )
       assertError(
-        await post(url, a.adminCookie, { method: 'Nakit' }, key(3)),
+        await post(url, a.adminCookie, { method: 'Banka havalesi' }, key(3)),
         409,
         'invoice_already_paid',
       )
       assertError(
-        await post(`/api/v1/invoices/${PAID.id}/pay`, a.adminCookie, { method: 'Nakit' }, key(4)),
+        await post(
+          `/api/v1/invoices/${PAID.id}/pay`,
+          a.adminCookie,
+          { method: 'Banka havalesi' },
+          key(4),
+        ),
         409,
         'invoice_already_paid',
       )
@@ -663,7 +675,7 @@ describe('yazma uçları', () => {
     test('anahtarsız 400 idempotency_key_required, geçersiz gövde 400; kayıt değişmez', async () => {
       const a = await institution()
       assertError(
-        await post(url, a.adminCookie, { method: 'Nakit' }),
+        await post(url, a.adminCookie, { method: 'Banka havalesi' }),
         400,
         'idempotency_key_required',
       )
@@ -688,7 +700,7 @@ describe('yazma uçları', () => {
         ['ogrenci', [{ kind: 'student', recordId: 's1' }]],
       ] as const) {
         const cookie = await member(a.id, role, [...links])
-        assertError(await post(url, cookie, { method: 'Nakit' }, key(6)), 403, 'forbidden')
+        assertError(await post(url, cookie, { method: 'Banka havalesi' }, key(6)), 403, 'forbidden')
       }
       assert.equal(await version(a.id, 'invoices', UNPAID.id), 1)
     })
@@ -704,7 +716,12 @@ describe('yazma uçları', () => {
         FIXED_NOW,
       )
       assertError(
-        await post('/api/v1/invoices/test-inv-yok/pay', a.adminCookie, { method: 'Nakit' }, key(7)),
+        await post(
+          '/api/v1/invoices/test-inv-yok/pay',
+          a.adminCookie,
+          { method: 'Banka havalesi' },
+          key(7),
+        ),
         404,
         'not_found',
       )
@@ -712,7 +729,7 @@ describe('yazma uçları', () => {
         await post(
           `/api/v1/invoices/${foreign.id}/pay`,
           a.adminCookie,
-          { method: 'Nakit' },
+          { method: 'Banka havalesi' },
           key(8),
         ),
         404,
@@ -726,11 +743,11 @@ describe('yazma uçları', () => {
     test('finans modülü kapalı 403; oturumsuz 401', async () => {
       const a = await institution({ enabledModules: { ...SEED.modules, finance: false } })
       assertError(
-        await post(url, a.adminCookie, { method: 'Nakit' }, key(9)),
+        await post(url, a.adminCookie, { method: 'Banka havalesi' }, key(9)),
         403,
         'module_disabled',
       )
-      assertError(await post(url, null, { method: 'Nakit' }, key(9)), 401)
+      assertError(await post(url, null, { method: 'Banka havalesi' }, key(9)), 401)
       assert.equal(await version(a.id, 'invoices', UNPAID.id), 1)
     })
   })
@@ -1070,7 +1087,7 @@ describe('yazma uçları', () => {
       const student = await member(a.id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
       const key = { 'idempotency-key': 'test-ogrenci-0001' }
       assertError(
-        await post(`/api/v1/invoices/${UNPAID.id}/pay`, student, { method: 'Nakit' }, key),
+        await post(`/api/v1/invoices/${UNPAID.id}/pay`, student, { method: 'Banka havalesi' }, key),
         403,
       )
       assertError(

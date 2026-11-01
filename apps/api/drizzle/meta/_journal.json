@@ -99,6 +99,13 @@
       "when": 1793395893262,
       "tag": "0013_create_skill_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793552022390,
+      "tag": "0014_create_payments",
+      "breakpoints": true
     }
   ]
 }

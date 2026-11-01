@@ -38,6 +38,7 @@ import { registerResourceCommandRoutes } from './routes/resource-commands.ts'
 import { registerQuestionRoutes } from './routes/questions.ts'
 import { registerRequestRoutes } from './routes/requests.ts'
 import { registerAppointmentRoutes } from './routes/appointments.ts'
+import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
 import { registerRubricRoutes } from './routes/rubrics.ts'
@@ -74,6 +75,10 @@ export const REDACTED_PATHS = [
   'phone',
   '*.phone',
   'guardianName',
+  'reference',
+  '*.reference',
+  'reversalReason',
+  '*.reversalReason',
   '*.guardianName',
   '*.nationalId',
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
@@ -239,6 +244,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerCommunicationRoutes(app)
   registerRequestRoutes(app)
   registerAppointmentRoutes(app)
+  registerPaymentRoutes(app)
   registerProspectRoutes(app)
   registerQuestionRoutes(app)
   registerResourceRoutes(app)

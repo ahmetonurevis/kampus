@@ -89,7 +89,7 @@ test.describe('Finans: tahsilat', () => {
     await expect(dialog).toBeVisible()
     await expect(page).toHaveURL(/[?&]tahsilat=inv-s10-5/)
     await expect(dialog).toContainText('Emir Kaya · 6. taksit')
-    await dialog.getByLabel('Ödeme yöntemi').selectOption('Nakit')
+    await dialog.getByLabel('Ödeme yöntemi').selectOption('Banka havalesi')
     await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
 
     await expect(page.getByText('Tahsilat kaydedildi.')).toBeVisible()
@@ -100,7 +100,7 @@ test.describe('Finans: tahsilat', () => {
 
     const stored = await invoice(client, 'inv-s10-5')
     expect(stored.paidAt).not.toBeNull()
-    expect(stored.method).toBe('Nakit')
+    expect(stored.method).toBe('Banka havalesi')
     expect(payments).toHaveLength(1)
     expect(payments[0]?.headers()['idempotency-key']).toMatch(/^[0-9a-f-]{36}$/)
   })

@@ -2,6 +2,13 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Tahsilat uçları
+
+- `payments`, `payment_allocations` ve `payment_settings` tabloları eklendi (ADR 0006, migration `0014_create_payments`).
+- `POST /api/v1/payments`, `GET /api/v1/payments`, `GET /api/v1/payments/:paymentId`, `POST /api/v1/payments/:paymentId/reverse`, `GET` ve `PATCH /api/v1/payment-settings` eklendi (DOM-FIN-030…033, DOM-FIN-052).
+- **Kırıcı:** `POST /api/v1/invoices/:invoiceId/pay` artık tahsilat kaydı da yazar; `Nakit` yöntemi kurumda nakit kapalıysa 422 `cash_payment_disabled` alır. Nakit varsayılan kapalıdır, örnek kurum tohumunda da.
+- Log gizleme listesine `reference` ve `reversalReason` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Kesin kayıt ucu
 
 - `POST /api/v1/prospects/:prospectId/enroll` eklendi (201 + `Location`; `Idempotency-Key` ve `If-Match` zorunlu; yalnız `yonetici` ve `onburo`, modül `crm`). Öğrenci, veli, taksit, sözleşme ve aday aşaması tek transaction'da yazılır (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035).

@@ -25482,6 +25482,1352 @@
         }
       }
     },
+    "/api/v1/payments": {
+      "get": {
+        "operationId": "listPayments",
+        "summary": "Tahsilatları listele",
+        "tags": [
+          "payments"
+        ],
+        "description": "Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Yalnız bu öğrencinin tahsilatları"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "amountCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Tahsilat tutarı (kuruş)"
+                          },
+                          "creditCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş)"
+                          },
+                          "method": {
+                            "type": "string",
+                            "enum": [
+                              "Banka havalesi",
+                              "Nakit",
+                              "Kredi kartı"
+                            ]
+                          },
+                          "reference": {
+                            "description": "Banka veya POS işlem referansı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "paidAt": {
+                            "type": "string",
+                            "description": "Ödeme anı (ISO 8601 UTC)"
+                          },
+                          "receiptYear": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Dekont yılı"
+                          },
+                          "receiptNumber": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kurum ve yıl içinde ardışık dekont numarası"
+                          },
+                          "reversedAt": {
+                            "description": "İptal anı; iptal edilmediyse boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reversalReason": {
+                            "description": "İptal gerekçesi; yalnız personele döner",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          },
+                          "allocations": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "invoiceId": {
+                                  "type": "string"
+                                },
+                                "amountCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Taksite dağıtılan tutar (kuruş)"
+                                }
+                              },
+                              "required": [
+                                "invoiceId",
+                                "amountCents"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "studentId",
+                          "amountCents",
+                          "creditCents",
+                          "method",
+                          "reference",
+                          "paidAt",
+                          "receiptYear",
+                          "receiptNumber",
+                          "reversedAt",
+                          "reversalReason",
+                          "version",
+                          "allocations"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "recordPayment",
+        "summary": "Tahsilat kaydet",
+        "tags": [
+          "payments"
+        ],
+        "description": "Tahsilatı ayrı kayıt olarak yazar ve önce `invoiceId` ile seçilen taksite, sonra en eski vadeye dağıtır; kısmi ödeme kabul edilir, açık taksitleri aşan kısım `creditCents` olarak iade alacağıdır (DOM-FIN-030). Açık taksit yoksa 409 `no_open_installments`, ödenmiş taksit seçilirse 409 `invoice_already_paid`. Nakit dışı yöntemde `reference` zorunlu (422 `payment_reference_required`); kullanılmış referans 409 `payment_reference_used` (DOM-FIN-031). Nakit kurumda kapalıysa 422 `cash_payment_disabled` (DOM-FIN-032). İleri tarih 422 `payment_date_in_future`. Olmayan veya başka kurumun öğrencisi 404. Gövde katıdır. `Idempotency-Key` zorunludur: aynı anahtar ikinci tahsilat açmaz, ilk yanıtı döner. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000
+                  },
+                  "amountCents": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 100000000
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "Banka havalesi",
+                      "Nakit",
+                      "Kredi kartı"
+                    ]
+                  },
+                  "reference": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 100
+                  },
+                  "paidDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "invoiceId": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "amountCents",
+                  "method"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tahsilat tutarı (kuruş)"
+                        },
+                        "creditCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş)"
+                        },
+                        "method": {
+                          "type": "string",
+                          "enum": [
+                            "Banka havalesi",
+                            "Nakit",
+                            "Kredi kartı"
+                          ]
+                        },
+                        "reference": {
+                          "description": "Banka veya POS işlem referansı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "paidAt": {
+                          "type": "string",
+                          "description": "Ödeme anı (ISO 8601 UTC)"
+                        },
+                        "receiptYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dekont yılı"
+                        },
+                        "receiptNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kurum ve yıl içinde ardışık dekont numarası"
+                        },
+                        "reversedAt": {
+                          "description": "İptal anı; iptal edilmediyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversalReason": {
+                          "description": "İptal gerekçesi; yalnız personele döner",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "allocations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Taksite dağıtılan tutar (kuruş)"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "amountCents",
+                        "creditCents",
+                        "method",
+                        "reference",
+                        "paidAt",
+                        "receiptYear",
+                        "receiptNumber",
+                        "reversedAt",
+                        "reversalReason",
+                        "version",
+                        "allocations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/{paymentId}": {
+      "get": {
+        "operationId": "getPayment",
+        "summary": "Tahsilat ayrıntısı",
+        "tags": [
+          "payments"
+        ],
+        "description": "Tek tahsilat ve dağılımı. Başka kurumun veya kapsam dışı öğrencinin tahsilatı 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "paymentId",
+            "required": true,
+            "description": "Tahsilat kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tahsilat tutarı (kuruş)"
+                        },
+                        "creditCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş)"
+                        },
+                        "method": {
+                          "type": "string",
+                          "enum": [
+                            "Banka havalesi",
+                            "Nakit",
+                            "Kredi kartı"
+                          ]
+                        },
+                        "reference": {
+                          "description": "Banka veya POS işlem referansı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "paidAt": {
+                          "type": "string",
+                          "description": "Ödeme anı (ISO 8601 UTC)"
+                        },
+                        "receiptYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dekont yılı"
+                        },
+                        "receiptNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kurum ve yıl içinde ardışık dekont numarası"
+                        },
+                        "reversedAt": {
+                          "description": "İptal anı; iptal edilmediyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversalReason": {
+                          "description": "İptal gerekçesi; yalnız personele döner",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "allocations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Taksite dağıtılan tutar (kuruş)"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "amountCents",
+                        "creditCents",
+                        "method",
+                        "reference",
+                        "paidAt",
+                        "receiptYear",
+                        "receiptNumber",
+                        "reversedAt",
+                        "reversalReason",
+                        "version",
+                        "allocations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/{paymentId}/reverse": {
+      "post": {
+        "operationId": "reversePayment",
+        "summary": "Tahsilatı iptal et",
+        "tags": [
+          "payments"
+        ],
+        "description": "Tahsilat silinmez ve tutarı değişmez; gerekçeyle iptal edilir, dağıtıldığı taksitler yeniden açılır (DOM-FIN-033). İptal edilmiş tahsilat 409 `payment_already_reversed`. `If-Match` zorunludur (tahsilatın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. `Idempotency-Key` zorunludur. Olmayan veya başka kurumun tahsilatı 404. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "paymentId",
+            "required": true,
+            "description": "Tahsilat kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tahsilat tutarı (kuruş)"
+                        },
+                        "creditCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş)"
+                        },
+                        "method": {
+                          "type": "string",
+                          "enum": [
+                            "Banka havalesi",
+                            "Nakit",
+                            "Kredi kartı"
+                          ]
+                        },
+                        "reference": {
+                          "description": "Banka veya POS işlem referansı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "paidAt": {
+                          "type": "string",
+                          "description": "Ödeme anı (ISO 8601 UTC)"
+                        },
+                        "receiptYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dekont yılı"
+                        },
+                        "receiptNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kurum ve yıl içinde ardışık dekont numarası"
+                        },
+                        "reversedAt": {
+                          "description": "İptal anı; iptal edilmediyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversalReason": {
+                          "description": "İptal gerekçesi; yalnız personele döner",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "allocations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Taksite dağıtılan tutar (kuruş)"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "amountCents",
+                        "creditCents",
+                        "method",
+                        "reference",
+                        "paidAt",
+                        "receiptYear",
+                        "receiptNumber",
+                        "reversedAt",
+                        "reversalReason",
+                        "version",
+                        "allocations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payment-settings": {
+      "get": {
+        "operationId": "getPaymentSettings",
+        "summary": "Tahsilat ayarları",
+        "tags": [
+          "payments"
+        ],
+        "description": "Kurumda nakit tahsilatın açık olup olmadığı ve ayar sürümü.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cashPaymentsEnabled": {
+                          "type": "boolean",
+                          "description": "Bu kurumda nakit tahsilat açık mı"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü; hiç değişmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "cashPaymentsEnabled",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "setPaymentSettings",
+        "summary": "Nakit tahsilatı aç veya kapat",
+        "tags": [
+          "payments"
+        ],
+        "description": "Kurumda nakit tahsilatı açar veya kapatır; varsayılan kapalıdır (ADR 0006, DOM-FIN-032). Değişiklik denetim kaydına yazılır, geçmiş tahsilatlar değişmez. `If-Match` (`GET` yanıtındaki sürüm; ayar hiç değişmediyse 1) ve `Idempotency-Key` zorunludur. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cashPaymentsEnabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "cashPaymentsEnabled"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cashPaymentsEnabled": {
+                          "type": "boolean",
+                          "description": "Bu kurumda nakit tahsilat açık mı"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü; hiç değişmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "cashPaymentsEnabled",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/prospects": {
       "post": {
         "operationId": "createProspect",

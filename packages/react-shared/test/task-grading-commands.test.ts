@@ -148,6 +148,10 @@ describe('öğretmen puanlaması komutları', () => {
       'Yeniden teslim, puanı kesinleşen sürüm için istenir.',
     )
     assert.equal(
+      feedback('submission_version_not_found', 404, 'Teslim sürümü bulunamadı.'),
+      'Puanlanan sürüm bulunamadı; teslimin güncel hâli yüklendi.',
+    )
+    assert.equal(
       feedback('band_unknown', 422, 'Bant 0–5 arasında olmalıdır.'),
       'Bant 0–5 arasında olmalıdır.',
     )
@@ -186,7 +190,7 @@ describe('eskimiş teslimin tazelenmesi', () => {
     }
   }
 
-  test('DOM-BEC-021: 409 (sürüm çakıştı, yeni sürüm geldi, zaten puanlandı) teslimi tazeler; 422 kriter hatası tazelemez', async () => {
+  test('DOM-BEC-021: 409 (sürüm çakıştı, yeni sürüm geldi, zaten puanlandı) ve 404 (teslim veya sürüm yok) teslimi tazeler; 422 kriter hatası tazelemez', async () => {
     assert.deepEqual(
       await failWith(
         new ApiError({ status: 409, code: 'version_conflict', message: 'Kayıt değişti.' }),
@@ -201,6 +205,24 @@ describe('eskimiş teslimin tazelenmesi', () => {
     assert.equal(
       submissionStale(new ApiError({ status: 404, code: 'not_found', message: 'Yok.' })),
       true,
+    )
+    assert.deepEqual(
+      await failWith(
+        new ApiError({
+          status: 404,
+          code: 'submission_version_not_found',
+          message: 'Teslim sürümü bulunamadı.',
+        }),
+      ),
+      {
+        status: 'failed',
+        toasts: ['Puanlanan sürüm bulunamadı; teslimin güncel hâli yüklendi.'],
+        refreshed: true,
+      },
+    )
+    assert.equal(
+      submissionStale(new ApiError({ status: 404, code: 'resource_missing', message: 'Yok.' })),
+      false,
     )
     assert.equal(
       submissionStale(new ApiError({ status: 403, code: 'forbidden', message: 'Yetki yok.' })),

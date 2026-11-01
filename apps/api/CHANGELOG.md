@@ -16,6 +16,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
   - Puanlama kuyruğunun `total` değeri satırlarla aynı kapsam koşuluyla (SQL `assignmentScopeFilter` = `visible`) sayılır; savunma amaçlı yeniden doğrulamada düşen satır sayıdan da çıkar.
   - Arşivli atamanın teslimine puan ve yeniden teslim isteği 404 (F4b3a öğrenci yazmalarıyla aynı kapsam kalıbı); okumalar açık kalır.
   - Kriter satırı katı (core 2.22.0): fazladan alan 400.
+  - `react-shared`: 404 `submission_version_not_found` Türkçe metne çevrilir ve teslimi tazeler (`submissionStale`).
 - OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok; core 2.22.0 (kriter satırı katı).
 - `react-shared`: `use-task-grading.ts` (`useGradingQueue`, `useScoreTaskSubmission`, `useRequestTaskResubmission`); puan ve istek okunan `rowVersion`'ı `If-Match` olarak taşır, 409 ve 404'te teslim ve kuyruk tazelenir, hata kodları Türkçe metne çevrilir.
 - F4b3b2'ye kalan: ikinci puanlayıcı ve koordinatör (DOM-BEC-024), itiraz ve puanlama süresi (DOM-BEC-025), not aktarımı, yeniden puanlama ve anahtar düzeltmesi (DOM-BEC-011).

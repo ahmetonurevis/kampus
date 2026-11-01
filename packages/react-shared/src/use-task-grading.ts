@@ -47,6 +47,7 @@ export const TASK_GRADING_MESSAGES = {
   not_found: 'Teslim bulunamadı.',
   version_conflict: TASK_SUBMISSION_CHANGED_MESSAGE,
   version_not_latest: 'Öğrenci yeni bir sürüm gönderdi; son sürümü puanlayın.',
+  submission_version_not_found: 'Puanlanan sürüm bulunamadı; teslimin güncel hâli yüklendi.',
   rubric_score_exists: 'Bu sürüm zaten puanlandı.',
   rubric_not_assigned: 'Bu görev rubrikle puanlanmaz.',
   rubric_criterion_missing: 'Her kritere bant verin.',
@@ -58,11 +59,13 @@ export const TASK_GRADING_MESSAGES = {
 } as const satisfies CommandMessages
 
 /**
- * Teslimin ekrandaki durumu eskidi: sürüm çakıştı, yeni sürüm geldi veya sürüm zaten puanlandı.
- * Teslim ve kuyruk tazelenir.
+ * Teslimin ekrandaki durumu eskidi: sürüm çakıştı, yeni sürüm geldi, sürüm zaten puanlandı,
+ * teslim veya ataması kaldırıldı ya da ekrandaki sürüm numarası artık yok. Teslim ve kuyruk
+ * tazelenir.
  */
+const STALE_NOT_FOUND = new Set(['not_found', 'submission_version_not_found'])
 export const submissionStale = (error: ApiError) =>
-  error.status === 409 || (error.status === 404 && error.code === 'not_found')
+  error.status === 409 || (error.status === 404 && STALE_NOT_FOUND.has(error.code))
 
 /** Puanlanmayı bekleyen teslimler (sayfalı); sorgu değişirken önceki sayfa ekranda kalır. */
 export function useGradingQueue(query: GradingQueueQuery) {

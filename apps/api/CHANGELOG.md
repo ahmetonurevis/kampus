@@ -2,6 +2,15 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Kesin kayıt ucu
+
+- `POST /api/v1/prospects/:prospectId/enroll` (core `prospect.enroll`, `enrollProspect`; DOM-KAY-001, DOM-KAY-011, DOM-KAY-035): açık aşamadaki adayı kesin kayda alır. Öğrenci, veli, taksitler, sözleşme ve adayın `Kayıt oldu` durumu kurum kilidi altında tek transaction'da yazılır; yazım yarıda başarısız olursa hiçbir kayıt, denetim kaydı ve istek anahtarı kalmaz. Yetki core `requireAuthorized(…, 'prospect.enroll', …)` ile işlemden önce ayrıca denetlenir; roller `yonetici`, `onburo` (öteki roller 403 `forbidden`), modüller `crm` (core komut tablosu) ve `finance` (rota `EXTRA_MODULES`; taksit ve sözleşme yazıldığı için): biri kapalıysa rol ve gövdeden önce 403 `module_disabled`, hiçbir kayıt yazılmaz (DOM-YTK-040).
+- Başarı 201: `entity` yeni öğrencidir, `Location` öğrenci kaydını (`/api/v1/collections/students/:id`) gösterir; denetim kaydı adaya bağlanır ve yalnız alan adları ile kimlikleri taşır. Yol api-tasarimi.md §1 alan komutudur (`POST /:id/<fiil>`); yeni kaynak doğduğu için 200 yerine 201.
+- `If-Match` (adayın sürümü) ve `Idempotency-Key` zorunlu: eksikse 400 `if_match_required` / `idempotency_key_required`; aynı anahtar ilk yanıtı tekrarlar, ikinci öğrenci ve taksit yazılmaz. Sıra: kapsam 404 → yetki 403 → sürüm 409. Kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş veya tanınmayan aşamadaki aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`, geçersiz ilk vade 422 `invalid_payment_date`; olmayan veya başka kurumun aday ya da sınıfı 404.
+- Gövde API'nin kendi şemasıdır (`enrollProspectBodySchema`, katı; core `registrationSchema` API'ye açılmaz): `classId`, `totalCents` (kuruş, tamsayı, 10.000–100.000.000, yani 100–1.000.000 ₺), `count` (1–12), `startDate` (`YYYY-MM-DD`). Sayısal alanlar zorlanmaz: `"3600000"` gibi metin, kesirli veya sınır dışı tutar 400 (`issues` yolu `totalCents`). Gövdede `prospectId`, `institutionId`, eski `total` veya bilinmeyen alan 400. Core şimdilik tam lira çalıştığı için 100'ün katı olmayan tutar 422 `amount_not_whole_lira` (`issues` yolu `["totalCents"]`); servis core'a `totalCents / 100` geçirir (`TODO(core-kurus)`). Core davranışı ve sürümü değişmedi.
+- Veli, taksit ve sözleşme koleksiyonları yüklenmez (core yalnız ekler; `loadScope` `{ ids: [] }`); kurumun bütün faturaları her kayıtta okunmaz. Aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır (test:pg).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
 ## Rubrik uçları
 
 - `GET /api/v1/rubrics` (sayfalı; rubrik, son sürümün özeti ve yayındaki sürüm kimliği) ve `GET /api/v1/rubrics/:rubricId` (bütün sürümler, her biri atama ve puan kullanım sayısıyla); yalnız `yonetici` ve `ogretmen` (core `isContentStaff`, rubrik kurumundur, IST-048). Modül `learning`; kapalıysa 403 `module_disabled`.
@@ -19,7 +28,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 - Not yazarının gösterilen adı oturum kullanıcısından (`users.name`) okunur; gövdede `authorName` 400 `validation_failed`. Kullanıcı satırı bulunamazsa not boş yazarla yazılmaz: programlama hatası olarak düz `Error` fırlar (500 `internal_error`, ayrıntı yalnız logda).
 - Mükerrer reddi (`prospect_duplicate`, `prospect_contact_shared`) eşleşen adayın kimliğini, telefonunu, e-postasını ve adını taşımaz; yanıt yalnız kod, ileti ve alan yolu içerir, logda da kimlik yoktur.
 - Log gizleme listesine `phone` (üst düzey), `guardianName`, `*.guardianName`, `notes` ve `*.notes` eklendi (kvkk: K); `test/security-defaults.test.ts` gerçek logger yapılandırmasıyla doğrular. Denetim kaydına yalnız değişen alan adları yazılır.
-- Kesin kayıt ucu (`prospect.enroll`) açılmadı; öğrenci, fatura ve sözleşme yazdığı için ayrı görevdir (`TODO(api-prospect-enroll)`).
+- Kesin kayıt ucu (`prospect.enroll`) bu adımda açılmadı; öğrenci, fatura ve sözleşme yazdığı için ayrı görevde eklendi (yukarıda "Kesin kayıt ucu").
 - OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
 
 ## Alınabilir randevu saatleri okuma ucu

@@ -427,6 +427,8 @@ describe('yazma uçları', () => {
         'POST /api/v1/classes',
         // Aday oluşturma (routes/prospects.ts; DOM-KAY-002).
         'POST /api/v1/prospects',
+        // Kesin kayıt: öğrenci, taksit ve sözleşme oluşturur (DOM-KAY-011, DOM-KAY-035).
+        'POST /api/v1/prospects/{prospectId}/enroll',
       ]
       assert.deepEqual(required.sort(), expected.sort())
     })

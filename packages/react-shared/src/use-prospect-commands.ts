@@ -6,14 +6,15 @@ import { requireIfMatch, type CommandHeaders, type CommandMessages } from './com
 import { useApiCommand } from './use-api-command.ts'
 
 // Aday/CRM yazma komutları (`POST /prospects`, `PATCH /prospects/:id`,
-// `POST /prospects/:id/{notes,meetings,trial-lessons}`; core `prospect.create` `prospect.stage`
-// `prospect.note` `prospect.meeting` `prospect.trial`, docs/domain/kayit-ve-crm.md DOM-KAY-002…009,
-// DOM-KAY-030…034, DOM-DIL-030). Okuma genel koleksiyon kancalarındadır (`prospects`).
+// `POST /prospects/:id/{notes,meetings,trial-lessons,enroll}`; core `prospect.create`
+// `prospect.stage` `prospect.note` `prospect.meeting` `prospect.trial` `prospect.enroll`,
+// docs/domain/kayit-ve-crm.md DOM-KAY-001…011, DOM-KAY-030…035, DOM-DIL-030). Okuma genel
+// koleksiyon kancalarındadır (`prospects`).
 // Hepsi `exclusive`: yollu `issues` (mükerrer aday `phone`, kardeş `siblingOfId`, görüşme çakışması
 // `date`, veli onayı `guardianConsent`) yalnız form alanında görünür, toast çıkmaz; yolsuz hata
 // tek toast olur. Aday ekleme `Idempotency-Key` taşır; var olan adayı değiştiren komutlar okunan
-// sürümü `If-Match` olarak taşır, sürüm yoksa istek atılmaz (`requireIfMatch`).
-// TODO(api-prospect-enroll): kesin kayıt kancası uç açılınca eklenir (DOM-KAY-035).
+// sürümü `If-Match` olarak taşır, sürüm yoksa istek atılmaz (`requireIfMatch`). Kesin kayıt
+// ikisini birden taşır: mükerrer öğrenci ve taksit üretilmez (DOM-KAY-011).
 
 type JsonBody<TOperation extends keyof operations> = NonNullable<
   operations[TOperation]['requestBody']
@@ -24,6 +25,8 @@ export type ChangeProspectStageBody = JsonBody<'changeProspectStage'>
 export type AddProspectNoteBody = JsonBody<'addProspectNote'>
 export type ScheduleProspectMeetingBody = JsonBody<'scheduleProspectMeeting'>
 export type ScheduleTrialLessonBody = JsonBody<'scheduleTrialLesson'>
+/** Kesin kayıt gövdesi; tutar kuruş tamsayıdır (`totalCents`, şimdilik 100'ün katı). */
+export type EnrollProspectBody = JsonBody<'enrollProspect'>
 
 /** Var olan adayı değiştiren komut: okunan sürüm `If-Match` olarak zorunludur. */
 interface ProspectCommandInput<TBody> {
@@ -35,6 +38,7 @@ export type ChangeProspectStageInput = ProspectCommandInput<ChangeProspectStageB
 export type AddProspectNoteInput = ProspectCommandInput<AddProspectNoteBody>
 export type ScheduleProspectMeetingInput = ProspectCommandInput<ScheduleProspectMeetingBody>
 export type ScheduleTrialLessonInput = ProspectCommandInput<ScheduleTrialLessonBody>
+export type EnrollProspectInput = ProspectCommandInput<EnrollProspectBody>
 
 /** Aday bu arada başka biri tarafından güncellendi (`If-Match` tutmadı): güncel kart yüklenir. */
 export const PROSPECT_CHANGED_MESSAGE =
@@ -42,6 +46,19 @@ export const PROSPECT_CHANGED_MESSAGE =
 
 export const PROSPECT_MESSAGES = {
   version_conflict: PROSPECT_CHANGED_MESSAGE,
+} as const satisfies CommandMessages
+
+/**
+ * Kesin kayıt `crm` yanında `finance` modülünü ister (taksit ve sözleşme yazar, DOM-YTK-040);
+ * kapalıysa sunucunun genel modül iletisi yerine hangi modülün gerektiği söylenir. Yollu iş
+ * kuralı hataları (`amount_not_whole_lira` → `totalCents`) `exclusive` ile alana gider.
+ */
+export const ENROLL_MODULE_DISABLED_MESSAGE =
+  'Kesin kayıt için aday (CRM) ve finans modüllerinin açık olması gerekir.'
+
+export const ENROLL_PROSPECT_MESSAGES = {
+  ...PROSPECT_MESSAGES,
+  module_disabled: ENROLL_MODULE_DISABLED_MESSAGE,
 } as const satisfies CommandMessages
 
 const versioned = (headers: CommandHeaders) => ({
@@ -104,6 +121,17 @@ export function scheduleTrialLessonRequest(
   })
 }
 
+export function enrollProspectRequest(
+  client: KampusClient,
+  { prospectId, body }: EnrollProspectInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/prospects/{prospectId}/enroll', {
+    params: { path: { prospectId }, header: versioned(headers) },
+    body,
+  })
+}
+
 interface CommandOptions {
   onSuccess?: () => void | Promise<void>
 }
@@ -114,6 +142,17 @@ interface CommandOptions {
  */
 export const PROSPECT_INVALIDATES: readonly (readonly unknown[])[] = [
   collectionKeyPrefix('prospects'),
+]
+/**
+ * Kesin kayıt adayı kapatır ve öğrenci, veli, taksit ile sözleşme doğurur: başarıda ve 409'da bu
+ * koleksiyonların etkin kurum sorguları da tazelenir (öğrenci listesi, finans ekranları).
+ */
+export const ENROLL_PROSPECT_INVALIDATES: readonly (readonly unknown[])[] = [
+  collectionKeyPrefix('prospects'),
+  collectionKeyPrefix('students'),
+  collectionKeyPrefix('parents'),
+  collectionKeyPrefix('invoices'),
+  collectionKeyPrefix('contracts'),
 ]
 const versionOf = <TBody>(input: ProspectCommandInput<TBody>) => input.version
 const success = (options: CommandOptions) =>
@@ -173,6 +212,22 @@ export function useScheduleTrialLesson(options: CommandOptions = {}) {
     version: versionOf<ScheduleTrialLessonBody>,
     invalidates: PROSPECT_INVALIDATES,
     messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}
+
+/**
+ * Adayı kesin kayda alır (201; `entity` yeni öğrenci): okunan aday sürümü `If-Match`, her eylem
+ * `Idempotency-Key` taşır (DOM-KAY-011, DOM-KAY-035). Modül kapalıysa toast
+ * `ENROLL_MODULE_DISABLED_MESSAGE`; 400 ve 422 `issues` alanlara yazılır (`totalCents`, `classId`).
+ */
+export function useEnrollProspect(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: enrollProspectRequest,
+    version: versionOf<EnrollProspectBody>,
+    invalidates: ENROLL_PROSPECT_INVALIDATES,
+    messages: ENROLL_PROSPECT_MESSAGES,
     exclusive: true,
     ...success(options),
   })

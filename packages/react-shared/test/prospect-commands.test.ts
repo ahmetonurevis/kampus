@@ -20,12 +20,17 @@ import {
   addProspectNoteRequest,
   changeProspectStageRequest,
   createProspectRequest,
+  ENROLL_MODULE_DISABLED_MESSAGE,
+  ENROLL_PROSPECT_INVALIDATES,
+  ENROLL_PROSPECT_MESSAGES,
+  enrollProspectRequest,
   PROSPECT_CHANGED_MESSAGE,
   PROSPECT_INVALIDATES,
   PROSPECT_MESSAGES,
   scheduleProspectMeetingRequest,
   scheduleTrialLessonRequest,
   type AddProspectNoteInput,
+  type EnrollProspectInput,
 } from '../src/use-prospect-commands.ts'
 
 interface Sent {
@@ -246,5 +251,188 @@ describe('aday komutları', () => {
     assert.equal(refreshed, 1)
     assert.equal(PROSPECT_MESSAGES.version_conflict, PROSPECT_CHANGED_MESSAGE)
     assert.notEqual(PROSPECT_CHANGED_MESSAGE, IF_MATCH_MISSING_MESSAGE)
+  })
+})
+
+describe('kesin kayıt komutu', () => {
+  const enrollment: EnrollProspectInput = {
+    prospectId: 'pr 1',
+    version: 3,
+    body: { classId: 'c1', totalCents: 3_600_000, count: 3, startDate: '2026-11-15' },
+  }
+  const created = {
+    data: {
+      entity: { collection: 'students', id: 's-new' },
+      changes: { inserted: 6, updated: 1, archived: 0, restored: 0 },
+      records: [],
+    },
+  }
+  /** Kanca yolu: `useEnrollProspect` ile aynı adımlar (`exclusive`, kesin kayıt iletileri). */
+  function enrollCommand(
+    client: ReturnType<typeof fakeClient>['client'],
+    refresh = async () => {},
+  ) {
+    return {
+      execute: (input: EnrollProspectInput, headers: Parameters<typeof enrollProspectRequest>[2]) =>
+        runRequest(() => enrollProspectRequest(client, input, headers)),
+      version: (input: EnrollProspectInput) => input.version,
+      refresh,
+      messages: ENROLL_PROSPECT_MESSAGES,
+      exclusive: true,
+    }
+  }
+
+  test('DOM-KAY-035, DOM-KAY-011: kesin kayıt alt yola If-Match ve Idempotency-Key ile, tutarı kuruş olarak gönderir', async () => {
+    const { client, sent } = fakeClient(201, created)
+    const outcome = await runCommand(
+      createCommandSession(() => 'key-enroll-1'),
+      enrollCommand(client, async () => assert.fail('başarıda çakışma tazelemesi yok')),
+      enrollment,
+      { notifyError: () => assert.fail('hata beklenmiyordu') },
+    )
+    assert.equal(outcome.status, 'success')
+    assert.equal(sent.length, 1)
+    assert.equal(`${sent[0]?.method} ${sent[0]?.path}`, 'POST /api/v1/prospects/pr%201/enroll')
+    assert.equal(sent[0]?.headers.get('if-match'), '"3"')
+    assert.equal(sent[0]?.headers.get('idempotency-key'), 'key-enroll-1')
+    // Aday kimliği yalnız yolda; gövde kuruş tamsayıdır.
+    assert.deepEqual(sent[0]?.body, enrollment.body)
+  })
+
+  test('DOM-KAY-035: okunan aday sürümü yoksa kesin kayıt isteği atılmaz', async () => {
+    const { client, sent } = fakeClient(201, created)
+    await assert.rejects(
+      runRequest(() => enrollProspectRequest(client, enrollment, commandHeaders('key-12345'))),
+      (error: unknown) =>
+        error instanceof Error && 'code' in error && error.code === IF_MATCH_MISSING_CODE,
+    )
+    assert.equal(sent.length, 0)
+  })
+
+  test('DOM-YTK-040: crm veya finance kapalıyken 403 module_disabled modülleri adlandıran tek toast olur; alan ve tazeleme yok', async () => {
+    const { client } = fakeClient(403, {
+      code: 'module_disabled',
+      message: 'Bu modül kurumunuzda kapalı.',
+      requestId: 'req-1',
+    })
+    const notified: string[] = []
+    const fields: string[] = []
+    const outcome = await runCommand(
+      createCommandSession(() => 'key-enroll-2'),
+      enrollCommand(client, async () => assert.fail('403 tazeleme istemez')),
+      enrollment,
+      {
+        notifyError: (text) => notified.push(text),
+        setError: (name) => fields.push(name),
+      },
+    )
+    assert.equal(outcome.status, 'failed')
+    assert.deepEqual(notified, [ENROLL_MODULE_DISABLED_MESSAGE])
+    assert.deepEqual(fields, [])
+  })
+
+  test('DOM-KAY-011: 100’ün katı olmayan tutarın 422 iletisi totalCents alanına yazılır, toast çıkmaz', async () => {
+    const message = 'Tutar şimdilik tam lira olmalıdır; kuruşlu tutar girilemez.'
+    const { client } = fakeClient(422, {
+      code: 'amount_not_whole_lira',
+      message,
+      issues: [{ path: ['totalCents'], code: 'amount_not_whole_lira', message }],
+      requestId: 'req-2',
+    })
+    const notified: string[] = []
+    const fields: { name: string; type: string; message: string }[] = []
+    const outcome = await runCommand(
+      createCommandSession(() => 'key-enroll-3'),
+      enrollCommand(client, async () => assert.fail('422 tazeleme istemez')),
+      { ...enrollment, body: { ...enrollment.body, totalCents: 3_600_050 } },
+      {
+        notifyError: (text) => notified.push(text),
+        setError: (name, error) => fields.push({ name, ...error }),
+      },
+    )
+    assert.equal(outcome.status, 'failed')
+    assert.deepEqual(fields, [{ name: 'totalCents', type: 'amount_not_whole_lira', message }])
+    assert.deepEqual(notified, [])
+  })
+
+  test('DOM-KAY-035: 400 doğrulama maddeleri alanlara gider; yolsuz 409 kayıtlı aday tek toast ve tazeleme', async () => {
+    const { client } = fakeClient(400, {
+      code: 'validation_failed',
+      message: 'Formda düzeltilmesi gereken alanlar var.',
+      issues: [{ path: ['classId'], code: 'too_small', message: 'Sınıf seçin.' }],
+      requestId: 'req-3',
+    })
+    const fields: string[] = []
+    const notified: string[] = []
+    await runCommand(
+      createCommandSession(() => 'key-enroll-4'),
+      enrollCommand(client),
+      enrollment,
+      {
+        notifyError: (text) => notified.push(text),
+        setError: (name) => fields.push(name),
+      },
+    )
+    assert.deepEqual(fields, ['classId'])
+    assert.deepEqual(notified, [])
+
+    const already = 'Bu adayın kaydı zaten tamamlanmış.'
+    const conflict = fakeClient(409, {
+      code: 'prospect_already_enrolled',
+      message: already,
+      requestId: 'req-4',
+    })
+    const toasts: string[] = []
+    let refreshed = 0
+    const outcome = await runCommand(
+      createCommandSession(() => 'key-enroll-5'),
+      enrollCommand(conflict.client, async () => {
+        refreshed += 1
+      }),
+      enrollment,
+      { notifyError: (text) => toasts.push(text), setError: () => assert.fail('yolsuz hata') },
+    )
+    assert.equal(outcome.status, 'failed')
+    assert.deepEqual(toasts, [already])
+    assert.equal(refreshed, 1)
+    assert.equal(ENROLL_PROSPECT_MESSAGES.version_conflict, PROSPECT_CHANGED_MESSAGE)
+  })
+
+  test('DOM-KAY-001: başarıda ve çakışmada etkin kurumun aday, öğrenci, veli ve finans sorguları geçersiz kılınır; başka kurum ve ilgisiz koleksiyon kalır', async () => {
+    const queryClient = new QueryClient()
+    const key = (institution: string, collection: string) =>
+      institutionKey(institution, ...collectionKeyPrefix(collection), 'list', {})
+    const touched = ['prospects', 'students', 'parents', 'invoices', 'contracts']
+    const own = touched.map((collection) => key('inst-a', collection))
+    const other = touched.map((collection) => key('inst-b', collection))
+    const unrelated = key('inst-a', 'grades')
+    for (const item of [...own, ...other, unrelated]) queryClient.setQueryData(item, [])
+    await invalidateInstitutionQueries(queryClient, 'inst-a', ENROLL_PROSPECT_INVALIDATES)
+    const invalidated = (item: readonly unknown[]) =>
+      queryClient.getQueryState(item)?.isInvalidated ?? false
+    assert.deepEqual(own.map(invalidated), [true, true, true, true, true])
+    assert.deepEqual(other.map(invalidated), [false, false, false, false, false])
+    assert.equal(invalidated(unrelated), false)
+  })
+
+  test('DOM-KAY-011: belirsiz hatadan sonra aynı kesin kayıt aynı Idempotency-Key ile yeniden gönderilir', async () => {
+    const failing = fakeClient(503, {
+      code: 'unavailable',
+      message: 'Hizmet şu anda kullanılamıyor.',
+      requestId: 'req-5',
+    })
+    let generated = 0
+    const session = createCommandSession(() => `key-enroll-retry-${String(++generated)}`)
+    await runCommand(session, enrollCommand(failing.client), enrollment, { notifyError: () => {} })
+    const ok = fakeClient(201, created)
+    const outcome = await runCommand(session, enrollCommand(ok.client), enrollment, {
+      notifyError: () => assert.fail('hata beklenmiyordu'),
+    })
+    assert.equal(outcome.status, 'success')
+    assert.equal(
+      ok.sent[0]?.headers.get('idempotency-key'),
+      failing.sent[0]?.headers.get('idempotency-key'),
+    )
+    assert.equal(generated, 1)
   })
 })

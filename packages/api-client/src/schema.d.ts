@@ -1904,6 +1904,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/{prospectId}/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adayı kesin kayda al
+         * @description Açık aşamadaki adayı kesin kayda alır: öğrenci, veli, taksit planı ve sözleşme oluşturulur, aday `Kayıt oldu` olur; hepsi tek işlemde yazılır, hata olursa hiçbir kayıt değişmez (core `enrollProspect`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetki core `prospect.enroll` işlemden önce ayrıca denetlenir. Gövde: `classId`, `totalCents` (eğitim bedeli, kuruş, tamsayı, 10.000–100.000.000), `count` (1–12 taksit), `startDate` (ilk vade, `YYYY-MM-DD`); sayısal alanlar metin olarak gelirse, aday kimliği gövdede olursa veya bilinmeyen alan varsa 400 `validation_failed`. Tutar şimdilik tam lira olmalıdır: 100'ün katı olmayan `totalCents` 422 `amount_not_whole_lira` (`issues` yolu `totalCents`). Olmayan veya başka kurumun aday ya da sınıfı 404; dolu sınıf 422 `class_capacity_full`, geçersiz ilk vade 422 `invalid_payment_date`. Kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş veya tanınmayan aşamadaki aday 409 `prospect_closed` (önce `İletişime geçildi` ile yeniden açılır). İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Aday telefonu, e-postası ve veli adı loglanmaz; denetim kaydına yalnız alan adları ve kimlikler yazılır. Modüller `crm` ve `finance` (taksit ve sözleşme yazılır); biri kapalıysa 403 `module_disabled`. `Idempotency-Key` zorunludur (mükerrer öğrenci ve taksit üretilmez). `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201; `entity` yeni öğrencidir ve `Location` öğrenci kaydını gösterir. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["enrollProspect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -15020,6 +15040,121 @@ export interface operations {
         responses: {
             /** @description Default Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    enrollProspect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Aday kimliği */
+                prospectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Öğrencinin yerleşeceği etkin sınıf */
+                    classId: string;
+                    /** @description Eğitim bedeli, kuruş (tamsayı). 10.000–100.000.000 (100–1.000.000 ₺); şimdilik 100’ün katı olmalı (tam lira), değilse 422 `amount_not_whole_lira` */
+                    totalCents: number;
+                    /** @description Taksit sayısı (1–12) */
+                    count: number;
+                    /** @description İlk taksitin vadesi (`YYYY-MM-DD`) */
+                    startDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -57,6 +57,7 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   'announcement.read': 'Duyuru okundu',
   'conversation.start': 'Yazışma başlatıldı',
   'conversation.access': 'Yazışmaya gerekçeyle erişildi',
+  'parent_contact.reveal': 'Veli iletişim bilgisi açıldı',
   'message.send': 'Mesaj gönderildi',
   'message.read': 'Mesaj okundu',
   'workflow.guidance': 'Rehberlik kaydı değişti',

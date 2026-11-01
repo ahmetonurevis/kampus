@@ -682,7 +682,7 @@ export interface AppealDecisionWriteInput {
 
 /**
  * İtiraz kararı (DOM-BEC-025; core `planAppealDecision`): o sürümü hiçbir rolde puanlamamış
- * öğretmen veya yönetici (409 `rater_not_independent`), gerekçeyle; kabulde yeni `final` puan
+ * öğretmen (409 `rater_not_independent`; rota yalnız `ogretmen` rolüne açar, yönetici 403), gerekçeyle; kabulde yeni `final` puan
  * eklenir, ilk puan ve önceki puanlar kayıt geçmişinde kalır. Sonuçlanmış itiraz 409
  * `appeal_decided`. `If-Match` teslimin `rowVersion`'ıdır. Karar gerekçesi loglanmaz.
  */

@@ -56,8 +56,9 @@ import {
  * altında yazılır, teslim üst düzey `task-submissions` kaynağıyla okunur (api-tasarimi.md §1).
  * Öğretmen puanlaması, yeniden teslim isteği ve puanlama kuyruğu (F4b3b1; DOM-BEC-020…023, 040,
  * 045) yönetici ve atamayı gören öğretmenindir; servis `services/task-grading.ts`. İkinci
- * puanlama (örneklem, elle istek, ikinci puan; DOM-BEC-024), puanlama süresi ve itiraz kararı
- * (DOM-BEC-025) da onlarındır; itirazı kursiyer veya velisi yapar (F4b3b2a).
+ * puanlama (örneklem, elle istek, ikinci puan; DOM-BEC-024) ve puanlama süresi de onlarındır;
+ * itirazı kursiyer veya velisi yapar, kararı yalnız atamayı gören öğretmen verir (DOM-BEC-025;
+ * yönetici okur, karar veremez; F4b3b2a).
  */
 
 const MODULE = 'learning'
@@ -65,6 +66,8 @@ const READERS: readonly Role[] = ['yonetici', 'ogretmen', 'ogrenci', 'veli']
 const WRITERS: readonly Role[] = ['ogrenci']
 const APPELLANTS: readonly Role[] = ['ogrenci', 'veli']
 const GRADERS: readonly Role[] = ['yonetici', 'ogretmen']
+/** İtiraz kararı yalnız öğretmendedir (DOM-BEC-025); yönetici okur ama karar vermez. */
+const APPEAL_DECIDERS: readonly Role[] = ['ogretmen']
 const READ_ACCESS =
   'Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz (DOM-BEC-023); puan öğretmenin rubrik puanıdır, her okumada kriter bantlarından hesaplanır. Kursiyer ve veli puanı ve geri bildirimi yalnız puan kesinleşip geri bildirim açılınca görür (DOM-BEC-045); öncesinde `score: null`, puanlanmamış sürümle aynı. Kesinleşmemiş puanı yalnız personel görür (öğretmen kendi puanını, yönetici hepsini). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.'
 const GRADE_ACCESS =
@@ -91,6 +94,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
   const write = [app.requireModule(MODULE), app.requireRole(WRITERS)]
   const grade = [app.requireModule(MODULE), app.requireRole(GRADERS)]
   const appeal = [app.requireModule(MODULE), app.requireRole(APPELLANTS)]
+  const appealDecider = [app.requireModule(MODULE), app.requireRole(APPEAL_DECIDERS)]
 
   typed.get(
     '/api/v1/task-submissions',
@@ -427,12 +431,12 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
   typed.post(
     '/api/v1/task-submissions/:submissionId/appeals/:appealId/decision',
     {
-      preValidation: [...grade, requireIfMatch()],
+      preValidation: [...appealDecider, requireIfMatch()],
       schema: {
         operationId: 'decideTaskAppeal',
         tags: ['task-submissions'],
         summary: 'İtirazı karara bağla',
-        description: `İtirazı o sürümü hiçbir rolde puanlamamış öğretmen veya yönetici karara bağlar (DOM-BEC-025; core \`planAppealDecision\`); puanlayan kişi 409 \`rater_not_independent\`. Karar gerekçesiyle bildirilir: \`upheld\` yeni rubrik puanı (son puan) ister, \`rejected\` yalnız gerekçe. İlk puan ve önceki puanlar kayıt geçmişinde kalır; kabulde son puan geçerli olur ve kursiyere açılır. Sonuçlanmış itiraz 409 \`appeal_decided\`; bilinmeyen itiraz 404. Karar gerekçesi loglanmaz. Başarı 200 ve teslimin güncel ayrıntısı. ${GRADE_ACCESS}`,
+        description: `İtirazı o sürümü hiçbir rolde puanlamamış, atamayı gören öğretmen karara bağlar (DOM-BEC-025: itiraz ilk puanlayıcı dışında bir öğretmene gider; core \`planAppealDecision\`); puanlayan öğretmen 409 \`rater_not_independent\`. Yönetici itirazı okur ama karar veremez (403 \`forbidden\`). Karar gerekçesiyle bildirilir: \`upheld\` yeni rubrik puanı (son puan) ister, \`rejected\` yalnız gerekçe. İlk puan ve önceki puanlar kayıt geçmişinde kalır; kabulde son puan geçerli olur ve kursiyere açılır. Sonuçlanmış itiraz 409 \`appeal_decided\`; bilinmeyen itiraz 404. Karar gerekçesi loglanmaz. Başarı 200 ve teslimin güncel ayrıntısı. Roller: yalnız \`ogretmen\` (atamayı gören; DOM-YTK-028); yönetici, öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → \`If-Match\` (teslimin \`rowVersion\`'ı, zorunlu) 409 \`version_conflict\` → core kuralı. \`Idempotency-Key\` zorunlu. Modül \`learning\`; kapalıysa 403 \`module_disabled\`.`,
         params: taskAppealParamsSchema,
         body: taskAppealDecisionBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),

@@ -1217,7 +1217,7 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     assert.deepEqual(audit?.changes, { fields: ['reason', 'filedAt'] })
   })
 
-  test('DOM-BEC-025: itirazı ilk puanlayıcı karara bağlayamaz (409 rater_not_independent); başka öğretmen kabul eder, son puan geçerli olur, ilk puan kayıt geçmişinde kalır; ikinci karar 409; öğrenci 403; gerekçe loglanmaz', async () => {
+  test('DOM-BEC-025: itirazı ilk puanlayıcı karara bağlayamaz (409 rater_not_independent); yönetici karar veremez (403), okur; başka öğretmen kabul eder, son puan geçerli olur, ilk puan kayıt geçmişinde kalır; ikinci karar 409; öğrenci 403; gerekçe loglanmaz', async () => {
     const { t, submission } = await setup()
     const id = submission.id as string
     await ok(await score(id, t.cookies.teacher, 1), 201)
@@ -1242,8 +1242,20 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       'rater_not_independent',
     )
     fails(await decide(id, appealId, t.cookies.student, staffVersion, upheld), 403, 'forbidden')
+    // Yönetici itirazı okur ama karar veremez (DOM-BEC-025); atamayı görmeyen öğretmen 404.
+    fails(await decide(id, appealId, t.cookies.admin, staffVersion, upheld), 403, 'forbidden')
     const stranger = await signInAs(app, (await createInstitution(app)).admin)
-    fails(await decide(id, appealId, stranger, staffVersion, upheld), 404, 'not_found')
+    fails(await decide(id, appealId, stranger, staffVersion, upheld), 403, 'forbidden')
+    fails(
+      await decide(id, appealId, t.cookies.otherTeacher, staffVersion, upheld),
+      404,
+      'not_found',
+    )
+    assert.equal(
+      (await ok(await detail(id, t.cookies.admin))).versions[0].appeal.id,
+      appealId,
+      'yönetici itirazı okuyamadı',
+    )
     fails(
       await decide(id, appealId, t.cookies.colleague, staffVersion, { ...upheld, total: 10 }),
       400,
@@ -1271,7 +1283,7 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       .where(eq(rubricScores.institutionId, t.institution.id))
     assert.deepEqual(roles.map((row) => row.role).sort(), ['final', 'first'])
     fails(
-      await decide(id, appealId, t.cookies.admin, decided.rowVersion, {
+      await decide(id, appealId, t.cookies.colleague, decided.rowVersion, {
         outcome: 'rejected',
         reason: 'İkinci karar denemesi.',
       }),

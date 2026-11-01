@@ -28,8 +28,9 @@ import { institutionSettings } from '../db/schema/institution-settings.ts'
 import {
   findStudentIdentity,
   insertStudentIdentity,
-  isIdentityInUse,
+  findIdentityHolder,
 } from '../db/student-identities.ts'
+import { archiveStudentIdentity } from '../db/withdrawals.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
@@ -251,12 +252,7 @@ export function enrollProspectCommand(
           .limit(1)
         const academicYear = settings?.academicYear ?? Number(dayKey(ctx.now).slice(0, 4))
         const tariff = await findPublishedTariff(tx, ctx.institutionId, academicYear)
-        const identityInUse = await isIdentityInUse(
-          tx,
-          ctx.institutionId,
-          academicYear,
-          identity.number,
-        )
+        const identityHolderId = await findIdentityHolder(tx, ctx.institutionId, identity.number)
         return {
           scalars,
           run: (state, { now, makeId }) => {
@@ -265,7 +261,7 @@ export function enrollProspectCommand(
               institutionType,
               tariff,
               academicYear,
-              identityInUse,
+              identityHolderId,
               approvedByUserId: ctx.actor.userId,
               canApproveCapException: ctx.actor.role === 'yonetici',
               today: dayKey(ctx.now),
@@ -274,6 +270,8 @@ export function enrollProspectCommand(
         }
       },
       after: async (tx, result) => {
+        if (result.supersededStudentId !== null)
+          await archiveStudentIdentity(tx, ctx.institutionId, result.supersededStudentId, ctx.now)
         await insertStudentIdentity(tx, ctx.institutionId, {
           studentId: result.student.id,
           academicYear: result.academicYear,

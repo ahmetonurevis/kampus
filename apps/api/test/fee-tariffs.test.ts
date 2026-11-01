@@ -229,4 +229,19 @@ describe('ücret tarifesi uçları', () => {
     assert.deepEqual(second.json(), first.json())
     assert.equal(second.headers['idempotent-replayed'], 'true')
   })
+
+  test('IST-104: yalnız kalem gönderen PATCH indirimleri silmez', async () => {
+    const a = await institution()
+    const discounts = [{ kind: 'sibling', percentBasisPoints: 1_000, amountCents: null }]
+    const created = await create(a.cookie, { ...DRAFT, discounts })
+    assert.equal(created.statusCode, 201, created.body)
+    const { id, version } = created.json().data
+    const edited = await update(a.cookie, id, version, { items: [TUITION] })
+    assert.equal(edited.statusCode, 200, edited.body)
+    assert.deepEqual(edited.json().data.discounts, discounts)
+    const cleared = await update(a.cookie, id, edited.json().data.version, { discounts: [] })
+    assert.equal(cleared.statusCode, 200, cleared.body)
+    assert.deepEqual(cleared.json().data.items, [TUITION])
+    assert.deepEqual(cleared.json().data.discounts, [])
+  })
 })

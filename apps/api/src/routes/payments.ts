@@ -140,7 +140,7 @@ export function registerPaymentRoutes(app: FastifyInstance) {
         tags: ['payments'],
         summary: 'Tahsilatı iptal et',
         description:
-          'Tahsilat silinmez ve tutarı değişmez; gerekçeyle iptal edilir, dağıtıldığı taksitler yeniden açılır (DOM-FIN-033). İptal edilmiş tahsilat 409 `payment_already_reversed`. `If-Match` zorunludur (tahsilatın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. `Idempotency-Key` zorunludur. Olmayan veya başka kurumun tahsilatı 404. Rol: `yonetici`.',
+          'Tahsilat silinmez ve tutarı değişmez; gerekçeyle iptal edilir, dağıtıldığı taksitler yeniden açılır (DOM-FIN-033). İptal edilmiş tahsilat 409 `payment_already_reversed`; ayrılış kaydı olan öğrencinin tahsilatı 409 `payment_student_withdrawn` (iade hesabı bu tahsilata dayanır, DOM-FIN-041). `If-Match` zorunludur (tahsilatın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. `Idempotency-Key` zorunludur. Olmayan veya başka kurumun tahsilatı 404. Rol: `yonetici`.',
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
         params: paymentParamsSchema,
         body: reversePaymentSchema,

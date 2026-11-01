@@ -2,6 +2,17 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Kayıt ve finans inceleme düzeltmeleri
+
+- Ayrılış kaydı olan öğrencinin tahsilatı iptal edilemez: 409 `payment_student_withdrawn` (DOM-FIN-041).
+- İade hesabı öğrenim, ek hizmet ve dağıtılmamış tahsilatı netleştirir; iade ve borç birlikte oluşmaz (DOM-FIN-040).
+- `parents.phone` ve `parents.relationship` öğretmen ve öğrenciye dönmez.
+- `GET /finance/exports` hız sınırı çerez özeti yerine kullanıcı kimliğine bağlandı.
+- `GET /students/:studentId/identity` `crm` modülünü denetler.
+- Kimlik tekilliği eğitim yılından ayrıldı, pasif kaydın kimliği yeniden kullanılır (migration `0018_relax_identity_year`).
+- `PATCH /fee-tariffs/:tariffId` verilmeyen alanı korur.
+- Dil okulunda kesin kayıt fiyatı sınıfın CEFR düzeyinden (`level`) okunur.
+
 ## Muhasebe dışa aktarımı
 
 - `GET /api/v1/finance/summary` ve `GET /api/v1/finance/exports` eklendi (ADR 0006 karar 11, IST-111). Dosya tahsilat, ödenmiş iade veya taksit satırlarını CSV olarak döner; toplamı özetle aynı satırlardan üretilir. Migration yok.

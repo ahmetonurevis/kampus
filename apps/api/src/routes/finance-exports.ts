@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto'
-
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
@@ -30,10 +28,9 @@ const summarySchema = dataResponse(
   }),
 )
 
-/** Çerez özeti kullanıcıyı ayırır; ham çerez bellekte anahtar olarak tutulmaz. */
+/** Sayaç doğrulanmış kullanıcıyadır; istemcinin değiştirebildiği başlığa bağlanmaz. */
 function exportRateKey(request: FastifyRequest): string {
-  const cookie = request.headers.cookie
-  return cookie ? createHash('sha256').update(cookie).digest('hex') : request.ip
+  return request.auth?.userId ?? request.ip
 }
 
 export function registerFinanceExportRoutes(app: FastifyInstance) {
@@ -61,7 +58,13 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
     '/api/v1/finance/exports',
     {
       config: {
-        rateLimit: { max: 10, timeWindow: '1 minute', keyGenerator: exportRateKey },
+        // `preHandler`: kimlik `preValidation`'da doğrulanır, anahtar kullanıcı kimliği olur.
+        rateLimit: {
+          max: 10,
+          timeWindow: '1 minute',
+          hook: 'preHandler',
+          keyGenerator: exportRateKey,
+        },
       },
       preValidation: [
         app.authenticate,

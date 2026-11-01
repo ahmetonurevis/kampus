@@ -167,7 +167,12 @@ export function planPayment(state: State, input: unknown, context: PaymentContex
  */
 export function reversePayment(
   state: State,
-  payment: { reversedAt: string | null; allocations: readonly PaymentAllocation[] },
+  payment: {
+    reversedAt: string | null
+    allocations: readonly PaymentAllocation[]
+    /** Ayrılış kaydı var: iade hesabı bu tahsilata dayanır (DOM-FIN-041). */
+    studentWithdrawn?: boolean
+  },
   input: unknown,
 ): { reason: string } {
   const { reason } = reversePaymentSchema.parse(input)
@@ -175,6 +180,12 @@ export function reversePayment(
     throw new DomainError('payment_already_reversed', 'Bu tahsilat zaten iptal edilmiş.', {
       kind: 'conflict',
     })
+  if (payment.studentWithdrawn === true)
+    throw new DomainError(
+      'payment_student_withdrawn',
+      'Ayrılış kaydı olan öğrencinin tahsilatı iptal edilemez.',
+      { kind: 'conflict' },
+    )
   const ids = new Set(payment.allocations.map((allocation) => allocation.invoiceId))
   for (const invoice of state.invoices)
     if (ids.has(invoice.id)) {

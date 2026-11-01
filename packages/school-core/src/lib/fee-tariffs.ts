@@ -77,9 +77,10 @@ export const createFeeTariffSchema = z.strictObject({
 })
 export type CreateFeeTariffInput = z.input<typeof createFeeTariffSchema>
 
+/** Kısmi güncelleme: verilmeyen alan kalır; verilen alan bütün olarak değişir. */
 export const updateFeeTariffSchema = z.strictObject({
-  items: feeItemsSchema,
-  discounts: feeDiscountsSchema,
+  items: feeItemsSchema.optional(),
+  discounts: z.array(feeDiscountSchema).max(20).optional(),
 })
 export type UpdateFeeTariffInput = z.input<typeof updateFeeTariffSchema>
 
@@ -97,6 +98,7 @@ export interface FeeTariffRow {
   versionNumber: number
   status: FeeTariffStatus
   items: readonly FeeItem[]
+  discounts: readonly FeeDiscount[]
 }
 
 /** Aynı tür ve düzey iki kez fiyatlanmaz. */
@@ -142,13 +144,14 @@ function assertDraft(row: Pick<FeeTariffRow, 'status'>): void {
 }
 
 export function planTariffUpdate(
-  row: Pick<FeeTariffRow, 'status'>,
+  row: Pick<FeeTariffRow, 'status' | 'items' | 'discounts'>,
   input: unknown,
 ): { items: FeeItem[]; discounts: FeeDiscount[] } {
   assertDraft(row)
   const data = updateFeeTariffSchema.parse(input)
-  assertUniqueItems(data.items)
-  return { items: data.items, discounts: data.discounts }
+  const items = data.items ?? [...row.items]
+  assertUniqueItems(items)
+  return { items, discounts: data.discounts ?? [...row.discounts] }
 }
 
 /**

@@ -211,14 +211,13 @@ export function quoteWithdrawal(
       paidCents: paidOf(invoice, context.allocated),
       usedCents: share(invoice.amount),
     }))
-  const extraRefund = extras.reduce(
-    (sum, line) => sum + Math.max(line.paidCents - line.usedCents, 0),
-    0,
-  )
-  const extraDebt = extras.reduce(
-    (sum, line) => sum + Math.max(line.usedCents - line.paidCents, 0),
-    0,
-  )
+  // Öğrenim, ek hizmet ve dağıtılmamış tahsilat tek bakiyede netleşir: iade ve borç birlikte
+  // oluşmaz (DOM-FIN-040: ödenen hak edilenden azsa iade sıfırdır).
+  const balance =
+    paidCents -
+    entitledCents +
+    extras.reduce((sum, line) => sum + line.paidCents - line.usedCents, 0) +
+    context.creditCents
   return {
     contractId: contract.id,
     breakdown: {
@@ -237,8 +236,8 @@ export function quoteWithdrawal(
       paidCents,
       creditCents: context.creditCents,
       extras,
-      refundCents: Math.max(paidCents - entitledCents, 0) + extraRefund + context.creditCents,
-      debtCents: Math.max(entitledCents - paidCents, 0) + extraDebt,
+      refundCents: Math.max(balance, 0),
+      debtCents: Math.max(-balance, 0),
     },
   }
 }

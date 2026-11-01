@@ -270,4 +270,11 @@ describe('muhasebe dışa aktarımı', () => {
     const other = await member(a.id, 'yonetici')
     assert.equal((await exportCsv(other, 'refunds')).statusCode, 200)
   })
+
+  test('guvenlik-kvkk: çerez başlığı değiştirilerek hız sınırı aşılamaz', async () => {
+    const a = await institution()
+    for (let index = 0; index < 10; index += 1)
+      assert.equal((await exportCsv(a.cookie, 'refunds')).statusCode, 200)
+    assertError(await exportCsv(`${a.cookie}; x=1`, 'refunds'), 429, 'rate_limited')
+  })
 })

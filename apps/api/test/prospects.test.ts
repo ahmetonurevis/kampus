@@ -11,6 +11,8 @@ import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { institutionSettings } from '../src/db/schema/institution-settings.ts'
+import { records } from '../src/db/schema/records.ts'
 import { studentIdentities } from '../src/db/schema/student-identities.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
@@ -952,6 +954,21 @@ describe('aday uçları', () => {
     )
     assert.equal(published.statusCode, 200, published.body)
   }
+  async function publishTariffForYear(cookie: string, academicYear: number) {
+    const draft = await send('POST', '/api/v1/fee-tariffs', cookie, {
+      academicYear,
+      items: [TUITION],
+    })
+    assert.equal(draft.statusCode, 201, draft.body)
+    const published = await send(
+      'POST',
+      `/api/v1/fee-tariffs/${String(draft.json().data.id)}/publish`,
+      cookie,
+      { announcedDate: '2026-05-01', mebbisRecordedDate: null },
+      ifMatch(draft.json().data.version),
+    )
+    assert.equal(published.statusCode, 200, published.body)
+  }
   async function pricedInstitution(
     overrides: Partial<InstitutionOverrides> = {},
     tariff: { items?: unknown[]; discounts?: unknown[] } = {},
@@ -1346,5 +1363,86 @@ describe('aday uçları', () => {
     assert.equal(contract?.data.title, 'Dil kursu eğitim sözleşmesi')
     assert.equal(contract?.data.grossCents, 2_000_000)
     assert.equal(contract?.data.payer, 'student')
+  })
+
+  test('DOM-YTK-040: crm modülü kapalıyken kimlik özeti 403 module_disabled', async () => {
+    const closed = await institution({ enabledModules: { crm: false } })
+    assertError(
+      await a_get(closed.adminCookie, '/api/v1/students/s1/identity'),
+      403,
+      'module_disabled',
+    )
+  })
+
+  test('DOM-YTK-020: veli telefonu öğrenciye gitmez; yönetici ve velinin kendisi görür', async () => {
+    const a = await pricedInstitution()
+    const done = await enroll(a.adminCookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(done.statusCode, 201, done.body)
+    const studentId = String(done.json().data.entity.id)
+    const student = await findRecord(db, a.id, 'students', studentId)
+    const url = `/api/v1/collections/parents/${String(student?.data.parentId)}`
+    const phone = ENROLLMENT.guardian.phone
+
+    const own = await signInAs(
+      app,
+      await createMember(app, a.id, 'ogrenci', [{ kind: 'student', recordId: studentId }]),
+    )
+    const hidden = await a_get(own, url)
+    assert.equal(hidden.statusCode, 200, hidden.body)
+    assert.equal(hidden.body.includes(phone), false)
+    assert.equal(hidden.body.includes('mother'), false)
+
+    const admin = await a_get(a.adminCookie, url)
+    assert.equal(admin.statusCode, 200, admin.body)
+    assert.equal(admin.body.includes(phone), true)
+    const parent = await signInAs(
+      app,
+      await createMember(app, a.id, 'veli', [{ kind: 'child', recordId: studentId }]),
+    )
+    assert.equal((await a_get(parent, url)).body.includes(phone), true)
+  })
+
+  test('DOM-KAY-011: kimlik tekilliği yıla bağlı değildir; pasif kaydın kimliği yeniden kullanılır', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const first = await enroll(cookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(first.statusCode, 201, first.body)
+    const elderId = String(first.json().data.entity.id)
+
+    // Eğitim yılı ilerlese de aynı kişi aktifken ikinci kayıt açılamaz.
+    await db
+      .update(institutionSettings)
+      .set({ academicYear: FIXED_NOW.getUTCFullYear() + 1 })
+      .where(eq(institutionSettings.institutionId, a.id))
+    await publishTariffForYear(a.adminCookie, FIXED_NOW.getUTCFullYear() + 1)
+    const next = await created(cookie)
+    await noEnrollment(a.id, next.id, async () => {
+      assertError(
+        await enroll(cookie, next.id, ENROLLMENT, next.version),
+        409,
+        'student_identity_duplicate',
+      )
+    })
+
+    // Öğrenci pasifleşince (mezuniyet) aynı kimlik yeniden kayıt olur, eski satır arşivlenir.
+    const elder = await findRecord(db, a.id, 'students', elderId)
+    await db
+      .update(records)
+      .set({ data: { ...elder?.data, isActive: false } })
+      .where(
+        and(
+          eq(records.institutionId, a.id),
+          eq(records.collection, 'students'),
+          eq(records.id, elderId),
+        ),
+      )
+    const again = await enroll(cookie, next.id, ENROLLMENT, next.version)
+    assert.equal(again.statusCode, 201, again.body)
+    const rows = await db
+      .select({ studentId: studentIdentities.studentId, archivedAt: studentIdentities.archivedAt })
+      .from(studentIdentities)
+      .where(eq(studentIdentities.institutionId, a.id))
+    assert.equal(rows.length, 2)
+    assert.ok(rows.find((row) => row.studentId === elderId)?.archivedAt)
   })
 })

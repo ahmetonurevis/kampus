@@ -150,7 +150,7 @@ export function registerFeeTariffRoutes(app: FastifyInstance) {
         tags: ['fee-tariffs'],
         summary: 'Tarife taslağını düzenle',
         description:
-          'Taslağın kalemlerini bütün olarak değiştirir. Yayımlanmış sürüm 409 `tariff_not_draft`. `If-Match` zorunludur: eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Rol: `yonetici`.',
+          'Verilen `items` veya `discounts` bütün olarak değişir, verilmeyen alan kalır. Yayımlanmış sürüm 409 `tariff_not_draft`. `If-Match` zorunludur: eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Rol: `yonetici`.',
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: paramsSchema,
         body: updateFeeTariffSchema,

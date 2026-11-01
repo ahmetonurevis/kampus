@@ -180,19 +180,16 @@ test('DOM-FIN-041, DOM-KAY-024: ayrılış öğrenciyi pasifler, açık taksiti 
   const plan = withdrawStudent(state, studentId, WITHDRAW, makeId, context())
 
   assert.equal(state.students.find((s) => s.id === studentId)?.isActive, false)
-  assert.equal(plan.breakdown.refundCents, 3_000_000)
+  // Öğrenim fazlası 3.000.000, ödenmemiş yemeğin kullanılan payı 100.000: iade netleşir.
+  assert.equal(plan.breakdown.refundCents, 2_900_000)
+  assert.equal(plan.breakdown.debtCents, 0)
   assert.equal(plan.refundDueDate, '2026-11-01')
   const invoices = state.invoices.filter((i) => i.studentId === studentId)
   assert.deepEqual(
     invoices.map((i) => i.id),
-    ['t-1', invoices[1]!.id],
+    ['t-1'],
   )
-  // Yemek ödenmemiş: kullanılan payı borçtur.
-  assert.equal(invoices[1]!.amount, 100_000)
-  assert.deepEqual(
-    state.contracts[0]!.invoiceIds,
-    invoices.map((i) => i.id),
-  )
+  assert.deepEqual(state.contracts[0]!.invoiceIds, ['t-1'])
   assert.equal(state.contracts[0]!.amount, 11_000_000)
   assert.equal(state.clubMemberships.length, 0)
   assert.equal(state.transportAssignments.length, 0)
@@ -298,4 +295,25 @@ test('DOM-KAY-012: ödeyici adı sözleşmeden okunur', () => {
   state.contracts[0]!.payer = 'student'
   assert.equal(payerNameOf(state, 'c-now'), student.name)
   assert.throws(() => payerNameOf(state, 'yok'), isDomainError('withdrawal_contract_missing'))
+})
+
+test('DOM-FIN-040: iade ve borç netleşir; ikisi aynı anda oluşmaz', () => {
+  const { state, studentId } = fixture()
+  // Taban 10.000.000; görülen yarısı: hak edilen 6.000.000, öğrenim ödemesi yok.
+  state.invoices[2]!.paidAt = NOW
+  const half = { ...AFTER, attendedUnits: 90 }
+  const debt = quoteWithdrawal(state, studentId, half, context()).breakdown
+  // Yemek 1.000.000 ödendi, 500.000 kullanıldı: 500.000 fazla öğrenim borcundan düşer.
+  assert.equal(debt.refundCents, 0)
+  assert.equal(debt.debtCents, 5_500_000)
+
+  const covered = quoteWithdrawal(
+    state,
+    studentId,
+    half,
+    context({ allocated: new Map([['t-1', 5_000_000]]), creditCents: 1_000_000 }),
+  ).breakdown
+  // -1.000.000 öğrenim, +500.000 yemek, +1.000.000 dağıtılmamış tahsilat.
+  assert.equal(covered.refundCents, 500_000)
+  assert.equal(covered.debtCents, 0)
 })

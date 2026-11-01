@@ -64,6 +64,25 @@ export async function findWithdrawal(
   return row ? stored(row) : null
 }
 
+/** Öğrencinin ayrılış kaydı var mı. */
+export async function hasWithdrawal(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: studentWithdrawals.id })
+    .from(studentWithdrawals)
+    .where(
+      and(
+        eq(studentWithdrawals.institutionId, institutionId),
+        eq(studentWithdrawals.studentId, studentId),
+      ),
+    )
+    .limit(1)
+  return row !== undefined
+}
+
 function statusFilter(status: RefundStatus | undefined): SQL | undefined {
   switch (status) {
     case undefined:

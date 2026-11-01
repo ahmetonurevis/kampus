@@ -209,7 +209,7 @@ export function registerProspectRoutes(app: FastifyInstance) {
         operationId: 'enrollProspect',
         tags: ['prospects'],
         summary: 'Adayı kesin kayda al',
-        description: `Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday \`Kayıt oldu\` olur (core \`enrollProspectWithTariff\`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002): tarife yoksa 422 \`tariff_not_published\`, düzeyin ücreti yoksa 422 \`tariff_tuition_missing\`. Dil okulunda \`lessonHours\` zorunlu (422 \`lesson_hours_required\`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 \`discount_not_in_tariff\`, toplam %50'yi aşarsa 422 \`discount_cap_exceeded\`, personel çocuğu istisnası yalnız yönetici (422 \`discount_approval_required\`), kardeş indirimi mevcut veli ve aktif kardeş ister (422 \`sibling_discount_ineligible\`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 \`extra_not_in_tariff\` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aynı yıl aynı kimlik 409 \`student_identity_duplicate\`. Veli zorunlu (422 \`guardian_required\`); dil okulunda 18 yaş üstü kursiyerde \`guardian: null\` kursiyeri ödeyici yapar. \`existingParentId\` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 \`not_found\`; kayıtlı aday 409 \`prospect_already_enrolled\`, vazgeçmiş aday 409 \`prospect_closed\`; dolu sınıf 422 \`class_capacity_full\`. Modül \`crm\`. \`Idempotency-Key\` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. ${ifMatchNote} Başarı 201 ve \`Location\` (öğrenci kaydı). Roller: ${rolesOf('prospect.enroll')}.`,
+        description: `Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday \`Kayıt oldu\` olur (core \`enrollProspectWithTariff\`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002): tarife yoksa 422 \`tariff_not_published\`, düzeyin ücreti yoksa 422 \`tariff_tuition_missing\`. Dil okulunda \`lessonHours\` zorunlu (422 \`lesson_hours_required\`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 \`discount_not_in_tariff\`, toplam %50'yi aşarsa 422 \`discount_cap_exceeded\`, personel çocuğu istisnası yalnız yönetici (422 \`discount_approval_required\`), kardeş indirimi mevcut veli ve aktif kardeş ister (422 \`sibling_discount_ineligible\`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 \`extra_not_in_tariff\` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aktif öğrencide kayıtlı kimlik 409 \`student_identity_duplicate\`, pasif kaydın kimliği yeniden kullanılır. Veli zorunlu (422 \`guardian_required\`); dil okulunda 18 yaş üstü kursiyerde \`guardian: null\` kursiyeri ödeyici yapar. \`existingParentId\` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 \`not_found\`; kayıtlı aday 409 \`prospect_already_enrolled\`, vazgeçmiş aday 409 \`prospect_closed\`; dolu sınıf 422 \`class_capacity_full\`. Modül \`crm\`. \`Idempotency-Key\` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. ${ifMatchNote} Başarı 201 ve \`Location\` (öğrenci kaydı). Roller: ${rolesOf('prospect.enroll')}.`,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
         params: prospectParamsSchema,
         body: enrollProspectSchema,
@@ -265,13 +265,13 @@ export function registerProspectRoutes(app: FastifyInstance) {
   typed.get(
     '/api/v1/students/:studentId/identity',
     {
-      preValidation: [app.authenticate, app.requireRole(STAFF)],
+      preValidation: [app.authenticate, app.requireModule('crm'), app.requireRole(STAFF)],
       schema: {
         operationId: 'getStudentIdentity',
         tags: ['prospects'],
         summary: 'Öğrencinin kimlik özeti',
         description:
-          'Kimlik numarası yalnız maskeli döner (`*******1234`). Kaydı olmayan veya başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo`.',
+          'Kimlik numarası yalnız maskeli döner (`*******1234`). Kaydı olmayan veya başka kurumun öğrencisi 404. Modül `crm`. Roller: `yonetici`, `onburo`.',
         params: z.object({ studentId: z.string().min(1).max(200).describe('Öğrenci kimliği') }),
         response: {
           200: dataResponse(

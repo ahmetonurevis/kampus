@@ -6,7 +6,9 @@ import { oneOf, requiredColumns } from './columns.ts'
 
 /**
  * Öğrenci kimlik verisi (ADR 0006 karar 9; DOM-KAY-011, DOM-KAY-012). `records`'a yazılmaz: genel
- * koleksiyon okuması bu alanlara hiç ulaşmaz. Aynı kişi aynı yılda ikinci aktif kayıt alamaz.
+ * koleksiyon okuması bu alanlara hiç ulaşmaz. Kurumda bir kimliğin tek arşivlenmemiş satırı olur:
+ * yenilemede öğrenci kaydı aynı kaldığı için tekillik eğitim yılına bağlanmaz. `academic_year`
+ * kaydın alındığı yıldır.
  * `student_id` `records` kimliğidir, yabancı anahtar değildir.
  */
 export const studentIdentities = pgTable(
@@ -31,7 +33,7 @@ export const studentIdentities = pgTable(
     }),
     check('student_identities_kind_check', oneOf(table.identityKind, ['tc', 'foreign'])),
     uniqueIndex('student_identities_number_key')
-      .on(table.institutionId, table.academicYear, table.identityNumber)
+      .on(table.institutionId, table.identityNumber)
       .where(sql`${table.archivedAt} is null`),
   ],
 )

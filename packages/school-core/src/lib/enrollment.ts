@@ -219,7 +219,8 @@ export interface EnrollmentContext {
   institutionType: InstitutionType
   tariff: EnrollmentTariff | null
   academicYear: number
-  identityInUse: boolean
+  /** Bu kimliğin arşivlenmemiş satırının öğrencisi; yoksa `null`. */
+  identityHolderId: string | null
   approvedByUserId: string
   canApproveCapException: boolean
   today: string
@@ -243,10 +244,11 @@ export function enrollProspectWithTariff(
       'tariff_not_published',
       'Bu eğitim yılı için yayımlanmış ücret tarifesi yok.',
     )
-  if (context.identityInUse)
+  // Aktif öğrenci ikinci kayıt alamaz; pasif veya silinmiş kaydın kimliği yeniden kullanılır.
+  if (state.students.find((student) => student.id === context.identityHolderId)?.isActive)
     throw new DomainError(
       'student_identity_duplicate',
-      'Bu kimlik numarasıyla bu yıl aktif bir kayıt var.',
+      'Bu kimlik numarasıyla aktif bir kayıt var.',
       { kind: 'conflict', path: ['identity', 'number'] },
     )
   if (data.identity.birthDate >= context.today)
@@ -284,7 +286,12 @@ export function enrollProspectWithTariff(
   }
   const cls = state.classes.find((item) => item.id === data.classId && item.isActive)
   const price = priceEnrollment(context.tariff, {
-    level: cls ? String(cls.grade) : '',
+    // Okulda düzey sınıf derecesi, dil okulunda sınıfın CEFR düzeyidir (`level`).
+    level: !cls
+      ? ''
+      : context.institutionType === 'language_school'
+        ? (cls.level ?? '')
+        : String(cls.grade),
     institutionType: context.institutionType,
     lessonHours: data.lessonHours,
     discounts: data.discounts,
@@ -332,5 +339,11 @@ export function enrollProspectWithTariff(
     makeId,
     now,
   )
-  return { ...result, identity: data.identity, academicYear: context.academicYear }
+  return {
+    ...result,
+    identity: data.identity,
+    academicYear: context.academicYear,
+    /** Arşivlenecek eski kimlik satırının öğrencisi. */
+    supersededStudentId: context.identityHolderId,
+  }
 }

@@ -210,3 +210,20 @@ test('tahsilat kaydı olmadan ödenmiş eski taksit tam ödenmiş sayılır', ()
   invoice.paidAt = NOW
   assert.equal(openAmount(invoice, new Map()), 0)
 })
+
+test('DOM-FIN-041: ayrılmış öğrencinin tahsilatı iptal edilemez; kayıt değişmez', () => {
+  const { state, studentId } = fixture()
+  const plan = planPayment(state, { studentId, amountCents: 10_000, ...bank }, context())
+  const before = JSON.stringify(state)
+  rejects(
+    () =>
+      reversePayment(
+        state,
+        { reversedAt: null, allocations: plan.allocations, studentWithdrawn: true },
+        { reason: 'Yanlış öğrenciye girildi' },
+      ),
+    'payment_student_withdrawn',
+    'conflict',
+  )
+  assert.equal(JSON.stringify(state), before)
+})

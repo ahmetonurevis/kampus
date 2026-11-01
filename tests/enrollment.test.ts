@@ -51,7 +51,7 @@ const CONTEXT: EnrollmentContext = {
   institutionType: 'school',
   tariff: TARIFF,
   academicYear: 2026,
-  identityInUse: false,
+  identityHolderId: null,
   approvedByUserId: 'test-user',
   canApproveCapException: false,
   today: '2026-10-06',
@@ -201,7 +201,8 @@ test('DOM-FIN-002: yayımlanmış tarife yoksa kayıt oluşmaz', () => {
 })
 
 test('DOM-KAY-011: aynı kimlikle ikinci kayıt reddedilir, geçersiz doğum tarihi reddedilir', () => {
-  rejectsUnchanged({}, { identityInUse: true }, 'student_identity_duplicate', 'conflict')
+  const active = createSeed(new Date(NOW)).students.find((student) => student.isActive)!.id
+  rejectsUnchanged({}, { identityHolderId: active }, 'student_identity_duplicate', 'conflict')
   rejectsUnchanged(
     { identity: { ...INPUT.identity, birthDate: '2026-10-06' } },
     {},
@@ -283,4 +284,30 @@ test('DOM-KAY-013: telefon eşleşmesi öneri döndürür, boş telefon eşleşm
   assert.ok(matches.some((match) => match.parentId === parent.id))
   assert.deepEqual(findParentMatches(state, ''), [])
   assert.deepEqual(findParentMatches(state, '05000000000'), [])
+})
+
+test('DOM-KAY-011: kimliğin sahibi pasifse veya kayıt yoksa yeni kayıt açılır, eski kimlik bildirilir', () => {
+  const seed = createSeed(new Date(NOW))
+  const holder = seed.students[0]!
+  holder.isActive = false
+  const { result } = enroll({}, { identityHolderId: holder.id }, seed)
+  assert.equal(result.supersededStudentId, holder.id)
+  assert.equal(enroll({}, { identityHolderId: 'silinmis' }).result.supersededStudentId, 'silinmis')
+  assert.equal(enroll().result.supersededStudentId, null)
+})
+
+test('DOM-FIN-006: dil okulunda fiyat sınıfın CEFR düzeyinden gelir', () => {
+  const seed = createSeed(new Date(NOW))
+  const cls = seed.classes.find((item) => item.id === 'c1')!
+  cls.level = 'B1'
+  const tariff: EnrollmentTariff = {
+    ...TARIFF,
+    items: [item({}), item({ level: 'B1', amountCents: 70_000 })],
+  }
+  const { result } = enroll(
+    { lessonHours: 10, guardian: null, identity: { ...INPUT.identity, birthDate: '2000-01-01' } },
+    { institutionType: 'language_school', tariff },
+    seed,
+  )
+  assert.equal(result.contract.grossCents, 700_000)
 })

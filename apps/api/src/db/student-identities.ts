@@ -5,25 +5,24 @@ import { studentIdentities } from './schema/student-identities.ts'
 
 /** Öğrenci kimlik deposu (ADR 0006 karar 9). Kimlik numarası loglanmaz. */
 
-export async function isIdentityInUse(
+/** Kimliğin arşivlenmemiş satırının öğrencisi; yoksa `null`. */
+export async function findIdentityHolder(
   db: Database,
   institutionId: string,
-  academicYear: number,
   identityNumber: string,
-): Promise<boolean> {
+): Promise<string | null> {
   const [row] = await db
     .select({ studentId: studentIdentities.studentId })
     .from(studentIdentities)
     .where(
       and(
         eq(studentIdentities.institutionId, institutionId),
-        eq(studentIdentities.academicYear, academicYear),
         eq(studentIdentities.identityNumber, identityNumber),
         isNull(studentIdentities.archivedAt),
       ),
     )
     .limit(1)
-  return row !== undefined
+  return row?.studentId ?? null
 }
 
 export async function insertStudentIdentity(

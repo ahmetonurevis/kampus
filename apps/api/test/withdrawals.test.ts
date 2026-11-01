@@ -369,4 +369,30 @@ describe('ayrılış ve iade uçları', () => {
     const row = await send('GET', `/api/v1/withdrawals/${String(id)}`, b.cookie)
     assert.equal(row.json().data.refundStatus, 'pending')
   })
+
+  test('DOM-FIN-041: ayrılıştan sonra tahsilat iptali 409; taksit ve iade değişmez', async () => {
+    const a = await institution()
+    const paid = await pay(a.cookie, NET / 2, 'TR-Z1')
+    assert.equal(paid.statusCode, 201, paid.body)
+    const { id, version } = paid.json().data
+    const withdrawn = await withdraw(a.cookie)
+    assert.equal(withdrawn.statusCode, 201, withdrawn.body)
+    const before = await findRecord(db, a.id, 'invoices', 'test-inv-1')
+    const reversal = await send(
+      'POST',
+      `/api/v1/payments/${String(id)}/reverse`,
+      a.cookie,
+      { reason: 'Yanlış öğrenciye girildi' },
+      { 'if-match': `"${String(version)}"`, ...key() },
+    )
+    assertError(reversal, 409, 'payment_student_withdrawn')
+    const after = await findRecord(db, a.id, 'invoices', 'test-inv-1')
+    assert.deepEqual(after?.data, before?.data)
+    const row = await send(
+      'GET',
+      `/api/v1/withdrawals/${String(withdrawn.json().data.id)}`,
+      a.cookie,
+    )
+    assert.equal(row.json().data.refundCents, withdrawn.json().data.refundCents)
+  })
 })

@@ -1,5 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { components } from '@kampus/api-client/schema.d.ts'
 import { ApiError, toApiError } from '@kampus/api-client/errors.ts'
 
@@ -20,11 +21,15 @@ const SWITCH_FAILED_MESSAGE = 'Kurum değiştirilemedi. Lütfen tekrar deneyin.'
 export function useMe() {
   const client = useKampusClient()
   const { status } = useSession()
-  return useQuery<Me, ApiError>({
+  return useQuery({ ...meQueryOptions(client), enabled: status === 'authenticated' })
+}
+
+/** `/me` sorgusunun anahtarı ve okuması; hook dışında `queryClient.fetchQuery` ile de kullanılır. */
+export function meQueryOptions(client: KampusClient) {
+  return queryOptions<Me, ApiError>({
     queryKey: ME_QUERY_KEY,
     queryFn: ({ signal }) =>
       runRequest(() => client.GET('/api/v1/me', { signal })).then((r) => r.data),
-    enabled: status === 'authenticated',
   })
 }
 

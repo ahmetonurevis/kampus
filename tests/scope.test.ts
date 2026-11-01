@@ -481,9 +481,14 @@ test('API oturumu bağlantılarıyla iş akışı başka öğretmen adına çal�
 
 test('guvenlik-kvkk §8, DOM-KAY-012: öğrencinin kimlik nosu yalnız yönetici ve ön büroya maskeli döner; doğum tarihini öğretmen görmez; ikisi aranmaz', () => {
   const state = seed()
-  const target = state.students.find((s) => s.id === 's1')
-  assert.ok(target)
-  Object.assign(target, { nationalId: '10000000146', birthDate: '2013-04-12' })
+  const found = state.students.find((s) => s.id === 's1')
+  assert.ok(found)
+  // Kimlik `student_identities` tablosundadır, State'te yoktur; maske ve arama dışı bırakma,
+  // alan bir kayda yine de düşerse diye savunma olarak sınanır.
+  const target: typeof found & { nationalId?: string; birthDate?: string } = Object.assign(found, {
+    nationalId: '10000000146',
+    birthDate: '2013-04-12',
+  })
   const rowOf = (actor: Actor) => {
     const row = visibleRecords(state, actor, 'students').find((s) => s.id === 's1')
     assert.ok(row, actor.role)
@@ -506,7 +511,8 @@ test('guvenlik-kvkk §8, DOM-KAY-012: öğrencinin kimlik nosu yalnız yönetici
   }
   // Ham kayıt değişmez; tam değer hiçbir okumada dönmez.
   assert.equal(target.nationalId, '10000000146')
-  assert.equal(redactRecord(state, admin, 'students', target)?.nationalId, '*******0146')
+  const redacted = redactRecord(state, admin, 'students', target) as Record<string, unknown> | null
+  assert.equal(redacted?.nationalId, '*******0146')
   for (const actor of [admin, frontOffice, teacher(teacherId), student('s1'), parent('s1')]) {
     const excluded = scopeFor(state, actor).searchExcludedFields('students')
     assert.ok(excluded.includes('nationalId') && excluded.includes('birthDate'), actor.role)
@@ -522,4 +528,39 @@ test('guvenlik-kvkk §8, DOM-KAY-012: öğrencinin kimlik nosu yalnız yönetici
   assert.equal('nationalId' in rowOf(admin), true)
   const other = visibleRecords(state, admin, 'students').find((s) => s.id === 's2')
   assert.equal(other && 'nationalId' in other, false)
+})
+
+// TODO(#10): veli de iletişimi görmemeli (DOM-ILT-073); kayıt testi değişince `parent('s1')`
+// öğrenci döngüsüne taşınır.
+test('DOM-KAY-003, DOM-YTK-020, DOM-YTK-055: yakınlık öğretmen ve öğrenciye dönmez; öğretmen iletişimi maskeli görür, öğrenci hiç görmez; veli ve personel görür', () => {
+  const state = seed()
+  const target = state.parents.find((p) => p.id === 'p1')
+  assert.ok(target)
+  Object.assign(target, {
+    phone: '05551234567',
+    email: 'veli@kampus.example',
+    relationship: 'mother',
+  })
+  const teacherId = state.classes.find(
+    (c) => c.id === state.students.find((s) => s.id === 's1')?.classId,
+  )?.teacherId
+  assert.ok(teacherId)
+  const fromStudent = visibleRecords(state, student('s1'), 'parents').find((p) => p.id === 'p1') as
+    Record<string, unknown> | undefined
+  assert.ok(fromStudent)
+  for (const field of ['phone', 'email', 'relationship'])
+    assert.equal(field in fromStudent, false, `ogrenci ${field}`)
+  const fromTeacher = visibleRecords(state, teacher(teacherId), 'parents').find(
+    (p) => p.id === 'p1',
+  ) as Record<string, unknown> | undefined
+  assert.ok(fromTeacher)
+  assert.equal('relationship' in fromTeacher, false)
+  assert.equal(fromTeacher.phone, '0555 *** ** 67')
+  assert.equal(fromTeacher.email, 'v***@kampus.example')
+  for (const actor of [admin, frontOffice, parent('s1')]) {
+    const row = visibleRecords(state, actor, 'parents').find((p) => p.id === 'p1') as
+      Record<string, unknown> | undefined
+    assert.equal(row?.email, 'veli@kampus.example', actor.role)
+    assert.equal(row?.phone, '05551234567', actor.role)
+  }
 })

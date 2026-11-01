@@ -6,7 +6,6 @@ import {
   requiredText,
   prospectSchema,
   enrollProspect,
-  enrollmentFromRegistration,
   payInvoice,
   type MakeId,
   type Session,
@@ -421,7 +420,7 @@ export function operation(
         text('startDate', 'İlk taksit tarihi', { type: 'date' }),
       ],
       { prospectId: record?.id, classId: 'c1', total: '240000', count: '8', startDate: dayKey() },
-      (s, v, id) => enrollProspect(s, enrollmentFromRegistration(v), id),
+      (s, v, id) => enrollProspect(s, v, id),
     )
   if (kind === 'collect')
     return config(

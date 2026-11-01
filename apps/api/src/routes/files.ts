@@ -7,7 +7,13 @@ import { AppError, MESSAGES, ValidationError } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import { DOWNLOAD_PATH, type DiskStorage } from '../storage/disk.ts'
 import { contentDisposition, sanitizeFileName } from '../services/file-detection.ts'
-import { getFile, getFileUrl, MAX_UPLOAD_BYTES, uploadFile } from '../services/files.ts'
+import {
+  findDownloadableFile,
+  getFile,
+  getFileUrl,
+  MAX_UPLOAD_BYTES,
+  uploadFile,
+} from '../services/files.ts'
 import { idempotencyOf, ifMatchVersion } from './command-support.ts'
 import { commandHeadersSchema } from './commands.schemas.ts'
 import {
@@ -142,7 +148,7 @@ export function registerFileRoutes(app: FastifyInstance, storage: DiskStorage) {
         tags: ['files'],
         summary: 'İmzalı indirme (disk sürücüsü)',
         description:
-          '`disk` sürücüsünde `GET /api/v1/files/{fileId}/url` bağlantısının hedefi; oturum istemez, yetki HMAC imzasındadır. Süresi geçmiş bağlantı 403 `link_expired`, bozuk veya değiştirilmiş bağlantı 403 `invalid_signature`, silinmiş nesne 404. Yanıt dosyanın kendisidir (`Cache-Control: no-store`); `Cross-Origin-Resource-Policy: cross-origin` ile web başka kökenden `<img>`/`<audio>` olarak gömebilir.',
+          '`disk` sürücüsünde `GET /api/v1/files/{fileId}/url` bağlantısının hedefi; oturum istemez, yetki HMAC imzasındadır. Süresi geçmiş bağlantı 403 `link_expired`, bozuk veya değiştirilmiş bağlantı 403 `invalid_signature`, silinmiş veya reddedilmiş dosya ve silinmiş nesne 404. Bağlantı özgün adı taşımaz (KVKK: URL vekil loguna ve tarayıcı geçmişine girer); ad ve tür dosya kaydından okunur. Yanıt dosyanın kendisidir (`Cache-Control: no-store`); `Cross-Origin-Resource-Policy: cross-origin` ile web başka kökenden `<img>`/`<audio>` olarak gömebilir.',
         querystring: fileDownloadQuerySchema,
         response: {
           200: z.unknown().describe('Dosya içeriği (ikili; türü `Content-Type` başlığında)'),
@@ -158,16 +164,17 @@ export function registerFileRoutes(app: FastifyInstance, storage: DiskStorage) {
         throw new AppError(403, code, LINK_MESSAGES[code])
       }
       const { object } = check
-      const opened = await storage.open(object.key)
-      if (!opened) throw new AppError(404, 'not_found', MESSAGES.not_found)
+      const row = await findDownloadableFile(app.db, object.institutionId, object.fileId)
+      const opened = row ? await storage.open(row.storageKey) : null
+      if (!row || !opened) throw new AppError(404, 'not_found', MESSAGES.not_found)
       // Helmet varsayılanı `Cross-Origin-Resource-Policy: same-origin`; bağlantı API kökeninde
       // üretilir, web başka kökenden `<img>`/`<audio>` ile açar. Yetki imzadadır (S3 ön imzalı
       // bağlantısı da CORP göndermez); CORP burada yalnız gömmeyi engellerdi.
       reply
         .header('cross-origin-resource-policy', 'cross-origin')
-        .header('content-type', object.contentType)
+        .header('content-type', row.contentType)
         .header('content-length', String(opened.byteSize))
-        .header('content-disposition', contentDisposition(object.disposition, object.fileName))
+        .header('content-disposition', contentDisposition(object.disposition, row.originalName))
       return reply.send(opened.stream)
     },
   )

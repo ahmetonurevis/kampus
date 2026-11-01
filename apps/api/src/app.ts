@@ -40,6 +40,11 @@ import { registerResourceCommandRoutes } from './routes/resource-commands.ts'
 import { registerQuestionRoutes } from './routes/questions.ts'
 import { registerRequestRoutes } from './routes/requests.ts'
 import { registerAppointmentRoutes } from './routes/appointments.ts'
+import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
+import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
+import { registerPaymentRoutes } from './routes/payments.ts'
+import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
+import { registerParentRoutes } from './routes/parents.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 import { registerResourceRoutes } from './routes/resources.ts'
 import { registerRubricRoutes } from './routes/rubrics.ts'
@@ -83,11 +88,26 @@ export const REDACTED_PATHS = [
   '*.phone',
   'guardianName',
   '*.guardianName',
-  // kvkk: Ç — kesin kayıtta öğrencinin kimlik numarası ve doğum tarihi (DOM-KAY-012).
+  // kvkk: Ç — kesin kayıtta öğrencinin kimliği, kimlik numarası ve doğum tarihi (DOM-KAY-012).
+  'identity',
+  '*.identity',
+  'identityNumber',
+  '*.identityNumber',
   'nationalId',
   '*.nationalId',
   'birthDate',
   '*.birthDate',
+  // Finans: dekont/havale referansı, iade IBAN'ı ve hesap sahibi, nakil okulu, iptal gerekçesi.
+  'reference',
+  '*.reference',
+  'iban',
+  '*.iban',
+  'accountHolder',
+  '*.accountHolder',
+  'targetSchool',
+  '*.targetSchool',
+  'reversalReason',
+  '*.reversalReason',
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
   // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).
@@ -256,8 +276,13 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerAssessmentRoutes(app)
   // Komut uçlarından sonra: ham gövde süsü (`commandInput`) orada tanımlanır.
   registerCommunicationRoutes(app)
+  registerParentRoutes(app)
   registerRequestRoutes(app)
   registerAppointmentRoutes(app)
+  registerFeeTariffRoutes(app)
+  registerFinanceExportRoutes(app)
+  registerPaymentRoutes(app)
+  registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
   registerQuestionRoutes(app)
   registerResourceRoutes(app)

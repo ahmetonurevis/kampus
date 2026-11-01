@@ -1,3 +1,4 @@
+import { lazy, Suspense, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Navigate, useSearchParams } from 'react-router'
@@ -13,6 +14,12 @@ import { RETURN_PARAM, returnPathFor } from '@/lib/return-path.ts'
 import { SessionPending } from '@/pages/shell/SessionPending.tsx'
 import { LoginStory } from './LoginStory.tsx'
 
+// Yalnız geliştirme: demo hesaplarıyla tek tıkla giriş. Üretimde koşul sabit `false` olur; bileşen,
+// hesap listesi ve parola derlemeye girmez (`vite.config.ts` `devOnlyGuard` denetler).
+const EasyLogin = import.meta.env.DEV
+  ? lazy(async () => ({ default: (await import('@/pages/dev/EasyLogin.tsx')).EasyLogin }))
+  : null
+
 const YEAR = new Date().getFullYear()
 const fieldClass = 'h-[46px] rounded-field px-3.5 text-base md:text-base'
 
@@ -26,6 +33,8 @@ export function LoginPage() {
   const { status, session, signIn, retry } = useAuth()
   useDocumentTitle('Giriş')
   const [searchParams] = useSearchParams()
+  // Kolay giriş sürerken (giriş + gerekirse kurum geçişi) yönlendirme ve bekleme ekranı ertelenir.
+  const [easyLoginPending, setEasyLoginPending] = useState(false)
   const {
     register,
     handleSubmit,
@@ -37,11 +46,13 @@ export function LoginPage() {
   })
 
   // Giriş başarılı olunca yönlendirme oturum durumundan çıkar (yeni rol `/me`'den gelir).
-  if (session)
+  if (session && !easyLoginPending)
     return <Navigate to={returnPathFor(searchParams.get(RETURN_PARAM), session.role)} replace />
-  if (status === 'loading' && !isSubmitting) return <SessionPending />
+  if (status === 'loading' && !isSubmitting && !easyLoginPending) return <SessionPending />
 
   const onSubmit = handleSubmit(async (values) => {
+    // Kolay giriş sürerken ikinci bir giriş başlatılmaz (düğme de kilitli; Enter ile gönderim dahil).
+    if (easyLoginPending) return
     try {
       const result = await signIn(values)
       if (result.ok) return
@@ -120,13 +131,18 @@ export function LoginPage() {
             </FormField>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || easyLoginPending}
               className="min-h-[47px] justify-between rounded-lg bg-brand px-5 text-base text-on-brand hover:bg-brand-hover"
             >
               {isSubmitting ? 'Giriş yapılıyor…' : 'Giriş yap'}
               <Icon name="ArrowRight" size={18} />
             </Button>
           </form>
+          {EasyLogin ? (
+            <Suspense fallback={null}>
+              <EasyLogin onPendingChange={setEasyLoginPending} />
+            </Suspense>
+          ) : null}
         </div>
         <p className="text-2xs text-muted-foreground">© {YEAR} Kampüs. Öğrenmenin her adımında.</p>
       </main>

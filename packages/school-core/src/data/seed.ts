@@ -1,11 +1,7 @@
+import type { ContractTerms } from '../lib/domain.ts'
 import { questionBank } from './question-bank.ts'
 import { subjects, subjectsForGrade, subjectById } from './curriculum.ts'
-import {
-  gradeQuiz,
-  type AttendanceCorrection,
-  type EnrollmentPayer,
-  type GuardianRelation,
-} from '../lib/domain.ts'
+import { gradeQuiz, type AttendanceCorrection } from '../lib/domain.ts'
 import { createSchoolWorkflows } from './school-workflows.ts'
 import { createAssessmentAutomation } from './assessment-automation.ts'
 import type {
@@ -868,33 +864,30 @@ type Item<K extends keyof SeedState> = SeedState[K] extends readonly (infer T)[]
 type Timestamps = { createdAt?: string; updatedAt?: string }
 export type State = Omit<SeedState, keyof StatePatches> & StatePatches
 type StatePatches = {
-  // Arayüzden kaydedilen öğrenciye okul numarası verilmez.
-  // Kesin kayıt alanları (lib/domain.ts `enrollProspect`, DOM-KAY-012); örnek veri ve eski
-  // kayıtlar taşımaz.
-  students: (Patch<Item<'students'>, { number?: string }> & {
-    academicYear?: number
-    // kvkk: Ç — T.C. veya yabancı uyruklu kimlik numarası; loglanmaz, listelerde maskelenir.
-    nationalId?: string
-    // kvkk: Ç — doğum tarihi (`YYYY-MM-DD`).
-    birthDate?: string
-    // kvkk: K — velinin öğrenciye yakınlık derecesi.
-    guardianRelation?: GuardianRelation
-  })[]
-  // 18 yaş altı öğrencinin velisinin iletişim bilgisi (DOM-KAY-003); örnek veri taşımaz.
-  // kvkk: K — veli telefonu ve e-postası.
-  parents: (Item<'parents'> & { phone?: string; email?: string })[]
+  // Arayüzden kaydedilen öğrenciye okul numarası verilmez. Kimlik no ve doğum tarihi
+  // `records.data`'ya yazılmaz; API'de `student_identities` tablosundadır (DOM-KAY-012).
+  students: (Patch<Item<'students'>, { number?: string }> & { academicYear?: number })[]
   // Not girişinin alanları; örnek veri ve eski kayıtlar bunları taşımaz (lib/grades.ts).
   grades: (Item<'grades'> & Partial<OfficialGradeFields>)[]
   // Düzeltme geçmişi; ilk kez alınan yoklama ve örnek veri taşımaz (DOM-AKD-035).
   attendance: (Item<'attendance'> & { corrections?: AttendanceCorrection[] })[]
-  invoices: (Item<'invoices'> & Timestamps & { contractId?: string; academicYear?: number })[]
+  invoices: (Item<'invoices'> &
+    Timestamps & {
+      /** Okunurken eklenen kısmi ödeme tutarı (API, DOM-FIN-030); saklanmaz. */
+      paidCents?: number
+      feeKind?: string
+      contractId?: string
+      academicYear?: number
+    })[]
+  // Kesin kayıtta yazılan veli iletişimi ve yakınlık derecesi (lib/enrollment.ts, DOM-KAY-003,
+  // DOM-KAY-012); örnek veri taşımaz.
+  // kvkk: K — veli telefonu, e-postası ve yakınlık derecesi.
+  parents: (Item<'parents'> & { phone?: string; email?: string; relationship?: string })[]
   contracts: (Item<'contracts'> & {
-    /** Kesin kayıtta ödeyici (DOM-KAY-012); eski kayıtlar taşımaz. */
-    payer?: EnrollmentPayer
     classId?: string
     academicYear?: number
     invoiceIds?: string[]
-  })[]
+  } & Partial<ContractTerms>)[]
   // İş akışıyla eklenen dersin adı ders listesinden okunur; listede yoksa boş kalır. Eski
   // kayıtlarda ders adı `subject` alanındadır.
   schedule: (Patch<Item<'schedule'>, { title?: string; subject?: string }> &

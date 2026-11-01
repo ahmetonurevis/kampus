@@ -18,5 +18,5 @@ Ayrıntı: `docs/muhendislik/kod-yazim.md` (klasör yapısı, hata sınıfları)
 - Büyük listelerde satır başına tam tarama yapılmaz; `studentId` gibi anahtarlarla `Map` indeksi bir kez kurulur.
 - Örnek veri deterministiktir: kimlikler sabit, tarihler başlangıç gününe göre üretilir. Mevcut kimlik değiştirilmez.
 - Yeni kişisel alan şemada sınıfıyla işaretlenir (`// kvkk: K|Ç|Ö`).
-- Davranış değişikliği `package.json` sürümünü (semver) ve `CHANGELOG.md`'yi günceller; tüketicilerdeki `workspace:x.y.z` sabitlemesi ve lockfile aynı committe güncellenir. Bir dal bir düzeyi bir kez artırır.
+- Davranış değişikliği aynı committe `packages/school-core/changes/<konu>.md` parçası yazar (`etki: major|minor|patch`); `package.json` sürümü ve `CHANGELOG.md` dalda değişmez, teslimde parçalardan derlenir (git-ve-surum §4–§5). Tüketiciler `workspace:*`.
 - Her yeni kural birim testiyle gelir: başarılı yol, doğrulama hatasında kaydın değişmemesi, mükerrer işlem, her rolün kapsamı, modül kapalıyken ret. Kapsam hedefi satır %90, dal %85.

@@ -2,21 +2,94 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
-## Görev görünüm uçları inceleme düzeltmeleri (W22api)
+## Kayıt ve finans dalının birleştirilmesi
 
-- Kursiyer atama içeriği kaynak düzeyinde süzülür (DOM-KYN-025, 051): kaynağın herhangi bir sürümü telif bildirimiyle incelemedeyse (yayın geçmişi olan `in_review`) ya da kaldırılmışsa, arşivli eski sürüme sabitlenen atamada da `content: null`, `contentUnavailable: 'unavailable'` döner (süren iş olsa da). İlk onay sürecindeki yeni taslak etkilemez.
-- `TaskAssignmentLearnerContent.body` artık serbest kayıt değil, tür başına izinli alanları sayan `TaskAssignmentLearnerBody` (`type` ayrımlı birleşim); servis her türü açıkça eşler, yanıt şeması fazladan alanı süzer.
-- `TaskAssignmentLearnerProgress.actionableUntil`: özetin yalnız zamanla değişeceği an (süren denemenin bitişi; yoksa `canAct` iken bir sonraki deneme/sürüm penceresinin kapanışı, yeniden teslim son tarihi dahil). Puan veya geri bildirimin açılma anı verilmez (DOM-BEC-045). `react-shared` `useLearnerAssignments` bu andan kısa süre sonra listeyi kendiliğinden yeniden okur (`nextSummaryChange`, `summaryRefreshDelay`).
-- Puanlama bağlamı kurulamayan otomatik puanlı atama için `task_progress.scoring_unavailable` uyarısı istek başına atama başına bir kez ve yalnız `assignmentId` ile loglanır.
-- Core değişmedi. Migration yok. OpenAPI ve `api-client` şeması yeniden üretildi.
+- Onur'un `feature/ogrenci-kaydi-finans` dalı birleştirildi; aşağıdaki "Bildirilmiş banka hesabı ve MEBBİS işareti" ile "Kesin kayıt ucu (kayıt ve finans dalı)" arasındaki bölümler o daldandır. Kayıt ve finansın temeli o dalın yapısıdır.
+- Migration'lar yeniden numaralandı (SQL aynı): `0014_create_payments` → `0016`, `0015_create_fee_tariffs` → `0017`, `0016_add_enrollment_terms` → `0018`, `0017_create_student_withdrawals` → `0019`, `0018_relax_identity_year` → `0020`, `0019_comment_finance_tables` → `0021`, `0020_bank_accounts_mebbis` → `0022`. Snapshot zinciri `0014_add_second_rating_sampled_at` ve `0015_create_files`'ı içerir; `db:generate` yeni migration üretmez.
+- Kesin kayıt ucu tarifeli gövdeyi kullanır (aşağıda "Tarifeli kesin kayıt"); "Kesin kayıt core takipleri (D16d)" bölümündeki `totalCents`, `nationalId`, `birthDate`, `guardianRelation`, `payer` ve `parentId` gövde alanları kalktı. Kimlik no ve doğum tarihi `records.data`'ya yazılmaz, `student_identities`'tedir.
+- Tarifeli kesin kayıt gövdesi isteğe bağlı `allowOtherCampus` (boolean) alır; sınıf adayın kampüsünden değilse ve onay yoksa 422 `class_campus_mismatch` (`issues` yolu `classId`, kontenjandan önce).
+- Kesin kayıtta seçilen mevcut veli yetişkin kursiyerin kendi satırı (`relationship: 'self'`) ya da eski yer tutucuysa 422 `parent_not_guardian` (`issues` yolu `guardian`); `GET /prospects/:id/guardian-matches` bu satırları önermez.
+- Kesin kayıt (DOM-KAY-012): okul kurumunda veli her yaşta zorunludur (`guardian: null` 422 `guardian_required`; `guardian_not_applicable` dönmez); kurs türlerinde 18 yaş ve üstü kursiyer ödeyicidir. Gövde isteğe bağlı `studentContact` (`phone`, `email`) alır; geçersiz değer 400.
+- `POST /api/v1/invoices/:invoiceId/pay` kaldırıldı (`POST /api/v1/payments`); `commands.test.ts` içindeki eski ödeme testleri silindi, karşılıkları `payments.test.ts`'tedir.
 
-## Görev görünüm uçları (W22api)
+## Bildirilmiş banka hesabı ve MEBBİS işareti
 
-- `GET /api/v1/task-assignments` ve `GET /api/v1/task-assignments/:assignmentId`: öğrenci ve veli (`learner`) görünümüne `progress` eklendi: her hedeflenen kişi (velide yalnız kendi çocukları) için `status`, `resubmissionRequested`, `attemptId`/`submissionId`, `lastActivityAt`, `used`/`limit`/`remaining`, `canAct`, `blockedBy` (`in_progress`, `license_expired`, `locked`, `limit`, `graded`, `unavailable`) ve açılmış `score`. Deneme ve teslim uçlarının aynı fonksiyonlarıyla hesaplanır (`services/task-progress.ts`; `learnerAttemptProgress`, `learnerSubmissionProgress`), açılmamış puan, ikinci puanlama, örneklem, uyuşmazlık ve itiraz durumu çıkarılamaz, satır sürümü yoktur (DOM-BEC-045). Liste satır başına istek gerektirmez: denemeler, teslimler, puanlar ve puanlama bağlamları toplu okunur (`loadAttemptsAmong`, `loadSubmissionsAmong`, `scoringContexts`).
-- Kursiyer atama ayrıntısına `content` ve `contentUnavailable`: sabitlenen sürümün core `learnerView` hâli (kaynak gösterimi korunur, DOM-KYN-024); yazma şablonunda yalnız yönerge ve teslim türleri (değerlendirme ölçütü ve rubrik bağı yok), soru/quiz/alıştırma setinde yalnız soru sayısı (sorular denemede gelir). Lisansı dolmuş içerik yalnız süren işi olana (deneme, teslim, öğrencinin taslağı) gösterilir (DOM-KYN-021); kaldırılmış veya yayın geçmişi olmayan sürüm `unavailable`. Yeni OpenAPI bileşenleri `TaskAssignmentLearnerProgress`, `TaskAssignmentLearnerContent`, `TaskAssignmentLearnerDetail`, `TaskAssignmentDetail` (ayrıntı yanıtı).
-- `GET /api/v1/rubric-versions/:versionId` (`getRubricVersion`): tek rubrik sürümü kimlikle (DOM-BEC-022); yönetici ve öğretmen, öğrenci/veli/ön büro 403, başka kurum 404, modül kapalı 403. Rubrik arşivlense de sürüm okunur. Personel atama görünümü zaten `rubricVersionId` taşıyordu.
-- Core değişmedi. Migration yok. OpenAPI ve `api-client` şeması yeniden üretildi.
-- `react-shared`: `useRubricVersion`/`rubricVersionRequest` (`use-rubrics.ts`), `TaskAssignmentDetail` ve `TaskAssignmentLearnerDetail` tipleri (`use-task-assignments.ts`).
+- `GET|POST /api/v1/bank-accounts`, `DELETE /api/v1/bank-accounts/:bankAccountId`, `POST /api/v1/payments/:paymentId/mebbis-record`; `GET /api/v1/payments?mebbis=pending` (DOM-FIN-032).
+- **Kırıcı:** Kurumda hesap tanımlıysa nakit dışı `POST /api/v1/payments` `bankAccountId` ister (422 `bank_account_required`, `bank_account_invalid`).
+- Migration: `bank_accounts` tablosu; `payments.bank_account_id`, `mebbis_recorded_at`, `mebbis_recorded_by_user_id`.
+
+## Yenilemede tarife denetimi
+
+- **Kırıcı:** `POST /api/v1/workflows/renewal` hedef yılın yayımlanmış tarifesini ister (422 `tariff_not_published`); öğrenim ücreti ilanı aşamaz (422 `renewal_above_tariff`), indirim %50 tavanındadır (DOM-FIN-002, -021). Artış tavanı (DOM-FIN-005) ÜFE/TÜFE verisi bekliyor.
+
+## Kesin kayıtta tarife doğrulaması
+
+- **Kırıcı:** `POST /api/v1/prospects/:prospectId/enroll` gövdesinde `tariffId` zorunludur; yayımdaki tarife değiştiyse 409 `tariff_changed`. Aynı ek hizmet iki kez seçilirse 422 `extra_duplicate`. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Kısmi ödeme gösterimi
+
+- `GET /api/v1/finance/totals` eklendi: finans kartları kısmi ödemeyi sayar, gecikmiş tutar kalan kısımdır (DOM-FIN-030).
+- Taksit okuması (`/collections/invoices`) açık taksitte `record.paidCents` döner; saklanmaz, okunurken eklenir.
+- Benzersizlik ihlali 500 yerine 409 `conflict` döner. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Ayrılış listesinde öğrenci adı
+
+- `GET /api/v1/withdrawals` ve `GET /api/v1/withdrawals/:withdrawalId` yanıtına `studentName` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Tahsilat listesi arama
+
+- `GET /api/v1/payments` `q` (öğrenci adı, işlem referansı) kabul eder, yanıtta `studentName` döner. Arama katlaması `db/text-search.ts`'e taşındı.
+- OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Eski taksit ödeme ucu kaldırıldı
+
+- **Kırıcı:** `POST /api/v1/invoices/:invoiceId/pay` kaldırıldı; tahsilat `POST /api/v1/payments` iledir ve nakit dışı yöntemde `reference` zorunludur (ADR 0006).
+- OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Kayıt ve finans inceleme düzeltmeleri
+
+- Ayrılış kaydı olan öğrencinin tahsilatı iptal edilemez: 409 `payment_student_withdrawn` (DOM-FIN-041).
+- İade hesabı öğrenim, ek hizmet ve dağıtılmamış tahsilatı netleştirir; iade ve borç birlikte oluşmaz (DOM-FIN-040).
+- `parents.phone` ve `parents.relationship` öğretmen ve öğrenciye dönmez.
+- `GET /finance/exports` hız sınırı çerez özeti yerine kullanıcı kimliğine bağlandı.
+- `GET /students/:studentId/identity` `crm` modülünü denetler.
+- Kimlik tekilliği eğitim yılından ayrıldı, pasif kaydın kimliği yeniden kullanılır (migration `0020_relax_identity_year`).
+- `PATCH /fee-tariffs/:tariffId` verilmeyen alanı korur.
+- Dil okulunda kesin kayıt fiyatı sınıfın CEFR düzeyinden (`level`) okunur.
+
+## Muhasebe dışa aktarımı
+
+- `GET /api/v1/finance/summary` ve `GET /api/v1/finance/exports` eklendi (ADR 0006 karar 11, IST-111). Dosya tahsilat, ödenmiş iade veya taksit satırlarını CSV olarak döner; toplamı özetle aynı satırlardan üretilir. Migration yok.
+- OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Ayrılış ve iade uçları
+
+- `student_withdrawals` tablosu (migration `0019_create_student_withdrawals`) ile `POST /api/v1/students/:studentId/withdrawal-quote`, `POST /api/v1/students/:studentId/withdraw`, `GET /api/v1/withdrawals`, `GET /api/v1/withdrawals/:withdrawalId`, `POST /api/v1/withdrawals/:withdrawalId/pay-refund` eklendi (ADR 0006 karar 10, DOM-FIN-040, -041, DOM-KAY-024, IST-110).
+- `requireFreshSession` eklendi; ayrılış ve iade ödemesi eski oturumda 403 `reauthentication_required` alır.
+- Log gizleme listesine `iban`, `accountHolder`, `targetSchool` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Tarifeli kesin kayıt
+
+- **Kırıcı:** `POST /api/v1/prospects/:prospectId/enroll` gövdesi değişti: `totalCents` kalktı; tutar yayımlanmış tarifeden hesaplanır. `identity` ve `guardian` zorunlu, `discounts`, `extras`, `lessonHours` eklendi.
+- `fee_tariffs.discounts` ve `student_identities` eklendi (migration `0018_add_enrollment_terms`). `GET /api/v1/prospects/:prospectId/guardian-matches` ve `GET /api/v1/students/:studentId/identity` eklendi.
+- Log gizleme listesine `identity`, `identityNumber`, `birthDate` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Ücret tarifesi uçları
+
+- `fee_tariffs` tablosu ve `GET`/`POST /api/v1/fee-tariffs`, `GET`/`PATCH /api/v1/fee-tariffs/:tariffId`, `POST /api/v1/fee-tariffs/:tariffId/publish` eklendi (ADR 0006 karar 8, DOM-FIN-002, -004, -006, IST-104). Migration `0017_create_fee_tariffs`.
+- Sözleşme ve tahsilat henüz tarifeye bağlı değildir. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Tahsilat uçları
+
+- `payments`, `payment_allocations` ve `payment_settings` tabloları eklendi (ADR 0006, migration `0016_create_payments`).
+- `POST /api/v1/payments`, `GET /api/v1/payments`, `GET /api/v1/payments/:paymentId`, `POST /api/v1/payments/:paymentId/reverse`, `GET` ve `PATCH /api/v1/payment-settings` eklendi (DOM-FIN-030…033, DOM-FIN-052).
+- **Kırıcı:** `POST /api/v1/invoices/:invoiceId/pay` artık tahsilat kaydı da yazar; `Nakit` yöntemi kurumda nakit kapalıysa 422 `cash_payment_disabled` alır. Nakit varsayılan kapalıdır, örnek kurum tohumunda da.
+- Log gizleme listesine `reference` ve `reversalReason` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Kesin kayıt ucu (kayıt ve finans dalı)
+
+- `POST /api/v1/prospects/:prospectId/enroll` eklendi (201 + `Location`; `Idempotency-Key` ve `If-Match` zorunlu; yalnız `yonetici` ve `onburo`, modül `crm`). Öğrenci, veli, taksit, sözleşme ve aday aşaması tek transaction'da yazılır (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035).
+- İlk sürümde tutar `totalCents` ile alındı; "Tarifeli kesin kayıt" değişikliğiyle kaldırıldı.
 
 ## Dosya depolama inceleme düzeltmeleri (F3c2a)
 

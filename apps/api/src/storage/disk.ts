@@ -7,12 +7,7 @@ import { pipeline } from 'node:stream/promises'
 
 import { z } from 'zod'
 
-import {
-  assertStorageKey,
-  STORAGE_KEY_PATTERN,
-  type SignedGetOptions,
-  type StorageDriver,
-} from './storage.ts'
+import { assertStorageKey, type SignedGetOptions, type StorageDriver } from './storage.ts'
 
 /**
  * `disk` sürücüsü (ADR 0003 karar 1): birim/API testleri ve S3 sunucusu kurmak istemeyen yerel
@@ -20,26 +15,27 @@ import {
  * akış başarıyla bitince yeniden adlandırılır: yarıda kesilen yüklemeden nesne kalmaz.
  *
  * İmzalı bağlantıyı API'nin kendi ucu (`GET /api/v1/files/download?token=…`) sunar. Belirteç
- * `<yük>.<imza>`dır: yük base64url JSON (anahtar, bitiş, tür, disposition, ad), imza yükün
- * HMAC-SHA256'sı. Belirteç sorgu dizesinde taşınır; uygulama logu sorgu dizesini yazmaz
- * (`app.ts` istek serileştiricisi), böylece dosya adı loga girmez.
+ * `<yük>.<imza>`dır: yük base64url JSON (kurum, dosya kimliği, bitiş, disposition), imza yükün
+ * HMAC-SHA256'sı. Belirteç imzalıdır ama şifreli değildir; URL vekil loguna ve tarayıcı geçmişine
+ * girebilir. Bu yüzden özgün ad (kişisel veri olabilir) ve tür belirteçte taşınmaz: indirme ucu
+ * ikisini `files` satırından okur, satır silinmiş veya reddedilmişse 404 döner (KVKK, F3c2a takip).
  */
 
 export const DOWNLOAD_PATH = '/api/v1/files/download'
 
 const tokenPayloadSchema = z.strictObject({
-  k: z.string().regex(STORAGE_KEY_PATTERN),
+  // Kimlikler nesne anahtarı bölümü biçimindedir (`STORAGE_KEY_PATTERN`; kurum kimliği UUID değildir).
+  i: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  f: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
   e: z.number().int().positive(),
-  t: z.string().min(1).max(200),
   d: z.enum(['inline', 'attachment']),
-  n: z.string().max(255).nullable(),
 })
 
+/** Belirtecin yetkilendirdiği dosya: ad ve tür `files` satırından okunur. */
 export type SignedObject = {
-  key: string
-  contentType: string
+  institutionId: string
+  fileId: string
   disposition: 'inline' | 'attachment'
-  fileName: string | null
 }
 
 /** İmza doğrulamasının sonucu: geçerli nesne, süresi geçmiş veya bozuk belirteç. */
@@ -110,11 +106,10 @@ export class DiskStorage implements StorageDriver {
     assertStorageKey(key)
     const payload = Buffer.from(
       JSON.stringify({
-        k: key,
+        i: options.institutionId,
+        f: options.fileId,
         e: Math.floor(options.expiresAt.getTime() / 1000),
-        t: options.contentType,
         d: options.disposition,
-        n: options.fileName,
       } satisfies z.infer<typeof tokenPayloadSchema>),
     ).toString('base64url')
     const token = `${payload}.${this.#sign(payload)}`
@@ -148,10 +143,9 @@ export class DiskStorage implements StorageDriver {
     return {
       ok: true,
       object: {
-        key: parsed.data.k,
-        contentType: parsed.data.t,
+        institutionId: parsed.data.i,
+        fileId: parsed.data.f,
         disposition: parsed.data.d,
-        fileName: parsed.data.n,
       },
     }
   }

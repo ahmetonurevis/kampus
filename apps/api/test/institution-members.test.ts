@@ -10,7 +10,7 @@ import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { memberships } from '../src/db/schema/auth.ts'
 import { membershipLinks } from '../src/db/schema/membership-links.ts'
-import { foldSearch } from '../src/services/institution-members.ts'
+import { foldSearch } from '../src/db/text-search.ts'
 import {
   buildTestApp,
   createInstitution,

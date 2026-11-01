@@ -47,6 +47,8 @@ export function useApiMutation<TVariables, TResult extends ApiResult>(
   const institutionId = useActiveInstitutionId()
 
   const mutation = useMutation<DataOf<TResult>, ApiError, TVariables>({
+    // Gövde (kimlik no, IBAN) ve yanıt işlem bitince önbellekte kalmaz.
+    gcTime: 0,
     mutationFn: (variables) => runRequest(() => options.request(client, variables)),
     onSuccess: async (data, variables) => {
       await invalidateInstitutionQueries(queryClient, institutionId, options.invalidates ?? [])

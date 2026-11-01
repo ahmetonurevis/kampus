@@ -7,9 +7,9 @@ import type {
   preHandlerAsyncHookHandler,
 } from 'fastify'
 
-import { roleSchema, type Role } from '../auth.ts'
+import { roleSchema, SESSION_FRESH_AGE_SECONDS, type Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
-import { AuthenticationError, ForbiddenError } from '../errors.ts'
+import { AppError, AuthenticationError, ForbiddenError, MESSAGES } from '../errors.ts'
 import { findMembership } from '../services/memberships.ts'
 
 /** Doğrulanmış Better Auth oturumu (etkin kurum gerekmeyen uçlar, ör. `/me`). */
@@ -17,6 +17,8 @@ export interface SessionAuth {
   userId: string
   sessionId: string
   activeInstitutionId: string | null
+  /** Oturumun açıldığı an; taze oturum denetimi içindir. */
+  createdAt: Date
 }
 
 /** Etkin kurumda doğrulanmış üyelik. Kurum kimliği yalnız oturumdan gelir. */
@@ -44,6 +46,8 @@ declare module 'fastify' {
     authenticateSession: preHandlerAsyncHookHandler
     /** Kimlik + rol denetimi; her kimlikli rota bunu bildirir (varsayılan ret). */
     requireRole: (roles: readonly Role[]) => preHandlerAsyncHookHandler
+    /** Hassas işlem: oturum `freshAge`'den eskiyse 403 `reauthentication_required`. */
+    requireFreshSession: preHandlerAsyncHookHandler
   }
   interface FastifyRequest {
     authSession: SessionAuth | null
@@ -86,6 +90,7 @@ export function registerAuthenticate(app: FastifyInstance) {
       userId: found.user.id,
       sessionId: found.session.id,
       activeInstitutionId: found.session.activeOrganizationId ?? null,
+      createdAt: found.session.createdAt,
     }
     return request.authSession
   }
@@ -120,6 +125,12 @@ export function registerAuthenticate(app: FastifyInstance) {
 
   app.decorate('authenticateSession', async function (request, reply) {
     await loadSession(request, reply)
+  } satisfies preHandlerAsyncHookHandler)
+
+  app.decorate('requireFreshSession', async function (request, reply) {
+    const session = await loadSession(request, reply)
+    if (app.clock().getTime() - session.createdAt.getTime() > SESSION_FRESH_AGE_SECONDS * 1000)
+      throw new AppError(403, 'reauthentication_required', MESSAGES.reauthentication_required)
   } satisfies preHandlerAsyncHookHandler)
 
   app.decorate('authenticate', async function (request, reply) {

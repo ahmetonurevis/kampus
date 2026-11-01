@@ -24,5 +24,5 @@ Ayrıntı: `docs/muhendislik/kod-yazim.md` §8, paket listesi ADR 0002.
 - Bağımlılık onu kullanan pakete eklenir; kök yalnız araç zinciri. Lockfile aynı committe.
 - Commit gövdesinde: paket@sürüm, neden (ADR 0002 paketi neden yetmiyor), alternatifler, bakım, tipler, lisans, erişilebilirlik, boyut, kurulum betiği.
 - shadcn/ui bileşenleri CLI ile `src/components/ui/`'ye alınır; değişiklik token ve erişilebilirlikle sınırlı. Üretilen kod (OpenAPI tipleri, Better Auth şeması, migration) elle düzenlenmez.
-- İç paketler `workspace:x.y.z` ile tam sürüme sabitlenir; sürüm artınca tüketiciler aynı committe güncellenir.
+- İç paketler `workspace:*` ile bağlanır; sürüm artışı tüketicileri ve lockfile'ı değiştirmez (git-ve-surum §6).
 - Kullanılmayan bağımlılık aynı committe kaldırılır.

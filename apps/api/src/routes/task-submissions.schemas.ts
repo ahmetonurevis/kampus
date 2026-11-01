@@ -188,7 +188,7 @@ const taskDraftSchema = z
 /**
  * Rubrik puanı gövdesi (DOM-BEC-021): core `rubricScoreInputSchema` ve puanlanan sürüm numarası.
  * Katıdır: istemcinin toplamı, yüzdesi, rubrik sürümü veya puanlayıcı rolü 400 alır; kriter
- * satırındaki fazladan alan (ör. `weighted`) yok sayılır. Toplam sunucuda hesaplanır.
+ * satırı da katıdır (core 2.22.0), fazladan alan (ör. `weighted`) 400. Toplam sunucuda hesaplanır.
  */
 export const taskScoreBodySchema = z.strictObject({
   versionNumber: z.number().int().min(1).describe('Puanlanan sürüm; yalnız son sürüm puanlanır'),

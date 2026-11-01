@@ -42416,7 +42416,8 @@
                       "required": [
                         "criterionId",
                         "band"
-                      ]
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "overallComment": {

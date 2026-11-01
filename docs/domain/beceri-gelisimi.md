@@ -78,7 +78,7 @@
 - **Gerekçe:** Rubrik toplamı hesaplanabilir; düşük bant gerekçesiz kalmamalı.
 - **Kaynak:** Proje kuralı (rubrik toplamı saklanmaz); yorum zorunluluğu işletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/rubric.ts` `rubricScore` (ağırlıklı toplam / azami toplam × 100, tamsayı aritmetiğiyle yarım yukarı; ağırlıklar 1 iken bu formül), `rubricScoreInputSchema` ve `assertRubricScoreFits` (genel yorum ve 0–2 banttaki kriter yorumu zorunlu), `planRubricScore`. API: `POST /api/v1/task-submissions/:submissionId/scores` (`services/task-grading.ts`) puanı core ile doğrular, toplamı istemciden almaz ve saklamaz; teslim okumaları toplamı her okumada `rubricScore` ile hesaplar (`services/task-submissions.ts`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/rubric.ts` `rubricScore` (ağırlıklı toplam / azami toplam × 100, tamsayı aritmetiğiyle yarım yukarı; ağırlıklar 1 iken bu formül), `rubricScoreInputSchema` (kriter satırı katı, fazladan alan reddedilir) ve `assertRubricScoreFits` (genel yorum ve 0–2 banttaki kriter yorumu zorunlu), `planRubricScore`. API: `POST /api/v1/task-submissions/:submissionId/scores` (`services/task-grading.ts`) puanı core ile doğrular, toplamı istemciden almaz ve saklamaz; teslim okumaları toplamı her okumada `rubricScore` ile hesaplar (`services/task-submissions.ts`).
 
 ### DOM-BEC-022 · Rubrik sürümü
 

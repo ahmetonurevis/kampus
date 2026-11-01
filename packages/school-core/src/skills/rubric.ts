@@ -396,12 +396,14 @@ export type RaterRole = keyof typeof RATER_ROLES
 
 /**
  * Puan gövdesi (DOM-BEC-021): kriter başına bant ve yorum, genel yorum. Genel yorum zorunludur;
- * "hedefin altında" bant verilen kritere yorum zorunluluğu rubrikle birlikte denetlenir.
+ * "hedefin altında" bant verilen kritere yorum zorunluluğu rubrikle birlikte denetlenir. Kriter
+ * satırı katıdır: istemcinin ağırlıklı puanı gibi fazladan alan reddedilir, toplam sunucuda
+ * hesaplanır.
  */
 export const rubricScoreInputSchema = z.object({
   criteria: z
     .array(
-      z.object({
+      z.strictObject({
         criterionId: itemId,
         band,
         comment: z.string().trim().max(2000).nullable().default(null),

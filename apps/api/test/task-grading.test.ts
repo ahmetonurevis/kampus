@@ -354,7 +354,7 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       fails(response, 403, 'module_disabled')
   })
 
-  test('DOM-BEC-021, DOM-BEC-022, DOM-YTK-028: atayan olmayan ama atamayı gören öğretmen puanlar; toplam sunucuda hesaplanır, rubrik sürümü atamanınki; istemci toplamı 400; aynı anahtar tekrarı ikinci puan yazmaz', async () => {
+  test('DOM-BEC-021, DOM-BEC-022, DOM-YTK-028: atayan olmayan ama atamayı gören öğretmen puanlar; toplam sunucuda hesaplanır, rubrik sürümü atamanınki; istemci toplamı ve kriter satırındaki fazladan alan 400; aynı anahtar tekrarı ikinci puan yazmaz', async () => {
     const { t, submission } = await setup()
     const id = submission.id as string
     // İstemcinin toplamı, yüzdesi, rubrik sürümü ve puanlayıcı rolü kabul edilmez.
@@ -363,15 +363,22 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       { percent: 100 },
       { rubricVersionId: t.rubricVersionId },
       { raterRole: 'final' },
+      // Kriter satırı da katıdır: istemcinin ağırlıklı puanı (`weighted`) 400 alır.
+      {
+        criteria: [
+          { criterionId: 'task', band: 4, comment: null, weighted: 99 },
+          { criterionId: 'grammar', band: 2, comment: CRITERION_NOTE },
+        ],
+      },
     ])
       fails(await score(id, t.cookies.teacher, 1, scoreBody(extra)), 400, 'validation_failed')
     assert.equal((await storedRows(t.institution.id)).scores, 0)
 
     const headers = key()
-    // Kriter satırındaki istemci hesabı (`weighted`) yok sayılır; puan bantlardan hesaplanır.
+    // Puan kriter bantlarından sunucuda hesaplanır.
     const body = scoreBody({
       criteria: [
-        { criterionId: 'task', band: 4, comment: null, weighted: 99 },
+        { criterionId: 'task', band: 4, comment: null },
         { criterionId: 'grammar', band: 2, comment: CRITERION_NOTE },
       ],
     })

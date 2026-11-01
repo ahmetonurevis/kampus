@@ -433,6 +433,8 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
       ...(guardian?.kind === 'new'
         ? { phone: guardian.phone, relationship: guardian.relationship }
         : {}),
+      // Yetişkin kursiyerin kendi satırı veli değildir; kardeşe önerilmez (DOM-KAY-013).
+      ...(guardian?.kind === 'self' ? { relationship: 'self' } : {}),
       // kvkk: K — 18 yaş altı adayın e-postası velinindir (DOM-KAY-003).
       ...(guardian?.kind === 'new' && data.minor === true && prospect.email
         ? { email: prospect.email }

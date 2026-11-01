@@ -307,11 +307,15 @@ const PARENT_MATCH = z.object({
   name: z.string(),
   studentIds: z.array(z.string()),
   phone: z.string().optional(),
+  // Yetişkin kursiyerin kendi satırını ve eski yer tutucuyu ayırmak için (`isNotGuardian`).
+  email: z.string().optional(),
+  relationship: z.string().optional(),
 })
 const STUDENT_MATCH = z.object({ id: z.string(), phone: z.string().optional() })
 const PROSPECT_MATCH = z.object({
   studentId: z.string().nullable().optional(),
   phone: z.string().optional(),
+  minor: z.boolean().optional(),
 })
 
 /** Adayın telefonuyla eşleşen veliler; ön büroya öneridir, birleştirmez (DOM-KAY-013). */

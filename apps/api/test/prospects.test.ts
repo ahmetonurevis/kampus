@@ -1516,6 +1516,66 @@ describe('aday uçları', () => {
     assert.equal((await enrollmentRows(a.id)).contracts.at(-1)?.data.payer, 'guardian')
   })
 
+  test('DOM-KAY-013, parent_not_guardian: yetişkin kursiyerin kendi satırı kardeşe önerilmez; seçilirse 422 ve kayıt yazılmaz', async () => {
+    const a = await pricedInstitution(
+      { type: 'language_school' },
+      {
+        items: [
+          { ...TUITION, unit: 'lesson_hour', amountCents: 50_000, announcedAmountCents: null },
+        ],
+      },
+    )
+    const cookie = await frontDesk(a.id)
+    const adultProspect: Record<string, unknown> = {
+      ...PROSPECT,
+      name: 'Test Yetişkin',
+      minor: false,
+    }
+    delete adultProspect.guardianName
+    const adult = await created(cookie, adultProspect)
+    const young = await created(cookie, {
+      ...PROSPECT,
+      name: 'Test Küçük Kardeş',
+      email: '',
+      minor: true,
+      siblingOfId: adult.id,
+    })
+    const grown = await enroll(
+      cookie,
+      adult.id,
+      {
+        ...ENROLLMENT,
+        lessonHours: 10,
+        identity: { ...ENROLLMENT.identity, birthDate: '2000-01-01' },
+        guardian: null,
+      },
+      adult.version,
+    )
+    assert.equal(grown.statusCode, 201, grown.body)
+    const student = await findRecord(db, a.id, 'students', grown.json().data.entity.id)
+    const selfId = String(student?.data.parentId)
+    assert.equal((await findRecord(db, a.id, 'parents', selfId))?.data.relationship, 'self')
+
+    const matches = await a_get(cookie, `/api/v1/prospects/${young.id}/guardian-matches`)
+    assert.equal(matches.statusCode, 200, matches.body)
+    assert.deepEqual(matches.json().data, [])
+    await noEnrollment(a.id, young.id, async () => {
+      const refused = await enroll(
+        cookie,
+        young.id,
+        {
+          ...ENROLLMENT,
+          lessonHours: 10,
+          identity: { ...ENROLLMENT.identity, number: '11111111110' },
+          guardian: { existingParentId: selfId },
+        },
+        young.version,
+      )
+      assertError(refused, 422, 'parent_not_guardian')
+      assert.deepEqual(refused.json().issues?.[0]?.path, ['guardian'])
+    })
+  })
+
   test('DOM-YTK-040: crm modülü kapalıyken kimlik özeti 403 module_disabled', async () => {
     const closed = await institution({ enabledModules: { crm: false } })
     assertError(

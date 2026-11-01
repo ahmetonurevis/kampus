@@ -202,34 +202,67 @@ export function priceEnrollment(
   return { grossCents, discounts, netCents: grossCents - total, extras }
 }
 
+type ParentLike = {
+  id: string
+  name: string
+  studentIds: readonly string[]
+  phone?: string
+  email?: string
+  relationship?: string
+}
+type ProspectLike = { studentId?: string | null; phone?: string; minor?: boolean }
+
+/** Yetişkin kursiyerin kendi kaydı için açılan veli satırının yakınlığı (DOM-KAY-012). */
+export const SELF_RELATIONSHIP = 'self'
+
+/**
+ * Veli satırı gerçekte bir veli değil mi (DOM-KAY-012, DOM-KAY-013): yetişkin kursiyerin kendisi
+ * (`relationship: 'self'`) ya da bu alan eklenmeden önce açılmış yer tutucu (telefonsuz, e-postasız,
+ * bütün adayları `minor === false`). Böyle satır 18 yaş altı kardeşe veli olarak verilmez.
+ */
+export function isNotGuardian(
+  parent: ParentLike,
+  prospects: readonly ProspectLike[] = [],
+): boolean {
+  if (parent.relationship === SELF_RELATIONSHIP) return true
+  if (parent.phone || parent.email) return false
+  const linked = prospects.filter(
+    (prospect) => prospect.studentId && parent.studentIds.includes(prospect.studentId),
+  )
+  return linked.length > 0 && linked.every((prospect) => prospect.minor === false)
+}
+
 /**
  * Telefonu eşleşen veliler; ön büroya önerilir, otomatik birleştirilmez (DOM-KAY-013). Eşleşme
  * velinin, öğrencisinin ya da öğrencisine dönüşmüş adayın telefonudur: 18 yaş altı öğrencinin
  * telefonu boş kaldığından (DOM-KAY-003) kardeşin aday kaydındaki aile telefonu da aranır.
+ * Yetişkin kursiyerin kendi satırı ve eski yer tutucu önerilmez (`isNotGuardian`).
  */
 export function findParentMatches(
   state: {
-    parents: readonly { id: string; name: string; studentIds: readonly string[]; phone?: string }[]
+    parents: readonly ParentLike[]
     students: readonly { id: string; phone?: string }[]
-    prospects?: readonly { studentId?: string | null; phone?: string }[]
+    prospects?: readonly ProspectLike[]
   },
   phone: string,
 ): { parentId: string; name: string; studentCount: number }[] {
   if (phone === '') return []
+  const prospects = state.prospects ?? []
   const enrolled = new Set(
-    (state.prospects ?? []).flatMap((prospect) =>
+    prospects.flatMap((prospect) =>
       prospect.phone === phone && prospect.studentId ? [prospect.studentId] : [],
     ),
   )
   return state.parents
     .filter(
       (parent) =>
-        parent.phone === phone ||
-        parent.studentIds.some(
-          (id) =>
-            enrolled.has(id) ||
-            state.students.find((student) => student.id === id)?.phone === phone,
-        ),
+        !isNotGuardian(parent, prospects) &&
+        (parent.phone === phone ||
+          parent.studentIds.some(
+            (id) =>
+              enrolled.has(id) ||
+              state.students.find((student) => student.id === id)?.phone === phone,
+          )),
     )
     .map((parent) => ({
       parentId: parent.id,
@@ -325,6 +358,13 @@ export function enrollProspectWithTariff(
       kind: 'not_found',
       path: ['guardian'],
     })
+  // Yetişkin kursiyerin kendi satırı ya da eski yer tutucu kardeşe veli olamaz (DOM-KAY-013).
+  if (existing && isNotGuardian(existing, state.prospects))
+    throw new DomainError(
+      'parent_not_guardian',
+      'Seçilen kayıt bir veli değil (yetişkin kursiyerin kendi kaydı); veliyi yeni veli olarak girin.',
+      { path: ['guardian'] },
+    )
   if (data.discounts.includes('sibling')) {
     const hasSibling = existing?.studentIds.some(
       (id) => state.students.find((student) => student.id === id)?.isActive === true,

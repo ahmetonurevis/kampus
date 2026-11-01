@@ -11,6 +11,7 @@ import {
   enrollProspectWithTariff,
   findParentMatches,
   GUARDIAN_RELATIONSHIP_LABELS,
+  isNotGuardian,
   GUARDIAN_RELATIONSHIPS,
   isValidTurkishId,
   previewEnrollment,
@@ -515,6 +516,82 @@ test('DOM-KAY-013, DOM-KAY-003: 18 yaş altı kardeşin telefonu öğrenciye yaz
     findParentMatches({ parents: state.parents, students: state.students }, family),
     [],
   )
+})
+
+test('DOM-KAY-013, parent_not_guardian: yetişkin kursiyerin kendi satırı 18 yaş altı kardeşe veli olarak verilmez ve önerilmez', () => {
+  const state = createSeed(new Date(NOW))
+  const language = { ...CONTEXT, institutionType: 'language_school' as const }
+  const adult = state.prospects.find((item) => item.id === 'pr4')!
+  adult.minor = false
+  const young = state.prospects.find((item) => item.id === 'pr1')!
+  young.minor = true
+  let n = 0
+  const makeId = (prefix: string) => `${prefix}-test-${n++}`
+  const grown = enrollProspectWithTariff(
+    state,
+    'pr4',
+    {
+      ...INPUT,
+      lessonHours: 10,
+      guardian: null,
+      identity: { kind: 'tc', number: '10000000146', birthDate: '2000-01-01' },
+    },
+    makeId,
+    NOW,
+    language,
+  )
+  const self = state.parents.find((parent) => parent.id === grown.student.parentId)!
+  assert.equal(self.relationship, 'self')
+  assert.equal(isNotGuardian(self, state.prospects), true)
+  // Yetişkinin telefonu öğrenci kaydındadır; yine de veli olarak önerilmez.
+  assert.deepEqual(findParentMatches(state, adult.phone), [])
+
+  const before = JSON.stringify(state)
+  assert.throws(
+    () =>
+      enrollProspectWithTariff(
+        state,
+        'pr1',
+        {
+          ...INPUT,
+          lessonHours: 10,
+          identity: { kind: 'tc', number: '11111111110', birthDate: '2013-03-01' },
+          guardian: { existingParentId: self.id },
+        },
+        makeId,
+        NOW,
+        { ...language, identityHolderId: null },
+      ),
+    (error: unknown) =>
+      isDomainError('parent_not_guardian')(error) &&
+      JSON.stringify((error as { path?: unknown }).path) === JSON.stringify(['guardian']),
+  )
+  assert.equal(JSON.stringify(state), before)
+})
+
+test('DOM-KAY-013, parent_not_guardian: eski yer tutucu (iletişimsiz, adayları yetişkin) veli sayılmaz; iletişimli veli sayılır', () => {
+  const placeholder = { id: 'p-eski', name: 'Kursiyer velisi', studentIds: ['s-eski'] }
+  const adultProspect = { studentId: 's-eski', minor: false }
+  assert.equal(isNotGuardian(placeholder, [adultProspect]), true)
+  // Adayı yoksa ya da adaylardan biri 18 yaş altıysa gerçek veli olabilir.
+  assert.equal(isNotGuardian(placeholder, []), false)
+  assert.equal(isNotGuardian(placeholder, [adultProspect, { studentId: 's-eski' }]), false)
+  assert.equal(isNotGuardian({ ...placeholder, phone: '05550000000' }, [adultProspect]), false)
+  assert.equal(
+    isNotGuardian({ ...placeholder, email: 'veli@kampus.example' }, [adultProspect]),
+    false,
+  )
+
+  const state = createSeed(new Date(NOW))
+  state.parents.push({ ...placeholder })
+  state.prospects.find((item) => item.id === 'pr4')!.studentId = 's-eski'
+  state.prospects.find((item) => item.id === 'pr4')!.minor = false
+  const before = JSON.stringify(state)
+  assert.throws(
+    () => enroll({ guardian: { existingParentId: 'p-eski' } }, {}, state),
+    isDomainError('parent_not_guardian'),
+  )
+  assert.equal(JSON.stringify(state), before)
 })
 
 test('DOM-KAY-011: kimliğin sahibi pasifse veya kayıt yoksa yeni kayıt açılır, eski kimlik bildirilir', () => {

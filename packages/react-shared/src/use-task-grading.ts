@@ -83,6 +83,8 @@ export const TASK_GRADING_MESSAGES = {
   second_rating_not_requested: 'Bu teslim için ikinci puanlama istenmedi.',
   second_rating_not_configured: 'Bu görevde ikinci puanlama örneklemi yok.',
   second_rating_sample_drawn: 'Bu görevin ikinci puanlama örneklemi zaten seçildi.',
+  second_rating_sample_unavailable:
+    'Son tarihi olmayan görevde örneklem seçilmez; ikinci puanı teslim bazında isteyin.',
   rater_not_independent: 'Bu teslimi daha önce puanladınız; bağımsız bir öğretmen puanlamalı.',
   appeal_decided: 'Bu itiraz zaten sonuçlandı.',
 } as const satisfies CommandMessages
@@ -96,6 +98,7 @@ export const TASK_APPEAL_MESSAGES = {
     'İtiraz süresi doldu; itiraz sonuç duyurusundan sonra 5 iş günü içinde yapılır.',
   appeal_not_available: 'Alıştırma sonucuna itiraz edilmez.',
   appeal_exists: 'Bu sonuca zaten itiraz edildi.',
+  appeal_not_latest: 'Yalnız son teslim sürümünün sonucuna itiraz edilebilir.',
 } as const satisfies CommandMessages
 
 /**

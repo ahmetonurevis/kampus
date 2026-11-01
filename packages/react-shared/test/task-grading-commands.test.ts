@@ -447,6 +447,14 @@ describe('ikinci puanlama ve itiraz komutları', () => {
       feedback(fileTaskAppealCommand.messages, 'appeal_exists'),
       'Bu sonuca zaten itiraz edildi.',
     )
+    assert.equal(
+      feedback(fileTaskAppealCommand.messages, 'appeal_not_latest'),
+      'Yalnız son teslim sürümünün sonucuna itiraz edilebilir.',
+    )
+    assert.match(
+      feedback(drawSecondRatingSampleCommand.messages, 'second_rating_sample_unavailable') ?? '',
+      /Son tarihi olmayan görevde örneklem seçilmez/,
+    )
     assert.equal(feedback(fileTaskAppealCommand.messages, 'unknown_code', 500), 'Sunucu mesajı.')
   })
 

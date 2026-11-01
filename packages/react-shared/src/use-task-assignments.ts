@@ -60,10 +60,14 @@ export const TASK_ASSIGNMENT_MESSAGES = {
   rubric_version_not_assignable: 'Yalnız yayındaki rubrik sürümü atanabilir.',
 } as const satisfies CommandMessages
 
-/** Değişiklikte 404 atamanın kendisidir (kapsam dışı, silinmiş veya başka kurumun). */
+/**
+ * Değişiklikte 404 atamanın kendisidir (kapsam dışı, silinmiş veya başka kurumun). İkinci puanlama
+ * başladıysa (örneklem seçildi veya süre bitince ikinci puan istendi) teslim penceresi değişmez.
+ */
 export const UPDATE_TASK_ASSIGNMENT_MESSAGES = {
   ...TASK_ASSIGNMENT_MESSAGES,
   not_found: 'Görev bulunamadı.',
+  second_rating_started: 'İkinci puanlama başladı; son teslim tarihi artık değiştirilemez.',
 } as const satisfies CommandMessages
 
 /** Sunucu sayfalı liste (rol kapsamlı); sorgu değişirken önceki sayfa ekranda kalır. */

@@ -21,6 +21,7 @@ const PAYMENT: ReceiptPayment = {
   creditCents: 0,
   method: 'Banka havalesi',
   reference: 'TR-0001',
+  bankAccountLabel: 'Örnek Bankası · 1326',
   paidAt: '2026-10-10T09:00:00.000Z',
   receiptYear: 2026,
   receiptNumber: 7,
@@ -33,6 +34,7 @@ test('DOM-FIN-050: dekont yıl içi numara, referans ve tutar taşır', () => {
   assert.equal(receiptNumberLabel(PAYMENT), '2026-7')
   assert.ok(all.includes('2026-7'))
   assert.ok(all.includes('TR-0001'))
+  assert.ok(all.includes('Örnek Bankası · 1326'))
   assert.ok(all.includes('Geçerli'))
   assert.ok(all.some((text) => text.includes('1.234,56')))
   assert.equal(all.includes('İPTAL EDİLDİ'), false)

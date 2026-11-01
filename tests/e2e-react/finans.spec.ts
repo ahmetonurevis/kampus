@@ -289,6 +289,50 @@ test.describe('Finans: tahsilat', () => {
     expect((await invoice(client, 'inv-s16-5')).method).toBe('Nakit')
   })
 
+  test('DOM-FIN-032: yönetici hesap ekler, tahsilat hesaba bağlanır, MEBBİS işareti listeden süzülür', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s16'] })
+    await loginAs(school.user('yonetici'))
+
+    await page.goto('/yonetici/ayarlar')
+    const accountForm = page.getByRole('form', { name: 'Banka hesabı ekle' })
+    await accountForm.getByLabel('Banka adı').fill('Örnek Bankası')
+    await accountForm.getByLabel('IBAN').fill('TR33 0006 1005 1978 6457 8413 27')
+    await accountForm.getByLabel('Hesap sahibi').fill('Akademi Özel Okulları')
+    await accountForm.getByRole('button', { name: 'Hesabı ekle' }).click()
+    await expect(accountForm.getByText('Geçerli bir IBAN girin.')).toBeVisible()
+    await accountForm.getByLabel('IBAN').fill('TR33 0006 1005 1978 6457 8413 26')
+    await accountForm.getByRole('button', { name: 'Hesabı ekle' }).click()
+    await expect(page.getByText('Banka hesabı eklendi.')).toBeVisible()
+    await expect(
+      page.getByRole('list', { name: 'Banka hesapları' }).getByText('TR330006100519786457841326', {
+        exact: false,
+      }),
+    ).toBeVisible()
+
+    await page.goto(`${ADMIN_URL}?tahsilat=inv-s16-5`)
+    const dialog = paymentDialog(page)
+    await expect(dialog.getByLabel('Banka hesabı')).toHaveValue(/.+/)
+    await fillReference(dialog)
+    await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
+    await expect(page.getByText('Tahsilat kaydedildi.')).toBeVisible()
+
+    await page.goto(`${ADMIN_URL}?gorunum=tahsilatlar`)
+    const table = page.getByRole('table', { name: 'Tahsilat geçmişi' })
+    await expect(table.getByText('Örnek Bankası · 1326')).toBeVisible()
+    await page.getByLabel('MEBBİS durumu').selectOption('pending')
+    await expect(table.getByText('İşlenmedi')).toBeVisible()
+    await table.getByRole('button', { name: /MEBBİS işaretini değiştir/ }).click()
+    await expect(table.getByText('İşlenmedi')).toHaveCount(0)
+    await page.getByLabel('MEBBİS durumu').selectOption('all')
+    await expect(table.getByRole('button', { name: /MEBBİS işaretini değiştir/ })).toHaveText(
+      'İşareti kaldır',
+    )
+  })
+
   test('DOM-FIN-033: yönetici tahsilatı gerekçeyle iptal eder, taksit açılır, satır kalır', async ({
     page,
     loginAs,

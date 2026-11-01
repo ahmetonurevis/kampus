@@ -7,6 +7,9 @@ import {
   openAmount,
   parseAmountInput,
   paymentFormSchema,
+  assertMebbisChangeAllowed,
+  bankAccountLabel,
+  bankAccountSchema,
   planPayment,
   reversePayment,
   type PaymentContext,
@@ -34,6 +37,7 @@ const context = (overrides: Partial<PaymentContext> = {}): PaymentContext => ({
   allocated: new Map(),
   cashEnabled: false,
   referenceInUse: false,
+  bankAccountIds: [],
   now: NOW,
   ...overrides,
 })
@@ -256,7 +260,7 @@ test('DOM-FIN-001: tutar metinden kuruşa kayıpsız çevrilir', () => {
 })
 
 test('DOM-FIN-031: tahsilat formu nakit dışında referans ister', () => {
-  const base = { amount: '100', reference: '', paidDate: '2026-10-01' }
+  const base = { amount: '100', reference: '', paidDate: '2026-10-01', bankAccountId: '' }
   assert.equal(paymentFormSchema.safeParse({ ...base, method: 'Nakit' }).success, true)
   assert.equal(paymentFormSchema.safeParse({ ...base, method: 'Kredi kartı' }).success, false)
   assert.equal(
@@ -266,5 +270,48 @@ test('DOM-FIN-031: tahsilat formu nakit dışında referans ister', () => {
   assert.equal(
     paymentFormSchema.safeParse({ ...base, amount: '0', method: 'Nakit' }).success,
     false,
+  )
+})
+
+test('DOM-FIN-032: hesap tanımlıysa nakit dışı tahsilat hesap ister, nakit istemez', () => {
+  const { state, studentId } = fixture()
+  const accounts = { bankAccountIds: ['a1'] }
+  const input = { studentId, amountCents: 4_000, ...bank }
+  assert.throws(
+    () => planPayment(state, input, context(accounts)),
+    isDomainError('bank_account_required'),
+  )
+  assert.throws(
+    () => planPayment(state, { ...input, bankAccountId: 'a2' }, context(accounts)),
+    isDomainError('bank_account_invalid'),
+  )
+  assert.equal(
+    planPayment(state, { ...input, bankAccountId: 'a1' }, context(accounts)).bankAccountId,
+    'a1',
+  )
+  assert.equal(planPayment(state, input, context()).bankAccountId, null)
+  const cash = { studentId, amountCents: 4_000, method: 'Nakit' }
+  assert.equal(
+    planPayment(state, cash, context({ ...accounts, cashEnabled: true })).bankAccountId,
+    null,
+  )
+})
+
+test('DOM-FIN-032: hesap IBAN mod 97 ile doğrulanır, boşluklar temizlenir; etiket son dört hane', () => {
+  const account = { bankName: 'Örnek Bankası', accountHolder: 'Akademi Özel Okulları' }
+  const parsed = bankAccountSchema.parse({ ...account, iban: 'tr33 0006 1005 1978 6457 8413 26' })
+  assert.equal(parsed.iban, 'TR330006100519786457841326')
+  assert.equal(bankAccountLabel(parsed), 'Örnek Bankası · 1326')
+  assert.equal(
+    bankAccountSchema.safeParse({ ...account, iban: 'TR330006100519786457841327' }).success,
+    false,
+  )
+})
+
+test('DOM-FIN-032: iptal edilen tahsilatın MEBBİS işareti değişmez', () => {
+  assert.doesNotThrow(() => assertMebbisChangeAllowed({ reversedAt: null }))
+  assert.throws(
+    () => assertMebbisChangeAllowed({ reversedAt: NOW }),
+    isDomainError('payment_already_reversed', 'conflict'),
   )
 })

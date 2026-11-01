@@ -8,12 +8,14 @@ import {
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import {
   amountInputValue,
+  bankAccountLabel,
   parseAmountInput,
   paymentFormSchema,
   type PaymentFormValues,
 } from '@kampus/school-core/lib/payments.ts'
 import {
   allocatedToInvoice,
+  useBankAccounts,
   usePaymentSettings,
   useRecordPayment,
   useStudentPayments,
@@ -62,11 +64,14 @@ function PaymentLoader({ invoiceId, onClose }: Props) {
   const row = item.data ? invoiceRow(item.data, dayKey()) : null
   const history = useStudentPayments(row?.studentId ?? '')
   const settings = usePaymentSettings()
+  const accounts = useBankAccounts()
 
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (history.error)
     return <QueryError error={history.error} onRetry={() => void history.refetch()} />
-  if (!row || !history.data || settings.isPending) return <SummaryLoading />
+  if (accounts.error)
+    return <QueryError error={accounts.error} onRetry={() => void accounts.refetch()} />
+  if (!row || !history.data || settings.isPending || !accounts.data) return <SummaryLoading />
   // Bağlantıyla açılan ödenmiş taksit (veya başka sekmede ödenmiş): form gösterilmez.
   if (row.paidAt)
     return (
@@ -79,6 +84,7 @@ function PaymentLoader({ invoiceId, onClose }: Props) {
       row={row}
       paidCents={allocatedToInvoice(history.data.data, invoiceId)}
       cashEnabled={settings.cashEnabled}
+      accounts={accounts.data.data}
       onClose={onClose}
     />
   )
@@ -88,11 +94,13 @@ function PaymentForm({
   row,
   paidCents,
   cashEnabled,
+  accounts,
   onClose,
 }: {
   row: InvoiceRow
   paidCents: number
   cashEnabled: boolean
+  accounts: readonly { id: string; bankName: string; iban: string }[]
   onClose: () => void
 }) {
   const pay = useRecordPayment()
@@ -106,41 +114,51 @@ function PaymentForm({
       method: methods[0] ?? 'Banka havalesi',
       reference: '',
       paidDate: today,
+      bankAccountId: accounts[0]?.id ?? '',
     },
   })
   const busy = pay.isPending || form.formState.isSubmitting
   const isCash = useWatch({ control: form.control, name: 'method' }) === CASH
 
-  const onSubmit = form.handleSubmit(async ({ amount, method, reference, paidDate }) => {
-    const amountCents = parseAmountInput(amount)
-    if (amountCents === null) return
-    const outcome = await pay.submit(
-      {
-        studentId: row.studentId,
-        invoiceId: row.id,
-        amountCents,
-        method,
-        ...(method === CASH ? {} : { reference }),
-        // Bugün için gün gönderilmez: tahsilat kayıt anını taşır.
-        ...(paidDate === today ? {} : { paidDate }),
-      },
-      {
-        setError: (name, error) => {
-          if (name === 'amountCents') form.setError('amount', error)
-          else if (name === 'reference' || name === 'paidDate' || name === 'method')
-            form.setError(name, error)
-          else form.setError('root.server', error)
+  const onSubmit = form.handleSubmit(
+    async ({ amount, method, reference, paidDate, bankAccountId }) => {
+      const amountCents = parseAmountInput(amount)
+      if (amountCents === null) return
+      const outcome = await pay.submit(
+        {
+          studentId: row.studentId,
+          invoiceId: row.id,
+          amountCents,
+          method,
+          ...(method === CASH ? {} : { reference }),
+          ...(method === CASH || bankAccountId === '' ? {} : { bankAccountId }),
+          // Bugün için gün gönderilmez: tahsilat kayıt anını taşır.
+          ...(paidDate === today ? {} : { paidDate }),
         },
-      },
-    )
-    if (outcome.status === 'success') {
-      notify.success('Tahsilat kaydedildi.')
-      onClose()
-    }
-    // Mükerrer ödeme: mesaj gösterildi, liste tazelendi; form artık geçersiz. Kullanılmış
-    // referans da 409'dur ama düzeltilebilir: form açık kalır.
-    else if (outcome.status === 'failed' && outcome.error.code === 'invoice_already_paid') onClose()
-  })
+        {
+          setError: (name, error) => {
+            if (name === 'amountCents') form.setError('amount', error)
+            else if (
+              name === 'reference' ||
+              name === 'paidDate' ||
+              name === 'method' ||
+              name === 'bankAccountId'
+            )
+              form.setError(name, error)
+            else form.setError('root.server', error)
+          },
+        },
+      )
+      if (outcome.status === 'success') {
+        notify.success('Tahsilat kaydedildi.')
+        onClose()
+      }
+      // Mükerrer ödeme: mesaj gösterildi, liste tazelendi; form artık geçersiz. Kullanılmış
+      // referans da 409'dur ama düzeltilebilir: form açık kalır.
+      else if (outcome.status === 'failed' && outcome.error.code === 'invoice_already_paid')
+        onClose()
+    },
+  )
 
   const errors = form.formState.errors
   const rootError = errors.root?.server
@@ -177,6 +195,19 @@ function PaymentForm({
           </NativeSelect>
         )}
       </FormField>
+      {isCash || accounts.length === 0 ? null : (
+        <FormField id="tahsilat-hesap" label="Banka hesabı" error={errors.bankAccountId}>
+          {(control) => (
+            <NativeSelect {...control} {...form.register('bankAccountId')} disabled={busy}>
+              {accounts.map((account) => (
+                <NativeSelectOption key={account.id} value={account.id}>
+                  {bankAccountLabel(account)}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          )}
+        </FormField>
+      )}
       {isCash ? null : (
         <FormField
           id="tahsilat-referans"

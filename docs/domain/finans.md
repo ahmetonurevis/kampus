@@ -176,7 +176,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat eğitim ücretinin bildirilmiş banka hesabına yatırılarak tahsilini ve MEBBİS'e işlenmesini ister.
 - **Kaynak:** ÖÖKY md. 55/3.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — API nakdi kurum ayarıyla denetler (`lib/payments.ts`, 422 `cash_payment_disabled`; `PATCH /api/v1/payment-settings`). Bildirilmiş banka hesabı ve MEBBİS işaretlemesi yok. Çevrimdışı demo formu ayarı bilmez (`apps/web/src/views/Finance.vue`).
+- **Kodda:** kısmen — API nakdi kurum ayarıyla denetler (`lib/payments.ts`, 422 `cash_payment_disabled`; `PATCH /api/v1/payment-settings`). Bildirilmiş hesaplar `/api/v1/bank-accounts` ile tutulur; hesap tanımlıysa nakit dışı tahsilat bir hesaba bağlanır (422 `bank_account_required`), hiç hesap tanımlanmadıysa tahsilat engellenmez. MEBBİS işareti `POST /api/v1/payments/:paymentId/mebbis-record` ile elle tutulur; MEBBİS'e bağlantı yoktur. Çevrimdışı demo formu ayarı bilmez (`apps/web/src/views/Finance.vue`).
 
 ### DOM-FIN-033 · Tahsilat silinmez, ters kayıtla düzeltilir
 

@@ -1,13 +1,18 @@
 import { and, asc, count, desc, eq, gte, inArray, isNull, lt, max, or, sql } from 'drizzle-orm'
 
 import type { ExportPayment } from '@kampus/school-core/lib/finance-export.ts'
-import type { PaymentAllocation, PaymentPlan } from '@kampus/school-core/lib/payments.ts'
+import {
+  bankAccountLabel,
+  type PaymentAllocation,
+  type PaymentPlan,
+} from '@kampus/school-core/lib/payments.ts'
 import type { PaymentMethod } from '@kampus/school-core/lib/domain.ts'
 
 import type { Database } from './client.ts'
 import { records } from './schema/records.ts'
 import { foldSearch, foldSql } from './text-search.ts'
 import {
+  bankAccounts,
   PAYMENT_METHOD_KEYS,
   paymentAllocations,
   payments,
@@ -29,6 +34,9 @@ export interface StoredPayment {
   receiptNumber: number
   reversedAt: Date | null
   reversalReason: string | null
+  bankAccountId: string | null
+  bankAccountLabel: string | null
+  mebbisRecordedAt: Date | null
   version: number
   allocations: PaymentAllocation[]
 }
@@ -44,6 +52,12 @@ const STUDENT_JOIN = and(
   eq(records.id, payments.studentId),
 )
 
+/** Arşivlenmiş hesap da eşleşir: geçmiş tahsilat hesabını göstermeyi sürdürür. */
+const BANK_JOIN = and(
+  eq(bankAccounts.institutionId, payments.institutionId),
+  eq(bankAccounts.id, payments.bankAccountId),
+)
+
 const COLUMNS = {
   id: payments.id,
   studentId: payments.studentId,
@@ -56,6 +70,10 @@ const COLUMNS = {
   receiptNumber: payments.receiptNumber,
   reversedAt: payments.reversedAt,
   reversalReason: payments.reversalReason,
+  bankAccountId: payments.bankAccountId,
+  bankName: bankAccounts.bankName,
+  bankIban: bankAccounts.iban,
+  mebbisRecordedAt: payments.mebbisRecordedAt,
   version: payments.version,
 }
 type Row = {
@@ -70,6 +88,10 @@ type Row = {
   receiptNumber: number
   reversedAt: Date | null
   reversalReason: string | null
+  bankAccountId: string | null
+  bankName: string | null
+  bankIban: string | null
+  mebbisRecordedAt: Date | null
   version: number
 }
 
@@ -99,9 +121,14 @@ async function withAllocations(
   return rows.map((row) => {
     const method = METHOD_LABELS[row.method]
     if (method === undefined) throw new Error(`unknown payment method: ${row.method}`)
+    const { bankName, bankIban, ...rest } = row
     return {
-      ...row,
+      ...rest,
       method,
+      bankAccountLabel:
+        bankName !== null && bankIban !== null
+          ? bankAccountLabel({ bankName, iban: bankIban })
+          : null,
       allocations: allocations
         .filter((item) => item.paymentId === row.id)
         .map(({ invoiceId, amountCents }) => ({ invoiceId, amountCents })),
@@ -286,7 +313,7 @@ export async function insertPayment(
     recordedByUserId: string
     now: Date
   },
-): Promise<StoredPayment> {
+): Promise<void> {
   const { id, plan, receiptYear, recordedByUserId, now } = input
   const receiptNumber = await nextReceiptNumber(tx, institutionId, receiptYear)
   await tx.insert(payments).values({
@@ -296,6 +323,7 @@ export async function insertPayment(
     amountCents: plan.amountCents,
     method: PAYMENT_METHOD_KEYS[plan.method],
     reference: plan.reference,
+    bankAccountId: plan.bankAccountId,
     paidAt: new Date(plan.paidAt),
     receiptYear,
     receiptNumber,
@@ -313,21 +341,6 @@ export async function insertPayment(
       updatedAt: now,
     })),
   )
-  return {
-    id,
-    studentId: plan.studentId,
-    studentName: null,
-    amountCents: plan.amountCents,
-    method: plan.method,
-    reference: plan.reference,
-    paidAt: new Date(plan.paidAt),
-    receiptYear,
-    receiptNumber,
-    reversedAt: null,
-    reversalReason: null,
-    version: 1,
-    allocations: plan.allocations,
-  }
 }
 
 export async function findPayment(
@@ -339,6 +352,7 @@ export async function findPayment(
     .select(COLUMNS)
     .from(payments)
     .leftJoin(records, STUDENT_JOIN)
+    .leftJoin(bankAccounts, BANK_JOIN)
     .where(and(eq(payments.institutionId, institutionId), eq(payments.id, id)))
     .limit(1)
   const [found] = await withAllocations(db, institutionId, rows)
@@ -353,6 +367,8 @@ export async function listPayments(
     studentId?: string | undefined
     studentIds: readonly string[] | null
     q?: string | undefined
+    /** Yalnız MEBBİS'e işlenmemiş geçerli tahsilatlar. */
+    mebbisPending?: boolean
     page: number
     pageSize: number
   },
@@ -361,6 +377,9 @@ export async function listPayments(
     eq(payments.institutionId, institutionId),
     query.studentId === undefined ? undefined : eq(payments.studentId, query.studentId),
     query.studentIds === null ? undefined : inArray(payments.studentId, [...query.studentIds]),
+    query.mebbisPending
+      ? and(isNull(payments.mebbisRecordedAt), isNull(payments.reversedAt))
+      : undefined,
     query.q === undefined
       ? undefined
       : sql`(strpos(${foldSql(sql`${records.data} ->> 'name'`)}, ${foldSearch(query.q)}) > 0 or strpos(${foldSql(payments.reference)}, ${foldSearch(query.q)}) > 0)`,
@@ -374,6 +393,7 @@ export async function listPayments(
     .select(COLUMNS)
     .from(payments)
     .leftJoin(records, STUDENT_JOIN)
+    .leftJoin(bankAccounts, BANK_JOIN)
     .where(where)
     .orderBy(desc(payments.paidAt), desc(payments.receiptNumber))
     .limit(query.pageSize)
@@ -475,4 +495,95 @@ export async function savePaymentSettings(
     .onConflictDoNothing()
     .returning(columns)
   return created ?? null
+}
+
+/** MEBBİS işaretini yazar veya kaldırır; sürüm koşulu tutmazsa `null` döner (DOM-FIN-032). */
+export async function setPaymentMebbis(
+  tx: Database,
+  institutionId: string,
+  input: { id: string; expectedVersion: number; recordedByUserId: string | null; now: Date },
+): Promise<{ version: number } | null> {
+  const [row] = await tx
+    .update(payments)
+    .set({
+      mebbisRecordedAt: input.recordedByUserId === null ? null : input.now,
+      mebbisRecordedByUserId: input.recordedByUserId,
+      version: sql`${payments.version} + 1`,
+      updatedAt: input.now,
+    })
+    .where(
+      and(
+        eq(payments.institutionId, institutionId),
+        eq(payments.id, input.id),
+        eq(payments.version, input.expectedVersion),
+      ),
+    )
+    .returning({ version: payments.version })
+  return row ?? null
+}
+
+export interface StoredBankAccount {
+  id: string
+  bankName: string
+  iban: string
+  accountHolder: string
+  version: number
+}
+
+const BANK_ACCOUNT_COLUMNS = {
+  id: bankAccounts.id,
+  bankName: bankAccounts.bankName,
+  iban: bankAccounts.iban,
+  accountHolder: bankAccounts.accountHolder,
+  version: bankAccounts.version,
+}
+
+/** Kurumun arşivlenmemiş hesapları, ilk eklenen önce. */
+export function listBankAccounts(
+  db: Database,
+  institutionId: string,
+): Promise<StoredBankAccount[]> {
+  return db
+    .select(BANK_ACCOUNT_COLUMNS)
+    .from(bankAccounts)
+    .where(and(eq(bankAccounts.institutionId, institutionId), isNull(bankAccounts.archivedAt)))
+    .orderBy(asc(bankAccounts.createdAt), asc(bankAccounts.id))
+}
+
+export async function insertBankAccount(
+  tx: Database,
+  institutionId: string,
+  input: { id: string; bankName: string; iban: string; accountHolder: string; now: Date },
+): Promise<StoredBankAccount> {
+  const { now, ...values } = input
+  const [row] = await tx
+    .insert(bankAccounts)
+    .values({ institutionId, ...values, createdAt: now, updatedAt: now })
+    .returning(BANK_ACCOUNT_COLUMNS)
+  if (row === undefined) throw new Error('bank account was not written')
+  return row
+}
+
+/** Sürüm koşulu tutmazsa `null` döner. */
+export async function archiveBankAccount(
+  tx: Database,
+  institutionId: string,
+  input: { id: string; expectedVersion: number; now: Date },
+): Promise<{ version: number } | null> {
+  const [row] = await tx
+    .update(bankAccounts)
+    .set({
+      archivedAt: input.now,
+      version: sql`${bankAccounts.version} + 1`,
+      updatedAt: input.now,
+    })
+    .where(
+      and(
+        eq(bankAccounts.institutionId, institutionId),
+        eq(bankAccounts.id, input.id),
+        eq(bankAccounts.version, input.expectedVersion),
+      ),
+    )
+    .returning({ version: bankAccounts.version })
+  return row ?? null
 }

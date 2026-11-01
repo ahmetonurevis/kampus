@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyReply, preValidationAsyncHookHandler } fro
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
 import {
+  bankAccountSchema,
+  paymentMebbisSchema,
   paymentSettingsSchema,
   recordPaymentSchema,
   reversePaymentSchema,
@@ -10,16 +12,24 @@ import {
 import { contextOf } from '../plugins/authenticate.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import {
+  archiveBankAccountCommand,
+  createBankAccountCommand,
+  getBankAccounts,
   getPaymentFor,
   getPaymentSettings,
   listPaymentsFor,
   recordPaymentCommand,
   reversePaymentCommand,
+  setPaymentMebbisCommand,
   setPaymentSettings,
 } from '../services/payments.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import {
+  bankAccountArchiveResponseSchema,
+  bankAccountListResponseSchema,
+  bankAccountParamsSchema,
+  bankAccountResponseSchema,
   paymentListQuerySchema,
   paymentListResponseSchema,
   paymentParamsSchema,
@@ -76,7 +86,7 @@ export function registerPaymentRoutes(app: FastifyInstance) {
         tags: ['payments'],
         summary: 'Tahsilatları listele',
         description:
-          'Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız). Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.',
+          'Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.',
         querystring: paymentListQuerySchema,
         response: { 200: paymentListResponseSchema, ...commandErrors },
       },
@@ -116,7 +126,7 @@ export function registerPaymentRoutes(app: FastifyInstance) {
         tags: ['payments'],
         summary: 'Tahsilat kaydet',
         description:
-          'Tahsilatı ayrı kayıt olarak yazar ve önce `invoiceId` ile seçilen taksite, sonra en eski vadeye dağıtır; kısmi ödeme kabul edilir, açık taksitleri aşan kısım `creditCents` olarak iade alacağıdır (DOM-FIN-030). Açık taksit yoksa 409 `no_open_installments`, ödenmiş taksit seçilirse 409 `invoice_already_paid`. Nakit dışı yöntemde `reference` zorunlu (422 `payment_reference_required`); kullanılmış referans 409 `payment_reference_used` (DOM-FIN-031). Nakit kurumda kapalıysa 422 `cash_payment_disabled` (DOM-FIN-032). İleri tarih 422 `payment_date_in_future`. Olmayan veya başka kurumun öğrencisi 404. Gövde katıdır. `Idempotency-Key` zorunludur: aynı anahtar ikinci tahsilat açmaz, ilk yanıtı döner. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.',
+          'Tahsilatı ayrı kayıt olarak yazar ve önce `invoiceId` ile seçilen taksite, sonra en eski vadeye dağıtır; kısmi ödeme kabul edilir, açık taksitleri aşan kısım `creditCents` olarak iade alacağıdır (DOM-FIN-030). Açık taksit yoksa 409 `no_open_installments`, ödenmiş taksit seçilirse 409 `invoice_already_paid`. Nakit dışı yöntemde `reference` zorunlu (422 `payment_reference_required`); kullanılmış referans 409 `payment_reference_used` (DOM-FIN-031). Nakit kurumda kapalıysa 422 `cash_payment_disabled`. Kurumda bildirilmiş hesap varsa nakit dışı tahsilat `bankAccountId` ister (422 `bank_account_required`), arşivli veya başka kurumun hesabı 422 `bank_account_invalid` (DOM-FIN-032). İleri tarih 422 `payment_date_in_future`. Olmayan veya başka kurumun öğrencisi 404. Gövde katıdır. `Idempotency-Key` zorunludur: aynı anahtar ikinci tahsilat açmaz, ilk yanıtı döner. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.',
         headers: commandHeadersSchema('required', { ifMatch: false }),
         body: recordPaymentSchema,
         response: { 201: paymentResponseSchema, ...commandErrors },
@@ -161,6 +171,109 @@ export function registerPaymentRoutes(app: FastifyInstance) {
         idempotency,
       )
       return paymentResponseSchema.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.post(
+    '/api/v1/payments/:paymentId/mebbis-record',
+    {
+      preValidation: writeGuard(['yonetici', 'onburo'], 'required'),
+      schema: {
+        operationId: 'setPaymentMebbis',
+        tags: ['payments'],
+        summary: "Tahsilatı MEBBİS'e işlendi olarak işaretle",
+        description:
+          "`recorded: true` tahsilatı MEBBİS'e işlendi olarak işaretler, `false` işareti kaldırır (DOM-FIN-032). Platform MEBBİS'e bağlanmaz; işlemi kurum yapar, burada yalnız takip edilir. İptal edilmiş tahsilat 409 `payment_already_reversed`. `If-Match` ve `Idempotency-Key` zorunludur. Olmayan veya başka kurumun tahsilatı 404. Roller: `yonetici`, `onburo`.",
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        params: paymentParamsSchema,
+        body: paymentMebbisSchema,
+        response: { 200: paymentResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const { idempotency, expectedVersion } = options(request, 'required')
+      if (expectedVersion === null) throw new Error('If-Match guard did not run')
+      const result = await setPaymentMebbisCommand(
+        contextOf(request),
+        request.params.paymentId,
+        request.commandInput,
+        expectedVersion,
+        idempotency,
+      )
+      return paymentResponseSchema.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.get(
+    '/api/v1/bank-accounts',
+    {
+      preValidation: readGuard(['yonetici', 'onburo']),
+      schema: {
+        operationId: 'listBankAccounts',
+        tags: ['payments'],
+        summary: 'Bildirilmiş banka hesapları',
+        description:
+          'Kurumun arşivlenmemiş bildirilmiş banka hesapları, ilk eklenen önce (DOM-FIN-032). Roller: `yonetici`, `onburo`.',
+        response: { 200: bankAccountListResponseSchema, ...commandErrors },
+      },
+    },
+    async (request) => {
+      const ctx = contextOf(request)
+      return { data: await getBankAccounts(ctx.db, ctx.institutionId) }
+    },
+  )
+
+  typed.post(
+    '/api/v1/bank-accounts',
+    {
+      preValidation: writeGuard(['yonetici'], 'reject'),
+      schema: {
+        operationId: 'createBankAccount',
+        tags: ['payments'],
+        summary: 'Bildirilmiş banka hesabı ekle',
+        description:
+          'Kurumun bildirilmiş banka hesabını ekler (DOM-FIN-032). IBAN mod 97 ile doğrulanır; aynı IBAN 409 `bank_account_exists`. `Idempotency-Key` zorunludur. Başarı 201. Rol: `yonetici`.',
+        headers: commandHeadersSchema('required', { ifMatch: false }),
+        body: bankAccountSchema,
+        response: { 201: bankAccountResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const { idempotency } = options(request, 'required')
+      const result = await createBankAccountCommand(
+        contextOf(request),
+        request.commandInput,
+        idempotency,
+      )
+      return bankAccountResponseSchema.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.delete(
+    '/api/v1/bank-accounts/:bankAccountId',
+    {
+      preValidation: writeGuard(['yonetici'], 'required'),
+      schema: {
+        operationId: 'archiveBankAccount',
+        tags: ['payments'],
+        summary: 'Banka hesabını arşivle',
+        description:
+          'Hesap yeni tahsilatta seçilemez, geçmiş tahsilatlar hesabı göstermeyi sürdürür (DOM-FIN-032). `If-Match` ve `Idempotency-Key` zorunludur. Olmayan veya başka kurumun hesabı 404. Rol: `yonetici`.',
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        params: bankAccountParamsSchema,
+        response: { 200: bankAccountArchiveResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const { idempotency, expectedVersion } = options(request, 'required')
+      if (expectedVersion === null) throw new Error('If-Match guard did not run')
+      const result = await archiveBankAccountCommand(
+        contextOf(request),
+        request.params.bankAccountId,
+        expectedVersion,
+        idempotency,
+      )
+      return bankAccountArchiveResponseSchema.parse(sendBody(reply, result))
     },
   )
 

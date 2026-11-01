@@ -14,6 +14,7 @@ export type ReceiptPayment = {
   creditCents: number
   method: string
   reference: string | null
+  bankAccountLabel: string | null
   paidAt: string
   receiptYear: number
   receiptNumber: number
@@ -86,6 +87,7 @@ export function paymentReceiptDocument(
     ['Ödeme tarihi', dateLabel(payment.paidAt, AT)],
     ['Ödeme yöntemi', payment.method],
     ['İşlem referansı', payment.reference ?? '—'],
+    ['Banka hesabı', payment.bankAccountLabel ?? '—'],
     ['Durum', reversed ? 'İptal edildi' : 'Geçerli'],
   ])
   if (payment.creditCents > 0)

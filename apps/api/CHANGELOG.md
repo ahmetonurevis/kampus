@@ -2,6 +2,12 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Bildirilmiş banka hesabı ve MEBBİS işareti
+
+- `GET|POST /api/v1/bank-accounts`, `DELETE /api/v1/bank-accounts/:bankAccountId`, `POST /api/v1/payments/:paymentId/mebbis-record`; `GET /api/v1/payments?mebbis=pending` (DOM-FIN-032).
+- **Kırıcı:** Kurumda hesap tanımlıysa nakit dışı `POST /api/v1/payments` `bankAccountId` ister (422 `bank_account_required`, `bank_account_invalid`).
+- Migration: `bank_accounts` tablosu; `payments.bank_account_id`, `mebbis_recorded_at`, `mebbis_recorded_by_user_id`.
+
 ## Yenilemede tarife denetimi
 
 - **Kırıcı:** `POST /api/v1/workflows/renewal` hedef yılın yayımlanmış tarifesini ister (422 `tariff_not_published`); öğrenim ücreti ilanı aşamaz (422 `renewal_above_tariff`), indirim %50 tavanındadır (DOM-FIN-002, -021). Artış tavanı (DOM-FIN-005) ÜFE/TÜFE verisi bekliyor.

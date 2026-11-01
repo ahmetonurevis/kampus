@@ -319,6 +319,24 @@ describe('bildirim merkezi uçları', () => {
     assert.deepEqual(await readRows(institution.id), [])
   })
 
+  test('DOM-YTK-040: sıra 401 → 403 module_disabled → 400; modül kapalıyken geçersiz sorgu da 403', async () => {
+    const closed = await tenant({ enabledModules: { communication: false } })
+    const open = await tenant()
+    for (const query of ['?limit=0', '?unread=evet', '?bilinmeyen=1']) {
+      assert.equal((await call('GET', `/notifications${query}`, undefined)).statusCode, 401)
+      fails(
+        await call('GET', `/notifications${query}`, closed.cookies.parent),
+        403,
+        'module_disabled',
+      )
+      fails(
+        await call('GET', `/notifications${query}`, open.cookies.parent),
+        400,
+        'validation_failed',
+      )
+    }
+  })
+
   test('DOM-ILT-023: log bildirim başlığını ve öğrenci adını taşımaz', async () => {
     const { ids, cookies } = await tenant()
     const from = logs.length

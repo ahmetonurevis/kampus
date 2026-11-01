@@ -26,9 +26,10 @@ import { emptyCommandBodySchema } from './workflows.schemas.ts'
 /**
  * Uygulama içi bildirim merkezi uçları (F6a; core `lib/notifications.ts`;
  * docs/domain/iletisim-ve-veli.md DOM-ILT-020, -023, -073). Her rol kendi bildirim merkezini
- * kullanır; bugün yalnız öğrenci ve veli bildirim alır, personelin listesi boştur. Sıra: 401 →
- * 403 `module_disabled` (`communication`) → 403 `forbidden` → 400 → işlem (404). Bildirimler
- * genel koleksiyon ucuna kapalıdır (`services/collection-access.ts`).
+ * kullanır; bugün yalnız öğrenci ve veli bildirim alır, personelin listesi boştur. Sıra bütün
+ * uçlarda: 401 → 403 `module_disabled` (`communication`) → 403 `forbidden` → 400 → işlem (404);
+ * bu yüzden okumalar da yazmalar gibi denetimi `preValidation`'da yapar. Bildirimler genel
+ * koleksiyon ucuna kapalıdır (`services/collection-access.ts`).
  */
 
 const MODULE = 'communication'
@@ -48,12 +49,21 @@ export function registerNotificationRoutes(app: FastifyInstance) {
       captureInput(),
     ]
   }
-  const readGuard = [app.requireModule(MODULE), app.requireRole(READ_ROLES)]
+  /**
+   * Okumalar: kimlik → modül → rol, sorgu doğrulamasından önce (`preValidation`). `preHandler`
+   * doğrulamadan sonra çalışır; modül kapalıyken veya oturumsuz geçersiz sorgu 403/401 yerine
+   * 400 alırdı.
+   */
+  const readGuard: preValidationAsyncHookHandler[] = [
+    app.authenticate,
+    app.requireModule(MODULE),
+    app.requireRole(READ_ROLES),
+  ]
 
   typed.get(
     '/api/v1/notifications',
     {
-      preHandler: readGuard,
+      preValidation: readGuard,
       schema: {
         operationId: 'listNotifications',
         tags: ['notifications'],
@@ -73,7 +83,7 @@ export function registerNotificationRoutes(app: FastifyInstance) {
   typed.get(
     '/api/v1/notifications/unread-count',
     {
-      preHandler: readGuard,
+      preValidation: readGuard,
       schema: {
         operationId: 'countUnreadNotifications',
         tags: ['notifications'],

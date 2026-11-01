@@ -5,6 +5,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 ## Bildirim merkezi inceleme düzeltmeleri (F6a)
 
 - Geri bildirimi açan öğretmen puanında bildirim kaydının denetim satırı `notification.create` eylemiyle yazılır (`runCommand` `auditAction`); puanın tek `task_submission.score`/`second_score` satırı kalır.
+- Bildirim okuma uçları (`GET /notifications`, `/unread-count`) kimlik, modül ve rol denetimini sorgu doğrulamasından önce (`preValidation`) yapar: oturumsuz geçersiz sorgu 401, modül kapalıyken 403 `module_disabled` alır (önce 400 dönüyordu).
 
 ## Uygulama içi bildirim merkezi (F6a)
 

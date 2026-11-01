@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
-import { ADULT_AGE, ageOn } from './age.ts'
+import { ADULT_AGE, ageOn, isCalendarDay } from './age.ts'
 import { applyEnrollment, daySchema, requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { renewalQuote, workflowSchemas } from './school-workflows.ts'
@@ -487,8 +487,38 @@ export const GUARDIAN_RELATIONSHIP_LABELS: Readonly<Record<GuardianRelationship,
   other: 'Diğer',
 }
 
+/** Kayıt formunun veli ve ödeyici seçimi: yeni veli, mevcut veliye bağlama, kursiyerin kendisi. */
+export const GUARDIAN_MODES = ['new', 'existing', 'self'] as const
+export type GuardianMode = (typeof GUARDIAN_MODES)[number]
+
+/** Formda veli zorunluyken "kendisi" seçilirse ve sunucunun 422 `guardian_required` iletisi. */
+export const GUARDIAN_REQUIRED_FORM_MESSAGE =
+  'Veli bilgisi zorunludur; yeni veli girin ya da mevcut veliye bağlayın.'
+/** Formda yetişkin kursiyere veli seçilirse ve sunucunun 422 `guardian_not_applicable` iletisi. */
+export const GUARDIAN_NOT_APPLICABLE_FORM_MESSAGE =
+  '18 yaş ve üstü kursiyer kendi ödeyicisidir; veli yerine "Kursiyerin kendisi"ni seçin.'
+
+/**
+ * Formda sunulan veli seçimleri (DOM-KAY-012, `guardianRequired` ile aynı kural): veli
+ * zorunluyken yeni ya da mevcut veli; kursta 18 yaş ve üstünde yalnız kursiyerin kendisi. Doğum
+ * tarihi henüz geçerli değilse veli zorunlu sayılır (okulda her yaşta zorunludur).
+ */
+export function allowedGuardianModes(
+  institutionType: InstitutionType,
+  birthDate: string,
+  now: string | number | Date = new Date(),
+): readonly GuardianMode[] {
+  return !isCalendarDay(birthDate) || guardianRequired(institutionType, birthDate, now)
+    ? ['new', 'existing']
+    : ['self']
+}
+
 /** Kesin kayıt formu (web): adımlar arası metin değerleri; gönderimde API gövdesine çevrilir. */
-export function enrollmentFormSchema(institutionType: InstitutionType) {
+export function enrollmentFormSchema(
+  institutionType: InstitutionType,
+  /** Yaşın hesaplandığı an (test için); verilmezse doğrulama anı. */
+  now?: string | number | Date,
+) {
   return z
     .object({
       prospectId: z.string().min(1, 'Aday seçin.'),
@@ -496,11 +526,14 @@ export function enrollmentFormSchema(institutionType: InstitutionType) {
       identityKind: z.enum(['tc', 'foreign']),
       identityNumber: z.string().trim(),
       birthDate: daySchema,
-      guardianMode: z.enum(['new', 'existing', 'self']),
+      guardianMode: z.enum(GUARDIAN_MODES),
       guardianName: z.string().trim().max(80),
       guardianPhone: z.string().trim(),
       relationship: z.enum(GUARDIAN_RELATIONSHIPS),
       existingParentId: z.string(),
+      /** Yetişkin kursiyerin kendi iletişimi (isteğe bağlı); gövdede `studentContact`. */
+      studentPhone: z.string().trim(),
+      studentEmail: z.string().trim(),
       lessonHours: z.string().trim(),
       discounts: z.array(z.enum(FEE_DISCOUNT_KINDS)),
       extras: z.array(z.enum(FEE_ITEM_KINDS)),
@@ -521,13 +554,27 @@ export function enrollmentFormSchema(institutionType: InstitutionType) {
         issue('identityNumber', 'Geçerli bir T.C. kimlik numarası girin.')
       if (value.identityKind === 'foreign' && !/^.{5,20}$/.test(value.identityNumber))
         issue('identityNumber', 'Kimlik numarasını girin (5–20 karakter).')
-      if (value.guardianMode === 'new') {
+      // Sunucuyla aynı veli kuralı (DOM-KAY-012): okulda her yaşta, kursta 18 yaş altında veli
+      // zorunlu; kursta 18 yaş ve üstünde veli alınmaz. Yanlış seçim son adımda 422 olmaz.
+      const allowed = allowedGuardianModes(institutionType, value.birthDate, now ?? new Date())
+      const required = !allowed.includes('self')
+      if (required && value.guardianMode === 'self')
+        issue('guardianMode', GUARDIAN_REQUIRED_FORM_MESSAGE)
+      if (!required && value.guardianMode !== 'self')
+        issue('guardianMode', GUARDIAN_NOT_APPLICABLE_FORM_MESSAGE)
+      if (required && value.guardianMode === 'new') {
         if (value.guardianName.length < 2) issue('guardianName', 'Veli adını girin.')
         if (!/^0\d{10}$/.test(value.guardianPhone))
           issue('guardianPhone', 'Telefonu 05XXXXXXXXX biçiminde girin.')
       }
-      if (value.guardianMode === 'existing' && value.existingParentId === '')
+      if (required && value.guardianMode === 'existing' && value.existingParentId === '')
         issue('existingParentId', 'Veli seçin.')
+      if (value.guardianMode === 'self') {
+        if (value.studentPhone !== '' && !/^0\d{10}$/.test(value.studentPhone))
+          issue('studentPhone', 'Telefonu 05XXXXXXXXX biçiminde girin.')
+        if (value.studentEmail !== '' && !z.email().safeParse(value.studentEmail).success)
+          issue('studentEmail', 'Geçerli bir e-posta adresi girin.')
+      }
       if (
         institutionType === 'language_school' &&
         !(Number.isInteger(Number(value.lessonHours)) && Number(value.lessonHours) >= 1)
@@ -549,6 +596,8 @@ export const ENROLLMENT_STEP_FIELDS: readonly (readonly (keyof EnrollmentFormVal
     'guardianPhone',
     'relationship',
     'existingParentId',
+    'studentPhone',
+    'studentEmail',
   ],
   ['lessonHours', 'discounts', 'extras', 'installmentCount', 'firstDueDate'],
 ]
@@ -558,6 +607,15 @@ export function enrollmentFormToBody(
   tariffId: string,
 ): EnrollProspectInput {
   const lessonHours = values.lessonHours === '' ? null : Number(values.lessonHours)
+  // Kursiyerin kendi iletişimi yalnız "kendisi" seçiliyken ve doldurulduysa gider; boşsa sunucu
+  // adayın iletişimini yazar (DOM-KAY-012).
+  const studentContact =
+    values.guardianMode === 'self'
+      ? {
+          ...(values.studentPhone === '' ? {} : { phone: values.studentPhone }),
+          ...(values.studentEmail === '' ? {} : { email: values.studentEmail }),
+        }
+      : {}
   return {
     classId: values.classId,
     tariffId,
@@ -582,6 +640,7 @@ export function enrollmentFormToBody(
               phone: values.guardianPhone,
               relationship: values.relationship,
             },
+    ...(Object.keys(studentContact).length > 0 ? { studentContact } : {}),
   }
 }
 

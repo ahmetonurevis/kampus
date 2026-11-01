@@ -4,14 +4,17 @@ import test from 'node:test'
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import { enrollProspect } from '../packages/school-core/src/lib/domain.ts'
 import {
+  allowedGuardianModes,
   assertRenewalWithinTariff,
   enrollmentFormSchema,
   enrollmentFormToBody,
   enrollProspectSchema,
   enrollProspectWithTariff,
   findParentMatches,
+  GUARDIAN_NOT_APPLICABLE_FORM_MESSAGE,
   GUARDIAN_RELATIONSHIP_LABELS,
   GUARDIAN_RELATIONSHIPS,
+  GUARDIAN_REQUIRED_FORM_MESSAGE,
   guardianRequired,
   isCourse,
   isNotGuardian,
@@ -690,6 +693,8 @@ const FORM = {
   guardianPhone: '05559990001',
   relationship: 'mother',
   existingParentId: '',
+  studentPhone: '',
+  studentEmail: '',
   lessonHours: '',
   discounts: [],
   extras: [],
@@ -717,6 +722,87 @@ test('DOM-KAY-012: kayıt formu kimlik, veli ve dil okulunda saat ister', () => 
   assert.deepEqual(formIssues(FORM, 'language_school'), ['lessonHours'])
   assert.deepEqual(formIssues({ ...FORM, lessonHours: '40' }, 'language_school'), [])
   assert.deepEqual(formIssues({ ...FORM, installmentCount: '13' }), ['installmentCount'])
+})
+
+test('DOM-KAY-012: kayıt formu veli kuralını sunucuyla aynı uygular (okul/kurs × 17/18/25 yaş × veli/kendisi)', () => {
+  // NOW 2026-10-06: 2008-10-07 doğumlu 18 yaşına bir gün kala 17'dir; 2008-10-06 tam 18'dir.
+  const births = { 17: '2008-10-07', 18: '2008-10-06', 25: '2001-10-06' } as const
+  for (const type of ['school', 'language_school'] as const)
+    for (const [age, birthDate] of Object.entries(births))
+      for (const mode of ['new', 'self'] as const) {
+        const parsed = enrollmentFormSchema(type, NOW).safeParse({
+          ...FORM,
+          birthDate,
+          guardianMode: mode,
+          lessonHours: '40',
+        })
+        const issues = parsed.success ? [] : parsed.error.issues
+        const required = guardianRequired(type, birthDate, NOW)
+        assert.equal(required, type === 'school' || Number(age) < 18, `${type} ${age}`)
+        const rejected = required ? mode === 'self' : mode === 'new'
+        assert.deepEqual(
+          issues.map((issue) => [issue.path.join('.'), issue.message]),
+          rejected
+            ? [
+                [
+                  'guardianMode',
+                  required ? GUARDIAN_REQUIRED_FORM_MESSAGE : GUARDIAN_NOT_APPLICABLE_FORM_MESSAGE,
+                ],
+              ]
+            : [],
+          `${type} ${age} ${mode}`,
+        )
+        assert.deepEqual(
+          allowedGuardianModes(type, birthDate, NOW),
+          required ? ['new', 'existing'] : ['self'],
+        )
+      }
+  // Doğum tarihi girilmeden "kendisi" sunulmaz; yetişkine veli alanları ayrıca sorulmaz.
+  assert.deepEqual(allowedGuardianModes('language_school', '', NOW), ['new', 'existing'])
+  const adult = enrollmentFormSchema('language_school', NOW).safeParse({
+    ...FORM,
+    birthDate: '2001-10-06',
+    guardianMode: 'existing',
+    lessonHours: '40',
+  })
+  assert.deepEqual(adult.success ? [] : adult.error.issues.map((issue) => issue.path.join('.')), [
+    'guardianMode',
+  ])
+})
+
+test('DOM-KAY-012: yetişkin kursiyerin kendi iletişimi isteğe bağlıdır, yalnız "kendisi" seçiliyken gider', () => {
+  const adult = {
+    ...FORM,
+    birthDate: '2001-10-06',
+    guardianMode: 'self' as const,
+    lessonHours: '40',
+  }
+  const issues = (values: object) => {
+    const parsed = enrollmentFormSchema('language_school', NOW).safeParse({ ...adult, ...values })
+    return parsed.success ? [] : parsed.error.issues.map((issue) => issue.path.join('.'))
+  }
+  assert.deepEqual(issues({}), [])
+  assert.deepEqual(issues({ studentPhone: '123', studentEmail: 'yok' }), [
+    'studentPhone',
+    'studentEmail',
+  ])
+  const body = (values: Partial<Parameters<typeof enrollmentFormToBody>[0]>) =>
+    enrollmentFormToBody({ ...adult, discounts: [], extras: [], ...values }, 'test-tariff')
+  assert.equal('studentContact' in body({}), false)
+  const filled = body({ studentPhone: '05551112233', studentEmail: 'kursiyer@kampus.example' })
+  assert.deepEqual(filled.studentContact, {
+    phone: '05551112233',
+    email: 'kursiyer@kampus.example',
+  })
+  assert.equal(enrollProspectSchema.safeParse(filled).success, true)
+  assert.deepEqual(body({ studentEmail: 'kursiyer@kampus.example' }).studentContact, {
+    email: 'kursiyer@kampus.example',
+  })
+  // Veli seçiliyken kalmış iletişim gövdeye taşınmaz.
+  assert.equal(
+    'studentContact' in body({ guardianMode: 'new', studentPhone: '05551112233' }),
+    false,
+  )
 })
 
 test('DOM-KAY-012, -013: form gövdesi API şemasından geçer, veli türüne göre değişir', () => {

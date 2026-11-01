@@ -4,6 +4,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { Link, useSearchParams } from 'react-router'
 import { installmentAmounts } from '@kampus/school-core/lib/domain.ts'
 import {
+  allowedGuardianModes,
   enrollmentFormSchema,
   enrollmentFormToBody,
   ENROLLMENT_STEP_FIELDS,
@@ -42,11 +43,17 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { enrollmentServerError, guardianModeFor, prospectChangeValues } from './enrollment-form.ts'
 
 const STEPS = ['Aday ve sınıf', 'Kimlik ve veli', 'Ücret ve taksit', 'Kontrol'] as const
 const TARIFF_PAGE_SIZE = 100
 const OPEN_STAGES: readonly (string | undefined)[] = OPEN_PROSPECT_STAGES
 const OCCUPANCY_QUERY = { groupBy: 'classId', isActive: true } as const
+const GUARDIAN_MODE_LABELS = {
+  new: 'Yeni veli',
+  existing: 'Mevcut veliye bağla',
+  self: 'Kursiyerin kendisi (18 yaş ve üstü)',
+} as const
 
 type Done = { studentName: string; contractId: string | null }
 
@@ -159,6 +166,8 @@ function EnrollmentForm({
       guardianPhone: '',
       relationship: 'mother',
       existingParentId: '',
+      studentPhone: '',
+      studentEmail: '',
       lessonHours: '',
       discounts: [],
       extras: [],
@@ -191,6 +200,8 @@ function EnrollmentForm({
   const occupied = (classId: string) =>
     occupancy.data?.groups.find((group) => group.value === classId)?.count ?? 0
   const room = activeClasses.find((row) => row.id === values.classId)
+  // Veli seçimleri doğum tarihine göre: "kendisi" yalnız kursta 18 yaş ve üstünde (DOM-KAY-012).
+  const guardianModes = allowedGuardianModes(institutionType, values.birthDate)
   const otherCampus = Boolean(room && branchId && room.record.branchId !== branchId)
   const preview = previewEnrollment(tariff, values, {
     institutionType,
@@ -243,7 +254,14 @@ function EnrollmentForm({
         version: prospect.version,
         body: enrollmentFormToBody(data, tariff.id),
       },
-      { setError: (_name, error) => form.setError('root.server', error) },
+      {
+        // Veli, doğum tarihi ve kimlik hatası kendi alanına ve adımına döner (DOM-KAY-012).
+        setError: (name, error) => {
+          const target = enrollmentServerError(name, error)
+          if (target.step !== null) setStep(target.step)
+          form.setError(target.field, { type: target.type, message: target.message })
+        },
+      },
     )
     if (outcome.status === 'success') {
       notify.success('Kesin kayıt, sözleşme ve taksit planı oluşturuldu.')
@@ -316,10 +334,10 @@ function EnrollmentForm({
                     {...form.register('prospectId', {
                       // Başka adayın veli seçimi ve bilgisi yeni adaya taşınmaz.
                       onChange: () => {
-                        form.setValue('existingParentId', '')
-                        form.setValue('guardianName', '')
-                        form.setValue('guardianPhone', '')
-                        form.setValue('guardianMode', 'new')
+                        const reset = prospectChangeValues(form.getValues(), institutionType)
+                        for (const [name, value] of Object.entries(reset))
+                          form.setValue(name as keyof typeof reset, value)
+                        form.clearErrors('guardianMode')
                       },
                     })}
                   >
@@ -433,23 +451,79 @@ function EnrollmentForm({
                 </FormField>
                 <FormField id="kayit-dogum" label="Doğum tarihi" error={errors.birthDate}>
                   {(control) => (
-                    <Input {...control} {...form.register('birthDate')} type="date" max={today} />
+                    <Input
+                      {...control}
+                      {...form.register('birthDate', {
+                        // Veli seçimi yaşa uyar: kursta 18 yaş ve üstünde "kendisi" (DOM-KAY-012).
+                        onChange: () => {
+                          const values = form.getValues()
+                          form.setValue(
+                            'guardianMode',
+                            guardianModeFor(values.guardianMode, institutionType, values.birthDate),
+                          )
+                          form.clearErrors('guardianMode')
+                        },
+                      })}
+                      type="date"
+                      max={today}
+                    />
                   )}
                 </FormField>
               </div>
-              <FormField id="kayit-veli-tur" label="Veli ve ödeyici" error={errors.guardianMode}>
+              <FormField
+                id="kayit-veli-tur"
+                label="Veli ve ödeyici"
+                error={errors.guardianMode}
+                description={
+                  institutionType === 'school'
+                    ? 'Okulda veli her yaşta zorunludur.'
+                    : '18 yaş altında veli zorunludur; 18 yaş ve üstü kursiyer kendi ödeyicisidir.'
+                }
+              >
                 {(control) => (
                   <NativeSelect {...control} {...form.register('guardianMode')}>
-                    <NativeSelectOption value="new">Yeni veli</NativeSelectOption>
-                    <NativeSelectOption value="existing">Mevcut veliye bağla</NativeSelectOption>
-                    {institutionType === 'language_school' ? (
-                      <NativeSelectOption value="self">
-                        18 yaş üstü: kursiyerin kendisi
+                    {guardianModes.map((mode) => (
+                      <NativeSelectOption key={mode} value={mode}>
+                        {GUARDIAN_MODE_LABELS[mode]}
                       </NativeSelectOption>
-                    ) : null}
+                    ))}
                   </NativeSelect>
                 )}
               </FormField>
+              {values.guardianMode === 'self' ? (
+                <div className="grid grid-cols-2 gap-4 max-[650px]:grid-cols-1">
+                  <FormField
+                    id="kayit-kursiyer-telefon"
+                    label="Kursiyer telefonu (isteğe bağlı)"
+                    error={errors.studentPhone}
+                    description="Boş bırakılırsa aday kartındaki telefon yazılır."
+                  >
+                    {(control) => (
+                      <Input
+                        {...control}
+                        {...form.register('studentPhone')}
+                        inputMode="tel"
+                        autoComplete="off"
+                      />
+                    )}
+                  </FormField>
+                  <FormField
+                    id="kayit-kursiyer-eposta"
+                    label="Kursiyer e-postası (isteğe bağlı)"
+                    error={errors.studentEmail}
+                    description="Boş bırakılırsa aday kartındaki e-posta yazılır."
+                  >
+                    {(control) => (
+                      <Input
+                        {...control}
+                        {...form.register('studentEmail')}
+                        type="email"
+                        autoComplete="off"
+                      />
+                    )}
+                  </FormField>
+                </div>
+              ) : null}
               {values.guardianMode === 'new' ? (
                 <div className="grid grid-cols-2 gap-4 max-[650px]:grid-cols-1">
                   <FormField id="kayit-veli-ad" label="Veli adı soyadı" error={errors.guardianName}>

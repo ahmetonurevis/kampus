@@ -361,6 +361,64 @@ test.describe('Kayıt İşlemleri', () => {
     expect(invoices.reduce((sum, row) => sum + row.record.amount, 0)).toBe(2_000_000)
   })
 
+  test('DOM-KAY-012: dil okulunda yetişkin kursiyer "kendisi" ile kaydolur; 15 yaşında "kendisi" seçeneği yok', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const name = 'Yetişkin Kursiyer'
+    const year = new Date().getUTCFullYear()
+    const school = await tenant({
+      type: 'language_school',
+      roles: ['onburo'],
+      tariffYears: ['current'],
+      records: [
+        prospect('e2e-kyt-yetiskin', name, { interest: 'B1 İngilizce', minor: false }),
+        prospect('e2e-kyt-genc', 'Genç Kursiyer', {
+          interest: 'A2 İngilizce',
+          minor: true,
+          guardianName: 'Genç Velisi',
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    const client = await api(school.user('onburo'))
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    const guardian = page.getByLabel('Veli ve ödeyici')
+
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-genc`)
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+    await proceed.click()
+    await page.getByLabel('Doğum tarihi').fill(`${year - 15}-01-15`)
+    await expect(guardian).toHaveValue('new')
+    await expect(guardian.getByRole('option', { name: /Kursiyerin kendisi/ })).toHaveCount(0)
+
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-yetiskin`)
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+    await proceed.click()
+    await page.getByLabel('Kimlik numarası').fill('10000000146')
+    // Varsayılan "Yeni veli" doğum tarihi yetişkini gösterince "kendisi"ne döner.
+    await expect(guardian).toHaveValue('new')
+    await page.getByLabel('Doğum tarihi').fill(`${year - 25}-01-15`)
+    await expect(guardian).toHaveValue('self')
+    await expect(guardian.getByRole('option', { name: 'Yeni veli' })).toHaveCount(0)
+    await expect(page.getByLabel('Veli adı soyadı')).toHaveCount(0)
+    await page.getByLabel('Kursiyer telefonu (isteğe bağlı)').fill('123')
+    await proceed.click()
+    await expect(page.getByText('Telefonu 05XXXXXXXXX biçiminde girin.')).toBeVisible()
+    await page.getByLabel('Kursiyer telefonu (isteğe bağlı)').fill('05551234567')
+    await proceed.click()
+    await page.getByLabel('Paket ders saati').fill('20')
+    await proceed.click()
+    await expect(page.getByText('Kursiyerin kendisi', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+    await expect(page.getByRole('heading', { name: `${name} kaydedildi` })).toBeVisible()
+
+    const saved = await prospectOf(client, 'e2e-kyt-yetiskin')
+    expect(saved.record.stage).toBe('Kayıt oldu')
+  })
+
   test('DOM-YTK-040: finans modülü kapalıyken aday detayında kesin kayıt devre dışıdır, nedeni yazılır; API 403 verir', async ({
     page,
     loginAs,

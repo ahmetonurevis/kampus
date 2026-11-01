@@ -1,4 +1,16 @@
-import { and, asc, count, desc, eq, getTableColumns, inArray, isNull, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  exists,
+  getTableColumns,
+  inArray,
+  isNull,
+  or,
+  sql,
+} from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 import type { AssignmentTarget, FixedAssignment } from '@kampus/school-core/skills/assignment.ts'
@@ -23,6 +35,7 @@ import {
   RuleViolationError,
 } from '../errors.ts'
 import type { Database } from './client.ts'
+import { resources, resourceVersions } from './schema/resources.ts'
 import {
   resubmissionRequests,
   rubrics,
@@ -683,6 +696,179 @@ export async function loadResourceAssignments(
     )
     .orderBy(asc(taskAssignments.createdAt), asc(taskAssignments.id))
   return withTargets(db, institutionId, rows)
+}
+
+/** Atanan içerik sürümünün başlığı ve kaynağın türü (liste ve ayrıntı satırı). */
+export type AssignmentContentRef = {
+  title: string
+  contentType: (typeof resources.$inferSelect)['contentType']
+}
+
+/**
+ * Sürüm başına başlık ve içerik türü (`resource_versions` + `resources`, kurumla süzülür). Kaldırılan
+ * sürümün başlığı kalır (DOM-KYN-051); cevap anahtarı ve içerik okunmaz.
+ */
+export async function assignmentContentRefs(
+  db: Database,
+  institutionId: string,
+  resourceVersionIds: readonly string[],
+): Promise<Map<string, AssignmentContentRef>> {
+  const ids = [...new Set(resourceVersionIds)]
+  if (ids.length === 0) return new Map()
+  const rows = await db
+    .select({
+      id: resourceVersions.id,
+      title: resourceVersions.title,
+      contentType: resources.contentType,
+    })
+    .from(resourceVersions)
+    .innerJoin(
+      resources,
+      and(
+        eq(resources.institutionId, resourceVersions.institutionId),
+        eq(resources.id, resourceVersions.resourceId),
+      ),
+    )
+    .where(
+      and(eq(resourceVersions.institutionId, institutionId), inArray(resourceVersions.id, ids)),
+    )
+  return new Map(rows.map(({ id, ...ref }) => [id, ref]))
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * İçerik sürümünün kaynağı (atama gövdesindeki `resourceVersionId`); yoksa veya başka kurumdaysa
+ * `null`. Core kimliği serbest metindir, kolon `uuid`'dir: uuid olmayan kimlik sorguya girmez.
+ */
+export async function resourceIdOfVersion(
+  db: Database,
+  institutionId: string,
+  versionId: string,
+): Promise<string | null> {
+  if (!UUID.test(versionId)) return null
+  const [row] = await db
+    .select({ resourceId: resourceVersions.resourceId })
+    .from(resourceVersions)
+    .where(
+      and(eq(resourceVersions.institutionId, institutionId), eq(resourceVersions.id, versionId)),
+    )
+  return row?.resourceId ?? null
+}
+
+/**
+ * Atama listesinin süzgeçleri. Rol kapsamı servisten gelir: `assignedByUserId` öğretmenin kendi
+ * atamaları, `learnerTargets` kursiyerin (veya velinin çocuklarının) ya da öğretmenin kapsamındaki
+ * sınıf ve öğrencilerin hedeflendiği atamalar. İkisi birlikte verilirse "veya" ile birleşir
+ * (öğretmen: kendi ataması veya kapsamındaki hedef; DOM-YTK-028). İkisi de yoksa kurumun bütün
+ * atamaları (yönetici).
+ */
+export interface AssignmentListQuery {
+  page: number
+  pageSize: number
+  assignedByUserId?: string | undefined
+  /** Hedef eşleşmesi: öğrenci hedefi `studentIds`'te veya sınıf/grup hedefi `classIds`'te. */
+  learnerTargets?: { studentIds: readonly string[]; classIds: readonly string[] } | undefined
+  resourceId?: string | undefined
+  kind?: FixedAssignment['kind'] | undefined
+}
+
+/**
+ * Kurumun arşivlenmemiş atamaları, en yeni önce (IST-034). Kursiyer süzgeci arşivlenmemiş hedefler
+ * üzerinde `exists` alt sorgusudur (`task_assignment_targets_target_idx`); boş kimlik listesi hiçbir
+ * satır vermez. Sayım aynı koşulla ayrı sorgudur.
+ */
+export async function listAssignments(
+  db: Database,
+  institutionId: string,
+  query: AssignmentListQuery,
+): Promise<{ rows: StoredAssignment[]; total: number }> {
+  const a = taskAssignments
+  const t = taskAssignmentTargets
+  const learnerFilter = (() => {
+    if (query.learnerTargets === undefined) return undefined
+    const { studentIds, classIds } = query.learnerTargets
+    const matches = [
+      ...(studentIds.length > 0
+        ? [and(eq(t.targetKind, 'student'), inArray(t.targetId, [...studentIds]))]
+        : []),
+      ...(classIds.length > 0
+        ? [and(inArray(t.targetKind, ['class', 'group']), inArray(t.targetId, [...classIds]))]
+        : []),
+    ]
+    if (matches.length === 0) return sql`false`
+    return exists(
+      db
+        .select({ one: sql`1` })
+        .from(t)
+        .where(
+          and(
+            eq(t.institutionId, a.institutionId),
+            eq(t.assignmentId, a.id),
+            isNull(t.archivedAt),
+            or(...matches),
+          ),
+        ),
+    )
+  })()
+  const ownerFilter =
+    query.assignedByUserId === undefined
+      ? undefined
+      : eq(a.assignedByUserId, query.assignedByUserId)
+  const scopeFilter =
+    ownerFilter !== undefined && learnerFilter !== undefined
+      ? or(ownerFilter, learnerFilter)
+      : (ownerFilter ?? learnerFilter)
+  const where = and(
+    eq(a.institutionId, institutionId),
+    isNull(a.archivedAt),
+    ...(scopeFilter === undefined ? [] : [scopeFilter]),
+    ...(query.resourceId === undefined ? [] : [eq(a.resourceId, query.resourceId)]),
+    ...(query.kind === undefined ? [] : [eq(a.kind, query.kind)]),
+  )
+  const [rows, [totals]] = await Promise.all([
+    db
+      .select()
+      .from(a)
+      .where(where)
+      .orderBy(desc(a.createdAt), asc(a.id))
+      .limit(query.pageSize)
+      .offset((query.page - 1) * query.pageSize),
+    db.select({ total: count() }).from(a).where(where),
+  ])
+  return { rows: await withTargets(db, institutionId, rows), total: totals?.total ?? 0 }
+}
+
+/**
+ * Son teslim değişikliği (core `planAssignmentChange`; DOM-BEC-041, 044): yalnız arşivlenmemiş
+ * atamada ve beklenen satır sürümüyle; 0 satır → 409 `version_conflict`. Sabitlenen diğer
+ * kolonlar (içerik, puanlama ve rubrik sürümü, deneme ayarı) bu fonksiyonla yazılamaz.
+ */
+export async function updateAssignmentDeadline(
+  tx: Database,
+  institutionId: string,
+  assignment: Pick<StoredAssignment, 'id' | 'rowVersion'>,
+  deadline: FixedAssignment['deadline'],
+  now: Date,
+): Promise<void> {
+  const updated = await tx
+    .update(taskAssignments)
+    .set({
+      dueAt: dateOrNull(deadline.dueAt),
+      lateAcceptanceDays: deadline.lateAcceptanceDays,
+      updatedAt: now,
+      version: sql`${taskAssignments.version} + 1`,
+    })
+    .where(
+      and(
+        eq(taskAssignments.institutionId, institutionId),
+        eq(taskAssignments.id, assignment.id),
+        eq(taskAssignments.version, assignment.rowVersion),
+        isNull(taskAssignments.archivedAt),
+      ),
+    )
+    .returning({ id: taskAssignments.id })
+  if (updated.length === 0) throw new ConflictError()
 }
 
 // --- Deneme -------------------------------------------------------------------------------

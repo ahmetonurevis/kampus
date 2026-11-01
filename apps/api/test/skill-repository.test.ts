@@ -11,12 +11,14 @@ import type { Database } from '../src/db/client.ts'
 import {
   scoreAppeals,
   submissionDrafts,
+  taskAssignments,
   taskAttempts,
   taskSubmissions,
 } from '../src/db/schema/skills.ts'
 import {
   applyRubricArchive,
   applyRubricPublish,
+  assignmentContentRefs,
   findAssignment,
   findRubric,
   findRubricVersion,
@@ -32,6 +34,7 @@ import {
   insertSubmission,
   insertSubmissionVersion,
   isSecondRatingRequested,
+  listAssignments,
   loadAppeals,
   loadAttempts,
   loadDraft,
@@ -43,6 +46,7 @@ import {
   rubricUsageByVersion,
   rubricVersionUsage,
   saveDraft,
+  updateAssignmentDeadline,
   updateRubricVersionDraft,
 } from '../src/db/skills.ts'
 import { AppError } from '../src/errors.ts'
@@ -468,6 +472,167 @@ describe('beceri görevi deposu', () => {
     assert.deepEqual(
       (await loadAttempts(db, institutionId, id, LEARNER)).map((row) => row.attemptNumber),
       [1],
+    )
+  })
+
+  test('IST-034, DOM-BEC-044: atama listesi kurum, sahip, hedef, içerik ve tür süzgeciyle sayfalı; içerik başlığı okunur; son teslim beklenen sürümle yazılır, eski sürüm ve arşivli atama 409', async () => {
+    const { institutionId, owner, otherId, chain: c } = await setup()
+    const base: FixedAssignment = {
+      resourceId: c.resourceId,
+      resourceVersionId: c.resourceVersionId,
+      scoringVersionId: c.resourceVersionId,
+      rubricVersionId: null,
+      scoringMode: 'auto',
+      kind: 'practice',
+      attempts: { kind: 'practice' },
+      deadline: { dueAt: null, lateAcceptanceDays: 0 },
+      timeLimitMinutes: null,
+      listeningPlays: null,
+      showTranscript: false,
+      submission: null,
+      highStakes: false,
+      secondRatingPercent: 0,
+    }
+    const add = async (
+      assignedByUserId: string,
+      targets: { kind: 'student' | 'class' | 'group'; id: string }[],
+      at: Date,
+    ) => {
+      const id = randomUUID()
+      await insertAssignment(
+        db,
+        institutionId,
+        { id, assignedByUserId, assignment: base, targets },
+        at,
+      )
+      return id
+    }
+    const minute = (n: number) => new Date(FIXED_NOW.getTime() + n * 60_000)
+    const toStudent = await add('test-teacher-a', [{ kind: 'student', id: 'test-s1' }], minute(1))
+    const toClass = await add('test-teacher-b', [{ kind: 'class', id: 'test-c1' }], minute(2))
+    const toOther = await add('test-teacher-a', [{ kind: 'student', id: 'test-s9' }], minute(3))
+    // Başka kurumda aynı hedefe atama: hiçbir süzgeçte görünmez.
+    const foreign = await seedSkillChain(db, otherId, owner)
+    await insertAssignment(
+      db,
+      otherId,
+      {
+        id: randomUUID(),
+        assignedByUserId: 'test-teacher-a',
+        assignment: {
+          ...base,
+          resourceId: foreign.resourceId,
+          resourceVersionId: foreign.resourceVersionId,
+          scoringVersionId: foreign.resourceVersionId,
+        },
+        targets: [{ kind: 'student', id: 'test-s1' }],
+      },
+      minute(4),
+    )
+    const ids = async (query: Partial<Parameters<typeof listAssignments>[2]> = {}) => {
+      const page = await listAssignments(db, institutionId, { page: 1, pageSize: 20, ...query })
+      return { ids: page.rows.map((row) => row.id), total: page.total }
+    }
+    // En yeni önce; zincirin hedefsiz ataması da kurumdadır.
+    assert.deepEqual(await ids(), { ids: [toOther, toClass, toStudent, c.assignmentId], total: 4 })
+    assert.deepEqual(await ids({ pageSize: 2, page: 2 }), {
+      ids: [toStudent, c.assignmentId],
+      total: 4,
+    })
+    assert.deepEqual(await ids({ assignedByUserId: 'test-teacher-a' }), {
+      ids: [toOther, toStudent],
+      total: 2,
+    })
+    assert.deepEqual(
+      await ids({ learnerTargets: { studentIds: ['test-s1'], classIds: ['test-c1'] } }),
+      { ids: [toClass, toStudent], total: 2 },
+    )
+    // Sınıf kimliği öğrenci hedefiyle, öğrenci kimliği sınıf hedefiyle eşleşmez.
+    assert.deepEqual(
+      await ids({ learnerTargets: { studentIds: ['test-c1'], classIds: ['test-s1'] } }),
+      { ids: [], total: 0 },
+    )
+    assert.deepEqual(await ids({ learnerTargets: { studentIds: [], classIds: [] } }), {
+      ids: [],
+      total: 0,
+    })
+    // DOM-YTK-028: öğretmen süzgeci "veya"dır: kendi ataması veya kapsamındaki hedef.
+    assert.deepEqual(
+      await ids({
+        assignedByUserId: 'test-teacher-a',
+        learnerTargets: { studentIds: [], classIds: ['test-c1'] },
+      }),
+      { ids: [toOther, toClass, toStudent], total: 3 },
+    )
+    assert.deepEqual(
+      await ids({
+        assignedByUserId: 'test-teacher-x',
+        learnerTargets: { studentIds: [], classIds: [] },
+      }),
+      { ids: [], total: 0 },
+    )
+    assert.deepEqual(await ids({ kind: 'evaluation' }), { ids: [c.assignmentId], total: 1 })
+    assert.deepEqual((await ids({ resourceId: foreign.resourceId })).total, 0)
+
+    const refs = await assignmentContentRefs(db, institutionId, [
+      c.resourceVersionId,
+      foreign.resourceVersionId,
+    ])
+    assert.deepEqual(
+      [...refs.entries()],
+      [[c.resourceVersionId, { title: 'Okuma metni', contentType: 'text' }]],
+    )
+    assert.equal((await assignmentContentRefs(db, institutionId, [])).size, 0)
+
+    // Son teslim: beklenen sürümle yazılır; eski sürüm ve başka kurum 409, satır değişmez.
+    const deadline = { dueAt: iso(DUE_AT), lateAcceptanceDays: 3 }
+    await updateAssignmentDeadline(
+      db,
+      institutionId,
+      { id: toStudent, rowVersion: 1 },
+      deadline,
+      LATER,
+    )
+    const updated = await findAssignment(db, institutionId, toStudent)
+    assert.deepEqual(
+      [updated?.deadline, updated?.rowVersion, updated?.updatedAt],
+      [deadline, 2, iso(LATER)],
+    )
+    await rejectsWith(
+      () =>
+        updateAssignmentDeadline(
+          db,
+          institutionId,
+          { id: toStudent, rowVersion: 1 },
+          base.deadline,
+          LATER,
+        ),
+      409,
+      'version_conflict',
+    )
+    await rejectsWith(
+      () => updateAssignmentDeadline(db, otherId, { id: toClass, rowVersion: 1 }, deadline, LATER),
+      409,
+      'version_conflict',
+    )
+    assert.deepEqual((await findAssignment(db, institutionId, toClass))?.deadline, base.deadline)
+    // Arşivli atama listede yok ve değiştirilemez.
+    await db
+      .update(taskAssignments)
+      .set(archive)
+      .where(and(eq(taskAssignments.institutionId, institutionId), eq(taskAssignments.id, toClass)))
+    assert.deepEqual((await ids()).total, 3)
+    await rejectsWith(
+      () =>
+        updateAssignmentDeadline(
+          db,
+          institutionId,
+          { id: toClass, rowVersion: 2 },
+          deadline,
+          LATER,
+        ),
+      409,
+      'version_conflict',
     )
   })
 

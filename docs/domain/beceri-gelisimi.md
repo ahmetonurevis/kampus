@@ -42,7 +42,7 @@
 - **Gerekçe:** Transkript öğretmen kontrolü ve erişilebilirlik için gerekir; dinleme sayısı ölçmenin koşuludur.
 - **Kaynak:** İşletme kuralı (iki dinleme, yaygın sınav uygulaması).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/assignment.ts` `assignmentSettingsSchema` (dinleme hakkı 1, 2 veya sınırsız, varsayılan 2; alıştırmada da 2, `TODO(beceri-dinleme-alistirma)`; değerlendirmede atama düzeyinde döküm açılamaz) ve `resolveAssignmentSettings` (dinleme hakkı yalnız dinleme görevinde sabitlenir); dökümün gizlenmesi `content/resource.ts` `learnerView`. Hakkın sayılması API'dedir (ADR 0003 karar 6).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/assignment.ts` `assignmentSettingsSchema` (dinleme hakkı 1, 2 veya sınırsız, varsayılan 2; alıştırmada da 2, `TODO(beceri-dinleme-alistirma)`; değerlendirmede atama düzeyinde döküm açılamaz) ve `resolveAssignmentSettings` (dinleme hakkı yalnız dinleme görevinde sabitlenir); dökümün gizlenmesi `content/resource.ts` `learnerView`. Hakkın sayılması API'dedir (ADR 0003 karar 6). API: `attempt_media_plays` gelene kadar `POST /api/v1/task-assignments` gönderilmeyen hakkı sınırsız saklar, 1 veya 2 seçimine 422 `listening_plays_unavailable` verir (ADR 0004 karar 6 uygulama notu, F4b2b).
 
 ## Otomatik puanlama
 
@@ -170,7 +170,7 @@
 - **Gerekçe:** Pratik yapmayı cezalandırmamak ile ölçmeyi güvenilir tutmak ayrı türler gerektirir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `TASK_KINDS`, `attemptRulesSchema` (alıştırma sınırsız) ve `countedAttempt` (alıştırma sayılan sonuç üretmez); türün yayımdan sonra değişmemesi `packages/school-core/src/skills/assignment.ts` `planAssignmentChange` (atamada yalnız son teslim uzatılır). Eski demoda her quiz denemesi not üretir.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `TASK_KINDS`, `attemptRulesSchema` (alıştırma sınırsız) ve `countedAttempt` (alıştırma sayılan sonuç üretmez); türün yayımdan sonra değişmemesi `packages/school-core/src/skills/assignment.ts` `planAssignmentChange` (atamada yalnız son teslim uzatılır). API: `POST /api/v1/task-assignments` türü atamada sabitler, `PATCH /api/v1/task-assignments/:assignmentId` türü değiştirmeye 409 `assignment_setting_frozen` verir; liste `kind` ile süzülür. Eski demoda her quiz denemesi not üretir.
 
 ### DOM-BEC-042 · Deneme hakkı
 
@@ -178,7 +178,7 @@
 - **Gerekçe:** Sınırsız deneme cevapları ezberletir; her denemenin ayrı not üretmesi ortalamayı bozar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `attemptRulesSchema` (hak 1–3, "en yüksek" yalnız hak 1'den büyükse), `planAttemptStart` (başlatılan her deneme hak tüketir, `TODO(beceri-deneme-sayimi)`), `countedAttempt`; hak ve politika atamada sabitlenir ve değişmez (`skills/assignment.ts` `resolveAssignmentSettings`, `planAssignmentChange`). Eski demo hâlâ çelişiyor: deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `attemptRulesSchema` (hak 1–3, "en yüksek" yalnız hak 1'den büyükse), `planAttemptStart` (başlatılan her deneme hak tüketir, `TODO(beceri-deneme-sayimi)`), `countedAttempt`; hak ve politika atamada sabitlenir ve değişmez (`skills/assignment.ts` `resolveAssignmentSettings`, `planAssignmentChange`; API `POST /api/v1/task-assignments`, değiştirme `PATCH` 409 `assignment_setting_frozen`). Deneme uçları F4b3'tedir. Eski demo hâlâ çelişiyor: deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
 
 ### DOM-BEC-043 · Süreli görev
 
@@ -194,7 +194,7 @@
 - **Gerekçe:** Gecikme görünür olmalı; mekanik kesinti mazereti ayırt etmez. Mevzuat yalnız proje için sıfır puan öngörür.
 - **Kaynak:** İşletme kuralı; OİKY md. 22/2 (proje teslim etmeyen sıfır).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `deadlineSchema` (geç kabul 0–7 gün, varsayılan kapalı, `TODO(beceri-gec-kabul-varsayilan)`), `istanbulLocalToUtc`, `submissionWindow`, `isLate` (son teslim anı dahil zamanında), `assertSubmissionOpen`; `packages/school-core/src/skills/submission.ts` `versionIsLate`, `submissionStatus` (`teslim edilmedi`); `skills/assignment.ts` değerlendirmede son teslimi zorunlu ve ileri tutar, yalnız uzatır (`TODO(beceri-atama-duzenleme)`), yeniden teslimin kendi son tarihi `deadlineForVersion`. Eski demoda teslimde son tarih denetimi ve geç işareti yok (`apps/web/src/views/Learning.vue:222-248`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `deadlineSchema` (geç kabul 0–7 gün, varsayılan kapalı, `TODO(beceri-gec-kabul-varsayilan)`), `istanbulLocalToUtc`, `submissionWindow`, `isLate` (son teslim anı dahil zamanında), `assertSubmissionOpen`; `packages/school-core/src/skills/submission.ts` `versionIsLate`, `submissionStatus` (`teslim edilmedi`); `skills/assignment.ts` değerlendirmede son teslimi zorunlu ve ileri tutar, yalnız uzatır (`TODO(beceri-atama-duzenleme)`), yeniden teslimin kendi son tarihi `deadlineForVersion`. API: `PATCH /api/v1/task-assignments/:assignmentId` yalnız son teslim ve geç kabulü uzatır (`If-Match` zorunlu; kısaltma 422 `deadline_shortened`). Eski demoda teslimde son tarih denetimi ve geç işareti yok (`apps/web/src/views/Learning.vue:222-248`).
 
 ### DOM-BEC-045 · Cevap ve geri bildirimin açılması
 

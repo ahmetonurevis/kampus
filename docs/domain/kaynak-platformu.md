@@ -102,7 +102,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Ders kitabı alınmış olması, içeriğin dijital ortamda çoğaltılması ve umuma iletimi için izin değildir.
 - **Kaynak:** FSEK md. 22 (çoğaltma), md. 25 (umuma iletim), md. 52; md. 34/1 son cümlesi ("bu serbestlik, hak sahibinin meşru menfaatlerine haklı bir sebep olmadan zarar verir veya eserden normal yararlanma ile çelişir şekilde kullanılamaz"). Eğitim amaçlı piyasaya sürülen yayınlar için md. 34 serbestisine dayanılamayacağı işletme yorumudur — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (bitiş günü), `packages/school-core/src/content/visibility.ts` (kitap sahibi sınırı, `isAssignable`), `packages/school-core/src/content/copy.ts` (uyarlama izni, süresi dolmuş lisansın kopyası); otomatik arşiv işi yok.
+- **Kodda:** yok. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (bitiş günü), `packages/school-core/src/content/visibility.ts` (kitap sahibi sınırı, `isAssignable`), `packages/school-core/src/content/copy.ts` (uyarlama izni, süresi dolmuş lisansın kopyası); otomatik arşiv işi yok. API: `POST /api/v1/task-assignments` lisansı dolmuş içeriği core planından önce 409 `resource_license_expired` ile reddeder (bitiş günü dahil atanabilir).
 
 ### DOM-KYN-022 · Alıntı sınırı ve biçimi
 
@@ -176,7 +176,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğrenci bir soruyu cevapladıktan sonra sorunun değişmesi puanı geriye dönük anlamsızlaştırır.
 - **Kaynak:** İşletme kuralı; CLAUDE.md "anahtar revizyonu eski optik analizin kullanımını engeller" ilkesinin kaynak platformuna genellemesi.
 - **Kurum türü:** ikisi
-- **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planDraftUpdate`, `planNewVersion`); atama yalnız güncel yayındaki sürüme bağlanır ve onu sabitler: `packages/school-core/src/skills/assignment.ts` `resolveAssignmentSettings` (`resourceVersionId`, başta ona eşit `scoringVersionId`, `rubricVersionId`). API: `PATCH /api/v1/resources/:id/versions/:versionId` (`If-Match` zorunlu; yayındaki sürüm 409 `version_immutable`), `POST /api/v1/resources/:id/versions` (ikinci açık sürüm 409 `open_version_exists`); yeni yayın önceki sürümü aynı işlemde arşivler.
+- **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planDraftUpdate`, `planNewVersion`); atama yalnız güncel yayındaki sürüme bağlanır ve onu sabitler: `packages/school-core/src/skills/assignment.ts` `resolveAssignmentSettings` (`resourceVersionId`, başta ona eşit `scoringVersionId`, `rubricVersionId`). API: `PATCH /api/v1/resources/:id/versions/:versionId` (`If-Match` zorunlu; yayındaki sürüm 409 `version_immutable`), `POST /api/v1/resources/:id/versions` (ikinci açık sürüm 409 `open_version_exists`); yeni yayın önceki sürümü aynı işlemde arşivler. Atama: `POST /api/v1/task-assignments` içeriğin güncel yayındaki sürümünü sabitler (taslak, arşivli veya güncel olmayan sürüm 409 `resource_version_not_assignable`); atanmış sürüm, puanlama ve rubrik sürümü `PATCH` ile değişmez (409 `assignment_setting_frozen`).
 
 ### DOM-KYN-033 · Hatalı soru düzeltmesi
 

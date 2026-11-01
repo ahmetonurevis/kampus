@@ -629,6 +629,47 @@ describe('dosya uçları', () => {
     assert.equal((await get(t.student.cookie, `/api/v1/files/${id}/url`)).statusCode, 404)
   })
 
+  test('ret yeniden bildirilince yalnız nesne silme yeniden çalışır; durum ve denetim değişmez, ready 409 kalır', async () => {
+    const t = await tenant()
+    const id: string = (await upload(t.student.cookie, uploadParts('submission', PDF))).json().data
+      .id
+    const check = (outcome: 'ready' | 'rejected') =>
+      recordFileCheck(db, store.storage, {
+        institutionId: t.institution.id,
+        fileId: id,
+        outcome,
+        now,
+        log: app.log,
+      })
+    store.storage.failDeletes = true
+    try {
+      await assert.rejects(check('rejected'), /EIO: simulated delete failure/)
+    } finally {
+      store.storage.failDeletes = false
+    }
+    const [failed] = (await rowsOf(t.institution.id)).filter((file) => file.id === id)
+    assert.ok(failed)
+    assert.ok(await store.storage.head(failed.storageKey))
+    const audits = async () =>
+      (
+        await db
+          .select()
+          .from(auditLog)
+          .where(and(eq(auditLog.institutionId, t.institution.id), eq(auditLog.entityId, id)))
+      ).filter((entry) => entry.action === 'file.reject').length
+    assert.equal(await audits(), 1)
+    const retried = await check('rejected')
+    assert.equal(retried.status, 'rejected')
+    assert.equal(retried.version, failed.version)
+    assert.equal(await store.storage.head(failed.storageKey), null)
+    assert.equal(await audits(), 1)
+    await check('rejected')
+    await assert.rejects(check('ready'), (error: { code?: string }) => {
+      assert.equal(error.code, 'file_already_checked')
+      return true
+    })
+  })
+
   test('reddedilen dosyanın nesnesi silinir ve görünmez', async () => {
     const t = await tenant()
     const id: string = (await upload(t.student.cookie, uploadParts('submission', PDF))).json().data

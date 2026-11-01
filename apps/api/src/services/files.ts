@@ -451,7 +451,9 @@ export async function attachFile(
  * reddedilen dosyanın nesnesi silinir. Ret kaydı nesne silinmeden önce yazılır; nesne silinemezse
  * satır `rejected` kalır (indirilemez, kotaya sayılmaz), hata `file.reject_object_failed` olarak
  * yalnız kimliklerle loglanır ve asıl hata olduğu gibi fırlatılır (yutulmaz; çağıran iş hatayı
- * görür). Kalan nesne `TODO(F3c2-orphans)` taramasıyla silinir.
+ * görür). Aynı dosya için ret yeniden bildirilirse (iş yeniden denemesi) durum ve denetim
+ * değişmeden yalnız nesne silme yeniden çalışır; `ready` bildirimi 409 `file_already_checked`
+ * kalır. Hiç yeniden denenmeyen nesne `TODO(F3c2-orphans)` taramasıyla silinir.
  * TODO(F3c2-scan): `pg-boss` `file.scan` işi (ClamAV) ve `sharp` meta veri temizliği bu
  * fonksiyonu çağırır; o gelene kadar tarama yoktur ve dosya `pending` kalır (yalnız yükleyen
  * okur, bağlanamaz).
@@ -470,6 +472,9 @@ export async function recordFileCheck(
   const row = await db.transaction(async (tx) => {
     const current = await findFile(tx, input.institutionId, input.fileId, { lock: true })
     if (!current) throw new NotFoundError()
+    // Yeniden deneme: önceki ret kaydı yazılmış ama nesne silinememişse durum ve denetim
+    // değişmez, yalnız nesne silme yeniden çalışır (silme idempotenttir).
+    if (current.status === 'rejected' && input.outcome === 'rejected') return current
     if (current.status !== 'pending' && current.status !== 'processing')
       throw new AppError(409, 'file_already_checked', 'Dosya zaten denetlendi.')
     const updated = await setFileStatus(tx, input.institutionId, current, input.outcome, input.now)

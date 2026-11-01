@@ -4559,6 +4559,19 @@
             "minimum": 0,
             "maximum": 100
           },
+          "secondRatingSampledAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "İkinci puanlama örnekleminin seçildiği an (DOM-BEC-024); seçilmediyse veya örneklem yoksa `null`. Yalnız personel görür"
+          },
           "assignedByUserId": {
             "type": "string"
           },
@@ -4630,6 +4643,7 @@
           "rubricVersionId",
           "highStakes",
           "secondRatingPercent",
+          "secondRatingSampledAt",
           "assignedByUserId",
           "targets",
           "updatedAt",
@@ -6453,6 +6467,133 @@
           "rowVersion"
         ]
       },
+      "TaskVersionGradingInput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "unscored",
+              "pending",
+              "disagreement",
+              "settled"
+            ],
+            "description": "Sürümün puan sonucu (core `scoreResolution`): puanlanmadı, puan bekliyor, iki puan arasında birden fazla bant fark (DOM-BEC-024) veya kesinleşti"
+          },
+          "missing": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "first",
+                  "second"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`pending` iken beklenen puan; değilse `null`"
+          },
+          "secondRatingRequested": {
+            "type": "boolean",
+            "description": "Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında mı"
+          },
+          "disagreementCriterionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına görünür. Son puan koordinatör rolüyle gelecek (F4b3b2b); o zamana kadar sonuç kursiyere kapalıdır"
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün). Örneklemli görevde süre örneklemin seçildiği andan başlar; örneklem seçilmeden `null` (süre işlemez)"
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false`"
+          }
+        },
+        "required": [
+          "status",
+          "missing",
+          "secondRatingRequested",
+          "disagreementCriterionIds",
+          "dueAt",
+          "overdue"
+        ]
+      },
+      "TaskAppealInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "reason": {
+            "type": "string",
+            "description": "İtiraz gerekçesi"
+          },
+          "filedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "upheld",
+                  "rejected"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Karar; beklerken `null`"
+          },
+          "decidedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decisionReason": {
+            "description": "Karar gerekçesi",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "reason",
+          "filedAt",
+          "outcome",
+          "decidedAt",
+          "decisionReason"
+        ]
+      },
       "TaskSubmissionDetailInput": {
         "type": "object",
         "properties": {
@@ -6637,6 +6778,41 @@
                       "type": "null"
                     }
                   ]
+                },
+                "grading": {
+                  "anyOf": [
+                    {
+                      "description": "Personelin gördüğü puanlama durumu (DOM-BEC-024, 025); kursiyer ve veliye `null`",
+                      "$ref": "#/components/schemas/TaskVersionGradingInput"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "appealDeadline": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "İtirazın son anı (core `appealDeadline`: duyurudan sonra 5 iş günü, Europe/Istanbul gün sonu); yalnız değerlendirme türünde ve sonuç duyurulduysa, kursiyer ve veliye duyurudan önce `null`"
+                },
+                "appeal": {
+                  "anyOf": [
+                    {
+                      "description": "Sürümün itirazı (DOM-BEC-025); itiraz yalnız sonuç duyurusundan sonra açılır, yoksa `null`",
+                      "$ref": "#/components/schemas/TaskAppealInput"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -6646,7 +6822,10 @@
                 "late",
                 "wordCount",
                 "body",
-                "score"
+                "score",
+                "grading",
+                "appealDeadline",
+                "appeal"
               ]
             },
             "description": "Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez"
@@ -6762,6 +6941,248 @@
           "revision",
           "savedAt",
           "wordCount"
+        ]
+      },
+      "GradingQueueItemInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "learnerId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "submitted",
+              "late",
+              "not_submitted"
+            ],
+            "description": "Son sürüme göre teslim durumu (DOM-BEC-044)"
+          },
+          "versionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "latestVersion": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "number": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "submittedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "late": {
+                    "type": "boolean",
+                    "description": "Sürümün süresinden sonra, geç kabul içinde gönderildi (DOM-BEC-044)"
+                  },
+                  "wordCount": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/TaskWordCountInput"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Yazmada sözcük sayısı; saklanmaz, okunurken"
+                  },
+                  "score": {
+                    "anyOf": [
+                      {
+                        "description": "Son sürümün puan özeti; kursiyer ve veliye geri bildirim açılmadan `null` (DOM-BEC-045)",
+                        "$ref": "#/components/schemas/TaskScoreBriefInput"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "number",
+                  "submittedAt",
+                  "late",
+                  "wordCount",
+                  "score"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resubmission": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "versionNumber": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "dueAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "versionNumber",
+                  "dueAt"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040)"
+          },
+          "rowVersion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045)"
+          },
+          "grading": {
+            "type": "object",
+            "properties": {
+              "awaiting": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "first",
+                    "second"
+                  ]
+                },
+                "description": "Son sürümün beklediği puanlar; kişinin puanladığı bekleyen sürüm kuyrukta yoktur. Uyuşmazlıkta boş"
+              },
+              "awaitingResolution": {
+                "type": "boolean",
+                "description": "İki puan uyuşmuyor, koordinatörün son puanı bekleniyor (DOM-BEC-024); yalnız iki puan da verildikten sonra `true`"
+              },
+              "samplePending": {
+                "type": "boolean",
+                "description": "Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir. Son tarihsiz görevde örneklem yoktur, `false`"
+              },
+              "dueAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Puanlamanın son anı (core `gradingDueAt`); örneklemli görevde örneklem anından başlar, örneklem seçilmeden `null`"
+              },
+              "overdue": {
+                "type": "boolean",
+                "description": "Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false`"
+              }
+            },
+            "required": [
+              "awaiting",
+              "awaitingResolution",
+              "samplePending",
+              "dueAt",
+              "overdue"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "assignmentId",
+          "learnerId",
+          "status",
+          "versionCount",
+          "latestVersion",
+          "resubmission",
+          "rowVersion",
+          "grading"
+        ]
+      },
+      "SecondRatingSampleInput": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "sampledAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "percent": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "submissionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Örneklem havuzu: sürümü olan teslimler"
+          },
+          "submissionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "description": "İkinci puanlanacak teslimler: oranın yukarı yuvarlanmışı, en az bir"
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Atamanın yeni satır sürümü"
+          }
+        },
+        "required": [
+          "assignmentId",
+          "sampledAt",
+          "percent",
+          "submissionCount",
+          "submissionIds",
+          "rowVersion"
         ]
       },
       "ErrorResponse": {
@@ -11457,6 +11878,19 @@
             "minimum": 0,
             "maximum": 100
           },
+          "secondRatingSampledAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "İkinci puanlama örnekleminin seçildiği an (DOM-BEC-024); seçilmediyse veya örneklem yoksa `null`. Yalnız personel görür"
+          },
           "assignedByUserId": {
             "type": "string"
           },
@@ -11529,6 +11963,7 @@
           "rubricVersionId",
           "highStakes",
           "secondRatingPercent",
+          "secondRatingSampledAt",
           "assignedByUserId",
           "targets",
           "updatedAt",
@@ -13400,6 +13835,135 @@
         ],
         "additionalProperties": false
       },
+      "TaskVersionGrading": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "unscored",
+              "pending",
+              "disagreement",
+              "settled"
+            ],
+            "description": "Sürümün puan sonucu (core `scoreResolution`): puanlanmadı, puan bekliyor, iki puan arasında birden fazla bant fark (DOM-BEC-024) veya kesinleşti"
+          },
+          "missing": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "first",
+                  "second"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`pending` iken beklenen puan; değilse `null`"
+          },
+          "secondRatingRequested": {
+            "type": "boolean",
+            "description": "Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında mı"
+          },
+          "disagreementCriterionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına görünür. Son puan koordinatör rolüyle gelecek (F4b3b2b); o zamana kadar sonuç kursiyere kapalıdır"
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün). Örneklemli görevde süre örneklemin seçildiği andan başlar; örneklem seçilmeden `null` (süre işlemez)"
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false`"
+          }
+        },
+        "required": [
+          "status",
+          "missing",
+          "secondRatingRequested",
+          "disagreementCriterionIds",
+          "dueAt",
+          "overdue"
+        ],
+        "additionalProperties": false
+      },
+      "TaskAppeal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "reason": {
+            "type": "string",
+            "description": "İtiraz gerekçesi"
+          },
+          "filedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "upheld",
+                  "rejected"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Karar; beklerken `null`"
+          },
+          "decidedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decisionReason": {
+            "description": "Karar gerekçesi",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "reason",
+          "filedAt",
+          "outcome",
+          "decidedAt",
+          "decisionReason"
+        ],
+        "additionalProperties": false
+      },
       "TaskSubmissionDetail": {
         "type": "object",
         "properties": {
@@ -13586,6 +14150,41 @@
                       "type": "null"
                     }
                   ]
+                },
+                "grading": {
+                  "anyOf": [
+                    {
+                      "description": "Personelin gördüğü puanlama durumu (DOM-BEC-024, 025); kursiyer ve veliye `null`",
+                      "$ref": "#/components/schemas/TaskVersionGrading"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "appealDeadline": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "İtirazın son anı (core `appealDeadline`: duyurudan sonra 5 iş günü, Europe/Istanbul gün sonu); yalnız değerlendirme türünde ve sonuç duyurulduysa, kursiyer ve veliye duyurudan önce `null`"
+                },
+                "appeal": {
+                  "anyOf": [
+                    {
+                      "description": "Sürümün itirazı (DOM-BEC-025); itiraz yalnız sonuç duyurusundan sonra açılır, yoksa `null`",
+                      "$ref": "#/components/schemas/TaskAppeal"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -13595,7 +14194,10 @@
                 "late",
                 "wordCount",
                 "body",
-                "score"
+                "score",
+                "grading",
+                "appealDeadline",
+                "appeal"
               ],
               "additionalProperties": false
             },
@@ -13714,6 +14316,253 @@
           "revision",
           "savedAt",
           "wordCount"
+        ],
+        "additionalProperties": false
+      },
+      "GradingQueueItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "learnerId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "submitted",
+              "late",
+              "not_submitted"
+            ],
+            "description": "Son sürüme göre teslim durumu (DOM-BEC-044)"
+          },
+          "versionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "latestVersion": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "number": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "submittedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "late": {
+                    "type": "boolean",
+                    "description": "Sürümün süresinden sonra, geç kabul içinde gönderildi (DOM-BEC-044)"
+                  },
+                  "wordCount": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/TaskWordCount"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Yazmada sözcük sayısı; saklanmaz, okunurken"
+                  },
+                  "score": {
+                    "anyOf": [
+                      {
+                        "description": "Son sürümün puan özeti; kursiyer ve veliye geri bildirim açılmadan `null` (DOM-BEC-045)",
+                        "$ref": "#/components/schemas/TaskScoreBrief"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "number",
+                  "submittedAt",
+                  "late",
+                  "wordCount",
+                  "score"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resubmission": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "versionNumber": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "dueAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "versionNumber",
+                  "dueAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040)"
+          },
+          "rowVersion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045)"
+          },
+          "grading": {
+            "type": "object",
+            "properties": {
+              "awaiting": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "first",
+                    "second"
+                  ]
+                },
+                "description": "Son sürümün beklediği puanlar; kişinin puanladığı bekleyen sürüm kuyrukta yoktur. Uyuşmazlıkta boş"
+              },
+              "awaitingResolution": {
+                "type": "boolean",
+                "description": "İki puan uyuşmuyor, koordinatörün son puanı bekleniyor (DOM-BEC-024); yalnız iki puan da verildikten sonra `true`"
+              },
+              "samplePending": {
+                "type": "boolean",
+                "description": "Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir. Son tarihsiz görevde örneklem yoktur, `false`"
+              },
+              "dueAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Puanlamanın son anı (core `gradingDueAt`); örneklemli görevde örneklem anından başlar, örneklem seçilmeden `null`"
+              },
+              "overdue": {
+                "type": "boolean",
+                "description": "Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false`"
+              }
+            },
+            "required": [
+              "awaiting",
+              "awaitingResolution",
+              "samplePending",
+              "dueAt",
+              "overdue"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "assignmentId",
+          "learnerId",
+          "status",
+          "versionCount",
+          "latestVersion",
+          "resubmission",
+          "rowVersion",
+          "grading"
+        ],
+        "additionalProperties": false
+      },
+      "SecondRatingSample": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "sampledAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "percent": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "submissionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Örneklem havuzu: sürümü olan teslimler"
+          },
+          "submissionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "description": "İkinci puanlanacak teslimler: oranın yukarı yuvarlanmışı, en az bir"
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Atamanın yeni satır sürümü"
+          }
+        },
+        "required": [
+          "assignmentId",
+          "sampledAt",
+          "percent",
+          "submissionCount",
+          "submissionIds",
+          "rowVersion"
         ],
         "additionalProperties": false
       }
@@ -40266,7 +41115,7 @@
         "tags": [
           "task-assignments"
         ],
-        "description": "Yalnız son teslim ve geç kabul süresi uzatılır (core `planAssignmentChange`; DOM-BEC-041, 042, 044): kısaltma 422 `deadline_shortened`; otomatik puanlı değerlendirmenin cevap anahtarı açıldıysa (teslim kapandı) uzatma 409 `answer_key_released` (DOM-BEC-045); içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 `assignment_setting_frozen`. Değiştiren yalnız atayan veya yöneticidir (DOM-YTK-028). Sıra: kapsam dışı atama 404 → görünür ama atayan olmayan öğretmen 403 `forbidden` → sürüm. `If-Match` zorunlu: atamanın `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "Yalnız son teslim ve geç kabul süresi uzatılır (core `planAssignmentChange`; DOM-BEC-041, 042, 044): kısaltma 422 `deadline_shortened`; otomatik puanlı değerlendirmenin cevap anahtarı açıldıysa (teslim kapandı) uzatma 409 `answer_key_released` (DOM-BEC-045); ikinci puanlama başladıysa (örneklem veya elle istek) süre değişikliği 409 `second_rating_started` (DOM-BEC-024); içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 `assignment_setting_frozen`. Değiştiren yalnız atayan veya yöneticidir (DOM-YTK-028). Sıra: kapsam dışı atama 404 → görünür ama atayan olmayan öğretmen 403 `forbidden` → sürüm. `If-Match` zorunlu: atamanın `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -41671,7 +42520,7 @@
         "tags": [
           "task-submissions"
         ],
-        "description": "Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü henüz puanlanmamış teslimler, en eski gönderim önce, sayfalı; her kayıtta son sürümün özeti (metin yok). `assignmentId` isteğe bağlı süzgeçtir. Roller: `yonetici` kurumun bütün, `ogretmen` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü ilk puanı veya istenmiş ikinci puanı (DOM-BEC-024) almamış teslimler ile iki puanı uyuşmayıp koordinatörü bekleyen teslimler, en eski gönderim önce, sayfalı; kişinin bir rolde puanladığı bekleyen sürüm listede yoktur (aynı kişi iki rolde puanlamaz), uyuşmazlıklı sürüm puanlayıcılara da görünür. Her kayıtta son sürümün özeti (metin yok) ve `grading`: bekleyen roller (`awaiting`; ikinci puan bekleyenler ayrı görünür), uyuşmazlık (`awaitingResolution`; yalnız iki puan da verilince), örneklem bekleniyor mu, puanlama süresi (`dueAt`: son teslim + 7 gün, core `gradingDueAt`; örneklemli görevde örneklem anından, örneklemden önce `null`) ve gecikme (`overdue`; DOM-BEC-025). Süzgeçler: `assignmentId`, `awaiting=first|second` (uyuşmazlıklı satırları dışarıda bırakır), `overdue=true|false`; bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün, `ogretmen` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {
@@ -41707,6 +42556,32 @@
             "name": "assignmentId",
             "required": false,
             "description": "Atama süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "first",
+                "second"
+              ]
+            },
+            "in": "query",
+            "name": "awaiting",
+            "required": false,
+            "description": "Yalnız ilk puanı veya yalnız ikinci puanı bekleyenler (DOM-BEC-024)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "overdue",
+            "required": false,
+            "description": "`true` puanlama süresi aşılanlar, `false` aşılmayanlar (DOM-BEC-025)"
           }
         ],
         "responses": {
@@ -41720,7 +42595,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/TaskSubmission"
+                        "$ref": "#/components/schemas/GradingQueueItem"
                       }
                     },
                     "meta": {
@@ -42670,6 +43545,959 @@
         ],
         "responses": {
           "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskSubmissionDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-submissions/{submissionId}/second-scores": {
+      "post": {
+        "operationId": "secondScoreTaskSubmission",
+        "summary": "İkinci puanı ver",
+        "tags": [
+          "task-submissions"
+        ],
+        "description": "İkinci puanlayıcı son sürümü ilk puanı görmeden rubrikle puanlar (DOM-BEC-024; core `planRubricScore`, `scoresVisibleToRater`). Gövde ilk puanınkiyle aynıdır. Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında değilse 409 `second_rating_not_requested`; ilk puanı veren kişi 409 `rater_not_independent`; aynı sürümün ikinci ikinci puanı 409 `rubric_score_exists`. Herhangi bir kriterde iki puan arasında birden fazla bant fark varsa sonuç uyuşmazlıktır: son puan koordinatörle gelecek (F4b3b2b), o zamana kadar sonuç kursiyere ve veliye kapalıdır. Uyuşmazlık yoksa ilk puan geçerlidir ve geri bildirim açılır (DOM-BEC-045). Roller: `yonetici` ve atamayı gören `ogretmen` (atayan olmasa da kapsamındaki sınıf/öğrenci hedefi yüzünden gören; DOM-YTK-028); öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "versionNumber": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991,
+                    "description": "Puanlanan sürüm; yalnız son sürüm puanlanır"
+                  },
+                  "criteria": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "criterionId": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        },
+                        "band": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 5
+                        },
+                        "comment": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "criterionId",
+                        "band"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "overallComment": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 5000
+                  }
+                },
+                "required": [
+                  "versionNumber",
+                  "criteria",
+                  "overallComment"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "submissionId",
+            "required": true,
+            "description": "Teslim kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskSubmissionDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-submissions/{submissionId}/second-rating-requests": {
+      "post": {
+        "operationId": "requestSecondRating",
+        "summary": "İkinci puanlama iste",
+        "tags": [
+          "task-submissions"
+        ],
+        "description": "Öğretmen veya yönetici son teslim sürümü için ikinci puanlama ister (DOM-BEC-024: diğer görevlerde isteğe bağlı). İstek, kursiyer yeni sürüm gönderemezken yapılır: sıradaki sürümün teslim penceresi (geç kabul dahil) kapandı ya da sürüm hakkı doldu, aksi 409 `second_rating_window_open`. Böylece kursiyerin yanıtı ve yazma hakkı istekten ve sonraki puanlamadan etkilenmez (DOM-BEC-045). Puanı kesinleşen sürüm 409 `second_rating_too_late` (açılmış sonuç geri alınmaz); teslim başına tek istek 409 `second_rating_exists`; son olmayan sürüm 409 `version_not_latest`, bilinmeyen sürüm 404; rubriksiz görev 422 `rubric_not_assigned`. Roller: `yonetici` ve atamayı gören `ogretmen` (atayan olmasa da kapsamındaki sınıf/öğrenci hedefi yüzünden gören; DOM-YTK-028); öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "versionNumber": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991,
+                    "description": "İkinci puanlaması istenen sürüm; yalnız son sürüm"
+                  }
+                },
+                "required": [
+                  "versionNumber"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "submissionId",
+            "required": true,
+            "description": "Teslim kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskSubmissionDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-assignments/{assignmentId}/second-rating-sample": {
+      "post": {
+        "operationId": "drawSecondRatingSample",
+        "summary": "İkinci puanlama örneklemini seç",
+        "tags": [
+          "task-submissions"
+        ],
+        "description": "Örneklemli görevde (`secondRatingPercent > 0`; seviye tespiti ve kur sonu değerlendirmesinde en az %10) ikinci puanlanacak teslimler seçilir (DOM-BEC-024; core `secondRatingQuota`, `pickSecondRatingSample`): sürümü olan bütün teslimlerden oranın yukarı yuvarlanmışı, en az bir. Örneklem teslim penceresi (geç kabul dahil) kapanınca bir kez seçilir (açıkken 409 `second_rating_window_open`, ikinci kez 409 `second_rating_sample_drawn`); seçilmeden ilk puan verilmez (409 `second_rating_sample_pending`) ve puanlama süresi örneklem anından başlar. Böylece kursiyere açılmış bir sonuç sonradan ikinci puan beklemeye dönmez ve kursiyer puanlandığını yeni sürüm reddinden çıkaramaz (DOM-BEC-045). Son tarihsiz görevde pencere kapanmaz, örneklem seçilmez (409 `second_rating_sample_unavailable`): ilk puan örneklemi beklemez, ikinci puan teslim bazında elle istenir. Örneklemsiz görev 422 `second_rating_not_configured`. Rastgelelik atama kimliğiyle tohumlanır. `If-Match` atamanın `rowVersion`'ıdır; başarı 201, atamanın yeni sürümü ve ikinci puan kuyruğunun `Location`'ı. Roller: `yonetici` ve atamayı gören `ogretmen`; öğrenci, veli ve ön büro 403; kapsam dışı veya başka kurumun ataması 404. `Idempotency-Key` zorunlu. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true,
+            "description": "Atama kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SecondRatingSample"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-submissions/{submissionId}/appeals": {
+      "post": {
+        "operationId": "fileTaskAppeal",
+        "summary": "Sonuca itiraz et",
+        "tags": [
+          "task-submissions"
+        ],
+        "description": "Kursiyer/öğrenci veya velisi sonuç duyurusundan (geri bildirimin açılması) sonra 5 iş günü içinde gerekçeli itiraz eder (DOM-BEC-025; core `planAppeal`, `appealDeadline`: süre ertesi gün başlar, hafta sonu ve kurum tatili sayılmaz, Europe/Istanbul gün sonu). Duyurudan önce 409 `appeal_not_open`; puanlanmamış ve açılmamış puanlı sürümde yanıt aynıdır (DOM-BEC-045). Süre geçince 422 `appeal_window_closed`; alıştırmada 422 `appeal_not_available`; sürüm başına tek itiraz 409 `appeal_exists`; yalnız son sürüme, eski sürüme 409 `appeal_not_latest`; bilinmeyen sürüm 404. İtirazı o sürümü puanlamamış bir öğretmen karara bağlar. Gerekçe loglanmaz; denetime yalnız alan adları. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: `ogrenci` kendi, `veli` çocuğunun teslimine; yönetici, öğretmen ve ön büro 403; okuma kapsamı dışı veya başka kurumun teslimi ve arşivli atama 404. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "versionNumber": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991,
+                    "description": "İtiraz edilen sürüm"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "versionNumber",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "submissionId",
+            "required": true,
+            "description": "Teslim kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskSubmissionDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-submissions/{submissionId}/appeals/{appealId}/decision": {
+      "post": {
+        "operationId": "decideTaskAppeal",
+        "summary": "İtirazı karara bağla",
+        "tags": [
+          "task-submissions"
+        ],
+        "description": "İtirazı o sürümü hiçbir rolde puanlamamış, atamayı gören öğretmen karara bağlar (DOM-BEC-025: itiraz ilk puanlayıcı dışında bir öğretmene gider; core `planAppealDecision`); puanlayan öğretmen 409 `rater_not_independent`. Yönetici itirazı okur ama karar veremez (403 `forbidden`). Karar gerekçesiyle bildirilir: `upheld` yeni rubrik puanı (son puan) ister, `rejected` yalnız gerekçe. İlk puan ve önceki puanlar kayıt geçmişinde kalır; kabulde son puan geçerli olur ve kursiyere açılır. Sonuçlanmış itiraz 409 `appeal_decided`; bilinmeyen itiraz 404. Karar gerekçesi loglanmaz. Başarı 200 ve teslimin güncel ayrıntısı. Roller: yalnız `ogretmen` (atamayı gören; DOM-YTK-028); yönetici, öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "outcome": {
+                        "type": "string",
+                        "enum": [
+                          "upheld"
+                        ]
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 5,
+                        "maxLength": 2000
+                      },
+                      "score": {
+                        "type": "object",
+                        "properties": {
+                          "criteria": {
+                            "minItems": 1,
+                            "maxItems": 10,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "criterionId": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                },
+                                "band": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 5
+                                },
+                                "comment": {
+                                  "default": null,
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 2000
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "criterionId",
+                                "band"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "overallComment": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 5000
+                          }
+                        },
+                        "required": [
+                          "criteria",
+                          "overallComment"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "outcome",
+                      "reason",
+                      "score"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "outcome": {
+                        "type": "string",
+                        "enum": [
+                          "rejected"
+                        ]
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 5,
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "outcome",
+                      "reason"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "submissionId",
+            "required": true,
+            "description": "Teslim kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "appealId",
+            "required": true,
+            "description": "İtiraz kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "Default Response",
             "content": {
               "application/json": {

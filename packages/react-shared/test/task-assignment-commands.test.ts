@@ -184,6 +184,18 @@ describe('görev atama komutları', () => {
     )
   })
 
+  test('DOM-BEC-024: ikinci puanlama başlamışken son tarih değişikliği Türkçe metinle reddedilir', () => {
+    const started = new ApiError({
+      status: 409,
+      code: 'second_rating_started',
+      message: 'Sunucu mesajı.',
+    })
+    assert.equal(
+      commandFeedback(started, updateTaskAssignmentCommand.messages).message,
+      'İkinci puanlama başladı; son teslim tarihi artık değiştirilemez.',
+    )
+  })
+
   test('IST-034: yazma sonrası etkin kurumun atama ve rubrik sorguları geçersiz kılınır', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const list = institutionKey('inst-a', TASK_ASSIGNMENTS_KEY, 'list', { page: 1 })

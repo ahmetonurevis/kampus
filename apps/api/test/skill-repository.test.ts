@@ -39,7 +39,8 @@ import {
   listAssignments,
   listAttempts,
   listSubmissions,
-  loadAppeals,
+  latestSecondRatingRequestAt,
+  loadAppealsBySubmission,
   loadAttempts,
   loadDraft,
   loadLearnersAttempts,
@@ -67,6 +68,12 @@ import { DUE_AT, LEARNER, sampleRubricData, seedSkillChain } from './support/ski
 
 const LATER = new Date(FIXED_NOW.getTime() + 60_000)
 const iso = (value: Date) => value.toISOString()
+
+/** Teslimin itirazları; toplu okuma (`loadAppealsBySubmission`) bilinmeyen kimlikle birlikte denenir. */
+async function appealsOf(db: Database, institutionId: string, submissionId: string) {
+  const book = await loadAppealsBySubmission(db, institutionId, [submissionId, randomUUID()])
+  return book.get(submissionId) ?? []
+}
 
 /** Kullanıcı silmesinin karşılığı: satırı arşivler (`archived_at`, `version + 1`). */
 const archive = { archivedAt: LATER, version: sql`version + 1` }
@@ -410,6 +417,7 @@ describe('beceri görevi deposu', () => {
       targets: [targets[1], targets[0]],
       createdAt: iso(FIXED_NOW),
       updatedAt: iso(FIXED_NOW),
+      secondRatingSampledAt: null,
       archivedAt: null,
       rowVersion: 1,
     })
@@ -967,6 +975,14 @@ describe('beceri görevi deposu', () => {
     assert.equal(await insertSecondRatingRequest(db, institutionId, secondRating, LATER), false)
     assert.equal(await isSecondRatingRequested(db, institutionId, c.submissionId), true)
     assert.equal(await isSecondRatingRequested(db, otherId, c.submissionId), false)
+    // Son tarih kilidi en son isteğin anına bakar (DOM-BEC-024, 045).
+    assert.equal(
+      await latestSecondRatingRequestAt(db, institutionId, c.assignmentId),
+      iso(FIXED_NOW),
+    )
+    assert.equal(await latestSecondRatingRequestAt(db, otherId, c.assignmentId), null)
+
+    assert.equal((await loadAppealsBySubmission(db, institutionId, [])).size, 0)
 
     const appeal = {
       id: randomUUID(),
@@ -982,7 +998,7 @@ describe('beceri görevi deposu', () => {
       409,
       'appeal_exists',
     )
-    assert.deepEqual(await loadAppeals(db, institutionId, c.submissionId), [
+    assert.deepEqual(await appealsOf(db, institutionId, c.submissionId), [
       {
         ...appeal,
         decidedByUserId: null,
@@ -992,12 +1008,12 @@ describe('beceri görevi deposu', () => {
         rowVersion: 1,
       },
     ])
-    assert.deepEqual(await loadAppeals(db, otherId, c.submissionId), [])
+    assert.deepEqual(await appealsOf(db, otherId, c.submissionId), [])
     await db
       .update(scoreAppeals)
       .set(archive)
       .where(and(eq(scoreAppeals.institutionId, institutionId), eq(scoreAppeals.id, appeal.id)))
-    assert.deepEqual(await loadAppeals(db, institutionId, c.submissionId), [])
+    assert.deepEqual(await appealsOf(db, institutionId, c.submissionId), [])
 
     const transfer = {
       id: randomUUID(),
@@ -1095,7 +1111,7 @@ describe('beceri görevi deposu', () => {
       404,
       'not_found',
     )
-    assert.deepEqual(await loadAppeals(db, institutionId, c.submissionId), [])
+    assert.deepEqual(await appealsOf(db, institutionId, c.submissionId), [])
 
     const otherLearnerAttempt = {
       id: randomUUID(),

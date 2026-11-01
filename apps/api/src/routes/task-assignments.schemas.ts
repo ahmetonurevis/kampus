@@ -101,6 +101,11 @@ const staffAssignmentSchema = z
     rubricVersionId: id.nullable().describe('Sabitlenen yayındaki rubrik sürümü (DOM-BEC-022)'),
     highStakes: z.boolean(),
     secondRatingPercent: z.number().int().min(0).max(100),
+    secondRatingSampledAt: instant
+      .nullable()
+      .describe(
+        'İkinci puanlama örnekleminin seçildiği an (DOM-BEC-024); seçilmediyse veya örneklem yoksa `null`. Yalnız personel görür',
+      ),
     assignedByUserId: z.string(),
     targets: z
       .array(z.object({ kind: z.enum(enumKeys(TARGET_KINDS)), id: z.string() }))

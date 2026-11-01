@@ -6,9 +6,14 @@ import { AppError, MESSAGES } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import {
+  decideTaskAppeal,
+  drawSecondRatingSample,
+  fileAppeal,
   listGradingQueue,
+  requestSecondRating,
   requestTaskResubmission,
   scoreTaskSubmission,
+  secondScoreTaskSubmission,
 } from '../services/task-grading.ts'
 import {
   getTaskDraft,
@@ -35,6 +40,12 @@ import {
   taskSubmissionParamsSchema,
   taskResubmissionBodySchema,
   taskScoreBodySchema,
+  secondRatingRequestBodySchema,
+  secondRatingSampleBodySchema,
+  secondRatingSampleResponseSchema,
+  taskAppealBodySchema,
+  taskAppealDecisionBodySchema,
+  taskAppealParamsSchema,
 } from './task-submissions.schemas.ts'
 
 /**
@@ -44,13 +55,19 @@ import {
  * taslak yalnız öğrencinin kendisinindir; yazma yalnız öğrencinindir. Taslak ve teslim atamanın
  * altında yazılır, teslim üst düzey `task-submissions` kaynağıyla okunur (api-tasarimi.md §1).
  * Öğretmen puanlaması, yeniden teslim isteği ve puanlama kuyruğu (F4b3b1; DOM-BEC-020…023, 040,
- * 045) yönetici ve atamayı gören öğretmenindir; servis `services/task-grading.ts`.
+ * 045) yönetici ve atamayı gören öğretmenindir; servis `services/task-grading.ts`. İkinci
+ * puanlama (örneklem, elle istek, ikinci puan; DOM-BEC-024) ve puanlama süresi de onlarındır;
+ * itirazı kursiyer veya velisi yapar, kararı yalnız atamayı gören öğretmen verir (DOM-BEC-025;
+ * yönetici okur, karar veremez; F4b3b2a).
  */
 
 const MODULE = 'learning'
 const READERS: readonly Role[] = ['yonetici', 'ogretmen', 'ogrenci', 'veli']
 const WRITERS: readonly Role[] = ['ogrenci']
+const APPELLANTS: readonly Role[] = ['ogrenci', 'veli']
 const GRADERS: readonly Role[] = ['yonetici', 'ogretmen']
+/** İtiraz kararı yalnız öğretmendedir (DOM-BEC-025); yönetici okur ama karar vermez. */
+const APPEAL_DECIDERS: readonly Role[] = ['ogretmen']
 const READ_ACCESS =
   'Roller: `yonetici` kurumun bütün teslimlerini; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün teslimlerini, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz (DOM-BEC-023); puan öğretmenin rubrik puanıdır, her okumada kriter bantlarından hesaplanır. Kursiyer ve veli puanı ve geri bildirimi yalnız puan kesinleşip geri bildirim açılınca görür (DOM-BEC-045); öncesinde `score: null`, puanlanmamış sürümle aynı. Kesinleşmemiş puanı yalnız personel görür (öğretmen kendi puanını, yönetici hepsini). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.'
 const GRADE_ACCESS =
@@ -76,6 +93,8 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
   const read = [app.requireModule(MODULE), app.requireRole(READERS)]
   const write = [app.requireModule(MODULE), app.requireRole(WRITERS)]
   const grade = [app.requireModule(MODULE), app.requireRole(GRADERS)]
+  const appeal = [app.requireModule(MODULE), app.requireRole(APPELLANTS)]
+  const appealDecider = [app.requireModule(MODULE), app.requireRole(APPEAL_DECIDERS)]
 
   typed.get(
     '/api/v1/task-submissions',
@@ -105,14 +124,18 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         operationId: 'listGradingQueue',
         tags: ['task-submissions'],
         summary: 'Puanlanmayı bekleyen teslimler',
-        description: `Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü henüz puanlanmamış teslimler, en eski gönderim önce, sayfalı; her kayıtta son sürümün özeti (metin yok). \`assignmentId\` isteğe bağlı süzgeçtir. Roller: \`yonetici\` kurumun bütün, \`ogretmen\` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül \`learning\`; kapalıysa 403 \`module_disabled\`.`,
+        description: `Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü ilk puanı veya istenmiş ikinci puanı (DOM-BEC-024) almamış teslimler ile iki puanı uyuşmayıp koordinatörü bekleyen teslimler, en eski gönderim önce, sayfalı; kişinin bir rolde puanladığı bekleyen sürüm listede yoktur (aynı kişi iki rolde puanlamaz), uyuşmazlıklı sürüm puanlayıcılara da görünür. Her kayıtta son sürümün özeti (metin yok) ve \`grading\`: bekleyen roller (\`awaiting\`; ikinci puan bekleyenler ayrı görünür), uyuşmazlık (\`awaitingResolution\`; yalnız iki puan da verilince), örneklem bekleniyor mu, puanlama süresi (\`dueAt\`: son teslim + 7 gün, core \`gradingDueAt\`; örneklemli görevde örneklem anından, örneklemden önce \`null\`) ve gecikme (\`overdue\`; DOM-BEC-025). Süzgeçler: \`assignmentId\`, \`awaiting=first|second\` (uyuşmazlıklı satırları dışarıda bırakır), \`overdue=true|false\`; bilinmeyen parametre 400. Roller: \`yonetici\` kurumun bütün, \`ogretmen\` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül \`learning\`; kapalıysa 403 \`module_disabled\`.`,
         querystring: gradingQueueQuerySchema,
         response: { 200: gradingQueueResponseSchema, ...readErrors },
       },
     },
     async (request) => {
       const { page, pageSize } = request.query
-      const result = await listGradingQueue(contextOf(request), request.query)
+      const { overdue, ...query } = request.query
+      const result = await listGradingQueue(contextOf(request), {
+        ...query,
+        overdue: overdue === undefined ? undefined : overdue === 'true',
+      })
       return { data: result.items, meta: { page, pageSize, total: result.total } }
     },
   )
@@ -272,6 +295,167 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
       )
       reply.header('location', `/api/v1/task-submissions/${body.data.id}`)
       return body
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-submissions/:submissionId/second-scores',
+    {
+      preValidation: [...grade, requireIfMatch()],
+      schema: {
+        operationId: 'secondScoreTaskSubmission',
+        tags: ['task-submissions'],
+        summary: 'İkinci puanı ver',
+        description: `İkinci puanlayıcı son sürümü ilk puanı görmeden rubrikle puanlar (DOM-BEC-024; core \`planRubricScore\`, \`scoresVisibleToRater\`). Gövde ilk puanınkiyle aynıdır. Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında değilse 409 \`second_rating_not_requested\`; ilk puanı veren kişi 409 \`rater_not_independent\`; aynı sürümün ikinci ikinci puanı 409 \`rubric_score_exists\`. Herhangi bir kriterde iki puan arasında birden fazla bant fark varsa sonuç uyuşmazlıktır: son puan koordinatörle gelecek (F4b3b2b), o zamana kadar sonuç kursiyere ve veliye kapalıdır. Uyuşmazlık yoksa ilk puan geçerlidir ve geri bildirim açılır (DOM-BEC-045). ${GRADE_ACCESS}`,
+        params: taskSubmissionParamsSchema,
+        body: taskScoreBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        response: { 201: taskSubmissionDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const expectedVersion = requiredVersion(request)
+      const { versionNumber, ...score } = request.body
+      const result = await secondScoreTaskSubmission(
+        contextOf(request),
+        { submissionId: request.params.submissionId, expectedVersion, versionNumber, score },
+        idempotencyOf(request, true),
+      )
+      const body = sendWith(reply, result, (value) =>
+        taskSubmissionDetailResponseSchema.parse(value),
+      )
+      reply.header('location', `/api/v1/task-submissions/${body.data.id}`)
+      return body
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-submissions/:submissionId/second-rating-requests',
+    {
+      preValidation: [...grade, requireIfMatch()],
+      schema: {
+        operationId: 'requestSecondRating',
+        tags: ['task-submissions'],
+        summary: 'İkinci puanlama iste',
+        description: `Öğretmen veya yönetici son teslim sürümü için ikinci puanlama ister (DOM-BEC-024: diğer görevlerde isteğe bağlı). İstek, kursiyer yeni sürüm gönderemezken yapılır: sıradaki sürümün teslim penceresi (geç kabul dahil) kapandı ya da sürüm hakkı doldu, aksi 409 \`second_rating_window_open\`. Böylece kursiyerin yanıtı ve yazma hakkı istekten ve sonraki puanlamadan etkilenmez (DOM-BEC-045). Puanı kesinleşen sürüm 409 \`second_rating_too_late\` (açılmış sonuç geri alınmaz); teslim başına tek istek 409 \`second_rating_exists\`; son olmayan sürüm 409 \`version_not_latest\`, bilinmeyen sürüm 404; rubriksiz görev 422 \`rubric_not_assigned\`. ${GRADE_ACCESS}`,
+        params: taskSubmissionParamsSchema,
+        body: secondRatingRequestBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        response: { 201: taskSubmissionDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const expectedVersion = requiredVersion(request)
+      const result = await requestSecondRating(
+        contextOf(request),
+        {
+          submissionId: request.params.submissionId,
+          expectedVersion,
+          versionNumber: request.body.versionNumber,
+        },
+        idempotencyOf(request, true),
+      )
+      const body = sendWith(reply, result, (value) =>
+        taskSubmissionDetailResponseSchema.parse(value),
+      )
+      reply.header('location', `/api/v1/task-submissions/${body.data.id}`)
+      return body
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-assignments/:assignmentId/second-rating-sample',
+    {
+      preValidation: [...grade, requireIfMatch()],
+      schema: {
+        operationId: 'drawSecondRatingSample',
+        tags: ['task-submissions'],
+        summary: 'İkinci puanlama örneklemini seç',
+        description: `Örneklemli görevde (\`secondRatingPercent > 0\`; seviye tespiti ve kur sonu değerlendirmesinde en az %10) ikinci puanlanacak teslimler seçilir (DOM-BEC-024; core \`secondRatingQuota\`, \`pickSecondRatingSample\`): sürümü olan bütün teslimlerden oranın yukarı yuvarlanmışı, en az bir. Örneklem teslim penceresi (geç kabul dahil) kapanınca bir kez seçilir (açıkken 409 \`second_rating_window_open\`, ikinci kez 409 \`second_rating_sample_drawn\`); seçilmeden ilk puan verilmez (409 \`second_rating_sample_pending\`) ve puanlama süresi örneklem anından başlar. Böylece kursiyere açılmış bir sonuç sonradan ikinci puan beklemeye dönmez ve kursiyer puanlandığını yeni sürüm reddinden çıkaramaz (DOM-BEC-045). Son tarihsiz görevde pencere kapanmaz, örneklem seçilmez (409 \`second_rating_sample_unavailable\`): ilk puan örneklemi beklemez, ikinci puan teslim bazında elle istenir. Örneklemsiz görev 422 \`second_rating_not_configured\`. Rastgelelik atama kimliğiyle tohumlanır. \`If-Match\` atamanın \`rowVersion\`'ıdır; başarı 201, atamanın yeni sürümü ve ikinci puan kuyruğunun \`Location\`'ı. Roller: \`yonetici\` ve atamayı gören \`ogretmen\`; öğrenci, veli ve ön büro 403; kapsam dışı veya başka kurumun ataması 404. \`Idempotency-Key\` zorunlu. Modül \`learning\`; kapalıysa 403 \`module_disabled\`.`,
+        params: taskSubmissionAssignmentParamsSchema,
+        body: secondRatingSampleBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        response: { 201: secondRatingSampleResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const expectedVersion = requiredVersion(request)
+      const result = await drawSecondRatingSample(
+        contextOf(request),
+        { assignmentId: request.params.assignmentId, expectedVersion },
+        idempotencyOf(request, true),
+      )
+      const body = sendWith(reply, result, (value) => secondRatingSampleResponseSchema.parse(value))
+      reply.header(
+        'location',
+        `/api/v1/task-submissions/grading-queue?assignmentId=${body.data.assignmentId}&awaiting=second`,
+      )
+      return body
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-submissions/:submissionId/appeals',
+    {
+      preValidation: appeal,
+      schema: {
+        operationId: 'fileTaskAppeal',
+        tags: ['task-submissions'],
+        summary: 'Sonuca itiraz et',
+        description: `Kursiyer/öğrenci veya velisi sonuç duyurusundan (geri bildirimin açılması) sonra 5 iş günü içinde gerekçeli itiraz eder (DOM-BEC-025; core \`planAppeal\`, \`appealDeadline\`: süre ertesi gün başlar, hafta sonu ve kurum tatili sayılmaz, Europe/Istanbul gün sonu). Duyurudan önce 409 \`appeal_not_open\`; puanlanmamış ve açılmamış puanlı sürümde yanıt aynıdır (DOM-BEC-045). Süre geçince 422 \`appeal_window_closed\`; alıştırmada 422 \`appeal_not_available\`; sürüm başına tek itiraz 409 \`appeal_exists\`; yalnız son sürüme, eski sürüme 409 \`appeal_not_latest\`; bilinmeyen sürüm 404. İtirazı o sürümü puanlamamış bir öğretmen karara bağlar. Gerekçe loglanmaz; denetime yalnız alan adları. \`Idempotency-Key\` zorunlu; \`If-Match\` desteklenmez (400 \`if_match_not_supported\`). Başarı 201 ve teslim kaydının \`Location\`'ı. Roller: \`ogrenci\` kendi, \`veli\` çocuğunun teslimine; yönetici, öğretmen ve ön büro 403; okuma kapsamı dışı veya başka kurumun teslimi ve arşivli atama 404. Modül \`learning\`; kapalıysa 403 \`module_disabled\`.`,
+        params: taskSubmissionParamsSchema,
+        body: taskAppealBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: false }),
+        response: { 201: taskSubmissionDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      ifMatchVersion(request, false)
+      const result = await fileAppeal(
+        contextOf(request),
+        {
+          submissionId: request.params.submissionId,
+          versionNumber: request.body.versionNumber,
+          reason: request.body.reason,
+        },
+        idempotencyOf(request, true),
+      )
+      const body = sendWith(reply, result, (value) =>
+        taskSubmissionDetailResponseSchema.parse(value),
+      )
+      reply.header('location', `/api/v1/task-submissions/${body.data.id}`)
+      return body
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-submissions/:submissionId/appeals/:appealId/decision',
+    {
+      preValidation: [...appealDecider, requireIfMatch()],
+      schema: {
+        operationId: 'decideTaskAppeal',
+        tags: ['task-submissions'],
+        summary: 'İtirazı karara bağla',
+        description: `İtirazı o sürümü hiçbir rolde puanlamamış, atamayı gören öğretmen karara bağlar (DOM-BEC-025: itiraz ilk puanlayıcı dışında bir öğretmene gider; core \`planAppealDecision\`); puanlayan öğretmen 409 \`rater_not_independent\`. Yönetici itirazı okur ama karar veremez (403 \`forbidden\`). Karar gerekçesiyle bildirilir: \`upheld\` yeni rubrik puanı (son puan) ister, \`rejected\` yalnız gerekçe. İlk puan ve önceki puanlar kayıt geçmişinde kalır; kabulde son puan geçerli olur ve kursiyere açılır. Sonuçlanmış itiraz 409 \`appeal_decided\`; bilinmeyen itiraz 404. Karar gerekçesi loglanmaz. Başarı 200 ve teslimin güncel ayrıntısı. Roller: yalnız \`ogretmen\` (atamayı gören; DOM-YTK-028); yönetici, öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → \`If-Match\` (teslimin \`rowVersion\`'ı, zorunlu) 409 \`version_conflict\` → core kuralı. \`Idempotency-Key\` zorunlu. Modül \`learning\`; kapalıysa 403 \`module_disabled\`.`,
+        params: taskAppealParamsSchema,
+        body: taskAppealDecisionBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        response: { 200: taskSubmissionDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const expectedVersion = requiredVersion(request)
+      const result = await decideTaskAppeal(
+        contextOf(request),
+        {
+          submissionId: request.params.submissionId,
+          appealId: request.params.appealId,
+          expectedVersion,
+          decision: request.body,
+        },
+        idempotencyOf(request, true),
+      )
+      return sendWith(reply, result, (value) => taskSubmissionDetailResponseSchema.parse(value))
     },
   )
 }

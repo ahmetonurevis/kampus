@@ -435,6 +435,13 @@ describe('yazma uçları', () => {
         // Öğretmen puanı ve yeniden teslim isteği (routes/task-submissions.ts; DOM-BEC-021, 040).
         'POST /api/v1/task-submissions/{submissionId}/scores',
         'POST /api/v1/task-submissions/{submissionId}/resubmission-requests',
+        // İkinci puanlama: örneklem, elle istek ve ikinci puan (DOM-BEC-024); itiraz ve kararı
+        // (DOM-BEC-025). Yeniden denemede ikinci satır yazılmaz.
+        'POST /api/v1/task-submissions/{submissionId}/second-scores',
+        'POST /api/v1/task-submissions/{submissionId}/second-rating-requests',
+        'POST /api/v1/task-assignments/{assignmentId}/second-rating-sample',
+        'POST /api/v1/task-submissions/{submissionId}/appeals',
+        'POST /api/v1/task-submissions/{submissionId}/appeals/{appealId}/decision',
         // Aday oluşturma (routes/prospects.ts; DOM-KAY-002).
         'POST /api/v1/prospects',
         // Kesin kayıt: öğrenci, taksit ve sözleşme oluşturur (DOM-KAY-011, DOM-KAY-035).

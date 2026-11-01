@@ -3,12 +3,17 @@ import { randomUUID } from 'node:crypto'
 import { deadlineForVersion } from '@kampus/school-core/skills/assignment.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import {
+  appealDeadline,
   gradedVersionNumbers,
+  gradingDueAt,
+  gradingOverdue,
   rubricScore,
   scoreResolution,
   scoresVisibleToRater,
+  type AppealRow,
   type RubricScoreRow,
   type RubricVersionData,
+  type ScoreResolution,
 } from '@kampus/school-core/skills/rubric.ts'
 import { isClosed, teacherFeedbackReleased } from '@kampus/school-core/skills/scoring.ts'
 import {
@@ -32,14 +37,13 @@ import {
   findSubmission,
   insertSubmission,
   insertSubmissionVersion,
-  isSecondRatingRequested,
   listSubmissions,
+  loadAppealsBySubmission,
   loadDraft,
   loadSubmission,
   loadScoresBySubmission,
-  loadSubmissionScores,
   saveDraft,
-  secondRatingRequestedAmong,
+  secondRatingRequestsAmong,
   type StoredAssignment,
   type StoredSubmissionWork,
 } from '../db/skills.ts'
@@ -103,23 +107,95 @@ function versionView(
 
 // --- Puan ve geri bildirim görünümü ---------------------------------------------------------
 
-/** Teslimin puanlama durumu: bütün sürümlerin puanları ve ikinci puanlama isteği. */
-type Grading = { scores: readonly RubricScoreRow[]; secondRatingRequested: boolean }
+/**
+ * Teslimin puanlama durumu: bütün sürümlerin puanları, ikinci puanlama isteğinin anı ve
+ * itirazları.
+ */
+export type Grading = {
+  scores: readonly RubricScoreRow[]
+  secondRatingRequestedAt: string | null
+  appeals: readonly (AppealRow & { rowVersion: number })[]
+}
 /** Puanların rubrik sürümleri (kimlik → kriterler); puan bunlarla hesaplanır (DOM-BEC-022). */
 type RubricsById = ReadonlyMap<string, RubricVersionData>
 type GradingBook = { bySubmission: ReadonlyMap<string, Grading>; rubrics: RubricsById }
 
-const NO_GRADING: Grading = { scores: [], secondRatingRequested: false }
+const NO_GRADING: Grading = { scores: [], secondRatingRequestedAt: null, appeals: [] }
 
-/** Teslimlerin puanları, ikinci puanlama istekleri ve puanların rubrik sürümleri (toplu). */
-async function loadGrading(
+/**
+ * Sürüm ikinci puanlama isteğinin kapsamında mı (DOM-BEC-024). İstek teslim başına bir satırdır
+ * ve istendiği anda var olan sürümleri kapsar: istek, kursiyerin yeni sürüm gönderemediği anda
+ * yapılır (`task-grading.ts` `assertLearnerCannotSubmit`); yeniden teslimle sonradan gelen sürüm
+ * yeni bir iştir, ikinci puanlama beklemez. Böylece açılmamış puanlı sürüm yalnız kursiyerin yeni
+ * sürüm gönderemediği teslimde bulunur ve ret nedeni puanlamayı ele vermez (DOM-BEC-045).
+ */
+export function secondRatingFor(
+  grading: Pick<Grading, 'secondRatingRequestedAt'>,
+  version: Pick<VersionRow, 'submittedAt'> | undefined,
+): boolean {
+  const requestedAt = grading.secondRatingRequestedAt
+  return (
+    requestedAt !== null &&
+    version !== undefined &&
+    Date.parse(version.submittedAt) <= Date.parse(requestedAt)
+  )
+}
+
+/**
+ * Görevde ikinci puanlama örneklemi çekilir mi (DOM-BEC-024): oran sıfırdan büyük ve görevin son
+ * tarihi var. Son tarihsiz görevde teslim penceresi kapanmaz, örneklem çekilemez; ilk puan
+ * örneklemi beklemez, ikinci puan yalnız elle istenir.
+ */
+// TODO(core-ikinci-puan-son-tarih): Core `secondRatingPercent > 0` iken `dueAt`'ı zorunlu tutabilir;
+// o zaman son tarihsiz örneklemli görev oluşmaz, bu ayrım kalkar.
+export function sampleLocked(
+  assignment: Pick<StoredAssignment, 'secondRatingPercent' | 'deadline'>,
+): boolean {
+  return assignment.secondRatingPercent > 0 && assignment.deadline.dueAt !== null
+}
+
+/**
+ * Sürümün puanlama süresinin başladığı son teslim (DOM-BEC-025; core `gradingDueAt`'a verilir).
+ * Örneklemli görevde ilk puan örneklemden önce verilemediği için süre örneklemin seçildiği andan
+ * (veya sürümün daha geç son tesliminden) başlar; örneklem seçilmeden süre işlemez (`null`:
+ * puanlama süresi yok, gecikmiş sayılmaz). Örneklemsiz görevde sürümün son teslimidir.
+ */
+// TODO(beceri-puanlama-suresi-orneklem): Domain örneklemli görevde sürenin başlangıcını
+// söylemiyor; örneklem anı seçildi, aksi hâlde örneklem kilidindeki günler öğretmenden düşerdi.
+export function gradingDeadlineOf(
+  assignment: StoredAssignment,
+  submission: StoredSubmissionWork['submission'],
+  versionNumber: number,
+): { dueAt: string | null } | null {
+  const deadline = deadlineForVersion(assignment.deadline, submission, versionNumber)
+  if (!sampleLocked(assignment)) return deadline
+  const sampledAt = assignment.secondRatingSampledAt
+  if (sampledAt === null) return null
+  const later =
+    deadline.dueAt !== null && Date.parse(deadline.dueAt) > Date.parse(sampledAt)
+      ? deadline.dueAt
+      : sampledAt
+  return { dueAt: later }
+}
+
+/** Sürümün puan sonucu (core `scoreResolution`); hesaplanır, saklanmaz. */
+export function resolutionOf(grading: Grading, version: VersionRow): ScoreResolution {
+  return scoreResolution({
+    scores: grading.scores.filter((score) => score.submissionVersionId === version.id),
+    secondRatingRequested: secondRatingFor(grading, version),
+  })
+}
+
+/** Teslimlerin puanları, ikinci puanlama istekleri, itirazları ve puanların rubrik sürümleri. */
+export async function loadGrading(
   db: Database,
-  ctx: ServiceContext,
+  ctx: Pick<ServiceContext, 'institutionId'>,
   submissionIds: readonly string[],
 ): Promise<GradingBook> {
-  const [scores, second] = await Promise.all([
+  const [scores, second, appeals] = await Promise.all([
     loadScoresBySubmission(db, ctx.institutionId, submissionIds),
-    secondRatingRequestedAmong(db, ctx.institutionId, submissionIds),
+    secondRatingRequestsAmong(db, ctx.institutionId, submissionIds),
+    loadAppealsBySubmission(db, ctx.institutionId, submissionIds),
   ])
   const rubricIds = [...new Set([...scores.values()].flat().map((score) => score.rubricVersionId))]
   const rubrics = new Map<string, RubricVersionData>()
@@ -131,7 +207,11 @@ async function loadGrading(
     bySubmission: new Map(
       submissionIds.map((id) => [
         id,
-        { scores: scores.get(id) ?? [], secondRatingRequested: second.has(id) },
+        {
+          scores: scores.get(id) ?? [],
+          secondRatingRequestedAt: second.get(id) ?? null,
+          appeals: appeals.get(id) ?? [],
+        },
       ]),
     ),
     rubrics,
@@ -142,23 +222,21 @@ async function loadGrading(
  * Sürümün kişiye gösterilen puanı (DOM-BEC-021, 024, 045). Kesinleşmiş puan (core
  * `scoreResolution`) personele her zaman, kursiyer ve veliye yalnız geri bildirim açılınca
  * (`teacherFeedbackReleased`) görünür; açılmadan önce kursiyerin gördüğü, hiç puanlanmamış sürümle
- * aynıdır (`null`). Kesinleşmemiş puanı yalnız personel görür, core `scoresVisibleToRater` ile:
- * öğretmen ve yönetici yalnız kendi puanını görür (en yenisi gösterilir); yönetici koordinatör
- * sayılmaz.
+ * aynıdır (`null`). Uyuşmazlıkta puan kesinleşmez, kursiyere kapalı kalır. Kesinleşmemiş puanı
+ * yalnız personel görür, core `scoresVisibleToRater` ile: öğretmen ve yönetici yalnız kendi
+ * puanını görür (kör puanlama; ikinci puanlayıcı ilk puanı görmez, DOM-BEC-024); yönetici
+ * koordinatör sayılmaz, ikinci puanlayıcı olabilir.
  */
-// TODO(F4b3b2): Koordinatör rolü DOM-YTK-027 ile tanımlanınca açılır; yönetici ikinci puanlayıcı
-// olursa ilk puanı görmemeli (DOM-BEC-024).
+// TODO(F4b3b2b): Koordinatör (DOM-YTK-027) bütün puanları görür ve uyuşmazlıkta son puanı verir.
 function shownScore(
   viewer: Viewer,
   ctx: ServiceContext,
   grading: Grading,
-  versionId: string,
+  version: VersionRow,
 ): { row: RubricScoreRow; settled: boolean } | null {
-  const scores = grading.scores.filter((score) => score.submissionVersionId === versionId)
-  const resolution = scoreResolution({
-    scores,
-    secondRatingRequested: grading.secondRatingRequested,
-  })
+  const scores = grading.scores.filter((score) => score.submissionVersionId === version.id)
+  const secondRatingRequested = secondRatingFor(grading, version)
+  const resolution = scoreResolution({ scores, secondRatingRequested })
   if (resolution.status === 'settled') {
     if (viewer.kind !== 'learner' || teacherFeedbackReleased(resolution.settledAt, ctx.now))
       return { row: resolution.score, settled: true }
@@ -168,7 +246,7 @@ function shownScore(
   const visibleScores = scoresVisibleToRater({
     scores,
     viewer: { userId: ctx.actor.userId, coordinator: false },
-    secondRatingRequested: grading.secondRatingRequested,
+    secondRatingRequested,
   })
   const row = visibleScores.at(-1)
   return row === undefined ? null : { row, settled: false }
@@ -250,7 +328,7 @@ function summaryView(
         : {
             ...versionView(assignment, work, latest),
             score: scoreBrief(
-              scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, latest.id)),
+              scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, latest)),
             ),
           },
     resubmission: resubmissionOf(work),
@@ -272,28 +350,16 @@ function resubmissionOf(work: StoredSubmissionWork) {
 }
 
 /**
- * Son sürümün öğretmen geri bildirimi kursiyere açık mı (DOM-BEC-045; core `scoreResolution`,
- * `teacherFeedbackReleased`): puan kesinleşmiş (ikinci puanlama veya koordinatör beklenmiyor) ve
- * kesinleşme anı geçmiş.
+ * Sürümün öğretmen geri bildirimi kursiyere açık mı (DOM-BEC-045; core `scoreResolution`,
+ * `teacherFeedbackReleased`): puan kesinleşmiş (ikinci puan veya koordinatör beklenmiyor,
+ * uyuşmazlık yok) ve kesinleşme anı geçmiş. Sonuç duyurusu bu andır (itiraz süresi; DOM-BEC-025).
  */
-async function feedbackReleased(
-  db: Database,
-  ctx: ServiceContext,
-  work: Pick<StoredSubmissionWork, 'submission' | 'versions'>,
-  scores: readonly RubricScoreRow[],
-) {
-  return latestFeedbackReleased(
-    work,
-    {
-      scores,
-      secondRatingRequested: await isSecondRatingRequested(
-        db,
-        ctx.institutionId,
-        work.submission.id,
-      ),
-    },
-    ctx.now,
-  )
+export function releasedResolution(grading: Grading, version: VersionRow | undefined, now: Date) {
+  if (version === undefined) return null
+  const resolution = resolutionOf(grading, version)
+  return resolution.status === 'settled' && teacherFeedbackReleased(resolution.settledAt, now)
+    ? resolution
+    : null
 }
 
 function latestFeedbackReleased(
@@ -301,13 +367,7 @@ function latestFeedbackReleased(
   grading: Grading,
   now: Date,
 ) {
-  const latest = work.versions.at(-1)
-  if (latest === undefined) return false
-  const resolution = scoreResolution({
-    scores: grading.scores.filter((score) => score.submissionVersionId === latest.id),
-    secondRatingRequested: grading.secondRatingRequested,
-  })
-  return resolution.status === 'settled' && teacherFeedbackReleased(resolution.settledAt, now)
+  return releasedResolution(grading, work.versions.at(-1), now) !== null
 }
 
 /** Kursiyer ve veliye teslim penceresi kapanmışsa (puanlamadan bağımsız) genel `locked` döner. */
@@ -320,12 +380,10 @@ type Allowance = Omit<VersionAllowance, 'blockedBy'> & { blockedBy: BlockedBy }
  * geri bildirimi açılmadıysa hak, sürüm hiç puanlanmamış gibi hesaplanır, yani yanıt
  * puanlamadan öncekiyle birebir aynıdır. Onlara `locked` yalnız puanlamadan bağımsız koşulda
  * döner: sıradaki sürümün teslim penceresi (geç kabul veya yeniden teslim süresi dahil) kapandı
- * ve yeni sürüm başka nedenle zaten kapalı değil. Açılmamış puanlı teslime yeni sürüm yine
- * reddedilir (genel 409 `submission_locked`; `submitTaskSubmission`).
+ * ve yeni sürüm başka nedenle zaten kapalı değil. Açılmamış puan yalnız ikinci puanlama veya
+ * uyuşmazlıkta olur; ikinci puanlama yalnız kursiyer yeni sürüm gönderemezken istenir
+ * (`secondRatingFor`), bu yüzden gösterilen hak gerçek hakla aynı kalır.
  */
-// TODO(F4b3b2): Sürüm hakkı kalan teslimde ikinci puanlama sürerken yeni sürüm denemesinin 409'u
-// puanlandığını hâlâ ele verir; domain kararı gerekir (ör. ikinci puanlama örneklemi teslim
-// penceresi kapanınca seçilir veya ilk puan pencere kapanmadan verilmez; DOM-BEC-024, 040, 045).
 function allowanceOf(
   ctx: ServiceContext,
   viewer: Viewer,
@@ -374,10 +432,83 @@ export async function detailView(
       ...versionView(assignment, work, version),
       body: version.body,
       score: scoreFeedback(
-        scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, version.id)),
+        scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, version)),
       ),
+      grading: gradingView(ctx, viewer, assignment, work, grading, version),
+      appealDeadline: appealDeadlineOf(ctx, viewer, assignment, grading, version),
+      appeal: appealView(viewer, grading, version),
     })),
     allowance: allowanceOf(ctx, viewer, assignment, work, grading),
+  }
+}
+
+/**
+ * Personelin gördüğü puanlama durumu (DOM-BEC-024, 025): sonuç, ikinci puanlama isteği,
+ * uyuşmazlık kriterleri ve puanlama süresi. Kursiyer ve veliye `null` (DOM-BEC-045). Uyuşmazlık
+ * kriterleri iki puan da verildikten sonra döner; puanlar değişmez olduğu için kör puanlamayı
+ * etkilemez, bantların kendisi yine `scoresVisibleToRater` ile gizlidir.
+ */
+function gradingView(
+  ctx: ServiceContext,
+  viewer: Viewer,
+  assignment: StoredAssignment,
+  work: StoredSubmissionWork,
+  grading: Grading,
+  version: VersionRow,
+) {
+  if (viewer.kind === 'learner') return null
+  const resolution = resolutionOf(grading, version)
+  const deadline = gradingDeadlineOf(assignment, work.submission, version.number)
+  return {
+    status: resolution.status,
+    missing: resolution.status === 'pending' ? resolution.missing : null,
+    secondRatingRequested: secondRatingFor(grading, version),
+    disagreementCriterionIds: resolution.status === 'disagreement' ? resolution.criterionIds : [],
+    dueAt: deadline === null ? null : gradingDueAt(deadline, version),
+    overdue: deadline !== null && gradingOverdue({ deadline, version, resolution, now: ctx.now }),
+  }
+}
+
+// TODO(institution-settings): Kurum takvimi (resmî tatiller) kurum ayarına gelince itiraz süresi
+// onu kullanır; şimdilik yalnız hafta sonu sayılmaz.
+export const APPEAL_HOLIDAYS: readonly string[] = []
+
+/**
+ * İtirazın son anı (DOM-BEC-025; core `appealDeadline`): yalnız değerlendirme türünde ve sonuç
+ * duyurulduysa; kursiyer ve veliye duyurudan önce `null` (puanlanmamışla aynı; DOM-BEC-045).
+ * Sürüme itiraz edildiyse `null`: itiraz sürüm başına birdir; kabul edilen itirazın yeni son
+ * puanı yeni bir itiraz süresi açmaz.
+ */
+function appealDeadlineOf(
+  ctx: ServiceContext,
+  viewer: Viewer,
+  assignment: StoredAssignment,
+  grading: Grading,
+  version: VersionRow,
+) {
+  if (assignment.kind !== 'evaluation') return null
+  if (grading.appeals.some((row) => row.submissionVersionId === version.id)) return null
+  const resolution =
+    viewer.kind === 'learner'
+      ? releasedResolution(grading, version, ctx.now)
+      : resolutionOf(grading, version)
+  if (resolution === null || resolution.status !== 'settled') return null
+  return appealDeadline(resolution.settledAt, APPEAL_HOLIDAYS)
+}
+
+/** Sürümün itirazı; itiraz yalnız duyurudan sonra açıldığı için kursiyere sızma yoktur. */
+function appealView(viewer: Viewer, grading: Grading, version: VersionRow) {
+  const appeal = grading.appeals.find((row) => row.submissionVersionId === version.id)
+  if (appeal === undefined) return null
+  return {
+    id: appeal.id,
+    reason: appeal.reason,
+    filedAt: appeal.filedAt,
+    outcome: appeal.outcome,
+    decidedAt: appeal.decidedAt,
+    decisionReason: appeal.decisionReason,
+    // Karar yalnız personelin yazmasıdır (`If-Match`); kursiyer ve veli sürümü kullanmaz.
+    rowVersion: viewer.kind === 'learner' ? null : appeal.rowVersion,
   }
 }
 
@@ -630,12 +761,21 @@ export async function submitTaskSubmission(
           )
         const work = await loadSubmission(tx, ctx.institutionId, assignment.id, learnerId)
         const versions = work?.versions ?? []
-        const scores =
-          work === null ? [] : await loadSubmissionScores(tx, ctx.institutionId, work.submission.id)
-        const graded = gradedVersionNumbers(versions, scores)
-        // Geri bildirim açılmadan "puanlandı" sızmasın (DOM-BEC-045): ret nedeni genel kalır.
-        const released =
-          work !== null && graded.length > 0 && (await feedbackReleased(tx, ctx, work, scores))
+        const grading =
+          work === null
+            ? NO_GRADING
+            : ((await loadGrading(tx, ctx, [work.submission.id])).bySubmission.get(
+                work.submission.id,
+              ) ?? NO_GRADING)
+        const graded = gradedVersionNumbers(versions, grading.scores)
+        // Geri bildirim açılmamış son sürüm kursiyere puanlanmamış görünür (`allowanceOf`).
+        const latest = versions.at(-1)
+        const hidden =
+          latest !== undefined &&
+          graded.includes(latest.number) &&
+          !latestFeedbackReleased({ versions }, grading, ctx.now)
+            ? latest.number
+            : null
         const nextNumber = (versions.at(-1)?.number ?? 0) + 1
         const deadline = deadlineForVersion(
           assignment.deadline,
@@ -644,30 +784,32 @@ export async function submitTaskSubmission(
         )
         return {
           run: (_state, tools) => {
+            const plan = (gradedVersionNumbers: readonly number[]) =>
+              planSubmissionVersion({
+                settings,
+                deadline,
+                submission: work?.submission ?? null,
+                versions,
+                gradedVersionNumbers,
+                input: body,
+                files: [],
+                now: tools.now,
+              })
             try {
-              return {
-                assignment,
-                learnerId,
-                work,
-                plan: planSubmissionVersion({
-                  settings,
-                  deadline,
-                  submission: work?.submission ?? null,
-                  versions,
-                  gradedVersionNumbers: graded,
-                  input: body,
-                  files: [],
-                  now: tools.now,
-                }),
-              }
+              return { assignment, learnerId, work, plan: plan(graded) }
             } catch (error) {
               if (
-                !released &&
-                error instanceof DomainError &&
-                error.code === 'resubmission_not_requested'
+                hidden === null ||
+                !(error instanceof DomainError) ||
+                error.code !== 'resubmission_not_requested'
               )
-                throw new DomainError('submission_locked', LOCKED_MESSAGE, { kind: 'conflict' })
-              throw error
+                throw error
+              // Geri bildirim açılmadan "puanlandı" sızmasın (DOM-BEC-045): kursiyerin
+              // gördüğü hakla (puanlanmamış gibi) yeniden denenir; o da reddediyorsa ret
+              // puanlamadan öncekiyle aynıdır. Yalnız o hak açıksa genel kilit döner; ikinci
+              // puanlama zamanlaması (`secondRatingFor`) bu durumu kapatır.
+              plan(graded.filter((number) => number !== hidden))
+              throw new DomainError('submission_locked', LOCKED_MESSAGE, { kind: 'conflict' })
             }
           },
         }

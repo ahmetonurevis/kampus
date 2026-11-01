@@ -1,0 +1,1 @@
+ALTER TABLE "task_assignments" ADD COLUMN "second_rating_sampled_at" timestamp with time zone;

@@ -2459,7 +2459,7 @@ export interface paths {
         head?: never;
         /**
          * Görev atamasını değiştir
-         * @description Yalnız son teslim ve geç kabul süresi uzatılır (core `planAssignmentChange`; DOM-BEC-041, 042, 044): kısaltma 422 `deadline_shortened`; otomatik puanlı değerlendirmenin cevap anahtarı açıldıysa (teslim kapandı) uzatma 409 `answer_key_released` (DOM-BEC-045); içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 `assignment_setting_frozen`. Değiştiren yalnız atayan veya yöneticidir (DOM-YTK-028). Sıra: kapsam dışı atama 404 → görünür ama atayan olmayan öğretmen 403 `forbidden` → sürüm. `If-Match` zorunlu: atamanın `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Yalnız son teslim ve geç kabul süresi uzatılır (core `planAssignmentChange`; DOM-BEC-041, 042, 044): kısaltma 422 `deadline_shortened`; otomatik puanlı değerlendirmenin cevap anahtarı açıldıysa (teslim kapandı) uzatma 409 `answer_key_released` (DOM-BEC-045); ikinci puanlama başladıysa (örneklem veya elle istek) süre değişikliği 409 `second_rating_started` (DOM-BEC-024); içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 `assignment_setting_frozen`. Değiştiren yalnız atayan veya yöneticidir (DOM-YTK-028). Sıra: kapsam dışı atama 404 → görünür ama atayan olmayan öğretmen 403 `forbidden` → sürüm. `If-Match` zorunlu: atamanın `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         patch: operations["updateTaskAssignment"];
         trace?: never;
@@ -2577,7 +2577,7 @@ export interface paths {
         };
         /**
          * Puanlanmayı bekleyen teslimler
-         * @description Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü henüz puanlanmamış teslimler, en eski gönderim önce, sayfalı; her kayıtta son sürümün özeti (metin yok). `assignmentId` isteğe bağlı süzgeçtir. Roller: `yonetici` kurumun bütün, `ogretmen` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü ilk puanı veya istenmiş ikinci puanı (DOM-BEC-024) almamış teslimler ile iki puanı uyuşmayıp koordinatörü bekleyen teslimler, en eski gönderim önce, sayfalı; kişinin bir rolde puanladığı bekleyen sürüm listede yoktur (aynı kişi iki rolde puanlamaz), uyuşmazlıklı sürüm puanlayıcılara da görünür. Her kayıtta son sürümün özeti (metin yok) ve `grading`: bekleyen roller (`awaiting`; ikinci puan bekleyenler ayrı görünür), uyuşmazlık (`awaitingResolution`; yalnız iki puan da verilince), örneklem bekleniyor mu, puanlama süresi (`dueAt`: son teslim + 7 gün, core `gradingDueAt`; örneklemli görevde örneklem anından, örneklemden önce `null`) ve gecikme (`overdue`; DOM-BEC-025). Süzgeçler: `assignmentId`, `awaiting=first|second` (uyuşmazlıklı satırları dışarıda bırakır), `overdue=true|false`; bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün, `ogretmen` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         get: operations["listGradingQueue"];
         put?: never;
@@ -2686,6 +2686,106 @@ export interface paths {
          * @description Öğretmen puanlanan son sürüm için kursiyerden yeni sürüm ister (DOM-BEC-040; core `planResubmissionRequest`). Son tarih ileri ve en çok 14 gün sonradır (422 `resubmission_due_invalid`), geç kabul yoktur. Son olmayan sürüm 409 `version_not_latest`, puanı kesinleşmemiş sürüm 409 `resubmission_not_graded`, aynı sürüme ikinci istek 409 `resubmission_exists`. Kursiyer sonra yeni sürüm gönderebilir; bu sürüm hakka sayılmaz. Roller: `yonetici` ve atamayı gören `ogretmen` (atayan olmasa da kapsamındaki sınıf/öğrenci hedefi yüzünden gören; DOM-YTK-028); öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["requestTaskResubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-submissions/{submissionId}/second-scores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İkinci puanı ver
+         * @description İkinci puanlayıcı son sürümü ilk puanı görmeden rubrikle puanlar (DOM-BEC-024; core `planRubricScore`, `scoresVisibleToRater`). Gövde ilk puanınkiyle aynıdır. Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında değilse 409 `second_rating_not_requested`; ilk puanı veren kişi 409 `rater_not_independent`; aynı sürümün ikinci ikinci puanı 409 `rubric_score_exists`. Herhangi bir kriterde iki puan arasında birden fazla bant fark varsa sonuç uyuşmazlıktır: son puan koordinatörle gelecek (F4b3b2b), o zamana kadar sonuç kursiyere ve veliye kapalıdır. Uyuşmazlık yoksa ilk puan geçerlidir ve geri bildirim açılır (DOM-BEC-045). Roller: `yonetici` ve atamayı gören `ogretmen` (atayan olmasa da kapsamındaki sınıf/öğrenci hedefi yüzünden gören; DOM-YTK-028); öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["secondScoreTaskSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-submissions/{submissionId}/second-rating-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İkinci puanlama iste
+         * @description Öğretmen veya yönetici son teslim sürümü için ikinci puanlama ister (DOM-BEC-024: diğer görevlerde isteğe bağlı). İstek, kursiyer yeni sürüm gönderemezken yapılır: sıradaki sürümün teslim penceresi (geç kabul dahil) kapandı ya da sürüm hakkı doldu, aksi 409 `second_rating_window_open`. Böylece kursiyerin yanıtı ve yazma hakkı istekten ve sonraki puanlamadan etkilenmez (DOM-BEC-045). Puanı kesinleşen sürüm 409 `second_rating_too_late` (açılmış sonuç geri alınmaz); teslim başına tek istek 409 `second_rating_exists`; son olmayan sürüm 409 `version_not_latest`, bilinmeyen sürüm 404; rubriksiz görev 422 `rubric_not_assigned`. Roller: `yonetici` ve atamayı gören `ogretmen` (atayan olmasa da kapsamındaki sınıf/öğrenci hedefi yüzünden gören; DOM-YTK-028); öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["requestSecondRating"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-assignments/{assignmentId}/second-rating-sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İkinci puanlama örneklemini seç
+         * @description Örneklemli görevde (`secondRatingPercent > 0`; seviye tespiti ve kur sonu değerlendirmesinde en az %10) ikinci puanlanacak teslimler seçilir (DOM-BEC-024; core `secondRatingQuota`, `pickSecondRatingSample`): sürümü olan bütün teslimlerden oranın yukarı yuvarlanmışı, en az bir. Örneklem teslim penceresi (geç kabul dahil) kapanınca bir kez seçilir (açıkken 409 `second_rating_window_open`, ikinci kez 409 `second_rating_sample_drawn`); seçilmeden ilk puan verilmez (409 `second_rating_sample_pending`) ve puanlama süresi örneklem anından başlar. Böylece kursiyere açılmış bir sonuç sonradan ikinci puan beklemeye dönmez ve kursiyer puanlandığını yeni sürüm reddinden çıkaramaz (DOM-BEC-045). Son tarihsiz görevde pencere kapanmaz, örneklem seçilmez (409 `second_rating_sample_unavailable`): ilk puan örneklemi beklemez, ikinci puan teslim bazında elle istenir. Örneklemsiz görev 422 `second_rating_not_configured`. Rastgelelik atama kimliğiyle tohumlanır. `If-Match` atamanın `rowVersion`'ıdır; başarı 201, atamanın yeni sürümü ve ikinci puan kuyruğunun `Location`'ı. Roller: `yonetici` ve atamayı gören `ogretmen`; öğrenci, veli ve ön büro 403; kapsam dışı veya başka kurumun ataması 404. `Idempotency-Key` zorunlu. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["drawSecondRatingSample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-submissions/{submissionId}/appeals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sonuca itiraz et
+         * @description Kursiyer/öğrenci veya velisi sonuç duyurusundan (geri bildirimin açılması) sonra 5 iş günü içinde gerekçeli itiraz eder (DOM-BEC-025; core `planAppeal`, `appealDeadline`: süre ertesi gün başlar, hafta sonu ve kurum tatili sayılmaz, Europe/Istanbul gün sonu). Duyurudan önce 409 `appeal_not_open`; puanlanmamış ve açılmamış puanlı sürümde yanıt aynıdır (DOM-BEC-045). Süre geçince 422 `appeal_window_closed`; alıştırmada 422 `appeal_not_available`; sürüm başına tek itiraz 409 `appeal_exists`; yalnız son sürüme, eski sürüme 409 `appeal_not_latest`; bilinmeyen sürüm 404. İtirazı o sürümü puanlamamış bir öğretmen karara bağlar. Gerekçe loglanmaz; denetime yalnız alan adları. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: `ogrenci` kendi, `veli` çocuğunun teslimine; yönetici, öğretmen ve ön büro 403; okuma kapsamı dışı veya başka kurumun teslimi ve arşivli atama 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["fileTaskAppeal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-submissions/{submissionId}/appeals/{appealId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İtirazı karara bağla
+         * @description İtirazı o sürümü hiçbir rolde puanlamamış, atamayı gören öğretmen karara bağlar (DOM-BEC-025: itiraz ilk puanlayıcı dışında bir öğretmene gider; core `planAppealDecision`); puanlayan öğretmen 409 `rater_not_independent`. Yönetici itirazı okur ama karar veremez (403 `forbidden`). Karar gerekçesiyle bildirilir: `upheld` yeni rubrik puanı (son puan) ister, `rejected` yalnız gerekçe. İlk puan ve önceki puanlar kayıt geçmişinde kalır; kabulde son puan geçerli olur ve kursiyere açılır. Sonuçlanmış itiraz 409 `appeal_decided`; bilinmeyen itiraz 404. Karar gerekçesi loglanmaz. Başarı 200 ve teslimin güncel ayrıntısı. Roller: yalnız `ogretmen` (atamayı gören; DOM-YTK-028); yönetici, öğrenci, veli ve ön büro 403. Sıra: kapsam dışı veya başka kurumun teslimi 404 → rol 403 → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. `Idempotency-Key` zorunlu. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["decideTaskAppeal"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3783,6 +3883,8 @@ export interface components {
             rubricVersionId: string | null;
             highStakes: boolean;
             secondRatingPercent: number;
+            /** @description İkinci puanlama örnekleminin seçildiği an (DOM-BEC-024); seçilmediyse veya örneklem yoksa `null`. Yalnız personel görür */
+            secondRatingSampledAt: string | null;
             assignedByUserId: string;
             /** @description Sınıf/şube, dil grubu veya öğrenci hedefleri */
             targets: {
@@ -4206,6 +4308,36 @@ export interface components {
             /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
             rowVersion: number | null;
         };
+        TaskVersionGradingInput: {
+            /**
+             * @description Sürümün puan sonucu (core `scoreResolution`): puanlanmadı, puan bekliyor, iki puan arasında birden fazla bant fark (DOM-BEC-024) veya kesinleşti
+             * @enum {string}
+             */
+            status: "unscored" | "pending" | "disagreement" | "settled";
+            /** @description `pending` iken beklenen puan; değilse `null` */
+            missing: ("first" | "second") | null;
+            /** @description Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında mı */
+            secondRatingRequested: boolean;
+            /** @description Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına görünür. Son puan koordinatör rolüyle gelecek (F4b3b2b); o zamana kadar sonuç kursiyere kapalıdır */
+            disagreementCriterionIds: string[];
+            /** @description Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün). Örneklemli görevde süre örneklemin seçildiği andan başlar; örneklem seçilmeden `null` (süre işlemez) */
+            dueAt: string | null;
+            /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
+            overdue: boolean;
+        };
+        TaskAppealInput: {
+            /** Format: uuid */
+            id: string;
+            /** @description İtiraz gerekçesi */
+            reason: string;
+            /** Format: date-time */
+            filedAt: string;
+            /** @description Karar; beklerken `null` */
+            outcome: ("upheld" | "rejected") | null;
+            decidedAt: string | null;
+            /** @description Karar gerekçesi */
+            decisionReason: string | null;
+        };
         TaskSubmissionDetailInput: {
             /** Format: uuid */
             id: string;
@@ -4252,6 +4384,10 @@ export interface components {
                 /** @description Gönderilen metin; değişmez */
                 body: string | null;
                 score: components["schemas"]["TaskScoreInput"] | null;
+                grading: components["schemas"]["TaskVersionGradingInput"] | null;
+                /** @description İtirazın son anı (core `appealDeadline`: duyurudan sonra 5 iş günü, Europe/Istanbul gün sonu); yalnız değerlendirme türünde ve sonuç duyurulduysa, kursiyer ve veliye duyurudan önce `null` */
+                appealDeadline: string | null;
+                appeal: components["schemas"]["TaskAppealInput"] | null;
             }[];
             /** @description Yeni sürüm hakkı (core `versionAllowance`) */
             allowance: {
@@ -4273,6 +4409,64 @@ export interface components {
             /** Format: date-time */
             savedAt: string;
             wordCount: components["schemas"]["TaskWordCountInput"] | null;
+        };
+        GradingQueueItemInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            learnerId: string;
+            /**
+             * @description Son sürüme göre teslim durumu (DOM-BEC-044)
+             * @enum {string}
+             */
+            status: "pending" | "submitted" | "late" | "not_submitted";
+            versionCount: number;
+            latestVersion: {
+                /** Format: uuid */
+                id: string;
+                number: number;
+                /** Format: date-time */
+                submittedAt: string;
+                /** @description Sürümün süresinden sonra, geç kabul içinde gönderildi (DOM-BEC-044) */
+                late: boolean;
+                /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
+                wordCount: components["schemas"]["TaskWordCountInput"] | null;
+                score: components["schemas"]["TaskScoreBriefInput"] | null;
+            } | null;
+            /** @description Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040) */
+            resubmission: {
+                versionNumber: number;
+                /** Format: date-time */
+                dueAt: string;
+            } | null;
+            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
+            rowVersion: number | null;
+            grading: {
+                /** @description Son sürümün beklediği puanlar; kişinin puanladığı bekleyen sürüm kuyrukta yoktur. Uyuşmazlıkta boş */
+                awaiting: ("first" | "second")[];
+                /** @description İki puan uyuşmuyor, koordinatörün son puanı bekleniyor (DOM-BEC-024); yalnız iki puan da verildikten sonra `true` */
+                awaitingResolution: boolean;
+                /** @description Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir. Son tarihsiz görevde örneklem yoktur, `false` */
+                samplePending: boolean;
+                /** @description Puanlamanın son anı (core `gradingDueAt`); örneklemli görevde örneklem anından başlar, örneklem seçilmeden `null` */
+                dueAt: string | null;
+                /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
+                overdue: boolean;
+            };
+        };
+        SecondRatingSampleInput: {
+            /** Format: uuid */
+            assignmentId: string;
+            /** Format: date-time */
+            sampledAt: string;
+            percent: number;
+            /** @description Örneklem havuzu: sürümü olan teslimler */
+            submissionCount: number;
+            /** @description İkinci puanlanacak teslimler: oranın yukarı yuvarlanmışı, en az bir */
+            submissionIds: string[];
+            /** @description Atamanın yeni satır sürümü */
+            rowVersion: number;
         };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
@@ -5361,6 +5555,8 @@ export interface components {
             rubricVersionId: string | null;
             highStakes: boolean;
             secondRatingPercent: number;
+            /** @description İkinci puanlama örnekleminin seçildiği an (DOM-BEC-024); seçilmediyse veya örneklem yoksa `null`. Yalnız personel görür */
+            secondRatingSampledAt: string | null;
             assignedByUserId: string;
             /** @description Sınıf/şube, dil grubu veya öğrenci hedefleri */
             targets: {
@@ -5783,6 +5979,36 @@ export interface components {
             /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
             rowVersion: number | null;
         };
+        TaskVersionGrading: {
+            /**
+             * @description Sürümün puan sonucu (core `scoreResolution`): puanlanmadı, puan bekliyor, iki puan arasında birden fazla bant fark (DOM-BEC-024) veya kesinleşti
+             * @enum {string}
+             */
+            status: "unscored" | "pending" | "disagreement" | "settled";
+            /** @description `pending` iken beklenen puan; değilse `null` */
+            missing: ("first" | "second") | null;
+            /** @description Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında mı */
+            secondRatingRequested: boolean;
+            /** @description Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına görünür. Son puan koordinatör rolüyle gelecek (F4b3b2b); o zamana kadar sonuç kursiyere kapalıdır */
+            disagreementCriterionIds: string[];
+            /** @description Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün). Örneklemli görevde süre örneklemin seçildiği andan başlar; örneklem seçilmeden `null` (süre işlemez) */
+            dueAt: string | null;
+            /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
+            overdue: boolean;
+        };
+        TaskAppeal: {
+            /** Format: uuid */
+            id: string;
+            /** @description İtiraz gerekçesi */
+            reason: string;
+            /** Format: date-time */
+            filedAt: string;
+            /** @description Karar; beklerken `null` */
+            outcome: ("upheld" | "rejected") | null;
+            decidedAt: string | null;
+            /** @description Karar gerekçesi */
+            decisionReason: string | null;
+        };
         TaskSubmissionDetail: {
             /** Format: uuid */
             id: string;
@@ -5829,6 +6055,10 @@ export interface components {
                 /** @description Gönderilen metin; değişmez */
                 body: string | null;
                 score: components["schemas"]["TaskScore"] | null;
+                grading: components["schemas"]["TaskVersionGrading"] | null;
+                /** @description İtirazın son anı (core `appealDeadline`: duyurudan sonra 5 iş günü, Europe/Istanbul gün sonu); yalnız değerlendirme türünde ve sonuç duyurulduysa, kursiyer ve veliye duyurudan önce `null` */
+                appealDeadline: string | null;
+                appeal: components["schemas"]["TaskAppeal"] | null;
             }[];
             /** @description Yeni sürüm hakkı (core `versionAllowance`) */
             allowance: {
@@ -5850,6 +6080,64 @@ export interface components {
             /** Format: date-time */
             savedAt: string;
             wordCount: components["schemas"]["TaskWordCount"] | null;
+        };
+        GradingQueueItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            learnerId: string;
+            /**
+             * @description Son sürüme göre teslim durumu (DOM-BEC-044)
+             * @enum {string}
+             */
+            status: "pending" | "submitted" | "late" | "not_submitted";
+            versionCount: number;
+            latestVersion: {
+                /** Format: uuid */
+                id: string;
+                number: number;
+                /** Format: date-time */
+                submittedAt: string;
+                /** @description Sürümün süresinden sonra, geç kabul içinde gönderildi (DOM-BEC-044) */
+                late: boolean;
+                /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
+                wordCount: components["schemas"]["TaskWordCount"] | null;
+                score: components["schemas"]["TaskScoreBrief"] | null;
+            } | null;
+            /** @description Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040) */
+            resubmission: {
+                versionNumber: number;
+                /** Format: date-time */
+                dueAt: string;
+            } | null;
+            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
+            rowVersion: number | null;
+            grading: {
+                /** @description Son sürümün beklediği puanlar; kişinin puanladığı bekleyen sürüm kuyrukta yoktur. Uyuşmazlıkta boş */
+                awaiting: ("first" | "second")[];
+                /** @description İki puan uyuşmuyor, koordinatörün son puanı bekleniyor (DOM-BEC-024); yalnız iki puan da verildikten sonra `true` */
+                awaitingResolution: boolean;
+                /** @description Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir. Son tarihsiz görevde örneklem yoktur, `false` */
+                samplePending: boolean;
+                /** @description Puanlamanın son anı (core `gradingDueAt`); örneklemli görevde örneklem anından başlar, örneklem seçilmeden `null` */
+                dueAt: string | null;
+                /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
+                overdue: boolean;
+            };
+        };
+        SecondRatingSample: {
+            /** Format: uuid */
+            assignmentId: string;
+            /** Format: date-time */
+            sampledAt: string;
+            percent: number;
+            /** @description Örneklem havuzu: sürümü olan teslimler */
+            submissionCount: number;
+            /** @description İkinci puanlanacak teslimler: oranın yukarı yuvarlanmışı, en az bir */
+            submissionIds: string[];
+            /** @description Atamanın yeni satır sürümü */
+            rowVersion: number;
         };
     };
     responses: never;
@@ -21221,6 +21509,10 @@ export interface operations {
                 pageSize?: number;
                 /** @description Atama süzgeci */
                 assignmentId?: string;
+                /** @description Yalnız ilk puanı veya yalnız ikinci puanı bekleyenler (DOM-BEC-024) */
+                awaiting?: "first" | "second";
+                /** @description `true` puanlama süresi aşılanlar, `false` aşılmayanlar (DOM-BEC-025) */
+                overdue?: "true" | "false";
             };
             header?: never;
             path?: never;
@@ -21235,7 +21527,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["TaskSubmission"][];
+                        data: components["schemas"]["GradingQueueItem"][];
                         meta: components["schemas"]["PageMeta"];
                     };
                 };
@@ -21824,6 +22116,570 @@ export interface operations {
         responses: {
             /** @description Default Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmissionDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    secondScoreTaskSubmission: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Teslim kimliği */
+                submissionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Puanlanan sürüm; yalnız son sürüm puanlanır */
+                    versionNumber: number;
+                    criteria: {
+                        criterionId: string;
+                        band: number;
+                        /** @default null */
+                        comment?: string | null;
+                    }[];
+                    overallComment: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmissionDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    requestSecondRating: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Teslim kimliği */
+                submissionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İkinci puanlaması istenen sürüm; yalnız son sürüm */
+                    versionNumber: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmissionDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    drawSecondRatingSample: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SecondRatingSample"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    fileTaskAppeal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Teslim kimliği */
+                submissionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İtiraz edilen sürüm */
+                    versionNumber: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmissionDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    decideTaskAppeal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Teslim kimliği */
+                submissionId: string;
+                /** @description İtiraz kimliği */
+                appealId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    outcome: "upheld";
+                    reason: string;
+                    score: {
+                        criteria: {
+                            criterionId: string;
+                            band: number;
+                            /** @default null */
+                            comment?: string | null;
+                        }[];
+                        overallComment: string;
+                    };
+                } | {
+                    /** @enum {string} */
+                    outcome: "rejected";
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

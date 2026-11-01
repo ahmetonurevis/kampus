@@ -2,6 +2,32 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## İkinci puanlayıcı, puanlama süresi ve itiraz uçları (F4b3b2a)
+
+- `POST /api/v1/task-assignments/:assignmentId/second-rating-sample` (201 + `Location` kuyruk `?assignmentId=…&awaiting=second`; `Idempotency-Key` ve `If-Match` zorunlu, `If-Match` atamanın `rowVersion`'ı): ikinci puanlama örneklemi (DOM-BEC-024; core `secondRatingQuota`, `pickSecondRatingSample`: en az %10 ve en az bir teslim, atama kimliğiyle tohumlu). Örneklem teslim penceresi kapanınca açık uçla bir kez çekilir; örneklemli görevde (`secondRatingPercent > 0`) çekilmeden ilk puan 409 `second_rating_sample_pending`. Karar `task_assignments.second_rating_sampled_at` kolonundadır.
+- `POST /api/v1/task-submissions/:submissionId/second-rating-requests` (201): elle ikinci puanlama istemi; yalnız kursiyer yeni sürüm gönderemezken (pencere kapalı veya hak dolu) ve puan kesinleşmeden. İstem, istendiği anda var olan sürümleri kapsar.
+- `POST /api/v1/task-submissions/:submissionId/second-scores` (201; `If-Match` teslimin `rowVersion`'ı): kör ikinci puan; ilk puanı görmeden, başka öğretmence. Yönetici koordinatör sayılmaz.
+- `POST /api/v1/task-submissions/:submissionId/appeals` (201; `If-Match` desteklenmez): kursiyer veya velisi, sonuç duyurusundan sonra 5 iş günü içinde gerekçeli itiraz eder (DOM-BEC-025; core `planAppeal`, `appealDeadline`). Kurum tatil takvimi gelene kadar tatil listesi boştur (`APPEAL_HOLIDAYS`, `TODO(institution-settings)`).
+- `POST /api/v1/task-submissions/:submissionId/appeals/:appealId/decision` (200; `If-Match` teslimin `rowVersion`'ı): itiraz kararı yalnız o sürümü puanlamamış, atamayı gören **öğretmendedir** (itiraz ilk puanlayıcı dışında bir öğretmene gider); yönetici itirazı okur ama karar veremez (403 `forbidden`). Kabulde yeni `final` puan eklenir, ilk puan kayıt geçmişinde kalır; sonuçlanmış itiraz 409 `appeal_decided`.
+- `GET /api/v1/task-submissions/grading-queue`: yeni süzgeçler `awaiting=first|second` ve `overdue=true|false`; satırda `grading { awaiting, awaitingResolution, samplePending, dueAt, overdue }` (süre: son teslim + 7 gün).
+- Teslim ayrıntısında sürüm başına `grading` (personel; kursiyere `null`), `appealDeadline` ve `appeal`. Uyuşmazlıklı sonuç kursiyere kapalıdır.
+- `PATCH /api/v1/task-assignments/:assignmentId`: ikinci puanlama başladıysa süre değişikliği 409 `second_rating_started`.
+- Yeni sürüm reddi kursiyerin gördüğü hakla yeniden hesaplanır: istem ve puan sonrası yanıt öncesiyle birebir aynıdır (F4b3b1 sızıntısı kapandı).
+- Migration `0014_add_second_rating_sampled_at`. Core değişmedi (2.22.0). OpenAPI ve `api-client` şeması yeniden üretildi.
+- `react-shared`: `use-task-grading.ts` içine `useDrawSecondRatingSample`, `useRequestSecondRating`, `useSecondScoreTaskSubmission`, `useFileTaskAppeal`, `useDecideTaskAppeal`; okunan `rowVersion` `If-Match` olur (itiraz hariç), hata kodları Türkçe metne çevrilir, örneklem atama sorgularını da tazeler.
+- İnceleme düzeltmeleri (R-F4b3b2a):
+  - Son tarihsiz görevde örneklem kilidi yok: pencere kapanmadığı için örneklem çekilemez ve ilk puan sonsuza dek 409 `second_rating_sample_pending` alıyordu. Artık ilk puan örneklemi beklemez, ikinci puan yalnız elle istenir; örneklem ucu 409 `second_rating_sample_unavailable` döner (`TODO(core-ikinci-puan-son-tarih)`: core oran > 0 iken son tarihi zorunlu tutabilir).
+  - Örneklemli görevde puanlama süresi örneklemin seçildiği andan (`secondRatingSampledAt`; sürümün son tesliminden erken değil) başlar; örneklem seçilmeden süre işlemez: `grading.dueAt` `null` (şema `nullable`), `overdue` `false`, `overdue=false` süzgecinde kalır. Örneklemsiz görev aynı. Core `gradingDueAt` değişmedi, başlangıç anı serviste (`gradingDeadlineOf`) verilir (`TODO(beceri-puanlama-suresi-orneklem)`).
+  - Son tarih kilidi daraldı: yalnız örneklem seçildiyse ya da teslim penceresi kapandıktan sonra ikinci puan istendiyse 409 `second_rating_started`. Pencere açıkken hakkı dolmuş teslim için yapılan elle istek sınıfın süre uzatmasını engellemez; o kursiyer yeni sürüm gönderemediği için yanıtı uzatmadan önce ve sonra aynıdır (DOM-BEC-045, testli).
+  - İtiraz yalnız son sürümün sonucuna: eski sürüme 409 `appeal_not_latest`.
+  - İtirazlı sürümde `appealDeadline` `null`: kabul edilen itirazın son puanı yeni itiraz süresi açmaz.
+  - Kuyruk: uyuşmazlıklı (koordinatör bekleyen) teslim düşmez; yönetici ve atamayı gören öğretmenler (puanlayıcılar dahil) `grading.awaitingResolution: true` ve boş `awaiting` ile görür, süre aşımı da görünür. `awaiting=first|second` süzgeci bu satırları dışarıda bırakır. İkinci puan verilmeden uyuşmazlık hesaplanmaz (kör puanlama).
+  - İtirazlar sayfadaki bütün teslimler için tek sorguda okunur (`loadAppealsBySubmission`; teslim başına sorgu kalktı).
+  - Personelin atama görünümüne `secondRatingSampledAt`; öğrenci ve veli görünümünde yok.
+  - `react-shared`: `second_rating_started` (süre değişikliği), `second_rating_sample_unavailable` ve `appeal_not_latest` Türkçe metinleri.
+  - OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok; core değişmedi.
+- F4b3b2b'ye kalan: koordinatör ve uyuşmazlıkta son puan (DOM-YTK-027), yeniden puanlama ve anahtar düzeltmesi (DOM-BEC-011), not aktarımı, kurum takvimi (tatiller), itiraz kuyruğu/listesi, yeniden teslim turunda ikinci puanlama, kuyrukta `awaiting=resolution` süzgeci.
+
 ## Öğretmen puanlaması uçları (F4b3b1)
 
 - `POST /api/v1/task-submissions/:submissionId/scores` (201 + `Location: /api/v1/task-submissions/:id`; `Idempotency-Key` ve `If-Match` zorunlu, `If-Match` teslimin `rowVersion`'ı): yazma teslimi sürümünün rubrik puanı ve geri bildirimi (core `planRubricScore`; DOM-BEC-020…023). Gövde `{ versionNumber, criteria: [{ criterionId, band, comment }], overallComment }` (core `rubricScoreInputSchema`), katı: istemcinin toplamı, yüzdesi, rubrik sürümü ve rolü 400; kriter satırı da katıdır (core 2.22.0 `z.strictObject`), fazladan alan (ör. `weighted: 99`) 400 `validation_failed`. Rubrik atamanın sabitlediği sürümdür (DOM-BEC-022). Eksik kriter 422 `rubric_criterion_missing`, rubrikte olmayan/tekrar eden 422 `rubric_criterion_invalid`, hedefin altındaki banda yorumsuz 422 `criterion_comment_required`, son olmayan sürüm 409 `version_not_latest`, bilinmeyen sürüm 404, aynı sürümün ikinci ilk puanı 409 `rubric_score_exists`. Yalnız ilk puan (`first`) verilir.

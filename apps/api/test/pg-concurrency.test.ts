@@ -640,6 +640,32 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     const desk = await createMember(app, base.institutionId, 'onburo')
     return { ...base, actor: { userId: desk.id, role: 'onburo', membershipId: desk.membershipId } }
   }
+  /** Eğitim yılının yayımlanmış tarifesi (1.000 ₺ öğrenim ücreti); kimliği kesin kayıt gövdesine gider. */
+  async function publishTariff(ctx: ServiceContext): Promise<string> {
+    const tariffId = randomUUID()
+    await db.insert(feeTariffs).values({
+      institutionId: ctx.institutionId,
+      id: tariffId,
+      academicYear: FIXED_NOW.getUTCFullYear(),
+      versionNumber: 1,
+      status: 'published',
+      items: [
+        {
+          kind: 'tuition',
+          level: null,
+          amountCents: 100_000,
+          unit: 'year',
+          vatBasisPoints: 1000,
+          vatEffectiveDate: '2026-01-01',
+          announcedAmountCents: 100_000,
+        },
+      ],
+      announcedDate: '2026-05-01',
+      publishedByUserId: ctx.actor.userId,
+      publishedAt: FIXED_NOW,
+    })
+    return tariffId
+  }
   const prospectCount = async (institutionId: string) => {
     const [row] = await db
       .select({ n: count() })
@@ -705,36 +731,16 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       ctx.institutionId,
       [
         { collection: 'classes', id: seat.id, data: { ...seat, capacity: 1 } },
+        // Adaylar sınıfın kampüsündedir; kampüs denetimi kontenjandan önce çalışır.
         ...open.map((data) => ({
           collection: 'prospects' as const,
           id: data.id,
-          data: { ...data },
+          data: { ...data, branchId: seat.branchId },
         })),
       ],
       FIXED_NOW,
     )
-    const tariffId = randomUUID()
-    await db.insert(feeTariffs).values({
-      institutionId: ctx.institutionId,
-      id: tariffId,
-      academicYear: FIXED_NOW.getUTCFullYear(),
-      versionNumber: 1,
-      status: 'published',
-      items: [
-        {
-          kind: 'tuition',
-          level: null,
-          amountCents: 100_000,
-          unit: 'year',
-          vatBasisPoints: 1000,
-          vatEffectiveDate: '2026-01-01',
-          announcedAmountCents: 100_000,
-        },
-      ],
-      announcedDate: '2026-05-01',
-      publishedByUserId: ctx.actor.userId,
-      publishedAt: FIXED_NOW,
-    })
+    const tariffId = await publishTariff(ctx)
     const enrollment = (number: string) => ({
       classId: seat.id,
       tariffId,
@@ -1074,7 +1080,15 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       ],
       FIXED_NOW,
     )
-    const body = { classId: target.id, totalCents: 3_600_000, count: 3, startDate: '2026-11-15' }
+    // Tarifeli gövde: tutar yayımlanmış tarifeden hesaplanır (DOM-FIN-002).
+    const body = {
+      classId: target.id,
+      tariffId: await publishTariff(ctx),
+      installmentCount: 3,
+      firstDueDate: '2026-11-15',
+      identity: { kind: 'tc', number: '10000000146', birthDate: '2013-03-01' },
+      guardian: { name: 'Test Veli', phone: '05559990124', relationship: 'mother' },
+    }
     const versioned = (key: string) => ({
       idempotency: { key, fingerprint: key },
       expectedVersion: 1,

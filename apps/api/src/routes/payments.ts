@@ -31,6 +31,9 @@ import {
  * Tahsilat uçları (ADR 0006; docs/domain/finans.md DOM-FIN-030…033, DOM-FIN-052). Modül `finance`.
  * Kayıt yönetici ve ön büro, iptal ve nakit ayarı yalnız yönetici; veli ve öğrenci kapsamındaki
  * öğrencilerin tahsilatını okur, öğretmenin finans erişimi yoktur.
+ *
+ * TODO(payment-provider): velinin çevrim içi ödemesi (core `invoice.payOnline`) sağlayıcı seçilince
+ * ayrı uçla bağlanır; o zamana kadar uç yoktur.
  */
 
 const FINANCE_READERS = ['yonetici', 'onburo', 'veli', 'ogrenci'] as const

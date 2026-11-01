@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import type { State } from '../data/seed.ts'
+import { csvAmount } from './csv.ts'
 import { PAYMENT_METHODS, daySchema, requiredText, type PaymentMethod } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
@@ -48,6 +49,44 @@ export type ReversePaymentInput = z.input<typeof reversePaymentSchema>
 export const paymentSettingsSchema = z.strictObject({ cashPaymentsEnabled: z.boolean() })
 export type PaymentSettingsInput = z.input<typeof paymentSettingsSchema>
 
+const MAX_AMOUNT_CENTS = 100_000_000
+
+/**
+ * Kullanıcı tutarını kuruşa çevirir: `1.234,56`, `1234,56`, `1234.5`. En fazla iki ondalık kabul
+ * edilir, hesap metin üzerindendir (DOM-FIN-001). Geçersiz, sıfır veya üst sınır üstü `null`.
+ */
+export function parseAmountInput(text: string): number | null {
+  const value = text.trim()
+  const grouped = /^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/.test(value)
+  if (!grouped && !/^\d+(?:[.,]\d{1,2})?$/.test(value)) return null
+  const [whole = '', fraction = ''] = (grouped ? value.replaceAll('.', '') : value).split(/[.,]/)
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'))
+  return Number.isSafeInteger(cents) && cents > 0 && cents <= MAX_AMOUNT_CENTS ? cents : null
+}
+
+/** Kuruşu form alanına yazılacak metne çevirir (`1234,56`). */
+export const amountInputValue = csvAmount
+
+/** Tahsilat formu (web): tutar metindir, gönderimde kuruşa çevrilir. */
+export const paymentFormSchema = z
+  .object({
+    amount: z.string().refine((value) => parseAmountInput(value) !== null, {
+      message: 'Tutarı 1.234,56 biçiminde girin (en fazla 1.000.000 ₺).',
+    }),
+    method: z.enum(PAYMENT_METHODS, 'Ödeme yöntemini seçin.'),
+    reference: z.string().trim().max(100),
+    paidDate: daySchema,
+  })
+  .superRefine((value, context) => {
+    if (value.method !== CASH && value.reference.length < 3)
+      context.addIssue({
+        code: 'custom',
+        path: ['reference'],
+        message: 'İşlem referansını girin (en az 3 karakter).',
+      })
+  })
+export type PaymentFormValues = z.output<typeof paymentFormSchema>
+
 export type PaymentAllocation = { invoiceId: string; amountCents: number }
 
 export interface PaymentContext {
@@ -56,8 +95,6 @@ export interface PaymentContext {
   cashEnabled: boolean
   /** Referans başka bir iptal edilmemiş tahsilatta kullanılmış mı. */
   referenceInUse: boolean
-  /** Eski `POST /invoices/:id/pay` referans almaz (ADR 0006). */
-  referenceOptional?: boolean
   now: string
 }
 
@@ -111,7 +148,7 @@ export function planPayment(state: State, input: unknown, context: PaymentContex
     throw new DomainError('cash_payment_disabled', 'Bu kurumda nakit tahsilat kapalıdır.', {
       path: ['method'],
     })
-  if (reference === null && data.method !== CASH && context.referenceOptional !== true)
+  if (reference === null && data.method !== CASH)
     throw new DomainError('payment_reference_required', 'İşlem referansını girin.', {
       path: ['reference'],
     })

@@ -3,7 +3,10 @@ import test from 'node:test'
 
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import {
+  amountInputValue,
   openAmount,
+  parseAmountInput,
+  paymentFormSchema,
   planPayment,
   reversePayment,
   type PaymentContext,
@@ -124,12 +127,6 @@ test('DOM-FIN-031: kullanılmış referans ve referanssız banka tahsilatı redd
     'payment_reference_required',
   )
   assert.equal(JSON.stringify(state), before)
-  const legacy = planPayment(
-    state,
-    { studentId, amountCents: 100, method: 'Banka havalesi' },
-    context({ referenceOptional: true }),
-  )
-  assert.equal(legacy.reference, null)
 })
 
 test('DOM-FIN-032: nakit kurum ayarına bağlıdır', () => {
@@ -226,4 +223,46 @@ test('DOM-FIN-041: ayrılmış öğrencinin tahsilatı iptal edilemez; kayıt de
     'conflict',
   )
   assert.equal(JSON.stringify(state), before)
+})
+
+test('DOM-FIN-001: tutar metinden kuruşa kayıpsız çevrilir', () => {
+  for (const [input, cents] of [
+    ['1.234,56', 123_456],
+    ['1234,56', 123_456],
+    ['1234.5', 123_450],
+    ['999.999,99', 99_999_999],
+    ['0,07', 7],
+    [' 100 ', 10_000],
+    ['1000000', 100_000_000],
+  ] as const)
+    assert.equal(parseAmountInput(input), cents, input)
+  for (const input of [
+    '',
+    '0',
+    '0,00',
+    'abc',
+    '1,234',
+    '1.23.4',
+    '12,345',
+    '-5',
+    '1000000,01',
+    '1.234.567',
+  ])
+    assert.equal(parseAmountInput(input), null, input)
+  assert.equal(amountInputValue(123_456), '1234,56')
+  assert.equal(parseAmountInput(amountInputValue(5)), 5)
+})
+
+test('DOM-FIN-031: tahsilat formu nakit dışında referans ister', () => {
+  const base = { amount: '100', reference: '', paidDate: '2026-10-01' }
+  assert.equal(paymentFormSchema.safeParse({ ...base, method: 'Nakit' }).success, true)
+  assert.equal(paymentFormSchema.safeParse({ ...base, method: 'Kredi kartı' }).success, false)
+  assert.equal(
+    paymentFormSchema.safeParse({ ...base, method: 'Kredi kartı', reference: 'POS-1' }).success,
+    true,
+  )
+  assert.equal(
+    paymentFormSchema.safeParse({ ...base, amount: '0', method: 'Nakit' }).success,
+    false,
+  )
 })

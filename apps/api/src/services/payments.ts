@@ -1,11 +1,8 @@
 import { randomUUID } from 'node:crypto'
 
-import type { State } from '@kampus/school-core/data/seed.ts'
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
-import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
-  openAmount,
   planPayment,
   recordPaymentSchema,
   reversePayment,
@@ -27,19 +24,12 @@ import {
   type StoredPayment,
   type StoredPaymentSettings,
 } from '../db/payments.ts'
-import { findRecord } from '../db/records.ts'
 import { hasWithdrawal } from '../db/withdrawals.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
-import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
-import {
-  runCommand,
-  type CommandResponse,
-  type IdempotencyRequest,
-  type OperationResponse,
-} from './operation-runner.ts'
+import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { readScope } from './read-scope.ts'
 
 /**
@@ -110,56 +100,39 @@ async function audit(
   })
 }
 
-interface PaymentWrite {
-  /** Çalıştırıcının taksit değişikliği için yazdığı denetim eylemi ve varlığı. */
-  action: string
-  entity: (paymentId: string) => { type: string; id: string }
-  studentId: (tx: Database) => Promise<string>
-  reference: string | null
-  referenceOptional: boolean
-  expectedVersions?: readonly { collection: 'invoices'; id: string; version: number }[]
-  input: (state: State, allocated: ReadonlyMap<string, number>) => unknown
-  respond: (payment: StoredPayment, changes: Parameters<typeof commandBody>[1]) => OperationResponse
-}
-
-/** Tahsilatı yazan ortak akış. Dağılım ve referans kurum kilidi altında okunur (DOM-FIN-031). */
-function writePayment(
+/** Tahsilat kaydeder, açık taksitlere dağıtır; denetimler kurum kilidi altındadır (DOM-FIN-030, -031). 201. */
+export function recordPaymentCommand(
   ctx: ServiceContext,
-  write: PaymentWrite,
-  idempotency: IdempotencyRequest | null,
+  input: unknown,
+  options: CommandOptions,
 ): Promise<CommandResponse> {
+  const data = recordPaymentSchema.parse(input)
+  const reference = data.reference ?? null
   const id = randomUUID()
   let stored: StoredPayment | undefined
   return runCommand<PaymentPlan>(
     ctx,
     {
-      action: write.action,
+      action: 'payment.invoices',
       collections: SPEC.collections,
-      entity: write.entity(id),
-      ...(write.expectedVersions ? { expectedVersions: write.expectedVersions } : {}),
+      entity: { type: 'payments', id },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
-        const studentId = await write.studentId(tx)
-        const allocated = await allocatedByInvoice(tx, ctx.institutionId, studentId)
+        const allocated = await allocatedByInvoice(tx, ctx.institutionId, data.studentId)
         const { cashPaymentsEnabled: cashEnabled } = await loadPaymentSettings(
           tx,
           ctx.institutionId,
         )
         const referenceInUse =
-          write.reference !== null &&
-          (await isReferenceInUse(tx, ctx.institutionId, write.reference))
+          reference !== null && (await isReferenceInUse(tx, ctx.institutionId, reference))
         return {
           scalars,
           run: (state, { now }) => {
-            // Olmayan taksitte hedef boştur: yetki reddi kayıt aramasından önce döner.
-            requireAuthorized(actor, 'invoice.pay', { studentId }, state, { now, institutionType })
-            return planPayment(state, write.input(state, allocated), {
-              allocated,
-              cashEnabled,
-              referenceInUse,
-              referenceOptional: write.referenceOptional,
+            requireAuthorized(actor, 'invoice.pay', { studentId: data.studentId }, state, {
               now,
+              institutionType,
             })
+            return planPayment(state, data, { allocated, cashEnabled, referenceInUse, now })
           },
         }
       },
@@ -180,88 +153,9 @@ function writePayment(
         ])
       },
     },
-    (outcome) => {
+    () => {
       if (stored === undefined) throw new Error('payment was not written')
-      return write.respond(stored, outcome.changes)
-    },
-    idempotency,
-  )
-}
-
-/** Tahsilat kaydeder, açık taksitlere dağıtır (DOM-FIN-030, -031). 201. */
-export function recordPaymentCommand(
-  ctx: ServiceContext,
-  input: unknown,
-  options: CommandOptions,
-): Promise<CommandResponse> {
-  const data = recordPaymentSchema.parse(input)
-  return writePayment(
-    ctx,
-    {
-      action: 'payment.invoices',
-      entity: (id) => ({ type: 'payments', id }),
-      studentId: () => Promise.resolve(data.studentId),
-      reference: data.reference ?? null,
-      referenceOptional: false,
-      input: () => data,
-      respond: (payment) => ({
-        statusCode: 201,
-        body: { data: paymentView(payment, true) },
-      }),
-    },
-    options.idempotency,
-  )
-}
-
-/**
- * Eski taksit ödeme ucu: taksitin kalan tutarını referanssız tahsilat olarak yazar (ADR 0006).
- * Yanıt biçimi değişmez. TODO(web-payments): React ekranı `POST /payments`'a geçince kalkar.
- */
-export function payInvoiceCommand(
-  ctx: ServiceContext,
-  invoiceId: string,
-  method: string,
-  options: CommandOptions,
-): Promise<CommandResponse> {
-  return writePayment(
-    ctx,
-    {
-      action: 'invoice.pay',
-      entity: () => ({ type: 'invoices', id: invoiceId }),
-      studentId: async (tx) => {
-        const row = await findRecord(tx, ctx.institutionId, 'invoices', invoiceId)
-        return typeof row?.data.studentId === 'string' ? row.data.studentId : ''
-      },
-      reference: null,
-      referenceOptional: true,
-      ...(options.expectedVersion === null
-        ? {}
-        : {
-            expectedVersions: [
-              {
-                collection: 'invoices' as const,
-                id: invoiceId,
-                version: options.expectedVersion,
-              },
-            ],
-          }),
-      input: (state, allocated) => {
-        const invoice = state.invoices.find((item) => item.id === invoiceId)
-        if (!invoice)
-          throw new DomainError('invoice_not_found', 'Ödeme kaydı bulunamadı.', {
-            kind: 'not_found',
-          })
-        // Ödenmiş taksitte de tutar pozitif kalır; ret core `invoice_already_paid`'dir.
-        const open = openAmount(invoice, allocated)
-        return {
-          studentId: invoice.studentId,
-          amountCents: open === 0 ? invoice.amount : open,
-          method,
-          invoiceId,
-        }
-      },
-      respond: (_payment, changes) =>
-        commandBody({ collection: 'invoices', id: invoiceId }, changes),
+      return { statusCode: 201, body: { data: paymentView(stored, true) } }
     },
     options.idempotency,
   )

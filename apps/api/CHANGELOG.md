@@ -2,6 +2,11 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Eski taksit ödeme ucu kaldırıldı
+
+- **Kırıcı:** `POST /api/v1/invoices/:invoiceId/pay` kaldırıldı; tahsilat `POST /api/v1/payments` iledir ve nakit dışı yöntemde `reference` zorunludur (ADR 0006).
+- OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Kayıt ve finans inceleme düzeltmeleri
 
 - Ayrılış kaydı olan öğrencinin tahsilatı iptal edilemez: 409 `payment_student_withdrawn` (DOM-FIN-041).

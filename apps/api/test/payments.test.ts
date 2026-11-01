@@ -420,36 +420,4 @@ describe('tahsilat uçları', () => {
     assert.equal((await paymentRows(b.id))[0]?.reversedAt, null)
     assert.ok((await invoice(b.id, 'test-inv-1'))?.paidAt)
   })
-
-  // --- Eski uç ----------------------------------------------------------------------------------
-
-  test('ADR 0006: eski taksit ödeme ucu kalan tutarı tahsilat kaydı olarak yazar', async () => {
-    const a = await institution()
-    const partial = await record(a.adminCookie, payment(4_000))
-    assert.equal(partial.statusCode, 201, partial.body)
-    const paid = await send(
-      'POST',
-      '/api/v1/invoices/test-inv-1/pay',
-      a.adminCookie,
-      { method: 'Kredi kartı' },
-      key(),
-    )
-    assert.equal(paid.statusCode, 200, paid.body)
-    assert.equal(paid.json().data.entity.id, 'test-inv-1')
-    assert.equal((await invoice(a.id, 'test-inv-1'))?.method, 'Kredi kartı')
-    const rows = await paymentRows(a.id)
-    assert.equal(rows.length, 2)
-    assert.equal(rows.find((row) => row.reference === null)?.amountCents, 6_000)
-    assertError(
-      await send(
-        'POST',
-        '/api/v1/invoices/test-inv-1/pay',
-        a.adminCookie,
-        { method: 'Kredi kartı' },
-        key(),
-      ),
-      409,
-      'invoice_already_paid',
-    )
-  })
 })

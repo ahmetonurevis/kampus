@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
-import type { Download, Page, Request } from '@playwright/test'
+import type { Download, Locator, Page, Request } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
@@ -19,14 +19,21 @@ import {
 const ADMIN_URL = '/yonetici/finans'
 const FRONT_OFFICE_URL = '/onburo/tahsilat-takip'
 const TABLE = 'Taksit ve tahsilat listesi'
-const PAY_PATH = /\/api\/v1\/invoices\/[^/]+\/pay$/
+const PAY_PATH = /\/api\/v1\/payments$/
 
 const tableOf = (page: Page) => page.getByRole('table', { name: TABLE })
 const bodyRows = (page: Page) => tableOf(page).locator('tbody tr')
 const resultCount = (page: Page) => page.locator('.result-count')
+const fillReference = (dialog: Locator, value = `E2E-${randomUUID()}`) =>
+  dialog.getByLabel('İşlem referansı').fill(value)
 const paymentDialog = (page: Page) => page.getByRole('dialog', { name: 'Tahsilat kaydet' })
 
-type InvoiceRecord = { paidAt: string | null; method: string | null; studentId: string }
+type InvoiceRecord = {
+  paidAt: string | null
+  method: string | null
+  studentId: string
+  amount: number
+}
 
 async function invoice(client: ApiClient, id: string): Promise<InvoiceRecord> {
   const result = await client.get(`/api/v1/collections/invoices/${id}`)
@@ -36,13 +43,20 @@ async function invoice(client: ApiClient, id: string): Promise<InvoiceRecord> {
 
 /** Arayüzden geçmeden ödeme (başka bir kullanıcının aynı anda tahsilatı). */
 async function payThroughApi(client: ApiClient, id: string, method: string) {
-  const response = await client.context.fetch(`/api/v1/invoices/${id}/pay`, {
+  const record = await invoice(client, id)
+  const response = await client.context.fetch('/api/v1/payments', {
     method: 'POST',
-    data: { method },
+    data: {
+      studentId: record.studentId,
+      amountCents: record.amount,
+      method,
+      reference: `E2E-${randomUUID()}`,
+      invoiceId: id,
+    },
     headers: { 'idempotency-key': randomUUID() },
     failOnStatusCode: false,
   })
-  expect(response.status(), 'API ödemesi').toBe(200)
+  expect(response.status(), 'API ödemesi').toBe(201)
 }
 
 /** Sayfadaki ödeme isteklerini sayar (çift gönderim denetimi). */
@@ -90,6 +104,7 @@ test.describe('Finans: tahsilat', () => {
     await expect(page).toHaveURL(/[?&]tahsilat=inv-s10-5/)
     await expect(dialog).toContainText('Emir Kaya · 6. taksit')
     await dialog.getByLabel('Ödeme yöntemi').selectOption('Banka havalesi')
+    await fillReference(dialog)
     await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
 
     await expect(page.getByText('Tahsilat kaydedildi.')).toBeVisible()
@@ -119,6 +134,7 @@ test.describe('Finans: tahsilat', () => {
     await page.goto(`${ADMIN_URL}?tahsilat=inv-s11-5`)
     const dialog = paymentDialog(page)
     const submit = dialog.getByRole('button', { name: 'Tahsilatı kaydet' })
+    await fillReference(dialog)
     await submit.dblclick()
     await expect(page.getByText('Tahsilat kaydedildi.')).toBeVisible()
     await expect(dialog).toBeHidden()
@@ -128,6 +144,7 @@ test.describe('Finans: tahsilat', () => {
     // Düğme kilidinden bağımsız: aynı tikte iki gönderim (Enter + tıklama) yine tek istektir.
     await page.goto(`${ADMIN_URL}?tahsilat=inv-s11-6`)
     await expect(submit).toBeEnabled()
+    await fillReference(dialog)
     await dialog.locator('form').evaluate((form: HTMLFormElement) => {
       form.requestSubmit()
       form.requestSubmit()
@@ -160,6 +177,7 @@ test.describe('Finans: tahsilat', () => {
 
     // Form açıkken ön büroda başka biri tahsil etti; ekrandaki liste eski.
     await payThroughApi(client, 'inv-s13-5', 'Kredi kartı')
+    await fillReference(dialog)
     await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
 
     await expect(page.getByText('Bu taksit zaten ödenmiş. Liste güncellendi.')).toBeVisible()
@@ -167,6 +185,98 @@ test.describe('Finans: tahsilat', () => {
     await expect(row).toContainText('Ödendi')
     // Kayıt ilk ödemenin yöntemini korur: ikinci ödeme yazılmadı.
     expect((await invoice(client, 'inv-s13-5')).method).toBe('Kredi kartı')
+  })
+
+  test('DOM-FIN-030: kısmi tahsilat taksiti açık bırakır, panel kalan tutarı gösterir', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s14'] })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
+
+    await page.goto(`${ADMIN_URL}?tahsilat=inv-s14-5`)
+    const dialog = paymentDialog(page)
+    const amount = dialog.getByLabel('Tutar (₺)')
+    const total = (await invoice(client, 'inv-s14-5')).amount
+    await expect(amount).toHaveValue(/,\d{2}$/)
+    await amount.fill('abc')
+    await fillReference(dialog)
+    await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
+    await expect(dialog.getByText(/biçiminde girin/)).toBeVisible()
+
+    await amount.fill('100,50')
+    await fillReference(dialog)
+    await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
+    await expect(page.getByText('Tahsilat kaydedildi.')).toBeVisible()
+    expect((await invoice(client, 'inv-s14-5')).paidAt).toBeNull()
+
+    await page.goto(`${ADMIN_URL}?tahsilat=inv-s14-5`)
+    await expect(dialog.getByText(/Ödenen .*Kalan/)).toBeVisible()
+    const remaining = total - 10_050
+    await expect(amount).toHaveValue(
+      `${String(Math.floor(remaining / 100))},${String(remaining % 100).padStart(2, '0')}`,
+    )
+    await fillReference(dialog)
+    await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
+    await expect(page.getByText('Tahsilat kaydedildi.')).toBeVisible()
+    expect((await invoice(client, 'inv-s14-5')).paidAt).not.toBeNull()
+  })
+
+  test('DOM-FIN-031: kullanılmış referans alanda gösterilir, form açık kalır', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s15'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?tahsilat=inv-s15-5`)
+    const dialog = paymentDialog(page)
+    await fillReference(dialog, 'E2E-AYNI-REF')
+    await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
+    await expect(page.getByText('Tahsilat kaydedildi.')).toBeVisible()
+
+    await page.goto(`${ADMIN_URL}?tahsilat=inv-s15-6`)
+    await fillReference(dialog, 'E2E-AYNI-REF')
+    await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
+    await expect(dialog.getByText('Bu işlem referansı daha önce kaydedilmiş.')).toBeVisible()
+    await expect(dialog).toBeVisible()
+  })
+
+  test('DOM-FIN-032: nakit varsayılan kapalı; yönetici açınca formda görünür, referans istemez', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s16'] })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
+
+    await page.goto(`${ADMIN_URL}?tahsilat=inv-s16-5`)
+    const dialog = paymentDialog(page)
+    const method = dialog.getByLabel('Ödeme yöntemi')
+    await expect(method).toBeVisible()
+    await expect(method.getByRole('option', { name: 'Nakit' })).toHaveCount(0)
+
+    await page.goto('/yonetici/ayarlar')
+    const toggle = page.getByRole('switch', { name: 'Nakit tahsilat' })
+    await expect(toggle).not.toBeChecked()
+    await toggle.click()
+    const confirm = page.getByRole('dialog', { name: 'Nakit tahsilatı aç' })
+    await expect(confirm).toContainText('ÖÖKY md. 55/3')
+    await confirm.getByRole('button', { name: 'Nakit tahsilatı aç' }).click()
+    await expect(page.getByText('Nakit tahsilat açıldı.')).toBeVisible()
+    await expect(toggle).toBeChecked()
+
+    await page.goto(`${ADMIN_URL}?tahsilat=inv-s16-5`)
+    await method.selectOption('Nakit')
+    await expect(dialog.getByLabel('İşlem referansı')).toHaveCount(0)
+    await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
+    await expect(page.getByText('Tahsilat kaydedildi.')).toBeVisible()
+    expect((await invoice(client, 'inv-s16-5')).method).toBe('Nakit')
   })
 
   test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api, tenant }) => {
@@ -185,6 +295,7 @@ test.describe('Finans: tahsilat', () => {
     await detail.getByRole('button', { name: 'Tahsil et' }).click()
     const dialog = paymentDialog(page)
     await dialog.getByLabel('Ödeme yöntemi').selectOption('Kredi kartı')
+    await fillReference(dialog)
     await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
 
     await expect(dialog).toBeHidden()

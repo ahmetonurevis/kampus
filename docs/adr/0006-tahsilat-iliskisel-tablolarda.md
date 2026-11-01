@@ -31,7 +31,7 @@ Tahsilat bugün taksit kaydının `paidAt` ve `method` alanlarıdır (`records`,
 - Nakdi açmanın ÖÖKY md. 55/3 açısından sorumluluğu kuruma geçer; yasal uygunluk **doğrulanmalı**, pilot öncesi hukukçuya sorulacak.
 - İade hesabının tabanı (net ücret), gün sayımı ve ek hizmet iadesi mevzuatta açık değildir; **doğrulanmalı**, pilot öncesi hukukçuya sorulacak.
 - Tahsilatın bildirilmiş banka hesabına bağlanması (DOM-FIN-032) kurum hesap ayarı gelene kadar yapılmaz.
-- `POST /invoices/:id/pay` React ekranı yeni uca geçene kadar kalır; taksitin kalan tutarını referanssız tahsilat olarak yazar.
+- `POST /invoices/:id/pay` React ekranı `POST /payments`'a geçince kaldırıldı. Çevrimdışı demo core `payInvoice`'ı kullanmaya devam eder.
 
 ## Alternatifler
 

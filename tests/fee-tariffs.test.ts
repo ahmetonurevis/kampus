@@ -2,9 +2,13 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  emptyTariffForm,
+  feeTariffFormSchema,
   planTariffCreate,
   planTariffPublish,
   planTariffUpdate,
+  tariffFormToBody,
+  tariffToForm,
   type FeeItem,
 } from '../packages/school-core/src/lib/fee-tariffs.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -135,4 +139,38 @@ test('IST-104: PATCH verilmeyen alanı korur', () => {
   assert.deepEqual(planTariffUpdate(row, { items: [meal] }).discounts, [discount])
   assert.deepEqual(planTariffUpdate(row, { discounts: [] }).items, [tuition])
   assert.deepEqual(planTariffUpdate(row, { discounts: [] }).discounts, [])
+})
+
+test('IST-104: tarife formu kuruşa çevrilir, kayıtlı tarife forma kayıpsız döner', () => {
+  const stored = {
+    academicYear: 2026,
+    items: [tuition, { ...meal, vatBasisPoints: 0 }],
+    discounts: [
+      { kind: 'sibling', percentBasisPoints: 1_250, amountCents: null },
+      { kind: 'corporate', percentBasisPoints: null, amountCents: 100_050 },
+    ] as const,
+  }
+  const form = tariffToForm(stored)
+  assert.equal(form.items[0]?.amount, '300000,00')
+  assert.equal(form.items[1]?.vatPercent, '0')
+  assert.equal(form.discounts[0]?.value, '12,50')
+  assert.equal(feeTariffFormSchema.safeParse(form).success, true)
+  assert.deepEqual(tariffFormToBody(form), stored)
+})
+
+test('IST-104: tarife formu geçersiz tutar, oran ve yılı reddeder', () => {
+  const base = emptyTariffForm(2026, TODAY)
+  assert.equal(feeTariffFormSchema.safeParse(base).success, false, 'boş tutar')
+  const valid = {
+    ...base,
+    items: base.items.map((item) => ({ ...item, amount: '1.000,00' })),
+  }
+  assert.equal(feeTariffFormSchema.safeParse(valid).success, true)
+  const discount = { kind: 'sibling', mode: 'percent', value: '101' } as const
+  assert.equal(feeTariffFormSchema.safeParse({ ...valid, discounts: [discount] }).success, false)
+  assert.equal(
+    feeTariffFormSchema.safeParse({ ...valid, discounts: [{ ...discount, value: '10' }] }).success,
+    true,
+  )
+  assert.equal(feeTariffFormSchema.safeParse({ ...valid, academicYear: '26' }).success, false)
 })

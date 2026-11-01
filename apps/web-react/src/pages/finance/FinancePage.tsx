@@ -32,6 +32,8 @@ import {
   isInvoiceStatusKey,
   type InvoiceRow,
 } from './finance-rows.ts'
+import { FeeTariffsSection } from './FeeTariffsSection.tsx'
+import { FinanceExportSection } from './FinanceExportSection.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 import { PaymentPanel } from './PaymentPanel.tsx'
 import { PaymentsSection } from './PaymentsSection.tsx'
@@ -42,13 +44,22 @@ const SORTABLE = sortableColumns(INVOICE_LIST)
 const MOBILE_COLUMNS = ['installment', 'dueDate', 'amount', 'status']
 const CSV_NAME = 'finans-raporu'
 const ALL = 'all'
-const VIEW_PARAM = 'gorunum'
-const PAYMENTS_VIEW = 'tahsilatlar'
-const VIEW_OPTIONS = [
-  { value: 'invoices' as const, label: 'Taksitler' },
-  { value: 'payments' as const, label: 'Tahsilat geçmişi' },
-]
 const TOTALS_QUERY = { groupBy: 'status', sum: 'amount' } as const
+const VIEW_PARAM = 'gorunum'
+const VIEWS = {
+  invoices: { label: 'Taksitler', param: '' },
+  payments: { label: 'Tahsilat geçmişi', param: 'tahsilatlar' },
+  tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
+  exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
+} as const
+type FinanceView = keyof typeof VIEWS
+const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
+  value: value as FinanceView,
+  label: view.label,
+}))
+const viewOf = (param: string | null): FinanceView =>
+  VIEW_OPTIONS.find(({ value }) => param !== null && VIEWS[value].param === param)?.value ??
+  'invoices'
 
 /**
  * Finans & Tahsilat (yönetici `/finans`, ön büro `/tahsilat-takip`; Vue `Finance.vue`): kurumun
@@ -61,7 +72,8 @@ export function FinancePage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const { session } = useAuth()
   const [params, setParams] = useSearchParams()
-  const tab = params.get(VIEW_PARAM) === PAYMENTS_VIEW ? 'payments' : 'invoices'
+  const tab = viewOf(params.get(VIEW_PARAM))
+  const isManager = session?.role === 'yonetici'
   const list = useListState('taksitler', { urlFilters: INVOICE_URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
   const query = useMemo(() => invoiceListQuery(list.state, search), [list.state, search])
@@ -213,12 +225,20 @@ export function FinancePage({ page }: { page: NavPage }) {
         value={tab}
         options={VIEW_OPTIONS}
         onChange={(next) =>
-          setParams(next === 'payments' ? { [VIEW_PARAM]: PAYMENTS_VIEW } : new URLSearchParams())
+          setParams(
+            next === 'invoices' ? new URLSearchParams() : { [VIEW_PARAM]: VIEWS[next].param },
+          )
         }
       />
-      {tab === 'payments' ? (
-        <PaymentsSection canReverse={session?.role === 'yonetici'} />
-      ) : (
+      {tab === 'payments' ? <PaymentsSection canReverse={isManager} /> : null}
+      {tab === 'tariffs' ? (
+        <FeeTariffsSection
+          canManage={isManager}
+          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+        />
+      ) : null}
+      {tab === 'exports' ? <FinanceExportSection canDownload={isManager} /> : null}
+      {tab === 'invoices' ? (
         <section
           aria-labelledby="taksit-tablosu"
           className="panel overflow-hidden rounded-card border bg-surface"
@@ -265,7 +285,7 @@ export function FinancePage({ page }: { page: NavPage }) {
             }
           />
         </section>
-      )}
+      ) : null}
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}
         onClose={panel.close}

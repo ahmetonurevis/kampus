@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
+import { amountInputValue, parseAmountInput } from './payments.ts'
 
 /**
  * Ücret tarifesi (docs/domain/finans.md DOM-FIN-002, -003, -004, -006; IST-104; ADR 0006). Tarife
@@ -26,6 +27,23 @@ export type FeeItemKind = (typeof FEE_ITEM_KINDS)[number]
 /** Öğrenim ücreti birimi kurum türüne bağlıdır (DOM-FIN-006). */
 export const FEE_UNITS = ['year', 'month', 'lesson_hour', 'item'] as const
 export type FeeUnit = (typeof FEE_UNITS)[number]
+
+export const FEE_ITEM_KIND_LABELS: Readonly<Record<FeeItemKind, string>> = {
+  tuition: 'Öğrenim ücreti',
+  breakfast: 'Kahvaltı',
+  meal: 'Yemek',
+  transport: 'Servis',
+  dormitory: 'Pansiyon',
+  stationery: 'Kitap ve kırtasiye',
+  uniform: 'Kıyafet',
+  tutoring: 'Etüt',
+}
+export const FEE_UNIT_LABELS: Readonly<Record<FeeUnit, string>> = {
+  year: 'Yıl',
+  month: 'Ay',
+  lesson_hour: 'Ders saati',
+  item: 'Adet',
+}
 
 export const feeItemSchema = z.strictObject({
   kind: z.enum(FEE_ITEM_KINDS, 'Ücret kalemi türünü seçin.'),
@@ -55,6 +73,15 @@ export const FEE_DISCOUNT_KINDS = [
   'staff_child',
 ] as const
 export type FeeDiscountKind = (typeof FEE_DISCOUNT_KINDS)[number]
+
+export const FEE_DISCOUNT_KIND_LABELS: Readonly<Record<FeeDiscountKind, string>> = {
+  sibling: 'Kardeş',
+  early_payment: 'Peşin ödeme',
+  early_registration: 'Erken kayıt',
+  referral: 'Referans',
+  corporate: 'Kurumsal anlaşma',
+  staff_child: 'Personel çocuğu',
+}
 
 export const feeDiscountSchema = z
   .strictObject({
@@ -198,4 +225,146 @@ export function planTariffPublish(
         'Ücret, MEBBİS onaylı tutarı aşamaz.',
       )
   return { announcedDate: data.announcedDate, mebbisRecordedDate: data.mebbisRecordedDate }
+}
+
+const AMOUNT_MESSAGE = 'Tutarı 1.234,56 biçiminde girin (en fazla 1.000.000 ₺).'
+const amountField = z.string().refine((value) => parseAmountInput(value) !== null, AMOUNT_MESSAGE)
+const percentCents = (value: string) => {
+  const parsed = parseAmountInput(value)
+  return parsed !== null && parsed <= BASIS ? parsed : null
+}
+const BASIS = 10_000
+
+/** Tarife formu (web): tutar ve oran metindir, gönderimde kuruşa ve on binde birliğe çevrilir. */
+export const feeTariffFormSchema = z.object({
+  academicYear: z.string().regex(/^20\d{2}$/, 'Eğitim yılını 2026 biçiminde girin.'),
+  items: z
+    .array(
+      z.object({
+        kind: z.enum(FEE_ITEM_KINDS, 'Ücret kalemi türünü seçin.'),
+        level: z.string().trim().max(40),
+        amount: amountField,
+        unit: z.enum(FEE_UNITS, 'Ücret birimini seçin.'),
+        vatPercent: z.string().refine((value) => {
+          const trimmed = value.trim()
+          return trimmed === '0' || percentCents(trimmed) !== null
+        }, 'KDV oranını 0 ile 100 arasında girin.'),
+        vatEffectiveDate: daySchema,
+        announcedAmount: z
+          .string()
+          .refine(
+            (value) => value.trim() === '' || parseAmountInput(value) !== null,
+            AMOUNT_MESSAGE,
+          ),
+      }),
+    )
+    .min(1, 'En az bir ücret kalemi girin.'),
+  discounts: z.array(
+    z
+      .object({
+        kind: z.enum(FEE_DISCOUNT_KINDS, 'İndirim türünü seçin.'),
+        mode: z.enum(['percent', 'amount']),
+        value: z.string(),
+      })
+      .superRefine((discount, context) => {
+        const valid =
+          discount.mode === 'percent'
+            ? percentCents(discount.value) !== null
+            : parseAmountInput(discount.value) !== null
+        if (!valid)
+          context.addIssue({
+            code: 'custom',
+            path: ['value'],
+            message:
+              discount.mode === 'percent' ? 'Oranı 0 ile 100 arasında girin.' : AMOUNT_MESSAGE,
+          })
+      }),
+  ),
+})
+export type FeeTariffFormValues = z.output<typeof feeTariffFormSchema>
+
+export function emptyTariffForm(academicYear: number, today: string): FeeTariffFormValues {
+  return {
+    academicYear: String(academicYear),
+    items: [
+      {
+        kind: 'tuition',
+        level: '',
+        amount: '',
+        unit: 'year',
+        vatPercent: '10',
+        vatEffectiveDate: today,
+        announcedAmount: '',
+      },
+    ],
+    discounts: [],
+  }
+}
+
+/** Kayıtlı tarifeyi forma çevirir: taslak düzenleme ve yeni sürüm aynı değerlerle açılır. */
+export function tariffToForm(tariff: {
+  academicYear: number
+  items: readonly FeeItem[]
+  discounts: readonly FeeDiscount[]
+}): FeeTariffFormValues {
+  return {
+    academicYear: String(tariff.academicYear),
+    items: tariff.items.map((item) => ({
+      kind: item.kind,
+      level: item.level ?? '',
+      amount: amountInputValue(item.amountCents),
+      unit: item.unit,
+      vatPercent: item.vatBasisPoints === 0 ? '0' : amountInputValue(item.vatBasisPoints),
+      vatEffectiveDate: item.vatEffectiveDate,
+      announcedAmount:
+        item.announcedAmountCents === null ? '' : amountInputValue(item.announcedAmountCents),
+    })),
+    discounts: tariff.discounts.map((discount) =>
+      discount.amountCents === null
+        ? {
+            kind: discount.kind,
+            mode: 'percent' as const,
+            value: amountInputValue(discount.percentBasisPoints ?? 0),
+          }
+        : {
+            kind: discount.kind,
+            mode: 'amount' as const,
+            value: amountInputValue(discount.amountCents),
+          },
+    ),
+  }
+}
+
+/** Doğrulanmış form değerlerini API gövdesine çevirir. */
+export function tariffFormToBody(values: FeeTariffFormValues): {
+  academicYear: number
+  items: FeeItem[]
+  discounts: FeeDiscount[]
+} {
+  return {
+    academicYear: Number(values.academicYear),
+    items: values.items.map((item) => ({
+      kind: item.kind,
+      level: item.level.trim() === '' ? null : item.level.trim(),
+      amountCents: parseAmountInput(item.amount) ?? 0,
+      unit: item.unit,
+      vatBasisPoints: item.vatPercent.trim() === '0' ? 0 : (percentCents(item.vatPercent) ?? 0),
+      vatEffectiveDate: item.vatEffectiveDate,
+      announcedAmountCents:
+        item.announcedAmount.trim() === '' ? null : parseAmountInput(item.announcedAmount),
+    })),
+    discounts: values.discounts.map((discount) =>
+      discount.mode === 'percent'
+        ? {
+            kind: discount.kind,
+            percentBasisPoints: percentCents(discount.value),
+            amountCents: null,
+          }
+        : {
+            kind: discount.kind,
+            percentBasisPoints: null,
+            amountCents: parseAmountInput(discount.value),
+          },
+    ),
+  }
 }

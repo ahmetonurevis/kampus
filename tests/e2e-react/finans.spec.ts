@@ -321,6 +321,74 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: /numaralı tahsilatı iptal et/ })).toHaveCount(0)
   })
 
+  test('DOM-FIN-002: yönetici tarife taslağı açar ve yayımlar; yayımlanan düzenlenemez; ön büro yalnız görür', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s19'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=tarife`)
+    await page.getByRole('button', { name: 'Yeni tarife' }).click()
+    const editor = page.getByRole('dialog', { name: 'Yeni tarife' })
+    await editor.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(editor.getByText(/biçiminde girin/).first()).toBeVisible()
+    await editor.getByLabel('Tutar (₺)', { exact: true }).fill('300.000,00')
+    await editor.getByLabel('MEBBİS onaylı tutar (₺)').fill('300.000,00')
+    await editor.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(page.getByText('Tarife kaydedildi.')).toBeVisible()
+
+    const table = page.getByRole('table', { name: 'Ücret tarifeleri' })
+    await expect(table).toContainText('Taslak')
+    await page.getByRole('button', { name: /tarifesini yayımla/ }).click()
+    const publish = page.getByRole('dialog', { name: 'Tarifeyi yayımla' })
+    await publish.getByRole('button', { name: 'Tarifeyi yayımla' }).click()
+    await expect(page.getByText('Tarife yayımlandı.')).toBeVisible()
+    await expect(table).toContainText('Yayında')
+    await expect(page.getByRole('button', { name: /taslağını düzenle/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /yeni sürüm aç/ })).toBeVisible()
+
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/tahsilat-takip?gorunum=tarife')
+    await expect(page.getByRole('table', { name: 'Ücret tarifeleri' })).toContainText('Yayında')
+    await expect(page.getByRole('button', { name: 'Yeni tarife' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /yeni sürüm aç/ })).toHaveCount(0)
+    await page.getByRole('button', { name: /tarifesini görüntüle/ }).click()
+    await expect(page.getByRole('dialog')).toContainText('Öğrenim ücreti')
+  })
+
+  test('IST-111: dönem toplamı dosya toplamına eşittir; dosya yöneticiye iner, ön büro indiremez', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s20'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s20-5', 'Kredi kartı')
+    const amount = (await invoice(client, 'inv-s20-5')).amount
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
+    const totals = page
+      .getByRole('list', { name: 'Dönem toplamları' })
+      .or(page.getByLabel('Dönem toplamları'))
+    await expect(totals).toContainText('1 hareket')
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Tahsilat dosyası' }).click()
+    const file = await downloading
+    expect(file.suggestedFilename()).toMatch(/^tahsilatlar-.*\.csv$/)
+    const body = await readFile(await file.path(), 'utf8')
+    expect(body.charCodeAt(0)).toBe(0xfeff)
+    const cents = String(amount % 100).padStart(2, '0')
+    expect(body).toContain(`;${String(Math.floor(amount / 100))},${cents}`)
+
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/tahsilat-takip?gorunum=aktarim')
+    await expect(page.getByLabel('Dönem toplamları')).toContainText('1 hareket')
+    await expect(page.getByRole('button', { name: 'Tahsilat dosyası' })).toHaveCount(0)
+  })
+
   test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api, tenant }) => {
     const school = await tenant({ roles: ['onburo'], students: ['s12'] })
     await loginAs(school.user('onburo'))

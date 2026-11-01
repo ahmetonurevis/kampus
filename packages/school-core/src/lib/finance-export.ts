@@ -4,6 +4,7 @@ import type { State } from '../data/seed.ts'
 import { CSV_SEPARATOR, csvAmount, csvCell } from './csv.ts'
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
+import { FEE_ITEM_KIND_LABELS } from './fee-tariffs.ts'
 import { dayKey } from './format.ts'
 
 /**
@@ -156,17 +157,6 @@ export function refundLines(
     .sort((a, b) => a.date.localeCompare(b.date))
 }
 
-const FEE_KIND_LABELS: Readonly<Record<string, string>> = {
-  tuition: 'Öğrenim ücreti',
-  breakfast: 'Kahvaltı',
-  meal: 'Yemek',
-  transport: 'Servis',
-  dormitory: 'Pansiyon',
-  stationery: 'Kitap ve kırtasiye',
-  uniform: 'Kıyafet',
-  tutoring: 'Etüt',
-}
-
 export interface InvoiceLine {
   date: string
   studentName: string
@@ -195,7 +185,10 @@ export function invoiceLines(
           date,
           ...studentCells(students, invoice.studentId),
           installment: invoice.installment,
-          feeKind: FEE_KIND_LABELS[invoice.feeKind ?? 'tuition'] ?? '',
+          feeKind:
+            (FEE_ITEM_KIND_LABELS as Readonly<Record<string, string>>)[
+              invoice.feeKind ?? 'tuition'
+            ] ?? '',
           status: invoice.paidAt ? 'Ödendi' : paidCents > 0 ? 'Kısmi' : 'Açık',
           amountCents: invoice.amount,
           paidCents,

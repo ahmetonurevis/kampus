@@ -1,61 +1,73 @@
-import { useMemo } from 'react'
-import { useQueries } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { runRequest } from '@kampus/react-shared/api-result.ts'
 import { useKampusClient } from '@kampus/react-shared/kampus-context.ts'
 import { institutionKey } from '@kampus/react-shared/query-keys.ts'
 import { useActiveInstitutionId } from '@kampus/react-shared/use-active-institution.ts'
-import { RUBRICS_KEY, useRubrics, type RubricVersion } from '@kampus/react-shared/use-rubrics.ts'
+import { RUBRICS_KEY } from '@kampus/react-shared/use-rubrics.ts'
+import {
+  findRubricVersion,
+  RUBRIC_LOOKUP_PAGE_SIZE,
+  shouldLookUpRubric,
+  type RubricLookupSource,
+} from './rubric-version-lookup.ts'
+
+/** Yayımlanmış ya da kullanılmış sürüm değişmez (DOM-BEC-022); bulunan sürüm uzun süre taze kalır. */
+const LOOKUP_STALE_MS = 5 * 60_000
 
 /**
- * Atamanın sabitlediği rubrik sürümünü (kriterler ve bantlar) bulur. Atama yanıtı yalnız
- * `rubricVersionId` taşır, rubrik kimliği taşımaz; bu yüzden önce rubrik listesinde baş ya da
- * yayındaki sürümle eşleşme aranır (ortak durum), bulunamazsa (sürüm sonradan arşivlendi) rubrik
- * ayrıntıları okunup sürüm orada aranır.
- * TODO(W22b-api-rubrik-kimligi): Atama yanıtına `rubricId` eklenince tek ayrıntı çağrısı yeter;
- * 100'den çok rubrikte yalnız ilk 100'ü taranır.
+ * Atamanın sabitlediği rubrik sürümünü (kriterler ve bantlar) bulur; `rubricVersionId` boşken
+ * (atama yüklenmedi ya da otomatik puanlı görev) hiçbir istek atılmaz. Tarama sırayla yapılır ve
+ * bulununca durur (`findRubricVersion`); liste ve ayrıntılar önbelleği paylaşır, aynı sürüm tekrar
+ * açıldığında istek atılmaz.
  */
 export function useRubricVersion(rubricVersionId: string | null) {
   const client = useKampusClient()
+  const queryClient = useQueryClient()
   const institutionId = useActiveInstitutionId()
-  const enabled = rubricVersionId !== null
-  const list = useRubrics({ page: 1, pageSize: 100 })
-  const items = list.data?.data
-  const direct = items?.find(
-    (item) => item.head.id === rubricVersionId || item.publishedVersionId === rubricVersionId,
-  )
-  // Baş sürüm ya da yayındaki sürüm eşleşmezse bütün rubriklerin sürümleri taranır.
-  const candidates = enabled && items && !direct ? items : []
-  const details = useQueries({
-    queries: [direct, ...candidates].flatMap((item) =>
-      item
-        ? [
-            {
-              queryKey: institutionKey(institutionId, RUBRICS_KEY, 'detail', item.rubric.id),
-              queryFn: ({ signal }: { signal: AbortSignal }) =>
-                runRequest(() =>
-                  client.GET('/api/v1/rubrics/{rubricId}', {
-                    params: { path: { rubricId: item.rubric.id } },
-                    signal,
-                  }),
-                ),
-              enabled: institutionId !== null,
-            },
-          ]
-        : [],
-    ),
+  const enabled = shouldLookUpRubric(rubricVersionId, institutionId)
+  const query = useQuery({
+    queryKey: institutionKey(institutionId, RUBRICS_KEY, 'version-lookup', rubricVersionId),
+    enabled,
+    staleTime: LOOKUP_STALE_MS,
+    queryFn: ({ signal }) => {
+      const source: RubricLookupSource = {
+        listPage: (page) =>
+          queryClient.fetchQuery({
+            staleTime: LOOKUP_STALE_MS,
+            queryKey: institutionKey(institutionId, RUBRICS_KEY, 'list', {
+              page,
+              pageSize: RUBRIC_LOOKUP_PAGE_SIZE,
+            }),
+            queryFn: () =>
+              runRequest(() =>
+                client.GET('/api/v1/rubrics', {
+                  params: { query: { page, pageSize: RUBRIC_LOOKUP_PAGE_SIZE } },
+                  signal,
+                }),
+              ),
+          }),
+        // Önbellek girdisi `useRubricDetail` ile aynı biçimdedir (`{ data }` zarfı).
+        detail: async (rubricId) => {
+          const result = await queryClient.fetchQuery({
+            queryKey: institutionKey(institutionId, RUBRICS_KEY, 'detail', rubricId),
+            staleTime: LOOKUP_STALE_MS,
+            queryFn: () =>
+              runRequest(() =>
+                client.GET('/api/v1/rubrics/{rubricId}', {
+                  params: { path: { rubricId } },
+                  signal,
+                }),
+              ),
+          })
+          return result.data
+        },
+      }
+      return findRubricVersion(rubricVersionId ?? '', source)
+    },
   })
-  const version = useMemo<RubricVersion | null>(() => {
-    for (const detail of details) {
-      const found = detail.data?.data.versions.find((item) => item.id === rubricVersionId)
-      if (found) return found
-    }
-    return null
-  }, [details, rubricVersionId])
-  const loading =
-    enabled && version === null && (list.isPending || details.some((item) => item.isPending))
   return {
-    version,
-    loading,
-    error: list.error ?? details.find((item) => item.error)?.error ?? null,
+    version: query.data ?? null,
+    loading: enabled && query.isPending,
+    error: query.error,
   }
 }

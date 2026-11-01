@@ -6,7 +6,7 @@ import {
   NOTIFICATION_TOPICS,
 } from '@kampus/school-core/lib/notifications.ts'
 
-import { dataResponse, pageMetaSchema } from './common.schemas.ts'
+import { dataResponse } from './common.schemas.ts'
 
 /** Bildirim uçlarının yol, sorgu ve yanıt şemaları (core `lib/notifications.ts`). */
 
@@ -15,8 +15,13 @@ export const notificationParamsSchema = z.object({
 })
 
 export const notificationListQuerySchema = z.strictObject({
-  page: z.coerce.number().int().min(1).default(1).describe('Sayfa numarası'),
-  pageSize: z.coerce.number().int().min(1).max(100).default(25).describe('Sayfa boyutu (≤ 100)'),
+  cursor: z
+    .string()
+    .min(1)
+    .max(200)
+    .optional()
+    .describe('Önceki sayfanın `meta.nextCursor` değeri; yoksa en yeni bildirimler'),
+  limit: z.coerce.number().int().min(1).max(100).default(50).describe('Sayfa boyutu (≤ 100)'),
   unread: z
     .enum(['true', 'false'])
     .default('false')
@@ -48,8 +53,10 @@ const notificationViewSchema = z
   .meta({ id: 'Notification' })
 
 export const notificationPageResponseSchema = z.object({
-  data: z.array(notificationViewSchema),
-  meta: pageMetaSchema,
+  data: z.array(notificationViewSchema).describe('En yeni önce'),
+  meta: z.object({
+    nextCursor: z.string().nullable().describe('Daha eski bildirimler için imleç; yoksa `null`'),
+  }),
 })
 
 export const unreadNotificationsResponseSchema = dataResponse(

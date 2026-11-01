@@ -57,8 +57,8 @@ export function parentAccountsKey(studentId: string) {
 }
 
 /**
- * Uygulama içi bildirim merkezi anahtar parçaları (F6a; `GET /notifications`). Liste süzgeç ve
- * sayfayla, okunmamış sayısı ayrı alt koldadır; okundu işaretinden sonra `['notifications']`
+ * Uygulama içi bildirim merkezi anahtar parçaları (F6a; `GET /notifications`). Liste (imleçli
+ * sayfalar tek sonsuz sorguda) süzgeçle, okunmamış sayısı ayrı alt koldadır; okundu işaretinden sonra `['notifications']`
  * önekiyle ikisi birlikte tazelenir.
  */
 export const NOTIFICATIONS_KEY_ROOT = 'notifications'
@@ -67,12 +67,8 @@ export function notificationsPrefix(): readonly unknown[] {
   return [NOTIFICATIONS_KEY_ROOT]
 }
 
-export function notificationListKey(query: { page: number; pageSize: number; unread: boolean }) {
-  return [
-    NOTIFICATIONS_KEY_ROOT,
-    'list',
-    { page: query.page, pageSize: query.pageSize, unread: query.unread },
-  ] as const
+export function notificationListKey(filters: { unread: boolean }) {
+  return [NOTIFICATIONS_KEY_ROOT, 'list', { unread: filters.unread }] as const
 }
 
 export function unreadNotificationsKey() {

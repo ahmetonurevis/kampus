@@ -31689,29 +31689,28 @@
         "tags": [
           "notifications"
         ],
-        "description": "Oturum sahibinin uygulama içi bildirimleri, en yeni önce (DOM-ILT-020). Öğrenci kendi kaydının, veli bağlı çocuklarının bildirimini görür; başka velinin çocuğu ve başka kurum hiç görünmez, personelin listesi boştur. Bildirim serbest metin taşımaz: `title` türün sabit şablonundan, yalnız öğrencinin ilk adıyla üretilir; puan, geri bildirim metni, tutar veya sağlık bilgisi yoktur (DOM-ILT-023). `readAt` yalnız okuyanın kendi okumasıdır; diğer velinin okuması görünmez (DOM-ILT-073). `unread=true` yalnız okunmamışları verir. Modül `communication`.",
+        "description": "Oturum sahibinin uygulama içi bildirimleri, en yeni önce (DOM-ILT-020). Öğrenci kendi kaydının, veli bağlı çocuklarının bildirimini görür; başka velinin çocuğu ve başka kurum hiç görünmez, personelin listesi boştur. Bildirim serbest metin taşımaz: `title` türün sabit şablonundan, yalnız öğrencinin ilk adıyla üretilir; puan, geri bildirim metni, tutar veya sağlık bilgisi yoktur (DOM-ILT-023). `readAt` yalnız okuyanın kendi okumasıdır; diğer velinin okuması görünmez (DOM-ILT-073). İmleçli sayfalama: `cursor` önceki sayfanın `meta.nextCursor` değeridir, toplam dönmez (okunmamış sayısı ayrı uçtadır); görülemeyen bildirim imleci 400. `unread=true` yalnız okunmamışları verir. Modül `communication`.",
         "parameters": [
           {
             "schema": {
-              "default": 1,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 9007199254740991
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
             },
             "in": "query",
-            "name": "page",
+            "name": "cursor",
             "required": false,
-            "description": "Sayfa numarası"
+            "description": "Önceki sayfanın `meta.nextCursor` değeri; yoksa en yeni bildirimler"
           },
           {
             "schema": {
-              "default": 25,
+              "default": 50,
               "type": "integer",
               "minimum": 1,
               "maximum": 100
             },
             "in": "query",
-            "name": "pageSize",
+            "name": "limit",
             "required": false,
             "description": "Sayfa boyutu (≤ 100)"
           },
@@ -31742,10 +31741,24 @@
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/Notification"
-                      }
+                      },
+                      "description": "En yeni önce"
                     },
                     "meta": {
-                      "$ref": "#/components/schemas/PageMeta"
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "description": "Daha eski bildirimler için imleç; yoksa `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [

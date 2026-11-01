@@ -1753,7 +1753,7 @@ export interface paths {
         };
         /**
          * Bildirimlerim
-         * @description Oturum sahibinin uygulama içi bildirimleri, en yeni önce (DOM-ILT-020). Öğrenci kendi kaydının, veli bağlı çocuklarının bildirimini görür; başka velinin çocuğu ve başka kurum hiç görünmez, personelin listesi boştur. Bildirim serbest metin taşımaz: `title` türün sabit şablonundan, yalnız öğrencinin ilk adıyla üretilir; puan, geri bildirim metni, tutar veya sağlık bilgisi yoktur (DOM-ILT-023). `readAt` yalnız okuyanın kendi okumasıdır; diğer velinin okuması görünmez (DOM-ILT-073). `unread=true` yalnız okunmamışları verir. Modül `communication`.
+         * @description Oturum sahibinin uygulama içi bildirimleri, en yeni önce (DOM-ILT-020). Öğrenci kendi kaydının, veli bağlı çocuklarının bildirimini görür; başka velinin çocuğu ve başka kurum hiç görünmez, personelin listesi boştur. Bildirim serbest metin taşımaz: `title` türün sabit şablonundan, yalnız öğrencinin ilk adıyla üretilir; puan, geri bildirim metni, tutar veya sağlık bilgisi yoktur (DOM-ILT-023). `readAt` yalnız okuyanın kendi okumasıdır; diğer velinin okuması görünmez (DOM-ILT-073). İmleçli sayfalama: `cursor` önceki sayfanın `meta.nextCursor` değeridir, toplam dönmez (okunmamış sayısı ayrı uçtadır); görülemeyen bildirim imleci 400. `unread=true` yalnız okunmamışları verir. Modül `communication`.
          */
         get: operations["listNotifications"];
         put?: never;
@@ -16361,10 +16361,10 @@ export interface operations {
     listNotifications: {
         parameters: {
             query?: {
-                /** @description Sayfa numarası */
-                page?: number;
+                /** @description Önceki sayfanın `meta.nextCursor` değeri; yoksa en yeni bildirimler */
+                cursor?: string;
                 /** @description Sayfa boyutu (≤ 100) */
-                pageSize?: number;
+                limit?: number;
                 /** @description `true`: yalnız okunmamış bildirimler */
                 unread?: "true" | "false";
             };
@@ -16381,8 +16381,12 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @description En yeni önce */
                         data: components["schemas"]["Notification"][];
-                        meta: components["schemas"]["PageMeta"];
+                        meta: {
+                            /** @description Daha eski bildirimler için imleç; yoksa `null` */
+                            nextCursor: string | null;
+                        };
                     };
                 };
             };

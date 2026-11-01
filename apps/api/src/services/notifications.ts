@@ -17,6 +17,7 @@ import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
 import { notificationPage, unreadNotificationTotal, type AudienceIds } from '../db/notifications.ts'
 import { loadRecords, loadRecordsByIds } from '../db/records.ts'
+import { ValidationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
@@ -52,15 +53,22 @@ async function audienceOf(ctx: ServiceContext): Promise<AudienceIds> {
 }
 
 export interface NotificationListInput {
-  page: number
-  pageSize: number
+  cursor?: string | undefined
+  limit: number
   unread: boolean
 }
 
-/** Aktörün bildirim sayfası, en yeni önce (DOM-ILT-020). */
+/**
+ * Aktörün bildirim sayfası, en yeni önce (DOM-ILT-020). İmleç aktörün görebildiği bir bildirim
+ * değilse 400 (başkasının bildiriminin varlığı sızmaz).
+ */
 export async function listNotifications(ctx: ServiceContext, input: NotificationListInput) {
   const audience = await audienceOf(ctx)
   const page = await notificationPage(ctx.db, ctx.institutionId, ctx.actor.userId, audience, input)
+  if (!page)
+    throw new ValidationError([
+      { path: ['querystring', 'cursor'], code: 'invalid_value', message: 'Sayfa imleci geçersiz.' },
+    ])
   const items = page.rows.map((row) => ({
     record: notificationRecordSchema.parse(row.data),
     readAt: row.readAt,
@@ -82,7 +90,7 @@ export async function listNotifications(ctx: ServiceContext, input: Notification
       createdAt: record.createdAt,
       readAt,
     })),
-    meta: { page: input.page, pageSize: input.pageSize, total: page.total },
+    meta: { nextCursor: page.more ? (items.at(-1)?.record.id ?? null) : null },
   }
 }
 

@@ -12,11 +12,13 @@ import {
   unreadNotificationsKey,
 } from '../src/query-keys.ts'
 import {
+  flattenNotificationPages,
   listNotificationsRequest,
   NOTIFICATION_PAGE_SIZE,
   readAllNotificationsRequest,
   readNotificationRequest,
   unreadNotificationCountRequest,
+  type NotificationView,
 } from '../src/use-notifications.ts'
 
 interface Sent {
@@ -27,7 +29,7 @@ interface Sent {
 }
 
 /** Gerçek istemci + sahte fetch: giden istek kaydedilir, yanıt sabittir. */
-function fakeClient(payload: unknown = { data: [], meta: { page: 1, pageSize: 25, total: 0 } }) {
+function fakeClient(payload: unknown = { data: [], meta: { nextCursor: null } }) {
   const sent: Sent[] = []
   const client = createKampusClient({
     baseUrl: 'https://api.kampus.test',
@@ -52,19 +54,31 @@ function fakeClient(payload: unknown = { data: [], meta: { page: 1, pageSize: 25
 }
 
 describe('bildirim merkezi kancaları', () => {
-  test('DOM-ILT-073: liste varsayılan sayfa ve boyutla, okunmamış süzgeci kapalı ister; süzgeç ve sayfa taşınır', async () => {
+  test('DOM-ILT-073: liste varsayılan boyutla, imleçsiz ve okunmamış süzgeci kapalı ister; imleç ve süzgeç taşınır', async () => {
     const { client, sent } = fakeClient()
     await runRequest(() => listNotificationsRequest(client, {}))
     await runRequest(() =>
-      listNotificationsRequest(client, { page: 3, pageSize: 10, unreadOnly: true }),
+      listNotificationsRequest(client, { cursor: 'nt-9', limit: 10, unreadOnly: true }),
     )
     assert.deepEqual(
       sent.map((item) => [item.method, item.url.pathname, item.url.search]),
       [
-        ['GET', '/api/v1/notifications', `?page=1&pageSize=${NOTIFICATION_PAGE_SIZE}&unread=false`],
-        ['GET', '/api/v1/notifications', '?page=3&pageSize=10&unread=true'],
+        ['GET', '/api/v1/notifications', `?limit=${NOTIFICATION_PAGE_SIZE}&unread=false`],
+        ['GET', '/api/v1/notifications', '?limit=10&unread=true&cursor=nt-9'],
       ],
     )
+  })
+
+  test('sayfalar en yeni önce tek akışa dizilir; sayfalar arasında kayan bildirim bir kez görünür', () => {
+    const view = (id: string) => ({ id }) as NotificationView
+    assert.deepEqual(
+      flattenNotificationPages([
+        { data: [view('n5'), view('n4')] },
+        { data: [view('n4'), view('n3')] },
+      ]).map((item) => item.id),
+      ['n5', 'n4', 'n3'],
+    )
+    assert.deepEqual(flattenNotificationPages(undefined), [])
   })
 
   test('okunmamış sayısı kendi yolundan okunur ve yanıt gövdesi döner', async () => {
@@ -95,8 +109,8 @@ describe('bildirim merkezi kancaları', () => {
   })
 
   test('sorgu anahtarları liste süzgecini ve sayıyı ayırır; ortak önekle birlikte tazelenir', () => {
-    const list = notificationListKey({ page: 1, pageSize: 25, unread: false })
-    const unread = notificationListKey({ page: 1, pageSize: 25, unread: true })
+    const list = notificationListKey({ unread: false })
+    const unread = notificationListKey({ unread: true })
     const count = unreadNotificationsKey()
     assert.notDeepEqual(list, unread)
     assert.notDeepEqual(list, count)

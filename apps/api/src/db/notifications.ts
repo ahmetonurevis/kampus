@@ -64,36 +64,44 @@ export interface NotificationRow {
 
 export interface NotificationPage {
   rows: NotificationRow[]
-  total: number
+  /** Bu sayfadan sonra daha eski bildirim var mı. */
+  more: boolean
 }
 
-/** Aktörün bildirim sayfası, en yeni önce; `unread` yalnız okunmamışları verir. */
+/**
+ * Aktörün bildirim sayfası, en yeni önce (imleçli; api-tasarimi §3 sürekli büyüyen akış):
+ * `cursor` önceki sayfanın en eski bildiriminin kimliğidir ve sayfa ondan eski `limit`
+ * bildirimdir. İmleç aktörün görebildiği bir bildirim değilse `null` (rota 400); böylece imleç
+ * başkasının bildiriminin varlığını sızdırmaz. `unread` yalnız okunmamışları verir.
+ */
 export async function notificationPage(
   db: Database,
   institutionId: string,
   userId: string,
   audience: AudienceIds,
-  { page, pageSize, unread }: { page: number; pageSize: number; unread: boolean },
-): Promise<NotificationPage> {
+  { cursor, limit, unread }: { cursor?: string | undefined; limit: number; unread: boolean },
+): Promise<NotificationPage | null> {
   const visible = visibleTo(institutionId, audience)
-  if (visible === null) return { rows: [], total: 0 }
-  const where = unread ? (and(visible, isNull(reads.id)) as SQL) : visible
-  const [rows, totals] = await Promise.all([
-    db
-      .select({ data: records.data, readAt: sql<string | null>`${reads.data} ->> 'readAt'` })
+  if (visible === null) return cursor === undefined ? { rows: [], more: false } : null
+  const where: SQL[] = [visible]
+  if (unread) where.push(isNull(reads.id))
+  if (cursor !== undefined) {
+    const [anchor] = await db
+      .select({ position: records.position, id: records.id })
       .from(records)
-      .leftJoin(reads, readOf(institutionId, userId))
-      .where(where)
-      .orderBy(desc(records.position), desc(records.id))
-      .limit(pageSize)
-      .offset((page - 1) * pageSize),
-    db
-      .select({ total: count() })
-      .from(records)
-      .leftJoin(reads, readOf(institutionId, userId))
-      .where(where),
-  ])
-  return { rows, total: totals[0]?.total ?? 0 }
+      .where(and(visible, eq(records.id, cursor)))
+      .limit(1)
+    if (!anchor) return null
+    where.push(sql`(${records.position}, ${records.id}) < (${anchor.position}, ${anchor.id})`)
+  }
+  const rows = await db
+    .select({ data: records.data, readAt: sql<string | null>`${reads.data} ->> 'readAt'` })
+    .from(records)
+    .leftJoin(reads, readOf(institutionId, userId))
+    .where(and(...where))
+    .orderBy(desc(records.position), desc(records.id))
+    .limit(limit + 1)
+  return { rows: rows.slice(0, limit), more: rows.length > limit }
 }
 
 /** Aktörün okunmamış bildirim sayısı (core `unreadNotificationCount` ile aynı). */

@@ -158,7 +158,7 @@ describe('bildirim merkezi uçları', () => {
       parentPage.data.map((n: Json) => n.id),
       [ids.denizParentLater, ids.denizParent],
     )
-    assert.deepEqual(parentPage.meta, { page: 1, pageSize: 25, total: 2 })
+    assert.deepEqual(parentPage.meta, { nextCursor: null })
     assert.deepEqual(parentPage.data[0], {
       id: ids.denizParentLater,
       kind: 'feedback_released',
@@ -184,21 +184,23 @@ describe('bildirim merkezi uçları', () => {
     for (const cookie of [cookies.admin, cookies.teacher]) {
       assert.deepEqual(await ok(await list(cookie)), {
         data: [],
-        meta: { page: 1, pageSize: 25, total: 0 },
+        meta: { nextCursor: null },
       })
       assert.equal(await unread(cookie), 0)
     }
   })
 
-  test('sayfalama, okunmamış süzgeci ve sayısı; bilinmeyen sorgu alanı 400', async () => {
+  test('imleçli sayfalama, okunmamış süzgeci ve sayısı; görülemeyen imleç ve bilinmeyen sorgu alanı 400', async () => {
     const { ids, cookies } = await tenant()
-    const first = await ok(await list(cookies.parent, '?pageSize=1'))
-    const second = await ok(await list(cookies.parent, '?pageSize=1&page=2'))
+    const first = await ok(await list(cookies.parent, '?limit=1'))
+    assert.equal(first.meta.nextCursor, ids.denizParentLater)
+    assert.equal('total' in first.meta, false)
+    const second = await ok(await list(cookies.parent, `?limit=1&cursor=${first.meta.nextCursor}`))
     assert.deepEqual(
       [...first.data, ...second.data].map((n: Json) => n.id),
       [ids.denizParentLater, ids.denizParent],
     )
-    assert.equal(second.meta.total, 2)
+    assert.equal(second.meta.nextCursor, null)
     assert.equal(await unread(cookies.parent), 2)
     await ok(await read(ids.denizParent, cookies.parent))
     assert.equal(await unread(cookies.parent), 1)
@@ -207,9 +209,13 @@ describe('bildirim merkezi uçları', () => {
       unreadPage.data.map((n: Json) => n.id),
       [ids.denizParentLater],
     )
-    assert.equal(unreadPage.meta.total, 1)
+    assert.equal(unreadPage.meta.nextCursor, null)
+    // DOM-ILT-073: başkasının bildirimi imleç olarak da kullanılamaz; olmayanla aynı yanıt.
+    for (const cursor of [ids.canParent, ids.denizStudent, 'olmayan'])
+      fails(await list(cookies.parent, `?cursor=${cursor}`), 400, 'validation_failed')
     fails(await list(cookies.parent, '?studentId=s-3'), 400, 'validation_failed')
-    fails(await list(cookies.parent, '?pageSize=101'), 400, 'validation_failed')
+    fails(await list(cookies.parent, '?limit=101'), 400, 'validation_failed')
+    fails(await list(cookies.parent, '?page=2'), 400, 'validation_failed')
   })
 
   test('DOM-ILT-073: okundu kullanıcıya özeldir; tekrar çağrı ilk anı korur, diğer veliye yansımaz', async () => {

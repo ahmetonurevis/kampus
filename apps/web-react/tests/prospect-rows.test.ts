@@ -47,8 +47,8 @@ test('aşama tonu bilinmeyen aşamada gri, kapalı aşamalarda yeşil/kırmızı
 })
 
 test('aşama süzgeci dil okulunda görüşme aşamasını seviye tespiti olarak adlandırır', () => {
-  const school = stageFilter('school').options.map((item) => item.label)
-  const language = stageFilter('language_school').options.map((item) => item.label)
+  const school = (stageFilter('school').options ?? []).map((item) => item.label)
+  const language = (stageFilter('language_school').options ?? []).map((item) => item.label)
   assert.equal(school.length, language.length)
   assert.ok(school.includes('Görüşme planlandı'))
   assert.ok(!language.includes('Görüşme planlandı'))
@@ -118,7 +118,15 @@ test('DOM-KAY-034: deneme dersi ayrı olay olur ve grup adını taşır', () => 
       prospect({
         id: 'p-trial',
         stage: 'Görüşme planlandı',
-        trialLesson: { lessonId: 'l1', classId: 'c1', date: FUTURE, duration: 40 },
+        trialLesson: {
+          lessonId: 'l1',
+          classId: 'c1',
+          date: FUTURE,
+          duration: 40,
+          guardianConsentAt: null,
+          scheduledAt: PAST,
+          by: { role: 'onburo', userId: 'u-onburo' },
+        },
       }),
     ],
     'language_school',

@@ -1,5 +1,14 @@
 # Değişiklikler
 
+## 2.26.0
+
+Zümre başkanı ve akademik koordinatör ek görevi; uyuşmazlıkta son puan (F4b3b2b; `docs/domain/yetki-ve-kapsam.md` DOM-YTK-027, `docs/domain/beceri-gelisimi.md` DOM-BEC-024).
+
+- Yeni `lib/coordinator-duties.ts`: `COORDINATOR_DUTY_KINDS` (`subject_head` `school`'da, `academic_coordinator` `language_school`'da), `dutyKindFor`, `coordinatorDutyInputSchema` (`membershipId`, `scopeId`), `planCoordinatorDuty` (yalnız öğretmene `duty_requires_teacher`; `school`'da öğretmenin kendi branşı `duty_outside_branch`, kadro kaydı yoksa `teacher_record_required`; dil okulunda CEFR seviyesi `invalid_cefr_level`; aynı görev `coordinator_duty_exists` 409), `coordinatorScopeOf`, `isCoordinator`, `coordinatesArea` (ders veya seviye eşleşmesi; etiketsiz alan kapsam dışı).
+- `skills/rubric.ts` `scoresVisibleToRater`: koordinatör bir sürümün bütün puanlarını görür, ama o sürümün ilk veya ikinci puanlayıcısıysa kör puanlama ona da uygulanır (önceden koordinatör her durumda hepsini görüyordu). Yeni `coordinatorCase`: ilk ve ikinci puan bir kriterde uyuşmuyor mu (son puan verilse de `true`; koordinatörün öğrenci bazında okuma erişimi buna dayanır).
+- `TODO(beceri-koordinator-bagimsiz)` kapandı: koordinatör o sürümün iki puanlayıcısından biri olamaz (`planRubricScore` `final`, 409 `rater_not_independent`); kural DOM-BEC-024'e yazıldı.
+- Tüketiciler `workspace:2.26.0` sürümüne sabitlendi. 2.25.0 ayrı dalda yayımlandı ve entegrasyonda bu sürümün altında yer alır.
+
 ## 2.24.0
 
 Bildirilen dosya türü kanonik MIME'a çevrilir (F3c2a inceleme düzeltmesi; ADR 0003 karar 3; `docs/domain/kaynak-platformu.md` DOM-KYN-004).

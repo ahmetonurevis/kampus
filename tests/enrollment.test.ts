@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { enrollProspect } from '../packages/school-core/src/lib/domain.ts'
 import {
   assertRenewalWithinTariff,
   enrollmentFormSchema,
@@ -315,6 +316,66 @@ test('DOM-KAY-012: yetişkin kursiyerde veli alınmaz (guardian_not_applicable);
   assert.equal(enroll({ identity: adultIdentity }).result.contract.payer, 'guardian')
 })
 
+test('DOM-KAY-003: 18 yaş altında adayın telefonu ve e-postası öğrenciye yazılmaz; yeni veliye adayın e-postası yazılır', () => {
+  const { state, result } = enroll()
+  const prospect = state.prospects.find((item) => item.id === 'pr1')!
+  assert.equal(result.student.email, '')
+  assert.equal(result.student.phone, '')
+  const parent = state.parents.find((p) => p.id === result.student.parentId)
+  assert.equal(parent?.email, prospect.email)
+  // Telefon formdan gelir (ön büro adayınkini düzeltebilir).
+  assert.equal(parent?.phone, INPUT.guardian.phone)
+})
+
+test('DOM-KAY-003: mevcut velinin eksik telefonu ve e-postası adayınkiyle tamamlanır; var olan değer ve ad değişmez', () => {
+  const state = createSeed(new Date(NOW))
+  const prospect = state.prospects.find((item) => item.id === 'pr1')!
+  const empty = state.parents.find((p) => p.id === 'p1')!
+  const name = empty.name
+  enroll({ guardian: { existingParentId: 'p1' } }, {}, state)
+  assert.equal(empty.phone, prospect.phone)
+  assert.equal(empty.email, prospect.email)
+  assert.equal(empty.name, name)
+
+  const filled = createSeed(new Date(NOW))
+  const parent = filled.parents.find((p) => p.id === 'p1')!
+  Object.assign(parent, { phone: '05551234567', email: 'anne@kampus.example' })
+  const { result } = enroll({ guardian: { existingParentId: 'p1' } }, {}, filled)
+  assert.equal(parent.phone, '05551234567')
+  assert.equal(parent.email, 'anne@kampus.example')
+  assert.equal(result.student.phone, '')
+  // Aday kaydı kendi iletişimini korur.
+  assert.equal(filled.prospects.find((item) => item.id === 'pr1')?.phone, prospect.phone)
+})
+
+test('DOM-KAY-003: yetişkin kursiyerin iletişimi kendisine yazılır; yer tutucu veli iletişimsizdir', () => {
+  const attempt = languageEnroll({
+    identity: { ...INPUT.identity, birthDate: '2000-01-01' },
+    guardian: null,
+  })
+  const result = attempt.run()
+  const prospect = attempt.state.prospects.find((item) => item.id === 'pr1')!
+  assert.equal(result.student.email, prospect.email)
+  assert.equal(result.student.phone, prospect.phone)
+  const parent = attempt.state.parents.find((p) => p.id === result.student.parentId)
+  assert.equal(parent?.phone, undefined)
+  assert.equal(parent?.email, undefined)
+})
+
+test('DOM-KAY-003: çevrimdışı demo kaydı yaş bilmez; öğrenci adayın iletişimini eski davranışla taşır', () => {
+  const state = createSeed(new Date(NOW))
+  const prospect = state.prospects.find((item) => item.id === 'pr1')!
+  let n = 0
+  const result = enrollProspect(
+    state,
+    { prospectId: 'pr1', classId: 'c1', total: 1000, count: 2, startDate: '2026-11-15' },
+    (prefix) => `${prefix}-demo-${n++}`,
+    NOW,
+  )
+  assert.equal(result.student.email, prospect.email)
+  assert.equal(result.student.phone, prospect.phone)
+})
+
 test('DOM-KAY-012: veli adı, telefonu ve yakınlığı kaydedilir', () => {
   const { state, result } = enroll()
   const parent = state.parents.find((p) => p.id === result.student.parentId)
@@ -380,6 +441,24 @@ test('DOM-KAY-013: telefon eşleşmesi öneri döndürür, boş telefon eşleşm
   assert.ok(matches.some((match) => match.parentId === parent.id))
   assert.deepEqual(findParentMatches(state, ''), [])
   assert.deepEqual(findParentMatches(state, '05000000000'), [])
+})
+
+test('DOM-KAY-013, DOM-KAY-003: 18 yaş altı kardeşin telefonu öğrenciye yazılmadığından veli, kardeşin aday telefonuyla önerilir', () => {
+  const { state, result } = enroll({
+    guardian: { name: 'Test Veli', phone: '05559990001', relationship: 'mother' },
+  })
+  const family = state.prospects.find((item) => item.id === 'pr1')!.phone
+  assert.equal(result.student.phone, '')
+  // Veli telefonu formda başka yazıldı; eşleşme kardeşin aday kaydındaki aile telefonundandır.
+  assert.deepEqual(
+    findParentMatches(state, family).map((match) => match.parentId),
+    [result.student.parentId],
+  )
+  // Aday listesi verilmezse yalnız veli ve öğrenci telefonuna bakılır.
+  assert.deepEqual(
+    findParentMatches({ parents: state.parents, students: state.students }, family),
+    [],
+  )
 })
 
 test('DOM-KAY-011: kimliğin sahibi pasifse veya kayıt yoksa yeni kayıt açılır, eski kimlik bildirilir', () => {

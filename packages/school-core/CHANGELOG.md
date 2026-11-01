@@ -11,6 +11,7 @@ Birleştirmeden sonra bizim kesin kayıt kuralları Onur'un `enrollProspectWithT
 
 - **Kırıcı:** veli yakınlığı `GUARDIAN_RELATIONSHIPS` `'guardian'` yerine `'legal_guardian'` (etiket "Vasi"); ödeyici değeri `'guardian'` ve gövdedeki `guardian` nesnesiyle karışmasın (DOM-KAY-012). Eski değer 400 alır.
 - 18 yaş doğum tarihinden `lib/age.ts` `ageOn(birthDate, now)` ile (Europe/Istanbul günü) hesaplanır; `lib/enrollment.ts`'teki yerel `ageOn`/`ADULT_AGE` kalktı. Dil okulunda adayın yaş grubu seçimi (`minor`) doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (`path: ['identity', 'birthDate']`). Ödeyici: yetişkin kursiyere veli verilirse 422 `guardian_not_applicable` (`path: ['guardian']`), 18 yaş altında veli yoksa `guardian_required`; okul öğrencisi her zaman 18 yaş altıdır (DOM-KAY-012).
+- DOM-KAY-003: `applyEnrollment` `minor` alanı (tarifeli kayıt verir, demo vermez): 18 yaş altında öğrencinin e-postası ve telefonu boş kalır, yeni veliye adayın e-postası yazılır, mevcut velinin eksik telefonu ve e-postası adayınkiyle tamamlanır (var olan değişmez). `lib/scope.ts` veli e-postasını da öğretmen ve öğrenciden gizler. Öğrenci telefonu boş kaldığı için `findParentMatches` isteğe bağlı `prospects` alır ve veliyi, öğrencisine dönüşmüş kardeş adayın aile telefonuyla da önerir (DOM-KAY-013).
 
 Onur'un dalındaki girdiler: kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-001, DOM-FIN-012, DOM-FIN-030…033).
 

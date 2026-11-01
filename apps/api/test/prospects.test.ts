@@ -1501,6 +1501,57 @@ describe('aday uçları', () => {
     )
   })
 
+  test('DOM-KAY-003: 18 yaş altında iletişim veliye yazılır, öğrenciye yazılmaz; mevcut velinin eksiği tamamlanır, öğretmen veli e-postasını görmez', async () => {
+    const existing = {
+      id: 'test-veli-mevcut',
+      name: 'Test Mevcut Veli',
+      studentIds: ['s1'],
+      phone: '05551234567',
+    }
+    const a = await institution({}, withRecords({ parents: [existing] }))
+    await publishTariff(a.adminCookie)
+    const cookie = await frontDesk(a.id)
+    const prospect = await findRecord(db, a.id, 'prospects', 'pr1')
+    const done = await enroll(
+      cookie,
+      'pr1',
+      { ...ENROLLMENT, guardian: { existingParentId: existing.id } },
+      await versionOf(a.id, 'pr1'),
+    )
+    assert.equal(done.statusCode, 201, done.body)
+    const student = await findRecord(db, a.id, 'students', String(done.json().data.entity.id))
+    assert.equal(student?.data.email, '')
+    assert.equal(student?.data.phone, '')
+    const parent = await findRecord(db, a.id, 'parents', existing.id)
+    // Var olan telefon ve ad değişmez; eksik e-posta adayınkiyle tamamlanır.
+    assert.equal(parent?.data.phone, existing.phone)
+    assert.equal(parent?.data.name, existing.name)
+    assert.equal(parent?.data.email, prospect?.data.email)
+
+    // Yeni veliye adayın e-postası yazılır; telefon formdan gelir.
+    const b = await pricedInstitution()
+    const created = await enroll(
+      await frontDesk(b.id),
+      'pr1',
+      ENROLLMENT,
+      await versionOf(b.id, 'pr1'),
+    )
+    assert.equal(created.statusCode, 201, created.body)
+    const other = await findRecord(db, b.id, 'students', String(created.json().data.entity.id))
+    const newParent = await findRecord(db, b.id, 'parents', String(other?.data.parentId))
+    assert.equal(other?.data.email, '')
+    assert.equal(newParent?.data.email, prospect?.data.email)
+    assert.equal(newParent?.data.phone, ENROLLMENT.guardian.phone)
+
+    const teacherView = await a_get(
+      (await member(a.id, 'ogretmen')).cookie,
+      `/api/v1/collections/parents/${existing.id}`,
+    )
+    assert.equal(teacherView.statusCode, 200, teacherView.body)
+    assert.equal(teacherView.body.includes(String(prospect?.data.email)), false)
+    assert.equal(teacherView.body.includes(existing.phone), false)
+  })
+
   test('DOM-YTK-020: veli telefonu öğrenciye gitmez; yönetici ve velinin kendisi görür', async () => {
     const a = await pricedInstitution()
     const done = await enroll(a.adminCookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))

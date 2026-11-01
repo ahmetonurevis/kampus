@@ -309,13 +309,17 @@ const PARENT_MATCH = z.object({
   phone: z.string().optional(),
 })
 const STUDENT_MATCH = z.object({ id: z.string(), phone: z.string().optional() })
+const PROSPECT_MATCH = z.object({
+  studentId: z.string().nullable().optional(),
+  phone: z.string().optional(),
+})
 
 /** Adayın telefonuyla eşleşen veliler; ön büroya öneridir, birleştirmez (DOM-KAY-013). */
 export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string) {
   const prospect = await findRecord(ctx.db, ctx.institutionId, 'prospects', prospectId)
   if (prospect === null) throw new NotFoundError()
   const phone = typeof prospect.data.phone === 'string' ? prospect.data.phone : ''
-  const rows = await loadRecords(ctx.db, ctx.institutionId, ['parents', 'students'])
+  const rows = await loadRecords(ctx.db, ctx.institutionId, ['parents', 'students', 'prospects'])
   const only = <T>(collection: CollectionName, schema: z.ZodType<T>): T[] =>
     rows.flatMap((row) => {
       if (row.collection !== collection) return []
@@ -323,7 +327,11 @@ export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string
       return parsed.success ? [parsed.data] : []
     })
   return findParentMatches(
-    { parents: only('parents', PARENT_MATCH), students: only('students', STUDENT_MATCH) },
+    {
+      parents: only('parents', PARENT_MATCH),
+      students: only('students', STUDENT_MATCH),
+      prospects: only('prospects', PROSPECT_MATCH),
+    },
     phone,
   )
 }

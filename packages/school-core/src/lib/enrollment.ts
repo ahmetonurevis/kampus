@@ -200,21 +200,33 @@ export function priceEnrollment(
   return { grossCents, discounts, netCents: grossCents - total, extras }
 }
 
-/** Telefonu eşleşen veliler; ön büroya önerilir, otomatik birleştirilmez (DOM-KAY-013). */
+/**
+ * Telefonu eşleşen veliler; ön büroya önerilir, otomatik birleştirilmez (DOM-KAY-013). Eşleşme
+ * velinin, öğrencisinin ya da öğrencisine dönüşmüş adayın telefonudur: 18 yaş altı öğrencinin
+ * telefonu boş kaldığından (DOM-KAY-003) kardeşin aday kaydındaki aile telefonu da aranır.
+ */
 export function findParentMatches(
   state: {
     parents: readonly { id: string; name: string; studentIds: readonly string[]; phone?: string }[]
     students: readonly { id: string; phone?: string }[]
+    prospects?: readonly { studentId?: string | null; phone?: string }[]
   },
   phone: string,
 ): { parentId: string; name: string; studentCount: number }[] {
   if (phone === '') return []
+  const enrolled = new Set(
+    (state.prospects ?? []).flatMap((prospect) =>
+      prospect.phone === phone && prospect.studentId ? [prospect.studentId] : [],
+    ),
+  )
   return state.parents
     .filter(
       (parent) =>
         parent.phone === phone ||
         parent.studentIds.some(
-          (id) => state.students.find((student) => student.id === id)?.phone === phone,
+          (id) =>
+            enrolled.has(id) ||
+            state.students.find((student) => student.id === id)?.phone === phone,
         ),
     )
     .map((parent) => ({
@@ -373,6 +385,7 @@ export function enrollProspectWithTariff(
         approvedByUserId: context.approvedByUserId,
         payer: data.guardian === null ? 'student' : 'guardian',
       },
+      minor: !adult,
     },
     makeId,
     now,

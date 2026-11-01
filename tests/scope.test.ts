@@ -529,3 +529,31 @@ test('guvenlik-kvkk §8, DOM-KAY-012: öğrencinin kimlik nosu yalnız yönetici
   const other = visibleRecords(state, admin, 'students').find((s) => s.id === 's2')
   assert.equal(other && 'nationalId' in other, false)
 })
+
+test('DOM-KAY-003, DOM-YTK-020: veli telefonu, e-postası ve yakınlığı öğretmen ve öğrenciye dönmez; veli ve personel görür', () => {
+  const state = seed()
+  const target = state.parents.find((p) => p.id === 'p1')
+  assert.ok(target)
+  Object.assign(target, {
+    phone: '05551234567',
+    email: 'veli@kampus.example',
+    relationship: 'mother',
+  })
+  const teacherId = state.classes.find(
+    (c) => c.id === state.students.find((s) => s.id === 's1')?.classId,
+  )?.teacherId
+  assert.ok(teacherId)
+  for (const actor of [teacher(teacherId), student('s1')]) {
+    const row = visibleRecords(state, actor, 'parents').find((p) => p.id === 'p1') as
+      Record<string, unknown> | undefined
+    assert.ok(row, actor.role)
+    for (const field of ['phone', 'email', 'relationship'])
+      assert.equal(field in row, false, `${actor.role} ${field}`)
+  }
+  for (const actor of [admin, frontOffice, parent('s1')]) {
+    const row = visibleRecords(state, actor, 'parents').find((p) => p.id === 'p1') as
+      Record<string, unknown> | undefined
+    assert.equal(row?.email, 'veli@kampus.example', actor.role)
+    assert.equal(row?.phone, '05551234567', actor.role)
+  }
+})

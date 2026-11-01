@@ -282,6 +282,11 @@ type Enrollment = {
     | { kind: 'existing'; parentId: string }
     | { kind: 'new'; name: string; phone: string; relationship: string }
   terms?: ContractTerms
+  /**
+   * Öğrenci 18 yaş altı mı (DOM-KAY-003): `true` ise adayın telefonu ve e-postası velinindir,
+   * öğrenciye yazılmaz. Tarifeli kayıt verir; çevrimdışı demo vermez (`undefined`, eski davranış).
+   */
+  minor?: boolean
 }
 const SCHOOL_CONTRACT_TITLE = 'Özel okul eğitim sözleşmesi'
 
@@ -347,8 +352,9 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
     name: prospect.name,
     classId: cls.id,
     parentId: existingParent?.id ?? makeId('p'),
-    email: prospect.email,
-    phone: prospect.phone,
+    // 18 yaş altında iletişim bilgisi velinindir; öğrenciye yazılmaz (DOM-KAY-003).
+    email: data.minor === true ? '' : prospect.email,
+    phone: data.minor === true ? '' : prospect.phone,
     joinedAt: now,
     isActive: true,
     progress: 0,
@@ -395,8 +401,15 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
     feeKind: extra.kind,
     ...(data.academicYear === undefined ? {} : { academicYear: data.academicYear }),
   }))
-  if (existingParent) existingParent.studentIds.push(student.id)
-  else
+  if (existingParent) {
+    existingParent.studentIds.push(student.id)
+    // Mevcut velinin eksik iletişimi adayınkiyle tamamlanır; var olan telefon, e-posta ve ad
+    // değişmez, adayın kendi kaydında kalır (ör. diğer ebeveynin telefonu) (DOM-KAY-003).
+    if (data.minor === true) {
+      if (!existingParent.phone && prospect.phone) existingParent.phone = prospect.phone
+      if (!existingParent.email && prospect.email) existingParent.email = prospect.email
+    }
+  } else
     state.parents.push({
       id: student.parentId,
       name:
@@ -408,6 +421,10 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
       studentIds: [student.id],
       ...(guardian?.kind === 'new'
         ? { phone: guardian.phone, relationship: guardian.relationship }
+        : {}),
+      // kvkk: K — 18 yaş altı adayın e-postası velinindir (DOM-KAY-003).
+      ...(guardian?.kind === 'new' && data.minor === true && prospect.email
+        ? { email: prospect.email }
         : {}),
     })
   state.students.push(student)

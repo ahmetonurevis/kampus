@@ -28,7 +28,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Aydınlatma yükümlülüğü veri toplanırken yerine getirilir; ispat yükü veri sorumlusundadır.
 - **Kaynak:** KVKK md. 10.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — aydınlatma sürümü ve anı (`privacyNotice`), 18 yaş altında veli adı ve en az veri `packages/school-core/src/lib/prospects.ts` (`createProspect`, `DOM-KAY-009`); kesin kayıtta 18 yaş altı adayın telefonu, e-postası ve veli adı veliye yazılır, öğrenciye yazılmaz (`packages/school-core/src/lib/domain.ts` `enrollProspect`, D16d). API `POST /api/v1/prospects` ve `POST /api/v1/prospects/:prospectId/enroll`, telefon/e-posta/veli adı log `redact` listesinde. Aydınlatma metninin kendisi ve sürüm kaydı (metin deposu) yok.
+- **Kodda:** kısmen — aydınlatma sürümü ve anı (`privacyNotice`), 18 yaş altında veli adı ve en az veri `packages/school-core/src/lib/prospects.ts` (`createProspect`, `DOM-KAY-009`); kesin kayıtta 18 yaş altı adayın telefonu ve e-postası öğrenciye yazılmaz; yeni veliye adayın e-postası, formdaki veli adı ve telefonu yazılır, mevcut velinin eksik telefonu ve e-postası adayınkiyle tamamlanır, var olan değer ve ad değişmez (`packages/school-core/src/lib/domain.ts` `applyEnrollment` `minor`, `lib/enrollment.ts` `enrollProspectWithTariff`); yetişkin kursiyerin iletişimi kendisine yazılır. Veli telefonu, e-postası ve yakınlığı öğretmen ve öğrenciye dönmez (`lib/scope.ts`). Çevrimdışı demo `enrollProspect` yaşı bilmediği için eski davranıştadır. API `POST /api/v1/prospects` ve `POST /api/v1/prospects/:prospectId/enroll`, telefon/e-posta/veli adı log `redact` listesinde. Aydınlatma metninin kendisi ve sürüm kaydı (metin deposu) yok.
 
 ### DOM-KAY-004 · Pazarlama iletisi onayı
 
@@ -110,7 +110,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Kardeş indirimi, tek veli hesabı ve tek bildirim akışı aile bağına dayanır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API) — `GET /api/v1/prospects/:prospectId/guardian-matches` önerir, `guardian.existingParentId` bağlar. Eşleşme yalnız telefonladır. Çevrimdışı demo her kayıtta yeni veli açar.
+- **Kodda:** var (API) — `GET /api/v1/prospects/:prospectId/guardian-matches` önerir, `guardian.existingParentId` bağlar. Eşleşme yalnız telefonladır: velinin, öğrencisinin ya da öğrencisine dönüşmüş kardeş adayın telefonu (18 yaş altı öğrencinin telefonu boş kaldığı için, DOM-KAY-003). Çevrimdışı demo her kayıtta yeni veli açar.
 
 ### DOM-KAY-014 · Düzeye uygun sınıf
 

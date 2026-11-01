@@ -168,8 +168,14 @@ const versionGradingSchema = z
       .describe(
         'Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına görünür. Son puan koordinatör rolüyle gelecek (F4b3b2b); o zamana kadar sonuç kursiyere kapalıdır',
       ),
-    dueAt: instant.describe('Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün)'),
-    overdue: z.boolean().describe('Puanlama süresi aşıldı mı (core `gradingOverdue`)'),
+    dueAt: instant
+      .nullable()
+      .describe(
+        'Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün). Örneklemli görevde süre örneklemin seçildiği andan başlar; örneklem seçilmeden `null` (süre işlemez)',
+      ),
+    overdue: z
+      .boolean()
+      .describe('Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false`'),
   })
   .meta({ id: 'TaskVersionGrading' })
   .describe('Personelin gördüğü puanlama durumu (DOM-BEC-024, 025); kursiyer ve veliye `null`')
@@ -276,15 +282,27 @@ const gradingQueueItemSchema = z
     grading: z.object({
       awaiting: z
         .array(z.enum(['first', 'second']))
-        .min(1)
-        .describe('Son sürümün beklediği puanlar; kişinin puanladığı sürüm kuyrukta yoktur'),
+        .describe(
+          'Son sürümün beklediği puanlar; kişinin puanladığı bekleyen sürüm kuyrukta yoktur. Uyuşmazlıkta boş',
+        ),
+      awaitingResolution: z
+        .boolean()
+        .describe(
+          'İki puan uyuşmuyor, koordinatörün son puanı bekleniyor (DOM-BEC-024); yalnız iki puan da verildikten sonra `true`',
+        ),
       samplePending: z
         .boolean()
         .describe(
-          'Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir',
+          'Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir. Son tarihsiz görevde örneklem yoktur, `false`',
         ),
-      dueAt: instant.describe('Puanlamanın son anı (core `gradingDueAt`)'),
-      overdue: z.boolean().describe('Puanlama süresi aşıldı mı (core `gradingOverdue`)'),
+      dueAt: instant
+        .nullable()
+        .describe(
+          'Puanlamanın son anı (core `gradingDueAt`); örneklemli görevde örneklem anından başlar, örneklem seçilmeden `null`',
+        ),
+      overdue: z
+        .boolean()
+        .describe('Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false`'),
     }),
   })
   .meta({ id: 'GradingQueueItem' })

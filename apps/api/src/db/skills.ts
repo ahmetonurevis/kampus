@@ -8,6 +8,7 @@ import {
   getTableColumns,
   inArray,
   isNull,
+  max,
   or,
   sql,
   type SQL,
@@ -16,6 +17,7 @@ import { alias } from 'drizzle-orm/pg-core'
 
 import type { AssignmentTarget, FixedAssignment } from '@kampus/school-core/skills/assignment.ts'
 import {
+  DISAGREEMENT_BAND_GAP,
   GRADING_DAYS,
   type AppealDraft,
   type AppealRow,
@@ -1426,10 +1428,12 @@ export interface GradingQueueQuery extends Pick<
 /**
  * Puanlanmayı bekleyen teslimler (F4b3b1, F4b3b2a; DOM-BEC-021, 024, 025, 040): arşivlenmemiş,
  * rubrikli atamanın teslimi ve son sürümünün ilk puanı yok ya da kendisini kapsayan ikinci
- * puanlama isteği varken ikinci puanı yok. Kişinin son sürüme puan verdiği satır düşer (aynı kişi
- * iki rolde puanlayamaz). En eski son gönderim önce. Gecikme süzgeci core `gradingDueAt` ile
- * aynı hesaptır (sürümün son teslimi ile gönderimin geç olanı + 7 gün); servis satırı core ile
- * yeniden hesaplar. Kapsam süzgeci atama listesininkidir; servis satırları `visible` ile doğrular.
+ * puanlama isteği varken ikinci puanı yok; ya da iki puan uyuşmuyor ve koordinatör bekleniyor
+ * (`awaiting` süzgeci yokken). Kişinin son sürüme puan verdiği bekleyen satır düşer (aynı kişi
+ * iki rolde puanlayamaz); uyuşmazlıklı satır puanlayıcılara da görünür. En eski son gönderim
+ * önce. Gecikme süzgeci core `gradingDueAt` ile aynı hesaptır (sürümün son teslimi ile gönderimin
+ * geç olanı + 7 gün; örneklemli görevde başlangıç örneklem anından erken olmaz); servis satırı
+ * core ile yeniden hesaplar. Kapsam süzgeci atama listesininkidir; servis satırları `visible` ile doğrular.
  */
 export async function listAwaitingScore(
   db: Database,
@@ -1457,26 +1461,52 @@ export async function listAwaitingScore(
         and r.archived_at is null and r.requested_at >= ${latestSubmittedAt})
     and not ${latestScored(sql`rs.rater_role = 'second'`)})`
   const scoredBySelf = latestScored(sql`rs.rater_user_id = ${query.raterUserId}`)
+  // Core `scoreResolution` `disagreement`: son sürümde ilk ve ikinci puan var, `final` yok ve bir
+  // kriterde fark eşiği aşıyor ya da kriter ikinci puanda yok (`bandDisagreements`). İki puan da
+  // verildiği için puanlayıcılara da görünür; kör puanlama bitmiştir (DOM-BEC-024).
+  const disputed = sql`exists (select 1 from ${rubricScores} f
+    join ${submissionVersions} fv
+      on fv.institution_id = f.institution_id and fv.id = f.submission_version_id
+    join ${rubricScores} sc on sc.institution_id = f.institution_id
+      and sc.submission_version_id = f.submission_version_id and sc.rater_role = 'second'
+    where f.institution_id = ${s.institutionId} and fv.submission_id = ${s.id}
+      and fv.version_number = ${latestNumber} and f.rater_role = 'first'
+      and not exists (select 1 from ${rubricScores} fin
+        where fin.institution_id = f.institution_id
+          and fin.submission_version_id = f.submission_version_id and fin.rater_role = 'final')
+      and exists (select 1 from jsonb_array_elements(f.criteria) fc
+        where not exists (select 1 from jsonb_array_elements(sc.criteria) c2
+          where c2->>'criterionId' = fc->>'criterionId'
+            and abs((c2->>'band')::numeric - (fc->>'band')::numeric) <= ${DISAGREEMENT_BAND_GAP})))`
   const awaiting =
     query.awaiting === 'first'
-      ? needsFirst
+      ? sql`(${needsFirst} and not ${scoredBySelf})`
       : query.awaiting === 'second'
-        ? needsSecond
-        : sql`(${needsFirst} or ${needsSecond})`
+        ? sql`(${needsSecond} and not ${scoredBySelf})`
+        : sql`(((${needsFirst} or ${needsSecond}) and not ${scoredBySelf}) or ${disputed})`
   // Core `deadlineForVersion`: yeniden teslim istenen sürümden sonrakiler isteğin son tarihine bağlı.
   const resubmissionDue = sql`(select case when rr.version_number < ${latestNumber}
       then rr.due_at end from ${resubmissionRequests} rr
     where rr.institution_id = ${s.institutionId} and rr.submission_id = ${s.id}
       and rr.archived_at is null order by rr.version_number desc limit 1)`
-  const gradingDueAt = sql`(greatest(coalesce(${resubmissionDue}, ${a.dueAt}), ${latestSubmittedAt})
-    + make_interval(days => ${GRADING_DAYS}))`
+  // Servis `gradingDeadlineOf`: örneklemli görevde (oran > 0 ve son tarih var) süre örneklem
+  // anından başlar, örneklem seçilmeden süre yoktur (`null`, gecikmiş sayılmaz). `greatest` NULL'u
+  // atladığı için örneklem bekleyen durum ayrıca `case` ile `null` yapılır.
+  const versionStart = sql`greatest(coalesce(${resubmissionDue}, ${a.dueAt}), ${latestSubmittedAt})`
+  const gradingStart = sql`(case
+    when ${a.secondRatingPercent} > 0 and ${a.dueAt} is not null then
+      case when ${a.secondRatingSampledAt} is null then null
+        else greatest(${a.secondRatingSampledAt}, ${versionStart}) end
+    else ${versionStart} end)`
+  const gradingDueAt = sql`(${gradingStart} + make_interval(days => ${GRADING_DAYS}))`
+  const nowAt = sql`${query.now.toISOString()}::timestamptz`
   const overdue =
     query.overdue === undefined
       ? []
       : [
           query.overdue
-            ? sql`${gradingDueAt} < ${query.now.toISOString()}::timestamptz`
-            : sql`${gradingDueAt} >= ${query.now.toISOString()}::timestamptz`,
+            ? sql`${gradingDueAt} < ${nowAt}`
+            : sql`(${gradingDueAt} is null or ${gradingDueAt} >= ${nowAt})`,
         ]
   const where = and(
     eq(s.institutionId, institutionId),
@@ -1485,7 +1515,6 @@ export async function listAwaitingScore(
     sql`${a.rubricVersionId} is not null`,
     sql`${latestNumber} is not null`,
     awaiting,
-    sql`not ${scoredBySelf}`,
     ...overdue,
     ...(scopeFilter === undefined ? [] : [scopeFilter]),
     ...(query.assignmentId === undefined ? [] : [eq(s.assignmentId, query.assignmentId)]),
@@ -1792,14 +1821,17 @@ export async function listSubmittedIds(
   return rows.map((row) => row.id)
 }
 
-/** Atamanın teslimlerinden herhangi biri için ikinci puanlama istendi mi. */
-export async function anySecondRatingRequested(
+/**
+ * Atamanın teslimleri için yapılmış en son ikinci puanlama isteğinin anı; istek yoksa `null`.
+ * Son tarih kilidi, isteğin teslim penceresi kapandıktan sonra yapılıp yapılmadığına bakar.
+ */
+export async function latestSecondRatingRequestAt(
   db: Database,
   institutionId: string,
   assignmentId: string,
-): Promise<boolean> {
+): Promise<string | null> {
   const [row] = await db
-    .select({ submissionId: secondRatingRequests.submissionId })
+    .select({ requestedAt: max(secondRatingRequests.requestedAt) })
     .from(secondRatingRequests)
     .innerJoin(
       taskSubmissions,
@@ -1815,8 +1847,7 @@ export async function anySecondRatingRequested(
         isNull(secondRatingRequests.archivedAt),
       ),
     )
-    .limit(1)
-  return row !== undefined
+  return isoOrNull(row?.requestedAt ?? null)
 }
 
 /**
@@ -1918,14 +1949,19 @@ export async function insertAppeal(
   )
 }
 
-/** Teslimin sürümlerine yapılmış arşivlenmemiş itirazlar (core `AppealRow`). */
-export async function loadAppeals(
+/**
+ * Teslimlerin sürümlerine yapılmış arşivlenmemiş itirazlar tek sorguda (core `AppealRow`): teslim
+ * kimliği → itirazlar, veriliş sırasıyla. Liste sayfası teslim başına sorgu atmaz.
+ */
+export async function loadAppealsBySubmission(
   db: Database,
   institutionId: string,
-  submissionId: string,
-): Promise<(AppealRow & { rowVersion: number })[]> {
+  submissionIds: readonly string[],
+): Promise<Map<string, (AppealRow & { rowVersion: number })[]>> {
+  const bySubmission = new Map<string, (AppealRow & { rowVersion: number })[]>()
+  if (submissionIds.length === 0) return bySubmission
   const rows = await db
-    .select({ appeal: scoreAppeals })
+    .select({ appeal: scoreAppeals, submissionId: submissionVersions.submissionId })
     .from(scoreAppeals)
     .innerJoin(
       submissionVersions,
@@ -1937,25 +1973,30 @@ export async function loadAppeals(
     .where(
       and(
         eq(scoreAppeals.institutionId, institutionId),
-        eq(submissionVersions.submissionId, submissionId),
+        inArray(submissionVersions.submissionId, [...submissionIds]),
         isNull(scoreAppeals.archivedAt),
         isNull(submissionVersions.archivedAt),
       ),
     )
     .orderBy(asc(scoreAppeals.filedAt), asc(scoreAppeals.id))
-  return rows.map(({ appeal }) => ({
-    id: appeal.id,
-    submissionVersionId: appeal.submissionVersionId,
-    learnerId: appeal.learnerId,
-    filedByUserId: appeal.filedByUserId,
-    reason: appeal.reason,
-    filedAt: iso(appeal.filedAt),
-    decidedByUserId: appeal.decidedByUserId,
-    decidedAt: isoOrNull(appeal.decidedAt),
-    outcome: appeal.outcome,
-    decisionReason: appeal.decisionReason,
-    rowVersion: appeal.version,
-  }))
+  for (const { appeal, submissionId } of rows) {
+    const list = bySubmission.get(submissionId) ?? []
+    list.push({
+      id: appeal.id,
+      submissionVersionId: appeal.submissionVersionId,
+      learnerId: appeal.learnerId,
+      filedByUserId: appeal.filedByUserId,
+      reason: appeal.reason,
+      filedAt: iso(appeal.filedAt),
+      decidedByUserId: appeal.decidedByUserId,
+      decidedAt: isoOrNull(appeal.decidedAt),
+      outcome: appeal.outcome,
+      decisionReason: appeal.decisionReason,
+      rowVersion: appeal.version,
+    })
+    bySubmission.set(submissionId, list)
+  }
+  return bySubmission
 }
 
 /**

@@ -82,6 +82,8 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
   let app: App
   let now = FIXED_NOW
   const logs: string[] = []
+  let tenantCount = 0
+  let clientIp = '127.0.0.1'
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
@@ -98,6 +100,8 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
    */
   async function tenant() {
     now = FIXED_NOW
+    // Genel hız sınırı (dakikada 300, IP başına) dosyanın bütününe değil her kiracıya düşsün.
+    clientIp = `10.0.${(tenantCount += 1)}.1`
     const institution = await createInstitution(app)
     await insertMissingRecords(
       db,
@@ -191,6 +195,7 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     return app.inject({
       method,
       url: `/api/v1${url}`,
+      remoteAddress: clientIp,
       headers: {
         origin: TEST_ORIGIN,
         ...(cookie ? { cookie } : {}),
@@ -714,6 +719,7 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     const extended = await app.inject({
       method: 'PATCH',
       url: `/api/v1/task-assignments/${assignmentId}`,
+      remoteAddress: clientIp,
       headers: {
         origin: TEST_ORIGIN,
         cookie: t.cookies.admin,
@@ -1197,6 +1203,7 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       [APPEAL_REASON, null],
     )
     assert.equal(filed.rowVersion, null)
+    assert.equal(filed.versions[0].appealDeadline, null)
     fails(await appeal(id, t.cookies.student), 409, 'appeal_exists')
     assert.equal(
       (await ok(await detail(id, t.cookies.teacher))).versions[0].appeal.reason,
@@ -1217,7 +1224,7 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     assert.deepEqual(audit?.changes, { fields: ['reason', 'filedAt'] })
   })
 
-  test('DOM-BEC-025: itirazı ilk puanlayıcı karara bağlayamaz (409 rater_not_independent); yönetici karar veremez (403), okur; başka öğretmen kabul eder, son puan geçerli olur, ilk puan kayıt geçmişinde kalır; ikinci karar 409; öğrenci 403; gerekçe loglanmaz', async () => {
+  test('DOM-BEC-025: itirazı ilk puanlayıcı karara bağlayamaz (409 rater_not_independent); yönetici karar veremez (403), okur; başka öğretmen kabul eder, son puan geçerli olur, ilk puan kayıt geçmişinde kalır; itirazdan sonra yeni itiraz süresi gösterilmez; ikinci karar 409; öğrenci 403; gerekçe loglanmaz', async () => {
     const { t, submission } = await setup()
     const id = submission.id as string
     await ok(await score(id, t.cookies.teacher, 1), 201)
@@ -1277,6 +1284,10 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       [seen.versions[0].score.percent, seen.versions[0].appeal.decisionReason],
       [100, upheld.reason],
     )
+    // Kabul edilen itirazın son puanı yeni bir itiraz süresi açmaz (sürüm başına bir itiraz).
+    for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.colleague])
+      assert.equal((await ok(await detail(id, cookie))).versions[0].appealDeadline, null)
+    fails(await appeal(id, t.cookies.student), 409, 'appeal_exists')
     const roles = await db
       .select({ role: rubricScores.raterRole })
       .from(rubricScores)
@@ -1291,5 +1302,210 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       'appeal_decided',
     )
     assert.ok(!logs.slice(from).join('\n').includes('GIZLI-KARAR'), 'karar gerekçesi loglandı')
+  })
+
+  /** Yöneticinin atama son tarihi değişikliği (`If-Match`: atamanın güncel `rowVersion`'ı). */
+  async function extendDeadline(t: Tenant, assignmentId: string, dueAt: string) {
+    const assignment = await ok(
+      await call('GET', `/task-assignments/${assignmentId}`, t.cookies.admin),
+    )
+    return app.inject({
+      method: 'PATCH',
+      url: `/api/v1/task-assignments/${assignmentId}`,
+      remoteAddress: clientIp,
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie: t.cookies.admin,
+        'content-type': 'application/json',
+        ...match(assignment.rowVersion),
+        ...key(),
+      },
+      payload: JSON.stringify({ deadline: { dueAt } }),
+    })
+  }
+  const DAY = 24 * 3_600_000
+
+  test('DOM-BEC-024: son tarihsiz örneklemli görevde örneklem kilidi yok: ilk puan hemen verilir, kuyrukta örneklem beklenmez ve süre gönderimden başlar; örneklem 409 second_rating_sample_unavailable; ikinci puan elle istenir', async () => {
+    // Değerlendirme son tarih ister; son tarihsiz görev alıştırmadır.
+    const { t, assignmentId, submission } = await setup({
+      attempts: { kind: 'practice' },
+      deadline: { dueAt: null },
+      secondRatingPercent: 20,
+    })
+    const id = submission.id as string
+    const [row] = await ok(await queue(t.cookies.teacher))
+    assert.deepEqual(
+      [row.grading.awaiting, row.grading.samplePending, row.grading.dueAt],
+      [['first'], false, new Date(FIXED_NOW.getTime() + 7 * DAY).toISOString()],
+    )
+    const assignment = await ok(
+      await call('GET', `/task-assignments/${assignmentId}`, t.cookies.admin),
+    )
+    assert.equal(assignment.secondRatingSampledAt, null)
+    now = new Date(FIXED_NOW.getTime() + 60 * DAY)
+    fails(
+      await drawSample(assignmentId, t.cookies.admin, assignment.rowVersion),
+      409,
+      'second_rating_sample_unavailable',
+    )
+    // Sürüm hakkı dolmuş teslim için ikinci puan elle istenir; ilk puan örneklemi beklemez.
+    await ok(await requestSecond(id, t.cookies.teacher, 1), 201)
+    const scored = await ok(await score(id, t.cookies.teacher, 2), 201)
+    assert.deepEqual(
+      [scored.versions[0].grading.status, scored.versions[0].grading.missing],
+      ['pending', 'second'],
+    )
+    assert.deepEqual(
+      (await ok(await queue(t.cookies.colleague, '&awaiting=second'))).map((r: Json) => r.id),
+      [id],
+    )
+  })
+
+  test('DOM-BEC-024, DOM-BEC-025: örneklemli görevde puanlama süresi örneklemin seçildiği andan başlar; örneklem seçilmeden süre yok (dueAt null), gecikmiş sayılmaz; örneklem anı yalnız personelin atama görünümünde', async () => {
+    const { t, assignmentId, submission } = await setup({ highStakes: true })
+    const id = submission.id as string
+    // Örneklem seçilmeden süre işlemez: son teslimden 30 gün sonra da gecikmiş değil.
+    now = new Date(Date.parse(DUE) + 30 * DAY)
+    const [waiting] = await ok(await queue(t.cookies.teacher))
+    assert.deepEqual(
+      [waiting.grading.samplePending, waiting.grading.dueAt, waiting.grading.overdue],
+      [true, null, false],
+    )
+    assert.equal((await ok(await queue(t.cookies.teacher, '&overdue=true'))).length, 0)
+    assert.equal((await ok(await queue(t.cookies.teacher, '&overdue=false'))).length, 1)
+    const staffBefore = (await ok(await detail(id, t.cookies.teacher))).versions[0].grading
+    assert.deepEqual([staffBefore.dueAt, staffBefore.overdue], [null, false])
+
+    const sampledAt = now
+    const assignment = await ok(
+      await call('GET', `/task-assignments/${assignmentId}`, t.cookies.admin),
+    )
+    await ok(await drawSample(assignmentId, t.cookies.admin, assignment.rowVersion), 201)
+    const due = new Date(sampledAt.getTime() + 7 * DAY).toISOString()
+    const [started] = await ok(await queue(t.cookies.teacher))
+    assert.deepEqual(
+      [started.grading.samplePending, started.grading.dueAt, started.grading.overdue],
+      [false, due, false],
+    )
+    assert.equal((await ok(await detail(id, t.cookies.teacher))).versions[0].grading.dueAt, due)
+    now = new Date(Date.parse(due) + 1)
+    const [late] = await ok(await queue(t.cookies.teacher, '&overdue=true'))
+    assert.deepEqual([late.id, late.grading.overdue], [id, true])
+    assert.equal((await ok(await queue(t.cookies.teacher, '&overdue=false'))).length, 0)
+
+    // Örneklem anı personelin atama görünümünde; kursiyer ve veli görmez.
+    for (const cookie of [t.cookies.admin, t.cookies.teacher]) {
+      const staff = await ok(await call('GET', `/task-assignments/${assignmentId}`, cookie))
+      assert.equal(staff.secondRatingSampledAt, sampledAt.toISOString())
+    }
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const response = await call('GET', `/task-assignments/${assignmentId}`, cookie)
+      const learner = await ok(response)
+      assert.equal(learner.view, 'learner')
+      assert.ok(!('secondRatingSampledAt' in learner))
+      assert.ok(!response.body.includes('secondRating'))
+      const list = await call('GET', '/task-assignments?page=1&pageSize=20', cookie)
+      assert.ok(!list.body.includes('secondRating'))
+    }
+  })
+
+  test('DOM-BEC-024, DOM-BEC-045: pencere açıkken hakkı dolmuş teslim için yapılan elle istek son tarih uzatmasını engellemez; istek yapılan kursiyerin yanıtı ve yeni sürüm reddi uzatmadan önce ve sonra aynı; pencere kapandıktan sonraki istek kilitler', async () => {
+    const { t, assignmentId, submission } = await setup()
+    const id = submission.id as string
+    await ok(await requestSecond(id, t.cookies.teacher, 1), 201)
+    await ok(await score(id, t.cookies.teacher, 2), 201)
+    const before = await learnerViews(t, id, assignmentId)
+    assert.deepEqual(
+      [before[0].allowance.canSubmit, before[0].allowance.blockedBy],
+      [false, 'limit'],
+    )
+    const refusedBefore = refusal(await resubmit(assignmentId, 'Second version.'))
+    assert.equal(refusedBefore[0], 422)
+    const extendedDue = '2026-10-30T20:59:00.000Z'
+    const extended = await ok(await extendDeadline(t, assignmentId, extendedDue))
+    assert.equal(extended.deadline.dueAt, extendedDue)
+    assert.deepEqual(await learnerViews(t, id, assignmentId), before)
+    assert.deepEqual(refusal(await resubmit(assignmentId, 'Second version.')), refusedBefore)
+
+    // Pencere kapandıktan sonra yapılan istek pencereyi kilitler.
+    const closed = await setup()
+    const other = closed.submission.id as string
+    now = afterDue()
+    await ok(await requestSecond(other, closed.t.cookies.teacher, 1), 201)
+    fails(
+      await extendDeadline(closed.t, closed.assignmentId, extendedDue),
+      409,
+      'second_rating_started',
+    )
+  })
+
+  test('DOM-BEC-025: itiraz yalnız son sürümün sonucuna: v1 duyurulur, v2 kesinleşir, v1 itirazı 409 appeal_not_latest; v2 itirazı kabul edilir', async () => {
+    const { t, assignmentId, submission } = await setup()
+    const id = submission.id as string
+    await ok(await score(id, t.cookies.teacher, 1), 201)
+    assert.ok((await ok(await detail(id, t.cookies.student))).versions[0].appealDeadline)
+    await ok(
+      await requestResubmission(id, t.cookies.teacher, 2, {
+        versionNumber: 1,
+        dueAt: new Date(now.getTime() + 3 * DAY).toISOString(),
+      }),
+      201,
+    )
+    await ok(await resubmit(assignmentId, 'Second version.'), 201)
+    const staff = await ok(await detail(id, t.cookies.teacher))
+    await ok(
+      await score(id, t.cookies.teacher, staff.rowVersion, scoreBody({ versionNumber: 2 })),
+      201,
+    )
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      fails(await appeal(id, cookie), 409, 'appeal_not_latest')
+    assert.equal((await storedRows(t.institution.id)).scores, 2)
+    const filed = await ok(
+      await appeal(id, t.cookies.student, { versionNumber: 2, reason: APPEAL_REASON }),
+      201,
+    )
+    assert.deepEqual(
+      filed.versions.map((v: Json) => v.appeal?.reason ?? null),
+      [null, APPEAL_REASON],
+    )
+  })
+
+  test('DOM-BEC-024, DOM-BEC-025: uyuşmazlıklı (koordinatör bekleyen) teslim kuyruktan düşmez: yönetici ve atamayı gören öğretmenler awaitingResolution ile görür, süre aşımı da görünür; ikinci puandan önce uyuşmazlık bilgisi yok (kör puanlama)', async () => {
+    const { t, submission } = await setup()
+    const id = submission.id as string
+    await ok(await requestSecond(id, t.cookies.admin, 1), 201)
+    await ok(await score(id, t.cookies.teacher, 2), 201)
+    // İkinci puanı vermemiş puanlayıcı: yalnız bekleyen ikinci puan, uyuşmazlık bilgisi yok.
+    const [blind] = await ok(await queue(t.cookies.colleague))
+    assert.deepEqual(
+      [blind.grading.awaiting, blind.grading.awaitingResolution],
+      [['second'], false],
+    )
+    assert.deepEqual(await ok(await queue(t.cookies.teacher)), [])
+    const disagreeing = scoreBody({
+      criteria: [
+        { criterionId: 'task', band: 1, comment: 'Görev eksik kaldı.' },
+        { criterionId: 'grammar', band: 2, comment: 'Zaman hataları var.' },
+      ],
+      overallComment: 'İkinci puanlayıcının yorumu.',
+    })
+    await ok(await secondScore(id, t.cookies.colleague, 3, disagreeing), 201)
+    for (const cookie of [t.cookies.admin, t.cookies.teacher, t.cookies.colleague]) {
+      const rows = await ok(await queue(cookie))
+      assert.deepEqual(
+        rows.map((row: Json) => [row.id, row.grading.awaiting, row.grading.awaitingResolution]),
+        [[id, [], true]],
+      )
+    }
+    assert.deepEqual(await ok(await queue(t.cookies.otherTeacher)), [])
+    for (const filter of ['&awaiting=first', '&awaiting=second'])
+      assert.deepEqual(await ok(await queue(t.cookies.admin, filter)), [])
+    const due = new Date(Date.parse(DUE) + 7 * DAY)
+    now = new Date(due.getTime() + 1)
+    const [late] = await ok(await queue(t.cookies.admin, '&overdue=true'))
+    assert.deepEqual(
+      [late.id, late.grading.dueAt, late.grading.overdue, late.grading.awaitingResolution],
+      [id, due.toISOString(), true, true],
+    )
   })
 })

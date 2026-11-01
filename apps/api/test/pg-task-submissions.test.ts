@@ -42,9 +42,11 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
   let close: () => Promise<void>
   let app: App
 
+  let now = FIXED_NOW
+
   before(async () => {
     ;({ db, close } = await createPgDatabase())
-    app = await buildTestApp(db)
+    app = await buildTestApp(db, { clock: () => now })
   })
   after(async () => {
     await app.close()
@@ -68,7 +70,8 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
   const key = () => ({ 'idempotency-key': randomUUID() })
 
   /** Deniz (`s-1`) 9-A'da; yönetici yazma görevini (en çok 1 sürüm) 9-A'ya atar. */
-  async function setup() {
+  async function setup(settings: Record<string, unknown> = {}) {
+    now = FIXED_NOW
     const institution = await createInstitution(app)
     await insertMissingRecords(
       db,
@@ -145,6 +148,7 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
           deadline: { dueAt: '2026-10-20T20:59:00.000Z' },
           submission: { submissionKind: 'text', maxVersions: 1 },
           rubricVersionId,
+          ...settings,
         },
         targets: [{ kind: 'class', id: '9-A' }],
       },
@@ -296,5 +300,102 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
     assert.equal(rows.length, 1)
     const winner = responses.find((r) => r.statusCode === 201)?.json().data
     assert.equal(rows[0]?.reason, winner.versions[0].appeal.reason)
+  })
+
+  /** Puanlama kuyruğu (yönetici veya öğretmen). */
+  async function gradingQueue(cookie: string, extra = '') {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/task-submissions/grading-queue?page=1&pageSize=20${extra}`,
+      headers: { origin: TEST_ORIGIN, cookie },
+    })
+    assert.equal(response.statusCode, 200, response.body)
+    return response.json() as { data: { id: string; grading: Record<string, unknown> }[] }
+  }
+  const DAY = 24 * 3_600_000
+  const DUE = '2026-10-20T20:59:00.000Z'
+
+  test('DOM-BEC-024, DOM-BEC-025: kuyruk SQL’i PostgreSQL 16’da: uyuşmazlıklı teslim kuyrukta kalır (jsonb bant farkı); örneklem seçilmemiş görevin süresi yok, gecikme süzgecinde gecikmemiş sayılır', async () => {
+    const { institution, student, admin, assignmentId } = await setup()
+    await insertMissingRecords(
+      db,
+      institution.id,
+      [
+        {
+          collection: 'teachers',
+          id: 't-eng',
+          data: { id: 't-eng', name: 'Selin Kaya', subjectId: 'ingilizce', branchId: 'b-1' },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const teacher = await signInAs(
+      app,
+      await createMember(app, institution.id, 'ogretmen', [{ kind: 'teacher', recordId: 't-eng' }]),
+    )
+    const submitted = await call(
+      'POST',
+      `/task-assignments/${assignmentId}/submissions`,
+      student,
+      { submissionKind: 'text', body: 'Birinci metin.' },
+      key(),
+    )
+    assert.equal(submitted.statusCode, 201, submitted.body)
+    const submissionId = submitted.json().data.id as string
+    const write = async (path: string, cookie: string, version: number, body: unknown) => {
+      const response = await call(
+        'POST',
+        `/task-submissions/${submissionId}/${path}`,
+        cookie,
+        body,
+        {
+          ...key(),
+          'if-match': `"${version}"`,
+        },
+      )
+      assert.equal(response.statusCode, 201, response.body)
+    }
+    const scoreBody = (task: number) => ({
+      versionNumber: 1,
+      criteria: [
+        { criterionId: 'task', band: task, comment: 'Görev kısmen karşılandı.' },
+        { criterionId: 'grammar', band: 3, comment: null },
+      ],
+      overallComment: 'Genel yorum yazıldı.',
+    })
+    await write('second-rating-requests', admin, 1, { versionNumber: 1 })
+    await write('scores', admin, 2, scoreBody(4))
+    await write('second-scores', teacher, 3, scoreBody(2))
+    for (const cookie of [admin, teacher]) {
+      const { data } = await gradingQueue(cookie)
+      assert.deepEqual(
+        data.map((row) => [row.id, row.grading.awaiting, row.grading.awaitingResolution]),
+        [[submissionId, [], true]],
+      )
+    }
+    assert.equal((await gradingQueue(admin, '&awaiting=second')).data.length, 0)
+    now = new Date(Date.parse(DUE) + 7 * DAY + 1)
+    assert.deepEqual(
+      (await gradingQueue(admin, '&overdue=true')).data.map((row) => row.id),
+      [submissionId],
+    )
+
+    // Örneklem seçilmemiş görev: süre işlemez, gecikmemiş süzgecinde kalır.
+    const sampled = await setup({ highStakes: true })
+    const pending = await call(
+      'POST',
+      `/task-assignments/${sampled.assignmentId}/submissions`,
+      sampled.student,
+      { submissionKind: 'text', body: 'Birinci metin.' },
+      key(),
+    )
+    assert.equal(pending.statusCode, 201, pending.body)
+    now = new Date(Date.parse(DUE) + 30 * DAY)
+    assert.equal((await gradingQueue(sampled.admin, '&overdue=true')).data.length, 0)
+    const [row] = (await gradingQueue(sampled.admin, '&overdue=false')).data
+    assert.deepEqual(
+      [row?.grading.samplePending, row?.grading.dueAt, row?.grading.overdue],
+      [true, null, false],
+    )
   })
 })

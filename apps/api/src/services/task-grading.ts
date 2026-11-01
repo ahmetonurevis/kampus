@@ -52,9 +52,11 @@ import { viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
   APPEAL_HOLIDAYS,
   detailView,
+  gradingDeadlineOf,
   listSummaries,
   loadGrading,
   resolutionOf,
+  sampleLocked,
   secondRatingFor,
   type Grading,
 } from './task-submissions.ts'
@@ -185,9 +187,12 @@ function rubricOf(assignment: StoredAssignment) {
   return assignment.rubricVersionId
 }
 
-/** Örneklemli görevde (DOM-BEC-024) örneklem çekilmeden ilk puan verilmez. */
+/**
+ * Örneklemli görevde (DOM-BEC-024) örneklem çekilmeden ilk puan verilmez. Son tarihsiz görevde
+ * örneklem çekilemez, kilit de yoktur (`sampleLocked`); ikinci puan yalnız elle istenir.
+ */
 function assertSampleDrawn(assignment: StoredAssignment) {
-  if (assignment.secondRatingPercent > 0 && assignment.secondRatingSampledAt === null)
+  if (sampleLocked(assignment) && assignment.secondRatingSampledAt === null)
     throw new AppError(
       409,
       'second_rating_sample_pending',
@@ -495,7 +500,8 @@ export interface SecondRatingSampleInput {
 /**
  * İkinci puanlama örneklemi (DOM-BEC-024; core `pickSecondRatingSample`): örneklemli görevde
  * (`secondRatingPercent > 0`, aksi 422 `second_rating_not_configured`) teslim penceresi (geç
- * kabul dahil) kapanınca (aksi 409 `second_rating_window_open`) bütün teslimlerden bir kez
+ * kabul dahil) kapanınca (aksi 409 `second_rating_window_open`; son tarihsiz görevde pencere
+ * kapanmaz, 409 `second_rating_sample_unavailable`) bütün teslimlerden bir kez
  * (409 `second_rating_sample_drawn`) çekilir: oranın yukarı yuvarlanmışı, en az bir teslim.
  * Rastgelelik atama kimliğiyle tohumlanır (tekrarlanabilir). `If-Match` atamanın `rowVersion`'ıdır.
  */
@@ -528,6 +534,12 @@ export async function drawSecondRatingSample(
             409,
             'second_rating_sample_drawn',
             'Bu görevin ikinci puanlama örneklemi zaten seçildi.',
+          )
+        if (assignment.deadline.dueAt === null)
+          throw new AppError(
+            409,
+            'second_rating_sample_unavailable',
+            'Son tarihi olmayan görevde örneklem seçilmez; ikinci puanı teslim bazında isteyin.',
           )
         if (!isClosed(assignment.deadline, ctx.now))
           throw new AppError(
@@ -603,7 +615,8 @@ export interface AppealWriteInput {
  * (geri bildirimin açılması) sonra 5 iş günü içinde, gerekçeyle; sürüm başına bir (409
  * `appeal_exists`, eşzamanlıda benzersiz indeks). Duyurudan önce 409 `appeal_not_open` döner:
  * puanlanmamış ve açılmamış puanlı sürümde aynı yanıt (DOM-BEC-045). Alıştırmada 422
- * `appeal_not_available`, süre geçince 422 `appeal_window_closed`. Okuma kapsamı dışı teslim ve
+ * `appeal_not_available`, süre geçince 422 `appeal_window_closed`; son sürüm dışındaki sürüme 409
+ * `appeal_not_latest` (DOM-BEC-025: sonuç son sürümündür). Okuma kapsamı dışı teslim ve
  * arşivli atama 404; personel 403. Gerekçe loglanmaz.
  */
 export async function fileAppeal(
@@ -633,6 +646,14 @@ export async function fileAppeal(
           throw new NotFoundError()
         if (viewer.kind !== 'learner') throw new ForbiddenError()
         const version = versionOf(work, input.versionNumber)
+        // Yalnız son sürümün sonucuna itiraz edilir; eski sürümün sonucu yerini yenisine bıraktı.
+        // Kursiyer sürümlerini zaten bilir, ret puanlamayı ele vermez (DOM-BEC-045).
+        if (version.number !== work.versions.at(-1)?.number)
+          throw new AppError(
+            409,
+            'appeal_not_latest',
+            'Yalnız son teslim sürümünün sonucuna itiraz edilebilir.',
+          )
         const [grading, links] = await Promise.all([
           gradingOf(tx, ctx, work.submission.id),
           listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId),
@@ -774,10 +795,11 @@ export interface GradingQueueInput {
 /**
  * Puanlanmayı bekleyen teslimler (öğretmen puanlama kuyruğu; DOM-BEC-021, 024, 025): kişinin
  * gördüğü (DOM-YTK-028) arşivsiz, rubrikli atamaların son sürümü ilk puanı ya da istenmiş ikinci
- * puanı almamış teslimleri, en eski gönderim önce. Kişinin puan verdiği sürüm listede yoktur.
- * Her satırda bekleyen roller (`awaiting`; ikinci puan bekleyenler ayrı görünür ve süzülür) ve
- * puanlama süresi (`gradingDueAt`, `gradingOverdue`); gecikene göre süzülebilir. Öğrenci ve veli
- * 403 (rota ve servis).
+ * puanı almamış teslimleri ve iki puanı uyuşmayıp koordinatörü bekleyenler, en eski gönderim önce.
+ * Kişinin puan verdiği bekleyen sürüm listede yoktur; uyuşmazlıklı sürüm puanlayıcılara da görünür.
+ * Her satırda bekleyen roller (`awaiting`; ikinci puan bekleyenler ayrı görünür ve süzülür),
+ * uyuşmazlık (`awaitingResolution`) ve puanlama süresi (`gradingDueAt`, `gradingOverdue`);
+ * gecikene göre süzülebilir. Öğrenci ve veli 403 (rota ve servis).
  */
 export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueInput) {
   const viewer = await viewerOf(ctx)
@@ -833,7 +855,12 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
   }
 }
 
-/** Kuyruk satırının bekleyen rolleri ve puanlama süresi (core `gradingDueAt`, `gradingOverdue`). */
+/**
+ * Kuyruk satırının bekleyen rolleri, uyuşmazlığı ve puanlama süresi (core `gradingDueAt`,
+ * `gradingOverdue`; başlangıç `gradingDeadlineOf`). `awaitingResolution` iki puan da verildikten
+ * sonra uyuşmazlıkta `true` olur (koordinatör bekleniyor); ikinci puan verilmeden uyuşmazlık
+ * hesaplanmaz, kör puanlama korunur (DOM-BEC-024).
+ */
 function queueGrading(
   ctx: ServiceContext,
   assignment: StoredAssignment,
@@ -846,16 +873,14 @@ function queueGrading(
   const awaiting: ('first' | 'second')[] = []
   if (!has('first')) awaiting.push('first')
   if (secondRatingFor(grading, latest) && !has('second')) awaiting.push('second')
-  const deadline = deadlineForVersion(assignment.deadline, work.submission, latest.number)
+  const resolution = resolutionOf(grading, latest)
+  const deadline = gradingDeadlineOf(assignment, work.submission, latest.number)
   return {
     awaiting,
-    samplePending: assignment.secondRatingPercent > 0 && assignment.secondRatingSampledAt === null,
-    dueAt: gradingDueAt(deadline, latest),
-    overdue: gradingOverdue({
-      deadline,
-      version: latest,
-      resolution: resolutionOf(grading, latest),
-      now: ctx.now,
-    }),
+    awaitingResolution: resolution.status === 'disagreement',
+    samplePending: sampleLocked(assignment) && assignment.secondRatingSampledAt === null,
+    dueAt: deadline === null ? null : gradingDueAt(deadline, latest),
+    overdue:
+      deadline !== null && gradingOverdue({ deadline, version: latest, resolution, now: ctx.now }),
   }
 }

@@ -38,7 +38,7 @@ import {
   insertSubmission,
   insertSubmissionVersion,
   listSubmissions,
-  loadAppeals,
+  loadAppealsBySubmission,
   loadDraft,
   loadSubmission,
   loadScoresBySubmission,
@@ -141,6 +141,43 @@ export function secondRatingFor(
   )
 }
 
+/**
+ * Görevde ikinci puanlama örneklemi çekilir mi (DOM-BEC-024): oran sıfırdan büyük ve görevin son
+ * tarihi var. Son tarihsiz görevde teslim penceresi kapanmaz, örneklem çekilemez; ilk puan
+ * örneklemi beklemez, ikinci puan yalnız elle istenir.
+ */
+// TODO(core-ikinci-puan-son-tarih): Core `secondRatingPercent > 0` iken `dueAt`'ı zorunlu tutabilir;
+// o zaman son tarihsiz örneklemli görev oluşmaz, bu ayrım kalkar.
+export function sampleLocked(
+  assignment: Pick<StoredAssignment, 'secondRatingPercent' | 'deadline'>,
+): boolean {
+  return assignment.secondRatingPercent > 0 && assignment.deadline.dueAt !== null
+}
+
+/**
+ * Sürümün puanlama süresinin başladığı son teslim (DOM-BEC-025; core `gradingDueAt`'a verilir).
+ * Örneklemli görevde ilk puan örneklemden önce verilemediği için süre örneklemin seçildiği andan
+ * (veya sürümün daha geç son tesliminden) başlar; örneklem seçilmeden süre işlemez (`null`:
+ * puanlama süresi yok, gecikmiş sayılmaz). Örneklemsiz görevde sürümün son teslimidir.
+ */
+// TODO(beceri-puanlama-suresi-orneklem): Domain örneklemli görevde sürenin başlangıcını
+// söylemiyor; örneklem anı seçildi, aksi hâlde örneklem kilidindeki günler öğretmenden düşerdi.
+export function gradingDeadlineOf(
+  assignment: StoredAssignment,
+  submission: StoredSubmissionWork['submission'],
+  versionNumber: number,
+): { dueAt: string | null } | null {
+  const deadline = deadlineForVersion(assignment.deadline, submission, versionNumber)
+  if (!sampleLocked(assignment)) return deadline
+  const sampledAt = assignment.secondRatingSampledAt
+  if (sampledAt === null) return null
+  const later =
+    deadline.dueAt !== null && Date.parse(deadline.dueAt) > Date.parse(sampledAt)
+      ? deadline.dueAt
+      : sampledAt
+  return { dueAt: later }
+}
+
 /** Sürümün puan sonucu (core `scoreResolution`); hesaplanır, saklanmaz. */
 export function resolutionOf(grading: Grading, version: VersionRow): ScoreResolution {
   return scoreResolution({
@@ -158,7 +195,7 @@ export async function loadGrading(
   const [scores, second, appeals] = await Promise.all([
     loadScoresBySubmission(db, ctx.institutionId, submissionIds),
     secondRatingRequestsAmong(db, ctx.institutionId, submissionIds),
-    Promise.all(submissionIds.map((id) => loadAppeals(db, ctx.institutionId, id))),
+    loadAppealsBySubmission(db, ctx.institutionId, submissionIds),
   ])
   const rubricIds = [...new Set([...scores.values()].flat().map((score) => score.rubricVersionId))]
   const rubrics = new Map<string, RubricVersionData>()
@@ -168,12 +205,12 @@ export async function loadGrading(
     if (version !== null) rubrics.set(version.id, version)
   return {
     bySubmission: new Map(
-      submissionIds.map((id, index) => [
+      submissionIds.map((id) => [
         id,
         {
           scores: scores.get(id) ?? [],
           secondRatingRequestedAt: second.get(id) ?? null,
-          appeals: appeals[index] ?? [],
+          appeals: appeals.get(id) ?? [],
         },
       ]),
     ),
@@ -421,14 +458,14 @@ function gradingView(
 ) {
   if (viewer.kind === 'learner') return null
   const resolution = resolutionOf(grading, version)
-  const deadline = deadlineForVersion(assignment.deadline, work.submission, version.number)
+  const deadline = gradingDeadlineOf(assignment, work.submission, version.number)
   return {
     status: resolution.status,
     missing: resolution.status === 'pending' ? resolution.missing : null,
     secondRatingRequested: secondRatingFor(grading, version),
     disagreementCriterionIds: resolution.status === 'disagreement' ? resolution.criterionIds : [],
-    dueAt: gradingDueAt(deadline, version),
-    overdue: gradingOverdue({ deadline, version, resolution, now: ctx.now }),
+    dueAt: deadline === null ? null : gradingDueAt(deadline, version),
+    overdue: deadline !== null && gradingOverdue({ deadline, version, resolution, now: ctx.now }),
   }
 }
 
@@ -439,6 +476,8 @@ export const APPEAL_HOLIDAYS: readonly string[] = []
 /**
  * İtirazın son anı (DOM-BEC-025; core `appealDeadline`): yalnız değerlendirme türünde ve sonuç
  * duyurulduysa; kursiyer ve veliye duyurudan önce `null` (puanlanmamışla aynı; DOM-BEC-045).
+ * Sürüme itiraz edildiyse `null`: itiraz sürüm başına birdir; kabul edilen itirazın yeni son
+ * puanı yeni bir itiraz süresi açmaz.
  */
 function appealDeadlineOf(
   ctx: ServiceContext,
@@ -448,6 +487,7 @@ function appealDeadlineOf(
   version: VersionRow,
 ) {
   if (assignment.kind !== 'evaluation') return null
+  if (grading.appeals.some((row) => row.submissionVersionId === version.id)) return null
   const resolution =
     viewer.kind === 'learner'
       ? releasedResolution(grading, version, ctx.now)

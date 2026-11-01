@@ -12,16 +12,17 @@ import {
   type AssignmentPlan,
   type ExistingAssignment,
 } from '@kampus/school-core/skills/assignment.ts'
+import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 
 import type { Database } from '../db/client.ts'
 import { asCoreVersion, findResource, listResourceVersions } from '../db/resources.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
-  anySecondRatingRequested,
   assignmentContentRefs,
   findAssignment,
   findRubricVersion,
   insertAssignment,
+  latestSecondRatingRequestAt,
   listAssignments,
   loadResourceAssignments,
   resourceIdOfVersion,
@@ -260,6 +261,7 @@ function staffView(assignment: StoredAssignment, content: AssignmentContentRef) 
     rubricVersionId: assignment.rubricVersionId,
     highStakes: assignment.highStakes,
     secondRatingPercent: assignment.secondRatingPercent,
+    secondRatingSampledAt: assignment.secondRatingSampledAt,
     assignedByUserId: assignment.assignedByUserId,
     targets: assignment.targets,
     updatedAt: assignment.updatedAt,
@@ -575,9 +577,18 @@ export async function updateTaskAssignment(
         // Kapsam (404): olmayan, başka kurumun, görünmeyen veya arşivli atama.
         if (!assignment || assignment.archivedAt !== null || !visible(viewer, assignment))
           throw new NotFoundError()
+        // Kilit: örneklem seçildi ya da pencere kapandıktan sonra ikinci puan istendi. Pencere
+        // açıkken yapılan elle istek yalnız sürüm hakkı dolmuş teslim içindir (`task-grading.ts`
+        // `assertLearnerCannotSubmit`); süre uzasa da o kursiyer yeni sürüm gönderemez, yanıtı
+        // değişmez (DOM-BEC-045). Bu yüzden sınıfın son tarih uzatmasını engellemez.
+        const lastRequestAt = await latestSecondRatingRequestAt(
+          tx,
+          ctx.institutionId,
+          assignment.id,
+        )
         const secondRatingStarted =
           assignment.secondRatingSampledAt !== null ||
-          (await anySecondRatingRequested(tx, ctx.institutionId, assignment.id))
+          (lastRequestAt !== null && isClosed(assignment.deadline, lastRequestAt))
         return {
           run: (_state, tools) => {
             // Yetki (403): görünür ama değiştiremeyen kişi (yalnız atayan ve yönetici).

@@ -2577,7 +2577,7 @@ export interface paths {
         };
         /**
          * Puanlanmayı bekleyen teslimler
-         * @description Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü ilk puanı veya istenmiş ikinci puanı (DOM-BEC-024) almamış teslimler, en eski gönderim önce, sayfalı; kişinin bir rolde puanladığı sürüm listede yoktur (aynı kişi iki rolde puanlamaz). Her kayıtta son sürümün özeti (metin yok) ve `grading`: bekleyen roller (`awaiting`; ikinci puan bekleyenler ayrı görünür), örneklem bekleniyor mu, puanlama süresi (`dueAt`: son teslim + 7 gün, core `gradingDueAt`) ve gecikme (`overdue`; DOM-BEC-025). Süzgeçler: `assignmentId`, `awaiting=first|second`, `overdue=true|false`; bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün, `ogretmen` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü ilk puanı veya istenmiş ikinci puanı (DOM-BEC-024) almamış teslimler ile iki puanı uyuşmayıp koordinatörü bekleyen teslimler, en eski gönderim önce, sayfalı; kişinin bir rolde puanladığı bekleyen sürüm listede yoktur (aynı kişi iki rolde puanlamaz), uyuşmazlıklı sürüm puanlayıcılara da görünür. Her kayıtta son sürümün özeti (metin yok) ve `grading`: bekleyen roller (`awaiting`; ikinci puan bekleyenler ayrı görünür), uyuşmazlık (`awaitingResolution`; yalnız iki puan da verilince), örneklem bekleniyor mu, puanlama süresi (`dueAt`: son teslim + 7 gün, core `gradingDueAt`; örneklemli görevde örneklem anından, örneklemden önce `null`) ve gecikme (`overdue`; DOM-BEC-025). Süzgeçler: `assignmentId`, `awaiting=first|second` (uyuşmazlıklı satırları dışarıda bırakır), `overdue=true|false`; bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün, `ogretmen` gördüğü atamaların (DOM-YTK-028) teslimleri; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         get: operations["listGradingQueue"];
         put?: never;
@@ -2743,7 +2743,7 @@ export interface paths {
         put?: never;
         /**
          * İkinci puanlama örneklemini seç
-         * @description Örneklemli görevde (`secondRatingPercent > 0`; seviye tespiti ve kur sonu değerlendirmesinde en az %10) ikinci puanlanacak teslimler seçilir (DOM-BEC-024; core `secondRatingQuota`, `pickSecondRatingSample`): sürümü olan bütün teslimlerden oranın yukarı yuvarlanmışı, en az bir. Örneklem teslim penceresi (geç kabul dahil) kapanınca bir kez seçilir (açıkken 409 `second_rating_window_open`, ikinci kez 409 `second_rating_sample_drawn`); seçilmeden ilk puan verilmez (409 `second_rating_sample_pending`). Böylece kursiyere açılmış bir sonuç sonradan ikinci puan beklemeye dönmez ve kursiyer puanlandığını yeni sürüm reddinden çıkaramaz (DOM-BEC-045). Örneklemsiz görev 422 `second_rating_not_configured`. Rastgelelik atama kimliğiyle tohumlanır. `If-Match` atamanın `rowVersion`'ıdır; başarı 201, atamanın yeni sürümü ve ikinci puan kuyruğunun `Location`'ı. Roller: `yonetici` ve atamayı gören `ogretmen`; öğrenci, veli ve ön büro 403; kapsam dışı veya başka kurumun ataması 404. `Idempotency-Key` zorunlu. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Örneklemli görevde (`secondRatingPercent > 0`; seviye tespiti ve kur sonu değerlendirmesinde en az %10) ikinci puanlanacak teslimler seçilir (DOM-BEC-024; core `secondRatingQuota`, `pickSecondRatingSample`): sürümü olan bütün teslimlerden oranın yukarı yuvarlanmışı, en az bir. Örneklem teslim penceresi (geç kabul dahil) kapanınca bir kez seçilir (açıkken 409 `second_rating_window_open`, ikinci kez 409 `second_rating_sample_drawn`); seçilmeden ilk puan verilmez (409 `second_rating_sample_pending`) ve puanlama süresi örneklem anından başlar. Böylece kursiyere açılmış bir sonuç sonradan ikinci puan beklemeye dönmez ve kursiyer puanlandığını yeni sürüm reddinden çıkaramaz (DOM-BEC-045). Son tarihsiz görevde pencere kapanmaz, örneklem seçilmez (409 `second_rating_sample_unavailable`): ilk puan örneklemi beklemez, ikinci puan teslim bazında elle istenir. Örneklemsiz görev 422 `second_rating_not_configured`. Rastgelelik atama kimliğiyle tohumlanır. `If-Match` atamanın `rowVersion`'ıdır; başarı 201, atamanın yeni sürümü ve ikinci puan kuyruğunun `Location`'ı. Roller: `yonetici` ve atamayı gören `ogretmen`; öğrenci, veli ve ön büro 403; kapsam dışı veya başka kurumun ataması 404. `Idempotency-Key` zorunlu. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["drawSecondRatingSample"];
         delete?: never;
@@ -2763,7 +2763,7 @@ export interface paths {
         put?: never;
         /**
          * Sonuca itiraz et
-         * @description Kursiyer/öğrenci veya velisi sonuç duyurusundan (geri bildirimin açılması) sonra 5 iş günü içinde gerekçeli itiraz eder (DOM-BEC-025; core `planAppeal`, `appealDeadline`: süre ertesi gün başlar, hafta sonu ve kurum tatili sayılmaz, Europe/Istanbul gün sonu). Duyurudan önce 409 `appeal_not_open`; puanlanmamış ve açılmamış puanlı sürümde yanıt aynıdır (DOM-BEC-045). Süre geçince 422 `appeal_window_closed`; alıştırmada 422 `appeal_not_available`; sürüm başına tek itiraz 409 `appeal_exists`; bilinmeyen sürüm 404. İtirazı o sürümü puanlamamış bir öğretmen karara bağlar. Gerekçe loglanmaz; denetime yalnız alan adları. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: `ogrenci` kendi, `veli` çocuğunun teslimine; yönetici, öğretmen ve ön büro 403; okuma kapsamı dışı veya başka kurumun teslimi ve arşivli atama 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Kursiyer/öğrenci veya velisi sonuç duyurusundan (geri bildirimin açılması) sonra 5 iş günü içinde gerekçeli itiraz eder (DOM-BEC-025; core `planAppeal`, `appealDeadline`: süre ertesi gün başlar, hafta sonu ve kurum tatili sayılmaz, Europe/Istanbul gün sonu). Duyurudan önce 409 `appeal_not_open`; puanlanmamış ve açılmamış puanlı sürümde yanıt aynıdır (DOM-BEC-045). Süre geçince 422 `appeal_window_closed`; alıştırmada 422 `appeal_not_available`; sürüm başına tek itiraz 409 `appeal_exists`; yalnız son sürüme, eski sürüme 409 `appeal_not_latest`; bilinmeyen sürüm 404. İtirazı o sürümü puanlamamış bir öğretmen karara bağlar. Gerekçe loglanmaz; denetime yalnız alan adları. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: `ogrenci` kendi, `veli` çocuğunun teslimine; yönetici, öğretmen ve ön büro 403; okuma kapsamı dışı veya başka kurumun teslimi ve arşivli atama 404. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["fileTaskAppeal"];
         delete?: never;
@@ -3883,6 +3883,8 @@ export interface components {
             rubricVersionId: string | null;
             highStakes: boolean;
             secondRatingPercent: number;
+            /** @description İkinci puanlama örnekleminin seçildiği an (DOM-BEC-024); seçilmediyse veya örneklem yoksa `null`. Yalnız personel görür */
+            secondRatingSampledAt: string | null;
             assignedByUserId: string;
             /** @description Sınıf/şube, dil grubu veya öğrenci hedefleri */
             targets: {
@@ -4318,12 +4320,9 @@ export interface components {
             secondRatingRequested: boolean;
             /** @description Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına görünür. Son puan koordinatör rolüyle gelecek (F4b3b2b); o zamana kadar sonuç kursiyere kapalıdır */
             disagreementCriterionIds: string[];
-            /**
-             * Format: date-time
-             * @description Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün)
-             */
-            dueAt: string;
-            /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`) */
+            /** @description Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün). Örneklemli görevde süre örneklemin seçildiği andan başlar; örneklem seçilmeden `null` (süre işlemez) */
+            dueAt: string | null;
+            /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
             overdue: boolean;
         };
         TaskAppealInput: {
@@ -4444,16 +4443,15 @@ export interface components {
             /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
             rowVersion: number | null;
             grading: {
-                /** @description Son sürümün beklediği puanlar; kişinin puanladığı sürüm kuyrukta yoktur */
+                /** @description Son sürümün beklediği puanlar; kişinin puanladığı bekleyen sürüm kuyrukta yoktur. Uyuşmazlıkta boş */
                 awaiting: ("first" | "second")[];
-                /** @description Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir */
+                /** @description İki puan uyuşmuyor, koordinatörün son puanı bekleniyor (DOM-BEC-024); yalnız iki puan da verildikten sonra `true` */
+                awaitingResolution: boolean;
+                /** @description Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir. Son tarihsiz görevde örneklem yoktur, `false` */
                 samplePending: boolean;
-                /**
-                 * Format: date-time
-                 * @description Puanlamanın son anı (core `gradingDueAt`)
-                 */
-                dueAt: string;
-                /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`) */
+                /** @description Puanlamanın son anı (core `gradingDueAt`); örneklemli görevde örneklem anından başlar, örneklem seçilmeden `null` */
+                dueAt: string | null;
+                /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
                 overdue: boolean;
             };
         };
@@ -5557,6 +5555,8 @@ export interface components {
             rubricVersionId: string | null;
             highStakes: boolean;
             secondRatingPercent: number;
+            /** @description İkinci puanlama örnekleminin seçildiği an (DOM-BEC-024); seçilmediyse veya örneklem yoksa `null`. Yalnız personel görür */
+            secondRatingSampledAt: string | null;
             assignedByUserId: string;
             /** @description Sınıf/şube, dil grubu veya öğrenci hedefleri */
             targets: {
@@ -5991,12 +5991,9 @@ export interface components {
             secondRatingRequested: boolean;
             /** @description Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına görünür. Son puan koordinatör rolüyle gelecek (F4b3b2b); o zamana kadar sonuç kursiyere kapalıdır */
             disagreementCriterionIds: string[];
-            /**
-             * Format: date-time
-             * @description Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün)
-             */
-            dueAt: string;
-            /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`) */
+            /** @description Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün). Örneklemli görevde süre örneklemin seçildiği andan başlar; örneklem seçilmeden `null` (süre işlemez) */
+            dueAt: string | null;
+            /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
             overdue: boolean;
         };
         TaskAppeal: {
@@ -6117,16 +6114,15 @@ export interface components {
             /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
             rowVersion: number | null;
             grading: {
-                /** @description Son sürümün beklediği puanlar; kişinin puanladığı sürüm kuyrukta yoktur */
+                /** @description Son sürümün beklediği puanlar; kişinin puanladığı bekleyen sürüm kuyrukta yoktur. Uyuşmazlıkta boş */
                 awaiting: ("first" | "second")[];
-                /** @description Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir */
+                /** @description İki puan uyuşmuyor, koordinatörün son puanı bekleniyor (DOM-BEC-024); yalnız iki puan da verildikten sonra `true` */
+                awaitingResolution: boolean;
+                /** @description Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir. Son tarihsiz görevde örneklem yoktur, `false` */
                 samplePending: boolean;
-                /**
-                 * Format: date-time
-                 * @description Puanlamanın son anı (core `gradingDueAt`)
-                 */
-                dueAt: string;
-                /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`) */
+                /** @description Puanlamanın son anı (core `gradingDueAt`); örneklemli görevde örneklem anından başlar, örneklem seçilmeden `null` */
+                dueAt: string | null;
+                /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
                 overdue: boolean;
             };
         };

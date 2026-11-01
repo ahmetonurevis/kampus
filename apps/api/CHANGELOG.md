@@ -6,6 +6,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 
 - Geri bildirimi açan öğretmen puanında bildirim kaydının denetim satırı `notification.create` eylemiyle yazılır (`runCommand` `auditAction`); puanın tek `task_submission.score`/`second_score` satırı kalır.
 - Bildirim okuma uçları (`GET /notifications`, `/unread-count`) kimlik, modül ve rol denetimini sorgu doğrulamasından önce (`preValidation`) yapar: oturumsuz geçersiz sorgu 401, modül kapalıyken 403 `module_disabled` alır (önce 400 dönüyordu).
+- `react-shared` `useUnreadNotificationCount` yedek tazelemesi 60 sn'den 5 dk'ya çıktı; sayı sekme odağa dönünce (bayatsa) ve okundu işaretinde tazelenir. Sayım ifade indeksi gelene kadar kurumun bildirim satırlarını tarar (`TODO(F6-bildirim-indeksi)`, ayrı migration hattı).
 
 ## Uygulama içi bildirim merkezi (F6a)
 

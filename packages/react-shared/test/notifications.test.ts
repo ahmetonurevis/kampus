@@ -5,6 +5,7 @@ import { createKampusClient } from '@kampus/api-client/client.ts'
 
 import { runRequest } from '../src/api-result.ts'
 import { commandHeaders } from '../src/commands.ts'
+import { createKampusQueryClient, DEFAULT_STALE_TIME_MS } from '../src/query-client.ts'
 import {
   institutionKey,
   notificationListKey,
@@ -17,6 +18,7 @@ import {
   NOTIFICATION_PAGE_SIZE,
   readAllNotificationsRequest,
   readNotificationRequest,
+  UNREAD_NOTIFICATIONS_REFRESH_MS,
   unreadNotificationCountRequest,
   type NotificationView,
 } from '../src/use-notifications.ts'
@@ -118,5 +120,13 @@ describe('bildirim merkezi kancaları', () => {
       assert.deepEqual(key.slice(0, notificationsPrefix().length), notificationsPrefix())
     // Kurum başa eklenir; başka kurumun önbelleğiyle karışmaz.
     assert.notDeepEqual(institutionKey('a', ...count), institutionKey('b', ...count))
+  })
+
+  test('okunmamış sayısı dakikada bir sorgulanmaz: yedek aralık en az 5 dk, odak dönüşü bayat sayıyı tazeler', () => {
+    // Sayım indekssiz tarar (TODO(F6-bildirim-indeksi)); sık aralık büyük kurumda yük olur.
+    assert.ok(UNREAD_NOTIFICATIONS_REFRESH_MS >= 5 * 60_000)
+    assert.ok(UNREAD_NOTIFICATIONS_REFRESH_MS > DEFAULT_STALE_TIME_MS)
+    const queries = createKampusQueryClient().getDefaultOptions().queries
+    assert.notEqual(queries?.refetchOnWindowFocus, false)
   })
 })

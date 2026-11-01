@@ -33,8 +33,14 @@ export type NotificationKind = NotificationView['kind']
 
 /** Bir sayfadaki bildirim sayısı (API `limit` ≤ 100); daha eskiler istek üzerine gelir. */
 export const NOTIFICATION_PAGE_SIZE = 25
-/** Okunmamış sayısının açık ekranda tazelenme aralığı; anlık bildirim (push) kapsam dışıdır. */
-export const UNREAD_NOTIFICATIONS_REFRESH_MS = 60_000
+/**
+ * Okunmamış sayısının açık ekrandaki yedek tazeleme aralığı (5 dk). Sayım ifade indeksi gelene
+ * kadar kurumun bildirim satırlarını tarar (API `TODO(F6-bildirim-indeksi)`); yüzlerce açık
+ * ekranın dakikada bir sorgusu yerine sayı, sekme odağa döndüğünde bayatsa
+ * (`DEFAULT_STALE_TIME_MS`) TanStack'in odak tazelemesiyle ve okundu işaretinde yenilenir. Anlık
+ * bildirim (push) kapsam dışıdır.
+ */
+export const UNREAD_NOTIFICATIONS_REFRESH_MS = 5 * 60_000
 
 export interface NotificationQuery {
   /** Önceki sayfanın `meta.nextCursor` değeri; yoksa en yeni bildirimler. */
@@ -125,7 +131,7 @@ export function useNotifications(
   return { ...query, notifications: flattenNotificationPages(query.data?.pages) }
 }
 
-/** Okunmamış bildirim sayısı (rozet); açık ekranda dakikada bir tazelenir. */
+/** Okunmamış bildirim sayısı (rozet); odak dönüşünde ve açık ekranda beş dakikada bir tazelenir. */
 export function useUnreadNotificationCount(options: { enabled?: boolean } = {}) {
   return useApiQuery({
     key: unreadNotificationsKey(),

@@ -1,7 +1,7 @@
 # Onur'un görev tablosu
 
 - Bu dosyayı yalnız Onur düzenler. Oğuzhan'ın tablosu [oguzhan.md](oguzhan.md); sahiplik, sözleşmeler ve bağımlılıklar [README](README.md)'dedir.
-- Her dalga (D1–D5, Sonra) bir tablodur. Sıradaki iş önce dalgaya, sonra bağımlılığa göre seçilir; dalga içinde konu sırası serbesttir. Karşı tarafı bekleyen iş durmaz, geçici veriyle sürer.
+- Her dalga (D1–D9, Sonra) bir tablodur; D6–D9 kümelere göre alt başlıklıdır (genişleme kataloğu). Sıradaki iş önce dalgaya, sonra bağımlılığa göre seçilir; dalga içinde konu sırası serbesttir. Karşı tarafı bekleyen iş durmaz, geçici veriyle sürer.
 - **ID** kalıcıdır (`ON-001`…). Yeni görev ilgili dalga tablosunun sonuna, dosyadaki en büyük numaradan sonraki numarayla eklenir. Numara yeniden verilmez; vazgeçilen görev silinmez, `iptal` olur.
 - **Durum** yalnız şunlardan biridir: `bekliyor`, `çalışılıyor`, `revizyon` (bitmişti; inceleme, karşı taraf ya da kullanıcı düzeltme istedi), `engelli` (Not'ta beklenen görev ID'si), `bitti`, `iptal`.
 - **Dal / commit:** `çalışılıyor` ve `revizyon`da dal adı, `bitti`de entegrasyondaki birleştirme commit'inin kısa hash'i. **Not:** bağımlılık ya da engel ("OG-014 bekleniyor"), revizyon gerekçesi ya da `#issue`, migration ve ADR numarası.
@@ -37,7 +37,7 @@
 | ON-021 | Cari ekstre: core ve API (IST-107)                                                                                                                                                                                       | M     | bekliyor |              |                                                                                                                                                                                                                                                                                                      |
 | ON-022 | Cari ekstre web ekranı ve PDF'i (IST-107)                                                                                                                                                                                | M     | bekliyor |              | Tarama: cari ekstre PDF şablonu yok (apps/web-react/src/lib/pdf/templates.ts:13)                                                                                                                                                                                                                     |
 | ON-023 | İade hesaplayıcının kalanları ve iade dökümü PDF'i (IST-110)                                                                                                                                                             | M     | bekliyor |              | Tarama: burslu istisnası, iade takvimi ve profili (docs/domain/finans.md:233), önce kodda doğrula                                                                                                                                                                                                    |
-| ON-024 | Muhasebe dışa aktarımında yaygın program sütunları (IST-111)                                                                                                                                                             | S     | bekliyor |              |                                                                                                                                                                                                                                                                                                      |
+| ON-024 | Muhasebe dışa aktarımında yaygın program sütunları (IST-111)                                                                                                                                                             | S     | bekliyor |              | Katalog: Muhasebe programı aktarım profilleri (yaygın muhasebe programları için sütun ve hesap planı eşleme profilleri (IST-111 genişlemesi)); bağımlılık: IST-111                                                                                                                                   |
 | ON-025 | Kayıt formuna rıza adımı (IST-016, 017)                                                                                                                                                                                  | S     | bekliyor |              | OG-016, OG-017; gelene kadar geçici veri                                                                                                                                                                                                                                                             |
 | ON-026 | Vade ve gecikme bildirimleri, uygulama içi (IST-109)                                                                                                                                                                     | M     | bekliyor |              | OG-018. Tarama: ödeme hatırlatması (docs/domain/finans.md:41)                                                                                                                                                                                                                                        |
 | ON-027 | Tahsilat alındı ve iade ödendi bildirimleri (IST-106, 110)                                                                                                                                                               | S     | bekliyor |              | OG-018                                                                                                                                                                                                                                                                                               |
@@ -113,7 +113,7 @@ Ara nokta: API'nin ilk yayını.
 | ON-059 | Paket satışı web ekranı, çevrim içi satışta ön bilgilendirme (IST-078)                            | M     | bekliyor |              |                                                                                                                                                                                                                  |
 | ON-060 | Pilot verisi aktarımı: öğrenci ve veli, CSV ve Excel (IST-007)                                    | L     | bekliyor |              |                                                                                                                                                                                                                  |
 | ON-061 | Pilot verisi aktarımı: taksitler (IST-007)                                                        | M     | bekliyor |              |                                                                                                                                                                                                                  |
-| ON-062 | e-Okul öğrenci listesinden içe aktarım (IST-134)                                                  | M     | bekliyor |              |                                                                                                                                                                                                                  |
+| ON-062 | e-Okul öğrenci listesinden içe aktarım (IST-134)                                                  | M     | bekliyor |              | Katalog: e-Okul öğrenci listesi içe aktarma (e-Okul'dan indirilen dosyadan öğrenci ve sınıf); doğrulanmalı (dosya biçimi)                                                                                        |
 | ON-063 | Kimlik okuma `GET /students/:id/identity`: maskeli, yetkili, denetimli                            | S     | bekliyor |              | Oğuzhan'ın OG-135 kullanır. Tarama: uç var, web ekranı yok (openapi `GET /students/{studentId}/identity`). Tarama: kimlik okuması denetim kaydına girmiyor, DOM-YTK-052 (apps/api/src/services/prospects.ts:344) |
 | ON-064 | Kasa ve gün sonu: core ve API (IST-113)                                                           | M     | bekliyor |              |                                                                                                                                                                                                                  |
 | ON-065 | Gün sonu rapor ekranı ve PDF'i (IST-113)                                                          | M     | bekliyor |              |                                                                                                                                                                                                                  |
@@ -160,17 +160,251 @@ Ara nokta: Android mağaza sürümü; dil okulu pilotu canlı; yıl sonu işleml
 
 ## D5 · Yeni öğretim yılı
 
-| ID     | Görev                                                                         | Boyut | Durum    | Dal / commit | Not                                                                          |
-| ------ | ----------------------------------------------------------------------------- | ----- | -------- | ------------ | ---------------------------------------------------------------------------- |
-| ON-092 | Yeni yıl tarifeleri, sözleşmeleri, burs dağıtımı (IST-104, 105)               | M     | bekliyor |              |                                                                              |
-| ON-093 | Pilot geri bildirimiyle kasa, ekstre ve iade düzeltmeleri (IST-107, 110, 113) | M     | bekliyor |              |                                                                              |
-| ON-094 | Muhasebe programı şablonu (IST-111)                                           | M     | bekliyor |              | Tarama: .xlsx dışa aktarma ve şablon (docs/domain/finans.md muhasebe bölümü) |
-| ON-095 | Açılış nöbeti: ilk taksitler, kayıt değişiklikleri, iade talepleri            | M     | bekliyor |              |                                                                              |
-| ON-096 | (öneri A) Operatör paneli ve yeni kurum kurulum aracı (IST-012)               | L     | iptal    |              | Oğuzhan'da: OG-189                                                           |
-| ON-097 | (öneri A) Yük testi, yedekten geri dönüş provası, yeni kurumların kurulumu    | M     | iptal    |              | Oğuzhan'da: OG-190                                                           |
-| ON-098 | Servis güzergâhları ve kulüp kayıtları (IST-099)                              | M     | bekliyor |              | Kullanıcı kararı, 2 Kasım (K9); Oğuzhan'daki OG-194 iptal                    |
+| ID     | Görev                                                                         | Boyut | Durum    | Dal / commit | Not                                                                                                                                                                                                                 |
+| ------ | ----------------------------------------------------------------------------- | ----- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ON-092 | Yeni yıl tarifeleri, sözleşmeleri, burs dağıtımı (IST-104, 105)               | M     | bekliyor |              |                                                                                                                                                                                                                     |
+| ON-093 | Pilot geri bildirimiyle kasa, ekstre ve iade düzeltmeleri (IST-107, 110, 113) | M     | bekliyor |              |                                                                                                                                                                                                                     |
+| ON-094 | Muhasebe programı şablonu (IST-111)                                           | M     | bekliyor |              | Tarama: .xlsx dışa aktarma ve şablon (docs/domain/finans.md muhasebe bölümü)                                                                                                                                        |
+| ON-095 | Açılış nöbeti: ilk taksitler, kayıt değişiklikleri, iade talepleri            | M     | bekliyor |              |                                                                                                                                                                                                                     |
+| ON-096 | (öneri A) Operatör paneli ve yeni kurum kurulum aracı (IST-012)               | L     | iptal    |              | Oğuzhan'da: OG-189                                                                                                                                                                                                  |
+| ON-097 | (öneri A) Yük testi, yedekten geri dönüş provası, yeni kurumların kurulumu    | M     | iptal    |              | Oğuzhan'da: OG-190                                                                                                                                                                                                  |
+| ON-098 | Servis güzergâhları ve kulüp kayıtları (IST-099)                              | M     | bekliyor |              | Kullanıcı kararı, 2 Kasım (K9); Oğuzhan'daki OG-194 iptal. Katalog: Servis güzergâhı ve durak modeli (araç, sürücü, rehber personel, durak sırası, öğrenci–durak ataması (IST-099 genişlemesi)); KVKK: adres verisi |
 
 Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve yeni kurumlar canlı. Faz 2 kapandı.
+
+## D7 · LMS genişlemesi
+
+### K2 · Finans · genişleme
+
+| ID     | Görev                                                                                                    | Boyut | Durum    | Dal / commit | Not                        |
+| ------ | -------------------------------------------------------------------------------------------------------- | ----- | -------- | ------------ | -------------------------- |
+| ON-131 | Kurs kurumu ücret modeli: `course_center` için dönem, paket, deneme seti ve çevrim içi program kalemleri | M     | bekliyor |              | bağımlılık: K14 kurum türü |
+
+## D8 · ERP genişlemesi
+
+### K1 · Kayıt ve CRM · genişleme
+
+| ID     | Görev                                                                                                               | Boyut | Durum    | Dal / commit | Not                                                                              |
+| ------ | ------------------------------------------------------------------------------------------------------------------- | ----- | -------- | ------------ | -------------------------------------------------------------------------------- |
+| ON-132 | Kampanya ve segment yönetimi: aday ve veli segmenti, e-posta ve SMS kampanyası, zamanlama, sonuç ölçümü             | M     | bekliyor |              | KVKK: yalnız İYS onaylı alıcı (IST-135); bağımlılık: Platform bildirim kanalları |
+| ON-133 | Siteye gömülen ön başvuru formu: kurum sitesine yerleşen başvuru formu, aday kaydına düşer, aydınlatma adımı içerir | M     | bekliyor |              | KVKK: DOM-KAY-003; üçüncü taraf izleme kodu yok (IST-145)                        |
+| ON-134 | Kampanya kodu ve kaynak izleme: kampanya kodu adaya bağlanır, kayıt hunisinde kırılım (IST-117 genişlemesi)         | M     | bekliyor |              | bağımlılık: kampanya yönetimi                                                    |
+| ON-135 | Tanıtım günü ve açık kapı etkinliği: etkinlik, kontenjan, kayıt, katılım, adaya dönüşüm                             | M     | bekliyor |              | bağımlılık: K9 okul takvimi                                                      |
+| ON-136 | Bursluluk sınavı başvurusu: başvuru formu, oturum seçimi, sınav giriş belgesi PDF'i                                 | M     | bekliyor |              | bağımlılık: K14 çevrim içi deneme ya da K5 optik                                 |
+| ON-137 | Bursluluk sınavı sonucu ve burs teklifi: sonuçtan burs oranı önerisi, teklif mektubu PDF'i, süreli kabul            | M     | bekliyor |              | bağımlılık: DOM-FIN-025 burs programı                                            |
+| ON-138 | Aday iletişim otomasyonu: aşamaya göre zamanlanmış hatırlatma dizisi (görüşme sonrası, teklif süresi)               | M     | bekliyor |              | KVKK: hizmet/ticari ayrımı (DOM-ILT-022)                                         |
+| ON-139 | Referans programı takibi: veli referansı, referans indirimi hak edişi ve bildirimi                                  | M     | bekliyor |              | bağımlılık: DOM-FIN-024                                                          |
+| ON-140 | Kayıp aday nedeni ve rakip analizi: kaybedilen adayda neden ve tercih edilen kurum, raporda kırılım                 | M     | bekliyor |              | bağımlılık: IST-117                                                              |
+
+### K2 · Finans · genişleme
+
+| ID     | Görev                                                                                          | Boyut | Durum    | Dal / commit | Not                                                                   |
+| ------ | ---------------------------------------------------------------------------------------------- | ----- | -------- | ------------ | --------------------------------------------------------------------- |
+| ON-141 | Kantin ve yemekhane ön ödemeli bakiyesi: veli yüklemesi, harcama, günlük limit, ayrılışta iade | M     | bekliyor |              | ADR gerekir; doğrulanmalı (6493 sayılı Kanun, elektronik para sınırı) |
+| ON-142 | Gezi ve etkinlik ücreti: gezi katılım kalemi, iptalde iade kuralı                              | S     | bekliyor |              | bağımlılık: K9 gezi; DOM-FIN-003 ek hizmet                            |
+| ON-143 | Tedarikçi cari ve ödeme planı: tedarikçi faturasının ödeme planı ve ödeme talimatı dosyası     | M     | bekliyor |              | bağımlılık: K23; IST-142 sınırı                                       |
+
+### K9 · Ön büro ve okul yaşamı · genişleme
+
+| ID     | Görev                                                                                                           | Boyut | Durum    | Dal / commit | Not                                                                    |
+| ------ | --------------------------------------------------------------------------------------------------------------- | ----- | -------- | ------------ | ---------------------------------------------------------------------- |
+| ON-144 | Güzergâh önerisi: adreslerden durak ve rota önerisi, araç kapasitesi                                            | M     | bekliyor |              | ADR gerekir (rota servisi ve çözücü)                                   |
+| ON-145 | Servis biniş-iniş kaydı: rehber personel öğrencinin binişini ve inişini mobilde işaretler                       | M     | bekliyor |              | biyometri yok (IST-144)                                                |
+| ON-146 | Veliye servis bildirimi: bindi, indi ve gecikme bildirimi                                                       | S     | bekliyor |              | bağımlılık: Platform push                                              |
+| ON-147 | Servis personeli ve araç belgeleri: sürücü belgesi, mesleki yeterlilik, araç muayene bitiş uyarısı              | M     | bekliyor |              | bağımlılık: K20 belge geçerlilik uyarıları                             |
+| ON-148 | Servis listesi PDF'i: araç bazında öğrenci, durak ve acil iletişim listesi                                      | M     | bekliyor |              | KVKK: telefon maskeli (IST-028)                                        |
+| ON-149 | Menü besin değeri ve alerjen matrisi: kalori, besin öğeleri, alerjen işaretleri (IST-099 menüsünün genişlemesi) | M     | bekliyor |              | bağımlılık: IST-099                                                    |
+| ON-150 | Yemek aboneliği ve gün iptali: öğle yemeği aboneliği, diyet türü, gün bazında iptal                             | M     | bekliyor |              | bağımlılık: K2 ek hizmet kalemi                                        |
+| ON-151 | Yemekhane alerji uyarısı: servis sırasında görevliye öğrencinin alerji uyarısı                                  | M     | bekliyor |              | KVKK: özel nitelikli, yalnız görevli                                   |
+| ON-152 | Kantin satış noktası: ürün, fiyat, satış, öğrenci kartıyla ödeme                                                | M     | bekliyor |              | ADR gerekir (POS donanımı); bağımlılık: K2 ön ödemeli bakiye, K23 stok |
+| ON-153 | Veli kantin limiti ve ürün kısıtı: günlük harcama sınırı, yasaklı ürün (alerji, şeker)                          | M     | bekliyor |              | doğrulanmalı (okul kantinleri genelgesi)                               |
+| ON-154 | Kantin harcama dökümü: veli ve öğrenci için harcama listesi ve aylık özet                                       | M     | bekliyor |              | bağımlılık: kantin satış noktası                                       |
+| ON-155 | Gezi planı ve onay dosyası: amaç, güzergâh, görevli öğretmen, ulaşım, risk değerlendirmesi, müdürlük onayı      | L     | bekliyor |              | doğrulanmalı (sosyal etkinlikler mevzuatı)                             |
+| ON-156 | Gezi katılımcı yönetimi: veli izni (IST-067) ve ücret (K2) ile katılım listesi, yedek liste                     | M     | bekliyor |              | bağımlılık: IST-067, K2 gezi ücreti                                    |
+| ON-157 | Gezi günü yoklaması ve acil kartı: mobilde araç ve grup yoklaması, acil iletişim ve sağlık uyarısı              | M     | bekliyor |              | KVKK: özel nitelikli                                                   |
+| ON-158 | Gezi sonrası rapor: etkinlik raporu, rızalı fotoğraf, katılımcı değerlendirmesi                                 | M     | bekliyor |              | KVKK: IST-017 rıza                                                     |
+| ON-159 | Etkinlik bileti ve oturma: gösteri ve tören için kontenjan, bilet, oturma düzeni                                | M     | bekliyor |              | bağımlılık: K9 okul takvimi                                            |
+| ON-160 | Sağlık kartı: kronik hastalık, alerji, düzenli ilaç, acil eylem planı; ayrı tablo, dar yetki                    | M     | bekliyor |              | KVKK: özel nitelikli (IST-020)                                         |
+| ON-161 | İlaç uygulama kaydı: veli onaylı ilacın doz, saat ve uygulayan kaydı (IST-102 genişlemesi)                      | M     | bekliyor |              | KVKK: özel nitelikli                                                   |
+| ON-162 | Kaza ve yaralanma tutanağı: olay, müdahale, veli bildirimi, tutanak PDF'i                                       | M     | bekliyor |              | KVKK: özel nitelikli                                                   |
+| ON-163 | Okul sağlığı taramaları: boy-kilo ve görme taraması sonucu, veliye bildirim                                     | M     | bekliyor |              | KVKK; doğrulanmalı (tarama protokolü)                                  |
+| ON-164 | Sağlık verisi okuma denetimi: her okumada gerekçe zorunlu, denetim kaydı                                        | M     | bekliyor |              | KVKK; bağımlılık: DOM-YTK-052                                          |
+| ON-165 | Acil durum özeti: sınıf öğretmeni ve nöbetçiye öğrencinin acil eylem özeti                                      | M     | bekliyor |              | KVKK: en az bilgi ilkesi                                               |
+| ON-166 | Ziyaretçi kaydı: ziyaretçi kimliği, amaç, giriş-çıkış saati, ziyaretçi kartı                                    | M     | bekliyor |              | KVKK: aydınlatma, kısa saklama süresi                                  |
+| ON-167 | Kartlı giriş entegrasyonu: kart ve turnike olaylarından giriş-çıkış kaydı (IST-103 genişlemesi)                 | M     | bekliyor |              | ADR gerekir; biyometri yok (IST-144)                                   |
+| ON-168 | Erken çıkış ve izinli ayrılış: veli talebi, teslim yetkilisi doğrulaması, yoklamaya yansıma                     | M     | bekliyor |              | bağımlılık: IST-019, IST-072                                           |
+| ON-169 | Kulüp tercihi ve kontenjanlı dağıtım: öğrenci tercih sırası, adil dağıtım, yedek liste                          | M     | bekliyor |              | bağımlılık: IST-099 kulüp üyeliği                                      |
+| ON-170 | Sosyal etkinlik ve gönüllülük saatleri: lise sosyal etkinlik ve gönüllülük saati kaydı, belgesi                 | M     | bekliyor |              | doğrulanmalı; bağımlılık: DOM-AKD-021                                  |
+| ON-171 | Kayıp eşya: bildirim, fotoğraf, teslim kaydı                                                                    | S     | bekliyor |              | bağımlılık: Platform dosya                                             |
+
+### K20 · İnsan kaynakları ve özlük
+
+| ID     | Görev                                                                                                   | Boyut | Durum    | Dal / commit | Not                                      |
+| ------ | ------------------------------------------------------------------------------------------------------- | ----- | -------- | ------------ | ---------------------------------------- |
+| ON-172 | Personel özlük kartı: kimlik, iletişim, eğitim, sertifika, banka, acil durum kişisi; alan bazında yetki | L     | bekliyor |              | KVKK: özlük verisi                       |
+| ON-173 | Özlük belgeleri ve geçerlilik takibi: diploma, sağlık raporu, adli sicil, sertifika; bitiş uyarısı      | M     | bekliyor |              | KVKK: adli sicil özel nitelikli          |
+| ON-174 | Çalışma onayı takibi: özel okul ve kurs öğretmeninin çalışma onayı başvuru ve onay tarihleri            | M     | bekliyor |              | doğrulanmalı (MEB özel öğretim mevzuatı) |
+| ON-175 | Personel belgeleri PDF'i: çalışma belgesi, hizmet belgesi                                               | S     | bekliyor |              | bağımlılık: K27 şablonlu belge           |
+| ON-176 | Özlük verisinin saklanması ve imhası: ayrılış sonrası süre, imha kaydı                                  | S     | bekliyor |              | KVKK: IST-021; doğrulanmalı              |
+| ON-177 | İş ilanı ve başvuru formu: kurum sitesine gömülen form, başvuru havuzu                                  | M     | bekliyor |              | KVKK: aday aydınlatma ve saklama süresi  |
+| ON-178 | Aday değerlendirme ve mülakat: aşamalar, mülakat formu, örnek ders gözlemi                              | M     | bekliyor |              | bağımlılık: K22 gözlem formu             |
+| ON-179 | İş teklifi ve işe başlama listesi: belge, hesap açma, zimmet, oryantasyon adımları                      | M     | bekliyor |              | bağımlılık: IST-007, K23 zimmet          |
+| ON-180 | İşten ayrılış süreci: zimmet iadesi, hesap kapatma, ilişik kesme                                        | M     | bekliyor |              | bağımlılık: IST-010 kadro arşivi         |
+| ON-181 | İzin türleri ve hak ediş: yıllık, mazeret, ücretsiz, rapor; kıdeme göre gün sayısı                      | M     | bekliyor |              | doğrulanmalı (4857 sayılı İş Kanunu)     |
+| ON-182 | İzin talebi ve onayı: personel talebi, yönetici onayı, ders saatleri için yedek öğretmen bağı           | M     | bekliyor |              | bağımlılık: K28 yedek öğretmen önerisi   |
+| ON-183 | İzin takvimi ve çakışma uyarısı: aynı branşta eşzamanlı izin, sınav haftası uyarısı                     | M     | bekliyor |              | bağımlılık: IST-011                      |
+| ON-184 | Mobilde izin talebi: talep, bakiye, onay bildirimi                                                      | S     | bekliyor |              | bağımlılık: mobil kabuk                  |
+| ON-185 | Sağlık raporu girişi: yalnız tarih aralığı ve tür, tanı yok                                             | S     | bekliyor |              | KVKK: sağlık verisi özel nitelikli       |
+| ON-186 | Puantaj: günlük çalışma, fazla mesai, devamsızlık; kartlı girişten isteğe bağlı besleme                 | M     | bekliyor |              | bağımlılık: K9 kartlı giriş entegrasyonu |
+| ON-187 | Organizasyon şeması: birim, pozisyon, raporlama hattı, görsel şema                                      | M     | bekliyor |              | bağımlılık: IST-006                      |
+| ON-188 | Kadro planlama: branş başına ihtiyaç saati, norm, açık pozisyon                                         | M     | bekliyor |              | bağımlılık: K28 ders programı            |
+| ON-189 | Personel self-servisi: kendi bilgileri, belge yükleme, izin bakiyesi, bordro pusulası                   | M     | bekliyor |              | bağımlılık: K21 bordro pusulası          |
+| ON-190 | Politika belgesi okundu onayı: personel yönetmeliği, KVKK taahhüdü, iş güvenliği                        | M     | bekliyor |              | bağımlılık: K27 belge deposu             |
+| ON-191 | Anonim personel memnuniyet anketi: IST-069'un personel sürümü                                           | S     | bekliyor |              | KVKK: anonimlik eşiği                    |
+| ON-192 | İK raporları: personel devir oranı, kıdem dağılımı, izin kullanımı                                      | M     | bekliyor |              | bağımlılık: K19 küçük grup bastırma      |
+
+### K21 · Bordro ve personel ödemeleri
+
+| ID     | Görev                                                                                                      | Boyut | Durum    | Dal / commit | Not                                            |
+| ------ | ---------------------------------------------------------------------------------------------------------- | ----- | -------- | ------------ | ---------------------------------------------- |
+| ON-193 | Bordro kapsam kararı: Kampüs ön hesap mı yapar, bordro programına yalnız girdi mi üretir; IST-142 sınırı   | S     | bekliyor |              | ADR gerekir                                    |
+| ON-194 | Ücret tanımı: aylık, saatlik, ek ders ücreti, yan haklar; yürürlük tarihli                                 | M     | bekliyor |              | KVKK: ücret verisi alan yetkisi                |
+| ON-195 | Ek ders çizelgesi: ders programı, yoklama ve yedek derslerden aylık ek ders saati; IST-087'nin genişlemesi | M     | bekliyor |              | bağımlılık: IST-087, K28                       |
+| ON-196 | Ek ders onayı: öğretmen kontrolü, müdür onayı, kilitleme                                                   | M     | bekliyor |              | bağımlılık: K27 iş akışı motoru                |
+| ON-197 | Bordro parametreleri: asgari ücret, vergi dilimleri, SGK oranları, damga vergisi, istisnalar; yıllık tablo | M     | bekliyor |              | doğrulanmalı (mali müşavir)                    |
+| ON-198 | Bordro ön hesabı: brütten nete, kümülatif matrah, asgari ücret istisnası                                   | M     | bekliyor |              | doğrulanmalı; bağımlılık: bordro kapsam kararı |
+| ON-199 | Avans ve kesintiler: avans, icra, bireysel emeklilik kesintisi                                             | M     | bekliyor |              | doğrulanmalı                                   |
+| ON-200 | Bordro onayı ve dönem kilidi: onaydan sonra değişiklik yasağı, düzeltme bordrosu                           | M     | bekliyor |              | bağımlılık: IST-014                            |
+| ON-201 | Bordro pusulası: PDF, personel self-servisi                                                                | S     | bekliyor |              | KVKK                                           |
+| ON-202 | Bordro programına aktarım: personel ve ek ders girdilerinin dışa aktarımı                                  | M     | bekliyor |              | bağımlılık: IST-111                            |
+| ON-203 | SGK bildirge hazırlık listesi: hazır liste; resmî sisteme otomatik gönderim yok (IST-143 ilkesi)           | M     | bekliyor |              | doğrulanmalı                                   |
+| ON-204 | Personel maliyet raporu: maliyet merkezine göre                                                            | S     | bekliyor |              | bağımlılık: K24 maliyet merkezi                |
+| ON-205 | Kıdem ve ihbar tazminatı hesaplayıcısı: tahmini tutar, ayrılış sürecine bağ                                | S     | bekliyor |              | doğrulanmalı                                   |
+
+### K22 · Performans ve mesleki gelişim
+
+| ID     | Görev                                                                                   | Boyut | Durum    | Dal / commit | Not                                        |
+| ------ | --------------------------------------------------------------------------------------- | ----- | -------- | ------------ | ------------------------------------------ |
+| ON-206 | Ders gözlem formu: gözlem ölçütleri, rubrik motoruyla puan                              | S     | bekliyor |              | bağımlılık: IST-048                        |
+| ON-207 | Gözlem planı: gözlemci ataması, takvim, öğretmene bildirim                              | M     | bekliyor |              | bağımlılık: K28 ders programı              |
+| ON-208 | Mobil gözlem formu: sınıfta tablet ya da telefonla doldurma, çevrimdışı taslak          | M     | bekliyor |              | bağımlılık: mobil kabuk                    |
+| ON-209 | Gözlem sonrası görüşme ve gelişim hedefi: görüşme notu, hedef, takip tarihi             | S     | bekliyor |              | KVKK: yalnız öğretmen ve gözlemci          |
+| ON-210 | Öz değerlendirme formu: dönemlik öz değerlendirme                                       | S     | bekliyor |              | bağımlılık: performans dönemi              |
+| ON-211 | Performans dönemi: hedef belirleme, ara görüşme, dönem sonu değerlendirme               | M     | bekliyor |              | KVKK                                       |
+| ON-212 | Çok kaynaklı geri bildirim: yönetici ve meslektaş geri bildirimi                        | S     | bekliyor |              | KVKK: anonimlik eşiği                      |
+| ON-213 | Öğrenci ve veli geri bildirimi: öğretmene yönelik anket sonuçları                       | S     | bekliyor |              | KVKK: anonimlik eşiği; bağımlılık: IST-069 |
+| ON-214 | Mesleki gelişim kataloğu: kurs, seminer, kurum içi eğitim                               | S     | bekliyor |              | bağımlılık: K15 ders yapısı                |
+| ON-215 | Mesleki gelişim saati ve sertifikaları: katılım, saat, belge yükleme                    | S     | bekliyor |              | bağımlılık: K20 özlük belgeleri            |
+| ON-216 | Kurum içi personel eğitimi: K15 ders yapısıyla personele çevrim içi eğitim ve tamamlama | M     | bekliyor |              | bağımlılık: K15                            |
+| ON-217 | Zümre toplantısı tutanağı: gündem, katılım, karar, sorumlu, takip                       | S     | bekliyor |              | doğrulanmalı (MEB zümre mevzuatı)          |
+| ON-218 | Öğretmenler kurulu ve şube kurulu tutanakları: gündem şablonu, karar takibi             | S     | bekliyor |              | doğrulanmalı                               |
+| ON-219 | Yeni öğretmen mentorluğu: eşleştirme, görüşme kaydı, kontrol listesi                    | M     | bekliyor |              | bağımlılık: K20 işe başlama listesi        |
+| ON-220 | Performans raporu: dönem sonuçları, gelişim hedefleri                                   | S     | bekliyor |              | KVKK: yalnız yönetici ve ilgili öğretmen   |
+
+### K23 · Satın alma, stok ve demirbaş
+
+| ID     | Görev                                                                                 | Boyut | Durum    | Dal / commit | Not                                       |
+| ------ | ------------------------------------------------------------------------------------- | ----- | -------- | ------------ | ----------------------------------------- |
+| ON-221 | Tedarikçi kaydı: vergi numarası, iletişim, kategori, belgeler                         | M     | bekliyor |              | bağımlılık: K2 tedarikçi cari             |
+| ON-222 | Satın alma talebi: birim talebi, gerekçe, bütçe kalemi                                | S     | bekliyor |              | bağımlılık: K24 bütçe kalemleri           |
+| ON-223 | Talep onay akışı: tutar eşiğine göre kademeli onay                                    | S     | bekliyor |              | bağımlılık: K27 iş akışı motoru           |
+| ON-224 | Teklif toplama ve karşılaştırma: tedarikçi teklifleri, karşılaştırma tablosu          | M     | bekliyor |              | bağımlılık: tedarikçi kaydı               |
+| ON-225 | Satın alma siparişi: sipariş PDF'i, tedarikçiye e-posta                               | S     | bekliyor |              | bağımlılık: IST-132                       |
+| ON-226 | Mal kabul: kısmi kabul, muayene notu                                                  | S     | bekliyor |              | bağımlılık: satın alma siparişi           |
+| ON-227 | Satın alma raporu: harcama kategorisi ve tedarikçi bazında                            | S     | bekliyor |              | bağımlılık: K24                           |
+| ON-228 | Stok kartı ve depo: ürün, birim, kampüs deposu                                        | S     | bekliyor |              | bağımlılık: IST-010                       |
+| ON-229 | Stok hareketi: giriş, çıkış, depolar arası transfer                                   | S     | bekliyor |              | bağımlılık: stok kartı                    |
+| ON-230 | Asgari stok uyarısı: eşik altına inince bildirim ve talep önerisi                     | M     | bekliyor |              | bağımlılık: IST-065                       |
+| ON-231 | Stok sayımı ve fark raporu: mobil barkodla sayım                                      | S     | bekliyor |              | bağımlılık: mobil kamera                  |
+| ON-232 | Kitap ve materyal seti dağıtımı: öğrenciye set teslimi ve imza kaydı                  | S     | bekliyor |              | bağımlılık: K2 ücret kalemi               |
+| ON-233 | Sarf malzeme talebi: öğretmen kırtasiye ve laboratuvar malzemesi talebi               | M     | bekliyor |              | bağımlılık: satın alma talebi             |
+| ON-234 | Laboratuvar kimyasal envanteri: tehlike sınıfı, son kullanma, güvenlik bilgi formu    | M     | bekliyor |              | doğrulanmalı (kimyasal güvenlik mevzuatı) |
+| ON-235 | Demirbaş kaydı: etiket numarası, konum, değer, alım tarihi                            | M     | bekliyor |              | bağımlılık: IST-010                       |
+| ON-236 | Demirbaş zimmeti: personele ve odaya zimmet, zimmet tutanağı PDF'i                    | M     | bekliyor |              | bağımlılık: K20 personel kartı            |
+| ON-237 | Demirbaş sayımı: karekodlu etiket ve mobil sayım                                      | S     | bekliyor |              | bağımlılık: mobil kamera                  |
+| ON-238 | Amortisman ön hesabı: yalnız yönetim raporu, defter kaydı yok (IST-142)               | M     | bekliyor |              | doğrulanmalı                              |
+| ON-239 | Bakım ve arıza talebi: arıza bildirimi, iş emri, durum takibi                         | S     | bekliyor |              | bağımlılık: IST-065                       |
+| ON-240 | Periyodik bakım planı: asansör, yangın söndürücü, jeneratör ve oyun alanı denetimleri | M     | bekliyor |              | doğrulanmalı (yasal periyotlar)           |
+
+### K24 · Bütçe, maliyet merkezi ve konsolide rapor
+
+| ID     | Görev                                                                   | Boyut | Durum    | Dal / commit | Not                               |
+| ------ | ----------------------------------------------------------------------- | ----- | -------- | ------------ | --------------------------------- |
+| ON-241 | Bütçe dönemi ve kalemleri: gelir ve gider kalemleri, dönem              | S     | bekliyor |              | bağımlılık: IST-011               |
+| ON-242 | Maliyet merkezi: kampüs, birim, program                                 | S     | bekliyor |              | bağımlılık: IST-010               |
+| ON-243 | Bütçe hazırlama ve onay: birim taslakları, revizyon, onay               | S     | bekliyor |              | bağımlılık: K27 iş akışı motoru   |
+| ON-244 | Bütçe–gerçekleşen raporu: tahsilat ve satın alma verisinden             | S     | bekliyor |              | bağımlılık: K2, K23               |
+| ON-245 | Bütçe aşımı denetimi: talep anında kalan bütçe uyarısı                  | S     | bekliyor |              | bağımlılık: K23 satın alma talebi |
+| ON-246 | Gelir tahmini: kayıt hunisi ve fiyat listesinden                        | S     | bekliyor |              | bağımlılık: IST-117, IST-104      |
+| ON-247 | Nakit akışı tahmini: taksit vadeleri ve gider planından                 | S     | bekliyor |              | bağımlılık: IST-105               |
+| ON-248 | Senaryo analizi: öğrenci sayısı, fiyat artışı ve burs oranı senaryoları | M     | bekliyor |              | bağımlılık: gelir tahmini         |
+| ON-249 | Öğrenci başı maliyet: maliyet merkezi bölüşümüyle                       | S     | bekliyor |              | bağımlılık: maliyet merkezi       |
+| ON-250 | Çok kampüslü konsolide rapor: kampüsler toplamı ve karşılaştırması      | S     | bekliyor |              | bağımlılık: maliyet merkezi       |
+| ON-251 | Yönetim kurulu raporu PDF'i: dönemlik finans ve kayıt özeti             | S     | bekliyor |              | bağımlılık: PDF motoru            |
+
+### K26 · Mezunlar ve kurumsal ilişkiler
+
+| ID     | Görev                                                                          | Boyut | Durum    | Dal / commit | Not                                      |
+| ------ | ------------------------------------------------------------------------------ | ----- | -------- | ------------ | ---------------------------------------- |
+| ON-252 | Mezun hesabı: mezuniyette hesabın mezun profiline dönüşmesi, yeni rıza         | M     | bekliyor |              | KVKK: amaç değişikliği için açık rıza    |
+| ON-253 | Mezun dizini: isteğe bağlı görünürlük, meslek ve şehir                         | S     | bekliyor |              | KVKK                                     |
+| ON-254 | Mezun iletişim tercihi: kanal tercihi ve ticari ileti izni                     | S     | bekliyor |              | bağımlılık: IST-135                      |
+| ON-255 | Mezun etkinliği: davet, kayıt, katılım                                         | S     | bekliyor |              | bağımlılık: K9 etkinlik bileti           |
+| ON-256 | Üniversite ve meslek yerleşme takibi: yıllara göre yerleşme özeti              | S     | bekliyor |              | bağımlılık: K14 yerleşme kaydı           |
+| ON-257 | Mezun mentorluğu: öğrencilerle kariyer görüşmesi, kurum aracılığıyla           | M     | bekliyor |              | KVKK: çocukla iletişim kurallı (IST-070) |
+| ON-258 | Bağış kampanyası: hedef, bağışçı, makbuz                                       | S     | bekliyor |              | doğrulanmalı (bağış ve vergi mevzuatı)   |
+| ON-259 | Burs fonu: bağış kaynaklı fon, burs ataması ve fon bakiyesi                    | M     | bekliyor |              | bağımlılık: IST-105                      |
+| ON-260 | Mezun belge talebi: diploma örneği, transkript, öğrenim belgesi                | M     | bekliyor |              | bağımlılık: K27 şablonlu belge           |
+| ON-261 | Mezun bülteni: dönemlik bülten                                                 | S     | bekliyor |              | bağımlılık: IST-068                      |
+| ON-262 | Paydaş ve sponsor kaydı: kurumsal paydaşlar, iş birlikleri, sözleşme tarihleri | M     | bekliyor |              | bağımlılık: K27 belge deposu             |
+
+## D9 · Entegrasyon ve ekosistem
+
+### K1 · Kayıt ve CRM · genişleme
+
+| ID     | Görev                                                                                      | Boyut | Durum    | Dal / commit | Not                                                                      |
+| ------ | ------------------------------------------------------------------------------------------ | ----- | -------- | ------------ | ------------------------------------------------------------------------ |
+| ON-263 | Ön başvuruda belge yükleme: kimlik, karne, sağlık raporu yükleme, eksik belge hatırlatması | M     | bekliyor |              | KVKK: sağlık raporu özel nitelikli (IST-020); bağımlılık: Platform dosya |
+
+### K2 · Finans · genişleme
+
+| ID     | Görev                                                                                                                        | Boyut | Durum    | Dal / commit | Not                                                 |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------- | ----- | -------- | ------------ | --------------------------------------------------- |
+| ON-264 | e-Fatura/e-Arşiv çoklu entegratör adaptörü: IST-112'nin ötesinde ikinci entegratör ve sağlayıcı değiştirme                   | M     | bekliyor |              | ADR gerekir (entegratör seçimi)                     |
+| ON-265 | e-Fatura mükellef sorgusu: kurumsal müşteride e-Fatura/e-Arşiv ayrımı ve VKN doğrulaması                                     | M     | bekliyor |              | ADR gerekir; bağımlılık: IST-089                    |
+| ON-266 | İade ve iptal faturası akışı: iade (IST-110) sonrasında iade faturası ya da iptal isteği                                     | M     | bekliyor |              | doğrulanmalı (mali müşavir)                         |
+| ON-267 | Muhasebe programına API ile gönderim: tahsilat fişinin programın API'sine gönderimi, hata kuyruğu                            | M     | bekliyor |              | ADR gerekir; IST-142 sınırı: defter tutulmaz        |
+| ON-268 | Banka hareketlerinin otomatik alınması: bankanın kurumsal API'si ya da açık bankacılıkla hareket çekme (IST-115 genişlemesi) | M     | bekliyor |              | ADR gerekir; doğrulanmalı (BDDK izinleri)           |
+| ON-269 | Doğrudan borçlandırma ve otomatik ödeme talimatı: veli talimatı, vade günü tahsilat, sonuç eşleme                            | M     | bekliyor |              | ADR gerekir (banka anlaşması)                       |
+| ON-270 | Tek kullanımlık ödeme bağlantısı: taksit için ödeme bağlantısı, SMS ve e-postayla gönderim                                   | M     | bekliyor |              | bağımlılık: IST-108, IST-133                        |
+| ON-271 | Karekodla ödeme: taksit için TR Karekod üretimi ve gelen ödemenin eşlenmesi                                                  | M     | bekliyor |              | ADR gerekir; doğrulanmalı                           |
+| ON-272 | Çoklu sanal POS yönlendirme: kart türüne göre POS seçimi, taksit seçenekleri, yedek POS                                      | M     | bekliyor |              | ADR gerekir                                         |
+| ON-273 | Sağlayıcıda saklanan kartla düzenli tahsilat: sağlayıcı belirteciyle otomatik taksit çekimi; kart verisi Kampüs'te tutulmaz  | M     | bekliyor |              | ADR gerekir; KVKK                                   |
+| ON-274 | İçerik pazarı tahsilatı ve gelir paylaşımı: pazar satışında tahsilat, yazar payı, dönem mutabakatı                           | M     | bekliyor |              | ADR gerekir (ödeme kuruluşu); bağımlılık: K17 pazar |
+
+### K9 · Ön büro ve okul yaşamı · genişleme
+
+| ID     | Görev                                                                                    | Boyut | Durum    | Dal / commit | Not                                               |
+| ------ | ---------------------------------------------------------------------------------------- | ----- | -------- | ------------ | ------------------------------------------------- |
+| ON-275 | Araç takip entegrasyonu: araç takip sağlayıcısından konum, "servis yaklaşıyor" bildirimi | M     | bekliyor |              | ADR gerekir; KVKK: konum verisi ve saklama süresi |
+
+### K21 · Bordro ve personel ödemeleri
+
+| ID     | Görev                                                          | Boyut | Durum    | Dal / commit | Not                                 |
+| ------ | -------------------------------------------------------------- | ----- | -------- | ------------ | ----------------------------------- |
+| ON-276 | Maaş ödeme banka dosyası: bankanın toplu ödeme biçiminde dosya | S     | bekliyor |              | ADR gerekir (banka dosya biçimleri) |
+
+### K23 · Satın alma, stok ve demirbaş
+
+| ID     | Görev                                                                     | Boyut | Durum    | Dal / commit | Not                              |
+| ------ | ------------------------------------------------------------------------- | ----- | -------- | ------------ | -------------------------------- |
+| ON-277 | Fatura eşleştirme: sipariş, mal kabul ve gelen e-fatura üçlü eşleştirmesi | M     | bekliyor |              | bağımlılık: K2 e-Fatura adaptörü |
+
+### K24 · Bütçe, maliyet merkezi ve konsolide rapor
+
+| ID     | Görev                                                           | Boyut | Durum    | Dal / commit | Not                                     |
+| ------ | --------------------------------------------------------------- | ----- | -------- | ------------ | --------------------------------------- |
+| ON-278 | Kurum grubu konsolide raporu: grup altındaki kurumların toplamı | S     | bekliyor |              | bağımlılık: Platform kurum grubu modeli |
 
 ## Sonra · Faz 3
 

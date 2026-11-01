@@ -66,6 +66,7 @@ interface ProspectData {
   minor?: boolean
   guardianName?: string
   notes?: object[]
+  lostReason?: string
 }
 
 /** Kurulum kaydı; seed'deki aday biçimi (`notes` dizisi, kampüs b1). */
@@ -637,6 +638,125 @@ test.describe('dil okulu deneme dersi', () => {
     await expect(rows.first()).toContainText('Deniz Akın')
     await expect(rows.first()).toContainText('Deneme dersi')
     await expect(rows.first()).toContainText('7-A')
+  })
+})
+
+test.describe('inceleme bulguları', () => {
+  test('başka kurumun aday adresi "Kayıt bulunamadı" gösterir; kapsam dışı kayıt sızmaz (DOM-KAY-007)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const own = await tenant({ roles: ['onburo'], records: [] })
+    const other = await tenant({
+      roles: ['onburo'],
+      records: [prospect({ id: 'e2e-pr-baska', name: 'Başka Kurum Adayı', phone: '05550300090' })],
+    })
+    expect(other.institutionId).not.toBe(own.institutionId)
+    await loginAs(own.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-baska'))
+    await expect(page.getByText('Kayıt bulunamadı.')).toBeVisible()
+    await expect(page.getByText('Başka Kurum Adayı')).toHaveCount(0)
+  })
+
+  test('vazgeçen aday yeniden açılırken iletişim paylaşılıyorsa kardeş seçici açılır; aşama adı kurum diliyle yazılır (DOM-KAY-030, DOM-KAY-031)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-pr-lost',
+          name: 'Mina Kaya',
+          phone: '05550300100',
+          stage: 'Vazgeçti',
+          lostReason: 'price',
+        }),
+        prospect({ id: 'e2e-pr-open', name: 'Nehir Kaya', phone: '05550300100' }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-lost'))
+    await page.getByLabel('Kayıt aşaması').selectOption('İletişime geçildi')
+    await page.getByRole('button', { name: 'Aşamayı güncelle' }).click()
+
+    // `prospect_contact_shared`: eşleşen aday söylenmez, seçici açılır.
+    const sibling = page.getByLabel('Kardeş aday')
+    await expect(sibling).toBeVisible()
+    await expect(page.getByText(SHARED_MESSAGE)).toBeVisible()
+    await expect(
+      sibling.locator('option').filter({ hasText: 'Nehir Kaya · Yeni aday' }),
+    ).toHaveCount(1)
+
+    await sibling.selectOption({ label: 'Nehir Kaya · Yeni aday' })
+    await page.getByRole('button', { name: 'Aşamayı güncelle' }).click()
+    await expect(toast(page, 'Aday aşaması güncellendi.')).toBeVisible()
+    const saved = await prospectsOf(await api(school.user('onburo')))
+    const reopened = saved.find((item) => item.id === 'e2e-pr-lost')
+    expect(reopened?.record.stage).toBe('İletişime geçildi')
+    expect(reopened?.record.siblingOfId).toBe('e2e-pr-open')
+  })
+
+  test('kart bu arada başka biri tarafından değişince aşama güncellemesi uyarı verir ve kart yenilenir (If-Match 409)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect({ id: 'e2e-pr-race', name: 'Rana Işık', phone: '05550300110' })],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-race'))
+    await expect(page.getByRole('heading', { name: 'Rana Işık', level: 1 })).toBeVisible()
+
+    // Başka bir oturum aynı karta not ekler; sayfadaki sürüm eskir.
+    const other = await api(school.user('onburo'))
+    const [current] = await prospectsOf(other)
+    const note = 'Başka oturumdan eklenen not.'
+    const added = await other.post(
+      '/api/v1/prospects/e2e-pr-race/notes',
+      { text: note },
+      { 'idempotency-key': randomUUID(), 'if-match': `"${current?.version}"` },
+    )
+    expect(added.status).toBe(201)
+
+    await page.getByLabel('Kayıt aşaması').selectOption('Teklif verildi')
+    await page.getByRole('button', { name: 'Aşamayı güncelle' }).click()
+    await expect(
+      page.getByText('Aday kartı başka biri tarafından güncellendi.').first(),
+    ).toBeVisible()
+    // Kart yenilenir: araya giren not görünür ve aşama değişmemiştir.
+    await expect(page.getByText(note)).toBeVisible()
+    const [after] = await prospectsOf(other)
+    expect(after?.record.stage).toBe('Yeni aday')
+  })
+
+  test('KVKK: telefonla arama adrese yazılmaz; süzgeç ve sayfa adreste kalır', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['onburo'], records: listRecords() })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await page.getByPlaceholder('Listede ara...').fill('05550300003')
+    await expect(resultCount(page)).toContainText('1–1 / 1 kayıt')
+    await expect(bodyRows(page, 'Aday öğrenciler').filter({ hasText: 'Aday 03' })).toHaveCount(1)
+    // Adres güncellemesi bekletilmeden kontrol edilir: numara ve `q` parametresi yok.
+    await page.waitForTimeout(500)
+    expect(page.url()).not.toContain('05550300003')
+    expect(new URL(page.url()).searchParams.has('q')).toBe(false)
+
+    await page.getByRole('button', { name: 'Filtreler', exact: true }).click()
+    await page.getByLabel('Aşama', { exact: true }).selectOption('Yeni aday')
+    await expect(page).toHaveURL(/asama=/)
+    expect(page.url()).not.toContain('05550300003')
+    await expect(resultCount(page)).toContainText('1–1 / 1 kayıt')
   })
 })
 

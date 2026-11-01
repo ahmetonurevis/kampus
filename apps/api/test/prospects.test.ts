@@ -923,4 +923,49 @@ describe('aday uçları', () => {
     assert.equal(none.statusCode, 200)
     assert.equal(none.json().meta.total, 0)
   })
+
+  test('DOM-KAY-007: kaynak süzgeci ve groupBy=source başka kurumun adaylarını saymaz', async () => {
+    const a = await institution()
+    // B kurumunda aynı kaynaktan daha çok aday vardır (pr1…pr15: 'Web sitesi' 3 kez).
+    const b = await institution(
+      {},
+      { ...SAMPLE, prospects: SEED.prospects.slice(0, 15) as Sample['prospects'] },
+    )
+    const cookieA = await frontDesk(a.id)
+    const cookieB = await frontDesk(b.id)
+    const source = String(SEED.prospects[0]?.source)
+    const get = (url: string, cookie: string) =>
+      app.inject({ method: 'GET', url, headers: { origin: TEST_ORIGIN, cookie } })
+    const listA = await get(
+      `/api/v1/collections/prospects?source=${encodeURIComponent(source)}`,
+      cookieA,
+    )
+    assert.equal(listA.statusCode, 200, listA.body)
+    assert.equal(listA.json().meta.total, 1, 'A yalnız kendi adayını sayar')
+    const listB = await get(
+      `/api/v1/collections/prospects?source=${encodeURIComponent(source)}`,
+      cookieB,
+    )
+    assert.equal(listB.json().meta.total, 3)
+    const groupsA = await get('/api/v1/collections/prospects/counts?groupBy=source', cookieA)
+    assert.equal(groupsA.statusCode, 200, groupsA.body)
+    const countsA = Object.fromEntries(
+      (groupsA.json().data as { value: string; count: number }[]).map((item) => [
+        item.value,
+        item.count,
+      ]),
+    )
+    assert.equal(countsA[source], 1)
+    assert.equal(
+      Object.values(countsA).reduce((sum, count) => sum + count, 0),
+      5,
+    )
+    const groupsB = await get('/api/v1/collections/prospects/counts?groupBy=source', cookieB)
+    assert.equal(
+      (groupsB.json().data as { value: string; count: number }[]).find(
+        (item) => item.value === source,
+      )?.count,
+      3,
+    )
+  })
 })

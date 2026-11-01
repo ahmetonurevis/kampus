@@ -510,8 +510,11 @@ describe('yazma uçları', () => {
         'POST /api/v1/prospects/{prospectId}/enroll',
         // Tahsilat, iptal ve nakit ayarı (routes/payments.ts; DOM-FIN-031, DOM-FIN-033).
         'POST /api/v1/payments',
+        'POST /api/v1/payments/{paymentId}/mebbis-record',
         'POST /api/v1/payments/{paymentId}/reverse',
         'PATCH /api/v1/payment-settings',
+        'POST /api/v1/bank-accounts',
+        'DELETE /api/v1/bank-accounts/{bankAccountId}',
         // Ayrılış ve iade (routes/withdrawals.ts; DOM-FIN-041).
         'POST /api/v1/students/{studentId}/withdraw',
         'POST /api/v1/withdrawals/{withdrawalId}/pay-refund',

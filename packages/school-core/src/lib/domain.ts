@@ -568,5 +568,7 @@ export function enrollProspect(
   state.contracts.push(contract)
   prospect.studentId = student.id
   prospect.stage = 'Kayıt oldu'
-  return { student, contract, parent }
+  // `minor`: öğrencinin velili kaydı mı; kesin kayıt bildiriminin alıcısını belirler
+  // (`lib/notifications.ts`, yetişkin kursiyerde kendisi).
+  return { student, contract, parent, minor }
 }

@@ -205,6 +205,8 @@ export const OPERATION_COMMANDS = {
   'prospect.meeting': spec('crm', [...SCOPE, 'branches', 'prospects', ...CONFLICTS]),
   'prospect.trial': spec('crm', [...SCOPE, 'prospects', 'schedule']),
   // Kesin kayıt (`enrollProspect`, `lib/domain.ts`): öğrenci, veli, taksit ve sözleşmeyi yazar.
+  // API iletişim modülü açıksa veliye (yetişkinde kursiyere) uygulama içi bildirim de ekler
+  // (`lib/notifications.ts`); bildirimleri okumaz, yalnız ekler.
   'prospect.enroll': spec('crm', [
     ...SCOPE,
     'branches',
@@ -212,7 +214,13 @@ export const OPERATION_COMMANDS = {
     'parents',
     'invoices',
     'contracts',
+    'notifications',
   ]),
+  // Uygulama içi bildirimin okundu işareti (`lib/notifications.ts`, DOM-ILT-020, -073). Görünürlük
+  // üyelik bağlantılarındandır; kapsam kaynağı yalnız yetki (modül, rol) için okunur. API yalnız
+  // aktörün gördüğü bildirimleri ve kendi okundu işaretlerini yükler.
+  'notification.read': spec('communication', [...SCOPE, 'notifications', 'notificationReads']),
+  'notification.read_all': spec('communication', [...SCOPE, 'notifications', 'notificationReads']),
 } as const satisfies Record<string, CommandSpec>
 export type OperationCommand = keyof typeof OPERATION_COMMANDS
 

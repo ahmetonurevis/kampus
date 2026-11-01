@@ -83,14 +83,20 @@ test('Kapsam kaynağı yalnız tanımlı koleksiyonlarla kurulabilir', () => {
   )
 })
 
-test('Yönetici kurum geneli okur; birebir yazışma dışındaki her koleksiyon açıktır', () => {
+test('Yönetici kurum geneli okur; birebir yazışma ve bildirim dışındaki her koleksiyon açıktır', () => {
   const state = seed()
   const scope = scopeFor(state, admin)
   assert.equal(scope.studentIds.size, state.students.length)
   assert.equal(scope.classIds.size, state.classes.length)
   assert.equal(scope.teacher, undefined)
   for (const name of COLLECTION_NAMES) {
-    const expected = name !== 'conversations' && name !== 'conversationMessages'
+    // Bildirim öğrenci ve veliye aittir; yöneticinin bildirimi yoktur (lib/notifications.ts).
+    const expected = ![
+      'conversations',
+      'conversationMessages',
+      'notifications',
+      'notificationReads',
+    ].includes(name)
     assert.equal(scope.access(name).allowed, expected, name)
     assert.equal(
       scope.read(name, rowsOf(state, name)).length,

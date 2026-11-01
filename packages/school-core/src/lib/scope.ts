@@ -337,6 +337,18 @@ const READ_RULES: Record<CollectionName, Partial<Record<Role, Rule>>> = {
       c.userId !== undefined &&
       text(r, 'parentUserId') === c.userId,
   },
+  // Uygulama içi bildirim öğrenciye ait olaydır: öğrenci kendi `student`, veli bağlı çocuğunun
+  // `parent` bildirimini görür; personelin bildirimi yoktur (lib/notifications.ts
+  // `canSeeNotification`). Okundu işareti yalnız kendi kullanıcısınındır (DOM-ILT-073). API bu
+  // iki koleksiyonu genel okumaya açmaz; bildirim ucu aynı kuralı SQL'de uygular.
+  notifications: {
+    ogrenci: (c, r) => ownStudent(c, r) && text(r, 'audience') === 'student',
+    veli: (c, r) => ownStudent(c, r) && text(r, 'audience') === 'parent',
+  },
+  notificationReads: {
+    ogrenci: (c, r) => c.userId !== undefined && text(r, 'userId') === c.userId,
+    veli: (c, r) => c.userId !== undefined && text(r, 'userId') === c.userId,
+  },
   // Veli görüşmesini öğrenci görmez; veli yalnız kendi açtığını görür, başka velinin görüşmesi
   // ona görünmez (DOM-ILT-103, DOM-ILT-073). Açanı bilinmeyen eski veli görüşmesi kapalıdır.
   // TODO(velayet-kapsam): velayeti olmayan ebeveynin kapsamı (DOM-ILT-070…073) yok; bağlantı

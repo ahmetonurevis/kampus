@@ -1,5 +1,16 @@
 # Değişiklikler
 
+## 2.27.0
+
+Uygulama içi bildirim merkezi (F6a; IST-065'in ilk parçası; `docs/domain/iletisim-ve-veli.md` DOM-ILT-020, DOM-ILT-022, DOM-ILT-023, DOM-ILT-073).
+
+- Yeni `lib/notifications.ts`: bildirim türleri kaydı `NOTIFICATION_KINDS` (`feedback_released` DOM-BEC-045, `enrollment_completed` DOM-KAY-011; konu, `service`/`commercial` ayrımı, zorunluluk, alıcı kitlesi ve başlık şablonu), `notifyStudentEvent` (yalnız ekler), `notificationAudienceOf`/`canSeeNotification` (öğrenci kendi `student`, veli bağlı çocuğunun `parent` bildirimini görür; personelin bildirimi yok), `markNotificationRead` ve `markAllNotificationsRead` (kullanıcı başına okundu işareti; görülemeyen bildirim 404 `notification_not_found`, tekrar çağrı ilk anı korur), `unreadNotificationCount`, `notificationTitle` (yalnız ilk ad), `learnerIsMinor` (yetişkin kursiyerin bildirimi veliye gitmez).
+- Kayıtta serbest metin yoktur: `notificationRecordSchema` katı şemadır (tür, kitle, öğrenci, konu kimliği, an); başlık okumada şablondan üretilir (DOM-ILT-023).
+- State'e iki koleksiyon: `notifications`, `notificationReads` (modül `communication`; örnek veri ve çevrimdışı demo boş başlar, demo bildirim üretmez). Kapsam kuralı `lib/scope.ts`'te; yönetici bu koleksiyonları okumaz.
+- Komutlar: `notification.read`, `notification.read_all` (modül `communication`, bütün roller); `prospect.enroll` `notifications` koleksiyonunu da yazar.
+- `lib/domain.ts` `enrollProspect` sonucu `minor` alanını da döndürür (kırıcı değil).
+- Tüketiciler `workspace:2.27.0` sürümüne sabitlendi. 2.25.0 ve 2.26.0 ayrı dallarda yayımlandı ve entegrasyonda bu sürümün altında yer alır.
+
 ## 2.24.0
 
 Bildirilen dosya türü kanonik MIME'a çevrilir (F3c2a inceleme düzeltmesi; ADR 0003 karar 3; `docs/domain/kaynak-platformu.md` DOM-KYN-004).

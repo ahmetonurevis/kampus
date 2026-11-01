@@ -30,6 +30,7 @@ import type { AbsenceReasonCategory, RequestActor, RequestFields } from '../lib/
 import type { AppointmentFields } from '../lib/appointments.ts'
 import type { QuestionFields } from '../lib/questions.ts'
 import type { ProspectFields } from '../lib/prospects.ts'
+import type { NotificationReadRecord, NotificationRecord } from '../lib/notifications.ts'
 export const topics = subjects.map((s) => s.name)
 
 // Örnek veri kendi içinde tutarlıdır; aranan kayıt yoksa üretici hatalıdır ve hemen durur.
@@ -843,6 +844,8 @@ function buildSeed(now: Date) {
     availability,
     quizAttempts,
     absences: [],
+    notifications: [],
+    notificationReads: [],
     contracts: students.map((s) => ({
       id: `contract-${s.id}`,
       studentId: s.id,
@@ -950,6 +953,10 @@ type StatePatches = {
   announcements: (Item<'announcements'> & AnnouncementFields)[]
   conversations: (Patch<Item<'conversations'>, { lastMessageAt?: string }> & ConversationFields)[]
   conversationMessages: (Item<'conversationMessages'> & ConversationMessageFields)[]
+  // Uygulama içi bildirim ve kullanıcının okundu işareti (lib/notifications.ts); yalnız API
+  // üretir, örnek veri ve çevrimdışı demo boştur.
+  notifications: NotificationRecord[]
+  notificationReads: NotificationReadRecord[]
   // Randevu işlemlerinin alanları (süre dakika); eski kayıtlar taşımaz (lib/appointments.ts).
   appointments: (Item<'appointments'> & AppointmentFields)[]
   preferences: Record<string, unknown>

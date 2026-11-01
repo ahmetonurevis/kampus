@@ -26,19 +26,55 @@ with_timeout() {
   return $status
 }
 
+# Oturum sahibi: `kampus.sahip`, yoksa git kullanıcı adı (alan-koruma hook'uyla aynı kural).
+owner=$(git config kampus.sahip 2>/dev/null | tr '[:upper:]' '[:lower:]')
+if [[ "$owner" != onur && "$owner" != oguzhan ]]; then
+  case "$(git config user.name 2>/dev/null | tr '[:upper:]' '[:lower:]')" in
+    *oguzhan* | *oğuzhan*) owner=oguzhan ;;
+    *onur*) owner=onur ;;
+    *) owner= ;;
+  esac
+fi
+other=
+[[ "$owner" == onur ]] && other=oguzhan
+[[ "$owner" == oguzhan ]] && other=onur
+
+if [[ -n "$owner" && -f "docs/is-bolumu/$owner.md" ]]; then
+  tasks=$(grep -m5 -E '^[[:space:]]*- \[ \]' "docs/is-bolumu/$owner.md")
+  [[ -n "$tasks" ]] && printf 'Sıradaki işlerin (docs/is-bolumu/%s.md):\n%s\n' "$owner" "$tasks"
+fi
+
+# fetch ve gh paralel koşar; ikisi de en çok 3 sn, ağ yoksa sessiz geçilir.
 integration=feature/platform-gecisi
+has_origin=
 if git remote get-url origin >/dev/null 2>&1; then
-  with_timeout 3 git fetch --quiet origin "$integration" </dev/null >/dev/null 2>&1
+  has_origin=1
+  with_timeout 3 git fetch --quiet origin "$integration" </dev/null >/dev/null 2>&1 &
+  fetch_pid=$!
+fi
+
+issues=
+if command -v gh >/dev/null 2>&1; then
+  # Satır biçimi: <durum:devam ise D, değilse -><TAB><sahip etiketleri><TAB>#no başlık
+  issues=$(with_timeout 3 gh issue list --state open --limit 50 --json number,title,labels \
+    --jq '.[] | [([.labels[].name] | if index("durum:devam") then "D" else "-" end), ([.labels[].name | select(startswith("sahip:"))] | join(",")), "#\(.number) \(.title)"] | @tsv' \
+    </dev/null 2>/dev/null)
+fi
+
+if [[ -n "$has_origin" ]]; then
+  wait "$fetch_pid" 2>/dev/null
   behind=$(git rev-list --count "HEAD..origin/$integration" 2>/dev/null)
   if [[ -n "$behind" && "$behind" -gt 0 ]]; then
     echo "origin/$integration bu daldan $behind commit ileride: önce birleştir (git merge origin/$integration)."
   fi
 fi
 
-if command -v gh >/dev/null 2>&1; then
-  issues=$(with_timeout 3 gh issue list --state open --limit 8 --json number,title,labels \
-    --jq '.[] | "#\(.number) [\([.labels[].name | select(startswith("sahip:"))] | join(",") | if . == "" then "sahipsiz" else . end)] \(.title)"' \
-    </dev/null 2>/dev/null)
-  [[ -n "$issues" ]] && printf 'Açık issue'"'"'lar (çakışan iş var mı bak):\n%s\n' "$issues"
+if [[ -n "$issues" ]]; then
+  if [[ -n "$other" ]]; then
+    active=$(printf '%s\n' "$issues" | awk -F'\t' -v who="sahip:$other" '$1 == "D" && index($2, who) { print $3 }' | head -8)
+    [[ -n "$active" ]] && printf 'Karşı tarafın sürmekte olan işleri (durum:devam):\n%s\n' "$active"
+  fi
+  list=$(printf '%s\n' "$issues" | awk -F'\t' '{ print $3 " [" ($2 == "" ? "sahipsiz" : $2) "]" }' | head -8)
+  printf 'Açık issue'"'"'lar (çakışan iş var mı bak):\n%s\n' "$list"
 fi
 exit 0

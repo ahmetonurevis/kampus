@@ -27,7 +27,8 @@
         "apps/web-react/src/pages/finance/**",
         "tests/e2e-react/{adaylar,kayit-islemleri,finans,odemeler-aile,is-akislari-yenileme}.spec.ts",
         "docs/domain/kayit-ve-crm.md",
-        "docs/domain/finans.md"
+        "docs/domain/finans.md",
+        "docs/is-bolumu/onur.md"
       ]
     },
     "oguzhan": {
@@ -35,7 +36,7 @@
       "possessive": "Oğuzhan'ın",
       "gitName": "Oguzhan Demirci",
       "area": "Onur'un alanı dışındaki her şey; platform altyapısı (kimlik, rol/kapsam, bildirim, dosya, PDF, KVKK, tasarım sistemi, kabuk, mobil) dahil",
-      "paths": []
+      "paths": ["docs/is-bolumu/oguzhan.md"]
     }
   },
   "shared": [
@@ -54,7 +55,10 @@
     ".claude/**",
     "docs/adr/**",
     "docs/muhendislik/**",
+    "docs/is-bolumu/README.md",
     "**/CHANGELOG.md",
+    "packages/*/changes/**",
+    "apps/*/changes/**",
     "**/package.json",
     "pnpm-lock.yaml"
   ]

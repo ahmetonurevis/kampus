@@ -199,8 +199,9 @@ function runHook(raw: string): number {
     return 0
   }
   process.stderr.write(
-    `Bu dosya ${owner?.possessive ?? ownerName} alanında (.claude/alanlar.json): ${path}. Dur, kullanıcıya sor; gerekirse alan sahibinin sahip: etiketiyle issue'da iş isteği aç ve kendi tarafını geçici veriyle yaz. ` +
-      "Kullanıcı dosyayı açmak isterse yolu git'e girmeyen .claude/alan-izni.local dosyasına satır olarak ekler.\n",
+    `Bu dosya ${owner?.possessive ?? ownerName} alanında (.claude/alanlar.json): ${path}. Karşı alana yazılmaz; durmadan iş isteği aç: ` +
+      `gh issue create -R ahmetonurevis/kampus --label sahip:${result.owner} (gerekçe, istenen davranış, dosyalar) ` +
+      "ve kendi tarafına geçici veriyle devam et. Kullanıcı dosyayı açmak isterse yolu git'e girmeyen .claude/alan-izni.local dosyasına ekler.\n",
   )
   return 2
 }

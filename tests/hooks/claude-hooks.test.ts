@@ -64,7 +64,7 @@ describe('alan-koruma', () => {
     const result = edit(root, 'apps/api/src/services/payments.ts')
     assert.equal(result.status, 2)
     assert.match(result.stderr, /Onur'un alanında \(\.claude\/alanlar\.json\)/)
-    assert.match(result.stderr, /kullanıcıya sor/)
+    assert.match(result.stderr, /gh issue create -R ahmetonurevis\/kampus --label sahip:onur/)
   })
 
   test("Oğuzhan'ın dosyası Onur'a engellenir", () => {
@@ -72,6 +72,7 @@ describe('alan-koruma', () => {
     const result = edit(root, 'apps/api/src/services/notifications.ts')
     assert.equal(result.status, 2)
     assert.match(result.stderr, /Oğuzhan'ın alanında/)
+    assert.match(result.stderr, /--label sahip:oguzhan/)
   })
 
   test('Kendi alanındaki dosya sessizce geçer', () => {
@@ -134,6 +135,10 @@ describe('alan-koruma', () => {
     assert.equal(owner('apps/api/drizzle/0014_create_payments.sql'), 'ortak')
     assert.equal(owner('packages/school-core/src/modules/commands.ts'), 'ortak')
     assert.equal(owner('apps/api/package.json'), 'ortak')
+    assert.equal(owner('packages/school-core/changes/odeme-iadesi.md'), 'ortak')
+    assert.equal(owner('docs/is-bolumu/README.md'), 'ortak')
+    assert.equal(owner('docs/is-bolumu/onur.md'), 'onur')
+    assert.equal(owner('docs/is-bolumu/oguzhan.md'), 'oguzhan')
   })
 })
 

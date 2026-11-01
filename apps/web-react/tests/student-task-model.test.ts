@@ -11,7 +11,12 @@ import {
   describeKey,
   describeResponse,
   formatRemaining,
+  FAILED,
+  INSTRUCTIONS_FALLBACK,
   isAnswered,
+  newerRowVersion,
+  writingInitialBody,
+  writingInstructions,
   releasedScore,
   resubmissionPending,
   splitGapStem,
@@ -407,5 +412,48 @@ describe('cevap yardımcıları', () => {
     )
     assert.equal(acceptedText(['go', 'goes']), 'go / goes')
     assert.equal(acceptedText(undefined), '')
+  })
+})
+
+describe('W22a inceleme düzeltmeleri', () => {
+  test('IST-051 satır okuması başarısızsa yalnız o satır Okunamadı olur, diğerleri etkilenmez', () => {
+    const failed = studentTaskRow(auto(), null, true)
+    assert.equal(failed.status, FAILED.status)
+    assert.equal(failed.tone, 'red')
+    assert.equal(studentTaskRow(auto(), null).status, 'Yükleniyor')
+    const ok = studentTaskRow(auto(), autoProgress(auto(), [], NOW), false)
+    assert.equal(ok.status, 'Başlanmadı')
+  })
+
+  test('DOM-BEC-043 cevap kaydı sürümü geri alınmaz, yalnız ilerler', () => {
+    assert.equal(newerRowVersion(5, 4), 5)
+    assert.equal(newerRowVersion(5, 6), 6)
+    assert.equal(newerRowVersion(5, 5), 5)
+  })
+
+  test('DOM-BEC-040 editör, son sürümden eski taslağı değil gönderilen metni açar', () => {
+    const detail = { versions: [{ body: 'gönderilen', submittedAt: '2026-10-15T09:00:10.000Z' }] }
+    const oldDraft = { body: 'eksik taslak', savedAt: '2026-10-15T09:00:00.000Z' }
+    const newDraft = { body: 'yeni taslak', savedAt: '2026-10-15T09:05:00.000Z' }
+    assert.equal(writingInitialBody(oldDraft, detail, true), 'gönderilen')
+    assert.equal(writingInitialBody(oldDraft, detail, false), '')
+    assert.equal(writingInitialBody(newDraft, detail, true), 'yeni taslak')
+    assert.equal(writingInitialBody(newDraft, { versions: [] }, false), 'yeni taslak')
+    assert.equal(writingInitialBody(null, detail, true), 'gönderilen')
+    assert.equal(writingInitialBody(null, null, false), '')
+  })
+
+  test('DOM-KYN-024 yönerge yalnız sabitlenen sürümle okunabilir; aksi hâlde boş (yedek metin gösterilir)', () => {
+    const resource = (id: string, instructions: unknown = 'Write 100 words.') => ({
+      view: 'learner',
+      version: { id, content: { type: 'homework_template', instructions } },
+    })
+    const assignment = { resourceVersionId: 'rv-1' }
+    assert.equal(writingInstructions(resource('rv-1'), assignment), 'Write 100 words.')
+    assert.equal(writingInstructions(resource('rv-2'), assignment), null)
+    assert.equal(writingInstructions(resource('rv-1', 5), assignment), null)
+    assert.equal(writingInstructions({ view: 'staff' }, assignment), null)
+    assert.equal(writingInstructions(undefined, assignment), null)
+    assert.match(INSTRUCTIONS_FALLBACK, /öğretmeninizden/)
   })
 })

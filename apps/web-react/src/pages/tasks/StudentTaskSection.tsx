@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
-import { useLearnerTaskProgress } from '@kampus/react-shared/use-learner-task-progress.ts'
-import { useTaskAssignments } from '@kampus/react-shared/use-task-assignments.ts'
+import {
+  useLearnerAssignments,
+  useLearnerTaskProgress,
+} from '@kampus/react-shared/use-learner-task-progress.ts'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -13,6 +15,7 @@ import { Facts, TableGate } from '../learning/LearningParts.tsx'
 import { QUIZ_PARAM } from './StudentQuizWorkspace.tsx'
 import { WRITING_PARAM } from './StudentWritingWorkspace.tsx'
 import {
+  FAILED,
   autoProgress,
   isLearnerAssignment,
   studentTaskRow,
@@ -71,13 +74,10 @@ function actionLabel(status: string): { text: string; primary: boolean } {
  */
 export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
   const copy = COPY[mode]
-  const assignments = useTaskAssignments({ pageSize: 100 })
+  const assignments = useLearnerAssignments()
   const learners = useMemo(
-    () =>
-      (assignments.data?.data ?? [])
-        .filter(isLearnerAssignment)
-        .filter((item) => item.scoringMode === mode),
-    [assignments.data, mode],
+    () => assignments.items.filter(isLearnerAssignment).filter((item) => item.scoringMode === mode),
+    [assignments.items, mode],
   )
   const progress = useLearnerTaskProgress(learners)
   const nowMs = useNow(true, 30_000)
@@ -91,9 +91,12 @@ export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
     if (!progress.submissions.has(assignment.id)) return null
     return writingProgress(assignment, progress.submissions.get(assignment.id) ?? null, now)
   }
-  const rows = assignments.data
-    ? learners.map((assignment) => studentTaskRow(assignment, progressOf(assignment)))
+  const rows = assignments.isReady
+    ? learners.map((assignment) =>
+        studentTaskRow(assignment, progressOf(assignment), progress.errors.has(assignment.id)),
+      )
     : undefined
+  const failedCount = progress.errors.size
 
   const panel = useDetailPanel(PANEL_PARAM)
   const workspace = useDetailPanel(copy.workspace)
@@ -144,7 +147,9 @@ export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
   )
 
   const selected = learners.find((item) => item.id === panel.selectedId)
-  const selectedProgress = selected ? progressOf(selected) : null
+  const selectedProgress = selected
+    ? (progressOf(selected) ?? (progress.errors.has(selected.id) ? FAILED : null))
+    : null
   const action = selectedProgress ? actionLabel(selectedProgress.status) : null
 
   return (
@@ -165,13 +170,23 @@ export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
           <p className="px-6 pb-6 text-sm text-muted-foreground">{copy.empty}</p>
         ) : (
           <TableGate
-            error={assignments.error ?? progress.error}
-            onRetry={() => {
-              if (assignments.error) void assignments.refetch()
-              progress.refetch()
-            }}
+            error={assignments.isReady ? null : assignments.error}
+            onRetry={() => void assignments.refetch()}
             loading={rows === undefined}
           >
+            {assignments.truncated ? (
+              <p role="status" className="px-6 pb-3 text-sm text-muted-foreground">
+                Görev sayınız çok fazla; yalnız en yeni kayıtlar gösteriliyor.
+              </p>
+            ) : null}
+            {failedCount > 0 ? (
+              <div role="status" className="flex flex-wrap items-center gap-3 px-6 pb-3 text-sm">
+                <span>{failedCount} görevin durumu okunamadı.</span>
+                <Button type="button" variant="secondary" size="sm" onClick={progress.refetch}>
+                  Yeniden dene
+                </Button>
+              </div>
+            ) : null}
             <DataTable
               listKey={copy.listKey}
               rows={rows ?? NONE}
@@ -233,7 +248,7 @@ export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
               </Button>
             ) : null}
           </div>
-        ) : !selected && assignments.data ? (
+        ) : !selected && assignments.isReady && !assignments.isLoadingMore ? (
           <p role="status" className="text-sm text-muted-foreground">
             Görev bulunamadı. Size atanmamış ya da kaldırılmış olabilir.
           </p>

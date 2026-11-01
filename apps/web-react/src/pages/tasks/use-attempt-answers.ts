@@ -4,7 +4,7 @@ import {
   type TaskAttemptAnswers,
   type TaskAttemptDetail,
 } from '@kampus/react-shared/use-task-attempts.ts'
-import { answersFingerprint } from './student-task-model.ts'
+import { answersFingerprint, newerRowVersion } from './student-task-model.ts'
 
 export type SaveState = 'saved' | 'dirty' | 'saving' | 'error'
 
@@ -31,9 +31,10 @@ export function useAttemptAnswers(attempt: TaskAttemptDetail) {
   useEffect(() => {
     saveRef.current = save
   })
-  // Başka yerden gelen güncel sürüm (409 sonrası tazeleme) bir sonraki kaydın başlığı olur.
+  // Başka yerden gelen güncel sürüm (409 sonrası tazeleme) bir sonraki kaydın başlığı olur; geç dönen
+  // eski okuma sürümü geri almaz.
   useEffect(() => {
-    version.current = attempt.rowVersion
+    version.current = newerRowVersion(version.current, attempt.rowVersion)
   }, [attempt.rowVersion])
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
@@ -49,7 +50,7 @@ export function useAttemptAnswers(attempt: TaskAttemptDetail) {
       setState('error')
       return false
     }
-    version.current = outcome.data.data.rowVersion
+    version.current = newerRowVersion(version.current, outcome.data.data.rowVersion)
     saved.current = answersFingerprint(current)
     setState(answersFingerprint(latest.current) === saved.current ? 'saved' : 'dirty')
     return true

@@ -21,11 +21,14 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { Facts } from '../learning/LearningParts.tsx'
 import { SubmissionVersions } from './SubmissionVersions.tsx'
 import {
+  INSTRUCTIONS_FALLBACK,
   isLearnerAssignment,
   isNotFoundError,
   resubmissionPending,
   taskKindLabel,
   taskTypeLabel,
+  writingInitialBody,
+  writingInstructions,
   writingProgress,
 } from './student-task-model.ts'
 import { WritingEditor } from './WritingEditor.tsx'
@@ -61,15 +64,12 @@ export function StudentWritingWorkspace({
       ? assignmentQuery.data.data
       : undefined
   const resourceQuery = useResourceDetail(assignment?.resourceId ?? '')
-  const instructions = useMemo(() => {
-    const data = resourceQuery.data?.data
-    if (!assignment || !data || data.view !== 'learner') return null
-    if (data.version.id !== assignment.resourceVersionId) return null
-    const content = data.version.content
-    return content.type === 'homework_template' && typeof content.instructions === 'string'
-      ? content.instructions
-      : null
-  }, [resourceQuery.data, assignment])
+  // Yönerge okunamazsa (paylaşılmamış ya da yeni sürüm yayımlanmış) açık metin gösterilir.
+  const instructions = useMemo(
+    () => writingInstructions(resourceQuery.data?.data, assignment),
+    [resourceQuery.data, assignment],
+  )
+  const instructionsSettled = resourceQuery.isSuccess || resourceQuery.isError
 
   const back = (
     <Button type="button" variant="secondary" onClick={workspace.close}>
@@ -122,9 +122,8 @@ export function StudentWritingWorkspace({
   const settings = assignment.submission
   const textKind = settings?.submissionKind === 'text'
   const draft = draftQuery.data?.data ?? null
-  const latestBody = detail?.versions.at(-1)?.body ?? ''
-  // Yeniden teslimde editör son sürümle açılır; taslak varsa o önceliklidir.
-  const initialBody = draft?.body ?? (resubmissionPending(detail) ? latestBody : '')
+  // Yeniden teslimde editör son sürümle açılır; taslak yalnız son sürümden yeniyse önceliklidir.
+  const initialBody = writingInitialBody(draft, detail, resubmissionPending(detail))
   const request = detail?.resubmission
 
   return (
@@ -145,6 +144,10 @@ export function StudentWritingWorkspace({
           {instructions ? (
             <p lang="en" className="mb-4 text-sm whitespace-pre-line [overflow-wrap:anywhere]">
               {instructions}
+            </p>
+          ) : instructionsSettled ? (
+            <p role="note" className="mb-4 text-sm text-muted-foreground">
+              {INSTRUCTIONS_FALLBACK}
             </p>
           ) : null}
           <Facts

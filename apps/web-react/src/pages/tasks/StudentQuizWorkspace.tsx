@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { learnerAttemptsQuery } from '@kampus/react-shared/use-learner-task-progress.ts'
 import { useTaskAssignment } from '@kampus/react-shared/use-task-assignments.ts'
@@ -15,6 +15,7 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useNow } from '@/hooks/use-now.ts'
+import { useStableCallback } from '@/hooks/use-stable-callback.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { Facts } from '../learning/LearningParts.tsx'
@@ -66,10 +67,12 @@ export function StudentQuizWorkspace({
   // Pencere kapanışı saate bağlıdır: yarım dakikada bir yeniden hesaplanır.
   const nowMs = useNow(true, 30_000)
   const progress = assignment ? autoProgress(assignment, attempts, new Date(nowMs)) : null
-  const refreshExpired = useCallback(() => {
+  // Sorgu sonucu nesneleri her render'da yenilenir; kimliği sabit işlev AttemptPlayer'ın süre dolum
+  // zamanlayıcısının her saniye yeniden kurulmasını önler.
+  const refreshExpired = useStableCallback(() => {
     void attemptsQuery.refetch()
     void detail.refetch()
-  }, [attemptsQuery, detail])
+  })
 
   const back = (
     <Button type="button" variant="secondary" onClick={workspace.close}>

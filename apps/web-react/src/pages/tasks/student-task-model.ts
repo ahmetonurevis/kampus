@@ -219,11 +219,22 @@ export type StudentTaskRow = {
   pending: boolean
 }
 
+/** Satırın deneme/teslim okuması başarısız oldu; diğer satırlar etkilenmez. */
+export const FAILED: TaskProgress = {
+  status: 'Okunamadı',
+  tone: 'red',
+  rights: '—',
+  score: '—',
+  canAct: false,
+  blockedReason: 'Bu görevin durumu okunamadı; listeyi yenileyip yeniden deneyin.',
+}
+
 export function studentTaskRow(
   assignment: TaskAssignmentLearner,
   progress: TaskProgress | null,
+  failed = false,
 ): StudentTaskRow {
-  const shown = progress ?? NOT_LOADED
+  const shown = progress ?? (failed ? FAILED : NOT_LOADED)
   return {
     id: assignment.id,
     title: assignment.title,
@@ -238,7 +249,64 @@ export function studentTaskRow(
   }
 }
 
+// --- Yazma yönergesi ve taslak ----------------------------------------------------------------
+
+type DraftLike = { body: string; savedAt: string } | null | undefined
+type DetailLike =
+  | {
+      versions: readonly { body: string | null; submittedAt: string }[]
+    }
+  | null
+  | undefined
+
+/**
+ * Editörün açılış metni. Taslak yalnız son gönderilen sürümden yeniyse kullanılır: teslimden sonra
+ * eski kalan taslak gönderilen metnin üstüne yazılmaz. Taslak yoksa yeniden teslim bekleniyorsa son
+ * sürüm, aksi hâlde boş metin.
+ */
+export function writingInitialBody(
+  draft: DraftLike,
+  detail: DetailLike,
+  resubmissionOpen: boolean,
+): string {
+  const latest = detail?.versions.at(-1)
+  const draftIsNewer =
+    draft && (!latest || new Date(draft.savedAt).getTime() > new Date(latest.submittedAt).getTime())
+  if (draftIsNewer) return draft.body
+  return resubmissionOpen && latest ? (latest.body ?? '') : ''
+}
+
+/**
+ * Yönerge, öğrencinin okuyabildiği kaynak sürümünden gelir. Kaynak paylaşılmamışsa ya da atamadan
+ * sonra yeni sürüm yayımlandıysa okunamaz (null); ekran bunu açık bir metinle söyler.
+ * TODO(W22a, API): görev ataması/teslim yanıtı sabitlenen sürümün yönergesini taşımalı
+ * (openQuestions: DOM-KYN-024 kapsamını etkileyen karar).
+ */
+export function writingInstructions(
+  resource:
+    | { view: string; version?: { id: string; content: { type?: string; instructions?: unknown } } }
+    | undefined,
+  assignment: { resourceVersionId: string } | undefined,
+): string | null {
+  if (!assignment || !resource || resource.view !== 'learner' || !resource.version) return null
+  if (resource.version.id !== assignment.resourceVersionId) return null
+  const content = resource.version.content
+  return content.type === 'homework_template' && typeof content.instructions === 'string'
+    ? content.instructions
+    : null
+}
+
+/** Yönerge okunamadığında gösterilen metin. */
+export const INSTRUCTIONS_FALLBACK =
+  'Yönerge bu ekranda gösterilemiyor; ne yazacağınızı öğretmeninizden öğrenin.'
+
 // --- Cevaplar -----------------------------------------------------------------------------
+
+/**
+ * Cevap kaydı sürümü yalnız ilerler: geç dönen eski bir okuma, daha yeni bir yazmanın sürümünü
+ * geri alamaz (aksi hâlde sonraki kayıt 409 alır).
+ */
+export const newerRowVersion = (current: number, incoming: number) => Math.max(current, incoming)
 
 export type AttemptQuestion = TaskAttemptDetail['questions'][number]
 type Response = TaskAttemptAnswers[string]

@@ -24,6 +24,10 @@ export const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import('@/pages/auth/LoginPage.tsx')).LoginPage }),
       },
       {
+        path: ':role/aday/:prospectId',
+        lazy: async () => ({ Component: (await import('@/pages/shell/RoleShell.tsx')).RoleShell }),
+      },
+      {
         path: ':role/:page?',
         lazy: async () => ({ Component: (await import('@/pages/shell/RoleShell.tsx')).RoleShell }),
       },

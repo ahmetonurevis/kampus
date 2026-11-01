@@ -44,3 +44,28 @@ export function resolveShell(
 export function showsClosedNotice(page: Pick<NavPage, 'path'>): boolean {
   return workflowPage(page.path) !== undefined
 }
+
+/** Aday detayı (`/<rol>/aday/:id`) menüde olmayan kayıt sayfasıdır; modülü `crm`'dir. */
+const PROSPECT_DETAIL_ROLES: readonly RoleKey[] = ['yonetici', 'onburo']
+export const PROSPECT_DETAIL_PATH = 'aday'
+
+/**
+ * Aday detayı kararı: yalnız yönetici ve ön büro (`prospect.*` yazma yetkisiyle aynı roller),
+ * `crm` modülü açıkken. Başka rol kendi dashboard'una, kapalı modül uyarıyla dashboard'a döner;
+ * aday kapsamı ve varlığı sunucudadır (başka kurumun adayı 404).
+ */
+export function resolveProspectDetail(
+  session: SessionScope | null,
+  role: string | undefined,
+): ShellDecision {
+  if (!isRoleKey(role)) return { kind: 'not-found-outside' }
+  if (!session) return { kind: 'login' }
+  const home = pageHref(session.role, { path: 'dashboard' })
+  if (role !== session.role || !PROSPECT_DETAIL_ROLES.includes(session.role))
+    return { kind: 'redirect', to: home }
+  const listing = findPage('onburo', 'adaylar')
+  if (!listing) return { kind: 'not-found' }
+  const page: NavPage = { ...listing, path: PROSPECT_DETAIL_PATH, title: 'Aday detayı' }
+  if (!isPageEnabled(page, session.modules)) return { kind: 'module-closed', to: home, page }
+  return { kind: 'page', page }
+}

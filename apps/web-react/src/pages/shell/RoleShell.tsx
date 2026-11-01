@@ -6,7 +6,7 @@ import { AppLayout } from '@/layout/AppLayout.tsx'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
 import { withChildParam } from '@/lib/child-selection.ts'
 import { loginHref } from '@/lib/return-path.ts'
-import { resolveShell, showsClosedNotice } from '@/lib/route-guard.ts'
+import { resolveProspectDetail, resolveShell, showsClosedNotice } from '@/lib/route-guard.ts'
 import { isMigratedPage, MigratedPage } from '@/pages/page-registry.tsx'
 import { ModuleClosedPage } from './ModuleClosedPage.tsx'
 import { ModuleClosedRedirect } from './ModuleClosedRedirect.tsx'
@@ -32,9 +32,13 @@ function PageLoading() {
 /** Korumalı rol kabuğu: karar `resolveShell`'de, burada yalnız çizilir. */
 export function RoleShell() {
   const { status, session, isSigningOut } = useAuth()
-  const { role, page: path } = useParams()
+  const { role, page: path, prospectId } = useParams()
   const location = useLocation()
-  const decision = resolveShell(session, role, path)
+  // `/<rol>/aday/:id` menüde olmayan kayıt sayfasıdır; kararı kendi koruması verir.
+  const decision =
+    prospectId === undefined
+      ? resolveShell(session, role, path)
+      : resolveProspectDetail(session, role)
   const child = useChildSelection(session)
 
   // Oturum durumu bilinmeden yönlendirme yapılmaz; yenilemede girişe düşülmesin.

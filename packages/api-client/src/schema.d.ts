@@ -2548,6 +2548,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/task-submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Görev teslimleri
+         * @description Atamanın arşivlenmemiş teslim kayıtları (kursiyer başına bir), kursiyer sırasıyla, sayfalı; her kayıtta son sürümün özeti (metin yok). `assignmentId` zorunlu; `learnerId` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün teslimlerini; atayan `ogretmen` atamanın bütün teslimlerini, atamayı kapsamındaki sınıf/öğrenci hedefi yüzünden gören öğretmen yalnız kapsamındaki öğrencilerinkini (DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz; yanıtta puan alanı yoktur (rubrik puanlaması ayrı uçtadır). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
+         */
+        get: operations["listTaskSubmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-submissions/{submissionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Görev teslimi ayrıntısı
+         * @description Teslim kaydı, değişmez sürümleri (eskiden yeniye, metinleriyle), her sürümün geç bayrağı ve sözcük sayısı (DOM-BEC-044, 046), teslim durumu ve yeni sürüm hakkı. Roller: `yonetici` kurumun bütün teslimlerini; atayan `ogretmen` atamanın bütün teslimlerini, atamayı kapsamındaki sınıf/öğrenci hedefi yüzünden gören öğretmen yalnız kapsamındaki öğrencilerinkini (DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının teslimini (sınıf değiştirse de eski sınıfta yaptığı teslimi görür); ön büro 403. Taslak teslim okumasında hiç dönmez. Yazma otomatik puanlanmaz; yanıtta puan alanı yoktur (rubrik puanlaması ayrı uçtadır). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
+         */
+        get: operations["getTaskSubmission"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-assignments/{assignmentId}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yazma taslağı
+         * @description Öğrencinin kendi taslağı (IST-047); yoksa `data: null`. Taslağı yalnız öğrenci görür (ADR 0004 karar 6); öğretmen, yönetici, veli ve ön büro 403. Atama öğrenciyi artık hedeflemiyorsa taslak varken okunur, yoksa 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getTaskDraft"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Yazma taslağını kaydet
+         * @description Taslağın otomatik kaydı (IST-047; core `planDraftSave`); kursiyer × atama başına tek taslak üzerine yazılır. `If-Match` taslağın `revision`'ıdır: yalnız henüz taslak yokken atlanabilir (ilk kayıt); taslak varken başlıksız istek 400 `if_match_required`, eski revizyon 409 `draft_conflict` (başka pencere; eşzamanlı iki kayıttan biri). Teslim kapandıysa 422 `submission_closed`, yazma dışı görevde 422 `draft_not_supported`. Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        patch: operations["saveTaskDraft"];
+        trace?: never;
+    };
+    "/api/v1/task-assignments/{assignmentId}/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yazma görevini teslim et
+         * @description Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core `planSubmissionVersion`). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; önceki sürümler ve metinleri değişmez. Sürüm sınırı (`maxVersions`) dolunca 422 `version_limit_reached`; puanlanmış teslimde öğretmen yeniden teslim istemeden 409 `resubmission_not_requested`; teslim kapandıysa (geç kabul dahil) 422 `submission_closed`; son teslimden sonra geç kabul süresindeki sürüm `late`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 `submission_not_expected`; dosyalı ve sesli teslim 422 `submission_kind_unavailable`. Yazma otomatik puanlanmaz. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["submitTaskSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3977,6 +4061,98 @@ export interface components {
                 };
             }[];
         };
+        TaskWordCountInput: {
+            count: number;
+            /** @enum {string} */
+            status: "ok" | "below" | "above";
+            /** @description Sözcük sınırı dışındaysa uyarı; teslim reddedilmez (DOM-BEC-046) */
+            warning: string | null;
+        };
+        TaskSubmissionInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            learnerId: string;
+            /**
+             * @description Son sürüme göre teslim durumu (DOM-BEC-044)
+             * @enum {string}
+             */
+            status: "pending" | "submitted" | "late" | "not_submitted";
+            versionCount: number;
+            latestVersion: {
+                /** Format: uuid */
+                id: string;
+                number: number;
+                /** Format: date-time */
+                submittedAt: string;
+                /** @description Sürümün süresinden sonra, geç kabul içinde gönderildi (DOM-BEC-044) */
+                late: boolean;
+                /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
+                wordCount: components["schemas"]["TaskWordCountInput"] | null;
+            } | null;
+            /** @description Teslim kaydının satır sürümü */
+            rowVersion: number;
+        };
+        TaskSubmissionDetailInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            learnerId: string;
+            /**
+             * @description Son sürüme göre teslim durumu (DOM-BEC-044)
+             * @enum {string}
+             */
+            status: "pending" | "submitted" | "late" | "not_submitted";
+            versionCount: number;
+            latestVersion: {
+                /** Format: uuid */
+                id: string;
+                number: number;
+                /** Format: date-time */
+                submittedAt: string;
+                /** @description Sürümün süresinden sonra, geç kabul içinde gönderildi (DOM-BEC-044) */
+                late: boolean;
+                /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
+                wordCount: components["schemas"]["TaskWordCountInput"] | null;
+            } | null;
+            /** @description Teslim kaydının satır sürümü */
+            rowVersion: number;
+            /** @description Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez */
+            versions: {
+                /** Format: uuid */
+                id: string;
+                number: number;
+                /** Format: date-time */
+                submittedAt: string;
+                /** @description Sürümün süresinden sonra, geç kabul içinde gönderildi (DOM-BEC-044) */
+                late: boolean;
+                /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
+                wordCount: components["schemas"]["TaskWordCountInput"] | null;
+                /** @description Gönderilen metin; değişmez */
+                body: string | null;
+            }[];
+            /** @description Yeni sürüm hakkı (core `versionAllowance`) */
+            allowance: {
+                limit: number;
+                used: number;
+                remaining: number;
+                resubmissionOpen: boolean;
+                canSubmit: boolean;
+                blockedBy: ("limit" | "graded") | null;
+            } | null;
+        };
+        TaskDraftInput: {
+            /** Format: uuid */
+            assignmentId: string;
+            body: string;
+            /** @description Taslağın iyimser kilit sürümü; sonraki kayıtta `If-Match` olarak gönderilir */
+            revision: number;
+            /** Format: date-time */
+            savedAt: string;
+            wordCount: components["schemas"]["TaskWordCountInput"] | null;
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -5400,6 +5576,98 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
+        };
+        TaskWordCount: {
+            count: number;
+            /** @enum {string} */
+            status: "ok" | "below" | "above";
+            /** @description Sözcük sınırı dışındaysa uyarı; teslim reddedilmez (DOM-BEC-046) */
+            warning: string | null;
+        };
+        TaskSubmission: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            learnerId: string;
+            /**
+             * @description Son sürüme göre teslim durumu (DOM-BEC-044)
+             * @enum {string}
+             */
+            status: "pending" | "submitted" | "late" | "not_submitted";
+            versionCount: number;
+            latestVersion: {
+                /** Format: uuid */
+                id: string;
+                number: number;
+                /** Format: date-time */
+                submittedAt: string;
+                /** @description Sürümün süresinden sonra, geç kabul içinde gönderildi (DOM-BEC-044) */
+                late: boolean;
+                /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
+                wordCount: components["schemas"]["TaskWordCount"] | null;
+            } | null;
+            /** @description Teslim kaydının satır sürümü */
+            rowVersion: number;
+        };
+        TaskSubmissionDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            learnerId: string;
+            /**
+             * @description Son sürüme göre teslim durumu (DOM-BEC-044)
+             * @enum {string}
+             */
+            status: "pending" | "submitted" | "late" | "not_submitted";
+            versionCount: number;
+            latestVersion: {
+                /** Format: uuid */
+                id: string;
+                number: number;
+                /** Format: date-time */
+                submittedAt: string;
+                /** @description Sürümün süresinden sonra, geç kabul içinde gönderildi (DOM-BEC-044) */
+                late: boolean;
+                /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
+                wordCount: components["schemas"]["TaskWordCount"] | null;
+            } | null;
+            /** @description Teslim kaydının satır sürümü */
+            rowVersion: number;
+            /** @description Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez */
+            versions: {
+                /** Format: uuid */
+                id: string;
+                number: number;
+                /** Format: date-time */
+                submittedAt: string;
+                /** @description Sürümün süresinden sonra, geç kabul içinde gönderildi (DOM-BEC-044) */
+                late: boolean;
+                /** @description Yazmada sözcük sayısı; saklanmaz, okunurken */
+                wordCount: components["schemas"]["TaskWordCount"] | null;
+                /** @description Gönderilen metin; değişmez */
+                body: string | null;
+            }[];
+            /** @description Yeni sürüm hakkı (core `versionAllowance`) */
+            allowance: {
+                limit: number;
+                used: number;
+                remaining: number;
+                resubmissionOpen: boolean;
+                canSubmit: boolean;
+                blockedBy: ("limit" | "graded") | null;
+            } | null;
+        };
+        TaskDraft: {
+            /** Format: uuid */
+            assignmentId: string;
+            body: string;
+            /** @description Taslağın iyimser kilit sürümü; sonraki kayıtta `If-Match` olarak gönderilir */
+            revision: number;
+            /** Format: date-time */
+            savedAt: string;
+            wordCount: components["schemas"]["TaskWordCount"] | null;
         };
     };
     responses: never;
@@ -20595,6 +20863,477 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["TaskAttemptDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTaskSubmissions: {
+        parameters: {
+            query: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Atama (zorunlu) */
+                assignmentId: string;
+                /** @description Kursiyer süzgeci; okuma kapsamı dışındaki kursiyer boş liste verir */
+                learnerId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmission"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTaskSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Teslim kimliği */
+                submissionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmissionDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTaskDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Taslak yoksa `null` */
+                        data: components["schemas"]["TaskDraft"] | null;
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    saveTaskDraft: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Taslak metni; boş olabilir */
+                    body: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskDraft"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitTaskSubmission: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    submissionKind: "text";
+                    /** @description Teslim metni; boş olamaz, gönderildikten sonra değişmez */
+                    body: string;
+                } | {
+                    /** @enum {string} */
+                    submissionKind: "file";
+                    fileIds: string[];
+                } | {
+                    /** @enum {string} */
+                    submissionKind: "audio";
+                    recordingFileId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmissionDetail"];
                     };
                 };
             };

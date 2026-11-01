@@ -1218,7 +1218,7 @@ export function insertResubmissionRequest(
   )
 }
 
-type StoredSubmissionWork = {
+export type StoredSubmissionWork = {
   submission: StoredSubmission
   versions: VersionRow[]
   resubmissions: ResubmissionRequestRow[]

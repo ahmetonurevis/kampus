@@ -430,6 +430,8 @@ describe('yazma uçları', () => {
         // Görev denemesi başlatma ve teslimi (routes/task-attempts.ts; DOM-BEC-042, 043).
         'POST /api/v1/task-assignments/{assignmentId}/attempts',
         'POST /api/v1/task-attempts/{attemptId}/submit',
+        // Yazma görevi teslimi: yeni değişmez sürüm (routes/task-submissions.ts; DOM-BEC-040).
+        'POST /api/v1/task-assignments/{assignmentId}/submissions',
         // Aday oluşturma (routes/prospects.ts; DOM-KAY-002).
         'POST /api/v1/prospects',
         // Kesin kayıt: öğrenci, taksit ve sözleşme oluşturur (DOM-KAY-011, DOM-KAY-035).

@@ -13,9 +13,12 @@ import { useApiCommand } from './use-api-command.ts'
 // İki komut da `exclusive`: yollu `issues` (dolu saat `slotId`, eksik gerekçe `reason`, yanlış geçiş
 // `status`) yalnız form alanında görünür, toast çıkmaz; yolsuz hata tek toast olur.
 
-type JsonBody<TOperation extends keyof operations> = NonNullable<
-  operations[TOperation]['requestBody']
->['content']['application/json']
+type JsonBody<TOperation extends keyof operations> =
+  NonNullable<operations[TOperation]['requestBody']> extends {
+    content: { 'application/json': infer TBody }
+  }
+    ? TBody
+    : never
 
 export type BookAppointmentBody = JsonBody<'bookAppointment'>
 export type UpdateAppointmentBody = JsonBody<'updateAppointment'>

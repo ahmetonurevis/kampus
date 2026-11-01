@@ -22,9 +22,12 @@ import { useApiQuery } from './use-api-query.ts'
 export const RUBRICS_KEY = 'rubrics'
 export const RUBRIC_INVALIDATES = [[RUBRICS_KEY]] as const
 
-type JsonBody<TOperation extends keyof operations> = NonNullable<
-  operations[TOperation]['requestBody']
->['content']['application/json']
+type JsonBody<TOperation extends keyof operations> =
+  NonNullable<operations[TOperation]['requestBody']> extends {
+    content: { 'application/json': infer TBody }
+  }
+    ? TBody
+    : never
 
 export type RubricListQuery = NonNullable<operations['listRubrics']['parameters']['query']>
 export type RubricBody = JsonBody<'createRubric'>

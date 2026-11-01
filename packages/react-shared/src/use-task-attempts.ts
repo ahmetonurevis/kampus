@@ -28,9 +28,12 @@ export const TASK_ATTEMPT_INVALIDATES = [[TASK_ATTEMPTS_KEY], [TASK_ASSIGNMENTS_
 /** Otomatik cevap kaydı yalnız denemeleri tazeler (atama listesi her kayıtta yeniden çekilmez). */
 export const TASK_ATTEMPT_ANSWER_INVALIDATES = [[TASK_ATTEMPTS_KEY]] as const
 
-type JsonBody<TOperation extends keyof operations> = NonNullable<
-  operations[TOperation]['requestBody']
->['content']['application/json']
+type JsonBody<TOperation extends keyof operations> =
+  NonNullable<operations[TOperation]['requestBody']> extends {
+    content: { 'application/json': infer TBody }
+  }
+    ? TBody
+    : never
 
 export type TaskAttemptListQuery = NonNullable<
   operations['listTaskAttempts']['parameters']['query']

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { check, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { bigint, check, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 
 import { institutions } from './auth.ts'
 
@@ -16,6 +16,12 @@ export const institutionSettings = pgTable(
       .primaryKey()
       .references(() => institutions.id, { onDelete: 'cascade' }),
     academicYear: integer('academic_year').notNull(),
+    /**
+     * Kurumun dosya depolama kotası, bayt (ADR 0003 karar 3, DOM-KYN-004). Boşsa platform
+     * varsayılanı (`DEFAULT_STORAGE_QUOTA_BYTES`, 50 GB; Açık soru 6-a) geçerlidir.
+     * TODO(F3c2-quota): platform yöneticisinin kotayı değiştirdiği uç ve ekran.
+     */
+    storageQuotaBytes: bigint('storage_quota_bytes', { mode: 'number' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
@@ -25,6 +31,10 @@ export const institutionSettings = pgTable(
     check(
       'institution_settings_academic_year_check',
       sql`${table.academicYear} between 2000 and 2100`,
+    ),
+    check(
+      'institution_settings_storage_quota_bytes_check',
+      sql`${table.storageQuotaBytes} is null or ${table.storageQuotaBytes} > 0`,
     ),
   ],
 )

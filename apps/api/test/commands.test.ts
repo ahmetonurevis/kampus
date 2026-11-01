@@ -446,6 +446,8 @@ describe('yazma uçları', () => {
         'POST /api/v1/prospects',
         // Kesin kayıt: öğrenci, taksit ve sözleşme oluşturur (DOM-KAY-011, DOM-KAY-035).
         'POST /api/v1/prospects/{prospectId}/enroll',
+        // Dosya yükleme: yeniden denemede ikinci nesne ve satır açılmaz (routes/files.ts; ADR 0003).
+        'POST /api/v1/files',
       ]
       assert.deepEqual(required.sort(), expected.sort())
     })

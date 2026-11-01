@@ -97,6 +97,14 @@ export const configSchema = z
     TRUSTED_ORIGINS: csv.default(['kampus://']),
     /** Yalnız `db:seed`: demo kullanıcılarının parolası. Üretimde verilmezse tohum çalışmaz. */
     DEMO_PASSWORD: optional(z.string().min(12)),
+    /**
+     * Dosya deposu sürücüsü (ADR 0003 karar 1). Bugün yalnız `disk`.
+     * TODO(F3c2-s3): `s3` sürücüsü ve `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`,
+     * `S3_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_URL` doğrulaması.
+     */
+    STORAGE_DRIVER: z.enum(['disk']).default('disk'),
+    /** `disk` sürücüsünün kök klasörü (göreliyse API'nin çalışma klasörüne göre); üretimde zorunlu. */
+    STORAGE_DIR: optional(z.string().min(1)),
   })
   .superRefine((config, ctx) => {
     if (config.NODE_ENV !== 'production') return
@@ -104,6 +112,8 @@ export const configSchema = z
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_URL'], message: 'required' })
     if (isPlaceholderSecret(config.BETTER_AUTH_SECRET))
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_SECRET'], message: 'placeholder' })
+    if (config.STORAGE_DRIVER === 'disk' && !config.STORAGE_DIR)
+      ctx.addIssue({ code: 'custom', path: ['STORAGE_DIR'], message: 'required' })
   })
 
 export type Config = z.infer<typeof configSchema>
@@ -141,6 +151,14 @@ export function loadTestPgUrl(
 
 export function publicUrl(config: Config): string {
   return config.BETTER_AUTH_URL ?? `http://localhost:${config.PORT}`
+}
+
+/** Yerel geliştirme ve testte `STORAGE_DIR` verilmezse kullanılan klasör (git'e girmez). */
+export const DEFAULT_STORAGE_DIR = 'var/storage'
+
+/** Disk deposunun kök klasörü: verilen değer veya üretim dışı varsayılan. */
+export function storageDir(config: Config): string {
+  return config.STORAGE_DIR ?? DEFAULT_STORAGE_DIR
 }
 
 /** Geliştirme kolaylıkları (Expo Go kökenleri, API belgesi) yalnız açıkça bu ortamlarda açılır. */

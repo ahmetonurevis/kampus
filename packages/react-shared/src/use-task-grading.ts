@@ -30,9 +30,12 @@ import { TASK_SUBMISSIONS_KEY } from './use-task-submissions.ts'
 /** Puan ve istek teslimi, listeyi ve kuyruğu değiştirir. */
 export const TASK_GRADING_INVALIDATES = [[TASK_SUBMISSIONS_KEY]] as const
 
-type JsonBody<TOperation extends keyof operations> = NonNullable<
-  operations[TOperation]['requestBody']
->['content']['application/json']
+type JsonBody<TOperation extends keyof operations> =
+  NonNullable<operations[TOperation]['requestBody']> extends {
+    content: { 'application/json': infer TBody }
+  }
+    ? TBody
+    : never
 
 export type GradingQueueQuery = NonNullable<operations['listGradingQueue']['parameters']['query']>
 export type TaskScore = components['schemas']['TaskScore']

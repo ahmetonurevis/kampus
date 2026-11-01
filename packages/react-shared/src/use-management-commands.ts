@@ -9,9 +9,12 @@ import { useApiCommand } from './use-api-command.ts'
 // `POST …/restore`; yalnız `yonetici`, core `branch.save` `class.save` `teacher.save`
 // `record.archive` `record.restore`). Çekirdek kayıttır: modül denetimi yoktur.
 
-type JsonBody<TOperation extends keyof operations> = NonNullable<
-  operations[TOperation]['requestBody']
->['content']['application/json']
+type JsonBody<TOperation extends keyof operations> =
+  NonNullable<operations[TOperation]['requestBody']> extends {
+    content: { 'application/json': infer TBody }
+  }
+    ? TBody
+    : never
 
 export type BranchBody = JsonBody<'createBranch'>
 export type TeacherBody = JsonBody<'createTeacher'>

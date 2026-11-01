@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
-import { isDevelopmentLike, loadConfig, useSecureCookies } from '../src/config.ts'
+import {
+  DEFAULT_STORAGE_DIR,
+  isDevelopmentLike,
+  loadConfig,
+  storageDir,
+  useSecureCookies,
+} from '../src/config.ts'
 
 const base = {
   NODE_ENV: 'development',
@@ -36,6 +42,7 @@ describe('ortam yapılandırması', () => {
     NODE_ENV: 'production',
     BETTER_AUTH_URL: 'https://api.kampus.example',
     BETTER_AUTH_SECRET: 'b4Jx9-uretim-icin-uretilmis-rastgele-deger-Qm2',
+    STORAGE_DIR: '/srv/kampus/storage',
   }
 
   test('üretimde örnek veya bilinen gizli anahtar reddedilir', () => {
@@ -88,6 +95,17 @@ describe('ortam yapılandırması', () => {
     assert.deepEqual(trust('loopback,fd00::/8'), ['loopback', 'fd00::/8'])
     for (const invalid of ['true', '*', '10.0.0.0/33', '10.0.0.0/8/1', 'vekil.example', '::1/129'])
       assert.throws(() => trust(invalid), /TRUST_PROXY/, invalid)
+  })
+
+  test('ADR 0003: disk sürücüsü üretimde STORAGE_DIR ister; geliştirmede varsayılan klasör', () => {
+    const withoutDir: Record<string, string> = { ...production }
+    delete withoutDir.STORAGE_DIR
+    assert.throws(() => loadConfig(withoutDir), /STORAGE_DIR/)
+    assert.throws(() => loadConfig({ ...production, STORAGE_DRIVER: 's3' }), /STORAGE_DRIVER/)
+    const development = loadConfig(base)
+    assert.equal(development.STORAGE_DRIVER, 'disk')
+    assert.equal(storageDir(development), DEFAULT_STORAGE_DIR)
+    assert.equal(storageDir(loadConfig(production)), '/srv/kampus/storage')
   })
 
   test('hata mesajı değişken adlarını verir, değerleri sızdırmaz', () => {

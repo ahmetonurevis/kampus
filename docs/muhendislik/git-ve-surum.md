@@ -108,7 +108,7 @@ etki: minor
 
 ### 7.2a Görev tablosu ve durum
 
-- Her dalga (D1–D5, Sonra) bir tablodur: `ID | Görev | … | Durum | Dal / commit | Not` (ek sütun, ör. `Boyut`, serbesttir; hook sütunları başlıktan okur). ID kalıcıdır (`OG-001`, `ON-001`); yeni görev dalga tablosunun sonuna dosyadaki en büyük numaradan sonrakiyle eklenir, numara yeniden verilmez, vazgeçilen görev `iptal` olur.
+- Her dalga (D1–D5, Sonra) bir tablodur: `ID | Görev | … | Durum | Dal / commit | Not` (`Boyut` S/M/L; ek sütun serbesttir, hook sütunları başlıktan okur). ID kalıcıdır (`OG-001`, `ON-001`); yeni görev dalga tablosunun sonuna dosyadaki en büyük numaradan sonrakiyle eklenir, numara yeniden verilmez, vazgeçilen görev `iptal` olur.
 - Durum yalnız `bekliyor`, `çalışılıyor`, `revizyon` (bitmişti; inceleme, kullanıcı ya da karşı taraf düzeltme istedi; Not'a gerekçe ya da `#issue`), `engelli` (Not'a beklenen ID: "ON-014 bekleniyor"; o bitince `bekliyor`a döner), `bitti`, `iptal`.
 - Başlarken (`is-baslat`) sıradaki `bekliyor` görev (önce dalga, sonra bağımlılık) `çalışılıyor` olur, Dal sütununa dal adı yazılır; bu tek satır güncel entegrasyon dalında küçük bir commit'tir ("Görev durumunu güncelle: OG-012 çalışılıyor") ve dal açılmadan gönderilir. Onur'un oturumu push'u kendisi yapar; Oğuzhan tarafında push'u kullanıcı yapar.
 - Bitirirken (`entegre-et`) entegrasyona birleştirme commit'inin hemen arkasındaki commit satırı `bitti` yapar, Dal / commit sütununa birleştirmenin kısa hash'ini yazar.

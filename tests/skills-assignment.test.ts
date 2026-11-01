@@ -642,7 +642,8 @@ describe('yayım sonrası değişiklik (DOM-BEC-041, 042)', () => {
   test('DOM-BEC-041 görev türü ve sayım politikası yayımdan sonra değişmez', () => {
     for (const key of ['attempts', 'kind']) {
       assert.throws(
-        () => planAssignmentChange({ assignment: fixed, patch: { [key]: { kind: 'practice' } } }),
+        () =>
+          planAssignmentChange({ assignment: fixed, now, patch: { [key]: { kind: 'practice' } } }),
         (error: unknown) =>
           isDomainError('assignment_setting_frozen', 'conflict')(error) &&
           (error as Error).message.includes('Görev türü'),
@@ -655,7 +656,7 @@ describe('yayım sonrası değişiklik (DOM-BEC-041, 042)', () => {
       'listeningPlays',
     ]) {
       assert.throws(
-        () => planAssignmentChange({ assignment: fixed, patch: { [key]: null } }),
+        () => planAssignmentChange({ assignment: fixed, now, patch: { [key]: null } }),
         isDomainError('assignment_setting_frozen', 'conflict'),
       )
     }
@@ -664,23 +665,25 @@ describe('yayım sonrası değişiklik (DOM-BEC-041, 042)', () => {
   test('DOM-BEC-044 son teslim ve geç kabul yalnız uzatılır', () => {
     const later = plusMs(due, DAY)
     assert.deepEqual(
-      planAssignmentChange({ assignment: fixed, patch: { deadline: { dueAt: later } } }),
+      planAssignmentChange({ assignment: fixed, now, patch: { deadline: { dueAt: later } } }),
       { deadline: { dueAt: later, lateAcceptanceDays: 0 } },
     )
     assert.equal(
       planAssignmentChange({
         assignment: fixed,
+        now,
         patch: { deadline: { dueAt: due, lateAcceptanceDays: 2 } },
       }).deadline.lateAcceptanceDays,
       2,
     )
-    assert.deepEqual(planAssignmentChange({ assignment: fixed, patch: {} }), {
+    assert.deepEqual(planAssignmentChange({ assignment: fixed, now, patch: {} }), {
       deadline: fixed.deadline,
     })
     assert.throws(
       () =>
         planAssignmentChange({
           assignment: fixed,
+          now,
           patch: { deadline: { dueAt: plusMs(due, -1) } },
         }),
       isDomainError('deadline_shortened'),
@@ -690,26 +693,83 @@ describe('yayım sonrası değişiklik (DOM-BEC-041, 042)', () => {
       () =>
         planAssignmentChange({
           assignment: lenient,
+          now,
           patch: { deadline: { dueAt: plusMs(due, DAY), lateAcceptanceDays: 1 } },
         }),
       isDomainError('deadline_shortened'),
     )
     assert.throws(
-      () => planAssignmentChange({ assignment: fixed, patch: { deadline: { dueAt: null } } }),
+      () => planAssignmentChange({ assignment: fixed, now, patch: { deadline: { dueAt: null } } }),
       isDomainError('deadline_shortened'),
+    )
+  })
+
+  test('DOM-BEC-045 değerlendirmenin cevap anahtarı açılınca son teslim ve geç kabul uzatılamaz', () => {
+    const closed = plusMs(due, 1)
+    for (const deadline of [{ dueAt: plusMs(due, DAY) }, { dueAt: due, lateAcceptanceDays: 2 }]) {
+      assert.throws(
+        () => planAssignmentChange({ assignment: fixed, now: closed, patch: { deadline } }),
+        (error: unknown) =>
+          isDomainError('answer_key_released', 'conflict')(error) &&
+          (error as Error).message.includes('Cevap anahtarı'),
+      )
+    }
+    // Kapanış anında teslim hâlâ alınır, anahtar kapalıdır: uzatma serbest.
+    assert.equal(
+      planAssignmentChange({
+        assignment: fixed,
+        now: due,
+        patch: { deadline: { dueAt: plusMs(due, DAY) } },
+      }).deadline.dueAt,
+      plusMs(due, DAY),
+    )
+    // Aynı tarih değişiklik değildir.
+    assert.deepEqual(
+      planAssignmentChange({ assignment: fixed, now: closed, patch: { deadline: fixed.deadline } }),
+      { deadline: fixed.deadline },
+    )
+    // Geç kabul süresi bitmeden anahtar açılmaz.
+    const lenient = { ...fixed, deadline: { dueAt: due, lateAcceptanceDays: 2 } }
+    assert.equal(
+      planAssignmentChange({
+        assignment: lenient,
+        now: closed,
+        patch: { deadline: { dueAt: due, lateAcceptanceDays: 3 } },
+      }).deadline.lateAcceptanceDays,
+      3,
+    )
+    // Öğretmen puanlı görevin anahtarı yoktur; kapanıştan sonra da uzatılır.
+    const graded = resolve(homework, writingSettings(), rubric())
+    assert.equal(
+      planAssignmentChange({
+        assignment: graded,
+        now: closed,
+        patch: { deadline: { dueAt: plusMs(due, DAY) } },
+      }).deadline.dueAt,
+      plusMs(due, DAY),
+    )
+    // Alıştırmada anahtar kursiyerin kendi denemesiyle açılır; atama düzeyinde uzatma serbesttir.
+    const practice = resolve(quiz, settings({ attempts: { kind: 'practice' } }))
+    assert.equal(
+      planAssignmentChange({
+        assignment: practice,
+        now: closed,
+        patch: { deadline: { dueAt: plusMs(due, DAY) } },
+      }).deadline.dueAt,
+      plusMs(due, DAY),
     )
   })
 
   test('DOM-BEC-041 alıştırmanın son tarihi kaldırılabilir, sonradan eklenemez', () => {
     const practice = resolve(quiz, settings({ attempts: { kind: 'practice' } }))
     assert.equal(
-      planAssignmentChange({ assignment: practice, patch: { deadline: { dueAt: null } } }).deadline
-        .dueAt,
+      planAssignmentChange({ assignment: practice, now, patch: { deadline: { dueAt: null } } })
+        .deadline.dueAt,
       null,
     )
     const open = { ...practice, deadline: { dueAt: null, lateAcceptanceDays: 0 } }
     assert.throws(
-      () => planAssignmentChange({ assignment: open, patch: { deadline: { dueAt: due } } }),
+      () => planAssignmentChange({ assignment: open, now, patch: { deadline: { dueAt: due } } }),
       isDomainError('deadline_shortened'),
     )
   })

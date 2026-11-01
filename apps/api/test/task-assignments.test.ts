@@ -80,11 +80,12 @@ describe('görev atama uçları', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
+  let now = FIXED_NOW
   const logs: string[] = []
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
-    app = await buildTestApp(db, { logs })
+    app = await buildTestApp(db, { logs, clock: () => now })
   })
   after(async () => {
     await app.close()
@@ -893,8 +894,8 @@ describe('görev atama uçları', () => {
           eq(records.id, 's-1'),
         ),
       )
-    // TODO(F4b3-sinif-degisimi): eski sınıfta teslim etmiş öğrenci kendi teslimini F4b3 deneme ve
-    // teslim uçlarında görür; atama listesi yalnız güncel hedefi izler.
+    // Atama listesi yalnız güncel hedefi izler; eski sınıfta yapılan deneme ve teslim deneme/teslim
+    // uçlarında görünür (F4b3a; test/task-attempts.test.ts, test/task-submissions.test.ts).
     for (const cookie of [t.cookies.student, t.cookies.parent])
       assert.deepEqual(await seen(cookie), [toB.id])
     fails(await call('GET', `/task-assignments/${toA.id}`, t.cookies.student), 404, 'not_found')
@@ -1024,6 +1025,45 @@ describe('görev atama uçları', () => {
     assert.equal(first.statusCode, 200, first.body)
     assert.equal(replay.headers['idempotent-replayed'], 'true')
     assert.equal(replay.json().data.rowVersion, 3)
+  })
+
+  test('DOM-BEC-045: değerlendirmenin cevap anahtarı açılınca son teslim uzatılamaz 409 answer_key_released; yazma görevi ve kapanış öncesi uzar; kayıt değişmez', async () => {
+    const t = await tenant()
+    const { versions } = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      versions: [{ status: 'published', input: listeningQuestion() }],
+    })
+    const quiz = await ok(
+      await create(t.cookies.teacher, {
+        resourceVersionId: versions[0]!.id,
+        settings: { deadline: { dueAt: DUE } },
+        targets: [{ kind: 'class', id: '9-A' }],
+      }),
+      201,
+    )
+    const written = await ok(await create(t.cookies.teacher, writing(t)), 201)
+    try {
+      // Kapanıştan sonra (geç kabul yok): anahtar açık, uzatma kopyaya kapı açardı.
+      now = new Date(new Date(DUE).getTime() + 60_000)
+      const before = await snapshot(t.institution.id)
+      for (const deadline of [{ dueAt: LATER_DUE }, { dueAt: DUE, lateAcceptanceDays: 2 }])
+        for (const cookie of [t.cookies.teacher, t.cookies.admin])
+          fails(await change(quiz.id, cookie, { deadline }, 1), 409, 'answer_key_released')
+      assert.deepEqual(await snapshot(t.institution.id), before)
+      // Anahtarı olmayan yazma görevi kapanıştan sonra da uzatılır.
+      const extended = await ok(
+        await change(written.id, t.cookies.teacher, { deadline: { dueAt: LATER_DUE } }, 1),
+      )
+      assert.equal(extended.deadline.dueAt, LATER_DUE)
+      // Kapanış anında teslim hâlâ alınır, anahtar kapalıdır: uzatma serbest.
+      now = new Date(DUE)
+      const open = await ok(
+        await change(quiz.id, t.cookies.teacher, { deadline: { dueAt: LATER_DUE } }, 1),
+      )
+      assert.equal(open.deadline.dueAt, LATER_DUE)
+    } finally {
+      now = FIXED_NOW
+    }
   })
 
   test('IST-034: kurumlar arası: B kurumunun atamasına, içerik ve rubrik sürümüne erişim 404; listede B kaydı yok; B satırları değişmez', async () => {

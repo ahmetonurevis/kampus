@@ -232,6 +232,11 @@ export interface CommandSteps<TVariables, TData> {
   version?: ((variables: TVariables) => number | null | undefined) | undefined
   /** Çakışmada ilgili sorguları tazeler. */
   refresh: () => Promise<void>
+  /**
+   * 409 dışında ekrandaki verinin eskidiğini bildiren hata (ör. taslak başka pencerede yazıldı:
+   * 400 `if_match_required`; deneme süresi doldu: 422). `true` dönerse sorgular tazelenir.
+   */
+  refreshOn?: ((error: ApiError) => boolean) | undefined
   messages?: CommandMessages | undefined
   /**
    * Formun açık tercihi: hata kodundan bağımsız, `issues` maddeleri (400 ve 422/409/403) alana
@@ -280,7 +285,7 @@ export async function runCommand<TVariables, TData>(
       exclusive: steps.exclusive ?? false,
       hasForm: targets.setError !== undefined,
     })
-    if (feedback.refresh) await steps.refresh()
+    if (feedback.refresh || steps.refreshOn?.(error)) await steps.refresh()
     reportCommandError(error, feedback, targets)
     return { status: 'failed', error }
   } finally {

@@ -52,7 +52,7 @@
 - **Gerekçe:** Hesaplanabilen değer saklanmaz; saklanan puan anahtar düzeltilince bayatlar.
 - **Kaynak:** Proje kuralı (quiz puanı cevaplardan hesaplanır); eksi puan yokluğu işletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `scoreAttempt`/`scoreItem` (altı soru türü, madde başına puan, eksi puan yok, saklanmaz) ve `normalizeShortAnswer(değer, dil)` ve `answerLocaleForTags` (NFC, dile göre küçültme `tr-TR`/`en-US`, Unicode boşluk, tipografik kesme işareti ve tırnak tek karakter; diğer noktalama korunur; okul kurumunda İngilizce dersinin beceri etiketsiz içeriği `tr` olur, `TODO(beceri-ders-dili)`); sıralamada madde konumdur (`TODO(beceri-siralama-puani)`). Eski demo hâlâ çelişiyor: `gradeQuiz` (`packages/school-core/src/lib/domain.ts`) sonucu denemeye ve not kaydına kopyalanır (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `scoreAttempt`/`scoreItem` (altı soru türü, madde başına puan, eksi puan yok, saklanmaz) ve `normalizeShortAnswer(değer, dil)` ve `answerLocaleForTags` (NFC, dile göre küçültme `tr-TR`/`en-US`, Unicode boşluk, tipografik kesme işareti ve tırnak tek karakter; diğer noktalama korunur; okul kurumunda İngilizce dersinin beceri etiketsiz içeriği `tr` olur, `TODO(beceri-ders-dili)`); sıralamada madde konumdur (`TODO(beceri-siralama-puani)`). API: deneme uçları puanı saklamaz, her okumada cevaplardan ve atamanın puanlama sürümünden hesaplar; teslim gövdesindeki puan 400 (`apps/api/src/services/task-attempts.ts`, `POST /api/v1/task-attempts/:attemptId/submit`). Eski demo hâlâ çelişiyor: `gradeQuiz` (`packages/school-core/src/lib/domain.ts`) sonucu denemeye ve not kaydına kopyalanır (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
 
 ### DOM-BEC-011 · Anahtar düzeltmesi
 
@@ -94,7 +94,7 @@
 - **Gerekçe:** Otomatik puanlamanın geçerliliği ve hatası kursiyere karşı denetlenemez; çocuk sesi ve yazısının yurt dışı/üçüncü taraf hizmete aktarımı ayrı hukuki dayanak ister.
 - **Kaynak:** ADR 0001 karar 8 (dış SaaS yok); KVKK md. 8–9 (aktarım) — yurt dışı aktarım koşulları **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `packages/school-core/src/skills/scoring.ts` `scoringModeFor`/`assertAutoScored` otomatik puanı yalnız soru, quiz ve alıştırma setine açar; `packages/school-core/src/skills/submission.ts` `wordCountCheck` yalnız uyarı verir, bant önermez.
+- **Kodda:** kısmen — `packages/school-core/src/skills/scoring.ts` `scoringModeFor`/`assertAutoScored` otomatik puanı yalnız soru, quiz ve alıştırma setine açar; `packages/school-core/src/skills/submission.ts` `wordCountCheck` yalnız uyarı verir, bant önermez. API: yazma teslimi (`POST /api/v1/task-assignments/:assignmentId/submissions`, `services/task-submissions.ts`) puanlanmaz, yanıtta puan alanı yoktur; deneme uçları yazma görevine 422 `not_auto_scored` verir. Rubrik puanlama ucu F4b3b'dedir.
 
 ### DOM-BEC-024 · İkinci puanlayıcı
 
@@ -162,7 +162,7 @@
 - **Gerekçe:** Teslimin üzerine yazmak öğretmenin neyi okuduğunu belirsizleştirir ve itirazda kanıt bırakmaz.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/submission.ts` `planSubmissionVersion` (tek teslim kaydı, değişmez yeni sürüm), `versionAllowance` (sınır 1–5, yeniden teslim isteği sınıra sayılmaz), `assertGradableVersion` (yalnız son sürüm); puanlanan sürüm `skills/rubric.ts` `gradedVersionNumbers` (ilk puanı olan sürüm), yeniden teslim isteği ve kendi son tarihi `skills/assignment.ts` `planResubmissionRequest`/`deadlineForVersion` (en çok 14 gün, geç kabulsüz, `TODO(beceri-yeniden-teslim-suresi)`). Eski demo hâlâ çelişiyor: yeniden teslim dosya adını ve zamanı üzerine yazar (`apps/web/src/views/Learning.vue:222-248`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/submission.ts` `planSubmissionVersion` (tek teslim kaydı, değişmez yeni sürüm), `versionAllowance` (sınır 1–5, yeniden teslim isteği sınıra sayılmaz), `assertGradableVersion` (yalnız son sürüm); puanlanan sürüm `skills/rubric.ts` `gradedVersionNumbers` (ilk puanı olan sürüm), yeniden teslim isteği ve kendi son tarihi `skills/assignment.ts` `planResubmissionRequest`/`deadlineForVersion` (en çok 14 gün, geç kabulsüz, `TODO(beceri-yeniden-teslim-suresi)`). API: `POST /api/v1/task-assignments/:assignmentId/submissions` ilk gönderimde tek teslim kaydını açar, sonra değişmez sürüm ekler (sınır dolunca 422 `version_limit_reached`, puanlı sürümde 409 `resubmission_not_requested`; metin tetikleyiciyle değişmez); okuma `GET /api/v1/task-submissions` ve `/:submissionId` (sürümler eskiden yeniye, taslak dönmez); taslak `GET/PATCH /api/v1/task-assignments/:assignmentId/draft` (yalnız öğrenci; `services/task-submissions.ts`). Yeniden teslim isteği ucu F4b3b'dedir. Eski demo hâlâ çelişiyor: yeniden teslim dosya adını ve zamanı üzerine yazar (`apps/web/src/views/Learning.vue:222-248`).
 
 ### DOM-BEC-041 · Görev türü: değerlendirme veya alıştırma
 
@@ -178,7 +178,7 @@
 - **Gerekçe:** Sınırsız deneme cevapları ezberletir; her denemenin ayrı not üretmesi ortalamayı bozar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `attemptRulesSchema` (hak 1–3, "en yüksek" yalnız hak 1'den büyükse), `planAttemptStart` (başlatılan her deneme hak tüketir, `TODO(beceri-deneme-sayimi)`), `countedAttempt`; hak ve politika atamada sabitlenir ve değişmez (`skills/assignment.ts` `resolveAssignmentSettings`, `planAssignmentChange`; API `POST /api/v1/task-assignments`, değiştirme `PATCH` 409 `assignment_setting_frozen`). Deneme uçları F4b3'tedir. Eski demo hâlâ çelişiyor: deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `attemptRulesSchema` (hak 1–3, "en yüksek" yalnız hak 1'den büyükse), `planAttemptStart` (başlatılan her deneme hak tüketir, `TODO(beceri-deneme-sayimi)`), `countedAttempt`; hak ve politika atamada sabitlenir ve değişmez (`skills/assignment.ts` `resolveAssignmentSettings`, `planAssignmentChange`; API `POST /api/v1/task-assignments`, değiştirme `PATCH` 409 `assignment_setting_frozen`). API: `POST /api/v1/task-assignments/:assignmentId/attempts` (hak dolunca 422 `attempt_limit_reached`, eşzamanlı iki başlatma hakkı aşmaz), sayılan deneme okumada `countedAttempt` ile (`services/task-attempts.ts`). Eski demo hâlâ çelişiyor: deneme sınırı yok ve her deneme ayrı not kaydı ekler (`apps/web/src/views/Learning.vue:411-430`, `apps/mobile/src/screens/Quiz.tsx:49-69`).
 
 ### DOM-BEC-043 · Süreli görev
 
@@ -186,7 +186,7 @@
 - **Gerekçe:** İstemci saati değiştirilebilir; erişilebilirlik uyarlaması herkese açık bir istisna olmamalı.
 - **Kaynak:** İşletme kuralı; proje kuralı (doğrulama sunucuda).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `attemptEndsAt` (süre + `extraTimeSchema` ek süresi, teslim kapanışıyla sınırlı), `attemptState`, `planAnswerSave`, `planAttemptSubmit` (bitiş anında süre dolmuştur, kaydedilmiş cevaplarla teslim). Eski mobil süre istemci sayacıdır (`apps/mobile/src/screens/Quiz.tsx:49,75`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `attemptEndsAt` (süre + `extraTimeSchema` ek süresi, teslim kapanışıyla sınırlı), `attemptState`, `planAnswerSave`, `planAttemptSubmit` (bitiş anında süre dolmuştur, kaydedilmiş cevaplarla teslim). API: başlangıç ve bitiş sunucu saatidir; `PATCH /api/v1/task-attempts/:attemptId` süre dolunca 422 `attempt_time_over`, teslim süre dolduysa kaydedilmiş cevaplarla bitiş anında sayılır (`autoSubmitted`); ek süre şimdilik 0 (`TODO(F4b3-ek-sure)`). Eski mobil süre istemci sayacıdır (`apps/mobile/src/screens/Quiz.tsx:49,75`).
 
 ### DOM-BEC-044 · Geç teslim
 
@@ -194,15 +194,15 @@
 - **Gerekçe:** Gecikme görünür olmalı; mekanik kesinti mazereti ayırt etmez. Mevzuat yalnız proje için sıfır puan öngörür.
 - **Kaynak:** İşletme kuralı; OİKY md. 22/2 (proje teslim etmeyen sıfır).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `deadlineSchema` (geç kabul 0–7 gün, varsayılan kapalı, `TODO(beceri-gec-kabul-varsayilan)`), `istanbulLocalToUtc`, `submissionWindow`, `isLate` (son teslim anı dahil zamanında), `assertSubmissionOpen`; `packages/school-core/src/skills/submission.ts` `versionIsLate`, `submissionStatus` (`teslim edilmedi`); `skills/assignment.ts` değerlendirmede son teslimi zorunlu ve ileri tutar, yalnız uzatır (`TODO(beceri-atama-duzenleme)`), yeniden teslimin kendi son tarihi `deadlineForVersion`. API: `PATCH /api/v1/task-assignments/:assignmentId` yalnız son teslim ve geç kabulü uzatır (`If-Match` zorunlu; kısaltma 422 `deadline_shortened`). Eski demoda teslimde son tarih denetimi ve geç işareti yok (`apps/web/src/views/Learning.vue:222-248`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `deadlineSchema` (geç kabul 0–7 gün, varsayılan kapalı, `TODO(beceri-gec-kabul-varsayilan)`), `istanbulLocalToUtc`, `submissionWindow`, `isLate` (son teslim anı dahil zamanında), `assertSubmissionOpen`; `packages/school-core/src/skills/submission.ts` `versionIsLate`, `submissionStatus` (`teslim edilmedi`); `skills/assignment.ts` değerlendirmede son teslimi zorunlu ve ileri tutar, yalnız uzatır (`TODO(beceri-atama-duzenleme)`), yeniden teslimin kendi son tarihi `deadlineForVersion`. API: `PATCH /api/v1/task-assignments/:assignmentId` yalnız son teslim ve geç kabulü uzatır (`If-Match` zorunlu; kısaltma 422 `deadline_shortened`). API: deneme ve yazma teslimi pencereyi core'dan alır (kapandıysa 422 `submission_closed`), geç kabuldeki deneme ve sürüm `late`, teslim durumu `submissionStatus` ile okunur (`services/task-attempts.ts`, `services/task-submissions.ts`). Eski demoda teslimde son tarih denetimi ve geç işareti yok (`apps/web/src/views/Learning.vue:222-248`).
 
 ### DOM-BEC-045 · Cevap ve geri bildirimin açılması
 
-- **Kural:** Otomatik görevde doğru cevaplar ve açıklamalar, görevin son teslim tarihi ve geç kabul süresi bitene kadar hiçbir kursiyere gösterilmez; kursiyer yalnız kendi puanını görür. Alıştırma türünde cevaplar deneme biter bitmez gösterilir. Öğretmen geri bildirimi puanlama tamamlanınca açılır.
+- **Kural:** Otomatik görevde doğru cevaplar ve açıklamalar, görevin son teslim tarihi ve geç kabul süresi bitene kadar hiçbir kursiyere gösterilmez; kursiyer yalnız kendi puanını görür. Alıştırma türünde cevaplar deneme biter bitmez gösterilir. Öğretmen geri bildirimi puanlama tamamlanınca açılır. Değerlendirmenin cevap anahtarı açıldıktan sonra son teslim ve geç kabul süresi uzatılamaz; uzatma, anahtarı görmüş kursiyerlerden sonra teslimi yeniden açardı. Kursiyer ve veli, öğretmen geri bildirimi açılmadan teslimin puanlandığını hiçbir yanıttan çıkaramaz.
 - **Gerekçe:** Erken açılan anahtar aynı grubun diğer kursiyerlerine kopya imkânı verir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `answerKeyReleased` (son tarihsiz değerlendirmede açılmaz, `TODO(beceri-suresiz-anahtar)`), `learnerResultLevel`, `teacherFeedbackReleased`. Eski demo hâlâ çelişiyor: sonuç ekranı açıklamayı deneme biter bitmez gösterir (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.tsx:109`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `answerKeyReleased` (son tarihsiz değerlendirmede açılmaz, `TODO(beceri-suresiz-anahtar)`), `learnerResultLevel`, `teacherFeedbackReleased`; anahtar açıldıktan sonra uzatma yasağı `skills/assignment.ts` `planAssignmentChange` (otomatik puanlı değerlendirmede 409 `answer_key_released`; anahtarı olmayan öğretmen puanlı görev uzar). API: `PATCH /api/v1/task-assignments/:assignmentId` uzatmayı 409 `answer_key_released` ile reddeder; yazma teslimi kursiyer ve veliye geri bildirim açılmadan `allowance.blockedBy: 'locked'` ve yeni sürümde genel 409 `submission_locked` döner (`services/task-submissions.ts`); deneme okuması kursiyer ve veliye `learnerResultLevel`, personele anahtarı yalnız `answerKeyReleased` iken döner (`GET /api/v1/task-attempts/:attemptId`). Eski demo hâlâ çelişiyor: sonuç ekranı açıklamayı deneme biter bitmez gösterir (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.tsx:109`).
 
 ### DOM-BEC-046 · Yazma teslimi metindir
 
@@ -210,7 +210,7 @@
 - **Gerekçe:** Metin teslimi sözcük sayısını, sürüm karşılaştırmasını ve erişilebilir okumayı mümkün kılar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/submission.ts` `planSubmissionVersion` (metin teslimi, el yazısında yalnız görüntü/PDF), `wordCountCheck` (sınır dışı uyarıyla kabul) ve `packages/school-core/src/content/resource.ts` `wordCount`. Eski demoda ödev yalnız dosya adı olarak saklanır (`apps/web/src/views/Learning.vue:232-240`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/submission.ts` `planSubmissionVersion` (metin teslimi, el yazısında yalnız görüntü/PDF), `wordCountCheck` (sınır dışı uyarıyla kabul) ve `packages/school-core/src/content/resource.ts` `wordCount`. API: yazma teslimi metindir (`submissionKind: 'text'`, 50.000 karakter); sürümde ve taslakta `wordCountCheck` uyarısı döner, metin reddedilmez; dosyalı ve sesli teslim `files` gelene kadar 422 `submission_kind_unavailable`. Eski demoda ödev yalnız dosya adı olarak saklanır (`apps/web/src/views/Learning.vue:232-240`).
 
 ## Ses kaydı ve kişisel veri
 

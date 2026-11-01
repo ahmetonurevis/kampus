@@ -76,8 +76,9 @@ import { contentReader } from './resources.ts'
 
 // TODO(F4b-rescore): `POST /task-assignments/:id/rescore` açılmadı. Core önizlemesi
 // (`previewRescore`/`planRescore`) hazır, ama (1) yeni sürümün sorularını eski cevaplardaki soru
-// sürümlerine eşleme kuralı tanımsız (core bunu servise bırakıyor), (2) deneme uçları (F4b3) yok,
-// (3) kursiyer ve veliye bildirim (DOM-KYN-033) altyapısı yok. Deneme uçlarıyla birlikte açılır.
+// sürümlerine eşleme kuralı tanımsız (core bunu servise bırakıyor), (2) kursiyer ve veliye
+// bildirim (DOM-KYN-033) altyapısı yok. Deneme uçları (F4b3a, `services/task-attempts.ts`) puanı
+// her okumada `scoringVersionId`'den hesapladığı için yeniden puanlama yalnız bu sürümü değiştirir.
 // TODO(F4b-atama-arsiv): Atama arşivi veya iptali için core planı yok; açık teslim ve denemeler
 // varken ne olacağı domain'de tanımlı değil. Core kuralı gelince `DELETE /task-assignments/:id`.
 
@@ -90,7 +91,7 @@ const CLASS_TARGETS = new Set(['class', 'group'])
 // değiştirir" kuralı burada; core'da `canReadAssignment`/`canManageAssignment` yok. Web ve mobil
 // aynı kuralı çalıştırsın diye core'a taşınır (semver + CHANGELOG); bu görevin kapsamı dışında.
 
-type Viewer =
+export type Viewer =
   | { kind: 'admin' }
   | {
       kind: 'teacher'
@@ -101,11 +102,13 @@ type Viewer =
     }
   | {
       kind: 'learner'
+      /** Okuma ikisinde aynıdır; deneme ve teslim yazması yalnız `ogrenci`'dedir. */
+      role: 'ogrenci' | 'veli'
       /** Kapsamdaki öğrenci → güncel sınıf/grup (öğrencide kendisi, velide çocukları). */
       classOf: ReadonlyMap<string, string>
     }
 
-async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
+export async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
   const { role, userId } = ctx.actor
   switch (role) {
     case 'yonetici':
@@ -119,6 +122,7 @@ async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
       const [scope, source] = await Promise.all([readScope(ctx), readSource(ctx)])
       return {
         kind: 'learner',
+        role,
         classOf: new Map(
           source.students
             .filter((student) => scope.studentIds.has(student.id))
@@ -136,11 +140,16 @@ async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
 /**
  * Atamanın kapsamdaki kursiyerleri (öğrenci hedefi veya güncel sınıfı/grubu hedefte). Sınıf/şube
  * hedefli atama o sınıfın güncel öğrencilerine görünür: sınıf değiştiren öğrenci yeni sınıfının
- * atamalarını görür, eski sınıfınınkini görmez (ADR 0004 karar 4 uygulama notu, F4b2b).
+ * atamalarını görür, eski sınıfınınkini görmez (ADR 0004 karar 4 uygulama notu, F4b2b). Eski
+ * sınıfta yaptığı denemeyi, teslimi ve puanı görmeye devam eder: deneme ve teslim okuması hedefe
+ * değil kayıt sahipliğine bakar; personel atamayı görüyorsa atamanın bütün deneme ve teslimlerini
+ * görür (`services/task-work.ts` `readableLearners`, F4b3a). Yeni deneme ve teslim yalnız
+ * hedeflenen kursiyere açıktır.
  */
-// TODO(F4b3-sinif-degisimi): Eski sınıfta teslim etmiş öğrenci kendi teslimini ve puanını F4b3
-// deneme/teslim uçlarında görür; atama görünürlüğü hedefin güncel sınıfla eşleşmesi olarak kalır.
-function targetedLearners(classOf: ReadonlyMap<string, string>, assignment: StoredAssignment) {
+export function targetedLearners(
+  classOf: ReadonlyMap<string, string>,
+  assignment: StoredAssignment,
+) {
   const students = new Set(assignment.targets.filter((t) => t.kind === 'student').map((t) => t.id))
   const classes = new Set(
     assignment.targets.filter((t) => CLASS_TARGETS.has(t.kind)).map((t) => t.id),
@@ -152,7 +161,7 @@ function targetedLearners(classOf: ReadonlyMap<string, string>, assignment: Stor
 }
 
 /** Hedef öğretmenin kapsamında mı: sınıf/grup hedefi kapsamdaki sınıf, öğrenci hedefi öğrencisi. */
-function teacherReaches(
+export function teacherReaches(
   viewer: Extract<Viewer, { kind: 'teacher' }>,
   target: StoredAssignment['targets'][number],
 ): boolean {
@@ -161,7 +170,7 @@ function teacherReaches(
     : viewer.studentIds.has(target.id)
 }
 
-function visible(viewer: Viewer, assignment: StoredAssignment): boolean {
+export function visible(viewer: Viewer, assignment: StoredAssignment): boolean {
   switch (viewer.kind) {
     case 'admin':
       return true
@@ -540,8 +549,9 @@ export async function createTaskAssignment(
 }
 
 /**
- * Atama değişikliği (core `planAssignmentChange`; DOM-BEC-041, 042, 044): yalnız son teslim ve geç
- * kabul uzar; sabitlenen sürüm ve ayarlar 409 `assignment_setting_frozen`. Değiştiren atayan veya
+ * Atama değişikliği (core `planAssignmentChange`; DOM-BEC-041, 042, 044, 045): yalnız son teslim ve
+ * geç kabul uzar; sabitlenen sürüm ve ayarlar 409 `assignment_setting_frozen`; değerlendirmenin
+ * cevap anahtarı açıldıysa (teslim kapandı) uzatma 409 `answer_key_released`. Değiştiren atayan veya
  * yöneticidir (DOM-YTK-028): kapsam dışı atama 404, ders verdiği sınıfı hedeflediği için görünen
  * ama başkasının ataması 403, ardından sürüm 409. `If-Match` atamanın `rowVersion`'ıdır.
  */
@@ -565,7 +575,7 @@ export async function updateTaskAssignment(
         if (!assignment || assignment.archivedAt !== null || !visible(viewer, assignment))
           throw new NotFoundError()
         return {
-          run: () => {
+          run: (_state, tools) => {
             // Yetki (403): görünür ama değiştiremeyen kişi (yalnız atayan ve yönetici).
             const manages =
               viewer.kind === 'admin' ||
@@ -573,7 +583,11 @@ export async function updateTaskAssignment(
             if (!manages) throw new ForbiddenError()
             // Sürüm (409).
             if (assignment.rowVersion !== input.expectedVersion) throw new ConflictError()
-            const { deadline } = planAssignmentChange({ assignment, patch: input.patch })
+            const { deadline } = planAssignmentChange({
+              assignment,
+              patch: input.patch,
+              now: tools.now,
+            })
             return { assignment, deadline }
           },
         }

@@ -20,8 +20,10 @@ import {
   applyRubricPublish,
   assignmentContentRefs,
   findAssignment,
+  findAttempt,
   findRubric,
   findRubricVersion,
+  findSubmission,
   insertAppeal,
   insertAssignment,
   insertAttempt,
@@ -35,9 +37,12 @@ import {
   insertSubmissionVersion,
   isSecondRatingRequested,
   listAssignments,
+  listAttempts,
+  listSubmissions,
   loadAppeals,
   loadAttempts,
   loadDraft,
+  loadLearnersAttempts,
   loadResourceAssignments,
   loadRubricVersions,
   loadScoreTransfers,
@@ -45,7 +50,9 @@ import {
   loadSubmissionScores,
   rubricUsageByVersion,
   rubricVersionUsage,
+  saveAttemptAnswers,
   saveDraft,
+  submitAttempt,
   updateAssignmentDeadline,
   updateRubricVersionDraft,
 } from '../src/db/skills.ts'
@@ -634,6 +641,153 @@ describe('beceri görevi deposu', () => {
       409,
       'version_conflict',
     )
+  })
+
+  test('DOM-BEC-010, DOM-BEC-042, DOM-BEC-043: deneme kimlikle ve sayfalı listede okunur; cevap ve teslim beklenen sürümle yazılır; teslimden sonra ve eski sürümle 409', async () => {
+    const { institutionId, otherId, chain: c } = await setup()
+    const other = 'test-s-diger'
+    const rows = [
+      { id: randomUUID(), learnerId: LEARNER, attemptNumber: 1 },
+      { id: randomUUID(), learnerId: LEARNER, attemptNumber: 2 },
+      { id: randomUUID(), learnerId: other, attemptNumber: 1 },
+    ]
+    for (const row of rows) {
+      await insertAttempt(
+        db,
+        institutionId,
+        { ...row, assignmentId: c.assignmentId, startedAt: iso(FIXED_NOW) },
+        FIXED_NOW,
+      )
+    }
+    const [first, second, third] = rows as [(typeof rows)[0], (typeof rows)[0], (typeof rows)[0]]
+    const found = await findAttempt(db, institutionId, first.id)
+    assert.equal(found?.attemptNumber, 1)
+    assert.equal(found?.rowVersion, 1)
+    assert.equal(await findAttempt(db, otherId, first.id), null)
+    assert.equal(await findAttempt(db, institutionId, 'uuid-degil'), null)
+    assert.equal(await findAttempt(db, institutionId, randomUUID()), null)
+
+    const query = { assignmentId: c.assignmentId, page: 1, pageSize: 2 }
+    const all = await listAttempts(db, institutionId, query)
+    assert.equal(all.total, 3)
+    assert.equal(all.rows.length, 2)
+    const pageTwo = await listAttempts(db, institutionId, { ...query, page: 2 })
+    assert.equal(pageTwo.rows.length, 1)
+    const own = await listAttempts(db, institutionId, { ...query, learnerIds: [LEARNER] })
+    assert.deepEqual(
+      own.rows.map((row) => [row.learnerId, row.attemptNumber]),
+      [
+        [LEARNER, 1],
+        [LEARNER, 2],
+      ],
+    )
+    assert.deepEqual(await listAttempts(db, institutionId, { ...query, learnerIds: [] }), {
+      rows: [],
+      total: 0,
+    })
+    assert.equal((await listAttempts(db, otherId, query)).total, 0)
+    assert.deepEqual(
+      (await loadLearnersAttempts(db, institutionId, c.assignmentId, [other, other])).map(
+        (row) => row.id,
+      ),
+      [third.id],
+    )
+    assert.deepEqual(await loadLearnersAttempts(db, institutionId, c.assignmentId, []), [])
+
+    const answers = { q1: { kind: 'choice', optionId: 'a' } } as never
+    const saved = await saveAttemptAnswers(
+      db,
+      institutionId,
+      { id: first.id, rowVersion: 1 },
+      answers,
+      LATER,
+    )
+    assert.equal(saved, 2)
+    await rejectsWith(
+      () => saveAttemptAnswers(db, institutionId, { id: first.id, rowVersion: 1 }, answers, LATER),
+      409,
+      'version_conflict',
+    )
+    const submitted = await submitAttempt(
+      db,
+      institutionId,
+      { id: first.id, rowVersion: 2 },
+      { answers, submittedAt: iso(LATER) },
+      LATER,
+    )
+    assert.equal(submitted, 3)
+    const after = await findAttempt(db, institutionId, first.id)
+    assert.deepEqual(
+      [after?.submittedAt, after?.answers, after?.rowVersion],
+      [iso(LATER), answers, 3],
+    )
+    // Teslim edilmiş deneme değişmez: güncel sürümle bile cevap ve ikinci teslim 409.
+    await rejectsWith(
+      () => saveAttemptAnswers(db, institutionId, { id: first.id, rowVersion: 3 }, {}, LATER),
+      409,
+      'version_conflict',
+    )
+    await rejectsWith(
+      () =>
+        submitAttempt(
+          db,
+          institutionId,
+          { id: first.id, rowVersion: 3 },
+          { answers: {}, submittedAt: iso(LATER) },
+          LATER,
+        ),
+      409,
+      'version_conflict',
+    )
+    await rejectsWith(
+      () => saveAttemptAnswers(db, otherId, { id: second.id, rowVersion: 1 }, {}, LATER),
+      409,
+      'version_conflict',
+    )
+    await db
+      .update(taskAttempts)
+      .set(archive)
+      .where(and(eq(taskAttempts.institutionId, institutionId), eq(taskAttempts.id, second.id)))
+    assert.equal(await findAttempt(db, institutionId, second.id), null)
+    assert.equal((await listAttempts(db, institutionId, query)).total, 2)
+  })
+
+  test('DOM-BEC-040: teslim kimlikle ve sayfalı listede sürümleriyle okunur; kapsam süzgeci, başka kurum ve arşivli teslim boş', async () => {
+    const { institutionId, otherId, chain: c } = await setup()
+    const found = await findSubmission(db, institutionId, c.submissionId)
+    assert.equal(found?.submission.learnerId, LEARNER)
+    assert.deepEqual(
+      found?.versions.map((row) => row.id),
+      [c.submissionVersionId],
+    )
+    assert.deepEqual(found, await loadSubmission(db, institutionId, c.assignmentId, LEARNER))
+    assert.equal(await findSubmission(db, otherId, c.submissionId), null)
+    assert.equal(await findSubmission(db, institutionId, 'uuid-degil'), null)
+
+    const query = { assignmentId: c.assignmentId, page: 1, pageSize: 20 }
+    const listed = await listSubmissions(db, institutionId, query)
+    assert.equal(listed.total, 1)
+    assert.deepEqual(listed.rows, [found])
+    assert.deepEqual(
+      await listSubmissions(db, institutionId, { ...query, learnerIds: ['test-s-yok'] }),
+      { rows: [], total: 0 },
+    )
+    assert.deepEqual(await listSubmissions(db, institutionId, { ...query, learnerIds: [] }), {
+      rows: [],
+      total: 0,
+    })
+    assert.equal((await listSubmissions(db, otherId, query)).total, 0)
+    await db
+      .update(taskSubmissions)
+      .set(archive)
+      .where(
+        and(
+          eq(taskSubmissions.institutionId, institutionId),
+          eq(taskSubmissions.id, c.submissionId),
+        ),
+      )
+    assert.equal(await findSubmission(db, institutionId, c.submissionId), null)
+    assert.equal((await listSubmissions(db, institutionId, query)).total, 0)
   })
 
   test('DOM-BEC-040: teslim tek; sürüm numarası tekil; yeniden teslim isteği son istekten okunur; dosyalı sürüm 422; arşivli teslim okunmaz', async () => {

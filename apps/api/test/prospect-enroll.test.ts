@@ -48,6 +48,7 @@ const WRITTEN = [
   'parents',
   'invoices',
   'contracts',
+  'notifications',
 ] as const satisfies readonly CollectionName[]
 
 /** Geçerli bir T.C. kimlik numarası (denetim haneleri doğru, gerçek kişiye ait değil). */
@@ -232,7 +233,8 @@ describe('kesin kayıt ucu', () => {
     assert.equal(data.entity.collection, 'students')
     const studentId: string = data.entity.id
     assert.equal(response.headers.location, `/api/v1/collections/students/${studentId}`)
-    assert.deepEqual(data.changes, { inserted: 6, updated: 1, archived: 0, restored: 0 })
+    // Öğrenci, veli, üç taksit, sözleşme ve veliye kayıt bildirimi (F6a, DOM-KAY-011).
+    assert.deepEqual(data.changes, { inserted: 7, updated: 1, archived: 0, restored: 0 })
 
     const prospect = await findRecord(db, a.id, 'prospects', 'pr1')
     assert.equal(prospect?.data.stage, 'Kayıt oldu')
@@ -552,7 +554,7 @@ describe('kesin kayıt ucu', () => {
     assert.equal(second.statusCode, 201, second.body)
     assert.equal(await count(a.id, 'parents'), parents)
     assert.deepEqual(second.json().data.changes, {
-      inserted: 5,
+      inserted: 6,
       updated: 2,
       archived: 0,
       restored: 0,
@@ -753,6 +755,44 @@ describe('kesin kayıt ucu', () => {
     const contract = await findRecord(db, a.id, 'contracts', response.json().data.contractId)
     assert.equal(contract?.data.title, 'Dil kursu eğitim sözleşmesi')
     assert.equal(contract?.data.payer, 'student')
+  })
+
+  /** Kurumun bildirim kayıtları (F6a; `lib/notifications.ts`). */
+  const notices = async (institutionId: string) =>
+    (await loadRecords(db, institutionId, ['notifications'])).map((row) => row.data)
+
+  test('DOM-KAY-011, DOM-ILT-023: kesin kayıt aynı işlemde yeni öğrencinin velisine tek bildirim üretir; kayıt ad, tutar ve metin taşımaz', async () => {
+    const a = await institution()
+    const response = await enroll({ cookie: await frontDesk(a.id) })
+    assert.equal(response.statusCode, 201, response.body)
+    const studentId: string = response.json().data.entity.id
+    const [notice, ...rest] = await notices(a.id)
+    assert.equal(rest.length, 0)
+    assert.deepEqual(
+      [notice?.kind, notice?.audience, notice?.studentId, notice?.subject],
+      ['enrollment_completed', 'parent', studentId, { type: 'students', id: studentId }],
+    )
+    const stored = JSON.stringify(notice)
+    for (const text of [PR1?.name, PR1?.phone, '3600000', '1200000'])
+      assert.ok(!stored.includes(String(text)), String(text))
+  })
+
+  test('DOM-KAY-011, DOM-KAY-003: dil okulunda yetişkin kursiyerin kayıt bildirimi kendisine gider, veliye gitmez', async () => {
+    const adult = { ...PR1, minor: false }
+    const a = await institution({ type: 'language_school' }, { ...SAMPLE, prospects: [adult] })
+    const response = await enroll({ cookie: await frontDesk(a.id) })
+    assert.equal(response.statusCode, 201, response.body)
+    assert.deepEqual(
+      (await notices(a.id)).map((notice) => [notice.kind, notice.audience]),
+      [['enrollment_completed', 'student']],
+    )
+  })
+
+  test('DOM-KAY-011, DOM-YTK-040: iletişim modülü kapalıyken kesin kayıt yapılır, bildirim üretilmez', async () => {
+    const a = await institution({ enabledModules: { communication: false } })
+    const response = await enroll({ cookie: await frontDesk(a.id) })
+    assert.equal(response.statusCode, 201, response.body)
+    assert.deepEqual(await notices(a.id), [])
   })
 
   // --- Kurumlar arası ---------------------------------------------------------------------------------

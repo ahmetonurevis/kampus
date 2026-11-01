@@ -38,6 +38,7 @@ import { registerMembershipRoutes } from './routes/memberships.ts'
 import { registerModuleRoutes } from './routes/modules.ts'
 import { registerResourceCommandRoutes } from './routes/resource-commands.ts'
 import { registerQuestionRoutes } from './routes/questions.ts'
+import { registerNotificationRoutes } from './routes/notifications.ts'
 import { registerRequestRoutes } from './routes/requests.ts'
 import { registerAppointmentRoutes } from './routes/appointments.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
@@ -257,6 +258,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   // Komut uçlarından sonra: ham gövde süsü (`commandInput`) orada tanımlanır.
   registerCommunicationRoutes(app)
   registerRequestRoutes(app)
+  registerNotificationRoutes(app)
   registerAppointmentRoutes(app)
   registerProspectRoutes(app)
   registerQuestionRoutes(app)

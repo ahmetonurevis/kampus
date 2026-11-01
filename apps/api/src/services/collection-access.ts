@@ -14,11 +14,15 @@ import { NotFoundError } from '../errors.ts'
  *   yöneticinin okuması gerekçeli ve denetim kayıtlı ayrı işlemdir (DOM-YTK-052).
  * - `conversationMessages`: yazışmanın mesajları (ADR 0005); yalnız
  *   `GET /conversations/:id/messages` ile, taraf denetiminden sonra sayfalanarak okunur.
+ * - `notifications`, `notificationReads`: uygulama içi bildirim ve kullanıcının okundu işareti;
+ *   yalnız `GET /notifications` ile, okuyanın kendi okundu bilgisiyle gelir (DOM-ILT-073).
  */
 const CLOSED_COLLECTIONS: ReadonlySet<CollectionName> = new Set<CollectionName>([
   'audit',
   'conversations',
   'conversationMessages',
+  'notifications',
+  'notificationReads',
 ])
 
 /** Okuma uçlarında görünen koleksiyonlar (OpenAPI açıklaması ve testler için). */

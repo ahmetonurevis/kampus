@@ -68,7 +68,7 @@ describe('koleksiyon okuma uçları', () => {
       .orderBy(asc(records.collection), asc(records.id))
   }
 
-  test('modül eşlemesi core kaydındandır; denetim listesi ve yazışmalar genel okumaya kapalı', () => {
+  test('modül eşlemesi core kaydındandır; denetim listesi, yazışmalar ve bildirimler genel okumaya kapalı', () => {
     for (const collection of RECORD_COLLECTIONS)
       assert.equal(
         moduleOfCollection(collection) ?? ALWAYS_ON,
@@ -78,7 +78,10 @@ describe('koleksiyon okuma uçları', () => {
     assert.equal(READABLE_COLLECTIONS.includes('audit'), false)
     assert.equal(READABLE_COLLECTIONS.includes('conversations'), false)
     assert.equal(READABLE_COLLECTIONS.includes('conversationMessages'), false)
-    assert.equal(READABLE_COLLECTIONS.length, RECORD_COLLECTIONS.length - 3)
+    // Bildirimler ve okundu kayıtları yalnız bildirim uçlarından okunur (F6a, DOM-ILT-073).
+    assert.equal(READABLE_COLLECTIONS.includes('notifications'), false)
+    assert.equal(READABLE_COLLECTIONS.includes('notificationReads'), false)
+    assert.equal(READABLE_COLLECTIONS.length, RECORD_COLLECTIONS.length - 5)
   })
 
   test('sıralama ve arama yardımcıları', () => {

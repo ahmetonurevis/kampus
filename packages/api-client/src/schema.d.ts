@@ -1744,6 +1744,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bildirimlerim
+         * @description Oturum sahibinin uygulama içi bildirimleri, en yeni önce (DOM-ILT-020). Öğrenci kendi kaydının, veli bağlı çocuklarının bildirimini görür; başka velinin çocuğu ve başka kurum hiç görünmez, personelin listesi boştur. Bildirim serbest metin taşımaz: `title` türün sabit şablonundan, yalnız öğrencinin ilk adıyla üretilir; puan, geri bildirim metni, tutar veya sağlık bilgisi yoktur (DOM-ILT-023). `readAt` yalnız okuyanın kendi okumasıdır; diğer velinin okuması görünmez (DOM-ILT-073). `unread=true` yalnız okunmamışları verir. Modül `communication`.
+         */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Okunmamış bildirim sayısı
+         * @description Oturum sahibinin okunmamış bildirim sayısı; saklanmaz, her istekte hesaplanır. Modül `communication`.
+         */
+        get: operations["countUnreadNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bütün bildirimleri okundu işaretle
+         * @description Oturum sahibinin gördüğü bütün okunmamış bildirimlere ilk okuma anını yazar (core `markAllNotificationsRead`); okunmuşların anı değişmez, tekrar çağrı kayıt eklemez. Okuma kullanıcıya özeldir (DOM-ILT-073). `Idempotency-Key` isteğe bağlıdır, `If-Match` kabul edilmez. Modül `communication`. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.
+         */
+        post: operations["readAllNotifications"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/{notificationId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bildirimi okundu işaretle
+         * @description Bildirime oturum sahibinin ilk okuma anını yazar (core `markNotificationRead`); tekrar çağrı kaydı değiştirmez. Görülemeyen (başka öğrencinin, başka velinin çocuğunun, başka kurumun) veya olmayan bildirim 404 `not_found` (core `notification_not_found` genel koda çevrilir). `Idempotency-Key` isteğe bağlıdır, `If-Match` kabul edilmez. Modül `communication`. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.
+         */
+        post: operations["readNotification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/appointments/slots": {
         parameters: {
             query?: never;
@@ -3813,6 +3893,38 @@ export interface components {
             /** @description Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri */
             affectedContainerVersionIds: string[];
         };
+        NotificationInput: {
+            id: string;
+            /**
+             * @description Bildirim türü (core `NOTIFICATION_KINDS`)
+             * @enum {string}
+             */
+            kind: "feedback_released" | "enrollment_completed";
+            /**
+             * @description Konu (DOM-ILT-020)
+             * @enum {string}
+             */
+            topic: "homework" | "grade" | "attendance" | "payment" | "announcement" | "message" | "appointment" | "consent" | "bulletin" | "enrollment";
+            /**
+             * @description Alıcı kitlesi: öğrenci veya veli
+             * @enum {string}
+             */
+            audience: "student" | "parent";
+            /** @description Bildirimin ait olduğu öğrenci */
+            studentId: string;
+            /** @description Bildirimin bağlandığı kayıt */
+            subject: {
+                /** @description Konu kaydının türü (`task_submission`, `students`) */
+                type: string;
+                id: string;
+            };
+            /** @description Gösterilen başlık; ayrıntı (puan, tutar, metin) içermez */
+            title: string;
+            /** @description Oluşturulma anı (ISO 8601 UTC) */
+            createdAt: string;
+            /** @description Okuyanın ilk okuma anı; okunmamışsa `null` */
+            readAt: string | null;
+        };
         BookableSlotInput: {
             /** @description Uygunluk saati kimliği; talepte `slotId` olarak gönderilir */
             slotId: string;
@@ -5563,6 +5675,38 @@ export interface components {
             affectedCopyIds: string[];
             /** @description Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri */
             affectedContainerVersionIds: string[];
+        };
+        Notification: {
+            id: string;
+            /**
+             * @description Bildirim türü (core `NOTIFICATION_KINDS`)
+             * @enum {string}
+             */
+            kind: "feedback_released" | "enrollment_completed";
+            /**
+             * @description Konu (DOM-ILT-020)
+             * @enum {string}
+             */
+            topic: "homework" | "grade" | "attendance" | "payment" | "announcement" | "message" | "appointment" | "consent" | "bulletin" | "enrollment";
+            /**
+             * @description Alıcı kitlesi: öğrenci veya veli
+             * @enum {string}
+             */
+            audience: "student" | "parent";
+            /** @description Bildirimin ait olduğu öğrenci */
+            studentId: string;
+            /** @description Bildirimin bağlandığı kayıt */
+            subject: {
+                /** @description Konu kaydının türü (`task_submission`, `students`) */
+                type: string;
+                id: string;
+            };
+            /** @description Gösterilen başlık; ayrıntı (puan, tutar, metin) içermez */
+            title: string;
+            /** @description Oluşturulma anı (ISO 8601 UTC) */
+            createdAt: string;
+            /** @description Okuyanın ilk okuma anı; okunmamışsa `null` */
+            readAt: string | null;
         };
         BookableSlot: {
             /** @description Uygunluk saati kimliği; talepte `slotId` olarak gönderilir */
@@ -16131,6 +16275,358 @@ export interface operations {
         responses: {
             /** @description Default Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `true`: yalnız okunmamış bildirimler */
+                unread?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Notification"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    countUnreadNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Okunmamış bildirim sayısı */
+                            unread: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readAllNotifications: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Gövdesiz komut */
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readNotification: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Bildirim kimliği */
+                notificationId: string;
+            };
+            cookie?: never;
+        };
+        /** @description Gövdesiz komut */
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

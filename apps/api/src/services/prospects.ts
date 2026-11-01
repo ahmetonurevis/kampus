@@ -12,6 +12,7 @@ import {
   scheduleTrialLesson,
   type ProspectOptions,
 } from '@kampus/school-core/lib/prospects.ts'
+import { notifyStudentEvent } from '@kampus/school-core/lib/notifications.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
@@ -265,8 +266,10 @@ export type EnrollProspectInput = Omit<EnrollmentInput, 'prospectId'>
  * `prospect_already_enrolled`); aynı adayı eşzamanlı iki istek kayda alırsa kurum kilidi altında
  * ikincisi 409 alır (`test:pg`). Gövdede aday kimliği yoktur; yol parametresinden eklenir. 201,
  * yanıtın konusu yeni öğrencidir, yanıt sözleşme kimliğini (`contractId`) de taşır; denetim kaydı
- * adaya bağlanır. Tutar kuruştur ve core'a olduğu gibi geçer. Kimlik no ve doğum tarihi
- * loglanmaz (`REDACTED_PATHS`); denetim kaydına yalnız alan adları yazılır.
+ * adaya bağlanır. İletişim modülü açıksa `enrollment_completed` bildirimi aynı transaction'da
+ * eklenir (18 yaş altında veliye, yetişkinde kursiyere; core `lib/notifications.ts`). Tutar
+ * kuruştur ve core'a olduğu gibi geçer. Kimlik no ve doğum tarihi loglanmaz (`REDACTED_PATHS`);
+ * denetim kaydına yalnız alan adları yazılır.
  */
 export function enrollProspectCommand(
   ctx: ServiceContext,
@@ -279,19 +282,28 @@ export function enrollProspectCommand(
     {
       action: 'prospect.enroll',
       subjectId: prospectId,
-      loadScope: { invoices: APPEND_ONLY, contracts: APPEND_ONLY },
+      loadScope: { invoices: APPEND_ONLY, contracts: APPEND_ONLY, notifications: APPEND_ONLY },
       run: (state, by, { now, makeId }, { institutionType }) => {
         requireAuthorized(by, 'prospect.enroll', {}, state, {
           now,
           ...(institutionType === undefined ? {} : { institutionType }),
         })
-        const { student, contract } = enrollProspect(
+        const { student, contract, minor } = enrollProspect(
           state,
           { ...input, prospectId },
           makeId,
           now,
           institutionType === undefined ? {} : { institutionType },
         )
+        // Uygulama içi bildirim (F6a): 18 yaş altında veliye, yetişkinde kursiyere; iletişim
+        // modülü kapalıysa bildirim merkezi yoktur, üretilmez. Aynı transaction'da yazılır.
+        if (state.modules.communication === true)
+          notifyStudentEvent(
+            state,
+            { kind: 'enrollment_completed', studentId: student.id, subjectId: student.id, minor },
+            makeId,
+            now,
+          )
         return {
           id: prospectId,
           statusCode: 201,

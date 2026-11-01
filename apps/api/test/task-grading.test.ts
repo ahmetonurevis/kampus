@@ -10,6 +10,7 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { records } from '../src/db/schema/records.ts'
 import {
   resubmissionRequests,
   rubrics,
@@ -31,6 +32,7 @@ import {
   FIXED_NOW,
   signInAs,
   TEST_ORIGIN,
+  type InstitutionOverrides,
 } from './support/app.ts'
 import { seedResource } from './support/resources-sample.ts'
 import { sampleRubricData } from './support/skills-sample.ts'
@@ -98,11 +100,11 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
    * `t-eng` 9-A'nın öğretmenidir, `t-mat` 9-B'nin. Deniz (`s-1`) 9-A'da. Atamayı yönetici yapar:
    * `t-eng` atayan değildir ama 9-A hedefi yüzünden atamayı görür (DOM-YTK-028).
    */
-  async function tenant() {
+  async function tenant(overrides: Partial<InstitutionOverrides> = {}) {
     now = FIXED_NOW
     // Genel hız sınırı (dakikada 300, IP başına) dosyanın bütününe değil her kiracıya düşsün.
     clientIp = `10.0.${(tenantCount += 1)}.1`
-    const institution = await createInstitution(app)
+    const institution = await createInstitution(app, overrides)
     await insertMissingRecords(
       db,
       institution.id,
@@ -357,8 +359,11 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     return { scores: scores.length, requests: requests.length, submissions }
   }
 
-  async function setup(settings: Record<string, unknown> = {}) {
-    const t = await tenant()
+  async function setup(
+    settings: Record<string, unknown> = {},
+    overrides: Partial<InstitutionOverrides> = {},
+  ) {
+    const t = await tenant(overrides)
     cookieOf.student = t.cookies.student
     return { t, ...(await submitted(t, settings)) }
   }
@@ -940,6 +945,13 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     assert.deepEqual(
       audits.filter((row) => row.action !== 'task_submission.submit'),
       [
+        // Geri bildirimi açan puan bildirim kaydı da ekler (F6a, DOM-BEC-045); işlem
+        // çalıştırıcısı bunu yalnız alan adlarıyla ayrı satıra yazar, metin ve alıcı yoktur.
+        {
+          action: 'task_submission.score',
+          entityId: id,
+          changes: { fields: ['audience', 'createdAt', 'id', 'kind', 'studentId', 'subject'] },
+        },
         {
           action: 'task_submission.score',
           entityId: id,
@@ -1507,5 +1519,57 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       [late.id, late.grading.dueAt, late.grading.overdue, late.grading.awaitingResolution],
       [id, due.toISOString(), true, true],
     )
+  })
+
+  /** Aktörün bildirim listesi (F6a); yalnız geri bildirim türü ve konu teslimi. */
+  async function feedbackNotices(cookie: string) {
+    const list = (await ok(await call('GET', '/notifications', cookie))) as Json[]
+    return list
+      .filter((n) => n.kind === 'feedback_released')
+      .map((n) => [n.audience, n.studentId, n.subject.id] as const)
+  }
+
+  test('DOM-BEC-045, DOM-ILT-023: puanı kesinleştiren ilk puan öğrenciye ve veliye bildirim üretir; başka öğrenci ve veliye gitmez; bildirimde puan ve geri bildirim metni yok, logda da yok', async () => {
+    const { t, submission } = await setup()
+    const id = submission.id as string
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await feedbackNotices(cookie), [])
+    logs.length = 0
+    await ok(await score(id, t.cookies.teacher, 1), 201)
+    assert.deepEqual(await feedbackNotices(t.cookies.student), [['student', 's-1', id]])
+    assert.deepEqual(await feedbackNotices(t.cookies.parent), [['parent', 's-1', id]])
+    for (const cookie of [t.cookies.otherStudent, t.cookies.otherParent, t.cookies.teacher])
+      assert.deepEqual(await feedbackNotices(cookie), [])
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const body = (await call('GET', '/notifications', cookie)).body
+      for (const text of [FEEDBACK, CRITERION_NOTE, 'percent', 'band'])
+        assert.ok(!body.includes(text), text)
+    }
+    const logText = logs.join('\n')
+    for (const text of [FEEDBACK, CRITERION_NOTE, 'Deniz']) assert.ok(!logText.includes(text), text)
+  })
+
+  test('DOM-BEC-045, DOM-BEC-024: ikinci puanlama istenmişse ilk puan bildirim üretmez; uyuşan ikinci puan geri bildirimi açar ve bir kez bildirir', async () => {
+    const { t, submission } = await setup()
+    const id = submission.id as string
+    await ok(await requestSecond(id, t.cookies.admin, 1), 201)
+    await ok(await score(id, t.cookies.teacher, 2), 201)
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await feedbackNotices(cookie), [])
+    await ok(await secondScore(id, t.cookies.colleague, 3), 201)
+    assert.deepEqual(await feedbackNotices(t.cookies.student), [['student', 's-1', id]])
+    assert.deepEqual(await feedbackNotices(t.cookies.parent), [['parent', 's-1', id]])
+  })
+
+  test('DOM-YTK-040: iletişim modülü kapalıyken puan yazılır ama bildirim kaydı üretilmez', async () => {
+    const { t, submission } = await setup({}, { enabledModules: { communication: false } })
+    await ok(await score(submission.id as string, t.cookies.teacher, 1), 201)
+    const rows = await db
+      .select({ id: records.id })
+      .from(records)
+      .where(
+        and(eq(records.institutionId, t.institution.id), eq(records.collection, 'notifications')),
+      )
+    assert.equal(rows.length, 0)
   })
 })

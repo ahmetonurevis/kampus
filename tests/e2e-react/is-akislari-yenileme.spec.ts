@@ -56,6 +56,7 @@ test.describe('kayıt yenileme', () => {
       roles: ['yonetici'],
       students: ['s3'],
       collections: ['renewals'],
+      tariffYears: ['current', 'next'],
     })
     const page = await loginAs(school.user('yonetici'))
     const client = await api(school.user('yonetici'))
@@ -99,6 +100,7 @@ test.describe('kayıt yenileme', () => {
       roles: ['yonetici'],
       students: ['s4'],
       collections: ['renewals'],
+      tariffYears: ['current', 'next'],
     })
     const client = await api(school.user('yonetici'))
     // Yenileme `Idempotency-Key` zorunlu kılar; ortak istemci başlık eklemediği için doğrudan gönderilir.

@@ -20,7 +20,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kurum ilan etmeden ücret tahsil edemez ve ilan ettiği ücretin üzerinde ücret isteyemez.
 - **Kaynak:** 5580 md. 13/1 (ocak–mayıs ilanı); ÖÖKY md. 54/1-a, c, ç, d ve 54/2.
 - **Kurum türü:** ikisi (dil okulunda ders saati ücreti, `DOM-FIN-006`)
-- **Kodda:** kısmen — tarife sürümü, ilan ve MEBBİS tarihi var (`lib/fee-tariffs.ts`, `POST /api/v1/fee-tariffs`, ADR 0006 karar 8). Kesin kayıt tutarı yayımlanmış tarifeden hesaplanır (`lib/enrollment.ts`). Yenileme (`lib/school-workflows.ts`) ve çevrimdışı demo tutarı henüz serbesttir; ilan dönemi denetimi yok.
+- **Kodda:** kısmen — tarife sürümü, ilan ve MEBBİS tarihi var (`lib/fee-tariffs.ts`, `POST /api/v1/fee-tariffs`, ADR 0006 karar 8). Kesin kayıt tutarı yayımlanmış tarifeden hesaplanır (`lib/enrollment.ts`). Yenileme de yayımlı tarife ister, ilanı aşamaz (API, `assertRenewalWithinTariff`); çevrimdışı demo tutarı serbesttir.
 
 ### DOM-FIN-003 · Ek hizmetler ayrı kalemdir ve isteğe bağlıdır
 

@@ -153,6 +153,7 @@ test.describe('PDF: sözleşme', () => {
       roles: ['yonetici'],
       students: ['s4'],
       collections: ['renewals'],
+      tariffYears: ['current', 'next'],
     })
     const client = await api(school.user('yonetici'))
     const startDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(

@@ -2,6 +2,10 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Yenilemede tarife denetimi
+
+- **Kırıcı:** `POST /api/v1/workflows/renewal` hedef yılın yayımlanmış tarifesini ister (422 `tariff_not_published`); öğrenim ücreti ilanı aşamaz (422 `renewal_above_tariff`), indirim %50 tavanındadır (DOM-FIN-002, -021). Artış tavanı (DOM-FIN-005) ÜFE/TÜFE verisi bekliyor.
+
 ## Kesin kayıtta tarife doğrulaması
 
 - **Kırıcı:** `POST /api/v1/prospects/:prospectId/enroll` gövdesinde `tariffId` zorunludur; yayımdaki tarife değiştiyse 409 `tariff_changed`. Aynı ek hizmet iki kez seçilirse 422 `extra_duplicate`. OpenAPI ve `api-client` şeması yeniden üretildi.

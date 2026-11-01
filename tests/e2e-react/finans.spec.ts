@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import type { Download, Locator, Page, Request } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
+import { e2e } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
 import {
   expectContentInsideCards,
@@ -389,6 +390,89 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: 'Tahsilat dosyası' })).toHaveCount(0)
   })
 
+  test('DOM-FIN-041: yönetici hesabı önizler, ayrılışı onaylar, iadeyi öder; ön büro yalnız görür', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s21'] })
+    const client = await api(school.user('yonetici'))
+    await loginAs(school.user('yonetici'))
+    const student = (await client.get('/api/v1/collections/students/s21')).body as {
+      data: { record: { name: string; parentId: string; isActive: boolean } }
+    }
+    const { name, parentId } = student.data.record
+    const parent = (await client.get(`/api/v1/collections/parents/${parentId}`)).body as {
+      data: { record: { name: string } }
+    }
+
+    await page.goto(`${ADMIN_URL}?gorunum=ayrilis`)
+    await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Ayrılış başlat' })
+    await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
+    await expect(dialog.getByLabel('Öğrenci')).toHaveAttribute('aria-invalid', 'true')
+
+    await dialog.getByLabel('Öğrenci').selectOption({ label: name })
+    await dialog.getByLabel('Dönem başlangıcı').fill('2026-09-07')
+    await dialog.getByLabel('Görülen gün veya ders saati').fill('1')
+    await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
+    await expect(dialog.getByText('Hesap önizlemesi')).toBeVisible()
+    await expect(dialog).toContainText('Hak edilen')
+    // Önizleme kayıt yazmaz.
+    const before = (await client.get('/api/v1/collections/students/s21')).body as typeof student
+    expect(before.data.record.isActive).toBe(true)
+
+    await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
+    await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
+    await expect(dialog).toBeHidden()
+    const after = (await client.get('/api/v1/collections/students/s21')).body as typeof student
+    expect(after.data.record.isActive).toBe(false)
+
+    const table = page.getByRole('table', { name: 'Ayrılış ve iade kayıtları' })
+    await expect(table).toContainText(name)
+    await expect(table).toContainText('Ödenecek')
+    await page.getByRole('button', { name: `${name} hesap dökümünü görüntüle` }).click()
+    await expect(page.getByRole('dialog', { name: 'Hesap dökümü' })).toContainText('Hesap tabanı')
+    await page.keyboard.press('Escape')
+
+    await page.getByRole('button', { name: `${name} iadesini ödenmiş işaretle` }).click()
+    const refund = page.getByRole('dialog', { name: 'İadeyi öde' })
+    await refund.getByLabel('IBAN').fill('TR330006100519786457841326')
+    await refund.getByLabel('Hesap sahibi').fill('Başka Kişi')
+    await refund.getByRole('button', { name: 'Ödendi olarak kaydet' }).click()
+    await expect(refund.getByText('Hesap sahibi sözleşmedeki ödeyici olmalıdır.')).toBeVisible()
+    await refund.getByLabel('Hesap sahibi').fill(parent.data.record.name)
+
+    // Oturum eskidiyse parola sorulur ve işlem tekrarlanır (guvenlik-kvkk.md).
+    let stale = true
+    await page.route('**/api/v1/withdrawals/*/pay-refund', async (route) => {
+      if (!stale) return route.continue()
+      stale = false
+      return route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'reauthentication_required',
+          message: 'Bu işlem için parolanızı yeniden girmeniz gerekiyor.',
+          requestId: 'e2e',
+        }),
+      })
+    })
+    await refund.getByRole('button', { name: 'Ödendi olarak kaydet' }).click()
+    const reauth = page.getByRole('dialog', { name: 'Parolanızı doğrulayın' })
+    await reauth.getByLabel('Parola').fill(e2e.password)
+    await reauth.getByRole('button', { name: 'Doğrula ve devam et' }).click()
+    await expect(page.getByText('İade ödendi olarak kaydedildi.')).toBeVisible()
+    await expect(table).toContainText('Ödendi')
+    await expect(table).not.toContainText('TR330006100519786457841326')
+
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/tahsilat-takip?gorunum=ayrilis')
+    await expect(page.getByRole('table', { name: 'Ayrılış ve iade kayıtları' })).toContainText(name)
+    await expect(page.getByRole('button', { name: 'Ayrılış başlat' })).toHaveCount(0)
+  })
+
   test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api, tenant }) => {
     const school = await tenant({ roles: ['onburo'], students: ['s12'] })
     await loginAs(school.user('onburo'))
@@ -695,6 +779,29 @@ test.describe('Finans: liste', () => {
 
     await page.goto(`${ADMIN_URL}?tahsilat=inv-s1-7`)
     await expect(paymentDialog(page).getByLabel('Ödeme yöntemi')).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+  })
+
+  for (const [view, table] of [
+    ['tahsilatlar', 'Tahsilat geçmişi'],
+    ['tarife', 'Ücret tarifeleri'],
+    ['ayrilis', 'Ayrılış ve iade kayıtları'],
+  ] as const)
+    test(`320 ve 390 px genişlikte ${view} sekmesi yatay taşmaz`, async ({ page }) => {
+      for (const width of [390, 320]) {
+        await page.setViewportSize({ width, height: 844 })
+        await page.goto(`${ADMIN_URL}?gorunum=${view}`)
+        await expect(
+          page.getByRole('heading', { name: table.split(' ')[0] ?? table }).first(),
+        ).toBeVisible()
+        await expectNoHorizontalOverflow(page)
+      }
+    })
+
+  test('320 px genişlikte muhasebe aktarımı yatay taşmaz', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 844 })
+    await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
+    await expect(page.getByRole('heading', { name: 'Muhasebe aktarımı' })).toBeVisible()
     await expectNoHorizontalOverflow(page)
   })
 })

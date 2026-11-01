@@ -62,6 +62,7 @@ const breakdownSchema = z.object({
 const withdrawalSchema = z.object({
   id: z.string(),
   studentId: z.string(),
+  studentName: z.string().nullable(),
   contractId: z.string(),
   withdrawalDate: z.string(),
   reason: z.enum(WITHDRAWAL_REASONS),

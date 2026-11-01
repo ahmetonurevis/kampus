@@ -8,6 +8,7 @@ import {
   planRefundPayment,
   quoteWithdrawal,
   refundDueDate,
+  withdrawalFormSchema,
   withdrawStudent,
   type WithdrawalContext,
 } from '../packages/school-core/src/lib/withdrawals.ts'
@@ -316,4 +317,21 @@ test('DOM-FIN-040: iade ve borç netleşir; ikisi aynı anda oluşmaz', () => {
   // -1.000.000 öğrenim, +500.000 yemek, +1.000.000 dağıtılmamış tahsilat.
   assert.equal(covered.refundCents, 500_000)
   assert.equal(covered.debtCents, 0)
+})
+
+test('IST-110: ayrılış formu öğrenci ve geçerli birim ister', () => {
+  const values = {
+    studentId: 's1',
+    withdrawalDate: '2026-10-01',
+    termStartDate: '2026-09-07',
+    attendedUnits: 18,
+    totalUnits: 180,
+    publicSchoolExemption: false,
+    reason: 'transfer',
+    targetSchool: '',
+  }
+  assert.equal(withdrawalFormSchema.safeParse(values).success, true)
+  assert.equal(withdrawalFormSchema.safeParse({ ...values, studentId: '' }).success, false)
+  assert.equal(withdrawalFormSchema.safeParse({ ...values, totalUnits: 0 }).success, false)
+  assert.equal(withdrawalFormSchema.safeParse({ ...values, attendedUnits: NaN }).success, false)
 })

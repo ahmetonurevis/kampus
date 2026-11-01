@@ -29440,6 +29440,12 @@
                         "studentId": {
                           "type": "string"
                         },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "contractId": {
                           "type": "string"
                         },
@@ -29651,6 +29657,7 @@
                       "required": [
                         "id",
                         "studentId",
+                        "studentName",
                         "contractId",
                         "withdrawalDate",
                         "reason",
@@ -29825,6 +29832,12 @@
                           },
                           "studentId": {
                             "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "contractId": {
                             "type": "string"
@@ -30037,6 +30050,7 @@
                         "required": [
                           "id",
                           "studentId",
+                          "studentName",
                           "contractId",
                           "withdrawalDate",
                           "reason",
@@ -30186,6 +30200,12 @@
                         },
                         "studentId": {
                           "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "contractId": {
                           "type": "string"
@@ -30398,6 +30418,7 @@
                       "required": [
                         "id",
                         "studentId",
+                        "studentName",
                         "contractId",
                         "withdrawalDate",
                         "reason",
@@ -30593,6 +30614,12 @@
                         "studentId": {
                           "type": "string"
                         },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "contractId": {
                           "type": "string"
                         },
@@ -30804,6 +30831,7 @@
                       "required": [
                         "id",
                         "studentId",
+                        "studentName",
                         "contractId",
                         "withdrawalDate",
                         "reason",

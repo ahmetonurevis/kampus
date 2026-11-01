@@ -11,7 +11,7 @@ Kesin kayıt API girişi ve tahsilat kuralları eklendi (DOM-KAY-035, DOM-FIN-00
 - `lib/authorize.ts` ve `modules/commands.ts`: `payment.reverse`, `tariff.manage` ve `student.withdraw` (yalnız yönetici), modül `finance`.
 - `lib/csv.ts`: `csvCell`, `CSV_SEPARATOR` web'den taşındı, `csvAmount` eklendi. `lib/finance-export.ts`: dönem doğrulaması, `paymentLines`, `refundLines`, `invoiceLines`, `financeSummary`, CSV üreticileri eklendi (IST-111).
 - `lib/payments.ts`: `paymentFormSchema`, `parseAmountInput`, `amountInputValue` eklendi; geçici `referenceOptional` kaldırıldı.
-- `lib/withdrawals.ts`: `withdrawalQuoteSchema`, `withdrawStudentSchema`, `payRefundSchema`, `quoteWithdrawal`, `withdrawStudent`, `planRefundPayment`, `refundDueDate`, `payerNameOf`, `isValidTurkishIban` eklendi (DOM-FIN-040, -041, DOM-KAY-024).
+- `lib/withdrawals.ts`: `withdrawalFormSchema`, `WITHDRAWAL_REASON_LABELS`, `withdrawalQuoteSchema`, `withdrawStudentSchema`, `payRefundSchema`, `quoteWithdrawal`, `withdrawStudent`, `planRefundPayment`, `refundDueDate`, `payerNameOf`, `isValidTurkishIban` eklendi (DOM-FIN-040, -041, DOM-KAY-024).
 - `lib/fee-tariffs.ts`: `feeItemSchema`, `createFeeTariffSchema`, `updateFeeTariffSchema`, `publishFeeTariffSchema`, `feeDiscountSchema`, `planTariffCreate`, `planTariffUpdate`, `planTariffPublish` eklendi (DOM-FIN-002, -004, -006, -020).
 
 ## 2.20.0

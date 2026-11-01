@@ -347,6 +347,7 @@ describe('ayrılış ve iade uçları', () => {
     const pending = await send('GET', '/api/v1/withdrawals?refundStatus=pending', desk)
     assert.equal(pending.statusCode, 200, pending.body)
     assert.equal(pending.json().meta.total, 1)
+    assert.equal(pending.json().data[0].studentName, STUDENT?.name)
     for (const status of ['paid', 'none']) {
       const other = await send('GET', `/api/v1/withdrawals?refundStatus=${status}`, desk)
       assert.equal(other.json().meta.total, 0)

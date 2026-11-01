@@ -37,6 +37,7 @@ import { FinanceExportSection } from './FinanceExportSection.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 import { PaymentPanel } from './PaymentPanel.tsx'
 import { PaymentsSection } from './PaymentsSection.tsx'
+import { WithdrawalsSection } from './WithdrawalsSection.tsx'
 import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
 
 const INVOICE_URL_FILTERS = { status: 'durum' }
@@ -50,6 +51,7 @@ const VIEWS = {
   invoices: { label: 'Taksitler', param: '' },
   payments: { label: 'Tahsilat geçmişi', param: 'tahsilatlar' },
   tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
+  withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
 } as const
 type FinanceView = keyof typeof VIEWS
@@ -237,6 +239,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
         />
       ) : null}
+      {tab === 'withdrawals' ? <WithdrawalsSection canManage={isManager} /> : null}
       {tab === 'exports' ? <FinanceExportSection canDownload={isManager} /> : null}
       {tab === 'invoices' ? (
         <section

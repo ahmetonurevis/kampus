@@ -5,6 +5,7 @@ import {
   useFinanceSummary,
   type FinanceExportKind,
 } from '@kampus/react-shared/use-finance-exports.ts'
+import { REAUTHENTICATION_CODE } from '@kampus/react-shared/use-withdrawals.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -13,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { saveBlob } from '@/lib/download.ts'
 import { notify } from '@/lib/notify.ts'
 import { StatGrid } from '../academic/AcademicParts.tsx'
+import { ReauthModal } from './ReauthModal.tsx'
 
 const FILES: readonly { kind: FinanceExportKind; label: string; name: string }[] = [
   { kind: 'payments', label: 'Tahsilat dosyası', name: 'tahsilatlar' },
@@ -30,6 +32,7 @@ export function FinanceExportSection({ canDownload }: { canDownload: boolean }) 
   const today = dayKey()
   const [from, setFrom] = useState(`${today.slice(0, 7)}-01`)
   const [to, setTo] = useState(today)
+  const [pending, setPending] = useState<(typeof FILES)[number] | null>(null)
   const complete = from !== '' && to !== ''
   const summary = useFinanceSummary({ from, to }, { enabled: complete })
   const exporter = useFinanceExport()
@@ -37,6 +40,8 @@ export function FinanceExportSection({ canDownload }: { canDownload: boolean }) 
 
   async function download(file: (typeof FILES)[number]) {
     const outcome = await exporter.submit({ kind: file.kind, from, to })
+    if (outcome.status === 'failed' && outcome.error.code === REAUTHENTICATION_CODE)
+      setPending(file)
     if (outcome.status !== 'success') return
     // Yanıt çözülürken BOM düşer; Excel Türkçe karakterleri onunla tanır.
     const csv = String(outcome.data).replace(BOM, '')
@@ -127,6 +132,16 @@ export function FinanceExportSection({ canDownload }: { canDownload: boolean }) 
       ) : (
         <p className="text-sm text-muted-foreground">Aktarım dosyalarını yönetici indirir.</p>
       )}
+      {pending ? (
+        <ReauthModal
+          onCancel={() => setPending(null)}
+          onDone={() => {
+            const file = pending
+            setPending(null)
+            void download(file)
+          }}
+        />
+      ) : null}
     </section>
   )
 }

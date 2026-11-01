@@ -46,6 +46,28 @@ export const withdrawStudentSchema = z.strictObject({
 })
 export type WithdrawStudentInput = z.input<typeof withdrawStudentSchema>
 
+export const WITHDRAWAL_REASON_LABELS: Readonly<Record<WithdrawalReason, string>> = {
+  transfer: 'Nakil',
+  relocation: 'Taşınma',
+  health: 'Sağlık',
+  financial: 'Ekonomik',
+  dissatisfaction: 'Memnuniyetsizlik',
+  other: 'Diğer',
+}
+
+/** Ayrılış formu (web): öğrenci seçilir, hedef okul boş metin olabilir. */
+export const withdrawalFormSchema = z.object({
+  studentId: requiredText,
+  withdrawalDate: daySchema,
+  termStartDate: daySchema,
+  attendedUnits: z.number('Görülen birimi girin.').int().min(0).max(100_000),
+  totalUnits: z.number('Toplam birimi girin.').int().min(1).max(100_000),
+  publicSchoolExemption: z.boolean(),
+  reason: z.enum(WITHDRAWAL_REASONS, 'Ayrılış nedenini seçin.'),
+  targetSchool: z.string().trim().max(200),
+})
+export type WithdrawalFormValues = z.output<typeof withdrawalFormSchema>
+
 /** TR IBAN: 26 karakter, ISO 13616 mod 97 denetimi. */
 export function isValidTurkishIban(value: string): boolean {
   if (!/^TR\d{24}$/.test(value)) return false

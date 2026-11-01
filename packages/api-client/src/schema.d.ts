@@ -16614,6 +16614,7 @@ export interface operations {
                         data: {
                             id: string;
                             studentId: string;
+                            studentName: string | null;
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
@@ -16765,6 +16766,7 @@ export interface operations {
                         data: {
                             id: string;
                             studentId: string;
+                            studentName: string | null;
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
@@ -16912,6 +16914,7 @@ export interface operations {
                         data: {
                             id: string;
                             studentId: string;
+                            studentName: string | null;
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */
@@ -17071,6 +17074,7 @@ export interface operations {
                         data: {
                             id: string;
                             studentId: string;
+                            studentName: string | null;
                             contractId: string;
                             withdrawalDate: string;
                             /** @enum {string} */

@@ -4,6 +4,7 @@ import type { ExportRefund } from '@kampus/school-core/lib/finance-export.ts'
 import type { WithdrawalBreakdown, WithdrawalReason } from '@kampus/school-core/lib/withdrawals.ts'
 
 import type { Database } from './client.ts'
+import { records } from './schema/records.ts'
 import { studentIdentities } from './schema/student-identities.ts'
 import { studentWithdrawals } from './schema/withdrawals.ts'
 
@@ -14,6 +15,7 @@ export type RefundStatus = 'none' | 'pending' | 'paid'
 export interface StoredWithdrawal {
   id: string
   studentId: string
+  studentName: string | null
   contractId: string
   withdrawalDate: string
   reason: WithdrawalReason
@@ -28,9 +30,17 @@ export interface StoredWithdrawal {
   version: number
 }
 
+/** Ayrılışın öğrenci kaydı: yalnız ad içindir; kurum eşleşmesi zorunludur. */
+const STUDENT_JOIN = and(
+  eq(records.institutionId, studentWithdrawals.institutionId),
+  eq(records.collection, 'students'),
+  eq(records.id, studentWithdrawals.studentId),
+)
+
 const COLUMNS = {
   id: studentWithdrawals.id,
   studentId: studentWithdrawals.studentId,
+  studentName: sql<string | null>`${records.data} ->> 'name'`,
   contractId: studentWithdrawals.contractId,
   withdrawalDate: studentWithdrawals.withdrawalDate,
   reason: studentWithdrawals.reason,
@@ -59,6 +69,7 @@ export async function findWithdrawal(
   const [row] = await db
     .select(COLUMNS)
     .from(studentWithdrawals)
+    .leftJoin(records, STUDENT_JOIN)
     .where(and(eq(studentWithdrawals.institutionId, institutionId), eq(studentWithdrawals.id, id)))
     .limit(1)
   return row ? stored(row) : null
@@ -112,6 +123,7 @@ export async function listWithdrawals(
   const items = await db
     .select(COLUMNS)
     .from(studentWithdrawals)
+    .leftJoin(records, STUDENT_JOIN)
     .where(where)
     .orderBy(asc(studentWithdrawals.refundDueDate), asc(studentWithdrawals.id))
     .limit(query.pageSize)

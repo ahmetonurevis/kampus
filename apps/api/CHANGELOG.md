@@ -2,6 +2,10 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Ayrılış listesinde öğrenci adı
+
+- `GET /api/v1/withdrawals` ve `GET /api/v1/withdrawals/:withdrawalId` yanıtına `studentName` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Tahsilat listesi arama
 
 - `GET /api/v1/payments` `q` (öğrenci adı, işlem referansı) kabul eder, yanıtta `studentName` döner. Arama katlaması `db/text-search.ts`'e taşındı.

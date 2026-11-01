@@ -1561,6 +1561,31 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     assert.deepEqual(await feedbackNotices(t.cookies.parent), [['parent', 's-1', id]])
   })
 
+  test('DOM-BEC-045, DOM-BEC-024: uyuşmayan ikinci puan geri bildirimi açmaz ve bildirim üretmez; ilk açılış koordinatör puanındadır (F4b3b2b)', async () => {
+    const { t, submission } = await setup()
+    const id = submission.id as string
+    await ok(await requestSecond(id, t.cookies.admin, 1), 201)
+    await ok(await score(id, t.cookies.teacher, 2), 201)
+    const disagreeing = scoreBody({
+      criteria: [
+        { criterionId: 'task', band: 1, comment: 'Görev eksik kaldı.' },
+        { criterionId: 'grammar', band: 2, comment: 'Zaman hataları var.' },
+      ],
+      overallComment: 'İkinci puanlayıcının yorumu.',
+    })
+    const second = await ok(await secondScore(id, t.cookies.colleague, 3, disagreeing), 201)
+    assert.equal(second.versions[0].grading.status, 'disagreement')
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await feedbackNotices(cookie), [])
+    const rows = await db
+      .select({ id: records.id })
+      .from(records)
+      .where(
+        and(eq(records.institutionId, t.institution.id), eq(records.collection, 'notifications')),
+      )
+    assert.equal(rows.length, 0)
+  })
+
   test('DOM-YTK-040: iletişim modülü kapalıyken puan yazılır ama bildirim kaydı üretilmez', async () => {
     const { t, submission } = await setup({}, { enabledModules: { communication: false } })
     await ok(await score(submission.id as string, t.cookies.teacher, 1), 201)

@@ -96,7 +96,10 @@ import { auditWork, canReadLearner } from './task-work.ts'
 // TODO(core-atama-yetki): "Atamayı gören öğretmen veya yönetici puanlar" kuralı core yetki
 // tablosunda (`lib/authorize.ts`) yok; web ve mobil aynı kuralı çalıştırsın diye core'a taşınır.
 // TODO(F4b3b2b): Koordinatör son puanı (DOM-YTK-027; uyuşmazlıkta), yeniden puanlama ve anahtar
-// düzeltmesi (DOM-BEC-011) ve not aktarımı bu servise eklenmedi.
+// düzeltmesi (DOM-BEC-011) ve not aktarımı bu servise eklenmedi. Uyuşmazlıkta geri bildirimin
+// ilk açılışı koordinatör son puanıdır: o yazma `writeScore` gibi core `releasesFeedback` ile
+// açılışı saptayıp aynı transaction'da `notifyStudentEvent` (`feedback_released`) çağırmalıdır;
+// bugün uyuşmayan ikinci puan bildirim üretmez ve teslim bildirimsiz kalır (DOM-BEC-045, F6a).
 
 const ENTITY = 'task_submission'
 

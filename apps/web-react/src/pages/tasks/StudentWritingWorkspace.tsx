@@ -22,6 +22,7 @@ import { Facts } from '../learning/LearningParts.tsx'
 import { SubmissionVersions } from './SubmissionVersions.tsx'
 import {
   isLearnerAssignment,
+  isNotFoundError,
   resubmissionPending,
   taskKindLabel,
   taskTypeLabel,
@@ -76,8 +77,9 @@ export function StudentWritingWorkspace({
       Listeye dön
     </Button>
   )
+  const missing = isNotFoundError(assignmentQuery.error)
   const error = assignmentQuery.error ?? listQuery.error
-  if (error)
+  if (error && !missing)
     return (
       <>
         <PageHeading title={page.title} actions={back} />
@@ -90,7 +92,7 @@ export function StudentWritingWorkspace({
         />
       </>
     )
-  if (assignmentQuery.data && (!assignment || assignment.scoringMode !== 'teacher'))
+  if (missing || (assignmentQuery.data && (!assignment || assignment.scoringMode !== 'teacher')))
     return (
       <>
         <PageHeading title={page.title} actions={back} />

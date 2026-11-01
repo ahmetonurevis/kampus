@@ -11,6 +11,7 @@ import type {
   TaskSubmission,
   TaskSubmissionDetail,
 } from '@kampus/react-shared/use-task-submissions.ts'
+import { isApiError } from '@kampus/api-client/errors.ts'
 import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 
@@ -389,3 +390,7 @@ export function describeKey(body: QuestionBody, key: KeyEntry): string {
       return key satisfies never
   }
 }
+
+/** Atama okuması 404 döndüyse görev yok ya da öğrencinin kapsamında değil (varlığı sızdırılmaz). */
+export const isNotFoundError = (error: unknown): boolean =>
+  isApiError(error) && error.status === 404

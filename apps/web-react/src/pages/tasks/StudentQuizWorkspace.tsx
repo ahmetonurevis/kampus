@@ -23,6 +23,7 @@ import { AttemptResult } from './AttemptResult.tsx'
 import {
   autoProgress,
   isLearnerAssignment,
+  isNotFoundError,
   runningAttempt,
   scoreLabel,
   shownAttempt,
@@ -76,8 +77,9 @@ export function StudentQuizWorkspace({
       Listeye dön
     </Button>
   )
+  const missing = isNotFoundError(assignmentQuery.error)
   const error = assignmentQuery.error ?? attemptsQuery.error
-  if (error)
+  if (error && !missing)
     return (
       <>
         <PageHeading title={page.title} actions={back} />
@@ -90,7 +92,7 @@ export function StudentQuizWorkspace({
         />
       </>
     )
-  if (assignmentQuery.data && (!assignment || assignment.scoringMode !== 'auto'))
+  if (missing || (assignmentQuery.data && (!assignment || assignment.scoringMode !== 'auto')))
     return (
       <>
         <PageHeading title={page.title} actions={back} />

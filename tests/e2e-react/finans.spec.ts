@@ -444,6 +444,9 @@ test.describe('Finans: tahsilat', () => {
     await page.getByRole('button', { name: `${name} hesap dökümünü görüntüle` }).click()
     await expect(page.getByRole('dialog', { name: 'Hesap dökümü' })).toContainText('Hesap tabanı')
     await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: `${name} iade kırılımını görüntüle` }).click()
+    await expect(page.getByRole('dialog', { name: /İade hesap kırılımı/ })).toBeVisible()
+    await page.keyboard.press('Escape')
 
     await page.getByRole('button', { name: `${name} iadesini ödenmiş işaretle` }).click()
     const refund = page.getByRole('dialog', { name: 'İadeyi öde' })
@@ -480,6 +483,29 @@ test.describe('Finans: tahsilat', () => {
     await page.goto('/onburo/tahsilat-takip?gorunum=ayrilis')
     await expect(page.getByRole('table', { name: 'Ayrılış ve iade kayıtları' })).toContainText(name)
     await expect(page.getByRole('button', { name: 'Ayrılış başlat' })).toHaveCount(0)
+  })
+
+  test('DOM-FIN-050, -052: tahsilat dekontu PDF açılır; veli kendi tahsilatını ve dekontunu görür', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['veli'], students: ['s1'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s1-5', 'Kredi kartı')
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=tahsilatlar`)
+    await page.getByRole('button', { name: /numaralı dekontu görüntüle/ }).click()
+    await expect(page.getByRole('dialog', { name: /Tahsilat dekontu/ })).toBeVisible()
+    await expect(page.getByRole('dialog', { name: /Tahsilat dekontu/ })).toContainText('2026-')
+
+    await loginAs(school.user('veli'))
+    await page.goto('/veli/finans')
+    await expect(page.getByRole('heading', { name: 'Tahsilat geçmişi' })).toBeVisible()
+    await page.getByRole('button', { name: /numaralı dekontu görüntüle/ }).click()
+    await expect(page.getByRole('dialog', { name: /Tahsilat dekontu/ })).toBeVisible()
   })
 
   test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api, tenant }) => {

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useActiveInstitution } from '@kampus/react-shared/use-active-institution.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { Modal } from '@/components/Modal.tsx'
@@ -9,10 +10,14 @@ const FORM_ID = 'yeniden-giris-formu'
 
 /**
  * Hassas işlemde eski oturum (403 `reauthentication_required`, guvenlik-kvkk.md): parola yeniden
- * sorulur, yeni oturum açılır ve çağıran işlemi tekrarlar. Parola saklanmaz, durumda kalmaz.
+ * sorulur, yeni oturum aynı kurumda açılır ve çağıran işlemi tekrarlar. Parola yalnız pencere açıkken
+ * tutulur; yanlış denemede silinir.
  */
 export function ReauthModal({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
   const { session, signIn } = useAuth()
+  const { switchInstitution } = useActiveInstitution()
+  // Pencere açılırken okunur: giriş sırasında oturum başka kuruma geçer.
+  const [institutionId] = useState(session?.institution.id)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -26,8 +31,14 @@ export function ReauthModal({ onDone, onCancel }: { onDone: () => void; onCancel
     setBusy(true)
     try {
       const result = await signIn({ email, password })
-      if (result.ok) onDone()
-      else setError(result.message)
+      if (!result.ok) {
+        setError(result.message)
+        setPassword('')
+        return
+      }
+      // Yeni oturum en eski üyeliğe açılır; işlem ekrandaki kurumda sürmelidir.
+      if (institutionId) await switchInstitution.mutateAsync(institutionId)
+      onDone()
     } catch {
       setError('Giriş şu an yapılamıyor. Lütfen tekrar deneyin.')
     } finally {

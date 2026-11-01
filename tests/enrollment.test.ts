@@ -62,6 +62,7 @@ const CONTEXT: EnrollmentContext = {
 }
 const INPUT = {
   classId: 'c1',
+  tariffId: 'test-tariff',
   installmentCount: 3,
   firstDueDate: '2026-11-15',
   identity: { kind: 'tc', number: '10000000146', birthDate: '2013-03-01' },
@@ -356,7 +357,7 @@ test('DOM-KAY-012: kayıt formu kimlik, veli ve dil okulunda saat ister', () => 
 
 test('DOM-KAY-012, -013: form gövdesi API şemasından geçer, veli türüne göre değişir', () => {
   const parse = (values: Parameters<typeof enrollmentFormToBody>[0]) => {
-    const body = enrollmentFormToBody(values)
+    const body = enrollmentFormToBody(values, 'test-tariff')
     assert.equal(enrollProspectSchema.safeParse(body).success, true)
     return body
   }
@@ -401,4 +402,12 @@ test('DOM-FIN-020: önizleme sunucu kuralıyla hesaplar, reddi mesaj olarak dön
   assert.throws(() =>
     previewEnrollment(null as never, { lessonHours: '', discounts: [], extras: [] }, school),
   )
+})
+
+test('DOM-FIN-010: form açıkken tarife değiştiyse kayıt yazılmaz (409)', () => {
+  rejectsUnchanged({ tariffId: 'eski-tarife' }, {}, 'tariff_changed', 'conflict')
+})
+
+test('DOM-FIN-003: aynı ek hizmet iki kez borç açmaz', () => {
+  rejectsUnchanged({ extras: ['meal', 'meal'] }, {}, 'extra_duplicate')
 })

@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
-import { useCoreItem } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 
@@ -95,6 +95,7 @@ function ProspectCard({ prospectId }: { prospectId: string }) {
           prospectId={prospectId}
           version={version}
           stage={prospect.stage ?? ''}
+          phone={prospect.phone ?? ''}
           key={prospect.stage}
         />
       ) : null}
@@ -150,10 +151,12 @@ function StageForm({
   prospectId,
   version,
   stage,
+  phone,
 }: {
   prospectId: string
   version: number
   stage: string
+  phone: string
 }) {
   const { session } = useAuth()
   const change = useChangeProspectStage()
@@ -161,7 +164,14 @@ function StageForm({
   const [next, setNext] = useState<ProspectStage | ''>(options[0] ?? '')
   const [reason, setReason] = useState<ProspectLostReason | ''>('')
   const [error, setError] = useState('')
+  // Telefonu paylaşan adayı yeniden açmak kardeş seçimi ister (DOM-KAY-031).
+  const [sharedContact, setSharedContact] = useState(false)
+  const [siblingOfId, setSiblingOfId] = useState('')
+  const prospects = useCoreAll('prospects', {}, { enabled: sharedContact })
   if (options.length === 0) return null
+  const siblings = (prospects.data ?? []).filter(
+    (row) => row.id !== prospectId && row.record.phone === phone,
+  )
 
   async function submit() {
     if (next === '') return
@@ -174,11 +184,17 @@ function StageForm({
       {
         prospectId,
         version,
-        body: { stage: next, ...(next === LOST && reason !== '' ? { lostReason: reason } : {}) },
+        body: {
+          stage: next,
+          ...(next === LOST && reason !== '' ? { lostReason: reason } : {}),
+          ...(siblingOfId === '' ? {} : { siblingOfId }),
+        },
       },
       { setError: (_name, issue) => setError(issue.message) },
     )
     if (outcome.status === 'success') notify.success('Aday aşaması güncellendi.')
+    else if (outcome.status === 'failed' && outcome.error.code === 'prospect_contact_shared')
+      setSharedContact(true)
   }
 
   const busy = change.isPending
@@ -220,6 +236,29 @@ function StageForm({
               {PROSPECT_LOST_REASONS.map((item) => (
                 <NativeSelectOption key={item} value={item}>
                   {PROSPECT_LOST_REASON_LABELS[item]}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          )}
+        </FormField>
+      ) : null}
+      {sharedContact ? (
+        <FormField
+          id="aday-asama-kardes"
+          label="Kardeş aday"
+          description="Bu telefon başka bir adayda kayıtlı. Kardeşse seçin."
+        >
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={siblingOfId}
+              disabled={busy}
+              onChange={(event) => setSiblingOfId(event.target.value)}
+            >
+              <NativeSelectOption value="">Aday seçin</NativeSelectOption>
+              {siblings.map((row) => (
+                <NativeSelectOption key={row.id} value={row.id}>
+                  {row.record.name}
                 </NativeSelectOption>
               ))}
             </NativeSelect>

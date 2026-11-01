@@ -71,6 +71,8 @@ const guardianSchema = z.union([
 
 export const enrollProspectSchema = z.strictObject({
   classId: requiredText,
+  /** Formun hesapladığı tarife; yayımdaki sürüm değiştiyse kayıt yazılmaz. */
+  tariffId: requiredText,
   installmentCount: z.number().int().min(1).max(12),
   firstDueDate: daySchema,
   /** Dil okulunda paket saati (DOM-FIN-006); okulda verilmez. */
@@ -178,6 +180,10 @@ export function priceEnrollment(
     throw new DomainError('discount_exceeds_gross', 'İndirim öğrenim ücretini karşılayamaz.', {
       path: ['discounts'],
     })
+  if (new Set(request.extras).size !== request.extras.length)
+    throw new DomainError('extra_duplicate', 'Aynı ek hizmet iki kez seçilemez.', {
+      path: ['extras'],
+    })
   const extras = request.extras.map((kind): ExtraLine => {
     const item = kind === 'tuition' ? undefined : itemFor(tariff.items, kind, request.level)
     if (!item)
@@ -246,6 +252,12 @@ export function enrollProspectWithTariff(
     throw new DomainError(
       'tariff_not_published',
       'Bu eğitim yılı için yayımlanmış ücret tarifesi yok.',
+    )
+  if (data.tariffId !== context.tariff.id)
+    throw new DomainError(
+      'tariff_changed',
+      'Ücret tarifesi değişti. Ödeme planını yeniden kontrol edin.',
+      { kind: 'conflict' },
     )
   // Aktif öğrenci ikinci kayıt alamaz; pasif veya silinmiş kaydın kimliği yeniden kullanılır.
   if (state.students.find((student) => student.id === context.identityHolderId)?.isActive)
@@ -417,10 +429,14 @@ export const ENROLLMENT_STEP_FIELDS: readonly (readonly (keyof EnrollmentFormVal
   ['lessonHours', 'discounts', 'extras', 'installmentCount', 'firstDueDate'],
 ]
 
-export function enrollmentFormToBody(values: EnrollmentFormValues): EnrollProspectInput {
+export function enrollmentFormToBody(
+  values: EnrollmentFormValues,
+  tariffId: string,
+): EnrollProspectInput {
   const lessonHours = values.lessonHours === '' ? null : Number(values.lessonHours)
   return {
     classId: values.classId,
+    tariffId,
     installmentCount: Number(values.installmentCount),
     firstDueDate: values.firstDueDate,
     ...(lessonHours === null ? {} : { lessonHours }),

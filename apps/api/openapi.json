@@ -31881,6 +31881,11 @@
                     "minLength": 2,
                     "maxLength": 2000
                   },
+                  "tariffId": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000
+                  },
                   "installmentCount": {
                     "type": "integer",
                     "minimum": 1,
@@ -32013,6 +32018,7 @@
                 },
                 "required": [
                   "classId",
+                  "tariffId",
                   "installmentCount",
                   "firstDueDate",
                   "identity",

@@ -57,7 +57,7 @@ const MAX_AMOUNT_CENTS = 100_000_000
  */
 export function parseAmountInput(text: string): number | null {
   const value = text.trim()
-  const grouped = /^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/.test(value)
+  const grouped = /^[1-9]\d{0,2}(?:\.\d{3})+(?:,\d{1,2})?$/.test(value)
   if (!grouped && !/^\d+(?:[.,]\d{1,2})?$/.test(value)) return null
   const [whole = '', fraction = ''] = (grouped ? value.replaceAll('.', '') : value).split(/[.,]/)
   const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'))

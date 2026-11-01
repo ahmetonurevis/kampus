@@ -2,6 +2,10 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Kesin kayıtta tarife doğrulaması
+
+- **Kırıcı:** `POST /api/v1/prospects/:prospectId/enroll` gövdesinde `tariffId` zorunludur; yayımdaki tarife değiştiyse 409 `tariff_changed`. Aynı ek hizmet iki kez seçilirse 422 `extra_duplicate`. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Kısmi ödeme gösterimi
 
 - `GET /api/v1/finance/totals` eklendi: finans kartları kısmi ödemeyi sayar, gecikmiş tutar kalan kısımdır (DOM-FIN-030).

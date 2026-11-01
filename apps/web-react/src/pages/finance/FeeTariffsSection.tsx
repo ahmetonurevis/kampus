@@ -290,7 +290,7 @@ function TariffEditor({
     if (outcome.status === 'success') {
       notify.success('Tarife kaydedildi.')
       onClose()
-    }
+    } else if (outcome.status === 'failed' && outcome.error.code === 'version_conflict') onClose()
   })
 
   return (
@@ -595,7 +595,7 @@ function PublishModal({ tariff, onClose }: { tariff: TariffRecord; onClose: () =
     if (outcome.status === 'success') {
       notify.success('Tarife yayımlandı.')
       onClose()
-    }
+    } else if (outcome.status === 'failed' && outcome.error.code === 'version_conflict') onClose()
   })
 
   return (

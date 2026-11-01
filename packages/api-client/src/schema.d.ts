@@ -17795,6 +17795,7 @@ export interface operations {
             content: {
                 "application/json": {
                     classId: string;
+                    tariffId: string;
                     installmentCount: number;
                     firstDueDate: string;
                     lessonHours?: number;

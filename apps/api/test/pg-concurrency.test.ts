@@ -713,9 +713,10 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
       ],
       FIXED_NOW,
     )
+    const tariffId = randomUUID()
     await db.insert(feeTariffs).values({
       institutionId: ctx.institutionId,
-      id: randomUUID(),
+      id: tariffId,
       academicYear: FIXED_NOW.getUTCFullYear(),
       versionNumber: 1,
       status: 'published',
@@ -736,6 +737,7 @@ describe('PostgreSQL 16: eşzamanlı işlemler', { skip: PG_SKIP }, () => {
     })
     const enrollment = (number: string) => ({
       classId: seat.id,
+      tariffId,
       installmentCount: 2,
       firstDueDate: '2026-11-15',
       identity: { kind: 'tc', number, birthDate: '2013-03-01' },

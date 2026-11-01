@@ -20,9 +20,11 @@ import {
   useWithdrawals,
   useWithdrawStudent,
 } from '@kampus/react-shared/use-withdrawals.ts'
+import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Modal } from '@/components/Modal.tsx'
+import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
@@ -124,6 +126,12 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
             >
               Döküm
             </Button>
+            <PdfButton
+              type="refund-statement"
+              recordId={row.id}
+              label="Kırılım"
+              ariaLabel={`${row.studentName} iade kırılımını görüntüle`}
+            />
             {canManage && row.refundStatus === 'pending' ? (
               <Button
                 size="sm"
@@ -229,6 +237,7 @@ function BreakdownList({ breakdown }: { breakdown: WithdrawalBreakdown }) {
 }
 
 function StartModal({ onClose }: { onClose: () => void }) {
+  const { session } = useAuth()
   const students = useCoreAll('students')
   const quote = useQuoteWithdrawal()
   const withdraw = useWithdrawStudent()
@@ -427,15 +436,25 @@ function StartModal({ onClose }: { onClose: () => void }) {
               <Input {...control} {...form.register('targetSchool')} disabled={locked} />
             )}
           </FormField>
-          <label className="flex items-center gap-2 self-end pb-2 text-sm">
-            <input
-              type="checkbox"
-              {...form.register('publicSchoolExemption')}
-              disabled={locked}
-              className="size-4"
-            />
-            Resmî okul 9. sınıf kaydı belgelendi (kesinti yok)
-          </label>
+          {session?.institution.type === 'school' ? (
+            <div className="grid gap-1 self-end pb-2 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  {...form.register('publicSchoolExemption')}
+                  disabled={locked}
+                  aria-invalid={Boolean(errors.publicSchoolExemption)}
+                  className="size-4"
+                />
+                Resmî okul 9. sınıf kaydı belgelendi (kesinti yok)
+              </label>
+              {errors.publicSchoolExemption?.message ? (
+                <p role="alert" className="text-danger">
+                  {errors.publicSchoolExemption.message}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           {errors.root?.server?.message ? (
             <p role="alert" className="col-span-full text-sm text-danger">
               {errors.root.server.message}

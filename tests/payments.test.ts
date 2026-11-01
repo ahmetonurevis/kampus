@@ -247,6 +247,8 @@ test('DOM-FIN-001: tutar metinden kuruşa kayıpsız çevrilir', () => {
     '-5',
     '1000000,01',
     '1.234.567',
+    '0.500',
+    '00.500',
   ])
     assert.equal(parseAmountInput(input), null, input)
   assert.equal(amountInputValue(123_456), '1234,56')

@@ -7,6 +7,8 @@ export function commandBody(
   changes: readonly WrittenRecord[],
   /** Oluşturma uçlarında 201 (api-tasarimi.md §1); idempotent tekrar aynı durumu döndürür. */
   statusCode = 200,
+  /** Uca özgü ek yanıt alanları (ör. kesin kayıtta `contractId`); yanıt şeması tanımlar. */
+  extra: Readonly<Record<string, string>> = {},
 ): OperationResponse {
   const count = (kind: WrittenRecord['kind']) =>
     changes.filter((change) => change.kind === kind).length
@@ -14,6 +16,7 @@ export function commandBody(
     statusCode,
     body: {
       data: {
+        ...extra,
         entity,
         changes: {
           inserted: count('insert'),

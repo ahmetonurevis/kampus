@@ -84,8 +84,17 @@ export const enrollDefaults = (now: Date | number = Date.now()): EnrollFormValue
   startDate: dayKey(now),
 })
 
-/** Doğrulanmış form → API gövdesi; tutar yeniden ayrıştırılır, kuruşlu giriş buraya ulaşmaz. */
-export function enrollBody(values: z.output<typeof enrollFormSchema>): EnrollProspectBody {
+/**
+ * Doğrulanmış form → API gövdesi; tutar yeniden ayrıştırılır, kuruşlu giriş buraya ulaşmaz.
+ * Başka kampüsün sınıfı yalnız "tüm kampüsler" açıkken seçilebilir; bu bilinçli seçimdir ve
+ * gövdeye `allowOtherCampus` olarak gider (yoksa sunucu 422 `class_campus_mismatch`).
+ * TODO(web-enroll-fields): DOM-KAY-012 alanları (kimlik no, doğum tarihi, yakınlık, ödeyici) ve
+ * kardeşin mevcut velisi (`parentId`, DOM-KAY-013) forma eklenince gövdeye yazılır.
+ */
+export function enrollBody(
+  values: z.output<typeof enrollFormSchema>,
+  { otherCampus = false }: { otherCampus?: boolean } = {},
+): EnrollProspectBody {
   const total = parseLira(values.total)
   if (!total.ok) throw new Error(total.message)
   return {
@@ -93,6 +102,7 @@ export function enrollBody(values: z.output<typeof enrollFormSchema>): EnrollPro
     totalCents: liraToCents(total.lira),
     count: Number(values.count),
     startDate: values.startDate,
+    ...(otherCampus ? { allowOtherCampus: true } : {}),
   }
 }
 
@@ -107,10 +117,10 @@ const PATH_FIELDS: Readonly<Record<string, EnrollField>> = {
   count: 'count',
   startDate: 'startDate',
 }
-/** Yolsuz gelen iş kuralı kodu → form alanı (kontenjan, ödeme tarihi). */
+/** Yolsuz gelen iş kuralı kodu → form alanı (kontenjan, kampüs, ödeme tarihi). */
 const CODE_FIELDS: Readonly<Record<string, EnrollField>> = {
   class_capacity_full: 'classId',
-  amount_not_whole_lira: 'total',
+  class_campus_mismatch: 'classId',
   invalid_payment_date: 'startDate',
   invalid_installment: 'count',
 }

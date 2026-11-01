@@ -51,7 +51,7 @@ export const PROSPECT_MESSAGES = {
 /**
  * Kesin kayıt `crm` yanında `finance` modülünü ister (taksit ve sözleşme yazar, DOM-YTK-040);
  * kapalıysa sunucunun genel modül iletisi yerine hangi modülün gerektiği söylenir. Yollu iş
- * kuralı hataları (`amount_not_whole_lira` → `totalCents`) `exclusive` ile alana gider.
+ * kuralı hataları (`class_campus_mismatch` → `classId`) `exclusive` ile alana gider.
  */
 export const ENROLL_MODULE_DISABLED_MESSAGE =
   'Kesin kayıt için aday (CRM) ve finans modüllerinin açık olması gerekir.'
@@ -221,6 +221,7 @@ export function useScheduleTrialLesson(options: CommandOptions = {}) {
  * Adayı kesin kayda alır (201; `entity` yeni öğrenci): okunan aday sürümü `If-Match`, her eylem
  * `Idempotency-Key` taşır (DOM-KAY-011, DOM-KAY-035). Modül kapalıysa toast
  * `ENROLL_MODULE_DISABLED_MESSAGE`; 400 ve 422 `issues` alanlara yazılır (`totalCents`, `classId`).
+ * Yanıt oluşturulan sözleşmenin kimliğini (`contractId`) taşır.
  */
 export function useEnrollProspect(options: CommandOptions = {}) {
   return useApiCommand({

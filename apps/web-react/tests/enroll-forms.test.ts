@@ -87,13 +87,20 @@ test('DOM-KAY-011: gövde kuruş tamsayı ve sayısal taksit taşır', () => {
   assert.equal(Number.isInteger(body.totalCents), true)
 })
 
+test('class_campus_mismatch: başka kampüsün sınıfı bilinçli seçimse gövde allowOtherCampus taşır', () => {
+  const values = enrollFormSchema.parse(valid)
+  assert.equal('allowOtherCampus' in enrollBody(values), false)
+  assert.equal('allowOtherCampus' in enrollBody(values, { otherCampus: false }), false)
+  assert.equal(enrollBody(values, { otherCampus: true }).allowOtherCampus, true)
+})
+
 test('DOM-KAY-035: sunucu yolu ve kodu form alanına bağlanır', () => {
   assert.equal(enrollFieldOfPath('totalCents'), 'total')
   assert.equal(enrollFieldOfPath('total'), 'total')
   assert.equal(enrollFieldOfPath('classId'), 'classId')
   assert.equal(enrollFieldOfPath('studentId'), undefined)
   assert.equal(enrollFieldOfCode('class_capacity_full'), 'classId')
-  assert.equal(enrollFieldOfCode('amount_not_whole_lira'), 'total')
+  assert.equal(enrollFieldOfCode('class_campus_mismatch'), 'classId')
   assert.equal(enrollFieldOfCode('prospect_closed'), undefined)
 })
 

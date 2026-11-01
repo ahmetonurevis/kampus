@@ -223,7 +223,7 @@ test.describe('kesin kayıt', () => {
     await expect(page.getByRole('button', { name: 'Kesin kayda dönüştür' })).toBeDisabled()
   })
 
-  test('kuruşlu ve sınır dışı tutar formda engellenir; kayıt yazılmaz (DOM-KAY-035)', async ({
+  test('kuruşlu ve sınır dışı tutar formda engellenir; sunucu kuruşu olduğu gibi yazar (DOM-KAY-035, core-kurus)', async ({
     page,
     loginAs,
     api,
@@ -252,7 +252,7 @@ test.describe('kesin kayıt', () => {
     const client = await api(school.user('onburo'))
     expect((await prospectOf(client, 'e2e-kyt-tutar')).record.stage).toBe('Yeni aday')
 
-    // Sunucu da kuruşlu tutarı alana bağlı hatayla reddeder.
+    // Form tam lira ister; sunucu ise kuruşu olduğu gibi kabul eder (core kuruş çalışır).
     const direct = await client.post(
       '/api/v1/prospects/e2e-kyt-tutar/enroll',
       { classId: 'c1', totalCents: 1_250_050, count: 3, startDate: istanbulDay(30) },
@@ -261,9 +261,14 @@ test.describe('kesin kayıt', () => {
         'if-match': `"${(await prospectOf(client, 'e2e-kyt-tutar')).version}"`,
       },
     )
-    expect(direct.status).toBe(422)
-    expect((direct.body as { code: string }).code).toBe('amount_not_whole_lira')
-    expect((await prospectOf(client, 'e2e-kyt-tutar')).record.studentId).toBeNull()
+    expect(direct.status).toBe(201)
+    const studentId = (await prospectOf(client, 'e2e-kyt-tutar')).record.studentId
+    expect(studentId).toBeTruthy()
+    const invoices = await list<{ amount: number }>(
+      client,
+      `invoices?pageSize=100&studentId=${String(studentId)}`,
+    )
+    expect(invoices.reduce((sum, item) => sum + item.record.amount, 0)).toBe(1_250_050)
   })
 
   test('sınıf seçici adayın kampüsünü gösterir, "tüm kampüsler" genişletir; dolu sınıf seçilemez, sunucu da reddeder (DOM-KAY-035)', async ({
@@ -307,6 +312,38 @@ test.describe('kesin kayıt', () => {
     expect((direct.body as { code: string }).code).toBe('class_capacity_full')
     expect(saved.record.stage).toBe('Yeni aday')
     expect(saved.record.studentId).toBeNull()
+  })
+
+  test('başka kampüsün sınıfı "tüm kampüsler" ile bilinçli seçilir ve kayıt yazılır (class_campus_mismatch)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect('e2e-kyt-kampus', 'Kaan Kara')],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await page.getByRole('button', { name: 'Kaan Kara için kesin kayıt' }).click()
+    const dialog = enrollDialog(page)
+    await dialog.getByLabel('Tüm kampüslerin sınıflarını göster').check()
+    const other = dialog
+      .getByLabel('Sınıf', { exact: true })
+      .locator('option:not([disabled])')
+      .filter({ hasText: 'Beşiktaş Kampüsü' })
+      .first()
+    const classId = (await other.getAttribute('value')) ?? ''
+    expect(classId).not.toBe('')
+    await fillForm(dialog, { classId, total: '9000', count: '3' })
+    await dialog.getByRole('button', { name: 'Kesin kaydı tamamla' }).click()
+    await expect(dialog.getByText('Kaan Kara öğrenci olarak kaydedildi')).toBeVisible()
+
+    const client = await api(school.user('onburo'))
+    const studentId = (await prospectOf(client, 'e2e-kyt-kampus')).record.studentId
+    const student = await client.get(`/api/v1/collections/students/${String(studentId)}`)
+    expect((student.body as { data: Item<{ classId: string }> }).data.record.classId).toBe(classId)
   })
 
   test('araya giren kayıt: aday başka yerde kayda alınmışsa anlaşılır ileti verilir ve form kullanılamaz olur (DOM-KAY-035)', async ({
@@ -566,7 +603,7 @@ test.describe('kesin kayıt', () => {
     expect((await prospectOf(client, 'e2e-kyt-surum')).record.stage).toBe('Kayıt oldu')
   })
 
-  test('sunucudan gelen amount_not_whole_lira hatası tutar alanına bağlanır (DOM-KAY-035)', async ({
+  test('sunucudan gelen totalCents yollu hata tutar alanına bağlanır (DOM-KAY-035)', async ({
     page,
     loginAs,
     tenant,
@@ -578,10 +615,10 @@ test.describe('kesin kayıt', () => {
     await loginAs(school.user('onburo'))
     await page.route('**/api/v1/prospects/e2e-kyt-sunucu/enroll', (route) =>
       route.fulfill({
-        status: 422,
+        status: 400,
         contentType: 'application/json',
         body: JSON.stringify({
-          code: 'amount_not_whole_lira',
+          code: 'validation_failed',
           message: 'Tutar tam lira olmalıdır.',
           issues: [{ path: 'totalCents', message: 'Tutar tam lira olmalıdır.' }],
         }),

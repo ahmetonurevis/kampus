@@ -255,7 +255,7 @@ describe('işlem çalıştırıcı', () => {
           {
             prospectId: prospect.id,
             classId: target.id,
-            total: 120000,
+            totalCents: 12_000_000,
             count: 3,
             startDate: '2026-11-01',
           },
@@ -307,7 +307,13 @@ describe('işlem çalıştırıcı', () => {
         run: (state, { now, makeId }) =>
           enrollProspect(
             state,
-            { prospectId: prospect.id, classId: target.id, total: 5, count: 3, startDate: 'x' },
+            {
+              prospectId: prospect.id,
+              classId: target.id,
+              totalCents: 5,
+              count: 3,
+              startDate: 'x',
+            },
             makeId,
             now,
           ),
@@ -317,7 +323,7 @@ describe('işlem çalıştırıcı', () => {
         assert.ok(error instanceof AppError)
         assert.deepEqual(error.issues?.map((issue) => issue.path.join('.')).sort(), [
           'startDate',
-          'total',
+          'totalCents',
         ])
         return true
       },
@@ -650,7 +656,7 @@ describe('işlem çalıştırıcı', () => {
     const input = {
       prospectId: prospect.id,
       classId: target.id,
-      total: 120000,
+      totalCents: 12_000_000,
       count: 3,
       startDate: '2026-11-01',
     }

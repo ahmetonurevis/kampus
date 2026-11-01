@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@kampus/api-client": "workspace:0.1.0",
-    "@kampus/school-core": "workspace:2.22.0",
+    "@kampus/school-core": "workspace:2.23.0",
     "zod": "4.6.5"
   },
   "peerDependencies": {

@@ -1,5 +1,17 @@
 # Değişiklikler
 
+## 2.23.0
+
+Kesin kayıt core takipleri (D16d; `docs/domain/kayit-ve-crm.md` DOM-KAY-003, DOM-KAY-012, DOM-KAY-013).
+
+- **Kırıcı:** `lib/domain.ts` `enrollProspect` girdisi kuruştur: yeni `enrollmentSchema` (`totalCents` tamsayı, 10.000–100.000.000) eski `total` (tam lira) alanının yerini aldı (`TODO(core-kurus)` kapandı). Çevrimdışı demo formları (`registrationSchema`, lira) sınırda `enrollmentFromRegistration` ile çevrilir; Vue `Crm.vue` ve mobil `model/operations.ts` bunu çağırır, demo davranışı (her kampüsün sınıfı seçilebilir) korunur.
+- Sınıf adayın kampüsünden değilse 422 `class_campus_mismatch` (`path: ['classId']`); `allowOtherCampus: true` bilinçli seçimdir.
+- 18 yaş altında (`school` her zaman; `language_school`'da adayın seçimi, seçimi olmayan eski adayda doğum tarihi) adayın telefonu ve e-postası veliye yazılır, öğrenciye boş yazılır; veli adı `guardianName`'dir (DOM-KAY-003). Yetişkin kursiyerin iletişimi kendisinde kalır.
+- Kardeş kaydında yeni veli açılmaz (DOM-KAY-013): `parentId` ile seçilen veli ya da kardeş adayın (`siblingOfId`, iki yönde) kayıtlı öğrencisinin velisi kullanılır; olmayan veli `parent_not_found` (`not_found`). İletişim eşleşmesi otomatik birleştirmez.
+- DOM-KAY-012 alanları şimdilik isteğe bağlıdır: `nationalId` (`nationalIdSchema`, `isValidNationalId` denetim haneleri; kvkk Ç), `birthDate` (`birthDateSchema`, `ageOn`; kvkk Ç), `guardianRelation` (`GUARDIAN_RELATIONS`), `payer` (`ENROLLMENT_PAYERS`). Gelecek doğum tarihi `invalid_birth_date`, dil okulunda 18 yaş seçimiyle uyuşmazlık `birth_date_minor_mismatch`; 18 yaş altında ödeyici veli (`payer_must_be_guardian`), yetişkinde kendisi (`payer_must_be_student`); yetişkinde veli alanı `guardian_not_applicable`.
+- Sözleşme başlığı kurum türüne göredir (`ENROLLMENT_CONTRACT_TITLES`; dil okulunda "Dil kursu eğitim sözleşmesi") ve sözleşme `payer` taşır. İşlev beşinci parametre olarak `{ institutionType }` alır ve `{ student, contract, parent }` döndürür.
+- `State`: `students` `nationalId`, `birthDate`, `guardianRelation`; `parents` `phone`, `email`; `contracts` `payer` isteğe bağlı alanlarını kazandı. Tüketiciler `workspace:2.23.0` sürümüne sabitlendi.
+
 ## 2.22.0
 
 Rubrik puanının kriter satırı katı oldu (F4b3b1 inceleme düzeltmesi; `docs/domain/beceri-gelisimi.md` DOM-BEC-021; `docs/muhendislik/api-tasarimi.md` "gövde katı").

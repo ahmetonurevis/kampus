@@ -50,6 +50,8 @@ const WRITTEN = [
   'contracts',
 ] as const satisfies readonly CollectionName[]
 
+/** Geçerli bir T.C. kimlik numarası (denetim haneleri doğru, gerçek kişiye ait değil). */
+const NATIONAL_ID = '10000000146'
 /** 36.000 ₺ = 3.600.000 kuruş, üç taksit: 3 × 1.200.000 kuruş. */
 const REGISTRATION = { classId: 'c1', totalCents: 3_600_000, count: 3, startDate: '2026-11-15' }
 
@@ -312,6 +314,7 @@ describe('kesin kayıt ucu', () => {
     assert.equal(again.statusCode, 201, again.body)
     assert.equal(again.headers['idempotent-replayed'], 'true')
     assert.deepEqual(again.json(), first.json())
+    assert.equal(typeof again.json().data.contractId, 'string')
     assert.equal(again.headers.location, first.headers.location)
     await unchanged(a.id, async () => {
       // Aynı anahtar farklı gövde: 422; yeni anahtar ve güncel sürüm: aday zaten kayıtlı.
@@ -418,7 +421,7 @@ describe('kesin kayıt ucu', () => {
     })
   })
 
-  test('DOM-KAY-011: tutar kuruştur; metin, kesirli, sınır dışı tutar 400; 100’ün katı olmayan tutar 422 totalCents yoluyla; kayıt değişmez', async () => {
+  test('DOM-KAY-011: tutar kuruştur; metin, kesirli, sınır dışı tutar 400 totalCents yoluyla; kayıt değişmez', async () => {
     const a = await institution()
     const cookie = await frontDesk(a.id)
     const issuePaths = (response: Awaited<ReturnType<typeof enroll>>) =>
@@ -429,23 +432,18 @@ describe('kesin kayıt ucu', () => {
         assertError(response, 400, 'validation_failed')
         assert.deepEqual(issuePaths(response), ['totalCents'], String(totalCents))
       }
-      for (const totalCents of [3_600_050, 10_001, 99_999_999]) {
-        const response = await enroll({ cookie, body: { ...REGISTRATION, totalCents } })
-        assertError(response, 422, 'amount_not_whole_lira')
-        const issues = response.json().issues as { path: string[]; message: string }[]
-        assert.deepEqual(
-          issues.map((item) => item.path),
-          [['totalCents']],
-        )
-        assert.match(issues[0]?.message ?? '', /tam lira/)
-      }
-      // Bayat sürümdeki tutar kuralı da 409 olur (api-tasarimi.md §6 sırası).
-      assertError(
-        await enroll({ cookie, version: 2, body: { ...REGISTRATION, totalCents: 3_600_050 } }),
-        409,
-        'version_conflict',
-      )
     })
+  })
+
+  test('core-kurus, DOM-KAY-011: kuruşlu tutar core’a olduğu gibi geçer; taksitler kuruşu kuruşuna, sözleşme aynı tutar', async () => {
+    const a = await institution()
+    const cookie = await frontDesk(a.id)
+    const response = await enroll({ cookie, body: { ...REGISTRATION, totalCents: 3_600_050 } })
+    assert.equal(response.statusCode, 201, response.body)
+    const invoices = (await loadRecords(db, a.id, ['invoices'])).map((row) => row.data.amount)
+    assert.deepEqual(invoices, [1_200_017, 1_200_017, 1_200_016])
+    const contracts = (await loadRecords(db, a.id, ['contracts'])).map((row) => row.data.amount)
+    assert.deepEqual(contracts, [3_600_050])
   })
 
   test('DOM-KAY-011: sınır tutarlar kabul edilir; 10.000 kuruş tek taksit, 100.000.000 kuruş on iki taksit, toplam kuruşu kuruşuna', async () => {
@@ -474,6 +472,199 @@ describe('kesin kayıt ucu', () => {
       contracts.sort((x, y) => Number(x) - Number(y)),
       [10_000, 100_000_000],
     )
+  })
+
+  // --- Kampüs, veli ve kimlik alanları (DOM-KAY-003, -012, -013) --------------------------------
+
+  test('class_campus_mismatch: adayın kampüsünden olmayan sınıf 422 classId yoluyla; allowOtherCampus ile kabul', async () => {
+    // pr2 Beşiktaş (b2) adayıdır, c1 Kadıköy (b1) sınıfıdır.
+    const a = await institution()
+    const cookie = await frontDesk(a.id)
+    await unchanged(a.id, async () => {
+      for (const body of [REGISTRATION, { ...REGISTRATION, allowOtherCampus: false }]) {
+        const response = await enroll({ cookie, prospectId: 'pr2', body })
+        assertError(response, 422, 'class_campus_mismatch')
+        assert.deepEqual(
+          (response.json().issues as { path: string[] }[]).map((item) => item.path),
+          [['classId']],
+        )
+      }
+      assertError(
+        await enroll({
+          cookie,
+          prospectId: 'pr2',
+          body: { ...REGISTRATION, allowOtherCampus: 'evet' },
+        }),
+        400,
+        'validation_failed',
+      )
+    })
+    const accepted = await enroll({
+      cookie,
+      prospectId: 'pr2',
+      body: { ...REGISTRATION, allowOtherCampus: true },
+    })
+    assert.equal(accepted.statusCode, 201, accepted.body)
+    const student = await findRecord(db, a.id, 'students', accepted.json().data.entity.id)
+    assert.equal(student?.data.classId, 'c1')
+  })
+
+  test('DOM-KAY-003: 18 yaş altında telefon, e-posta ve veli adı veliye yazılır, öğrenciye yazılmaz; yanıt contractId taşır', async () => {
+    const guardian = { ...PR1, guardianName: 'Test Veli Güven' }
+    const a = await institution({}, { ...SAMPLE, prospects: [guardian] })
+    const cookie = await frontDesk(a.id)
+    const response = await enroll({ cookie })
+    assert.equal(response.statusCode, 201, response.body)
+    const data = response.json().data
+    const student = await findRecord(db, a.id, 'students', data.entity.id)
+    assert.equal(student?.data.phone, '')
+    assert.equal(student?.data.email, '')
+    const parent = await findRecord(db, a.id, 'parents', String(student?.data.parentId))
+    assert.deepEqual(parent?.data, {
+      id: student?.data.parentId,
+      name: 'Test Veli Güven',
+      studentIds: [data.entity.id],
+      phone: PR1?.phone,
+      email: PR1?.email,
+    })
+    // Sözleşme kimliği yanıttadır; ek sorgu gerekmez (TODO(web-enroll-contract) kapandı).
+    const contracts = await loadRecords(db, a.id, ['contracts'])
+    assert.equal(contracts.length, 1)
+    assert.equal(data.contractId, contracts[0]?.id)
+    assert.equal(contracts[0]?.data.payer, 'guardian')
+    assert.equal(contracts[0]?.data.title, 'Özel okul eğitim sözleşmesi')
+    assert.ok(
+      data.records.some(
+        (item: { collection: string; id: string }) =>
+          item.collection === 'contracts' && item.id === data.contractId,
+      ),
+    )
+  })
+
+  test('DOM-KAY-013: kardeş kaydında mevcut veli kullanılır; yeni veli açılmaz, veli güncellenir', async () => {
+    const sibling = { ...SEED.prospects[3], siblingOfId: 'pr1' }
+    const a = await institution({}, { ...SAMPLE, prospects: [PR1 ?? {}, sibling] })
+    const cookie = await frontDesk(a.id)
+    const first = await enroll({ cookie })
+    assert.equal(first.statusCode, 201, first.body)
+    const parents = await count(a.id, 'parents')
+    const second = await enroll({ cookie, prospectId: 'pr4' })
+    assert.equal(second.statusCode, 201, second.body)
+    assert.equal(await count(a.id, 'parents'), parents)
+    assert.deepEqual(second.json().data.changes, {
+      inserted: 5,
+      updated: 2,
+      archived: 0,
+      restored: 0,
+    })
+    const [one, two] = await Promise.all(
+      [first, second].map((item) => findRecord(db, a.id, 'students', item.json().data.entity.id)),
+    )
+    assert.equal(two?.data.parentId, one?.data.parentId)
+    const parent = await findRecord(db, a.id, 'parents', String(one?.data.parentId))
+    assert.deepEqual(parent?.data.studentIds, [one?.data.id, two?.data.id])
+    assert.equal(parent?.version, 2)
+  })
+
+  test('DOM-KAY-013: parentId ile seçilen veliye bağlanır; olmayan veya başka kurumun velisi 404 not_found', async () => {
+    const b = await institution(
+      {},
+      { ...SAMPLE, parents: [{ id: 'test-p-b', name: 'B Veli', studentIds: [] }] },
+    )
+    const a = await institution(
+      {},
+      { ...SAMPLE, parents: [{ id: 'test-p-a', name: 'A Veli', studentIds: [] }] },
+    )
+    const cookie = await frontDesk(a.id)
+    const bBefore = await snapshot(b.id)
+    await unchanged(a.id, async () => {
+      for (const parentId of ['test-p-yok', 'test-p-b'])
+        assertError(await enroll({ cookie, body: { ...REGISTRATION, parentId } }), 404, 'not_found')
+    })
+    const parents = await count(a.id, 'parents')
+    const response = await enroll({ cookie, body: { ...REGISTRATION, parentId: 'test-p-a' } })
+    assert.equal(response.statusCode, 201, response.body)
+    assert.equal(await count(a.id, 'parents'), parents)
+    const parent = await findRecord(db, a.id, 'parents', 'test-p-a')
+    assert.deepEqual(parent?.data, {
+      id: 'test-p-a',
+      name: 'A Veli',
+      studentIds: [response.json().data.entity.id],
+    })
+    assert.deepEqual(await snapshot(b.id), bBefore)
+  })
+
+  test('DOM-KAY-012: kimlik no, doğum tarihi ve yakınlık öğrenciye yazılır; geçersiz kimlik no 400; 18 yaş altında ödeyici öğrenci 422', async () => {
+    const a = await institution()
+    const cookie = await frontDesk(a.id)
+    await unchanged(a.id, async () => {
+      for (const extra of [
+        { nationalId: '10000000145' },
+        { nationalId: '1234' },
+        { birthDate: '2013-02-30' },
+        { guardianRelation: 'dede' },
+        { payer: 'kurum' },
+      ])
+        assertError(
+          await enroll({ cookie, body: { ...REGISTRATION, ...extra } }),
+          400,
+          'validation_failed',
+        )
+      assertError(
+        await enroll({ cookie, body: { ...REGISTRATION, payer: 'student' } }),
+        422,
+        'payer_must_be_guardian',
+      )
+      assertError(
+        await enroll({ cookie, body: { ...REGISTRATION, birthDate: '2027-01-01' } }),
+        422,
+        'invalid_birth_date',
+      )
+    })
+    const response = await enroll({
+      cookie,
+      body: {
+        ...REGISTRATION,
+        nationalId: NATIONAL_ID,
+        birthDate: '2013-04-12',
+        guardianRelation: 'father',
+        payer: 'guardian',
+      },
+    })
+    assert.equal(response.statusCode, 201, response.body)
+    const student = await findRecord(db, a.id, 'students', response.json().data.entity.id)
+    assert.equal(student?.data.nationalId, NATIONAL_ID)
+    assert.equal(student?.data.birthDate, '2013-04-12')
+    assert.equal(student?.data.guardianRelation, 'father')
+    // Denetim kaydına kimlik no ve doğum tarihi değeri yazılmaz.
+    const audit = JSON.stringify(await enrollAudits(a.id))
+    for (const value of [NATIONAL_ID, '2013-04-12'])
+      assert.equal(audit.includes(value), false, `denetimde: ${value}`)
+  })
+
+  test('DOM-KAY-003, DOM-KAY-012: dil okulunda yetişkin kursiyerin iletişimi kendisine yazılır, ödeyici kendisidir, sözleşme dil kursu başlığı taşır', async () => {
+    const adult = { ...PR1, minor: false }
+    const a = await institution({ type: 'language_school' }, { ...SAMPLE, prospects: [adult] })
+    const cookie = await frontDesk(a.id)
+    await unchanged(a.id, async () => {
+      assertError(
+        await enroll({ cookie, body: { ...REGISTRATION, guardianRelation: 'mother' } }),
+        422,
+        'guardian_not_applicable',
+      )
+      assertError(
+        await enroll({ cookie, body: { ...REGISTRATION, birthDate: '2010-01-01' } }),
+        422,
+        'birth_date_minor_mismatch',
+      )
+    })
+    const response = await enroll({ cookie })
+    assert.equal(response.statusCode, 201, response.body)
+    const student = await findRecord(db, a.id, 'students', response.json().data.entity.id)
+    assert.equal(student?.data.phone, PR1?.phone)
+    const contract = await findRecord(db, a.id, 'contracts', response.json().data.contractId)
+    assert.equal(contract?.data.title, 'Dil kursu eğitim sözleşmesi')
+    assert.equal(contract?.data.payer, 'student')
   })
 
   // --- Kurumlar arası ---------------------------------------------------------------------------------
@@ -558,7 +749,7 @@ describe('kesin kayıt ucu', () => {
 
   // --- Log -----------------------------------------------------------------------------------------------
 
-  test('DOM-KAY-003, DOM-KAY-035: adayın adı, telefonu, e-postası ve veli adı loga düşmez', async () => {
+  test('DOM-KAY-003, DOM-KAY-012, DOM-KAY-035: adayın adı, telefonu, e-postası, veli adı, kimlik no ve doğum tarihi loga düşmez', async () => {
     const guardian = 'Test Gizli Veli Adı'
     const minor = {
       ...PR1,
@@ -573,14 +764,27 @@ describe('kesin kayıt ucu', () => {
     const logs: string[] = []
     const logged = await buildTestApp(db, { logs, clock: () => FIXED_NOW })
     try {
-      const response = await enroll({ cookie, prospectId: minor.id, target: logged })
+      const response = await enroll({
+        cookie,
+        prospectId: minor.id,
+        target: logged,
+        body: { ...REGISTRATION, nationalId: NATIONAL_ID, birthDate: '2012-03-04' },
+      })
       assert.equal(response.statusCode, 201, response.body)
       const rejected = await enroll({ cookie, prospectId: minor.id, version: 2, target: logged })
       assertError(rejected, 409, 'prospect_already_enrolled')
       const lines = logs.flatMap((line) => line.split('\n')).filter(Boolean)
       assert.ok(lines.some((line) => line.includes('"operation.applied"')))
       const text = lines.join('\n')
-      for (const value of [minor.name, minor.phone, minor.email, guardian, 'velisi'])
+      for (const value of [
+        minor.name,
+        minor.phone,
+        minor.email,
+        guardian,
+        'velisi',
+        NATIONAL_ID,
+        '2012-03-04',
+      ])
         assert.equal(text.includes(value), false, `logda: ${value}`)
     } finally {
       await logged.close()

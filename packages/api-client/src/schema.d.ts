@@ -1915,7 +1915,7 @@ export interface paths {
         put?: never;
         /**
          * Adayı kesin kayda al
-         * @description Açık aşamadaki adayı kesin kayda alır: öğrenci, veli, taksit planı ve sözleşme oluşturulur, aday `Kayıt oldu` olur; hepsi tek işlemde yazılır, hata olursa hiçbir kayıt değişmez (core `enrollProspect`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetki core `prospect.enroll` işlemden önce ayrıca denetlenir. Gövde: `classId`, `totalCents` (eğitim bedeli, kuruş, tamsayı, 10.000–100.000.000), `count` (1–12 taksit), `startDate` (ilk vade, `YYYY-MM-DD`); sayısal alanlar metin olarak gelirse, aday kimliği gövdede olursa veya bilinmeyen alan varsa 400 `validation_failed`. Tutar şimdilik tam lira olmalıdır: 100'ün katı olmayan `totalCents` 422 `amount_not_whole_lira` (`issues` yolu `totalCents`). Olmayan veya başka kurumun aday ya da sınıfı 404; dolu sınıf 422 `class_capacity_full`, geçersiz ilk vade 422 `invalid_payment_date`. Kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş veya tanınmayan aşamadaki aday 409 `prospect_closed` (önce `İletişime geçildi` ile yeniden açılır). İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Aday telefonu, e-postası ve veli adı loglanmaz; denetim kaydına yalnız alan adları ve kimlikler yazılır. Modüller `crm` ve `finance` (taksit ve sözleşme yazılır); biri kapalıysa 403 `module_disabled`. `Idempotency-Key` zorunludur (mükerrer öğrenci ve taksit üretilmez). `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201; `entity` yeni öğrencidir ve `Location` öğrenci kaydını gösterir. Roller: `yonetici`, `onburo`.
+         * @description Açık aşamadaki adayı kesin kayda alır: öğrenci, veli, taksit planı ve sözleşme oluşturulur, aday `Kayıt oldu` olur; hepsi tek işlemde yazılır, hata olursa hiçbir kayıt değişmez (core `enrollProspect`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Yetki core `prospect.enroll` işlemden önce ayrıca denetlenir. Gövde: `classId`, `totalCents` (eğitim bedeli, kuruş, tamsayı, 10.000–100.000.000; core'a olduğu gibi geçer), `count` (1–12 taksit), `startDate` (ilk vade, `YYYY-MM-DD`); isteğe bağlı `allowOtherCampus`, `parentId`, `nationalId`, `birthDate`, `guardianRelation`, `payer`. Sayısal alanlar metin olarak gelirse, aday kimliği gövdede olursa veya bilinmeyen alan varsa 400 `validation_failed`; geçersiz kimlik numarası (11 hane ve denetim haneleri) 400. 18 yaş altında (`school` her zaman; `language_school`'da adayın seçimi) adayın telefonu, e-postası ve veli adı veliye yazılır, öğrenciye yazılmaz (DOM-KAY-003). Kardeş kaydında yeni veli açılmaz: `parentId` ile seçilen veli ya da kardeş adayın kayıtlı öğrencisinin velisi kullanılır (DOM-KAY-013); olmayan veya başka kurumun velisi 404. Sınıf adayın kampüsünden değilse 422 `class_campus_mismatch` (`issues` yolu `classId`); `allowOtherCampus: true` bilinçli seçimdir. DOM-KAY-012: doğum tarihi gelecekte 422 `invalid_birth_date`, dil okulunda adayın 18 yaş seçimiyle uyuşmazsa 422 `birth_date_minor_mismatch`; 18 yaş altında ödeyici veli (422 `payer_must_be_guardian`), yetişkin kursiyerde kendisi (422 `payer_must_be_student`), yetişkinde veli alanı 422 `guardian_not_applicable`. Sözleşme başlığı kurum türüne göredir (dil okulunda `Dil kursu eğitim sözleşmesi`). Olmayan veya başka kurumun aday ya da sınıfı 404; dolu sınıf 422 `class_capacity_full`, geçersiz ilk vade 422 `invalid_payment_date`. Kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş veya tanınmayan aşamadaki aday 409 `prospect_closed` (önce `İletişime geçildi` ile yeniden açılır). İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Aday telefonu, e-postası, veli adı, kimlik numarası ve doğum tarihi loglanmaz; denetim kaydına yalnız alan adları ve kimlikler yazılır. Modüller `crm` ve `finance` (taksit ve sözleşme yazılır); biri kapalıysa 403 `module_disabled`. `Idempotency-Key` zorunludur (mükerrer öğrenci ve taksit üretilmez). `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201; `entity` yeni öğrencidir, `Location` öğrenci kaydını gösterir ve `contractId` oluşturulan sözleşmedir. Roller: `yonetici`, `onburo`.
          */
         post: operations["enrollProspect"];
         delete?: never;
@@ -3598,6 +3598,34 @@ export interface components {
             /** @description `false`: saat dolu ("Dolu"); neden hiçbir durumda bildirilmez (DOM-ILT-073) */
             available: boolean;
         };
+        EnrollProspectResultInput: {
+            /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
+            entity: {
+                /** @description İşlemin konusu olan kaydın koleksiyonu */
+                collection: string;
+                /** @description İşlemin konusu olan kaydın kimliği (yeni kayıtta üretilen) */
+                id: string;
+            } | null;
+            /** @description Değişen kayıt sayıları (yalnız sıra değişikliği sayılmaz) */
+            changes: {
+                inserted: number;
+                updated: number;
+                archived: number;
+                restored: number;
+            };
+            /** @description Yazılan kayıtlar; güncel veri koleksiyon okuma uçlarından alınır */
+            records: {
+                /** @description school-core State koleksiyonu */
+                collection: string;
+                id: string;
+                /** @description Kaydın yeni sürümü (`If-Match` için) */
+                version: number;
+                /** @enum {string} */
+                change: "insert" | "update" | "archive" | "restore" | "move";
+            }[];
+            /** @description Oluşturulan sözleşmenin kimliği (PDF ve okuma uçları için) */
+            contractId: string;
+        };
         RubricInput: {
             /** Format: uuid */
             id: string;
@@ -5175,6 +5203,34 @@ export interface components {
             subjectNames: string[];
             /** @description `false`: saat dolu ("Dolu"); neden hiçbir durumda bildirilmez (DOM-ILT-073) */
             available: boolean;
+        };
+        EnrollProspectResult: {
+            /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
+            entity: {
+                /** @description İşlemin konusu olan kaydın koleksiyonu */
+                collection: string;
+                /** @description İşlemin konusu olan kaydın kimliği (yeni kayıtta üretilen) */
+                id: string;
+            } | null;
+            /** @description Değişen kayıt sayıları (yalnız sıra değişikliği sayılmaz) */
+            changes: {
+                inserted: number;
+                updated: number;
+                archived: number;
+                restored: number;
+            };
+            /** @description Yazılan kayıtlar; güncel veri koleksiyon okuma uçlarından alınır */
+            records: {
+                /** @description school-core State koleksiyonu */
+                collection: string;
+                id: string;
+                /** @description Kaydın yeni sürümü (`If-Match` için) */
+                version: number;
+                /** @enum {string} */
+                change: "insert" | "update" | "archive" | "restore" | "move";
+            }[];
+            /** @description Oluşturulan sözleşmenin kimliği (PDF ve okuma uçları için) */
+            contractId: string;
         };
         Rubric: {
             /** Format: uuid */
@@ -16576,12 +16632,30 @@ export interface operations {
                 "application/json": {
                     /** @description Öğrencinin yerleşeceği etkin sınıf */
                     classId: string;
-                    /** @description Eğitim bedeli, kuruş (tamsayı). 10.000–100.000.000 (100–1.000.000 ₺); şimdilik 100’ün katı olmalı (tam lira), değilse 422 `amount_not_whole_lira` */
+                    /** @description Eğitim bedeli, kuruş (tamsayı). 10.000–100.000.000 (100–1.000.000 ₺) */
                     totalCents: number;
                     /** @description Taksit sayısı (1–12) */
                     count: number;
                     /** @description İlk taksitin vadesi (`YYYY-MM-DD`) */
                     startDate: string;
+                    /** @description Sınıf adayın kampüsünden değilse bilinçli seçim onayı; verilmezse 422 `class_campus_mismatch` */
+                    allowOtherCampus?: boolean;
+                    /** @description Kardeş kaydında öğrencinin bağlanacağı mevcut veli (DOM-KAY-013); yalnız 18 yaş altı */
+                    parentId?: string;
+                    /** @description Öğrencinin T.C. veya yabancı uyruklu kimlik numarası (11 hane, DOM-KAY-012) */
+                    nationalId?: string;
+                    /** @description Öğrencinin doğum tarihi (`YYYY-MM-DD`, DOM-KAY-012) */
+                    birthDate?: string;
+                    /**
+                     * @description Velinin öğrenciye yakınlığı (DOM-KAY-012); yalnız 18 yaş altı
+                     * @enum {string}
+                     */
+                    guardianRelation?: "mother" | "father" | "legal_guardian" | "other";
+                    /**
+                     * @description Sözleşmenin ödeyicisi (DOM-KAY-012); verilmezse 18 yaş altında `guardian`, üstünde `student`
+                     * @enum {string}
+                     */
+                    payer?: "guardian" | "student";
                 };
             };
         };
@@ -16593,7 +16667,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["CommandResult"];
+                        data: components["schemas"]["EnrollProspectResult"];
                     };
                 };
             };

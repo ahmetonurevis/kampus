@@ -13,7 +13,7 @@ import {
 import { institutionKey } from './query-keys.ts'
 
 /**
- * Yazma komutlarının (`POST /invoices/:id/pay` gibi) saf mantığı: `Idempotency-Key` yaşam
+ * Yazma komutlarının (`POST /payments` gibi) saf mantığı: `Idempotency-Key` yaşam
  * döngüsü, `If-Match` başlığı, çift gönderim kilidi ve hata geri bildirimi. Hook
  * `use-api-command.ts`'tedir; burası React olmadan test edilir (api-tasarimi.md §7).
  */

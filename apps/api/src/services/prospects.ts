@@ -1,9 +1,15 @@
 import { eq } from 'drizzle-orm'
+import { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
-import { enrollProspect, type EnrollmentInput } from '@kampus/school-core/lib/domain.ts'
+import {
+  enrollProspectSchema,
+  enrollProspectWithTariff,
+  findParentMatches,
+} from '@kampus/school-core/lib/enrollment.ts'
+import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   addProspectNote,
   changeProspectStage,
@@ -16,7 +22,17 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
+import { findPublishedTariff } from '../db/fee-tariffs.ts'
+import { findRecord, loadRecords } from '../db/records.ts'
 import { users } from '../db/schema/auth.ts'
+import { institutionSettings } from '../db/schema/institution-settings.ts'
+import {
+  findStudentIdentity,
+  insertStudentIdentity,
+  findIdentityHolder,
+} from '../db/student-identities.ts'
+import { archiveStudentIdentity } from '../db/withdrawals.ts'
+import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
@@ -28,7 +44,7 @@ import {
 } from './operation-runner.ts'
 
 /**
- * Aday/CRM servisi (docs/domain/kayit-ve-crm.md DOM-KAY-001…011, DOM-KAY-030…035; deneme dersi
+ * Aday/CRM servisi (docs/domain/kayit-ve-crm.md DOM-KAY-001…013, DOM-KAY-030…035; deneme dersi
  * docs/domain/dil-okulu.md DOM-DIL-030). Kurallar, rol ve kurum türü core'dadır
  * (`lib/prospects.ts`, `requireAuthorized`); burada yalnız kayıtların yüklenmesi ve işlemin tek
  * transaction'da çalıştırılması vardır.
@@ -46,28 +62,11 @@ import {
  * Aday telefonu, e-postası, veli adı ve not metni loglanmaz; denetim kaydına yalnız değişen alan
  * adları yazılır. Mükerrer kayıt reddi (`prospect_duplicate`, `prospect_contact_shared`) eşleşen
  * adayın kimliğini taşımaz (core hatası yalnız kod, ileti ve alan yolu taşır).
- *
- * Kesin kayıt (`prospect.enroll`, DOM-KAY-001, -011, -035) öğrenci, veli, taksitler, sözleşme ve
- * adayın `Kayıt oldu` durumunu aynı transaction'da yazar. Core `enrollProspect` yetkiyi kendisi
- * denetlemediği için işlemden önce `requireAuthorized` çalışır.
  */
 
 type ProspectAction =
-  | 'prospect.create'
-  | 'prospect.stage'
-  | 'prospect.note'
-  | 'prospect.meeting'
-  | 'prospect.trial'
-  | 'prospect.enroll'
-type Outcome = {
-  /** İşlemin konusu olan aday; denetim kaydı ona bağlanır. */
-  id: string
-  statusCode: number
-  /** Yanıtın konusu (`entity`) adaydan başkaysa: kesin kayıtta oluşturulan öğrenci. */
-  created?: { collection: CollectionName; id: string }
-  /** Yanıt verisine eklenen alanlar (kesin kayıtta `contractId`). */
-  extra?: Record<string, string>
-}
+  'prospect.create' | 'prospect.stage' | 'prospect.note' | 'prospect.meeting' | 'prospect.trial'
+type Outcome = { id: string; statusCode: number }
 
 interface ProspectRun {
   action: ProspectAction
@@ -75,8 +74,6 @@ interface ProspectRun {
   subjectId: string | null
   /** Not yazarının gösterilen adı oturum kullanıcısından okunur (DOM-KAY-032). */
   needsAuthorName?: boolean
-  /** Koleksiyon başına kısmi yükleme; verilmeyen koleksiyon bütünüyle yüklenir. */
-  loadScope?: Partial<Record<CollectionName, LoadScope>>
   run: (state: State, by: Participant, tools: OperationTools, options: ProspectOptions) => Outcome
 }
 
@@ -109,7 +106,6 @@ function execute(
     {
       action: command.action,
       collections: spec.collections,
-      ...(command.loadScope === undefined ? {} : { loadScope: command.loadScope }),
       ...(command.subjectId !== null && options.expectedVersion !== null
         ? {
             expectedVersions: [
@@ -132,10 +128,9 @@ function execute(
     },
     (outcome) =>
       commandBody(
-        outcome.result.created ?? { collection: COLLECTION, id: outcome.result.id },
+        { collection: COLLECTION, id: outcome.result.id },
         outcome.changes,
         outcome.result.statusCode,
-        outcome.result.extra,
       ),
     options.idempotency,
   )
@@ -225,6 +220,138 @@ export function scheduleProspectMeetingCommand(
   )
 }
 
+/**
+ * Kesin kayıtta yalnız eklenen koleksiyonlar: `applyEnrollment` taksitleri ve sözleşmeyi okumaz,
+ * yalnız ekler. Kurumun bütün faturaları her kayıtta yüklenmez; yeni kayıtlar koleksiyonun sonuna
+ * eklenir. Öğrenciler (kontenjan, kardeş indirimi) ve veliler bütünüyle yüklenir.
+ */
+const APPEND_ONLY: LoadScope = { ids: [] }
+
+/**
+ * Adayı kesin kayda alır: tutar yayımlanmış tarifeden hesaplanır; öğrenci, veli, taksit, sözleşme,
+ * aday aşaması ve kimlik satırı tek transaction'da yazılır (DOM-FIN-002, DOM-KAY-001, -011, -012,
+ * -035). Kontenjan ve kimlik tekilliği kurum kilidi altında denetlenir. 201; konu öğrencidir.
+ */
+export function enrollProspectCommand(
+  ctx: ServiceContext,
+  prospectId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  const spec = OPERATION_COMMANDS['prospect.enroll']
+  const identity = enrollProspectSchema.parse(input).identity
+  return runCommand(
+    ctx,
+    {
+      action: 'prospect.enroll',
+      collections: spec.collections,
+      loadScope: { invoices: APPEND_ONLY, contracts: APPEND_ONLY },
+      ...(options.expectedVersion !== null
+        ? {
+            expectedVersions: [
+              { collection: COLLECTION, id: prospectId, version: options.expectedVersion },
+            ],
+          }
+        : {}),
+      entity: (result: { student: { id: string } }) => ({
+        type: 'students',
+        id: result.student.id,
+      }),
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        const [settings] = await tx
+          .select({ academicYear: institutionSettings.academicYear })
+          .from(institutionSettings)
+          .where(eq(institutionSettings.institutionId, ctx.institutionId))
+          .limit(1)
+        const academicYear = settings?.academicYear ?? Number(dayKey(ctx.now).slice(0, 4))
+        const tariff = await findPublishedTariff(tx, ctx.institutionId, academicYear)
+        const identityHolderId = await findIdentityHolder(tx, ctx.institutionId, identity.number)
+        return {
+          scalars,
+          run: (state, { now, makeId }) => {
+            requireAuthorized(actor, 'prospect.enroll', {}, state, { now, institutionType })
+            return enrollProspectWithTariff(state, prospectId, input, makeId, now, {
+              institutionType,
+              tariff,
+              academicYear,
+              identityHolderId,
+              approvedByUserId: ctx.actor.userId,
+              canApproveCapException: ctx.actor.role === 'yonetici',
+              today: dayKey(ctx.now),
+            })
+          },
+        }
+      },
+      after: async (tx, result) => {
+        if (result.supersededStudentId !== null)
+          await archiveStudentIdentity(tx, ctx.institutionId, result.supersededStudentId, ctx.now)
+        await insertStudentIdentity(tx, ctx.institutionId, {
+          studentId: result.student.id,
+          academicYear: result.academicYear,
+          kind: result.identity.kind,
+          number: result.identity.number,
+          birthDate: result.identity.birthDate,
+          now: ctx.now,
+        })
+      },
+    },
+    (outcome) =>
+      commandBody({ collection: 'students', id: outcome.result.student.id }, outcome.changes, 201),
+    options.idempotency,
+  )
+}
+
+const PARENT_MATCH = z.object({
+  id: z.string(),
+  name: z.string(),
+  studentIds: z.array(z.string()),
+  phone: z.string().optional(),
+  // Yetişkin kursiyerin kendi satırını ve eski yer tutucuyu ayırmak için (`isNotGuardian`).
+  email: z.string().optional(),
+  relationship: z.string().optional(),
+})
+const STUDENT_MATCH = z.object({ id: z.string(), phone: z.string().optional() })
+const PROSPECT_MATCH = z.object({
+  studentId: z.string().nullable().optional(),
+  phone: z.string().optional(),
+  minor: z.boolean().optional(),
+})
+
+/** Adayın telefonuyla eşleşen veliler; ön büroya öneridir, birleştirmez (DOM-KAY-013). */
+export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string) {
+  const prospect = await findRecord(ctx.db, ctx.institutionId, 'prospects', prospectId)
+  if (prospect === null) throw new NotFoundError()
+  const phone = typeof prospect.data.phone === 'string' ? prospect.data.phone : ''
+  const rows = await loadRecords(ctx.db, ctx.institutionId, ['parents', 'students', 'prospects'])
+  const only = <T>(collection: CollectionName, schema: z.ZodType<T>): T[] =>
+    rows.flatMap((row) => {
+      if (row.collection !== collection) return []
+      const parsed = schema.safeParse(row.data)
+      return parsed.success ? [parsed.data] : []
+    })
+  return findParentMatches(
+    {
+      parents: only('parents', PARENT_MATCH),
+      students: only('students', STUDENT_MATCH),
+      prospects: only('prospects', PROSPECT_MATCH),
+    },
+    phone,
+  )
+}
+
+/** Kimlik yalnız personele ve maskeli döner (guvenlik-kvkk.md Ç sınıfı). */
+export async function studentIdentityFor(ctx: ServiceContext, studentId: string) {
+  const row = await findStudentIdentity(ctx.db, ctx.institutionId, studentId)
+  if (row === null) throw new NotFoundError()
+  return {
+    kind: row.kind,
+    maskedNumber: `*******${row.number.slice(-4)}`,
+    birthDate: row.birthDate,
+    academicYear: row.academicYear,
+  }
+}
+
 /** Dil okulunda deneme dersi planlar (DOM-DIL-030, DOM-KAY-034). 200. */
 export function scheduleTrialLessonCommand(
   ctx: ServiceContext,
@@ -240,64 +367,6 @@ export function scheduleTrialLessonCommand(
       run: (state, by, { now }, prospectOptions) => {
         scheduleTrialLesson(state, by, prospectId, input, now, prospectOptions)
         return { id: prospectId, statusCode: 200 }
-      },
-    },
-    options,
-  )
-}
-
-/**
- * Kesin kayıtta yalnız eklenen koleksiyonlar: core `enrollProspect` taksitleri ve sözleşmeyi
- * okumaz, yalnız ekler. Kurumun bütün faturalarını yüklemek gereksizdir; yeni kayıtlar
- * koleksiyonun sonuna eklenir. Veliler bütünüyle yüklenir: kardeş kaydında mevcut veliye bağlanır
- * (DOM-KAY-013).
- */
-const APPEND_ONLY: LoadScope = { ids: [] }
-
-/** Kesin kayıt gövdesi (rota şeması `enrollProspectBodySchema` doğrulamıştır); tutar kuruş. */
-export type EnrollProspectInput = Omit<EnrollmentInput, 'prospectId'>
-
-/**
- * Adayı kesin kayda alır: öğrenci, veli, taksitler ve sözleşme yazılır, aday `Kayıt oldu` olur
- * (DOM-KAY-001, DOM-KAY-003, DOM-KAY-011, DOM-KAY-012, DOM-KAY-013, DOM-KAY-035). Yetki core
- * `prospect.enroll` (yönetici, ön büro; modül `crm`) işlemden önce açıkça denetlenir; `finance`
- * modülü rotada ayrıca istenir. Kapalı veya kayıtlı aday 409 (`prospect_closed`,
- * `prospect_already_enrolled`); aynı adayı eşzamanlı iki istek kayda alırsa kurum kilidi altında
- * ikincisi 409 alır (`test:pg`). Gövdede aday kimliği yoktur; yol parametresinden eklenir. 201,
- * yanıtın konusu yeni öğrencidir, yanıt sözleşme kimliğini (`contractId`) de taşır; denetim kaydı
- * adaya bağlanır. Tutar kuruştur ve core'a olduğu gibi geçer. Kimlik no ve doğum tarihi
- * loglanmaz (`REDACTED_PATHS`); denetim kaydına yalnız alan adları yazılır.
- */
-export function enrollProspectCommand(
-  ctx: ServiceContext,
-  prospectId: string,
-  input: EnrollProspectInput,
-  options: CommandOptions,
-): Promise<CommandResponse> {
-  return execute(
-    ctx,
-    {
-      action: 'prospect.enroll',
-      subjectId: prospectId,
-      loadScope: { invoices: APPEND_ONLY, contracts: APPEND_ONLY },
-      run: (state, by, { now, makeId }, { institutionType }) => {
-        requireAuthorized(by, 'prospect.enroll', {}, state, {
-          now,
-          ...(institutionType === undefined ? {} : { institutionType }),
-        })
-        const { student, contract } = enrollProspect(
-          state,
-          { ...input, prospectId },
-          makeId,
-          now,
-          institutionType === undefined ? {} : { institutionType },
-        )
-        return {
-          id: prospectId,
-          statusCode: 201,
-          created: { collection: 'students', id: student.id },
-          extra: { contractId: contract.id },
-        }
       },
     },
     options,

@@ -88,6 +88,8 @@ export function trustedOrigins(config: Config): string[] {
   return [...config.CORS_ORIGINS, ...config.TRUSTED_ORIGINS, ...development]
 }
 
+/** Hassas işlemlerde oturumun en çok yaşı (guvenlik-kvkk.md). */
+export const SESSION_FRESH_AGE_SECONDS = 15 * 60
 const DAY = 60 * 60 * 24
 
 export function createAuth(config: Config, db: Database) {
@@ -113,7 +115,7 @@ export function createAuth(config: Config, db: Database) {
     session: {
       expiresIn: 14 * DAY,
       updateAge: DAY,
-      freshAge: 15 * 60,
+      freshAge: SESSION_FRESH_AGE_SECONDS,
       // Oturum, üyelik ve rol her istekte veritabanından doğrulanır.
       cookieCache: { enabled: false },
     },

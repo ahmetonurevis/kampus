@@ -1,27 +1,39 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import {
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHODS,
-  paymentInputSchema,
-  type PaymentInput,
+  type PaymentMethod,
 } from '@kampus/school-core/lib/domain.ts'
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
-import { usePayInvoice } from '@kampus/react-shared/use-invoice-commands.ts'
+import {
+  amountInputValue,
+  bankAccountLabel,
+  parseAmountInput,
+  paymentFormSchema,
+  type PaymentFormValues,
+} from '@kampus/school-core/lib/payments.ts'
+import {
+  allocatedToInvoice,
+  useBankAccounts,
+  usePaymentSettings,
+  useRecordPayment,
+  useStudentPayments,
+} from '@kampus/react-shared/use-payment-commands.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreItem } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
-import { invoiceRow } from './finance-rows.ts'
-
-type PaymentValues = PaymentInput
+import { invoiceRow, type InvoiceRow } from './finance-rows.ts'
 
 const FORM_ID = 'tahsilat-formu'
+const CASH: PaymentMethod = 'Nakit'
 
 type Props = {
   invoiceId: string
@@ -29,8 +41,9 @@ type Props = {
 }
 
 /**
- * Tahsilat kaydı (Vue "Tahsilat kaydet" drawer'ı): kısa form sağ panelde, ödeme yöntemi seçilir.
- * Gönderim `usePayInvoice` ile: istek anahtarı, çift tıklama kilidi, 409'da Türkçe mesaj ve
+ * Tahsilat kaydı (`POST /payments`; ADR 0006, DOM-FIN-030…032): kısa form sağ panelde. Tutar
+ * taksitin kalanıyla gelir, kısmi ödeme girilebilir. Nakit yalnız kurum ayarı açıksa listelenir.
+ * Gönderim `useRecordPayment` ile: istek anahtarı, çift tıklama kilidi, 409'da Türkçe mesaj ve
  * liste tazeleme kancadadır. Başarıda veya mükerrer ödemede panel kapanır.
  */
 export function PaymentPanel({ invoiceId, onClose }: Props) {
@@ -40,52 +53,141 @@ export function PaymentPanel({ invoiceId, onClose }: Props) {
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Tahsilat kaydet"
     >
-      {invoiceId ? <PaymentForm invoiceId={invoiceId} onClose={onClose} /> : null}
+      {invoiceId ? <PaymentLoader invoiceId={invoiceId} onClose={onClose} /> : null}
     </SidePanel>
   )
 }
 
-function PaymentForm({ invoiceId, onClose }: Props) {
+/** Kalan tutar formun başlangıç değeridir: form ancak veriler gelince kurulur. */
+function PaymentLoader({ invoiceId, onClose }: Props) {
   const item = useCoreItem('invoices', invoiceId)
-  const pay = usePayInvoice()
-  const form = useForm<PaymentValues>({
-    resolver: zodResolver(paymentInputSchema),
-    defaultValues: { method: PAYMENT_METHODS[0] },
-  })
-  const busy = pay.isPending || form.formState.isSubmitting
-
-  const onSubmit = form.handleSubmit(async ({ method }) => {
-    const outcome = await pay.submit({ invoiceId, method }, { setError: form.setError })
-    if (outcome.status === 'success') {
-      notify.success('Tahsilat kaydedildi.')
-      onClose()
-    }
-    // Mükerrer ödeme: mesaj gösterildi, liste tazelendi; form artık geçersiz.
-    else if (outcome.status === 'failed' && outcome.error.status === 409) onClose()
-  })
+  const row = item.data ? invoiceRow(item.data, dayKey()) : null
+  const history = useStudentPayments(row?.studentId ?? '')
+  const settings = usePaymentSettings()
+  const accounts = useBankAccounts()
 
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
-  if (!item.data) return <SummaryLoading />
-  const row = invoiceRow(item.data, dayKey())
+  if (history.error)
+    return <QueryError error={history.error} onRetry={() => void history.refetch()} />
+  if (accounts.error)
+    return <QueryError error={accounts.error} onRetry={() => void accounts.refetch()} />
+  if (!row || !history.data || settings.isPending || !accounts.data) return <SummaryLoading />
   // Bağlantıyla açılan ödenmiş taksit (veya başka sekmede ödenmiş): form gösterilmez.
-  if (row.paidAt && !busy)
+  if (row.paidAt)
     return (
       <p role="status" className="text-sm text-muted-foreground">
         Bu taksit zaten ödenmiş.
       </p>
     )
+  return (
+    <PaymentForm
+      row={row}
+      paidCents={allocatedToInvoice(history.data.data, invoiceId)}
+      cashEnabled={settings.cashEnabled}
+      accounts={accounts.data.data}
+      onClose={onClose}
+    />
+  )
+}
 
-  const methodError = form.formState.errors.method
-  const rootError = form.formState.errors.root?.server
+function PaymentForm({
+  row,
+  paidCents,
+  cashEnabled,
+  accounts,
+  onClose,
+}: {
+  row: InvoiceRow
+  paidCents: number
+  cashEnabled: boolean
+  accounts: readonly { id: string; bankName: string; iban: string }[]
+  onClose: () => void
+}) {
+  const pay = useRecordPayment()
+  const today = dayKey()
+  const open = Math.max(row.amount - paidCents, 0)
+  const methods = PAYMENT_METHODS.filter((method) => method !== CASH || cashEnabled)
+  const form = useForm<PaymentFormValues>({
+    resolver: zodResolver(paymentFormSchema),
+    defaultValues: {
+      amount: amountInputValue(open),
+      method: methods[0] ?? 'Banka havalesi',
+      reference: '',
+      paidDate: today,
+      bankAccountId: accounts[0]?.id ?? '',
+    },
+  })
+  const busy = pay.isPending || form.formState.isSubmitting
+  const isCash = useWatch({ control: form.control, name: 'method' }) === CASH
+
+  const onSubmit = form.handleSubmit(
+    async ({ amount, method, reference, paidDate, bankAccountId }) => {
+      const amountCents = parseAmountInput(amount)
+      if (amountCents === null) return
+      const outcome = await pay.submit(
+        {
+          studentId: row.studentId,
+          invoiceId: row.id,
+          amountCents,
+          method,
+          ...(method === CASH ? {} : { reference }),
+          ...(method === CASH || bankAccountId === '' ? {} : { bankAccountId }),
+          // Bugün için gün gönderilmez: tahsilat kayıt anını taşır.
+          ...(paidDate === today ? {} : { paidDate }),
+        },
+        {
+          setError: (name, error) => {
+            if (name === 'amountCents') form.setError('amount', error)
+            else if (
+              name === 'reference' ||
+              name === 'paidDate' ||
+              name === 'method' ||
+              name === 'bankAccountId'
+            )
+              form.setError(name, error)
+            else form.setError('root.server', error)
+          },
+        },
+      )
+      if (outcome.status === 'success') {
+        notify.success('Tahsilat kaydedildi.')
+        onClose()
+      }
+      // Mükerrer ödeme: mesaj gösterildi, liste tazelendi; form artık geçersiz. Kullanılmış
+      // referans da 409'dur ama düzeltilebilir: form açık kalır.
+      else if (outcome.status === 'failed' && outcome.error.code === 'invoice_already_paid')
+        onClose()
+    },
+  )
+
+  const errors = form.formState.errors
+  const rootError = errors.root?.server
   return (
     <form id={FORM_ID} noValidate onSubmit={(event) => void onSubmit(event)} className="grid gap-5">
-      <p className="info-box rounded-card border bg-surface-soft px-4 py-3 text-sm font-medium">
-        {row.studentName} · {row.installment}. taksit · {money(row.amount)}
-      </p>
-      <FormField id="tahsilat-yontem" label="Ödeme yöntemi" error={methodError}>
+      <div className="info-box rounded-card border bg-surface-soft px-4 py-3 text-sm font-medium">
+        <p>
+          {row.studentName} · {row.installment}. taksit · {money(row.amount)}
+        </p>
+        {paidCents > 0 ? (
+          <p className="mt-1 font-normal text-muted-foreground">
+            Ödenen {money(paidCents)} · Kalan {money(open)}
+          </p>
+        ) : null}
+      </div>
+      <FormField
+        id="tahsilat-tutar"
+        label="Tutar (₺)"
+        error={errors.amount}
+        description="Kısmi ödeme girilebilir. Taksiti aşan tutar en eski vadeli taksite düşer."
+      >
+        {(control) => (
+          <Input {...control} {...form.register('amount')} inputMode="decimal" disabled={busy} />
+        )}
+      </FormField>
+      <FormField id="tahsilat-yontem" label="Ödeme yöntemi" error={errors.method}>
         {(control) => (
           <NativeSelect {...control} {...form.register('method')} disabled={busy}>
-            {PAYMENT_METHODS.map((method) => (
+            {methods.map((method) => (
               <NativeSelectOption key={method} value={method}>
                 {PAYMENT_METHOD_LABELS[method]}
               </NativeSelectOption>
@@ -93,9 +195,47 @@ function PaymentForm({ invoiceId, onClose }: Props) {
           </NativeSelect>
         )}
       </FormField>
-      <p className="text-sm text-muted-foreground">
-        Bu işlem tahsilatı kaydeder ve öğrencinin ödeme planını günceller.
-      </p>
+      {isCash || accounts.length === 0 ? null : (
+        <FormField id="tahsilat-hesap" label="Banka hesabı" error={errors.bankAccountId}>
+          {(control) => (
+            <NativeSelect {...control} {...form.register('bankAccountId')} disabled={busy}>
+              {accounts.map((account) => (
+                <NativeSelectOption key={account.id} value={account.id}>
+                  {bankAccountLabel(account)}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          )}
+        </FormField>
+      )}
+      {isCash ? null : (
+        <FormField
+          id="tahsilat-referans"
+          label="İşlem referansı"
+          error={errors.reference}
+          description="Banka dekontundaki veya POS fişindeki numara."
+        >
+          {(control) => (
+            <Input
+              {...control}
+              {...form.register('reference')}
+              autoComplete="off"
+              disabled={busy}
+            />
+          )}
+        </FormField>
+      )}
+      <FormField id="tahsilat-tarih" label="Ödeme tarihi" error={errors.paidDate}>
+        {(control) => (
+          <Input
+            {...control}
+            {...form.register('paidDate')}
+            type="date"
+            max={today}
+            disabled={busy}
+          />
+        )}
+      </FormField>
       {rootError?.message ? (
         <p role="alert" className="text-sm text-danger">
           {rootError.message}

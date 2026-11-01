@@ -25,7 +25,7 @@ import {
   type CommandSteps,
 } from '../src/commands.ts'
 import { institutionKey } from '../src/query-keys.ts'
-import type { PayInvoiceInput } from '../src/use-invoice-commands.ts'
+import { allocatedToInvoice, type RecordPaymentBody } from '../src/use-payment-commands.ts'
 
 // Sunucunun kabul ettiği anahtar biçimi (apps/api `IDEMPOTENCY_KEY_PATTERN`).
 const KEY_PATTERN = /^[A-Za-z0-9_-]{8,128}$/
@@ -415,13 +415,8 @@ function payClient(replies: (() => Response | Error)[]) {
       return result
     },
   })
-  const execute = (input: PayInvoiceInput, header: CommandHeaders) =>
-    runRequest(() =>
-      client.POST('/api/v1/invoices/{invoiceId}/pay', {
-        params: { path: { invoiceId: input.invoiceId }, header },
-        body: { method: input.method },
-      }),
-    )
+  const execute = (input: RecordPaymentBody, header: CommandHeaders) =>
+    runRequest(() => client.POST('/api/v1/payments', { params: { header }, body: input }))
   return { sent, execute }
 }
 
@@ -429,9 +424,8 @@ const ok = () =>
   new Response(
     JSON.stringify({
       data: {
-        entity: { collection: 'invoices', id: 'i1' },
-        changes: { inserted: 0, updated: 1, archived: 0, restored: 0 },
-        records: [{ collection: 'invoices', id: 'i1', version: 2, change: 'update' }],
+        id: 'p1',
+        version: 2,
       },
     }),
     { status: 200, headers: { 'content-type': 'application/json' } },
@@ -463,7 +457,7 @@ function steps<TVariables, TData>(
 }
 
 describe('runCommand', () => {
-  const payment: PayInvoiceInput = { invoiceId: 'i1', method: 'Nakit' }
+  const payment: RecordPaymentBody = { studentId: 's1', amountCents: 100, method: 'Nakit' }
 
   test('ağ hatasından sonra yeniden gönderim aynı Idempotency-Key ile gider', async () => {
     const { sent, execute } = payClient([() => new TypeError('fetch failed'), ok, ok])
@@ -477,7 +471,7 @@ describe('runCommand', () => {
 
     const retried = await runCommand(session, run, payment)
     assert.equal(retried.status, 'success')
-    if (retried.status === 'success') assert.equal(retried.data.data.records[0]?.version, 2)
+    if (retried.status === 'success') assert.equal(retried.data.data.version, 2)
 
     // Başarıdan sonraki eylem yeni anahtar alır.
     await runCommand(session, run, payment)
@@ -547,5 +541,26 @@ describe('runCommand', () => {
     if (outcome.status === 'failed') assert.equal(outcome.error.code, 'unexpected_error')
     assert.equal(run.refreshed(), 0)
     assert.deepEqual(toasts, ['Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.'])
+  })
+})
+
+describe('allocatedToInvoice', () => {
+  test('DOM-FIN-030: iptal edilmemiş tahsilatların taksite dağıttığı tutarı toplar', () => {
+    const allocations = [
+      { invoiceId: 'i1', amountCents: 100 },
+      { invoiceId: 'i2', amountCents: 50 },
+    ]
+    assert.equal(
+      allocatedToInvoice(
+        [
+          { reversedAt: null, allocations },
+          { reversedAt: null, allocations: [{ invoiceId: 'i1', amountCents: 25 }] },
+          { reversedAt: '2026-10-01T09:00:00.000Z', allocations },
+        ],
+        'i1',
+      ),
+      125,
+    )
+    assert.equal(allocatedToInvoice([], 'i1'), 0)
   })
 })

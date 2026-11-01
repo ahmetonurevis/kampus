@@ -7,7 +7,7 @@ import {
   isUnderAdultAge,
 } from '../packages/school-core/src/lib/age.ts'
 import { isMinorOn } from '../packages/school-core/src/cefr/progression.ts'
-import { birthDateSchema } from '../packages/school-core/src/lib/domain.ts'
+import { daySchema } from '../packages/school-core/src/lib/domain.ts'
 
 // 18 yaş sınırı tek yerde hesaplanır (packages/school-core/src/lib/age.ts): kesin kayıt
 // (DOM-KAY-003, DOM-KAY-012) ve CEFR devamsızlık bildirimi (DOM-DIL-091) aynı kişiyi aynı yaşta
@@ -36,7 +36,8 @@ test('DOM-KAY-012 DOM-DIL-091: kesin kayıt ve CEFR bildirimi 18 yaşı aynı he
   assert.equal(ageOn('2008-02-29', '2026-02-28T21:30:00.000Z'), 18)
 })
 
-test('DOM-KAY-012: doğum tarihi şeması ortak takvim günü denetimini kullanır', () => {
-  assert.equal(birthDateSchema.safeParse('2008-02-29').success, true)
-  assert.equal(birthDateSchema.safeParse('2007-02-29').success, false)
+test('DOM-KAY-012: kesin kayıt doğum tarihi şeması gerçek takvim gününü ister', () => {
+  // Kimlik doğum tarihi `daySchema`'dır (lib/enrollment.ts); `isCalendarDay` ile aynı karar.
+  for (const day of ['2008-02-29', '2007-02-29', '2008-13-01'])
+    assert.equal(daySchema.safeParse(day).success, isCalendarDay(day), day)
 })

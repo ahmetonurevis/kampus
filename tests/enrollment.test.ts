@@ -11,8 +11,10 @@ import {
   enrollProspectWithTariff,
   findParentMatches,
   GUARDIAN_RELATIONSHIP_LABELS,
-  isNotGuardian,
   GUARDIAN_RELATIONSHIPS,
+  guardianRequired,
+  isCourse,
+  isNotGuardian,
   isValidTurkishId,
   previewEnrollment,
   priceEnrollment,
@@ -301,7 +303,7 @@ test('DOM-KAY-012, DOM-KAY-003: dil okulunda adayın yaş grubu seçimi doğum t
   assert.equal(languageEnroll({}, { minor: true }).run().contract.payer, 'guardian')
 })
 
-test('DOM-KAY-012: yetişkin kursiyerde veli alınmaz (guardian_not_applicable); okulda öğrenci her zaman 18 yaş altıdır', () => {
+test('DOM-KAY-012: yetişkin kursiyerde veli alınmaz (guardian_not_applicable); okulda 18 yaş üstünde de veli zorunludur', () => {
   const adultIdentity = { ...INPUT.identity, birthDate: '2000-01-01' }
   for (const guardian of [INPUT.guardian, { existingParentId: 'p1' }]) {
     const attempt = languageEnroll({ identity: adultIdentity, guardian })
@@ -315,6 +317,63 @@ test('DOM-KAY-012: yetişkin kursiyerde veli alınmaz (guardian_not_applicable);
   // Okulda doğum tarihi ne olursa olsun ödeyici velidir; veli verilmezse kayıt yazılmaz.
   rejectsUnchanged({ identity: adultIdentity, guardian: null }, {}, 'guardian_required')
   assert.equal(enroll({ identity: adultIdentity }).result.contract.payer, 'guardian')
+})
+
+test('DOM-KAY-012: veli okulda her yaşta, kursta yalnız 18 yaş altında zorunludur (guardianRequired)', () => {
+  const now = '2026-10-06T09:00:00.000Z'
+  assert.equal(isCourse('school'), false)
+  assert.equal(isCourse('language_school'), true)
+  // Okul: 18 yaşını doldurmuş öğrencide de veli zorunlu.
+  assert.equal(guardianRequired('school', '2013-03-01', now), true)
+  assert.equal(guardianRequired('school', '2008-10-06', now), true)
+  assert.equal(guardianRequired('school', '1990-01-01', now), true)
+  // Kurs: 18 yaş günü (Europe/Istanbul) dolunca veli gerekmez.
+  assert.equal(guardianRequired('language_school', '2008-10-07', now), true)
+  assert.equal(guardianRequired('language_school', '2008-10-06', now), false)
+})
+
+test('DOM-KAY-012, DOM-KAY-003: okulda 18 yaşını doldurmuş öğrencide veli zorunlu; iletişim velide kalır, guardian_not_applicable dönmez', () => {
+  const adultIdentity = { ...INPUT.identity, birthDate: '2007-01-01' }
+  // Okul adayında yaş grubu seçimi veli kuralını değiştirmez; uyuşmazlık denetimi kurstadır.
+  const seed = createSeed(new Date(NOW))
+  seed.prospects.find((item) => item.id === 'pr1')!.minor = true
+  const { state, result } = enroll({ identity: adultIdentity }, {}, seed)
+  const prospect = state.prospects.find((item) => item.id === 'pr1')!
+  assert.equal(result.contract.payer, 'guardian')
+  assert.equal(result.student.email, '')
+  assert.equal(result.student.phone, '')
+  const parent = state.parents.find((p) => p.id === result.student.parentId)!
+  assert.equal(parent.email, prospect.email)
+  assert.equal(parent.phone, INPUT.guardian.phone)
+  assert.notEqual(parent.relationship, 'self')
+  rejectsUnchanged({ identity: adultIdentity, guardian: null }, {}, 'guardian_required')
+
+  // Kardeşin mevcut velisine bağlanır.
+  const linked = createSeed(new Date(NOW))
+  const sibling = linked.parents[0]!
+  const { result: second } = enroll(
+    { identity: adultIdentity, guardian: { existingParentId: sibling.id } },
+    {},
+    linked,
+  )
+  assert.equal(second.student.parentId, sibling.id)
+  assert.equal(second.contract.payer, 'guardian')
+})
+
+test('DOM-KAY-012: öğrencinin kendi iletişimi isteğe bağlı ve ayrıca alınır; adayın iletişimi velide kalır', () => {
+  const contact = { phone: '05551234567', email: 'Ogrenci@Kampus.example' }
+  const { state, result } = enroll({
+    identity: { ...INPUT.identity, birthDate: '2007-01-01' },
+    studentContact: contact,
+  })
+  const prospect = state.prospects.find((item) => item.id === 'pr1')!
+  assert.equal(result.student.phone, contact.phone)
+  assert.equal(result.student.email, 'ogrenci@kampus.example')
+  assert.equal(state.parents.find((p) => p.id === result.student.parentId)?.email, prospect.email)
+  // Yalnız telefon verilirse e-posta boş kalır.
+  assert.equal(enroll({ studentContact: { phone: contact.phone } }).result.student.email, '')
+  for (const bad of [{ phone: '123' }, { email: 'eposta' }, { phone: contact.phone, extra: 1 }])
+    assert.equal(enrollProspectSchema.safeParse({ ...INPUT, studentContact: bad }).success, false)
 })
 
 test('DOM-KAY-003: 18 yaş altında adayın telefonu ve e-postası öğrenciye yazılmaz; yeni veliye adayın e-postası yazılır', () => {

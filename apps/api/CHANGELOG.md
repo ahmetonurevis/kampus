@@ -9,6 +9,7 @@ API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelen
 - Kesin kayıt ucu tarifeli gövdeyi kullanır (aşağıda "Tarifeli kesin kayıt"); "Kesin kayıt core takipleri (D16d)" bölümündeki `totalCents`, `nationalId`, `birthDate`, `guardianRelation`, `payer` ve `parentId` gövde alanları kalktı. Kimlik no ve doğum tarihi `records.data`'ya yazılmaz, `student_identities`'tedir.
 - Tarifeli kesin kayıt gövdesi isteğe bağlı `allowOtherCampus` (boolean) alır; sınıf adayın kampüsünden değilse ve onay yoksa 422 `class_campus_mismatch` (`issues` yolu `classId`, kontenjandan önce).
 - Kesin kayıtta seçilen mevcut veli yetişkin kursiyerin kendi satırı (`relationship: 'self'`) ya da eski yer tutucuysa 422 `parent_not_guardian` (`issues` yolu `guardian`); `GET /prospects/:id/guardian-matches` bu satırları önermez.
+- Kesin kayıt (DOM-KAY-012): okul kurumunda veli her yaşta zorunludur (`guardian: null` 422 `guardian_required`; `guardian_not_applicable` dönmez); kurs türlerinde 18 yaş ve üstü kursiyer ödeyicidir. Gövde isteğe bağlı `studentContact` (`phone`, `email`) alır; geçersiz değer 400.
 - `POST /api/v1/invoices/:invoiceId/pay` kaldırıldı (`POST /api/v1/payments`); `commands.test.ts` içindeki eski ödeme testleri silindi, karşılıkları `payments.test.ts`'tedir.
 
 ## Bildirilmiş banka hesabı ve MEBBİS işareti

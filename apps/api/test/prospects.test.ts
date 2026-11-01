@@ -1576,6 +1576,38 @@ describe('aday uçları', () => {
     })
   })
 
+  test('DOM-KAY-012, DOM-KAY-003: okulda 18 yaşını doldurmuş öğrencide veli zorunlu; iletişim velide kalır, öğrencinin kendi iletişimi isteğe bağlıdır', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const adult = { ...ENROLLMENT, identity: { ...ENROLLMENT.identity, birthDate: '2000-01-01' } }
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      const refused = await enroll(cookie, 'pr1', { ...adult, guardian: null }, version)
+      assertError(refused, 422, 'guardian_required')
+      assert.deepEqual(refused.json().issues?.[0]?.path, ['guardian'])
+    })
+    await noEnrollment(a.id, 'pr1', async () => {
+      const invalid = await enroll(
+        cookie,
+        'pr1',
+        { ...adult, studentContact: { phone: '123' } },
+        version,
+      )
+      assert.equal(invalid.statusCode, 400, invalid.body)
+    })
+    const studentContact = { phone: '05551234567', email: 'test-ogrenci@kampus.example' }
+    const done = await enroll(cookie, 'pr1', { ...adult, studentContact }, version)
+    assert.equal(done.statusCode, 201, done.body)
+    const student = await findRecord(db, a.id, 'students', done.json().data.entity.id)
+    assert.equal(student?.data.phone, studentContact.phone)
+    assert.equal(student?.data.email, studentContact.email)
+    const parent = await findRecord(db, a.id, 'parents', String(student?.data.parentId))
+    assert.equal(parent?.data.email, PR1?.email)
+    assert.equal(parent?.data.phone, ENROLLMENT.guardian.phone)
+    const contract = (await enrollmentRows(a.id)).contracts.at(-1)
+    assert.equal(contract?.data.payer, 'guardian')
+  })
+
   test('DOM-YTK-040: crm modülü kapalıyken kimlik özeti 403 module_disabled', async () => {
     const closed = await institution({ enabledModules: { crm: false } })
     assertError(

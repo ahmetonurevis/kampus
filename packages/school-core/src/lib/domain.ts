@@ -283,10 +283,13 @@ type Enrollment = {
     | { kind: 'new'; name: string; phone: string; relationship: string }
   terms?: ContractTerms
   /**
-   * Öğrenci 18 yaş altı mı (DOM-KAY-003): `true` ise adayın telefonu ve e-postası velinindir,
-   * öğrenciye yazılmaz. Tarifeli kayıt verir; çevrimdışı demo vermez (`undefined`, eski davranış).
+   * Veli zorunlu mu (DOM-KAY-003, DOM-KAY-012; okulda her yaşta, kursta 18 yaş altında): `true` ise
+   * adayın telefonu ve e-postası velinindir, öğrenciye yazılmaz. Tarifeli kayıt verir; çevrimdışı
+   * demo vermez (`undefined`, eski davranış).
    */
-  minor?: boolean
+  guardianContact?: boolean
+  /** Öğrencinin kendi iletişimi (isteğe bağlı); verilen alan öğrenciye yazılır. */
+  studentContact?: { phone?: string | undefined; email?: string | undefined }
   /** Başka kampüsün sınıfı bilinçli seçildi; yoksa 422 `class_campus_mismatch`. */
   allowOtherCampus?: boolean
 }
@@ -363,9 +366,10 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
     name: prospect.name,
     classId: cls.id,
     parentId: existingParent?.id ?? makeId('p'),
-    // 18 yaş altında iletişim bilgisi velinindir; öğrenciye yazılmaz (DOM-KAY-003).
-    email: data.minor === true ? '' : prospect.email,
-    phone: data.minor === true ? '' : prospect.phone,
+    // Veli zorunluyken adayın iletişimi velinindir; öğrenciye yazılmaz (DOM-KAY-003). Öğrencinin
+    // kendi iletişimi istenirse ayrıca verilir (DOM-KAY-012).
+    email: data.studentContact?.email ?? (data.guardianContact === true ? '' : prospect.email),
+    phone: data.studentContact?.phone ?? (data.guardianContact === true ? '' : prospect.phone),
     joinedAt: now,
     isActive: true,
     progress: 0,
@@ -416,7 +420,7 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
     existingParent.studentIds.push(student.id)
     // Mevcut velinin eksik iletişimi adayınkiyle tamamlanır; var olan telefon, e-posta ve ad
     // değişmez, adayın kendi kaydında kalır (ör. diğer ebeveynin telefonu) (DOM-KAY-003).
-    if (data.minor === true) {
+    if (data.guardianContact === true) {
       if (!existingParent.phone && prospect.phone) existingParent.phone = prospect.phone
       if (!existingParent.email && prospect.email) existingParent.email = prospect.email
     }
@@ -436,7 +440,7 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
       // Yetişkin kursiyerin kendi satırı veli değildir; kardeşe önerilmez (DOM-KAY-013).
       ...(guardian?.kind === 'self' ? { relationship: 'self' } : {}),
       // kvkk: K — 18 yaş altı adayın e-postası velinindir (DOM-KAY-003).
-      ...(guardian?.kind === 'new' && data.minor === true && prospect.email
+      ...(guardian?.kind === 'new' && data.guardianContact === true && prospect.email
         ? { email: prospect.email }
         : {}),
     })

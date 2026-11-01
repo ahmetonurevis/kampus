@@ -86,8 +86,23 @@ export const enrollProspectSchema = z.strictObject({
   /** Velinin talep ettiği ek hizmetler; öğrenim ücretine gömülmez (DOM-FIN-003). */
   extras: z.array(z.enum(FEE_ITEM_KINDS, 'Ek hizmet geçersiz.')).max(10).default([]),
   identity: identitySchema,
-  /** 18 yaş üstü kursiyerde boş olabilir; kursiyer kendisi ödeyicidir (DOM-KAY-012). */
+  /**
+   * Okulda her yaşta, kursta 18 yaş altında zorunlu; 18 yaş ve üstü kursiyerde `null`, kursiyer
+   * kendisi ödeyicidir (DOM-KAY-012).
+   */
   guardian: guardianSchema.nullable(),
+  /**
+   * Öğrencinin kendi iletişimi (isteğe bağlı, DOM-KAY-012). Veli zorunluyken adayın iletişimi
+   * velinindir; öğrencinin telefonu ve e-postası istenirse ayrıca buradan alınır.
+   */
+  studentContact: z
+    .strictObject({
+      // kvkk: K
+      phone: phoneSchema.optional(),
+      // kvkk: K
+      email: z.email('Geçerli bir e-posta adresi girin.').toLowerCase().optional(),
+    })
+    .optional(),
   /** Başka kampüsün sınıfı bilinçli seçildi; verilmezse sınıf adayın kampüsünde olmalıdır. */
   allowOtherCampus: z.boolean().optional(),
 })
@@ -98,6 +113,25 @@ export interface EnrollmentTariff {
   versionNumber: number
   items: readonly FeeItem[]
   discounts: readonly FeeDiscount[]
+}
+
+/**
+ * Kurs türü mü (DOM-KAY-012): okul (`school`, ortaokul ve lise) dışındaki her tür kurstur. Bugün
+ * `language_school`; ileride üniversiteye hazırlık, KPSS akademisi gibi kurslar aynı kuralı alır.
+ */
+export const isCourse = (institutionType: InstitutionType) => institutionType !== 'school'
+
+/**
+ * Kesin kayıtta veli zorunlu mu (DOM-KAY-012): okulda her yaşta (18 yaşını doldurmuş öğrencide de);
+ * kursta yalnız 18 yaş altında. Zorunluyken adayın iletişimi velinindir, öğrenciye yazılmaz
+ * (DOM-KAY-003); ödeyici velidir.
+ */
+export function guardianRequired(
+  institutionType: InstitutionType,
+  birthDate: string,
+  now: string | number | Date,
+): boolean {
+  return !isCourse(institutionType) || ageOn(birthDate, now) < ADULT_AGE
 }
 
 export interface DiscountLine {
@@ -317,17 +351,15 @@ export function enrollProspectWithTariff(
     throw new DomainError('birth_date_invalid', 'Doğum tarihi geçmiş bir gün olmalıdır.', {
       path: ['identity', 'birthDate'],
     })
-  // 18 yaş doğum tarihinden, Europe/Istanbul gününe göre hesaplanır (`lib/age.ts`, CEFR
-  // bildirimiyle ortak). Okul öğrencisi her zaman 18 yaş altıdır; yalnız dil okulunda kursiyer
-  // sözleşmenin tarafı ve ödeyicisi olabilir (DOM-KAY-012).
-  const adult =
-    context.institutionType === 'language_school' &&
-    ageOn(data.identity.birthDate, now) >= ADULT_AGE
+  // Okulda veli her yaşta zorunludur; kursta 18 yaş ve üstü kursiyer kendi ödeyicisidir. 18 yaş
+  // doğum tarihinden, Europe/Istanbul gününe göre hesaplanır (`lib/age.ts`) (DOM-KAY-012).
+  const adult = !guardianRequired(context.institutionType, data.identity.birthDate, now)
   const prospect = state.prospects.find((item) => item.id === prospectId)
-  // Dil okulu adayında ön büronun seçtiği yaş grubu (`minor`) doğum tarihiyle uyuşmalıdır; uyuşmazsa
-  // yanlış doğum tarihiyle veli kuralı atlanmış olur (DOM-KAY-003, DOM-KAY-012).
+  // Kurs adayında ön büronun seçtiği yaş grubu (`minor`) doğum tarihiyle uyuşmalıdır; uyuşmazsa
+  // yanlış doğum tarihiyle veli kuralı atlanmış olur (DOM-KAY-003, DOM-KAY-012). Okulda yaş grubu
+  // seçilmez; doğum tarihi 18 yaşı gösterse de veli zorunluluğu kalkmaz.
   if (
-    context.institutionType === 'language_school' &&
+    isCourse(context.institutionType) &&
     prospect?.minor !== undefined &&
     prospect.minor === adult
   )
@@ -336,7 +368,8 @@ export function enrollProspectWithTariff(
       'Doğum tarihi adayın 18 yaş durumuyla uyuşmuyor; doğum tarihini kontrol edin.',
       { path: ['identity', 'birthDate'] },
     )
-  // 18 yaş altında sözleşmeyi ve ödemeyi veli üstlenir; yetişkin kursiyer kendisi ödeyicidir.
+  // Okulda ve kursta 18 yaş altında sözleşmeyi ve ödemeyi veli üstlenir; yetişkin kursiyer kendisi
+  // ödeyicidir. Okulda `guardian_not_applicable` dönmez.
   if (data.guardian === null && !adult)
     throw new DomainError('guardian_required', 'Veli bilgisi zorunludur.', { path: ['guardian'] })
   if (data.guardian !== null && adult)
@@ -427,7 +460,8 @@ export function enrollProspectWithTariff(
         approvedByUserId: context.approvedByUserId,
         payer: data.guardian === null ? 'student' : 'guardian',
       },
-      minor: !adult,
+      guardianContact: !adult,
+      ...(data.studentContact === undefined ? {} : { studentContact: data.studentContact }),
       ...(data.allowOtherCampus === undefined ? {} : { allowOtherCampus: data.allowOtherCampus }),
     },
     makeId,

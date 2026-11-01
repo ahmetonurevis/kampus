@@ -3,6 +3,11 @@ import { randomUUID } from 'node:crypto'
 import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
 import { canReadVersion } from '@kampus/school-core/content/visibility.ts'
 import type { AuthorizationSource } from '@kampus/school-core/lib/authorize.ts'
+import {
+  coordinatesArea,
+  coordinatorScopeOf,
+  type CoordinatorScope,
+} from '@kampus/school-core/lib/coordinator-duties.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '@kampus/school-core/lib/scope.ts'
 import {
@@ -15,6 +20,7 @@ import {
 import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 
 import type { Database } from '../db/client.ts'
+import { activeDutiesOf } from '../db/coordinator-duties.ts'
 import { asCoreVersion, findResource, listResourceVersions } from '../db/resources.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
@@ -101,6 +107,11 @@ export type Viewer =
       /** Öğretmen kapsamı (`readScope`): ders verdiği sınıflar ve onların güncel öğrencileri. */
       classIds: ReadonlySet<string>
       studentIds: ReadonlySet<string>
+      /**
+       * Zümre başkanı/akademik koordinatör kapsamı (DOM-YTK-027); görevi yoksa boş. Atama
+       * görünürlüğünü genişletmez: yalnız uyuşmazlıklı teslimlerin okunması ve son puan içindir.
+       */
+      coordination: CoordinatorScope
     }
   | {
       kind: 'learner'
@@ -116,8 +127,17 @@ export async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
     case 'yonetici':
       return { kind: 'admin' }
     case 'ogretmen': {
-      const scope = await readScope(ctx)
-      return { kind: 'teacher', userId, classIds: scope.classIds, studentIds: scope.studentIds }
+      const [scope, duties] = await Promise.all([
+        readScope(ctx),
+        activeDutiesOf(ctx.db, ctx.institutionId, ctx.actor.membershipId),
+      ])
+      return {
+        kind: 'teacher',
+        userId,
+        classIds: scope.classIds,
+        studentIds: scope.studentIds,
+        coordination: coordinatorScopeOf(duties),
+      }
     }
     case 'ogrenci':
     case 'veli': {
@@ -188,6 +208,14 @@ export function visible(viewer: Viewer, assignment: StoredAssignment): boolean {
     default:
       return viewer satisfies never
   }
+}
+
+/**
+ * Kişi atamanın dersinin zümre başkanı veya seviyesinin akademik koordinatörü mü (DOM-YTK-027).
+ * Atama görünürlüğü vermez; uyuşmazlıklı teslimin okunması ve son puan bununla açılır.
+ */
+export function coordinates(viewer: Viewer, assignment: StoredAssignment): boolean {
+  return viewer.kind === 'teacher' && coordinatesArea(viewer.coordination, assignment.area)
 }
 
 function listFilter(

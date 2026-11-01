@@ -6,6 +6,7 @@ import {
   appealInputSchema,
   APPEAL_OUTCOMES,
   BAND_MEANINGS,
+  RATER_ROLES,
   rubricScoreInputSchema,
 } from '@kampus/school-core/skills/rubric.ts'
 import { SUBMISSION_TEXT_MAX } from '@kampus/school-core/skills/submission.ts'
@@ -166,7 +167,26 @@ const versionGradingSchema = z
     disagreementCriterionIds: z
       .array(z.string())
       .describe(
-        'Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına görünür. Son puan koordinatör rolüyle gelecek (F4b3b2b); o zamana kadar sonuç kursiyere kapalıdır',
+        'Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına ve kapsamındaki koordinatöre görünür. Son puanı koordinatör verir (`final-scores`); o zamana kadar sonuç kursiyere kapalıdır',
+      ),
+    raterScores: z
+      .array(
+        z.object({
+          raterRole: z
+            .enum(Object.keys(RATER_ROLES) as [keyof typeof RATER_ROLES])
+            .describe(
+              '`first` ilk, `second` ikinci puan, `final` son puan (koordinatör veya itiraz)',
+            ),
+          score: taskScoreSchema,
+        }),
+      )
+      .describe(
+        'Kişinin görebildiği puanlar rolleriyle (core `scoresVisibleToRater`): öğretmen ve yönetici kendi puanını ve kesinleşen puanı; atamanın dersinin/seviyesinin koordinatörü hepsini, ama sürümü kendisi puanladıysa yalnız kendininkini (kör puanlama; DOM-BEC-024, DOM-YTK-027)',
+      ),
+    canResolve: z
+      .boolean()
+      .describe(
+        'Kişi bu sürüme son puan verebilir mi: uyuşmazlık var, atamanın dersinin/seviyesinin koordinatörü ve iki puanlayıcıdan biri değil (DOM-BEC-024)',
       ),
     dueAt: instant
       .nullable()
@@ -266,9 +286,11 @@ export const gradingQueueQuerySchema = pageQuerySchema
   .extend({
     assignmentId: id.optional().describe('Atama süzgeci'),
     awaiting: z
-      .enum(['first', 'second'])
+      .enum(['first', 'second', 'resolution'])
       .optional()
-      .describe('Yalnız ilk puanı veya yalnız ikinci puanı bekleyenler (DOM-BEC-024)'),
+      .describe(
+        'Yalnız ilk puanı, yalnız ikinci puanı veya yalnız koordinatörün son puanını (uyuşmazlık) bekleyenler (DOM-BEC-024)',
+      ),
     overdue: z
       .enum(['true', 'false'])
       .optional()

@@ -2,6 +2,15 @@
 
 API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
 
+## Zümre başkanı / akademik koordinatör ve uyuşmazlıkta son puan (F4b3b2b)
+
+- Yeni tablo `coordinator_duties` (migration `0016_create_coordinator_duties`): öğretmen üyeliğine ek görev (`subject_head` `school`'da ders kimliğiyle, `academic_coordinator` `language_school`'da CEFR seviyesiyle; DOM-YTK-027). Rol modeli değişmedi. Etkin görev üyelik × tür × kapsam başına tekildir.
+- Yeni uçlar: `GET /api/v1/coordinator-duties`, `GET /api/v1/coordinator-duties/:dutyId` (yönetici kurumun, öğretmen kendi görevleri), `POST /api/v1/coordinator-duties` (yalnız yönetici; Idempotency-Key zorunlu; 201 + `Location`; 422 `duty_requires_teacher`, `duty_outside_branch`, `teacher_record_required`, `invalid_cefr_level`; 409 `coordinator_duty_exists`), `DELETE /api/v1/coordinator-duties/:dutyId` (yalnız yönetici; `If-Match` zorunlu; arşiv). Denetime yalnız alan adları.
+- Yeni uç `POST /api/v1/task-submissions/:submissionId/final-scores`: uyuşmazlıkta (DOM-BEC-024) son puanı yalnız atanan içeriğin dersinin/seviyesinin koordinatörü verir; puanlayıcılardan biri 409 `rater_not_independent`, koordinatör olmayan 403 `coordinator_required`, kapsam dışı 404, yönetici 403. Son puan sonucu kesinleştirir; geri bildirim DOM-BEC-045 ile açılır.
+- Koordinatör atamayı görmese de alanındaki uyuşmazlıklı teslimi `GET /task-submissions/:submissionId` ile okur; teslim listesine erişimi yoktur. Puan görünürlüğü core `scoresVisibleToRater` ile gerçek görev denetimine bağlandı (önceden `coordinator: false`); koordinatör puanlayıcıysa kör kalır.
+- Teslim ayrıntısı: `versions[].grading.raterScores` (kişinin görebildiği puanlar rolleriyle) ve `versions[].grading.canResolve`. Puanlama kuyruğu `awaiting=resolution` süzgeci; koordinatöre alanındaki uyuşmazlıklar da listelenir.
+- Atama deposu (`StoredAssignment.area`) içerik sürümünün dersini ve seviyesini taşır. Core `workspace:2.26.0`. OpenAPI ve `api-client` şeması yeniden üretildi.
+
 ## Dosya depolama inceleme düzeltmeleri (F3c2a)
 
 - İndirme ucu `Cross-Origin-Resource-Policy: cross-origin` gönderir: Helmet varsayılanı `same-origin` web'in başka kökenden `<img>`/`<audio>` ile açtığı bağlantıyı engellerdi. Yetki imzadadır; JSON uçları `same-origin`'de kalır.

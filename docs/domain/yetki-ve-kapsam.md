@@ -154,7 +154,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** İçerik kalitesi ve ortak sınav hazırlığı zümre düzeyinde yürür.
 - **Kaynak:** İşletme kuralı; zümre öğretmenler kurulu hükümleri **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — core `packages/school-core/src/lib/coordinator-duties.ts` (`planCoordinatorDuty`: yalnız öğretmene, `school`'da öğretmenin kendi branşında, dil okulunda CEFR seviyesinde; `coordinatesArea`); API (F4b3b2b) `coordinator_duties` tablosu (migration `0016`), `GET/POST /api/v1/coordinator-duties`, `DELETE /api/v1/coordinator-duties/:dutyId` (yalnız yönetici atar ve kaldırır). Görev atama görünürlüğü vermez; koordinatör alanındaki uyuşmazlıklı teslimi okur ve son puanı verir (`POST /api/v1/task-submissions/:id/final-scores`, DOM-BEC-024). Kaynak onayı (DOM-KYN-031) ve sınıf düzeyi toplu sonuç okuması henüz bağlı değil (`TODO(content-reviewer)`); bir kapsamın tek görevlisi olup olmadığı `TODO(zumre-tekil)`, artı seviyenin kapsamı `TODO(koordinator-arti-seviye)`.
 
 ### DOM-YTK-028 · Görev atamasını sınıfın öğretmeni de görür, yalnız atayan değiştirir
 

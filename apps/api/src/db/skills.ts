@@ -536,6 +536,11 @@ export type StoredAssignment = FixedAssignment & {
   secondRatingSampledAt: string | null
   assignedByUserId: string
   targets: AssignmentTarget[]
+  /**
+   * Atanan içerik sürümünün dersi ve CEFR seviyesi (`resource_versions`); koordinatör kapsamı
+   * bunlarla eşleşir (DOM-YTK-027, core `coordinatesArea`).
+   */
+  area: { subjectId: string | null; cefrLevel: string | null }
   createdAt: string
   updatedAt: string
   archivedAt: string | null
@@ -551,7 +556,14 @@ function attemptRulesOf(row: TaskAssignmentRow): AttemptRules {
   }
 }
 
-function toAssignment(row: TaskAssignmentRow, targets: AssignmentTarget[]): StoredAssignment {
+type AssignmentArea = StoredAssignment['area']
+const NO_AREA: AssignmentArea = { subjectId: null, cefrLevel: null }
+
+function toAssignment(
+  row: TaskAssignmentRow,
+  targets: AssignmentTarget[],
+  area: AssignmentArea,
+): StoredAssignment {
   return {
     id: row.id,
     resourceId: row.resourceId,
@@ -572,6 +584,7 @@ function toAssignment(row: TaskAssignmentRow, targets: AssignmentTarget[]): Stor
     secondRatingSampledAt: isoOrNull(row.secondRatingSampledAt),
     assignedByUserId: row.assignedByUserId,
     targets,
+    area,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
     archivedAt: isoOrNull(row.archivedAt),
@@ -642,7 +655,34 @@ async function withTargets(
   rows: readonly TaskAssignmentRow[],
 ): Promise<StoredAssignment[]> {
   if (rows.length === 0) return []
-  const targets = await db
+  const versionIds = [...new Set(rows.map((row) => row.resourceVersionId))]
+  const [targets, areas] = await Promise.all([
+    targetsOf(db, institutionId, rows),
+    db
+      .select({
+        id: resourceVersions.id,
+        subjectId: resourceVersions.subjectId,
+        cefrLevel: resourceVersions.cefrLevel,
+      })
+      .from(resourceVersions)
+      .where(
+        and(
+          eq(resourceVersions.institutionId, institutionId),
+          inArray(resourceVersions.id, versionIds),
+        ),
+      ),
+  ])
+  const areaOf = new Map(areas.map(({ id, ...area }) => [id, area]))
+  const byAssignment = new Map<string, AssignmentTarget[]>()
+  for (const { assignmentId, kind, id } of targets)
+    byAssignment.set(assignmentId, [...(byAssignment.get(assignmentId) ?? []), { kind, id }])
+  return rows.map((row) =>
+    toAssignment(row, byAssignment.get(row.id) ?? [], areaOf.get(row.resourceVersionId) ?? NO_AREA),
+  )
+}
+
+function targetsOf(db: Database, institutionId: string, rows: readonly TaskAssignmentRow[]) {
+  return db
     .select({
       assignmentId: taskAssignmentTargets.assignmentId,
       kind: taskAssignmentTargets.targetKind,
@@ -660,10 +700,6 @@ async function withTargets(
       ),
     )
     .orderBy(asc(taskAssignmentTargets.targetKind), asc(taskAssignmentTargets.targetId))
-  const byAssignment = new Map<string, AssignmentTarget[]>()
-  for (const { assignmentId, kind, id } of targets)
-    byAssignment.set(assignmentId, [...(byAssignment.get(assignmentId) ?? []), { kind, id }])
-  return rows.map((row) => toAssignment(row, byAssignment.get(row.id) ?? []))
 }
 
 /** Atama (arşivli dahil; başka kurumun kimliği `null`). */
@@ -1416,8 +1452,13 @@ export interface GradingQueueQuery extends Pick<
   assignmentId?: string | undefined
   /** Kişi son sürümü bir rolde puanladıysa satırı görmez (bağımsız puanlayıcı; DOM-BEC-024). */
   raterUserId: string
-  /** Yalnız ilk veya yalnız ikinci puanı bekleyenler (DOM-BEC-024). */
-  awaiting?: 'first' | 'second' | undefined
+  /** Yalnız ilk, yalnız ikinci puanı veya yalnız koordinatörün son puanını bekleyenler (DOM-BEC-024). */
+  awaiting?: 'first' | 'second' | 'resolution' | undefined
+  /**
+   * Koordinatör kapsamı (DOM-YTK-027): atamanın içerik sürümünün dersi veya CEFR seviyesi bunlardan
+   * biriyse uyuşmazlıklı satır, atama kapsam süzgecinin dışında olsa da görünür.
+   */
+  coordination?: { subjectIds: readonly string[]; cefrLevels: readonly string[] } | undefined
   /** Puanlama süresi aşılmış (`true`) veya aşılmamış (`false`) olanlar (DOM-BEC-025). */
   overdue?: boolean | undefined
   now: Date
@@ -1483,7 +1524,39 @@ export async function listAwaitingScore(
       ? sql`(${needsFirst} and not ${scoredBySelf})`
       : query.awaiting === 'second'
         ? sql`(${needsSecond} and not ${scoredBySelf})`
-        : sql`(((${needsFirst} or ${needsSecond}) and not ${scoredBySelf}) or ${disputed})`
+        : query.awaiting === 'resolution'
+          ? disputed
+          : sql`(((${needsFirst} or ${needsSecond}) and not ${scoredBySelf}) or ${disputed})`
+  // Koordinatörün alanı (core `coordinatesArea`): atanan içerik sürümünün dersi veya seviyesi.
+  const areaMatches = [
+    ...(query.coordination?.subjectIds.length
+      ? [inArray(resourceVersions.subjectId, [...query.coordination.subjectIds])]
+      : []),
+    ...(query.coordination?.cefrLevels.length
+      ? [inArray(sql<string>`${resourceVersions.cefrLevel}`, [...query.coordination.cefrLevels])]
+      : []),
+  ]
+  const coordinated =
+    areaMatches.length === 0
+      ? undefined
+      : exists(
+          db
+            .select({ one: sql`1` })
+            .from(resourceVersions)
+            .where(
+              and(
+                eq(resourceVersions.institutionId, a.institutionId),
+                eq(resourceVersions.id, a.resourceVersionId),
+                or(...areaMatches),
+              ),
+            ),
+        )
+  const scope =
+    scopeFilter === undefined
+      ? undefined
+      : coordinated === undefined
+        ? scopeFilter
+        : or(scopeFilter, and(coordinated, disputed))
   // Core `deadlineForVersion`: yeniden teslim istenen sürümden sonrakiler isteğin son tarihine bağlı.
   const resubmissionDue = sql`(select case when rr.version_number < ${latestNumber}
       then rr.due_at end from ${resubmissionRequests} rr
@@ -1516,7 +1589,7 @@ export async function listAwaitingScore(
     sql`${latestNumber} is not null`,
     awaiting,
     ...overdue,
-    ...(scopeFilter === undefined ? [] : [scopeFilter]),
+    ...(scope === undefined ? [] : [scope]),
     ...(query.assignmentId === undefined ? [] : [eq(s.assignmentId, query.assignmentId)]),
   )
   const joinAssignment = and(eq(a.institutionId, s.institutionId), eq(a.id, s.assignmentId))

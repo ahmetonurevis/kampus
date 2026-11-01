@@ -4,12 +4,15 @@ import { describe, test } from 'node:test'
 import { QueryClient } from '@tanstack/react-query'
 
 import { createKampusClient } from '@kampus/api-client/client.ts'
+import { ApiError } from '@kampus/api-client/errors.ts'
 
 import { runRequest } from '../src/api-result.ts'
 import {
+  commandFeedback,
   commandHeaders,
   IF_MATCH_MISSING_CODE,
   invalidateInstitutionQueries,
+  routeFeedback,
 } from '../src/commands.ts'
 import { institutionKey } from '../src/query-keys.ts'
 import { RUBRICS_KEY } from '../src/use-rubrics.ts'
@@ -18,6 +21,7 @@ import {
   createTaskAssignmentRequest,
   TASK_ASSIGNMENT_CHANGED_MESSAGE,
   TASK_ASSIGNMENT_INVALIDATES,
+  TASK_ASSIGNMENT_LICENSE_EXPIRED_MESSAGE,
   TASK_ASSIGNMENT_MESSAGES,
   TASK_ASSIGNMENTS_KEY,
   updateTaskAssignmentCommand,
@@ -124,6 +128,60 @@ describe('görev atama komutları', () => {
     )
     assert.equal(createTaskAssignmentCommand.messages, TASK_ASSIGNMENT_MESSAGES)
     assert.equal(TASK_ASSIGNMENT_MESSAGES.version_conflict, TASK_ASSIGNMENT_CHANGED_MESSAGE)
+    assert.equal(
+      updateTaskAssignmentCommand.messages.version_conflict,
+      TASK_ASSIGNMENT_CHANGED_MESSAGE,
+    )
+  })
+
+  test('DOM-KYN-021: lisansı dolmuş içerik Türkçe mesajla bildirilir; sayfayı yenilemek önerilmez', () => {
+    const error = new ApiError({
+      status: 409,
+      code: 'resource_license_expired',
+      message: 'Bu içeriğin lisans süresi dolmuş; atanamaz.',
+    })
+    const feedback = commandFeedback(error, createTaskAssignmentCommand.messages)
+    assert.equal(feedback.message, TASK_ASSIGNMENT_LICENSE_EXPIRED_MESSAGE)
+    assert.match(feedback.message ?? '', /lisans süresi dolduğu için atanamaz/)
+    assert.doesNotMatch(feedback.message ?? '', /yenile/i)
+  })
+
+  test('IST-034: oluşturmada 404 sunucunun mesajı ve issues yoluyla gösterilir; "Görev bulunamadı." yalnız değişiklikte', () => {
+    const missingTarget = new ApiError({
+      status: 404,
+      code: 'not_found',
+      message: 'Seçilen hedef bulunamadı.',
+      issues: [
+        { path: ['targets', '1'], code: 'target_not_found', message: 'Seçilen hedef bulunamadı.' },
+      ],
+    })
+    const created = commandFeedback(missingTarget, createTaskAssignmentCommand.messages)
+    assert.equal(created.message, 'Seçilen hedef bulunamadı.')
+    // Form varken yollu hata alana gider, toast çıkmaz (exclusive).
+    const routed = routeFeedback(missingTarget, created, { exclusive: true, hasForm: true })
+    assert.equal(routed.message, null)
+    assert.deepEqual(
+      routed.fieldIssues.map((issue) => [issue.name, issue.message]),
+      [['targets.1', 'Seçilen hedef bulunamadı.']],
+    )
+    // Yolsuz 404 (görünmeyen içerik) sunucunun genel mesajıyla tek toast olur.
+    const missingContent = new ApiError({
+      status: 404,
+      code: 'not_found',
+      message: 'İstenen kayıt bulunamadı.',
+    })
+    assert.equal(
+      routeFeedback(
+        missingContent,
+        commandFeedback(missingContent, createTaskAssignmentCommand.messages),
+        { exclusive: true, hasForm: true },
+      ).message,
+      'İstenen kayıt bulunamadı.',
+    )
+    assert.equal(
+      commandFeedback(missingContent, updateTaskAssignmentCommand.messages).message,
+      'Görev bulunamadı.',
+    )
   })
 
   test('IST-034: yazma sonrası etkin kurumun atama ve rubrik sorguları geçersiz kılınır', async () => {

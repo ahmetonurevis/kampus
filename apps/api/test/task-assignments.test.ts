@@ -425,6 +425,9 @@ describe('görev atama uçları', () => {
     assert.equal(replay.statusCode, 201, replay.body)
     assert.equal(replay.headers['idempotent-replayed'], 'true')
     assert.deepEqual(replay.json(), first.json())
+    // Tekrar da kaynağın adresini verir (istemci yönlendirmesi ilk yanıtla aynı).
+    assert.equal(replay.headers.location, `/api/v1/task-assignments/${first.json().data.id}`)
+    assert.equal(replay.headers.location, first.headers.location)
     fails(
       await create(
         t.cookies.teacher,
@@ -450,10 +453,29 @@ describe('görev atama uçları', () => {
       403,
       'target_scope_denied',
     )
+    const missing = await create(
+      t.cookies.teacher,
+      writing(t, {
+        targets: [
+          { kind: 'class', id: '9-A' },
+          { kind: 'class', id: '12-Z' },
+        ],
+      }),
+    )
+    fails(missing, 404, 'not_found')
+    assert.equal(missing.json().message, 'Seçilen hedef bulunamadı.')
+    assert.deepEqual(missing.json().issues?.[0]?.path, ['targets', '1'])
+    // Kapsam yetkiden, yetki sürümden önce: kapsam dışı hedef + taslak sürüm 403, 409 değil.
     fails(
-      await create(t.cookies.teacher, writing(t, { targets: [{ kind: 'class', id: '12-Z' }] })),
-      404,
-      'not_found',
+      await create(
+        t.cookies.teacher,
+        writing(t, {
+          resourceVersionId: t.draftVersionId,
+          targets: [{ kind: 'class', id: '9-B' }],
+        }),
+      ),
+      403,
+      'target_scope_denied',
     )
     // Okulda dil grubu hedefi yoktur.
     fails(
@@ -580,6 +602,170 @@ describe('görev atama uçları', () => {
       for (const text of ['GIZLI-COZUM', 'correctOptionId', 'answerKey'])
         assert.ok(!JSON.stringify(detail).includes(text), `${text} kursiyere gitti`)
     }
+  })
+
+  test('DOM-KYN-021: lisansı dolmuş içerik 409 resource_license_expired; açık atama çakışmasından önce denetlenir; hiçbir satır yazılmaz', async () => {
+    const t = await tenant()
+    const license = {
+      kind: 'licensed_publication' as const,
+      publisher: 'Örnek Yayınevi',
+      contractNumber: 'SZ-2026-01',
+      coverage: 'Kurumun bütün öğrencileri',
+      expiryDate: '2026-10-05',
+      restrictedToBookOwners: false,
+    }
+    const { versions } = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      versions: [{ status: 'published', input: { ...homework('Lisanslı yazı'), license } }],
+    })
+    const before = await snapshot(t.institution.id)
+    const expired = writing(t, { resourceVersionId: versions[0]!.id })
+    const response = await create(t.cookies.teacher, expired)
+    fails(response, 409, 'resource_license_expired')
+    assert.match(response.json().message, /lisans süresi dolmuş/)
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    // Lisans süresinin son günü atanabilir (`expiryDate` gün sonuna kadar geçerli).
+    const { versions: valid } = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      versions: [
+        {
+          status: 'published',
+          input: {
+            ...homework('Geçerli lisanslı yazı'),
+            license: { ...license, expiryDate: '2026-10-06' },
+          },
+        },
+      ],
+    })
+    await ok(await create(t.cookies.teacher, writing(t, { resourceVersionId: valid[0]!.id })), 201)
+    // Aynı kursiyerlere açık atama varken de lisans hatası önce gelir.
+    fails(await create(t.cookies.teacher, expired), 409, 'resource_license_expired')
+  })
+
+  test('DOM-YTK-025: veli yalnız kendi çocuğuna hedeflenen atamayı görür; aynı sınıftaki başka çocuğa hedeflenen görünmez', async () => {
+    const t = await tenant()
+    const toEce = await ok(
+      await create(t.cookies.teacher, writing(t, { targets: [{ kind: 'student', id: 's-2' }] })),
+      201,
+    )
+    for (const cookie of [t.cookies.parent, t.cookies.student]) {
+      assert.deepEqual(await ok(await call('GET', '/task-assignments', cookie)), [])
+      fails(await call('GET', `/task-assignments/${toEce.id}`, cookie), 404, 'not_found')
+    }
+    // Sınıf hedefinde velinin gördüğü kursiyer listesi yalnız kendi çocuğudur.
+    const { versions } = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      versions: [{ status: 'published', input: homework('Sınıf yazısı') }],
+    })
+    const toClass = await ok(
+      await create(t.cookies.teacher, writing(t, { resourceVersionId: versions[0]!.id })),
+      201,
+    )
+    const [row] = await ok(await call('GET', '/task-assignments', t.cookies.parent))
+    assert.equal(row.id, toClass.id)
+    assert.deepEqual(row.learnerIds, ['s-1'])
+  })
+
+  test('DOM-YTK-028, IST-034: dil okulunda görev gruba atanır; grubun kursiyeri ve grubun öğretmeni görür, başka grup görmez; sınıf hedefi 422', async () => {
+    const institution = await createInstitution(app, { type: 'language_school' })
+    await insertMissingRecords(
+      db,
+      institution.id,
+      [
+        {
+          collection: 'teachers',
+          id: 't-dil',
+          data: { id: 't-dil', name: 'Selin Kaya', subjectId: 'ingilizce', branchId: 'b-1' },
+        },
+        ...['A2-1', 'B1-1'].map((id) => ({
+          collection: 'classes' as const,
+          id,
+          data: { id, grade: 0, level: id.slice(0, 2), branchId: 'b-1', teacherId: 't-dil' },
+        })),
+        ...[
+          ['k-1', 'Deniz Yılmaz', 'A2-1'],
+          ['k-2', 'Can Arslan', 'B1-1'],
+        ].map(([id, name, classId]) => ({
+          collection: 'students' as const,
+          id: id!,
+          data: { id, name, classId, isActive: true },
+        })),
+        {
+          collection: 'assignments',
+          id: 'as-dil',
+          data: { id: 'as-dil', classId: 'A2-1', teacherId: 't-dil', subjectId: 'ingilizce' },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const teacher = await createMember(app, institution.id, 'ogretmen', [
+      { kind: 'teacher', recordId: 't-dil' },
+    ])
+    const learner = await createMember(app, institution.id, 'ogrenci', [
+      { kind: 'student', recordId: 'k-1' },
+    ])
+    const otherLearner = await createMember(app, institution.id, 'ogrenci', [
+      { kind: 'student', recordId: 'k-2' },
+    ])
+    const cookies = {
+      admin: await signInAs(app, institution.admin),
+      teacher: await signInAs(app, teacher),
+      learner: await signInAs(app, learner),
+      otherLearner: await signInAs(app, otherLearner),
+    }
+    const { versions } = await seedResource(db, institution.id, {
+      ownerUserId: institution.admin.id,
+      shareScope: 'institution',
+      versions: [{ status: 'published', input: homework() }],
+    })
+    const rubricId = randomUUID()
+    const rubricVersionId = randomUUID()
+    const at = { createdAt: FIXED_NOW, updatedAt: FIXED_NOW }
+    await db
+      .insert(rubrics)
+      .values({ institutionId: institution.id, id: rubricId, ownerUserId: teacher.id, ...at })
+    await db.insert(rubricVersions).values({
+      institutionId: institution.id,
+      id: rubricVersionId,
+      rubricId,
+      versionNumber: 1,
+      status: 'published',
+      ...sampleRubricData(),
+      publishedAt: FIXED_NOW,
+      archivedAt: null,
+      ...at,
+    })
+    const body = (targets: unknown) => ({
+      resourceVersionId: versions[0]!.id,
+      settings: {
+        deadline: { dueAt: DUE },
+        submission: { submissionKind: 'text', maxVersions: 3 },
+        rubricVersionId,
+      },
+      targets,
+    })
+    fails(
+      await create(cookies.admin, body([{ kind: 'class', id: 'A2-1' }])),
+      422,
+      'target_kind_invalid',
+    )
+    const data = await ok(await create(cookies.admin, body([{ kind: 'group', id: 'A2-1' }])), 201)
+    assert.deepEqual(data.targets, [{ kind: 'group', id: 'A2-1' }])
+    const seen = await ok(await call('GET', '/task-assignments', cookies.learner))
+    assert.deepEqual(
+      seen.map((row: Json) => [row.id, row.view, row.learnerIds]),
+      [[data.id, 'learner', ['k-1']]],
+    )
+    assert.deepEqual(await ok(await call('GET', '/task-assignments', cookies.otherLearner)), [])
+    fails(await call('GET', `/task-assignments/${data.id}`, cookies.otherLearner), 404, 'not_found')
+    // Grubun öğretmeni yöneticinin atamasını görür (DOM-YTK-028), değiştiremez.
+    const staff = await ok(await call('GET', `/task-assignments/${data.id}`, cookies.teacher))
+    assert.deepEqual(staff.targets, [{ kind: 'group', id: 'A2-1' }])
+    fails(
+      await change(data.id, cookies.teacher, { deadline: { dueAt: LATER_DUE } }, 1),
+      403,
+      'forbidden',
+    )
   })
 
   test('IST-034: aynı içerik farklı sınıfa farklı son tarihle ayrı atamadır; açık atamadaki kursiyere ikinci kez 409', async () => {

@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto'
 
-import { isAssignable, canReadVersion } from '@kampus/school-core/content/visibility.ts'
+import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
+import { canReadVersion } from '@kampus/school-core/content/visibility.ts'
 import type { AuthorizationSource } from '@kampus/school-core/lib/authorize.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '@kampus/school-core/lib/scope.ts'
 import {
   planAssignment,
@@ -52,8 +54,10 @@ import { contentReader } from './resources.ts'
  * Sıra (api-tasarimi.md §6): kapsam → yetki → sürüm. Oluşturmada atayanın göremediği veya olmayan
  * içerik sürümü 404; görünür içerikte kapsam dışı hedef 403 (core `target_scope_denied`); yayında
  * olmayan veya güncel olmayan sürüm 409 (core `resource_version_not_assignable`), taslak veya
- * arşivli rubrik sürümü 409 (core `rubric_version_not_assignable`). Değişiklikte görünmeyen atama
- * 404, görünür ama atayan olmayan öğretmen 403, sürüm 409.
+ * arşivli rubrik sürümü 409 (core `rubric_version_not_assignable`). İstisna: lisansı dolmuş içerik
+ * (atayan zaten görebildiği için sızıntı yoktur) core planından önce 409 `resource_license_expired`
+ * alır. Olmayan hedef veya rubrik sürümü 404 `not_found` mesaj ve `issues` yoluyla döner.
+ * Değişiklikte görünmeyen atama 404, görünür ama atayan olmayan öğretmen 403, sürüm 409.
  *
  * Okuma kapsamı (yetki-ve-kapsam.md DOM-YTK-028): yönetici kurumun bütün atamalarını; öğretmen
  * kendi atamalarını, kapsamındaki (ders verdiği veya rehberi olduğu) sınıfı/grubu hedefleyenleri
@@ -203,6 +207,21 @@ function listFilter(
 
 const UNKNOWN_CONTENT: AssignmentContentRef = { title: '', contentType: 'text' }
 
+/**
+ * Atamanın içerik başlığı ve türü. Sürüm satırı yabancı anahtarla korunur; bulunamaması veri
+ * bütünlüğü sorunudur: yanıt boş başlıkla döner, olay loglanır (kimlik ve başlık loglanmaz).
+ */
+function contentOf(
+  ctx: ServiceContext,
+  refs: ReadonlyMap<string, AssignmentContentRef>,
+  assignment: StoredAssignment,
+): AssignmentContentRef {
+  const ref = refs.get(assignment.resourceVersionId)
+  if (ref) return ref
+  ctx.log.warn({ event: 'task_assignment.content_missing' })
+  return UNKNOWN_CONTENT
+}
+
 /** Kursiyerin ve personelin ortak alanları: görevin ayarları ve atanan içerik. */
 function sharedView(assignment: StoredAssignment, content: AssignmentContentRef) {
   return {
@@ -282,9 +301,7 @@ export async function listTaskAssignments(ctx: ServiceContext, input: TaskAssign
   )
   return {
     total,
-    items: shown.map((row) =>
-      viewOf(viewer, row, refs.get(row.resourceVersionId) ?? UNKNOWN_CONTENT),
-    ),
+    items: shown.map((row) => viewOf(viewer, row, contentOf(ctx, refs, row))),
   }
 }
 
@@ -296,7 +313,7 @@ export async function getTaskAssignment(ctx: ServiceContext, assignmentId: strin
   const refs = await assignmentContentRefs(ctx.db, ctx.institutionId, [
     assignment.resourceVersionId,
   ])
-  return viewOf(viewer, assignment, refs.get(assignment.resourceVersionId) ?? UNKNOWN_CONTENT)
+  return viewOf(viewer, assignment, contentOf(ctx, refs, assignment))
 }
 
 // --- Yazma --------------------------------------------------------------------------------
@@ -307,7 +324,7 @@ async function readBack(tx: Database, ctx: ServiceContext, assignmentId: string)
   const assignment = await findAssignment(tx, ctx.institutionId, assignmentId)
   if (!assignment) throw new Error('task assignment disappeared after write')
   const refs = await assignmentContentRefs(tx, ctx.institutionId, [assignment.resourceVersionId])
-  return staffView(assignment, refs.get(assignment.resourceVersionId) ?? UNKNOWN_CONTENT)
+  return staffView(assignment, contentOf(ctx, refs, assignment))
 }
 
 async function audit(
@@ -368,6 +385,20 @@ function assertSupportedByApi(plan: AssignmentPlan): void {
         ],
       },
     )
+}
+
+/**
+ * Core'un 404'ü (olmayan hedef veya rubrik sürümü) mesajı ve alan yoluyla döner; kapsam dışı hedef
+ * 403 olduğundan varlık sızmaz. Kod `not_found` kalır. Diğer hatalar olduğu gibi geçer.
+ */
+function withNotFoundPath(error: unknown): unknown {
+  if (!(error instanceof DomainError) || error.kind !== 'not_found') return error
+  return new AppError(404, 'not_found', error.message, {
+    ...(error.path === undefined
+      ? {}
+      : { issues: [{ path: [...error.path], code: error.code, message: error.message }] }),
+    cause: error,
+  })
 }
 
 /**
@@ -448,24 +479,31 @@ export async function createTaskAssignment(
                 target.kind === 'student' ? [target.id] : (byClass.get(target.id) ?? []),
               ),
             }))
-            const plan = planAssignment({
-              resource,
-              version,
-              actor,
-              source,
-              institutionType: institution.type,
-              rubricVersion,
-              existing,
-              input,
-              now: ctx.now,
-            })
-            // Core yayındaki güncel sürümü denetler; lisans süresi `isAssignable`'dadır (DOM-KYN-021).
-            if (!isAssignable(resource, version, ctx.now))
+            // Lisans (DOM-KYN-021): `isAssignable`'ın lisans koşulu core planından önce denetlenir;
+            // yoksa dolmuş lisans çakışma (`assignment_duplicate`) veya ayar hatasının ardında
+            // kalırdı. Yayın ve güncel sürüm koşulunu core `planAssignment` hedeften sonra denetler.
+            if (licenseExpired(version.license, ctx.now))
               throw new AppError(
                 409,
-                'resource_version_not_assignable',
-                'Lisans süresi dolmuş içerik atanamaz.',
+                'resource_license_expired',
+                'Bu içeriğin lisans süresi dolmuş; atanamaz.',
               )
+            let plan: AssignmentPlan
+            try {
+              plan = planAssignment({
+                resource,
+                version,
+                actor,
+                source,
+                institutionType: institution.type,
+                rubricVersion,
+                existing,
+                input,
+                now: ctx.now,
+              })
+            } catch (error) {
+              throw withNotFoundPath(error)
+            }
             assertSupportedByApi(plan)
             return plan
           },

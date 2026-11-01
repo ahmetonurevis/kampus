@@ -42,13 +42,27 @@ export type TaskAssignmentLearner = components['schemas']['TaskAssignmentLearner
 export const TASK_ASSIGNMENT_CHANGED_MESSAGE =
   'Görev siz bakarken başkası tarafından değiştirildi. Güncel hâli yüklendi; yeniden deneyin.'
 
+/** Lisansı dolmuş içerik (409 `resource_license_expired`); yenilemek sonucu değiştirmez. */
+export const TASK_ASSIGNMENT_LICENSE_EXPIRED_MESSAGE =
+  'Bu içeriğin lisans süresi dolduğu için atanamaz; başka bir içerik seçin.'
+
+/**
+ * Oluşturma ve değişikliğin ortak metinleri. `not_found` burada yoktur: oluşturmada 404 olmayan
+ * hedef, içerik veya rubrik sürümüdür; sunucunun mesajı ve `issues` yolu kullanılır.
+ */
 export const TASK_ASSIGNMENT_MESSAGES = {
   version_conflict: TASK_ASSIGNMENT_CHANGED_MESSAGE,
   assignment_setting_frozen:
     'Atanmış görevde yalnız son teslim tarihi uzatılabilir; diğer ayarlar için yeni görev atayın.',
   resource_version_not_assignable:
     'Bu içeriğin yalnız güncel yayındaki sürümü atanabilir; sayfayı yenileyin.',
+  resource_license_expired: TASK_ASSIGNMENT_LICENSE_EXPIRED_MESSAGE,
   rubric_version_not_assignable: 'Yalnız yayındaki rubrik sürümü atanabilir.',
+} as const satisfies CommandMessages
+
+/** Değişiklikte 404 atamanın kendisidir (kapsam dışı, silinmiş veya başka kurumun). */
+export const UPDATE_TASK_ASSIGNMENT_MESSAGES = {
+  ...TASK_ASSIGNMENT_MESSAGES,
   not_found: 'Görev bulunamadı.',
 } as const satisfies CommandMessages
 
@@ -131,7 +145,7 @@ export const updateTaskAssignmentCommand = {
   request: updateTaskAssignmentRequest,
   version: (input: UpdateTaskAssignmentInput) => input.version,
   invalidates: TASK_ASSIGNMENT_INVALIDATES,
-  messages: TASK_ASSIGNMENT_MESSAGES,
+  messages: UPDATE_TASK_ASSIGNMENT_MESSAGES,
   exclusive: true,
 } as const
 

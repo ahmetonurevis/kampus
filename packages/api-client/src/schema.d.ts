@@ -2464,6 +2464,90 @@ export interface paths {
         patch: operations["updateTaskAssignment"];
         trace?: never;
     };
+    "/api/v1/task-attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Görev denemeleri
+         * @description Atamanın arşivlenmemiş denemeleri, kursiyer ve deneme numarası sırasıyla, sayfalı (DOM-BEC-042). `assignmentId` zorunlu; `learnerId` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün denemeleri; atayan `ogretmen` atamanın bütün denemeleri, atamayı kapsamındaki sınıf/öğrenci hedefi yüzünden gören öğretmen yalnız kapsamındaki öğrencilerinkini (DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
+         */
+        get: operations["listTaskAttempts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-attempts/{attemptId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Görev denemesi ayrıntısı
+         * @description Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Roller: `yonetici` kurumun bütün denemeleri; atayan `ogretmen` atamanın bütün denemeleri, atamayı kapsamındaki sınıf/öğrenci hedefi yüzünden gören öğretmen yalnız kapsamındaki öğrencilerinkini (DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
+         */
+        get: operations["getTaskAttempt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Deneme cevaplarını kaydet
+         * @description Süren denemeye cevap kaydı (DOM-BEC-043; core `planAnswerSave`): yalnız gönderilen sorular güncellenir. Süre dolduysa 422 `attempt_time_over`, teslim edilmiş deneme 409 `attempt_already_submitted`, soruyla uyuşmayan cevap 422 `answer_invalid`. `If-Match` zorunlu: denemenin `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        patch: operations["saveTaskAttemptAnswers"];
+        trace?: never;
+    };
+    "/api/v1/task-assignments/{assignmentId}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Görev denemesi başlat
+         * @description Atamanın şu an hedeflediği öğrenci için yeni deneme (DOM-BEC-042, 043, 044; core `planAttemptStart`). Başlangıç sunucu saatidir; süre başlangıç + süre sınırıdır ve teslim kapanışını aşmaz. Değerlendirmede başlatılan her deneme hakkı tüketir: hak dolunca 422 `attempt_limit_reached`; süren deneme varken 409 `attempt_in_progress` (eşzamanlı ikinci başlatma da); teslim kapandıysa 422 `submission_closed`; otomatik puanlanmayan görev 422 `not_auto_scored`. Gövde `{}`. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve `Location`. Roller: yalnız `ogrenci` (kendi denemesi); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["startTaskAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-attempts/{attemptId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Denemeyi teslim et
+         * @description Denemeyi teslim eder (DOM-BEC-010, 043; core `planAttemptSubmit`). Puan sunucuda cevaplardan hesaplanır; gövdede puan veya bilinmeyen alan 400. Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (`autoSubmitted`). Son teslimden sonra geç kabul süresinde teslim `late` işaretlenir. İkinci teslim 409 `attempt_already_submitted`. `If-Match` zorunlu (denemenin `rowVersion`'ı); `Idempotency-Key` zorunlu. Roller: yalnız `ogrenci` (kendi denemesi); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["submitTaskAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3649,6 +3733,250 @@ export interface components {
             learnerIds: string[];
         };
         TaskAssignmentInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerInput"];
+        TaskAttemptItemScoreInput: {
+            questionVersionId: string;
+            parts: number;
+            correctParts: number;
+            answered: boolean;
+            points: number;
+            earned: number;
+        };
+        TaskAttemptResultInput: {
+            /** @description Kazanılan puan (iki ondalık) */
+            earned: number;
+            possible: number;
+            /** @description 100 üzerinden puan */
+            percent: number;
+            /** @description Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045) */
+            items: components["schemas"]["TaskAttemptItemScoreInput"][] | null;
+            /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) */
+            answerKey: {
+                questionVersionId: string;
+                answerKey: {
+                    /** @constant */
+                    questionType: "multiple_choice";
+                    correctOptionId: string;
+                    explanation: string;
+                } | {
+                    /** @constant */
+                    questionType: "true_false";
+                    /** @enum {string} */
+                    answer: "true" | "false" | "not_given";
+                    explanation: string;
+                } | {
+                    /** @constant */
+                    questionType: "matching";
+                    pairs: {
+                        promptId: string;
+                        choiceId: string;
+                    }[];
+                    explanation: string;
+                } | {
+                    /** @constant */
+                    questionType: "gap_fill";
+                    gaps: {
+                        gapId: string;
+                        accepted: string[];
+                    }[];
+                    explanation: string;
+                } | {
+                    /** @constant */
+                    questionType: "ordering";
+                    order: string[];
+                    explanation: string;
+                } | {
+                    /** @constant */
+                    questionType: "short_answer";
+                    accepted: string[];
+                    explanation: string;
+                };
+            }[] | null;
+        };
+        TaskAttemptInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            learnerId: string;
+            attemptNumber: number;
+            /**
+             * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
+             * @enum {string}
+             */
+            status: "in_progress" | "submitted" | "expired";
+            /** Format: date-time */
+            startedAt: string;
+            /** @description Süre ve teslim kapanışından erken olanı; yoksa `null` */
+            endsAt: string | null;
+            remainingMs: number | null;
+            completedAt: string | null;
+            /** @description Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı */
+            autoSubmitted: boolean;
+            /** @description Son teslimden sonra, geç kabul süresinde tamamlandı */
+            late: boolean;
+            /** @description Sayılan deneme (DOM-BEC-042); alıştırmada hep `false` */
+            counted: boolean;
+            answers: {
+                [key: string]: {
+                    /** @constant */
+                    questionType: "multiple_choice";
+                    optionId: string | null;
+                } | {
+                    /** @constant */
+                    questionType: "true_false";
+                    answer: ("true" | "false" | "not_given") | null;
+                } | {
+                    /** @constant */
+                    questionType: "matching";
+                    pairs: {
+                        promptId: string;
+                        choiceId: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "gap_fill";
+                    gaps: {
+                        gapId: string;
+                        value: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "ordering";
+                    order: string[];
+                } | {
+                    /** @constant */
+                    questionType: "short_answer";
+                    value: string;
+                };
+            };
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            result: components["schemas"]["TaskAttemptResultInput"] | null;
+            /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
+            rowVersion: number;
+        };
+        TaskAttemptDetailInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            learnerId: string;
+            attemptNumber: number;
+            /**
+             * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
+             * @enum {string}
+             */
+            status: "in_progress" | "submitted" | "expired";
+            /** Format: date-time */
+            startedAt: string;
+            /** @description Süre ve teslim kapanışından erken olanı; yoksa `null` */
+            endsAt: string | null;
+            remainingMs: number | null;
+            completedAt: string | null;
+            /** @description Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı */
+            autoSubmitted: boolean;
+            /** @description Son teslimden sonra, geç kabul süresinde tamamlandı */
+            late: boolean;
+            /** @description Sayılan deneme (DOM-BEC-042); alıştırmada hep `false` */
+            counted: boolean;
+            answers: {
+                [key: string]: {
+                    /** @constant */
+                    questionType: "multiple_choice";
+                    optionId: string | null;
+                } | {
+                    /** @constant */
+                    questionType: "true_false";
+                    answer: ("true" | "false" | "not_given") | null;
+                } | {
+                    /** @constant */
+                    questionType: "matching";
+                    pairs: {
+                        promptId: string;
+                        choiceId: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "gap_fill";
+                    gaps: {
+                        gapId: string;
+                        value: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "ordering";
+                    order: string[];
+                } | {
+                    /** @constant */
+                    questionType: "short_answer";
+                    value: string;
+                };
+            };
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            result: components["schemas"]["TaskAttemptResultInput"] | null;
+            /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
+            rowVersion: number;
+            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık */
+            questions: {
+                questionVersionId: string;
+                points: number;
+                question: {
+                    /** @constant */
+                    questionType: "multiple_choice";
+                    stem: string;
+                    options: {
+                        id: string;
+                        text: string;
+                    }[];
+                    /** @default null */
+                    imageFileId: string | null;
+                } | {
+                    /** @constant */
+                    questionType: "true_false";
+                    stem: string;
+                    /** @default false */
+                    allowNotGiven: boolean;
+                    /** @default null */
+                    imageFileId: string | null;
+                } | {
+                    /** @constant */
+                    questionType: "matching";
+                    stem: string;
+                    prompts: {
+                        id: string;
+                        text: string;
+                    }[];
+                    choices: {
+                        id: string;
+                        text: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "gap_fill";
+                    stem: string;
+                    gaps: {
+                        id: string;
+                        /** @default [] */
+                        options: string[];
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "ordering";
+                    stem: string;
+                    items: {
+                        id: string;
+                        text: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "short_answer";
+                    stem: string;
+                    /** @default 100 */
+                    maxLength: number;
+                    /** @default null */
+                    imageFileId: string | null;
+                };
+            }[];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -4830,6 +5158,249 @@ export interface components {
             learnerIds: string[];
         };
         TaskAssignment: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearner"];
+        TaskAttemptItemScore: {
+            questionVersionId: string;
+            parts: number;
+            correctParts: number;
+            answered: boolean;
+            points: number;
+            earned: number;
+        };
+        TaskAttemptResult: {
+            /** @description Kazanılan puan (iki ondalık) */
+            earned: number;
+            possible: number;
+            /** @description 100 üzerinden puan */
+            percent: number;
+            /** @description Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045) */
+            items: components["schemas"]["TaskAttemptItemScore"][] | null;
+            /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) */
+            answerKey: {
+                questionVersionId: string;
+                answerKey: {
+                    /** @constant */
+                    questionType: "multiple_choice";
+                    correctOptionId: string;
+                    explanation: string;
+                } | {
+                    /** @constant */
+                    questionType: "true_false";
+                    /** @enum {string} */
+                    answer: "true" | "false" | "not_given";
+                    explanation: string;
+                } | {
+                    /** @constant */
+                    questionType: "matching";
+                    pairs: {
+                        promptId: string;
+                        choiceId: string;
+                    }[];
+                    explanation: string;
+                } | {
+                    /** @constant */
+                    questionType: "gap_fill";
+                    gaps: {
+                        gapId: string;
+                        accepted: unknown;
+                    }[];
+                    explanation: string;
+                } | {
+                    /** @constant */
+                    questionType: "ordering";
+                    order: string[];
+                    explanation: string;
+                } | {
+                    /** @constant */
+                    questionType: "short_answer";
+                    accepted: unknown;
+                    explanation: string;
+                };
+            }[] | null;
+        };
+        TaskAttempt: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            learnerId: string;
+            attemptNumber: number;
+            /**
+             * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
+             * @enum {string}
+             */
+            status: "in_progress" | "submitted" | "expired";
+            /** Format: date-time */
+            startedAt: string;
+            /** @description Süre ve teslim kapanışından erken olanı; yoksa `null` */
+            endsAt: string | null;
+            remainingMs: number | null;
+            completedAt: string | null;
+            /** @description Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı */
+            autoSubmitted: boolean;
+            /** @description Son teslimden sonra, geç kabul süresinde tamamlandı */
+            late: boolean;
+            /** @description Sayılan deneme (DOM-BEC-042); alıştırmada hep `false` */
+            counted: boolean;
+            answers: {
+                [key: string]: {
+                    /** @constant */
+                    questionType: "multiple_choice";
+                    optionId: string | null;
+                } | {
+                    /** @constant */
+                    questionType: "true_false";
+                    answer: ("true" | "false" | "not_given") | null;
+                } | {
+                    /** @constant */
+                    questionType: "matching";
+                    pairs: {
+                        promptId: string;
+                        choiceId: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "gap_fill";
+                    gaps: {
+                        gapId: string;
+                        value: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "ordering";
+                    order: string[];
+                } | {
+                    /** @constant */
+                    questionType: "short_answer";
+                    value: string;
+                };
+            };
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            result: components["schemas"]["TaskAttemptResult"] | null;
+            /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
+            rowVersion: number;
+        };
+        TaskAttemptDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            learnerId: string;
+            attemptNumber: number;
+            /**
+             * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
+             * @enum {string}
+             */
+            status: "in_progress" | "submitted" | "expired";
+            /** Format: date-time */
+            startedAt: string;
+            /** @description Süre ve teslim kapanışından erken olanı; yoksa `null` */
+            endsAt: string | null;
+            remainingMs: number | null;
+            completedAt: string | null;
+            /** @description Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı */
+            autoSubmitted: boolean;
+            /** @description Son teslimden sonra, geç kabul süresinde tamamlandı */
+            late: boolean;
+            /** @description Sayılan deneme (DOM-BEC-042); alıştırmada hep `false` */
+            counted: boolean;
+            answers: {
+                [key: string]: {
+                    /** @constant */
+                    questionType: "multiple_choice";
+                    optionId: string | null;
+                } | {
+                    /** @constant */
+                    questionType: "true_false";
+                    answer: ("true" | "false" | "not_given") | null;
+                } | {
+                    /** @constant */
+                    questionType: "matching";
+                    pairs: {
+                        promptId: string;
+                        choiceId: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "gap_fill";
+                    gaps: {
+                        gapId: string;
+                        value: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "ordering";
+                    order: string[];
+                } | {
+                    /** @constant */
+                    questionType: "short_answer";
+                    value: string;
+                };
+            };
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            result: components["schemas"]["TaskAttemptResult"] | null;
+            /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
+            rowVersion: number;
+            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık */
+            questions: {
+                questionVersionId: string;
+                points: number;
+                question: {
+                    /** @constant */
+                    questionType: "multiple_choice";
+                    stem: string;
+                    options: {
+                        id: string;
+                        text: string;
+                    }[];
+                    /** @default null */
+                    imageFileId: string | null;
+                } | {
+                    /** @constant */
+                    questionType: "true_false";
+                    stem: string;
+                    /** @default false */
+                    allowNotGiven: boolean;
+                    /** @default null */
+                    imageFileId: string | null;
+                } | {
+                    /** @constant */
+                    questionType: "matching";
+                    stem: string;
+                    prompts: {
+                        id: string;
+                        text: string;
+                    }[];
+                    choices: {
+                        id: string;
+                        text: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "gap_fill";
+                    stem: string;
+                    gaps: {
+                        id: string;
+                        options: unknown;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "ordering";
+                    stem: string;
+                    items: {
+                        id: string;
+                        text: string;
+                    }[];
+                } | {
+                    /** @constant */
+                    questionType: "short_answer";
+                    stem: string;
+                    /** @default 100 */
+                    maxLength: number;
+                    /** @default null */
+                    imageFileId: string | null;
+                };
+            }[];
+        };
     };
     responses: never;
     parameters: never;
@@ -19473,6 +20044,557 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["TaskAssignmentStaff"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTaskAttempts: {
+        parameters: {
+            query: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Atama (zorunlu) */
+                assignmentId: string;
+                /** @description Kursiyer süzgeci; okuma kapsamı dışındaki kursiyer boş liste verir */
+                learnerId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAttempt"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTaskAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Deneme kimliği */
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAttemptDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    saveTaskAttemptAnswers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Deneme kimliği */
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kaydedilecek cevaplar; yalnız gönderilen sorular güncellenir */
+                    answers: {
+                        [key: string]: {
+                            /** @enum {string} */
+                            questionType: "multiple_choice";
+                            optionId: string | null;
+                        } | {
+                            /** @enum {string} */
+                            questionType: "true_false";
+                            answer: ("true" | "false" | "not_given") | null;
+                        } | {
+                            /** @enum {string} */
+                            questionType: "matching";
+                            pairs: {
+                                promptId: string;
+                                choiceId: string;
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "gap_fill";
+                            gaps: {
+                                gapId: string;
+                                value: string;
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "ordering";
+                            order: string[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "short_answer";
+                            value: string;
+                        };
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAttemptDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startTaskAttempt: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAttemptDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitTaskAttempt: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Deneme kimliği */
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Teslimle birlikte kaydedilecek son cevaplar; süre dolduysa alınmaz */
+                    answers?: {
+                        [key: string]: {
+                            /** @enum {string} */
+                            questionType: "multiple_choice";
+                            optionId: string | null;
+                        } | {
+                            /** @enum {string} */
+                            questionType: "true_false";
+                            answer: ("true" | "false" | "not_given") | null;
+                        } | {
+                            /** @enum {string} */
+                            questionType: "matching";
+                            pairs: {
+                                promptId: string;
+                                choiceId: string;
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "gap_fill";
+                            gaps: {
+                                gapId: string;
+                                value: string;
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "ordering";
+                            order: string[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "short_answer";
+                            value: string;
+                        };
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAttemptDetail"];
                     };
                 };
             };

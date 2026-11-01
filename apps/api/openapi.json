@@ -4951,6 +4951,1188 @@
           }
         ]
       },
+      "TaskAttemptItemScoreInput": {
+        "type": "object",
+        "properties": {
+          "questionVersionId": {
+            "type": "string"
+          },
+          "parts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "correctParts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "answered": {
+            "type": "boolean"
+          },
+          "points": {
+            "type": "number"
+          },
+          "earned": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "questionVersionId",
+          "parts",
+          "correctParts",
+          "answered",
+          "points",
+          "earned"
+        ]
+      },
+      "TaskAttemptResultInput": {
+        "type": "object",
+        "properties": {
+          "earned": {
+            "type": "number",
+            "description": "Kazanılan puan (iki ondalık)"
+          },
+          "possible": {
+            "type": "number"
+          },
+          "percent": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "100 üzerinden puan"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TaskAttemptItemScoreInput"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045)"
+          },
+          "answerKey": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "questionVersionId": {
+                      "type": "string"
+                    },
+                    "answerKey": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "multiple_choice"
+                            },
+                            "correctOptionId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "correctOptionId",
+                            "explanation"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "true_false"
+                            },
+                            "answer": {
+                              "type": "string",
+                              "enum": [
+                                "true",
+                                "false",
+                                "not_given"
+                              ]
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "answer",
+                            "explanation"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "matching"
+                            },
+                            "pairs": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "promptId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  },
+                                  "choiceId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  }
+                                },
+                                "required": [
+                                  "promptId",
+                                  "choiceId"
+                                ]
+                              }
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "pairs",
+                            "explanation"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "gap_fill"
+                            },
+                            "gaps": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "gapId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  },
+                                  "accepted": {
+                                    "minItems": 1,
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "gapId",
+                                  "accepted"
+                                ]
+                              }
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "gaps",
+                            "explanation"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "ordering"
+                            },
+                            "order": {
+                              "minItems": 2,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              }
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "order",
+                            "explanation"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "short_answer"
+                            },
+                            "accepted": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              }
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "accepted",
+                            "explanation"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionVersionId",
+                    "answerKey"
+                  ]
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045)"
+          }
+        },
+        "required": [
+          "earned",
+          "possible",
+          "percent",
+          "items",
+          "answerKey"
+        ]
+      },
+      "TaskAttemptInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "learnerId": {
+            "type": "string"
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "submitted",
+              "expired"
+            ],
+            "description": "Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "endsAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Süre ve teslim kapanışından erken olanı; yoksa `null`"
+          },
+          "remainingMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "autoSubmitted": {
+            "type": "boolean",
+            "description": "Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı"
+          },
+          "late": {
+            "type": "boolean",
+            "description": "Son teslimden sonra, geç kabul süresinde tamamlandı"
+          },
+          "counted": {
+            "type": "boolean",
+            "description": "Sayılan deneme (DOM-BEC-042); alıştırmada hep `false`"
+          },
+          "answers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "multiple_choice"
+                    },
+                    "optionId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "optionId"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "true_false"
+                    },
+                    "answer": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "true",
+                            "false",
+                            "not_given"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "answer"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "matching"
+                    },
+                    "pairs": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "promptId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          },
+                          "choiceId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          }
+                        },
+                        "required": [
+                          "promptId",
+                          "choiceId"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "pairs"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "gap_fill"
+                    },
+                    "gaps": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "gapId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          },
+                          "value": {
+                            "type": "string",
+                            "maxLength": 200
+                          }
+                        },
+                        "required": [
+                          "gapId",
+                          "value"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "gaps"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "ordering"
+                    },
+                    "order": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "order"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "short_answer"
+                    },
+                    "value": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "value"
+                  ]
+                }
+              ]
+            }
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskAttemptResultInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Süren denemede ve kursiyer görünümünde tamamlanmadan `null`"
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`)"
+          }
+        },
+        "required": [
+          "id",
+          "assignmentId",
+          "learnerId",
+          "attemptNumber",
+          "status",
+          "startedAt",
+          "endsAt",
+          "remainingMs",
+          "completedAt",
+          "autoSubmitted",
+          "late",
+          "counted",
+          "answers",
+          "result",
+          "rowVersion"
+        ]
+      },
+      "TaskAttemptDetailInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "learnerId": {
+            "type": "string"
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "submitted",
+              "expired"
+            ],
+            "description": "Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "endsAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Süre ve teslim kapanışından erken olanı; yoksa `null`"
+          },
+          "remainingMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "autoSubmitted": {
+            "type": "boolean",
+            "description": "Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı"
+          },
+          "late": {
+            "type": "boolean",
+            "description": "Son teslimden sonra, geç kabul süresinde tamamlandı"
+          },
+          "counted": {
+            "type": "boolean",
+            "description": "Sayılan deneme (DOM-BEC-042); alıştırmada hep `false`"
+          },
+          "answers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "multiple_choice"
+                    },
+                    "optionId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "optionId"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "true_false"
+                    },
+                    "answer": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "true",
+                            "false",
+                            "not_given"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "answer"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "matching"
+                    },
+                    "pairs": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "promptId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          },
+                          "choiceId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          }
+                        },
+                        "required": [
+                          "promptId",
+                          "choiceId"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "pairs"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "gap_fill"
+                    },
+                    "gaps": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "gapId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          },
+                          "value": {
+                            "type": "string",
+                            "maxLength": 200
+                          }
+                        },
+                        "required": [
+                          "gapId",
+                          "value"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "gaps"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "ordering"
+                    },
+                    "order": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "order"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "short_answer"
+                    },
+                    "value": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "value"
+                  ]
+                }
+              ]
+            }
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskAttemptResultInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Süren denemede ve kursiyer görünümünde tamamlanmadan `null`"
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`)"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "questionVersionId": {
+                  "type": "string"
+                },
+                "points": {
+                  "type": "number"
+                },
+                "question": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "multiple_choice"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "options": {
+                          "minItems": 4,
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text"
+                            ]
+                          }
+                        },
+                        "imageFileId": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem",
+                        "options"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "true_false"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "allowNotGiven": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "imageFileId": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "matching"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "prompts": {
+                          "minItems": 2,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text"
+                            ]
+                          }
+                        },
+                        "choices": {
+                          "minItems": 2,
+                          "maxItems": 26,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem",
+                        "prompts",
+                        "choices"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "gap_fill"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "gaps": {
+                          "minItems": 1,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              "options": {
+                                "default": [],
+                                "maxItems": 10,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              }
+                            },
+                            "required": [
+                              "id"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem",
+                        "gaps"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "ordering"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "items": {
+                          "minItems": 2,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem",
+                        "items"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "short_answer"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "maxLength": {
+                          "default": 100,
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 500
+                        },
+                        "imageFileId": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "questionVersionId",
+                "points",
+                "question"
+              ]
+            },
+            "description": "Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık"
+          }
+        },
+        "required": [
+          "id",
+          "assignmentId",
+          "learnerId",
+          "attemptNumber",
+          "status",
+          "startedAt",
+          "endsAt",
+          "remainingMs",
+          "completedAt",
+          "autoSubmitted",
+          "late",
+          "counted",
+          "answers",
+          "result",
+          "rowVersion",
+          "questions"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -10057,6 +11239,1208 @@
             "$ref": "#/components/schemas/TaskAssignmentLearner"
           }
         ]
+      },
+      "TaskAttemptItemScore": {
+        "type": "object",
+        "properties": {
+          "questionVersionId": {
+            "type": "string"
+          },
+          "parts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "correctParts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "answered": {
+            "type": "boolean"
+          },
+          "points": {
+            "type": "number"
+          },
+          "earned": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "questionVersionId",
+          "parts",
+          "correctParts",
+          "answered",
+          "points",
+          "earned"
+        ],
+        "additionalProperties": false
+      },
+      "TaskAttemptResult": {
+        "type": "object",
+        "properties": {
+          "earned": {
+            "type": "number",
+            "description": "Kazanılan puan (iki ondalık)"
+          },
+          "possible": {
+            "type": "number"
+          },
+          "percent": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "100 üzerinden puan"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TaskAttemptItemScore"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045)"
+          },
+          "answerKey": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "questionVersionId": {
+                      "type": "string"
+                    },
+                    "answerKey": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "multiple_choice"
+                            },
+                            "correctOptionId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "correctOptionId",
+                            "explanation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "true_false"
+                            },
+                            "answer": {
+                              "type": "string",
+                              "enum": [
+                                "true",
+                                "false",
+                                "not_given"
+                              ]
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "answer",
+                            "explanation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "matching"
+                            },
+                            "pairs": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "promptId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  },
+                                  "choiceId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  }
+                                },
+                                "required": [
+                                  "promptId",
+                                  "choiceId"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "pairs",
+                            "explanation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "gap_fill"
+                            },
+                            "gaps": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "gapId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  },
+                                  "accepted": {}
+                                },
+                                "required": [
+                                  "gapId",
+                                  "accepted"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "gaps",
+                            "explanation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "ordering"
+                            },
+                            "order": {
+                              "minItems": 2,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              }
+                            },
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "order",
+                            "explanation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "const": "short_answer"
+                            },
+                            "accepted": {},
+                            "explanation": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 5000
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "accepted",
+                            "explanation"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionVersionId",
+                    "answerKey"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045)"
+          }
+        },
+        "required": [
+          "earned",
+          "possible",
+          "percent",
+          "items",
+          "answerKey"
+        ],
+        "additionalProperties": false
+      },
+      "TaskAttempt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "learnerId": {
+            "type": "string"
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "submitted",
+              "expired"
+            ],
+            "description": "Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "endsAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Süre ve teslim kapanışından erken olanı; yoksa `null`"
+          },
+          "remainingMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "autoSubmitted": {
+            "type": "boolean",
+            "description": "Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı"
+          },
+          "late": {
+            "type": "boolean",
+            "description": "Son teslimden sonra, geç kabul süresinde tamamlandı"
+          },
+          "counted": {
+            "type": "boolean",
+            "description": "Sayılan deneme (DOM-BEC-042); alıştırmada hep `false`"
+          },
+          "answers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "multiple_choice"
+                    },
+                    "optionId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "optionId"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "true_false"
+                    },
+                    "answer": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "true",
+                            "false",
+                            "not_given"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "answer"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "matching"
+                    },
+                    "pairs": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "promptId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          },
+                          "choiceId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          }
+                        },
+                        "required": [
+                          "promptId",
+                          "choiceId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "pairs"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "gap_fill"
+                    },
+                    "gaps": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "gapId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          },
+                          "value": {
+                            "type": "string",
+                            "maxLength": 200
+                          }
+                        },
+                        "required": [
+                          "gapId",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "gaps"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "ordering"
+                    },
+                    "order": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "order"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "short_answer"
+                    },
+                    "value": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskAttemptResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Süren denemede ve kursiyer görünümünde tamamlanmadan `null`"
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`)"
+          }
+        },
+        "required": [
+          "id",
+          "assignmentId",
+          "learnerId",
+          "attemptNumber",
+          "status",
+          "startedAt",
+          "endsAt",
+          "remainingMs",
+          "completedAt",
+          "autoSubmitted",
+          "late",
+          "counted",
+          "answers",
+          "result",
+          "rowVersion"
+        ],
+        "additionalProperties": false
+      },
+      "TaskAttemptDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "learnerId": {
+            "type": "string"
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "submitted",
+              "expired"
+            ],
+            "description": "Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "endsAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Süre ve teslim kapanışından erken olanı; yoksa `null`"
+          },
+          "remainingMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "autoSubmitted": {
+            "type": "boolean",
+            "description": "Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı"
+          },
+          "late": {
+            "type": "boolean",
+            "description": "Son teslimden sonra, geç kabul süresinde tamamlandı"
+          },
+          "counted": {
+            "type": "boolean",
+            "description": "Sayılan deneme (DOM-BEC-042); alıştırmada hep `false`"
+          },
+          "answers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "multiple_choice"
+                    },
+                    "optionId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "optionId"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "true_false"
+                    },
+                    "answer": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "true",
+                            "false",
+                            "not_given"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "answer"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "matching"
+                    },
+                    "pairs": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "promptId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          },
+                          "choiceId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          }
+                        },
+                        "required": [
+                          "promptId",
+                          "choiceId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "pairs"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "gap_fill"
+                    },
+                    "gaps": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "gapId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                          },
+                          "value": {
+                            "type": "string",
+                            "maxLength": 200
+                          }
+                        },
+                        "required": [
+                          "gapId",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "gaps"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "ordering"
+                    },
+                    "order": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                      }
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "order"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "questionType": {
+                      "type": "string",
+                      "const": "short_answer"
+                    },
+                    "value": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "questionType",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskAttemptResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Süren denemede ve kursiyer görünümünde tamamlanmadan `null`"
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`)"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "questionVersionId": {
+                  "type": "string"
+                },
+                "points": {
+                  "type": "number"
+                },
+                "question": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "multiple_choice"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "options": {
+                          "minItems": 4,
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "imageFileId": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem",
+                        "options",
+                        "imageFileId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "true_false"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "allowNotGiven": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "imageFileId": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem",
+                        "allowNotGiven",
+                        "imageFileId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "matching"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "prompts": {
+                          "minItems": 2,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "choices": {
+                          "minItems": 2,
+                          "maxItems": 26,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem",
+                        "prompts",
+                        "choices"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "gap_fill"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "gaps": {
+                          "minItems": 1,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              "options": {}
+                            },
+                            "required": [
+                              "id",
+                              "options"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem",
+                        "gaps"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "ordering"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "items": {
+                          "minItems": 2,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem",
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "questionType": {
+                          "type": "string",
+                          "const": "short_answer"
+                        },
+                        "stem": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 5000
+                        },
+                        "maxLength": {
+                          "default": 100,
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 500
+                        },
+                        "imageFileId": {
+                          "default": null,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "questionType",
+                        "stem",
+                        "maxLength",
+                        "imageFileId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "questionVersionId",
+                "points",
+                "question"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık"
+          }
+        },
+        "required": [
+          "id",
+          "assignmentId",
+          "learnerId",
+          "attemptNumber",
+          "status",
+          "startedAt",
+          "endsAt",
+          "remainingMs",
+          "completedAt",
+          "autoSubmitted",
+          "late",
+          "counted",
+          "answers",
+          "result",
+          "rowVersion",
+          "questions"
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -36638,6 +39022,1083 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/TaskAssignmentStaff"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-attempts": {
+      "get": {
+        "operationId": "listTaskAttempts",
+        "summary": "Görev denemeleri",
+        "tags": [
+          "task-attempts"
+        ],
+        "description": "Atamanın arşivlenmemiş denemeleri, kursiyer ve deneme numarası sırasıyla, sayfalı (DOM-BEC-042). `assignmentId` zorunlu; `learnerId` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün denemeleri; atayan `ogretmen` atamanın bütün denemeleri, atamayı kapsamındaki sınıf/öğrenci hedefi yüzünden gören öğretmen yalnız kapsamındaki öğrencilerinkini (DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "assignmentId",
+            "required": true,
+            "description": "Atama (zorunlu)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "learnerId",
+            "required": false,
+            "description": "Kursiyer süzgeci; okuma kapsamı dışındaki kursiyer boş liste verir"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TaskAttempt"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-attempts/{attemptId}": {
+      "get": {
+        "operationId": "getTaskAttempt",
+        "summary": "Görev denemesi ayrıntısı",
+        "tags": [
+          "task-attempts"
+        ],
+        "description": "Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Roller: `yonetici` kurumun bütün denemeleri; atayan `ogretmen` atamanın bütün denemeleri, atamayı kapsamındaki sınıf/öğrenci hedefi yüzünden gören öğretmen yalnız kapsamındaki öğrencilerinkini (DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "attemptId",
+            "required": true,
+            "description": "Deneme kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskAttemptDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "saveTaskAttemptAnswers",
+        "summary": "Deneme cevaplarını kaydet",
+        "tags": [
+          "task-attempts"
+        ],
+        "description": "Süren denemeye cevap kaydı (DOM-BEC-043; core `planAnswerSave`): yalnız gönderilen sorular güncellenir. Süre dolduysa 422 `attempt_time_over`, teslim edilmiş deneme 409 `attempt_already_submitted`, soruyla uyuşmayan cevap 422 `answer_invalid`. `If-Match` zorunlu: denemenin `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answers": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "multiple_choice"
+                              ]
+                            },
+                            "optionId": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "optionId"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "true_false"
+                              ]
+                            },
+                            "answer": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "true",
+                                    "false",
+                                    "not_given"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "answer"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "matching"
+                              ]
+                            },
+                            "pairs": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "promptId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  },
+                                  "choiceId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  }
+                                },
+                                "required": [
+                                  "promptId",
+                                  "choiceId"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "pairs"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "gap_fill"
+                              ]
+                            },
+                            "gaps": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "gapId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  },
+                                  "value": {
+                                    "type": "string",
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": [
+                                  "gapId",
+                                  "value"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "gaps"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "ordering"
+                              ]
+                            },
+                            "order": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              }
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "order"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "short_answer"
+                              ]
+                            },
+                            "value": {
+                              "type": "string",
+                              "maxLength": 500
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "value"
+                          ]
+                        }
+                      ]
+                    },
+                    "description": "Kaydedilecek cevaplar; yalnız gönderilen sorular güncellenir"
+                  }
+                },
+                "required": [
+                  "answers"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "attemptId",
+            "required": true,
+            "description": "Deneme kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskAttemptDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-assignments/{assignmentId}/attempts": {
+      "post": {
+        "operationId": "startTaskAttempt",
+        "summary": "Görev denemesi başlat",
+        "tags": [
+          "task-attempts"
+        ],
+        "description": "Atamanın şu an hedeflediği öğrenci için yeni deneme (DOM-BEC-042, 043, 044; core `planAttemptStart`). Başlangıç sunucu saatidir; süre başlangıç + süre sınırıdır ve teslim kapanışını aşmaz. Değerlendirmede başlatılan her deneme hakkı tüketir: hak dolunca 422 `attempt_limit_reached`; süren deneme varken 409 `attempt_in_progress` (eşzamanlı ikinci başlatma da); teslim kapandıysa 422 `submission_closed`; otomatik puanlanmayan görev 422 `not_auto_scored`. Gövde `{}`. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve `Location`. Roller: yalnız `ogrenci` (kendi denemesi); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true,
+            "description": "Atama kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskAttemptDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-attempts/{attemptId}/submit": {
+      "post": {
+        "operationId": "submitTaskAttempt",
+        "summary": "Denemeyi teslim et",
+        "tags": [
+          "task-attempts"
+        ],
+        "description": "Denemeyi teslim eder (DOM-BEC-010, 043; core `planAttemptSubmit`). Puan sunucuda cevaplardan hesaplanır; gövdede puan veya bilinmeyen alan 400. Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (`autoSubmitted`). Son teslimden sonra geç kabul süresinde teslim `late` işaretlenir. İkinci teslim 409 `attempt_already_submitted`. `If-Match` zorunlu (denemenin `rowVersion`'ı); `Idempotency-Key` zorunlu. Roller: yalnız `ogrenci` (kendi denemesi); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answers": {
+                    "description": "Teslimle birlikte kaydedilecek son cevaplar; süre dolduysa alınmaz",
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "multiple_choice"
+                              ]
+                            },
+                            "optionId": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "optionId"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "true_false"
+                              ]
+                            },
+                            "answer": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "true",
+                                    "false",
+                                    "not_given"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "answer"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "matching"
+                              ]
+                            },
+                            "pairs": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "promptId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  },
+                                  "choiceId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  }
+                                },
+                                "required": [
+                                  "promptId",
+                                  "choiceId"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "pairs"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "gap_fill"
+                              ]
+                            },
+                            "gaps": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "gapId": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                  },
+                                  "value": {
+                                    "type": "string",
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": [
+                                  "gapId",
+                                  "value"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "gaps"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "ordering"
+                              ]
+                            },
+                            "order": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              }
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "order"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "questionType": {
+                              "type": "string",
+                              "enum": [
+                                "short_answer"
+                              ]
+                            },
+                            "value": {
+                              "type": "string",
+                              "maxLength": 500
+                            }
+                          },
+                          "required": [
+                            "questionType",
+                            "value"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "attemptId",
+            "required": true,
+            "description": "Deneme kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskAttemptDetail"
                     }
                   },
                   "required": [

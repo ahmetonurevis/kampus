@@ -1,5 +1,12 @@
 # Değişiklikler
 
+## 2.21.0
+
+Anahtarı açılmış değerlendirmenin son teslimi uzatılamaz (F4b3a inceleme düzeltmesi; `docs/domain/beceri-gelisimi.md` DOM-BEC-045).
+
+- `skills/assignment.ts` `planAssignmentChange`: girdiye zorunlu `now` ve atamanın `scoringMode`'u eklendi. Otomatik puanlı değerlendirmenin cevap anahtarı kursiyerlere açıldıysa (`answerKeyReleased`: son teslim ve geç kabul bitti) son teslim veya geç kabul değişikliği 409 `answer_key_released` alır; gerekçe kopya (anahtarı görenlerden sonra açılan teslim). Aynı tarihle gelen değişiklik, kapanış anı, alıştırma ve anahtarı olmayan öğretmen puanlı görev bu kurala girmez. Kısaltma kuralı (422 `deadline_shortened`) değişmedi; anahtar açıkken her tarih değişikliği önce 409 alır.
+- Çağıran tek tüketici API'dir (`PATCH /api/v1/task-assignments/:assignmentId`, sunucu saatiyle). Tüketiciler `workspace:2.21.0` sürümüne sabitlendi.
+
 ## 2.20.0
 
 Veli ve öğrencinin randevu alabileceği saatleri okuyan saf kural eklendi (W20a; `docs/domain/iletisim-ve-veli.md` DOM-ILT-105). Uç ve kanca ayrı adımdadır, ekran W20b'dedir. Başka açık dal da 2.19.0 kullanıyor; birleştirmede sürüm çözülecek.

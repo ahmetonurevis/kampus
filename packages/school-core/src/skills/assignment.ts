@@ -11,6 +11,7 @@ import type {
   ResourceVersion,
 } from '../content/resource.ts'
 import {
+  answerKeyReleased,
   answerLocaleForTags,
   attemptRulesSchema,
   countedAttempt,
@@ -533,15 +534,20 @@ export function planAssignment(
 export const MUTABLE_ASSIGNMENT_FIELDS = ['deadline'] as const
 
 /**
- * Yayımlanmış atamanın ayar değişikliği (DOM-BEC-041, 042; ADR 0004 karar 4). Görev türü, sayım
- * politikası, deneme hakkı, içerik/puanlama/rubrik sürümü ve diğer ayarlar değişmez; son teslim ve
- * geç kabul yalnız ileri alınır. Puanlama sürümü yalnız `planRescore` ile değişir.
+ * Yayımlanmış atamanın ayar değişikliği (DOM-BEC-041, 042, 045; ADR 0004 karar 4). Görev türü,
+ * sayım politikası, deneme hakkı, içerik/puanlama/rubrik sürümü ve diğer ayarlar değişmez; son
+ * teslim ve geç kabul yalnız ileri alınır. Otomatik puanlı değerlendirmenin cevap anahtarı
+ * kursiyerlere açıldıysa (`answerKeyReleased`: teslim kapandı) son teslim ve geç kabul artık
+ * uzatılamaz: 409 `answer_key_released` (anahtarı görenlerden sonra açılan teslim kopyaya açıktır).
+ * Aynı tarihle gelen değişiklik reddedilmez. Anahtarı olmayan öğretmen puanlı görev ve kursiyerin
+ * kendi denemesiyle anahtar açan alıştırma bu kurala girmez. Puanlama sürümü yalnız `planRescore` ile değişir.
  */
 // TODO(beceri-atama-duzenleme): Domain son teslimin değişmesini ele almıyor; en muhafazakâr yorumla
 // yalnız uzatma kabul edildi (kısaltma kursiyerin planını bozar).
 export function planAssignmentChange(input: {
-  assignment: Pick<FixedAssignment, 'kind' | 'deadline'>
+  assignment: Pick<FixedAssignment, 'kind' | 'deadline' | 'scoringMode'>
   patch: unknown
+  now: Instant
 }): { deadline: Deadline } {
   const patch = z.record(z.string(), z.unknown()).parse(input.patch)
   for (const key of Object.keys(patch)) {
@@ -565,6 +571,25 @@ export function planAssignmentChange(input: {
   }
   const before = submissionWindow(input.assignment.deadline)
   const after = submissionWindow(next)
+  const changed = after.dueAt !== before.dueAt || after.closesAt !== before.closesAt
+  if (
+    changed &&
+    input.assignment.kind === 'evaluation' &&
+    input.assignment.scoringMode === 'auto' &&
+    answerKeyReleased({
+      kind: input.assignment.kind,
+      deadline: input.assignment.deadline,
+      attemptCompleted: false,
+      now: input.now,
+    })
+  ) {
+    throw rule(
+      'answer_key_released',
+      'Cevap anahtarı öğrencilere açıldı; son teslim tarihi artık uzatılamaz.',
+      ['deadline'],
+      'conflict',
+    )
+  }
   const earlier = (a: string | null, b: string | null) =>
     b === null ? a !== null : a !== null && toMs(a) < toMs(b)
   if (earlier(after.dueAt, before.dueAt) || earlier(after.closesAt, before.closesAt)) {

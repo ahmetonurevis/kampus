@@ -545,8 +545,9 @@ export async function createTaskAssignment(
 }
 
 /**
- * Atama değişikliği (core `planAssignmentChange`; DOM-BEC-041, 042, 044): yalnız son teslim ve geç
- * kabul uzar; sabitlenen sürüm ve ayarlar 409 `assignment_setting_frozen`. Değiştiren atayan veya
+ * Atama değişikliği (core `planAssignmentChange`; DOM-BEC-041, 042, 044, 045): yalnız son teslim ve
+ * geç kabul uzar; sabitlenen sürüm ve ayarlar 409 `assignment_setting_frozen`; değerlendirmenin
+ * cevap anahtarı açıldıysa (teslim kapandı) uzatma 409 `answer_key_released`. Değiştiren atayan veya
  * yöneticidir (DOM-YTK-028): kapsam dışı atama 404, ders verdiği sınıfı hedeflediği için görünen
  * ama başkasının ataması 403, ardından sürüm 409. `If-Match` atamanın `rowVersion`'ıdır.
  */
@@ -570,7 +571,7 @@ export async function updateTaskAssignment(
         if (!assignment || assignment.archivedAt !== null || !visible(viewer, assignment))
           throw new NotFoundError()
         return {
-          run: () => {
+          run: (_state, tools) => {
             // Yetki (403): görünür ama değiştiremeyen kişi (yalnız atayan ve yönetici).
             const manages =
               viewer.kind === 'admin' ||
@@ -578,7 +579,11 @@ export async function updateTaskAssignment(
             if (!manages) throw new ForbiddenError()
             // Sürüm (409).
             if (assignment.rowVersion !== input.expectedVersion) throw new ConflictError()
-            const { deadline } = planAssignmentChange({ assignment, patch: input.patch })
+            const { deadline } = planAssignmentChange({
+              assignment,
+              patch: input.patch,
+              now: tools.now,
+            })
             return { assignment, deadline }
           },
         }

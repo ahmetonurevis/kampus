@@ -39702,7 +39702,7 @@
         "tags": [
           "task-assignments"
         ],
-        "description": "Yalnız son teslim ve geç kabul süresi uzatılır (core `planAssignmentChange`; DOM-BEC-041, 042, 044): kısaltma 422 `deadline_shortened`; içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 `assignment_setting_frozen`. Değiştiren yalnız atayan veya yöneticidir (DOM-YTK-028). Sıra: kapsam dışı atama 404 → görünür ama atayan olmayan öğretmen 403 `forbidden` → sürüm. `If-Match` zorunlu: atamanın `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "Yalnız son teslim ve geç kabul süresi uzatılır (core `planAssignmentChange`; DOM-BEC-041, 042, 044): kısaltma 422 `deadline_shortened`; otomatik puanlı değerlendirmenin cevap anahtarı açıldıysa (teslim kapandı) uzatma 409 `answer_key_released` (DOM-BEC-045); içerik, puanlama ve rubrik sürümü, görev türü, deneme hakkı ve diğer ayarlar 409 `assignment_setting_frozen`. Değiştiren yalnız atayan veya yöneticidir (DOM-YTK-028). Sıra: kapsam dışı atama 404 → görünür ama atayan olmayan öğretmen 403 `forbidden` → sürüm. `If-Match` zorunlu: atamanın `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "requestBody": {
           "required": true,
           "content": {

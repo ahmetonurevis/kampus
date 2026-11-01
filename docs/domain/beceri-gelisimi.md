@@ -198,11 +198,11 @@
 
 ### DOM-BEC-045 · Cevap ve geri bildirimin açılması
 
-- **Kural:** Otomatik görevde doğru cevaplar ve açıklamalar, görevin son teslim tarihi ve geç kabul süresi bitene kadar hiçbir kursiyere gösterilmez; kursiyer yalnız kendi puanını görür. Alıştırma türünde cevaplar deneme biter bitmez gösterilir. Öğretmen geri bildirimi puanlama tamamlanınca açılır.
+- **Kural:** Otomatik görevde doğru cevaplar ve açıklamalar, görevin son teslim tarihi ve geç kabul süresi bitene kadar hiçbir kursiyere gösterilmez; kursiyer yalnız kendi puanını görür. Alıştırma türünde cevaplar deneme biter bitmez gösterilir. Öğretmen geri bildirimi puanlama tamamlanınca açılır. Değerlendirmenin cevap anahtarı açıldıktan sonra son teslim ve geç kabul süresi uzatılamaz; uzatma, anahtarı görmüş kursiyerlerden sonra teslimi yeniden açardı.
 - **Gerekçe:** Erken açılan anahtar aynı grubun diğer kursiyerlerine kopya imkânı verir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `answerKeyReleased` (son tarihsiz değerlendirmede açılmaz, `TODO(beceri-suresiz-anahtar)`), `learnerResultLevel`, `teacherFeedbackReleased`. API: deneme okuması kursiyer ve veliye `learnerResultLevel`, personele anahtarı yalnız `answerKeyReleased` iken döner (`GET /api/v1/task-attempts/:attemptId`). Eski demo hâlâ çelişiyor: sonuç ekranı açıklamayı deneme biter bitmez gösterir (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.tsx:109`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `answerKeyReleased` (son tarihsiz değerlendirmede açılmaz, `TODO(beceri-suresiz-anahtar)`), `learnerResultLevel`, `teacherFeedbackReleased`; anahtar açıldıktan sonra uzatma yasağı `skills/assignment.ts` `planAssignmentChange` (otomatik puanlı değerlendirmede 409 `answer_key_released`; anahtarı olmayan öğretmen puanlı görev uzar). API: `PATCH /api/v1/task-assignments/:assignmentId` uzatmayı 409 `answer_key_released` ile reddeder; deneme okuması kursiyer ve veliye `learnerResultLevel`, personele anahtarı yalnız `answerKeyReleased` iken döner (`GET /api/v1/task-attempts/:attemptId`). Eski demo hâlâ çelişiyor: sonuç ekranı açıklamayı deneme biter bitmez gösterir (`apps/web/src/views/Learning.vue:993`, `apps/mobile/src/screens/Quiz.tsx:109`).
 
 ### DOM-BEC-046 · Yazma teslimi metindir
 

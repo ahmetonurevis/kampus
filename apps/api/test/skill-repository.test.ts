@@ -410,6 +410,7 @@ describe('beceri görevi deposu', () => {
       targets: [targets[1], targets[0]],
       createdAt: iso(FIXED_NOW),
       updatedAt: iso(FIXED_NOW),
+      secondRatingSampledAt: null,
       archivedAt: null,
       rowVersion: 1,
     })

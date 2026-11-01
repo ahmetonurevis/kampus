@@ -10,6 +10,7 @@ import { insertMissingRecords } from '../src/db/records.ts'
 import {
   rubrics,
   rubricScores,
+  scoreAppeals,
   rubricVersions,
   submissionDrafts,
   submissionVersions,
@@ -31,7 +32,8 @@ import { sampleRubricData } from './support/skills-sample.ts'
  * PostgreSQL 16: yazma taslağının ve teslim sürümünün eşzamanlı yazılması (IST-047, DOM-BEC-040;
  * ADR 0004 karar 6). Yazmalar kurum kilidi altında sıralanır: aynı revizyonla iki taslak kaydından
  * biri 409 `draft_conflict` alır; sürüm sınırı 1 iken iki eşzamanlı teslimden yalnız biri yazılır;
- * aynı sürüme eşzamanlı iki öğretmen puanından yalnız biri yazılır (F4b3b1, DOM-BEC-021).
+ * aynı sürüme eşzamanlı iki öğretmen puanından yalnız biri yazılır (F4b3b1, DOM-BEC-021); aynı
+ * sürüme öğrenci ve velinin eşzamanlı itirazından yalnız biri yazılır (F4b3b2a, DOM-BEC-025).
  * PGlite tek bağlantılı olduğundan gerçek eşzamanlılık yalnız burada sınanır.
  */
 
@@ -90,6 +92,10 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
       await createMember(app, institution.id, 'ogrenci', [{ kind: 'student', recordId: 's-1' }]),
     )
     const admin = await signInAs(app, institution.admin)
+    const parent = await signInAs(
+      app,
+      await createMember(app, institution.id, 'veli', [{ kind: 'child', recordId: 's-1' }]),
+    )
     const { versions } = await seedResource(db, institution.id, {
       ownerUserId: institution.admin.id,
       versions: [
@@ -145,7 +151,13 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
       key(),
     )
     assert.equal(created.statusCode, 201, created.body)
-    return { institution, student, admin, assignmentId: created.json().data.id as string }
+    return {
+      institution,
+      student,
+      parent,
+      admin,
+      assignmentId: created.json().data.id as string,
+    }
   }
 
   test('IST-047: aynı taslağa eşzamanlı iki kayıt: biri 200, diğeri 409 draft_conflict; eşzamanlı ilk kayıtta geride kalan 400; taslak kazananın metni', async () => {
@@ -235,5 +247,54 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
     assert.equal(rows.length, 1)
     const winner = responses.find((r) => r.statusCode === 201)?.json().data
     assert.equal(rows[0]?.criteria[0]?.band, winner.versions[0].score.criteria[0].band)
+  })
+
+  test('DOM-BEC-025: aynı sürüme öğrenci ve veliden eşzamanlı iki itiraz: biri 201, diğeri 409 appeal_exists; tek itiraz satırı', async () => {
+    const { institution, student, parent, admin, assignmentId } = await setup()
+    const submitted = await call(
+      'POST',
+      `/task-assignments/${assignmentId}/submissions`,
+      student,
+      { submissionKind: 'text', body: 'Birinci metin.' },
+      key(),
+    )
+    assert.equal(submitted.statusCode, 201, submitted.body)
+    const submissionId = submitted.json().data.id as string
+    const scored = await call(
+      'POST',
+      `/task-submissions/${submissionId}/scores`,
+      admin,
+      {
+        versionNumber: 1,
+        criteria: [
+          { criterionId: 'task', band: 3, comment: null },
+          { criterionId: 'grammar', band: 3, comment: null },
+        ],
+        overallComment: 'Genel yorum yazıldı.',
+      },
+      { ...key(), 'if-match': '"1"' },
+    )
+    assert.equal(scored.statusCode, 201, scored.body)
+    const file = (cookie: string, reason: string) =>
+      call(
+        'POST',
+        `/task-submissions/${submissionId}/appeals`,
+        cookie,
+        { versionNumber: 1, reason },
+        key(),
+      )
+    const responses = await Promise.all([
+      file(student, 'Öğrencinin itiraz gerekçesi.'),
+      file(parent, 'Velinin itiraz gerekçesi yazıldı.'),
+    ])
+    assert.deepEqual(responses.map((r) => r.statusCode).sort(), [201, 409])
+    assert.equal(responses.find((r) => r.statusCode === 409)?.json().code, 'appeal_exists')
+    const rows = await db
+      .select({ reason: scoreAppeals.reason })
+      .from(scoreAppeals)
+      .where(eq(scoreAppeals.institutionId, institution.id))
+    assert.equal(rows.length, 1)
+    const winner = responses.find((r) => r.statusCode === 201)?.json().data
+    assert.equal(rows[0]?.reason, winner.versions[0].appeal.reason)
   })
 })

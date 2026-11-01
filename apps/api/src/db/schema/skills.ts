@@ -231,6 +231,12 @@ export const taskAssignments = pgTable(
       .generatedAlwaysAs(sql`(submission_settings ->> 'submissionKind')`),
     highStakes: boolean('high_stakes').notNull().default(false),
     secondRatingPercent: integer('second_rating_percent').notNull().default(0),
+    /**
+     * İkinci puanlama örnekleminin çekildiği an (DOM-BEC-024); boş: çekilmedi. Örneklem teslim
+     * penceresi kapanınca bir kez çekilir, karar `second_rating_requests` satırlarıdır; bu kolon
+     * yalnız "çekildi" kararıdır (örneklemdeki teslimler elle istenmiş olsa da tekrar çekilmez).
+     */
+    secondRatingSampledAt: timestamp('second_rating_sampled_at', { withTimezone: true }),
     // kvkk: K
     assignedByUserId: text('assigned_by_user_id').notNull(),
     ...required(),

@@ -17,6 +17,7 @@ import type { Database } from '../db/client.ts'
 import { asCoreVersion, findResource, listResourceVersions } from '../db/resources.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
+  anySecondRatingRequested,
   assignmentContentRefs,
   findAssignment,
   findRubricVersion,
@@ -574,6 +575,9 @@ export async function updateTaskAssignment(
         // Kapsam (404): olmayan, başka kurumun, görünmeyen veya arşivli atama.
         if (!assignment || assignment.archivedAt !== null || !visible(viewer, assignment))
           throw new NotFoundError()
+        const secondRatingStarted =
+          assignment.secondRatingSampledAt !== null ||
+          (await anySecondRatingRequested(tx, ctx.institutionId, assignment.id))
         return {
           run: (_state, tools) => {
             // Yetki (403): görünür ama değiştiremeyen kişi (yalnız atayan ve yönetici).
@@ -588,6 +592,15 @@ export async function updateTaskAssignment(
               patch: input.patch,
               now: tools.now,
             })
+            // İkinci puanlama, kursiyer yeni sürüm gönderemezken başlar (DOM-BEC-024, 045;
+            // `task-grading.ts`); pencere yeniden açılsa açılmamış puan yeni sürüm reddinden
+            // sızardı. Bu yüzden ikinci puanlama başladıktan sonra teslim penceresi değişmez.
+            if (secondRatingStarted && windowChanged(assignment.deadline, deadline))
+              throw new AppError(
+                409,
+                'second_rating_started',
+                'İkinci puanlama başladı; son teslim tarihi artık değiştirilemez.',
+              )
             return { assignment, deadline }
           },
         }
@@ -603,5 +616,13 @@ export async function updateTaskAssignment(
       return { statusCode: 200, body: out.body }
     },
     idempotency,
+  )
+}
+
+/** Teslim penceresi (son teslim veya geç kabul) değişti mi. */
+function windowChanged(before: StoredAssignment['deadline'], after: StoredAssignment['deadline']) {
+  const at = (value: string | null) => (value === null ? null : Date.parse(value))
+  return (
+    at(before.dueAt) !== at(after.dueAt) || before.lateAcceptanceDays !== after.lateAcceptanceDays
   )
 }

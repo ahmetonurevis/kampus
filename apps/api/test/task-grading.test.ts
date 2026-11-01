@@ -50,6 +50,7 @@ const DUE = '2026-10-20T20:59:00.000Z'
 const SECRET_TEXT = 'GIZLI-YAZI my weekend was very nice'
 const FEEDBACK = 'GIZLI-GERI-BILDIRIM paragraf düzeni iyi'
 const CRITERION_NOTE = 'GIZLI-KRITER zaman uyumuna dikkat'
+const APPEAL_REASON = 'GIZLI-ITIRAZ paragraf düzeni yanlış değerlendirildi'
 
 const homework = (): Partial<ResourceVersionInput> => ({
   title: 'Hafta sonu yazısı',
@@ -149,6 +150,10 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       student: await signInAs(app, await member('ogrenci', 'student', 's-1')),
       parent: await signInAs(app, parent),
       frontDesk: await signInAs(app, await createMember(app, institution.id, 'onburo')),
+      // Aynı sınıfın ikinci öğretmen hesabı: atamayı görür, bağımsız puanlayıcı olabilir.
+      colleague: await signInAs(app, await member('ogretmen', 'teacher', 't-eng')),
+      otherStudent: await signInAs(app, await member('ogrenci', 'student', 's-3')),
+      otherParent: await signInAs(app, await member('veli', 'child', 's-3')),
     }
     const homeworkId = (
       await seedResource(db, institution.id, {
@@ -265,6 +270,70 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     })
   const detail = (submissionId: string, cookie: string) =>
     call('GET', `/task-submissions/${submissionId}`, cookie)
+  const requestSecond = (
+    submissionId: string,
+    cookie: string,
+    version: number,
+    body: unknown = { versionNumber: 1 },
+  ) =>
+    call('POST', `/task-submissions/${submissionId}/second-rating-requests`, cookie, body, {
+      ...match(version),
+      ...key(),
+    })
+  const secondScore = (
+    submissionId: string,
+    cookie: string,
+    version: number,
+    body: unknown = scoreBody(),
+  ) =>
+    call('POST', `/task-submissions/${submissionId}/second-scores`, cookie, body, {
+      ...match(version),
+      ...key(),
+    })
+  const drawSample = (assignmentId: string, cookie: string, version: number) =>
+    call(
+      'POST',
+      `/task-assignments/${assignmentId}/second-rating-sample`,
+      cookie,
+      {},
+      {
+        ...match(version),
+        ...key(),
+      },
+    )
+  const appeal = (
+    submissionId: string,
+    cookie: string,
+    body: unknown = { versionNumber: 1, reason: APPEAL_REASON },
+  ) => call('POST', `/task-submissions/${submissionId}/appeals`, cookie, body, key())
+  const decide = (
+    submissionId: string,
+    appealId: string,
+    cookie: string,
+    version: number,
+    body: unknown,
+  ) =>
+    call('POST', `/task-submissions/${submissionId}/appeals/${appealId}/decision`, cookie, body, {
+      ...match(version),
+      ...key(),
+    })
+  /** Ret yanıtı, istek kimliği dışında (yanıtların birebir aynılığı için). */
+  const refusal = (response: Awaited<ReturnType<typeof call>>) => {
+    const body = response.json()
+    delete body.requestId
+    return [response.statusCode, body]
+  }
+  /** Kursiyer ve velinin teslim ayrıntısı ve listesi. */
+  async function learnerViews(t: Tenant, submissionId: string, assignmentId: string) {
+    const views: Json[] = []
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      views.push(
+        await ok(await detail(submissionId, cookie)),
+        await ok(await call('GET', `/task-submissions?assignmentId=${assignmentId}`, cookie)),
+      )
+    return views
+  }
+  const afterDue = () => new Date(new Date(DUE).getTime() + 3_600_000)
   const queue = (cookie: string, extra = '') =>
     call('GET', `/task-submissions/grading-queue?page=1&pageSize=20${extra}`, cookie)
 
@@ -608,40 +677,65 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     assert.equal((await ok(await detail(id, t.cookies.admin))).versions[0].score.settled, true)
   })
 
-  test('DOM-BEC-045, DOM-BEC-040: sürüm hakkı kalan teslimde açılmamış puan kursiyerin hakkını değiştirmez, yeni sürüm genel 409 submission_locked alır; locked yalnız teslim penceresi kapanınca döner', async () => {
+  test('DOM-BEC-024, DOM-BEC-045: sürüm hakkı kalan teslimde pencere açıkken ikinci puanlama istenmez (409 second_rating_window_open); pencere kapanınca istenir; kursiyerin yanıtı ve yeni sürüm reddi istemden ve puanlamadan önceki ve sonraki hâliyle birebir aynı', async () => {
     const { t, assignmentId, submission } = await setup({
       submission: { submissionKind: 'text', maxVersions: 2 },
     })
     const id = submission.id as string
-    const open = await ok(await detail(id, t.cookies.student))
+    const open = await learnerViews(t, id, assignmentId)
     assert.deepEqual(
-      [open.allowance.canSubmit, open.allowance.blockedBy, open.allowance.remaining],
+      [open[0].allowance.canSubmit, open[0].allowance.blockedBy, open[0].allowance.remaining],
       [true, null, 1],
     )
-    await insertSecondRatingRequest(
-      db,
-      t.institution.id,
-      {
-        submissionId: id,
-        source: 'manual',
-        requestedByUserId: t.institution.admin.id,
-        requestedAt: now.toISOString(),
-      },
-      now,
-    )
-    await ok(await score(id, t.cookies.teacher, 1), 201)
-    for (const cookie of [t.cookies.student, t.cookies.parent])
-      assert.deepEqual(await ok(await detail(id, cookie)), open)
-    assert.equal((await ok(await detail(id, t.cookies.teacher))).allowance.blockedBy, 'graded')
-    const refused = await resubmit(assignmentId, 'Second version.')
-    fails(refused, 409, 'submission_locked')
-    assert.ok(!refused.body.includes('graded') && !refused.body.includes('puan'), refused.body)
+    fails(await requestSecond(id, t.cookies.teacher, 1), 409, 'second_rating_window_open')
+    assert.deepEqual(await learnerViews(t, id, assignmentId), open)
+    assert.equal((await storedRows(t.institution.id)).submissions[0]?.version, 1)
 
-    // Teslim penceresi kapandı (son tarih geçti, geç kabul yok): kilit puanlamadan bağımsızdır.
-    now = new Date(new Date(DUE).getTime() + 3_600_000)
+    // Pencere kapandı (geç kabul yok): yeni sürüm puanlamadan bağımsız olarak kapalıdır.
+    now = afterDue()
+    const closed = await learnerViews(t, id, assignmentId)
+    assert.deepEqual(
+      [closed[0].allowance.canSubmit, closed[0].allowance.blockedBy],
+      [false, 'locked'],
+    )
+    const refusedBefore = refusal(await resubmit(assignmentId, 'Second version.'))
+    assert.equal(refusedBefore[0], 422)
+    const requested = await requestSecond(id, t.cookies.teacher, 1)
+    const afterRequest = await ok(requested, 201)
+    assert.equal(requested.headers.location, `/api/v1/task-submissions/${id}`)
+    assert.equal(afterRequest.versions[0].grading.secondRatingRequested, true)
+    assert.equal(afterRequest.rowVersion, 2)
+    assert.deepEqual(await learnerViews(t, id, assignmentId), closed)
+    fails(await requestSecond(id, t.cookies.admin, 2), 409, 'second_rating_exists')
+    // İkinci puanlama başladıktan sonra pencere yeniden açılmaz (açılsa ret puanlamayı ele verirdi).
+    const assignment = await ok(
+      await call('GET', `/task-assignments/${assignmentId}`, t.cookies.admin),
+    )
+    const extended = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/task-assignments/${assignmentId}`,
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie: t.cookies.admin,
+        'content-type': 'application/json',
+        ...match(assignment.rowVersion),
+      },
+      payload: JSON.stringify({ deadline: { dueAt: '2026-10-30T20:59:00.000Z' } }),
+    })
+    fails(extended, 409, 'second_rating_started')
+
+    const scored = await ok(await score(id, t.cookies.teacher, 2), 201)
+    assert.deepEqual(
+      [scored.versions[0].score.settled, scored.versions[0].grading.status],
+      [false, 'pending'],
+    )
+    assert.equal(scored.versions[0].grading.missing, 'second')
+    assert.deepEqual(await learnerViews(t, id, assignmentId), closed)
+    assert.deepEqual(refusal(await resubmit(assignmentId, 'Second version.')), refusedBefore)
     for (const cookie of [t.cookies.student, t.cookies.parent]) {
-      const closed = await ok(await detail(id, cookie))
-      assert.deepEqual([closed.allowance.canSubmit, closed.allowance.blockedBy], [false, 'locked'])
+      const body = (await detail(id, cookie)).body
+      for (const text of [FEEDBACK, 'graded', 'grading":{', 'appealDeadline":"'])
+        assert.ok(!body.includes(text), text)
     }
   })
 
@@ -852,5 +946,338 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
         },
       ],
     )
+  })
+
+  test('DOM-BEC-024, DOM-BEC-045: sürüm hakkı dolunca pencere açıkken de istenir; ret yanıtı puanlamadan öncekiyle aynı (422 version_limit_reached); kesinleşmiş puana istem 409 second_rating_too_late; istenmeyen sürüme ikinci puan 409', async () => {
+    const { t, assignmentId, submission } = await setup()
+    const id = submission.id as string
+    const before = await learnerViews(t, id, assignmentId)
+    const refusedBefore = refusal(await resubmit(assignmentId, 'Second version.'))
+    assert.equal(refusedBefore[0], 422)
+    fails(await secondScore(id, t.cookies.admin, 1), 409, 'second_rating_not_requested')
+    fails(
+      await requestSecond(id, t.cookies.teacher, 1, { versionNumber: 2 }),
+      404,
+      'submission_version_not_found',
+    )
+    fails(
+      await requestSecond(id, t.cookies.teacher, 1, { versionNumber: 1, extra: true }),
+      400,
+      'validation_failed',
+    )
+    await ok(await requestSecond(id, t.cookies.teacher, 1), 201)
+    await ok(await score(id, t.cookies.teacher, 2), 201)
+    assert.deepEqual(await learnerViews(t, id, assignmentId), before)
+    assert.deepEqual(refusal(await resubmit(assignmentId, 'Second version.')), refusedBefore)
+
+    // İlk puanı kesinleşmiş başka teslim: istem açılmış sonucu geri almaz.
+    const settled = await setup()
+    const other = settled.submission.id as string
+    await ok(await score(other, settled.t.cookies.teacher, 1), 201)
+    fails(await requestSecond(other, settled.t.cookies.teacher, 2), 409, 'second_rating_too_late')
+    fails(await secondScore(other, settled.t.cookies.admin, 2), 409, 'second_rating_not_requested')
+    assert.equal((await storedRows(settled.t.institution.id)).scores, 1)
+  })
+
+  test('DOM-BEC-024: kör puanlama: ikinci puanlayıcı ilk puanı görmez, aynı öğretmen ikinci puan veremez; uyuşmazlıkta sonuç kursiyere kapalı, okumada uyuşmazlık kriterleri; uyuşmazlıkta yeniden teslim ve itiraz açılmaz', async () => {
+    const { t, assignmentId, submission } = await setup()
+    const id = submission.id as string
+    const before = await learnerViews(t, id, assignmentId)
+    await ok(await requestSecond(id, t.cookies.admin, 1), 201)
+    await ok(await score(id, t.cookies.teacher, 2), 201)
+    // İkinci puanlayıcı (yönetici veya başka öğretmen) ilk puanı görmez.
+    for (const cookie of [t.cookies.admin, t.cookies.colleague]) {
+      const seen = await ok(await detail(id, cookie))
+      assert.equal(seen.versions[0].score, null)
+      assert.equal(seen.latestVersion.score, null)
+      assert.deepEqual(
+        [seen.versions[0].grading.status, seen.versions[0].grading.missing],
+        ['pending', 'second'],
+      )
+      const raw = (await detail(id, cookie)).body
+      assert.ok(!raw.includes(FEEDBACK) && !raw.includes(CRITERION_NOTE))
+    }
+    fails(await secondScore(id, t.cookies.teacher, 3), 409, 'rater_not_independent')
+    const disagreeing = scoreBody({
+      criteria: [
+        { criterionId: 'task', band: 1, comment: 'Görev eksik kaldı.' },
+        { criterionId: 'grammar', band: 2, comment: 'Zaman hataları var.' },
+      ],
+      overallComment: 'İkinci puanlayıcının yorumu.',
+    })
+    const second = await ok(await secondScore(id, t.cookies.colleague, 3, disagreeing), 201)
+    assert.deepEqual(second.versions[0].grading.disagreementCriterionIds, ['task'])
+    assert.equal(second.versions[0].grading.status, 'disagreement')
+    // İkinci puanlayıcı yalnız kendi puanını görür; ilk puan yine gizli.
+    assert.equal(second.versions[0].score.overallComment, 'İkinci puanlayıcının yorumu.')
+    assert.equal(second.versions[0].score.settled, false)
+    fails(await secondScore(id, t.cookies.admin, 4), 409, 'rubric_score_exists')
+    assert.equal((await ok(await detail(id, t.cookies.admin))).versions[0].score, null)
+    // Uyuşmazlık: son puan koordinatörle gelecek (F4b3b2b); kursiyer ve veliye hiçbir şey açılmaz.
+    assert.deepEqual(await learnerViews(t, id, assignmentId), before)
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      fails(await appeal(id, cookie), 409, 'appeal_not_open')
+    fails(
+      await requestResubmission(id, t.cookies.teacher, 4, {
+        versionNumber: 1,
+        dueAt: new Date(now.getTime() + 24 * 3_600_000).toISOString(),
+      }),
+      409,
+      'resubmission_not_graded',
+    )
+    assert.deepEqual(
+      (await ok(await queue(t.cookies.admin, '&awaiting=second'))).map((row: Json) => row.id),
+      [],
+    )
+  })
+
+  test('DOM-BEC-024: örneklem teslim penceresi kapanınca bir kez seçilir (%10, en az bir); seçilmeden ilk puan 409; ikinci puan bekleyenler kuyrukta ayrı; rol × kapsam, başka kurum 404, modül kapalı 403', async () => {
+    const t = await tenant()
+    cookieOf.student = t.cookies.student
+    const created = await ok(
+      await call(
+        'POST',
+        '/task-assignments',
+        t.cookies.admin,
+        {
+          resourceVersionId: t.homeworkId,
+          settings: {
+            deadline: { dueAt: DUE },
+            submission: { submissionKind: 'text', maxVersions: 1 },
+            rubricVersionId: t.rubricVersionId,
+            highStakes: true,
+          },
+          targets: [
+            { kind: 'class', id: '9-A' },
+            { kind: 'class', id: '9-B' },
+          ],
+        },
+        key(),
+      ),
+      201,
+    )
+    const assignmentId = created.id as string
+    const first = await ok(await resubmit(assignmentId), 201)
+    cookieOf.student = t.cookies.otherStudent
+    const otherSubmission = await ok(await resubmit(assignmentId, 'Another text.'), 201)
+    const ids = [first.id as string, otherSubmission.id as string].sort()
+    const version = created.rowVersion as number
+
+    fails(await score(first.id, t.cookies.teacher, 1), 409, 'second_rating_sample_pending')
+    const pending = await ok(await queue(t.cookies.teacher))
+    assert.deepEqual(
+      pending.map((row: Json) => [row.grading.awaiting, row.grading.samplePending]),
+      [
+        [['first'], true],
+        [['first'], true],
+      ],
+    )
+    fails(
+      await drawSample(assignmentId, t.cookies.admin, version),
+      409,
+      'second_rating_window_open',
+    )
+    for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.frontDesk])
+      fails(await drawSample(assignmentId, cookie, version), 403, 'forbidden')
+    const other = await createInstitution(app)
+    fails(
+      await drawSample(assignmentId, await signInAs(app, other.admin), version),
+      404,
+      'not_found',
+    )
+    const closedModule = await createInstitution(app, { enabledModules: { learning: false } })
+    fails(
+      await drawSample(assignmentId, await signInAs(app, closedModule.admin), version),
+      403,
+      'module_disabled',
+    )
+
+    now = afterDue()
+    fails(await drawSample(assignmentId, t.cookies.teacher, version + 5), 409, 'version_conflict')
+    const response = await drawSample(assignmentId, t.cookies.teacher, version)
+    const sample = await ok(response, 201)
+    assert.equal(
+      response.headers.location,
+      `/api/v1/task-submissions/grading-queue?assignmentId=${assignmentId}&awaiting=second`,
+    )
+    assert.deepEqual(
+      [sample.percent, sample.submissionCount, sample.submissionIds.length],
+      [10, 2, 1],
+    )
+    assert.ok(ids.includes(sample.submissionIds[0]))
+    fails(
+      await drawSample(assignmentId, t.cookies.admin, sample.rowVersion),
+      409,
+      'second_rating_sample_drawn',
+    )
+    const sampled = sample.submissionIds[0] as string
+    const unsampled = ids.find((value) => value !== sampled) as string
+    assert.deepEqual(
+      (await ok(await queue(t.cookies.teacher, '&awaiting=second'))).map((row: Json) => [
+        row.id,
+        row.grading.awaiting,
+      ]),
+      [[sampled, ['first', 'second']]],
+    )
+    // Örneklemdeki teslim ilk puandan sonra ikinci puanı bekler; dışındaki hemen kesinleşir.
+    await ok(await score(sampled, t.cookies.teacher, 2), 201)
+    await ok(await score(unsampled, t.cookies.teacher, 1), 201)
+    assert.deepEqual(await ok(await queue(t.cookies.teacher)), [])
+    assert.deepEqual(
+      (await ok(await queue(t.cookies.admin, '&awaiting=second'))).map((row: Json) => row.id),
+      [sampled],
+    )
+    assert.deepEqual(await ok(await queue(t.cookies.admin, '&awaiting=first')), [])
+    const learner = sampled === first.id ? t.cookies.student : t.cookies.otherStudent
+    const unsampledLearner =
+      learner === t.cookies.student ? t.cookies.otherStudent : t.cookies.student
+    assert.equal((await ok(await detail(sampled, learner))).versions[0].score, null)
+    assert.equal(
+      (await ok(await detail(unsampled, unsampledLearner))).versions[0].score.settled,
+      true,
+    )
+    fails(await queue(t.cookies.admin, '&awaiting=third'), 400, 'validation_failed')
+  })
+
+  test('DOM-BEC-025: kuyruk satırında puanlama süresi (son teslim + 7 gün, son an dahil zamanında); gecikene göre süzgeç; geçersiz süzgeç 400', async () => {
+    const { t } = await setup()
+    const due = new Date(new Date(DUE).getTime() + 7 * 24 * 3_600_000)
+    const [row] = await ok(await queue(t.cookies.teacher))
+    assert.deepEqual([row.grading.dueAt, row.grading.overdue], [due.toISOString(), false])
+    assert.equal((await ok(await queue(t.cookies.teacher, '&overdue=true'))).length, 0)
+    now = due
+    assert.equal((await ok(await queue(t.cookies.teacher, '&overdue=false'))).length, 1)
+    now = new Date(due.getTime() + 1)
+    const [late] = await ok(await queue(t.cookies.teacher, '&overdue=true'))
+    assert.equal(late.grading.overdue, true)
+    assert.equal((await ok(await queue(t.cookies.teacher, '&overdue=false'))).length, 0)
+    const staff = await ok(await detail(late.id, t.cookies.teacher))
+    assert.deepEqual(
+      [staff.versions[0].grading.dueAt, staff.versions[0].grading.overdue],
+      [due.toISOString(), true],
+    )
+    fails(await queue(t.cookies.teacher, '&overdue=yes'), 400, 'validation_failed')
+  })
+
+  test('DOM-BEC-025: öğrenci veya velisi duyurudan sonra 5 iş günü içinde itiraz eder (hafta sonu sayılmaz, son an dahil); duyurudan önce 409, süre geçince 422; sürüm başına bir; veli yalnız kendi çocuğu; personel 403; başka kurum 404; gerekçe loglanmaz', async () => {
+    const { t, submission } = await setup()
+    const id = submission.id as string
+    const from = logs.length
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      fails(await appeal(id, cookie), 409, 'appeal_not_open')
+    await ok(await score(id, t.cookies.teacher, 1), 201)
+    // Duyuru salı 6 Ekim 12.00 (İstanbul): 7, 8, 9, 12, 13 Ekim iş günü; son an 13 Ekim 23.59.59.
+    const deadline = '2026-10-13T20:59:59.999Z'
+    for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.teacher])
+      assert.equal((await ok(await detail(id, cookie))).versions[0].appealDeadline, deadline)
+    for (const cookie of [t.cookies.teacher, t.cookies.admin, t.cookies.frontDesk])
+      fails(await appeal(id, cookie), 403, 'forbidden')
+    fails(await appeal(id, t.cookies.otherParent), 404, 'not_found')
+    fails(await appeal(id, t.cookies.otherStudent), 404, 'not_found')
+    const other = await createInstitution(app)
+    fails(await appeal(id, await signInAs(app, other.admin)), 403, 'forbidden')
+    fails(
+      await appeal(id, t.cookies.student, { versionNumber: 1, reason: 'kısa' }),
+      400,
+      'validation_failed',
+    )
+    fails(
+      await appeal(id, t.cookies.student, { versionNumber: 2, reason: APPEAL_REASON }),
+      404,
+      'submission_version_not_found',
+    )
+    now = new Date(Date.parse(deadline) + 1)
+    fails(await appeal(id, t.cookies.student), 422, 'appeal_window_closed')
+    now = new Date(Date.parse(deadline))
+    const response = await appeal(id, t.cookies.parent)
+    const filed = await ok(response, 201)
+    assert.equal(response.headers.location, `/api/v1/task-submissions/${id}`)
+    assert.deepEqual(
+      [filed.versions[0].appeal.reason, filed.versions[0].appeal.outcome],
+      [APPEAL_REASON, null],
+    )
+    assert.equal(filed.rowVersion, null)
+    fails(await appeal(id, t.cookies.student), 409, 'appeal_exists')
+    assert.equal(
+      (await ok(await detail(id, t.cookies.teacher))).versions[0].appeal.reason,
+      APPEAL_REASON,
+    )
+    const written = logs.slice(from).join('\n')
+    assert.ok(written.includes('task_submission.appeal'), 'işlem logu yok')
+    assert.ok(!written.includes('GIZLI-ITIRAZ'), 'itiraz gerekçesi loglandı')
+    const [audit] = await db
+      .select({ changes: auditLog.changes })
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.institutionId, t.institution.id),
+          eq(auditLog.action, 'task_submission.appeal'),
+        ),
+      )
+    assert.deepEqual(audit?.changes, { fields: ['reason', 'filedAt'] })
+  })
+
+  test('DOM-BEC-025: itirazı ilk puanlayıcı karara bağlayamaz (409 rater_not_independent); başka öğretmen kabul eder, son puan geçerli olur, ilk puan kayıt geçmişinde kalır; ikinci karar 409; öğrenci 403; gerekçe loglanmaz', async () => {
+    const { t, submission } = await setup()
+    const id = submission.id as string
+    await ok(await score(id, t.cookies.teacher, 1), 201)
+    const filed = await ok(await appeal(id, t.cookies.student), 201)
+    const appealId = filed.versions[0].appeal.id as string
+    const staffVersion = (await ok(await detail(id, t.cookies.teacher))).rowVersion as number
+    const upheld = {
+      outcome: 'upheld',
+      reason: 'GIZLI-KARAR kriterler yeniden okundu',
+      score: {
+        criteria: [
+          { criterionId: 'task', band: 5, comment: null },
+          { criterionId: 'grammar', band: 5, comment: null },
+        ],
+        overallComment: 'Yeniden değerlendirme sonucu.',
+      },
+    }
+    const from = logs.length
+    fails(
+      await decide(id, appealId, t.cookies.teacher, staffVersion, upheld),
+      409,
+      'rater_not_independent',
+    )
+    fails(await decide(id, appealId, t.cookies.student, staffVersion, upheld), 403, 'forbidden')
+    const stranger = await signInAs(app, (await createInstitution(app)).admin)
+    fails(await decide(id, appealId, stranger, staffVersion, upheld), 404, 'not_found')
+    fails(
+      await decide(id, appealId, t.cookies.colleague, staffVersion, { ...upheld, total: 10 }),
+      400,
+      'validation_failed',
+    )
+    fails(
+      await decide(id, randomUUID(), t.cookies.colleague, staffVersion, upheld),
+      404,
+      'not_found',
+    )
+    assert.equal((await storedRows(t.institution.id)).scores, 1)
+    const decided = await ok(await decide(id, appealId, t.cookies.colleague, staffVersion, upheld))
+    assert.deepEqual(
+      [decided.versions[0].appeal.outcome, decided.versions[0].score.percent],
+      ['upheld', 100],
+    )
+    const seen = await ok(await detail(id, t.cookies.student))
+    assert.deepEqual(
+      [seen.versions[0].score.percent, seen.versions[0].appeal.decisionReason],
+      [100, upheld.reason],
+    )
+    const roles = await db
+      .select({ role: rubricScores.raterRole })
+      .from(rubricScores)
+      .where(eq(rubricScores.institutionId, t.institution.id))
+    assert.deepEqual(roles.map((row) => row.role).sort(), ['final', 'first'])
+    fails(
+      await decide(id, appealId, t.cookies.admin, decided.rowVersion, {
+        outcome: 'rejected',
+        reason: 'İkinci karar denemesi.',
+      }),
+      409,
+      'appeal_decided',
+    )
+    assert.ok(!logs.slice(from).join('\n').includes('GIZLI-KARAR'), 'karar gerekçesi loglandı')
   })
 })

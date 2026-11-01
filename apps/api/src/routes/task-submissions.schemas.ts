@@ -1,7 +1,13 @@
 import { z } from 'zod'
 
 import { resubmissionRequestSchema } from '@kampus/school-core/skills/assignment.ts'
-import { BAND_MEANINGS, rubricScoreInputSchema } from '@kampus/school-core/skills/rubric.ts'
+import {
+  appealDecisionSchema,
+  appealInputSchema,
+  APPEAL_OUTCOMES,
+  BAND_MEANINGS,
+  rubricScoreInputSchema,
+} from '@kampus/school-core/skills/rubric.ts'
 import { SUBMISSION_TEXT_MAX } from '@kampus/school-core/skills/submission.ts'
 
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
@@ -143,6 +149,48 @@ const summaryShape = {
 
 const taskSubmissionSchema = z.object(summaryShape).meta({ id: 'TaskSubmission' })
 
+const versionGradingSchema = z
+  .object({
+    status: z
+      .enum(['unscored', 'pending', 'disagreement', 'settled'])
+      .describe(
+        'Sürümün puan sonucu (core `scoreResolution`): puanlanmadı, puan bekliyor, iki puan arasında birden fazla bant fark (DOM-BEC-024) veya kesinleşti',
+      ),
+    missing: z
+      .enum(['first', 'second'])
+      .nullable()
+      .describe('`pending` iken beklenen puan; değilse `null`'),
+    secondRatingRequested: z
+      .boolean()
+      .describe('Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında mı'),
+    disagreementCriterionIds: z
+      .array(z.string())
+      .describe(
+        'Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına görünür. Son puan koordinatör rolüyle gelecek (F4b3b2b); o zamana kadar sonuç kursiyere kapalıdır',
+      ),
+    dueAt: instant.describe('Puanlamanın son anı (core `gradingDueAt`; son teslim + 7 gün)'),
+    overdue: z.boolean().describe('Puanlama süresi aşıldı mı (core `gradingOverdue`)'),
+  })
+  .meta({ id: 'TaskVersionGrading' })
+  .describe('Personelin gördüğü puanlama durumu (DOM-BEC-024, 025); kursiyer ve veliye `null`')
+
+const taskAppealSchema = z
+  .object({
+    id,
+    reason: z.string().describe('İtiraz gerekçesi'),
+    filedAt: instant,
+    outcome: z
+      .enum(Object.keys(APPEAL_OUTCOMES) as [keyof typeof APPEAL_OUTCOMES])
+      .nullable()
+      .describe('Karar; beklerken `null`'),
+    decidedAt: instant.nullable(),
+    decisionReason: z.string().nullable().describe('Karar gerekçesi'),
+  })
+  .meta({ id: 'TaskAppeal' })
+  .describe(
+    'Sürümün itirazı (DOM-BEC-025); itiraz yalnız sonuç duyurusundan sonra açılır, yoksa `null`',
+  )
+
 const taskSubmissionDetailSchema = z
   .object({
     ...summaryShape,
@@ -152,6 +200,13 @@ const taskSubmissionDetailSchema = z
           ...versionShape,
           body: z.string().nullable().describe('Gönderilen metin; değişmez'),
           score: taskScoreSchema.nullable(),
+          grading: versionGradingSchema.nullable(),
+          appealDeadline: instant
+            .nullable()
+            .describe(
+              'İtirazın son anı (core `appealDeadline`: duyurudan sonra 5 iş günü, Europe/Istanbul gün sonu); yalnız değerlendirme türünde ve sonuç duyurulduysa, kursiyer ve veliye duyurudan önce `null`',
+            ),
+          appeal: taskAppealSchema.nullable(),
         }),
       )
       .describe('Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez'),
@@ -202,11 +257,82 @@ export const taskScoreBodySchema = z.strictObject({
 export const taskResubmissionBodySchema = z.strictObject({ ...resubmissionRequestSchema.shape })
 
 export const gradingQueueQuerySchema = pageQuerySchema
-  .extend({ assignmentId: id.optional().describe('Atama süzgeci') })
+  .extend({
+    assignmentId: id.optional().describe('Atama süzgeci'),
+    awaiting: z
+      .enum(['first', 'second'])
+      .optional()
+      .describe('Yalnız ilk puanı veya yalnız ikinci puanı bekleyenler (DOM-BEC-024)'),
+    overdue: z
+      .enum(['true', 'false'])
+      .optional()
+      .describe('`true` puanlama süresi aşılanlar, `false` aşılmayanlar (DOM-BEC-025)'),
+  })
   .strict()
 
+const gradingQueueItemSchema = z
+  .object({
+    ...summaryShape,
+    grading: z.object({
+      awaiting: z
+        .array(z.enum(['first', 'second']))
+        .min(1)
+        .describe('Son sürümün beklediği puanlar; kişinin puanladığı sürüm kuyrukta yoktur'),
+      samplePending: z
+        .boolean()
+        .describe(
+          'Örneklemli görevde örneklem henüz seçilmedi; ilk puan örneklemden sonra verilir',
+        ),
+      dueAt: instant.describe('Puanlamanın son anı (core `gradingDueAt`)'),
+      overdue: z.boolean().describe('Puanlama süresi aşıldı mı (core `gradingOverdue`)'),
+    }),
+  })
+  .meta({ id: 'GradingQueueItem' })
+
+export const secondRatingRequestBodySchema = z.strictObject({
+  versionNumber: z
+    .number()
+    .int()
+    .min(1)
+    .describe('İkinci puanlaması istenen sürüm; yalnız son sürüm'),
+})
+
+export const secondRatingSampleBodySchema = z.strictObject({})
+
+export const secondRatingSampleResponseSchema = dataResponse(
+  z
+    .object({
+      assignmentId: id,
+      sampledAt: instant,
+      percent: z.number().int().min(1).max(100),
+      submissionCount: z.number().int().min(0).describe('Örneklem havuzu: sürümü olan teslimler'),
+      submissionIds: z
+        .array(id)
+        .describe('İkinci puanlanacak teslimler: oranın yukarı yuvarlanmışı, en az bir'),
+      rowVersion: z.number().int().min(1).describe('Atamanın yeni satır sürümü'),
+    })
+    .meta({ id: 'SecondRatingSample' }),
+)
+
+export const taskAppealParamsSchema = taskSubmissionParamsSchema.extend({
+  appealId: id.describe('İtiraz kimliği'),
+})
+
+export const taskAppealBodySchema = z.strictObject({
+  versionNumber: z.number().int().min(1).describe('İtiraz edilen sürüm'),
+  ...appealInputSchema.shape,
+})
+
+const [upheldDecision, rejectedDecision] = appealDecisionSchema.options
+
+/** İtiraz kararı (core `appealDecisionSchema`); kabulde yeni rubrik puanı. Fazladan alan 400. */
+export const taskAppealDecisionBodySchema = z.discriminatedUnion('outcome', [
+  upheldDecision.extend({ score: rubricScoreInputSchema.strict() }).strict(),
+  rejectedDecision.strict(),
+])
+
 export const taskSubmissionListResponseSchema = pageResponse(taskSubmissionSchema)
-export const gradingQueueResponseSchema = pageResponse(taskSubmissionSchema)
+export const gradingQueueResponseSchema = pageResponse(gradingQueueItemSchema)
 export const taskSubmissionDetailResponseSchema = dataResponse(taskSubmissionDetailSchema)
 export const taskDraftResponseSchema = dataResponse(taskDraftSchema)
 export const taskDraftReadResponseSchema = dataResponse(

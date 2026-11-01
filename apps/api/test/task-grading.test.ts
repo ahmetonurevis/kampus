@@ -16,6 +16,7 @@ import {
   rubricScores,
   rubricVersions,
   submissionVersions,
+  taskAssignments,
   taskSubmissions,
 } from '../src/db/schema/skills.ts'
 import { insertRubricScore, insertSecondRatingRequest } from '../src/db/skills.ts'
@@ -516,9 +517,23 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     })
   })
 
-  test('DOM-BEC-045: geri bildirim açılmadan kursiyer ve veli puanı ve yorumu görmez; açılınca görür; personel kesinleşmemiş puanını görür', async () => {
+  test('DOM-BEC-045, DOM-BEC-024: geri bildirim açılmadan kursiyer ve veli puanı, yorumu, satır sürümünü ve kilidi görmez (yanıt puanlamadan öncekiyle aynı); açılınca görür; puanlayan öğretmen kesinleşmemiş puanını görür, yönetici koordinatör sayılmaz', async () => {
     const { t, assignmentId, submission } = await setup()
     const id = submission.id as string
+    const learnerViews = async () => {
+      const views: Json[] = []
+      for (const cookie of [t.cookies.student, t.cookies.parent])
+        views.push(
+          await ok(await detail(id, cookie)),
+          await ok(await call('GET', `/task-submissions?assignmentId=${assignmentId}`, cookie)),
+        )
+      return views
+    }
+    const before = await learnerViews()
+    for (const view of [before[0], before[2]]) {
+      assert.equal(view.rowVersion, null)
+      assert.equal(view.allowance.blockedBy, 'limit')
+    }
     // İkinci puanlama istendi: ilk puan verilse de puanlama sürer, geri bildirim kapalıdır.
     await insertSecondRatingRequest(
       db,
@@ -534,20 +549,30 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     const scored = await ok(await score(id, t.cookies.teacher, 1), 201)
     assert.equal(scored.versions[0].score.settled, false)
     assert.equal(scored.versions[0].score.overallComment, FEEDBACK)
+    assert.equal(scored.rowVersion, 2)
+    // Puan teslimin satır sürümünü artırdı; kursiyer ve velinin yanıtı yine birebir aynı.
+    assert.deepEqual(await learnerViews(), before)
     for (const cookie of [t.cookies.student, t.cookies.parent]) {
       const response = await detail(id, cookie)
       const seen = await ok(response)
       assert.equal(seen.versions[0].score, null)
       assert.equal(seen.latestVersion.score, null)
-      assert.equal(seen.allowance.blockedBy, 'locked')
+      assert.equal(seen.rowVersion, null)
+      assert.equal(seen.allowance.blockedBy, 'limit')
       const listed = await call('GET', `/task-submissions?assignmentId=${assignmentId}`, cookie)
       for (const body of [response.body, listed.body])
-        for (const text of [FEEDBACK, CRITERION_NOTE, 'percent":6', 'graded'])
+        for (const text of [FEEDBACK, CRITERION_NOTE, 'percent":6', 'graded', '"locked"'])
           assert.ok(!body.includes(text), text)
       assert.equal((await ok(listed))[0].latestVersion.score, null)
+      assert.equal((await ok(listed))[0].rowVersion, null)
     }
-    // Yönetici de kesinleşmemiş puanı görür (personel).
-    assert.equal((await ok(await detail(id, t.cookies.admin))).versions[0].score.settled, false)
+    // Puanlayan öğretmen kendi kesinleşmemiş puanını görür; yönetici koordinatör sayılmaz,
+    // ikinci puanlayıcı olabileceği için ilk puanı görmez (DOM-BEC-024).
+    assert.equal((await ok(await detail(id, t.cookies.teacher))).versions[0].score.settled, false)
+    const admin = await ok(await detail(id, t.cookies.admin))
+    assert.equal(admin.versions[0].score, null)
+    assert.equal(admin.latestVersion.score, null)
+    assert.equal(admin.rowVersion, 2)
 
     // İkinci puan uyuşur: puan kesinleşir, geri bildirim açılır.
     const [version] = scored.versions
@@ -577,6 +602,46 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       assert.equal(seen.versions[0].score.criteria[1].comment, CRITERION_NOTE)
       assert.equal(seen.latestVersion.score.percent, 60)
       assert.equal(seen.allowance.blockedBy, 'graded')
+      assert.equal(seen.rowVersion, null)
+    }
+    // Kesinleşmiş puanı yönetici de görür.
+    assert.equal((await ok(await detail(id, t.cookies.admin))).versions[0].score.settled, true)
+  })
+
+  test('DOM-BEC-045, DOM-BEC-040: sürüm hakkı kalan teslimde açılmamış puan kursiyerin hakkını değiştirmez, yeni sürüm genel 409 submission_locked alır; locked yalnız teslim penceresi kapanınca döner', async () => {
+    const { t, assignmentId, submission } = await setup({
+      submission: { submissionKind: 'text', maxVersions: 2 },
+    })
+    const id = submission.id as string
+    const open = await ok(await detail(id, t.cookies.student))
+    assert.deepEqual(
+      [open.allowance.canSubmit, open.allowance.blockedBy, open.allowance.remaining],
+      [true, null, 1],
+    )
+    await insertSecondRatingRequest(
+      db,
+      t.institution.id,
+      {
+        submissionId: id,
+        source: 'manual',
+        requestedByUserId: t.institution.admin.id,
+        requestedAt: now.toISOString(),
+      },
+      now,
+    )
+    await ok(await score(id, t.cookies.teacher, 1), 201)
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await ok(await detail(id, cookie)), open)
+    assert.equal((await ok(await detail(id, t.cookies.teacher))).allowance.blockedBy, 'graded')
+    const refused = await resubmit(assignmentId, 'Second version.')
+    fails(refused, 409, 'submission_locked')
+    assert.ok(!refused.body.includes('graded') && !refused.body.includes('puan'), refused.body)
+
+    // Teslim penceresi kapandı (son tarih geçti, geç kabul yok): kilit puanlamadan bağımsızdır.
+    now = new Date(new Date(DUE).getTime() + 3_600_000)
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const closed = await ok(await detail(id, cookie))
+      assert.deepEqual([closed.allowance.canSubmit, closed.allowance.blockedBy], [false, 'locked'])
     }
   })
 
@@ -633,13 +698,13 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       (await ok(await queue(t.cookies.teacher))).map((row: Json) => [row.id, row.versionCount]),
       [[id, 2]],
     )
+    // Öğrencinin yanıtında satır sürümü yok; öğretmen güncel sürümü kendi okumasından alır.
+    assert.equal(next.rowVersion, null)
+    const current = (await ok(await detail(id, t.cookies.teacher))).rowVersion as number
     // Eski sürüm artık puanlanmaz; yeni sürüm puanlanır.
-    const stale = await score(id, t.cookies.teacher, next.rowVersion, scoreBody())
+    const stale = await score(id, t.cookies.teacher, current, scoreBody())
     fails(stale, 409, 'version_not_latest')
-    await ok(
-      await score(id, t.cookies.teacher, next.rowVersion, scoreBody({ versionNumber: 2 })),
-      201,
-    )
+    await ok(await score(id, t.cookies.teacher, current, scoreBody({ versionNumber: 2 })), 201)
     assert.deepEqual(await ok(await queue(t.cookies.teacher)), [])
     const versions = await db
       .select({ number: submissionVersions.versionNumber })
@@ -648,11 +713,13 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     assert.equal(versions.length, 2)
   })
 
-  test('DOM-YTK-028: puanlama kuyruğu atamayı görenlere: öğretmen ve yönetici bekleyen teslimi görür, başka sınıfın öğretmeni görmez; puanlanınca düşer; atama süzgeci', async () => {
+  test('DOM-YTK-028: puanlama kuyruğu atamayı görenlere: atayan olmayan ama atamayı gören öğretmen ve yönetici bekleyen teslimi görür, başka sınıfın öğretmeni görmez ve toplamına sayılmaz; puanlanınca düşer; atama süzgeci', async () => {
     const { t, assignmentId, submission } = await setup()
     const id = submission.id as string
     for (const cookie of [t.cookies.teacher, t.cookies.admin]) {
-      const rows = await ok(await queue(cookie))
+      const response = await queue(cookie)
+      const rows = await ok(response)
+      assert.equal(response.json().meta.total, 1)
       assert.deepEqual(
         rows.map((row: Json) => [row.id, row.assignmentId, row.latestVersion.number]),
         [[id, assignmentId, 1]],
@@ -660,7 +727,9 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       assert.equal('body' in rows[0].latestVersion, false)
       assert.equal(rows[0].latestVersion.score, null)
     }
-    assert.deepEqual(await ok(await queue(t.cookies.otherTeacher)), [])
+    const hidden = await queue(t.cookies.otherTeacher)
+    assert.deepEqual(await ok(hidden), [])
+    assert.equal(hidden.json().meta.total, 0)
     assert.equal(
       (await ok(await queue(t.cookies.teacher, `&assignmentId=${assignmentId}`))).length,
       1,
@@ -671,6 +740,33 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     const response = await queue(t.cookies.admin)
     assert.deepEqual(await ok(response), [])
     assert.equal(response.json().meta.total, 0)
+  })
+
+  test('DOM-YTK-028: arşivli atamada puan ve yeniden teslim isteği 404 (öğrenci yazmalarıyla aynı kapsam kalıbı); okumalar açık, kuyrukta yok; kayıt değişmez', async () => {
+    const { t, assignmentId, submission } = await setup()
+    const id = submission.id as string
+    await ok(await score(id, t.cookies.teacher, 1), 201)
+    await db
+      .update(taskAssignments)
+      .set({ archivedAt: now })
+      .where(
+        and(
+          eq(taskAssignments.institutionId, t.institution.id),
+          eq(taskAssignments.id, assignmentId),
+        ),
+      )
+    const stored = await storedRows(t.institution.id)
+    const dueAt = new Date(now.getTime() + 3 * 24 * 3_600_000).toISOString()
+    for (const cookie of [t.cookies.teacher, t.cookies.admin]) {
+      fails(await score(id, cookie, 2), 404, 'not_found')
+      fails(await requestResubmission(id, cookie, 2, { versionNumber: 1, dueAt }), 404, 'not_found')
+      assert.equal((await ok(await detail(id, cookie))).versions[0].score.settled, true)
+      const response = await queue(cookie)
+      assert.deepEqual(await ok(response), [])
+      assert.equal(response.json().meta.total, 0)
+    }
+    assert.equal((await ok(await detail(id, t.cookies.student))).id, id)
+    assert.deepEqual(await storedRows(t.institution.id), stored)
   })
 
   test('DOM-YTK-028: servis de yalnız personele puanlatır: veli çocuğunun teslimini puanlayamaz ve yeniden teslim isteyemez (403); kayıt değişmez', async () => {

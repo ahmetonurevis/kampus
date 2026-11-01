@@ -6429,10 +6429,17 @@
             "description": "Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040)"
           },
           "rowVersion": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 9007199254740991,
-            "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`"
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045)"
           }
         },
         "required": [
@@ -6566,10 +6573,17 @@
             "description": "Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040)"
           },
           "rowVersion": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 9007199254740991,
-            "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`"
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045)"
           },
           "versions": {
             "type": "array",
@@ -6677,7 +6691,7 @@
                         "type": "null"
                       }
                     ],
-                    "description": "`canSubmit: false` ise neden. Kursiyer ve veli, öğretmen geri bildirimi açılmadan `graded` yerine genel `locked` alır (DOM-BEC-045)"
+                    "description": "`canSubmit: false` ise neden. Kursiyer ve veli geri bildirimi açılmamış puanı görmez: hak, son sürüm puanlanmamış gibi hesaplanır (DOM-BEC-045); onlara `locked` yalnız sıradaki sürümün teslim penceresi kapandığında döner"
                   }
                 },
                 "required": [
@@ -13361,10 +13375,17 @@
             "description": "Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040)"
           },
           "rowVersion": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 9007199254740991,
-            "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`"
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045)"
           }
         },
         "required": [
@@ -13501,10 +13522,17 @@
             "description": "Son yeniden teslim isteği: puanlanan sürüm ve kendi son tarihi (DOM-BEC-040)"
           },
           "rowVersion": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 9007199254740991,
-            "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`"
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045)"
           },
           "versions": {
             "type": "array",
@@ -13613,7 +13641,7 @@
                         "type": "null"
                       }
                     ],
-                    "description": "`canSubmit: false` ise neden. Kursiyer ve veli, öğretmen geri bildirimi açılmadan `graded` yerine genel `locked` alır (DOM-BEC-045)"
+                    "description": "`canSubmit: false` ise neden. Kursiyer ve veli geri bildirimi açılmamış puanı görmez: hak, son sürüm puanlanmamış gibi hesaplanır (DOM-BEC-045); onlara `locked` yalnız sıradaki sürümün teslim penceresi kapandığında döner"
                   }
                 },
                 "required": [

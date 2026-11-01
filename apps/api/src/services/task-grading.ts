@@ -88,7 +88,9 @@ async function gradableSubmission(
   const work = await findSubmission(tx, ctx.institutionId, submissionId)
   const assignment =
     work && (await findAssignment(tx, ctx.institutionId, work.submission.assignmentId))
-  if (!work || !assignment) throw new NotFoundError()
+  // Arşivli atamada yazma kapalıdır, okuma açık kalır: öğrenci yazmalarıyla aynı kalıp
+  // (`task-submissions.ts` `writableAssignment`, `task-attempts.ts`; kapsam 404).
+  if (!work || !assignment || assignment.archivedAt !== null) throw new NotFoundError()
   assertGrader(viewer, assignment)
   if (work.submission.rowVersion !== expectedVersion) throw new ConflictError()
   return { work, assignment }
@@ -321,14 +323,16 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
   const assignments = new Map<string, StoredAssignment>()
   for (const assignmentId of new Set(rows.map((row) => row.submission.assignmentId))) {
     const assignment = await findAssignment(ctx.db, ctx.institutionId, assignmentId)
-    // SQL yalnız adayları daraltır; satır yine kapsam kuralıyla doğrulanır.
+    // Kapsam SQL'dedir (`assignmentScopeFilter`, `visible` ile aynı koşul: atayan veya arşivsiz
+    // hedefi öğretmenin sınıf/öğrencisi); `total` aynı koşulla sayılır. Satır yine kapsam
+    // kuralıyla doğrulanır; uyuşmazlık hatadır, satır düşer ve sayıdan da çıkar.
     if (assignment && visible(viewer, assignment)) assignments.set(assignmentId, assignment)
   }
   const shown = rows.filter((row) => assignments.has(row.submission.assignmentId))
-  if (shown.length !== rows.length)
-    ctx.log.warn({
-      event: 'grading_queue.visibility_mismatch',
-      dropped: rows.length - shown.length,
-    })
-  return { total, items: await listSummaries(ctx.db, ctx, viewer, assignments, shown) }
+  const dropped = rows.length - shown.length
+  if (dropped > 0) ctx.log.warn({ event: 'grading_queue.visibility_mismatch', dropped })
+  return {
+    total: total - dropped,
+    items: await listSummaries(ctx.db, ctx, viewer, assignments, shown),
+  }
 }

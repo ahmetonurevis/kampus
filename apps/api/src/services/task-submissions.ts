@@ -10,7 +10,7 @@ import {
   type RubricScoreRow,
   type RubricVersionData,
 } from '@kampus/school-core/skills/rubric.ts'
-import { teacherFeedbackReleased } from '@kampus/school-core/skills/scoring.ts'
+import { isClosed, teacherFeedbackReleased } from '@kampus/school-core/skills/scoring.ts'
 import {
   canReadDraft,
   planDraftSave,
@@ -143,10 +143,11 @@ async function loadGrading(
  * `scoreResolution`) personele her zaman, kursiyer ve veliye yalnız geri bildirim açılınca
  * (`teacherFeedbackReleased`) görünür; açılmadan önce kursiyerin gördüğü, hiç puanlanmamış sürümle
  * aynıdır (`null`). Kesinleşmemiş puanı yalnız personel görür, core `scoresVisibleToRater` ile:
- * öğretmen kendi puanını, yönetici bütün puanları (en yenisi gösterilir).
+ * öğretmen ve yönetici yalnız kendi puanını görür (en yenisi gösterilir); yönetici koordinatör
+ * sayılmaz.
  */
-// TODO(F4b3b2): Yöneticinin koordinatör sayılması geçicidir; akademik koordinatör yetkisi
-// (DOM-YTK-027) üyelikte tanımlanınca `coordinator` oradan okunur.
+// TODO(F4b3b2): Koordinatör rolü DOM-YTK-027 ile tanımlanınca açılır; yönetici ikinci puanlayıcı
+// olursa ilk puanı görmemeli (DOM-BEC-024).
 function shownScore(
   viewer: Viewer,
   ctx: ServiceContext,
@@ -166,7 +167,7 @@ function shownScore(
   if (viewer.kind === 'learner') return null
   const visibleScores = scoresVisibleToRater({
     scores,
-    viewer: { userId: ctx.actor.userId, coordinator: viewer.kind === 'admin' },
+    viewer: { userId: ctx.actor.userId, coordinator: false },
     secondRatingRequested: grading.secondRatingRequested,
   })
   const row = visibleScores.at(-1)
@@ -253,7 +254,10 @@ function summaryView(
             ),
           },
     resubmission: resubmissionOf(work),
-    rowVersion: work.submission.rowVersion,
+    // Puan ve yeniden teslim isteği teslimin satır sürümünü artırır; kursiyer ve veli sürümü
+    // görse geri bildirim açılmadan puanlandığını anlardı (DOM-BEC-045). Onların yazmaları
+    // (teslim, taslak) bu sürümü kullanmaz.
+    rowVersion: viewer.kind === 'learner' ? null : work.submission.rowVersion,
   }
 }
 
@@ -278,17 +282,81 @@ async function feedbackReleased(
   work: Pick<StoredSubmissionWork, 'submission' | 'versions'>,
   scores: readonly RubricScoreRow[],
 ) {
+  return latestFeedbackReleased(
+    work,
+    {
+      scores,
+      secondRatingRequested: await isSecondRatingRequested(
+        db,
+        ctx.institutionId,
+        work.submission.id,
+      ),
+    },
+    ctx.now,
+  )
+}
+
+function latestFeedbackReleased(
+  work: Pick<StoredSubmissionWork, 'versions'>,
+  grading: Grading,
+  now: Date,
+) {
   const latest = work.versions.at(-1)
   if (latest === undefined) return false
   const resolution = scoreResolution({
-    scores: scores.filter((score) => score.submissionVersionId === latest.id),
-    secondRatingRequested: await isSecondRatingRequested(db, ctx.institutionId, work.submission.id),
+    scores: grading.scores.filter((score) => score.submissionVersionId === latest.id),
+    secondRatingRequested: grading.secondRatingRequested,
   })
-  return resolution.status === 'settled' && teacherFeedbackReleased(resolution.settledAt, ctx.now)
+  return resolution.status === 'settled' && teacherFeedbackReleased(resolution.settledAt, now)
 }
 
-/** Kursiyer ve veliye geri bildirim açılmadan puanlanmış teslimin nedeni genel `locked` döner. */
+/** Kursiyer ve veliye teslim penceresi kapanmışsa (puanlamadan bağımsız) genel `locked` döner. */
 type BlockedBy = VersionAllowance['blockedBy'] | 'locked'
+type Allowance = Omit<VersionAllowance, 'blockedBy'> & { blockedBy: BlockedBy }
+
+/**
+ * Yeni sürüm hakkı (core `versionAllowance`). Personel core sonucunu olduğu gibi görür. Kursiyer
+ * ve veli geri bildirimi açılmamış puanı hiçbir alandan çıkaramaz (DOM-BEC-045): son sürümün
+ * geri bildirimi açılmadıysa hak, sürüm hiç puanlanmamış gibi hesaplanır, yani yanıt
+ * puanlamadan öncekiyle birebir aynıdır. Onlara `locked` yalnız puanlamadan bağımsız koşulda
+ * döner: sıradaki sürümün teslim penceresi (geç kabul veya yeniden teslim süresi dahil) kapandı
+ * ve yeni sürüm başka nedenle zaten kapalı değil. Açılmamış puanlı teslime yeni sürüm yine
+ * reddedilir (genel 409 `submission_locked`; `submitTaskSubmission`).
+ */
+// TODO(F4b3b2): Sürüm hakkı kalan teslimde ikinci puanlama sürerken yeni sürüm denemesinin 409'u
+// puanlandığını hâlâ ele verir; domain kararı gerekir (ör. ikinci puanlama örneklemi teslim
+// penceresi kapanınca seçilir veya ilk puan pencere kapanmadan verilmez; DOM-BEC-024, 040, 045).
+function allowanceOf(
+  ctx: ServiceContext,
+  viewer: Viewer,
+  assignment: StoredAssignment,
+  work: StoredSubmissionWork,
+  grading: Grading,
+): Allowance | null {
+  const settings = settingsOf(assignment)
+  if (settings === null) return null
+  const graded = gradedVersionNumbers(work.versions, grading.scores)
+  if (viewer.kind !== 'learner')
+    return versionAllowance({
+      settings,
+      submission: work.submission,
+      versions: work.versions,
+      gradedVersionNumbers: graded,
+    })
+  const latest = work.versions.at(-1)
+  const hidden =
+    latest !== undefined && !latestFeedbackReleased(work, grading, ctx.now) ? latest.number : null
+  const allowance = versionAllowance({
+    settings,
+    submission: work.submission,
+    versions: work.versions,
+    gradedVersionNumbers: graded.filter((number) => number !== hidden),
+  })
+  const next = deadlineForVersion(assignment.deadline, work.submission, (latest?.number ?? 0) + 1)
+  return allowance.canSubmit && isClosed(next, ctx.now)
+    ? { ...allowance, canSubmit: false, blockedBy: 'locked' }
+    : allowance
+}
 const LOCKED_MESSAGE = 'Bu teslim için şu an yeni sürüm gönderilemez.'
 
 export async function detailView(
@@ -298,25 +366,8 @@ export async function detailView(
   assignment: StoredAssignment,
   work: StoredSubmissionWork,
 ) {
-  const settings = settingsOf(assignment)
   const book = await loadGrading(db, ctx, [work.submission.id])
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
-  const scores = grading.scores
-  const computed =
-    settings === null
-      ? null
-      : versionAllowance({
-          settings,
-          submission: work.submission,
-          versions: work.versions,
-          gradedVersionNumbers: gradedVersionNumbers(work.versions, scores),
-        })
-  const masked =
-    computed?.blockedBy === 'graded' &&
-    viewer.kind === 'learner' &&
-    !(await feedbackReleased(db, ctx, work, scores))
-  const allowance: (Omit<VersionAllowance, 'blockedBy'> & { blockedBy: BlockedBy }) | null =
-    computed === null ? null : { ...computed, blockedBy: masked ? 'locked' : computed.blockedBy }
   return {
     ...summaryView(viewer, ctx, book, assignment, work),
     versions: work.versions.map((version) => ({
@@ -326,7 +377,7 @@ export async function detailView(
         scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, grading, version.id)),
       ),
     })),
-    allowance,
+    allowance: allowanceOf(ctx, viewer, assignment, work, grading),
   }
 }
 

@@ -135,7 +135,10 @@ const summaryShape = {
     .number()
     .int()
     .min(1)
-    .describe('Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`'),
+    .nullable()
+    .describe(
+      'Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045)',
+    ),
 }
 
 const taskSubmissionSchema = z.object(summaryShape).meta({ id: 'TaskSubmission' })
@@ -163,7 +166,7 @@ const taskSubmissionDetailSchema = z
           .enum(['limit', 'graded', 'locked'])
           .nullable()
           .describe(
-            '`canSubmit: false` ise neden. Kursiyer ve veli, öğretmen geri bildirimi açılmadan `graded` yerine genel `locked` alır (DOM-BEC-045)',
+            '`canSubmit: false` ise neden. Kursiyer ve veli geri bildirimi açılmamış puanı görmez: hak, son sürüm puanlanmamış gibi hesaplanır (DOM-BEC-045); onlara `locked` yalnız sıradaki sürümün teslim penceresi kapandığında döner',
           ),
       })
       .nullable()

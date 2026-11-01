@@ -4203,8 +4203,8 @@ export interface components {
                 /** Format: date-time */
                 dueAt: string;
             } | null;
-            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match` */
-            rowVersion: number;
+            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
+            rowVersion: number | null;
         };
         TaskSubmissionDetailInput: {
             /** Format: uuid */
@@ -4236,8 +4236,8 @@ export interface components {
                 /** Format: date-time */
                 dueAt: string;
             } | null;
-            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match` */
-            rowVersion: number;
+            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
+            rowVersion: number | null;
             /** @description Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez */
             versions: {
                 /** Format: uuid */
@@ -4260,7 +4260,7 @@ export interface components {
                 remaining: number;
                 resubmissionOpen: boolean;
                 canSubmit: boolean;
-                /** @description `canSubmit: false` ise neden. Kursiyer ve veli, öğretmen geri bildirimi açılmadan `graded` yerine genel `locked` alır (DOM-BEC-045) */
+                /** @description `canSubmit: false` ise neden. Kursiyer ve veli geri bildirimi açılmamış puanı görmez: hak, son sürüm puanlanmamış gibi hesaplanır (DOM-BEC-045); onlara `locked` yalnız sıradaki sürümün teslim penceresi kapandığında döner */
                 blockedBy: ("limit" | "graded" | "locked") | null;
             } | null;
         };
@@ -5780,8 +5780,8 @@ export interface components {
                 /** Format: date-time */
                 dueAt: string;
             } | null;
-            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match` */
-            rowVersion: number;
+            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
+            rowVersion: number | null;
         };
         TaskSubmissionDetail: {
             /** Format: uuid */
@@ -5813,8 +5813,8 @@ export interface components {
                 /** Format: date-time */
                 dueAt: string;
             } | null;
-            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match` */
-            rowVersion: number;
+            /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
+            rowVersion: number | null;
             /** @description Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez */
             versions: {
                 /** Format: uuid */
@@ -5837,7 +5837,7 @@ export interface components {
                 remaining: number;
                 resubmissionOpen: boolean;
                 canSubmit: boolean;
-                /** @description `canSubmit: false` ise neden. Kursiyer ve veli, öğretmen geri bildirimi açılmadan `graded` yerine genel `locked` alır (DOM-BEC-045) */
+                /** @description `canSubmit: false` ise neden. Kursiyer ve veli geri bildirimi açılmamış puanı görmez: hak, son sürüm puanlanmamış gibi hesaplanır (DOM-BEC-045); onlara `locked` yalnız sıradaki sürümün teslim penceresi kapandığında döner */
                 blockedBy: ("limit" | "graded" | "locked") | null;
             } | null;
         };

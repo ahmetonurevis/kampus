@@ -54,6 +54,18 @@ Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokun
 - Girişin 3B hareketi ve okunaklı KAMPÜS yazısı korunur; azaltılmış hareket/görünmeyen sekme desteklenir.
 - Erişilebilir etiket, klavye odağı, azaltılmış hareket, dar/yatay ekran zorunludur. Mobil dokunma hedefi en az 48 dp; büyük yazı ve klavye açıkken alan/işlem görünür kalır.
 
+## İki geliştiriciyle çalışma
+
+İki geliştirici (Oğuzhan, Onur) paralel çalışır. İlke: izin yok, görünürlük var; kendi alanında herkes sormadan yazar, birleştirir, gönderir. Yalnız sahiplik/kural değişikliği ve ürün-hukuk-maliyet kararları birlikte alınır. Alan haritası `.claude/alanlar.json`; ayrıntı `docs/muhendislik/git-ve-surum.md` §7 ve `.claude/rules/ortak-calisma.md`; skill'ler `is-baslat`, `entegre-et`.
+
+- Görev dağılımı `docs/is-bolumu/`; kendi listen `<sahip>.md`, yalnız sahibi düzenler.
+- Dal `onur/<konu>` veya `oguzhan/<konu>`, güncel `origin/feature/platform-gecisi`'nden açılır; oturum başında entegrasyon dala birleştirilir. Küçük birim yeşil olunca hemen entegrasyona; uzun yaşayan dal yok.
+- İş başlamadan `gh issue list --state open` ile çakışan iş aranır; varsa durulur, kullanıcıya sorulur. Sonra issue: `sahip:` + `durum:devam` etiketi, alan, dokunulacak dosyalar, gerekiyorsa başlıkta migration/ADR numarası (onay beklenmez). Commit/merge mesajı `#<no>` anar; birleştiren `gh issue close` ile kapatır.
+- Diğer geliştiricinin alanına yazılmaz (`alan-koruma` hook'u engeller); durmadan onun `sahip:` etiketiyle iş isteği issue'su açılır ve kendi taraf geçici veriyle yazılır. Ortak dosyada kendi bloğuna yazılır; blok dışına çıkılırsa `ortak-dosya` etiketi, beklenmez.
+- Entegrasyondan önce: fetch + entegrasyonu dala birleştir, `pnpm gen`, dokunulan paketlerin format/lint/typecheck ve ilgili birim/API testleri, `git merge-tree` ölçümü; birleştirme `--no-ff`. Tam set ve e2e CI'da; CI'ı kıran ilk iş düzeltir ya da geri alır.
+- Sürüm ve README test sayıları yalnız teslimde; davranış değişikliği `changes/<konu>.md` parçası yazar, iç paketler `workspace:*`.
+- Yasak: force push; gönderilmiş commit'te amend, rebase veya reset; `main`'e push (`push-kontrol` hook'u ve izin ayarı engeller).
+
 ## Claude Code ile çalışma
 
 - İş başlamadan kapsam, adımlar ve etkilenecek dosyalar belirlenir. Tamamlanmış geçici planlar bu dosyada biriktirilmez; kalıcı kararlar ADR'ye, kurallar `.claude/rules/`'a yazılır.
@@ -64,10 +76,10 @@ Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokun
 
 ## Komutlar ve teslimler
 
-`pnpm dev` (Vue, 5173), `pnpm dev:react` (React, 5174), `pnpm dev:api`, `pnpm build` (Vue + React), `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` (Vue demosu), `pnpm test:e2e:react` (React web + API, `kampus_e2e` veritabanı), `pnpm mobile`, `pnpm build:apk`. API: `docker compose up -d` (PostgreSQL 16, port 5433), `pnpm --filter @kampus/api <test|db:migrate|db:seed|db:generate|auth:schema|openapi|openapi:check>`; ortam `apps/api/.env.example`.
+`pnpm dev` (Vue, 5173), `pnpm dev:react` (React, 5174), `pnpm dev:api`, `pnpm build` (Vue + React), `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:hooks` (Claude hook'ları), `pnpm gen` (OpenAPI + api-client şeması), `pnpm test:e2e` (Vue demosu), `pnpm test:e2e:react` (React web + API, `kampus_e2e` veritabanı), `pnpm mobile`, `pnpm build:apk`. API: `docker compose up -d` (PostgreSQL 16, port 5433), `pnpm --filter @kampus/api <test|db:migrate|db:seed|db:generate|auth:schema|openapi|openapi:check>`; ortam `apps/api/.env.example`.
 
 Android teslim bilgileri `docs/mobile-release.md`, sayfa rehberi `docs/sayfalar.md`, yatırımcı sunumu `sunumlar/` (üretim: `sunumlar/OKU.md`). Mevcut statik yayın (`pnpm run deploy`, `demo.onurevis.com`) backend'siz demoya aittir; API yayını ayrı ADR ile planlanır. Geçici build/cache/rapor klasörleri, eski APK'lar ve yinelenen sunum kopyaları tutulmaz; ortam dosyaları, lockfile ve imzalama bilgileri temizliğe dahil edilmez.
 
 ## Tamamlanma ölçütü
 
-Belirtilen sayfalar gezilebilir; listeler arama/filtre/sayfalama içerir; işlemler doğru kurum/rol/sınıf/öğrenciye yansır. Ödeme mükerrer yapılmaz, quiz puanı cevaplardan hesaplanır, yoklama yinelenmez. Lint, format, typecheck, test ve build sonuçları README'de güncel tutulur.
+Belirtilen sayfalar gezilebilir; listeler arama/filtre/sayfalama içerir; işlemler doğru kurum/rol/sınıf/öğrenciye yansır. Ödeme mükerrer yapılmaz, quiz puanı cevaplardan hesaplanır, yoklama yinelenmez. Lint, format, typecheck, test ve build CI'da yeşildir; README doğrulama sayıları yalnız teslimde güncellenir.

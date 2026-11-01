@@ -68,6 +68,11 @@ type DataTableProps<T extends Row> = TableOptions<T> & {
   filterKey?: string
   searchKeys?: readonly string[]
   urlPrefix?: string
+  /**
+   * Arama metni URL'ye ve tarayıcı geçmişine yazılsın mı (varsayılan evet). Kişisel veri (ad,
+   * telefon) arayan listeler `false` verir (KVKK); arama sayfa içinde korunur.
+   */
+  searchInUrl?: boolean
   ref?: Ref<DataTableHandle<T>>
 }
 
@@ -119,10 +124,11 @@ export function DataTable<T extends Row>({
   filterKey = '',
   searchKeys = DEFAULT_SEARCH_KEYS,
   urlPrefix,
+  searchInUrl,
   ref,
   ...options
 }: DataTableProps<T>) {
-  const list = useListState(listKey, { pageSize, urlPrefix, resetKey: filterKey })
+  const list = useListState(listKey, { pageSize, urlPrefix, resetKey: filterKey, searchInUrl })
   const config = useMemo(
     () => ({
       fields: tableFields(columns, filters, excludeFilters),

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { seededRandom } from '@kampus/school-core/content/resource.ts'
+import { coordinatorScopeOf } from '@kampus/school-core/lib/coordinator-duties.ts'
 import {
   deadlineForVersion,
   planResubmissionRequest,
@@ -22,6 +23,7 @@ import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 import { versionAllowance } from '@kampus/school-core/skills/submission.ts'
 
 import type { Database } from '../db/client.ts'
+import { activeDutiesOf } from '../db/coordinator-duties.ts'
 import {
   decideAppeal,
   findAssignment,
@@ -163,8 +165,16 @@ async function resolvableSubmission(
   viewer: Viewer,
   submissionId: string,
   expectedVersion: number,
-): Promise<Graded> {
+): Promise<Graded & { viewer: Viewer }> {
   if (viewer.kind !== 'teacher') throw new ForbiddenError()
+  // Kapsam kurum kilidinden sonra işlem içinde yeniden okunur: istekten önce okunan görev,
+  // eşzamanlı kaldırmayla bayatlamış olabilir (kaldırılmış göreve dayanan son puan yazılmaz).
+  viewer = {
+    ...viewer,
+    coordination: coordinatorScopeOf(
+      await activeDutiesOf(tx, ctx.institutionId, ctx.actor.membershipId),
+    ),
+  }
   const work = await findSubmission(tx, ctx.institutionId, submissionId)
   const assignment =
     work && (await findAssignment(tx, ctx.institutionId, work.submission.assignmentId))
@@ -175,7 +185,7 @@ async function resolvableSubmission(
   if (!coordinates(viewer, assignment))
     throw new AppError(403, 'coordinator_required', COORDINATOR_REQUIRED)
   if (work.submission.rowVersion !== expectedVersion) throw new ConflictError()
-  return { work, assignment, grading }
+  return { work, assignment, grading, viewer }
 }
 
 /** Gövdedeki sürüm numarasının sürümü; bilinmeyen numara 404 (core `submission_version_not_found`). */
@@ -289,9 +299,15 @@ async function writeScore(
 ): Promise<CommandResponse> {
   const viewer = await viewerOf(ctx)
   const out: { body?: unknown } = {}
-  type Score = Graded & { draft: RubricScoreDraft }
+  type Score = Graded & { viewer: Viewer; draft: RubricScoreDraft }
   const action = SCORE_ACTIONS[role]
-  const load = role === 'final' ? resolvableSubmission : gradableSubmission
+  const load = async (tx: Database): Promise<Graded & { viewer: Viewer }> =>
+    role === 'final'
+      ? resolvableSubmission(tx, ctx, viewer, input.submissionId, input.expectedVersion)
+      : {
+          ...(await gradableSubmission(tx, ctx, viewer, input.submissionId, input.expectedVersion)),
+          viewer,
+        }
   return runCommand<Score>(
     ctx,
     {
@@ -299,7 +315,7 @@ async function writeScore(
       collections: [],
       entity: { type: ENTITY, id: input.submissionId },
       load: async (tx) => {
-        const graded = await load(tx, ctx, viewer, input.submissionId, input.expectedVersion)
+        const { viewer: current, ...graded } = await load(tx)
         const { work, assignment, grading } = graded
         const rubricVersionId = rubricOf(assignment)
         if (role === 'first') assertSampleDrawn(assignment)
@@ -310,6 +326,7 @@ async function writeScore(
         return {
           run: (_state, tools) => ({
             ...graded,
+            viewer: current,
             draft: planRubricScore({
               rubricVersion,
               assignmentRubricVersionId: rubricVersionId,
@@ -320,7 +337,7 @@ async function writeScore(
               // puanlayıcı olarak verir (DOM-YTK-027 not yazma yetkisi vermez).
               rater: {
                 userId: ctx.actor.userId,
-                coordinator: role === 'final' && coordinates(viewer, assignment),
+                coordinator: role === 'final' && coordinates(current, assignment),
               },
               raterRole: role,
               secondRatingRequested: secondRatingFor(grading, version),
@@ -330,7 +347,7 @@ async function writeScore(
           }),
         }
       },
-      after: async (tx, { work, assignment, draft }) => {
+      after: async (tx, { work, assignment, draft, viewer: current }) => {
         await insertRubricScore(tx, ctx.institutionId, { id: randomUUID(), ...draft }, ctx.now)
         await touchSubmission(tx, ctx.institutionId, work.submission, ctx.now)
         await auditWork(tx, ctx, action, { type: ENTITY, id: work.submission.id }, [
@@ -338,7 +355,7 @@ async function writeScore(
           'overallComment',
           'scoredAt',
         ])
-        out.body = await readBack(tx, ctx, viewer, assignment, work.submission.id)
+        out.body = await readBack(tx, ctx, current, assignment, work.submission.id)
       },
     },
     written(out),

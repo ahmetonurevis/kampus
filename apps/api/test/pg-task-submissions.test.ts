@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
+import { setTimeout as delay } from 'node:timers/promises'
 
-import { eq } from 'drizzle-orm'
+import { count, eq, sql } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
-import { insertCoordinatorDuty } from '../src/db/coordinator-duties.ts'
-import { insertMissingRecords } from '../src/db/records.ts'
+import { archiveCoordinatorDuty, insertCoordinatorDuty } from '../src/db/coordinator-duties.ts'
+import { insertMissingRecords, lockInstitution } from '../src/db/records.ts'
 import {
   rubrics,
   rubricScores,
@@ -36,7 +37,8 @@ import { sampleRubricData } from './support/skills-sample.ts'
  * aynı sürüme eşzamanlı iki öğretmen puanından yalnız biri yazılır (F4b3b1, DOM-BEC-021); aynı
  * sürüme öğrenci ve velinin eşzamanlı itirazından yalnız biri yazılır (F4b3b2a, DOM-BEC-025);
  * uyuşmazlıklı sürüme iki koordinatörün eşzamanlı son puanından yalnız biri yazılır (F4b3b2b,
- * DOM-BEC-024, DOM-YTK-027).
+ * DOM-BEC-024, DOM-YTK-027); görevin eşzamanlı kaldırılmasından sonra kaldırılmış göreve dayanan
+ * son puan yazılmaz.
  * PGlite tek bağlantılı olduğundan gerçek eşzamanlılık yalnız burada sınanır.
  */
 
@@ -71,6 +73,21 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
     })
   }
   const key = () => ({ 'idempotency-key': randomUUID() })
+
+  /** Bu veritabanında bir işlem kurum kilidini (advisory) bekleyene dek bekler. */
+  async function untilAdvisoryWait() {
+    for (let attempt = 0; ; attempt += 1) {
+      const [waiting] = await db
+        .select({ n: count() })
+        .from(sql`pg_locks`)
+        .where(
+          sql`locktype = 'advisory' and not granted and database = (select oid from pg_database where datname = current_database())`,
+        )
+      if ((waiting?.n ?? 0) > 0) return
+      assert.ok(attempt < 300, 'son puan kurum kilidini beklemedi')
+      await delay(10)
+    }
+  }
 
   /** Deniz (`s-1`) 9-A'da; yönetici yazma görevini (en çok 1 sürüm) 9-A'ya atar. */
   async function setup(settings: Record<string, unknown> = {}) {
@@ -488,5 +505,97 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
     assert.equal(final[0]?.criteria[0]?.band, winner.versions[0].score.criteria[0].band)
     for (const cookie of coordinators)
       assert.equal((await gradingQueue(cookie, '&awaiting=resolution')).data.length, 0)
+  })
+
+  test('DOM-YTK-027, DOM-BEC-024: görev kaldırılırken bekleyen son puan kapsamı kilitten sonra yeniden okur: kaldırılmış göreve dayanarak yazılmaz (404); son puan satırı yok', async () => {
+    const { institution, student, admin, assignmentId } = await setup()
+    await insertMissingRecords(
+      db,
+      institution.id,
+      ['t-eng', 't-k1'].map((id) => ({
+        collection: 'teachers' as const,
+        id,
+        data: { id, name: `Öğretmen ${id}`, subjectId: 'ingilizce', branchId: 'b-1' },
+      })),
+      FIXED_NOW,
+    )
+    const teacherMember = (recordId: string) =>
+      createMember(app, institution.id, 'ogretmen', [{ kind: 'teacher', recordId }])
+    const teacher = await signInAs(app, await teacherMember('t-eng'))
+    const member = await teacherMember('t-k1')
+    const dutyId = randomUUID()
+    await insertCoordinatorDuty(
+      db,
+      institution.id,
+      {
+        id: dutyId,
+        membershipId: member.membershipId,
+        kind: 'academic_coordinator',
+        scopeId: 'A2',
+        assignedByUserId: institution.admin.id,
+      },
+      FIXED_NOW,
+    )
+    const coordinator = await signInAs(app, member)
+    const submitted = await call(
+      'POST',
+      `/task-assignments/${assignmentId}/submissions`,
+      student,
+      { submissionKind: 'text', body: 'Birinci metin.' },
+      key(),
+    )
+    assert.equal(submitted.statusCode, 201, submitted.body)
+    const submissionId = submitted.json().data.id as string
+    const write = (path: string, cookie: string, version: number, body: unknown) =>
+      call('POST', `/task-submissions/${submissionId}/${path}`, cookie, body, {
+        ...key(),
+        'if-match': `"${version}"`,
+      })
+    const scoreBody = (task: number) => ({
+      versionNumber: 1,
+      criteria: [
+        { criterionId: 'task', band: task, comment: 'Görev kısmen karşılandı.' },
+        { criterionId: 'grammar', band: 3, comment: null },
+      ],
+      overallComment: 'Genel yorum yazıldı.',
+    })
+    for (const [path, cookie, version, body] of [
+      ['second-rating-requests', admin, 1, { versionNumber: 1 }],
+      ['scores', admin, 2, scoreBody(4)],
+      ['second-scores', teacher, 3, scoreBody(1)],
+    ] as const) {
+      const response = await write(path, cookie, version, body)
+      assert.equal(response.statusCode, 201, response.body)
+    }
+
+    // Kaldırma kurum kilidini tutarken son puan isteği gelir; görevi kilitten önce okumuş olur.
+    let release!: () => void
+    const released = new Promise<void>((resolve) => (release = resolve))
+    let locked!: () => void
+    const holding = new Promise<void>((resolve) => (locked = resolve))
+    const removal = db.transaction(async (tx) => {
+      await lockInstitution(tx, institution.id)
+      locked()
+      await released
+      assert.ok(
+        await archiveCoordinatorDuty(tx, institution.id, { id: dutyId, rowVersion: 1 }, FIXED_NOW),
+      )
+    })
+    await holding
+    // `inject` tembeldir; `then` çağrılınca istek gönderilir.
+    const pending = Promise.resolve(write('final-scores', coordinator, 4, scoreBody(2)))
+    try {
+      await untilAdvisoryWait()
+    } finally {
+      release()
+    }
+    await removal
+    const response = await pending
+    assert.equal(response.statusCode, 404, response.body)
+    const finals = await db
+      .select({ role: rubricScores.raterRole })
+      .from(rubricScores)
+      .where(eq(rubricScores.institutionId, institution.id))
+    assert.deepEqual(finals.map((row) => row.role).sort(), ['first', 'second'])
   })
 })

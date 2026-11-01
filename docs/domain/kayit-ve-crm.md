@@ -112,7 +112,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Kardeş indirimi, tek veli hesabı ve tek bildirim akışı aile bağına dayanır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API) — `GET /api/v1/prospects/:prospectId/guardian-matches` önerir, `guardian.existingParentId` bağlar. Eşleşme yalnız telefonladır: velinin, öğrencisinin ya da öğrencisine dönüşmüş kardeş adayın telefonu (18 yaş altı öğrencinin telefonu boş kaldığı için, DOM-KAY-003). Yetişkin kursiyerin kendi kaydı için açılan satır `relationship: 'self'` taşır ve veli değildir; bu satır ve alan eklenmeden önce açılmış yer tutucu (telefonsuz, e-postasız, bütün adayları `minor: false`) öneriye girmez, `existingParentId` ile seçilirse 422 `parent_not_guardian` (`path: ['guardian']`) döner ve kayıt yazılmaz (`isNotGuardian`). Çevrimdışı demo her kayıtta yeni veli açar.
+- **Kodda:** var (API) — `GET /api/v1/prospects/:prospectId/guardian-matches` önerir, `guardian.existingParentId` bağlar. Eşleşme yalnız telefonladır: velinin, öğrencisinin ya da öğrencisine dönüşmüş kardeş adayın telefonu (18 yaş altı öğrencinin telefonu boş kaldığı için, DOM-KAY-003). Yetişkin kursiyerin kendi kaydı için açılan satır `relationship: 'self'` taşır ve veli değildir; bu satır ve alan eklenmeden önce açılmış yer tutucu (telefonsuz, e-postasız, bütün adayları `minor: false`) öneriye girmez, `existingParentId` ile seçilirse 422 `parent_not_guardian` (`path: ['guardian']`) döner ve kayıt yazılmaz (`isNotGuardian`). Veli hesabının (üyelik bağlantısı) mevcut veliye bağlanan yeni çocuğu görmesi ayrı iştir (takip). Çevrimdışı demo her kayıtta yeni veli açar.
 
 ### DOM-KAY-014 · Düzeye uygun sınıf
 

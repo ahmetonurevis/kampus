@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTaskAssignment } from '@kampus/react-shared/use-task-assignments.ts'
 import {
   useTaskSubmission,
@@ -15,6 +16,7 @@ import {
   bandMeaningLabel,
   dateTimeLabel,
   isStaffAssignment,
+  staleNoticeText,
   submissionStatus,
 } from './task-model.ts'
 import { useRubricVersion } from './use-rubric-version.ts'
@@ -53,6 +55,7 @@ function GradingBody({ submissionId }: { submissionId: string }) {
   const staff = assignment && isStaffAssignment(assignment) ? assignment : null
   const rubric = useRubricVersion(staff?.rubricVersionId ?? null)
   const { names } = useTaskLookups()
+  const [stale, setStale] = useState(false)
 
   if (detail.error) return <QueryError error={detail.error} onRetry={() => void detail.refetch()} />
   if (!submission) {
@@ -83,6 +86,15 @@ function GradingBody({ submissionId }: { submissionId: string }) {
         </div>
         <StatusBadge text={status.label} tone={status.tone} />
       </header>
+
+      {stale ? (
+        <p role="alert" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
+          {staleNoticeText({
+            scored: latestScore !== null,
+            resubmissionRequested: resubmission !== null,
+          })}
+        </p>
+      ) : null}
 
       <section aria-labelledby="teslim-surumleri" className="grid gap-3">
         <h3 id="teslim-surumleri" className="text-md font-semibold">
@@ -129,6 +141,7 @@ function GradingBody({ submissionId }: { submissionId: string }) {
             assignmentError={assignmentQuery.error}
             assignmentPending={!assignment}
             versionNumber={latest.number}
+            onStaleChange={setStale}
           />
         </section>
       ) : null}
@@ -144,7 +157,11 @@ function GradingBody({ submissionId }: { submissionId: string }) {
               <strong>{dateTimeLabel(resubmission.dueAt)}</strong>
             </p>
           ) : latestScore.settled ? (
-            <ResubmissionForm submission={submission} versionNumber={latest.number} />
+            <ResubmissionForm
+              submission={submission}
+              versionNumber={latest.number}
+              onStaleChange={setStale}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">
               Yeniden teslim, puanı kesinleşen sürüm için istenir.
@@ -163,6 +180,7 @@ type ScoringAreaProps = {
   assignmentError: unknown
   assignmentPending: boolean
   versionNumber: number
+  onStaleChange: (stale: boolean) => void
 }
 
 function ScoringArea({
@@ -172,6 +190,7 @@ function ScoringArea({
   assignmentError,
   assignmentPending,
   versionNumber,
+  onStaleChange,
 }: ScoringAreaProps) {
   if (assignmentError) return <QueryError error={assignmentError} />
   if (noRubric) {
@@ -203,6 +222,7 @@ function ScoringArea({
       submission={submission}
       rubric={rubric.version}
       versionNumber={versionNumber}
+      onStaleChange={onStaleChange}
     />
   )
 }

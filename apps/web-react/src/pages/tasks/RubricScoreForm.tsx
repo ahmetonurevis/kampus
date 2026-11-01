@@ -1,7 +1,6 @@
-import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form'
-import { useScoreTaskSubmission, submissionStale } from '@kampus/react-shared/use-task-grading.ts'
+import { useScoreTaskSubmission } from '@kampus/react-shared/use-task-grading.ts'
 import type { RubricVersion } from '@kampus/react-shared/use-rubrics.ts'
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 import { bandMeaning } from '@kampus/school-core/skills/rubric.ts'
@@ -15,6 +14,7 @@ import {
   aspectLabel,
   bandMeaningLabel,
   bandNeedsComment,
+  showsStaleNotice,
   scoreBody,
   scoreFormSchema,
   type ScoreFormValues,
@@ -26,6 +26,8 @@ type Props = {
   /** Puanlanan sürüm (son sürüm) numarası. */
   versionNumber: number
   onScored?: () => void
+  /** Teslim eskidi: uyarıyı pencere gösterir (hata tek yerde). */
+  onStaleChange: (stale: boolean) => void
 }
 
 const SCORE_FIELD = /^(criteria\.\d+\.(band|comment)|overallComment)$/
@@ -34,11 +36,16 @@ const SCORE_FIELD = /^(criteria\.\d+\.(band|comment)|overallComment)$/
  * Rubrik puanı formu (DOM-BEC-020…023): her kritere bir bant (0–5) ve gerekirse yorum, genel
  * geri bildirim. Toplam ve yüzde sunucuda hesaplanır; istemci toplam göndermez. Hedefin altındaki
  * bantta (0–2) kriter yorumu zorunludur. 409'da (başka puan, yeni sürüm, sürüm çakışması) ekran
- * güncel teslimi yükler ve uyarır; yazılan yorumlar korunur.
+ * güncel teslimi yükler; uyarıyı pencere gösterir ve yazılan yorumlar korunur.
  */
-export function RubricScoreForm({ submission, rubric, versionNumber, onScored }: Props) {
+export function RubricScoreForm({
+  submission,
+  rubric,
+  versionNumber,
+  onScored,
+  onStaleChange,
+}: Props) {
   const score = useScoreTaskSubmission()
-  const [stale, setStale] = useState(false)
   const form = useForm<ScoreFormValues>({
     resolver: zodResolver(scoreFormSchema) as unknown as Resolver<ScoreFormValues>,
     defaultValues: {
@@ -57,10 +64,11 @@ export function RubricScoreForm({ submission, rubric, versionNumber, onScored }:
 
   const submit = form.handleSubmit(async (values) => {
     if (version === null) return
-    setStale(false)
+    onStaleChange(false)
     const outcome = await score.submit(
       { submissionId: submission.id, version, score: scoreBody(values, versionNumber) },
       {
+        silent: showsStaleNotice,
         setError: (name, error) =>
           form.setError((SCORE_FIELD.test(name) ? name : 'root.server') as 'overallComment', error),
       },
@@ -68,8 +76,8 @@ export function RubricScoreForm({ submission, rubric, versionNumber, onScored }:
     if (outcome.status === 'success') {
       notify.success('Puan kaydedildi.')
       onScored?.()
-    } else if (outcome.status === 'failed' && submissionStale(outcome.error)) {
-      setStale(true)
+    } else if (outcome.status === 'failed' && showsStaleNotice(outcome.error)) {
+      onStaleChange(true)
     }
   })
 
@@ -83,11 +91,6 @@ export function RubricScoreForm({ submission, rubric, versionNumber, onScored }:
       }}
       className="grid gap-5"
     >
-      {stale ? (
-        <p role="alert" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
-          Teslim bu arada değişti ve güncel hâli yüklendi. Puanı gözden geçirip yeniden kaydedin.
-        </p>
-      ) : null}
       {rubric.criteria.map((criterion, index) => {
         const band = watched[index]?.band ?? null
         const bandError = errors.criteria?.[index]?.band

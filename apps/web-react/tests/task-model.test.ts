@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
+import { rubricScoreInputSchema } from '@kampus/school-core/skills/rubric.ts'
 import {
   assignmentBody,
   assignmentFormSchema,
@@ -11,6 +12,8 @@ import {
   scoreBody,
   scoreFormSchema,
   scoreState,
+  showsStaleNotice,
+  staleNoticeText,
   targetsLabel,
   type AssignmentFormValues,
 } from '../src/pages/tasks/task-model.ts'
@@ -128,6 +131,58 @@ describe('rubrik puan formu (DOM-BEC-020, 021)', () => {
     assert.equal(scoreFormSchema.safeParse(values(null)).success, false)
     const short = scoreFormSchema.safeParse({ ...values(4), overallComment: 'ok' })
     assert.equal(short.success, false)
+  })
+
+  test('form sınırları core puan şemasıyla aynıdır (DOM-BEC-021); core değişirse ayrışmaz', () => {
+    const core = (comment: string, overall: string, band = 4) =>
+      rubricScoreInputSchema.safeParse({
+        versionNumber: 1,
+        criteria: [{ criterionId: 'task', band, comment }],
+        overallComment: overall,
+      }).success
+    const form = (comment: string, overall: string, band = 4) =>
+      scoreFormSchema.safeParse({
+        criteria: [{ criterionId: 'task', band, comment }],
+        overallComment: overall,
+      }).success
+    for (const [comment, overall, band] of [
+      ['a'.repeat(2000), 'abc', 4],
+      ['a'.repeat(2001), 'abc', 4],
+      ['', 'a'.repeat(5000), 4],
+      ['', 'a'.repeat(5001), 4],
+      ['', 'ab', 4],
+      ['', 'abc', 6],
+    ] as const) {
+      assert.equal(
+        form(comment, overall, band),
+        core(comment, overall, band),
+        `${comment.length}/${overall.length}/${band}`,
+      )
+    }
+  })
+
+  test('teslim eskiyince uyarı tek yerde ve güncel duruma göre yazılır (hata tek yerde)', () => {
+    for (const code of [
+      'version_conflict',
+      'version_not_latest',
+      'submission_version_not_found',
+      'rubric_score_exists',
+      'resubmission_exists',
+    ]) {
+      assert.equal(showsStaleNotice({ code }), true, code)
+    }
+    assert.equal(showsStaleNotice({ code: 'not_found' }), false)
+    assert.match(
+      staleNoticeText({ scored: false, resubmissionRequested: false }),
+      /yeniden kaydedin/,
+    )
+    const scored = staleNoticeText({ scored: true, resubmissionRequested: false })
+    assert.match(scored, /zaten puanlandı/)
+    assert.doesNotMatch(scored, /yeniden (kaydedin|deneyin)/)
+    assert.match(
+      staleNoticeText({ scored: true, resubmissionRequested: true }),
+      /yeniden teslim zaten istendi/,
+    )
   })
 
   test('gövde yalnız bant, yorum ve genel yorum taşır; toplam ve yüzde istemciden gitmez', () => {

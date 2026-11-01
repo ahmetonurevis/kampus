@@ -7,7 +7,12 @@ import type {
 import type { TaskSubmission } from '@kampus/react-shared/use-task-submissions.ts'
 import { CONTENT_TYPES } from '@kampus/school-core/content/taxonomy.ts'
 import { RESUBMISSION_MAX_DAYS } from '@kampus/school-core/skills/assignment.ts'
-import { BAND_SCALE, BAND_MEANINGS, RUBRIC_ASPECTS } from '@kampus/school-core/skills/rubric.ts'
+import {
+  BAND_SCALE,
+  BAND_MEANINGS,
+  RUBRIC_ASPECTS,
+  rubricScoreInputSchema,
+} from '@kampus/school-core/skills/rubric.ts'
 import {
   ATTEMPT_LIMITS,
   COUNT_POLICIES,
@@ -175,20 +180,22 @@ export const bandMeaningLabel = (meaning: keyof typeof BAND_MEANINGS) =>
 
 // --- Puan formu ----------------------------------------------------------------------------
 
+/**
+ * Alan sınırları ve mesajları sunucunun kurallarından (`rubricScoreInputSchema`) türetilir; core
+ * değişirse istemci ayrışmaz. Formda bant seçilmemiş (`null`) ve yorum boş (`''`) olabilir.
+ */
+const scoreCriterionCore = rubricScoreInputSchema.shape.criteria.element.shape
+
 export const scoreFormSchema = z
   .object({
     criteria: z.array(
       z.object({
         criterionId: z.string(),
-        band: z.number().int().min(BAND_SCALE.min).max(BAND_SCALE.max).nullable(),
-        comment: z.string().trim().max(2000, 'Yorum en fazla 2000 karakter olabilir.'),
+        band: scoreCriterionCore.band.nullable(),
+        comment: scoreCriterionCore.comment.removeDefault().unwrap(),
       }),
     ),
-    overallComment: z
-      .string()
-      .trim()
-      .min(3, 'Genel yorumu yazın.')
-      .max(5000, 'Genel yorum en fazla 5000 karakter olabilir.'),
+    overallComment: rubricScoreInputSchema.shape.overallComment,
   })
   .superRefine((value, context) => {
     value.criteria.forEach((criterion, index) => {
@@ -220,6 +227,30 @@ export function scoreBody(values: ScoreFormValues, versionNumber: number) {
     })),
     overallComment: values.overallComment.trim(),
   }
+}
+
+/**
+ * Teslim eskidiğinde (sürüm çakışması, yeni sürüm, kaybolan sürüm numarası, sürüm zaten puanlandı,
+ * yeniden teslim zaten istendi) hata TEK yerde, pencerenin üstündeki uyarıda görünür; toast
+ * gösterilmez. Teslim tazelendiği için form yerinde kalabilir ya da puan kartına dönüşebilir;
+ * uyarı metni bu güncel duruma göre yazılır (`staleNoticeText`). Teslimin hiç bulunamaması
+ * (`not_found`) gibi diğer hatalar toast'ta kalır.
+ */
+const STALE_NOTICE_CODES = new Set([
+  'version_conflict',
+  'version_not_latest',
+  'submission_version_not_found',
+  'rubric_score_exists',
+  'resubmission_exists',
+])
+export const showsStaleNotice = (error: { code: string }) => STALE_NOTICE_CODES.has(error.code)
+
+/** Güncel teslime göre uyarı: puan formu duruyorsa "yeniden kaydedin", kalktıysa nedeni söyler. */
+export function staleNoticeText(state: { scored: boolean; resubmissionRequested: boolean }) {
+  const head = 'Teslim bu arada değişti ve güncel hâli yüklendi.'
+  if (state.resubmissionRequested) return `${head} Bu sürüm için yeniden teslim zaten istendi.`
+  if (state.scored) return `${head} Bu sürüm zaten puanlandı; verilen puan sürüm kartındadır.`
+  return `${head} Puanı gözden geçirip yeniden kaydedin.`
 }
 
 // --- Yeniden teslim isteği -----------------------------------------------------------------
@@ -369,7 +400,7 @@ export function assignmentBody(
           }
         : {}),
     },
-  } as TaskAssignmentBody
+  } satisfies TaskAssignmentBody
 }
 
 /** Sunucu hata yolunu form alanına çevirir; bilinmeyen yol form düzeyi hatadır. */

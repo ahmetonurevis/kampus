@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import { istanbulLocalToUtc } from '@kampus/school-core/skills/scoring.ts'
-import {
-  submissionStale,
-  useRequestTaskResubmission,
-} from '@kampus/react-shared/use-task-grading.ts'
+import { useRequestTaskResubmission } from '@kampus/react-shared/use-task-grading.ts'
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -12,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { notify } from '@/lib/notify.ts'
 import {
   defaultResubmissionLocal,
+  showsStaleNotice,
   resubmissionDueError,
   resubmissionMaxLocal,
   resubmissionMinLocal,
@@ -21,6 +19,8 @@ type Props = {
   submission: TaskSubmissionDetail
   /** Puanı kesinleşen son sürüm. */
   versionNumber: number
+  /** Teslim eskidi: uyarıyı pencere gösterir (hata tek yerde). */
+  onStaleChange: (stale: boolean) => void
 }
 
 /**
@@ -28,13 +28,12 @@ type Props = {
  * istenir; yeni son tarih ileri ve en çok 14 gün sonradır, geç kabul yoktur. İstek teslimin
  * `rowVersion`'ıyla gider; 409'da teslim tazelenir ve kullanıcıya bildirilir.
  */
-export function ResubmissionForm({ submission, versionNumber }: Props) {
+export function ResubmissionForm({ submission, versionNumber, onStaleChange }: Props) {
   const request = useRequestTaskResubmission()
   // Pencere açıldığı andaki zaman: sınırlar çizim boyunca sabit kalır.
   const [now] = useState(() => Date.now())
   const [due, setDue] = useState(() => defaultResubmissionLocal(now))
   const [error, setError] = useState<string | null>(null)
-  const [stale, setStale] = useState(false)
   const version = submission.rowVersion
 
   async function submit() {
@@ -43,17 +42,18 @@ export function ResubmissionForm({ submission, versionNumber }: Props) {
     if (problem !== null || version === null) return
     const dueAt = istanbulLocalToUtc(due)
     if (dueAt === null) return
-    setStale(false)
+    onStaleChange(false)
     const outcome = await request.submit(
       { submissionId: submission.id, version, request: { versionNumber, dueAt } },
       {
+        silent: showsStaleNotice,
         fieldFor: (apiError) =>
           apiError.code === 'resubmission_due_invalid' ? 'dueAt' : undefined,
         setError: (_name, apiError) => setError(apiError.message),
       },
     )
     if (outcome.status === 'success') notify.success('Yeniden teslim istendi.')
-    else if (outcome.status === 'failed' && submissionStale(outcome.error)) setStale(true)
+    else if (outcome.status === 'failed' && showsStaleNotice(outcome.error)) onStaleChange(true)
   }
 
   return (
@@ -66,11 +66,6 @@ export function ResubmissionForm({ submission, versionNumber }: Props) {
       }}
       className="grid gap-4"
     >
-      {stale ? (
-        <p role="alert" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
-          Teslim bu arada değişti ve güncel hâli yüklendi. Gerekirse yeniden deneyin.
-        </p>
-      ) : null}
       <FormField
         id="yeniden-teslim-tarihi"
         label="Yeni son teslim"

@@ -104,6 +104,7 @@ export function GradingQueueView() {
         label: 'İşlemler',
         cell: (row) => (
           <Button
+            variant="secondary"
             size="sm"
             aria-label={`${row.learner} teslimini puanla`}
             onClick={() => openGrading(row.id)}

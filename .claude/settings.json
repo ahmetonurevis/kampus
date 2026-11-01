@@ -27,7 +27,7 @@
       "Bash(gh pr view *)",
       "Bash(gh pr list*)"
     ],
-    "ask": ["Bash(pnpm run deploy*)", "Bash(bash scripts/deploy.sh*)", "Bash(git push*)"],
+    "ask": ["Bash(pnpm run deploy*)", "Bash(bash scripts/deploy.sh*)"],
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f*)",

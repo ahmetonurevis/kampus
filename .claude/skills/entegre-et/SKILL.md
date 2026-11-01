@@ -20,6 +20,6 @@ Kurallar: `docs/muhendislik/git-ve-surum.md` §7.3. Geçmiş yeniden yazılmaz: 
    git commit -m "Görev durumunu güncelle: OG-012 bitti" -- docs/is-bolumu/<sahip>.md
    ```
    Görev birden çok birleştirmeyle bitiyorsa satır son birleştirmeye kadar `çalışılıyor` kalır. İş bir iş isteği issue'sundan geldiyse: `gh issue close <no> -R ahmetonurevis/kampus --comment "feature/platform-gecisi'ye birleşti (<sha>, OG-012)"` (entegrasyon dalı varsayılan dal olmadığı için "Closes #n" işlemez).
-6. **Push:** `git push origin feature/platform-gecisi` (birleştirme ve durum commit'i birlikte). `push-kontrol` hook'u entegrasyonun atası olmayı ve migration tekilliğini denetler. Proje ayarında push onay ister; iki tarafın oturumu da push'u kendisi yapar. Reddedilirse: fetch, merge, kontroller, durum satırını yeniden yaz, yeniden push.
+6. **Push:** `git push origin feature/platform-gecisi` (birleştirme ve durum commit'i birlikte). `push-kontrol` hook'u entegrasyonun atası olmayı ve migration tekilliğini denetler. İki tarafın oturumu da push'u onaysız, kendisi yapar; güvenceyi `push-kontrol` hook'u ve force/`main` deny kuralları verir. Reddedilirse: fetch, merge, kontroller, durum satırını yeniden yaz, yeniden push.
 7. **Temizle:** `git branch -d <dal>`; uzakta varsa `git push origin --delete <dal>` (aynı push kuralı).
 8. CI (`gh run list --limit 3`) kırmızıysa ilk iş düzelt ya da `git revert -m 1 <merge>` ile geri al; satır `revizyon` olur, Not'a gerekçe.

@@ -377,6 +377,70 @@ test.describe('öğretmen görevleri: puanlama', () => {
     expect(assignmentId).toBeTruthy()
   })
 
+  test('atama revize edilmiş rubriğin eski sürümüne sabitliyse puanlama açılır; ayrıntı istekleri sırayla atılır (DOM-BEC-022)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const { school, submissionId, admin } = await setUp(tenant, api)
+    const body = {
+      title: 'Yazma rubriği',
+      kind: 'analytic',
+      skill: 'writing',
+      criteria: [
+        { id: 'task', aspect: 'task_fulfilment', bands: bands('Görev') },
+        { id: 'grammar', aspect: 'grammatical_accuracy', bands: bands('Dilbilgisi') },
+      ],
+    }
+    // Rubriğin v2'si yayımlanınca atamanın v1'i ne baş ne yayındaki sürümdür; ayrıca başka rubrikler
+    // vardır. Ekran sürümü yine de bulmalı (en çok bir ayrıntı isteği uçuşta).
+    for (const title of ['Başka rubrik 1', 'Başka rubrik 2']) {
+      await expectOk(await admin.post('/api/v1/rubrics', { ...body, title }, idempotent()))
+    }
+    const list = await expectOk(await admin.get('/api/v1/rubrics?pageSize=100'), 200)
+    const rubric = (list as unknown as Json[]).find(
+      (item) => (item.head as Json).title === 'Yazma rubriği',
+    ) as Json
+    const rubricId = (rubric.rubric as Json).id as string
+    const second = await expectOk(
+      await admin.post(`/api/v1/rubrics/${rubricId}/versions`, body, idempotent()),
+    )
+    const draft = second.version as Json
+    await expectOk(
+      await admin.post(
+        `/api/v1/rubrics/${rubricId}/versions/${draft.id}/publish`,
+        {},
+        versioned(draft.rowVersion),
+      ),
+      200,
+    )
+
+    let inFlight = 0
+    let maxInFlight = 0
+    const detailUrl = /\/api\/v1\/rubrics\/[0-9a-f-]{36}$/
+    page.on('request', (request) => {
+      if (!detailUrl.test(request.url())) return
+      inFlight += 1
+      maxInFlight = Math.max(maxInFlight, inFlight)
+    })
+    const done = (request: { url(): string }) => {
+      if (detailUrl.test(request.url())) inFlight -= 1
+    }
+    page.on('requestfinished', done)
+    page.on('requestfailed', done)
+
+    await loginAs(school.user('ogretmen'))
+    await page.goto(`/ogretmen/odevler?sekme=puanlama&puanla=${submissionId}`)
+    const dialog = page.getByRole('dialog', { name: 'Teslimi puanla' })
+    await chooseBand(dialog, 'Görevin yerine getirilmesi', 3)
+    await chooseBand(dialog, 'Dilbilgisel doğruluk', 3)
+    await dialog.getByLabel('Genel geri bildirim').fill('Sürüm 1 rubriğiyle puanlandı.')
+    await dialog.getByRole('button', { name: 'Puanı kaydet' }).click()
+    await expect(toasts(page).filter({ hasText: 'Puan kaydedildi.' })).toBeVisible()
+    expect(maxInFlight).toBeLessThanOrEqual(1)
+  })
+
   test('puan verilirken başka puan girilmişse 409 uyarısı çıkar ve güncel teslim yüklenir', async ({
     page,
     loginAs,
@@ -409,8 +473,12 @@ test.describe('öğretmen görevleri: puanlama', () => {
       ),
     )
     await dialog.getByRole('button', { name: 'Puanı kaydet' }).click()
-    // Puan kartı formun yerini aldığı için uyarıyı toast taşır.
-    await expect(toasts(page).filter({ hasText: 'Teslim bu arada değişti' })).toBeVisible()
+    // Hata tek yerde: uyarı pencerede; formun yerini puan kartı aldığı için "yeniden kaydedin"
+    // denmez, toast gösterilmez.
+    const notice = dialog.getByRole('alert').filter({ hasText: 'Teslim bu arada değişti' })
+    await expect(notice).toContainText('Bu sürüm zaten puanlandı')
+    await expect(notice).not.toContainText('yeniden kaydedin')
+    await expect(toasts(page)).toHaveCount(0)
     // Güncel teslim yüklendi: yöneticinin puanı görünür, form kalktı, öğretmen puanı ezilmedi.
     const card = dialog.getByRole('group', { name: 'Verilen puan' })
     await expect(card).toContainText('%60')
@@ -460,6 +528,38 @@ test.describe('öğretmen görevleri: puanlama', () => {
     const student = await api(school.user('ogrenci'))
     const own = await expectOk(await student.get(`/api/v1/task-submissions/${submissionId}`), 200)
     expect(own.allowance.resubmissionOpen).toBe(true)
+  })
+
+  test('sunucu 14 günden uzak yeniden teslim tarihini 422 resubmission_due_invalid ile reddeder (DOM-BEC-040)', async ({
+    api,
+    tenant,
+  }) => {
+    // İstemci aşırı tarihi zaten engeller; sunucu eşlemesi uca doğrudan istekle sınanır.
+    const { submissionId, admin } = await setUp(tenant, api)
+    const detail = await expectOk(await admin.get(`/api/v1/task-submissions/${submissionId}`), 200)
+    await expectOk(
+      await admin.post(
+        `/api/v1/task-submissions/${submissionId}/scores`,
+        {
+          versionNumber: 1,
+          criteria: [
+            { criterionId: 'task', band: 3, comment: null },
+            { criterionId: 'grammar', band: 3, comment: null },
+          ],
+          overallComment: 'Fena değil, bir kez daha deneyin.',
+        },
+        versioned(detail.rowVersion),
+      ),
+    )
+    const fresh = await expectOk(await admin.get(`/api/v1/task-submissions/${submissionId}`), 200)
+    const far = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString()
+    const rejected = await admin.post(
+      `/api/v1/task-submissions/${submissionId}/resubmission-requests`,
+      { versionNumber: 1, dueAt: far },
+      versioned(fresh.rowVersion),
+    )
+    expect(rejected.status, JSON.stringify(rejected.body)).toBe(422)
+    expect((rejected.body as { code?: string }).code).toBe('resubmission_due_invalid')
   })
 
   test('başka kurumun teslimi 404 verir ve "bulunamadı" görünür', async ({
@@ -517,6 +617,8 @@ test.describe('öğretmen görevleri: modül ve erişim', () => {
   })
 
   test('öğrenci görev ve puanlama uçlarını yazamaz; öğretmen sayfası öğrenciye kapalıdır', async ({
+    page,
+    loginAs,
     api,
     tenant,
   }) => {
@@ -524,11 +626,24 @@ test.describe('öğretmen görevleri: modül ve erişim', () => {
     const student = await api(school.user('ogrenci'))
     const denied = await student.post(
       `/api/v1/task-submissions/${submissionId}/scores`,
-      { versionNumber: 1, criteria: [], overallComment: 'x' },
+      {
+        versionNumber: 1,
+        criteria: [
+          { criterionId: 'task', band: 3, comment: null },
+          { criterionId: 'grammar', band: 3, comment: null },
+        ],
+        overallComment: 'Öğrenci puan veremez.',
+      },
       versioned(1),
     )
-    expect([400, 403]).toContain(denied.status)
+    expect(denied.status, JSON.stringify(denied.body)).toBe(403)
     expect((await student.get('/api/v1/task-submissions/grading-queue')).status).toBe(403)
+
+    // Sayfa da kapalıdır: öğrenci öğretmen sayfasına giremez, kendi panosuna döner.
+    await loginAs(school.user('ogrenci'))
+    await page.goto('/ogretmen/odevler?sekme=puanlama')
+    await expect(page).toHaveURL(/\/ogrenci\/dashboard/)
+    await expect(page.getByRole('heading', { name: 'Puanlama kuyruğu', level: 2 })).toHaveCount(0)
   })
 })
 

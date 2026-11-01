@@ -53,4 +53,11 @@ test.describe('giriş ve çıkış', () => {
     await expect(page).toHaveURL(/\/giris$/)
     await expect(page.getByLabel('E-posta')).toHaveAttribute('aria-invalid', 'true')
   })
+
+  test('üretim derlemesinde Kolay giriş düğmesi yoktur', async ({ page }) => {
+    await page.goto('/giris')
+    await expect(page.getByRole('button', { name: 'Giriş yap' })).toBeVisible()
+    // Yalnız geliştirmede yüklenir (LoginPage `import.meta.env.DEV`); e2e üretim derlemesine karşı koşar.
+    await expect(page.getByRole('button', { name: 'Kolay giriş' })).toHaveCount(0)
+  })
 })

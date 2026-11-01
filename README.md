@@ -33,7 +33,7 @@ pnpm dev
 
 **http://127.0.0.1:5173** adresini açın. Giriş ekranından veya üst bardan rol seçin.
 
-Yeni React web uygulaması (`apps/web-react`, geçiş sürüyor) `pnpm dev:react` ile **http://127.0.0.1:5174** adresinde açılır ve gerçek API'ye bağlıdır: önce veritabanı ve API (`docker compose up -d`, `pnpm --filter @kampus/api db:migrate`, `pnpm --filter @kampus/api db:seed`, `pnpm dev:api`; `.env` için `apps/api/.env.example`). Vite `/api` isteklerini API'ye vekiller (varsayılan `http://127.0.0.1:3000`, `KAMPUS_API_URL` ile değişir); oturum aynı kökende Better Auth çerezindedir, sayfa yenilense de korunur. Demo hesapları ve parolası `db:seed` çıktısındadır (Akademi: `murat.yilmaz`, `busra.aydin`, `selin.kaya`, `deniz.yilmaz`, `ayse.yilmaz` `@kampus.example`; Murat Yılmaz iki kurumun yöneticisidir, kurum avatar menüsünden değişir).
+Yeni React web uygulaması (`apps/web-react`, geçiş sürüyor) `pnpm dev:react` ile **http://127.0.0.1:5174** adresinde açılır ve gerçek API'ye bağlıdır: önce veritabanı ve API (`docker compose up -d`, `pnpm --filter @kampus/api db:migrate`, `pnpm --filter @kampus/api db:seed`, `pnpm dev:api`; `.env` için `apps/api/.env.example`). Vite `/api` isteklerini API'ye vekiller (varsayılan `http://127.0.0.1:3000`, `KAMPUS_API_URL` ile değişir); oturum aynı kökende Better Auth çerezindedir, sayfa yenilense de korunur. Demo hesapları ve parolası `db:seed` çıktısındadır (Akademi: `murat.yilmaz`, `busra.aydin`, `selin.kaya`, `deniz.yilmaz`, `ayse.yilmaz` `@kampus.example`; Murat Yılmaz iki kurumun yöneticisidir, kurum avatar menüsünden değişir). Geliştirmede giriş ekranında Kolay giriş penceresi; üretimde yok.
 
 ```bash
 pnpm build                 # apps/web/dist ve apps/web-react/dist

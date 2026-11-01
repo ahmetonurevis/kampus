@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type ProxyOptions } from 'vite'
+import { devOnlyGuard } from './dev-only-guard.ts'
 
 // API aynı kökenden (`/api`) vekille sunulur: oturum çerezi birinci taraf kalır, CORS gerekmez.
 // Hedef yalnız geliştirme/önizleme sunucusunun ortamından gelir; paketlenen koda girmez.
@@ -11,7 +12,7 @@ const apiProxy: Record<string, ProxyOptions> = {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), devOnlyGuard()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

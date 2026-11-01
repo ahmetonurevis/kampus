@@ -35,7 +35,14 @@ const NONE: readonly never[] = []
  * çekilmez). Yalnız okuma.
  * TODO(api-homework-write): ödev atama, teslim değerlendirme ve geri bildirim yazma uçlarıyla gelir.
  */
-export function TeacherHomeworkPage({ page }: { page: NavPage }) {
+export function TeacherHomeworkPage({
+  page,
+  heading = true,
+}: {
+  page: NavPage
+  /** Başlık dış sayfada (sekmeli) çiziliyorsa `false`. */
+  heading?: boolean
+}) {
   useDocumentTitle(page.title)
   const classes = useCoreAll('classes')
   const filters = useClassSubjectFilters(classes.data ?? NONE)
@@ -131,7 +138,7 @@ export function TeacherHomeworkPage({ page }: { page: NavPage }) {
   const error = homework.error ?? classes.error ?? deliveries.error ?? enrolled.error
   return (
     <>
-      <PageHeading title={page.title} description={page.description} />
+      {heading ? <PageHeading title={page.title} description={page.description} /> : null}
       <section
         aria-labelledby="odev-tablosu"
         className="panel overflow-hidden rounded-card border bg-surface"

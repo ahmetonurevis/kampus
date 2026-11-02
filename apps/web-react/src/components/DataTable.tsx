@@ -109,6 +109,10 @@ function renderCell<T extends Row>(column: DataColumn<T>, row: T): ReactNode {
   return column.cell ? column.cell(row) : display(row[column.key])
 }
 
+function renderColumnCell<T extends Row>(column: DataColumn<T> | undefined, row: T): ReactNode {
+  return column ? renderCell(column, row) : null
+}
+
 /**
  * Kayıt tablosu (Vue `DataTable.vue`). Satır/sütun modeli TanStack Table'dan; arama, filtre,
  * Türkçe sıralama ve sayfa `useListState` + `list-view` ile (CSV aynı sonucu kullanır).
@@ -249,18 +253,16 @@ function TableView<T extends Row>({
     onRowClick(row)
   }
 
+  // Hücre içeriği TanStack'in `FlexRender`'ıyla değil doğrudan `renderCell` ile çizilir:
+  // `cell` işlevi bileşen tipi sayılır; sütunlar her yeniden hesaplandığında (ör. geç gelen
+  // başvuru verisi) yeni tip olur, hücre yeniden kurulur ve içindeki düğmenin odağı düşer.
   const tableColumns = useMemo(() => {
     const helper = createColumnHelper<typeof features, T>()
     return helper.columns(
-      columns.map((column) =>
-        helper.display({
-          id: column.key,
-          header: column.label,
-          cell: ({ row }) => renderCell(column, row.original),
-        }),
-      ),
+      columns.map((column) => helper.display({ id: column.key, header: column.label })),
     )
   }, [columns])
+  const columnByKey = new Map(columns.map((column) => [column.key, column]))
   const table = useTable({
     features,
     columns: tableColumns,
@@ -485,7 +487,7 @@ function TableView<T extends Row>({
                               'sticky-actions sticky right-0 z-[2] min-w-[140px] shadow-[inset_1px_0_0_var(--border)]',
                           )}
                         >
-                          <table.FlexRender cell={cell} />
+                          {renderColumnCell(columnByKey.get(cell.column.id), row.original)}
                         </td>
                       ))}
                     </tr>

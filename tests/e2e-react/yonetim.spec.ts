@@ -214,14 +214,28 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
   test('klavyeyle açılan sınıf özeti Escape ile kapanır ve odak düğmeye döner', async ({
     page,
   }) => {
+    // Başvuru verisi (öğrenci sayıları) tablo çizildikten sonra gelsin: geç yanıtla sayfa yeniden
+    // çizilince satır hücreleri yeniden kurulmamalı, odak düğmede kalmalı.
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/api/v1/collections/students/counts?*', async (route) => {
+      await held
+      await route.continue()
+    })
     await page.goto(CLASSES_URL)
     const opener = page.getByRole('button', { name: '7-A özeti' }).first()
+    const row = bodyRows(page, CLASS_TABLE).filter({ has: opener })
+    await expect(row).toContainText('0 / 24')
     await opener.focus()
+    release()
+    await expect(row).toContainText('10 / 24')
+    await expect(opener).toBeFocused()
     await page.keyboard.press('Enter')
     const dialog = page.getByRole('dialog', { name: 'Sınıf özeti' })
     await expect(dialog).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(dialog).toBeHidden()
+    await expect(opener).toBeFocused()
     await expect(page).not.toHaveURL(/[?&]ogretmen=/)
   })
 

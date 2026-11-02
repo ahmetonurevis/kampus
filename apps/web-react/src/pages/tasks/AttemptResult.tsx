@@ -2,14 +2,21 @@ import { TASK_CONTENT_UNAVAILABLE_MESSAGE } from '@kampus/react-shared/use-task-
 import type { TaskAttemptDetail } from '@kampus/react-shared/use-task-attempts.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
-import { describeKey, describeResponse, formatPoints, itemOutcome } from './student-task-model.ts'
+import {
+  describeKey,
+  describeResponse,
+  formatPoints,
+  itemOutcome,
+  responseLabel,
+  type ResultAudience,
+} from './student-task-model.ts'
 import { SubskillBreakdown } from './SubskillBreakdown.tsx'
 
 type Props = {
   attempt: TaskAttemptDetail
   title: string
-  /** Kim bakıyor: kursiyer kendi cevabını, personel ve veli öğrencinin cevabını okur. */
-  audience?: 'learner' | 'staff'
+  /** Kim bakıyor: kursiyer kendi cevabını, personel öğrencinin, veli çocuğunun cevabını okur. */
+  audience?: ResultAudience
 }
 
 /**
@@ -98,9 +105,7 @@ export function AttemptResult({ attempt, title, audience = 'learner' }: Props) {
                   ) : null}
                 </div>
                 <p className="mt-2 text-sm">
-                  <span className="text-muted-foreground">
-                    {audience === 'learner' ? 'Cevabınız: ' : 'Öğrencinin cevabı: '}
-                  </span>
+                  <span className="text-muted-foreground">{responseLabel(audience)}</span>
                   <span lang="en">
                     {describeResponse(
                       question.question,

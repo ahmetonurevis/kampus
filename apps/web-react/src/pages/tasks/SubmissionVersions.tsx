@@ -1,6 +1,7 @@
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { submittedTextLabel, type ResultAudience } from './student-task-model.ts'
 
 type Version = TaskSubmissionDetail['versions'][number]
 
@@ -10,8 +11,15 @@ const stamp = (iso: string) => `${dateLabel(iso, { year: 'numeric' })} ${timeLab
  * Gönderilen değişmez sürümler (DOM-BEC-040), yeniden eskiye. Puan ve geri bildirim yalnız sunucu
  * açtıysa (`score` dolu ve kesinleşmiş) çizilir; aksi hâlde sürümde puana dair hiçbir ifade yoktur
  * (DOM-BEC-045). Kriter adları öğrenciye açık olmadığından kriterler sıra numarasıyla anılır.
+ * Veli (`audience="parent"`) aynı alanları okur; itiraz ve puanlama iç ayrıntısı çizilmez.
  */
-export function SubmissionVersions({ versions }: { versions: readonly Version[] }) {
+export function SubmissionVersions({
+  versions,
+  audience = 'learner',
+}: {
+  versions: readonly Version[]
+  audience?: ResultAudience
+}) {
   if (versions.length === 0) return null
   return (
     <ol aria-label="Gönderilen sürümler" className="grid gap-4">
@@ -34,7 +42,7 @@ export function SubmissionVersions({ versions }: { versions: readonly Version[] 
             {version.body ? (
               <details className="mt-3">
                 <summary className="cursor-pointer text-sm font-medium text-primary">
-                  Gönderdiğiniz metni göster
+                  {submittedTextLabel(audience)}
                 </summary>
                 <p lang="en" className="mt-2 text-sm whitespace-pre-line [overflow-wrap:anywhere]">
                   {version.body}

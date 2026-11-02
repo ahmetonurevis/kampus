@@ -688,6 +688,27 @@ export const isNotFoundError = (error: unknown): boolean =>
 
 // --- Deneme sonucu (kursiyer, personel, veli) ----------------------------------------------
 
+/** Sonuç ekranına kim bakıyor: kursiyer kendi cevabını, personel ve veli öğrencinin cevabını okur. */
+export type ResultAudience = 'learner' | 'staff' | 'parent'
+
+const RESPONSE_LABELS = {
+  learner: 'Cevabınız: ',
+  staff: 'Öğrencinin cevabı: ',
+  parent: 'Çocuğunuzun cevabı: ',
+} as const satisfies Record<ResultAudience, string>
+
+/** Madde satırında cevabın önündeki etiket. */
+export const responseLabel = (audience: ResultAudience) => RESPONSE_LABELS[audience]
+
+const SUBMITTED_TEXT_LABELS = {
+  learner: 'Gönderdiğiniz metni göster',
+  staff: 'Gönderilen metni göster',
+  parent: 'Çocuğunuzun gönderdiği metni göster',
+} as const satisfies Record<ResultAudience, string>
+
+/** Teslim sürümündeki metni açan özet etiketi. */
+export const submittedTextLabel = (audience: ResultAudience) => SUBMITTED_TEXT_LABELS[audience]
+
 type ItemScore = NonNullable<NonNullable<TaskAttemptDetail['result']>['items']>[number]
 
 /**

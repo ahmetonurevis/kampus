@@ -263,16 +263,34 @@ describe('video izleme ilerlemesi ucu', () => {
     const a = await institution()
     const b = await institution({}, ONLY_B)
     const s1 = await student(a.id)
+    const bBefore = await snapshot(b.id)
     await unchanged(a.id, async () => {
       assertError(await post(s1, 'v5', BODY), 404, 'not_found')
       assertError(await post(s1, 'v-yok', BODY), 404, 'not_found')
       assertError(await post(s1, 'v-only-b', BODY), 404, 'not_found')
     })
     assert.equal(await findRecord(db, b.id, 'videoProgress', 's1:v-only-b'), null)
+    // B kurumunun ilerleme satırları (veri, sürüm, arşiv) hiç değişmez.
+    assert.deepEqual(await snapshot(b.id), bBefore)
+    // Başarılı yazma da yalnız kendi kurumuna gider: A'daki yazma B'yi değiştirmez.
+    assert.equal((await post(s1, 'v2', BODY)).statusCode, 200)
+    assert.deepEqual(await snapshot(b.id), bBefore)
     // Ece 5. Sınıf: kendi düzeyinin videosuna yazar, 7. Sınıf videosuna yazamaz.
     const s2 = await student(a.id, 's2')
     assertError(await post(s2, 'v1', BODY), 404, 'not_found')
     assert.equal((await post(s2, 'v5', BODY)).statusCode, 200)
+  })
+
+  test('DOM-KYN-005, DOM-YTK-025: kaydı pasif öğrenci 422 student_inactive, kayıt değişmez', async () => {
+    const a = await createInstitution(app)
+    const students = SAMPLE.students?.map((item) =>
+      item.id === 's1' ? { ...item, isActive: false } : item,
+    )
+    await insertMissingRecords(db, a.id, rows({ ...SAMPLE, students }), FIXED_NOW)
+    const s1 = await student(a.id)
+    await unchanged(a.id, async () => {
+      assertError(await post(s1, 'v2', BODY), 422, 'student_inactive')
+    })
   })
 
   test('DOM-KYN-005: geçersiz gövde ve başlık 400, kayıt değişmez', async () => {

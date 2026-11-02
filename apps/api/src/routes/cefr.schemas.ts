@@ -133,52 +133,81 @@ export const placementSessionListResponseSchema = pageResponse(
   z.object({ ...sessionBase, validity: validitySchema }),
 )
 
-export const cefrProfileResponseSchema = dataResponse(
-  z.object({
-    studentId: z.string(),
-    title: z.string(),
-    estimate: suggestionSchema.extend({
-      label: z.string().describe('"Tahmini seviye": öneri karar değildir (DOM-BEC-034)'),
-      evidence: z.array(
-        z.object({
-          id: z.string(),
-          title: z.string(),
-          source: z.enum(enumKeys(EVIDENCE_SOURCES)),
-          skill,
-          targetLevel: level,
-          performedAt: instant,
-          expiresAt: instant,
-          successful: z.boolean(),
-          percent: z.number().int(),
-        }),
-      ),
-      excluded: z.array(
-        z.object({
-          id: z.string(),
-          title: z.string(),
-          reason: z.enum(enumKeys(EXCLUSION_REASONS)),
-        }),
-      ),
-    }),
-    current: z
-      .array(
-        z.object({
-          skill: skill.nullable().describe('Boşsa genel seviye'),
-          level,
-          decisionId: z.uuid(),
-          decidedAt: instant,
-        }),
-      )
-      .describe('Beceri başına güncel seviye: en yeni insan kararı'),
-    timeline: z.array(decisionSchema).describe('Kararların zaman çizelgesi, en yeniden eskiye'),
-    placements: z.array(
+/**
+ * Kursiyer (öğrenci, veli) görünümündeki karar: gerekçe (öğretmenin serbest metni, kvkk Ç) ve
+ * kararı veren kullanıcı yoktur (Sabah kararı 35). Seviye, tür ve an görünür.
+ */
+const learnerDecisionSchema = decisionSchema.omit({ rationale: true, decidedByUserId: true })
+
+const profileShape = {
+  studentId: z.string(),
+  title: z.string(),
+  estimate: suggestionSchema.extend({
+    label: z.string().describe('"Tahmini seviye": öneri karar değildir (DOM-BEC-034)'),
+    evidence: z.array(
       z.object({
-        id: z.uuid(),
-        mode: z.enum(enumKeys(PLACEMENT_MODES)),
-        startedAt: instant,
-        completedAt: instant.nullable(),
-        validity: validitySchema,
+        id: z.string(),
+        title: z.string(),
+        source: z.enum(enumKeys(EVIDENCE_SOURCES)),
+        skill,
+        targetLevel: level,
+        performedAt: instant,
+        expiresAt: instant,
+        successful: z.boolean(),
+        percent: z.number().int(),
       }),
     ),
+    excluded: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        reason: z.enum(enumKeys(EXCLUSION_REASONS)),
+      }),
+    ),
+  }),
+  current: z
+    .array(
+      z.object({
+        skill: skill.nullable().describe('Boşsa genel seviye'),
+        level,
+        decisionId: z.uuid(),
+        decidedAt: instant,
+      }),
+    )
+    .describe('Beceri başına güncel seviye: en yeni insan kararı'),
+  placements: z.array(
+    z.object({
+      id: z.uuid(),
+      mode: z.enum(enumKeys(PLACEMENT_MODES)),
+      startedAt: instant,
+      completedAt: instant.nullable(),
+      validity: validitySchema,
+    }),
+  ),
+}
+
+const staffProfileSchema = z
+  .object({
+    view: z.literal('staff').describe('Yönetici ve öğretmen görünümü'),
+    ...profileShape,
+    timeline: z.array(decisionSchema).describe('Kararların zaman çizelgesi, en yeniden eskiye'),
+  })
+  .meta({ id: 'CefrProfileStaff' })
+
+const learnerProfileSchema = z
+  .object({
+    view: z
+      .literal('learner')
+      .describe('Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur'),
+    ...profileShape,
+    timeline: z
+      .array(learnerDecisionSchema)
+      .describe('Kararların zaman çizelgesi, en yeniden eskiye'),
+  })
+  .meta({ id: 'CefrProfileLearner' })
+
+export const cefrProfileResponseSchema = dataResponse(
+  z.discriminatedUnion('view', [staffProfileSchema, learnerProfileSchema]).meta({
+    id: 'CefrProfile',
   }),
 )

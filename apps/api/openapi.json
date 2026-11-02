@@ -11897,6 +11897,1088 @@
           "studentStatus"
         ]
       },
+      "CefrProfileStaffInput": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "staff",
+            "description": "Yönetici ve öğretmen görünümü"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "estimate": {
+            "type": "object",
+            "properties": {
+              "context": {
+                "type": "string",
+                "enum": [
+                  "general",
+                  "placement"
+                ]
+              },
+              "computedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "overall": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "suggested"
+                      },
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "level"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "insufficient"
+                      },
+                      "missingSkills": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "reading",
+                            "listening",
+                            "writing",
+                            "speaking",
+                            "mediation",
+                            "language_use"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "missingSkills"
+                    ]
+                  }
+                ]
+              },
+              "skills": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "suggested",
+                        "insufficient"
+                      ]
+                    },
+                    "level": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "Pre-A1",
+                            "A1",
+                            "A2",
+                            "A2+",
+                            "B1",
+                            "B1+",
+                            "B2",
+                            "B2+",
+                            "C1",
+                            "C2"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "plus": {
+                      "type": "boolean"
+                    },
+                    "demonstratedBy": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "general",
+                            "placement"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "missingEvidence": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "missingItems": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "evidenceIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "label",
+                    "status",
+                    "level",
+                    "plus",
+                    "demonstratedBy",
+                    "missingEvidence",
+                    "missingItems",
+                    "evidenceIds"
+                  ]
+                }
+              },
+              "label": {
+                "type": "string",
+                "description": "\"Tahmini seviye\": öneri karar değildir (DOM-BEC-034)"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "task",
+                        "placement"
+                      ]
+                    },
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    "targetLevel": {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    "performedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "successful": {
+                      "type": "boolean"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "source",
+                    "skill",
+                    "targetLevel",
+                    "performedAt",
+                    "expiresAt",
+                    "successful",
+                    "percent"
+                  ]
+                }
+              },
+              "excluded": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "practice",
+                        "preliminary",
+                        "no_skill",
+                        "no_target_level",
+                        "unscored",
+                        "appeal_pending",
+                        "not_yet",
+                        "expired"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "reason"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "context",
+              "computedAt",
+              "overall",
+              "skills",
+              "label",
+              "evidence",
+              "excluded"
+            ]
+          },
+          "current": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "skill": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Boşsa genel seviye"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "Pre-A1",
+                    "A1",
+                    "A2",
+                    "A2+",
+                    "B1",
+                    "B1+",
+                    "B2",
+                    "B2+",
+                    "C1",
+                    "C2"
+                  ]
+                },
+                "decisionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "skill",
+                "level",
+                "decisionId",
+                "decidedAt"
+              ]
+            },
+            "description": "Beceri başına güncel seviye: en yeni insan kararı"
+          },
+          "placements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "in_person",
+                    "remote"
+                  ]
+                },
+                "startedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "completedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "validity": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "in_progress",
+                        "valid",
+                        "expired"
+                      ]
+                    },
+                    "preliminary": {
+                      "type": "boolean"
+                    },
+                    "completedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "validUntil": {
+                      "description": "Geçerliliğin bittiği an (hariç)",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "preliminary"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "mode",
+                "startedAt",
+                "completedAt",
+                "validity"
+              ]
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "placement",
+                    "progression",
+                    "correction"
+                  ]
+                },
+                "skill": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Boşsa genel seviye"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "Pre-A1",
+                    "A1",
+                    "A2",
+                    "A2+",
+                    "B1",
+                    "B1+",
+                    "B2",
+                    "B2+",
+                    "C1",
+                    "C2"
+                  ]
+                },
+                "rationale": {
+                  "type": "string"
+                },
+                "decidedByUserId": {
+                  "type": "string"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "placementSessionId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "skill",
+                "level",
+                "rationale",
+                "decidedByUserId",
+                "decidedAt",
+                "placementSessionId"
+              ]
+            },
+            "description": "Kararların zaman çizelgesi, en yeniden eskiye"
+          }
+        },
+        "required": [
+          "view",
+          "studentId",
+          "title",
+          "estimate",
+          "current",
+          "placements",
+          "timeline"
+        ]
+      },
+      "CefrProfileLearnerInput": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "learner",
+            "description": "Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "estimate": {
+            "type": "object",
+            "properties": {
+              "context": {
+                "type": "string",
+                "enum": [
+                  "general",
+                  "placement"
+                ]
+              },
+              "computedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "overall": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "suggested"
+                      },
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "level"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "insufficient"
+                      },
+                      "missingSkills": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "reading",
+                            "listening",
+                            "writing",
+                            "speaking",
+                            "mediation",
+                            "language_use"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "missingSkills"
+                    ]
+                  }
+                ]
+              },
+              "skills": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "suggested",
+                        "insufficient"
+                      ]
+                    },
+                    "level": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "Pre-A1",
+                            "A1",
+                            "A2",
+                            "A2+",
+                            "B1",
+                            "B1+",
+                            "B2",
+                            "B2+",
+                            "C1",
+                            "C2"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "plus": {
+                      "type": "boolean"
+                    },
+                    "demonstratedBy": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "general",
+                            "placement"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "missingEvidence": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "missingItems": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "evidenceIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "label",
+                    "status",
+                    "level",
+                    "plus",
+                    "demonstratedBy",
+                    "missingEvidence",
+                    "missingItems",
+                    "evidenceIds"
+                  ]
+                }
+              },
+              "label": {
+                "type": "string",
+                "description": "\"Tahmini seviye\": öneri karar değildir (DOM-BEC-034)"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "task",
+                        "placement"
+                      ]
+                    },
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    "targetLevel": {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    "performedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "successful": {
+                      "type": "boolean"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "source",
+                    "skill",
+                    "targetLevel",
+                    "performedAt",
+                    "expiresAt",
+                    "successful",
+                    "percent"
+                  ]
+                }
+              },
+              "excluded": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "practice",
+                        "preliminary",
+                        "no_skill",
+                        "no_target_level",
+                        "unscored",
+                        "appeal_pending",
+                        "not_yet",
+                        "expired"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "reason"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "context",
+              "computedAt",
+              "overall",
+              "skills",
+              "label",
+              "evidence",
+              "excluded"
+            ]
+          },
+          "current": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "skill": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Boşsa genel seviye"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "Pre-A1",
+                    "A1",
+                    "A2",
+                    "A2+",
+                    "B1",
+                    "B1+",
+                    "B2",
+                    "B2+",
+                    "C1",
+                    "C2"
+                  ]
+                },
+                "decisionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "skill",
+                "level",
+                "decisionId",
+                "decidedAt"
+              ]
+            },
+            "description": "Beceri başına güncel seviye: en yeni insan kararı"
+          },
+          "placements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "in_person",
+                    "remote"
+                  ]
+                },
+                "startedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "completedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "validity": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "in_progress",
+                        "valid",
+                        "expired"
+                      ]
+                    },
+                    "preliminary": {
+                      "type": "boolean"
+                    },
+                    "completedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "validUntil": {
+                      "description": "Geçerliliğin bittiği an (hariç)",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "preliminary"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "mode",
+                "startedAt",
+                "completedAt",
+                "validity"
+              ]
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "placement",
+                    "progression",
+                    "correction"
+                  ]
+                },
+                "skill": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Boşsa genel seviye"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "Pre-A1",
+                    "A1",
+                    "A2",
+                    "A2+",
+                    "B1",
+                    "B1+",
+                    "B2",
+                    "B2+",
+                    "C1",
+                    "C2"
+                  ]
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "placementSessionId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "skill",
+                "level",
+                "decidedAt",
+                "placementSessionId"
+              ]
+            },
+            "description": "Kararların zaman çizelgesi, en yeniden eskiye"
+          }
+        },
+        "required": [
+          "view",
+          "studentId",
+          "title",
+          "estimate",
+          "current",
+          "placements",
+          "timeline"
+        ]
+      },
+      "CefrProfileInput": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CefrProfileStaffInput"
+          },
+          {
+            "$ref": "#/components/schemas/CefrProfileLearnerInput"
+          }
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -24084,6 +25166,1110 @@
           "studentStatus"
         ],
         "additionalProperties": false
+      },
+      "CefrProfileStaff": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "staff",
+            "description": "Yönetici ve öğretmen görünümü"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "estimate": {
+            "type": "object",
+            "properties": {
+              "context": {
+                "type": "string",
+                "enum": [
+                  "general",
+                  "placement"
+                ]
+              },
+              "computedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "overall": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "suggested"
+                      },
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "level"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "insufficient"
+                      },
+                      "missingSkills": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "reading",
+                            "listening",
+                            "writing",
+                            "speaking",
+                            "mediation",
+                            "language_use"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "missingSkills"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "skills": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "suggested",
+                        "insufficient"
+                      ]
+                    },
+                    "level": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "Pre-A1",
+                            "A1",
+                            "A2",
+                            "A2+",
+                            "B1",
+                            "B1+",
+                            "B2",
+                            "B2+",
+                            "C1",
+                            "C2"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "plus": {
+                      "type": "boolean"
+                    },
+                    "demonstratedBy": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "general",
+                            "placement"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "missingEvidence": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "missingItems": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "evidenceIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "label",
+                    "status",
+                    "level",
+                    "plus",
+                    "demonstratedBy",
+                    "missingEvidence",
+                    "missingItems",
+                    "evidenceIds"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "label": {
+                "type": "string",
+                "description": "\"Tahmini seviye\": öneri karar değildir (DOM-BEC-034)"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "task",
+                        "placement"
+                      ]
+                    },
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    "targetLevel": {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    "performedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "successful": {
+                      "type": "boolean"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "source",
+                    "skill",
+                    "targetLevel",
+                    "performedAt",
+                    "expiresAt",
+                    "successful",
+                    "percent"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "excluded": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "practice",
+                        "preliminary",
+                        "no_skill",
+                        "no_target_level",
+                        "unscored",
+                        "appeal_pending",
+                        "not_yet",
+                        "expired"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "context",
+              "computedAt",
+              "overall",
+              "skills",
+              "label",
+              "evidence",
+              "excluded"
+            ],
+            "additionalProperties": false
+          },
+          "current": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "skill": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Boşsa genel seviye"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "Pre-A1",
+                    "A1",
+                    "A2",
+                    "A2+",
+                    "B1",
+                    "B1+",
+                    "B2",
+                    "B2+",
+                    "C1",
+                    "C2"
+                  ]
+                },
+                "decisionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "skill",
+                "level",
+                "decisionId",
+                "decidedAt"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Beceri başına güncel seviye: en yeni insan kararı"
+          },
+          "placements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "in_person",
+                    "remote"
+                  ]
+                },
+                "startedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "completedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "validity": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "in_progress",
+                        "valid",
+                        "expired"
+                      ]
+                    },
+                    "preliminary": {
+                      "type": "boolean"
+                    },
+                    "completedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "validUntil": {
+                      "description": "Geçerliliğin bittiği an (hariç)",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "preliminary"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "mode",
+                "startedAt",
+                "completedAt",
+                "validity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "placement",
+                    "progression",
+                    "correction"
+                  ]
+                },
+                "skill": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Boşsa genel seviye"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "Pre-A1",
+                    "A1",
+                    "A2",
+                    "A2+",
+                    "B1",
+                    "B1+",
+                    "B2",
+                    "B2+",
+                    "C1",
+                    "C2"
+                  ]
+                },
+                "rationale": {
+                  "type": "string"
+                },
+                "decidedByUserId": {
+                  "type": "string"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "placementSessionId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "skill",
+                "level",
+                "rationale",
+                "decidedByUserId",
+                "decidedAt",
+                "placementSessionId"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Kararların zaman çizelgesi, en yeniden eskiye"
+          }
+        },
+        "required": [
+          "view",
+          "studentId",
+          "title",
+          "estimate",
+          "current",
+          "placements",
+          "timeline"
+        ],
+        "additionalProperties": false
+      },
+      "CefrProfileLearner": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "const": "learner",
+            "description": "Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "estimate": {
+            "type": "object",
+            "properties": {
+              "context": {
+                "type": "string",
+                "enum": [
+                  "general",
+                  "placement"
+                ]
+              },
+              "computedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "overall": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "suggested"
+                      },
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "level"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "insufficient"
+                      },
+                      "missingSkills": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "reading",
+                            "listening",
+                            "writing",
+                            "speaking",
+                            "mediation",
+                            "language_use"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "missingSkills"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "skills": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "suggested",
+                        "insufficient"
+                      ]
+                    },
+                    "level": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "Pre-A1",
+                            "A1",
+                            "A2",
+                            "A2+",
+                            "B1",
+                            "B1+",
+                            "B2",
+                            "B2+",
+                            "C1",
+                            "C2"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "plus": {
+                      "type": "boolean"
+                    },
+                    "demonstratedBy": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "general",
+                            "placement"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "missingEvidence": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "missingItems": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "evidenceIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "label",
+                    "status",
+                    "level",
+                    "plus",
+                    "demonstratedBy",
+                    "missingEvidence",
+                    "missingItems",
+                    "evidenceIds"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "label": {
+                "type": "string",
+                "description": "\"Tahmini seviye\": öneri karar değildir (DOM-BEC-034)"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "task",
+                        "placement"
+                      ]
+                    },
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    "targetLevel": {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    "performedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "successful": {
+                      "type": "boolean"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "source",
+                    "skill",
+                    "targetLevel",
+                    "performedAt",
+                    "expiresAt",
+                    "successful",
+                    "percent"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "excluded": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "practice",
+                        "preliminary",
+                        "no_skill",
+                        "no_target_level",
+                        "unscored",
+                        "appeal_pending",
+                        "not_yet",
+                        "expired"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "context",
+              "computedAt",
+              "overall",
+              "skills",
+              "label",
+              "evidence",
+              "excluded"
+            ],
+            "additionalProperties": false
+          },
+          "current": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "skill": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Boşsa genel seviye"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "Pre-A1",
+                    "A1",
+                    "A2",
+                    "A2+",
+                    "B1",
+                    "B1+",
+                    "B2",
+                    "B2+",
+                    "C1",
+                    "C2"
+                  ]
+                },
+                "decisionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "skill",
+                "level",
+                "decisionId",
+                "decidedAt"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Beceri başına güncel seviye: en yeni insan kararı"
+          },
+          "placements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "in_person",
+                    "remote"
+                  ]
+                },
+                "startedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "completedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "validity": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "in_progress",
+                        "valid",
+                        "expired"
+                      ]
+                    },
+                    "preliminary": {
+                      "type": "boolean"
+                    },
+                    "completedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "validUntil": {
+                      "description": "Geçerliliğin bittiği an (hariç)",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "preliminary"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "mode",
+                "startedAt",
+                "completedAt",
+                "validity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "placement",
+                    "progression",
+                    "correction"
+                  ]
+                },
+                "skill": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Boşsa genel seviye"
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "Pre-A1",
+                    "A1",
+                    "A2",
+                    "A2+",
+                    "B1",
+                    "B1+",
+                    "B2",
+                    "B2+",
+                    "C1",
+                    "C2"
+                  ]
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "placementSessionId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "skill",
+                "level",
+                "decidedAt",
+                "placementSessionId"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Kararların zaman çizelgesi, en yeniden eskiye"
+          }
+        },
+        "required": [
+          "view",
+          "studentId",
+          "title",
+          "estimate",
+          "current",
+          "placements",
+          "timeline"
+        ],
+        "additionalProperties": false
+      },
+      "CefrProfile": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CefrProfileStaff"
+          },
+          {
+            "$ref": "#/components/schemas/CefrProfileLearner"
+          }
+        ]
       }
     }
   },
@@ -79507,553 +81693,7 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "type": "object",
-                      "properties": {
-                        "studentId": {
-                          "type": "string"
-                        },
-                        "title": {
-                          "type": "string"
-                        },
-                        "estimate": {
-                          "type": "object",
-                          "properties": {
-                            "context": {
-                              "type": "string",
-                              "enum": [
-                                "general",
-                                "placement"
-                              ]
-                            },
-                            "computedAt": {
-                              "type": "string",
-                              "format": "date-time",
-                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                            },
-                            "overall": {
-                              "oneOf": [
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "status": {
-                                      "type": "string",
-                                      "enum": [
-                                        "suggested"
-                                      ]
-                                    },
-                                    "level": {
-                                      "type": "string",
-                                      "enum": [
-                                        "Pre-A1",
-                                        "A1",
-                                        "A2",
-                                        "A2+",
-                                        "B1",
-                                        "B1+",
-                                        "B2",
-                                        "B2+",
-                                        "C1",
-                                        "C2"
-                                      ]
-                                    }
-                                  },
-                                  "required": [
-                                    "status",
-                                    "level"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "status": {
-                                      "type": "string",
-                                      "enum": [
-                                        "insufficient"
-                                      ]
-                                    },
-                                    "missingSkills": {
-                                      "type": "array",
-                                      "items": {
-                                        "type": "string",
-                                        "enum": [
-                                          "reading",
-                                          "listening",
-                                          "writing",
-                                          "speaking",
-                                          "mediation",
-                                          "language_use"
-                                        ]
-                                      }
-                                    }
-                                  },
-                                  "required": [
-                                    "status",
-                                    "missingSkills"
-                                  ],
-                                  "additionalProperties": false
-                                }
-                              ]
-                            },
-                            "skills": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "properties": {
-                                  "skill": {
-                                    "type": "string",
-                                    "enum": [
-                                      "reading",
-                                      "listening",
-                                      "writing",
-                                      "speaking",
-                                      "mediation",
-                                      "language_use"
-                                    ]
-                                  },
-                                  "label": {
-                                    "type": "string"
-                                  },
-                                  "status": {
-                                    "type": "string",
-                                    "enum": [
-                                      "suggested",
-                                      "insufficient"
-                                    ]
-                                  },
-                                  "level": {
-                                    "anyOf": [
-                                      {
-                                        "type": "string",
-                                        "enum": [
-                                          "Pre-A1",
-                                          "A1",
-                                          "A2",
-                                          "A2+",
-                                          "B1",
-                                          "B1+",
-                                          "B2",
-                                          "B2+",
-                                          "C1",
-                                          "C2"
-                                        ]
-                                      },
-                                      {
-                                        "type": "null"
-                                      }
-                                    ]
-                                  },
-                                  "plus": {
-                                    "type": "boolean"
-                                  },
-                                  "demonstratedBy": {
-                                    "anyOf": [
-                                      {
-                                        "type": "string",
-                                        "enum": [
-                                          "general",
-                                          "placement"
-                                        ]
-                                      },
-                                      {
-                                        "type": "null"
-                                      }
-                                    ]
-                                  },
-                                  "missingEvidence": {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991
-                                  },
-                                  "missingItems": {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991
-                                  },
-                                  "evidenceIds": {
-                                    "type": "array",
-                                    "items": {
-                                      "type": "string"
-                                    }
-                                  }
-                                },
-                                "required": [
-                                  "skill",
-                                  "label",
-                                  "status",
-                                  "level",
-                                  "plus",
-                                  "demonstratedBy",
-                                  "missingEvidence",
-                                  "missingItems",
-                                  "evidenceIds"
-                                ],
-                                "additionalProperties": false
-                              }
-                            },
-                            "label": {
-                              "type": "string",
-                              "description": "\"Tahmini seviye\": öneri karar değildir (DOM-BEC-034)"
-                            },
-                            "evidence": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "properties": {
-                                  "id": {
-                                    "type": "string"
-                                  },
-                                  "title": {
-                                    "type": "string"
-                                  },
-                                  "source": {
-                                    "type": "string",
-                                    "enum": [
-                                      "task",
-                                      "placement"
-                                    ]
-                                  },
-                                  "skill": {
-                                    "type": "string",
-                                    "enum": [
-                                      "reading",
-                                      "listening",
-                                      "writing",
-                                      "speaking",
-                                      "mediation",
-                                      "language_use"
-                                    ]
-                                  },
-                                  "targetLevel": {
-                                    "type": "string",
-                                    "enum": [
-                                      "Pre-A1",
-                                      "A1",
-                                      "A2",
-                                      "A2+",
-                                      "B1",
-                                      "B1+",
-                                      "B2",
-                                      "B2+",
-                                      "C1",
-                                      "C2"
-                                    ]
-                                  },
-                                  "performedAt": {
-                                    "type": "string",
-                                    "format": "date-time",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                  },
-                                  "expiresAt": {
-                                    "type": "string",
-                                    "format": "date-time",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                  },
-                                  "successful": {
-                                    "type": "boolean"
-                                  },
-                                  "percent": {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991
-                                  }
-                                },
-                                "required": [
-                                  "id",
-                                  "title",
-                                  "source",
-                                  "skill",
-                                  "targetLevel",
-                                  "performedAt",
-                                  "expiresAt",
-                                  "successful",
-                                  "percent"
-                                ],
-                                "additionalProperties": false
-                              }
-                            },
-                            "excluded": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "properties": {
-                                  "id": {
-                                    "type": "string"
-                                  },
-                                  "title": {
-                                    "type": "string"
-                                  },
-                                  "reason": {
-                                    "type": "string",
-                                    "enum": [
-                                      "practice",
-                                      "preliminary",
-                                      "no_skill",
-                                      "no_target_level",
-                                      "unscored",
-                                      "appeal_pending",
-                                      "not_yet",
-                                      "expired"
-                                    ]
-                                  }
-                                },
-                                "required": [
-                                  "id",
-                                  "title",
-                                  "reason"
-                                ],
-                                "additionalProperties": false
-                              }
-                            }
-                          },
-                          "required": [
-                            "context",
-                            "computedAt",
-                            "overall",
-                            "skills",
-                            "label",
-                            "evidence",
-                            "excluded"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "current": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "skill": {
-                                "anyOf": [
-                                  {
-                                    "type": "string",
-                                    "enum": [
-                                      "reading",
-                                      "listening",
-                                      "writing",
-                                      "speaking",
-                                      "mediation",
-                                      "language_use"
-                                    ]
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ],
-                                "description": "Boşsa genel seviye"
-                              },
-                              "level": {
-                                "type": "string",
-                                "enum": [
-                                  "Pre-A1",
-                                  "A1",
-                                  "A2",
-                                  "A2+",
-                                  "B1",
-                                  "B1+",
-                                  "B2",
-                                  "B2+",
-                                  "C1",
-                                  "C2"
-                                ]
-                              },
-                              "decisionId": {
-                                "type": "string",
-                                "format": "uuid",
-                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                              },
-                              "decidedAt": {
-                                "type": "string",
-                                "format": "date-time",
-                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                              }
-                            },
-                            "required": [
-                              "skill",
-                              "level",
-                              "decisionId",
-                              "decidedAt"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "description": "Beceri başına güncel seviye: en yeni insan kararı"
-                        },
-                        "timeline": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "format": "uuid",
-                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                              },
-                              "kind": {
-                                "type": "string",
-                                "enum": [
-                                  "placement",
-                                  "progression",
-                                  "correction"
-                                ]
-                              },
-                              "skill": {
-                                "anyOf": [
-                                  {
-                                    "type": "string",
-                                    "enum": [
-                                      "reading",
-                                      "listening",
-                                      "writing",
-                                      "speaking",
-                                      "mediation",
-                                      "language_use"
-                                    ]
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ],
-                                "description": "Boşsa genel seviye"
-                              },
-                              "level": {
-                                "type": "string",
-                                "enum": [
-                                  "Pre-A1",
-                                  "A1",
-                                  "A2",
-                                  "A2+",
-                                  "B1",
-                                  "B1+",
-                                  "B2",
-                                  "B2+",
-                                  "C1",
-                                  "C2"
-                                ]
-                              },
-                              "rationale": {
-                                "type": "string"
-                              },
-                              "decidedByUserId": {
-                                "type": "string"
-                              },
-                              "decidedAt": {
-                                "type": "string",
-                                "format": "date-time",
-                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                              },
-                              "placementSessionId": {
-                                "anyOf": [
-                                  {
-                                    "type": "string",
-                                    "format": "uuid",
-                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "kind",
-                              "skill",
-                              "level",
-                              "rationale",
-                              "decidedByUserId",
-                              "decidedAt",
-                              "placementSessionId"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "description": "Kararların zaman çizelgesi, en yeniden eskiye"
-                        },
-                        "placements": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "format": "uuid",
-                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                              },
-                              "mode": {
-                                "type": "string",
-                                "enum": [
-                                  "in_person",
-                                  "remote"
-                                ]
-                              },
-                              "startedAt": {
-                                "type": "string",
-                                "format": "date-time",
-                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                              },
-                              "completedAt": {
-                                "anyOf": [
-                                  {
-                                    "type": "string",
-                                    "format": "date-time",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "validity": {
-                                "type": "object",
-                                "properties": {
-                                  "status": {
-                                    "type": "string",
-                                    "enum": [
-                                      "in_progress",
-                                      "valid",
-                                      "expired"
-                                    ]
-                                  },
-                                  "preliminary": {
-                                    "type": "boolean"
-                                  },
-                                  "completedAt": {
-                                    "type": "string",
-                                    "format": "date-time",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                  },
-                                  "validUntil": {
-                                    "description": "Geçerliliğin bittiği an (hariç)",
-                                    "type": "string",
-                                    "format": "date-time",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                  }
-                                },
-                                "required": [
-                                  "status",
-                                  "preliminary"
-                                ],
-                                "additionalProperties": false
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "mode",
-                              "startedAt",
-                              "completedAt",
-                              "validity"
-                            ],
-                            "additionalProperties": false
-                          }
-                        }
-                      },
-                      "required": [
-                        "studentId",
-                        "title",
-                        "estimate",
-                        "current",
-                        "timeline",
-                        "placements"
-                      ],
-                      "additionalProperties": false
+                      "$ref": "#/components/schemas/CefrProfile"
                     }
                   },
                   "required": [

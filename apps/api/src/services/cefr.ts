@@ -653,7 +653,8 @@ export function decidePlacement(
  * Kursiyerin CEFR profili (IST-060; DOM-BEC-034; core `cefrProfileView`): beceri başına güncel
  * seviye (insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi.
  * Öğrenci kendisi, veli bağlı çocuğu, öğretmen kursiyerin grubuna göre, yönetici herkesi görür;
- * göremediği ya da olmayan öğrenci 404 (varlık sızmaz).
+ * göremediği ya da olmayan öğrenci 404 (varlık sızmaz). Öğrenci ve veli `learner` görünümünü alır
+ * (kararın gerekçesi ve vereni yok), personel `staff` görünümünü.
  */
 // TODO(cefr-gorev-kaniti): Görev kanıtları (F4a sayılan deneme ve kesinleşmiş rubrik puanı)
 // henüz yüklenmiyor; öneri bitmiş tespit oturumlarının bölümlerinden çıkar.
@@ -677,7 +678,8 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   const suggestion = suggestCefrLevels({ candidates, now: ctx.now })
   const decisions = await listLevelDecisions(ctx.db, ctx.institutionId, learner)
   const view = cefrProfileView({ institutionType: 'language_school', suggestion, decisions })
-  return {
+  const timeline = (view.decisions?.history ?? []).map(decisionView)
+  const shared = {
     studentId,
     title: view.title,
     estimate: {
@@ -702,7 +704,6 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
       decisionId: decision.id,
       decidedAt: decision.decidedAt,
     })),
-    timeline: (view.decisions?.history ?? []).map(decisionView),
     placements: sessions.map((session) => ({
       id: session.id,
       mode: session.mode,
@@ -711,4 +712,21 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
       validity: placementValidity(session, ctx.now),
     })),
   }
+  // Öğrenci ve veli kararın gerekçesini (öğretmenin serbest metni) ve vereni görmez (Sabah kararı
+  // 35); alan kapsamı role özgü yanıt şemasıyla da kapanır.
+  if (ctx.actor.role === 'ogrenci' || ctx.actor.role === 'veli') {
+    return {
+      view: 'learner' as const,
+      ...shared,
+      timeline: timeline.map((d) => ({
+        id: d.id,
+        kind: d.kind,
+        skill: d.skill,
+        level: d.level,
+        decidedAt: d.decidedAt,
+        placementSessionId: d.placementSessionId,
+      })),
+    }
+  }
+  return { view: 'staff' as const, ...shared, timeline }
 }

@@ -665,6 +665,40 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
     await ok(await open(t, { learnerId: 's-ece' }, t.cookies.admin), 201)
   })
 
+  test('IST-060 profil görünümü: öğrenci ve veli kararın gerekçesini ve vereni görmez, personel görür', async () => {
+    const t = await tenant()
+    const session = await scoredSession(t)
+    await ok(await command(t.cookies.teacher, session.id, 'decide', decideBody(session.version)))
+    const profile = async (cookie: string) =>
+      ok(await call('GET', '/students/s-deniz/cefr-profile', cookie))
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const view = await profile(cookie)
+      assert.equal(view.view, 'learner')
+      assert.equal(view.timeline.length, 2)
+      for (const decision of view.timeline) {
+        assert.ok(!('rationale' in decision), JSON.stringify(decision))
+        assert.ok(!('decidedByUserId' in decision), JSON.stringify(decision))
+      }
+      assert.deepEqual(
+        view.current.map((c: Json) => [c.skill, c.level]),
+        [
+          [null, 'B1'],
+          ['speaking', 'B1+'],
+        ],
+      )
+    }
+    for (const cookie of [t.cookies.teacher, t.cookies.admin]) {
+      const view = await profile(cookie)
+      assert.equal(view.view, 'staff')
+      assert.ok(
+        view.timeline.every(
+          (d: Json) =>
+            d.rationale === decideBody(1).rationale && d.decidedByUserId === t.users.teacher.id,
+        ),
+      )
+    }
+  })
+
   test('IST-060 profil kapsamı: öğrenci kendisi, veli çocuğu, öğretmen grubundaki kursiyer', async () => {
     const t = await tenant()
     await scoredSession(t)

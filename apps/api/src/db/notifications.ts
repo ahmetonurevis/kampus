@@ -20,9 +20,10 @@ import { records } from './schema/records.ts'
  * Sıra deponun sırasıdır (`position`, kimlik; en yeni önce): bildirim yalnız eklenir, ekleme
  * sırası oluşturma sırasıdır.
  */
-// TODO(F6-bildirim-indeksi): `(institution_id, data ->> 'studentId', position) where collection =
-// 'notifications'` ifade indeksi migration gerektirir; o zamana kadar süzgeç kurumun bildirim
-// satırlarını (birincil anahtarın `(institution_id, collection)` önekiyle) tarar.
+// Süzgeç `records_notifications_idx` ifade indeksini kullanır: `(institution_id, data ->> 'studentId',
+// position, id) where collection = 'notifications' and archived_at is null`. İfade ve koşul indeksle
+// birebir olmalı; anahtar adı parametre değil sabit metindir (parametreli `data ->> $1` indeksle
+// eşleşmez).
 
 const NOTIFICATIONS = 'notifications'
 const READS = 'notificationReads'
@@ -30,10 +31,10 @@ const reads = alias(records, 'notification_reads')
 
 export type AudienceIds = Readonly<Record<NotificationAudience, readonly string[]>>
 
-const field = (name: string) => sql`(${records.data} ->> ${name}::text)`
+const field = (name: 'audience' | 'studentId') => sql`(${records.data} ->> ${sql.raw(`'${name}'`)})`
 
 /** Aktörün gördüğü bildirimler; görebileceği bildirim yoksa `null`. */
-function visibleTo(institutionId: string, audience: AudienceIds): SQL | null {
+export function visibleTo(institutionId: string, audience: AudienceIds): SQL | null {
   const parts = Object.entries(audience)
     .filter(([, ids]) => ids.length > 0)
     .map(

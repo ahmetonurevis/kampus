@@ -59,5 +59,11 @@ export const records = pgTable(
     index('records_conversation_messages_idx')
       .on(table.institutionId, sql`(${table.data} ->> 'conversationId')`, table.position, table.id)
       .where(sql`${table.collection} = 'conversationMessages' and ${table.archivedAt} is null`),
+    // Uygulama içi bildirimler (`db/notifications.ts`): görünürlük süzgeci öğrenci kimliğine
+    // eşitlik, sıra `position desc, id desc`. Sorgu aynı ifadeyi (sabit anahtar adıyla) ve
+    // koşulu kullanmalı.
+    index('records_notifications_idx')
+      .on(table.institutionId, sql`(${table.data} ->> 'studentId')`, table.position, table.id)
+      .where(sql`${table.collection} = 'notifications' and ${table.archivedAt} is null`),
   ],
 )

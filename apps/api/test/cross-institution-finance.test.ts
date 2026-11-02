@@ -100,6 +100,10 @@ async function tenant(type: 'school' | 'language_school' = 'school') {
     cookies: {
       admin: await signInAs(app, institution.admin),
       frontDesk: await signInAs(app, await createMember(app, institution.id, 'onburo')),
+      teacher: await signInAs(
+        app,
+        await createMember(app, institution.id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }]),
+      ),
     },
   }
 }
@@ -133,6 +137,32 @@ async function prospectCopy(t: Tenant) {
     db,
     t.id,
     [{ collection: 'prospects', id, data: { ...PROSPECT, id } }],
+    FIXED_NOW,
+  )
+  return { prospectId: id }
+}
+
+/** `prospectCopy` gibi, ama dersi yapılmış (geçmiş) bir deneme dersiyle: sonuç yazılabilir. */
+async function prospectWithHeldTrial(t: Tenant) {
+  assert.ok(PROSPECT)
+  const lesson = SEED.schedule.find(
+    (item) => item.classId === 'c1' && Date.parse(item.date) < +FIXED_NOW,
+  )
+  assert.ok(lesson, 'örnek veride 7-A’nın geçmiş dersi yok')
+  const id = `test-capraz-deneme-${randomUUID().slice(0, 8)}`
+  const trialLesson = {
+    lessonId: lesson.id,
+    classId: lesson.classId,
+    date: lesson.date,
+    duration: lesson.duration,
+    guardianConsentAt: null,
+    scheduledAt: FIXED_NOW.toISOString(),
+    by: { role: 'onburo', userId: 'u-test' },
+  }
+  await insertMissingRecords(
+    db,
+    t.id,
+    [{ collection: 'prospects', id, data: { ...PROSPECT, id, minor: false, trialLesson } }],
     FIXED_NOW,
   )
   return { prospectId: id }
@@ -223,6 +253,20 @@ const CASES: readonly (CrossCase<Tenant> & { type?: 'language_school' })[] = [
       method: 'POST',
       url: `/api/v1/prospects/${prospectId}/trial-lessons`,
       body: { lessonId: LESSON?.id, guardianConsent: true },
+      ifMatch: 1,
+    }),
+  },
+  {
+    // Deneme sonucunu dersin öğretmeni yazar; yalnız dil okulundadır (DOM-DIL-031).
+    key: 'POST /api/v1/prospects/:prospectId/trial-result',
+    kind: 'kayıt',
+    type: 'language_school',
+    actor: (a) => a.cookies.teacher,
+    make: prospectWithHeldTrial,
+    request: ({ prospectId }) => ({
+      method: 'POST',
+      url: `/api/v1/prospects/${prospectId}/trial-result`,
+      body: { fit: 'suitable' },
       ifMatch: 1,
     }),
   },

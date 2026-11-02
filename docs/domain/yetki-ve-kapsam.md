@@ -10,7 +10,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 
 | Kaynak                     | yonetici                 | onburo                          | ogretmen                                                                                     | ogrenci                                      | veli                                              |
 | -------------------------- | ------------------------ | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------- |
-| Aday, tanışma görüşmesi    | Y (kurum)                | Y (kurum)                       | —                                                                                            | —                                            | —                                                 |
+| Aday, tanışma görüşmesi    | Y (kurum)                | Y (kurum)                       | O + sonuç Y (kendi grubunun deneme adayı, DOM-YTK-080)                                       | —                                            | —                                                 |
 | Kesin kayıt, sözleşme      | Y                        | Y                               | —                                                                                            | — (yetişkin: O kendi)                        | O (çocuk; taraf olduğu sözleşme)                  |
 | Fatura, tahsilat, dekont   | Y; iade onayı            | Y (tahsilat; iade onayı yok)    | —                                                                                            | O kendi (mobilde yok)                        | O + öder (ödeyici olduğu çocuk)                   |
 | Kampüs, sınıf, kadro       | Y                        | O (sınıf, kontenjan)            | O (kendi sınıfları)                                                                          | —                                            | —                                                 |
@@ -396,6 +396,14 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/academic-years.ts`)
 - **Kaynak:** İşletme kuralı. IST-094.
 - **Kurum türü:** ikisi
 - **Kodda:** var — core `lesson`, `substitute`, `lesson-cancel` komutları ve `validateLesson`; API `POST /api/v1/lessons` (`Idempotency-Key` zorunlu, 201 + `Location`), `PATCH /api/v1/lessons/:lessonId`, `POST …/:lessonId/substitute`, `POST …/:lessonId/cancel` (var olan derse yazma `If-Match` ister; 409 `version_conflict`). Hata kodları: 409 `teacher_lesson_conflict`, `class_lesson_conflict`, `room_conflict`, `teacher_appointment_conflict`, `teacher_event_conflict`, `tutor_schedule_conflict`, `lesson_already_cancelled`; 422 `lesson_in_past`, `lesson_cancelled`, `lesson_teacher_mismatch`, `record_inactive`, `lesson_attendance_taken`, `teacher_unchanged`, `lesson_has_substitution`. Yoklama gün bazlıdır (DOM-AKD-030 boşluğu: ders bazlı yoklama yok).
+
+### DOM-YTK-080 · Öğretmen kendi grubunun deneme adayını sınırlı okur ve sonucunu yazar
+
+- **Kural:** Deneme dersine kendi grubunun dersinde katılan adayı `ogretmen` okur ve deneme sonucunu (`suitable`, `lower_level`, `upper_level` ve kısa not) yazar; başka grubun adayı, denemesi olmayan aday ve okul kurumundaki aday öğretmene görünmez (404; adayın varlığı sızmaz). Öğretmene yalnız ad, kampüs, ilgi, aşama, 18 yaş altı bayrağı ve deneme dersi bilgisi döner; telefon, e-posta, veli adı, aday notları, kaynak, rıza ve aydınlatma kaydı, tanışma görüşmesi ve oluşturan kişi dönmez. Sonuç yazmak aday aşamasını değiştirmez. Ön büro, yönetici, öğrenci ve veli sonuç yazamaz (403).
+- **Gerekçe:** Deneme sonucu akademik bir değerlendirmedir ve dersi veren öğretmenin işidir (`DOM-DIL-031`); iletişim ve satış bilgisi öğretmenin işi için gerekmez, veri en aza indirilir.
+- **Kaynak:** İşletme kuralı; KVKK md. 4/2-ç (ölçülülük).
+- **Kurum türü:** `language_school`
+- **Kodda:** var — core `lib/authorize.ts` (`prospect.trialResult`, hedef `classId`, kapsam dışı 404), `lib/scope.ts` (`ownTrialClass` satır kuralı, `PROSPECT_TEACHER_VISIBLE` alan görünürlüğü; yeni aday alanı karar verilmeden derlenmez), `lib/prospects.ts` (`recordTrialResult`); API `POST /api/v1/prospects/:prospectId/trial-result` (`If-Match` zorunlu) ve `GET /api/v1/collections/prospects` öğretmen kapsamı. Öğretmen ekranı yoktur.
 
 ## Mevcut kodla farklar
 

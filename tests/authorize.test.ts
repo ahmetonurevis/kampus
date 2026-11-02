@@ -80,6 +80,7 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'prospect.note': ['yonetici', 'onburo'],
     'prospect.meeting': ['yonetici', 'onburo'],
     'prospect.trial': ['yonetici', 'onburo'],
+    'prospect.trialResult': ['ogretmen'],
     'prospect.enroll': ['yonetici', 'onburo'],
     'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
     'notification.read_all': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
@@ -374,4 +375,48 @@ test('DOM-YTK-057 rıza okuması: personel rıza vermez, öğretmen yalnız sonu
     closed.modules[key as keyof typeof closed.modules] = false
   assert.equal(code(authorize(actors.veli, 'consent.withdraw', {}, closed)), 'allowed')
   assert.equal(code(authorize(actors.ogretmen, 'notice.acknowledge', {}, closed)), 'allowed')
+})
+
+test('DOM-DIL-031: deneme sonucunu yalnız dersin grubunun öğretmeni yazar; kapsam dışı grup 404, okulda 404', () => {
+  const state = seed()
+  const language = { institutionType: 'language_school' } as const
+  const target = { classId: 'c1' }
+  assert.equal(
+    code(authorize(actors.ogretmen, 'prospect.trialResult', target, state, language)),
+    'allowed',
+  )
+  // Dersi vermeyen öğretmen adayın varlığını öğrenmez: izinsiz rol 403, kapsam dışı öğretmen 404.
+  const outsider = state.teachers.find(
+    (teacher) =>
+      authorize(
+        { role: 'ogretmen', links: [{ kind: 'teacher', recordId: teacher.id }] },
+        'prospect.trialResult',
+        target,
+        state,
+        language,
+      ).allowed === false,
+  )
+  assert.ok(outsider, 'c1 dışında ders veren bir öğretmen bekleniyordu')
+  const denied = authorize(
+    { role: 'ogretmen', links: [{ kind: 'teacher', recordId: outsider.id }] },
+    'prospect.trialResult',
+    target,
+    state,
+    language,
+  )
+  assert.equal(denied.allowed, false)
+  assert.equal(denied.allowed ? '' : denied.kind, 'not_found')
+  for (const role of ['yonetici', 'onburo', 'ogrenci', 'veli'] as const)
+    assert.equal(
+      code(authorize(actors[role], 'prospect.trialResult', target, state, language)),
+      'permission_denied',
+      role,
+    )
+  // Okul kurumunda işlem yoktur; rol denetiminden önce 404.
+  for (const role of roles)
+    assert.equal(
+      code(authorize(actors[role], 'prospect.trialResult', target, state)),
+      'trial_lesson_unavailable',
+      role,
+    )
 })

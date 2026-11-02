@@ -9,6 +9,7 @@ import {
   changeProspectStageSchema,
   createProspectSchema,
   scheduleMeetingSchema,
+  recordTrialResultSchema,
   scheduleTrialLessonSchema,
 } from '@kampus/school-core/lib/prospects.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
@@ -23,6 +24,7 @@ import {
   enrollProspectCommand,
   guardianMatchesFor,
   scheduleProspectMeetingCommand,
+  recordTrialResultCommand,
   scheduleTrialLessonCommand,
   studentIdentityFor,
 } from '../services/prospects.ts'
@@ -94,7 +96,9 @@ export function registerProspectRoutes(app: FastifyInstance) {
       app.authenticate,
       ...(module === null ? [] : [app.requireModule(module)]),
       ...(EXTRA_MODULES[action] ?? []).map((extra) => app.requireModule(extra)),
-      ...(action === 'prospect.trial' ? [requireLanguageSchool()] : []),
+      ...(action === 'prospect.trial' || action === 'prospect.trialResult'
+        ? [requireLanguageSchool()]
+        : []),
       app.requireRole(WRITE_ACTION_ROLES[action]),
       ifMatch === 'reject' ? rejectIfMatch() : requireIfMatch(),
       captureInput(),
@@ -329,6 +333,33 @@ export function registerProspectRoutes(app: FastifyInstance) {
       sendCommand(
         reply,
         await scheduleTrialLessonCommand(
+          contextOf(request),
+          request.params.prospectId,
+          input(request),
+          options(request, 'optional'),
+        ),
+      ),
+  )
+
+  typed.post(
+    '/api/v1/prospects/:prospectId/trial-result',
+    {
+      preValidation: guard('prospect.trialResult', 'required'),
+      schema: {
+        operationId: 'recordTrialResult',
+        tags: ['prospects'],
+        summary: 'Deneme dersi sonucunu yaz',
+        description: `Yalnız dil okulunda: dersin grubunun öğretmeni, deneme dersinden sonra adayın seviye uygunluğunu (\`suitable\`, \`lower_level\`, \`upper_level\`) ve isteğe bağlı kısa notunu yazar (core \`recordTrialResult\`, DOM-DIL-031). Sonuç aday aşamasını değiştirmez; kesin kayıt yalnız kayıt işlemiyle olur. Okul kurumunda uç her rol için 404'tür. Öğretmenin kapsamında olmayan grubun adayı ve denemesi olmayan aday 404'tür (adayın varlığı sızmaz). Henüz yapılmamış ders 409 \`trial_not_held\`, iptal edilmiş ders 409 \`trial_lesson_cancelled\`, kapalı aday 409 \`prospect_closed\`. Sonuç yeniden yazılabilir, son yazılan geçerlidir. ${ifMatchNote} Roller: ${rolesOf('prospect.trialResult')}.`,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        params: prospectParamsSchema,
+        body: recordTrialResultSchema,
+        response,
+      },
+    },
+    async (request, reply) =>
+      sendCommand(
+        reply,
+        await recordTrialResultCommand(
           contextOf(request),
           request.params.prospectId,
           input(request),

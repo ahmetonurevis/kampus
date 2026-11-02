@@ -4188,6 +4188,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quizzes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quizler
+         * @description Quizler oluşturma anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `status` (`open`, `closed`, `all`). Yönetici ve öğretmen satırı deneme özetini (`statistics`: başlatan, sonuçlanan, süren, cevaplardan hesaplanan ortalama), öğrenci ve veli satırı yalnız kendi/çocuğunun denemesini (`attempts`) taşır. Bilinmeyen parametre 400. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez (DOM-AKD-078). Sınıf ortalamasını ve bütün denemeleri yönetici ile sınıfa giren öğretmen görür; öğrenci yalnız kendi, veli çocuğunun denemesini (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listQuizzes"];
+        put?: never;
+        /**
+         * Quiz hazırla
+         * @description Soru bankasından yeni quiz (core `createQuiz`, DOM-AKD-075). Öğretmen yalnız derse girdiği sınıf ve branşa (403 `quiz_scope_denied`); sınıfa birden çok dersle giriyorsa `subjectId` zorunlu (422 `quiz_subject_required`). Yönetici `subjectId` verir; quizin öğretmeni sınıfın o dersine atanmış aktif öğretmendir (yoksa 422 `quiz_teacher_unavailable`). Sorular (`questionIds`, 1–50, tekil) kurumun bankasında (422 `quiz_question_unavailable`), quizin dersinde ve sınıfın düzeyinde olmalı (422 `quiz_question_mismatch`). `duration` 5–120 dakika. `dueDate` isteğe bağlı saat dilimli ISO 8601 an, UTC saklanır; geçmişte olamaz (422 `quiz_due_in_past`). Olmayan sınıf 404, pasif sınıf 422 `record_inactive`. `Idempotency-Key` zorunlu; `If-Match` 400. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`.
+         */
+        post: operations["createQuiz"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quizzes/{quizId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quiz
+         * @description Tek quiz. Yönetici ve öğretmen `QuizStaffDetail` alır: anahtarsız sorular, cevap anahtarı (`answerKey`), görünen bütün denemeler ve özet. Öğrenci ve veli `QuizPersonalDetail` alır: sorular öğrencide deneme başlatılınca, velide çocuğunun denemesi sonuçlanınca açılır (aksi `null`); `attempts` kendi/çocuğunun denemesidir, sonuç süre işlerken `null`. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez (DOM-AKD-078). Sınıf ortalamasını ve bütün denemeleri yönetici ile sınıfa giren öğretmen görür; öğrenci yalnız kendi, veli çocuğunun denemesini (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getQuiz"];
+        put?: never;
+        post?: never;
+        /**
+         * Quizi arşivle
+         * @description Quizi arşivler (core `archiveQuiz`, DOM-AKD-076); kayıt silinmez. Deneme kaydı olan quiz arşivlenmez: 409 `quiz_has_attempts` (sonuç ve aktarılmış not korunur). `If-Match` quizin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Quizi gören başka öğretmen 403 `quiz_not_owner`, görmeyen ve başka kurumun quizi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
+         */
+        delete: operations["archiveQuiz"];
+        options?: never;
+        head?: never;
+        /**
+         * Quizi düzenle
+         * @description Başlık, süre, son tarih (`null` kaldırır) ve sorular (core `updateQuiz`, DOM-AKD-076); sınıf ve ders değişmez (gövdede 400). Deneme kaydı olan (başlatılmış dahil) quizin soruları değişmez: 409 `quiz_has_attempts`; süre ve son tarih yalnız sonraki denemeleri etkiler. Yeni son tarih geçmişte olamaz (422 `quiz_due_in_past`). `If-Match` quizin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Quizi gören başka öğretmen 403 `quiz_not_owner`, görmeyen ve başka kurumun quizi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
+         */
+        patch: operations["updateQuiz"];
+        trace?: never;
+    };
+    "/api/v1/quizzes/{quizId}/attempt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Quizi başlat
+         * @description Öğrenci kendi sınıfının quizinde denemesini başlatır (core `startQuiz`, DOM-AKD-077). Öğrenci oturumdan gelir; başka sınıfın quizi ve olmayan quiz 404, bağlantısız öğrenci 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Süre sunucuda işler: `expiresAt` = başlangıç + süre, son tarih daha erkense son tarih. Yeni deneme 201 + `Location`; süresi işleyen deneme varsa aynı deneme ve bitiş anı 200 ile döner. Sonuçlanmış deneme 409 `quiz_already_attempted`; son tarihi geçmiş quiz 422 `quiz_closed`; bankada eksik soru 422 `quiz_question_unavailable`. Yanıt anahtarsız soruları taşır (DOM-AKD-078). Gövde yok. `Idempotency-Key` zorunlu; `If-Match` 400. Roller: `ogrenci`.
+         */
+        post: operations["startQuiz"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quizzes/{quizId}/attempt/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Quiz cevaplarını gönder
+         * @description Öğrenci başlattığı denemenin cevaplarını gönderir (core `submitQuiz`, DOM-AKD-077, -078): `answers` soru kimliğinden şık sırasına (0'dan); boş soru gönderilmez ya da `null`dır ve yanlış sayılır. Puan yalnız cevaplardan, bankadaki anahtarla sunucuda hesaplanır; gövdede puan ya da bilinmeyen alan 400. Başlatılmamış deneme 422 `quiz_not_started`; bitiş anı ve 60 sn ağ payı geçtiyse 422 `quiz_time_expired` (deneme 0 ile kalır); quizde olmayan soru ya da şık 422 `quiz_answer_invalid`; gönderilmiş deneme 409 `quiz_already_submitted` (ağ yinelemesi aynı `Idempotency-Key` ile ilk yanıtı alır). Başarı 200 ve sonuç (puan, doğru ve soru sayısı, konu yüzdeleri; soru bazında doğru/yanlış yok). `Idempotency-Key` zorunlu; `If-Match` 400. Roller: `ogrenci`.
+         */
+        post: operations["submitQuiz"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -6815,6 +6907,213 @@ export interface components {
             /** @description Okuyanın görebildiği teslimler, teslim anına göre */
             submissions: components["schemas"]["HomeworkSubmissionInput"][];
         };
+        QuizInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Quizin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            /** @description Çözme süresi (dakika); deneme başlatılınca işler */
+            duration: number;
+            /** @description Deneme başlatmanın son anı; `null` süresiz açık */
+            dueDate: string | null;
+            /** @description Soru bankası kimlikleri, quizdeki sırayla */
+            questionIds: string[];
+            questionCount: number;
+            /**
+             * @description Türetilir: son tarih geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+        };
+        /** @description Deneme özeti (DOM-AKD-079); saklanmaz, her okumada hesaplanır */
+        QuizStatisticsInput: {
+            /** @description Deneme başlatan öğrenci sayısı */
+            started: number;
+            /** @description Sonuçlanmış (gönderilmiş ya da süresi dolmuş) */
+            scored: number;
+            /** @description Süresi işleyen deneme sayısı */
+            inProgress: number;
+            /** @description Sonuçlanmış denemelerin cevaplardan hesaplanan ortalaması; deneme yoksa `null` */
+            average: number | null;
+        };
+        /** @description Cevaplardan sunucuda hesaplanan sonuç (DOM-AKD-078) */
+        QuizResultInput: {
+            /** @description 0–100 puan; resmî not değildir (DOM-AKD-060) */
+            score: number;
+            /** @description Doğru cevap sayısı */
+            correctCount: number;
+            /** @description Soru sayısı */
+            total: number;
+            /** @description Konu başına yüzde */
+            topicScores: {
+                topic: string;
+                score: number;
+            }[];
+        };
+        QuizAttemptInput: {
+            id: string;
+            quizId: string;
+            studentId: string;
+            /**
+             * @description `in_progress` süresi işleyen, `expired` süresinde gönderilmemiş (0) deneme
+             * @enum {string}
+             */
+            status: "in_progress" | "expired" | "completed";
+            startedAt: string | null;
+            /** @description Gönderimin son anı (60 sn ağ payı ayrıca kabul) */
+            expiresAt: string | null;
+            submittedAt: string | null;
+            /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş */
+            answers: {
+                [key: string]: number;
+            };
+            /** @description Süre işlerken `null` */
+            result: components["schemas"]["QuizResultInput"] | null;
+        };
+        /** @description Cevap anahtarsız soru */
+        QuizQuestionInput: {
+            id: string;
+            text: string;
+            options: string[];
+            topic: string;
+        };
+        QuizAnswerKeyInput: {
+            questionId: string;
+            /** @description Doğru şıkkın sırası (0’dan) */
+            answer: number;
+            /** @description Çözüm açıklaması */
+            explanation?: string;
+        };
+        QuizListItemInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Quizin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            /** @description Çözme süresi (dakika); deneme başlatılınca işler */
+            duration: number;
+            /** @description Deneme başlatmanın son anı; `null` süresiz açık */
+            dueDate: string | null;
+            /** @description Soru bankası kimlikleri, quizdeki sırayla */
+            questionIds: string[];
+            questionCount: number;
+            /**
+             * @description Türetilir: son tarih geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            /** @description Yönetici ve öğretmende deneme özeti; öğrenci ve velide `null` */
+            statistics: components["schemas"]["QuizStatisticsInput"] | null;
+            /** @description Öğrencide kendi, velide çocuğunun denemesi; yönetici ve öğretmende boş */
+            attempts: components["schemas"]["QuizAttemptInput"][];
+        };
+        QuizPersonalDetailInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Quizin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            /** @description Çözme süresi (dakika); deneme başlatılınca işler */
+            duration: number;
+            /** @description Deneme başlatmanın son anı; `null` süresiz açık */
+            dueDate: string | null;
+            /** @description Soru bankası kimlikleri, quizdeki sırayla */
+            questionIds: string[];
+            questionCount: number;
+            /**
+             * @description Türetilir: son tarih geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            statistics: null;
+            /** @description Öğrenci denemeyi başlatınca, veli çocuğunun denemesi sonuçlanınca; aksi halde `null` */
+            questions: components["schemas"]["QuizQuestionInput"][] | null;
+            /** @description Öğrencide kendi, velide çocuğunun denemesi */
+            attempts: components["schemas"]["QuizAttemptInput"][];
+        };
+        QuizStaffDetailInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Quizin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            /** @description Çözme süresi (dakika); deneme başlatılınca işler */
+            duration: number;
+            /** @description Deneme başlatmanın son anı; `null` süresiz açık */
+            dueDate: string | null;
+            /** @description Soru bankası kimlikleri, quizdeki sırayla */
+            questionIds: string[];
+            questionCount: number;
+            /**
+             * @description Türetilir: son tarih geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            statistics: components["schemas"]["QuizStatisticsInput"];
+            questions: components["schemas"]["QuizQuestionInput"][] | null;
+            /** @description Doğru şık ve çözüm açıklaması; yalnız yönetici ve öğretmen */
+            answerKey: components["schemas"]["QuizAnswerKeyInput"][];
+            /** @description Görünen denemeler, başlangıç anına göre */
+            attempts: {
+                id: string;
+                quizId: string;
+                studentId: string;
+                /**
+                 * @description `in_progress` süresi işleyen, `expired` süresinde gönderilmemiş (0) deneme
+                 * @enum {string}
+                 */
+                status: "in_progress" | "expired" | "completed";
+                startedAt: string | null;
+                /** @description Gönderimin son anı (60 sn ağ payı ayrıca kabul) */
+                expiresAt: string | null;
+                submittedAt: string | null;
+                /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş */
+                answers: {
+                    [key: string]: number;
+                };
+                /** @description Süre işlerken `null` */
+                result: components["schemas"]["QuizResultInput"] | null;
+                studentName: string | null;
+            }[];
+        };
+        QuizStartInput: {
+            attempt: components["schemas"]["QuizAttemptInput"];
+            /** @description Cevap anahtarsız sorular */
+            questions: components["schemas"]["QuizQuestionInput"][];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -9356,6 +9655,213 @@ export interface components {
             submissionCounts: components["schemas"]["HomeworkSubmissionCounts"];
             /** @description Okuyanın görebildiği teslimler, teslim anına göre */
             submissions: components["schemas"]["HomeworkSubmission"][];
+        };
+        Quiz: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Quizin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            /** @description Çözme süresi (dakika); deneme başlatılınca işler */
+            duration: number;
+            /** @description Deneme başlatmanın son anı; `null` süresiz açık */
+            dueDate: string | null;
+            /** @description Soru bankası kimlikleri, quizdeki sırayla */
+            questionIds: string[];
+            questionCount: number;
+            /**
+             * @description Türetilir: son tarih geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+        };
+        /** @description Deneme özeti (DOM-AKD-079); saklanmaz, her okumada hesaplanır */
+        QuizStatistics: {
+            /** @description Deneme başlatan öğrenci sayısı */
+            started: number;
+            /** @description Sonuçlanmış (gönderilmiş ya da süresi dolmuş) */
+            scored: number;
+            /** @description Süresi işleyen deneme sayısı */
+            inProgress: number;
+            /** @description Sonuçlanmış denemelerin cevaplardan hesaplanan ortalaması; deneme yoksa `null` */
+            average: number | null;
+        };
+        /** @description Cevaplardan sunucuda hesaplanan sonuç (DOM-AKD-078) */
+        QuizResult: {
+            /** @description 0–100 puan; resmî not değildir (DOM-AKD-060) */
+            score: number;
+            /** @description Doğru cevap sayısı */
+            correctCount: number;
+            /** @description Soru sayısı */
+            total: number;
+            /** @description Konu başına yüzde */
+            topicScores: {
+                topic: string;
+                score: number;
+            }[];
+        };
+        QuizAttempt: {
+            id: string;
+            quizId: string;
+            studentId: string;
+            /**
+             * @description `in_progress` süresi işleyen, `expired` süresinde gönderilmemiş (0) deneme
+             * @enum {string}
+             */
+            status: "in_progress" | "expired" | "completed";
+            startedAt: string | null;
+            /** @description Gönderimin son anı (60 sn ağ payı ayrıca kabul) */
+            expiresAt: string | null;
+            submittedAt: string | null;
+            /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş */
+            answers: {
+                [key: string]: number;
+            };
+            /** @description Süre işlerken `null` */
+            result: components["schemas"]["QuizResult"] | null;
+        };
+        /** @description Cevap anahtarsız soru */
+        QuizQuestion: {
+            id: string;
+            text: string;
+            options: string[];
+            topic: string;
+        };
+        QuizAnswerKey: {
+            questionId: string;
+            /** @description Doğru şıkkın sırası (0’dan) */
+            answer: number;
+            /** @description Çözüm açıklaması */
+            explanation?: string;
+        };
+        QuizListItem: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Quizin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            /** @description Çözme süresi (dakika); deneme başlatılınca işler */
+            duration: number;
+            /** @description Deneme başlatmanın son anı; `null` süresiz açık */
+            dueDate: string | null;
+            /** @description Soru bankası kimlikleri, quizdeki sırayla */
+            questionIds: string[];
+            questionCount: number;
+            /**
+             * @description Türetilir: son tarih geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            /** @description Yönetici ve öğretmende deneme özeti; öğrenci ve velide `null` */
+            statistics: components["schemas"]["QuizStatistics"] | null;
+            /** @description Öğrencide kendi, velide çocuğunun denemesi; yönetici ve öğretmende boş */
+            attempts: components["schemas"]["QuizAttempt"][];
+        };
+        QuizPersonalDetail: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Quizin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            /** @description Çözme süresi (dakika); deneme başlatılınca işler */
+            duration: number;
+            /** @description Deneme başlatmanın son anı; `null` süresiz açık */
+            dueDate: string | null;
+            /** @description Soru bankası kimlikleri, quizdeki sırayla */
+            questionIds: string[];
+            questionCount: number;
+            /**
+             * @description Türetilir: son tarih geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            statistics: null;
+            /** @description Öğrenci denemeyi başlatınca, veli çocuğunun denemesi sonuçlanınca; aksi halde `null` */
+            questions: components["schemas"]["QuizQuestion"][] | null;
+            /** @description Öğrencide kendi, velide çocuğunun denemesi */
+            attempts: components["schemas"]["QuizAttempt"][];
+        };
+        QuizStaffDetail: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Quizin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            /** @description Çözme süresi (dakika); deneme başlatılınca işler */
+            duration: number;
+            /** @description Deneme başlatmanın son anı; `null` süresiz açık */
+            dueDate: string | null;
+            /** @description Soru bankası kimlikleri, quizdeki sırayla */
+            questionIds: string[];
+            questionCount: number;
+            /**
+             * @description Türetilir: son tarih geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            statistics: components["schemas"]["QuizStatistics"];
+            questions: components["schemas"]["QuizQuestion"][] | null;
+            /** @description Doğru şık ve çözüm açıklaması; yalnız yönetici ve öğretmen */
+            answerKey: components["schemas"]["QuizAnswerKey"][];
+            /** @description Görünen denemeler, başlangıç anına göre */
+            attempts: {
+                id: string;
+                quizId: string;
+                studentId: string;
+                /**
+                 * @description `in_progress` süresi işleyen, `expired` süresinde gönderilmemiş (0) deneme
+                 * @enum {string}
+                 */
+                status: "in_progress" | "expired" | "completed";
+                startedAt: string | null;
+                /** @description Gönderimin son anı (60 sn ağ payı ayrıca kabul) */
+                expiresAt: string | null;
+                submittedAt: string | null;
+                /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş */
+                answers: {
+                    [key: string]: number;
+                };
+                /** @description Süre işlerken `null` */
+                result: components["schemas"]["QuizResult"] | null;
+                studentName: string | null;
+            }[];
+        };
+        QuizStart: {
+            attempt: components["schemas"]["QuizAttempt"];
+            /** @description Cevap anahtarsız sorular */
+            questions: components["schemas"]["QuizQuestion"][];
         };
     };
     responses: never;
@@ -35466,6 +35972,714 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["HomeworkSubmission"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listQuizzes: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Sınıf */
+                classId?: string;
+                /** @description Ders */
+                subjectId?: string;
+                /** @description `open` son tarihi gelmemiş ya da son tarihsiz, `closed` son tarihi geçmiş quizler */
+                status?: "all" | "open" | "closed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["QuizListItem"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createQuiz: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    classId: string;
+                    subjectId?: string;
+                    title: string;
+                    duration: number;
+                    /** Format: date-time */
+                    dueDate?: string;
+                    questionIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Quiz"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getQuiz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Quiz kimliği */
+                quizId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["QuizStaffDetail"] | components["schemas"]["QuizPersonalDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveQuiz: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Quiz kimliği */
+                quizId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Quiz"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateQuiz: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Quiz kimliği */
+                quizId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    duration?: number;
+                    dueDate?: string | null;
+                    questionIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Quiz"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startQuiz: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Quiz kimliği */
+                quizId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["QuizStart"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["QuizStart"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitQuiz: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Quiz kimliği */
+                quizId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    answers: {
+                        [key: string]: number | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["QuizAttempt"];
                     };
                 };
             };

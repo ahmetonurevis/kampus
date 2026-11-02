@@ -72,4 +72,9 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   // DOM-AKD-070, DOM-AKD-072).
   'POST /api/v1/homework',
   'POST /api/v1/homework/{homeworkId}/submissions',
+  // Quiz hazırlama, deneme başlatma ve gönderim: yeniden denemede ikinci quiz açılmaz, ağ
+  // yinelemesi ilk yanıtı alır (routes/quizzes.ts; DOM-AKD-075, DOM-AKD-077).
+  'POST /api/v1/quizzes',
+  'POST /api/v1/quizzes/{quizId}/attempt',
+  'POST /api/v1/quizzes/{quizId}/attempt/submit',
 ]

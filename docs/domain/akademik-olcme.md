@@ -290,7 +290,7 @@ Quiz, öğretmenin soru bankasından hazırladığı, otomatik puanlanan kısa �
 - **Gerekçe:** Branş ya da düzey dışı soru, öğrencinin işlenmemiş konudan ölçülmesine yol açar; bankada olmayan soru puanlanamaz.
 - **Kaynak:** İşletme kuralı; öğretmenin kapsamı `DOM-YTK-022`. Vue demosu aynı ders ve düzey denetimini yapar (`apps/web/src/views/Learning.vue:363-404`).
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/quiz.ts` (`createQuiz`), yetki `lib/authorize.ts` (`quiz.create`).
+- **Kodda:** var — `packages/school-core/src/lib/quiz.ts` (`createQuiz`), yetki `lib/authorize.ts` (`quiz.create`); API `POST /api/v1/quizzes` (`apps/api/src/routes/quizzes.ts`).
 
 ### DOM-AKD-076 · Quiz düzenleme ve arşiv
 
@@ -298,7 +298,7 @@ Quiz, öğretmenin soru bankasından hazırladığı, otomatik puanlanan kısa �
 - **Gerekçe:** Çözülmüş quizin sorusunu değiştirmek verilmiş cevapları anlamsızlaştırır ve puanı geriye dönük değiştirir; arşiv öğrencinin sonucunu ve aktarılmış notun kaynağını siler.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `lib/quiz.ts` (`updateQuiz`, `archiveQuiz`).
+- **Kodda:** var — `lib/quiz.ts` (`updateQuiz`, `archiveQuiz`); API `PATCH` ve `DELETE /api/v1/quizzes/:quizId`.
 
 ### DOM-AKD-077 · Quiz çözme: tek deneme, süre ve son tarih
 
@@ -306,7 +306,7 @@ Quiz, öğretmenin soru bankasından hazırladığı, otomatik puanlanan kısa �
 - **Gerekçe:** Süre istemcide tutulursa sayfa yenilemesiyle uzatılabilir; tekrar gönderim sonucu iyileştirmeye ve cevabı arkadaştan öğrenip yeniden çözmeye izin verir. İkinci gönderimin sessizce ilk sonucu döndürmesi, yeni cevapların puanlandığı yanılgısını doğurur.
 - **Kaynak:** İşletme kuralı. Vue demosunda süre yalnız önerilir ve quiz tekrar çözülür (`apps/web/src/views/Learning.vue:405-436`).
 - **Kurum türü:** ikisi
-- **Kodda:** var — `lib/quiz.ts` (`startQuiz`, `submitQuiz`, `quizAttemptStatus`); nota aktarım süresi işleyen denemeyi saymaz (`lib/grades.ts`).
+- **Kodda:** var — `lib/quiz.ts` (`startQuiz`, `submitQuiz`, `quizAttemptStatus`); nota aktarım süresi işleyen denemeyi saymaz (`lib/grades.ts`); API `POST /api/v1/quizzes/:quizId/attempt` ve `/attempt/submit`.
 
 ### DOM-AKD-078 · Sunucu puanlaması ve cevap anahtarının gizliliği
 
@@ -314,7 +314,7 @@ Quiz, öğretmenin soru bankasından hazırladığı, otomatik puanlanan kısa �
 - **Gerekçe:** Doğru şık ya da soru bazında doğru/yanlış, quizi henüz çözmemiş sınıf arkadaşına anahtarı taşır. Konu yüzdesi kazanım analizinin amacıdır (`DOM-AKD-060`).
 - **Kaynak:** İşletme kuralı. Vue demosu çözümden sonra doğru şıkkı ve açıklamayı gösterir (`apps/web/src/views/Learning.vue:976-997`); bilinçli olarak değiştirildi.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `lib/quiz.ts` (`quizQuestionsView`, `quizAttemptResult`, `quizAttemptView`, `canSeeQuizQuestions`); soru bankası öğrenci ve veliye okunmaz (`platform/scope.ts` `bank`).
+- **Kodda:** var — `lib/quiz.ts` (`quizQuestionsView`, `quizAttemptResult`, `quizAttemptView`, `canSeeQuizQuestions`); soru bankası öğrenci ve veliye okunmaz (`platform/scope.ts` `bank`); API yanıt şeması role özgüdür (`apps/api/src/routes/quizzes.schemas.ts`: anahtar yalnız `QuizStaffDetail`'de) ve süren deneme genel koleksiyon okumasına girmez (`apps/api/src/services/collection-reads.ts`).
 
 ### DOM-AKD-079 · Quiz ortalaması ve görünürlük
 
@@ -322,7 +322,7 @@ Quiz, öğretmenin soru bankasından hazırladığı, otomatik puanlanan kısa �
 - **Gerekçe:** Saklanan ortalama her yeni denemede ve soru düzeltmesinde bayatlar; başka öğrencinin sonucu kişisel veridir.
 - **Kaynak:** KVKK md. 12; `DOM-YTK-022`, `DOM-YTK-025`.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `lib/quiz.ts` (`quizStatistics`); okuma kapsamı `platform/scope.ts` (`quizzes`, `quizAttempts`).
+- **Kodda:** var — `lib/quiz.ts` (`quizStatistics`); okuma kapsamı `platform/scope.ts` (`quizzes`, `quizAttempts`); API `GET /api/v1/quizzes` ve `/quizzes/:quizId` (`statistics`).
 
 ## Deneme ve optik
 

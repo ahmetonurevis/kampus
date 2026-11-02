@@ -1,4 +1,5 @@
 import { dayKey } from '@kampus/school-core/lib/format.ts'
+import { isScoredAttempt } from '@kampus/school-core/lib/quiz.ts'
 import type { Scope } from '@kampus/school-core/lib/scope.ts'
 
 import type { CollectionName, RecordData } from '../db/collections.ts'
@@ -301,6 +302,24 @@ export function parseSort(raw: string | undefined): SortKey[] {
     const field = descending ? part.slice(1) : part
     return isSortField(field) ? [{ field, descending }] : []
   })
+}
+
+/**
+ * Genel okumada hiçbir role dönmeyen geçici satır: süresi işleyen quiz denemesi (DOM-AKD-077,
+ * -078). Kayıttaki sonuç alanları başlatmada yazılan boş cevaplı yer tutucudur (0); koleksiyondan
+ * okuyan eski görünüm onu sonuç ve ortalamaya (DOM-AKD-079) katar. Süren deneme quiz uçlarından
+ * `in_progress` olarak, sonuçsuz okunur (`GET /quizzes/:quizId`); süresi dolmuş deneme 0 ile
+ * görünür, o gerçek sonuçtur. Satır zamana bağlıdır (`ctx.now`), kapsam kuralı statik olduğu
+ * için kapsamda değil burada süzülür; liste, sayım, toplam ve tekil okuma aynı kararı verir.
+ */
+function transientRow(ctx: ServiceContext, collection: CollectionName, record: RecordData) {
+  if (collection !== 'quizAttempts') return false
+  const status = record.status === 'started' ? 'started' : undefined
+  const expiresAt = typeof record.expiresAt === 'string' ? record.expiresAt : undefined
+  return !isScoredAttempt(
+    { ...(status ? { status } : {}), ...(expiresAt ? { expiresAt } : {}) },
+    ctx.now.toISOString(),
+  )
 }
 
 /** Kapsamdan geçmiş satır ve rolün görebildiği alanları (ayıklanmış kopya). */
@@ -628,6 +647,7 @@ async function readRows(
     (row) =>
       (query.archived !== 'only' || row.archivedAt !== null) &&
       scope.canRead(collection, row.data) &&
+      !transientRow(ctx, collection, row.data) &&
       (!narrowed || candidate(row.data)),
   )
   return { collection, scope, rows, narrowed, matches, joiner }
@@ -675,6 +695,8 @@ async function sqlPage(
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, collection)
   if (!scope.readsWhole(collection)) return null
+  // Süren quiz denemesi (`transientRow`) SQL toplamında da olmamalı: bellek yolu süzer.
+  if (collection === 'quizAttempts') return null
   const { rows, total } = await loadRecordPage(ctx.db, ctx.institutionId, collection, {
     archived: query.archived,
     offset: (query.page - 1) * query.pageSize,
@@ -875,7 +897,8 @@ export async function getCollectionItem(
   const row = await findRecord(ctx.db, ctx.institutionId, collection, id, {
     includeArchived: options.archived === 'include',
   })
-  if (!row || !scope.canRead(collection, row.data)) throw new NotFoundError()
+  if (!row || !scope.canRead(collection, row.data) || transientRow(ctx, collection, row.data))
+    throw new NotFoundError()
   const [item] = await toItems(ctx, scope, collection, [
     { row, record: scope.redact(collection, row.data) },
   ])

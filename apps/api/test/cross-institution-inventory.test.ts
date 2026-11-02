@@ -71,6 +71,7 @@ const HOMEWORK = kayit(
   'homework.test.ts',
   'başka kurumun ödevi ve teslimi olmayan kimlikle aynı 404, B değişmez',
 )
+const QUIZ = kayit('quizzes.test.ts', 'başka kurumun quizi olmayan kimlikle aynı 404, B değişmez')
 const RESOURCE_READ = kayit('resources.test.ts', 'başka kurumun kaynağı 404 ve listede yok')
 const RESOURCE_WRITE = kayit(
   'resource-commands.test.ts',
@@ -425,6 +426,15 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'DELETE /api/v1/homework/:homeworkId': HOMEWORK,
   'POST /api/v1/homework/:homeworkId/submissions': HOMEWORK,
   'POST /api/v1/homework/:homeworkId/submissions/:submissionId/grade': HOMEWORK,
+
+  // --- Quiz -----------------------------------------------------------------------------------
+  'GET /api/v1/quizzes': QUIZ,
+  'GET /api/v1/quizzes/:quizId': QUIZ,
+  'POST /api/v1/quizzes': govde('quizzes.test.ts', 'gövdedeki institutionId 400'),
+  'PATCH /api/v1/quizzes/:quizId': QUIZ,
+  'DELETE /api/v1/quizzes/:quizId': QUIZ,
+  'POST /api/v1/quizzes/:quizId/attempt': QUIZ,
+  'POST /api/v1/quizzes/:quizId/attempt/submit': QUIZ,
 
   // --- Dosya ----------------------------------------------------------------------------------
   'GET /api/v1/files/:fileId': kayit('files.test.ts', 'başka kurum ve başkası 404'),

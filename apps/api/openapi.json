@@ -10337,6 +10337,835 @@
           "submissions"
         ]
       },
+      "QuizInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Dersin adı (kayıt anındaki)"
+          },
+          "teacherId": {
+            "type": "string",
+            "description": "Quizin öğretmeni (sınıfın o dersine atanmış öğretmen)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Çözme süresi (dakika); deneme başlatılınca işler"
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deneme başlatmanın son anı; `null` süresiz açık"
+          },
+          "questionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Soru bankası kimlikleri, quizdeki sırayla"
+          },
+          "questionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: son tarih geçtiyse `closed`"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "classId",
+          "subjectId",
+          "subject",
+          "teacherId",
+          "title",
+          "duration",
+          "dueDate",
+          "questionIds",
+          "questionCount",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "QuizStatisticsInput": {
+        "type": "object",
+        "properties": {
+          "started": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Deneme başlatan öğrenci sayısı"
+          },
+          "scored": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Sonuçlanmış (gönderilmiş ya da süresi dolmuş)"
+          },
+          "inProgress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Süresi işleyen deneme sayısı"
+          },
+          "average": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sonuçlanmış denemelerin cevaplardan hesaplanan ortalaması; deneme yoksa `null`"
+          }
+        },
+        "required": [
+          "started",
+          "scored",
+          "inProgress",
+          "average"
+        ],
+        "description": "Deneme özeti (DOM-AKD-079); saklanmaz, her okumada hesaplanır"
+      },
+      "QuizResultInput": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "0–100 puan; resmî not değildir (DOM-AKD-060)"
+          },
+          "correctCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Doğru cevap sayısı"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Soru sayısı"
+          },
+          "topicScores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "topic": {
+                  "type": "string"
+                },
+                "score": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "topic",
+                "score"
+              ]
+            },
+            "description": "Konu başına yüzde"
+          }
+        },
+        "required": [
+          "score",
+          "correctCount",
+          "total",
+          "topicScores"
+        ],
+        "description": "Cevaplardan sunucuda hesaplanan sonuç (DOM-AKD-078)"
+      },
+      "QuizAttemptInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "quizId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "expired",
+              "completed"
+            ],
+            "description": "`in_progress` süresi işleyen, `expired` süresinde gönderilmemiş (0) deneme"
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Gönderimin son anı (60 sn ağ payı ayrıca kabul)"
+          },
+          "submittedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "answers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuizResultInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Süre işlerken `null`"
+          }
+        },
+        "required": [
+          "id",
+          "quizId",
+          "studentId",
+          "status",
+          "startedAt",
+          "expiresAt",
+          "submittedAt",
+          "answers",
+          "result"
+        ]
+      },
+      "QuizQuestionInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "options",
+          "topic"
+        ],
+        "description": "Cevap anahtarsız soru"
+      },
+      "QuizAnswerKeyInput": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Doğru şıkkın sırası (0’dan)"
+          },
+          "explanation": {
+            "description": "Çözüm açıklaması",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "answer"
+        ]
+      },
+      "QuizListItemInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Dersin adı (kayıt anındaki)"
+          },
+          "teacherId": {
+            "type": "string",
+            "description": "Quizin öğretmeni (sınıfın o dersine atanmış öğretmen)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Çözme süresi (dakika); deneme başlatılınca işler"
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deneme başlatmanın son anı; `null` süresiz açık"
+          },
+          "questionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Soru bankası kimlikleri, quizdeki sırayla"
+          },
+          "questionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: son tarih geçtiyse `closed`"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          },
+          "statistics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuizStatisticsInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yönetici ve öğretmende deneme özeti; öğrenci ve velide `null`"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuizAttemptInput"
+            },
+            "description": "Öğrencide kendi, velide çocuğunun denemesi; yönetici ve öğretmende boş"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "classId",
+          "subjectId",
+          "subject",
+          "teacherId",
+          "title",
+          "duration",
+          "dueDate",
+          "questionIds",
+          "questionCount",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "statistics",
+          "attempts"
+        ]
+      },
+      "QuizPersonalDetailInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Dersin adı (kayıt anındaki)"
+          },
+          "teacherId": {
+            "type": "string",
+            "description": "Quizin öğretmeni (sınıfın o dersine atanmış öğretmen)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Çözme süresi (dakika); deneme başlatılınca işler"
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deneme başlatmanın son anı; `null` süresiz açık"
+          },
+          "questionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Soru bankası kimlikleri, quizdeki sırayla"
+          },
+          "questionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: son tarih geçtiyse `closed`"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          },
+          "statistics": {
+            "type": "null"
+          },
+          "questions": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QuizQuestionInput"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğrenci denemeyi başlatınca, veli çocuğunun denemesi sonuçlanınca; aksi halde `null`"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuizAttemptInput"
+            },
+            "description": "Öğrencide kendi, velide çocuğunun denemesi"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "classId",
+          "subjectId",
+          "subject",
+          "teacherId",
+          "title",
+          "duration",
+          "dueDate",
+          "questionIds",
+          "questionCount",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "statistics",
+          "questions",
+          "attempts"
+        ]
+      },
+      "QuizStaffDetailInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Dersin adı (kayıt anındaki)"
+          },
+          "teacherId": {
+            "type": "string",
+            "description": "Quizin öğretmeni (sınıfın o dersine atanmış öğretmen)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Çözme süresi (dakika); deneme başlatılınca işler"
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deneme başlatmanın son anı; `null` süresiz açık"
+          },
+          "questionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Soru bankası kimlikleri, quizdeki sırayla"
+          },
+          "questionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: son tarih geçtiyse `closed`"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          },
+          "statistics": {
+            "$ref": "#/components/schemas/QuizStatisticsInput"
+          },
+          "questions": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QuizQuestionInput"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "answerKey": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuizAnswerKeyInput"
+            },
+            "description": "Doğru şık ve çözüm açıklaması; yalnız yönetici ve öğretmen"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "quizId": {
+                  "type": "string"
+                },
+                "studentId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "in_progress",
+                    "expired",
+                    "completed"
+                  ],
+                  "description": "`in_progress` süresi işleyen, `expired` süresinde gönderilmemiş (0) deneme"
+                },
+                "startedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "ISO 8601 UTC"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "expiresAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "ISO 8601 UTC"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Gönderimin son anı (60 sn ağ payı ayrıca kabul)"
+                },
+                "submittedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "ISO 8601 UTC"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "answers": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş"
+                },
+                "result": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/QuizResultInput"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Süre işlerken `null`"
+                },
+                "studentName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "quizId",
+                "studentId",
+                "status",
+                "startedAt",
+                "expiresAt",
+                "submittedAt",
+                "answers",
+                "result",
+                "studentName"
+              ]
+            },
+            "description": "Görünen denemeler, başlangıç anına göre"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "classId",
+          "subjectId",
+          "subject",
+          "teacherId",
+          "title",
+          "duration",
+          "dueDate",
+          "questionIds",
+          "questionCount",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "statistics",
+          "questions",
+          "answerKey",
+          "attempts"
+        ]
+      },
+      "QuizStartInput": {
+        "type": "object",
+        "properties": {
+          "attempt": {
+            "$ref": "#/components/schemas/QuizAttemptInput"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestionInput"
+            },
+            "description": "Cevap anahtarsız sorular"
+          }
+        },
+        "required": [
+          "attempt",
+          "questions"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -20936,6 +21765,847 @@
           "updatedAt",
           "submissionCounts",
           "submissions"
+        ],
+        "additionalProperties": false
+      },
+      "Quiz": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Dersin adı (kayıt anındaki)"
+          },
+          "teacherId": {
+            "type": "string",
+            "description": "Quizin öğretmeni (sınıfın o dersine atanmış öğretmen)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Çözme süresi (dakika); deneme başlatılınca işler"
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deneme başlatmanın son anı; `null` süresiz açık"
+          },
+          "questionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Soru bankası kimlikleri, quizdeki sırayla"
+          },
+          "questionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: son tarih geçtiyse `closed`"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "classId",
+          "subjectId",
+          "subject",
+          "teacherId",
+          "title",
+          "duration",
+          "dueDate",
+          "questionIds",
+          "questionCount",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "QuizStatistics": {
+        "type": "object",
+        "properties": {
+          "started": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Deneme başlatan öğrenci sayısı"
+          },
+          "scored": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Sonuçlanmış (gönderilmiş ya da süresi dolmuş)"
+          },
+          "inProgress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Süresi işleyen deneme sayısı"
+          },
+          "average": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sonuçlanmış denemelerin cevaplardan hesaplanan ortalaması; deneme yoksa `null`"
+          }
+        },
+        "required": [
+          "started",
+          "scored",
+          "inProgress",
+          "average"
+        ],
+        "additionalProperties": false,
+        "description": "Deneme özeti (DOM-AKD-079); saklanmaz, her okumada hesaplanır"
+      },
+      "QuizResult": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "0–100 puan; resmî not değildir (DOM-AKD-060)"
+          },
+          "correctCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Doğru cevap sayısı"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Soru sayısı"
+          },
+          "topicScores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "topic": {
+                  "type": "string"
+                },
+                "score": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "topic",
+                "score"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Konu başına yüzde"
+          }
+        },
+        "required": [
+          "score",
+          "correctCount",
+          "total",
+          "topicScores"
+        ],
+        "additionalProperties": false,
+        "description": "Cevaplardan sunucuda hesaplanan sonuç (DOM-AKD-078)"
+      },
+      "QuizAttempt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "quizId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "expired",
+              "completed"
+            ],
+            "description": "`in_progress` süresi işleyen, `expired` süresinde gönderilmemiş (0) deneme"
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Gönderimin son anı (60 sn ağ payı ayrıca kabul)"
+          },
+          "submittedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "answers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuizResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Süre işlerken `null`"
+          }
+        },
+        "required": [
+          "id",
+          "quizId",
+          "studentId",
+          "status",
+          "startedAt",
+          "expiresAt",
+          "submittedAt",
+          "answers",
+          "result"
+        ],
+        "additionalProperties": false
+      },
+      "QuizQuestion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "options",
+          "topic"
+        ],
+        "additionalProperties": false,
+        "description": "Cevap anahtarsız soru"
+      },
+      "QuizAnswerKey": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Doğru şıkkın sırası (0’dan)"
+          },
+          "explanation": {
+            "description": "Çözüm açıklaması",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "answer"
+        ],
+        "additionalProperties": false
+      },
+      "QuizListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Dersin adı (kayıt anındaki)"
+          },
+          "teacherId": {
+            "type": "string",
+            "description": "Quizin öğretmeni (sınıfın o dersine atanmış öğretmen)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Çözme süresi (dakika); deneme başlatılınca işler"
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deneme başlatmanın son anı; `null` süresiz açık"
+          },
+          "questionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Soru bankası kimlikleri, quizdeki sırayla"
+          },
+          "questionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: son tarih geçtiyse `closed`"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          },
+          "statistics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuizStatistics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yönetici ve öğretmende deneme özeti; öğrenci ve velide `null`"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuizAttempt"
+            },
+            "description": "Öğrencide kendi, velide çocuğunun denemesi; yönetici ve öğretmende boş"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "classId",
+          "subjectId",
+          "subject",
+          "teacherId",
+          "title",
+          "duration",
+          "dueDate",
+          "questionIds",
+          "questionCount",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "statistics",
+          "attempts"
+        ],
+        "additionalProperties": false
+      },
+      "QuizPersonalDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Dersin adı (kayıt anındaki)"
+          },
+          "teacherId": {
+            "type": "string",
+            "description": "Quizin öğretmeni (sınıfın o dersine atanmış öğretmen)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Çözme süresi (dakika); deneme başlatılınca işler"
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deneme başlatmanın son anı; `null` süresiz açık"
+          },
+          "questionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Soru bankası kimlikleri, quizdeki sırayla"
+          },
+          "questionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: son tarih geçtiyse `closed`"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          },
+          "statistics": {
+            "type": "null"
+          },
+          "questions": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QuizQuestion"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğrenci denemeyi başlatınca, veli çocuğunun denemesi sonuçlanınca; aksi halde `null`"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuizAttempt"
+            },
+            "description": "Öğrencide kendi, velide çocuğunun denemesi"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "classId",
+          "subjectId",
+          "subject",
+          "teacherId",
+          "title",
+          "duration",
+          "dueDate",
+          "questionIds",
+          "questionCount",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "statistics",
+          "questions",
+          "attempts"
+        ],
+        "additionalProperties": false
+      },
+      "QuizStaffDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Dersin adı (kayıt anındaki)"
+          },
+          "teacherId": {
+            "type": "string",
+            "description": "Quizin öğretmeni (sınıfın o dersine atanmış öğretmen)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Çözme süresi (dakika); deneme başlatılınca işler"
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deneme başlatmanın son anı; `null` süresiz açık"
+          },
+          "questionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Soru bankası kimlikleri, quizdeki sırayla"
+          },
+          "questionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: son tarih geçtiyse `closed`"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          },
+          "statistics": {
+            "$ref": "#/components/schemas/QuizStatistics"
+          },
+          "questions": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QuizQuestion"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "answerKey": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuizAnswerKey"
+            },
+            "description": "Doğru şık ve çözüm açıklaması; yalnız yönetici ve öğretmen"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "quizId": {
+                  "type": "string"
+                },
+                "studentId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "in_progress",
+                    "expired",
+                    "completed"
+                  ],
+                  "description": "`in_progress` süresi işleyen, `expired` süresinde gönderilmemiş (0) deneme"
+                },
+                "startedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "ISO 8601 UTC"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "expiresAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "ISO 8601 UTC"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Gönderimin son anı (60 sn ağ payı ayrıca kabul)"
+                },
+                "submittedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "ISO 8601 UTC"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "answers": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş"
+                },
+                "result": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/QuizResult"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Süre işlerken `null`"
+                },
+                "studentName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "quizId",
+                "studentId",
+                "status",
+                "startedAt",
+                "expiresAt",
+                "submittedAt",
+                "answers",
+                "result",
+                "studentName"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Görünen denemeler, başlangıç anına göre"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "classId",
+          "subjectId",
+          "subject",
+          "teacherId",
+          "title",
+          "duration",
+          "dueDate",
+          "questionIds",
+          "questionCount",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "statistics",
+          "questions",
+          "answerKey",
+          "attempts"
+        ],
+        "additionalProperties": false
+      },
+      "QuizStart": {
+        "type": "object",
+        "properties": {
+          "attempt": {
+            "$ref": "#/components/schemas/QuizAttempt"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestion"
+            },
+            "description": "Cevap anahtarsız sorular"
+          }
+        },
+        "required": [
+          "attempt",
+          "questions"
         ],
         "additionalProperties": false
       }
@@ -67837,6 +69507,1105 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/HomeworkSubmission"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes": {
+      "get": {
+        "operationId": "listQuizzes",
+        "summary": "Quizler",
+        "tags": [
+          "quizzes"
+        ],
+        "description": "Quizler oluşturma anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `status` (`open`, `closed`, `all`). Yönetici ve öğretmen satırı deneme özetini (`statistics`: başlatan, sonuçlanan, süren, cevaplardan hesaplanan ortalama), öğrenci ve veli satırı yalnız kendi/çocuğunun denemesini (`attempts`) taşır. Bilinmeyen parametre 400. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez (DOM-AKD-078). Sınıf ortalamasını ve bütün denemeleri yönetici ile sınıfa giren öğretmen görür; öğrenci yalnız kendi, veli çocuğunun denemesini (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "description": "Sınıf"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "subjectId",
+            "required": false,
+            "description": "Ders"
+          },
+          {
+            "schema": {
+              "default": "all",
+              "type": "string",
+              "enum": [
+                "all",
+                "open",
+                "closed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`open` son tarihi gelmemiş ya da son tarihsiz, `closed` son tarihi geçmiş quizler"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/QuizListItem"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createQuiz",
+        "summary": "Quiz hazırla",
+        "tags": [
+          "quizzes"
+        ],
+        "description": "Soru bankasından yeni quiz (core `createQuiz`, DOM-AKD-075). Öğretmen yalnız derse girdiği sınıf ve branşa (403 `quiz_scope_denied`); sınıfa birden çok dersle giriyorsa `subjectId` zorunlu (422 `quiz_subject_required`). Yönetici `subjectId` verir; quizin öğretmeni sınıfın o dersine atanmış aktif öğretmendir (yoksa 422 `quiz_teacher_unavailable`). Sorular (`questionIds`, 1–50, tekil) kurumun bankasında (422 `quiz_question_unavailable`), quizin dersinde ve sınıfın düzeyinde olmalı (422 `quiz_question_mismatch`). `duration` 5–120 dakika. `dueDate` isteğe bağlı saat dilimli ISO 8601 an, UTC saklanır; geçmişte olamaz (422 `quiz_due_in_past`). Olmayan sınıf 404, pasif sınıf 422 `record_inactive`. `Idempotency-Key` zorunlu; `If-Match` 400. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "classId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "subjectId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "duration": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 120
+                  },
+                  "dueDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "questionIds": {
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  }
+                },
+                "required": [
+                  "classId",
+                  "title",
+                  "duration",
+                  "questionIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Quiz"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes/{quizId}": {
+      "get": {
+        "operationId": "getQuiz",
+        "summary": "Quiz",
+        "tags": [
+          "quizzes"
+        ],
+        "description": "Tek quiz. Yönetici ve öğretmen `QuizStaffDetail` alır: anahtarsız sorular, cevap anahtarı (`answerKey`), görünen bütün denemeler ve özet. Öğrenci ve veli `QuizPersonalDetail` alır: sorular öğrencide deneme başlatılınca, velide çocuğunun denemesi sonuçlanınca açılır (aksi `null`); `attempts` kendi/çocuğunun denemesidir, sonuç süre işlerken `null`. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez (DOM-AKD-078). Sınıf ortalamasını ve bütün denemeleri yönetici ile sınıfa giren öğretmen görür; öğrenci yalnız kendi, veli çocuğunun denemesini (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "quizId",
+            "required": true,
+            "description": "Quiz kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/QuizStaffDetail"
+                        },
+                        {
+                          "$ref": "#/components/schemas/QuizPersonalDetail"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateQuiz",
+        "summary": "Quizi düzenle",
+        "tags": [
+          "quizzes"
+        ],
+        "description": "Başlık, süre, son tarih (`null` kaldırır) ve sorular (core `updateQuiz`, DOM-AKD-076); sınıf ve ders değişmez (gövdede 400). Deneme kaydı olan (başlatılmış dahil) quizin soruları değişmez: 409 `quiz_has_attempts`; süre ve son tarih yalnız sonraki denemeleri etkiler. Yeni son tarih geçmişte olamaz (422 `quiz_due_in_past`). `If-Match` quizin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Quizi gören başka öğretmen 403 `quiz_not_owner`, görmeyen ve başka kurumun quizi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "duration": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 120
+                  },
+                  "dueDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "questionIds": {
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "quizId",
+            "required": true,
+            "description": "Quiz kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Quiz"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveQuiz",
+        "summary": "Quizi arşivle",
+        "tags": [
+          "quizzes"
+        ],
+        "description": "Quizi arşivler (core `archiveQuiz`, DOM-AKD-076); kayıt silinmez. Deneme kaydı olan quiz arşivlenmez: 409 `quiz_has_attempts` (sonuç ve aktarılmış not korunur). `If-Match` quizin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Quizi gören başka öğretmen 403 `quiz_not_owner`, görmeyen ve başka kurumun quizi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "quizId",
+            "required": true,
+            "description": "Quiz kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Quiz"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes/{quizId}/attempt": {
+      "post": {
+        "operationId": "startQuiz",
+        "summary": "Quizi başlat",
+        "tags": [
+          "quizzes"
+        ],
+        "description": "Öğrenci kendi sınıfının quizinde denemesini başlatır (core `startQuiz`, DOM-AKD-077). Öğrenci oturumdan gelir; başka sınıfın quizi ve olmayan quiz 404, bağlantısız öğrenci 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Süre sunucuda işler: `expiresAt` = başlangıç + süre, son tarih daha erkense son tarih. Yeni deneme 201 + `Location`; süresi işleyen deneme varsa aynı deneme ve bitiş anı 200 ile döner. Sonuçlanmış deneme 409 `quiz_already_attempted`; son tarihi geçmiş quiz 422 `quiz_closed`; bankada eksik soru 422 `quiz_question_unavailable`. Yanıt anahtarsız soruları taşır (DOM-AKD-078). Gövde yok. `Idempotency-Key` zorunlu; `If-Match` 400. Roller: `ogrenci`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "quizId",
+            "required": true,
+            "description": "Quiz kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/QuizStart"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/QuizStart"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes/{quizId}/attempt/submit": {
+      "post": {
+        "operationId": "submitQuiz",
+        "summary": "Quiz cevaplarını gönder",
+        "tags": [
+          "quizzes"
+        ],
+        "description": "Öğrenci başlattığı denemenin cevaplarını gönderir (core `submitQuiz`, DOM-AKD-077, -078): `answers` soru kimliğinden şık sırasına (0'dan); boş soru gönderilmez ya da `null`dır ve yanlış sayılır. Puan yalnız cevaplardan, bankadaki anahtarla sunucuda hesaplanır; gövdede puan ya da bilinmeyen alan 400. Başlatılmamış deneme 422 `quiz_not_started`; bitiş anı ve 60 sn ağ payı geçtiyse 422 `quiz_time_expired` (deneme 0 ile kalır); quizde olmayan soru ya da şık 422 `quiz_answer_invalid`; gönderilmiş deneme 409 `quiz_already_submitted` (ağ yinelemesi aynı `Idempotency-Key` ile ilk yanıtı alır). Başarı 200 ve sonuç (puan, doğru ve soru sayısı, konu yüzdeleri; soru bazında doğru/yanlış yok). `Idempotency-Key` zorunlu; `If-Match` 400. Roller: `ogrenci`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answers": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "answers"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "quizId",
+            "required": true,
+            "description": "Quiz kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/QuizAttempt"
                     }
                   },
                   "required": [

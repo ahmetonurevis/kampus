@@ -20,7 +20,7 @@ export const STAFF_CONSENT_INFO = 'Rızayı veli ya da öğrenci kendi hesabınd
 export const DECLINE_NOTE =
   'Rıza vermemek temel eğitim hizmetini etkilemez. Rızanızı istediğiniz zaman geri çekebilirsiniz.'
 export const STUDENT_REQUIRED_INFO = 'Bu rıza öğrenci seçilmeden istenemez.'
-export const NO_TEXT_INFO = 'Bu amaç için rıza metni henüz yayımlanmadı; rıza alınamıyor.'
+export const NO_TEXT_INFO = 'Rıza metni henüz yayımlanmadığı için şu amaçlarda rıza alınamıyor:'
 export const OUTDATED_NOTICE =
   'Rıza metni güncellendi. Güncel metni okuyup kararınızı yeniden verin.'
 

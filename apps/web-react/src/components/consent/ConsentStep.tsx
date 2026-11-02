@@ -157,7 +157,11 @@ export function ConsentStep({
     onComplete?.({ granted, declined: plan.declined })
   }
 
-  const visible = steps.filter((step) => showGranted || step.kind !== 'valid')
+  // Metni yayımlanmamış amaçlar tek satırda toplanır; her biri için boş kart ekranı uzatırdı.
+  const unavailable = steps.filter((step) => step.kind === 'no-text')
+  const visible = steps.filter(
+    (step) => step.kind !== 'no-text' && (showGranted || step.kind !== 'valid'),
+  )
   const pending = choosable(steps).length > 0
 
   return (
@@ -165,9 +169,14 @@ export function ConsentStep({
       <h3 id={headingId} className="sr-only">
         Açık rıza
       </h3>
-      {visible.length === 0 ? (
+      {visible.length === 0 && unavailable.length === 0 ? (
         <p role="status" className="text-sm text-muted-foreground">
           Bekleyen rıza yok.
+        </p>
+      ) : null}
+      {unavailable.length > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {NO_TEXT_INFO} {unavailable.map((step) => purposeLabel(step.purpose)).join('; ')}.
         </p>
       ) : null}
       {visible.map((step) => (
@@ -250,7 +259,6 @@ function PurposeCard({
         </p>
       ) : null}
       {step.kind === 'needs-student' ? <p className="text-sm">{STUDENT_REQUIRED_INFO}</p> : null}
-      {step.kind === 'no-text' ? <p className="text-sm">{NO_TEXT_INFO}</p> : null}
       {step.kind === 'error' ? (
         <p role="alert" className="text-sm text-danger">
           Rıza metni yüklenemedi. Lütfen sayfayı yenileyip yeniden deneyin.

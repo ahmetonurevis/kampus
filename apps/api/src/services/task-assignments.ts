@@ -420,30 +420,14 @@ async function audit(
 }
 
 /**
- * Geçici API sınırları (ADR 0004 karar 6 uygulama notu, F4b2, OG-049): dosyalı ve sesli teslim
- * `files` gelene kadar saklanamaz; dinleme hakkı sayılamaz, çünkü sayım altyapısı
- * (`services/listening-plays.ts`) hazır olsa da core içerik modeli dinleme kaydını atanabilen
- * türlere bağlamaz. Aksi hâlde kursiyer teslim edemeyeceği veya hakkı sessizce sınırsız olan görev
- * alır. Dinleme görevi yine atanır: gövde şeması gönderilmeyen hakkı sınırsız (`null`) yapar;
- * yalnız açıkça seçilen 1 veya 2 reddedilir.
+ * Geçici API sınırı (ADR 0004 karar 6 uygulama notu, OG-049): dinleme hakkı sayılamaz, çünkü sayım
+ * altyapısı (`services/listening-plays.ts`) hazır olsa da core içerik modeli dinleme kaydını
+ * atanabilen türlere bağlamaz. Aksi hâlde kursiyerin hakkı sessizce sınırsız olurdu. Dinleme
+ * görevi yine atanır: gövde şeması gönderilmeyen hakkı sınırsız (`null`) yapar; yalnız açıkça
+ * seçilen 1 veya 2 reddedilir. Dosyalı ve sesli teslim OG-048 ile açıktır
+ * (`services/task-submission-files.ts`).
  */
 function assertSupportedByApi(plan: AssignmentPlan): void {
-  const kind = plan.assignment.submission?.submissionKind
-  // TODO(F3c2-files): `files` gelince dosyalı ve sesli teslim açılır.
-  if (kind === 'file' || kind === 'audio')
-    throw new RuleViolationError(
-      'submission_kind_unavailable',
-      'Dosyalı ve sesli teslim henüz açık değil; metin teslimi seçin.',
-      {
-        issues: [
-          {
-            path: ['settings', 'submission', 'submissionKind'],
-            code: 'submission_kind_unavailable',
-            message: 'Dosyalı ve sesli teslim henüz açık değil; metin teslimi seçin.',
-          },
-        ],
-      },
-    )
   // TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türe bağlayınca bu sınır kalkar.
   if (plan.assignment.listeningPlays !== null)
     throw new RuleViolationError(

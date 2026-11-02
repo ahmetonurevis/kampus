@@ -1326,8 +1326,9 @@ export function insertSubmission(
 
 /**
  * Değişmez teslim sürümü (`planSubmissionVersion`); aynı numara eşzamanlı gönderimde 409
- * `version_conflict`. Satır yazıldıktan sonra değişmez (tetikleyici). Dosyalı ve sesli sürüm
- * (`fileIds` dolu) `files` tablosu gelene kadar 422 `submission_kind_unavailable` ile reddedilir.
+ * `version_conflict`. Satır yazıldıktan sonra değişmez (tetikleyici). Dosyalı ve sesli sürümün
+ * dosya kimlikleri sırasıyla `file_ids`'e yazılır; dosya satırlarını sürüme bağlamak çağıranın
+ * işidir (`services/files.ts` `attachFile`, aynı transaction).
  */
 export async function insertSubmissionVersion(
   tx: Database,
@@ -1336,14 +1337,6 @@ export async function insertSubmissionVersion(
   version: VersionRow,
   now: Date,
 ): Promise<unknown> {
-  // TODO(F3c2-files): `version.fileIds` `files` bağlantı tablosuna yazılır; şimdilik dosyalı ve
-  // sesli teslim saklanamaz ve reddedilir. F4b2: atama oluşturulurken `file`/`audio` türü de
-  // reddedilmeli; yoksa kursiyer teslim edemeyeceği bir görev alır.
-  if (version.fileIds.length > 0)
-    throw new RuleViolationError(
-      'submission_kind_unavailable',
-      'Dosyalı ve sesli teslim henüz açık değil.',
-    )
   return constraintAs(
     tx.insert(submissionVersions).values({
       institutionId,
@@ -1352,6 +1345,7 @@ export async function insertSubmissionVersion(
       versionNumber: version.number,
       submittedAt: new Date(version.submittedAt),
       body: version.body,
+      fileIds: [...version.fileIds],
       createdAt: now,
       updatedAt: now,
     }),
@@ -1456,7 +1450,7 @@ async function withVersions(
           number: v.versionNumber,
           submittedAt: iso(v.submittedAt),
           body: v.body,
-          fileIds: [],
+          fileIds: v.fileIds,
         })),
       resubmissions,
     }
@@ -1486,6 +1480,30 @@ export async function loadSubmission(
     )
   const [work] = await withVersions(db, institutionId, rows)
   return work ?? null
+}
+
+/**
+ * Sürümün teslim kaydı ve sürümleri (sürüme bağlı dosyanın okuma kuralı; OG-048). Arşivli, başka
+ * kurumun veya olmayan sürüm `null`.
+ */
+export async function findSubmissionOfVersion(
+  db: Database,
+  institutionId: string,
+  versionId: string,
+): Promise<StoredSubmissionWork | null> {
+  if (!UUID.test(versionId)) return null
+  const [row] = await db
+    .select({ submissionId: submissionVersions.submissionId })
+    .from(submissionVersions)
+    .where(
+      and(
+        eq(submissionVersions.institutionId, institutionId),
+        eq(submissionVersions.id, versionId),
+        isNull(submissionVersions.archivedAt),
+      ),
+    )
+    .limit(1)
+  return row ? findSubmission(db, institutionId, row.submissionId) : null
 }
 
 /** Teslim kaydı kimliğiyle (arşivli, başka kurumun veya olmayan kimlik `null`). */

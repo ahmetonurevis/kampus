@@ -349,13 +349,14 @@ describe('yazma görevi taslak ve teslim uçları', () => {
       400,
       'validation_failed',
     )
+    // Görevin türünden başka teslim (metin görevine dosya) 422 (OG-048).
     fails(
       await submit(assignmentId, t.cookies.student, {
         submissionKind: 'file',
         fileIds: ['f-1'],
       }),
       422,
-      'submission_kind_unavailable',
+      'submission_kind_mismatch',
     )
     assert.deepEqual(await storedRows(t.institution.id), { submissions: 0, versions: 0, drafts: 0 })
 

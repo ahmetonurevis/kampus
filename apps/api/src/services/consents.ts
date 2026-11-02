@@ -294,12 +294,12 @@ export function giveConsent(
  * işlemde imhaya işaretlenir (ADR 0003 karar 9, 13: `retention_until = now`): kayda bağlanmış
  * dosyalar (`data_subject_id`) ve öğrencinin hesabının yüklediği henüz bağlanmamış dosyalar.
  *
- * TODO(F3c2-imha): saklama sonu gelen dosyayı silen imha işi henüz yok. Kuyruk ve kurum başına
- * zamanlanmış iş altyapısı `src/jobs`'tadır (OG-094; `purgeUnattachedFiles` yalnız bağlanmamış
- * dosyayı siler); imha işi oraya eklenince `retention_until <= now` dosyalar silinir ve bu işaret
- * onun girdisidir. Bağlanmamış
- * kayıt ayrıca 24 saatlik bağlanmamış dosya temizliğiyle (karar 5) silinir; geri çekmeden sonra
- * bağlanamaz (`attachFile` rızayı yeniden denetler).
+ * Bu işaret günlük saklama sonu imha işinin (`files.purge-expired`,
+ * `src/jobs/files-purge-expired.ts`; services/files.ts `purgeExpiredFiles`) girdisidir: işaretli
+ * dosyanın nesnesi en geç ertesi sabah silinir, satırı `deleted` kalır. Bağlanmamış kayıt ayrıca 24 saatlik bağlanmamış dosya
+ * temizliğiyle (karar 5) silinir; işaretli kayıt yeni rızadan sonra da bağlanamaz (`attachFile`
+ * 422 `file_unavailable`; rıza yoksa 403 `consent_required`). Satırı olmayan nesneler bu işlerin
+ * dışındadır (`TODO(F3c2-orphans)`).
  */
 export function withdrawConsent(
   ctx: ServiceContext,

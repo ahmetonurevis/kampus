@@ -1,4 +1,18 @@
-import { and, asc, eq, gt, inArray, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  notInArray,
+  or,
+  sql,
+} from 'drizzle-orm'
 
 import type { Database } from './client.ts'
 import { files, type FileStatus } from './schema/files.ts'
@@ -21,6 +35,8 @@ export type NewFile = Pick<
   | 'originalName'
   | 'uploadedByUserId'
 >
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** Kotayı tüketen durumlar: nesnesi silinmiş (`rejected`, `deleted`) dosya sayılmaz. */
 const QUOTA_EXCLUDED: FileStatus[] = ['rejected', 'deleted']
@@ -76,6 +92,23 @@ export async function listAttachedFiles(
       ),
     )
     .orderBy(asc(files.id))
+}
+
+/**
+ * Kimlikleri verilen dosyalar (durumdan bağımsız; silinmiş satır da döner: imhadan sonra süre
+ * okunur, DOM-BEC-052). Geçersiz (uuid olmayan) kimlik sorguya girmez, sonuçta yoktur.
+ */
+export async function loadFilesByIds(
+  db: Database,
+  institutionId: string,
+  fileIds: readonly string[],
+): Promise<StoredFile[]> {
+  const ids = [...new Set(fileIds.filter((id) => UUID.test(id)))]
+  if (ids.length === 0) return []
+  return db
+    .select()
+    .from(files)
+    .where(and(eq(files.institutionId, institutionId), inArray(files.id, ids)))
 }
 
 /** Kurumun depoda tuttuğu toplam bayt (karar 3: `files` tablosundan toplanır). */
@@ -134,13 +167,25 @@ async function updateFile(
   return row ?? null
 }
 
+/**
+ * Dosyayı kayda bağlar. Saklama sonu verilirse yazılır (ADR 0003 karar 13: bağlanma anında
+ * hesaplanır); daha erken bir saklama sonu (rıza geri çekme işareti) korunur.
+ */
 export function attachFileRow(
   tx: Database,
   institutionId: string,
   current: StoredFile,
-  attachment: { type: string; id: string; dataSubjectId: string | null },
+  attachment: {
+    type: string
+    id: string
+    dataSubjectId: string | null
+    retentionUntil?: Date | null
+  },
   now: Date,
 ) {
+  const retention = attachment.retentionUntil ?? null
+  const keepEarlier =
+    current.retentionUntil !== null && (retention === null || current.retentionUntil < retention)
   return updateFile(
     tx,
     institutionId,
@@ -150,6 +195,7 @@ export function attachFileRow(
       attachedId: attachment.id,
       attachedAt: now,
       dataSubjectId: attachment.dataSubjectId,
+      ...(keepEarlier || retention === null ? {} : { retentionUntil: retention }),
     },
     now,
   )
@@ -261,4 +307,56 @@ export async function listStaleUnattachedFiles(
     )
     .orderBy(asc(files.createdAt), asc(files.id))
     .limit(limit)
+}
+
+/** Saklama sonu taramasının sayfa imleci: son bakılan satırın saklama sonu ve kimliği. */
+export type ExpiredFileCursor = { retentionUntil: Date; id: string }
+
+/**
+ * Kurumun saklama sonu gelmiş (`retention_until <= now`), silinmemiş dosyaları (karar 13; imha
+ * işi `files.purge-expired`): bağlı ya da bağsız, rıza geri çekmesiyle işaretlenmiş olanlar dahil.
+ * En eski saklama sonu önce, `limit` kadar; `after` verilirse o satırdan sonrası (imha işinin
+ * beklettiği satırlar sonraki sayfaları tıkamaz). Saklama sonu yalnız konuşma kaydında yazılır
+ * (`TODO(F3c2-retention)`); tarama kurumun satırlarıyla sınırlıdır.
+ */
+export async function listExpiredFiles(
+  db: Database,
+  institutionId: string,
+  now: Date,
+  limit: number,
+  after: ExpiredFileCursor | null = null,
+): Promise<StoredFile[]> {
+  return db
+    .select()
+    .from(files)
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        isNotNull(files.retentionUntil),
+        lte(files.retentionUntil, now),
+        ne(files.status, 'deleted'),
+        after === null
+          ? undefined
+          : or(
+              gt(files.retentionUntil, after.retentionUntil),
+              and(eq(files.retentionUntil, after.retentionUntil), gt(files.id, after.id)),
+            ),
+      ),
+    )
+    .orderBy(asc(files.retentionUntil), asc(files.id))
+    .limit(limit)
+}
+
+/**
+ * Saklama sonunu yeniden hesaplanan değere taşır (DOM-BEC-052). Kararı (yalnız ileri) çağıran
+ * core `extendedRecordingRetention` ile verir; satır sürümü tutmazsa (eşzamanlı imha) `null`.
+ */
+export function extendFileRetention(
+  tx: Database,
+  institutionId: string,
+  current: StoredFile,
+  retentionUntil: Date,
+  now: Date,
+) {
+  return updateFile(tx, institutionId, current, { retentionUntil }, now)
 }

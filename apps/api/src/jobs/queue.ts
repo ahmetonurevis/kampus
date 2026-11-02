@@ -28,6 +28,25 @@ export const JOB_SCHEMA = 'pgboss'
 export const JOB_TIME_ZONE = 'Europe/Istanbul'
 const STOP_TIMEOUT_MS = 10_000
 
+/**
+ * Kurum başına işlerin işçi ayarı. pg-boss süre sınırını (`expireInSeconds`) iş başına değil çekim
+ * başına uygular: çekimdeki en büyük süre bütün çekimin sınırıdır ve aşılınca çekimdeki işlerin
+ * hepsi `failed` olur (pg-boss 12 `manager.js` `#processJobs`, `maxExpiration`). Bu yüzden her
+ * çekim tek iştir (`batchSize: 1`) ve her iş kendi 900 sn'lik sınırını taşır; birinin hatası ya da
+ * süre aşımı ötekini düşürmez.
+ *
+ * Çok kurumlu dağıtımın kurum sayısı × 2 sn yoklama aralığı kadar sürmemesi için işçi başına iki
+ * eşzamanlı çekici çalışır (`localConcurrency`; API havuzundan en çok iki bağlantı) ve kuyrukta
+ * bekleyen iş varken dolu çekimden sonra beklenmez (`burstWhenReadyExceeds`; kuyruk sayısı
+ * pg-boss'un istatistik önbelleğinden gelir, sayım ve önbellek dakikada bir yenilenir). İlk boş
+ * çekim normal yoklamaya döner.
+ */
+const INSTITUTION_WORK_OPTIONS = {
+  batchSize: 1,
+  localConcurrency: 2,
+  burstWhenReadyExceeds: 1,
+} as const
+
 /** Kurum başına işlerin ve dağıtım işlerinin yeniden deneme ayarı (geri çekilmeli, sınırlı). */
 const QUEUE_OPTIONS: QueueOptions = {
   retryLimit: 3,
@@ -75,7 +94,9 @@ async function runInstitutionJob(
   }
   const data = parsed.data
   try {
-    const result = await definition.run(deps, data, app.clock())
+    // Süre aşımında ya da kapanışta pg-boss `job.signal`'i iptal eder; uzun işler turlar arasında
+    // durur (sonuç pg-boss'ta zaten `failed`, iş yeniden denenir ve idempotenttir).
+    const result = await definition.run({ ...deps, signal: job.signal }, data, app.clock())
     deps.log.info({
       event: 'job.completed',
       job: definition.name,
@@ -153,8 +174,11 @@ export async function startJobs(
           throw new Error(info.message)
         }
       })
-      await boss.work<unknown>(definition.name, { perJobResults: true }, async (batch) =>
-        Promise.all(batch.map((job) => runInstitutionJob(app, deps, definition, job))),
+      await boss.work<unknown>(
+        definition.name,
+        { perJobResults: true, ...INSTITUTION_WORK_OPTIONS },
+        async (batch) =>
+          Promise.all(batch.map((job) => runInstitutionJob(app, deps, definition, job))),
       )
     }
     // Yalnız açıkça emekli edilen işlerin zamanlaması silinir; listede olmayan zamanlamaya

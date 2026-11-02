@@ -218,6 +218,13 @@
       "when": 1793603351966,
       "tag": "0030_create_attempt_media_plays",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793616727688,
+      "tag": "0031_add_submission_version_files",
+      "breakpoints": true
     }
   ]
 }

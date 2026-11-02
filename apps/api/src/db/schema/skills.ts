@@ -16,6 +16,7 @@ import {
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 
+import { FILE_PURPOSES } from '@kampus/school-core/content/taxonomy.ts'
 import { GRADE_TYPES, type GradeType } from '@kampus/school-core/lib/grades.ts'
 import {
   TARGET_KINDS,
@@ -75,9 +76,10 @@ import { resources, resourceVersions } from './resources.ts'
  * - Tablolar yeni ve boştur; kısıtlar `not valid` adımına gerek olmadan tek adımda eklenir.
  *
  * - Dinleme hakkı `attempt_media_plays` satırlarıyla sayılır (migration 0030, OG-049).
- *
- * TODO(F3c2-files): teslim sürümünün `files` bağlantıları (el yazısı ve konuşma kaydı) ileri
- * migration'da eklenir. O zamana kadar yalnız metin teslimi saklanabilir.
+ * - Dosyalı ve sesli teslim sürümü dosya kimliklerini sırasıyla `submission_versions.file_ids`'te
+ *   taşır (migration 0031, OG-048); dosya satırı aynı işlemde sürüme bağlanır
+ *   (`files.attached_type = 'task_submission_version'`). İmhadan sonra kimlik kalır, dosya satırı
+ *   `deleted` olur ve süresi okunur (DOM-BEC-052).
  */
 
 const required = requiredColumns
@@ -510,7 +512,8 @@ export const taskSubmissions = pgTable(
 
 /**
  * Değişmez teslim sürümü (karar 6; DOM-BEC-040, 046). Geç bayrağı ve sözcük sayısı saklanmaz.
- * TODO(F3c2-files): dosya ve konuşma kaydı bağlantıları `files` ile gelir.
+ * Dosyalı (el yazısı) ve sesli (konuşma kaydı) sürümün dosyaları `file_ids`'te, gönderim
+ * sırasıyla durur (OG-048); en fazla 10 (`FILE_PURPOSES.submission.maxFiles`).
  */
 export const submissionVersions = pgTable(
   'submission_versions',
@@ -524,6 +527,11 @@ export const submissionVersions = pgTable(
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull(),
     // kvkk: K — kursiyerin metni; loglanmaz
     body: text('body'),
+    // kvkk: K — kursiyerin el yazısı görüntüleri ya da ses kaydı (`files` satırları); loglanmaz
+    fileIds: uuid('file_ids')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
     ...required(),
   },
   (table) => [
@@ -537,6 +545,10 @@ export const submissionVersions = pgTable(
     check(
       'submission_versions_body_check',
       sql`${table.body} is null or char_length(${table.body}) <= 50000`,
+    ),
+    check(
+      'submission_versions_file_ids_check',
+      sql`cardinality(${table.fileIds}) <= ${sql.raw(String(FILE_PURPOSES.submission.maxFiles))}`,
     ),
     check('submission_versions_version_check', firstVersion(table)),
     // Sürüm numarası teslimde tekildir; teslim yabancı anahtarının indeksidir. Kısıt (indeks değil):

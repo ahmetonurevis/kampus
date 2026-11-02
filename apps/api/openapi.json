@@ -5249,14 +5249,14 @@
                         "maximum": 600
                       },
                       "speakingSeconds": {
+                        "default": 180,
                         "type": "integer",
                         "minimum": 10,
                         "maximum": 600
                       }
                     },
                     "required": [
-                      "submissionKind",
-                      "speakingSeconds"
+                      "submissionKind"
                     ]
                   }
                 ]
@@ -5817,14 +5817,14 @@
                         "maximum": 600
                       },
                       "speakingSeconds": {
+                        "default": 180,
                         "type": "integer",
                         "minimum": 10,
                         "maximum": 600
                       }
                     },
                     "required": [
-                      "submissionKind",
-                      "speakingSeconds"
+                      "submissionKind"
                     ]
                   }
                 ]
@@ -6495,14 +6495,14 @@
                         "maximum": 600
                       },
                       "speakingSeconds": {
+                        "default": 180,
                         "type": "integer",
                         "minimum": 10,
                         "maximum": 600
                       }
                     },
                     "required": [
-                      "submissionKind",
-                      "speakingSeconds"
+                      "submissionKind"
                     ]
                   }
                 ]
@@ -8317,6 +8317,63 @@
           "decisionReason"
         ]
       },
+      "TaskSubmissionFileInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "submission",
+              "speaking_recording"
+            ],
+            "description": "El yazısı teslimi veya konuşma kaydı"
+          },
+          "contentType": {
+            "type": "string",
+            "description": "İçerikten tespit edilen tür"
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sunucuda ölçülen süre; ölçülmediyse `null`. İmhadan sonra da kalır (DOM-BEC-052)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "ready",
+              "deleted"
+            ],
+            "description": "`ready` dosya `GET /api/v1/files/{fileId}/url` ile açılır (konuşma kaydında DOM-BEC-053 erişimi); `deleted` saklama süresi dolup imha edildi"
+          }
+        },
+        "required": [
+          "id",
+          "purpose",
+          "contentType",
+          "byteSize",
+          "durationMs",
+          "status"
+        ]
+      },
       "TaskSubmissionDetailInput": {
         "type": "object",
         "properties": {
@@ -8491,6 +8548,13 @@
                     "null"
                   ]
                 },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskSubmissionFileInput"
+                  },
+                  "description": "Dosyalı teslimin görüntüleri veya konuşma kaydı, gönderim sırasıyla; metin teslimde boş"
+                },
                 "score": {
                   "anyOf": [
                     {
@@ -8545,6 +8609,7 @@
                 "late",
                 "wordCount",
                 "body",
+                "files",
                 "score",
                 "grading",
                 "appealDeadline",
@@ -17225,6 +17290,7 @@
                         "maximum": 600
                       },
                       "speakingSeconds": {
+                        "default": 180,
                         "type": "integer",
                         "minimum": 10,
                         "maximum": 600
@@ -17816,6 +17882,7 @@
                         "maximum": 600
                       },
                       "speakingSeconds": {
+                        "default": 180,
                         "type": "integer",
                         "minimum": 10,
                         "maximum": 600
@@ -18527,6 +18594,7 @@
                         "maximum": 600
                       },
                       "speakingSeconds": {
+                        "default": 180,
                         "type": "integer",
                         "minimum": 10,
                         "maximum": 600
@@ -20386,6 +20454,64 @@
         ],
         "additionalProperties": false
       },
+      "TaskSubmissionFile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "submission",
+              "speaking_recording"
+            ],
+            "description": "El yazısı teslimi veya konuşma kaydı"
+          },
+          "contentType": {
+            "type": "string",
+            "description": "İçerikten tespit edilen tür"
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sunucuda ölçülen süre; ölçülmediyse `null`. İmhadan sonra da kalır (DOM-BEC-052)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "ready",
+              "deleted"
+            ],
+            "description": "`ready` dosya `GET /api/v1/files/{fileId}/url` ile açılır (konuşma kaydında DOM-BEC-053 erişimi); `deleted` saklama süresi dolup imha edildi"
+          }
+        },
+        "required": [
+          "id",
+          "purpose",
+          "contentType",
+          "byteSize",
+          "durationMs",
+          "status"
+        ],
+        "additionalProperties": false
+      },
       "TaskSubmissionDetail": {
         "type": "object",
         "properties": {
@@ -20562,6 +20688,13 @@
                     "null"
                   ]
                 },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskSubmissionFile"
+                  },
+                  "description": "Dosyalı teslimin görüntüleri veya konuşma kaydı, gönderim sırasıyla; metin teslimde boş"
+                },
                 "score": {
                   "anyOf": [
                     {
@@ -20616,6 +20749,7 @@
                 "late",
                 "wordCount",
                 "body",
+                "files",
                 "score",
                 "grading",
                 "appealDeadline",
@@ -59357,7 +59491,7 @@
         "tags": [
           "task-assignments"
         ],
-        "description": "İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Geçici sınır: dosyalı ve sesli teslim 422 `submission_kind_unavailable`. Dinleme görevinde hak core varsayılanıyla 2'dir; 1, 2 veya sınırsız (`null`) seçilebilir ve öğrencinin denemesinde sayılır (IST-045, DOM-BEC-005). Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Dosyalı (el yazısı) ve sesli (konuşma kaydı) teslim türü atanabilir (OG-048; DOM-BEC-046, 050). Dinleme görevinde hak core varsayılanıyla 2'dir; 1, 2 veya sınırsız (`null`) seçilebilir ve öğrencinin denemesinde sayılır (IST-045, DOM-BEC-005). Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -59588,14 +59722,14 @@
                                     "maximum": 600
                                   },
                                   "speakingSeconds": {
+                                    "default": 180,
                                     "type": "integer",
                                     "minimum": 10,
                                     "maximum": 600
                                   }
                                 },
                                 "required": [
-                                  "submissionKind",
-                                  "speakingSeconds"
+                                  "submissionKind"
                                 ]
                               }
                             ]
@@ -61831,11 +61965,11 @@
     "/api/v1/task-assignments/{assignmentId}/submissions": {
       "post": {
         "operationId": "submitTaskSubmission",
-        "summary": "Yazma görevini teslim et",
+        "summary": "Beceri görevini teslim et",
         "tags": [
           "task-submissions"
         ],
-        "description": "Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core `planSubmissionVersion`). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; önceki sürümler ve metinleri değişmez. Sürüm sınırı (`maxVersions`) dolunca 422 `version_limit_reached`; puanlanmış teslimde öğretmen yeniden teslim istemeden 409 `resubmission_not_requested` (geri bildirim açılmadan genel 409 `submission_locked`; DOM-BEC-045); teslim kapandıysa (geç kabul dahil) 422 `submission_closed`; son teslimden sonra geç kabul süresindeki sürüm `late`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 `submission_not_expected`; dosyalı ve sesli teslim 422 `submission_kind_unavailable`. Yazma otomatik puanlanmaz. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core `planSubmissionVersion`). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; önceki sürümler ve metinleri değişmez. Sürüm sınırı (`maxVersions`) dolunca 422 `version_limit_reached`; puanlanmış teslimde öğretmen yeniden teslim istemeden 409 `resubmission_not_requested` (geri bildirim açılmadan genel 409 `submission_locked`; DOM-BEC-045); teslim kapandıysa (geç kabul dahil) 422 `submission_closed`; son teslimden sonra geç kabul süresindeki sürüm `late`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 `submission_not_expected`; görevin türünden başka teslim 422 `submission_kind_mismatch`. Dosyalı (`fileIds`, el yazısı görüntü/PDF) ve sesli (`recordingFileId`, konuşma kaydı) teslimde dosya kursiyerin `POST /api/v1/files` ile yüklediği, hazır ve bağlanmamış dosyadır (başkasının veya olmayan dosya genel 404 `not_found`, hazır değilse 422 `file_not_ready`, başka kayda bağlıysa 409 `file_already_attached`, rıza geri çekildiği için imhaya işaretliyse 422 `file_unavailable`); sesli teslim işlem anında geçerli rıza ister (403 `consent_required`; DOM-BEC-050), kayıt ölçülmemişse 422 `recording_not_measured`, boşsa `recording_empty`, sınırı aşıyorsa `recording_too_long` (DOM-BEC-054). Dosyalar sürüme bağlanır; konuşma kaydının saklama sonu yazılır (DOM-BEC-052). Teslim otomatik puanlanmaz. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "requestBody": {
           "required": true,
           "content": {

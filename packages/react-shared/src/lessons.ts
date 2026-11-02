@@ -68,10 +68,13 @@ export const LESSON_MESSAGES = {
 /** Formun türü: alan eşlemesi yalnız o formda bulunan alana yapılır, gerisi toast'tur. */
 export type LessonFormKind = 'lesson' | 'substitute' | 'cancel'
 
+/** Alana bağlanamayan, formun kendi içinde (alanların altında değil) gösterilen hata yeri. */
+export const LESSON_FORM_ROOT = 'root.server'
+
 const FORM_FIELDS = {
-  lesson: ['classId', 'subjectId', 'teacherId', 'date', 'duration', 'room'],
-  substitute: ['teacherId', 'reason'],
-  cancel: ['reason'],
+  lesson: ['classId', 'subjectId', 'teacherId', 'date', 'duration', 'room', LESSON_FORM_ROOT],
+  substitute: ['teacherId', 'reason', LESSON_FORM_ROOT],
+  cancel: ['reason', LESSON_FORM_ROOT],
 } as const satisfies Record<LessonFormKind, readonly string[]>
 
 /**
@@ -89,7 +92,19 @@ export const LESSON_ERROR_FIELDS = {
   lesson_teacher_mismatch: 'teacherId',
   lesson_has_substitution: 'teacherId',
   teacher_unchanged: 'teacherId',
+  // Ders artık değiştirilemiyor: açık formun içinde, formu kapatmadan gösterilir.
+  lesson_cancelled: LESSON_FORM_ROOT,
+  lesson_already_cancelled: LESSON_FORM_ROOT,
 } as const satisfies Readonly<Record<string, string>>
+
+const isMappedCode = (code: string): code is keyof typeof LESSON_ERROR_FIELDS =>
+  Object.hasOwn(LESSON_ERROR_FIELDS, code)
+
+/**
+ * Ders başlamış ya da geçmişse (`lesson_in_past`) ders formunda başlangıç alanı, yedek ve iptal
+ * formlarında (başlangıç alanı yok) form içi mesajdır.
+ */
+const IN_PAST_CODE = 'lesson_in_past'
 
 /**
  * Hatanın formdaki alanı: önce kod eşlemesi, yoksa sunucunun yollu ilk maddesi; alan o formda
@@ -98,9 +113,10 @@ export const LESSON_ERROR_FIELDS = {
 export function lessonErrorField(error: ApiError, form: LessonFormKind): string | undefined {
   if (error.status === 401 || error.status === 403 || error.status === 404) return undefined
   const fields: readonly string[] = FORM_FIELDS[form]
-  const mapped = (LESSON_ERROR_FIELDS as Readonly<Record<string, string>>)[error.code]
+  const mapped = isMappedCode(error.code) ? LESSON_ERROR_FIELDS[error.code] : undefined
   const field = mapped ?? error.issues.find((issue) => issue.path.length > 0)?.path.join('.')
-  return field !== undefined && fields.includes(field) ? field : undefined
+  if (field !== undefined && fields.includes(field)) return field
+  return error.code === IN_PAST_CODE ? LESSON_FORM_ROOT : undefined
 }
 
 /** Çakışma kodları (409, sürüm dışı): form korunur, kullanıcı saati ya da kişiyi değiştirir. */
@@ -114,7 +130,7 @@ export const LESSON_CONFLICT_CODES = [
 ] as const
 
 export const isLessonConflict = (error: ApiError) =>
-  error.status === 409 && (LESSON_CONFLICT_CODES as readonly string[]).includes(error.code)
+  error.status === 409 && LESSON_CONFLICT_CODES.some((code) => code === error.code)
 
 /** Ekrandaki ders eskidi (sürüm çakıştı, ders yok oldu ya da zaten iptal): program tazelenir. */
 export const lessonStale = (error: ApiError) =>

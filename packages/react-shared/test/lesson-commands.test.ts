@@ -265,6 +265,17 @@ describe('ders hata metinleri ve alanları (DOM-YTK-069)', () => {
     assert.equal(lessonErrorField(error(404, 'not_found'), 'lesson'), undefined)
   })
 
+  test('ders artık değiştirilemiyorsa hata formun içine yazılır (OG-040, DOM-YTK-069)', () => {
+    for (const form of ['lesson', 'substitute', 'cancel'] as const) {
+      assert.equal(lessonErrorField(error(422, 'lesson_cancelled'), form), 'root.server')
+      assert.equal(lessonErrorField(error(409, 'lesson_already_cancelled'), form), 'root.server')
+    }
+    // Başlangıç alanı yalnız ders formunda vardır; yedek ve iptal formunda form içi mesaj.
+    assert.equal(lessonErrorField(error(422, 'lesson_in_past'), 'lesson'), 'date')
+    assert.equal(lessonErrorField(error(422, 'lesson_in_past'), 'substitute'), 'root.server')
+    assert.equal(lessonErrorField(error(422, 'lesson_in_past'), 'cancel'), 'root.server')
+  })
+
   test('404, sürüm çakışması, zaten iptal ve iptal edilmiş ders programı tazeler', () => {
     assert.equal(lessonStale(error(404, 'not_found')), true)
     assert.equal(lessonStale(error(409, 'version_conflict')), true)

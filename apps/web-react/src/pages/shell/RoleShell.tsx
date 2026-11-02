@@ -7,6 +7,7 @@ import { ViewScopeContext } from '@/layout/view-scope.ts'
 import { withChildParam } from '@/lib/child-selection.ts'
 import { loginHref } from '@/lib/return-path.ts'
 import { resolveProspectDetail, resolveShell, showsClosedNotice } from '@/lib/route-guard.ts'
+import { SECURITY_PATH, SECURITY_TITLE } from '@/lib/account-pages.ts'
 import { isMigratedPage, MigratedPage } from '@/pages/page-registry.tsx'
 import { ModuleClosedPage } from './ModuleClosedPage.tsx'
 import { ModuleClosedRedirect } from './ModuleClosedRedirect.tsx'
@@ -20,6 +21,12 @@ const DEV_DEMO_PATH = 'ornek-liste'
 const ListDemoPage = import.meta.env.DEV
   ? lazy(async () => ({ default: (await import('@/pages/dev/ListDemoPage.tsx')).ListDemoPage }))
   : null
+
+// Hesap menüsündeki Güvenlik sayfası her rolde vardır; menü kaydında değil (web'e özgü hesap
+// sayfası, mobil karşılığı OG-265), bu yüzden kararı `resolveShell`'den önce verilir.
+const SecurityPage = lazy(async () => ({
+  default: (await import('@/pages/account/SecurityPage.tsx')).SecurityPage,
+}))
 
 function PageLoading() {
   return (
@@ -58,6 +65,15 @@ export function RoleShell() {
             <ListDemoPage key={child.childId} />
           </Suspense>
         </ViewScopeContext>
+      </AppLayout>
+    )
+
+  if (session && role === session.role && path === SECURITY_PATH)
+    return (
+      <AppLayout session={session} title={SECURITY_TITLE}>
+        <Suspense fallback={<PageLoading />}>
+          <SecurityPage />
+        </Suspense>
       </AppLayout>
     )
 

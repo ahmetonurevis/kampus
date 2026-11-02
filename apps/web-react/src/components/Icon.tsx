@@ -100,6 +100,9 @@ import {
   Video,
   File,
   ExternalLink,
+  EyeOff,
+  KeyRound,
+  Smartphone,
 } from 'lucide-react'
 
 // Vue `Icon.vue` ile aynı ad listesi: school-core navigasyonu ikonları bu adlarla verir.
@@ -204,6 +207,9 @@ const icons = {
   Video,
   File,
   ExternalLink,
+  EyeOff,
+  KeyRound,
+  Smartphone,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof icons

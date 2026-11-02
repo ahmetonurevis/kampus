@@ -1,40 +1,135 @@
-name: Demo kalite kontrolleri
+name: Kalite kontrolleri
+# İşler paralel koşar; toplam duvar saati hedefi 12 dk, hiçbir iş 15 dk'yı aşmaz
+# (docs/muhendislik/test-stratejisi.md §8). Bütçe aşılırsa parça sayısı artırılır, zaman aşımı değil.
 on:
   pull_request:
+  # Sahip dalları (`oguzhan/**`, `onur/**`) her push'ta koşmaz: Actions dakikası entegrasyon
+  # push'unda harcanır; dalda gerekirse `gh workflow run checks.yml --ref <dal>`.
   push:
     branches: [main, 'feature/**', 'fix/**']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  validate:
+  statik:
+    name: Statik (biçim, lint, tip, sözleşme)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          package-manager-cache: false
-      - uses: pnpm/action-setup@v6
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/kurulum
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm --filter @kampus/api test
+      - run: pnpm test:hooks
       - run: pnpm --filter @kampus/api openapi:check
       - run: pnpm --filter @kampus/api-client generate:check
+
+  birim:
+    name: Birim ve paket testleri
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/kurulum
+      - run: pnpm test
+      # Kapsam eşikli (test-stratejisi.md §2).
       - run: pnpm --filter @kampus/api-client test:coverage
       - run: pnpm --filter @kampus/react-shared test
+
+  api:
+    # API bütünleşik testleri (app.inject + PGlite); dosya düzeyinde parçalara bölünür.
+    # `pnpm --filter @kampus/api test` ile aynı dosyalar; pg-* dosyaları TEST_PG_URL yokken atlanır.
+    name: API (PGlite) ${{ matrix.shard }}/3
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/kurulum
+      - working-directory: apps/api
+        run: node --test --test-shard=${{ matrix.shard }}/3 'test/**/*.test.ts'
+
+  api-pg:
+    # Eşzamanlılık ve kilit davranışı gerçek PostgreSQL 16 ile (test-stratejisi.md §5).
+    name: API (PostgreSQL 16)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kampus
+          POSTGRES_PASSWORD: kampus-yerel
+          POSTGRES_DB: kampus_test
+          TZ: UTC
+          PGTZ: UTC
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U kampus"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      TEST_PG_URL: postgres://kampus:kampus-yerel@127.0.0.1:5433/kampus_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/kurulum
+      - run: pnpm --filter @kampus/api test:pg
+
+  build:
+    name: Build (Vue + React)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/kurulum
       - run: pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
+
+  e2e-vue:
+    # Vue demosu uçtan uca testleri (playwright.config.ts).
+    name: E2E Vue ${{ matrix.shard }}/2
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/kurulum
+        with:
+          playwright: 'true'
+      # CI'da e2e derlenmiş Vue uygulamasında (`vite preview`) koşar (playwright.config.ts).
+      - run: pnpm --filter @kampus/web build
+      - run: pnpm test:e2e --shard=${{ matrix.shard }}/2
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-vue-${{ matrix.shard }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
   e2e-react:
     # React web + API uçtan uca testleri: gerçek PostgreSQL 16, API ve derlenmiş web-react.
-    # Vue demosunun e2e işi (validate) değişmez.
+    # Her parça kendi veritabanını, API'sini ve web derlemesini global kurulumda açar.
+    name: E2E React ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     services:
       postgres:
         image: postgres:16-alpine
@@ -53,12 +148,18 @@ jobs:
           --health-retries 30
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/kurulum
         with:
-          node-version-file: .nvmrc
-          package-manager-cache: false
-      - uses: pnpm/action-setup@v6
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+          playwright: 'true'
       # Veritabanı (kampus_e2e), migrate, seed, API ve web derlemesi global kurulumda yapılır.
-      - run: pnpm test:e2e:react
+      - run: pnpm test:e2e:react --shard=${{ matrix.shard }}/3
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-react-${{ matrix.shard }}
+          path: |
+            playwright-report/e2e-react/
+            test-results/e2e-react/
+            artifacts/e2e-react/*.log
+          retention-days: 7
+          if-no-files-found: ignore

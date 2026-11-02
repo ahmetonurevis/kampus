@@ -1,0 +1,34 @@
+name: Kurulum
+description: pnpm ve Node (pnpm deposu önbellekli), bağımlılıklar; istenirse Playwright Chromium (sürüme göre önbellekli).
+inputs:
+  playwright:
+    description: Playwright Chromium ve sistem bağımlılıkları kurulsun mu ("true"/"false").
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    # pnpm sürümü kök package.json `packageManager` alanından okunur; setup-node önbelleği pnpm'i ister.
+    - uses: pnpm/action-setup@v6
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    - shell: bash
+      run: pnpm install --frozen-lockfile
+    - if: inputs.playwright == 'true'
+      id: playwright
+      shell: bash
+      run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+    - if: inputs.playwright == 'true'
+      id: playwright-cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+    - if: inputs.playwright == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm exec playwright install --with-deps chromium
+    # Tarayıcı önbellekten geldiyse yalnız sistem kütüphaneleri kurulur.
+    - if: inputs.playwright == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: pnpm exec playwright install-deps chromium

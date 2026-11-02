@@ -15,6 +15,7 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { TableSection } from '../academic/AcademicParts.tsx'
 import { TableGate } from '../learning/LearningParts.tsx'
 import { AppointmentPanel } from './AppointmentPanel.tsx'
+import { TeacherAvailabilitySection } from './TeacherAvailabilitySection.tsx'
 import { BookAppointmentPanel, NEW_APPOINTMENT } from './BookAppointmentPanel.tsx'
 import {
   STATUS_TONES,
@@ -43,6 +44,7 @@ const toneOf = (row: AppointmentRow) =>
  * liste durumu çocuk bazında korunur, süzgeç değişince sayfa başa döner. Satırdan sağ panelde
  * ayrıntı ve işlemler açılır (`?randevu=<kimlik>`); öğrenci ve veli "Randevu talep et"i sağ panelde
  * açar (`?randevu-form=yeni`).
+ * Öğretmen ayrıca "Müsaitlik saatlerim" bölümünü görür (`TeacherAvailabilitySection`).
  * "Yaklaşan randevular" yalnız onaylı ve başlamamış randevuları gösterir (`scheduledAppointments`,
  * DOM-ILT-104): bekleyen talep, red, geri çekme ve iptal programda yoktur.
  */
@@ -176,6 +178,7 @@ export function AppointmentsPage({
           />
         </TableGate>
       </TableSection>
+      {teacher ? <TeacherAvailabilitySection /> : null}
       <AppointmentPanel
         appointmentId={panel.selectedId}
         onClose={panel.close}

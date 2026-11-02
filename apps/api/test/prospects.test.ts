@@ -166,6 +166,8 @@ describe('aday uçları', () => {
     send('POST', `/api/v1/prospects/${id}/meetings`, cookie, body, ifMatch(version))
   const trial = (cookie: string | null, id: string, body: unknown, version: number | null) =>
     send('POST', `/api/v1/prospects/${id}/trial-lessons`, cookie, body, ifMatch(version))
+  const stageRevert = (cookie: string | null, id: string, body: unknown, version: number | null) =>
+    send('POST', `/api/v1/prospects/${id}/stage-revert`, cookie, body, ifMatch(version))
   const trialResult = (
     cookie: string | null,
     id: string,
@@ -1951,5 +1953,92 @@ describe('aday uçları', () => {
     // Denemesi olmayan aday öğretmene tek kayıt okumasında da 404.
     const hiddenOne = await a_get(teacher, '/api/v1/collections/prospects/pr1')
     assert.equal(hiddenOne.statusCode, 404, hiddenOne.body)
+  })
+
+  // --- Aşama geri alma (DOM-KAY-030) ------------------------------------------------------------
+
+  test('DOM-KAY-030: yönetici gerekçeyle aşamayı geri alır; sürüm artar, gerekçe kartta, denetimde yok', async () => {
+    const a = await institution()
+    const version = await versionOf(a.id, 'pr4')
+    const reason = 'Teklif yanlışlıkla işaretlendi.'
+    const done = await stageRevert(
+      a.adminCookie,
+      'pr4',
+      { stage: 'İletişime geçildi', reason },
+      version,
+    )
+    assert.equal(done.statusCode, 200, done.body)
+    const record = await findRecord(db, a.id, 'prospects', 'pr4')
+    assert.equal(record?.version, version + 1)
+    assert.equal(record?.data.stage, 'İletişime geçildi')
+    const reverts = record?.data.stageReverts as {
+      from: string
+      to: string
+      reason: string
+      by: { role: string }
+    }[]
+    assert.equal(reverts.length, 1)
+    assert.deepEqual(
+      [reverts[0]?.from, reverts[0]?.to, reverts[0]?.reason, reverts[0]?.by.role],
+      ['Teklif verildi', 'İletişime geçildi', reason, 'yonetici'],
+    )
+    const audit = await db.select().from(auditLog).where(eq(auditLog.institutionId, a.id))
+    assert.ok(JSON.stringify(audit).includes('prospect.stageRevert'))
+    assert.ok(!JSON.stringify(audit).includes('yanlışlıkla işaretlendi'))
+    // Aynı sürümle ikinci istek eski sürüm olduğu için 409; kayıt yeniden değişmez.
+    await unchanged(a.id, 'pr4', async () => {
+      assertError(
+        await stageRevert(a.adminCookie, 'pr4', { stage: 'Yeni aday', reason }, version),
+        409,
+        'version_conflict',
+      )
+    })
+  })
+
+  test('DOM-KAY-030: oturumsuz 401; ön büro, öğretmen, öğrenci ve veli 403; başlık, gövde ve kural reddi aday değiştirmez', async () => {
+    const a = await institution()
+    const version = await versionOf(a.id, 'pr4')
+    const good = { stage: 'Yeni aday', reason: 'Gerekçe.' }
+    assertError(await stageRevert(null, 'pr4', good, version), 401)
+    await unchanged(a.id, 'pr4', async () => {
+      for (const role of ['onburo', 'ogretmen', 'ogrenci', 'veli'] as const)
+        assertError(
+          await stageRevert((await member(a.id, role)).cookie, 'pr4', good, version),
+          403,
+          'forbidden',
+        )
+      const admin = a.adminCookie
+      assertError(await stageRevert(admin, 'pr4', good, null), 400, 'if_match_required')
+      assertError(await stageRevert(admin, 'pr4', { stage: 'Yeni aday' }, version), 400)
+      assertError(await stageRevert(admin, 'pr4', { ...good, reason: 'x' }, version), 400)
+      assertError(await stageRevert(admin, 'pr4', { ...good, stage: 'Vazgeçti' }, version), 400)
+      assertError(await stageRevert(admin, 'pr4', { ...good, extra: 1 }, version), 400)
+      // Aynı ya da ileri aşama ve görüşmesiz Görüşme planlandı 422.
+      assertError(
+        await stageRevert(admin, 'pr4', { ...good, stage: 'Teklif verildi' }, version),
+        422,
+        'prospect_stage_not_backward',
+      )
+      assertError(
+        await stageRevert(admin, 'pr4', { ...good, stage: 'Görüşme planlandı' }, version),
+        422,
+        'prospect_meeting_required',
+      )
+      assertError(await stageRevert(admin, 'pr-yok', good, 1), 404, 'not_found')
+    })
+    // Vazgeçen aday önce yeniden açılır (409); sürüm ne olursa olsun yetkisiz rol 403 alır.
+    const lost = await versionOf(a.id, 'pr5')
+    assertError(await stageRevert(a.adminCookie, 'pr5', good, lost), 409, 'prospect_closed')
+  })
+
+  test('DOM-YTK-040: crm modülü kapalıyken aşama geri alma 403 module_disabled', async () => {
+    const a = await institution({ enabledModules: { crm: false } })
+    await unchanged(a.id, 'pr4', async () => {
+      assertError(
+        await stageRevert(a.adminCookie, 'pr4', { stage: 'Yeni aday', reason: 'Gerekçe.' }, 1),
+        403,
+        'module_disabled',
+      )
+    })
   })
 })

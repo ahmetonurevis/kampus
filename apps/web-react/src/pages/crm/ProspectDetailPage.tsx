@@ -16,6 +16,7 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { ProspectNoteForm } from './ProspectNoteForm.tsx'
 import { ProspectPlanPanel } from './ProspectPlanPanel.tsx'
 import { ProspectStageForm } from './ProspectStageForm.tsx'
+import { ProspectStageRevertForm } from './ProspectStageRevertForm.tsx'
 import { dateTimeLabel, isOpenStage, slotLabel, stageTone } from './prospect-rows.ts'
 
 type Prospect = CoreRecord<'prospects'>
@@ -236,6 +237,15 @@ function Detail({
             stage={prospect.stage ?? ''}
             type={type}
           />
+          {role === 'yonetici' ? (
+            <ProspectStageRevertForm
+              key={`revert:${prospect.stage}:${version}`}
+              prospectId={prospect.id}
+              version={version}
+              prospect={prospect}
+              type={type}
+            />
+          ) : null}
           {enrolled ? (
             <p className="text-xs text-muted-foreground">
               Kesin kayıt tamamlandı; öğrenci kaydı Kayıt İşlemleri ve öğrenci listelerinde görünür.

@@ -8,7 +8,7 @@ import { useApiQuery } from './use-api-query.ts'
 
 // Aday/CRM yazma komutları (`POST /prospects`, `PATCH /prospects/:id`,
 // `POST /prospects/:id/{notes,meetings,trial-lessons,enroll}`; core `prospect.create`
-// `prospect.stage` `prospect.note` `prospect.meeting` `prospect.trial` `prospect.enroll`,
+// `prospect.stage` `prospect.stageRevert` `prospect.note` `prospect.meeting` `prospect.trial` `prospect.enroll`,
 // docs/domain/kayit-ve-crm.md DOM-KAY-001…011, DOM-KAY-030…035, DOM-DIL-030). Okuma genel
 // koleksiyon kancalarındadır (`prospects`).
 // Hepsi `exclusive`: yollu `issues` (mükerrer aday `phone`, kardeş `siblingOfId`, görüşme çakışması
@@ -26,6 +26,7 @@ type JsonBody<TOperation extends keyof operations> =
 
 export type CreateProspectBody = JsonBody<'createProspect'>
 export type ChangeProspectStageBody = JsonBody<'changeProspectStage'>
+export type RevertProspectStageBody = JsonBody<'revertProspectStage'>
 export type AddProspectNoteBody = JsonBody<'addProspectNote'>
 export type ScheduleProspectMeetingBody = JsonBody<'scheduleProspectMeeting'>
 export type ScheduleTrialLessonBody = JsonBody<'scheduleTrialLesson'>
@@ -38,6 +39,7 @@ interface ProspectCommandInput<TBody> {
   body: TBody
 }
 export type ChangeProspectStageInput = ProspectCommandInput<ChangeProspectStageBody>
+export type RevertProspectStageInput = ProspectCommandInput<RevertProspectStageBody>
 export type AddProspectNoteInput = ProspectCommandInput<AddProspectNoteBody>
 export type ScheduleProspectMeetingInput = ProspectCommandInput<ScheduleProspectMeetingBody>
 export type ScheduleTrialLessonInput = ProspectCommandInput<ScheduleTrialLessonBody>
@@ -86,6 +88,17 @@ export function changeProspectStageRequest(
   headers: CommandHeaders,
 ) {
   return client.PATCH('/api/v1/prospects/{prospectId}', {
+    params: { path: { prospectId }, header: versioned(headers) },
+    body,
+  })
+}
+
+export function revertProspectStageRequest(
+  client: KampusClient,
+  { prospectId, body }: RevertProspectStageInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/prospects/{prospectId}/stage-revert', {
     params: { path: { prospectId }, header: versioned(headers) },
     body,
   })
@@ -177,6 +190,18 @@ export function useChangeProspectStage(options: CommandOptions = {}) {
   return useApiCommand({
     request: changeProspectStageRequest,
     version: versionOf<ChangeProspectStageBody>,
+    invalidates: PROSPECT_INVALIDATES,
+    messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}
+
+/** Yönetici yanlışlıkla ileri alınan açık aşamayı gerekçeyle geri alır (DOM-KAY-030). */
+export function useRevertProspectStage(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: revertProspectStageRequest,
+    version: versionOf<RevertProspectStageBody>,
     invalidates: PROSPECT_INVALIDATES,
     messages: PROSPECT_MESSAGES,
     exclusive: true,

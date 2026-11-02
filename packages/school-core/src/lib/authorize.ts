@@ -51,6 +51,8 @@ type OnurWriteTargets = {
   // Aday/CRM (`lib/prospects.ts`): kurum kapsamlıdır, hedef kaydı yetkiyi değiştirmez.
   'prospect.create': Record<string, never>
   'prospect.stage': Record<string, never>
+  // Yanlışlıkla ileri alınan aşamanın yönetici tarafından geri alınması (DOM-KAY-030).
+  'prospect.stageRevert': Record<string, never>
   'prospect.note': Record<string, never>
   'prospect.meeting': Record<string, never>
   'prospect.trial': Record<string, never>
@@ -108,6 +110,8 @@ export const ONUR_WRITE_ACTION_ROLES = {
   // veli aday kaydına erişmez (yetki matrisi "Aday, tanışma görüşmesi", DOM-YTK-021).
   'prospect.create': ['yonetici', 'onburo'],
   'prospect.stage': ['yonetici', 'onburo'],
+  // Aşamayı geri alma geri dönüş yasağının istisnasıdır; yalnız yönetici, gerekçeyle (DOM-KAY-030).
+  'prospect.stageRevert': ['yonetici'],
   'prospect.note': ['yonetici', 'onburo'],
   'prospect.meeting': ['yonetici', 'onburo'],
   'prospect.trial': ['yonetici', 'onburo'],
@@ -444,6 +448,7 @@ function decide(
     // denetlenir.
     case 'prospect.create':
     case 'prospect.stage':
+    case 'prospect.stageRevert':
     case 'prospect.note':
     case 'prospect.meeting':
     case 'prospect.trial':

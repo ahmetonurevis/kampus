@@ -21,6 +21,8 @@ import {
   nextProspectStages,
   prospectStageLabel,
   recordTrialResult,
+  revertableProspectStages,
+  revertProspectStage,
   scheduleProspectMeeting,
   scheduleTrialLesson,
 } from '../packages/school-core/src/lib/prospects.ts'
@@ -1711,4 +1713,148 @@ test('DOM-DIL-031, DOM-YTK-080: yalnız dersin grubunun öğretmeni yazar; diğe
     () => recordTrialResult(state, teacher, child.id, { fit: 'suitable' }, later),
     fails('trial_lesson_unavailable', 'not_found'),
   )
+})
+
+// --- Aşama geri alma (DOM-KAY-030) -----------------------------------------------------------
+
+const admin = people.yonetici
+const revert = (stage: string, reason = 'Yanlışlıkla ileri alındı.') => ({ stage, reason })
+
+test('DOM-KAY-030: yönetici gerekçeyle açık aşamayı geri alır; kayıt tutulur, ileri tarihli görüşme kalkar', () => {
+  const state = withoutMeetings()
+  const created = createProspect(state, front, input(), id, now)
+  changeProspectStage(state, front, created.id, { stage: 'İletişime geçildi' }, now)
+  scheduleProspectMeeting(state, front, created.id, meetingInput(), now)
+  assert.equal(created.stage, 'Görüşme planlandı')
+  changeProspectStage(state, front, created.id, { stage: 'Teklif verildi' }, now)
+  assert.deepEqual(revertableProspectStages(created), [
+    'Yeni aday',
+    'İletişime geçildi',
+    'Görüşme planlandı',
+  ])
+  const later = '2026-10-07T10:00:00.000Z'
+  // Bir önceki aşamaya dönüş: görüşme korunur.
+  revertProspectStage(state, admin, created.id, revert('Görüşme planlandı'), later)
+  assert.equal(created.stage, 'Görüşme planlandı')
+  assert.ok(created.trialAt)
+  // Görüşme öncesi aşamaya dönüş: ileri tarihli görüşme kalkar.
+  revertProspectStage(
+    state,
+    admin,
+    created.id,
+    revert('İletişime geçildi', '  Görüşme iptal.  '),
+    later,
+  )
+  assert.equal(created.stage, 'İletişime geçildi')
+  assert.equal(created.trialAt, null)
+  assert.equal(created.meeting, undefined)
+  assert.equal(created.updatedAt, later)
+  assert.deepEqual(created.stageReverts, [
+    {
+      from: 'Teklif verildi',
+      to: 'Görüşme planlandı',
+      reason: 'Yanlışlıkla ileri alındı.',
+      at: later,
+      by: { role: 'yonetici', userId: 'u-admin' },
+    },
+    {
+      from: 'Görüşme planlandı',
+      to: 'İletişime geçildi',
+      reason: 'Görüşme iptal.',
+      at: later,
+      by: { role: 'yonetici', userId: 'u-admin' },
+    },
+  ])
+})
+
+test('DOM-KAY-030: geri alma yalnız yönetici; ön büro, öğretmen, öğrenci ve veli 403; kayıt değişmez', () => {
+  const state = seed()
+  changeProspectStage(state, front, 'pr1', { stage: 'Teklif verildi' }, now)
+  for (const role of ['onburo', 'ogretmen', 'ogrenci', 'veli'] as const)
+    unchangedOnFailure(
+      state,
+      () => revertProspectStage(state, people[role], 'pr1', revert('Yeni aday'), now),
+      fails('permission_denied', 'forbidden'),
+    )
+  assert.equal(prospectOf(state, 'pr1').stage, 'Teklif verildi')
+  assert.equal(prospectOf(state, 'pr1').stageReverts, undefined)
+})
+
+test('DOM-KAY-030: aynı ya da ileri aşama, görüşmesiz Görüşme planlandı, kapalı ve kayıtlı aday reddedilir; kayıt değişmez', () => {
+  const state = withoutMeetings()
+  changeProspectStage(state, front, 'pr1', { stage: 'Teklif verildi' }, now)
+  const attempt = (prospectId: string, stage: string, reason?: string) => () =>
+    revertProspectStage(state, admin, prospectId, revert(stage, reason), now)
+  unchangedOnFailure(
+    state,
+    attempt('pr1', 'Teklif verildi'),
+    fails('prospect_stage_not_backward', 'rule', ['stage']),
+  )
+  // Görüşme planlandı planlamayla girilir; görüşmesi olmayan adayda seçilemez.
+  unchangedOnFailure(
+    state,
+    attempt('pr1', 'Görüşme planlandı'),
+    fails('prospect_meeting_required', 'rule', ['stage']),
+  )
+  const early = prospectOf(state, 'pr2')
+  assert.equal(early.stage, 'İletişime geçildi')
+  unchangedOnFailure(
+    state,
+    attempt('pr2', 'Teklif verildi'),
+    fails('prospect_stage_not_backward', 'rule', ['stage']),
+  )
+  unchangedOnFailure(
+    state,
+    attempt('pr-yok', 'Yeni aday'),
+    fails('prospect_not_found', 'not_found'),
+  )
+  // Vazgeçen aday önce yeniden açılır; kayıtlı aday kilitlidir.
+  unchangedOnFailure(state, attempt('pr5', 'Yeni aday'), fails('prospect_closed', 'conflict'))
+  unchangedOnFailure(state, attempt('pr15', 'Yeni aday'), fails('prospect_enrolled', 'conflict'))
+  // Kapalı aşama hedef olamaz; gerekçe zorunludur.
+  for (const stage of ['Vazgeçti', 'Kayıt oldu', 'Bilinmeyen'])
+    assert.throws(attempt('pr1', stage), zodError)
+  // Gerekçe zorunludur: eksik, boş, tek karakter ve uzun gerekçe doğrulamadan döner.
+  for (const body of [
+    { stage: 'Yeni aday' },
+    { stage: 'Yeni aday', reason: '' },
+    { stage: 'Yeni aday', reason: ' ' },
+    { stage: 'Yeni aday', reason: 'x' },
+    { stage: 'Yeni aday', reason: 'y'.repeat(prospects.PROSPECT_REVERT_REASON_MAX + 1) },
+  ])
+    assert.throws(() => revertProspectStage(state, admin, 'pr1', body, now), zodError)
+  assert.throws(
+    () =>
+      revertProspectStage(
+        state,
+        admin,
+        'pr1',
+        { stage: 'Yeni aday', reason: 'Gerekçe.', extra: 1 },
+        now,
+      ),
+    zodError,
+  )
+})
+
+test('DOM-KAY-030: geri alınmış aday yeniden ileri alınabilir; geçmiş görüşme geçmiş olarak kalır', () => {
+  const state = withoutMeetings()
+  const child = languageProspect(state)
+  const lesson = futureLesson(state)
+  scheduleTrialLesson(
+    state,
+    front,
+    child.id,
+    { lessonId: lesson.id, guardianConsent: true },
+    now,
+    language,
+  )
+  // Ders geçtikten sonra geri alma: gerçekleşmiş deneme silinmez.
+  const after = new Date(Date.parse(lesson.date) + 3_600_000).toISOString()
+  changeProspectStage(state, front, child.id, { stage: 'Teklif verildi' }, after, language)
+  revertProspectStage(state, admin, child.id, revert('İletişime geçildi'), after, language)
+  assert.equal(child.stage, 'İletişime geçildi')
+  assert.ok(child.trialLesson, 'gerçekleşmiş deneme dersi geçmiş olarak kalır')
+  changeProspectStage(state, front, child.id, { stage: 'Teklif verildi' }, after, language)
+  assert.equal(child.stage, 'Teklif verildi')
+  assert.equal(child.stageReverts?.length, 1)
 })

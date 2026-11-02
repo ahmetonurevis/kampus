@@ -10,6 +10,7 @@ import {
   createProspectSchema,
   scheduleMeetingSchema,
   recordTrialResultSchema,
+  revertProspectStageSchema,
   scheduleTrialLessonSchema,
 } from '@kampus/school-core/lib/prospects.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
@@ -25,6 +26,7 @@ import {
   guardianMatchesFor,
   scheduleProspectMeetingCommand,
   recordTrialResultCommand,
+  revertProspectStageCommand,
   scheduleTrialLessonCommand,
   studentIdentityFor,
 } from '../services/prospects.ts'
@@ -360,6 +362,33 @@ export function registerProspectRoutes(app: FastifyInstance) {
       sendCommand(
         reply,
         await recordTrialResultCommand(
+          contextOf(request),
+          request.params.prospectId,
+          input(request),
+          options(request, 'optional'),
+        ),
+      ),
+  )
+
+  typed.post(
+    '/api/v1/prospects/:prospectId/stage-revert',
+    {
+      preValidation: guard('prospect.stageRevert', 'required'),
+      schema: {
+        operationId: 'revertProspectStage',
+        tags: ['prospects'],
+        summary: 'Aday aşamasını geri al',
+        description: `Yanlışlıkla ileri alınan açık aşamayı bir önceki açık aşamaya geri alır (core \`revertProspectStage\`, DOM-KAY-030). Geri dönüş yasağının istisnasıdır: yalnız yönetici yapar ve gerekçe (en fazla 300 karakter) zorunludur; gerekçe aday kartında saklanır, denetim kaydına yalnız alan adı yazılır. Yalnız açık aşamalar arasında geriye gidilir: aynı veya ileri aşama 422 \`prospect_stage_not_backward\`, görüşmesi olmayan adayda \`Görüşme planlandı\` 422 \`prospect_meeting_required\`. Vazgeçen aday 409 \`prospect_closed\`, kayıtlı aday 409 \`prospect_enrolled\`. Görüşme öncesi aşamaya dönerken ileri tarihli görüşme ve deneme dersi kalkar. ${ifMatchNote} Roller: ${rolesOf('prospect.stageRevert')}.`,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        params: prospectParamsSchema,
+        body: revertProspectStageSchema,
+        response,
+      },
+    },
+    async (request, reply) =>
+      sendCommand(
+        reply,
+        await revertProspectStageCommand(
           contextOf(request),
           request.params.prospectId,
           input(request),

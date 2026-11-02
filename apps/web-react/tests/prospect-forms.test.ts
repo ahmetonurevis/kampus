@@ -12,6 +12,9 @@ import {
   meetingInstant,
   noteFormSchema,
   PRIVACY_NOTICE_VERSION,
+  revertBody,
+  revertDefaults,
+  revertFormSchema,
   stageBody,
   trialBody,
   trialLessonOptions,
@@ -194,4 +197,23 @@ test('sunucu hata yolu bilinen alana yazılır, bilinmeyen yol form düzeyi hata
     { name: 'siblingOfId', focus: false },
     { name: 'root.server', focus: undefined },
   ])
+})
+
+test('DOM-KAY-030: aşama geri alma formu hedef aşama ve gerekçe ister; gövde yalnız açık aşamayı taşır', () => {
+  const empty = revertFormSchema.safeParse(revertDefaults())
+  assert.equal(empty.success, false)
+  const paths = empty.success ? [] : empty.error.issues.map((issue) => issue.path[0])
+  assert.deepEqual(paths.sort(), ['reason', 'stage'])
+  assert.equal(revertFormSchema.safeParse({ stage: 'Yeni aday', reason: 'x' }).success, false)
+  const ok = revertFormSchema.parse({ stage: 'İletişime geçildi', reason: '  Yanlış aşama.  ' })
+  assert.deepEqual(revertBody(ok), {
+    ok: true,
+    body: { stage: 'İletişime geçildi', reason: 'Yanlış aşama.' },
+  })
+  // Kapalı ya da bilinmeyen aşama gövdeye girmez.
+  for (const stage of ['Vazgeçti', 'Kayıt oldu', 'Bilinmeyen'])
+    assert.deepEqual(revertBody({ stage, reason: 'Gerekçe.' }), {
+      ok: false,
+      message: 'Geri alınacak aşamayı seçin.',
+    })
 })

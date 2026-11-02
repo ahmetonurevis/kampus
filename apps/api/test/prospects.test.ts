@@ -14,6 +14,7 @@ import { auditLog } from '../src/db/schema/audit-log.ts'
 import { institutionSettings } from '../src/db/schema/institution-settings.ts'
 import { records } from '../src/db/schema/records.ts'
 import { studentIdentities } from '../src/db/schema/student-identities.ts'
+import { loadStudentGuardians } from '../src/db/student-guardians.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { addProspectNoteCommand } from '../src/services/prospects.ts'
@@ -23,6 +24,7 @@ import {
   createMember,
   createTestDatabase,
   FIXED_NOW,
+  nextIp,
   signInAs,
   TEST_ORIGIN,
   type InstitutionOverrides,
@@ -88,6 +90,25 @@ const PROSPECT = {
 }
 const MEETING = { date: SATURDAY, duration: 45, room: 'Görüşme odası' }
 
+/** Bağın karşılaştırılan alanları (kimlik ve sürüm hariç). */
+const bondOf = (link: {
+  parentId: string | null
+  membershipId: string | null
+  relationship: string
+  custody: string
+  contactRestricted: boolean
+  isPayer: boolean
+  canPickUp: boolean
+}) => ({
+  parentId: link.parentId,
+  membershipId: link.membershipId,
+  relationship: link.relationship,
+  custody: link.custody,
+  contactRestricted: link.contactRestricted,
+  isPayer: link.isPayer,
+  canPickUp: link.canPickUp,
+})
+
 describe('aday uçları', () => {
   let db: Database
   let close: () => Promise<void>
@@ -133,9 +154,11 @@ describe('aday uçları', () => {
     headers: Record<string, string> = {},
     target: App = app,
   ) {
+    // Her istek ayrı adresten gelir: dosya çok istek attığı için tek adres genel hız sınırına (300/dk) takılır.
     return target.inject({
       method,
       url,
+      remoteAddress: nextIp(),
       headers: {
         origin: TEST_ORIGIN,
         'content-type': 'application/json',
@@ -149,6 +172,7 @@ describe('aday uçları', () => {
     app.inject({
       method: 'GET',
       url,
+      remoteAddress: nextIp(),
       headers: { origin: TEST_ORIGIN, ...(cookie === null ? {} : { cookie }) },
     })
   const create = (
@@ -170,6 +194,8 @@ describe('aday uçları', () => {
     send('POST', `/api/v1/prospects/${id}/stage-revert`, cookie, body, ifMatch(version))
   const consent = (cookie: string | null, id: string, body: unknown, version: number | null) =>
     send('POST', `/api/v1/prospects/${id}/marketing-consent`, cookie, body, ifMatch(version))
+  const details = (cookie: string | null, id: string, body: unknown, version: number | null) =>
+    send('PATCH', `/api/v1/prospects/${id}/details`, cookie, body, ifMatch(version))
   const trialResult = (
     cookie: string | null,
     id: string,
@@ -1167,6 +1193,26 @@ describe('aday uçları', () => {
     const parent = parents.find((row) => row.id === student?.data.parentId)
     assert.equal(parent?.data.name, ENROLLMENT.guardian.name)
     assert.equal(parent?.data.relationship, 'mother')
+    // Veli–öğrenci bağı aynı işlemde yazılır: velayet sahibi ve ödeyici, hesapsız (DOM-ILT-070, -074).
+    const links = await loadStudentGuardians(db, a.id, studentId)
+    assert.deepEqual(links.map(bondOf), [
+      {
+        parentId: parent?.id,
+        membershipId: null,
+        relationship: 'mother',
+        custody: 'full',
+        contactRestricted: false,
+        isPayer: true,
+        canPickUp: false,
+      },
+    ])
+    const linkAudit = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'guardian.link')))
+    assert.equal(linkAudit.length, 1)
+    assert.equal(linkAudit[0]?.entityId, links[0]?.id)
+    assert.equal(JSON.stringify(linkAudit[0]).includes(String(prospect?.data.phone)), false)
 
     const audit = await db
       .select()
@@ -1326,6 +1372,14 @@ describe('aday uçları', () => {
     assert.deepEqual(contracts.at(-1)?.data.discounts, [
       { kind: 'sibling', amountCents: Math.floor(TUITION.amountCents / 10) },
     ])
+    // Kardeşin bağı aynı veli kaydına yazılır; her öğrencinin kendi ödeyicisi vardır (DOM-ILT-074).
+    for (const studentId of [elder?.id, second.json().data.entity.id as string]) {
+      const links = await loadStudentGuardians(db, a.id, String(studentId))
+      assert.equal(links.length, 1)
+      assert.equal(links[0]?.parentId, parentId)
+      assert.equal(links[0]?.isPayer, true)
+      assert.equal(links[0]?.custody, 'full')
+    }
     assertError(await a_get(cookie, '/api/v1/prospects/yok/guardian-matches'), 404)
     assertError(
       await a_get((await member(a.id, 'veli')).cookie, `/api/v1/prospects/pr2/guardian-matches`),
@@ -1492,6 +1546,14 @@ describe('aday uçları', () => {
     assert.equal(contract?.data.title, 'Dil kursu eğitim sözleşmesi')
     assert.equal(contract?.data.grossCents, 2_000_000)
     assert.equal(contract?.data.payer, 'student')
+    // Yetişkin kursiyerin kendisi veli değildir: veli bağı yazılmaz (DOM-YTK-030).
+    const studentId = done.json().data.entity.id as string
+    assert.deepEqual(await loadStudentGuardians(db, a.id, studentId), [])
+    const linkAudit = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'guardian.link')))
+    assert.equal(linkAudit.length, 0)
   })
 
   test('DOM-KAY-012: dil okulunda yetişkin kursiyere veli verilmez (422); yaş grubu seçimiyle uyuşmayan doğum tarihi 422', async () => {
@@ -2118,6 +2180,84 @@ describe('aday uçları', () => {
     await unchanged(a.id, 'pr1', async () => {
       assertError(
         await consent(a.adminCookie, 'pr1', { channel: 'sms', granted: true }, 1),
+        403,
+        'module_disabled',
+      )
+    })
+  })
+
+  // --- Aday bilgisi düzeltme (DOM-KAY-003) ------------------------------------------------------
+
+  test('DOM-KAY-003: ön büro adayın bilgisini düzeltir; sürüm artar, aşama değişmez, denetimde iletişim yok', async () => {
+    const a = await institution()
+    const front = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    const before = await findRecord(db, a.id, 'prospects', 'pr1')
+    const done = await details(
+      front,
+      'pr1',
+      { phone: '05559998877', interest: 'Düzeltilmiş ilgi' },
+      version,
+    )
+    assert.equal(done.statusCode, 200, done.body)
+    const record = await findRecord(db, a.id, 'prospects', 'pr1')
+    assert.equal(record?.version, version + 1)
+    assert.equal(record?.data.phone, '05559998877')
+    assert.equal(record?.data.interest, 'Düzeltilmiş ilgi')
+    assert.equal(record?.data.stage, before?.data.stage)
+    const edits = record?.data.profileEdits as { fields: string[]; by: { role: string } }[]
+    assert.deepEqual(edits[0]?.fields, ['phone', 'interest'])
+    assert.equal(edits[0]?.by.role, 'onburo')
+    const audit = await db.select().from(auditLog).where(eq(auditLog.institutionId, a.id))
+    assert.ok(JSON.stringify(audit).includes('prospect.update'))
+    assert.ok(!JSON.stringify(audit).includes('05559998877'))
+    assert.ok(!JSON.stringify(audit).includes('Düzeltilmiş ilgi'))
+  })
+
+  test('DOM-KAY-003: oturumsuz 401; öğretmen, öğrenci ve veli 403; başlık, gövde, değişiklik yok ve mükerrer reddedilir; aday değişmez', async () => {
+    const a = await institution()
+    const front = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    const good = { interest: 'Başka program' }
+    assertError(await details(null, 'pr1', good, version), 401)
+    await unchanged(a.id, 'pr1', async () => {
+      for (const role of ['ogretmen', 'ogrenci', 'veli'] as const)
+        assertError(
+          await details((await member(a.id, role)).cookie, 'pr1', good, version),
+          403,
+          'forbidden',
+        )
+      assertError(await details(front, 'pr1', good, null), 400, 'if_match_required')
+      for (const body of [
+        {},
+        { name: 'A' },
+        { phone: '123' },
+        { email: 'eposta' },
+        { stage: 'Yeni aday' },
+        { ...good, extra: 1 },
+      ])
+        assertError(await details(front, 'pr1', body, version), 400)
+      assertError(await details(front, 'pr1', good, version + 5), 409, 'version_conflict')
+      assertError(await details(front, 'pr-yok', good, 1), 404, 'not_found')
+      // Aynı değerle gönderim: değişiklik yok 409.
+      assertError(
+        await details(front, 'pr1', { interest: PR1?.interest }, version),
+        409,
+        'prospect_unchanged',
+      )
+    })
+    // Başka adayın telefonu ve adıyla çakışan düzeltme mükerrerdir (409).
+    const other = SEED.prospects[1]
+    assert.ok(other)
+    const dup = await details(front, 'pr1', { name: other.name, phone: other.phone }, version)
+    assert.ok([409].includes(dup.statusCode), dup.body)
+  })
+
+  test('DOM-YTK-040: crm modülü kapalıyken düzeltme ucu 403 module_disabled', async () => {
+    const a = await institution({ enabledModules: { crm: false } })
+    await unchanged(a.id, 'pr1', async () => {
+      assertError(
+        await details(a.adminCookie, 'pr1', { interest: 'Başka program' }, 1),
         403,
         'module_disabled',
       )

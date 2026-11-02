@@ -55,6 +55,8 @@ type OnurWriteTargets = {
   'prospect.stageRevert': Record<string, never>
   // Adayın kanal bazlı ticari ileti onayını verme ve geri alma (DOM-KAY-004).
   'prospect.consent': Record<string, never>
+  // Aday bilgisi düzeltme (KVKK md. 11 düzeltme hakkı, DOM-KAY-003).
+  'prospect.update': Record<string, never>
   'prospect.note': Record<string, never>
   'prospect.meeting': Record<string, never>
   'prospect.trial': Record<string, never>
@@ -116,6 +118,8 @@ export const ONUR_WRITE_ACTION_ROLES = {
   'prospect.stageRevert': ['yonetici'],
   // Onayı adayın talebiyle ön büro ve yönetici işler; ret hakkı geciktirilemez (DOM-KAY-004).
   'prospect.consent': ['yonetici', 'onburo'],
+  // Düzeltme talebini ön büro ve yönetici işler; öğretmen aday verisini düzeltmez (DOM-KAY-003).
+  'prospect.update': ['yonetici', 'onburo'],
   'prospect.note': ['yonetici', 'onburo'],
   'prospect.meeting': ['yonetici', 'onburo'],
   'prospect.trial': ['yonetici', 'onburo'],
@@ -506,6 +510,7 @@ function decide(
     case 'prospect.stage':
     case 'prospect.stageRevert':
     case 'prospect.consent':
+    case 'prospect.update':
     case 'prospect.note':
     case 'prospect.meeting':
     case 'prospect.trial':

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
@@ -10,6 +12,7 @@ import {
   findParentMatches,
 } from '@kampus/school-core/lib/enrollment.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
+import { planGuardianLink } from '@kampus/school-core/lib/guardianship.ts'
 import {
   addProspectNote,
   changeProspectStage,
@@ -18,6 +21,7 @@ import {
   recordTrialResult,
   revertProspectStage,
   setProspectMarketingConsent,
+  updateProspectDetails,
   scheduleTrialLesson,
   type ProspectOptions,
 } from '@kampus/school-core/lib/prospects.ts'
@@ -34,11 +38,13 @@ import {
   insertStudentIdentity,
   findIdentityHolder,
 } from '../db/student-identities.ts'
+import { insertGuardianLink } from '../db/student-guardians.ts'
 import { archiveStudentIdentity } from '../db/withdrawals.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import { auditWork } from './task-work.ts'
 import {
   runCommand,
   type CommandResponse,
@@ -72,6 +78,7 @@ type ProspectAction =
   | 'prospect.stage'
   | 'prospect.stageRevert'
   | 'prospect.consent'
+  | 'prospect.update'
   | 'prospect.note'
   | 'prospect.meeting'
   | 'prospect.trial'
@@ -304,6 +311,31 @@ export function enrollProspectCommand(
           birthDate: result.identity.birthDate,
           now: ctx.now,
         })
+        // Veli–öğrenci bağı: veli velayet sahibi ve ödeyici olarak kurulur (DOM-ILT-070, -074);
+        // yetişkin kursiyerin kendisi veli değildir, bağ yazılmaz. Kuralı core `planGuardianLink`
+        // verir; yeni öğrencinin başka bağı olmadığı için değişmezler boş kümeye uygulanır.
+        if (result.guardianBond !== null) {
+          const draft = planGuardianLink({
+            studentId: result.student.id,
+            links: [],
+            account: null,
+            input: {
+              parentId: result.guardianBond.parentId,
+              relationship: result.guardianBond.relationship,
+              custody: 'full',
+              isPayer: result.guardianBond.isPayer,
+            },
+          })
+          const linkId = randomUUID()
+          await insertGuardianLink(tx, ctx.institutionId, { id: linkId, ...draft }, ctx.now)
+          await auditWork(
+            tx,
+            ctx,
+            'guardian.link',
+            { type: 'student_guardian', id: linkId },
+            Object.keys(draft),
+          )
+        }
       },
     },
     (outcome) =>
@@ -439,6 +471,27 @@ export function setMarketingConsentCommand(
       subjectId: prospectId,
       run: (state, by, { now }, prospectOptions) => {
         setProspectMarketingConsent(state, by, prospectId, input, now, prospectOptions)
+        return { id: prospectId, statusCode: 200 }
+      },
+    },
+    options,
+  )
+}
+
+/** Aday bilgisini düzeltir: ad, telefon, e-posta, ilgi, veli adı (DOM-KAY-003). 200. */
+export function updateProspectDetailsCommand(
+  ctx: ServiceContext,
+  prospectId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  return execute(
+    ctx,
+    {
+      action: 'prospect.update',
+      subjectId: prospectId,
+      run: (state, by, { now }, prospectOptions) => {
+        updateProspectDetails(state, by, prospectId, input, now, prospectOptions)
         return { id: prospectId, statusCode: 200 }
       },
     },

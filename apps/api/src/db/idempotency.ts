@@ -71,9 +71,9 @@ export async function findIdempotentResponse(
 
 /**
  * Başarılı yanıtı saklar. Önce kurumun süresi dolmuş bütün anahtarları silinir (aynı anahtarın
- * eski kaydı dahil): 24 saat saklama sınırı (guvenlik-kvkk.md §10) iş kuyruğu kurulana kadar
- * yazma sırasında fırsatçı olarak uygulanır; süresi dolmamış kayıt varsa çağıran onu zaten
- * yanıtlamıştır. Açılışta ayrıca bütün kurumlar temizlenir (`server.ts`).
+ * eski kaydı dahil): 24 saat saklama sınırı (guvenlik-kvkk.md §10) yazma sırasında da fırsatçı
+ * olarak uygulanır; süresi dolmamış kayıt varsa çağıran onu zaten yanıtlamıştır. Günlük iş
+ * (`idempotency.purge`) yazma olmayan kurumları da temizler.
  */
 export async function saveIdempotentResponse(
   tx: Database,
@@ -102,14 +102,33 @@ export async function saveIdempotentResponse(
 
 /**
  * Süresi dolan anahtarları kalıcı siler (guvenlik-kvkk.md §10: 24 saat). Kurumlar arası teknik
- * temizliktir; silinen satır sayısını döndürür.
- * Bugün açılışta (`server.ts`) ve kurum başına yazma sırasında (`saveIdempotentResponse`) çalışır.
- * TODO(jobs): pg-boss günlük temizlik işi kurulunca oradan da çağrılır.
+ * temizliktir; silinen satır sayısını döndürür. İş kuyruğu kapalıyken (`JOBS_ENABLED=false`)
+ * açılışta (`server.ts`) çalışır; kuyruk açıkken günlük iş kurum başına
+ * `purgeInstitutionIdempotencyKeys` çağırır.
  */
 export async function purgeExpiredIdempotencyKeys(db: Database, now: Date): Promise<number> {
   const deleted = await db
     .delete(idempotencyKeys)
     .where(lte(idempotencyKeys.expiresAt, now))
+    .returning({ key: idempotencyKeys.key })
+  return deleted.length
+}
+
+/**
+ * Kurumun süresi dolan anahtarlarını kalıcı siler (günlük `idempotency.purge` işi,
+ * `src/jobs/idempotency-purge.ts`). İdempotenttir: ikinci çalıştırma 0 döndürür. Başka kurumun
+ * satırına dokunmaz.
+ */
+export async function purgeInstitutionIdempotencyKeys(
+  db: Database,
+  institutionId: string,
+  now: Date,
+): Promise<number> {
+  const deleted = await db
+    .delete(idempotencyKeys)
+    .where(
+      and(eq(idempotencyKeys.institutionId, institutionId), lte(idempotencyKeys.expiresAt, now)),
+    )
     .returning({ key: idempotencyKeys.key })
   return deleted.length
 }

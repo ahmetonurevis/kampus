@@ -21,3 +21,9 @@ overrides:
   'shell-quote@>=1.8.4 <1.11.0': 1.11.0
   'source-map-js@>=1.0.0 <1.2.2': 1.2.2
   'zod@>=4.0.0 <4.6.6': 4.6.6
+# OG-201 takibi: GHSA-mrhx-c7xc-m3w5 zod 3 için yamasız (yama yalnız >=4.6.6). zod 3.25.76 yalnız
+# @expo/cli (derleme/geliştirme CLI'ı) içinde; API ve uygulamaların çalışma anında yok ve dış girdi
+# doğrulamaz. zod 4 aralığı yukarıdaki override ile yamalı. Expo zod 4'e geçince bu satır kaldırılır.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-mrhx-c7xc-m3w5

@@ -200,6 +200,7 @@ const PROSPECT_TEACHER_VISIBLE = {
   privacyNotice: false,
   marketingConsent: false,
   marketingConsentHistory: false,
+  profileEdits: false,
   lostReason: false,
   lostAt: false,
   meeting: false,

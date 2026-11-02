@@ -94,7 +94,7 @@ src/
   routes/<alan>.ts      # HTTP: şema, kimlik, rol; iş kuralı ve SQL yok
   routes/<alan>.schemas.ts  # yanıt ve sorgu şemaları (girdi şeması school-core'dan)
   services/<alan>.ts    # iş akışı: school-core çağrısı, transaction
-  jobs/<iş-adı>.ts      # pg-boss iş tanımı ve işleyicisi
+  jobs/<iş-adı>.ts      # pg-boss iş tanımı ve işleyicisi; queue.ts açılış/kapanış, registry.ts liste
   db/
     schema/<tablo>.ts   # Drizzle şeması; schema/auth.ts Better Auth CLI çıktısı
     client.ts
@@ -187,6 +187,7 @@ app.post(
 - İşleyici idempotenttir (pg-boss en az bir kez teslim eder): aynı iş iki kez koşarsa sonuç değişmez. Tekrarı önlemek için `singletonKey`.
 - Yeniden deneme sınırlı ve geri çekilmeli (`retryLimit`, `retryBackoff`); son hata `error` düzeyinde loglanır ve kullanıcıya iş durumu ucuyla Türkçe gösterilir.
 - İşin yaptığı yazma `audit_log`'a `actor_user_id` = işi başlatan kullanıcı olarak yazılır.
+- Zamanlanmış iş kurum başına çalışır (`InstitutionJob`, `src/jobs/types.ts`): zamanlayıcı Europe/Istanbul saatiyle dağıtım işini tetikler, dağıtım her kuruma `{ institutionId }` yüklü tek iş koyar; işleyici `run(deps, data, now)` saftır ve sayı döndürür. Zamanlanmış işin aktörü yoktur (`actor_user_id` boş). Ayrıntı ve iş listesi: [api-tasarimi.md §12](api-tasarimi.md#12-iş-kuyruğu).
 
 ### React (web)
 

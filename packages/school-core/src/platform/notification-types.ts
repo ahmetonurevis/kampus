@@ -85,7 +85,7 @@ export const PLATFORM_NOTIFICATION_TYPES = {
   }),
   /**
    * Son gün yaklaşırken karar bekleyen öğrenci için hatırlatma (DOM-ILT-039; `permissionReminders`
-   * saf hesaptır, zamanlanmış iş `TODO(onay-hatirlatma-isi)`). Zorunludur (DOM-ILT-020).
+   * saf hesaptır, API'nin `permission-forms.remind` işi her sabah yazar). Zorunludur (DOM-ILT-020).
    */
   permission_form_reminder: defineNotificationType({
     topic: 'consent',

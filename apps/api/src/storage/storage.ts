@@ -21,6 +21,8 @@ export interface StorageDriver {
   put(key: string, body: Readable, options: { contentType: string }): Promise<void>
   /** Nesne varsa boyutu; yoksa `null`. */
   head(key: string): Promise<{ byteSize: number } | null>
+  /** Nesneyi okuma akışı ve boyutu; nesne yoksa `null` (ses dönüşümü, ADR 0003 karar 10). */
+  open(key: string): Promise<{ stream: Readable; byteSize: number } | null>
   /** Nesneyi siler; olmayan nesne hata değildir (temizlik yeniden denenebilir). */
   delete(key: string): Promise<void>
   /**

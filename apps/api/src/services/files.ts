@@ -39,11 +39,13 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { ModuleDisabledError } from '../plugins/modules.ts'
 import { meterUpload, StreamLimitError } from '../storage/meter.ts'
 import { storageKeyFor, type StorageDriver } from '../storage/storage.ts'
+import { needsTranscode } from './audio-transcoder.ts'
 import { actorStudentConsent, actorStudentHasConsent } from './consents.ts'
 import { contentTypeMismatch, detectContentType, dispositionFor } from './file-detection.ts'
 import { FILE_PURPOSE_ACCESS, fileAttachmentKind } from './file-registry.ts'
 import { requestFingerprint } from './idempotency.ts'
 import { grantListeningPlay, listeningWindowMs } from './listening-plays.ts'
+import type { MediaTranscodeScheduler } from './media-transcode.ts'
 import { getInstitutionModules } from './modules.ts'
 import { runCommand, type CommandResponse } from './operation-runner.ts'
 
@@ -216,13 +218,19 @@ async function storeStream(
  * → türe özel boyut 413 → transaction: kota 422 `storage_quota_exceeded`, satır, denetim. Hata
  * olursa depodaki nesne silinir; aynı anahtarla tekrarlanan istek ilk yanıtı döndürür ve ikinci
  * nesne silinir.
+ *
+ * Ses (`speaking_recording`, `listening_audio`) `processing` başlar ve `media.transcode` işi satırla
+ * aynı transaction'da kuyruğa girer (ADR 0003 karar 10); kuyruk kapalıysa dönüşüm yanıt
+ * dönmeden süreç içinde bir kez denenir (`scheduler.afterCommit`). Tekrarlanan istek iş açmaz.
  */
 export async function uploadFile(
   ctx: ServiceContext,
   storage: StorageDriver,
   input: UploadInput,
+  scheduler: MediaTranscodeScheduler,
 ): Promise<CommandResponse> {
   const { purpose } = input
+  const transcode = needsTranscode(purpose)
   await assertCanUpload(ctx, purpose)
   const fileId = randomUUID()
   const storageKey = storageKeyFor({
@@ -290,7 +298,9 @@ export async function uploadFile(
               uploadedByUserId: ctx.actor.userId,
             },
             ctx.now,
+            transcode ? 'processing' : 'pending',
           )
+          if (transcode) await scheduler.enqueue(tx, { institutionId: ctx.institutionId, fileId })
           await audit(tx, ctx, 'file.upload', fileId, [
             'purpose',
             'contentType',
@@ -308,6 +318,7 @@ export async function uploadFile(
       { key: input.idempotencyKey, fingerprint },
     )
     keep = !response.replayed
+    if (transcode && keep) await scheduler.afterCommit({ institutionId: ctx.institutionId, fileId })
     ctx.log.info({
       event: 'file.uploaded',
       purpose,

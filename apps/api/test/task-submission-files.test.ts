@@ -17,6 +17,7 @@ import { records } from '../src/db/schema/records.ts'
 import { rubrics, rubricVersions, submissionVersions } from '../src/db/schema/skills.ts'
 import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { recordFileCheck } from '../src/services/files.ts'
+import { transcodeAudioFile } from '../src/services/media-transcode.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -27,6 +28,7 @@ import {
   TEST_ORIGIN,
 } from './support/app.ts'
 import { MP3, multipart, PDF, png, tempStorage, uploadParts } from './support/files-sample.ts'
+import { FakeTranscoder } from './support/media-sample.ts'
 import { seedResource } from './support/resources-sample.ts'
 import { sampleRubricData } from './support/skills-sample.ts'
 
@@ -499,6 +501,56 @@ describe('beceri görevinde dosyalı ve sesli teslim', () => {
       422,
       'version_limit_reached',
     )
+  })
+
+  test('OG-262, DOM-BEC-054: gerçek yükleme yolunda kayıt dönüşüm işinden geçince ölçülür; sesli teslim recording_not_measured almaz, sürüm dönüşmüş kaydı ve yükleme anını taşır', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, 'audio')
+    await consent(t)
+    // Tarama sonucu yazılmaz: dosya yalnız dönüşüm işiyle hazır olur.
+    const fileId = await upload(
+      t,
+      t.cookies.student,
+      uploadParts('speaking_recording', MP3, FILE_NAME, 'audio/mpeg'),
+      { ready: false },
+    )
+    const uploaded = await fileRow(t, fileId)
+    assert.equal(uploaded.status, 'processing')
+    // İşlenirken süre yoktur: teslim "Kayıt henüz işleniyor" ile reddedilir, satır değişmez.
+    fails(
+      await submit(assignmentId, t.cookies.student, {
+        submissionKind: 'audio',
+        recordingFileId: fileId,
+      }),
+      422,
+      'recording_not_measured',
+    )
+    assert.deepEqual(await fileRow(t, fileId), uploaded)
+    const transcoded = await transcodeAudioFile(
+      { db, storage: store.storage, transcoder: app.media.transcoder, log: app.log },
+      { institutionId: t.institution.id, fileId },
+      FIXED_NOW,
+    )
+    assert.equal(transcoded.outcome, 'ready')
+    // Konuşma kaydı ~64 kbps'e çevrilir (dinleme ~96 kbps).
+    assert.ok(app.media.transcoder instanceof FakeTranscoder)
+    assert.equal(app.media.transcoder.calls.at(-1)?.bitrateKbps, 64)
+    const created = await ok(
+      await submit(assignmentId, t.cookies.student, {
+        submissionKind: 'audio',
+        recordingFileId: fileId,
+      }),
+      201,
+    )
+    const [file] = created.versions[0].files
+    assert.equal(file.id, fileId)
+    assert.equal(file.status, 'ready')
+    assert.equal(file.contentType, 'audio/mp4')
+    assert.equal(file.durationMs, 30_000)
+    const row = await fileRow(t, fileId)
+    assert.equal(row.attachedType, 'task_submission_version')
+    assert.equal(row.createdAt.toISOString(), uploaded.createdAt.toISOString())
+    assert.equal(await store.storage.head(uploaded.storageKey), null)
   })
 
   test('DOM-BEC-053, DOM-YTK-052: kaydı öğrenci, 18 yaş altı velisi, atamayı gören öğretmen ve yönetici açar; başka öğrenci/öğretmen, ön büro ve başka kurum 404; erişim denetime düşer, logda ad yok; 18 yaşını dolduran kursiyerin kaydı veliye kapanır; modül kapalıyken 403', async () => {

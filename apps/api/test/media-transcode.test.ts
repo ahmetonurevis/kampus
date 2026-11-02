@@ -1,0 +1,456 @@
+import assert from 'node:assert/strict'
+import { after, before, describe, test } from 'node:test'
+
+import { and, eq, sql } from 'drizzle-orm'
+
+import type { App } from '../src/app.ts'
+import type { Database } from '../src/db/client.ts'
+import { auditLog } from '../src/db/schema/audit-log.ts'
+import { files } from '../src/db/schema/files.ts'
+import { bootJobs } from '../src/jobs/boot.ts'
+import {
+  STALE_TRANSCODE_MS,
+  transactionConnection,
+  transcodeJobDataSchema,
+} from '../src/jobs/media-transcode.ts'
+import {
+  AUDIO_TRANSCODE_PROFILES,
+  MediaContentError,
+  MediaToolError,
+  TRANSCODED_CONTENT_TYPE,
+} from '../src/services/audio-transcoder.ts'
+import {
+  originalStorageKey,
+  transcodeAudioFile,
+  type TranscodeDeps,
+} from '../src/services/media-transcode.ts'
+import { STORAGE_KEY_PATTERN } from '../src/storage/storage.ts'
+import {
+  buildTestApp,
+  createInstitution,
+  createTestDatabase,
+  FIXED_NOW,
+  signInAs,
+  TEST_ORIGIN,
+} from './support/app.ts'
+import { MP3, multipart, PDF, tempStorage, uploadParts } from './support/files-sample.ts'
+import { FakeTranscoder, RecordingScheduler } from './support/media-sample.ts'
+
+/**
+ * Ses dönüştürme (OG-262; ADR 0003 karar 10; DOM-BEC-054). Dönüştürücü sahtedir; gerçek ffmpeg
+ * `media-ffmpeg.test.ts`'te, gerçek kuyruk `pg-jobs.test.ts`'tedir. Varsayılan test uygulaması
+ * kuyruk açıkmış gibi işi yalnız kaydeder; kuyruksuz (süreç içi) yol ayrı uygulamayla sınanır.
+ */
+
+const FILE_NAME = 'Ayse-dinleme-gizli.mp3'
+
+describe('ses dönüştürme (media.transcode)', () => {
+  let db: Database
+  let close: () => Promise<void>
+  let app: App
+  let inlineApp: App
+  let store: Awaited<ReturnType<typeof tempStorage>>
+  let now = FIXED_NOW
+  const logs: string[] = []
+  const transcoder = new FakeTranscoder()
+  const scheduler = new RecordingScheduler()
+  const inlineTranscoder = new FakeTranscoder()
+  let serial = 0
+
+  before(async () => {
+    ;({ db, close } = await createTestDatabase())
+    store = await tempStorage()
+    app = await buildTestApp(db, {
+      storage: store.storage,
+      clock: () => now,
+      logs,
+      media: { transcoder, scheduler },
+    })
+    // Kuyruk kapalı: dönüşüm yanıttan önce süreç içinde, tek denemeyle.
+    inlineApp = await buildTestApp(db, {
+      storage: store.storage,
+      clock: () => now,
+      logs,
+      media: { transcoder: inlineTranscoder },
+    })
+  })
+  after(async () => {
+    await app.close()
+    await inlineApp.close()
+    await close()
+    await store.remove()
+  })
+
+  const deps = (extra: Partial<TranscodeDeps> = {}): TranscodeDeps => ({
+    db,
+    storage: store.storage,
+    transcoder,
+    log: app.log,
+    ...extra,
+  })
+
+  async function tenant() {
+    const institution = await createInstitution(app)
+    return { institution, cookie: await signInAs(app, institution.admin) }
+  }
+  type Tenant = Awaited<ReturnType<typeof tenant>>
+
+  async function upload(
+    t: Tenant,
+    target: App = app,
+    key = `test-media-${String(++serial).padStart(6, '0')}`,
+  ) {
+    const body = multipart(uploadParts('listening_audio', MP3, FILE_NAME, 'audio/mpeg'))
+    const response = await target.inject({
+      method: 'POST',
+      url: '/api/v1/files',
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie: t.cookie,
+        'content-type': body.contentType,
+        'idempotency-key': key,
+      },
+      payload: body.payload,
+    })
+    assert.equal(response.statusCode, 201, response.body)
+    return response
+  }
+  const uploaded = async (t: Tenant) => (await upload(t)).json().data.id as string
+
+  async function rowOf(t: Tenant, id: string) {
+    const [row] = await db
+      .select()
+      .from(files)
+      .where(and(eq(files.institutionId, t.institution.id), eq(files.id, id)))
+    assert.ok(row)
+    return row
+  }
+  const auditsOf = (t: Tenant, id: string) =>
+    db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, t.institution.id), eq(auditLog.entityId, id)))
+  const url = (t: Tenant, id: string) =>
+    app.inject({
+      method: 'GET',
+      url: `/api/v1/files/${id}/url`,
+      headers: { origin: TEST_ORIGIN, cookie: t.cookie },
+    })
+  /** Dosyanın depodaki nesneleri (özgün ve dönüşmüş anahtarlar dosya kimliğiyle başlar). */
+  const objectsOf = async (id: string) => (await store.files()).filter((path) => path.includes(id))
+  const job = (t: Tenant, id: string) => ({ institutionId: t.institution.id, fileId: id })
+
+  test('ADR 0003 karar 10: ses yüklemesi processing başlar ve iş aynı işlemde kuyruğa girer; aynı anahtar ikinci iş açmaz; processing dosyanın bağlantısı 409', async () => {
+    const t = await tenant()
+    const first = await upload(t, app, 'test-media-replay-0001')
+    const id = first.json().data.id as string
+    assert.equal(first.json().data.status, 'processing')
+    assert.equal(first.json().data.durationMs, null)
+    const replay = await upload(t, app, 'test-media-replay-0001')
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    assert.deepEqual(
+      scheduler.queued.filter((item) => item.fileId === id),
+      [job(t, id)],
+    )
+    const response = await url(t, id)
+    assert.equal(response.statusCode, 409)
+    assert.equal(response.json().code, 'file_processing')
+    assert.equal((await rowOf(t, id)).status, 'processing')
+  })
+
+  test('OG-262, DOM-BEC-054: iş süreyi yazar, türü audio/mp4 yapar, dönüşmüş nesneyi saklar ve özgün nesneyi siler; teslim zamanı yükleme zamanı kalır; denetime file.ready düşer', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    const before = await rowOf(t, id)
+    transcoder.result = { durationMs: 42_500, silent: false }
+    now = new Date(FIXED_NOW.getTime() + 60_000)
+    try {
+      const result = await transcodeAudioFile(deps(), job(t, id), now)
+      assert.deepEqual(result, { outcome: 'ready', durationMs: 42_500 })
+    } finally {
+      now = FIXED_NOW
+    }
+    const call = transcoder.calls.at(-1)
+    assert.equal(call?.contentType, 'audio/mpeg')
+    assert.equal(call?.bitrateKbps, AUDIO_TRANSCODE_PROFILES.listening_audio.bitrateKbps)
+    const row = await rowOf(t, id)
+    assert.equal(row.status, 'ready')
+    assert.equal(row.durationMs, 42_500)
+    assert.equal(row.contentType, TRANSCODED_CONTENT_TYPE)
+    assert.equal(row.createdAt.toISOString(), before.createdAt.toISOString())
+    assert.notEqual(row.storageKey, before.storageKey)
+    assert.match(row.storageKey, STORAGE_KEY_PATTERN)
+    assert.equal(before.storageKey, originalStorageKey(row))
+    assert.equal(await store.storage.head(before.storageKey), null)
+    assert.equal((await store.storage.head(row.storageKey))?.byteSize, row.byteSize)
+    assert.deepEqual(await objectsOf(id), [`${store.root}/${row.storageKey}`])
+    const audits = await auditsOf(t, id)
+    assert.deepEqual(
+      audits.map((item) => [item.action, item.actorUserId]),
+      [
+        ['file.upload', t.institution.admin.id],
+        ['file.ready', null],
+      ],
+    )
+    assert.deepEqual(audits[1]?.changes?.fields, [
+      'status',
+      'storageKey',
+      'contentType',
+      'byteSize',
+      'sha256',
+      'durationMs',
+    ])
+    const response = await url(t, id)
+    assert.equal(response.statusCode, 200, response.body)
+    const log = logs.join('')
+    assert.ok(log.includes('"event":"media.transcoded"'))
+    assert.equal(log.includes(FILE_NAME), false)
+    transcoder.result = { durationMs: 30_000, silent: false }
+  })
+
+  test('OG-262: sessiz, boş, çözülemeyen ve sınırı aşan kayıt rejected olur; nesne silinir, bağlantı 404, denetime file.reject düşer', async () => {
+    const t = await tenant()
+    const cases = [
+      [{ durationMs: 5_000, silent: true }, 'media_silent'],
+      [{ durationMs: 0, silent: false }, 'media_empty'],
+      [new MediaContentError('media_undecodable'), 'media_undecodable'],
+      [new MediaContentError('media_no_audio'), 'media_no_audio'],
+      [{ durationMs: 15 * 60_000 + 1, silent: false }, 'media_too_long'],
+    ] as const
+    for (const [result, code] of cases) {
+      const id = await uploaded(t)
+      transcoder.result = result instanceof Error ? result : { ...result }
+      assert.deepEqual(await transcodeAudioFile(deps(), job(t, id), now), {
+        outcome: 'rejected',
+        code,
+      })
+      const row = await rowOf(t, id)
+      assert.equal(row.status, 'rejected', code)
+      assert.equal(row.durationMs, null)
+      assert.deepEqual(await objectsOf(id), [], code)
+      assert.equal((await url(t, id)).statusCode, 404)
+      assert.deepEqual(
+        (await auditsOf(t, id)).map((item) => item.action),
+        ['file.upload', 'file.reject'],
+      )
+    }
+    transcoder.result = { durationMs: 30_000, silent: false }
+    assert.equal(logs.join('').includes(FILE_NAME), false)
+  })
+
+  test('OG-262: geçici hata (araç yok, süre aşımı) fırlar ve dosya processing kalır, geçici nesne kalmaz; son denemede dosya reddedilir', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    const original = (await rowOf(t, id)).storageKey
+    transcoder.result = new MediaToolError('media_tool_unavailable')
+    try {
+      await assert.rejects(transcodeAudioFile(deps(), job(t, id), now), MediaToolError)
+      assert.equal((await rowOf(t, id)).status, 'processing')
+      assert.deepEqual(await objectsOf(id), [`${store.root}/${original}`])
+      assert.deepEqual(await transcodeAudioFile(deps(), job(t, id), now, { finalAttempt: true }), {
+        outcome: 'rejected',
+        code: 'media_retries_exhausted',
+      })
+    } finally {
+      transcoder.result = { durationMs: 30_000, silent: false }
+    }
+    assert.equal((await rowOf(t, id)).status, 'rejected')
+    assert.deepEqual(await objectsOf(id), [])
+    assert.ok(logs.join('').includes('"code":"media_tool_unavailable"'))
+  })
+
+  test('OG-262: iptal edilen iş (pg-boss job.signal) dönüştürmez; dosya processing kalır, nesne değişmez', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    const calls = transcoder.calls.length
+    const controller = new AbortController()
+    controller.abort()
+    await assert.rejects(
+      transcodeAudioFile(deps({ signal: controller.signal }), job(t, id), now),
+      (error: Error) => error.name === 'AbortError',
+    )
+    assert.equal(transcoder.calls.length, calls)
+    const row = await rowOf(t, id)
+    assert.equal(row.status, 'processing')
+    assert.deepEqual(await objectsOf(id), [`${store.root}/${row.storageKey}`])
+  })
+
+  test('OG-262: aynı iş iki kez gelirse etkisizdir; eşzamanlı iki teslimden biri yazar, ötekinin nesnesi silinir', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    assert.equal((await transcodeAudioFile(deps(), job(t, id), now)).outcome, 'ready')
+    const ready = await rowOf(t, id)
+    assert.deepEqual(await transcodeAudioFile(deps(), job(t, id), now), {
+      outcome: 'skipped',
+      reason: 'already_ready',
+    })
+    const again = await rowOf(t, id)
+    assert.equal(again.version, ready.version)
+    assert.equal(again.storageKey, ready.storageKey)
+    assert.equal((await auditsOf(t, id)).length, 2)
+
+    const twin = await uploaded(t)
+    const results = await Promise.all([
+      transcodeAudioFile(deps(), job(t, twin), now),
+      transcodeAudioFile(deps(), job(t, twin), now),
+    ])
+    assert.deepEqual(results.map((result) => result.outcome).sort(), ['ready', 'skipped'])
+    const row = await rowOf(t, twin)
+    assert.deepEqual(await objectsOf(twin), [`${store.root}/${row.storageKey}`])
+    assert.deepEqual(
+      (await auditsOf(t, twin)).map((item) => item.action),
+      ['file.upload', 'file.ready'],
+    )
+  })
+
+  test('OG-262: özgün nesne silinemezse hata fırlar, satır ready kalır; yeniden deneme yalnız özgün nesneyi siler', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    const original = (await rowOf(t, id)).storageKey
+    store.storage.failDeletes = true
+    try {
+      await assert.rejects(transcodeAudioFile(deps(), job(t, id), now), /simulated delete/)
+    } finally {
+      store.storage.failDeletes = false
+    }
+    const row = await rowOf(t, id)
+    assert.equal(row.status, 'ready')
+    assert.notEqual(await store.storage.head(original), null)
+    assert.deepEqual(await transcodeAudioFile(deps(), job(t, id), now), {
+      outcome: 'skipped',
+      reason: 'already_ready',
+    })
+    assert.equal(await store.storage.head(original), null)
+    assert.equal((await rowOf(t, id)).version, row.version)
+  })
+
+  test('OG-262: ses dışı, olmayan ve başka durumdaki dosyaya dokunulmaz', async () => {
+    const t = await tenant()
+    const calls = transcoder.calls.length
+    assert.deepEqual(
+      await transcodeAudioFile(deps(), job(t, '00000000-0000-4000-8000-000000000000'), now),
+      { outcome: 'skipped', reason: 'missing' },
+    )
+    // Başka kurumun kimliğiyle gelen iş dosyayı bulmaz.
+    const id = await uploaded(t)
+    const other = await tenant()
+    assert.deepEqual(await transcodeAudioFile(deps(), job(other, id), now), {
+      outcome: 'skipped',
+      reason: 'missing',
+    })
+    // Ses dışı amaç (kurum belgesi) dönüşüme girmez, `pending` kalır ve kuyruğa konmaz.
+    const body = multipart(uploadParts('document', PDF))
+    const document = await app.inject({
+      method: 'POST',
+      url: '/api/v1/files',
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie: t.cookie,
+        'content-type': body.contentType,
+        'idempotency-key': `test-media-document-${++serial}`,
+      },
+      payload: body.payload,
+    })
+    assert.equal(document.statusCode, 201, document.body)
+    const documentId = document.json().data.id as string
+    assert.equal(document.json().data.status, 'pending')
+    assert.equal(
+      scheduler.queued.some((item) => item.fileId === documentId),
+      false,
+    )
+    assert.deepEqual(await transcodeAudioFile(deps(), job(t, documentId), now), {
+      outcome: 'skipped',
+      reason: 'not_audio',
+    })
+    assert.equal(transcoder.calls.length, calls)
+    assert.equal((await rowOf(t, id)).status, 'processing')
+    assert.equal((await rowOf(t, documentId)).status, 'pending')
+  })
+
+  test('kuyruksuz: dönüşüm yanıttan önce süreç içinde çalışır; geçici hata kalıcı ret olur, dosya processing kalmaz', async () => {
+    const t = await tenant()
+    const response = await upload(t, inlineApp)
+    const id = response.json().data.id as string
+    const row = await rowOf(t, id)
+    assert.equal(row.status, 'ready')
+    assert.equal(row.durationMs, 30_000)
+
+    inlineTranscoder.result = new MediaToolError('media_timeout')
+    try {
+      const failed = (await upload(t, inlineApp)).json().data.id as string
+      assert.equal((await rowOf(t, failed)).status, 'rejected')
+      assert.deepEqual(await objectsOf(failed), [])
+    } finally {
+      inlineTranscoder.result = { durationMs: 30_000, silent: false }
+    }
+    assert.equal(logs.join('').includes(FILE_NAME), false)
+  })
+
+  test('kuyruksuz açılış: 15 dakikadır processing kalan dönüşüm işlenir, yeni olana dokunulmaz', async () => {
+    const t = await tenant()
+    const stale = await uploaded(t)
+    now = new Date(FIXED_NOW.getTime() + STALE_TRANSCODE_MS + 1000)
+    try {
+      const fresh = await uploaded(t)
+      await bootJobs({
+        app: inlineApp,
+        db,
+        log: inlineApp.log,
+        enabled: false,
+        connectionString: '',
+        storage: store.storage,
+      })
+      assert.equal((await rowOf(t, stale)).status, 'ready')
+      assert.equal((await rowOf(t, fresh)).status, 'processing')
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
+  test('iş yükü yalnız kurum ve dosya kimliğidir; fazladan alan ve bozuk kimlik reddedilir', () => {
+    const fileId = '00000000-0000-4000-8000-000000000000'
+    assert.equal(transcodeJobDataSchema.safeParse({ institutionId: 'k', fileId }).success, true)
+    assert.equal(
+      transcodeJobDataSchema.safeParse({ institutionId: 'k', fileId: 'x' }).success,
+      false,
+    )
+    assert.equal(
+      transcodeJobDataSchema.safeParse({ institutionId: 'k', fileId, name: 'a.mp3' }).success,
+      false,
+    )
+  })
+
+  test('pg-boss bağlantısı transaction içinde $n yer tutucularını parametre olarak çalıştırır', async () => {
+    const rows = await db.transaction(async (tx) => {
+      const result = await transactionConnection(tx).executeSql(
+        "select $1::text as a, $2::int + $2::int as b, '$' as c",
+        ["x'; drop table files; --", 2],
+      )
+      return result.rows
+    })
+    assert.deepEqual(rows, [{ a: "x'; drop table files; --", b: 4, c: '$' }])
+  })
+
+  test('migration 0032: içerik kolonları yalnız processing → ready geçişinde değişir', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    const immutable = (error: unknown) =>
+      JSON.stringify(error).includes('55000') || /immutable/.test(String(error))
+    // processing kalırken içerik değişmez.
+    await assert.rejects(
+      db.execute(sql`update files set byte_size = 1 where id = ${id}`),
+      immutable,
+    )
+    await transcodeAudioFile(deps(), job(t, id), now)
+    // ready dosyanın içeriği değişmez; amaç hiçbir geçişte değişmez.
+    await assert.rejects(
+      db.execute(sql`update files set byte_size = 1 where id = ${id}`),
+      immutable,
+    )
+    const next = await uploaded(t)
+    await assert.rejects(
+      db.execute(sql`update files set status = 'ready', purpose = 'material' where id = ${next}`),
+      immutable,
+    )
+  })
+})

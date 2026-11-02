@@ -12,6 +12,7 @@ import { insertFile } from '../src/db/files.ts'
 import { files } from '../src/db/schema/files.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { dispatchQueueName } from '../src/jobs/dispatch.ts'
+import { MEDIA_TRANSCODE_JOB } from '../src/jobs/media-transcode.ts'
 import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
 import { HOUR_SECONDS, type AnyInstitutionJob } from '../src/jobs/types.ts'
@@ -23,8 +24,16 @@ import {
   type StartJobsOptions,
 } from '../src/jobs/queue.ts'
 import { storageKeyFor } from '../src/storage/storage.ts'
-import { createInstitution, FIXED_NOW, testConfig, uniqueId } from './support/app.ts'
-import { MP3, tempStorage } from './support/files-sample.ts'
+import {
+  createInstitution,
+  FIXED_NOW,
+  signInAs,
+  TEST_ORIGIN,
+  testConfig,
+  uniqueId,
+} from './support/app.ts'
+import { MP3, multipart, tempStorage, uploadParts } from './support/files-sample.ts'
+import { FakeTranscoder } from './support/media-sample.ts'
 import { createPgDatabase, PG_SKIP, TEST_PG_URL } from './support/pg.ts'
 
 /**
@@ -41,6 +50,7 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
   let close: () => Promise<void>
   let store: Awaited<ReturnType<typeof tempStorage>>
   const apps: App[] = []
+  const transcoder = new FakeTranscoder()
 
   before(async () => {
     ;({ db, close } = await createPgDatabase())
@@ -56,11 +66,14 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
   async function appWithJobs(
     extra: Partial<StartJobsOptions> = {},
   ): Promise<{ app: App; queue: JobQueue }> {
+    // Ortak kuyruktaki `media.transcode` işini hangi örnek çekerse çeksin sahte dönüştürücü
+    // kullanılır (gerçek ffmpeg `media-ffmpeg.test.ts`'te).
     const app = await buildApp({
       config: testConfig(),
       db,
       clock: () => FIXED_NOW,
       storage: store.storage,
+      media: { transcoder },
     })
     apps.push(app)
     const queue = await startJobs(app, {
@@ -307,5 +320,61 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
         assert.deepEqual(completed?.output, { ok: 1 })
       },
     )
+  })
+  test('OG-262: ses yüklemesi media.transcode işini aynı işlemde açar; iş kuyruktan çalışır, dosya ölçülür ve ready olur', async () => {
+    const { app, queue } = await appWithJobs()
+    const institution = await createInstitution(app)
+    const cookie = await signInAs(app, institution.admin)
+    const body = multipart(uploadParts('listening_audio', MP3, 'dinleme.mp3', 'audio/mpeg'))
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/files',
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie,
+        'content-type': body.contentType,
+        'idempotency-key': `test-pg-media-${randomUUID()}`,
+      },
+      payload: body.payload,
+    })
+    assert.equal(response.statusCode, 201, response.body)
+    const fileId = response.json().data.id as string
+    assert.equal(response.json().data.status, 'processing')
+    const row = await until(
+      async () =>
+        (
+          await db
+            .select()
+            .from(files)
+            .where(and(eq(files.institutionId, institution.id), eq(files.id, fileId)))
+        )[0],
+      (value) => value?.status !== 'processing',
+    )
+    assert.equal(row?.status, 'ready')
+    assert.equal(row?.durationMs, 30_000)
+    assert.equal(row?.contentType, 'audio/mp4')
+    const jobs = await queue.boss.findJobs(MEDIA_TRANSCODE_JOB, {
+      data: { institutionId: institution.id, fileId },
+    })
+    assert.equal(jobs.length, 1)
+    assert.deepEqual(jobs[0]?.data, { institutionId: institution.id, fileId })
+  })
+
+  test("OG-262: iş satırı yüklemeyle aynı transaction'dadır; geri alınan işlem iş bırakmaz", async () => {
+    const { app, queue } = await appWithJobs()
+    const institution = await createInstitution(app)
+    const kept = { institutionId: institution.id, fileId: randomUUID() }
+    const dropped = { institutionId: institution.id, fileId: randomUUID() }
+    await db.transaction(async (tx) => app.media.scheduler.enqueue(tx, kept))
+    await assert.rejects(
+      db.transaction(async (tx) => {
+        await app.media.scheduler.enqueue(tx, dropped)
+        throw new Error('geri al')
+      }),
+      /geri al/,
+    )
+    const find = (data: object) => queue.boss.findJobs(MEDIA_TRANSCODE_JOB, { data })
+    assert.equal((await find(kept)).length, 1)
+    assert.equal((await find(dropped)).length, 0)
   })
 })

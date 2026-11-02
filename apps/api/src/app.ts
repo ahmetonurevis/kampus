@@ -17,6 +17,7 @@ import { z } from 'zod'
 import { createAuth, type Auth } from './auth.ts'
 import { isDevelopmentLike, publicUrl, type Config } from './config.ts'
 import type { Database } from './db/client.ts'
+import { inlineTranscodeScheduler } from './jobs/media-transcode.ts'
 import { registerAuthenticate } from './plugins/authenticate.ts'
 import { registerBetterAuth } from './plugins/better-auth.ts'
 import { registerCsrfGuard } from './plugins/csrf.ts'
@@ -32,8 +33,10 @@ import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 // Onur: kayıt ve finans sonu
+import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
 import type { Mailer } from './services/mailer.ts'
+import type { MediaRuntime, MediaTranscodeScheduler } from './services/media-transcode.ts'
 import { createStorage } from './storage/create.ts'
 import type { DiskStorage } from './storage/disk.ts'
 
@@ -174,6 +177,8 @@ declare module 'fastify' {
     db: Database
     config: Config
     clock: Clock
+    /** Ses dönüştürücü ve dönüşüm kuyruğu; kuyruk açılınca `scheduler` değişir (`startJobs`). */
+    media: MediaRuntime
   }
 }
 
@@ -189,6 +194,11 @@ export interface BuildAppOptions {
   mailer?: Mailer
   /** Sıfırlama iletisi yanıttan sonra gönderilir (varsayılan `true`); `false` iletiyi bekler. */
   backgroundMail?: boolean
+  /**
+   * Ses dönüşümü (ADR 0003 karar 10). Verilmezse dönüştürücü ortamdaki `ffmpeg`/`ffprobe`'dur
+   * (`FFMPEG_PATH`, `FFPROBE_PATH`) ve kuyruk açılana kadar dönüşüm süreç içinde çalışır.
+   */
+  media?: { transcoder?: AudioTranscoder; scheduler?: MediaTranscodeScheduler }
 }
 
 export type App = FastifyInstance
@@ -218,6 +228,17 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   app.decorate('db', db)
   app.decorate('config', config)
   app.decorate('clock', clock)
+  const storage = options.storage ?? createStorage(config)
+  const transcoder =
+    options.media?.transcoder ??
+    createFfmpegTranscoder({ ffmpegPath: config.FFMPEG_PATH, ffprobePath: config.FFPROBE_PATH })
+  const media: MediaRuntime = {
+    transcoder,
+    scheduler:
+      options.media?.scheduler ??
+      inlineTranscodeScheduler({ db, storage, transcoder, log: app.log, clock }),
+  }
+  app.decorate('media', media)
 
   registerErrorHandler(app)
   registerRequestContext(app)
@@ -274,7 +295,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
   // Onur: kayıt ve finans sonu
-  registerPlatformLateRoutes(app, options.storage ?? createStorage(config))
+  registerPlatformLateRoutes(app, storage)
 
   return app
 }

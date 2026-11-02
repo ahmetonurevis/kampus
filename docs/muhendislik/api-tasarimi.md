@@ -454,6 +454,7 @@ Arka plan ve zamanlanmış işler `pg-boss` ile `apps/api/src/jobs/` altındadı
 | `files.purge-unattached`  | her saat :17            | saat  | 24 saatte bağlanmayan ya da reddedilen yüklemenin nesnesini siler, satır `deleted` kalır (ADR 0003 karar 5)  |
 | `files.purge-expired`     | her gün 04:15           | gün   | Saklama sonu gelen dosyanın nesnesini siler, satır `deleted` kalır (ADR 0003 karar 13; DOM-BEC-052)          |
 | `permission-forms.remind` | her gün 08:00           | gün   | Son güne iki gün kala ve son gün kararı beklenen öğrenci için `permission_form_reminder` yazar (DOM-ILT-039) |
+| `installments.remind`     | her gün 09:00           | saat  | Yaklaşan ve geçen açık taksite bildirim yazar (DOM-FIN-035); `registry.ts` satırı bekliyor (ON-026)          |
 | `media.transcode`         | yüklemede (olaya bağlı) | —     | Sesi AAC-LC/M4A'ya çevirir, süreyi ölçer, dosyayı `ready` ya da `rejected` yapar (ADR 0003 karar 10; OG-262) |
 | `file.scan`               | yüklemede (olaya bağlı) | —     | Ses dışı dosyayı ClamAV ile tarar; temiz `ready`, zararlı `rejected` (ADR 0003 karar 8; OG-092)              |
 

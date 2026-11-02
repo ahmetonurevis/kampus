@@ -4145,7 +4145,9 @@
               "permission_form_reminder",
               "absence_recorded",
               "absence_corrected",
-              "enrollment_completed"
+              "enrollment_completed",
+              "installment_due",
+              "installment_overdue"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -17518,7 +17520,9 @@
               "permission_form_reminder",
               "absence_recorded",
               "absence_corrected",
-              "enrollment_completed"
+              "enrollment_completed",
+              "installment_due",
+              "installment_overdue"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },

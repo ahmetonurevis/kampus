@@ -200,7 +200,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Hatırlatma kaydı tahsilat takibinin ve olası uyuşmazlığın kanıtıdır. Aşırı hatırlatma veli ilişkisini bozar.
 - **Kaynak:** İşletme kuralı; KVKK md. 4 (ölçülülük).
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — `apps/web/src/views/Finance.vue:89-95` yalnız `reminderAt` yazar ve "gerçek mesaj gönderilmedi" der; gönderim ve sıklık sınırı yok.
+- **Kodda:** kısmen — uygulama içi kanal var (API): core `lib/installment-reminders.ts` karar verir (vadeye 3 gün kala ve vade günü `installment_due`, vade geçince `installment_overdue`; tam ödenmiş taksit gitmez, kısmi ödenmiş gider; gün Europe/Istanbul), türler `lib/finance-notifications.ts` (hizmet bildirimi, `finance` modülü, başlıkta tutar ve vade yok, `DOM-ILT-023`). Tarama `services/installment-reminders.ts`, iş `jobs/installment-reminders.ts` (`installments.remind`, her gün 09:00, sessiz saatte çalışmaz); `dedupeKey` taksit ve vade günüdür, iki pencere kesişmediği için aynı taksite aynı gün ikinci bildirim gitmez. Bir vade günü için en çok iki hatırlatma gider, gecikme tekrarlanmaz. İş `jobs/registry.ts`'e eklenmeden zamanlanmaz (`TODO(finans-bildirim-kayit)`). Alıcı `notify` kuralıdır: 18 yaş altında velayetli ve kısıtsız bütün veliler, yetişkinde kursiyer; kısıtlı veli görmez. Ödeyiciye daraltma yok (`TODO(finans-odeyici-hedefi)`, `DOM-ILT-074`): ödeyici olmayan velayetli veli de görür, velayeti olmayan ödeyici görmez. Kurum metni, sıklık ayarı (IST-109), teslim sonucu, personele kişi bazında gönderim listesi, e-posta ve SMS yok. Çevrimdışı demo `apps/web/src/views/Finance.vue:89-95` yalnız `reminderAt` yazar.
 
 ## İade
 
@@ -286,6 +286,6 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | DOM-FIN-001 | Kayıt tutarı tam TL, yenileme tutarı iki ondalık alır; iki giriş kuralı farklı (`packages/school-core/src/lib/domain.js:22-26`, `school-workflows.js:117-126`). |
 | DOM-FIN-005 | Yenilemede ÜFE/TÜFE+5 artış tavanı denetlenmez (`packages/school-core/src/lib/school-workflows.js:435-450`).                                                    |
-| DOM-FIN-035 | Hatırlatma gerçek ileti göndermez, sıklık sınırı yok (`apps/web/src/views/Finance.vue:89-95`).                                                                  |
+| DOM-FIN-035 | Yalnız uygulama içi kanal, ödeyiciye daraltma yok; Vue demosu gerçek ileti göndermez (`apps/web/src/views/Finance.vue:89-95`).                                  |
 | DOM-FIN-050 | Dekont numarası taksit kimliğidir; ardışık numara yok (`packages/school-core/src/lib/document-data.js:18`).                                                     |
 | DOM-FIN-053 | Denetim izi 200 kayıtla kesilir (`packages/school-core/src/lib/school-workflows.js:1334`).                                                                      |

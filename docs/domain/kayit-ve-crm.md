@@ -222,7 +222,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** `DOM-DIL-030`'un kapasite ve veli onayı şartlarının en korumalı uygulanışı; seviye ve yaş bandı uygunluğu henüz veriyle denetlenemez.
 - **Kaynak:** İşletme kuralı; ÖÖKY md. 48/2.
 - **Kurum türü:** `language_school`
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleTrialLesson`); API `POST /api/v1/prospects/:prospectId/trial-lessons` (okul kurumunda her rol için 404). Seviye ve yaş bandı uygunluğu (`DOM-DIL-041`) ön büro seçimine bırakılır (`TODO(crm-trial-level)`); öğretmenin deneme sonucu (`DOM-DIL-031`) yoktur (`TODO(crm-trial-result)`).
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleTrialLesson`); API `POST /api/v1/prospects/:prospectId/trial-lessons` (okul kurumunda her rol için 404). Seviye ve yaş bandı uygunluğu (`DOM-DIL-041`) denetlenmez, ön büro seçimine bırakılır (`TODO(crm-trial-level)`; önkoşullar `DOM-DIL-030`'dadır). Öğretmenin deneme sonucu (`DOM-DIL-031`) core ve API'de vardır (`recordTrialResult`, `POST /api/v1/prospects/:prospectId/trial-result`); ekranı yoktur.
 
 ### DOM-KAY-035 · Kesin kayıt yetkisi ve açık aday şartı
 

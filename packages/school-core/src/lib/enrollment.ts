@@ -3,13 +3,8 @@ import { z } from 'zod'
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { ADULT_AGE, ageOn, isCalendarDay } from './age.ts'
-import {
-  daySchema,
-  installmentAmounts,
-  requiredText,
-  type ContractTerms,
-  type MakeId,
-} from './domain.ts'
+import { daySchema, requiredText, type ContractTerms, type MakeId } from './domain.ts'
+import { installmentAmounts } from './payments.ts'
 import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
 import { OPEN_PROSPECT_STAGES } from './prospects.ts'

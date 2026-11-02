@@ -24,6 +24,7 @@ import {
   PERSONAL,
   personal,
   requesterId,
+  submissionReader,
   text,
   texts,
   type FieldRules,
@@ -113,7 +114,9 @@ export const PLATFORM_READ_RULES = {
     ogrenci: ownClass,
     veli: ownClass,
   },
-  submissions: { ...ADMIN, ogretmen: ownStudent, ...PERSONAL },
+  // Teslimi ödevin öğretmeni ve öğrencinin sınıf rehber öğretmeni okur; aynı sınıfa başka dersle
+  // giren öğretmen teslim notunu, puanını ve dosyasını görmez (DOM-AKD-074, DOM-YTK-022).
+  submissions: { ...ADMIN, ogretmen: submissionReader, ...PERSONAL },
   questions: { ...ADMIN, ogretmen: ownTeacher, ...PERSONAL },
   videos: { ...ADMIN, ogretmen: all, ogrenci: ownLevel, veli: ownLevel },
   videoProgress: { ...ADMIN, ogretmen: ownStudent, ...PERSONAL },

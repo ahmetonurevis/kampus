@@ -12,9 +12,11 @@ import { schoolModules } from '../modules/school-workflows.ts'
 import {
   ADMIN_FRONT_OFFICE,
   all,
+  member,
   NONE,
   ownStudent,
   PERSONAL,
+  text,
   texts,
   value,
   viewerOf,
@@ -66,6 +68,7 @@ type Classroom = State['classes'][number]
 type Assignment = State['assignments'][number]
 type Club = State['clubs'][number]
 type MockExam = State['mockExams'][number]
+type Homework = State['homework'][number]
 
 /** Kapsamı hesaplamak için gereken koleksiyonlar; API bunları kurumdan bir kez yükler. */
 export const SCOPE_SOURCE_COLLECTIONS = [
@@ -85,6 +88,12 @@ export type ScopeSource = {
   clubs: readonly Pick<Club, 'id' | 'teacherId'>[]
   /** Optik profilinin hangi düzeyin denemesine ait olduğunu bulmak için (deneme → düzey). */
   mockExams: readonly Pick<MockExam, 'id' | 'grade'>[]
+  /**
+   * Teslim kapsamı için ödev → öğretmen (DOM-AKD-074): öğretmen kendi verdiği ödevin teslimlerini
+   * okur. İsteğe bağlıdır ve `SCOPE_SOURCE_COLLECTIONS`'ta değildir: API yalnız öğretmenin kendi
+   * ödevlerini yükler; verilmezse öğretmen yalnız rehberi olduğu sınıfın teslimlerini görür.
+   */
+  homework?: readonly Pick<Homework, 'id' | 'teacherId'>[]
   /** Modül anahtarı → açık mı; haritada olmayan modül kapalıdır. */
   modules: Readonly<Record<string, boolean>>
 }
@@ -121,6 +130,8 @@ export type Scope = {
   readonly studentIds: ReadonlySet<string>
   /** Kapsamdaki sınıflar: öğretmende ders verdiği ve rehberi olduğu, öğrenci/velide kendi sınıfı. */
   readonly classIds: ReadonlySet<string>
+  /** Öğretmen aktörün verdiği ödevler (kaynaktaki `homework`; teslim kapsamı, DOM-AKD-074). */
+  readonly homeworkIds: ReadonlySet<string>
   access(collection: string): ReadDecision
   /**
    * Rol bu koleksiyonu satır ayrımı olmadan bütünüyle okur (erişim açık ve satır kuralı koşulsuz).
@@ -148,10 +159,55 @@ export type Scope = {
  * Okul iş akışı modüllerinde ayrıca modül kaydının rol listesi uygulanır.
  */
 // Onur: kayıt ve finans
+// Denemesi olan aday, deneme dersinin grubu öğretmenin kapsamındaysa görünür.
+const ownTrialClass: Rule = (c, r) => {
+  const trial = value(r, 'trialLesson')
+  return typeof trial === 'object' && trial !== null && member(c.classIds, text(trial, 'classId'))
+}
+
+/**
+ * Aday alanlarının öğretmene görünürlüğü. `Record<keyof …>` her yeni alanda burada karar vermeyi
+ * zorlar: gizlenen alanlar öğretmene dönmez, `true` olanlar dönür (DOM-DIL-031, DOM-YTK-021).
+ */
+const PROSPECT_TEACHER_VISIBLE = {
+  id: true,
+  name: true,
+  branchId: true,
+  interest: true,
+  stage: true,
+  minor: true,
+  trialLesson: true,
+  createdAt: true,
+  updatedAt: true,
+  phone: false,
+  email: false,
+  source: false,
+  studentId: false,
+  trialAt: false,
+  notes: false,
+  guardianName: false,
+  referrerStudentId: false,
+  siblingOfId: false,
+  privacyNotice: false,
+  marketingConsent: false,
+  lostReason: false,
+  lostAt: false,
+  meeting: false,
+  createdBy: false,
+} as const satisfies Record<keyof State['prospects'][number], boolean>
+const PROSPECT_TEACHER_HIDDEN = Object.entries(PROSPECT_TEACHER_VISIBLE)
+  .filter(([, visible]) => !visible)
+  .map(([field]) => field)
+const ONUR_HIDDEN_FIELDS: FieldRules = {
+  prospects: (context) => (context.role === 'ogretmen' ? PROSPECT_TEACHER_HIDDEN : NONE),
+}
+
 export const ONUR_READ_RULES = {
   invoices: { ...ADMIN_FRONT_OFFICE, ...PERSONAL },
   contracts: { ...ADMIN_FRONT_OFFICE, veli: ownStudent },
-  prospects: ADMIN_FRONT_OFFICE,
+  // Öğretmen yalnız kendi gruplarındaki deneme dersine katılan adayı okur (DOM-DIL-031); iletişim,
+  // veli, not, rıza ve satış bilgisi `ONUR_HIDDEN_FIELDS` ile ayıklanır.
+  prospects: { ...ADMIN_FRONT_OFFICE, ogretmen: ownTrialClass },
   renewals: { ...ADMIN_FRONT_OFFICE, veli: ownStudent },
   enrollmentHistory: { ...ADMIN_FRONT_OFFICE, veli: ownStudent },
 } as const satisfies ReadRules
@@ -170,7 +226,7 @@ const RULES: Readonly<Record<string, Partial<Record<Role, Rule>>>> = READ_RULES
  * yayılan tablo öncekini sessizce ezer (ör. `parents` ayıklaması düşer, öğrenci velinin
  * telefonunu görür). Davranış güvencesi `tests/parent-contact.test.ts` ve `tests/scope.test.ts`.
  */
-const HIDDEN_FIELDS: FieldRules = { ...PLATFORM_HIDDEN_FIELDS }
+const HIDDEN_FIELDS: FieldRules = { ...PLATFORM_HIDDEN_FIELDS, ...ONUR_HIDDEN_FIELDS }
 const HIDDEN: Readonly<Record<string, ((context: Context) => readonly string[]) | undefined>> =
   HIDDEN_FIELDS
 
@@ -284,6 +340,15 @@ function buildContext(source: ScopeSource, actor: Actor, role: Role | undefined)
   const clubIds = new Set(
     teacher ? source.clubs.filter((c) => c.teacherId === teacher.id).map((c) => c.id) : [],
   )
+  // Tembel: yalnız teslim kuralı sorulunca okunur. Ödevi yüklemeyen işlemler (komut tablosunda
+  // `homework` olmayan) kaynağın bu anahtarına hiç dokunmaz.
+  let homeworkIds: ReadonlySet<string> | undefined
+  const ownHomework = () =>
+    (homeworkIds ??= new Set(
+      teacher
+        ? (source.homework ?? []).filter((h) => h.teacherId === teacher.id).map((h) => h.id)
+        : [],
+    ))
   return {
     role,
     userId: actor.userId,
@@ -296,6 +361,9 @@ function buildContext(source: ScopeSource, actor: Actor, role: Role | undefined)
     grades,
     levels,
     clubIds,
+    get homeworkIds() {
+      return ownHomework()
+    },
     classTeacherIds,
     studentClass,
     examGrade: new Map(source.mockExams.map((e) => [e.id, e.grade])),
@@ -365,6 +433,9 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     counselor: context.counselor,
     studentIds: context.studentIds,
     classIds: context.classIds,
+    get homeworkIds() {
+      return context.homeworkIds
+    },
     access,
     readsWhole,
     canRead,

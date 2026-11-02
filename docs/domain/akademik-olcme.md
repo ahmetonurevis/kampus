@@ -358,6 +358,50 @@ Quiz, öğretmenin soru bankasından hazırladığı, otomatik puanlanan kısa �
 - **Kurum türü:** `school`
 - **Kodda:** kısmen — düzey ve kapsam denetimi var (`packages/school-core/src/lib/school-workflows.js:501-504`). Öğretmen kimliği sabit `'t1'` (`505`).
 
+## Ödev
+
+Ödev kurum içi çalışmadır: puanı resmî not değildir, dönem puanına ancak `DOM-AKD-060` ile ve açıkça aktarılarak girer. Kayıtlar `homework` ve `submissions` koleksiyonlarındadır; modül `learning`, kapalıysa ödev uçları ve bildirimi kapanır (`DOM-YTK-040`).
+
+### DOM-AKD-070 · Ödev verme
+
+- **Kural:** Öğretmen ödevi yalnız derse girdiği sınıf ve branşa verir; sınıfa tek dersle giriyorsa ders seçilmez, birden çok dersle giriyorsa seçilir. Yönetici her sınıfa ve derse verir. Ödevin öğretmeni sınıfın o dersine atanmış aktif öğretmendir; ders ataması yoksa ödev verilmez. Pasif ya da arşivlenmiş sınıfa ödev verilmez. Son teslim saat dilimli an olarak girilir, UTC saklanır ve verildiği anda geçmişte olamaz. Ödev geç teslime açık (varsayılan) ya da kapalı verilir. Ön büro ödev görmez ve yazmaz (`DOM-YTK-021`).
+- **Gerekçe:** Branş dışı ödev, öğrencinin yükünü sınıfın ders öğretmeni bilmeden artırır; geçmiş tarihli ödev daha verildiği anda gecikmiş görünür.
+- **Kaynak:** İşletme kuralı; öğretmenin kapsamı `DOM-YTK-022`.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `packages/school-core/src/lib/homework.ts` (`assignHomework`), yetki `lib/authorize.ts` (`homework.assign`); API `POST /api/v1/homework`.
+
+### DOM-AKD-071 · Ödev düzenleme ve arşiv
+
+- **Kural:** Ödevi ödevin öğretmeni ya da yönetici düzenler: başlık, açıklama, son teslim ve geç teslim seçeneği. Sınıf ve ders değişmez; yanlış sınıfa verilen ödev arşivlenip yeniden verilir. Yeni son teslim geçmişte olamaz. Ödevi gören (aynı sınıfa giren) başka öğretmen düzenleyemez; görmeyen için ödev yoktur. Teslim almış ödev arşivlenmez: öğrencinin çalışması, puanı ve geri bildirimi korunur. Ders öğretmeni değişince açık ödevler yeni öğretmene geçer (`class.save`, öğretmen arşivi).
+- **Gerekçe:** Teslimli ödevin silinmesi öğrencinin emeğini ve puan geçmişini yok eder.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `lib/homework.ts` (`updateHomework`, `archiveHomework`); API `PATCH`/`DELETE /api/v1/homework/:homeworkId`.
+
+### DOM-AKD-072 · Ödev teslimi ve geç teslim
+
+- **Kural:** Öğrenci yalnız kendi sınıfının ödevini teslim eder; teslim metin, dosya ya da ikisidir (en çok 5 dosya). Dosya öğrencinin kendi yüklediği, aynı kurumdaki, denetimi bitmiş ve başka kayda bağlanmamış `submission` amaçlı dosyadır (ADR 0003 karar 5); başkasının dosyası olmayan dosyayla aynı yanıtı alır. Puanlanana kadar öğrenci yeniden teslim eder; yeniden teslim aynı kaydı günceller ve teslimin dosya listesi gönderilen listeyle değişir. Listeden düşen dosyanın teslimle bağı aynı işlemde kalkar: dosya artık teslimi okuyanlara açılmaz, yalnız yükleyen öğrenci görür ve sonraki teslimde yeniden eklenebilir. Bağı kalkan dosya için ayrı imha işi yoktur; ADR 0003 karar 5 ve 13'teki bağlanmamış dosya kuralına girer (yüklemeden 24 saat sonra temizlik işi siler; eski yüklenmiş dosya ilk çalışmada silinir, öğrenci gerekirse yeniden yükler). Teslime zaten bağlı dosya yeniden bağlanmaz. Puanlanmış teslim değişmez. Son tarihten sonra teslim, ödev geç teslime açıksa kabul edilir ve kayıtta `late` olarak işaretlenir (son tarih sonradan değişse de teslim anındaki karar korunur); kapalıysa reddedilir. Pasif öğrenci teslim etmez.
+- **Gerekçe:** Geç teslimin sessizce kabulü öğretmenin değerlendirmesini yanıltır; puanlandıktan sonra değişen teslim, verilen puanla uyuşmaz.
+- **Kaynak:** İşletme kuralı. Resmî proje ödevinin teslim etmeyene 0 kuralı `DOM-AKD-012`'dedir; ödev modülü proje türü taşımaz.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `lib/homework.ts` (`submitHomework`: `attach`, `detach`); dosya bağlama ve bağ kaldırma `apps/api/src/services/homework.ts` (`attachFile`, `detachFile`; `services/files.ts`). Vue demosu dosya adını saklar ve geç teslimi işaretlemez (`apps/web/src/views/Learning.vue:222-248`).
+
+### DOM-AKD-073 · Teslimin değerlendirilmesi
+
+- **Kural:** Teslimi ödevin öğretmeni 0–100 tam sayı puan ve geri bildirimle değerlendirir; yeniden değerlendirme puanı ve geri bildirimi günceller. Yönetici değerlendirmez. Değerlendirme yazılınca öğrenciye ve 18 yaş altında veliye uygulama içi bildirim (`homework_graded`) aynı işlemde gider; bildirim puan ve geri bildirim metni taşımaz (`DOM-ILT-023`). Puan resmî not değildir (`DOM-AKD-060`).
+- **Gerekçe:** Geri bildirimin öğrenciye ulaşmadığı değerlendirme işe yaramaz; puanın bildirimde görünmesi kilit ekranında kişisel veriyi açar.
+- **Kaynak:** İşletme kuralı; KVKK md. 12.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `lib/homework.ts` (`gradeSubmission`); bildirim türü `platform/notification-types.ts`.
+
+### DOM-AKD-074 · Ödev ve teslim görünürlüğü
+
+- **Kural:** Yönetici bütün ödev ve teslimleri görür. Öğretmen derse girdiği sınıfların ödevlerini ve kendi verdiği ödevleri görür; teslimi ise yalnız ödevin öğretmeni ve öğrencinin sınıf rehber öğretmeni okur (`DOM-YTK-022`). Aynı sınıfa başka dersle giren öğretmen ödevi görür ama teslimin notunu, dosyasını, puanını, geri bildirimini ve teslim sayısını görmez. Ödevin öğretmeni, ataması sona erse ya da öğrenci sınıf değiştirse de kendi ödevinin teslimlerini okumaya devam eder (geçmiş kayıtları okuma, `DOM-YTK-022`). Öğrenci kendi sınıfının ödevlerini ve kendi teslimini, veli bağlı çocuğunun sınıfının ödevlerini ve çocuğunun teslimini görür. Ön büro görmez. Teslime bağlı dosyanın bağlantısı teslimin okuma kuralından geçer; görmediği teslim ve dosya olmayanla aynı yanıttır.
+- **Gerekçe:** Teslim ve puan öğrencinin kişisel verisidir; değerlendirme görevi olmayan öğretmenin okuması veri en aza indirme ilkesine aykırıdır.
+- **Kaynak:** KVKK md. 4/2-ç, md. 12; `DOM-YTK-022`. Beceri görevlerinin teslim görünürlüğü ayrı kuraldır (`DOM-YTK-025`).
+- **Kurum türü:** ikisi
+- **Kodda:** var — `packages/school-core/src/platform/scope.ts` (`homework`, `submissions`: `submissionReader`, `modules/scope-builders.ts`); ödev → öğretmen kapsam kaynağında (`lib/scope.ts` `ScopeSource.homework`, API yalnız öğretmenin kendi ödevlerini yükler: `apps/api/src/services/read-scope.ts`). Aynı kural `/homework` uçlarında, `homework_submission` dosya bağlantısında ve genel `/collections/submissions` okumasında uygulanır.
+
 ## Mevcut kodla farklar
 
 | Kural       | Fark                                                                                                                                            |

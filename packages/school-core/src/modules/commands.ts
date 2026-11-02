@@ -85,6 +85,8 @@ export const ONUR_OPERATION_COMMANDS = {
   'prospect.note': spec('crm', [...SCOPE, 'prospects']),
   'prospect.meeting': spec('crm', [...SCOPE, 'branches', 'prospects', ...CONFLICTS]),
   'prospect.trial': spec('crm', [...SCOPE, 'prospects', 'schedule']),
+  // Deneme sonucu (DOM-DIL-031): öğretmen kapsamı SCOPE'tan, ders programını `schedule` okur.
+  'prospect.trialResult': spec('crm', [...SCOPE, 'prospects', 'schedule']),
   // Kesin kayıt (`enrollProspect`, `lib/enrollment.ts`): öğrenci, veli, taksit ve sözleşmeyi yazar.
   'prospect.enroll': spec('crm', [
     ...SCOPE,

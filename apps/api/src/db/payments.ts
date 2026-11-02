@@ -6,8 +6,7 @@ import {
   type PaymentAllocation,
   type PaymentPlan,
 } from '@kampus/school-core/lib/payments.ts'
-import type { PaymentMethod } from '@kampus/school-core/lib/domain.ts'
-
+import type { PaymentMethod } from '@kampus/school-core/lib/payments.ts'
 import type { Database } from './client.ts'
 import { records } from './schema/records.ts'
 import { foldSearch, foldSql } from './text-search.ts'

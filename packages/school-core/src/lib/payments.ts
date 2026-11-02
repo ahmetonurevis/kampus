@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import type { State } from '../data/seed.ts'
 import { csvAmount } from './csv.ts'
-import { PAYMENT_METHODS, daySchema, requiredText, type PaymentMethod } from './domain.ts'
+import { daySchema, requiredText } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
 import { isValidTurkishIban } from './withdrawals.ts'
@@ -12,6 +12,61 @@ import { isValidTurkishIban } from './withdrawals.ts'
  * tablolarındadır; bu dosya dağılımı hesaplar ve taksitin `paidAt` geçiş önbelleğini günceller.
  * Yetkiyi kendisi denetlemez (`payInvoice` gibi); API önce `requireAuthorized` çalıştırır.
  */
+
+// --- Taksit bölme ve tahsilat yöntemleri (kesin kayıt, tahsilat ve çevrimdışı demo ortak çekirdeği) ---
+
+export function installmentAmounts(cents: number, count: number) {
+  if (
+    !Number.isSafeInteger(cents) ||
+    cents <= 0 ||
+    !Number.isInteger(count) ||
+    count < 1 ||
+    count > 12
+  )
+    throw new DomainError('invalid_installment', 'Taksit tutarı veya sayısı geçersiz.')
+  const base = Math.floor(cents / count)
+  return Array.from({ length: count }, (_, i) => base + (i < cents % count ? 1 : 0))
+}
+/** Tahsilat yöntemleri: saklanan değer Türkçe etikettir (örnek veri ve mevcut kayıtlar aynı metni taşır). */
+export const PAYMENT_METHODS = ['Banka havalesi', 'Nakit', 'Kredi kartı'] as const
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
+/** Yöntem değeri → kullanıcıya gösterilen Türkçe etiket. */
+export const PAYMENT_METHOD_LABELS = {
+  'Banka havalesi': 'Banka havalesi',
+  Nakit: 'Nakit',
+  'Kredi kartı': 'Kredi kartı',
+} as const satisfies Record<PaymentMethod, string>
+/** Tahsilat girdisi; API gövde şeması ve web/mobil form şemasıdır. */
+export const paymentInputSchema = z.object({
+  method: z.enum(PAYMENT_METHODS, 'Ödeme yöntemini seçin.'),
+})
+export type PaymentInput = z.input<typeof paymentInputSchema>
+// Çevrimdışı demo (Vue "Demo Sanal POS", mobil "Kredi kartı (demo)") bu değerleri yazar; demo kalıcılığı
+// silinene kadar `payInvoice` bunları da kabul eder. API ve yeni formlar `paymentInputSchema` kullanır.
+const LEGACY_DEMO_PAYMENT_METHODS = ['Demo Sanal POS', 'Kredi kartı (demo)'] as const
+const payInvoiceInputSchema = z.object({
+  method: z.enum([...PAYMENT_METHODS, ...LEGACY_DEMO_PAYMENT_METHODS], 'Ödeme yöntemini seçin.'),
+})
+export function payInvoice(
+  state: State,
+  invoiceId: string,
+  method: string,
+  now = new Date().toISOString(),
+) {
+  const input = payInvoiceInputSchema.safeParse({ method })
+  if (!input.success)
+    throw new DomainError('invalid_payment_method', 'Ödeme yöntemini seçin.', {
+      path: ['method'],
+    })
+  const invoice = state.invoices.find((i) => i.id === invoiceId)
+  if (!invoice)
+    throw new DomainError('invoice_not_found', 'Ödeme kaydı bulunamadı.', { kind: 'not_found' })
+  if (invoice.paidAt)
+    throw new DomainError('invoice_already_paid', 'Bu taksit zaten ödenmiş.', { kind: 'conflict' })
+  invoice.paidAt = now
+  invoice.method = input.data.method
+  return invoice
+}
 
 const CASH: PaymentMethod = 'Nakit'
 /** Saklanan öğle öncesi saat, gün değerinin Europe/Istanbul'da aynı güne düşmesi içindir. */

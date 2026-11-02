@@ -139,6 +139,14 @@ export const PLATFORM_OPERATION_COMMANDS = {
   'question.ask': spec('learning', [...SCOPE, 'subjects', 'questions']),
   'question.answer': spec('learning', [...SCOPE, 'questions']),
   'question.withdraw': spec('learning', [...SCOPE, 'questions']),
+  // Ödev ve teslim (`lib/homework.ts`; IST-095, DOM-AKD-070…073). API ödev verirken ödev ve
+  // teslimleri hiç, düzenleme ve değerlendirmede yalnız hedef ödevi ve teslimi, arşivde hedef
+  // ödevin teslimlerini, teslimde yalnız öğrencinin o ödevdeki teslimini yükler.
+  'homework.assign': spec('learning', [...SCOPE, 'subjects', 'homework', 'submissions']),
+  'homework.update': spec('learning', [...SCOPE, 'homework', 'submissions']),
+  'homework.archive': spec('learning', [...SCOPE, 'homework', 'submissions']),
+  'homework.submit': spec('learning', [...SCOPE, 'homework', 'submissions']),
+  'homework.grade': spec('learning', [...SCOPE, 'homework', 'submissions']),
   // Uygulama içi bildirimin okundu işareti (`lib/notifications.ts`, DOM-ILT-020, -073). Görünürlük
   // üyelik bağlantılarındandır; kapsam kaynağı yalnız yetki (modül, rol) için okunur. API yalnız
   // aktörün gördüğü bildirimleri ve kendi okundu işaretlerini yükler.

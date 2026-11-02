@@ -113,7 +113,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Deneme dersi satışın ana aracıdır ama derslikteki yasal mevcudu ve kayıtlı kursiyerin ders kalitesini bozmamalıdır. İlan edilmeyen ücret alınamayacağı için ücretli deneme dersi ancak ücret ilanında yer alırsa mümkündür; platform bunu desteklemez.
 - **Kaynak:** İşletme kuralı (bir kez, en fazla iki katılımcı); ÖÖKY md. 48/2 (mevcut), md. 54/1-b ve c (ilan dışı ücret yasağı).
 - **Kurum türü:** `language_school`
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleTrialLesson`; ayrıntı `DOM-KAY-034`): gerçek ders, aday başına bir kez, derse en fazla 2, kapasite en fazla 18, 18 yaş altında veli onayı; yoklamaya yazılmaz. Seviye/yaş bandı uygunluğu denetlenmez (`TODO(crm-trial-level)`). Web aday kartı (`ProspectPanel`, deneme dersi takvimi); API `POST /api/v1/prospects/:prospectId/trial-lessons` (`apps/api/src/routes/prospects.ts`; okul kurumunda 404).
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`scheduleTrialLesson`; ayrıntı `DOM-KAY-034`): gerçek ders, aday başına bir kez, derse en fazla 2, kapasite en fazla 18, 18 yaş altında veli onayı; yoklamaya yazılmaz. Seviye/yaş bandı uygunluğu denetlenmez (`TODO(crm-trial-level)`): adayın yapısal hedef seviyesi yoktur (`interest` serbest metin), `state.classes` seviye ve yaş bandı taşımaz, kur ve yaş bandı `language_groups` modelindedir ve deneme dersinin okuduğu ders programıyla bağı yoktur; uygunluğu bugün öğretmen deneme sonrası yazar (`DOM-DIL-031`). Web aday kartı (`ProspectPanel`, deneme dersi takvimi); API `POST /api/v1/prospects/:prospectId/trial-lessons` (`apps/api/src/routes/prospects.ts`; okul kurumunda 404).
 
 ### DOM-DIL-031 · Deneme dersi sonucu adayı kaydetmez
 
@@ -121,7 +121,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Satış hunisi ile akademik karar karışmamalı.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok — öğretmenin aday kartına erişimi yoktur (`TODO(crm-trial-result)`, `packages/school-core/src/lib/prospects.ts`).
+- **Kodda:** kısmen — core `packages/school-core/src/lib/prospects.ts` (`recordTrialResult`, `recordTrialResultSchema`): dersin grubunun öğretmeni, ders yapıldıktan sonra uygunluğu ve isteğe bağlı kısa notu (en fazla 500 karakter) yazar; yeniden yazılabilir, son karar geçerlidir; aşama, öğrenci kaydı ve yoklama değişmez; yapılmamış ders 409 `trial_not_held`, iptal edilmiş ders 409 `trial_lesson_cancelled`, kapalı aday 409 `prospect_closed`. Yetki `prospect.trialResult` (yalnız `ogretmen`, kapsam dışı grup 404; `DOM-YTK-080`); API `POST /api/v1/prospects/:prospectId/trial-result`. Öğretmen ekranı yoktur (web ve mobil), sonuç adayın kartında ön büroya gösterilmez.
 
 ## Grup ve kayıt
 

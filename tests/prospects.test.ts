@@ -20,6 +20,7 @@ import {
   findProspectDuplicate,
   nextProspectStages,
   prospectStageLabel,
+  recordTrialResult,
   scheduleProspectMeeting,
   scheduleTrialLesson,
 } from '../packages/school-core/src/lib/prospects.ts'
@@ -1568,4 +1569,146 @@ test('DOM-KAY-034: adayın görüşmesi ve deneme dersi çakışamaz; kapalı ad
         ),
       fails('prospect_closed', 'conflict'),
     )
+})
+
+// --- Deneme dersi sonucu (DOM-DIL-031) -----------------------------------------------------
+
+const teacher = people.ogretmen
+/** Dersten bir saat sonrası: deneme dersi yapılmış sayılır. */
+const afterLesson = (lesson: { date: string }) =>
+  new Date(Date.parse(lesson.date) + 3_600_000).toISOString()
+/** Dil okulu adayı deneme dersine planlanır; sonuç `later` anında yazılır. */
+function plannedTrial(state: State) {
+  const child = languageProspect(state)
+  const lesson = futureLesson(state)
+  scheduleTrialLesson(
+    state,
+    front,
+    child.id,
+    { lessonId: lesson.id, guardianConsent: true },
+    now,
+    language,
+  )
+  return { child, lesson, later: afterLesson(lesson) }
+}
+
+test('DOM-DIL-031: öğretmen deneme sonucunu yazar; aşama, öğrenci kaydı ve yoklama değişmez', () => {
+  const state = seed()
+  const { child, later } = plannedTrial(state)
+  const stage = child.stage
+  const attendance = JSON.stringify(state.attendance)
+  const students = state.students.length
+  const result = recordTrialResult(
+    state,
+    teacher,
+    child.id,
+    { fit: 'lower_level', note: '  Okuma iyi, konuşmada çekingen.  ' },
+    later,
+    language,
+  )
+  assert.deepEqual(result.trialLesson?.result, {
+    fit: 'lower_level',
+    note: 'Okuma iyi, konuşmada çekingen.',
+    recordedAt: later,
+    by: { role: 'ogretmen', userId: 'u-t1' },
+  })
+  assert.equal(result.stage, stage)
+  assert.equal(result.updatedAt, later)
+  assert.ok(!result.studentId)
+  assert.equal(state.students.length, students)
+  assert.equal(JSON.stringify(state.attendance), attendance)
+})
+
+test('DOM-DIL-031: not isteğe bağlıdır ve boşsa null olur; yeniden yazma son kararı saklar', () => {
+  const state = seed()
+  const { child, later } = plannedTrial(state)
+  recordTrialResult(state, teacher, child.id, { fit: 'suitable' }, later, language)
+  assert.equal(child.trialLesson?.result?.note, null)
+  recordTrialResult(state, teacher, child.id, { fit: 'upper_level', note: '   ' }, later, language)
+  assert.equal(child.trialLesson?.result?.fit, 'upper_level')
+  assert.equal(child.trialLesson?.result?.note, null)
+  const note = 'x'.repeat(prospects.TRIAL_RESULT_NOTE_MAX + 1)
+  assert.throws(
+    () => recordTrialResult(state, teacher, child.id, { fit: 'suitable', note }, later, language),
+    zodError,
+  )
+  assert.throws(
+    () => recordTrialResult(state, teacher, child.id, { fit: 'belki' }, later, language),
+    zodError,
+  )
+  assert.throws(
+    () =>
+      recordTrialResult(state, teacher, child.id, { fit: 'suitable', stage: 'x' }, later, language),
+    zodError,
+  )
+  assert.equal(child.trialLesson?.result?.fit, 'upper_level')
+})
+
+test('DOM-DIL-031: yapılmamış ders, iptal edilmiş ders, kapalı aday ve denemesiz aday reddedilir', () => {
+  const state = seed()
+  const { child, lesson, later } = plannedTrial(state)
+  const write = (at: string) => () =>
+    recordTrialResult(state, teacher, child.id, { fit: 'suitable' }, at, language)
+  unchangedOnFailure(state, write(now), fails('trial_not_held', 'conflict'))
+  // Denemesi olmayan aday öğretmene yok gibidir: varlığı sızmaz.
+  unchangedOnFailure(
+    state,
+    () => recordTrialResult(state, teacher, 'pr1', { fit: 'suitable' }, later, language),
+    fails('prospect_not_found', 'not_found'),
+  )
+  unchangedOnFailure(
+    state,
+    () => recordTrialResult(state, teacher, 'pr-yok', { fit: 'suitable' }, later, language),
+    fails('prospect_not_found', 'not_found'),
+  )
+  const scheduled = state.schedule.find((item) => item.id === lesson.id)
+  assert.ok(scheduled)
+  scheduled.cancelledAt = now
+  unchangedOnFailure(state, write(later), fails('trial_lesson_cancelled', 'conflict'))
+  delete scheduled.cancelledAt
+  child.stage = 'Vazgeçti'
+  unchangedOnFailure(state, write(later), fails('prospect_closed', 'conflict'))
+  child.stage = 'Kayıt oldu'
+  unchangedOnFailure(state, write(later), fails('prospect_closed', 'conflict'))
+})
+
+test('DOM-DIL-031, DOM-YTK-080: yalnız dersin grubunun öğretmeni yazar; diğer roller 403, okulda 404', () => {
+  const state = seed()
+  const { child, later } = plannedTrial(state)
+  const outsider = state.teachers.find(
+    (item) =>
+      !authorize(
+        { role: 'ogretmen', links: [{ kind: 'teacher', recordId: item.id }] },
+        'prospect.trialResult',
+        { classId: 'c1' },
+        state,
+        language,
+      ).allowed,
+  )
+  assert.ok(outsider)
+  unchangedOnFailure(
+    state,
+    () =>
+      recordTrialResult(
+        state,
+        { role: 'ogretmen', links: [{ kind: 'teacher', recordId: outsider.id }], userId: 'u-o' },
+        child.id,
+        { fit: 'suitable' },
+        later,
+        language,
+      ),
+    fails('prospect_not_found', 'not_found'),
+  )
+  for (const role of ['yonetici', 'onburo', 'ogrenci', 'veli'] as const)
+    unchangedOnFailure(
+      state,
+      () => recordTrialResult(state, people[role], child.id, { fit: 'suitable' }, later, language),
+      fails('permission_denied', 'forbidden'),
+    )
+  // Okul kurumunda deneme dersi yoktur (DOM-DIL-030): türden gelen 404 roldan önce.
+  unchangedOnFailure(
+    state,
+    () => recordTrialResult(state, teacher, child.id, { fit: 'suitable' }, later),
+    fails('trial_lesson_unavailable', 'not_found'),
+  )
 })

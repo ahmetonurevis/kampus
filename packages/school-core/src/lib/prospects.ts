@@ -3,7 +3,7 @@ import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { requireAuthorized } from './authorize.ts'
 import type { Participant } from './communication.ts'
-import type { MakeId } from './domain.ts'
+import { requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import type { RequestActor } from './requests.ts'
 import { intervalsOverlap, tutorConflict } from './tutor-conflicts.ts'
@@ -143,6 +143,24 @@ export type ProspectMeeting = {
   scheduledAt: string
   by: RequestActor
 }
+/** Deneme dersinden sonra öğretmenin seviye uygunluğu kararı (DOM-DIL-031). */
+export const TRIAL_FITS = ['suitable', 'lower_level', 'upper_level'] as const
+export type TrialFit = (typeof TRIAL_FITS)[number]
+/** Karar değeri → kullanıcıya gösterilen Türkçe etiket. */
+export const TRIAL_FIT_LABELS = {
+  suitable: 'Uygun',
+  lower_level: 'Alt kur önerilir',
+  upper_level: 'Üst kur önerilir',
+} as const satisfies Record<TrialFit, string>
+/** Sonuç notunun en fazla uzunluğu; kısa değerlendirme notudur, görüşme metni değil. */
+export const TRIAL_RESULT_NOTE_MAX = 500
+export type ProspectTrialResult = {
+  fit: TrialFit
+  // kvkk: K — öğretmenin kısa notu; loglanmaz, denetim kaydına yalnız alan adı yazılır.
+  note: string | null
+  recordedAt: string
+  by: RequestActor
+}
 export type ProspectTrialLesson = {
   lessonId: string
   classId: string
@@ -152,6 +170,8 @@ export type ProspectTrialLesson = {
   guardianConsentAt: string | null
   scheduledAt: string
   by: RequestActor
+  /** Öğretmenin deneme dersi sonrası yazdığı seviye uygunluğu (DOM-DIL-031); aşamayı değiştirmez. */
+  result?: ProspectTrialResult
 }
 export type MarketingConsent = Record<MarketingChannel, { granted: boolean; at: string }>
 /** Aday işlemlerinin eklediği alanlar; örnek veri ve eski kayıtlar taşımaz. */
@@ -186,6 +206,20 @@ const personName = z
   .trim()
   .min(2, 'En az 2 karakter girin.')
   .max(80, 'En fazla 80 karakter girebilirsiniz.')
+
+/**
+ * Çevrimdışı demo aday formu (Vue `Crm.vue`, mobil `operations.ts`): tek tip, e-posta zorunlu,
+ * aydınlatma ve onay alanı yok. API ve React `createProspectSchema`'yı kullanır; demo kalıcılığı
+ * silinince bu şema da kalkar.
+ */
+export const prospectSchema = z.object({
+  name: requiredText.max(80),
+  phone: z.string().regex(/^0\d{10}$/, 'Telefonu 05XXXXXXXXX biçiminde girin.'),
+  email: z.email('Geçerli bir e-posta adresi girin.'),
+  branchId: requiredText,
+  interest: requiredText,
+  source: requiredText,
+})
 
 /**
  * Yeni aday (DOM-KAY-003, -007, -009). Gövde katıdır; T.C. kimlik no, doğum tarihi, adres gibi
@@ -282,6 +316,16 @@ export const scheduleTrialLessonSchema = z.strictObject({
   guardianConsent: z.boolean().optional(),
 })
 export type ScheduleTrialLessonInput = z.input<typeof scheduleTrialLessonSchema>
+
+export const recordTrialResultSchema = z.strictObject({
+  fit: z.enum(TRIAL_FITS, 'Seviye uygunluğunu seçin.'),
+  note: z
+    .string()
+    .trim()
+    .max(TRIAL_RESULT_NOTE_MAX, `En fazla ${TRIAL_RESULT_NOTE_MAX} karakter girebilirsiniz.`)
+    .optional(),
+})
+export type RecordTrialResultInput = z.input<typeof recordTrialResultSchema>
 
 // --- Yardımcılar --------------------------------------------------------------------------
 
@@ -784,8 +828,11 @@ export function scheduleTrialLesson(
       'Deneme dersi adayın kampüsündeki açık bir grubun dersi olmalıdır.',
       { path: ['lessonId'] },
     )
-  // TODO(crm-trial-level): grubun seviyesi adayın hedef seviyesine ve yaş bandına (DOM-DIL-041)
-  // uygun mu; aday seviyesi serbest metin olduğu için ön büro seçer.
+  // TODO(crm-trial-level): grubun seviyesi ve yaş bandı (DOM-DIL-041) adayın hedef seviyesine ve
+  // yaşına uygun mu denetlenmez. Önkoşul eksik: adayın yapısal hedef seviyesi yok (`interest`
+  // serbest metin, `minor` yalnız bayrak) ve `state.classes` satırı seviye/yaş bandı taşımaz;
+  // kur ve yaş bandı `language_groups` modelindedir, deneme dersinin okuduğu ders programıyla
+  // bağı yoktur. Uygunluğu bugün öğretmen deneme sonrası yazar (`recordTrialResult`, DOM-DIL-031).
   const minor = prospect.minor !== false
   if (minor && (!prospect.guardianName || !prospect.phone))
     throw new DomainError(
@@ -832,7 +879,43 @@ export function scheduleTrialLesson(
   if (prospect.stage === 'Yeni aday' || prospect.stage === 'İletişime geçildi')
     prospect.stage = 'Görüşme planlandı'
   prospect.updatedAt = now
-  // TODO(crm-trial-result): öğretmenin deneme dersi sonucu (DOM-DIL-031) öğretmene aday kartı
-  // yetkisi gerektirir; yetki matrisinde öğretmenin aday erişimi yoktur.
+  return prospect
+}
+
+/**
+ * Deneme dersinden sonra öğretmen adayın seviye uygunluğunu ve kısa notunu yazar (DOM-DIL-031).
+ * Yalnız dersin grubunun öğretmeni yazar (kapsam dışı ya da denemesi olmayan aday 404; adayın
+ * varlığı sızmaz), ders yapılmış olmalı, ders iptal edilmemiş olmalı ve aday açık aşamada olmalıdır.
+ * Sonuç aday aşamasını değiştirmez; kesin kayıt yalnız kayıt işlemiyle olur (DOM-KAY-005). Sonuç
+ * yeniden yazılabilir (öğretmen kararını düzeltir), son yazılan geçerlidir.
+ */
+export function recordTrialResult(
+  state: State,
+  by: Participant,
+  prospectId: string,
+  input: unknown,
+  now: string,
+  options: ProspectOptions = {},
+): ProspectRecord {
+  const data = recordTrialResultSchema.parse(input)
+  const prospect = requireProspect(state, prospectId)
+  const trial = prospect.trialLesson
+  if (!trial) throw new DomainError('prospect_not_found', 'Aday bulunamadı.', { kind: 'not_found' })
+  requireAuthorized(by, 'prospect.trialResult', { classId: trial.classId }, state, options)
+  requireOpen(prospect)
+  const lesson = state.schedule.find((l) => l.id === trial.lessonId)
+  if (!lesson || lesson.cancelledAt)
+    throw new DomainError('trial_lesson_cancelled', 'Deneme dersi iptal edildi; sonuç yazılamaz.', {
+      kind: 'conflict',
+    })
+  if (Date.parse(trial.date) > Date.parse(now))
+    throw new DomainError('trial_not_held', 'Deneme dersi henüz yapılmadı.', { kind: 'conflict' })
+  trial.result = {
+    fit: data.fit,
+    note: data.note === undefined || data.note === '' ? null : data.note,
+    recordedAt: now,
+    by: actorOf(by),
+  }
+  prospect.updatedAt = now
   return prospect
 }

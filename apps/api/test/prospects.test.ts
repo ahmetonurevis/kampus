@@ -166,6 +166,13 @@ describe('aday uçları', () => {
     send('POST', `/api/v1/prospects/${id}/meetings`, cookie, body, ifMatch(version))
   const trial = (cookie: string | null, id: string, body: unknown, version: number | null) =>
     send('POST', `/api/v1/prospects/${id}/trial-lessons`, cookie, body, ifMatch(version))
+  const trialResult = (
+    cookie: string | null,
+    id: string,
+    body: unknown,
+    version: number | null,
+    target: App = app,
+  ) => send('POST', `/api/v1/prospects/${id}/trial-result`, cookie, body, ifMatch(version), target)
 
   function assertError(
     response: Awaited<ReturnType<typeof send>>,
@@ -1738,5 +1745,203 @@ describe('aday uçları', () => {
       .where(eq(studentIdentities.institutionId, a.id))
     assert.equal(rows.length, 2)
     assert.ok(rows.find((row) => row.studentId === elderId)?.archivedAt)
+  })
+
+  // --- Deneme dersi sonucu (DOM-DIL-031) -------------------------------------------------------
+
+  /** Deneme dersi bitmiş sayılır: sunucu saati dersin bir saat sonrasıdır. */
+  const AFTER_LESSON = () => new Date(Date.parse(LESSON?.date ?? '') + 3_600_000)
+
+  /** Dil okulunda veli onaylı bir deneme dersi planlanmış aday ve dersten sonraki saatte bir uygulama. */
+  async function plannedTrial() {
+    const a = await institution({ type: 'language_school' })
+    const front = await frontDesk(a.id)
+    const child = await created(front, {
+      ...PROSPECT,
+      minor: true,
+      interest: 'B1 · Genel İngilizce',
+    })
+    const planned = await trial(
+      front,
+      child.id,
+      { lessonId: LESSON?.id, guardianConsent: true },
+      child.version,
+    )
+    assert.equal(planned.statusCode, 200, planned.body)
+    const later = await buildTestApp(db, { clock: AFTER_LESSON })
+    return { a, front, child, later, version: await versionOf(a.id, child.id) }
+  }
+
+  test('DOM-DIL-031: öğretmen deneme sonucunu yazar; aşama değişmez, sürüm artar, denetimde not yok', async () => {
+    const { a, child, later, version } = await plannedTrial()
+    try {
+      const teacher = (await member(a.id, 'ogretmen')).cookie
+      const written = await trialResult(
+        teacher,
+        child.id,
+        { fit: 'lower_level', note: 'Konuşmada alt kur daha rahat eder.' },
+        version,
+        later,
+      )
+      assert.equal(written.statusCode, 200, written.body)
+      const record = await findRecord(db, a.id, 'prospects', child.id)
+      assert.equal(record?.version, version + 1)
+      assert.equal(record?.data.stage, 'Görüşme planlandı')
+      const result = (record?.data.trialLesson as { result: Record<string, unknown> }).result
+      assert.equal(result.fit, 'lower_level')
+      assert.equal(result.note, 'Konuşmada alt kur daha rahat eder.')
+      assert.equal(result.recordedAt, AFTER_LESSON().toISOString())
+      assert.equal((result.by as { role: string }).role, 'ogretmen')
+      // Öğrenci oluşmaz, yoklamaya yazılmaz.
+      assert.equal((await loadRecords(db, a.id, ['attendance'])).length, 0)
+      assert.equal((await loadRecords(db, a.id, ['students'])).length, SAMPLE.students?.length)
+      // Denetim kaydı alan adını taşır, not metnini taşımaz (guvenlik-kvkk).
+      const audit = await db.select().from(auditLog).where(eq(auditLog.institutionId, a.id))
+      assert.ok(JSON.stringify(audit).includes('prospect.trialResult'))
+      assert.ok(!JSON.stringify(audit).includes('Konuşmada alt kur'))
+      // Sonuç yeniden yazılabilir; son karar geçerlidir.
+      const again = await trialResult(teacher, child.id, { fit: 'suitable' }, version + 1, later)
+      assert.equal(again.statusCode, 200, again.body)
+      const final = await findRecord(db, a.id, 'prospects', child.id)
+      const finalResult = (final?.data.trialLesson as { result: Record<string, unknown> }).result
+      assert.equal(finalResult.fit, 'suitable')
+      assert.equal(finalResult.note, null)
+    } finally {
+      await later.close()
+    }
+  })
+
+  test('DOM-DIL-031: oturumsuz 401; öğretmen dışı roller 403; başlık, gövde ve ders zamanı denetlenir; aday değişmez', async () => {
+    const { a, front, child, later, version } = await plannedTrial()
+    try {
+      const teacher = (await member(a.id, 'ogretmen')).cookie
+      const good = { fit: 'suitable' }
+      assertError(await trialResult(null, child.id, good, version, later), 401)
+      await unchanged(a.id, child.id, async () => {
+        for (const cookie of [
+          a.adminCookie,
+          front,
+          (await member(a.id, 'ogrenci')).cookie,
+          (await member(a.id, 'veli')).cookie,
+        ])
+          assertError(await trialResult(cookie, child.id, good, version, later), 403, 'forbidden')
+        assertError(
+          await trialResult(teacher, child.id, good, null, later),
+          400,
+          'if_match_required',
+        )
+        assertError(await trialResult(teacher, child.id, { fit: 'belki' }, version, later), 400)
+        assertError(await trialResult(teacher, child.id, {}, version, later), 400)
+        assertError(
+          await trialResult(
+            teacher,
+            child.id,
+            { fit: 'suitable', stage: 'Kayıt oldu' },
+            version,
+            later,
+          ),
+          400,
+        )
+        assertError(
+          await trialResult(
+            teacher,
+            child.id,
+            { fit: 'suitable', note: 'x'.repeat(501) },
+            version,
+            later,
+          ),
+          400,
+        )
+        assertError(await trialResult(teacher, child.id, good, version + 5, later), 409)
+        // Ders henüz yapılmadı: sunucu saati dersten önce.
+        assertError(await trialResult(teacher, child.id, good, version), 409, 'trial_not_held')
+        // Denemesi olmayan aday öğretmene yok gibidir.
+        assertError(await trialResult(teacher, 'pr1', good, 1, later), 404, 'not_found')
+      })
+    } finally {
+      await later.close()
+    }
+  })
+
+  test('DOM-DIL-031, DOM-YTK-001: kapsam dışı öğretmen, başka kurum, okul kurumu ve kapalı modülde 404/403; aday değişmez', async () => {
+    const { a, child, later, version } = await plannedTrial()
+    try {
+      // Dersi vermeyen öğretmen: sınıf kapsamı yok, aday 404.
+      const outsiderLink = SEED.teachers.find((item) => item.id !== 't1')
+      assert.ok(outsiderLink)
+      const outsider = await createMember(app, a.id, 'ogretmen', [
+        { kind: 'teacher', recordId: outsiderLink.id },
+      ])
+      const outsiderCookie = await signInAs(app, outsider)
+      await unchanged(a.id, child.id, async () => {
+        assertError(
+          await trialResult(outsiderCookie, child.id, { fit: 'suitable' }, version, later),
+          404,
+          'not_found',
+        )
+      })
+      // Başka kurumun öğretmeni bu adayı bulamaz.
+      const b = await institution({ type: 'language_school' })
+      const foreign = (await member(b.id, 'ogretmen')).cookie
+      await unchanged(a.id, child.id, async () => {
+        assertError(
+          await trialResult(foreign, child.id, { fit: 'suitable' }, version, later),
+          404,
+          'not_found',
+        )
+      })
+      // Okul kurumunda uç her rol için 404'tür.
+      const school = await institution()
+      for (const role of ['yonetici', 'ogretmen'] as const) {
+        const cookie =
+          role === 'yonetici' ? school.adminCookie : (await member(school.id, role)).cookie
+        assertError(
+          await trialResult(cookie, 'pr1', { fit: 'suitable' }, 1, later),
+          404,
+          'not_found',
+        )
+      }
+      // crm modülü kapalıyken 403.
+      const closed = await institution({ type: 'language_school', enabledModules: { crm: false } })
+      const closedTeacher = (await member(closed.id, 'ogretmen')).cookie
+      assertError(
+        await trialResult(closedTeacher, 'pr1', { fit: 'suitable' }, 1, later),
+        403,
+        'module_disabled',
+      )
+    } finally {
+      await later.close()
+    }
+  })
+
+  test('DOM-DIL-031, DOM-YTK-080: öğretmen adayı yalnız kendi deneme grubunda ve telefon, veli ve not olmadan okur', async () => {
+    const { a, child } = await plannedTrial()
+    const teacher = (await member(a.id, 'ogretmen')).cookie
+    const listed = await a_get(teacher, '/api/v1/collections/prospects')
+    assert.equal(listed.statusCode, 200, listed.body)
+    const items = listed.json().data as { record: Record<string, unknown> }[]
+    assert.deepEqual(
+      items.map((item) => item.record.id),
+      [child.id],
+    )
+    const record = items[0]?.record ?? {}
+    for (const hidden of [
+      'phone',
+      'email',
+      'guardianName',
+      'notes',
+      'source',
+      'marketingConsent',
+      'privacyNotice',
+    ])
+      assert.ok(!(hidden in record), `${hidden} öğretmene dönmemeli`)
+    assert.ok('trialLesson' in record)
+    // Yönetici adayı tüm alanlarıyla görür.
+    const adminView = await a_get(a.adminCookie, `/api/v1/collections/prospects/${child.id}`)
+    assert.equal(adminView.statusCode, 200, adminView.body)
+    assert.ok('phone' in adminView.json().data.record)
+    // Denemesi olmayan aday öğretmene tek kayıt okumasında da 404.
+    const hiddenOne = await a_get(teacher, '/api/v1/collections/prospects/pr1')
+    assert.equal(hiddenOne.statusCode, 404, hiddenOne.body)
   })
 })

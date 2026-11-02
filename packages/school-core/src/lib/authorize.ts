@@ -54,6 +54,8 @@ type OnurWriteTargets = {
   'prospect.note': Record<string, never>
   'prospect.meeting': Record<string, never>
   'prospect.trial': Record<string, never>
+  // Deneme dersi sonucu (DOM-DIL-031): hedef, deneme dersinin grubudur; öğretmen kendi grubunda yazar.
+  'prospect.trialResult': { classId: string }
   // Kesin kayıt (`enrollProspect`, `lib/enrollment.ts`); işlem yetkiyi kendisi denetlemez, çağıran
   // önce `requireAuthorized` çalıştırır.
   'prospect.enroll': Record<string, never>
@@ -109,6 +111,8 @@ export const ONUR_WRITE_ACTION_ROLES = {
   'prospect.note': ['yonetici', 'onburo'],
   'prospect.meeting': ['yonetici', 'onburo'],
   'prospect.trial': ['yonetici', 'onburo'],
+  // Deneme sonucunu dersin öğretmeni yazar; satış hunisi ile akademik karar karışmaz (DOM-DIL-031).
+  'prospect.trialResult': ['ogretmen'],
   // Kesin kayıt (aday → öğrenci, sözleşme ve taksit) yönetici ve ön büronundur (DOM-KAY-011).
   'prospect.enroll': ['yonetici', 'onburo'],
 } as const satisfies Record<keyof typeof ONUR_OPERATION_COMMANDS, readonly Actor['role'][]>
@@ -194,7 +198,10 @@ export function authorize<A extends WriteAction>(
   if (!moduleCheck.allowed) return moduleCheck
   // Kurum türünde bulunmayan işlem her rol için yok sayılır (404); rol denetiminden önce gelir ki
   // yetkisiz rol 403 ile işlemin varlığını öğrenmesin (DOM-YTK-012).
-  if (action === 'prospect.trial' && institutionType !== 'language_school')
+  if (
+    (action === 'prospect.trial' || action === 'prospect.trialResult') &&
+    institutionType !== 'language_school'
+  )
     return deny('trial_lesson_unavailable', 'İlgili kayıt bulunamadı.', 'DOM-DIL-030', 'not_found')
   if (action.startsWith('course.') && institutionType !== 'language_school')
     return deny(
@@ -387,6 +394,52 @@ function decide(
         ? ALLOWED
         : deny('question_not_found', 'Soru bulunamadı.', 'DOM-ILT-091', 'not_found')
     }
+    case 'homework.assign': {
+      // Öğretmen yalnız derse girdiği sınıf ve branşa ödev verir; yönetici her sınıfa
+      // (DOM-AKD-070, DOM-YTK-022).
+      if (actor.role === 'yonetici') return ALLOWED
+      const { classId, subjectId } = request.target
+      return teaches(classId, subjectId)
+        ? ALLOWED
+        : deny(
+            'homework_scope_denied',
+            'Yalnız derse girdiğiniz sınıf ve branşa ödev verebilirsiniz.',
+            'DOM-AKD-070',
+          )
+    }
+    case 'homework.update':
+    case 'homework.archive':
+    case 'homework.grade': {
+      // Ödevin öğretmeni ya da yönetici (DOM-AKD-071, -073). Ödevi okuyabilen başka öğretmen
+      // (aynı sınıfa giren) 403 alır; okuyamayan için ret 404'tür, ödevin varlığı sızdırılmaz.
+      const homework = request.target.homework
+      if (homework === undefined || actor.role === 'yonetici') return ALLOWED
+      if (teacher && homework.teacherId === teacher.id) return ALLOWED
+      return scope.classIds.has(homework.classId)
+        ? deny('homework_not_owner', 'Bu ödevin öğretmeni değilsiniz.', 'DOM-AKD-071')
+        : deny('homework_not_found', 'Ödev bulunamadı.', 'DOM-AKD-071', 'not_found')
+    }
+    case 'homework.submit': {
+      // Öğrenci yalnız kendisi için ve kendi sınıfının ödevini teslim eder (DOM-AKD-072); başka
+      // sınıfın ödevi olmayan ödevle aynı 404'tür.
+      const { studentId, homework } = request.target
+      if (studentId === undefined || !scope.studentIds.has(studentId))
+        return deny(
+          'student_scope_denied',
+          'Bu öğrenci için işlem yetkiniz bulunmuyor.',
+          'DOM-AKD-072',
+        )
+      if (homework === undefined) return ALLOWED
+      return classOf(studentId) === homework.classId
+        ? ALLOWED
+        : deny('homework_not_found', 'Ödev bulunamadı.', 'DOM-AKD-072', 'not_found')
+    }
+    // Deneme dersi sonucu yalnız dersin grubunun öğretmenindir; kapsam dışı grup, denemesi olmayan
+    // aday gibi 404'tür (adayın varlığı sızmaz, DOM-DIL-031).
+    case 'prospect.trialResult':
+      return scope.classIds.has(request.target.classId)
+        ? ALLOWED
+        : deny('prospect_not_found', 'Aday bulunamadı.', 'DOM-DIL-031', 'not_found')
     // Deneme dersinin kurum türü (yalnız dil okulu, DOM-DIL-030) `authorize` içinde rolden önce
     // denetlenir.
     case 'prospect.create':

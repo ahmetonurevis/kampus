@@ -8959,6 +8959,234 @@
           "term"
         ]
       },
+      "CourseEOzelInput": {
+        "type": "object",
+        "properties": {
+          "programCode": {
+            "description": "e-Özel kurs programı kodu",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "approval": {
+            "type": "string",
+            "enum": [
+              "not_submitted",
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "recordedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kurumun e-Özel kaydını son işaretlediği an"
+          },
+          "recordedByUserId": {
+            "description": "İşaretleyen kullanıcı",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "programCode",
+          "approval",
+          "recordedAt",
+          "recordedByUserId"
+        ]
+      },
+      "CourseInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "de",
+              "fr",
+              "es",
+              "it",
+              "ru",
+              "ar",
+              "zh",
+              "ja",
+              "ko",
+              "tr"
+            ]
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "Pre-A1",
+              "A1",
+              "A2",
+              "A2+",
+              "B1",
+              "B1+",
+              "B2",
+              "B2+",
+              "C1",
+              "C2"
+            ]
+          },
+          "skillFocus": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "reading",
+                "listening",
+                "writing",
+                "speaking"
+              ]
+            },
+            "description": "Boş liste genel kurdur"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalHours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Toplam ders saati (45 dk)"
+          },
+          "weeklyHours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "sessionMinutes": {
+            "type": "number",
+            "enum": [
+              45,
+              90
+            ]
+          },
+          "durationWeeks": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Toplam ÷ haftalık saat, yukarı yuvarlanır; saklanmaz"
+          },
+          "maxLearners": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "certified": {
+            "type": "boolean",
+            "description": "Belgeli kurs (MEBBİS Kurs Bitirme Belgesi)"
+          },
+          "nextCourseId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Seviyeli kursta sonraki kur; öğrenci ve velide yalnız etkinse döner"
+          },
+          "minLearners": {
+            "description": "Yalnız personele döner",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "description": "Yalnız personele döner",
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "archived"
+            ]
+          },
+          "activatedAt": {
+            "description": "Yalnız personele döner",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archivedAt": {
+            "description": "Yalnız personele döner",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eOzel": {
+            "description": "Yalnız personele döner",
+            "$ref": "#/components/schemas/CourseEOzelInput"
+          },
+          "rowVersion": {
+            "description": "Yazmada `If-Match`. Yalnız personele döner",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "updatedAt": {
+            "description": "Yalnız personele döner",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "language",
+          "level",
+          "skillFocus",
+          "description",
+          "totalHours",
+          "weeklyHours",
+          "sessionMinutes",
+          "durationWeeks",
+          "maxLearners",
+          "certified",
+          "nextCourseId"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -18163,6 +18391,236 @@
           "date",
           "year",
           "term"
+        ],
+        "additionalProperties": false
+      },
+      "CourseEOzel": {
+        "type": "object",
+        "properties": {
+          "programCode": {
+            "description": "e-Özel kurs programı kodu",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "approval": {
+            "type": "string",
+            "enum": [
+              "not_submitted",
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "recordedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kurumun e-Özel kaydını son işaretlediği an"
+          },
+          "recordedByUserId": {
+            "description": "İşaretleyen kullanıcı",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "programCode",
+          "approval",
+          "recordedAt",
+          "recordedByUserId"
+        ],
+        "additionalProperties": false
+      },
+      "Course": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "de",
+              "fr",
+              "es",
+              "it",
+              "ru",
+              "ar",
+              "zh",
+              "ja",
+              "ko",
+              "tr"
+            ]
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "Pre-A1",
+              "A1",
+              "A2",
+              "A2+",
+              "B1",
+              "B1+",
+              "B2",
+              "B2+",
+              "C1",
+              "C2"
+            ]
+          },
+          "skillFocus": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "reading",
+                "listening",
+                "writing",
+                "speaking"
+              ]
+            },
+            "description": "Boş liste genel kurdur"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalHours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Toplam ders saati (45 dk)"
+          },
+          "weeklyHours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "sessionMinutes": {
+            "type": "number",
+            "enum": [
+              45,
+              90
+            ]
+          },
+          "durationWeeks": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Toplam ÷ haftalık saat, yukarı yuvarlanır; saklanmaz"
+          },
+          "maxLearners": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "certified": {
+            "type": "boolean",
+            "description": "Belgeli kurs (MEBBİS Kurs Bitirme Belgesi)"
+          },
+          "nextCourseId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Seviyeli kursta sonraki kur; öğrenci ve velide yalnız etkinse döner"
+          },
+          "minLearners": {
+            "description": "Yalnız personele döner",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "description": "Yalnız personele döner",
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "archived"
+            ]
+          },
+          "activatedAt": {
+            "description": "Yalnız personele döner",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archivedAt": {
+            "description": "Yalnız personele döner",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eOzel": {
+            "description": "Yalnız personele döner",
+            "$ref": "#/components/schemas/CourseEOzel"
+          },
+          "rowVersion": {
+            "description": "Yazmada `If-Match`. Yalnız personele döner",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "updatedAt": {
+            "description": "Yalnız personele döner",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "language",
+          "level",
+          "skillFocus",
+          "description",
+          "totalHours",
+          "weeklyHours",
+          "sessionMinutes",
+          "durationWeeks",
+          "maxLearners",
+          "certified",
+          "nextCourseId"
         ],
         "additionalProperties": false
       }
@@ -59307,6 +59765,1265 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/AcademicYear"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/courses": {
+      "get": {
+        "operationId": "listCourses",
+        "summary": "Kurlar",
+        "tags": [
+          "institution"
+        ],
+        "description": "Kurumun kur programı: seviye sırasıyla (Pre-A1 … C2), sonra ada göre, sayfalı. Arşiv varsayılan olarak dışlanır, `status=archived` ile okunur. Süzgeç `status`, `level`, `language`; bilinmeyen parametre 400. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`. Öğrenci ve veli yalnız etkin kurları ve katalog alanlarını görür (en az mevcut, durum, e-Özel kaydı, işlem anları ve sürüm dönmez; sonraki kur yalnız etkinse). Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "active",
+                "archived"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci; verilmezse arşiv dışındakiler (öğrenci ve velide yalnız `active`)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Pre-A1",
+                "A1",
+                "A2",
+                "A2+",
+                "B1",
+                "B1+",
+                "B2",
+                "B2+",
+                "C1",
+                "C2"
+              ]
+            },
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "description": "CEFR seviyesi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "de",
+                "fr",
+                "es",
+                "it",
+                "ru",
+                "ar",
+                "zh",
+                "ja",
+                "ko",
+                "tr"
+              ]
+            },
+            "in": "query",
+            "name": "language",
+            "required": false,
+            "description": "Öğretim dili (ISO 639-1)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Course"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createCourse",
+        "summary": "Kur oluştur",
+        "tags": [
+          "institution"
+        ],
+        "description": "Yeni kur `draft` durumunda açılır (core `planCourseCreation`, DOM-DIL-005). Dil verilmezse `en`, oturum 45 dakika, belgesiz. Ad arşivlenmemiş kurlarda tekil (409 `course_name_exists`); toplam saat haftalık saatten az olamaz (422 `course_hours_invalid`); 90 dakikalık oturumda saatler çift (422 `course_session_mismatch`); en az mevcut en çok mevcudu aşamaz (422 `course_learners_invalid`); sonraki kur aynı dilde, seviyesi düşük olmayan, arşivlenmemiş ve döngüsüz (422 `course_next_*`, DOM-DIL-007). `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarını yönetir (403 `course_coordinator_required`; seviye değişiminde eski ve yeni seviye). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "language": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "de",
+                      "fr",
+                      "es",
+                      "it",
+                      "ru",
+                      "ar",
+                      "zh",
+                      "ja",
+                      "ko",
+                      "tr"
+                    ]
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "Pre-A1",
+                      "A1",
+                      "A2",
+                      "A2+",
+                      "B1",
+                      "B1+",
+                      "B2",
+                      "B2+",
+                      "C1",
+                      "C2"
+                    ]
+                  },
+                  "skillFocus": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking"
+                      ]
+                    }
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "totalHours": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1200
+                  },
+                  "weeklyHours": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 40
+                  },
+                  "sessionMinutes": {
+                    "type": "number",
+                    "enum": [
+                      45,
+                      90
+                    ]
+                  },
+                  "minLearners": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 18
+                  },
+                  "maxLearners": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 18
+                  },
+                  "certified": {
+                    "type": "boolean"
+                  },
+                  "nextCourseId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "level",
+                  "totalHours",
+                  "weeklyHours",
+                  "minLearners",
+                  "maxLearners"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Course"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/courses/{courseId}": {
+      "get": {
+        "operationId": "getCourse",
+        "summary": "Kur",
+        "tags": [
+          "institution"
+        ],
+        "description": "Tek kur; olmayan, başka kurumun ya da rolün göremediği (öğrenci ve velide etkin olmayan) kur 404. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`. Öğrenci ve veli yalnız etkin kurları ve katalog alanlarını görür (en az mevcut, durum, e-Özel kaydı, işlem anları ve sürüm dönmez; sonraki kur yalnız etkinse). Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "courseId",
+            "required": true,
+            "description": "Kur kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Course"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateCourse",
+        "summary": "Kuru değiştir",
+        "tags": [
+          "institution"
+        ],
+        "description": "Kurun alanlarını değiştirir (DOM-DIL-005…007); kurallar oluşturmadaki gibidir. Etkin kurun dili, seviyesi, saatleri, oturumu ve belge türü değişmez (422 `course_active_locked`; yeni kur tanımlanır). Taslakta bu alanlardan biri değişirse e-Özel onayı sıfırlanır (`not_submitted`, program kodu kalır; DOM-DIL-006). `If-Match` kurun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun kuru 404. Arşivli kur değişmez: 409 `course_archived`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarını yönetir (403 `course_coordinator_required`; seviye değişiminde eski ve yeni seviye). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "language": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "de",
+                      "fr",
+                      "es",
+                      "it",
+                      "ru",
+                      "ar",
+                      "zh",
+                      "ja",
+                      "ko",
+                      "tr"
+                    ]
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "Pre-A1",
+                      "A1",
+                      "A2",
+                      "A2+",
+                      "B1",
+                      "B1+",
+                      "B2",
+                      "B2+",
+                      "C1",
+                      "C2"
+                    ]
+                  },
+                  "skillFocus": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking"
+                      ]
+                    }
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "totalHours": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1200
+                  },
+                  "weeklyHours": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 40
+                  },
+                  "sessionMinutes": {
+                    "type": "number",
+                    "enum": [
+                      45,
+                      90
+                    ]
+                  },
+                  "minLearners": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 18
+                  },
+                  "maxLearners": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 18
+                  },
+                  "certified": {
+                    "type": "boolean"
+                  },
+                  "nextCourseId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "courseId",
+            "required": true,
+            "description": "Kur kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Course"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveCourse",
+        "summary": "Kuru arşivle",
+        "tags": [
+          "institution"
+        ],
+        "description": "Taslak ya da etkin kuru arşivler (DOM-DIL-005); arşiv geri alınmaz. Arşivlenmemiş başka bir kurun sonraki kuruysa arşivlenmez (422 `course_has_dependents`, DOM-DIL-007). `If-Match` kurun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun kuru 404. Arşivli kur değişmez: 409 `course_archived`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarını yönetir (403 `course_coordinator_required`; seviye değişiminde eski ve yeni seviye). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "courseId",
+            "required": true,
+            "description": "Kur kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Course"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/courses/{courseId}/activate": {
+      "post": {
+        "operationId": "activateCourse",
+        "summary": "Kuru etkinleştir",
+        "tags": [
+          "institution"
+        ],
+        "description": "Taslak kuru etkinleştirir (DOM-DIL-005); yalnız taslak (409 `course_not_draft`). Belgeli kur, programı e-Özel'de onaylanmadan etkinleşmez (422 `course_program_not_approved`, DOM-DIL-006). Gövde yok ya da boş nesne. `If-Match` kurun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun kuru 404. Arşivli kur değişmez: 409 `course_archived`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarını yönetir (403 `course_coordinator_required`; seviye değişiminde eski ve yeni seviye). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "courseId",
+            "required": true,
+            "description": "Kur kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Course"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/courses/{courseId}/record-e-ozel": {
+      "post": {
+        "operationId": "recordCourseEOzel",
+        "summary": "Kurun e-Özel kaydını işaretle",
+        "tags": [
+          "institution"
+        ],
+        "description": "Kurumun e-Özel'e elle işlediği kurs programının kodunu ve onay durumunu (`pending`, `approved`, `rejected`) işaretler; iz işaretleyen ve anla tutulur (DOM-DIL-006). Platform e-Özel'e yazmaz. Program kodu arşivlenmemiş kurlarda tekil (409 `course_program_code_exists`, büyük/küçük harf duyarsız). Etkin belgeli kurun kaydı değişmez (422 `course_active_locked`). `If-Match` kurun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun kuru 404. Arşivli kur değişmez: 409 `course_archived`. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`; diğer roller 403. Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "programCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9./_-]*$"
+                  },
+                  "approval": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "approved",
+                      "rejected"
+                    ]
+                  }
+                },
+                "required": [
+                  "programCode",
+                  "approval"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "courseId",
+            "required": true,
+            "description": "Kur kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Course"
                     }
                   },
                   "required": [

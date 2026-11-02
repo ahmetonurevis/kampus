@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { uniqueConstraintClass } from './unique-constraints.ts'
+
 /** Tek hata zarfı (docs/muhendislik/api-tasarimi.md §4). `message` Türkçe, `code` snake_case. */
 export const issueSchema = z.object({
   path: z.array(z.union([z.string(), z.number()])),
@@ -42,6 +44,7 @@ export const MESSAGES = {
   idempotency_in_progress: 'Aynı istek hâlâ işleniyor. Lütfen biraz sonra yeniden deneyin.',
   idempotency_key_reused: 'Bu istek anahtarı farklı bir işlem için kullanılmış.',
   record_too_large: 'Kayıt izin verilen boyutu aşıyor.',
+  duplicate_record: 'Aynı bilgilerle bir kayıt zaten var. Bilgileri kontrol edin.',
   payload_too_large: 'Gönderilen veri çok büyük.',
   unsupported_media_type: 'İstek biçimi desteklenmiyor.',
   rate_limited: 'Çok fazla istek gönderildi. Lütfen biraz sonra yeniden deneyin.',
@@ -105,9 +108,9 @@ export class ConflictError extends AppError {
   }
 }
 
-/** 422: biçim doğru, iş kuralı reddetti. `message` school-core'un Türkçe mesajıdır. */
 /**
- * 409: veritabanı kilitlenme (40P01) veya serileştirme (40001) nedeniyle transaction'ı geri aldı.
+ * 409: veritabanı kilitlenme (40P01), serileştirme (40001) ya da yeniden denenebilir sınıftaki
+ * tekillik ihlali (23505, `unique-constraints.ts` `retry`) nedeniyle transaction'ı geri aldı.
  * Hiçbir kayıt değişmedi; aynı istek olduğu gibi yeniden denenebilir.
  */
 export class TransientConflictError extends AppError {
@@ -117,10 +120,26 @@ export class TransientConflictError extends AppError {
   }
 }
 
+/** 422: biçim doğru, iş kuralı reddetti. `message` school-core'un Türkçe mesajıdır. */
 export class RuleViolationError extends AppError {
   constructor(code: string, message: string, options: { issues?: Issue[]; cause?: unknown } = {}) {
     super(422, code, message, options)
     this.name = 'RuleViolationError'
+  }
+}
+
+/**
+ * 422 `duplicate_record`: sınıf tablosunda olmayan tekillik ihlali (OG-279). Hata işleyicisi
+ * kısıt adını `warn` loglar (değer ve kişisel veri yok); yeni kısıt böylece fark edilir ve
+ * `UNIQUE_CONSTRAINTS`'e sınıfıyla yazılır.
+ */
+export class UnclassifiedUniqueViolationError extends RuleViolationError {
+  readonly constraint: string | undefined
+
+  constructor(constraint: string | undefined, options: { cause?: unknown } = {}) {
+    super('duplicate_record', MESSAGES.duplicate_record, options)
+    this.name = 'UnclassifiedUniqueViolationError'
+    this.constraint = constraint
   }
 }
 
@@ -147,19 +166,35 @@ export function databaseErrorInfo(error: unknown): { code: string; constraint?: 
 }
 
 /**
- * Kullanıcıya anlamlı veritabanı hatalarını uygulama hatasına çevirir (boyut kısıtı 422,
- * kilitlenme, serileştirme ve benzersizlik 409 `conflict`); ötekiler aynen döner
- * (500, ayrıntı yalnız logda). `records_data_size_check`: jsonb'nin ikili boyutu JSON metninden
- * büyük olabildiği için uygulamanın metin denetimi geçse de kısıt reddedebilir.
+ * Kullanıcıya anlamlı veritabanı hatalarını uygulama hatasına çevirir; ötekiler aynen döner
+ * (500, ayrıntı yalnız logda).
+ *
+ * - 23514 `records_data_size_check` → 422 `record_too_large`: jsonb'nin ikili boyutu JSON
+ *   metninden büyük olabildiği için uygulamanın metin denetimi geçse de kısıt reddedebilir.
+ * - 40P01, 40001 → 409 `conflict` (yeniden denenebilir).
+ * - 23505 kısıt adına göre (`UNIQUE_CONSTRAINTS`): `retry` → 409 `conflict`; `rule` → 409 ve
+ *   kısıtın kodu (core'un aynı durumdaki kodu); tabloda olmayan → 422 `duplicate_record`.
  */
 export function mapDatabaseError(error: unknown): Error {
   if (error instanceof AppError) return error
   const info = databaseErrorInfo(error)
   if (info?.code === '23514' && info.constraint === 'records_data_size_check')
     return new RuleViolationError('record_too_large', MESSAGES.record_too_large, { cause: error })
-  // Benzersizlik kurum kilidinin dışından gelen yazmayla çakıştı: istek yenilenebilir.
-  if (info?.code === '40P01' || info?.code === '40001' || info?.code === '23505')
+  if (info?.code === '40P01' || info?.code === '40001')
     return new TransientConflictError({ cause: error })
+  if (info?.code === '23505') {
+    const unique = uniqueConstraintClass(info.constraint)
+    if (unique === undefined)
+      return new UnclassifiedUniqueViolationError(info.constraint, { cause: error })
+    switch (unique.kind) {
+      case 'retry':
+        return new TransientConflictError({ cause: error })
+      case 'rule':
+        return new AppError(409, unique.code, unique.message, { cause: error })
+      default:
+        return unique satisfies never
+    }
+  }
   if (error instanceof Error) return error
   return new AppError(500, 'internal_error', MESSAGES.internal_error, { cause: error })
 }

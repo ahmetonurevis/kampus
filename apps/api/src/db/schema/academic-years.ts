@@ -70,7 +70,8 @@ export const academicYears = pgTable(
         or (${table.status} = 'active' and ${table.activatedAt} is not null and ${table.closedAt} is null)
         or (${table.status} = 'closed' and ${table.activatedAt} is not null and ${table.closedAt} is not null)`,
     ),
-    // Kurumda tek etkin yıl (DOM-YTK-065); eşzamanlı ikinci etkinleştirme 23505 → 409.
+    // Kurumda tek etkin yıl (DOM-YTK-065); ikinci etkin yıl 23505 → 409
+    // `academic_year_active_exists` (unique-constraints.ts).
     uniqueIndex('academic_years_active_key')
       .on(table.institutionId)
       .where(sql`${table.status} = 'active' and ${table.archivedAt} is null`),

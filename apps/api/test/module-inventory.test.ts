@@ -19,6 +19,7 @@ import { READABLE_COLLECTIONS } from '../src/services/collection-access.ts'
 import {
   buildTestApp,
   createInstitution,
+  createMember,
   createTestDatabase,
   FIXED_NOW,
   nextIp,
@@ -104,20 +105,28 @@ const MODULELESS: Readonly<Record<string, string>> = {
   'POST /api/v1/students/:studentId/guardians': 'çekirdek kayıt',
   'PATCH /api/v1/students/:studentId/guardians/:linkId': 'çekirdek kayıt',
   'DELETE /api/v1/students/:studentId/guardians/:linkId': 'çekirdek kayıt',
-  // Kur programı modüle değil kurum türüne bağlıdır: okulda 404 (DOM-DIL-005).
-  'GET /api/v1/courses': 'kurum türü',
-  'GET /api/v1/courses/:courseId': 'kurum türü',
-  'POST /api/v1/courses': 'kurum türü',
-  'PATCH /api/v1/courses/:courseId': 'kurum türü',
-  'POST /api/v1/courses/:courseId/activate': 'kurum türü',
-  'DELETE /api/v1/courses/:courseId': 'kurum türü',
-  'POST /api/v1/courses/:courseId/record-e-ozel': 'kurum türü',
   // Dosyanın modülü amacından gelir ve serviste denetlenir (yükleme, bilgi ve bağlantı; kurum
   // belgesi modülsüz; `files.test.ts`). İndirme imzalı kısa ömürlü bağlantıdır, oturum istemez.
   'POST /api/v1/files': 'dosya amacına göre serviste',
   'GET /api/v1/files/:fileId': 'dosya amacına göre serviste',
   'GET /api/v1/files/:fileId/url': 'dosya amacına göre serviste',
   'GET /api/v1/files/download': 'imzalı bağlantı',
+}
+
+/**
+ * Kurum türüne bağlı uçlar: modül denetimi taşımaz, kurum türü uymazsa rol denetiminden önce 404
+ * döner (bulunmaz gibi; DOM-YTK-012). Kur programı (DOM-DIL-005) ve yakında kur grupları
+ * (`/groups*`) yalnız dil okulundadır. Bir dil okulu modülüne bağlanması ayrı karardır; o zamana
+ * dek modül kapatma bu uçları etkilemez.
+ */
+const INSTITUTION_TYPE_ROUTES: Readonly<Record<string, InstitutionType>> = {
+  'GET /api/v1/courses': 'language_school',
+  'GET /api/v1/courses/:courseId': 'language_school',
+  'POST /api/v1/courses': 'language_school',
+  'PATCH /api/v1/courses/:courseId': 'language_school',
+  'POST /api/v1/courses/:courseId/activate': 'language_school',
+  'DELETE /api/v1/courses/:courseId': 'language_school',
+  'POST /api/v1/courses/:courseId/record-e-ozel': 'language_school',
 }
 
 /** Oğuzhan'ın modüle bağlı uçları (iş akışı köprüsü core komut kaydından aşağıda türetilir). */
@@ -294,6 +303,10 @@ describe('IST-009: rota → modül envanteri (DOM-YTK-040)', () => {
         if (guarded) problems.push(`${route.key}: modülsüz listede ama modül denetimi var`)
         continue
       }
+      if (Object.hasOwn(INSTITUTION_TYPE_ROUTES, route.key)) {
+        if (guarded) problems.push(`${route.key}: kurum türüne bağlı ama modül denetimi var`)
+        continue
+      }
       if (TODO.includes(route.key)) {
         if (guarded) problems.push(`${route.key}: TODO listesinde ama artık korumalı; satırı sil`)
         continue
@@ -315,7 +328,14 @@ describe('IST-009: rota → modül envanteri (DOM-YTK-040)', () => {
         )
     }
     // Tablodaki her satır gerçek bir uca karşılık gelir (eski satır kalmaz).
-    for (const key of [...Object.keys(MODULELESS), ...Object.keys(EXPECTED), ...TODO])
+    const listed = [
+      ...Object.keys(MODULELESS),
+      ...Object.keys(INSTITUTION_TYPE_ROUTES),
+      ...Object.keys(EXPECTED),
+      ...TODO,
+    ]
+    assert.equal(new Set(listed).size, listed.length, 'bir uç iki sınıfta')
+    for (const key of listed)
       if (!keys.includes(key)) problems.push(`${key}: tabloda var, uygulamada yok`)
     assert.deepEqual(problems, [])
   })
@@ -413,6 +433,25 @@ describe('IST-009: rota → modül envanteri (DOM-YTK-040)', () => {
       }
     })
   }
+
+  test('IST-009: kurum türüne bağlı uçlar başka türde rol denetiminden önce 404, modül kapatmaktan etkilenmez', async () => {
+    for (const type of INSTITUTION_TYPES) {
+      const all = Object.fromEntries(MODULE_KEYS.map((key) => [key, false]))
+      const institution = await createInstitution(app, { type, enabledModules: all })
+      const admin = await signInAs(app, institution.admin)
+      const student = await signInAs(app, await createMember(app, institution.id, 'ogrenci'))
+      for (const [key, owner] of Object.entries(INSTITUTION_TYPE_ROUTES)) {
+        const [method, url] = key.split(' ') as [string, string]
+        for (const cookie of [admin, student]) {
+          const response = await hit(method, sample(url), cookie)
+          if (type === owner) {
+            const code = response.statusCode === 403 ? response.json<{ code: string }>().code : null
+            assert.notEqual(code, 'module_disabled', `${type} ${key}`)
+          } else assert.equal(response.statusCode, 404, `${type} ${key}: ${response.body}`)
+        }
+      }
+    }
+  })
 
   // --- Gerçek gövdeli örnekler --------------------------------------------------------------
 

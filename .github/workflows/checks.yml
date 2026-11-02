@@ -3,8 +3,10 @@ name: Kalite kontrolleri
 # (docs/muhendislik/test-stratejisi.md §8). Bütçe aşılırsa parça sayısı artırılır, zaman aşımı değil.
 on:
   pull_request:
+  # Sahip dalları (`oguzhan/**`, `onur/**`) her push'ta koşmaz: Actions dakikası entegrasyon
+  # push'unda harcanır; dalda gerekirse `gh workflow run checks.yml --ref <dal>`.
   push:
-    branches: [main, 'feature/**', 'fix/**', 'oguzhan/**', 'onur/**']
+    branches: [main, 'feature/**', 'fix/**']
   workflow_dispatch:
 permissions:
   contents: read

@@ -309,6 +309,9 @@ describe('IST-093: yoklama geçmişi tarih aralığı', () => {
     // Tam bir yıl (iki uç dahil) geçerlidir.
     const exact = await list(a.adminCookie, 'dateFrom=2025-10-06&dateTo=2026-10-06')
     assert.equal(exact.statusCode, 200, exact.body)
+    // Tek uçlu aralık ve aralıksız liste sınırsızdır (liste sayfalıdır, DOM-AKD-036).
+    for (const query of ['dateFrom=2020-01-01', 'dateTo=2030-01-01', 'sort=date'])
+      assert.equal((await list(a.adminCookie, query)).statusCode, 200, query)
     // Sayım ucu aynı denetimi uygular.
     const counts = await app.inject({
       method: 'GET',

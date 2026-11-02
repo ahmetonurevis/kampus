@@ -232,7 +232,8 @@ function dateFieldOf(collection: CollectionName, requested: string | undefined):
 
 /**
  * Yoklama geçmişi için en uzun gün aralığı (IST-093): bir takvim yılı. Başlangıçtan bir yıl sonraki
- * gün dahildir; ondan sonrası 400. Yalnız iki uç da verilmişse denetlenir (sıra denetimi sorgu
+ * gün dahildir; ondan sonrası 400. Yalnız iki uç da verilmişse denetlenir: tek uçlu ve aralıksız
+ * liste sınırsızdır, liste sayfalı olduğundan yük sınırlıdır (DOM-AKD-036; sıra denetimi sorgu
  * şemasındadır). Diğer koleksiyonlarda aralık sınırı yoktur.
  */
 const ATTENDANCE_RANGE_TOO_LONG = 'Tarih aralığı en fazla 1 yıl olabilir.'

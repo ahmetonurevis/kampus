@@ -103,6 +103,11 @@ export const REDACTED_PATHS = [
   '*.reason',
   'history[*].reason',
   '*.history[*].reason',
+  // kvkk: Ç — ders iptali ve yedek görevlendirme gerekçesi (DOM-YTK-068).
+  'cancelReason',
+  '*.cancelReason',
+  'substitutions',
+  '*.substitutions',
   // kvkk: Ç — öğrenci sorusunun ilk yanıtı ve ek yanıtları (DOM-ILT-092). Soru başlığı ve metni
   // (`title`, `text`) başka koleksiyonlarla ortak adlardır; gövde zaten loglanmaz.
   'answer',

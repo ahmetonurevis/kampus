@@ -31,6 +31,7 @@ import { registerTaskSubmissionRoutes } from './task-submissions.ts'
 import { registerAcademicYearRoutes } from './academic-years.ts'
 import { registerStudentGuardianRoutes } from './student-guardians.ts'
 import { registerCourseRoutes } from './courses.ts'
+import { registerLessonRoutes } from './lessons.ts'
 import { registerLanguageGroupRoutes } from './language-groups.ts'
 import { registerManagementMetricRoutes } from './management-metrics.ts'
 
@@ -78,6 +79,7 @@ export const PLATFORM_LATE_ROUTES = [
   registerAcademicYearRoutes,
   registerStudentGuardianRoutes,
   registerCourseRoutes,
+  registerLessonRoutes,
   registerLanguageGroupRoutes,
   registerManagementMetricRoutes,
 ] as const satisfies readonly RouteRegistrar[]

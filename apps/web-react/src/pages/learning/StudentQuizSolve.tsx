@@ -2,17 +2,25 @@
 // sunucuda başlar ve süre sunucuda işler: sayaç `expiresAt`'ten yalnız gösterimdir, karar
 // sunucudadır (ağ payı dahil). Sayfa yenilenirse açık deneme `GET /quizzes/:id`'den devam eder
 // (sorular deneme başlayınca öğrenciye açılır); yeni deneme başlatılmaz. Cevaplar yalnız bellekte
-// tutulur (tarayıcı deposuna yazılmaz); kirli ekrandan çıkarken onay sorulur. Süre dolunca cevaplar
-// bir kez kendiliğinden gönderilir. Gövdede puan yoktur; puan sunucuda cevaplardan hesaplanır.
+// tutulur (tarayıcı deposuna yazılmaz); kirli ekrandan çıkarken (gezinme, yenileme, sekme kapatma)
+// onay sorulur. Sayaç sunucu saatiyle işler (`serverNow`; cihaz saati yanlış olsa da). Süre dolunca
+// cevaplar kendiliğinden gönderilir; ağ/5xx/429 hatasında sunucunun ağ payı içinde aynı
+// `Idempotency-Key` ile geri çekilmeli yeniden denenir, sonunda "Yeniden gönder" kalır (cevaplar
+// kaybolmaz). Elle gönderim ile sayaç aynı anda tetiklenirse tek istek gider. Gövdede puan yoktur;
+// puan sunucuda cevaplardan hesaplanır.
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { isApiError } from '@kampus/api-client/errors.ts'
 import {
+  isQuizSubmitRetryable,
   QUIZ_ALREADY_SUBMITTED_MESSAGE,
   QUIZ_TIME_EXPIRED_MESSAGE,
   quizClockLabel,
-  quizErrorField,
+  quizClockOffset,
+  quizErrorMessage,
+  quizGraceLeftMs,
   quizSecondsLeft,
+  quizSubmitRetryDelay,
   submitQuizBody,
   type QuizAttempt,
   type QuizQuestion,
@@ -164,6 +172,10 @@ export function StudentQuizSolve({ page, quizId }: { page: NavPage; quizId: stri
         title={quiz.title}
         attempt={attempt}
         questions={quiz.questions}
+        clockOffsetMs={quizClockOffset(
+          'serverNow' in quiz ? quiz.serverNow : null,
+          item.dataUpdatedAt,
+        )}
         onSubmitted={() => nav.result(quizId)}
         onExpired={() => setExpired(true)}
       />
@@ -176,11 +188,33 @@ type FormProps = {
   title: string
   attempt: QuizAttempt
   questions: readonly QuizQuestion[]
+  /** Sunucu saati eksi cihaz saati (ms); sayaç ve yeniden deneme bununla işler. */
+  clockOffsetMs: number
   onSubmitted: () => void
   onExpired: () => void
 }
 
-function QuizSolveForm({ quizId, title, attempt, questions, onSubmitted, onExpired }: FormProps) {
+/** Çıkış onayı: cevaplar yalnız bellekte; süre ekran kapansa da işler. */
+const LEAVE_TEXTS = {
+  title: 'Quizden çıkılsın mı?',
+  description:
+    'Süre işlemeye devam eder; seçtiğiniz cevaplar kaybolur ve sunucuda boş cevaplı sayılır.',
+  cancel: 'Çözmeye devam et',
+  confirm: 'Çık ve cevapları at',
+} as const
+
+const RETRY_NOTICE = 'Bağlantı sorunu oldu; cevapların yeniden gönderiliyor. Bu ekranı kapatma.'
+const RESEND_HINT = ' Cevapların bu ekranda duruyor; bağlantı gelince "Yeniden gönder"e bas.'
+
+function QuizSolveForm({
+  quizId,
+  title,
+  attempt,
+  questions,
+  clockOffsetMs,
+  onSubmitted,
+  onExpired,
+}: FormProps) {
   // Sorular ilk okumada sabitlenir: arka planda tazelenen sorgu çözme sırasını değiştirmez.
   const [fixed] = useState(() =>
     questions.map((question) => ({
@@ -195,52 +229,93 @@ function QuizSolveForm({ quizId, title, attempt, questions, onSubmitted, onExpir
   const [answers, setAnswers] = useState<Readonly<Record<string, number>>>({})
   const [confirming, setConfirming] = useState(false)
   const [rootError, setRootError] = useState<string | undefined>()
+  // Kesin olmayan hata sonrası bekleme: cevaplar yeniden gönderilecek (alan kilitli kalır).
+  const [retrying, setRetrying] = useState(false)
   const submit = useSubmitQuiz()
-  const guard = useRouteDiscardGuard(Object.keys(answers).length > 0)
-  const autoSent = useRef(false)
+  const guard = useRouteDiscardGuard(Object.keys(answers).length > 0, LEAVE_TEXTS)
+  // Sürmekte olan gönderim: elle gönderim ve sayaç aynı anda tetiklenirse tek istek gider, ikisi
+  // de aynı sonucu bekler.
+  const flight = useRef<Promise<void> | null>(null)
+  const retryTimer = useRef<number | undefined>(undefined)
+  const offsetRef = useRef(clockOffsetMs)
+  useEffect(() => {
+    offsetRef.current = clockOffsetMs
+  })
+  useEffect(() => () => window.clearTimeout(retryTimer.current), [])
 
   const ids = fixed.map((question) => question.id)
   const total = fixed.length
   const done = answeredCount(ids, answers)
   const now = useNow(attempt.expiresAt !== null)
-  const secondsLeft = quizSecondsLeft(attempt.expiresAt, now)
+  const secondsLeft = quizSecondsLeft(attempt.expiresAt, now, clockOffsetMs)
   const timeOver = secondsLeft === 0
-  const busy = submit.isPending
+  const busy = submit.isPending || retrying
 
-  async function send(automatic: boolean) {
+  const isTimeOver = () => quizSecondsLeft(attempt.expiresAt, Date.now(), offsetRef.current) === 0
+  const sleep = (ms: number) =>
+    new Promise<void>((resolve) => {
+      retryTimer.current = window.setTimeout(resolve, ms)
+    })
+
+  async function run(automatic: boolean) {
     setRootError(undefined)
-    const outcome = await submit.submit(
-      { quizId, body: submitQuizBody(ids, answers) },
-      {
-        // Hata formun içinde görünür (toast yok); süre ve ikinci gönderim aşağıda ayrıca ele alınır.
-        fieldFor: (error) => quizErrorField(error, 'solve'),
-        setError: (_name, error) => setRootError(error.message),
-      },
-    )
-    if (outcome.status === 'busy') return
-    if (outcome.status === 'success') {
-      guard.leave()
-      setConfirming(false)
-      notify.success(automatic ? 'Süre doldu; cevapların gönderildi.' : 'Cevapların gönderildi.')
-      onSubmitted()
+    const body = submitQuizBody(ids, answers)
+    for (let tryNo = 0; ; tryNo += 1) {
+      // Hata formun içinde görünür (toast yok); yeniden denemede aynı gövde aynı anahtarla gider.
+      const outcome = await submit.submit(
+        { quizId, body },
+        { fieldFor: () => undefined, silent: () => true },
+      )
+      if (outcome.status === 'busy') return
+      if (outcome.status === 'success') {
+        guard.leave()
+        setConfirming(false)
+        notify.success(automatic ? 'Süre doldu; cevapların gönderildi.' : 'Cevapların gönderildi.')
+        onSubmitted()
+        return
+      }
+      const { error } = outcome
+      if (error.code === 'quiz_already_submitted') {
+        // Cevaplar zaten kayıtlı (ör. başka sekmeden): sonuç görünümüne geçilir.
+        guard.leave()
+        notify.info(QUIZ_ALREADY_SUBMITTED_MESSAGE)
+        onSubmitted()
+        return
+      }
+      if (error.code === 'quiz_time_expired') {
+        guard.leave()
+        onExpired()
+        return
+      }
+      const retryable = isQuizSubmitRetryable(error)
+      if (retryable && isTimeOver()) {
+        const delay = quizSubmitRetryDelay(
+          tryNo,
+          quizGraceLeftMs(attempt.expiresAt, Date.now(), offsetRef.current),
+        )
+        if (delay !== null) {
+          setRetrying(true)
+          setRootError(RETRY_NOTICE)
+          await sleep(delay)
+          setRetrying(false)
+          continue
+        }
+      }
+      // Kesin olmayan hata: cevaplar ekranda kalır, süre dolduysa "Yeniden gönder" açık kalır.
+      setRootError(quizErrorMessage(error) + (retryable && isTimeOver() ? RESEND_HINT : ''))
       return
-    }
-    const { code } = outcome.error
-    if (code === 'quiz_already_submitted') {
-      // Cevaplar zaten kayıtlı (ör. başka sekmeden): sonuç görünümüne geçilir.
-      guard.leave()
-      notify.info(QUIZ_ALREADY_SUBMITTED_MESSAGE)
-      onSubmitted()
-    } else if (code === 'quiz_time_expired') {
-      guard.leave()
-      onExpired()
     }
   }
 
-  // Süre dolunca bir kez kendiliğinden gönderilir (sunucu ağ payı içinde kabul eder).
+  function send(automatic: boolean): Promise<void> {
+    flight.current ??= run(automatic).finally(() => {
+      flight.current = null
+    })
+    return flight.current
+  }
+
+  // Süre dolunca kendiliğinden gönderilir (sunucu ağ payı içinde kabul eder).
   const sendOnTimeout = useStableCallback(() => {
-    if (autoSent.current) return
-    autoSent.current = true
     void send(true)
   })
   useEffect(() => {
@@ -324,10 +399,11 @@ function QuizSolveForm({ quizId, title, attempt, questions, onSubmitted, onExpir
             type="button"
             disabled={busy}
             aria-busy={busy || undefined}
-            onClick={() => setConfirming(true)}
+            // Süre dolmuşsa onay sorulmaz: cevaplar hemen yeniden gönderilir.
+            onClick={() => (timeOver ? void send(false) : setConfirming(true))}
           >
             <Icon name="Send" size={16} aria-hidden="true" />
-            Cevapları gönder
+            {timeOver ? 'Yeniden gönder' : 'Cevapları gönder'}
           </Button>
         </div>
       </div>

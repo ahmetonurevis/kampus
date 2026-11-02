@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { GROUP_AGE_BAND_LABELS } from '@kampus/school-core/lib/language-groups.ts'
 import type { LanguageGroup } from '@kampus/react-shared/language-groups.ts'
 import { useLanguageGroup, useOpenLanguageGroup } from '@kampus/react-shared/use-language-groups.ts'
 import { QueryError } from '@/components/QueryError.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { LineTabs } from '@/components/LineTabs.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { Button } from '@/components/ui/button'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
@@ -24,7 +25,9 @@ import {
   slotLines,
   type TeacherNames,
 } from './group-rows.ts'
+import { GroupWaitlist } from './GroupWaitlist.tsx'
 import { useLanguageAccess } from './use-language-access.ts'
+import { canReadWaitlist } from './waitlist-rows.ts'
 
 type Props = {
   /** `''` kapalı. */
@@ -40,7 +43,8 @@ type Props = {
  * Grup özeti (sağ panel, `?grup=`): takvim, öğretmen, derslik, doluluk ve kursiyerler. Kursiyer
  * listesi yalnız tek grup okumasında ve personele döner; ad öğrenci kayıtlarından eşlenir, kapsam
  * dışı kayıt adsız "Kursiyer" olarak kalır. İşlemler (aç, düzenle, birleştir, iptal) yönetici ve
- * seviyenin koordinatörü öğretmendedir.
+ * seviyenin koordinatörü öğretmendedir. Yönetici ve ön büro "Bekleme sırası" sekmesini de görür
+ * (salt okur; DOM-DIL-043).
  */
 export function GroupSummaryPanel({ groupId, names, onClose, onEdit, onCancel, onMerge }: Props) {
   const access = useLanguageAccess()
@@ -101,24 +105,36 @@ export function GroupSummaryPanel({ groupId, names, onClose, onEdit, onCancel, o
       ) : !group ? (
         <SummaryLoading />
       ) : (
-        <GroupSummary group={group} names={names} membershipId={access.membershipId} />
+        <GroupSummary
+          key={group.id}
+          group={group}
+          names={names}
+          membershipId={access.membershipId}
+          showWaitlist={canReadWaitlist(access.role)}
+        />
       )}
     </SidePanel>
   )
 }
 
+type SummaryTab = 'ozet' | 'bekleme'
+
 function GroupSummary({
   group,
   names,
   membershipId,
+  showWaitlist,
 }: {
   group: LanguageGroup
   names: TeacherNames | null
   membershipId: string | undefined
+  showWaitlist: boolean
 }) {
   const row = groupRow(group, names, membershipId)
   const members = group.members ?? []
-  const students = useCoreAll('students', {}, { enabled: members.length > 0 })
+  const [tab, setTab] = useState<SummaryTab>('ozet')
+  const waitlistOpen = showWaitlist && tab === 'bekleme'
+  const students = useCoreAll('students', {}, { enabled: members.length > 0 || waitlistOpen })
   const studentNames = useMemo(
     () => new Map((students.data ?? []).map(({ record }) => [record.id, record.name])),
     [students.data],
@@ -132,50 +148,69 @@ function GroupSummary({
         status={row.status}
         tone={groupStatusTone(group.status)}
       />
-      <SummaryMetrics
-        items={[
-          { label: 'Doluluk', value: row.occupancy },
-          { label: 'Boş yer', value: group.freeSeats ?? '—' },
-          { label: 'Öğretmen', value: row.teacher },
-          {
-            label: 'Derslik',
-            value: group.delivery === 'online' ? DELIVERY_LABELS.online : (group.room ?? '—'),
-          },
-        ]}
-      />
-      <SummarySection title="Takvim">
-        <p className="mb-3 text-sm text-muted-foreground">{row.period}</p>
-        <ul aria-label="Haftalık program" className="grid gap-2">
-          {slotLines(group.schedule, group.sessionMinutes).map((line) => (
-            <li key={line} className="rounded-xl border px-3.5 py-2.5 text-sm">
-              {line}
-            </li>
-          ))}
-        </ul>
-      </SummarySection>
-      {group.status === 'cancelled' && group.cancelReason ? (
-        <SummarySection title="İptal gerekçesi">
-          <p className="text-sm [overflow-wrap:anywhere]">{group.cancelReason}</p>
-        </SummarySection>
-      ) : null}
-      {group.members ? (
-        <SummarySection title="Kursiyerler">
-          <SummaryList
-            empty="Bu grupta henüz kursiyer yok."
-            items={members.map((member) => ({
-              key: member.studentId,
-              label: studentNames.get(member.studentId) ?? 'Kursiyer',
-              value: member.status === 'frozen' ? 'Donduruldu' : 'Etkin',
-            }))}
+      {showWaitlist ? (
+        <div className="mb-5">
+          <LineTabs
+            label="Grup özeti bölümleri"
+            value={tab}
+            options={[
+              { value: 'ozet', label: 'Özet' },
+              { value: 'bekleme', label: 'Bekleme sırası' },
+            ]}
+            onChange={setTab}
           />
-          {(group.frozenLearners ?? 0) > 0 || (group.openOffers ?? 0) > 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Dondurulan kursiyer: {group.frozenLearners ?? 0} · Açık teklif:{' '}
-              {group.openOffers ?? 0}
-            </p>
-          ) : null}
-        </SummarySection>
+        </div>
       ) : null}
+      {waitlistOpen ? (
+        <GroupWaitlist groupId={group.id} studentNames={studentNames} />
+      ) : (
+        <>
+          <SummaryMetrics
+            items={[
+              { label: 'Doluluk', value: row.occupancy },
+              { label: 'Boş yer', value: group.freeSeats ?? '—' },
+              { label: 'Öğretmen', value: row.teacher },
+              {
+                label: 'Derslik',
+                value: group.delivery === 'online' ? DELIVERY_LABELS.online : (group.room ?? '—'),
+              },
+            ]}
+          />
+          <SummarySection title="Takvim">
+            <p className="mb-3 text-sm text-muted-foreground">{row.period}</p>
+            <ul aria-label="Haftalık program" className="grid gap-2">
+              {slotLines(group.schedule, group.sessionMinutes).map((line) => (
+                <li key={line} className="rounded-xl border px-3.5 py-2.5 text-sm">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </SummarySection>
+          {group.status === 'cancelled' && group.cancelReason ? (
+            <SummarySection title="İptal gerekçesi">
+              <p className="text-sm [overflow-wrap:anywhere]">{group.cancelReason}</p>
+            </SummarySection>
+          ) : null}
+          {group.members ? (
+            <SummarySection title="Kursiyerler">
+              <SummaryList
+                empty="Bu grupta henüz kursiyer yok."
+                items={members.map((member) => ({
+                  key: member.studentId,
+                  label: studentNames.get(member.studentId) ?? 'Kursiyer',
+                  value: member.status === 'frozen' ? 'Donduruldu' : 'Etkin',
+                }))}
+              />
+              {(group.frozenLearners ?? 0) > 0 || (group.openOffers ?? 0) > 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Dondurulan kursiyer: {group.frozenLearners ?? 0} · Açık teklif:{' '}
+                  {group.openOffers ?? 0}
+                </p>
+              ) : null}
+            </SummarySection>
+          ) : null}
+        </>
+      )}
     </>
   )
 }

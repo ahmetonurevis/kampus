@@ -9,7 +9,7 @@ import { expect, test } from './support/fixtures.ts'
 
 const COURSE = 'E2E Genel İngilizce A1'
 
-test('IST-076, IST-077, DOM-DIL-042: yönetici kur tanımlar, etkinleştirir, grup planlar; çakışma ve asgari sayı hatası görünür', async ({
+test('IST-076, IST-077, DOM-DIL-042, DOM-DIL-043: yönetici kur tanımlar, etkinleştirir, grup planlar; çakışma, asgari sayı hatası ve bekleme sırası görünür', async ({
   loginAs,
   tenant,
 }) => {
@@ -83,6 +83,10 @@ test('IST-076, IST-077, DOM-DIL-042: yönetici kur tanımlar, etkinleştirir, gr
     page.getByText('Grup, kurun asgari açılış sayısına ulaşmadan açılamaz.'),
   ).toBeVisible()
   await expect(groupPanel.getByRole('button', { name: 'Grubu aç' })).toBeVisible()
+
+  // Bekleme sırası sekmesi salt okurdur (DOM-DIL-043); yazma kayıt akışındadır.
+  await groupPanel.getByRole('button', { name: 'Bekleme sırası' }).click()
+  await expect(groupPanel.getByText('Bu grup için bekleyen yok.')).toBeVisible()
 })
 
 test('DOM-DIL-008: okul kurumunda Kurlar ve Gruplar menüde yoktur, adresleri Sayfa bulunamadı verir', async ({

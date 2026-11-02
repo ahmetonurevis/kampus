@@ -20,6 +20,9 @@ export type LanguageGroup = components['schemas']['LanguageGroup']
 export type GroupSlot = components['schemas']['GroupSlot']
 export type GroupMember = components['schemas']['GroupMember']
 export type GroupWaitlistItem = components['schemas']['GroupWaitlistItem']
+/** Bekleme sırası yanıtı (`GET /groups/:groupId/waitlist`): sıra ve core teklif önerisi. */
+export type GroupWaitlist =
+  operations['getGroupWaitlist']['responses'][200]['content']['application/json']['data']
 export type GroupListQuery = NonNullable<operations['listGroups']['parameters']['query']>
 
 type JsonBody<TOperation extends keyof operations> =

@@ -1,4 +1,6 @@
+import { defaultAcademicYearDates, type AcademicYear } from '../lib/academic-years.ts'
 import { dayKey } from '../lib/format.ts'
+import type { InstitutionType } from '../modules/collection-modules.ts'
 import { subjectById, subjectsForGrade } from '../data/curriculum.ts'
 import { required, type SeedDate, type SeedMonth } from './seed-support.ts'
 import type { createStructure } from './seed-structure.ts'
@@ -124,4 +126,48 @@ export function createTimetable(input: {
     })),
   )
   return { schedule, availability }
+}
+
+/** Örnek dönem kimliği: yıl ve sıradan türetilen sabit UUID (`…-000020260001`). */
+export const seedTermId = (startYear: number, sequence: number) =>
+  `00000000-0000-4000-8000-0000${String(startYear).padStart(4, '0')}${String(sequence).padStart(4, '0')}`
+
+/**
+ * Örnek eğitim yılı (IST-011, DOM-YTK-063…065): kurumun güncel yılı (State `academicYear`)
+ * varsayılan aralıkla (1 Eylül – 31 Ağustos) etkindir. Okulun (Akademi Özel Okulları) iki dönemi
+ * vardır; dil okulunun (Kampüs Dil Akademisi) yılı dönemsizdir (kurlar ayrı modeldir). Kimlikler
+ * ve tarihler yıldan türetilir.
+ */
+export function createAcademicYears(
+  academicYear: number,
+  institutionType: InstitutionType,
+): AcademicYear[] {
+  const next = academicYear + 1
+  const terms =
+    institutionType === 'school'
+      ? [
+          {
+            id: seedTermId(academicYear, 1),
+            name: '1. dönem',
+            startDate: `${academicYear}-09-08`,
+            endDate: `${next}-01-16`,
+          },
+          {
+            id: seedTermId(academicYear, 2),
+            name: '2. dönem',
+            startDate: `${next}-02-02`,
+            endDate: `${next}-06-26`,
+          },
+        ]
+      : []
+  return [
+    {
+      startYear: academicYear,
+      ...defaultAcademicYearDates(academicYear),
+      status: 'active',
+      activatedAt: new Date(`${academicYear}-09-01T00:00:00+03:00`).toISOString(),
+      closedAt: null,
+      terms,
+    },
+  ]
 }

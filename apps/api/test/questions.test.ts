@@ -290,12 +290,9 @@ describe('Öğretmenime Sor uçları', () => {
     const topic = await ask(cookie, { ...QUESTION, topic: 'Paragraf' })
     assertError(topic, 422, 'question_topic_unknown')
     assert.deepEqual(topic.json().issues[0].path, ['topic'])
-    assertError(
-      await ask(cookie, { ...QUESTION, files: ['soru.jpg'] }),
-      422,
-      'question_files_unsupported',
-    )
     for (const body of [
+      // Eski demo alanı `files` (dosya adı) bilinmeyen alandır; fotoğraf `fileIds` ile gelir.
+      { ...QUESTION, files: ['soru.jpg'] },
       { ...QUESTION, studentId: 's25' },
       { ...QUESTION, text: 'kısa' },
       { ...QUESTION, title: 'x'.repeat(121) },

@@ -283,7 +283,7 @@ export type CourseManager = { role: Role; coordination: CoordinatorScope }
  */
 export function assertCourseManager(manager: CourseManager, levels: readonly CefrLevel[]): void {
   if (manager.role === 'yonetici') return
-  const covered = manager.coordination.cefrLevels as readonly CefrLevel[]
+  const covered = manager.coordination.cefrLevels
   if (manager.role === 'ogretmen' && levels.every((item) => covered.includes(item))) return
   throw new DomainError(
     'course_coordinator_required',

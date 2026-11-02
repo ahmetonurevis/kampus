@@ -71,6 +71,10 @@ export type PlatformWriteTargets = {
   'consent.read': { studentId: string | undefined }
   /** Amaç başına geçerli rıza sonucu (var/yok); `studentId` yoksa aktörün hesap amaçları. */
   'consent.status': { studentId: string | undefined }
+  // Eğitim yılı ve dönem (DOM-YTK-063…067): kural `lib/academic-years.ts`; okuma alan kapsamı
+  // `academicYearView`'dadır (öğrenci ve veli yalnız ad, tarih, etkinlik).
+  'academicYear.read': Record<string, never>
+  'academicYear.manage': Record<string, never>
 }
 
 /** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları `lib/authorize.ts`). */
@@ -141,4 +145,8 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   // (var/yok) görür, öğrenci ve veli kendi kapsamını okur.
   'consent.read': ['yonetici', 'onburo', 'ogrenci', 'veli'],
   'consent.status': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+  // Takvim herkesin okuduğu kurum bilgisidir; yılı, dönemi ve yıl geçişini yalnız yönetici
+  // yönetir (DOM-YTK-067, DOM-YTK-020).
+  'academicYear.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+  'academicYear.manage': ['yonetici'],
 } as const satisfies Record<PlatformAction, readonly Role[]>

@@ -385,6 +385,10 @@ function decide(
     case 'consent.give':
     case 'consent.withdraw':
       return ALLOWED
+    // Eğitim yılı kurum geneli bilgidir; okuma alanları rolle `academicYearView`'da daralır.
+    case 'academicYear.read':
+    case 'academicYear.manage':
+      return ALLOWED
     case 'consent.read':
     case 'consent.status': {
       // Kapsam dışı öğrenci olmayan kayıtla aynı 404'tür; öğrencinin varlığı sızdırılmaz

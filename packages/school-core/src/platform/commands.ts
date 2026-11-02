@@ -153,4 +153,9 @@ export const PLATFORM_OPERATION_COMMANDS = {
   'consent.withdraw': spec(null, [...SCOPE]),
   'consent.read': spec(null, [...SCOPE]),
   'consent.status': spec(null, [...SCOPE]),
+  // Eğitim yılı ve dönem (`lib/academic-years.ts`; DOM-YTK-063…067): çekirdek kurum ayarıdır,
+  // modül kapatılamaz. Kayıtlar ilişkisel tablolardadır (`academic_years`, `academic_terms`);
+  // koleksiyon yüklenmez, liste yalnız tablo okumasıdır.
+  'academicYear.read': spec(null, [...SCOPE]),
+  'academicYear.manage': spec(null, [...SCOPE]),
 } as const satisfies Record<string, CommandSpec>

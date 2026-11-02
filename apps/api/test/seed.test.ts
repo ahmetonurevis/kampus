@@ -3,7 +3,10 @@ import { after, before, describe, test } from 'node:test'
 
 import { count, eq } from 'drizzle-orm'
 
+import { seedTermId } from '@kampus/school-core/platform/seed-academic.ts'
+
 import type { App } from '../src/app.ts'
+import { loadAcademicYears } from '../src/db/academic-years.ts'
 import type { Database } from '../src/db/client.ts'
 import {
   DEFAULT_DEMO_PASSWORD,
@@ -123,6 +126,26 @@ describe('demo tohumu', () => {
     assert.deepEqual(
       founderMe.data.memberships.map((item: { institutionType: string }) => item.institutionType),
       ['school', 'language_school'],
+    )
+  })
+
+  test('IST-011 örnek okulun iki dönemli, dil okulunun dönemsiz etkin yılı tohumlanır; ikinci tohum değiştirmez (DOM-YTK-065)', async () => {
+    const seeded = await seedDemo(app.auth, db, DEFAULT_DEMO_PASSWORD, { now: FIXED_NOW })
+    await seedDemo(app.auth, db, DEFAULT_DEMO_PASSWORD, { now: LATER })
+    const year = demoState('akademi', FIXED_NOW).academicYear
+    const akademi = await loadAcademicYears(db, seeded.institutionIds.akademi!)
+    assert.deepEqual(
+      akademi.map((item) => [item.startYear, item.status, item.rowVersion]),
+      [[year, 'active', 1]],
+    )
+    assert.deepEqual(
+      akademi[0]!.terms.map((term) => term.id),
+      [seedTermId(year, 1), seedTermId(year, 2)],
+    )
+    const dil = await loadAcademicYears(db, seeded.institutionIds['kampus-dil']!)
+    assert.deepEqual(
+      dil.map((item) => [item.startYear, item.status, item.terms.length]),
+      [[year, 'active', 0]],
     )
   })
 

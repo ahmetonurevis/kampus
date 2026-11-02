@@ -84,6 +84,8 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'consent.withdraw': ['ogrenci', 'veli'],
     'consent.read': ['yonetici', 'onburo', 'ogrenci', 'veli'],
     'consent.status': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'academicYear.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'academicYear.manage': ['yonetici'],
   })
   // Sıra anlamsızdır: komut tablosu iki kaynaktan birleşir (platform ve Onur bloğu).
   assert.deepEqual(Object.keys(WRITE_ACTION_ROLES).sort(), [...WRITE_ACTIONS].sort())

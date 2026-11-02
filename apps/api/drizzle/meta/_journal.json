@@ -183,6 +183,13 @@
       "when": 1793586167423,
       "tag": "0025_index_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793589335619,
+      "tag": "0026_create_academic_years",
+      "breakpoints": true
     }
   ]
 }

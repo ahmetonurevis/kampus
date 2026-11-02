@@ -167,6 +167,9 @@ export const quizPersonalDetailSchema = quizSchema
         'Öğrenci denemeyi başlatınca, veli çocuğunun denemesi sonuçlanınca; aksi halde `null`',
       ),
     attempts: studentAttemptsField,
+    serverNow: instant.describe(
+      'Sunucu saati (ISO 8601 UTC); istemci cihaz saatiyle farkı hesaplayıp geri sayımı buna göre kurar',
+    ),
   })
   .meta({ id: 'QuizPersonalDetail' })
 
@@ -188,6 +191,9 @@ export const quizStartSchema = z
   .object({
     attempt: quizAttemptSchema,
     questions: z.array(quizQuestionSchema).describe('Cevap anahtarsız sorular'),
+    serverNow: instant.describe(
+      'Sunucu saati (ISO 8601 UTC); istemci cihaz saatiyle farkı hesaplayıp geri sayımı buna göre kurar',
+    ),
   })
   .meta({ id: 'QuizStart' })
 

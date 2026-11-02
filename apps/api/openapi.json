@@ -11000,6 +11000,10 @@
               "$ref": "#/components/schemas/QuizAttemptInput"
             },
             "description": "Öğrencide kendi, velide çocuğunun denemesi"
+          },
+          "serverNow": {
+            "type": "string",
+            "description": "Sunucu saati (ISO 8601 UTC); istemci cihaz saatiyle farkı hesaplayıp geri sayımı buna göre kurar"
           }
         },
         "required": [
@@ -11019,7 +11023,8 @@
           "updatedAt",
           "statistics",
           "questions",
-          "attempts"
+          "attempts",
+          "serverNow"
         ]
       },
       "QuizStaffDetailInput": {
@@ -11262,11 +11267,16 @@
               "$ref": "#/components/schemas/QuizQuestionInput"
             },
             "description": "Cevap anahtarsız sorular"
+          },
+          "serverNow": {
+            "type": "string",
+            "description": "Sunucu saati (ISO 8601 UTC); istemci cihaz saatiyle farkı hesaplayıp geri sayımı buna göre kurar"
           }
         },
         "required": [
           "attempt",
-          "questions"
+          "questions",
+          "serverNow"
         ]
       },
       "PermissionFormInput": {
@@ -23053,6 +23063,10 @@
               "$ref": "#/components/schemas/QuizAttempt"
             },
             "description": "Öğrencide kendi, velide çocuğunun denemesi"
+          },
+          "serverNow": {
+            "type": "string",
+            "description": "Sunucu saati (ISO 8601 UTC); istemci cihaz saatiyle farkı hesaplayıp geri sayımı buna göre kurar"
           }
         },
         "required": [
@@ -23072,7 +23086,8 @@
           "updatedAt",
           "statistics",
           "questions",
-          "attempts"
+          "attempts",
+          "serverNow"
         ],
         "additionalProperties": false
       },
@@ -23318,11 +23333,16 @@
               "$ref": "#/components/schemas/QuizQuestion"
             },
             "description": "Cevap anahtarsız sorular"
+          },
+          "serverNow": {
+            "type": "string",
+            "description": "Sunucu saati (ISO 8601 UTC); istemci cihaz saatiyle farkı hesaplayıp geri sayımı buna göre kurar"
           }
         },
         "required": [
           "attempt",
-          "questions"
+          "questions",
+          "serverNow"
         ],
         "additionalProperties": false
       },

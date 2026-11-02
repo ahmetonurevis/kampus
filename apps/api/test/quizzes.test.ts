@@ -862,6 +862,32 @@ describe('quiz uçları', () => {
     )
   })
 
+  test('DOM-AKD-077: başlatma ve öğrenci/veli okuması sunucu saatini (serverNow) taşır; personel ayrıntısı taşımaz', async () => {
+    const a = await institution()
+    const s1 = await student(a.id, 's1')
+    const p1 = await parent(a.id, 's1')
+    const t4 = await teacher(a.id, 't4')
+    try {
+      now = new Date(FIXED_NOW.getTime() + 7_000)
+      const before = await read(s1, '/api/v1/quizzes/quiz4')
+      assert.equal(before.json().data.serverNow, now.toISOString())
+      now = new Date(FIXED_NOW.getTime() + 11_000)
+      const started = await start(s1, 'quiz4')
+      assert.equal(started.statusCode, 201, started.body)
+      assert.equal(started.json().data.serverNow, now.toISOString())
+      now = new Date(FIXED_NOW.getTime() + 19_000)
+      const reread = await read(s1, '/api/v1/quizzes/quiz4')
+      assert.equal(reread.json().data.serverNow, now.toISOString())
+      assert.equal(
+        (await read(p1, '/api/v1/quizzes/quiz4')).json().data.serverNow,
+        now.toISOString(),
+      )
+      assert.equal('serverNow' in (await read(t4, '/api/v1/quizzes/quiz4')).json().data, false)
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
   test('DOM-AKD-077: pasif öğrenci quiz başlatamaz (422)', async () => {
     const a = await institution()
     const s1 = await student(a.id, 's1')

@@ -1,6 +1,8 @@
 // Kategorili menü: kaynak school-core modül kaydı ve tam navigasyon (web ve mobil ortak).
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import {
   navigation,
+  pageAvailableFor,
   roles,
   type NavigationPage,
 } from '@kampus/school-core/modules/full-navigation.ts'
@@ -10,6 +12,7 @@ export type NavPage = NavigationPage
 export type RoleInfo = (typeof roles)[RoleKey]
 export type NavGroup = { key: string; label: string; pages: NavPage[] }
 export type ModuleState = Readonly<Record<string, boolean | undefined>>
+export type { InstitutionType }
 
 export const ROLE_KEYS = [
   'yonetici',
@@ -41,8 +44,23 @@ export function isPageEnabled(page: NavPage, modules: ModuleState): boolean {
   return !page.module || modules[page.module] === true
 }
 
-export function visiblePages(role: RoleKey, modules: ModuleState): NavPage[] {
-  return rolePages(role).filter((page) => isPageEnabled(page, modules))
+/**
+ * Sayfa etkin kurumun türünde var mı: dil okulu kur ve grup sayfaları (`institutionTypes`) okulda
+ * yoktur. Tür bilinmiyorsa okul sayılır; türe bağlı sayfa böylece yanlışlıkla açılmaz.
+ */
+export function isPageAvailable(page: NavPage, type: InstitutionType = 'school'): boolean {
+  return pageAvailableFor(page, type)
+}
+
+/** Kurum türünde olmayan sayfa menüde hiç yoktur; modülü kapalı sayfa gizlenir. */
+export function visiblePages(
+  role: RoleKey,
+  modules: ModuleState,
+  type: InstitutionType = 'school',
+): NavPage[] {
+  return rolePages(role).filter(
+    (page) => isPageAvailable(page, type) && isPageEnabled(page, modules),
+  )
 }
 
 /** Hesap sayfaları sidebar'da değil, sağ üstteki isim/avatar menüsünde gösterilir. */
@@ -50,8 +68,12 @@ export function isAccountPage(page: NavPage): boolean {
   return page.group === ACCOUNT_GROUP
 }
 
-export function accountPages(role: RoleKey, modules: ModuleState): NavPage[] {
-  return visiblePages(role, modules).filter(isAccountPage)
+export function accountPages(
+  role: RoleKey,
+  modules: ModuleState,
+  type: InstitutionType = 'school',
+): NavPage[] {
+  return visiblePages(role, modules, type).filter(isAccountPage)
 }
 
 export function groupLabel(group: string): string {
@@ -59,9 +81,13 @@ export function groupLabel(group: string): string {
 }
 
 /** Sidebar grupları: kayıt sırası korunur, kapalı modüller ve boş kategoriler gizlenir. */
-export function sidebarGroups(role: RoleKey, modules: ModuleState): NavGroup[] {
+export function sidebarGroups(
+  role: RoleKey,
+  modules: ModuleState,
+  type: InstitutionType = 'school',
+): NavGroup[] {
   const groups = new Map<string, NavPage[]>()
-  for (const page of visiblePages(role, modules)) {
+  for (const page of visiblePages(role, modules, type)) {
     if (isAccountPage(page)) continue
     const list = groups.get(page.group)
     if (list) list.push(page)

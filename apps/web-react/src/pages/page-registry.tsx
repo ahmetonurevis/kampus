@@ -64,6 +64,7 @@ function renderOnurPage(role: RoleKey, page: NavPage): ReactNode {
     case 'onburo/deneme-dersi-takvimi':
       return <MeetingsPage page={page} />
     case 'onburo/kayit-islemleri':
+    case 'yonetici/kayit-islemleri':
       return <EnrollmentPage page={page} />
     case 'onburo/aday':
     case 'yonetici/aday':

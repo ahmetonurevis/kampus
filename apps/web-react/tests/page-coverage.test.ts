@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { pageAvailableFor } from '@kampus/school-core/modules/full-navigation.ts'
 import {
   INSTITUTION_TYPES,
   MODULE_INSTITUTION_TYPES,
@@ -22,9 +23,13 @@ import { PLATFORM_MIGRATED, PLATFORM_WORKFLOW_PATHS } from '../src/lib/page-cove
  */
 const KNOWN_PLACEHOLDERS: readonly string[] = []
 
-/** Kurum türünde bulunan menü sayfaları: modülü o türde açılabilen ya da modülsüz olanlar. */
+/**
+ * Kurum türünde bulunan menü sayfaları: türe bağlıysa (`institutionTypes`) o türdekiler, modülü o
+ * türde açılabilen ya da modülsüz olanlar.
+ */
 function pagesFor(role: RoleKey, type: (typeof INSTITUTION_TYPES)[number]) {
   return rolePages(role).filter((page) => {
+    if (!pageAvailableFor(page, type)) return false
     if (!page.module) return true
     const types: readonly string[] | undefined = MODULE_INSTITUTION_TYPES[page.module as ModuleKey]
     assert.ok(types, `bilinmeyen modül: ${page.module} (${role}/${page.path})`)

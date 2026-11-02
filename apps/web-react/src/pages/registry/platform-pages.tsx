@@ -29,6 +29,12 @@ const TeacherClassesPage = lazy(async () => ({
 const TeacherAttendancePage = lazy(async () => ({
   default: (await import('../academic/TeacherAttendancePage.tsx')).TeacherAttendancePage,
 }))
+const CoursesPage = lazy(async () => ({
+  default: (await import('../language/CoursesPage.tsx')).CoursesPage,
+}))
+const GroupsPage = lazy(async () => ({
+  default: (await import('../language/GroupsPage.tsx')).GroupsPage,
+}))
 const AttendanceCorrectionPage = lazy(async () => ({
   default: (await import('../academic/AttendanceCorrectionPage.tsx')).AttendanceCorrectionPage,
 }))
@@ -138,6 +144,14 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
     case 'yonetici/icerik-havuzu':
     case 'ogretmen/icerik-havuzu':
       return <ContentPoolPage page={page} />
+    case 'yonetici/kurlar':
+    case 'onburo/kurlar':
+    case 'ogretmen/kurlar':
+      return <CoursesPage page={page} />
+    case 'yonetici/gruplar':
+    case 'onburo/gruplar':
+    case 'ogretmen/gruplar':
+      return <GroupsPage page={page} />
     case 'yonetici/yoklama-duzeltme':
       return <AttendanceCorrectionPage page={page} />
     case 'yonetici/risk-listesi':

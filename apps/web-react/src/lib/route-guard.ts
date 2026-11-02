@@ -1,16 +1,23 @@
 // Rol kabuğu yönlendirme kararı. Kapsam sunucuda da uygulanır; bu yalnız arayüz davranışıdır.
 import {
   findPage,
+  isPageAvailable,
   isPageEnabled,
   isRoleKey,
   pageHref,
+  type InstitutionType,
   type ModuleState,
   type NavPage,
   type RoleKey,
 } from './navigation.ts'
 import { workflowPage } from '@kampus/school-core/modules/school-workflows.ts'
 
-type SessionScope = { role: RoleKey; modules: ModuleState }
+type SessionScope = {
+  role: RoleKey
+  modules: ModuleState
+  /** Etkin kurumun türü; verilmezse okul (türe bağlı sayfalar kapalı). */
+  institution?: { type: InstitutionType }
+}
 
 export type ShellDecision =
   | { kind: 'not-found-outside' }
@@ -32,7 +39,8 @@ export function resolveShell(
   // Başka rolün adresi kendi dashboard'una gider; rol kökü dashboard'a açılır.
   if (role !== session.role || !path) return { kind: 'redirect', to: home }
   const page = findPage(session.role, path)
-  if (!page) return { kind: 'not-found' }
+  // Kurum türünde olmayan sayfa (okulda dil okulu kurları) bu kurumda hiç yoktur.
+  if (!page || !isPageAvailable(page, session.institution?.type)) return { kind: 'not-found' }
   if (!isPageEnabled(page, session.modules)) return { kind: 'module-closed', to: home, page }
   return { kind: 'page', page }
 }

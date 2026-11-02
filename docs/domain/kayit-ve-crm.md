@@ -12,7 +12,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Satış hunisindeki kişi silinebilir/anonimleştirilebilir olmalı; öğrenci kaydı ise yasal saklama süresine tabidir.
 - **Kaynak:** İşletme kuralı; KVKK md. 4 (amaçla sınırlılık).
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/domain.ts` (`enrollProspect` öğrenci, veli, taksit ve sözleşmeyi birlikte yazar); API `POST /api/v1/prospects/:prospectId/enroll` (`apps/api/src/routes/prospects.ts`, `services/prospects.ts`) hepsini adayın `Kayıt oldu` durumuyla kurum kilidi altında tek transaction'da yazar; yazım yarıda başarısız olursa hiçbir kayıt değişmez.
+- **Kodda:** var — `packages/school-core/src/lib/enrollment.ts` (`enrollProspect` öğrenci, veli, taksit ve sözleşmeyi birlikte yazar); API `POST /api/v1/prospects/:prospectId/enroll` (`apps/api/src/routes/prospects.ts`, `services/prospects.ts`) hepsini adayın `Kayıt oldu` durumuyla kurum kilidi altında tek transaction'da yazar; yazım yarıda başarısız olursa hiçbir kayıt değişmez.
 
 ### DOM-KAY-002 · Aday tekilliği
 
@@ -28,7 +28,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Aydınlatma yükümlülüğü veri toplanırken yerine getirilir; ispat yükü veri sorumlusundadır.
 - **Kaynak:** KVKK md. 10.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — aydınlatma sürümü ve anı (`privacyNotice`), 18 yaş altında veli adı ve en az veri `packages/school-core/src/lib/prospects.ts` (`createProspect`, `DOM-KAY-009`); kesin kayıtta veli zorunluyken (okulda her yaşta, kursta 18 yaş altında; `DOM-KAY-012`) adayın telefonu ve e-postası öğrenciye yazılmaz, öğrencinin kendi iletişimi yalnız isteğe bağlı `studentContact` ile yazılır; yeni veliye adayın e-postası, formdaki veli adı ve telefonu yazılır, mevcut velinin eksik telefonu ve e-postası adayınkiyle tamamlanır, var olan değer ve ad değişmez (`packages/school-core/src/lib/domain.ts` `applyEnrollment` `guardianContact`, `lib/enrollment.ts` `enrollProspectWithTariff`); yetişkin kursiyerin iletişimi kendisine yazılır. Veli telefonu, e-postası ve yakınlığı öğretmen ve öğrenciye dönmez (`lib/scope.ts`). Çevrimdışı demo `enrollProspect` yaşı bilmediği için eski davranıştadır. API `POST /api/v1/prospects` ve `POST /api/v1/prospects/:prospectId/enroll`, telefon/e-posta/veli adı log `redact` listesinde. Aydınlatma metninin kendisi ve sürüm kaydı (metin deposu) yok.
+- **Kodda:** kısmen — aydınlatma sürümü ve anı (`privacyNotice`), 18 yaş altında veli adı ve en az veri `packages/school-core/src/lib/prospects.ts` (`createProspect`, `DOM-KAY-009`); kesin kayıtta veli zorunluyken (okulda her yaşta, kursta 18 yaş altında; `DOM-KAY-012`) adayın telefonu ve e-postası öğrenciye yazılmaz, öğrencinin kendi iletişimi yalnız isteğe bağlı `studentContact` ile yazılır; yeni veliye adayın e-postası, formdaki veli adı ve telefonu yazılır, mevcut velinin eksik telefonu ve e-postası adayınkiyle tamamlanır, var olan değer ve ad değişmez (`packages/school-core/src/lib/enrollment.ts` `applyEnrollment` `guardianContact`, `lib/enrollment.ts` `enrollProspectWithTariff`); yetişkin kursiyerin iletişimi kendisine yazılır. Veli telefonu, e-postası ve yakınlığı öğretmen ve öğrenciye dönmez (`lib/scope.ts`). Çevrimdışı demo `enrollProspect` yaşı bilmediği için eski davranıştadır. API `POST /api/v1/prospects` ve `POST /api/v1/prospects/:prospectId/enroll`, telefon/e-posta/veli adı log `redact` listesinde. Aydınlatma metninin kendisi ve sürüm kaydı (metin deposu) yok.
 
 ### DOM-KAY-004 · Pazarlama iletisi onayı
 
@@ -44,7 +44,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Dönüşüm raporu kayıtla tutarlı olmalı; kayıp nedeni satış stratejisinin girdisidir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/domain.ts`) yazar; yalnız açık aday kayda alınır (`DOM-KAY-035`). API `PATCH /api/v1/prospects/:prospectId` (`If-Match` zorunlu). Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/enrollment.ts`) yazar; yalnız açık aday kayda alınır (`DOM-KAY-035`). API `PATCH /api/v1/prospects/:prospectId` (`If-Match` zorunlu). Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
 
 ### DOM-KAY-006 · Tanışma görüşmesi / deneme dersi çakışması
 
@@ -230,7 +230,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Kesin kayıt borç ve sözleşme doğurur; vazgeçen adayın doğrudan kaydı yeniden açılıştaki tekillik denetimini (`DOM-KAY-002`) atlatır.
 - **Kaynak:** İşletme kuralı; yetki matrisi (`docs/domain/yetki-ve-kapsam.md`).
 - **Kurum türü:** ikisi
-- **Kodda:** var (core) — `packages/school-core/src/lib/domain.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). API `POST /api/v1/prospects/:prospectId/enroll` önce `requireAuthorized` çağırır, sonra core `enrollProspectWithTariff`'ı çalıştırır (`Idempotency-Key` ve `If-Match` zorunlu); `crm` veya `finance` modülü kapalıyken 403 `module_disabled` (kesin kayıt taksit ve sözleşme yazar), öteki roller 403, kapalı aday 409. Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`).
+- **Kodda:** var (core) — `packages/school-core/src/lib/enrollment.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). API `POST /api/v1/prospects/:prospectId/enroll` önce `requireAuthorized` çağırır, sonra core `enrollProspectWithTariff`'ı çalıştırır (`Idempotency-Key` ve `If-Match` zorunlu); `crm` veya `finance` modülü kapalıyken 403 `module_disabled` (kesin kayıt taksit ve sözleşme yazar), öteki roller 403, kapalı aday 409. Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`).
 
 ## API uygulama notları
 

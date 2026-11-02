@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { INSTITUTION_TYPES } from '@kampus/school-core/modules/collection-modules.ts'
 import {
   accountPages,
   findPage,
+  isPageAvailable,
   moduleKeys,
   ROLE_KEYS,
   rolePages,
+  rolePages as allRolePages,
   sidebarGroups,
   visiblePages,
   type ModuleState,
@@ -20,7 +23,8 @@ import {
 /**
  * IST-009, DOM-YTK-040: modül kapanınca menü (sidebar kategorileri ve hesap menüsü) ve doğrudan
  * adres kapanır; boş kategori gizlenir. Bütün roller ve bütün modüller döngüyle taranır; sunucu
- * tarafı `apps/api/test/module-inventory.test.ts`'tedir.
+ * tarafı `apps/api/test/module-inventory.test.ts`'tedir. Kurum türüne bağlı sayfalar (dil okulu
+ * kurları) yalnız kendi türlerinde taranır; başka türde adresleri yoktur (`route-guard.test.ts`).
  */
 
 const KEYS = moduleKeys()
@@ -29,28 +33,34 @@ const allOpen: ModuleState = Object.fromEntries(KEYS.map((key) => [key, true]))
 test('IST-009: her rol ve her modül için kapalı modülün sayfaları menüden ve adresten düşer', () => {
   for (const module of KEYS) {
     const closed = { ...allOpen, [module]: false }
-    for (const role of ROLE_KEYS) {
-      const home = `/${role}/dashboard`
-      for (const page of rolePages(role)) {
-        const decision = resolveShell({ role, modules: closed }, role, page.path)
-        if (page.module === module) {
-          assert.equal(decision.kind, 'module-closed', `${role}/${page.path}`)
-          assert.equal(decision.kind === 'module-closed' && decision.to, home)
-        } else assert.equal(decision.kind, 'page', `${role}/${page.path} (${module} kapalı)`)
+    for (const role of ROLE_KEYS)
+      for (const type of INSTITUTION_TYPES) {
+        const home = `/${role}/dashboard`
+        const session = { role, modules: closed, institution: { type } }
+        for (const page of rolePages(role)) {
+          if (!isPageAvailable(page, type)) continue
+          const decision = resolveShell(session, role, page.path)
+          if (page.module === module) {
+            assert.equal(decision.kind, 'module-closed', `${role}/${page.path}`)
+            assert.equal(decision.kind === 'module-closed' && decision.to, home)
+          } else assert.equal(decision.kind, 'page', `${role}/${page.path} (${module} kapalı)`)
+        }
+        const shown = [
+          ...sidebarGroups(role, closed, type).flatMap((group) => group.pages),
+          ...accountPages(role, closed, type),
+        ]
+        assert.ok(!shown.some((page) => page.module === module), `${role}: ${module} menüde`)
+        for (const group of sidebarGroups(role, closed, type))
+          assert.ok(group.pages.length > 0, `${role}: boş kategori ${group.key}`)
       }
-      const shown = [
-        ...sidebarGroups(role, closed).flatMap((group) => group.pages),
-        ...accountPages(role, closed),
-      ]
-      assert.ok(!shown.some((page) => page.module === module), `${role}: ${module} menüde`)
-      for (const group of sidebarGroups(role, closed))
-        assert.ok(group.pages.length > 0, `${role}: boş kategori ${group.key}`)
-    }
   }
 })
 
 test('IST-009: bütün modüller kapalıyken yalnız modülsüz sayfalar kalır, boş kategori yoktur', () => {
   const none = Object.fromEntries(KEYS.map((key) => [key, false]))
+  // Okul kurumu (tür verilmezse okul sayılır): türe bağlı sayfalar hiç yoktur.
+  const rolePages = (role: (typeof ROLE_KEYS)[number]) =>
+    allRolePages(role).filter((page) => isPageAvailable(page, 'school'))
   for (const role of ROLE_KEYS) {
     const visible = visiblePages(role, none)
     assert.deepEqual(

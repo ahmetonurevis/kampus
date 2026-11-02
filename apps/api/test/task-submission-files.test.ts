@@ -594,6 +594,13 @@ describe('beceri görevinde dosyalı ve sesli teslim', () => {
     ],
     overallComment: 'Akıcı bir anlatım.',
   }
+  const DISAGREEING = {
+    ...SCORE,
+    criteria: [
+      { criterionId: 'task', band: 1, comment: 'Görev eksik kaldı.' },
+      { criterionId: 'grammar', band: 2, comment: 'Zaman hataları var.' },
+    ],
+  }
   const rowVersionOf = async (cookie: string, submissionId: string) =>
     (await ok(await call('GET', `/task-submissions/${submissionId}`, cookie))).rowVersion as number
   /** `If-Match` teslimin güncel `rowVersion`'ı (okuyan personelle). */
@@ -724,5 +731,75 @@ describe('beceri görevinde dosyalı ve sesli teslim', () => {
     await ok(await call('POST', `/consents/${consentId}/withdraw`, t.cookies.parent, {}, key()))
     assert.deepEqual(await purge(t, after), { purged: 1, held: 0, rounds: 1 })
     assert.equal((await fileRow(t, recordingId)).status, 'deleted')
+  })
+
+  test('DOM-BEC-053, DOM-YTK-027: atamayı görmeyen koordinatör yalnız uyuşmazlıklı teslimin kaydını dinler; puansız ve ikinci puan bekleyen teslimin kaydı 404', async () => {
+    const t = await tenant()
+    await insertMissingRecords(
+      db,
+      t.institution.id,
+      [
+        {
+          collection: 'teachers',
+          id: 't-head',
+          data: { id: 't-head', name: 'Zeynep Ak', subjectId: 'ingilizce', branchId: 'b-1' },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const head = await createMember(app, t.institution.id, 'ogretmen', [
+      { kind: 'teacher', recordId: 't-head' } as never,
+    ])
+    const headCookie = await signInAs(app, head)
+    const colleague = await signInAs(
+      app,
+      await createMember(app, t.institution.id, 'ogretmen', [
+        { kind: 'teacher', recordId: 't-eng' } as never,
+      ]),
+    )
+    await ok(
+      await call(
+        'POST',
+        '/coordinator-duties',
+        t.cookies.admin,
+        { membershipId: head.membershipId, scopeId: 'ingilizce' },
+        key(),
+      ),
+      201,
+    )
+    await consent(t)
+    const { submissionId, recordingId } = await spoken(t, await assign(t, 'audio'))
+    try {
+      // Uyuşmazlık yokken (puansız, ikinci puan bekleyen) koordinatör kaydı göremez.
+      fails(await urlOf(headCookie, recordingId), 404, 'not_found')
+      at('2026-10-21T09:00:00.000Z')
+      await ok(
+        await write('second-rating-requests', t.cookies.admin, submissionId, {
+          versionNumber: 1,
+        }),
+        201,
+      )
+      await ok(await write('scores', t.cookies.teacher, submissionId, SCORE), 201)
+      fails(await urlOf(headCookie, recordingId), 404, 'not_found')
+      // İkinci puan uyuşmaz: kayıt koordinatöre açılır, erişim denetime düşer.
+      await ok(
+        await write('second-scores', colleague, submissionId, DISAGREEING, t.cookies.admin),
+        201,
+      )
+      await ok(await urlOf(headCookie, recordingId))
+      const [access] = await db
+        .select()
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.institutionId, t.institution.id),
+            eq(auditLog.action, 'file.access'),
+            eq(auditLog.actorUserId, head.id),
+          ),
+        )
+      assert.equal(access?.entityId, recordingId)
+    } finally {
+      now = FIXED_NOW
+    }
   })
 })

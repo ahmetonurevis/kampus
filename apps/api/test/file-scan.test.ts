@@ -14,8 +14,8 @@ import type { Job } from 'pg-boss'
 import {
   InlineScanScheduler,
   runScanRequeue,
+  SCAN_PENDING_PURPOSES,
   SCAN_QUEUE_OPTIONS,
-  SCANNED_PURPOSES,
   scanJobDataSchema,
   STALE_SCAN_MS,
 } from '../src/jobs/file-scan.ts'
@@ -370,7 +370,7 @@ describe('dosya taraması (file.scan)', () => {
     assert.equal((await rowOf(t, id)).status, 'rejected')
   })
 
-  test('ADR 0003 karar 8, 10: ses amaçları değişmedi; dönüşüm kuyruğuna girer, tarama işi açılmaz ve tarama ses dosyasını atlar', async () => {
+  test('OG-988, ADR 0003 karar 8, 10: tarayıcı açıkken ses yüklemesi dönüşüm ve tarama işini aynı işlemde kuyruğa koyar, scanPending başlar (ayrıntı audio-scan.test.ts)', async () => {
     const t = await tenant()
     const response = await upload(t, {
       parts: uploadParts('listening_audio', MP3, 'dinleme.mp3', 'audio/mpeg'),
@@ -382,16 +382,14 @@ describe('dosya taraması (file.scan)', () => {
       transcodeScheduler.queued.filter((item) => item.fileId === id),
       [job(t, id)],
     )
-    assert.equal(scanScheduler.queued.filter((item) => item.fileId === id).length, 0)
-    const before = await rowOf(t, id)
-    assert.deepEqual(await scanStoredFile(deps(), job(t, id), now), {
-      outcome: 'skipped',
-      reason: 'not_scanned',
-    })
-    assert.deepEqual(await rowOf(t, id), before)
-    assert.ok(!SCANNED_PURPOSES.includes('listening_audio'))
-    assert.ok(!SCANNED_PURPOSES.includes('speaking_recording'))
-    assert.ok(SCANNED_PURPOSES.includes('submission'))
+    assert.deepEqual(
+      scanScheduler.queued.filter((item) => item.fileId === id),
+      [job(t, id)],
+    )
+    assert.equal((await rowOf(t, id)).scanPending, true)
+    // Ses dışı dosyanın tarama durumu `status`'tadır; kolon `false` kalır.
+    assert.equal((await rowOf(t, await uploaded(t))).scanPending, false)
+    assert.deepEqual([...SCAN_PENDING_PURPOSES].sort(), ['listening_audio', 'speaking_recording'])
   })
 
   test('FILE_SCANNER=off: bugünkü davranış; yükleme pending kalır, tarama işi açılmaz', async () => {
@@ -646,6 +644,60 @@ describe('dosya taraması (file.scan)', () => {
     await purge(PROCESSING_FILE_TTL_MS + 60_000)
     assert.equal((await rowOf(t, waiting)).status, 'deleted')
     assert.deepEqual(await objectsOf(waiting), [])
+  })
+
+  test('OG-995, ADR 0003 karar 5: yüklemeden 30 saat sonra taranan bağsız dosyanın 24 saati taramadan sayılır', async () => {
+    const t = await tenant()
+    const HOUR = 3600_000
+    // T anında yüklenir; clamd kesintisi yüzünden T+30 saatte temiz bulunur.
+    const late = await uploaded(t)
+    // Aynı anda yüklenip hemen taranan dosya eskisi gibi yüklemeden 24 saat sonra silinir.
+    const onTime = await uploaded(t)
+    await scanStoredFile(deps(), job(t, onTime), FIXED_NOW)
+    const scannedAt = new Date(FIXED_NOW.getTime() + 30 * HOUR)
+    assert.deepEqual(await scanStoredFile(deps(), job(t, late), scannedAt), { outcome: 'ready' })
+    const ready = await rowOf(t, late)
+    assert.equal(ready.readyAt?.toISOString(), scannedAt.toISOString())
+    const purge = (at: number) =>
+      purgeUnattachedFiles({
+        db,
+        storage: store.storage,
+        institutionId: t.institution.id,
+        now: new Date(at),
+        log: app.log,
+      })
+    // T+31 saat: bir sonraki saatlik temizlik geç taranan dosyayı silmez.
+    await purge(FIXED_NOW.getTime() + 31 * HOUR)
+    assert.equal((await rowOf(t, late)).status, 'ready')
+    assert.equal((await store.storage.head(ready.storageKey))?.byteSize, ready.byteSize)
+    assert.equal((await rowOf(t, onTime)).status, 'deleted')
+    // Tam 24 saat dolduğunda silinmez; ε sonra silinir.
+    await purge(scannedAt.getTime() + UNATTACHED_FILE_TTL_MS)
+    assert.equal((await rowOf(t, late)).status, 'ready')
+    await purge(scannedAt.getTime() + UNATTACHED_FILE_TTL_MS + 1)
+    const purged = await rowOf(t, late)
+    assert.equal(purged.status, 'deleted')
+    assert.equal(await store.storage.head(ready.storageKey), null)
+  })
+
+  test('OG-995: taramasız (pending) dosyada ready anı yazılmaz, süre yüklemeden sayılır', async () => {
+    const t = await tenant()
+    const id = (
+      await upload(t, {
+        target: offApp,
+        parts: uploadParts('material', png(), 'gorsel.png', 'image/png'),
+        cookie: t.admin.cookie,
+      })
+    ).json().data.id as string
+    assert.equal((await rowOf(t, id)).readyAt, null)
+    await purgeUnattachedFiles({
+      db,
+      storage: store.storage,
+      institutionId: t.institution.id,
+      now: new Date(FIXED_NOW.getTime() + UNATTACHED_FILE_TTL_MS + 1),
+      log: app.log,
+    })
+    assert.equal((await rowOf(t, id)).status, 'deleted')
   })
 
   test('Sabah kararı 42: teslim, soru ve kaynak sürümü yollarında yükleyenin reddedilen dosyası 422 file_rejected (alan yolu), başkasınınki ayırt edilmez', async () => {

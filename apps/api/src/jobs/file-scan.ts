@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { FILE_PURPOSES, type FilePurpose } from '@kampus/school-core/content/taxonomy.ts'
 
 import type { Database } from '../db/client.ts'
-import { listStaleProcessingFiles } from '../db/files.ts'
+import { listStaleScanFiles } from '../db/files.ts'
 import { listInstitutionIds } from '../db/institutions.ts'
 import {
   needsScan,
@@ -19,8 +19,9 @@ import { jobErrorInfo } from './job-error.ts'
 import { RECOVERY_BATCH_SIZE, transactionConnection, type SessionLock } from './media-transcode.ts'
 
 /**
- * Olaya bağlı dosya tarama işi `file.scan` (ADR 0003 karar 8; OG-092, IST-027). Ses dönüşümüyle
- * (`media.transcode`) aynı desendir; işleyici `services/file-scan.ts`'tedir.
+ * Olaya bağlı dosya tarama işi `file.scan` (ADR 0003 karar 8; OG-092, OG-988, IST-027). Ses
+ * dönüşümüyle (`media.transcode`) aynı desendir; işleyici `services/file-scan.ts`'tedir. Seste iki iş
+ * aynı yüklemede kuyruğa girer ve paralel yürür.
  *
  * - Kuyruk açıkken iş satırı yüklemeyi yazan transaction'da eklenir (pg-boss `send({ db })`).
  * - Tarayıcıya ulaşılamaz ya da süre aşılırsa iş geri çekilmeli yeniden denenir (6 kez, yaklaşık
@@ -28,7 +29,8 @@ import { RECOVERY_BATCH_SIZE, transactionConnection, type SessionLock } from './
  *   olur; dosya açılışta ve 15 dakikada bir zamanlanmış `file.scan-requeue` işiyle yeniden kuyruğa
  *   girer (`requeueStaleScans`): `clamd` uzun süre kapalı kalsa da süreç yeniden başlamadan tarama
  *   sürer. Tarama bekleyen dosya 24 saatlik bağsız dosya temizliğine girmez; ancak yüklemeden 7 gün
- *   sonra silinir (`PROCESSING_FILE_TTL_MS`, `services/files.ts`).
+ *   sonra silinir (`PROCESSING_FILE_TTL_MS`, `services/files.ts`). Geç taranıp `ready` olan
+ *   dosyanın 24 saati taramanın bittiği andan sayılır (`ready_at`, OG-995).
  * - Kuyruk kapalıyken (`JOBS_ENABLED=false` ya da açılamadı) tarama yüklemenin transaction'ından
  *   sonra süreç içinde, arka planda tek denemeyle çalışır (`InlineScanScheduler`); geçici hatada
  *   dosya `processing` kalır ve açılış kurtarması (`recoverStaleScans`) yeniden dener.
@@ -59,16 +61,23 @@ export const SCAN_QUEUE_OPTIONS = {
 /** İşçi: tarama `clamd`'de çalışır, API süreci yalnız akışı taşır. */
 export const SCAN_WORK_OPTIONS = { batchSize: 1, localConcurrency: 2 } as const
 
-/** Bu süredir `processing` kalan ses dışı dosyanın işi kaybolmuş sayılır (açılışta yeniden). */
+/** Bu süredir taraması bitmemiş dosyanın işi kaybolmuş sayılır (açılışta yeniden). */
 export const STALE_SCAN_MS = 15 * 60 * 1000
 
-/** Taranan amaçlar: ses dışındakiler (bayat satır sorgusu ses dönüşümünden ayrılır). */
-export const SCANNED_PURPOSES = (Object.keys(FILE_PURPOSES) as FilePurpose[]).filter(needsScan)
+/**
+ * Taraması `scanPending` ile izlenen amaçlar: dönüşen ses (OG-988). Öteki amaçlarda tarama durumu
+ * `processing`'tir; seste `processing` dönüşümü de kapsadığından yalnız dönüşüm bekleyen ses
+ * yeniden taramaya girmez.
+ */
+export const SCAN_PENDING_PURPOSES = (Object.keys(FILE_PURPOSES) as FilePurpose[]).filter(
+  (purpose) => !needsScan(purpose),
+)
 
 /** İşin sonucu (`job.completed` logu ve pg-boss çıktısı): yalnız kodlar. */
 export function scanSummary(result: ScanOutcome): Record<string, string> {
   switch (result.outcome) {
     case 'ready':
+    case 'clean':
       return { outcome: result.outcome }
     case 'rejected':
       return { outcome: result.outcome, code: result.code }
@@ -162,15 +171,18 @@ export class InlineScanScheduler implements FileScanScheduler {
   }
 }
 
-/** Kurumların uzun süredir `processing` kalan ses dışı dosyaları (işi kaybolmuş taramalar). */
+/**
+ * Kurumların uzun süredir taraması bitmemiş dosyaları (işi kaybolmuş taramalar): ses dışı
+ * `processing` dosyalar ve taraması süren ses (OG-988); yalnız dönüşüm bekleyen ses girmez.
+ */
 async function staleScans(db: Database, now: Date): Promise<FileScanJobData[]> {
   const before = new Date(now.getTime() - STALE_SCAN_MS)
   const found: FileScanJobData[] = []
   for (const institutionId of await listInstitutionIds(db)) {
-    const rows = await listStaleProcessingFiles(
+    const rows = await listStaleScanFiles(
       db,
       institutionId,
-      SCANNED_PURPOSES,
+      SCAN_PENDING_PURPOSES,
       before,
       RECOVERY_BATCH_SIZE,
     )

@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import {
   bigint,
+  boolean,
   check,
   index,
   integer,
@@ -77,6 +78,20 @@ export const files = pgTable(
      * Anahtar kişisel veri taşımaz.
      */
     supersededStorageKey: text('superseded_storage_key'),
+    /**
+     * Dosyanın `ready` olduğu an (OG-995): tarama (`file.scan`) ya da ses dönüşümü `ready`'yi
+     * yazdığı güncellemede doldurur. Bağsız dosyanın 24 saatlik ömrü (karar 5) bu andan sayılır:
+     * `clamd` kesintisinden sonra geç taranan dosya bağlanmadan hemen silinmez. Taramasız
+     * (`pending`) ve eski `ready` satırlarda boştur; süre yüklemeden (`created_at`) sayılır.
+     */
+    readyAt: timestamp('ready_at', { withTimezone: true }),
+    /**
+     * Ses taraması sürüyor mu (ADR 0003 karar 8, OG-988). Tarayıcı açıkken ses yüklemesi `true`
+     * başlar; dönüşüm (`media.transcode`) taramayı beklemeden çalışır, dosya ancak tarama temiz
+     * çıkınca (`false`) ve dönüşüm bitince `ready` olur. Ses dışı dosyada tarama durumu `status`'tadır
+     * (`processing`), kolon `false` kalır; tarayıcı kapalıyken yüklenen ses de `false`'tur.
+     */
+    scanPending: boolean('scan_pending').notNull().default(false),
     ...requiredColumns(),
   },
   (table) => [
@@ -95,6 +110,8 @@ export const files = pgTable(
       sql`(${table.status} = 'deleted') = (${table.deletedAt} is not null)`,
     ),
     check('files_version_check', sql`${table.version} >= 1`),
+    // Taraması bitmemiş ses hiçbir yolda `ready` olamaz (karar 8: taramasız bağlantı yok).
+    check('files_scan_pending_check', sql`not ${table.scanPending} or ${table.status} <> 'ready'`),
     check(
       'files_superseded_storage_key_check',
       sql`${table.supersededStorageKey} is null or ${table.supersededStorageKey} <> ${table.storageKey}`,

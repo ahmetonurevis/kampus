@@ -80,6 +80,8 @@ export const LESSON_STATUS_LABELS = {
 } as const satisfies Record<Lesson['status'], string>
 
 export type ScheduleLesson = {
+  /** `tutoring`: programda görünen kazanım etüdü (`schedule-tutoring.ts`); ders değildir. */
+  kind: 'lesson' | 'tutoring'
   id: string
   version: number
   title: string
@@ -127,6 +129,7 @@ export function scheduleLesson(
         ? [className]
         : [lesson.originalTeacherId ? '' : teacher]
   return {
+    kind: 'lesson',
     id: lesson.id,
     version: lesson.version,
     title: lesson.title ?? lookups.subjects.get(lesson.subjectId)?.name ?? 'Ders',

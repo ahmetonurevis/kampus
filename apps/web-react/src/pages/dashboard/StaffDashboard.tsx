@@ -1,9 +1,10 @@
 import { useCallback, useMemo } from 'react'
-import { useSearchParams } from 'react-router'
+import { useLocation, useSearchParams } from 'react-router'
 import type { Session } from '@/auth/auth-port.ts'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { keptHistoryState } from '@/lib/history-state.ts'
 import { RoleDashboard } from './RoleDashboard.tsx'
 import { ALL_BRANCHES, BRANCH_PARAM, branchValue } from './dashboard-filter-model.ts'
 
@@ -23,6 +24,7 @@ type Props = {
  */
 export function StaffDashboard({ session, role, now, title, description }: Props) {
   const [params, setParams] = useSearchParams()
+  const location = useLocation()
   const branches = useCoreAll('branches')
   const options = useMemo(
     () =>
@@ -45,9 +47,9 @@ export function StaffDashboard({ session, role, now, title, description }: Props
           else next.set(BRANCH_PARAM, value)
           return next
         },
-        { replace: true, preventScrollReset: true },
+        { replace: true, preventScrollReset: true, state: keptHistoryState(location.state) },
       ),
-    [setParams],
+    [setParams, location.state],
   )
   return (
     <>

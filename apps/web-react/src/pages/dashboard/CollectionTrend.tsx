@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useMemo } from 'react'
-import { useSearchParams } from 'react-router'
+import { useLocation, useSearchParams } from 'react-router'
 import { money, number } from '@kampus/school-core/lib/format.ts'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { keptHistoryState } from '@/lib/history-state.ts'
 import { ListCard, type CardState } from './DashboardParts.tsx'
 import {
   collectionWindow,
@@ -58,6 +59,7 @@ function PeriodSelect({
  */
 export function CollectionTrend({ monthly, state, href }: Props) {
   const [params, setParams] = useSearchParams()
+  const location = useLocation()
   const period = periodValue(params.get(PERIOD_PARAM))
   const setPeriod = useCallback(
     (value: CollectionPeriod) =>
@@ -68,9 +70,9 @@ export function CollectionTrend({ monthly, state, href }: Props) {
           else next.set(PERIOD_PARAM, String(value))
           return next
         },
-        { replace: true, preventScrollReset: true },
+        { replace: true, preventScrollReset: true, state: keptHistoryState(location.state) },
       ),
-    [setParams],
+    [setParams, location.state],
   )
   const span = useMemo(
     () => (monthly ? collectionWindow(monthly, period) : null),

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -17,7 +17,8 @@ import type { Tenant, TenantOptions } from './support/tenant.ts'
 // (Chromium `--use-fake-device-for-media-stream`); sahte mikrofon 440 Hz sinüs çalar, böylece
 // sunucunun sessizlik reddi (`recording_empty`) tetiklenmez. e2e API'sinde iş kuyruğu kapalıdır:
 // dönüşüm süreç içinde, arka planda çalışır ve istemci dosya durumunu yoklayarak bekler.
-// Dönüşüm `ffmpeg`/`ffprobe` ister; ikisi PATH'te yoksa senaryolar atlanır.
+// Dönüşüm `ffmpeg`/`ffprobe` ister; ikisi PATH'te yoksa yerelde senaryolar atlanır, CI'da (`CI`)
+// atlamak yerine açık hatayla başarısız olunur: IST-051 akışı sessizce koşmaz hâle gelmesin.
 
 const hasFfmpeg = (() => {
   try {
@@ -52,8 +53,9 @@ function sineWav(seconds: number): Buffer {
   return Buffer.concat([header, data])
 }
 
+// Yol işçi sürecine özgüdür; dosya yalnız senaryolar koşarken yazılır ve sonunda silinir
+// (Chromium sahte mikrofonu bu dosyayı tarayıcı ilk açılınca okur; `beforeAll` onu önceler).
 const wavPath = join(tmpdir(), `kampus-e2e-konusma-${process.pid}.wav`)
-writeFileSync(wavPath, sineWav(4))
 
 test.use({
   launchOptions: {
@@ -65,7 +67,20 @@ test.use({
   },
 })
 
-test.skip(!hasFfmpeg, 'ffmpeg/ffprobe PATH üzerinde yok: ses dönüşümü denenemez')
+test.skip(
+  !hasFfmpeg && !process.env.CI,
+  'ffmpeg/ffprobe PATH üzerinde yok: ses dönüşümü denenemez',
+)
+test.beforeAll(() => {
+  if (hasFfmpeg) writeFileSync(wavPath, sineWav(4))
+})
+test.afterAll(() => {
+  rmSync(wavPath, { force: true })
+})
+test.beforeEach(() => {
+  if (!hasFfmpeg && process.env.CI)
+    throw new Error('CI ortamında ffmpeg/ffprobe kurulu olmalı (checks.yml e2e-react işi).')
+})
 
 const PURPOSE = 'speaking_recording'
 const MAIN_TITLE = 'Sevdiğim yer'
@@ -209,7 +224,9 @@ test.describe('öğrenci konuşma görevi', () => {
     await expect(page.getByRole('button', { name: /Kayda başla|Hazırlığa başla/ })).toHaveCount(0)
     await expect(page.getByRole('region', { name: 'Ses kaydı' })).toHaveCount(0)
 
-    // Sunucu da aynısını söyler: dosya kabul edilmez, teslim açılmaz.
+    // Teslim açılmamıştır. Rızasız yüklemenin 403 `consent_required` alması ve nesnenin
+    // yazılmaması API'de sınanır (apps/api/test/files.test.ts, DOM-BEC-050); burada
+    // öğrenci için kayıt düğmesinin hiç çıkmadığı ve sunucuda teslim bulunmadığı doğrulanır.
     const list = await school.admin.get(
       `/api/v1/task-submissions?assignmentId=${school.assignmentId}&page=1&pageSize=20`,
     )

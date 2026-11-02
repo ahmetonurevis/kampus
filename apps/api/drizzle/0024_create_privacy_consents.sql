@@ -74,7 +74,8 @@ CREATE TABLE "privacy_notices" (
         or ("privacy_notices"."kind" = 'consent_text' and "privacy_notices"."purpose" is not null and "privacy_notices"."audience" is null)),
 	CONSTRAINT "privacy_notices_notice_version_check" CHECK ("privacy_notices"."notice_version" >= 1),
 	CONSTRAINT "privacy_notices_title_check" CHECK (char_length("privacy_notices"."title") between 1 and 200),
-	CONSTRAINT "privacy_notices_body_check" CHECK (char_length("privacy_notices"."body") between 1 and 50000)
+	CONSTRAINT "privacy_notices_body_check" CHECK (char_length("privacy_notices"."body") between 1 and 50000),
+	CONSTRAINT "privacy_notices_version_check" CHECK ("privacy_notices"."version" = 1 and "privacy_notices"."archived_at" is null)
 );
 --> statement-breakpoint
 ALTER TABLE "consents" ADD CONSTRAINT "consents_institution_id_institutions_id_fk" FOREIGN KEY ("institution_id") REFERENCES "public"."institutions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -95,37 +96,12 @@ CREATE UNIQUE INDEX "privacy_notices_purpose_version_key" ON "privacy_notices" U
 -- İngilizcedir, kullanıcıya gitmez. `delete` yalnız transaction'da
 -- `set local kampus.allow_immutable_purge = 'on'` verilince geçer (imha işi).
 --
--- Yayımlanmış metin değişmez (DOM-YTK-056): içerik kolonlarını değiştiren `update` reddedilir;
--- yalnız arşiv (`archived_at`), `updated_at` ve `version` değişir. Düzeltme yeni sürümdür.
-CREATE FUNCTION "kampus_reject_privacy_notice_change"() RETURNS trigger
-LANGUAGE plpgsql AS $$
-BEGIN
-  IF TG_OP = 'DELETE' THEN
-    IF current_setting('kampus.allow_immutable_purge', true) = 'on' THEN
-      RETURN OLD;
-    END IF;
-  ELSIF TG_OP = 'UPDATE'
-    AND NEW.institution_id IS NOT DISTINCT FROM OLD.institution_id
-    AND NEW.id IS NOT DISTINCT FROM OLD.id
-    AND NEW.kind IS NOT DISTINCT FROM OLD.kind
-    AND NEW.audience IS NOT DISTINCT FROM OLD.audience
-    AND NEW.purpose IS NOT DISTINCT FROM OLD.purpose
-    AND NEW.notice_version IS NOT DISTINCT FROM OLD.notice_version
-    AND NEW.title IS NOT DISTINCT FROM OLD.title
-    AND NEW.body IS NOT DISTINCT FROM OLD.body
-    AND NEW.requires_reconsent IS NOT DISTINCT FROM OLD.requires_reconsent
-    AND NEW.published_at IS NOT DISTINCT FROM OLD.published_at
-    AND NEW.published_by_user_id IS NOT DISTINCT FROM OLD.published_by_user_id
-    AND NEW.created_at IS NOT DISTINCT FROM OLD.created_at THEN
-    RETURN NEW;
-  END IF;
-  RAISE EXCEPTION 'kampus: % content is immutable (%)', TG_TABLE_NAME, TG_OP
-    USING ERRCODE = '55000', TABLE = TG_TABLE_NAME;
-END;
-$$;
---> statement-breakpoint
-CREATE TRIGGER "privacy_notices_content_trigger" BEFORE UPDATE OR DELETE ON "privacy_notices" FOR EACH ROW EXECUTE FUNCTION "kampus_reject_privacy_notice_change"();--> statement-breakpoint
-CREATE TRIGGER "privacy_notices_truncate_trigger" BEFORE TRUNCATE ON "privacy_notices" FOR EACH STATEMENT EXECUTE FUNCTION "kampus_reject_privacy_notice_change"();--> statement-breakpoint
+-- Yayımlanmış metin değişmez ve arşivlenmez (DOM-YTK-056, DOM-YTK-060): her `update` reddedilir
+-- (0013'teki ortak fonksiyon; `privacy_notices_version_check` arşivli satırın doğrudan yazılmasını
+-- da engeller). Arşiv metni listeden düşürüp aynı sürüm numarasını yeniden kullandırır ya da
+-- yeniden rıza isteyen sürümü saklayıp eski rızaları geçerli kılardı. Düzeltme yeni sürümdür.
+CREATE TRIGGER "privacy_notices_immutable_trigger" BEFORE UPDATE OR DELETE ON "privacy_notices" FOR EACH ROW EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
+CREATE TRIGGER "privacy_notices_truncate_trigger" BEFORE TRUNCATE ON "privacy_notices" FOR EACH STATEMENT EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
 -- Aydınlatma gösterimi bir kez yazılır, hiç değişmez (0013'teki ortak fonksiyon).
 CREATE TRIGGER "notice_acknowledgements_immutable_trigger" BEFORE UPDATE OR DELETE ON "notice_acknowledgements" FOR EACH ROW EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
 CREATE TRIGGER "notice_acknowledgements_truncate_trigger" BEFORE TRUNCATE ON "notice_acknowledgements" FOR EACH STATEMENT EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint

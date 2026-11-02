@@ -3172,6 +3172,10 @@
         "privacy_notices_body_check": {
           "name": "privacy_notices_body_check",
           "value": "char_length(\"privacy_notices\".\"body\") between 1 and 50000"
+        },
+        "privacy_notices_version_check": {
+          "name": "privacy_notices_version_check",
+          "value": "\"privacy_notices\".\"version\" = 1 and \"privacy_notices\".\"archived_at\" is null"
         }
       },
       "isRLSEnabled": false

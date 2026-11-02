@@ -62,8 +62,10 @@ const toConsent = (row: ConsentRow): StoredConsent => ({
 })
 
 /**
- * Kurumun yayımlanmış (arşivlenmemiş) metinleri, konu ve sürüm sırasıyla. Core son sürümü ve en
- * düşük geçerli rıza sürümünü bu listeden hesaplar; metin sayısı kurum başına küçüktür.
+ * Kurumun yayımlanmış bütün metinleri, konu ve sürüm sırasıyla. Core son sürümü, sıradaki sürüm
+ * numarasını ve en düşük geçerli rıza sürümünü bu listeden hesaplar; metin arşivlenemediği için
+ * (`privacy_notices_version_check` + tetikleyici) liste eksik kalmaz. Metin sayısı kurum başına
+ * küçüktür.
  */
 export async function listPrivacyNotices(
   db: Database,
@@ -72,7 +74,7 @@ export async function listPrivacyNotices(
   const rows = await db
     .select()
     .from(privacyNotices)
-    .where(and(eq(privacyNotices.institutionId, institutionId), isNull(privacyNotices.archivedAt)))
+    .where(eq(privacyNotices.institutionId, institutionId))
     .orderBy(
       asc(privacyNotices.kind),
       asc(privacyNotices.audience),

@@ -286,7 +286,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Gerekçe:** Aydınlatma veri toplanırken yapılır ve ispatı veri sorumlusundadır; metin değişince eski gösterim yeni metni ispatlamaz.
 - **Kaynak:** KVKK md. 10; Aydınlatma Yükümlülüğünün Yerine Getirilmesinde Uyulacak Usul ve Esaslar Hakkında Tebliğ. IST-016.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/privacy-notices.ts` (`planNoticePublication`, `needsNoticeAcknowledgement`, `planNoticeAcknowledgement`); tablolar `privacy_notices` (yayımlanmış içerik tetikleyiciyle değişmez) ve `notice_acknowledgements` (değişmez satır). Uç ve ekran yok (OG-016/017). Çocuğun algı düzeyine uygun ayrı öğrenci metni kitle içinde tek sürümdür (`TODO(cocuk-aydinlatma)`).
+- **Kodda:** kısmen — core `lib/privacy-notices.ts` (`planNoticePublication`, `needsNoticeAcknowledgement`, `planNoticeAcknowledgement`); tablolar `privacy_notices` (yayımlanmış metin tetikleyiciyle değişmez ve arşivlenmez) ve `notice_acknowledgements` (değişmez satır). Uç ve ekran yok (OG-016/017). Çocuğun algı düzeyine uygun ayrı öğrenci metni kitle içinde tek sürümdür (`TODO(cocuk-aydinlatma)`).
 
 ### DOM-YTK-057 · Rızayı kim verir
 
@@ -318,7 +318,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Gerekçe:** Rıza bilgilendirilmiş olmalıdır; kişi görmediği amaca rıza vermiş sayılmaz.
 - **Kaynak:** KVKK md. 3/1-a; guvenlik-kvkk §9. Düzeltme sürümünün yeniden rıza istemeyeceği yorumu **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `lib/privacy-notices.ts` `minimumConsentTextVersion`; `hasValidConsent` alt sınırı çağıranın verdiği metin listesinden kendisi hesaplar (ayrı sayı almaz, unutulamaz).
+- **Kodda:** kısmen — `lib/privacy-notices.ts` `minimumConsentTextVersion`; `hasValidConsent` alt sınırı çağıranın verdiği metin listesinden kendisi hesaplar (ayrı sayı almaz, unutulamaz). Yayımlanmış metin arşivlenemez ve sürüm numarası yeniden kullanılmaz (`privacy_notices` değişmez satır); yeniden rıza şartı böylece listeden düşmez.
 
 ### DOM-YTK-061 · Rızaya bağlı işlem geçerli rıza ister
 

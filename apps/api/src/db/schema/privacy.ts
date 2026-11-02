@@ -45,7 +45,7 @@ import { keys, oneOf, requiredColumns } from './columns.ts'
  * yalnız kod, kimlik ve zaman taşır, metnin kendisi `privacy_notices`'tadır.
  *
  * Değişmezlik migration 0024'ün sonundaki elle yazılmış tetikleyicilerle korunur (Drizzle şeması
- * izlemez): yayımlanmış metnin içeriği değişmez (yalnız arşiv); gösterim satırı hiç değişmez
+ * izlemez): yayımlanmış metin ve gösterim satırı hiç değişmez, arşivlenmez
  * (`kampus_reject_immutable_change`); rıza satırında tek değişiklik geri çekme kolonlarının bir kez
  * yazılmasıdır. Satır silme yalnız imha işinin `kampus.allow_immutable_purge` ayarıyla geçer.
  * Tablolar yeni ve boştur; kısıtlar `not valid` adımına gerek olmadan tek adımda eklenir.
@@ -91,6 +91,13 @@ export const privacyNotices = pgTable(
     check('privacy_notices_notice_version_check', sql`${table.noticeVersion} >= 1`),
     check('privacy_notices_title_check', sql`char_length(${table.title}) between 1 and 200`),
     check('privacy_notices_body_check', sql`char_length(${table.body}) between 1 and 50000`),
+    // Yayımlanmış metin hiç değişmez ve arşivlenmez (DOM-YTK-056, DOM-YTK-060): arşivlenen sürüm
+    // listeden düşüp aynı sürüm numarasını yeniden kullandırır ya da yeniden rıza şartını düşürürdü.
+    // Yerini yeni sürüm alır; sürüm hesabı ve yeniden rıza alt sınırı bu yüzden bütün satırları görür.
+    check(
+      'privacy_notices_version_check',
+      sql`${table.version} = 1 and ${table.archivedAt} is null`,
+    ),
     // Konu başına sürüm tekildir; son sürüm sorgusu da bu indeksleri kullanır.
     uniqueIndex('privacy_notices_audience_version_key')
       .on(table.institutionId, table.audience, table.noticeVersion)

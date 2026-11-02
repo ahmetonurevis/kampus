@@ -236,8 +236,8 @@ describe('0024: aydınlatma ve rıza tabloları', () => {
         ['consents_withdrawal_trigger', 'kampus_reject_consent_change'],
         ['notice_acknowledgements_immutable_trigger', 'kampus_reject_immutable_change'],
         ['notice_acknowledgements_truncate_trigger', 'kampus_reject_immutable_change'],
-        ['privacy_notices_content_trigger', 'kampus_reject_privacy_notice_change'],
-        ['privacy_notices_truncate_trigger', 'kampus_reject_privacy_notice_change'],
+        ['privacy_notices_immutable_trigger', 'kampus_reject_immutable_change'],
+        ['privacy_notices_truncate_trigger', 'kampus_reject_immutable_change'],
       ],
     )
   })
@@ -337,12 +337,78 @@ describe('0024: aydınlatma ve rıza tabloları', () => {
       }),
       (error: unknown) => databaseErrorInfo(error)?.code === '23001',
     )
-    // Arşiv içerik değişikliği değildir.
-    await db
-      .update(privacyNotices)
-      .set({ archivedAt: FIXED_NOW, version: sql`${privacyNotices.version} + 1` })
-      .where(and(eq(privacyNotices.institutionId, institutionId), eq(privacyNotices.id, ids.photo)))
-    assert.equal((await listPrivacyNotices(db, institutionId)).length, 1)
+  })
+
+  test('DOM-YTK-060 yayımlanmış metin arşivlenemez: sürüm numarası yeniden kullanılmaz, yeniden rıza şartı düşmez', async () => {
+    const institutionId = await institution()
+    const ids = await publish(institutionId)
+    const old = await grant(institutionId, ids.photo)
+    const publishPhoto = async (requiresReconsent: boolean) => {
+      const draft = planNoticePublication({
+        notices: await listPrivacyNotices(db, institutionId),
+        publishedByUserId: 'test-u-admin',
+        input: {
+          kind: 'consent_text',
+          purpose: 'photo_video_sharing',
+          title: 'Fotoğraf',
+          body: 'Genişleyen amaç',
+          requiresReconsent,
+        },
+        now: NOW,
+      })
+      const id = randomUUID()
+      await insertPrivacyNotice(db, institutionId, { id, ...draft }, FIXED_NOW)
+      return { id, version: draft.version }
+    }
+    const v2 = await publishPhoto(true)
+    assert.equal(v2.version, 2)
+    const byId = (id: string) =>
+      and(eq(privacyNotices.institutionId, institutionId), eq(privacyNotices.id, id))
+    // Arşiv, yeniden rıza isteyen sürümü listeden düşürüp eski rızayı geçerli kılardı.
+    await rejectsChange(
+      db
+        .update(privacyNotices)
+        .set({ archivedAt: FIXED_NOW, version: sql`${privacyNotices.version} + 1` })
+        .where(byId(v2.id)),
+    )
+    await rejectsChange(
+      db
+        .update(privacyNotices)
+        .set({ updatedAt: FIXED_NOW, version: sql`${privacyNotices.version} + 1` })
+        .where(byId(ids.photo)),
+    )
+    // Arşivli metin doğrudan da yazılamaz.
+    await violates(
+      db.execute(
+        sql`insert into privacy_notices (institution_id, id, kind, purpose, notice_version, title, body, published_at, published_by_user_id, archived_at)
+            values (${institutionId}, ${randomUUID()}, 'consent_text', 'photo_video_sharing', 9, 'A', 'B', now(), 'u', now())`,
+      ),
+      'privacy_notices_version_check',
+      '23514',
+    )
+    const texts = await listPrivacyNotices(db, institutionId)
+    const subject = { kind: 'student', student: MINOR } as const
+    const stored = await listConsentsOfSubject(db, institutionId, { kind: 'student', id: MINOR.id })
+    assert.deepEqual(
+      stored.map((row) => row.id),
+      [old.id],
+    )
+    assert.equal(
+      hasValidConsent(stored, { purpose: 'photo_video_sharing', subject, texts }, NOW),
+      false,
+    )
+    // Sonraki yayın sürümü atlamadan ve çakışmadan 3 olur; yeniden rıza şartı 2'de kalır.
+    assert.equal((await publishPhoto(false)).version, 3)
+    assert.deepEqual(
+      (await listPrivacyNotices(db, institutionId))
+        .filter((notice) => notice.purpose === 'photo_video_sharing')
+        .map((notice) => [notice.version, notice.requiresReconsent]),
+      [
+        [1, false],
+        [2, true],
+        [3, false],
+      ],
+    )
   })
 
   test('DOM-YTK-058 kısmi benzersiz indeks aynı veri sahibi + amaç için ikinci etkin rızayı reddeder', async () => {

@@ -18,7 +18,8 @@ import { DomainError } from './errors.ts'
  * - Rıza metni (`consent_text`) amaca göre sürümlüdür ve aydınlatma metninden ayrıdır
  *   (DOM-ILT-033). Amacı genişleten sürüm `requiresReconsent` ile yayımlanır; ondan eski sürüme
  *   verilmiş rıza geçersizdir (`minimumConsentTextVersion`, DOM-YTK-060).
- * - Yayımlanmış metin değişmez; düzeltme yeni sürümdür (veritabanında tetikleyiciyle korunur).
+ * - Yayımlanmış metin değişmez ve arşivlenmez; düzeltme yeni sürümdür (veritabanında tetikleyiciyle
+ *   korunur). Sürüm hesabı ve yeniden rıza alt sınırı bu yüzden bütün sürümleri görür.
  *
  * Fonksiyonlar saftır ve `now` parametrelidir; kimlik, yükleme ve yazma servistedir. Girdi
  * dizileri değiştirilmez.

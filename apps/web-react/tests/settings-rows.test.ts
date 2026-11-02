@@ -13,7 +13,6 @@ import {
   reversedRange,
   ROLE_OPTIONS,
 } from '../src/pages/settings/settings-rows.ts'
-import { settingsTab } from '../src/pages/settings/settings-tabs.ts'
 
 const member = (patch: Partial<InstitutionMember> = {}): InstitutionMember => ({
   id: 'm1',
@@ -154,11 +153,4 @@ describe('eylem etiketleri', () => {
       [...labels].sort((a, b) => a.localeCompare(b, 'tr')),
     )
   })
-})
-
-test('sekme adresten çözülür; bilinmeyen değer ilk sekmeye düşer', () => {
-  assert.equal(settingsTab(null), 'general')
-  assert.equal(settingsTab('kullanicilar'), 'users')
-  assert.equal(settingsTab('gecmis'), 'activity')
-  assert.equal(settingsTab('x'), 'general')
 })

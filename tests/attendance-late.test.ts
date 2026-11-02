@@ -61,6 +61,18 @@ test('DOM-AKD-036: geç kalma dakikası günün en uzun iptal edilmemiş dersiyl
   assert.equal(lateMinutesLimit(state, 'c-yok', day), DEFAULT_LESSON_MINUTES)
 })
 
+test('DOM-AKD-036: başka sınıfın dersleri sınırı etkilemez (API kısmi yüklemesi yalnız sınıf derslerini getirir)', () => {
+  const state = seed()
+  const base = state.schedule[0]
+  assert.ok(base)
+  state.schedule.push({ ...base, id: 'l-c2-120', classId: 'c2', date: day, duration: 120 })
+  assert.equal(lateMinutesLimit(state, 'c1', day), 45)
+  assert.equal(lateMinutesLimit(state, 'c2', day), 120)
+  // Yalnız c1 dersleriyle çalışan durum (kısmi yükleme) aynı sınırı verir.
+  const partial = { schedule: state.schedule.filter((lesson) => lesson.classId === 'c1') }
+  assert.equal(lateMinutesLimit(partial, 'c1', day), 45)
+})
+
 test('DOM-AKD-036: şema pozitif tamsayı dakikayı kabul eder, diğerlerini 400 sınıfında reddeder', () => {
   const body = (lateMinutes: unknown) => ({
     date: '2026-10-06',

@@ -137,6 +137,42 @@ describe('DOM-AKD-036: yoklamada geç gelme dakikası', () => {
     assert.equal((await send({ [first.id]: 40 })).statusCode, 200)
   })
 
+  test('DOM-AKD-036: ders süresi sınırı yalnız sınıfın kendi derslerinden gelir; başka sınıfın dersi etkilemez', async () => {
+    const a = await institution()
+    const lesson = (classId: string, duration: number) => {
+      const id = `test-late-lesson-${classId}-${duration}`
+      return {
+        collection: 'schedule' as const,
+        id,
+        data: {
+          id,
+          classId,
+          teacherId: 't1',
+          subjectId: 'math',
+          date: `${DAY}T06:00:00.000Z`,
+          duration,
+          title: 'Matematik',
+          room: '101',
+        },
+      }
+    }
+    // c2'nin o günkü 90 dakikalık dersi c1'in sınırını (40 dk) yükseltmez.
+    await insertMissingRecords(db, a.id, [lesson('c2', 90)], FIXED_NOW)
+    const marks = { ...marksFor('c1'), [first.id]: 'late' }
+    const send = (minutes: number) =>
+      post(URL, a.adminCookie, {
+        date: DAY,
+        marks,
+        lateMinutes: { [first.id]: minutes },
+        reason: REASON,
+      })
+    assertError(await send(41), 422, 'late_minutes_out_of_range')
+    // c1'in kendi 90 dakikalık dersi (kısmi yükleme onu da getirir) sınırı yükseltir.
+    await insertMissingRecords(db, a.id, [lesson('c1', 90)], FIXED_NOW)
+    assert.equal((await send(90)).statusCode, 200)
+    assertError(await send(91), 422, 'late_minutes_out_of_range')
+  })
+
   test('geç gelme "gelmedi" bildirimi üretmez; gelmedi düzeltilirse düzeltme bildirimi gider', async () => {
     const a = await institution()
     const parent = await member(a.id, 'veli', [{ kind: 'child', recordId: first.id }])

@@ -291,6 +291,9 @@ export async function recordAttendanceCommand(
     {
       action: 'attendance.record',
       collections: OPERATION_COMMANDS['attendance.record'].collections,
+      // Geç kalma sınırı yalnız bu sınıfın derslerine bakar (`lateMinutesLimit`): kurumun bütün
+      // programı kurum kilidi altında yüklenmez.
+      loadScope: { schedule: { match: [{ kind: 'equals', field: 'classId', values: [classId] }] } },
       // İşlemin konusu sınıftır: `If-Match` sınıf kaydının okunan sürümüyle karşılaştırılır.
       ...(options.expectedVersion !== null
         ? {

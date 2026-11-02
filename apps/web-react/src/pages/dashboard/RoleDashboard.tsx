@@ -19,12 +19,18 @@ export function RoleDashboard({
   session,
   role,
   now,
+  branchId,
+  enabled = true,
 }: {
   session: Session
   role: CardRole
   now: Date
+  /** Yalnız yönetici ve ön büro: seçili kampüs; boşsa tüm kampüsler. */
+  branchId?: string
+  /** `false` iken özet istenmez (kampüs süzgeci henüz doğrulanmadı). */
+  enabled?: boolean
 }) {
-  const query = useDashboard(role)
+  const query = useDashboard(role, branchId ? { branchId } : {}, { enabled })
   const ctx = {
     session,
     role,

@@ -1126,3 +1126,206 @@ test.describe('Genel Bakış: dar ekran', () => {
     })
   }
 })
+
+// Şube süzgeci, tahsilat dönemi ve sayaç mini grafikleri (OG-225). Beklenen değerler API sayım
+// ucundan, seçili kampüsün sınıflarıyla ayrıca hesaplanır; sabit bekleme yok.
+test.describe('Genel Bakış: şube süzgeci, dönem seçici ve mini grafikler', () => {
+  const classQuery = (ids: readonly string[]) => ids.map((id) => `classId=${id}`).join('&')
+
+  async function classesOf(client: ApiClient, branchId: string): Promise<string[]> {
+    const rows = await allRows<{ branchId?: string }>(client, 'classes', `&branchId=${branchId}`)
+    return rows.map((row) => row.id)
+  }
+
+  for (const role of ['yonetici', 'onburo'] as const) {
+    test(`${role}: "Şube filtresi" kartları seçili kampüse daraltır ve adreste kalır`, async ({
+      page,
+      loginAs,
+      api,
+    }) => {
+      const client = await api(role)
+      const branches = await allRows<{ name: string }>(client, 'branches')
+      const second = branches.find((row) => row.id === 'b2')
+      expect(second, 'ikinci kampüs').toBeTruthy()
+      const ids = await classesOf(client, 'b2')
+      expect(ids.length).toBeGreaterThan(0)
+      const invoices = await counts(
+        client,
+        'invoices',
+        `groupBy=status&sum=amount&${classQuery(ids)}`,
+      )
+      const allInvoices = await counts(client, 'invoices', 'groupBy=status&sum=amount')
+      expect(invoices.total, 'kampüs taksitleri kurumdan azdır').toBeLessThan(allInvoices.total)
+
+      await loginAs(role)
+      await openDashboard(page, role)
+      const filter = page.getByRole('combobox', { name: 'Şube filtresi' })
+      await expect(filter).toHaveValue('')
+      await expect(filter.getByRole('option', { name: 'Tüm kampüsler' })).toBeAttached()
+      await expect(filter.getByRole('option', { name: second?.record.name ?? '' })).toBeAttached()
+      await expectCardsLoaded(page)
+
+      await filter.selectOption({ label: second?.record.name ?? '' })
+      await expect(page).toHaveURL(/[?&]sube=b2(&|$)/)
+      if (role === 'yonetici') {
+        const students = await counts(client, 'students', `groupBy=isActive&${classQuery(ids)}`)
+        await expect
+          .poll(() => cardValue(page, 'Aktif öğrenci').innerText())
+          .toBe(tr(countOf(students, true)))
+        const campuses = page
+          .getByRole('list', { name: 'Kampüs dolulukları' })
+          .getByRole('listitem')
+        await expect(campuses).toHaveCount(1)
+        await expect(campuses.first()).toContainText(second?.record.name ?? '')
+        await expect
+          .poll(async () => cents(await cardValue(page, 'Bekleyen tahsilat').innerText()))
+          .toBe(sumOf(invoices, 'Gecikmiş') + sumOf(invoices, 'Yaklaşan'))
+      } else {
+        await expect
+          .poll(() => cardValue(page, 'Gecikmiş taksit').innerText())
+          .toBe(tr(countOf(invoices, 'Gecikmiş')))
+        await expect
+          .poll(async () =>
+            cents((await card(page, 'Gecikmiş taksit').innerText()).match(MONEY)?.[0] ?? ''),
+          )
+          .toBe(sumOf(invoices, 'Gecikmiş'))
+      }
+
+      // Yeniden yükleme ve geri dönüş: seçim adreste korunur, "Tüm kampüsler" süzgeci kaldırır.
+      await page.reload()
+      await expect(filter).toHaveValue('b2')
+      await filter.selectOption('')
+      await expect(page).not.toHaveURL(/sube=/)
+      if (role === 'yonetici') {
+        const everyone = await counts(client, 'students', 'groupBy=isActive')
+        await expect
+          .poll(() => cardValue(page, 'Aktif öğrenci').innerText())
+          .toBe(tr(countOf(everyone, true)))
+      }
+    })
+  }
+
+  test('bilinmeyen kampüs adreste tüm kampüsler sayılır', async ({ page, loginAs, api }) => {
+    const admin = await api('yonetici')
+    const everyone = await counts(admin, 'students', 'groupBy=isActive')
+    await loginAs('yonetici')
+    await openDashboard(page, 'yonetici', '?sube=yok-boyle-kampus')
+    await expect(page.getByRole('combobox', { name: 'Şube filtresi' })).toHaveValue('')
+    await expect
+      .poll(() => cardValue(page, 'Aktif öğrenci').innerText())
+      .toBe(tr(countOf(everyone, true)))
+  })
+
+  for (const role of ['ogretmen', 'ogrenci', 'veli'] as const) {
+    test(`${role}: şube filtresi görünmez`, async ({ page, loginAs }) => {
+      await loginAs(role)
+      await openDashboard(page, role)
+      await expectCardsLoaded(page)
+      await expect(page.getByRole('combobox', { name: 'Şube filtresi' })).toHaveCount(0)
+    })
+  }
+
+  test('yönetici: tahsilat grafiğinde dönem seçici son 6 ve 12 ayı gösterir, adreste kalır', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const admin = await api('yonetici')
+    const today = istanbulDay()
+    const year = await counts(
+      admin,
+      'invoices',
+      `groupBy=paidAt:month&sum=amount&dateField=paidAt&dateFrom=${monthStart(today, 11)}&dateTo=${today}`,
+    )
+    const half = await counts(
+      admin,
+      'invoices',
+      `groupBy=paidAt:month&sum=amount&dateField=paidAt&dateFrom=${monthStart(today, 5)}&dateTo=${today}`,
+    )
+    await loginAs('yonetici')
+    await openDashboard(page, 'yonetici')
+    const trend = page.getByRole('region', { name: 'Aylık tahsilat' })
+    const period = trend.getByRole('combobox', { name: 'Grafik dönemi' })
+    await expect(period).toHaveValue('6')
+    await expect(trend.getByText('Son 6 ay, ödeme tarihine göre')).toBeVisible()
+    if (half.total > 0) {
+      await expect(trend.getByText(`Son 6 ayda ${tr(half.total)} taksitte toplam`)).toBeVisible()
+    }
+
+    await period.selectOption('12')
+    await expect(page).toHaveURL(/[?&]donem=12(&|$)/)
+    await expect(trend.getByText('Son 12 ay, ödeme tarihine göre')).toBeVisible()
+    if (year.total === 0) {
+      await expect(trend.getByText('Son 12 ayda tahsilat kaydı yok.')).toBeVisible()
+    } else {
+      await expect(trend.getByText(`Son 12 ayda ${tr(year.total)} taksitte toplam`)).toBeVisible()
+      await expect
+        .poll(async () => cents((await trend.innerText()).match(MONEY)?.[0] ?? ''))
+        .toBe(year.sum)
+    }
+
+    await page.reload()
+    await expect(period).toHaveValue('12')
+    await period.selectOption('6')
+    await expect(page).not.toHaveURL(/donem=/)
+    await expect(trend.getByText('Son 6 ay, ödeme tarihine göre')).toBeVisible()
+  })
+
+  test('yönetici: "Bu ay tahsilat" bu ayın tahsilatıdır, mini grafik son 6 ayın gerçek verisidir', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const admin = await api('yonetici')
+    const today = istanbulDay()
+    const thisMonth = await counts(
+      admin,
+      'invoices',
+      `groupBy=paidAt:month&sum=amount&dateField=paidAt&dateFrom=${monthStart(today, 0)}&dateTo=${today}`,
+    )
+    const half = await counts(
+      admin,
+      'invoices',
+      `groupBy=paidAt:month&sum=amount&dateField=paidAt&dateFrom=${monthStart(today, 5)}&dateTo=${today}`,
+    )
+    await loginAs('yonetici')
+    await openDashboard(page, 'yonetici')
+    await expect
+      .poll(async () => cents(await cardValue(page, 'Bu ay tahsilat').innerText()))
+      .toBe(thisMonth.sum)
+    const spark = card(page, 'Bu ay tahsilat').getByRole('img', { name: /^Son 6 ayın tahsilatı/ })
+    if (half.total === 0) {
+      await expect(spark).toHaveCount(0)
+    } else {
+      await expect(spark).toBeVisible()
+      await expect(spark.locator('.sparkline')).toHaveAttribute('aria-hidden', 'true')
+      // Etiket her ayın gerçek tutarını taşır; mini grafik süs değildir.
+      const label = (await spark.getAttribute('aria-label')) ?? ''
+      expect(label.split(', ')).toHaveLength(6)
+    }
+  })
+
+  test('öğrenci ve veli: "Genel not ortalaması" mini grafiği aylık ortalamalardan gelir', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    for (const role of ['ogrenci', 'veli'] as const) {
+      const client = await api(role)
+      const own = (await students(client))[0]
+      const months = monthlyAverages(
+        await allRows<GradeRecord>(client, 'grades', `&studentId=${own?.id}`),
+      )
+      expect(months.length, `${role} en az iki aylık not`).toBeGreaterThanOrEqual(2)
+      await loginAs(role)
+      await openDashboard(page, role, role === 'veli' ? `?cocuk=${own?.id}` : '')
+      const spark = card(page, 'Genel not ortalaması').getByRole('img', {
+        name: /^Aylık not ortalaması/,
+      })
+      await expect(spark).toBeVisible()
+      const label = (await spark.getAttribute('aria-label')) ?? ''
+      expect(label.split(', ')).toHaveLength(months.length)
+      expect(label).toContain(`${months.at(-1)?.value}/100`)
+    }
+  })
+})

@@ -5,6 +5,7 @@
 // "Pano kartı ekleme".
 import { buildDashboardCards, type DashboardCard } from './dashboard-cards-model.ts'
 import { ADMIN_CARDS } from './AdminCards.tsx'
+import { ADMIN_TREND_CARDS } from './AdminTrendCards.tsx'
 import { SLA_CARDS } from './AdminSlaCard.tsx'
 import { ENROLLMENT_CARDS } from './HandoverEnrollmentCards.tsx'
 import { FINANCE_CARDS } from './HandoverFinanceCards.tsx'
@@ -18,6 +19,7 @@ import { TEACHER_QUESTION_CARDS } from './TeacherQuestionCards.tsx'
 // Oğuzhan: akademik ve kurum kartları.
 const OGUZHAN_CARDS: readonly DashboardCard[] = [
   ...ADMIN_CARDS,
+  ...ADMIN_TREND_CARDS,
   ...SLA_CARDS,
   ...TEACHER_CARDS,
   ...STUDENT_CARDS,

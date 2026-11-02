@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/use-auth.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage, RoleKey } from '@/lib/navigation.ts'
 import { RoleDashboard } from './RoleDashboard.tsx'
+import { StaffDashboard } from './StaffDashboard.tsx'
 import { StudentDashboard } from './StudentDashboard.tsx'
 import { firstName } from './dashboard-model.ts'
 
@@ -27,13 +28,21 @@ export function DashboardPage({ page }: { page: NavPage }) {
   const [now] = useState(() => new Date())
   if (!session) return null
   const today = dateLabel(now, { year: 'numeric', weekday: 'long' })
+  const description = `Merhaba ${firstName(session.user.name)}, ${today}. ${DESCRIPTIONS[session.role]}`
+  if (session.role === 'yonetici' || session.role === 'onburo')
+    return (
+      <StaffDashboard
+        session={session}
+        role={session.role}
+        now={now}
+        title={page.title}
+        description={description}
+      />
+    )
   return (
     <>
-      <PageHeading
-        title={page.title}
-        description={`Merhaba ${firstName(session.user.name)}, ${today}. ${DESCRIPTIONS[session.role]}`}
-      />
-      {session.role === 'yonetici' || session.role === 'onburo' || session.role === 'ogretmen' ? (
+      <PageHeading title={page.title} description={description} />
+      {session.role === 'ogretmen' ? (
         <RoleDashboard session={session} role={session.role} now={now} />
       ) : (
         <StudentDashboard session={session} now={now} />

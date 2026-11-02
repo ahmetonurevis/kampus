@@ -1,36 +1,89 @@
-import { lazy, Suspense, useMemo } from 'react'
+import { lazy, Suspense, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'react-router'
 import { money, number } from '@kampus/school-core/lib/format.ts'
-import type { components } from '@kampus/api-client/schema.d.ts'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { ListCard, type CardState } from './DashboardParts.tsx'
+import {
+  collectionWindow,
+  COLLECTION_PERIODS,
+  DEFAULT_PERIOD,
+  periodLabel,
+  periodValue,
+  PERIOD_PARAM,
+  type CollectionPeriod,
+  type MonthlyCollection,
+} from './dashboard-filter-model.ts'
 import { hasTrendData, monthlyPoints } from './dashboard-model.ts'
 
 // recharts yalnız grafik çizileceği anda ayrı parça olarak yüklenir (ADR 0002).
 const TrendBars = lazy(() => import('./TrendBars.tsx'))
 
-type Monthly = NonNullable<components['schemas']['DashboardAdmin']['finance']>['monthlyCollection']
-
 type Props = {
   /** Özetin aylık tahsilatı; yanıt gelene kadar yok. */
-  monthly: Monthly | undefined
+  monthly: MonthlyCollection | undefined
   state: CardState
   /** Taksit sayfasına derin bağlantı. */
   href: string
 }
 
+/** Tahsilat dönemi seçici (Vue "Grafik dönemi"): seçim adreste (`?donem=`) tutulur. */
+function PeriodSelect({
+  period,
+  onChange,
+}: {
+  period: CollectionPeriod
+  onChange: (period: CollectionPeriod) => void
+}) {
+  return (
+    <NativeSelect
+      aria-label="Grafik dönemi"
+      value={String(period)}
+      onChange={(event) => onChange(periodValue(event.target.value))}
+      className="min-h-9 text-sm"
+    >
+      {COLLECTION_PERIODS.map((value) => (
+        <NativeSelectOption key={value} value={String(value)}>
+          {periodLabel(value)}
+        </NativeSelectOption>
+      ))}
+    </NativeSelect>
+  )
+}
+
 /**
- * Son 6 ayın aylık tahsilatı. Sunucu `invoices`'ı `paidAt` gününe göre süzer ve `paidAt:month` ile
- * Europe/Istanbul ayına gruplar; ödenmemiş taksit hiçbir aya girmez. Kayıt yoksa grafik çizilmez;
- * grafik yalnız görsel destektir, bilgi metin özetindedir.
+ * Seçili dönemin (son 6 ya da 12 ay) aylık tahsilatı. Sunucu `invoices`'ı `paidAt` gününe göre
+ * süzer ve `paidAt:month` ile Europe/Istanbul ayına gruplar; ödenmemiş taksit hiçbir aya girmez.
+ * Sunucu 12 aylık seri döndürür, dönem seçimi seriyi keser (yeni istek yok). Kayıt yoksa grafik
+ * çizilmez; grafik yalnız görsel destektir, bilgi metin özetindedir.
  */
 export function CollectionTrend({ monthly, state, href }: Props) {
-  const months = monthly?.months.length ?? 6
-  const points = useMemo(() => (monthly ? monthlyPoints(monthly.months) : []), [monthly])
+  const [params, setParams] = useSearchParams()
+  const period = periodValue(params.get(PERIOD_PARAM))
+  const setPeriod = useCallback(
+    (value: CollectionPeriod) =>
+      setParams(
+        (current) => {
+          const next = new URLSearchParams(current)
+          if (value === DEFAULT_PERIOD) next.delete(PERIOD_PARAM)
+          else next.set(PERIOD_PARAM, String(value))
+          return next
+        },
+        { replace: true, preventScrollReset: true },
+      ),
+    [setParams],
+  )
+  const span = useMemo(
+    () => (monthly ? collectionWindow(monthly, period) : null),
+    [monthly, period],
+  )
+  const months = period
+  const points = useMemo(() => (span ? monthlyPoints(span.months) : []), [span])
   const peak = points.reduce((best, point) => (point.value > best.value ? point : best), {
     label: '',
     value: 0,
   })
-  const summary = monthly
-    ? `Son ${months} ayda ${number(monthly.count)} taksitte toplam ${money(monthly.amount)} tahsil edildi. ` +
+  const summary = span
+    ? `Son ${months} ayda ${number(span.count)} taksitte toplam ${money(span.amount)} tahsil edildi. ` +
       `En yüksek ay: ${peak.label} (${money(peak.value)}).`
     : ''
 
@@ -39,6 +92,7 @@ export function CollectionTrend({ monthly, state, href }: Props) {
       title="Aylık tahsilat"
       description={`Son ${months} ay, ödeme tarihine göre`}
       action={{ label: 'Finansı aç', href }}
+      headerExtra={<PeriodSelect period={period} onChange={setPeriod} />}
       state={state}
       isEmpty={!hasTrendData(points)}
       emptyText={`Son ${months} ayda tahsilat kaydı yok.`}

@@ -383,26 +383,39 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   ),
 }
 
-/** İş akışı köprüsü: her komut ayrı rotadır (`module-inventory.test.ts` ile aynı türetme). */
-function workflowRoutes(proofFor: (command: string) => Proof | undefined) {
-  return Object.fromEntries(
-    Object.entries(WORKFLOW_ROUTES).flatMap(([command, { record }]) => {
-      const entry = proofFor(command)
-      if (entry === undefined) return []
-      return [
-        ...(record === 'required' ? [] : [[`POST /api/v1/workflows/${command}`, entry]]),
-        ...(record === 'none' ? [] : [[`POST /api/v1/workflows/${command}/:recordId`, entry]]),
-      ]
-    }),
-  ) as Record<string, Proof>
-}
-
-const WORKFLOWS = workflowRoutes((command) =>
-  command === 'goal'
-    ? govde('platform-commands.test.ts', 'gövdedeki institutionId etkisiz', "workflows/goal'")
-    : command === 'goal-close'
-      ? kayit('platform-commands.test.ts', 'başka kurumun kaydı 404 ve B değişmez')
-      : undefined,
+/**
+ * İş akışı köprüsü: her komut ayrı rotadır (`module-inventory.test.ts` ile aynı türetme). Kayıt
+ * alan komutlar B kaydına 404, oluşturanlar gövdedeki B kimliği ve `institutionId` için
+ * `cross-institution-workflows.test.ts`'te komut komut sınanır; o dosya kendi tablolarının
+ * köprünün bütün komutlarını kapsadığını ayrıca doğrular.
+ */
+const WORKFLOWS: Readonly<Record<string, Proof>> = Object.fromEntries(
+  Object.entries(WORKFLOW_ROUTES).flatMap(([command, { record }]) => [
+    ...(record === 'required'
+      ? []
+      : [
+          [
+            `POST /api/v1/workflows/${command}`,
+            govde(
+              'cross-institution-workflows.test.ts',
+              'gövdedeki institutionId ve başka kurumun kimliği etkisiz',
+              'workflows/${command}',
+            ),
+          ],
+        ]),
+    ...(record === 'none'
+      ? []
+      : [
+          [
+            `POST /api/v1/workflows/${command}/:recordId`,
+            kayit(
+              'cross-institution-workflows.test.ts',
+              'başka kurumun kaydı 404, If-Match B sürümüyle de 404',
+              'workflows/${command}/${id}',
+            ),
+          ],
+        ]),
+  ]),
 )
 
 /**
@@ -475,14 +488,6 @@ const TODO: readonly string[] = [
   'DELETE /api/v1/academic-years/:startYear/terms/:termId',
   'POST /api/v1/academic-years/:startYear/close',
   'POST /api/v1/files',
-  ...Object.entries(WORKFLOW_ROUTES).flatMap(([command, { record }]) =>
-    command === 'goal' || command === 'goal-close'
-      ? []
-      : [
-          ...(record === 'required' ? [] : [`POST /api/v1/workflows/${command}`]),
-          ...(record === 'none' ? [] : [`POST /api/v1/workflows/${command}/:recordId`]),
-        ],
-  ),
 ]
 
 const EXPECTED: Readonly<Record<string, Proof>> = { ...ROUTES, ...WORKFLOWS }

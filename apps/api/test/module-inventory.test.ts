@@ -116,7 +116,7 @@ const MODULELESS: Readonly<Record<string, string>> = {
 /**
  * Kurum türüne bağlı uçlar: modül denetimi taşımaz, kurum türü uymazsa rol denetiminden önce 404
  * döner (bulunmaz gibi; DOM-YTK-012). Kur programı (DOM-DIL-005) ve kur grupları (`/groups*`,
- * DOM-DIL-008) yalnız dil okulundadır. Bir dil okulu modülüne bağlanması ayrı karardır; o zamana
+ * DOM-DIL-008), seviye tespiti ve CEFR profili (IST-058, IST-060) yalnız dil okulundadır. Bir dil okulu modülüne bağlanması ayrı karardır; o zamana
  * dek modül kapatma bu uçları etkilemez.
  */
 const INSTITUTION_TYPE_ROUTES: Readonly<Record<string, InstitutionType>> = {
@@ -135,6 +135,14 @@ const INSTITUTION_TYPE_ROUTES: Readonly<Record<string, InstitutionType>> = {
   'POST /api/v1/groups/:groupId/open': 'language_school',
   'POST /api/v1/groups/:groupId/cancel': 'language_school',
   'POST /api/v1/groups/:groupId/merge': 'language_school',
+  // Seviye tespiti ve CEFR profili (OG-054; IST-058, IST-060; DOM-DIL-010).
+  'GET /api/v1/placement-sessions': 'language_school',
+  'GET /api/v1/placement-sessions/:sessionId': 'language_school',
+  'POST /api/v1/placement-sessions': 'language_school',
+  'POST /api/v1/placement-sessions/:sessionId/score': 'language_school',
+  'POST /api/v1/placement-sessions/:sessionId/complete': 'language_school',
+  'POST /api/v1/placement-sessions/:sessionId/decide': 'language_school',
+  'GET /api/v1/students/:studentId/cefr-profile': 'language_school',
 }
 
 /** Oğuzhan'ın modüle bağlı uçları (iş akışı köprüsü core komut kaydından aşağıda türetilir). */

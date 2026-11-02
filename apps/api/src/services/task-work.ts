@@ -153,13 +153,25 @@ export interface ScoringContext {
  * aynı cevaplar yeni anahtarla okunur. Tek soru atanmışsa soru kendi maddesidir (1 puan).
  * Okunamayan veya anahtarsız soru core'un 404/422'sidir.
  */
-export async function scoringContext(
+export function scoringContext(
   db: Database,
   institutionId: string,
   assignment: StoredAssignment,
 ): Promise<ScoringContext> {
-  const pairs = await loadVersionPairs(db, institutionId, [assignment.scoringVersionId])
-  const scoring = pairs.get(assignment.scoringVersionId)?.version
+  return versionScoringContext(db, institutionId, assignment.scoringVersionId)
+}
+
+/**
+ * Bir içerik sürümünün puanlama bağlamı (seviye tespit formu da; `services/cefr.ts`). Kurallar
+ * `scoringContext` ile aynıdır.
+ */
+export async function versionScoringContext(
+  db: Database,
+  institutionId: string,
+  versionId: string,
+): Promise<ScoringContext> {
+  const pairs = await loadVersionPairs(db, institutionId, [versionId])
+  const scoring = pairs.get(versionId)?.version
   const questions = await loadVersionPairs(db, institutionId, questionIdsOf(scoring))
   return buildScoringContext(scoring, questions)
 }

@@ -45,6 +45,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
 import { STAFF_CONSENT_INFO } from '@/components/consent/consent-model.ts'
+import { useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
 import {
@@ -204,6 +205,7 @@ function EnrollmentForm({
   const matches = useGuardianMatches(values.prospectId)
   const errors = form.formState.errors
   const busy = enroll.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
 
   const openProspects = (prospects.data ?? []).filter((row) =>
     OPEN_STAGES.includes(row.record.stage),
@@ -268,7 +270,7 @@ function EnrollmentForm({
     }
     if (step === 0 && otherCampus && !values.confirmOtherCampus) {
       form.setError('confirmOtherCampus', { type: 'campus', message: OTHER_CAMPUS_CONFIRM_MESSAGE })
-      form.setFocus('confirmOtherCampus')
+      focusAfterSubmit('confirmOtherCampus')
       return
     }
     // Veli alanları adaydan dolar; kullanıcı dilediğini değiştirir.

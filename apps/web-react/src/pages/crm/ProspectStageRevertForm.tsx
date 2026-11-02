@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
-import { RootError } from '../management/FormParts.tsx'
+import { RootError, useFocusAfterSubmit } from '../management/FormParts.tsx'
 import {
   fieldErrors,
   revertBody,
@@ -50,6 +50,7 @@ export function ProspectStageRevertForm({
     defaultValues: revertDefaults(),
   })
   const busy = revert.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const errors = form.formState.errors
 
   if (targets.length === 0) return null
@@ -57,12 +58,13 @@ export function ProspectStageRevertForm({
   const onSubmit = form.handleSubmit(async (values) => {
     const result = revertBody(values)
     if (!result.ok) {
-      form.setError('stage', { type: 'manual', message: result.message }, { shouldFocus: true })
+      form.setError('stage', { type: 'manual', message: result.message })
+      focusAfterSubmit('stage')
       return
     }
     const outcome = await revert.submit(
       { prospectId, version, body: result.body },
-      { setError: fieldErrors(FIELDS, form.setError) },
+      { setError: fieldErrors(FIELDS, form.setError, focusAfterSubmit) },
     )
     if (outcome.status === 'success') {
       notify.success('Aday aşaması geri alındı.')

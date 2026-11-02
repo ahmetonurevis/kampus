@@ -187,19 +187,19 @@ test('DOM-DIL-030: veli onayı yalnız 18 yaş altında gövdeye girer', () => {
 })
 
 test('sunucu hata yolu bilinen alana yazılır, bilinmeyen yol form düzeyi hata olur; yalnız ilk alan odak alır', () => {
-  const calls: Array<{ name: string; focus: boolean | undefined }> = []
-  const apply = fieldErrors(['phone', 'siblingOfId'] as const, (name, _error, options) => {
-    calls.push({ name, focus: options?.shouldFocus })
-  })
+  const calls: string[] = []
+  const focused: string[] = []
+  const apply = fieldErrors(
+    ['phone', 'siblingOfId'] as const,
+    (name) => calls.push(name),
+    (name) => focused.push(name),
+  )
   const error = { type: 'server', message: 'Bu telefon kullanılıyor.' }
   apply('phone', error)
   apply('siblingOfId', error)
   apply('guardianName', error)
-  assert.deepEqual(calls, [
-    { name: 'phone', focus: true },
-    { name: 'siblingOfId', focus: false },
-    { name: 'root.server', focus: undefined },
-  ])
+  assert.deepEqual(calls, ['phone', 'siblingOfId', 'root.server'])
+  assert.deepEqual(focused, ['phone'])
 })
 
 test('DOM-KAY-030: aşama geri alma formu hedef aşama ve gerekçe ister; gövde yalnız açık aşamayı taşır', () => {

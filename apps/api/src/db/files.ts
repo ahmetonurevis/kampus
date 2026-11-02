@@ -154,6 +154,7 @@ async function updateFile(
       | 'retentionUntil'
       | 'deletedAt'
       | 'originalName'
+      | 'readyAt'
     >
   >,
   now: Date,
@@ -228,7 +229,14 @@ export function setFileStatus(
   status: 'processing' | 'ready' | 'rejected',
   now: Date,
 ) {
-  return updateFile(tx, institutionId, current, { status }, now)
+  // `ready` anı bağsız dosya temizliğinin başlangıcıdır (OG-995).
+  return updateFile(
+    tx,
+    institutionId,
+    current,
+    { status, ...(status === 'ready' ? { readyAt: now } : {}) },
+    now,
+  )
 }
 
 /**
@@ -249,6 +257,7 @@ export async function completeFileTranscode(
     .set({
       ...output,
       status: 'ready',
+      readyAt: now,
       supersededStorageKey: current.storageKey,
       updatedAt: now,
       version: current.version + 1,
@@ -397,7 +406,9 @@ export async function scheduleSubjectFilesPurge(
  * Kurumun bağlanmamış ve `before`'dan önce yüklenmiş, silinmemiş dosyaları (karar 5: 24 saat);
  * en eskiler önce, `limit` kadar. Tarama `(institution_id, created_at)` indeksini kullanır.
  * Taranan ya da dönüştürülen (`processing`) dosya ancak `processingBefore`'dan önce yüklendiyse
- * listeye girer: tarayıcı kesintisi dosyayı bağlanmadan silmesin (OG-092).
+ * listeye girer: tarayıcı kesintisi dosyayı bağlanmadan silmesin (OG-092). `ready` olmuş dosyanın
+ * süresi `ready_at`'ten de sayılır (OG-995): geç taranan dosya taramadan 24 saat sonra silinir.
+ * `ready_at` hiçbir zaman `created_at`'ten önce olmadığından ek koşul indeks taramasını daraltır.
  */
 export async function listStaleUnattachedFiles(
   db: Database,
@@ -415,6 +426,7 @@ export async function listStaleUnattachedFiles(
         isNull(files.attachedId),
         ne(files.status, 'deleted'),
         lt(files.createdAt, before),
+        or(isNull(files.readyAt), lt(files.readyAt, before)),
         or(ne(files.status, 'processing'), lt(files.createdAt, processingBefore)),
       ),
     )

@@ -28,7 +28,8 @@ import { RECOVERY_BATCH_SIZE, transactionConnection, type SessionLock } from './
  *   olur; dosya açılışta ve 15 dakikada bir zamanlanmış `file.scan-requeue` işiyle yeniden kuyruğa
  *   girer (`requeueStaleScans`): `clamd` uzun süre kapalı kalsa da süreç yeniden başlamadan tarama
  *   sürer. Tarama bekleyen dosya 24 saatlik bağsız dosya temizliğine girmez; ancak yüklemeden 7 gün
- *   sonra silinir (`PROCESSING_FILE_TTL_MS`, `services/files.ts`).
+ *   sonra silinir (`PROCESSING_FILE_TTL_MS`, `services/files.ts`). Geç taranıp `ready` olan
+ *   dosyanın 24 saati taramanın bittiği andan sayılır (`ready_at`, OG-995).
  * - Kuyruk kapalıyken (`JOBS_ENABLED=false` ya da açılamadı) tarama yüklemenin transaction'ından
  *   sonra süreç içinde, arka planda tek denemeyle çalışır (`InlineScanScheduler`); geçici hatada
  *   dosya `processing` kalır ve açılış kurtarması (`recoverStaleScans`) yeniden dener.

@@ -77,6 +77,13 @@ export const files = pgTable(
      * Anahtar kişisel veri taşımaz.
      */
     supersededStorageKey: text('superseded_storage_key'),
+    /**
+     * Dosyanın `ready` olduğu an (OG-995): tarama (`file.scan`) ya da ses dönüşümü `ready`'yi
+     * yazdığı güncellemede doldurur. Bağsız dosyanın 24 saatlik ömrü (karar 5) bu andan sayılır:
+     * `clamd` kesintisinden sonra geç taranan dosya bağlanmadan hemen silinmez. Taramasız
+     * (`pending`) ve eski `ready` satırlarda boştur; süre yüklemeden (`created_at`) sayılır.
+     */
+    readyAt: timestamp('ready_at', { withTimezone: true }),
     ...requiredColumns(),
   },
   (table) => [

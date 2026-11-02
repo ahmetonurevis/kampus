@@ -70,7 +70,10 @@ const GB = 1024 * MB
 /** Kurum ayarı yokken kota (ADR 0003 Açık soru 6-a: 50 GB, platform yöneticisi artırır). */
 export const DEFAULT_STORAGE_QUOTA_BYTES = 50 * GB
 
-/** Bağlanmamış dosyanın ömrü (karar 5). */
+/**
+ * Bağlanmamış dosyanın ömrü (karar 5): yüklemeden, `ready` olmuş dosyada `ready` anından
+ * (`ready_at`, OG-995) sayılır; geç taranan dosya bağlanmaya fırsat bulmadan silinmez.
+ */
 export const UNATTACHED_FILE_TTL_MS = 24 * 60 * 60 * 1000
 
 /**
@@ -600,7 +603,8 @@ export async function attachFile(
  * kayda bağlı dosyanın bağı kalkar; olmayan, silinmiş ya da başka kayda bağlı dosyaya dokunulmaz
  * (eski kayıtta dosya kimliği `files` satırı olmadan da bulunabilir). Bağı kalkan dosya artık
  * kaydın okuma kuralıyla açılmaz, yalnız yükleyen görür; yeni bir imha işi yoktur, karar 5'in
- * bağlanmamış dosya temizliği (`purgeUnattachedFiles`, yüklemeden 24 saat sonra) siler.
+ * bağlanmamış dosya temizliği (`purgeUnattachedFiles`, yüklemeden ya da `ready` olduğu andan 24
+ * saat sonra; OG-995) siler.
  */
 export async function detachFile(
   tx: Database,
@@ -746,7 +750,10 @@ async function deletePurgedObjects(deps: ObjectCleanupDeps, row: StoredFile) {
 
 /**
  * Kurumun 24 saatte bağlanmayan (veya reddedilen) dosyalarının temizliği (karar 5, 13); işlenmeyi
- * bekleyen (`processing`) dosya yüklemeden 7 gün sonra (`PROCESSING_FILE_TTL_MS`). Nesne
+ * bekleyen (`processing`) dosya yüklemeden 7 gün sonra (`PROCESSING_FILE_TTL_MS`). `ready`
+ * dosyanın 24 saati `ready` anından sayılır (`ready_at`, OG-995): `clamd` kesintisinden sonra
+ * yüklemeden 30 saat sonra taranan dosya taramadan 24 saat sonra silinir. Taramasız (`pending`)
+ * dosyada süre yüklemeden sayılır. Nesne
  * silinir, satır `deleted` kalır ve özgün ad silinir; her dosya `file.purge` olarak denetime
  * yazılır. Satır kilitlenip `deleted` yazıldıktan sonra nesne silinir: aynı anda bağlanan dosyanın
  * nesnesi silinemez (bağlama da satırı kilitler ve `deleted` dosyayı reddeder). Nesne silinemezse

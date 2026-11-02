@@ -573,7 +573,7 @@ describe('quiz uçları', () => {
     const attempt = started.json().data.attempt as Json
     assert.equal(attempt.status, 'in_progress')
     assert.equal(attempt.result, null)
-    assert.deepEqual(attempt.answers, {})
+    assert.equal('answers' in attempt, false)
     assert.equal(attempt.expiresAt, minutes(quiz.duration).toISOString())
     assert.deepEqual(
       (started.json().data.questions as Json[]).map((q) => Object.keys(q).sort()),
@@ -618,12 +618,12 @@ describe('quiz uçları', () => {
     assertKeyless(submitted, 'gönderim')
     const result = submitted.json().data as Json
     assert.equal(result.status, 'completed')
-    assert.deepEqual(result.answers, answers)
+    // Son tarihsiz quiz kapanana kadar yalnız puan ve doğru sayısı (DOM-AKD-078).
+    assert.equal('answers' in result, false)
     assert.deepEqual(result.result, {
       score: expected.score,
       correctCount: expected.correct,
       total: expected.total,
-      topicScores: expected.topicScores,
     })
     // Ağ yinelemesi aynı anahtarla ilk yanıtı alır; yeni anahtarla ikinci gönderim 409.
     const replay = await submit(s1, 'quiz4', { answers }, headers)
@@ -636,7 +636,7 @@ describe('quiz uçları', () => {
       assertError(await start(s1, 'quiz4'), 409, 'quiz_already_attempted')
     })
 
-    // Sonuçlanınca öğrenci ve veli soruları anahtarsız, sonucu kendi cevaplarıyla görür.
+    // Sonuçlanınca öğrenci ve veli soruları anahtarsız, puanı görür.
     for (const [label, cookie] of [
       ['öğrenci', s1],
       ['veli', p1],
@@ -832,5 +832,269 @@ describe('quiz uçları', () => {
     await unchanged(a.id, async () => {
       assertError(await start(s1, 'quiz4'), 422, 'student_inactive')
     })
+  })
+  // --- İnceleme bulguları ----------------------------------------------------------------------
+
+  test('DOM-AKD-078: öğrenci ve veli soru bankasını genel okumada da göremez (403)', async () => {
+    const a = await institution()
+    for (const cookie of [await student(a.id), await parent(a.id)]) {
+      assertError(await read(cookie, '/api/v1/collections/bank'), 403, 'forbidden')
+      assertError(await read(cookie, '/api/v1/collections/bank/q-math-7-0'), 403, 'forbidden')
+    }
+  })
+
+  /** Öğretmenin gördüğü denemeler: quiz ayrıntısı ve genel koleksiyon okuması aynı karardır. */
+  async function attemptsSeenBy(cookie: string, quizId: string) {
+    const detail = await read(cookie, `/api/v1/quizzes/${quizId}`)
+    assert.equal(detail.statusCode, 200, detail.body)
+    const fromDetail = (detail.json().data.attempts as Json[]).map((item) => item.id as string)
+    const collection = await read(
+      cookie,
+      `/api/v1/collections/quizAttempts?quizId=${quizId}&pageSize=100`,
+    )
+    assert.equal(collection.statusCode, 200, collection.body)
+    assert.deepEqual(ids(collection).sort(), [...fromDetail].sort())
+    return { ids: fromDetail, statistics: detail.json().data.statistics as Json }
+  }
+
+  test('DOM-AKD-079: branş dışı öğretmen denemeleri görmez; quizin öğretmeni ve rehber öğretmen görür', async () => {
+    const a = await institution()
+    const stored = (await loadRecords(db, a.id, ['quizAttempts'])).filter(
+      (row) => row.data.quizId === 'quiz2',
+    )
+    assert.ok(stored.length > 0, 'quiz2 (c1 Türkçe, t2) örnek veride denemeli')
+    const expected = stored.map((row) => row.id).sort()
+    // Türkçe öğretmeni (t2) quizin öğretmenidir; Selin Kaya (t1) 7-A'nın rehber öğretmenidir.
+    assert.deepEqual(
+      (await attemptsSeenBy(await teacher(a.id, 't2'), 'quiz2')).ids.sort(),
+      expected,
+    )
+    assert.deepEqual(
+      (await attemptsSeenBy(await teacher(a.id, 't1'), 'quiz2')).ids.sort(),
+      expected,
+    )
+    // Aynı sınıfa İngilizceyle giren öğretmen (t11) quizi görür, cevapları ve puanı görmez.
+    const t11 = await teacher(a.id, 't11')
+    const outsider = await attemptsSeenBy(t11, 'quiz2')
+    assert.deepEqual(outsider.ids, [])
+    assert.deepEqual(outsider.statistics, { started: 0, scored: 0, inProgress: 0, average: null })
+    const t2 = await teacher(a.id, 't2')
+    assert.deepEqual(
+      (await attemptsSeenBy(t2, 'quiz1')).ids,
+      [],
+      'Türkçe öğretmeni matematik quizi',
+    )
+    const [first] = stored
+    assert.ok(first)
+    assertError(await read(t11, `/api/v1/collections/quizAttempts/${first.id}`), 404, 'not_found')
+    const counted = await read(t11, '/api/v1/collections/quizAttempts/counts?groupBy=quizId')
+    assert.equal(counted.statusCode, 200, counted.body)
+    const groups = counted.json().data as Json[]
+    assert.ok(!groups.some((group) => group.value === 'quiz2' || group.value === 'quiz1'))
+  })
+
+  test('DOM-AKD-079: sınıftan ayrılmış quiz sahibi öğretmen denemeleri görmeye devam eder', async () => {
+    const a = await institution()
+    const expected = (await loadRecords(db, a.id, ['quizAttempts']))
+      .filter((row) => row.data.quizId === 'quiz2')
+      .map((row) => row.id)
+      .sort()
+    // Türkçe ataması sona erer: t2 7-A'ya artık girmez.
+    await db
+      .update(records)
+      .set({ archivedAt: FIXED_NOW })
+      .where(
+        and(
+          eq(records.institutionId, a.id),
+          eq(records.collection, 'assignments'),
+          sql`${records.data} ->> 'classId' = 'c1' and ${records.data} ->> 'teacherId' = 't2'`,
+        ),
+      )
+    const t2 = await teacher(a.id, 't2')
+    assert.deepEqual((await attemptsSeenBy(t2, 'quiz2')).ids.sort(), expected)
+    // Sınıfın başka quizinin denemeleri artık görünmez (quiz1 matematik).
+    assertError(await read(t2, '/api/v1/quizzes/quiz1'), 404, 'not_found')
+  })
+
+  test('DOM-AKD-077: eşzamanlı iki başlatma ve iki gönderim tek deneme ve tek sonuç yazar', async () => {
+    const a = await institution()
+    const s1 = await student(a.id, 's1')
+    const quiz = quizById('quiz4')
+    const starts = await Promise.all([start(s1, 'quiz4'), start(s1, 'quiz4')])
+    assert.deepEqual(starts.map((response) => response.statusCode).sort(), [200, 201])
+    const [one, two] = starts.map((response) => response.json().data.attempt.id as string)
+    assert.equal(one, two)
+    const own = async () =>
+      (await loadRecords(db, a.id, ['quizAttempts'])).filter(
+        (row) => row.data.quizId === 'quiz4' && row.data.studentId === 's1',
+      )
+    assert.equal((await own()).length, 1)
+
+    const { answers, expected } = answersFor(quiz.questionIds, 1)
+    const all = answersFor(quiz.questionIds, quiz.questionIds.length).answers
+    const submits = await Promise.all([
+      submit(s1, 'quiz4', { answers }),
+      submit(s1, 'quiz4', { answers: all }),
+    ])
+    assert.deepEqual(submits.map((response) => response.statusCode).sort(), [200, 409])
+    const accepted = submits.find((response) => response.statusCode === 200)
+    const rejected = submits.find((response) => response.statusCode === 409)
+    assert.equal(rejected?.json().code, 'quiz_already_submitted')
+    const rows = await own()
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0]?.data.status, 'completed')
+    // Kayıttaki sonuç kabul edilen gönderimin cevaplarındandır.
+    const score = accepted?.json().data.result.score as number
+    assert.equal(rows[0]?.data.score, score)
+    assert.ok(score === expected.score || score === 100)
+  })
+
+  test('IST-002, DOM-AKD-077: başka kurumun süren denemesi 404; gönderilemez ve okunmaz', async () => {
+    const a = await institution()
+    const b = await institution({}, ONLY_B)
+    const started = await start(await student(b.id, 's1'), 'quiz-only-b')
+    assert.equal(started.statusCode, 201, started.body)
+    const attemptId = started.json().data.attempt.id as string
+    await unchanged(b.id, async () => {
+      assertError(await submit(await student(a.id, 's1'), 'quiz-only-b', { answers: {} }), 404)
+      assertError(await start(await student(a.id, 's1'), 'quiz-only-b'), 404)
+      for (const cookie of [a.adminCookie, await teacher(a.id, 't1')]) {
+        assertError(await read(cookie, `/api/v1/collections/quizAttempts/${attemptId}`), 404)
+        const list = await read(cookie, '/api/v1/collections/quizAttempts?pageSize=100')
+        assert.ok(!ids(list).includes(attemptId))
+      }
+    })
+    // Süresi dolduktan sonra da A'ya görünmez.
+    try {
+      now = minutes(30)
+      assertError(await read(a.adminCookie, `/api/v1/collections/quizAttempts/${attemptId}`), 404)
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
+  test('DOM-AKD-078: öğrenci ve veli son tarihe kadar yalnız puan ve doğru sayısını görür; sonra cevaplar ve konu yüzdeleri açılır', async () => {
+    const a = await institution()
+    const t1 = await teacher(a.id, 't1')
+    const s1 = await student(a.id, 's1')
+    const p1 = await parent(a.id, 's1')
+    const due = minutes(60)
+    const created = await create(t1, { ...NEW_QUIZ, dueDate: due.toISOString() })
+    assert.equal(created.statusCode, 201, created.body)
+    const id = created.json().data.id as string
+    assert.equal((await start(s1, id)).statusCode, 201)
+    const { answers, expected } = answersFor(NEW_QUIZ.questionIds, NEW_QUIZ.questionIds.length)
+    const submitted = await submit(s1, id, { answers })
+    assert.equal(submitted.statusCode, 200, submitted.body)
+
+    /** Öğrenci ve veli yanıtlarındaki kendi denemesi (gönderim, ayrıntı, liste, koleksiyon). */
+    async function personalViews(cookie: string) {
+      const detail = (await read(cookie, `/api/v1/quizzes/${id}`)).json().data.attempts[0] as Json
+      const list = (await read(cookie, '/api/v1/quizzes?pageSize=100')).json().data as Json[]
+      const fromList = list.find((item) => item.id === id)?.attempts[0] as Json
+      const collection = await read(cookie, `/api/v1/collections/quizAttempts?quizId=${id}`)
+      const record = (collection.json().data as Json[])[0]?.record as Json
+      const item = await read(cookie, `/api/v1/collections/quizAttempts/${detail.id as string}`)
+      return { detail, fromList, record, item: item.json().data.record as Json }
+    }
+    const early = submitted.json().data as Json
+    assert.equal('answers' in early, false)
+    assert.equal('topicScores' in early.result, false)
+    assert.equal(early.result.score, 100)
+    assert.equal(early.result.correctCount, expected.correct)
+    for (const cookie of [s1, p1]) {
+      const { detail, fromList, record, item } = await personalViews(cookie)
+      for (const view of [detail, fromList]) {
+        assert.equal('answers' in view, false)
+        assert.deepEqual(view.result, {
+          score: 100,
+          correctCount: expected.correct,
+          total: expected.total,
+        })
+      }
+      for (const row of [record, item]) {
+        assert.equal(row.score, 100)
+        assert.equal('answers' in row, false)
+        assert.equal('topicScores' in row, false)
+      }
+      // Aramada da yok: konu adıyla arama denemeyi bulmaz.
+      const topic = expected.topicScores[0]?.topic ?? ''
+      const search = await read(
+        cookie,
+        `/api/v1/collections/quizAttempts?quizId=${id}&q=${encodeURIComponent(topic)}`,
+      )
+      assert.equal(search.json().meta.total, 0)
+    }
+    // Öğretmen hemen görür.
+    const staff = (await read(t1, `/api/v1/quizzes/${id}`)).json().data.attempts[0] as Json
+    assert.deepEqual(staff.answers, answers)
+    assert.deepEqual(staff.result.topicScores, expected.topicScores)
+
+    try {
+      now = due
+      for (const cookie of [s1, p1]) {
+        const { detail, fromList, record, item } = await personalViews(cookie)
+        for (const view of [detail, fromList]) {
+          assert.deepEqual(view.answers, answers)
+          assert.deepEqual(view.result.topicScores, expected.topicScores)
+        }
+        for (const row of [record, item]) {
+          assert.deepEqual(row.answers, answers)
+          assert.deepEqual(row.topicScores, expected.topicScores)
+        }
+      }
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
+  test('DOM-AKD-077: süzgeçsiz yönetici listesi SQL sayfasında süren denemeyi saymaz; sayfalar tutarlı', async () => {
+    const a = await institution()
+    const s1 = await student(a.id, 's1')
+    const started = await start(s1, 'quiz4')
+    assert.equal(started.statusCode, 201, started.body)
+    const attemptId = started.json().data.attempt.id as string
+    const stored = await loadRecords(db, a.id, ['quizAttempts'])
+    const settled = stored.filter((row) => row.id !== attemptId).map((row) => row.id)
+
+    async function allPages() {
+      const seen: string[] = []
+      let total = -1
+      for (let page = 1; page < 50; page += 1) {
+        const response = await read(
+          a.adminCookie,
+          `/api/v1/collections/quizAttempts?pageSize=7&page=${String(page)}`,
+        )
+        assert.equal(response.statusCode, 200, response.body)
+        total = response.json().meta.total as number
+        const pageIds = ids(response)
+        seen.push(...pageIds)
+        if (pageIds.length < 7) break
+      }
+      return { seen, total }
+    }
+    const before = await allPages()
+    assert.equal(before.total, settled.length)
+    assert.deepEqual(before.seen, settled, 'depo sırasıyla, süren deneme yok')
+    assert.ok(!before.seen.includes(attemptId))
+    // Sayım ve tekil okuma aynı kararı verir.
+    const count = await read(
+      a.adminCookie,
+      '/api/v1/collections/quizAttempts/counts?groupBy=quizId',
+    )
+    assert.equal(count.json().meta.total, settled.length)
+    assertError(await read(a.adminCookie, `/api/v1/collections/quizAttempts/${attemptId}`), 404)
+
+    try {
+      // Ağ payı geçince deneme 0 ile sonuçlanmış sayılır ve listeye girer.
+      now = new Date(minutes(quizById('quiz4').duration).getTime() + 61_000)
+      const after = await allPages()
+      assert.equal(after.total, stored.length)
+      assert.ok(after.seen.includes(attemptId))
+      now = new Date(minutes(quizById('quiz4').duration).getTime() + 59_000)
+      assert.equal((await allPages()).total, settled.length, 'ağ payı içinde hâlâ süren')
+    } finally {
+      now = FIXED_NOW
+    }
   })
 })

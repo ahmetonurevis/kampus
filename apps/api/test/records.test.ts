@@ -5,6 +5,7 @@ import { and, asc, eq } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { invoiceStatus } from '@kampus/school-core/lib/format.ts'
+import { isScoredAttempt, QUIZ_SUBMIT_GRACE_SECONDS } from '@kampus/school-core/lib/quiz.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
@@ -716,6 +717,62 @@ describe('records deposu', () => {
     assert.deepEqual(
       (await loadRecords(db, id, ['invoices'], { match: [cases[1]!] })).map((r) => r.id),
       ['test-eq-a', 'test-eq-d'],
+    )
+  })
+
+  test('DOM-AKD-077: sonuçlanmış deneme süzgeci SQL ile bellekte ve core isScoredAttempt ile aynı', async () => {
+    const now = '2026-10-06T09:30:00.000Z'
+    const at = (seconds: number) => new Date(Date.parse(now) + seconds * 1000).toISOString()
+    const cases: [string, Record<string, unknown>][] = [
+      ['eski', {}],
+      ['tamam', { status: 'completed', expiresAt: at(600) }],
+      ['suren', { status: 'started', expiresAt: at(600) }],
+      ['pay-icinde', { status: 'started', expiresAt: at(-59) }],
+      ['pay-siniri', { status: 'started', expiresAt: at(-60) }],
+      ['pay-gecti', { status: 'started', expiresAt: at(-61) }],
+      ['bitissiz', { status: 'started' }],
+      ['bozuk-an', { status: 'started', expiresAt: 'dün' }],
+      ['sayi-an', { status: 'started', expiresAt: 5 }],
+      ['durum-sayi', { status: 1, expiresAt: at(600) }],
+    ]
+    const { id } = await createInstitution(app)
+    await insertMissingRecords(
+      db,
+      id,
+      cases.map(([key, data]) => ({
+        collection: 'quizAttempts' as const,
+        id: `test-settled-${key}`,
+        data: { id: `test-settled-${key}`, quizId: 'quiz1', studentId: 's1', ...data },
+      })),
+      FIXED_NOW,
+    )
+    const filter: RecordFilter = {
+      kind: 'settled',
+      expiredBefore: new Date(Date.parse(now) - QUIZ_SUBMIT_GRACE_SECONDS * 1000).toISOString(),
+    }
+    const all = await loadRecords(db, id, ['quizAttempts'])
+    const sqlIds = (await loadRecords(db, id, ['quizAttempts'], { match: [filter] })).map(
+      (r) => r.id,
+    )
+    const memoryIds = all.filter((r) => matchesRecordFilter(r.data, filter)).map((r) => r.id)
+    assert.deepEqual(sqlIds, memoryIds)
+    // İyi biçimli kayıtta core kararıyla aynı; bozuk ya da eksik bitiş anı süren sayılır.
+    const core = all
+      .filter((r) => {
+        const { status, expiresAt } = r.data
+        return isScoredAttempt(
+          {
+            ...(status === 'started' ? { status } : {}),
+            ...(typeof expiresAt === 'string' ? { expiresAt } : {}),
+          },
+          now,
+        )
+      })
+      .map((r) => r.id)
+    assert.deepEqual(sqlIds, core)
+    assert.deepEqual(
+      [...sqlIds].sort(),
+      ['eski', 'tamam', 'pay-gecti', 'durum-sayi'].map((key) => `test-settled-${key}`).sort(),
     )
   })
 

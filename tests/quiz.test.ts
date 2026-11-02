@@ -9,14 +9,18 @@ import {
   archiveQuiz,
   canSeeQuizQuestions,
   createQuiz,
+  isQuizStaff,
   isScoredAttempt,
   quizAttemptStatus,
   quizAttemptView,
+  quizReviewOpen,
   quizStatistics,
   startQuiz,
   submitQuiz,
   updateQuiz,
+  withheldAttemptFields,
 } from '../packages/school-core/src/lib/quiz.ts'
+import { scopeFor, type ScopeSource } from '../packages/school-core/src/lib/scope.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 // 2026-10-06 salıdır. Deniz (s1) ve Nehir (s25) 7-A (c1); Ece (s2) 5-A (c2). Selin Kaya (t1)
@@ -463,12 +467,12 @@ test('DOM-AKD-078: öğrenciye giden sorular ve deneme cevap anahtarı ile açı
     assert.equal(JSON.stringify(question).includes(bank.explanation), false)
   }
   // Süre işlerken sonuç ve cevaplar açılmaz.
-  const running = quizAttemptView(attempt, quiz, state.bank, minutes(1))
+  const running = quizAttemptView(attempt, quiz, state.bank, minutes(1), 'ogretmen')
   assert.equal(running.status, 'in_progress')
   assert.equal(running.result, null)
   const answers = Object.fromEntries(quiz.questionIds.map((q) => [q, key(state, q)]))
   submitQuiz(state, student(), 'quiz4', { answers }, minutes(2))
-  const done = quizAttemptView(attempt, quiz, state.bank, minutes(2))
+  const done = quizAttemptView(attempt, quiz, state.bank, minutes(2), 'ogretmen')
   assert.equal(done.status, 'completed')
   assert.equal(done.result?.score, 100)
   assert.deepEqual(done.answers, answers)
@@ -486,13 +490,48 @@ test('DOM-AKD-078: öğrenciye giden sorular ve deneme cevap anahtarı ile açı
   assert.deepEqual(Object.keys(done.result!).sort(), ['correct', 'score', 'topicScores', 'total'])
   // Sonuç cevaplardan yeniden hesaplanır; kayıttaki kopya değişse de görünüm değişmez.
   attempt.score = 3
-  assert.equal(quizAttemptView(attempt, quiz, state.bank, minutes(2)).result?.score, 100)
+  assert.equal(quizAttemptView(attempt, quiz, state.bank, minutes(2), 'ogrenci').result?.score, 100)
   // Eski deneme: gönderim anı `date`tir.
   const legacy = state.quizAttempts.find((a) => a.quizId === 'quiz1' && a.studentId === 's1')!
   const quiz1 = state.quizzes.find((q) => q.id === 'quiz1')!
-  const view = quizAttemptView(legacy, quiz1, state.bank, now)
+  const view = quizAttemptView(legacy, quiz1, state.bank, now, 'veli')
   assert.equal(view.submittedAt, legacy.date)
   assert.equal(view.result?.score, legacy.score)
+})
+
+test('DOM-AKD-078: öğrenci ve veli son tarihe ya da kapanışa kadar yalnız puan ve doğru sayısını görür', () => {
+  const state = seed()
+  const quiz = createQuiz(state, teacher('t1'), { ...QUIZ, dueDate: minutes(60) }, id, now)
+  const { attempt } = startQuiz(state, student(), quiz.id, id, now)
+  const answers = Object.fromEntries(quiz.questionIds.map((q) => [q, key(state, q)]))
+  submitQuiz(state, student(), quiz.id, { answers }, minutes(2))
+  for (const role of ['ogrenci', 'veli'] as const) {
+    // Tam puanlı öğrencinin cevapları anahtardır; tek sorulu konunun yüzdesi soru bazında doğrudur.
+    const early = quizAttemptView(attempt, quiz, state.bank, minutes(59), role)
+    assert.equal('answers' in early, false, role)
+    assert.deepEqual(early.result, { score: 100, correct: quiz.questionIds.length, total: 4 })
+    assert.deepEqual(withheldAttemptFields(role, quiz, minutes(59)), ['answers', 'topicScores'])
+    // Son tarih geçince cevaplar ve konu yüzdeleri açılır.
+    const late = quizAttemptView(attempt, quiz, state.bank, minutes(60), role)
+    assert.deepEqual(late.answers, answers)
+    assert.ok(late.result?.topicScores?.length)
+    assert.deepEqual(withheldAttemptFields(role, quiz, minutes(60)), [])
+    // Son tarihsiz quiz kapanınca (arşiv) açılır.
+    const open = { questionIds: quiz.questionIds }
+    assert.equal('answers' in quizAttemptView(attempt, open, state.bank, minutes(600), role), false)
+    const archived = quizAttemptView(attempt, { ...open, archived: true }, state.bank, now, role)
+    assert.deepEqual(archived.answers, answers)
+  }
+  // Personel her zaman ayrıntıyı görür.
+  const staff = quizAttemptView(attempt, quiz, state.bank, minutes(3), 'ogretmen')
+  assert.deepEqual(staff.answers, answers)
+  assert.ok(staff.result?.topicScores)
+  assert.deepEqual(withheldAttemptFields('yonetici', quiz, minutes(3)), [])
+  assert.equal(quizReviewOpen({}, minutes(600)), false)
+  assert.equal(quizReviewOpen({ dueDate: minutes(1) }, minutes(1)), true)
+  assert.equal(isQuizStaff('ogretmen'), true)
+  assert.equal(isQuizStaff('onburo'), false)
+  assert.equal(isQuizStaff(undefined), false)
 })
 
 test('DOM-AKD-078: soru metni öğrenciye başlatınca, veliye sonuçlanınca; anahtar yalnız personelde', () => {
@@ -599,4 +638,45 @@ test('DOM-AKD-060, DOM-AKD-077: süren deneme nota aktarılmaz; gönderilince pu
   const grade = recordGrade(state, t1, input, id, minutes(3))
   assert.equal(grade.score, 50)
   assert.equal(grade.quizId, quiz.id)
+})
+
+// --- Görünürlük ---------------------------------------------------------------------------------
+
+test('DOM-AKD-079: denemeyi quizin öğretmeni ve sınıfın rehber öğretmeni okur; branş dışı öğretmen okumaz', () => {
+  const state = seed()
+  const visible = (source: ScopeSource, by: Participant) =>
+    scopeFor(source, by)
+      .read('quizAttempts', state.quizAttempts)
+      .map((row) => row.id)
+  // attempt-s1-0: Deniz'in (c1) quiz1 (matematik, t1) denemesi; quiz2 Türkçedir (t2). Selin Kaya (t1)
+  // c1'in rehber öğretmenidir; Türkçe (t2) ve İngilizce (t11) öğretmenleri c1'e girer ama ne
+  // quizin öğretmeni ne rehberdir.
+  const quiz2 = state.quizAttempts.find((a) => a.quizId === 'quiz2' && a.studentId === 's1')!
+  assert.ok(visible(state, teacher('t1')).includes('attempt-s1-0'))
+  assert.ok(!visible(state, teacher('t2')).includes('attempt-s1-0'), 'branş dışı öğretmen')
+  assert.ok(!visible(state, teacher('t11')).includes('attempt-s1-0'))
+  assert.ok(visible(state, teacher('t2')).includes(quiz2.id), 'kendi quizinin denemesi')
+  assert.ok(visible(state, teacher('t1')).includes(quiz2.id), 'rehber öğretmen')
+  assert.ok(visible(state, admin).includes('attempt-s1-0'))
+  assert.ok(visible(state, student()).every((attemptId) => attemptId.startsWith('attempt-s1-')))
+  assert.ok(visible(state, parent).includes('attempt-s1-0'))
+  assert.deepEqual(visible(state, front), [])
+  // Sınıftan ayrılan (atama sona eren) öğretmen kendi quizinin denemesini görmeye devam eder.
+  const left = {
+    ...state,
+    assignments: state.assignments.filter((a) => !(a.classId === 'c1' && a.teacherId === 't2')),
+  }
+  assert.ok(visible(left, teacher('t2')).includes(quiz2.id))
+  // Kaynakta quiz yoksa (API yüklemediyse) öğretmen yalnız rehberi olduğu sınıfı görür.
+  const { students, teachers, classes, assignments, clubs, mockExams, modules } = state
+  const withoutQuizzes: ScopeSource = {
+    students,
+    teachers,
+    classes,
+    assignments,
+    clubs,
+    mockExams,
+    modules,
+  }
+  assert.ok(!visible(withoutQuizzes, teacher('t2')).includes(quiz2.id))
 })

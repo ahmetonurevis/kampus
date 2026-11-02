@@ -21,7 +21,8 @@ import type { RequestActor } from './requests.ts'
  * - Öğrenci başına tek deneme: deneme başlatılınca süre işler (`expiresAt`, en geç son tarih);
  *   gönderim süre ve kısa ağ payı içinde kabul edilir, ikinci gönderim 409'dur (DOM-AKD-077).
  * - Puan gönderilen cevaplardan sunucuda hesaplanır; istemciden puan alınmaz. Cevap anahtarı ve
- *   çözüm açıklaması öğrenci ve veliye hiçbir yanıtta dönmez (DOM-AKD-078).
+ *   çözüm açıklaması öğrenci ve veliye hiçbir yanıtta dönmez; kendi cevapları ve konu yüzdeleri
+ *   son tarih geçince ya da quiz kapanınca açılır (`quizReviewOpen`, DOM-AKD-078).
  * - Quiz ortalaması denemelerden hesaplanır, saklanmaz (`quizStatistics`, DOM-AKD-079).
  *
  * Şemalar API gövde şeması ve web/mobil form şemasıdır (`zodResolver`).
@@ -127,8 +128,17 @@ export type QuizAttemptFields = {
 /** Yetkinin dayandığı quiz tarafları (DOM-AKD-076). */
 export type QuizParties = { classId: string; subjectId: string; teacherId: string }
 
-type QuizRecord = State['quizzes'][number] & QuizFields
-type AttemptRecord = State['quizAttempts'][number] & QuizAttemptFields
+/** Saklanan quiz kaydı (örnek veri alanları ve quiz işlemlerinin eklediği alanlar). */
+export type QuizRecord = State['quizzes'][number] & QuizFields
+/** Saklanan deneme kaydı (örnek veri alanları ve deneme işlemlerinin eklediği alanlar). */
+export type QuizAttemptRecord = State['quizAttempts'][number] & QuizAttemptFields
+type AttemptRecord = QuizAttemptRecord
+
+/** Quizi bankadan anahtarla okuyan, bütün görünen denemeleri ve ortalamayı gören roller. */
+export const QUIZ_STAFF_ROLES = ['yonetici', 'ogretmen'] as const satisfies readonly Role[]
+/** Rol quiz personeli mi (anahtar, ortalama ve denemenin ayrıntısı; DOM-AKD-078, DOM-AKD-079). */
+export const isQuizStaff = (role: string | undefined): boolean =>
+  (QUIZ_STAFF_ROLES as readonly (string | undefined)[]).includes(role)
 
 /** Denemenin durumu: `in_progress` süresi işleyen, `expired` süresinde gönderilmemiş deneme. */
 export type QuizAttemptStatus = 'in_progress' | 'expired' | 'completed'
@@ -160,6 +170,35 @@ export const isScoredAttempt = (
 /** Quizin son tarihi geçti mi; son tarihi olmayan quiz kapanmaz. */
 export const isQuizClosed = (quiz: Pick<QuizFields, 'dueDate'>, now: string) =>
   quiz.dueDate !== undefined && Date.parse(quiz.dueDate) <= Date.parse(now)
+
+/**
+ * Öğrenci ve veliye denemenin ayrıntısı (kendi cevapları, konu yüzdeleri) açık mı (DOM-AKD-078):
+ * quizin son tarihi geçince ya da quiz kapanınca (arşiv). O zamana kadar yalnız puan ve doğru
+ * sayısı açılır: tam puanlı öğrencinin cevapları ve tek sorulu konunun yüzdesi, quizi henüz
+ * çözmemiş sınıf arkadaşına anahtarı taşır. Son tarihsiz quiz kapanana ya da öğretmen son tarih
+ * verip o tarih geçene kadar ayrıntı açılmaz.
+ */
+export function quizReviewOpen(
+  quiz: { dueDate?: string | undefined; archived?: boolean | undefined },
+  now: string,
+): boolean {
+  return quiz.archived === true || isQuizClosed(quiz, now)
+}
+
+/** Öğrenci ve veli yanıtından inceleme açılana kadar çıkarılan deneme alanları (DOM-AKD-078). */
+export const QUIZ_REVIEW_FIELDS = ['answers', 'topicScores'] as const
+
+/**
+ * Rolün bu quizin deneme kaydında göremediği alanlar: personel hepsini görür; öğrenci ve veli
+ * inceleme açılana kadar `QUIZ_REVIEW_FIELDS`'ı görmez (`quizReviewOpen`).
+ */
+export function withheldAttemptFields(
+  role: string | undefined,
+  quiz: { dueDate?: string | undefined; archived?: boolean | undefined },
+  now: string,
+): readonly string[] {
+  return isQuizStaff(role) || quizReviewOpen(quiz, now) ? [] : QUIZ_REVIEW_FIELDS
+}
 
 /** Öğrenciye giden soru: cevap anahtarı (`answer`) ve çözüm açıklaması yoktur (DOM-AKD-078). */
 export type QuizQuestionView = Pick<BankQuestion, 'id' | 'text' | 'options' | 'topic'>
@@ -213,7 +252,29 @@ export function quizAttemptResult(
   }
 }
 
-/** Öğrenci ve veliye dönen deneme: sonuç süre işlerken yoktur; anahtar hiç yoktur. */
+/** Okuma görünümlerinin denemeden kullandığı alanlar. */
+export type QuizAttemptReading = Pick<
+  AttemptRecord,
+  | 'id'
+  | 'quizId'
+  | 'studentId'
+  | 'answers'
+  | 'score'
+  | 'correct'
+  | 'total'
+  | 'topicScores'
+  | 'date'
+  | 'status'
+  | 'startedAt'
+  | 'expiresAt'
+  | 'submittedAt'
+>
+
+/** Görünümdeki sonuç: konu yüzdeleri öğrenci ve veliye inceleme açılınca döner. */
+export type QuizResultView = Pick<QuizResult, 'score' | 'correct' | 'total'> &
+  Partial<Pick<QuizResult, 'topicScores'>>
+
+/** Deneme görünümü: sonuç süre işlerken yoktur; anahtar hiç yoktur. */
 export type QuizAttemptView = {
   id: string
   quizId: string
@@ -222,23 +283,37 @@ export type QuizAttemptView = {
   startedAt: string | null
   expiresAt: string | null
   submittedAt: string | null
-  /** Öğrencinin kendi cevapları (soru kimliği → şık sırası); doğru şık yoktur. */
-  answers: Record<string, number>
-  result: QuizResult | null
+  /**
+   * Öğrencinin kendi cevapları (soru kimliği → şık sırası); doğru şık yoktur. Öğrenci ve velide
+   * inceleme açılana kadar yoktur (`quizReviewOpen`).
+   */
+  answers?: Record<string, number>
+  result: QuizResultView | null
+}
+
+/** Görünümün quizden kullandığı alanlar; `archived` quizin kapandığını (arşiv) bildirir. */
+export type QuizReading = {
+  questionIds: readonly string[]
+  dueDate?: string | undefined
+  archived?: boolean | undefined
 }
 
 /**
- * Denemenin öğrenci/veli görünümü (DOM-AKD-078): puan, doğru ve soru sayısı ile konu yüzdeleri
- * deneme tamamlanınca ya da süresi dolunca açılır; soru bazında doğru/yanlış, doğru şık ve
- * açıklama açılmaz.
+ * Denemenin rol görünümü (DOM-AKD-078). Süre işlerken sonuç da cevaplar da yoktur. Sonuçlanınca
+ * personel puanı, doğru ve soru sayısını, konu yüzdelerini ve cevapları görür; öğrenci ve veli
+ * inceleme açılana kadar (`quizReviewOpen`: son tarih geçince ya da quiz kapanınca) yalnız puan,
+ * doğru ve soru sayısını görür. Soru bazında doğru/yanlış, doğru şık ve açıklama hiç açılmaz.
  */
 export function quizAttemptView(
-  attempt: AttemptRecord,
-  quiz: { questionIds: readonly string[] },
+  attempt: QuizAttemptReading,
+  quiz: QuizReading,
   bank: readonly BankQuestion[],
   now: string,
+  role: string | undefined,
 ): QuizAttemptView {
   const status = quizAttemptStatus(attempt, now)
+  const withheld = withheldAttemptFields(role, quiz, now).length > 0
+  const result = status === 'in_progress' ? null : quizAttemptResult(attempt, quiz, bank)
   return {
     id: attempt.id,
     quizId: attempt.quizId,
@@ -247,8 +322,13 @@ export function quizAttemptView(
     startedAt: attempt.startedAt ?? null,
     expiresAt: attempt.expiresAt ?? null,
     submittedAt: attempt.submittedAt ?? (attempt.status === undefined ? attempt.date : null),
-    answers: status === 'in_progress' ? {} : { ...attempt.answers },
-    result: status === 'in_progress' ? null : quizAttemptResult(attempt, quiz, bank),
+    ...(withheld ? {} : { answers: status === 'in_progress' ? {} : { ...attempt.answers } }),
+    result:
+      result === null
+        ? null
+        : withheld
+          ? { score: result.score, correct: result.correct, total: result.total }
+          : result,
   }
 }
 
@@ -257,7 +337,7 @@ export function quizAttemptView(
  * denemeyi başlatınca, veli çocuğunun denemesi sonuçlanınca anahtarsız görür.
  */
 export function canSeeQuizQuestions(role: Role, status: QuizAttemptStatus | undefined): boolean {
-  if (role === 'yonetici' || role === 'ogretmen') return true
+  if (isQuizStaff(role)) return true
   if (role === 'ogrenci') return status !== undefined
   if (role === 'veli') return status === 'completed' || status === 'expired'
   return false
@@ -281,7 +361,7 @@ export type QuizStatistics = {
  */
 export function quizStatistics(
   quiz: { id: string; questionIds: readonly string[] },
-  attempts: readonly AttemptRecord[],
+  attempts: readonly QuizAttemptReading[],
   bank: readonly BankQuestion[],
   now: string,
 ): QuizStatistics {

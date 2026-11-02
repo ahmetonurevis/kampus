@@ -10502,6 +10502,7 @@
             "description": "Soru sayısı"
           },
           "topicScores": {
+            "description": "Konu başına yüzde. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok (DOM-AKD-078)",
             "type": "array",
             "items": {
               "type": "object",
@@ -10519,15 +10520,13 @@
                 "topic",
                 "score"
               ]
-            },
-            "description": "Konu başına yüzde"
+            }
           }
         },
         "required": [
           "score",
           "correctCount",
-          "total",
-          "topicScores"
+          "total"
         ],
         "description": "Cevaplardan sunucuda hesaplanan sonuç (DOM-AKD-078)"
       },
@@ -10587,6 +10586,7 @@
             ]
           },
           "answers": {
+            "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok: tam puanlı denemenin cevapları anahtarı taşır (DOM-AKD-078)",
             "type": "object",
             "propertyNames": {
               "type": "string"
@@ -10595,8 +10595,7 @@
               "type": "integer",
               "minimum": -9007199254740991,
               "maximum": 9007199254740991
-            },
-            "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş"
+            }
           },
           "result": {
             "anyOf": [
@@ -10618,7 +10617,6 @@
           "startedAt",
           "expiresAt",
           "submittedAt",
-          "answers",
           "result"
         ]
       },
@@ -11081,6 +11079,7 @@
                   ]
                 },
                 "answers": {
+                  "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok: tam puanlı denemenin cevapları anahtarı taşır (DOM-AKD-078)",
                   "type": "object",
                   "propertyNames": {
                     "type": "string"
@@ -11089,8 +11088,7 @@
                     "type": "integer",
                     "minimum": -9007199254740991,
                     "maximum": 9007199254740991
-                  },
-                  "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş"
+                  }
                 },
                 "result": {
                   "anyOf": [
@@ -11118,7 +11116,6 @@
                 "startedAt",
                 "expiresAt",
                 "submittedAt",
-                "answers",
                 "result",
                 "studentName"
               ]
@@ -21935,6 +21932,7 @@
             "description": "Soru sayısı"
           },
           "topicScores": {
+            "description": "Konu başına yüzde. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok (DOM-AKD-078)",
             "type": "array",
             "items": {
               "type": "object",
@@ -21953,15 +21951,13 @@
                 "score"
               ],
               "additionalProperties": false
-            },
-            "description": "Konu başına yüzde"
+            }
           }
         },
         "required": [
           "score",
           "correctCount",
-          "total",
-          "topicScores"
+          "total"
         ],
         "additionalProperties": false,
         "description": "Cevaplardan sunucuda hesaplanan sonuç (DOM-AKD-078)"
@@ -22022,6 +22018,7 @@
             ]
           },
           "answers": {
+            "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok: tam puanlı denemenin cevapları anahtarı taşır (DOM-AKD-078)",
             "type": "object",
             "propertyNames": {
               "type": "string"
@@ -22030,8 +22027,7 @@
               "type": "integer",
               "minimum": -9007199254740991,
               "maximum": 9007199254740991
-            },
-            "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş"
+            }
           },
           "result": {
             "anyOf": [
@@ -22053,7 +22049,6 @@
           "startedAt",
           "expiresAt",
           "submittedAt",
-          "answers",
           "result"
         ],
         "additionalProperties": false
@@ -22521,6 +22516,7 @@
                   ]
                 },
                 "answers": {
+                  "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok: tam puanlı denemenin cevapları anahtarı taşır (DOM-AKD-078)",
                   "type": "object",
                   "propertyNames": {
                     "type": "string"
@@ -22529,8 +22525,7 @@
                     "type": "integer",
                     "minimum": -9007199254740991,
                     "maximum": 9007199254740991
-                  },
-                  "description": "Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş"
+                  }
                 },
                 "result": {
                   "anyOf": [
@@ -22558,7 +22553,6 @@
                 "startedAt",
                 "expiresAt",
                 "submittedAt",
-                "answers",
                 "result",
                 "studentName"
               ],
@@ -69607,7 +69601,7 @@
         "tags": [
           "quizzes"
         ],
-        "description": "Quizler oluşturma anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `status` (`open`, `closed`, `all`). Yönetici ve öğretmen satırı deneme özetini (`statistics`: başlatan, sonuçlanan, süren, cevaplardan hesaplanan ortalama), öğrenci ve veli satırı yalnız kendi/çocuğunun denemesini (`attempts`) taşır. Bilinmeyen parametre 400. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez (DOM-AKD-078). Sınıf ortalamasını ve bütün denemeleri yönetici ile sınıfa giren öğretmen görür; öğrenci yalnız kendi, veli çocuğunun denemesini (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "Quizler oluşturma anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `status` (`open`, `closed`, `all`). Yönetici ve öğretmen satırı deneme özetini (`statistics`: başlatan, sonuçlanan, süren, cevaplardan hesaplanan ortalama), öğrenci ve veli satırı yalnız kendi/çocuğunun denemesini (`attempts`) taşır. Bilinmeyen parametre 400. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez; kendi cevaplarını ve konu yüzdelerini son tarih geçene ya da quiz kapanana kadar görmez, yalnız puan ve doğru sayısını görür (DOM-AKD-078). Denemeleri ve ortalamayı yönetici, quizin öğretmeni (sınıftan ayrılmış olsa da) ve öğrencinin sınıf rehber öğretmeni görür; aynı sınıfa başka dersle giren öğretmen görmez. Öğrenci yalnız kendi, veli çocuğunun denemesini görür (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {
@@ -69943,7 +69937,7 @@
         "tags": [
           "quizzes"
         ],
-        "description": "Tek quiz. Yönetici ve öğretmen `QuizStaffDetail` alır: anahtarsız sorular, cevap anahtarı (`answerKey`), görünen bütün denemeler ve özet. Öğrenci ve veli `QuizPersonalDetail` alır: sorular öğrencide deneme başlatılınca, velide çocuğunun denemesi sonuçlanınca açılır (aksi `null`); `attempts` kendi/çocuğunun denemesidir, sonuç süre işlerken `null`. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez (DOM-AKD-078). Sınıf ortalamasını ve bütün denemeleri yönetici ile sınıfa giren öğretmen görür; öğrenci yalnız kendi, veli çocuğunun denemesini (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "Tek quiz. Yönetici ve öğretmen `QuizStaffDetail` alır: anahtarsız sorular, cevap anahtarı (`answerKey`), görünen bütün denemeler ve özet. Öğrenci ve veli `QuizPersonalDetail` alır: sorular öğrencide deneme başlatılınca, velide çocuğunun denemesi sonuçlanınca açılır (aksi `null`); `attempts` kendi/çocuğunun denemesidir, sonuç süre işlerken `null`. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez; kendi cevaplarını ve konu yüzdelerini son tarih geçene ya da quiz kapanana kadar görmez, yalnız puan ve doğru sayısını görür (DOM-AKD-078). Denemeleri ve ortalamayı yönetici, quizin öğretmeni (sınıftan ayrılmış olsa da) ve öğrencinin sınıf rehber öğretmeni görür; aynı sınıfa başka dersle giren öğretmen görmez. Öğrenci yalnız kendi, veli çocuğunun denemesini görür (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {

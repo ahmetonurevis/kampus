@@ -24,6 +24,8 @@ export type Context = {
   clubIds: ReadonlySet<string>
   /** Öğretmenin verdiği ödevler (kapsam kaynağında ödev varsa; DOM-AKD-074). */
   homeworkIds: ReadonlySet<string>
+  /** Öğretmenin hazırladığı quizler (kapsam kaynağında quiz varsa; DOM-AKD-079). */
+  quizIds: ReadonlySet<string>
   classTeacherIds: ReadonlySet<string>
   studentClass: ReadonlyMap<string, string>
   examGrade: ReadonlyMap<string, number>
@@ -71,10 +73,19 @@ export const classOrEveryone: Rule = (c, r) => !text(r, 'classId') || ownClass(c
 // Öğrencinin güncel sınıfının rehber öğretmeni (DOM-YTK-022).
 export const homeroomStudent: Rule = (c, r) =>
   ownStudent(c, r) && member(c.homeroomIds, c.studentClass.get(text(r, 'studentId') ?? ''))
-// Teslimi ödevin öğretmeni (öğrenci ya da öğretmen sınıftan ayrılmış olsa da) ve öğrencinin
-// sınıf rehber öğretmeni okur; aynı sınıfa başka dersle giren öğretmen okumaz (DOM-AKD-074).
-export const submissionReader: Rule = (c, r) =>
-  member(c.homeworkIds, text(r, 'homeworkId')) || homeroomStudent(c, r)
+/**
+ * Öğretmenin kendi işine (ödev, quiz) bağlı öğrenci kaydını işin öğretmeni ve öğrencinin sınıf
+ * rehber öğretmeni okur. İşin öğretmeni, ataması sona erse ya da öğrenci sınıf değiştirse de okur
+ * (`ids`: kapsam kaynağındaki kendi işleri); aynı sınıfa başka dersle giren öğretmen okumaz.
+ */
+export const ownWorkOrHomeroom =
+  (ids: (context: Context) => ReadonlySet<string>, field: string): Rule =>
+  (c, r) =>
+    member(ids(c), text(r, field)) || homeroomStudent(c, r)
+// Teslim: ödevin öğretmeni ve rehber öğretmen (DOM-AKD-074).
+export const submissionReader = ownWorkOrHomeroom((c) => c.homeworkIds, 'homeworkId')
+// Quiz denemesi: quizin öğretmeni ve rehber öğretmen (DOM-AKD-079).
+export const quizAttemptReader = ownWorkOrHomeroom((c) => c.quizIds, 'quizId')
 export const subjectOrHomeroom: Rule = (c, r) => {
   const classId = c.studentClass.get(text(r, 'studentId') ?? '')
   return (

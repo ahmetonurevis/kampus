@@ -12,6 +12,7 @@ import {
   type InvoiceStatusMatch,
   type RecordFilter,
   type SetMatch,
+  type SettledMatch,
 } from '../db/records.ts'
 
 /**
@@ -177,6 +178,15 @@ export function matchesEquals(record: RecordData, { field, values }: EqualsMatch
   return typeof value === 'string' && values.includes(value)
 }
 
+/** Sonuçlanmış deneme (`SettledMatch`): SQL koşulunun bellekteki karşılığı. */
+export function matchesSettled(record: RecordData, { expiredBefore }: SettledMatch): boolean {
+  const expiresAt = record.expiresAt
+  return (
+    record.status !== 'started' ||
+    (typeof expiresAt === 'string' && INSTANT.test(expiresAt) && expiresAt < expiredBefore)
+  )
+}
+
 export function matchesRecordFilter(record: RecordData, filter: RecordFilter): boolean {
   switch (filter.kind) {
     case undefined:
@@ -198,6 +208,8 @@ export function matchesRecordFilter(record: RecordData, filter: RecordFilter): b
       return record[filter.field] !== null && record[filter.field] !== undefined
         ? matchesField(record, { field: filter.field, values: filter.values })
         : matchesField(record, { field: filter.viaField, values: filter.viaValues })
+    case 'settled':
+      return matchesSettled(record, filter)
     default:
       return filter satisfies never
   }

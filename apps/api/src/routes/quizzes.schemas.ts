@@ -14,6 +14,8 @@ import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts
  * Yanıt beyaz listedir ve role özgüdür: cevap anahtarı (`answerKey`: doğru şık ve çözüm
  * açıklaması) yalnız yönetici ve öğretmen şemasında tanımlıdır; öğrenci ve veli şemasında alan
  * yoktur ve serileştirici onu düşürür (DOM-AKD-078). Soru bazında doğru/yanlış hiçbir şemada yok.
+ * Öğrenci ve veli denemesinde kendi cevapları (`answers`) ve konu yüzdeleri (`topicScores`) son
+ * tarih geçene ya da quiz kapanana kadar yoktur; core görünümü (`quizAttemptView`) onları üretmez.
  */
 
 const identifier = z.string().min(1).max(200)
@@ -85,7 +87,10 @@ export const quizResultSchema = z
     total: z.number().int().min(0).describe('Soru sayısı'),
     topicScores: z
       .array(z.object({ topic: z.string(), score: z.number().int() }))
-      .describe('Konu başına yüzde'),
+      .optional()
+      .describe(
+        'Konu başına yüzde. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok (DOM-AKD-078)',
+      ),
   })
   .describe('Cevaplardan sunucuda hesaplanan sonuç (DOM-AKD-078)')
   .meta({ id: 'QuizResult' })
@@ -103,7 +108,10 @@ export const quizAttemptSchema = z
     submittedAt: instant.nullable(),
     answers: z
       .record(z.string(), z.number().int())
-      .describe('Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş'),
+      .optional()
+      .describe(
+        'Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok: tam puanlı denemenin cevapları anahtarı taşır (DOM-AKD-078)',
+      ),
     result: quizResultSchema.nullable().describe('Süre işlerken `null`'),
   })
   .meta({ id: 'QuizAttempt' })

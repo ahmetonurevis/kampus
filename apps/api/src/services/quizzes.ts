@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 import type { State } from '@kampus/school-core/data/seed.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
 import type { BankQuestion } from '@kampus/school-core/lib/domain.ts'
@@ -7,13 +9,16 @@ import {
   canSeeQuizQuestions,
   createQuiz,
   isQuizClosed,
+  isQuizStaff,
   quizAttemptView,
   quizQuestionsView,
   quizStatistics,
   startQuiz,
   submitQuiz,
   updateQuiz,
+  type QuizAttemptReading,
   type QuizAttemptView,
+  type QuizReading,
 } from '@kampus/school-core/lib/quiz.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
@@ -48,14 +53,20 @@ import { assertReadable, readScope, scopePrefilter } from './read-scope.ts'
  *
  * Okuma core kapsamıyladır (`scopeFor`): yönetici kurumun bütün quizlerini, öğretmen derse girdiği
  * sınıfların ve kendi hazırladığı quizleri, öğrenci ve veli kendi/çocuğunun sınıfının quizlerini
- * okur. Denemeleri yönetici ve sınıfa giren öğretmen, öğrenci yalnız kendisininkini, veli bağlı
- * çocuğununkini görür (DOM-AKD-079). Görmediği quiz olmayanla aynı 404'tür.
+ * okur. Denemeleri yönetici, quizin öğretmeni (sınıftan ayrılmış olsa da) ve öğrencinin sınıf
+ * rehber öğretmeni görür; aynı sınıfa başka dersle giren öğretmen görmez (`quizAttemptReader`).
+ * Öğrenci yalnız kendisininkini, veli bağlı çocuğununkini görür (DOM-AKD-079). Görmediği quiz
+ * olmayanla aynı 404.
  *
  * Cevap anahtarı (`answer`) ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtına girer
  * (`answerKey`); öğrenci ve veli görünümü anahtarsız soruyu (`quizQuestionsView`) ve deneme
- * özetini (`quizAttemptView`) taşır, soru bazında doğru/yanlış yoktur (DOM-AKD-078). Sonuç ve
- * ortalama her okumada cevaplardan hesaplanır, saklanan kopya okunmaz (`quizAttemptResult`,
- * `quizStatistics`).
+ * özetini (`quizAttemptView`) taşır, soru bazında doğru/yanlış yoktur. Öğrenci ve veli son tarih
+ * geçene ya da quiz kapanana kadar yalnız puanı ve doğru sayısını görür; kendi cevapları ve konu
+ * yüzdeleri sonra açılır (`quizReviewOpen`, DOM-AKD-078). Sonuç ve ortalama her okumada
+ * cevaplardan hesaplanır, saklanan kopya okunmaz (`quizAttemptResult`, `quizStatistics`).
+ *
+ * Saklanan satırlar Zod'la okunur: core görünümünün kullandığı alanları tutmayan satır yoksayılır
+ * ve yalnız sayısı loglanır (quiz için 404).
  *
  * Yazmalar kurumun bütün quiz ve denemelerini kurum kilidi altında yüklemez (`loadScope`):
  * hazırlarken quiz hiç, soru bankasından yalnız seçilen sorular; düzenlemede hedef quiz, denemeleri
@@ -73,22 +84,60 @@ const text = (value: unknown): string | null => (typeof value === 'string' ? val
 const texts = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 
-type QuizRecord = State['quizzes'][number] & { dueDate?: string; updatedAt?: string }
-type AttemptRecord = State['quizAttempts'][number] & {
-  status?: 'started' | 'completed'
-  startedAt?: string
-  expiresAt?: string
-  submittedAt?: string
-}
+// Saklanan satırların core görünümünün kullandığı alanları (kimlik satırdandır).
+const quizRowSchema = z.object({
+  questionIds: z.array(z.string()),
+  dueDate: z.string().optional(),
+}) satisfies z.ZodType<Omit<QuizReading, 'archived'>>
+const attemptRowSchema = z.object({
+  quizId: z.string(),
+  studentId: z.string(),
+  answers: z.record(z.string(), z.number()),
+  score: z.number(),
+  correct: z.number(),
+  total: z.number(),
+  topicScores: z.array(z.object({ topic: z.string(), score: z.number() })),
+  date: z.string(),
+  status: z.enum(['started', 'completed']).optional(),
+  startedAt: z.string().optional(),
+  expiresAt: z.string().optional(),
+  submittedAt: z.string().optional(),
+}) satisfies z.ZodType<Omit<QuizAttemptReading, 'id'>>
+// Puanlamanın ve anahtarın kullandığı soru alanları; örnek veri dışındaki soruda olmayan
+// ders adı, düzey ve açıklama boş varsayılır.
+const bankRowSchema = z.object({
+  subjectId: z.string(),
+  subject: z.string().default(''),
+  minGrade: z.number().default(0),
+  maxGrade: z.number().default(0),
+  text: z.string(),
+  options: z.array(z.string()),
+  answer: z.number().int(),
+  topic: z.string(),
+  explanation: z.string().default(''),
+}) satisfies z.ZodType<Omit<BankQuestion, 'id'>>
 
-/** Saklanan quiz satırı core tipine (kimlik satırdandır). */
-const quizOf = (row: StoredRecord): QuizRecord => ({ ...(row.data as QuizRecord), id: row.id })
-const attemptOf = (row: StoredRecord): AttemptRecord => ({
-  ...(row.data as AttemptRecord),
-  id: row.id,
-})
-const bankOf = (rows: readonly StoredRecord[]): BankQuestion[] =>
-  rows.map((row) => ({ ...(row.data as BankQuestion), id: row.id }))
+type QuizRow = QuizReading & { id: string; questionIds: string[] }
+type AttemptRow = QuizAttemptReading
+
+/** Satırları şemayla okur; tutmayan satır yoksayılır, yalnız sayısı loglanır. */
+function parsed<T extends object>(
+  ctx: ServiceContext,
+  collection: CollectionName,
+  rows: readonly StoredRecord[],
+  schema: z.ZodType<T>,
+): (T & { id: string })[] {
+  const out: (T & { id: string })[] = []
+  for (const row of rows) {
+    const result = schema.safeParse(row.data)
+    if (result.success) out.push({ ...result.data, id: row.id })
+  }
+  if (out.length < rows.length)
+    ctx.log.warn({ event: 'quiz.row_invalid', collection, skipped: rows.length - out.length })
+  return out
+}
+const quizOf = (ctx: ServiceContext, row: StoredRecord): QuizRow | undefined =>
+  parsed(ctx, QUIZZES, [row], quizRowSchema)[0]
 
 interface RowMeta {
   id: string
@@ -131,9 +180,11 @@ function quizView(record: RecordData, meta: RowMeta, now: Date) {
 
 /**
  * Denemenin API görünümü (DOM-AKD-078): core `quizAttemptView`; doğru sayısı `correctCount`
- * adıyla döner, soru bazında doğru/yanlış alanı yoktur.
+ * adıyla döner, soru bazında doğru/yanlış alanı yoktur. Core görünümünde olmayan cevaplar ve konu
+ * yüzdeleri (öğrenci ve velide inceleme açılmadan) yanıtta da yoktur.
  */
 function attemptView(view: QuizAttemptView) {
+  const { result, answers } = view
   return {
     id: view.id,
     quizId: view.quizId,
@@ -142,15 +193,19 @@ function attemptView(view: QuizAttemptView) {
     startedAt: view.startedAt,
     expiresAt: view.expiresAt,
     submittedAt: view.submittedAt,
-    answers: view.answers,
+    ...(answers === undefined ? {} : { answers }),
     result:
-      view.result === null
+      result === null
         ? null
         : {
-            score: view.result.score,
-            correctCount: view.result.correct,
-            total: view.result.total,
-            topicScores: view.result.topicScores.map((t) => ({ topic: t.topic, score: t.score })),
+            score: result.score,
+            correctCount: result.correct,
+            total: result.total,
+            ...(result.topicScores === undefined
+              ? {}
+              : {
+                  topicScores: result.topicScores.map((t) => ({ topic: t.topic, score: t.score })),
+                }),
           },
   }
 }
@@ -167,33 +222,37 @@ async function readableScope(ctx: ServiceContext) {
   return scope
 }
 
-const isStaff = (ctx: ServiceContext) =>
-  ctx.actor.role === 'yonetici' || ctx.actor.role === 'ogretmen'
-
 /** Görünen denemeler (kapsam ön süzgeci + core `canRead`), quiz kimliğine göre. */
 async function visibleAttempts(
   ctx: ServiceContext,
   scope: Scope,
   quizIds: readonly string[],
-): Promise<AttemptRecord[]> {
+): Promise<AttemptRow[]> {
   if (quizIds.length === 0) return []
   const match: RecordFilter[] = [{ kind: 'equals', field: 'quizId', values: quizIds }]
   const prefilter = scopePrefilter(scope, ATTEMPTS)
   if (prefilter) match.push(prefilter)
   const rows = await loadRecords(ctx.db, ctx.institutionId, [ATTEMPTS], { match })
-  return rows
-    .filter((row) => scope.canRead(ATTEMPTS, row.data))
-    .map(attemptOf)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+  return parsed(
+    ctx,
+    ATTEMPTS,
+    rows.filter((row) => scope.canRead(ATTEMPTS, row.data)),
+    attemptRowSchema,
+  ).sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
 }
 
 /**
  * Puanlama için soru bankası: yalnız quizlerin soruları. Sunucu içi okumadır; satırlar öğrenci ve
  * veliye dönmez (bankayı okuma kuralı yalnız yönetici ve öğretmendir, `platform/scope.ts`).
  */
-async function quizBank(ctx: ServiceContext, quizzes: readonly QuizRecord[]) {
-  const ids = [...new Set(quizzes.flatMap((quiz) => texts(quiz.questionIds)))]
-  return bankOf(await loadRecordsByIds(ctx.db, ctx.institutionId, BANK, ids))
+async function quizBank(ctx: ServiceContext, quizzes: readonly QuizRow[]): Promise<BankQuestion[]> {
+  const ids = [...new Set(quizzes.flatMap((quiz) => quiz.questionIds))]
+  return parsed(
+    ctx,
+    BANK,
+    await loadRecordsByIds(ctx.db, ctx.institutionId, BANK, ids),
+    bankRowSchema,
+  )
 }
 
 export interface QuizListInput {
@@ -229,7 +288,10 @@ export async function listQuizzes(ctx: ServiceContext, input: QuizListInput) {
     )
   const start = (input.page - 1) * input.pageSize
   const page = visible.slice(start, start + input.pageSize)
-  const quizzes = page.map((row) => ({ row, quiz: quizOf(row) }))
+  const quizzes = page.flatMap((row) => {
+    const quiz = quizOf(ctx, row)
+    return quiz ? [{ row, quiz }] : []
+  })
   const [attempts, bank] = await Promise.all([
     visibleAttempts(
       ctx,
@@ -241,14 +303,17 @@ export async function listQuizzes(ctx: ServiceContext, input: QuizListInput) {
       quizzes.map((item) => item.quiz),
     ),
   ])
-  const staff = isStaff(ctx)
+  const role = ctx.actor.role
+  const staff = isQuizStaff(role)
   return {
     items: quizzes.map(({ row, quiz }) => {
       const own = attempts.filter((attempt) => attempt.quizId === row.id)
       return {
         ...quizView(scope.redact(QUIZZES, row.data), metaOf(row), ctx.now),
         statistics: staff ? quizStatistics(quiz, own, bank, now) : null,
-        attempts: staff ? [] : own.map((a) => attemptView(quizAttemptView(a, quiz, bank, now))),
+        attempts: staff
+          ? []
+          : own.map((a) => attemptView(quizAttemptView(a, quiz, bank, now, role))),
       }
     }),
     total: visible.length,
@@ -259,13 +324,13 @@ export async function listQuizzes(ctx: ServiceContext, input: QuizListInput) {
  * Anahtarsız sorular; bankada eksik (silinmiş) soru varsa okuma 422 değil `null`dır: eksik soruyla
  * deneme başlatılmaz (`quiz_question_unavailable`).
  */
-function questionsOf(quiz: QuizRecord, bank: readonly BankQuestion[]) {
+function questionsOf(quiz: QuizRow, bank: readonly BankQuestion[]) {
   const known = new Set(bank.map((question) => question.id))
   return quiz.questionIds.every((id) => known.has(id)) ? quizQuestionsView(quiz, bank) : null
 }
 
 /** Yönetici ve öğretmen için cevap anahtarı (DOM-AKD-078): yalnız bankada bulunan sorular. */
-function answerKeyOf(quiz: QuizRecord, bank: readonly BankQuestion[]) {
+function answerKeyOf(quiz: QuizRow, bank: readonly BankQuestion[]) {
   return quiz.questionIds.flatMap((id) => {
     const question = bank.find((q) => q.id === id)
     return question
@@ -295,16 +360,19 @@ async function studentNames(ctx: ServiceContext, scope: Scope, ids: readonly str
 export async function getQuiz(ctx: ServiceContext, quizId: string) {
   const scope = await readableScope(ctx)
   const row = await findRecord(ctx.db, ctx.institutionId, QUIZZES, quizId)
-  if (!row || !scope.canRead(QUIZZES, row.data)) throw new NotFoundError()
-  const quiz = quizOf(row)
+  const quiz = row && scope.canRead(QUIZZES, row.data) ? quizOf(ctx, row) : undefined
+  if (!row || !quiz) throw new NotFoundError()
   const now = ctx.now.toISOString()
+  const role = ctx.actor.role
   const [attempts, bank] = await Promise.all([
     visibleAttempts(ctx, scope, [row.id]),
     quizBank(ctx, [quiz]),
   ])
-  const views = attempts.map((attempt) => attemptView(quizAttemptView(attempt, quiz, bank, now)))
+  const views = attempts.map((attempt) =>
+    attemptView(quizAttemptView(attempt, quiz, bank, now, role)),
+  )
   const base = quizView(scope.redact(QUIZZES, row.data), metaOf(row), ctx.now)
-  if (isStaff(ctx)) {
+  if (isQuizStaff(role)) {
     const names = await studentNames(
       ctx,
       scope,
@@ -324,7 +392,7 @@ export async function getQuiz(ctx: ServiceContext, quizId: string) {
       },
     }
   }
-  const visibleQuestions = views.some((view) => canSeeQuizQuestions(ctx.actor.role, view.status))
+  const visibleQuestions = views.some((view) => canSeeQuizQuestions(role, view.status))
   return {
     kind: 'personal' as const,
     data: {
@@ -541,13 +609,14 @@ async function quizQuestionIds(ctx: ServiceContext, quizId: string): Promise<str
 
 const attemptOutcome = (
   state: State,
+  by: Participant,
   quizId: string,
-  attempt: AttemptRecord,
+  attempt: QuizAttemptReading,
   now: string,
 ): QuizAttemptResponse => {
   const quiz = state.quizzes.find((q) => q.id === quizId)
   if (!quiz) throw new DomainError('quiz_not_found', 'Quiz bulunamadı.', { kind: 'not_found' })
-  return attemptView(quizAttemptView(attempt, quiz, state.bank, now))
+  return attemptView(quizAttemptView(attempt, quiz, state.bank, now, by.role))
 }
 
 /**
@@ -576,7 +645,7 @@ export async function startQuizCommand(
         return {
           kind: 'attempt',
           record: stored(outcome.attempt),
-          view: attemptOutcome(state, quizId, outcome.attempt, now),
+          view: attemptOutcome(state, by, quizId, outcome.attempt, now),
           questions: outcome.questions,
           statusCode: outcome.created ? 201 : 200,
         }
@@ -614,7 +683,7 @@ export async function submitQuizCommand(
         return {
           kind: 'attempt',
           record: stored(attempt),
-          view: attemptOutcome(state, quizId, attempt, now),
+          view: attemptOutcome(state, by, quizId, attempt, now),
           statusCode: 200,
         }
       },

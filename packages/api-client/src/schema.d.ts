@@ -4197,7 +4197,7 @@ export interface paths {
         };
         /**
          * Quizler
-         * @description Quizler oluşturma anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `status` (`open`, `closed`, `all`). Yönetici ve öğretmen satırı deneme özetini (`statistics`: başlatan, sonuçlanan, süren, cevaplardan hesaplanan ortalama), öğrenci ve veli satırı yalnız kendi/çocuğunun denemesini (`attempts`) taşır. Bilinmeyen parametre 400. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez (DOM-AKD-078). Sınıf ortalamasını ve bütün denemeleri yönetici ile sınıfa giren öğretmen görür; öğrenci yalnız kendi, veli çocuğunun denemesini (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Quizler oluşturma anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `status` (`open`, `closed`, `all`). Yönetici ve öğretmen satırı deneme özetini (`statistics`: başlatan, sonuçlanan, süren, cevaplardan hesaplanan ortalama), öğrenci ve veli satırı yalnız kendi/çocuğunun denemesini (`attempts`) taşır. Bilinmeyen parametre 400. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez; kendi cevaplarını ve konu yüzdelerini son tarih geçene ya da quiz kapanana kadar görmez, yalnız puan ve doğru sayısını görür (DOM-AKD-078). Denemeleri ve ortalamayı yönetici, quizin öğretmeni (sınıftan ayrılmış olsa da) ve öğrencinin sınıf rehber öğretmeni görür; aynı sınıfa başka dersle giren öğretmen görmez. Öğrenci yalnız kendi, veli çocuğunun denemesini görür (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         get: operations["listQuizzes"];
         put?: never;
@@ -4221,7 +4221,7 @@ export interface paths {
         };
         /**
          * Quiz
-         * @description Tek quiz. Yönetici ve öğretmen `QuizStaffDetail` alır: anahtarsız sorular, cevap anahtarı (`answerKey`), görünen bütün denemeler ve özet. Öğrenci ve veli `QuizPersonalDetail` alır: sorular öğrencide deneme başlatılınca, velide çocuğunun denemesi sonuçlanınca açılır (aksi `null`); `attempts` kendi/çocuğunun denemesidir, sonuç süre işlerken `null`. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez (DOM-AKD-078). Sınıf ortalamasını ve bütün denemeleri yönetici ile sınıfa giren öğretmen görür; öğrenci yalnız kendi, veli çocuğunun denemesini (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Tek quiz. Yönetici ve öğretmen `QuizStaffDetail` alır: anahtarsız sorular, cevap anahtarı (`answerKey`), görünen bütün denemeler ve özet. Öğrenci ve veli `QuizPersonalDetail` alır: sorular öğrencide deneme başlatılınca, velide çocuğunun denemesi sonuçlanınca açılır (aksi `null`); `attempts` kendi/çocuğunun denemesidir, sonuç süre işlerken `null`. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez; kendi cevaplarını ve konu yüzdelerini son tarih geçene ya da quiz kapanana kadar görmez, yalnız puan ve doğru sayısını görür (DOM-AKD-078). Denemeleri ve ortalamayı yönetici, quizin öğretmeni (sınıftan ayrılmış olsa da) ve öğrencinin sınıf rehber öğretmeni görür; aynı sınıfa başka dersle giren öğretmen görmez. Öğrenci yalnız kendi, veli çocuğunun denemesini görür (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         get: operations["getQuiz"];
         put?: never;
@@ -6953,8 +6953,8 @@ export interface components {
             correctCount: number;
             /** @description Soru sayısı */
             total: number;
-            /** @description Konu başına yüzde */
-            topicScores: {
+            /** @description Konu başına yüzde. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok (DOM-AKD-078) */
+            topicScores?: {
                 topic: string;
                 score: number;
             }[];
@@ -6972,8 +6972,8 @@ export interface components {
             /** @description Gönderimin son anı (60 sn ağ payı ayrıca kabul) */
             expiresAt: string | null;
             submittedAt: string | null;
-            /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş */
-            answers: {
+            /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok: tam puanlı denemenin cevapları anahtarı taşır (DOM-AKD-078) */
+            answers?: {
                 [key: string]: number;
             };
             /** @description Süre işlerken `null` */
@@ -7100,8 +7100,8 @@ export interface components {
                 /** @description Gönderimin son anı (60 sn ağ payı ayrıca kabul) */
                 expiresAt: string | null;
                 submittedAt: string | null;
-                /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş */
-                answers: {
+                /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok: tam puanlı denemenin cevapları anahtarı taşır (DOM-AKD-078) */
+                answers?: {
                     [key: string]: number;
                 };
                 /** @description Süre işlerken `null` */
@@ -9702,8 +9702,8 @@ export interface components {
             correctCount: number;
             /** @description Soru sayısı */
             total: number;
-            /** @description Konu başına yüzde */
-            topicScores: {
+            /** @description Konu başına yüzde. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok (DOM-AKD-078) */
+            topicScores?: {
                 topic: string;
                 score: number;
             }[];
@@ -9721,8 +9721,8 @@ export interface components {
             /** @description Gönderimin son anı (60 sn ağ payı ayrıca kabul) */
             expiresAt: string | null;
             submittedAt: string | null;
-            /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş */
-            answers: {
+            /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok: tam puanlı denemenin cevapları anahtarı taşır (DOM-AKD-078) */
+            answers?: {
                 [key: string]: number;
             };
             /** @description Süre işlerken `null` */
@@ -9849,8 +9849,8 @@ export interface components {
                 /** @description Gönderimin son anı (60 sn ağ payı ayrıca kabul) */
                 expiresAt: string | null;
                 submittedAt: string | null;
-                /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş */
-                answers: {
+                /** @description Öğrencinin seçtiği şıklar (soru → şık sırası); süre işlerken boş. Öğrenci ve velide son tarih geçene ya da quiz kapanana kadar yok: tam puanlı denemenin cevapları anahtarı taşır (DOM-AKD-078) */
+                answers?: {
                     [key: string]: number;
                 };
                 /** @description Süre işlerken `null` */

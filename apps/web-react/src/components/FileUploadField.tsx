@@ -90,7 +90,11 @@ export function FileUploadField({
     unmounted.current = false
     return () => {
       unmounted.current = true
-      aborter.current?.abort()
+      if (aborter.current) {
+        aborter.current.abort()
+        // Yükleme sürerken kalkarsa çağıranın gönderim kilidi açık kalmamalı.
+        busyChange.current?.(false)
+      }
     }
   }, [])
 
@@ -109,6 +113,8 @@ export function FileUploadField({
   })
 
   async function runQueue(queue: readonly File[], fit: { dropped: number; duplicates: number }) {
+    // Süren kuyruk varken ikincisi başlamaz (çift çağrıda ilk denetleyici sahipsiz kalırdı).
+    if (aborter.current) return
     const controller = new AbortController()
     aborter.current = controller
     setUploading(true)
@@ -129,6 +135,7 @@ export function FileUploadField({
         ),
       onUploaded,
     })
+    if (aborter.current === controller) aborter.current = null
     if (unmounted.current) return
     setUploading(false)
     if (input.current) input.current.value = ''

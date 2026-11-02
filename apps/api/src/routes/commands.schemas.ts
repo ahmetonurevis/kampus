@@ -149,6 +149,9 @@ export const attendanceBodySchema = attendanceInputSchema.extend({
   marks: attendanceFields.marks.describe(
     'Öğrenci kimliği → durum; sınıfın bütün aktif öğrencileri bulunmalı',
   ),
+  lateMinutes: attendanceFields.lateMinutes.describe(
+    'Öğrenci kimliği → geç kalma dakikası (DOM-AKD-036); pozitif tamsayı, yalnız `late` işaretli öğrenci için (yoksa 422 `late_minutes_without_late`), en çok günün en uzun ders süresi (yoksa 422 `late_minutes_out_of_range`; programda ders yoksa 40). Verilirse geç gelenlerin dakikasını belirler (anahtarı olmayanın dakikası boşalır); verilmezse kayıtlı dakikalar korunur',
+  ),
   // kvkk: K — serbest metin; loglanmaz, denetim kaydına yazılmaz (yalnız alan adı).
   reason: attendanceFields.reason.describe(
     'Düzeltme gerekçesi (DOM-AKD-035); kırpılır, en çok 500 karakter. Yöneticide zorunlu, yoksa 422 `correction_reason_required`; öğretmende isteğe bağlı. Durumu değişen öğrencinin düzeltme geçmişine yazılır',

@@ -201,6 +201,19 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 - **Kurum türü:** `school`
 - **Kodda:** kısmen — `packages/school-core/src/lib/domain.ts` (`recordAttendance`) düzeltmeyi kaydın `corrections` geçmişine yazar; yetki `lib/authorize.ts` (`attendance.record`), ayıklama `lib/scope.ts` (`HIDDEN_FIELDS`). Çelişen kısım: tekillik ders saati değil gün bazındadır (`DOM-AKD-030`).
 
+### DOM-AKD-036 · Geç gelme, toplu işaretleme ve yoklama geçmişi aralığı
+
+- **Kural:**
+  - **Geç gelme ayrı sayılır:** `Geç geldi` (`late`) devamsızlık günü değildir. Devamsızlık sayacı yalnız `Gelmedi` (`absent`) durumunu sayar; geç gelme ayrı bir sayaçta ("Geç katılım") gösterilir. Geç gelmeyi devamsızlığa çeviren kural (lisede "her 5 geç kalma yarım gün", süre dışı geç gelme) `DOM-AKD-031`'in kurul süresi ve ders saati bazlı yoklamayı gerektirir; bu kayıt onları kurmaz, yalnız veriyi (durum ve dakika) tutar. Ortaokulda geç kalma zaten devamsızlığa çevrilmez (`lateToAbsence` kapalı).
+  - **Dakika isteğe bağlıdır:** `Geç geldi` öğrencinin kaydına geç kalma dakikası (pozitif tamsayı) yazılabilir; yazılmayabilir. Dakika yalnız `Geç geldi` durumunda saklanır; başka duruma geçince kayıttan kalkar, eski değer düzeltme geçmişinde kalır. Üst sınır o gün sınıfın iptal edilmemiş derslerinin en uzununun süresidir (programda ders yoksa 40 dakika); sınırı aşan ya da geç gelmeyen öğrenciye girilen dakika reddedilir ve hiçbir kayıt değişmez.
+  - **Geç gelmede "gelmedi" bildirimi gitmez:** veli bildirimi (`DOM-ILT-052`) yalnız `Gelmedi` durumuna bağlıdır. Dakikanın değişmesi bildirim üretmez. "Gelmedi"den "Geç geldi"ye düzeltilirse önceki bildirime ayrı düzeltme bildirimi gider.
+  - **Toplu işaretleme tek işlemdir:** "Tümünü geldi işaretle" ve seçili satırlara toplu durum yalnız ekranda seçimi hızlandırır; sınıfın bütün işaretleri yine tek istekle ve tek işlemde yazılır (`DOM-AKD-035` atomiklik). Aynı öğrenci ve gün için ikinci kayıt oluşmaz; durumu (ya da geç kalma dakikası) değişen öğrencinin eski değeri düzeltme geçmişine yazılır.
+  - **Geçmiş aralığı:** Yoklama geçmişi başlangıç ve bitiş günüyle sunucuda süzülür (Europe/Istanbul günü, iki uç dahil), sayfalamadan ve CSV'den önce. Bitiş başlangıçtan önce olamaz; aralık en çok 1 yıldır (başlangıçtan bir yıl sonraki gün dahil). Aksi 400 ve Türkçe alan mesajıdır. Sınır yalnız iki uçlu aralık için uygulanır: tek uçlu (yalnız başlangıç ya da yalnız bitiş) ve aralıksız liste sınırsızdır, çünkü liste sayfalıdır ve yük sayfa boyutuyla sınırlıdır (patron kararı).
+- **Gerekçe:** Geç kalmanın devamsızlık sayılıp sayılmayacağı mevzuata ve kurul kararına bağlıdır; veriyi kaybetmeden ayrı tutmak sonradan doğru hesabı mümkün kılar, yanlış hesap öğrenciyi haksız yere sınıra yaklaştırır. Yoklamada hız toplu işaretlemeyle gelir, ama kayıt tek işlemde kalmalıdır.
+- **Kaynak:** İşletme kuralı (güvenli varsayılan); `DOM-AKD-031` ve OİKY md. 18, OKY md. 36 ile uyumlu.
+- **Kurum türü:** `school`
+- **Kodda:** kısmen — `packages/school-core/src/lib/domain.ts` (`attendanceInputSchema.lateMinutes`, `lateMinutesLimit`, `recordAttendance`), `lib/attendance-alerts.ts` (geç gelmede bildirim yok); API `POST /api/v1/classes/:classId/attendance` ve `GET /api/v1/collections/attendance?dateFrom&dateTo` (aralık denetimi `services/collection-reads.ts`); web `apps/web-react/src/pages/academic/AttendanceTaking.tsx`, `AttendanceView.tsx`. Yarım gün hesabı ve "5 geç = yarım gün" yok (`DOM-AKD-031`). Dil okulunda (`language_school`) yoklama grup ders saati bazlıdır (`DOM-DIL-061`, F5b); orada sınır grubun ders süresi (`course.sessionMinutes`) olacaktır, bugün sınıf yoklamasında ders bulunmazsa 40 dakikaya düşer (`TODO(yoklama-dil-okulu-siniri)`).
+
 ## Sınıf geçme
 
 ### DOM-AKD-040 · Sınıf geçme kararı
@@ -415,6 +428,7 @@ Quiz, öğretmenin soru bankasından hazırladığı, otomatik puanlanan kısa �
 | DOM-AKD-031 | Yarım gün ve "5 geç = yarım gün" yok; devamsızlık yalnız `absent` sayar (`apps/web/src/stores/demo.js:198-199`).                                |
 | DOM-AKD-032 | Özür belgesi ve süresi yok; veli izin bildirimi geçmiş tarihi engeller ve yoklamaya bağlanmaz (`apps/web/src/views/Communication.vue:322-323`). |
 | DOM-AKD-035 | Düzeltme geçmişi gün bazındaki kayıttadır; ders saati bazında sürüm yok (`DOM-AKD-030`).                                                        |
+| DOM-AKD-036 | Geç gelme devamsızlık günü sayılmaz, dakika isteğe bağlıdır; yarım gün hesabı yok (`DOM-AKD-031`).                                              |
 | DOM-AKD-040 | Sınıf geçme kararı yok; dönem geçişi kararı denetlemez (`packages/school-core/src/lib/school-workflows.js:846-927`).                            |
 | DOM-AKD-054 | Not yayım adımı yok; çevrimdışı demo öğretmeni sabit `t1` (`sessionActor`).                                                                     |
 | DOM-AKD-060 | Her quiz denemesi yeni not kaydı ekler (`apps/web/src/views/Learning.vue:411-432`).                                                             |

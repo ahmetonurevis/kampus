@@ -140,6 +140,8 @@ export type AttendanceRow = {
   date: string
   status: string
   statusLabel: string
+  /** Geç kalma dakikası (DOM-AKD-036); yalnız dakikası girilmiş "Geç geldi" kaydında. */
+  lateMinutes: number | null
   reason: string
 }
 
@@ -156,14 +158,20 @@ export function attendanceRow(
     date: record.date,
     status: record.status,
     statusLabel: attendanceStatusLabel(record.status),
+    lateMinutes: record.status === 'late' ? (record.lateMinutes ?? null) : null,
     reason: record.reason ?? '',
   }
 }
+
+/** Katılım metni: "Geç geldi · 12 dk" (dakika yoksa yalnız durum). */
+export const attendanceStatusText = (label: string, lateMinutes: number | null) =>
+  lateMinutes === null ? label : `${label} · ${lateMinutes} dk`
 
 export function attendanceCsvRow(row: AttendanceRow) {
   return {
     ...row,
     date: dateLabel(row.date, { year: 'numeric', weekday: 'long' }),
+    statusLabel: attendanceStatusText(row.statusLabel, row.lateMinutes),
     reason: row.reason || NO_REASON,
   }
 }
@@ -185,6 +193,38 @@ export const isDayKey = (value: unknown): value is string =>
 /** Tek gün süzgeci: sunucuda `dateFrom` = `dateTo` (gün Europe/Istanbul'a göre eşlenir). */
 export function attendanceDayFilters(day: string): { dateFrom?: string; dateTo?: string } {
   return isDayKey(day) ? { dateFrom: day, dateTo: day } : {}
+}
+
+export const ATTENDANCE_RANGE_ORDER_ERROR = 'Bitiş günü başlangıç gününden önce olamaz.'
+export const ATTENDANCE_RANGE_LONG_ERROR = 'Tarih aralığı en fazla 1 yıl olabilir.'
+
+/**
+ * Yoklama geçmişi tarih aralığının hatası (IST-093): bitiş başlangıçtan önce olamaz, aralık en
+ * çok 1 yıldır (başlangıçtan bir yıl sonraki gün dahil). Sunucu aynı kuralı 400 ile uygular
+ * (`services/collection-reads.ts`); burada istek atılmadan alanın altında gösterilir. Geçerli ya da
+ * tamamlanmamış (tek uçlu) aralık için boş metin.
+ */
+export function attendanceRangeError(from: string, to: string): string {
+  if (!isDayKey(from) || !isDayKey(to)) return ''
+  if (to < from) return ATTENDANCE_RANGE_ORDER_ERROR
+  const limit = new Date(`${from}T00:00:00Z`)
+  limit.setUTCFullYear(limit.getUTCFullYear() + 1)
+  return to > limit.toISOString().slice(0, 10) ? ATTENDANCE_RANGE_LONG_ERROR : ''
+}
+
+/**
+ * Sunucuya giden aralık süzgeci: biçimli uçlar eklenir (tek uç açık aralıktır); geçersiz aralık
+ * uygulanmaz (hata alanın altında gösterilir).
+ */
+export function attendanceRangeFilters(
+  from: string,
+  to: string,
+): { dateFrom?: string; dateTo?: string } {
+  if (attendanceRangeError(from, to)) return {}
+  return {
+    ...(isDayKey(from) ? { dateFrom: from } : {}),
+    ...(isDayKey(to) ? { dateTo: to } : {}),
+  }
 }
 
 // --- Sınıflar ---------------------------------------------------------------

@@ -274,6 +274,8 @@ export async function executeTutoringCommand(
  * yönetici yalnız gerekçeyle (DOM-YTK-022, DOM-AKD-035). Durumu değişen öğrencinin eski durumu,
  * gerekçe, düzelten kullanıcı ve zaman kaydın `corrections` geçmişine yazılır; denetim kaydına
  * içerik değil alan adı düşer. Girdi rotada core `attendanceInputSchema` ile çözümlenmiştir.
+ * "Geç geldi" öğrencinin isteğe bağlı dakikası aynı işlemde yazılır (DOM-AKD-036); geç gelme
+ * "gelmedi" bildirimi üretmez (`attendanceAlerts` yalnız `absent` durumuna bakar).
  */
 export async function recordAttendanceCommand(
   ctx: ServiceContext,
@@ -289,6 +291,9 @@ export async function recordAttendanceCommand(
     {
       action: 'attendance.record',
       collections: OPERATION_COMMANDS['attendance.record'].collections,
+      // Geç kalma sınırı yalnız bu sınıfın derslerine bakar (`lateMinutesLimit`): kurumun bütün
+      // programı kurum kilidi altında yüklenmez.
+      loadScope: { schedule: { match: [{ kind: 'equals', field: 'classId', values: [classId] }] } },
       // İşlemin konusu sınıftır: `If-Match` sınıf kaydının okunan sürümüyle karşılaştırılır.
       ...(options.expectedVersion !== null
         ? {
@@ -317,6 +322,7 @@ export async function recordAttendanceCommand(
             recordAttendance(state, classId, date, input.marks, now, {
               reason: input.reason,
               by: ctx.actor.userId,
+              lateMinutes: input.lateMinutes,
             })
             out.alerts = attendanceAlerts(before, attendanceSnapshots(state, date), now)
             return { collection: 'classes', id: classId }

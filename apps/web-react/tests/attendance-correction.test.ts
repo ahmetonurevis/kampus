@@ -197,6 +197,45 @@ test('düzeltme geçmişi en yeniden eskiye; düzelten kişi addan, bilinmeyen k
     ],
   )
   assert.deepEqual(correctorIds(records).sort(), ['u-admin', 'u-gone', 'u-teacher'])
+})
+
+test('DOM-AKD-036: düzeltme geçmişi geç kalma dakikasını durumun yanında gösterir', () => {
+  const history = correctionHistory(
+    [
+      {
+        id: 'a1',
+        studentId: 's1',
+        corrections: [
+          {
+            previousStatus: 'late',
+            status: 'late',
+            previousLateMinutes: 10,
+            lateMinutes: 20,
+            reason: '',
+            by: 'u-admin',
+            at: '2026-11-02T10:00:00.000Z',
+          },
+          {
+            previousStatus: 'late',
+            status: 'present',
+            previousLateMinutes: 20,
+            reason: '',
+            by: 'u-admin',
+            at: '2026-11-02T11:00:00.000Z',
+          },
+        ],
+      },
+    ],
+    new Map([['s1', 'Deniz Yılmaz']]),
+    new Map(),
+  )
+  assert.deepEqual(
+    history.map((entry) => [entry.previous, entry.next]),
+    [
+      ['Geç geldi · 20 dk', 'Geldi'],
+      ['Geç geldi · 10 dk', 'Geç geldi · 20 dk'],
+    ],
+  )
   assert.deepEqual(correctorIds([{ id: 'x', studentId: 's1' }]), [])
 })
 

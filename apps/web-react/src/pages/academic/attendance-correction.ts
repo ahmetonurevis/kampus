@@ -6,6 +6,7 @@ import { attendanceCorrectionReasonSchema } from '@kampus/school-core/lib/domain
 import {
   ATTENDANCE_STATUSES,
   attendanceStatusLabel,
+  attendanceStatusText,
   isDayKey,
   type AttendanceStatus,
 } from './academic-rows.ts'
@@ -207,7 +208,15 @@ type CorrectedRecord = {
   id: string
   studentId: string
   corrections?:
-    | readonly { previousStatus: string; status: string; reason: string; by: string; at: string }[]
+    | readonly {
+        previousStatus: string
+        status: string
+        previousLateMinutes?: number | undefined
+        lateMinutes?: number | undefined
+        reason: string
+        by: string
+        at: string
+      }[]
     | undefined
 }
 
@@ -227,8 +236,15 @@ export function correctionHistory(
       (record.corrections ?? []).map((item, index) => ({
         key: `${record.id}-${index}`,
         student: studentNames.get(record.studentId) ?? '—',
-        previous: attendanceStatusLabel(item.previousStatus),
-        next: attendanceStatusLabel(item.status),
+        // Geç kalma dakikası (DOM-AKD-036) durumun yanında gösterilir: "Geç geldi · 10 dk".
+        previous: attendanceStatusText(
+          attendanceStatusLabel(item.previousStatus),
+          item.previousStatus === 'late' ? (item.previousLateMinutes ?? null) : null,
+        ),
+        next: attendanceStatusText(
+          attendanceStatusLabel(item.status),
+          item.status === 'late' ? (item.lateMinutes ?? null) : null,
+        ),
         reason: item.reason,
         by: (item.by && userNames.get(item.by)) || UNKNOWN_ACTOR,
         at: item.at,

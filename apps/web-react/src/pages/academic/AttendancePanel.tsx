@@ -9,7 +9,12 @@ import {
   SummaryMetrics,
   SummarySection,
 } from '../management/SummaryParts.tsx'
-import { attendanceStatusLabel, NO_REASON, type AcademicLookups } from './academic-rows.ts'
+import {
+  attendanceStatusLabel,
+  attendanceStatusText,
+  NO_REASON,
+  type AcademicLookups,
+} from './academic-rows.ts'
 
 type Props = {
   recordId: string
@@ -47,7 +52,13 @@ function AttendanceDetail({ recordId, lookups }: Omit<Props, 'onClose'>) {
       <SummaryMetrics
         items={[
           { label: 'Sınıf', value: lookups.classes.get(record.classId)?.name ?? '—' },
-          { label: 'Katılım', value: status },
+          {
+            label: 'Katılım',
+            value: attendanceStatusText(
+              status,
+              record.status === 'late' ? (record.lateMinutes ?? null) : null,
+            ),
+          },
         ]}
       />
       <SummarySection title="Not">

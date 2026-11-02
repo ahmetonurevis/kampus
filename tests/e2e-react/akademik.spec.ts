@@ -209,18 +209,20 @@ test.describe('öğretmen: Sınıflarım, not listesi, yoklama geçmişi', () =>
     expect(all[0]).toEqual(['Öğrenci', 'Sınıf', 'Ders tarihi', 'Katılım', 'Not'])
     expect(all).toHaveLength(1 + c1.length)
 
-    await page.getByLabel('Yoklama tarihi').fill(day)
-    await expect(page).toHaveURL(new RegExp(`[?&]tarih=${day}`))
+    await page.getByLabel('Yoklama başlangıç tarihi').fill(day)
+    await page.getByLabel('Yoklama bitiş tarihi').fill(day)
+    await expect(page).toHaveURL(new RegExp(`[?&]baslangic=${day}`))
+    await expect(page).toHaveURL(new RegExp(`[?&]bitis=${day}`))
     await expect(resultCount(page)).toContainText(`/ ${onDay.length} kayıt`)
     const filtered = await downloadList(page)
     expect(filtered).toHaveLength(1 + onDay.length)
     for (const row of filtered.slice(1)) expect(row[1]).toBe('7-A')
 
     await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
-    await expect(page).not.toHaveURL(/[?&](sinif|tarih)=/)
+    await expect(page).not.toHaveURL(/[?&](sinif|baslangic|bitis)=/)
   })
 
-  test('yoklama tarih adresi doğrudan açılır ve tek günü sunucuda süzer', async ({ page, api }) => {
+  test('yoklama tarih aralığı adresi doğrudan açılır ve sunucuda süzer', async ({ page, api }) => {
     const teacher = await api('ogretmen')
     const all = await listAll(teacher, 'attendance')
     const day = String(all[0]?.date).slice(0, 10)
@@ -228,8 +230,9 @@ test.describe('öğretmen: Sınıflarım, not listesi, yoklama geçmişi', () =>
     expect(onDay.length).toBeGreaterThan(0)
     expect(onDay.length).toBeLessThan(all.length)
 
-    await page.goto(`/ogretmen/yoklama?tarih=${day}`)
-    await expect(page.getByLabel('Yoklama tarihi')).toHaveValue(day)
+    await page.goto(`/ogretmen/yoklama?baslangic=${day}&bitis=${day}`)
+    await expect(page.getByLabel('Yoklama başlangıç tarihi')).toHaveValue(day)
+    await expect(page.getByLabel('Yoklama bitiş tarihi')).toHaveValue(day)
     await expect(resultCount(page)).toContainText(`/ ${onDay.length} kayıt`)
     await expect(bodyRows(page, 'Yoklama geçmişi')).toHaveCount(Math.min(8, onDay.length))
     // Tarih süzgeci serbest aramayı kapatmaz.

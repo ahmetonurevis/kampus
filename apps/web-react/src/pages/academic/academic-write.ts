@@ -1,6 +1,7 @@
 // Akademik yazma ekranlarının (yoklama alma, not girişi) saf hesapları. Yetkinin kendisi
 // sunucudadır (school-core `authorize`); buradaki süzgeçler yalnız kullanıcıya seçilemeyecek
 // seçenekleri hiç göstermemek içindir (kapsam dışı sınıf seçilemez).
+import { lateMinutesSchema } from '@kampus/school-core/lib/domain.ts'
 import { GRADE_TYPES, GRADE_TYPE_LABELS, type GradeType } from '@kampus/school-core/lib/grades.ts'
 import type { CoreRecord } from '@/hooks/use-core-collection.ts'
 import { ATTENDANCE_STATUSES, type AttendanceStatus } from './academic-rows.ts'
@@ -75,6 +76,55 @@ export function markCounts(
   const counts: Record<AttendanceStatus, number> = { present: 0, absent: 0, late: 0, excused: 0 }
   for (const status of Object.values(marks)) counts[status] += 1
   return counts
+}
+
+/** Toplu işaretleme: seçili öğrencilere aynı durum; diğerlerinin işaretine dokunulmaz. */
+export function bulkMark(
+  edits: Readonly<Record<string, AttendanceStatus>>,
+  studentIds: Iterable<string>,
+  status: AttendanceStatus,
+): Record<string, AttendanceStatus> {
+  const next = { ...edits }
+  for (const id of studentIds) next[id] = status
+  return next
+}
+
+/**
+ * Kayıtlı geç kalma dakikaları (öğrenci kimliği → metin). Dakika yalnız `late` kayıtta bulunur
+ * (DOM-AKD-036); alan metni formda düzenlenir.
+ */
+export function savedLateMinutes(
+  saved: readonly { studentId: string; lateMinutes?: number | undefined }[],
+): Record<string, string> {
+  return Object.fromEntries(
+    saved.flatMap((item) =>
+      item.lateMinutes === undefined ? [] : [[item.studentId, String(item.lateMinutes)]],
+    ),
+  )
+}
+
+/**
+ * Gönderilecek geç kalma dakikaları: yalnız "Geç geldi" işaretli öğrencinin dolu alanı. Boş alan
+ * dakikasız geç gelmedir. Değer core `lateMinutesSchema` ile doğrulanır (ileti core'dandır; geçersiz
+ * değer o öğrencinin hatasıdır, istek atılmaz). Üst sınır (günün ders süresi) istemcide bilinmez,
+ * sunucuda denetlenir (422).
+ */
+export function lateMinutesPayload(
+  marks: Readonly<Record<string, AttendanceStatus>>,
+  text: Readonly<Record<string, string>>,
+): { minutes: Record<string, number>; errors: Record<string, string> } {
+  const minutes: Record<string, number> = {}
+  const errors: Record<string, string> = {}
+  for (const [studentId, status] of Object.entries(marks)) {
+    if (status !== 'late') continue
+    const raw = (text[studentId] ?? '').trim()
+    if (raw === '') continue
+    // Yalnız ondalık yazım sayıdır ("0x10", "1e1" değil); diğeri NaN ile "dakika olarak girin".
+    const parsed = lateMinutesSchema.safeParse(/^[-+]?\d+(\.\d+)?$/.test(raw) ? Number(raw) : NaN)
+    if (parsed.success) minutes[studentId] = parsed.data
+    else errors[studentId] = parsed.error.issues[0]?.message ?? 'Geç kalma süresi geçersiz.'
+  }
+  return { minutes, errors }
 }
 
 /** Eylül–Ocak 1. dönem, Şubat–Ağustos 2. dönem (MEB takvimine yakın varsayılan; seçilebilir). */

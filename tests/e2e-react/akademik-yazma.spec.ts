@@ -162,7 +162,7 @@ test.describe('öğretmen: yoklama alma', () => {
     expect(updated.get(second!.id)).toBe('late')
 
     // Yoklama geçmişi bugünkü kaydı gösterir (liste tazelendi).
-    await page.getByLabel('Yoklama tarihi').fill(today())
+    await page.getByLabel('Yoklama başlangıç tarihi').fill(today())
     await page.getByLabel('Yoklama sınıfı').selectOption({ label: '6-A' })
     await expect(
       page.getByRole('table', { name: 'Yoklama geçmişi' }).locator('tbody tr').first(),

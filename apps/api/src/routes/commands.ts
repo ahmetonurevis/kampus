@@ -246,7 +246,7 @@ export function registerCommandRoutes(app: FastifyInstance) {
         operationId: 'recordClassAttendance',
         tags: ['attendance'],
         summary: 'Sınıf yoklaması al',
-        description: `Sınıfın günlük yoklamasını yazar (core \`recordAttendance\`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir. Yetki core \`authorize('attendance.record')\`: \`ogretmen\` yalnız ders verdiği sınıfta ve aynı gün (başka sınıf 403 \`attendance_class_forbidden\`, geçmiş gün 403 \`attendance_correction_admin_only\`); \`yonetici\` yalnız \`reason\` ile (yoksa 422 \`correction_reason_required\`). \`If-Match\` sınıf kaydının sürümüdür; tutmazsa 409 \`version_conflict\`. Roller: ${rolesOf('attendance.record')}.`,
+        description: `Sınıfın günlük yoklamasını yazar (core \`recordAttendance\`); aynı öğrenci ve gün için kayıt yinelenmez, güncellenir; \`late\` öğrenci için isteğe bağlı \`lateMinutes\` (DOM-AKD-036) kayda yazılır. Yetki core \`authorize('attendance.record')\`: \`ogretmen\` yalnız ders verdiği sınıfta ve aynı gün (başka sınıf 403 \`attendance_class_forbidden\`, geçmiş gün 403 \`attendance_correction_admin_only\`); \`yonetici\` yalnız \`reason\` ile (yoksa 422 \`correction_reason_required\`). \`If-Match\` sınıf kaydının sürümüdür; tutmazsa 409 \`version_conflict\`. Roller: ${rolesOf('attendance.record')}.`,
         headers: commandHeadersSchema('optional'),
         params: classParamsSchema,
         body: attendanceBodySchema,

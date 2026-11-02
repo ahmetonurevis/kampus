@@ -93,6 +93,19 @@ describe('yoklama komutu', () => {
     assert.equal(sent[0]?.headers.get('if-match'), '"4"')
   })
 
+  test('DOM-AKD-036: geç kalma dakikası verilirse gövdeye girer (boş nesne dahil), verilmezse girmez', async () => {
+    const { client, sent } = fakeClient(() => json(200, result('classes', 'c-1')))
+    const headers = commandHeaders('key-12345')
+    await runRequest(() => recordAttendanceRequest(client, input, headers))
+    await runRequest(() =>
+      recordAttendanceRequest(client, { ...input, lateMinutes: { s2: 12 } }, headers),
+    )
+    await runRequest(() => recordAttendanceRequest(client, { ...input, lateMinutes: {} }, headers))
+    assert.equal('lateMinutes' in (sent[0]?.body as object), false)
+    assert.deepEqual((sent[1]?.body as { lateMinutes: object }).lateMinutes, { s2: 12 })
+    assert.deepEqual((sent[2]?.body as { lateMinutes: object }).lateMinutes, {})
+  })
+
   test('gerekçe yalnız doluysa gövdeye girer (yönetici düzeltmesi)', async () => {
     const { client, sent } = fakeClient(() => json(200, result('classes', 'c-1')))
     const headers = commandHeaders('key-12345')

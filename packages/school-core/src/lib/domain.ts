@@ -70,6 +70,14 @@ const attendanceReasonSchema = z
   .max(500, 'En fazla 500 karakter girebilirsiniz.')
   .optional()
 
+/** Geç kalma dakikası alt sınırı; üst sınır günün ders süresidir (`lateMinutesLimit`). */
+export const LATE_MINUTES_MIN = 1
+/** Tek öğrencinin geç kalma dakikası; ileti web formunda da aynen kullanılır (DOM-AKD-036). */
+export const lateMinutesSchema = z
+  .number('Geç kalma süresini dakika olarak girin.')
+  .int('Geç kalma süresi tam dakika olmalıdır.')
+  .min(LATE_MINUTES_MIN, `Geç kalma süresi en az ${LATE_MINUTES_MIN} dakika olmalıdır.`)
+
 /**
  * Sınıf yoklaması girdisi; API gövde şeması ve web/mobil form şemasıdır. `marks` sınıfın bütün
  * aktif öğrencilerini içermelidir (işlem denetler).
@@ -77,6 +85,13 @@ const attendanceReasonSchema = z
 export const attendanceInputSchema = z.object({
   date: daySchema,
   marks: z.record(z.string().min(1).max(200), attendanceStatusSchema),
+  /**
+   * Öğrenci kimliği → geç kalma dakikası (DOM-AKD-036). Yalnız `late` işaretli öğrenci için ve
+   * isteğe bağlıdır; üst sınır günün en uzun ders süresidir (`lateMinutesLimit`, işlem denetler).
+   * Alan verilirse yoklamadaki bütün geç gelenlerin dakikasını belirler (anahtarı olmayan
+   * `late` öğrencinin dakikası boşalır); hiç verilmezse kayıtlı dakikalara dokunulmaz.
+   */
+  lateMinutes: z.record(z.string().min(1).max(200), lateMinutesSchema).optional(),
   reason: attendanceReasonSchema,
 })
 export type AttendanceInput = z.input<typeof attendanceInputSchema>
@@ -104,6 +119,9 @@ export type AttendanceCorrection = {
   /** Eski kayıt örnek veri veya demo kalıcılığından gelir; değer olduğu gibi saklanır. */
   previousStatus: string
   status: AttendanceStatus
+  /** Geç kalma dakikası değiştiyse eski ve yeni değer (DOM-AKD-036); yoksa alan da yoktur. */
+  previousLateMinutes?: number
+  lateMinutes?: number
   // kvkk: K
   reason: string
   /** Düzelten kullanıcının kimliği; çevrimdışı demoda boş. */
@@ -116,13 +134,42 @@ export type AttendanceOptions = {
   reason?: string | undefined
   /** İşlemi yapan kullanıcının kimliği (API: oturum kullanıcısı). */
   by?: string | undefined
+  /** Öğrenci kimliği → geç kalma dakikası (`attendanceInputSchema.lateMinutes`). */
+  lateMinutes?: Readonly<Record<string, number>> | undefined
+}
+
+/** Gün için ders programı yoksa geç kalma dakikasının sınırı (örnek veri ve iş akışı: 40 dk). */
+export const DEFAULT_LESSON_MINUTES = 40
+
+/**
+ * Geç kalma dakikasının üst sınırı (DOM-AKD-036): sınıfın o günkü iptal edilmemiş derslerinin en
+ * uzununun süresi; programda ders yoksa `DEFAULT_LESSON_MINUTES`. Gün Europe/Istanbul günüdür.
+ * TODO(yoklama-dil-okulu-siniri): dil okulunda yoklama sınıf değil grup ders saati bazlıdır
+ * (DOM-DIL-061, F5b); grubun `course.sessionMinutes` süresi bu sınırın kaynağı olacak. Bugün bu uç
+ * yalnız `school` kurumunun sınıf yoklamasıdır, dil okulunda ders programı sınıf dersi taşımaz ve
+ * sınır 40 dakikaya düşer.
+ */
+export function lateMinutesLimit(
+  state: Pick<State, 'schedule'>,
+  classId: string,
+  date: string,
+): number {
+  const day = dayKey(date)
+  const durations = state.schedule
+    .filter((lesson) => lesson.classId === classId && !lesson.cancelledAt)
+    .filter((lesson) => dayKey(lesson.date) === day)
+    .map((lesson) => lesson.duration)
+    .filter((minutes) => Number.isInteger(minutes) && minutes > 0)
+  return durations.length ? Math.max(...durations) : DEFAULT_LESSON_MINUTES
 }
 
 /**
  * Sınıfın günlük yoklaması: aynı öğrenci ve gün için tek kayıt bulunur. Var olan kaydın durumu
- * değişince eski durum `corrections` geçmişine yazılır (DOM-AKD-035); durumu değişmeyen öğrenciye
- * geçmiş düşülmez. Yetki çağıranın işidir (`requireAuthorized(…, 'attendance.record', …)`).
- * Önce bütün girdi doğrulanır; hata olursa hiçbir kayıt değişmez.
+ * (ya da geç kalma dakikası) değişince eski değer `corrections` geçmişine yazılır (DOM-AKD-035);
+ * değişmeyen öğrenciye geçmiş düşülmez. `late` durumunda isteğe bağlı dakika saklanır
+ * (DOM-AKD-036); başka durumda dakika tutulmaz. Yetki çağıranın işidir
+ * (`requireAuthorized(…, 'attendance.record', …)`). Önce bütün girdi doğrulanır; hata olursa hiçbir
+ * kayıt değişmez. Toplu işaretleme istemcide yapılır: sınıfın tüm işaretleri bu tek işlemle yazılır.
  */
 export function recordAttendance(
   state: State,
@@ -147,23 +194,52 @@ export function recordAttendance(
       throw new DomainError('attendance_incomplete', 'Tüm öğrencilerin yoklama durumunu seçin.')
     return { student, status }
   })
+  const minutes = options.lateMinutes
+  if (minutes) {
+    const limit = lateMinutesLimit(state, classId, date)
+    for (const [studentId, value] of Object.entries(minutes)) {
+      const entry = marked.find(({ student }) => student.id === studentId)
+      if (!entry || entry.status !== 'late')
+        throw new DomainError(
+          'late_minutes_without_late',
+          'Geç kalma süresi yalnız "Geç geldi" işaretli öğrenci için girilir.',
+          { path: ['lateMinutes', studentId] },
+        )
+      if (!Number.isInteger(value) || value < 1 || value > limit)
+        throw new DomainError(
+          'late_minutes_out_of_range',
+          `Geç kalma süresi 1 ile ${limit} dakika arasında olmalıdır (ders süresi).`,
+          { path: ['lateMinutes', studentId] },
+        )
+    }
+  }
   const day = dayKey(date)
   const byStudent = new Map<string, State['attendance'][number]>()
   for (const a of state.attendance)
     if (dayKey(a.date) === day && !byStudent.has(a.studentId)) byStudent.set(a.studentId, a)
   for (const { student, status } of marked) {
     const existing = byStudent.get(student.id)
+    // Dakika yalnız `late` için; alan verilmediyse kayıtlı dakika korunur.
+    const wanted =
+      status !== 'late' ? undefined : minutes ? minutes[student.id] : existing?.lateMinutes
     if (existing) {
-      if (existing.status === status) continue
+      const minutesChanged = status === 'late' && wanted !== existing.lateMinutes
+      if (existing.status === status && !minutesChanged) continue
       const correction: AttendanceCorrection = {
         previousStatus: existing.status,
         status,
+        ...(existing.lateMinutes === undefined
+          ? {}
+          : { previousLateMinutes: existing.lateMinutes }),
+        ...(wanted === undefined ? {} : { lateMinutes: wanted }),
         reason,
         by: options.by ?? '',
         at: now,
       }
       existing.corrections = [...(existing.corrections ?? []), correction]
       existing.status = status
+      if (wanted === undefined) delete existing.lateMinutes
+      else existing.lateMinutes = wanted
     } else
       state.attendance.push({
         id: `att-${student.id}-${dayKey(date)}`,
@@ -172,6 +248,7 @@ export function recordAttendance(
         date,
         status,
         reason: '',
+        ...(wanted === undefined ? {} : { lateMinutes: wanted }),
       })
   }
 }

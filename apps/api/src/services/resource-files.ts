@@ -115,6 +115,41 @@ export async function detachDroppedFiles(
 type VersionPair =
   Awaited<ReturnType<typeof loadVersionPairs>> extends Map<string, infer P> ? P : never
 
+/**
+ * Kaldırmanın aşağı yayılması (DOM-KYN-051, sabah kararı 39): kaldırılan kaynağın ve ondan türeyen
+ * kopyaların (zincirdeki bütün torunlar) sürümleri dosya açmaz; ata ve kardeş kopyalar açık kalır.
+ * Kopya ilişkisi `resources.derived_from_version_id`'dir; soy yukarı doğru, düzey başına tek
+ * sorguyla yüklenir. Kaldırma kaynağın bütün sürümlerini `removed` yapar: atanın sürümüne bakmak
+ * yeter.
+ */
+async function openLinkedVersions(
+  tx: Database,
+  institutionId: string,
+  linked: readonly VersionPair[],
+): Promise<VersionPair[]> {
+  const known = new Map<string, VersionPair>(linked.map((pair) => [pair.version.id, pair]))
+  let parents = linked.map(({ resource }) => resource.derivedFromVersionId)
+  for (;;) {
+    const missing = parents.filter((id): id is string => id !== null && !known.has(id))
+    if (missing.length === 0) break
+    const loaded = await loadVersionPairs(tx, institutionId, missing)
+    for (const [id, pair] of loaded) known.set(id, pair)
+    parents = [...loaded.values()].map(({ resource }) => resource.derivedFromVersionId)
+  }
+  const removedLine = (start: VersionPair) => {
+    const seen = new Set<string>()
+    let pair: VersionPair | undefined = start
+    while (pair && !seen.has(pair.version.id)) {
+      if (pair.version.status === 'removed') return true
+      seen.add(pair.version.id)
+      const parent: string | null = pair.resource.derivedFromVersionId
+      pair = parent === null ? undefined : known.get(parent)
+    }
+    return false
+  }
+  return linked.filter((pair) => !removedLine(pair))
+}
+
 /** Kişi dosyaya bağ açan sürümlerden birini içerik havuzu kuralıyla okuyabiliyor mu. */
 async function readsLinkedVersion(
   ctx: ServiceContext,
@@ -196,10 +231,12 @@ async function assignedLinkedVersion(
  * sabitleyen bir görevi gören kişi (`assignedLinkedVersion`). Kopya aynı dosyaya bağ açtığından
  * kopyanın okuyucusu da dosyayı okur. Ön büro içerik havuzuna ve görevlere erişmez (404).
  *
- * Kaldırma (DOM-KYN-051, sabah kararı 36): dosyaya bağ açan sürümlerden biri kaldırılmışsa dosya
- * hiçbir yoldan açılmaz; kopyanın ve atanmış görevin bağı da kapanır. Bağ satırları silinmez,
- * yalnız okuma kapanır: karar geri alınabilir ve imha işi dosyayı bağlı bulur. Yayından kaldırma
- * (arşiv) kaldırma değildir: kopyanın okuyucusu açmaya devam eder. Sonradan yayımlanan sürümün yeni dosyası
+ * Kaldırma (DOM-KYN-051, sabah kararları 36 ve 39) aşağı yayılır: kaldırılan kaynağın ve ondan
+ * türeyen kopyaların (torunlar dahil) sürümleri ne okumayla ne atanmış görevle dosya açar; ata ve
+ * kardeş kopyalar açık kalır (`openLinkedVersions`). Orijinal kaldırılınca bütün kopyalar kapanır;
+ * kopya kaldırılınca orijinal de aynı içeriği taşıyorsa yönetici onu ayrıca kaldırır. Bağ satırları
+ * silinmez, yalnız okuma kapanır: karar geri alınabilir ve imha işi dosyayı bağlı bulur. Yayından
+ * kaldırma (arşiv) kaldırma değildir: kopyanın okuyucusu açmaya devam eder. Sonradan yayımlanan sürümün yeni dosyası
  * eski sürüme atanmış göreve açılmaz: atama yalnız kendi sabitlediği sürümün bağını taşır. PGlite
  * tek bağlantılıdır: kapsam işlemin bağlantısıyla (`tx`) okunur.
  */
@@ -208,9 +245,9 @@ defineFileAttachment(RESOURCE_VERSION_ATTACHMENT, {
   canRead: async (tx, ctx, _attachedId, file) => {
     const scoped = { ...ctx, db: tx }
     const versionIds = await listFileVersionIds(tx, ctx.institutionId, file.id)
-    const linked = [...(await loadVersionPairs(tx, ctx.institutionId, versionIds)).values()]
-    if (linked.length === 0 || linked.some(({ version }) => version.status === 'removed'))
-      return false
+    const pairs = await loadVersionPairs(tx, ctx.institutionId, versionIds)
+    const linked = await openLinkedVersions(tx, ctx.institutionId, [...pairs.values()])
+    if (linked.length === 0) return false
     return (
       (await readsLinkedVersion(scoped, linked)) || (await assignedLinkedVersion(scoped, linked))
     )

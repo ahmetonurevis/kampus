@@ -33,6 +33,7 @@ import {
   type InvoiceRow,
 } from './finance-rows.ts'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
+import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 import { PaymentPanel } from './PaymentPanel.tsx'
@@ -50,6 +51,7 @@ const VIEWS = {
   invoices: { label: 'Taksitler', param: '' },
   payments: { label: 'Tahsilat geçmişi', param: 'tahsilatlar' },
   tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
+  scholarships: { label: 'Burslar', param: 'burs' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
 } as const
@@ -233,6 +235,12 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'payments' ? <PaymentsSection canReverse={isManager} /> : null}
       {tab === 'tariffs' ? (
         <FeeTariffsSection
+          canManage={isManager}
+          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+        />
+      ) : null}
+      {tab === 'scholarships' ? (
+        <ScholarshipsSection
           canManage={isManager}
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
         />

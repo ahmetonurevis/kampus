@@ -375,6 +375,50 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: /numaralı tahsilatı iptal et/ })).toHaveCount(0)
   })
 
+  test('DOM-FIN-025: yönetici burs programı açar, bildirim gününü işler; ön büro yalnız görür', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici', 'onburo'], students: [] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=burs`)
+    await page.getByRole('button', { name: 'Yeni burs programı' }).click()
+    const form = page.getByRole('dialog', { name: 'Yeni burs programı' })
+    // Eksik alanlar form hatası verir, istek atılmaz.
+    await form.getByRole('button', { name: 'Programı aç' }).click()
+    await expect(form.getByText('Burslu sayısını girin.')).toBeVisible()
+    await form.getByLabel('Program adı').fill('Başarı Bursu')
+    await form.getByLabel('Burs şartları').fill('Sınav puanı 90 ve üstü.')
+    await form
+      .getByLabel('Kesilme koşulları')
+      .fill('Disiplin cezası alan öğrencinin bursu kesilir.')
+    await form.getByLabel('Burslu sayısı').fill('2')
+    await form.getByLabel('Oran (%)').fill('25')
+    await form.getByRole('button', { name: 'Programı aç' }).click()
+    await expect(page.getByText('Burs programı açıldı.')).toBeVisible()
+    const table = page.getByRole('table', { name: 'Burs programları' })
+    const row = table.locator('tbody tr').filter({ hasText: 'Başarı Bursu' })
+    await expect(row).toContainText('%25')
+    await expect(row).toContainText('0 / 2')
+    await expect(row).toContainText('Bildirilmedi')
+    await page.getByRole('button', { name: 'Başarı Bursu bildirim gününü işle' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Bildirim gününü işle' })
+    await dialog.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Bildirim günü işlendi.')).toBeVisible()
+    await expect(row).not.toContainText('Bildirilmedi')
+    await expect(
+      page.getByRole('button', { name: 'Başarı Bursu bildirim gününü işle' }),
+    ).toHaveCount(0)
+    await page.context().clearCookies()
+    await loginAs(school.user('onburo'))
+    await page.goto(`${FRONT_OFFICE_URL}?gorunum=burs`)
+    await expect(page.getByRole('table', { name: 'Burs programları' })).toContainText(
+      'Başarı Bursu',
+    )
+    await expect(page.getByRole('button', { name: 'Yeni burs programı' })).toHaveCount(0)
+  })
+
   test('DOM-FIN-002: yönetici tarife taslağı açar ve yayımlar; yayımlanan düzenlenemez; ön büro yalnız görür', async ({
     page,
     loginAs,

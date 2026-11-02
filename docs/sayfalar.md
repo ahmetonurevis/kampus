@@ -164,7 +164,7 @@ React web (`apps/web-react`) menüsünde olup henüz kendi ekranı bulunmayan sa
 
 Yer tutucu kalanların gerekçesi (W17 ve W18 seçimi: yalnız mevcut API okuma uçlarıyla tam karşılanabilenler taşındı):
 
-- Kayıt İşlemleri (`kayit-islemleri`): React'e taşındı; tarifeli adımlı kesin kayıt formudur (`pages/crm/EnrollmentPage.tsx`, aşağıdaki Kayıt İşlemleri notu ve `DOM-KAY-001`, `-011…013`, `-035`). Kesin kayıt tutarı tarifeden hesaplanır; yayımlanmış tarife yoksa form açılmaz. Aday Öğrenciler (`adaylar`) ve Tanışma Görüşmeleri (`deneme-dersi-takvimi`) W21a'da taşındı (`DOM-KAY-005`, `-007`, `-009`, `-030…034`, `DOM-DIL-030`).
+- Kayıt İşlemleri (`kayit-islemleri`): React'e taşındı; tarifeli adımlı kesin kayıt formudur (`pages/crm/EnrollmentPage.tsx`, aşağıdaki Kayıt İşlemleri notu ve `DOM-KAY-001`, `-011…013`, `-035`). Yönetici ücret adımında burs programı seçer (bildirilmiş ve kontenjanı dolmamış, `DOM-FIN-025`), önizlemede burs ayrı kalemdir. Kesin kayıt tutarı tarifeden hesaplanır; yayımlanmış tarife yoksa form açılmaz. Aday Öğrenciler (`adaylar`) ve Tanışma Görüşmeleri (`deneme-dersi-takvimi`) W21a'da taşındı (`DOM-KAY-005`, `-007`, `-009`, `-030…034`, `DOM-DIL-030`).
 - Öğretmenime Sor (`soru-sor`) ve Soru Kuyruğu (`sorular`): W19'da React'e taşındı (`TODO(api-question-write)` kapandı; yazma uçları ve kancalar kullanılıyor). Ekran davranışı aşağıdaki not ve `DOM-ILT-090…093` içindedir.
 - Etüt Randevusu (`randevu-talep`) ve Etüt & Görüşmeler (`randevular`): W20'de React'e taşındı (`TODO(web-randevu)` ve `TODO(randevu-w20)` kapandı). Ekran davranışı aşağıdaki not ve `DOM-ILT-100…105` içindedir.
 

@@ -6,19 +6,24 @@ import { eq } from 'drizzle-orm'
 import type { App } from '../src/app.ts'
 import { jobsEnabled, parseConfig } from '../src/config.ts'
 import type { Database } from '../src/db/client.ts'
+import { files } from '../src/db/schema/files.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { dispatchInstitutionJobs, dispatchQueueName, type JobSender } from '../src/jobs/dispatch.ts'
+import { filesPurgeJob } from '../src/jobs/files-purge.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
 import { INSTITUTION_JOBS } from '../src/jobs/registry.ts'
 import { DAY_SECONDS, type JobDeps } from '../src/jobs/types.ts'
 import {
   buildTestApp,
   createInstitution,
+  createMember,
   createTestDatabase,
   FIXED_NOW,
+  signInAs,
+  TEST_ORIGIN,
   uniqueId,
 } from './support/app.ts'
-import { tempStorage } from './support/files-sample.ts'
+import { multipart, PDF, tempStorage, uploadParts } from './support/files-sample.ts'
 
 /**
  * Arka plan işleri (OG-094): kurum başına dağıtım ve saf işleyiciler. Kuyruğun kendisi (pg-boss)
@@ -51,8 +56,8 @@ describe('arka plan işleri', () => {
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
-    app = await buildTestApp(db)
     store = await tempStorage()
+    app = await buildTestApp(db, { storage: store.storage })
     deps = { db, storage: store.storage, log: app.log }
   })
   after(async () => {
@@ -152,6 +157,63 @@ describe('arka plan işleri', () => {
 
     assert.deepEqual(await idempotencyPurgeJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
       purged: 0,
+    })
+  })
+
+  let serial = 0
+  /** Kurumda öğrenci olarak bağlanmamış PDF yükler; dosya kimliğini döndürür. */
+  async function uploadIn(institutionId: string): Promise<string> {
+    const user = await createMember(app, institutionId, 'ogrenci')
+    const body = multipart(uploadParts('submission', PDF))
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/files',
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie: await signInAs(app, user),
+        'content-type': body.contentType,
+        'idempotency-key': `test-jobs-${String(++serial).padStart(5, '0')}`,
+      },
+      payload: body.payload,
+    })
+    assert.equal(response.statusCode, 201, response.body)
+    return (response.json() as { data: { id: string } }).data.id
+  }
+  const fileOf = async (institutionId: string, id: string) => {
+    const [row] = await db.select().from(files).where(eq(files.id, id))
+    assert.equal(row?.institutionId, institutionId)
+    return row
+  }
+
+  test('ADR 0003 karar 5: files.purge-unattached 24 saati geçen bağlanmamış dosyayı siler; başka kurum ve yeni dosya kalır, ikinci çalıştırma 0', async () => {
+    const a = await createInstitution(app)
+    const b = await createInstitution(app)
+    const stale = await uploadIn(a.id)
+    const other = await uploadIn(b.id)
+
+    const early = await filesPurgeJob.run(
+      deps,
+      { institutionId: a.id },
+      new Date(FIXED_NOW.getTime() + 23 * HOUR),
+    )
+    assert.deepEqual(early, { purged: 0, rounds: 1 })
+    assert.equal((await fileOf(a.id, stale))?.status, 'pending')
+
+    const later = new Date(FIXED_NOW.getTime() + 25 * HOUR)
+    assert.deepEqual(await filesPurgeJob.run(deps, { institutionId: a.id }, later), {
+      purged: 1,
+      rounds: 1,
+    })
+    const purged = await fileOf(a.id, stale)
+    assert.equal(purged?.status, 'deleted')
+    assert.ok(purged && (await store.storage.head(purged.storageKey)) === null)
+    const kept = await fileOf(b.id, other)
+    assert.equal(kept?.status, 'pending')
+    assert.ok(kept && (await store.storage.head(kept.storageKey)) !== null)
+
+    assert.deepEqual(await filesPurgeJob.run(deps, { institutionId: a.id }, later), {
+      purged: 0,
+      rounds: 1,
     })
   })
 })

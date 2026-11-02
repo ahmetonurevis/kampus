@@ -66,6 +66,9 @@ export const DEFAULT_STORAGE_QUOTA_BYTES = 50 * GB
 /** Bağlanmamış dosyanın ömrü (karar 5). */
 export const UNATTACHED_FILE_TTL_MS = 24 * 60 * 60 * 1000
 
+/** Bağlanmamış dosya temizliğinin bir turda baktığı en çok dosya. */
+export const PURGE_BATCH_SIZE = 500
+
 /** Amacın en büyük sınırı: akış bu sınırda kesilir; türe özel sınır tespitten sonra denetlenir. */
 export function uploadLimitBytes(purpose: FilePurpose): number {
   const rule: FilePurposeRule = FILE_PURPOSES[purpose]
@@ -172,7 +175,8 @@ export interface UploadInput {
  * TODO(F3c2-orphans): satırsız nesneler (silme hatası ya da nesne yazımıyla satır yazımı arasında
  * süreç çökmesi) yalnız satırları tarayan `purgeUnattachedFiles` ile bulunmaz. Sürücüye
  * `list(prefix)` eklenip kurum öneki (`<kurum>/`) altında satırı olmayan ve 24 saatten eski
- * nesneler periyodik işte silinir (karar 5); KVKK silme başvurusu da bu taramaya dayanır.
+ * nesneler periyodik işte (`src/jobs`, kurum başına) silinir (karar 5); KVKK silme başvurusu da bu
+ * taramaya dayanır.
  */
 async function discardObject(storage: StorageDriver, key: string, log: FastifyBaseLogger) {
   try {
@@ -518,9 +522,10 @@ export async function detachFile(
  * görür). Aynı dosya için ret yeniden bildirilirse (iş yeniden denemesi) durum ve denetim
  * değişmeden yalnız nesne silme yeniden çalışır; `ready` bildirimi 409 `file_already_checked`
  * kalır. Hiç yeniden denenmeyen nesne `TODO(F3c2-orphans)` taramasıyla silinir.
- * TODO(F3c2-scan): `pg-boss` `file.scan` işi (ClamAV) ve `sharp` meta veri temizliği bu
- * fonksiyonu çağırır; o gelene kadar tarama yoktur ve dosya `pending` kalır (yalnız yükleyen
- * okur, bağlanamaz).
+ * TODO(F3c2-scan): `file.scan` işi (ClamAV) ve `sharp` meta veri temizliği bu fonksiyonu çağırır
+ * (OG-092). Kuyruk altyapısı `src/jobs`'tadır; iş, kurum başına zamanlanmış işten farklı olarak
+ * yüklemeden sonra `{ institutionId, fileId }` yüküyle kuyruğa konur. O gelene kadar tarama
+ * yoktur ve dosya `pending` kalır (yalnız yükleyen okur, bağlanamaz).
  */
 export async function recordFileCheck(
   db: Database,
@@ -571,24 +576,30 @@ export async function recordFileCheck(
 }
 
 /**
- * 24 saatte bağlanmayan (veya reddedilen) dosyaların temizliği (karar 5, 13): nesne silinir,
- * satır `deleted` kalır ve özgün ad silinir; her dosya `file.purge` olarak denetime yazılır.
- * Kurumlar arası teknik temizliktir. Satır kilitlenip `deleted` yazıldıktan sonra nesne silinir:
- * aynı anda bağlanan dosyanın nesnesi silinemez (bağlama da satırı kilitler ve `deleted` dosyayı
- * reddeder). Nesne silinemezse satır yine `deleted` kalır, hata loglanır (kimlik dışında bilgi
- * yok). Silinen dosya sayısını döndürür.
- * TODO(jobs): `pg-boss` periyodik işi kurulunca oradan çağrılır; bugün zamanlayıcı yok.
+ * Kurumun 24 saatte bağlanmayan (veya reddedilen) dosyalarının temizliği (karar 5, 13): nesne
+ * silinir, satır `deleted` kalır ve özgün ad silinir; her dosya `file.purge` olarak denetime
+ * yazılır. Satır kilitlenip `deleted` yazıldıktan sonra nesne silinir: aynı anda bağlanan dosyanın
+ * nesnesi silinemez (bağlama da satırı kilitler ve `deleted` dosyayı reddeder). Nesne silinemezse
+ * satır yine `deleted` kalır, hata loglanır (kimlik dışında bilgi yok). En çok `limit` dosyaya
+ * bakar; silinen dosya sayısını döndürür. Saatlik `files.purge-unattached` işi
+ * (`src/jobs/files-purge.ts`) kurum başına çağırır.
  */
 export async function purgeUnattachedFiles(input: {
   db: Database
   storage: StorageDriver
+  institutionId: string
   now: Date
   log: FastifyBaseLogger
   limit?: number
 }): Promise<number> {
   const { db, storage, now, log } = input
   const before = new Date(now.getTime() - UNATTACHED_FILE_TTL_MS)
-  const stale = await listStaleUnattachedFiles(db, before, input.limit ?? 500)
+  const stale = await listStaleUnattachedFiles(
+    db,
+    input.institutionId,
+    before,
+    input.limit ?? PURGE_BATCH_SIZE,
+  )
   let purged = 0
   for (const candidate of stale) {
     const done = await db.transaction(async (tx) => {
@@ -611,9 +622,14 @@ export async function purgeUnattachedFiles(input: {
     try {
       await storage.delete(candidate.storageKey)
     } catch (error) {
-      log.error({ event: 'file.purge_object_failed', fileId: candidate.id, err: error })
+      log.error({
+        event: 'file.purge_object_failed',
+        institutionId: input.institutionId,
+        fileId: candidate.id,
+        err: error,
+      })
     }
   }
-  log.info({ event: 'file.purged', count: purged })
+  log.info({ event: 'file.purged', institutionId: input.institutionId, count: purged })
   return purged
 }

@@ -964,6 +964,7 @@ describe('dosya uçları', () => {
     const early = await purgeUnattachedFiles({
       db,
       storage: store.storage,
+      institutionId: t.institution.id,
       now: new Date(FIXED_NOW.getTime() + 23 * 3600_000),
       log: app.log,
     })
@@ -971,10 +972,11 @@ describe('dosya uçları', () => {
     const purged = await purgeUnattachedFiles({
       db,
       storage: store.storage,
+      institutionId: t.institution.id,
       now: new Date(FIXED_NOW.getTime() + 25 * 3600_000),
       log: app.log,
     })
-    assert.ok(purged >= 1)
+    assert.equal(purged, 1)
     const rows = await rowsOf(t.institution.id)
     const staleRow = rows.find((row) => row.id === stale)
     const keptRow = rows.find((row) => row.id === kept)

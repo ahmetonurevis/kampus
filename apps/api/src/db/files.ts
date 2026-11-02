@@ -5,8 +5,7 @@ import { files, type FileStatus } from './schema/files.ts'
 import { institutionSettings } from './schema/institution-settings.ts'
 
 /**
- * `files` deposu (ADR 0003 karar 4, 5, 13). İlk parametre her zaman `institutionId`'dir; yalnız
- * kurumlar arası teknik temizlik (`listStaleUnattachedFiles`) istisnadır. İçerik kolonları
+ * `files` deposu (ADR 0003 karar 4, 5, 13). İlk parametre her zaman `institutionId`'dir. İçerik kolonları
  * değişmez (migration 0015 tetikleyicisi); depo yalnız durum, bağlama ve silme yazar.
  */
 
@@ -240,18 +239,26 @@ export async function scheduleSubjectFilesPurge(
 }
 
 /**
- * Bağlanmamış ve `before`'dan önce yüklenmiş, silinmemiş dosyalar (karar 5: 24 saat). Kurumlar
- * arası teknik temizliktir; en eskiler önce, `limit` kadar.
+ * Kurumun bağlanmamış ve `before`'dan önce yüklenmiş, silinmemiş dosyaları (karar 5: 24 saat);
+ * en eskiler önce, `limit` kadar. Tarama `(institution_id, created_at)` indeksini kullanır.
  */
 export async function listStaleUnattachedFiles(
   db: Database,
+  institutionId: string,
   before: Date,
   limit: number,
 ): Promise<StoredFile[]> {
   return db
     .select()
     .from(files)
-    .where(and(isNull(files.attachedId), ne(files.status, 'deleted'), lt(files.createdAt, before)))
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        isNull(files.attachedId),
+        ne(files.status, 'deleted'),
+        lt(files.createdAt, before),
+      ),
+    )
     .orderBy(asc(files.createdAt), asc(files.id))
     .limit(limit)
 }

@@ -717,6 +717,6 @@ export function permissionReminders(input: {
   }
   return reminders
 }
-// TODO(onay-hatirlatma-isi): `permissionReminders` her gün sabah (Europe/Istanbul) pg-boss işiyle
-// kurum başına çalıştırılır ve `permission_form_reminder` bildirimini `dedupeKey` ile yazar; iş
-// altyapısı (`src/jobs`) gelince API'de bağlanır (OG-056).
+// `permissionReminders` her sabah 08:00 (Europe/Istanbul) API'nin `permission-forms.remind` işiyle
+// kurum başına çalışır ve `permission_form_reminder` bildirimini `dedupeKey` ile yazar
+// (`apps/api/src/jobs/permission-reminders.ts`, `sendPermissionReminders`; OG-094).

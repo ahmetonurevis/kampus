@@ -202,7 +202,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Sessizlik onay değildir (`DOM-ILT-030`); yanıt vermeyen velinin çocuğu etkinliğe katılamaz, bu yüzden son gün hatırlatılır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — saf hesap core `permissionReminders` (`PERMISSION_REMINDER_DAYS`, tekil anahtar form + son gün + kalan gün), bildirim türü `permission_form_reminder`. Zamanlanmış iş yok (`TODO(onay-hatirlatma-isi)`).
+- **Kodda:** evet — saf hesap core `permissionReminders` (`PERMISSION_REMINDER_DAYS`, tekil anahtar form + son gün + kalan gün), bildirim türü `permission_form_reminder`; API'nin `permission-forms.remind` işi her sabah 08:00 (Europe/Istanbul) kurum başına çalışır (`sendPermissionReminders`, `apps/api/test/permission-reminders.test.ts`).
 
 ## Rehberlik gizliliği
 

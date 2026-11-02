@@ -75,7 +75,8 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
     'notification.read_all': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
   })
-  assert.deepEqual(Object.keys(WRITE_ACTION_ROLES), [...WRITE_ACTIONS])
+  // Sıra anlamsızdır: komut tablosu iki kaynaktan birleşir (platform ve Onur bloğu).
+  assert.deepEqual(Object.keys(WRITE_ACTION_ROLES).sort(), [...WRITE_ACTIONS].sort())
 })
 
 test('Tahsilat kaydı yalnız yönetici ve ön büroda; veli tahsilat kaydedemez', () => {

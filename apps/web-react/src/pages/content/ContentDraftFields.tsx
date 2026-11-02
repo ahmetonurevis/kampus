@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Controller, get, useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form'
 import type { AuthorableType } from '@kampus/react-shared/resource-model.ts'
 import { GLOSSARY_MAX } from '@kampus/school-core/content/resource.ts'
@@ -13,6 +14,8 @@ import { CheckGroup } from '../communication/CheckGroup.tsx'
 import {
   CEFR_OPTIONS,
   emptyGlossaryEntry,
+  glossaryFocusAfterRemove,
+  glossaryTermId,
   GRADE_OPTIONS,
   LICENSE_NOTES,
   LICENSE_OPTIONS,
@@ -106,6 +109,16 @@ export function ContentFields({ form, type, busy, onUploadingChange }: ContentPr
 function GlossaryFields({ form, busy }: { form: DraftForm; busy: boolean }) {
   const entries = useFieldArray({ control: form.control, name: 'content.glossary' })
   const listError = fieldError(form, 'content.glossary')
+  const addButton = useRef<HTMLButtonElement>(null)
+  const pendingFocus = useRef<ReturnType<typeof glossaryFocusAfterRemove> | null>(null)
+  // Silinen satırın düğmesi kalkınca odak `body`'ye düşer; satırlar çizildikten sonra taşınır.
+  useEffect(() => {
+    const target = pendingFocus.current
+    if (!target) return
+    pendingFocus.current = null
+    if (target.kind === 'add') addButton.current?.focus()
+    else document.getElementById(glossaryTermId(target.index))?.focus()
+  }, [entries.fields.length])
   return (
     <fieldset className="grid gap-3">
       <legend className="mb-1 text-sm font-medium">Sözlükçe</legend>
@@ -116,7 +129,7 @@ function GlossaryFields({ form, busy }: { form: DraftForm; busy: boolean }) {
       {entries.fields.map((field, index) => (
         <div key={field.id} className="grid gap-3 rounded-card border p-3 sm:grid-cols-2">
           <FormField
-            id={`icerik-sozluk-kelime-${index}`}
+            id={glossaryTermId(index)}
             label={`${index + 1}. kelime`}
             error={fieldError(form, `content.glossary.${index}.term`)}
           >
@@ -164,7 +177,10 @@ function GlossaryFields({ form, busy }: { form: DraftForm; busy: boolean }) {
               variant="outline"
               size="sm"
               aria-label={`${index + 1}. kelimeyi sil`}
-              onClick={() => entries.remove(index)}
+              onClick={() => {
+                pendingFocus.current = glossaryFocusAfterRemove(index, entries.fields.length)
+                entries.remove(index)
+              }}
               disabled={busy}
             >
               <Icon name="Trash2" size={15} aria-hidden="true" />
@@ -180,6 +196,7 @@ function GlossaryFields({ form, busy }: { form: DraftForm; busy: boolean }) {
       ) : null}
       <div>
         <Button
+          ref={addButton}
           type="button"
           variant="secondary"
           size="sm"

@@ -11,6 +11,8 @@ import {
   draftFormSchema,
   draftFromHead,
   emptyGlossaryEntry,
+  glossaryFocusAfterRemove,
+  glossaryTermId,
   MATERIAL_FILE_REQUIRED,
   MATERIAL_FILE_RULE,
   nextOptionId,
@@ -429,5 +431,14 @@ describe('Materyal dosyası formu (DOM-KYN-006)', () => {
 
   test('materyal dosyası önizlemesi metin yerine dosya listesine bırakılır', () => {
     assert.equal(previewFromHead(head({ content: { type: 'file', fileId: 'f1' } })).kind, 'file')
+  })
+
+  test('DOM-BEC-006: sözlükçe satırı silinince odak önceki satıra, satır kalmazsa Kelime ekle düğmesine gider', () => {
+    assert.deepEqual(glossaryFocusAfterRemove(2, 3), { kind: 'term', index: 1 })
+    assert.deepEqual(glossaryFocusAfterRemove(1, 2), { kind: 'term', index: 0 })
+    // İlk satır silinince yeni ilk satır (önceki satır yok).
+    assert.deepEqual(glossaryFocusAfterRemove(0, 3), { kind: 'term', index: 0 })
+    assert.deepEqual(glossaryFocusAfterRemove(0, 1), { kind: 'add' })
+    assert.equal(glossaryTermId(1), 'icerik-sozluk-kelime-1')
   })
 })

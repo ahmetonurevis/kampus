@@ -3,9 +3,20 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
-function Table({ className, ...props }: React.ComponentProps<'table'>) {
+function Table({
+  className,
+  container,
+  ...props
+}: React.ComponentProps<'table'> & {
+  /** Kaydırma kapsayıcısının özellikleri (klavye odağı için `ref`, `tabIndex`, `role`). */
+  container?: React.ComponentProps<'div'>
+}) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
+    <div
+      {...container}
+      data-slot="table-container"
+      className={cn('relative w-full overflow-x-auto', container?.className)}
+    >
       <table
         data-slot="table"
         className={cn('w-full caption-bottom text-sm', className)}

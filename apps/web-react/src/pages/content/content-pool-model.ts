@@ -256,6 +256,20 @@ export type DraftFormValues = Omit<DraftFormInput, 'content' | 'answerKey'> & {
 /** Sözlükçeye eklenen boş satır; alanlar doldurulunca core `glossaryEntrySchema` doğrular. */
 export const emptyGlossaryEntry = (): GlossaryEntry => ({ term: '', meaning: '', example: null })
 
+/** Sözlükçe satırının kelime alanının kimliği; etiket, hata ve odak aynı kimliği kullanır. */
+export const glossaryTermId = (index: number) => `icerik-sozluk-kelime-${index}`
+
+/**
+ * Satır silinince odağın gideceği yer (WCAG 2.4.3): silinen düğme DOM'dan kalktığı için odak
+ * `body`'ye düşer. Önceki satırın kelime alanı; ilk satır silindiyse yeni ilk satırın kelime alanı;
+ * satır kalmadıysa "Kelime ekle" düğmesi. `count` silmeden önceki satır sayısıdır.
+ */
+export const glossaryFocusAfterRemove = (
+  index: number,
+  count: number,
+): { kind: 'term'; index: number } | { kind: 'add' } =>
+  count <= 1 ? { kind: 'add' } : { kind: 'term', index: index > 0 ? index - 1 : 0 }
+
 /** Seçenek kimlikleri `a`, `b`, … biçiminde üretilir (core kimlik kuralına uyar). */
 export const OPTION_IDS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const
 export const MIN_OPTIONS = 4

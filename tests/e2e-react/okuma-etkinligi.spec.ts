@@ -215,6 +215,7 @@ test.describe('okuma-anlama etkinliği', () => {
     const { school, assignmentId } = await setUp(tenant, api, 'Feribot okuma alıştırması', {
       kind: 'practice',
     })
+    await page.setViewportSize({ width: 1440, height: 1000 })
     await loginAs(school.user('ogrenci'))
     await startAttempt(page, assignmentId)
 
@@ -227,23 +228,30 @@ test.describe('okuma-anlama etkinliği', () => {
     await expect(passage.getByRole('region', { name: 'Kaynak gösterimi' })).toContainText(
       'Kampüs yazarları',
     )
-    // Sözlükçe terim + anlam + örnek; metin bölgesi klavyeyle odaklanır (kaydırılabilir).
+    // Sözlükçe terim + anlam + örnek.
     const glossary = glossaryOf(page)
     await expect(glossary.getByRole('term')).toHaveCount(GLOSSARY.length)
     await expect(glossary.getByText('ferry', { exact: true })).toBeVisible()
     await expect(glossary.getByText(GLOSSARY[0].meaning, { exact: true })).toBeVisible()
     await expect(glossary.getByText(GLOSSARY[0].example, { exact: true })).toBeVisible()
     await expect(glossary.getByText(GLOSSARY[1].meaning, { exact: true })).toBeVisible()
-    await passage.focus()
-    await expect(passage).toBeFocused()
-
-    // Geniş ekranda metin ve sorular yan yana.
+    // Başlık sırası: metin başlığı h2 (deneme başlığıyla kardeş), sözlükçe başlığı h3.
+    await expect(passage.getByRole('heading', { level: 2, name: PASSAGE_TITLE })).toBeVisible()
+    await expect(glossary.getByRole('heading', { level: 3, name: 'Sözlükçe' })).toBeVisible()
+    // Metin kutuya sığıyorsa bölge Tab durağı olmaz; alçak pencerede kayar ve odaklanır.
+    await expect(passage).not.toHaveAttribute('tabindex')
     const question = page.getByText(QUESTIONS[0].stem, { exact: true })
     const [textBox, questionBox] = await Promise.all([
       passage.boundingBox(),
       question.boundingBox(),
     ])
     expect(textBox && questionBox && questionBox.x >= textBox.x + textBox.width).toBe(true)
+    await page.setViewportSize({ width: 1280, height: 360 })
+    await expect(passage).toHaveAttribute('tabindex', '0')
+    await passage.focus()
+    await expect(passage).toBeFocused()
+    await page.setViewportSize({ width: 1440, height: 1000 })
+    await expect(passage).not.toHaveAttribute('tabindex')
 
     // Soru başında alt beceri etiketi; çözümde doğru cevap ve açıklama yok.
     await expect(page.getByText('Ana fikir', { exact: true })).toBeVisible()
@@ -262,6 +270,18 @@ test.describe('okuma-anlama etkinliği', () => {
     await expect(row('Ayrıntı')).toContainText('%0')
     await expect(row('Çıkarım')).toContainText('2 / 2')
     await expect(row('Kelime bilgisi')).toHaveCount(0)
+
+    // Dar ekranda döküm görünürken taşma yok; tablo kayarsa kapsayıcı klavyeyle odaklanır.
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 844 })
+      await expect(breakdown).toBeVisible()
+      await expectNoHorizontalOverflow(page)
+    }
+    const scroller = page.getByRole('region', { name: 'Alt beceri dökümü (kaydırılabilir)' })
+    if ((await scroller.count()) > 0) {
+      await scroller.focus()
+      await expect(scroller).toBeFocused()
+    }
   })
 
   test('DOM-BEC-045, DOM-BEC-006: değerlendirmede döküm kapanışa kadar çizilmez; dar ekranda metin soruların üstünde, taşma yok', async ({
@@ -288,6 +308,8 @@ test.describe('okuma-anlama etkinliği', () => {
     ])
     expect(textBox && questionBox && questionBox.y >= textBox.y + textBox.height).toBe(true)
     await expect(glossaryOf(page).getByText('gull', { exact: true })).toBeVisible()
+    // Dar ekranda sayfa kayar, metin bölgesi gereksiz Tab durağı olmaz.
+    await expect(passage).not.toHaveAttribute('tabindex')
     await expectNoHorizontalOverflow(page)
 
     await answerAll(page, ["Ann's trip to work.", 'By ferry.', 'She is bored.'])
@@ -353,6 +375,8 @@ test.describe('okuma-anlama etkinliği', () => {
       glossary.getByText('Aynı kelime sözlükçede bir kez yer alır.', { exact: true }),
     ).toBeVisible()
     await glossary.getByRole('button', { name: '3. kelimeyi sil' }).click()
+    // Silinen satırın düğmesi kalkınca odak önceki satırın kelime alanına gider (body'ye düşmez).
+    await expect(glossary.getByLabel('2. kelime', { exact: true })).toBeFocused()
     await dialog.getByRole('button', { name: 'Taslağı kaydet' }).click()
     await expect(page.getByRole('dialog', { name: title })).toBeVisible()
 

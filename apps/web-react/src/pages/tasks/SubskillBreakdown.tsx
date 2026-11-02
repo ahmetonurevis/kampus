@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { SUBSKILLS } from '@kampus/school-core/content/taxonomy.ts'
 import type { TaskAttemptSubskillScore } from '@kampus/react-shared/use-task-attempts.ts'
+import { useScrollable } from '@/hooks/use-scrollable.ts'
 import {
   Table,
   TableBody,
@@ -20,10 +21,12 @@ const points = (value: number) =>
  * Alt beceri dökümü (IST-042, DOM-BEC-006): her satır sunucunun madde puanlarından hesapladığı
  * gerçek veridir (yüzde, kazanılan / olası puan, madde sayısı). Döküm madde sonuçlarıyla aynı anda
  * açılır (DOM-BEC-045); sunucu `null` döndürdüyse bileşen hiçbir şey çizmez ve nedenine dair ipucu
- * vermez. Kursiyer sonucu ve personelin deneme görünümü aynı bileşeni kullanır.
+ * vermez. Bugün yalnız kursiyerin sonuç ekranı (`AttemptResult`) kullanır; personelin deneme görünümü
+ * eklendiğinde aynı bileşen kullanılmalıdır (takip).
  */
 export function SubskillBreakdown({ subskills }: Props) {
   const headingId = useId()
+  const { ref, scrollable } = useScrollable<HTMLDivElement>()
   if (!subskills || subskills.length === 0) return null
   return (
     <section aria-labelledby={headingId} className="grid gap-2">
@@ -31,7 +34,23 @@ export function SubskillBreakdown({ subskills }: Props) {
         Alt beceri dökümü
       </h4>
       <div className="overflow-hidden rounded-card border">
-        <Table aria-labelledby={headingId}>
+        <Table
+          aria-labelledby={headingId}
+          // Çok dar ekranda tablo kayarsa kapsayıcı klavyeyle odaklanır (WCAG 2.1.1); sığıyorsa
+          // gereksiz Tab durağı olmaz.
+          container={{
+            ref,
+            ...(scrollable
+              ? {
+                  tabIndex: 0,
+                  role: 'region',
+                  'aria-label': 'Alt beceri dökümü (kaydırılabilir)',
+                  className:
+                    'focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                }
+              : {}),
+          }}
+        >
           <TableHeader>
             <TableRow>
               <TableHead>Alt beceri</TableHead>

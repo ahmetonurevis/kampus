@@ -115,6 +115,7 @@ form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 - **Açık rıza** gerekiyorsa: belirli amaca özgü, ayrı onay kutusu, önceden işaretli değil, hizmet şartına bağlanmamış; reddetmek temel eğitim hizmetini engellemez. Reşit olmayan için veli verir.
 - Rıza kaydı: `consents` (kurum, veri sahibi, veren kullanıcı, amaç kodu, metin sürümü, kanal, `given_at`, `withdrawn_at`). Geri çekme verildiği kadar kolaydır (aynı ekranda tek işlem) ve ilgili işleme hemen durur.
 - Metin değişince yeni sürüm yayımlanır; eski sürüme verilmiş rıza yeni amacı kapsamaz.
+- Kodda: kurallar `packages/school-core/src/lib/consent-purposes.ts` (amaç kodları), `lib/privacy-notices.ts` (sürümlü metin, `needsNoticeAcknowledgement`), `lib/consents.ts` (`requireConsentAuthority`, `planConsent`, `planConsentWithdrawal`, `hasValidConsent`); tablolar `privacy_notices`, `notice_acknowledgements`, `consents` (migration `0024`, `apps/api/src/db/schema/privacy.ts`, depo `apps/api/src/db/privacy.ts`); alan kuralları DOM-YTK-056…062. Uçlar ve ekranlar OG-016/OG-017'dedir; konuşma kaydı yüklemesi henüz bağlı değil (`apps/api/src/services/files.ts` `TODO(F3c2-consents)`).
 - Yurt dışına aktarım (m.9): barındırma, yedek, e-posta/SMS sağlayıcısı ve mobil anlık bildirim servisleri (FCM/APNs) aktarım riski taşır; her biri ADR'de değerlendirilir (açık soru).
 
 ## 10. Saklama ve silme

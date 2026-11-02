@@ -13,7 +13,7 @@
   "dependencies": {
     "@kampus/api-client": "workspace:*",
     "@kampus/school-core": "workspace:*",
-    "zod": "4.6.5"
+    "zod": "4.6.6"
   },
   "peerDependencies": {
     "@tanstack/react-query": "5.105.0",

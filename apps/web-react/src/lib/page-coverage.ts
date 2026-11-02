@@ -1,86 +1,39 @@
 // Hangi menü sayfalarının React karşılığı var: sayfa kaydı (`pages/page-registry.tsx`) ve kapsam
-// testi aynı kümeleri okur. Kayıtta olmayan sayfa yer tutucuyla açılır.
+// testi aynı kümeleri okur. Kayıtta olmayan sayfa yer tutucuyla açılır. İki kaynak birleşir:
+// Oğuzhan'ın girdileri `page-coverage/platform.ts`, kayıt ve finans girdileri aşağıdaki
+// `// Onur: kayıt ve finans` bloğudur. Bir anahtar yalnız bir kaynakta bulunur (test yakalar).
+import {
+  ANNOUNCEMENT_PATH,
+  ASSESSMENT_PATHS,
+  PLATFORM_MIGRATED,
+  PLATFORM_WORKFLOW_PATHS,
+} from './page-coverage/platform.ts'
 import type { RoleKey } from './navigation.ts'
 
-export const ASSESSMENT_PATHS = new Set(['optik-degerlendirme', 'otomatik-etut'])
-/** Bağlanmış iş akışı sayfaları; kalanlar yer tutucudur (bkz. README geçiş durumu). */
-export const WORKFLOW_PATHS = new Set([
-  'yemek-menusu',
-  'okul-takvimi',
-  'kulupler',
-  'hedef-plani',
-  'rehberlik',
-  'deneme-sinavlari',
-  'kayit-yenileme',
-  'program-yonetimi',
-  'calisma-plani',
-  'okul-servisi',
-])
+export { ANNOUNCEMENT_PATH, ASSESSMENT_PATHS }
 
-export const MIGRATED = new Set([
-  'yonetici/dashboard',
-  'onburo/dashboard',
-  'ogretmen/dashboard',
-  'ogrenci/dashboard',
-  'veli/dashboard',
-  'yonetici/subeler',
-  'yonetici/personel',
-  'yonetici/icerik-havuzu',
-  'ogretmen/icerik-havuzu',
-  'yonetici/ayarlar',
-  'ogrenci/ayarlar',
-  'veli/ayarlar',
+// Onur: kayıt ve finans
+export const ONUR_WORKFLOW_PATHS: readonly string[] = ['kayit-yenileme']
+export const ONUR_MIGRATED: readonly string[] = [
   'yonetici/finans',
   'onburo/tahsilat-takip',
-  'ogretmen/siniflarim',
-  'ogretmen/yoklama',
-  'ogretmen/ders-programi',
-  'ogrenci/notlarim',
-  'ogrenci/devamsizlik',
-  'ogrenci/ders-programi',
-  'veli/akademik-takip',
-  'veli/cocuk-secici',
-  'ogretmen/odevler',
-  'ogretmen/materyal-yukle',
-  'ogretmen/quiz-olustur',
-  'ogrenci/odevler',
-  'ogrenci/materyaller',
-  'ogrenci/videolar',
-  'ogrenci/soru-coz',
-  'ogrenci/soru-sor',
-  'ogretmen/sorular',
-  'ogrenci/mesajlar',
-  'ogretmen/mesajlar',
-  'yonetici/mesajlar',
-  'veli/randevu-mesaj',
-  'ogrenci/randevu-talep',
-  'ogretmen/randevular',
   'veli/finans',
   'veli/dekontlar',
   'veli/odeme-yap',
   'veli/sozlesmeler',
   'ogrenci/odemelerim',
-  'ogrenci/sinav-analizi',
-  'ogrenci/seviye-takibi',
-  'veli/sinav-analizi',
-  'veli/seviye-takibi',
-  'veli/ogretmen-degerlendirmeleri',
-  'veli/sikayet-talep',
-  'veli/devamsizlik-bildirimi',
-  'onburo/talepler',
   'onburo/adaylar',
   'onburo/deneme-dersi-takvimi',
   'onburo/kayit-islemleri',
-  // Menüde olmayan aday detayı (`/<rol>/aday/:id`, `resolveProspectDetail`).
   'onburo/aday',
   'yonetici/aday',
-  'ogretmen/sinif-analizi',
-  'yonetici/risk-listesi',
   'yonetici/kayit-raporlari',
-  'yonetici/sla-raporu',
-])
-// Duyurular beş rolün hepsinde aynı ekrandır; rol kapsamı sunucudadır.
-export const ANNOUNCEMENT_PATH = 'duyurular'
+]
+// Onur: kayıt ve finans sonu
+
+/** Bağlanmış iş akışı sayfaları (iki kaynağın birleşimi). */
+export const WORKFLOW_PATHS = new Set([...PLATFORM_WORKFLOW_PATHS, ...ONUR_WORKFLOW_PATHS])
+export const MIGRATED = new Set([...PLATFORM_MIGRATED, ...ONUR_MIGRATED])
 
 export function isMigratedPage(role: RoleKey, path: string): boolean {
   return (

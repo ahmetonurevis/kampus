@@ -23,36 +23,15 @@ import { registerCsrfGuard } from './plugins/csrf.ts'
 import { registerErrorHandler } from './plugins/error-handler.ts'
 import { registerModuleGuard } from './plugins/modules.ts'
 import { genRequestId, registerRequestContext } from './plugins/request-context.ts'
-import { registerCollectionRoutes } from './routes/collections.ts'
-import { registerAssessmentRoutes } from './routes/assessment.ts'
-import { registerCommandRoutes } from './routes/commands.ts'
-import { registerCommunicationRoutes } from './routes/communication.ts'
-import { registerDashboardRoutes } from './routes/dashboard.ts'
-import { registerFileRoutes } from './routes/files.ts'
+import { registerPlatformLateRoutes, registerPlatformRoutes } from './routes/platform-routes.ts'
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
-import { registerHealthRoutes } from './routes/health.ts'
-import { registerMeRoutes } from './routes/me.ts'
-import { registerAuditEventRoutes } from './routes/audit-events.ts'
-import { registerCoordinatorDutyRoutes } from './routes/coordinator-duties.ts'
-import { registerInstitutionMemberRoutes } from './routes/institution-members.ts'
-import { registerMembershipRoutes } from './routes/memberships.ts'
-import { registerModuleRoutes } from './routes/modules.ts'
-import { registerResourceCommandRoutes } from './routes/resource-commands.ts'
-import { registerQuestionRoutes } from './routes/questions.ts'
-import { registerNotificationRoutes } from './routes/notifications.ts'
-import { registerRequestRoutes } from './routes/requests.ts'
-import { registerAppointmentRoutes } from './routes/appointments.ts'
+// Onur: kayıt ve finans
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
-import { registerParentRoutes } from './routes/parents.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
-import { registerResourceRoutes } from './routes/resources.ts'
-import { registerRubricRoutes } from './routes/rubrics.ts'
-import { registerTaskAssignmentRoutes } from './routes/task-assignments.ts'
-import { registerTaskAttemptRoutes } from './routes/task-attempts.ts'
-import { registerTaskSubmissionRoutes } from './routes/task-submissions.ts'
+// Onur: kayıt ve finans sonu
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
 import { createStorage } from './storage/create.ts'
 import type { DiskStorage } from './storage/disk.ts'
@@ -266,36 +245,17 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerAuthenticate(app)
   registerModuleGuard(app)
   await registerBetterAuth(app, auth, base)
-  registerHealthRoutes(app)
-  registerMeRoutes(app)
-  registerMembershipRoutes(app)
-  registerInstitutionMemberRoutes(app)
-  registerCoordinatorDutyRoutes(app)
-  registerAuditEventRoutes(app)
-  registerModuleRoutes(app)
-  registerCollectionRoutes(app)
-  registerDashboardRoutes(app)
-  registerCommandRoutes(app)
-  registerAssessmentRoutes(app)
-  // Komut uçlarından sonra: ham gövde süsü (`commandInput`) orada tanımlanır.
-  registerCommunicationRoutes(app)
-  registerParentRoutes(app)
-  registerRequestRoutes(app)
-  registerNotificationRoutes(app)
-  registerAppointmentRoutes(app)
+  // Rota kayıt sırası OpenAPI yol sırasıdır; platform uçları iki adımda, Onur bloğu arasında
+  // (`routes/platform-routes.ts`). Bir kayıt fonksiyonu iki kaynakta bulunamaz.
+  registerPlatformRoutes(app)
+  // Onur: kayıt ve finans
   registerFeeTariffRoutes(app)
   registerFinanceExportRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
-  registerQuestionRoutes(app)
-  registerResourceRoutes(app)
-  registerResourceCommandRoutes(app)
-  registerRubricRoutes(app)
-  registerTaskAssignmentRoutes(app)
-  registerTaskAttemptRoutes(app)
-  registerTaskSubmissionRoutes(app)
-  registerFileRoutes(app, options.storage ?? createStorage(config))
+  // Onur: kayıt ve finans sonu
+  registerPlatformLateRoutes(app, options.storage ?? createStorage(config))
 
   return app
 }

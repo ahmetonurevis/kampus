@@ -260,6 +260,13 @@
       "when": 1793636493590,
       "tag": "0036_create_resource_version_files",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793638245092,
+      "tag": "0037_add_placement_section_entries",
+      "breakpoints": true
     }
   ]
 }

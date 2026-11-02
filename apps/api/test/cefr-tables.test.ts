@@ -285,7 +285,7 @@ describe('0034: CEFR tabloları ve deposu', () => {
     )
   })
 
-  test('0035 IST-058, DOM-DIL-010: bölüm girişleri sürüm koşuluyla yazılır; dizi, beş bölüm sınırı ve core şeması', async () => {
+  test('0037 IST-058, DOM-DIL-010: bölüm girişleri sürüm koşuluyla yazılır; dizi, beş bölüm sınırı ve core şeması', async () => {
     const t = await tenant()
     const other = await tenant()
     const open = await insertPlacementSession(

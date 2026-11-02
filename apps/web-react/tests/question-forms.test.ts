@@ -229,4 +229,6 @@ test('DOM-ILT-094: soru fotoğrafları gövdeye yalnız kimlikle gider; en çok 
   assert.equal(askFieldName('fileIds'), 'files')
   assert.equal(askFieldName('fileIds.0'), 'files')
   assert.equal(askFieldName('topic'), 'topic')
+  assert.equal(askFieldName('root.server'), 'root.server')
+  assert.equal(askFieldName('bilinmeyen'), 'root.server')
 })

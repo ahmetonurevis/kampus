@@ -141,8 +141,7 @@ function AskQuestionForm({
     const focus = focusFirstError(form.setError)
     const outcome = await ask.submit(result.body, {
       // Sunucunun `fileIds` maddesi formdaki fotoğraf listesinde görünür.
-      setError: (name: string, error) =>
-        focus(askFieldName(name) as Parameters<typeof form.setError>[0], error),
+      setError: (name: string, error) => focus(askFieldName(name), error),
     })
     if (outcome.status === 'success') {
       notify.success('Sorunuz öğretmeninize iletildi.')

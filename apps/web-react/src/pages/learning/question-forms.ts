@@ -96,7 +96,10 @@ export function askDefaults(): AskFormValues {
 
 /**
  * Yüklenen fotoğrafı listeye ekler; aynı kimlik (aynı dosya yeniden seçildi, sunucu aynı kaydı
- * döndürdü) iki kez eklenmez ve liste soru sınırında kalır (DOM-ILT-094).
+ * döndürdü) iki kez eklenmez ve liste soru sınırında kalır (DOM-ILT-094). `FileUploadField`
+ * `maxFiles` ile sınırı yüklemeden önce uygular (sınıra varınca seçim kapanır, fazlası
+ * yüklenmeden reddedilip alan hatası gösterilir); buradaki `slice` yalnız korumadır, normal
+ * akışta bir şey atmaz.
  */
 export function addQuestionPhoto(
   current: readonly FileUploadItem[],
@@ -106,9 +109,23 @@ export function addQuestionPhoto(
   return [...current, item].slice(0, QUESTION_PHOTO_LIMIT)
 }
 
-/** Sunucunun alan adı → formdaki alan (fotoğraf listesi formda `files`'tır). */
-export const askFieldName = (name: string): string =>
-  name === 'fileIds' || name.startsWith('fileIds.') ? 'files' : name
+/** Form alanı adı: formun alanları ya da `root` hatası (react-hook-form `setError` adı). */
+export type AskFieldName = keyof AskFormValues | 'root' | `root.${string}`
+
+const ASK_FIELDS: readonly string[] = Object.keys(askDefaults())
+
+function isAskFieldName(name: string): name is AskFieldName {
+  return ASK_FIELDS.includes(name) || name === 'root' || name.startsWith('root.')
+}
+
+/**
+ * Sunucunun alan adı → formdaki alan (fotoğraf listesi formda `files`'tır). Formda karşılığı
+ * olmayan ad görünmez kalmasın diye form düzeyi hataya (`root.server`) düşer.
+ */
+export function askFieldName(name: string): AskFieldName {
+  if (name === 'fileIds' || name.startsWith('fileIds.')) return 'files'
+  return isAskFieldName(name) ? name : 'root.server'
+}
 
 export type AskOutcome =
   | { ok: true; body: AskQuestionInput }

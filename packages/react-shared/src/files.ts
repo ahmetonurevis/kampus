@@ -45,26 +45,38 @@ export function fileLabel(file: Pick<StoredFile, 'originalName'> | undefined, in
  * bozuk, sınırı aşan kayıt) istemciye dönmez. `failed` başka bir okuma hatasıdır (yetki, modül).
  * Ağ ve sunucu hatası beklemeyi bozmaz: dosya hâlâ işleniyor olabilir.
  */
-export type FileProcessing = 'waiting' | 'ready' | 'rejected' | 'failed'
+export type FileProcessing = 'waiting' | 'ready' | 'rejected' | 'failed' | 'timed_out'
 
+/** İşlenmeyi bekleme üst süresi; aşılınca yoklama durur (`timed_out`), `fileId` korunur. */
+export const FILE_WAIT_LIMIT_MS = 120_000
+
+/**
+ * `timedOut` bekleme süresi dolduysa `true`: sonuç hâlâ belli değilse (`waiting`) `timed_out`
+ * döner. Dosya bu arada hazır, reddedilmiş ya da okunamıyorsa o sonuç korunur.
+ */
 export function fileProcessing(
   file: Pick<StoredFile, 'status'> | undefined,
   error: unknown,
+  timedOut = false,
 ): FileProcessing {
   if (file?.status === 'ready') return 'ready'
   if (file?.status === 'rejected' || file?.status === 'deleted') return 'rejected'
   if (isApiError(error) && error.status === 404) return 'rejected'
   if (isApiError(error) && error.status >= 400 && error.status < 500) return 'failed'
-  return 'waiting'
+  return timedOut ? 'timed_out' : 'waiting'
 }
 
 /** İşlenen dosyanın yoklama aralığı; dönüşüm birkaç saniye sürer. */
 export const FILE_POLL_INTERVAL_MS = 1500
 
-/** Yoklama yalnız dosya beklenirken sürer; sonuç belli olunca (hazır, ret, hata) durur. */
+/**
+ * Yoklama yalnız dosya beklenirken sürer; sonuç belli olunca (hazır, ret, hata) ya da bekleme
+ * üst süresi dolunca durur.
+ */
 export function filePollInterval(
   file: Pick<StoredFile, 'status'> | undefined,
   error: unknown,
+  timedOut = false,
 ): number | false {
-  return fileProcessing(file, error) === 'waiting' ? FILE_POLL_INTERVAL_MS : false
+  return fileProcessing(file, error, timedOut) === 'waiting' ? FILE_POLL_INTERVAL_MS : false
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { commandFeedback } from '@kampus/react-shared/commands.ts'
 import { useConsentStatus } from '@kampus/react-shared/use-consents.ts'
 import { useFileUpload } from '@kampus/react-shared/use-file-upload.ts'
+import type { FileProcessing } from '@kampus/react-shared/files.ts'
 import { useFileProcessing } from '@kampus/react-shared/use-files.ts'
 import {
   TASK_SUBMISSION_MESSAGES,
@@ -33,6 +34,7 @@ export const RECORDING_NOTICE =
   'Kaydınız yalnız bu görevin puanlanması, geri bildirimi ve itirazı için kullanılır. Kaydı siz, 18 yaşından küçükseniz veliniz ve görevi değerlendiren öğretmenler dinleyebilir. Kayıt kurum dışına gönderilmez, ses tanıma yapılmaz ve saklama süresi sonunda silinir. Gönderene kadar yalnız bu sayfada tutulur; sayfadan ayrılırsanız silinir.'
 
 const FAILED_UPLOAD = 'Kaydınız gönderilemedi.'
+const STILL_PROCESSING = 'Kaydınız hâlâ işleniyor; birazdan yeniden deneyin.'
 
 type Props = {
   assignmentId: string
@@ -133,8 +135,10 @@ function SpeakingRecorder({ assignmentId, limits, remaining, canSubmit, blockedR
       })
   }
 
-  // Dosya sunucuda işlenince (ADR 0003 karar 10) teslim kendiliğinden yapılır.
-  const settle = useStableCallback((state: 'ready' | 'rejected' | 'failed', fileId: string) => {
+  // Dosya sunucuda işlenince (ADR 0003 karar 10) teslim kendiliğinden yapılır. Bekleme üst süresi
+  // dolarsa `fileId` korunur: "Yeniden gönder" yüklemeden yalnız beklemeyi yeniden başlatır.
+  const settle = useStableCallback((state: Exclude<FileProcessing, 'waiting'>, fileId: string) => {
+    if (state === 'timed_out') return dispatch({ type: 'send_failed', message: STILL_PROCESSING })
     if (state === 'rejected') return dispatch({ type: 'file_rejected' })
     if (state === 'failed') return dispatch({ type: 'send_failed', message: FAILED_UPLOAD })
     dispatch({ type: 'file_ready' })

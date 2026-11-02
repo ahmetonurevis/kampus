@@ -80,6 +80,7 @@ test('OG-205: ödev durumu başka öğretmenin ödevini "teslim edilmedi" diye g
   const homework = [
     {
       id: 'hw1',
+      classId: 'c1',
       title: 'Türkçe ödevi',
       subject: 'Türkçe',
       dueDate: '2026-10-10T20:59:00.000Z',
@@ -88,6 +89,7 @@ test('OG-205: ödev durumu başka öğretmenin ödevini "teslim edilmedi" diye g
     },
     {
       id: 'hw2',
+      classId: 'c1',
       title: 'Matematik ödevi',
       subject: 'Matematik',
       dueDate: '2026-10-20T20:59:00.000Z',
@@ -96,6 +98,7 @@ test('OG-205: ödev durumu başka öğretmenin ödevini "teslim edilmedi" diye g
     },
     {
       id: 'hw3',
+      classId: 'c1',
       title: 'Türkçe ikinci',
       subject: 'Türkçe',
       dueDate: '2026-10-25T20:59:00.000Z',
@@ -106,6 +109,7 @@ test('OG-205: ödev durumu başka öğretmenin ödevini "teslim edilmedi" diye g
   const submissions = [{ id: 'sub1', homeworkId: 'hw1', studentId: 's1', score: 80 }]
   const subjectTeacher = profileHomeworkRows(homework, submissions, {
     studentId: 's1',
+    classId: 'c1',
     teacherId: 't2',
     homeroom: false,
     now: NOW,
@@ -119,6 +123,7 @@ test('OG-205: ödev durumu başka öğretmenin ödevini "teslim edilmedi" diye g
   )
   const homeroom = profileHomeworkRows(homework, submissions, {
     studentId: 's1',
+    classId: 'c1',
     teacherId: 't1',
     homeroom: true,
     now: NOW,
@@ -276,4 +281,27 @@ test('OG-205: özet göstergeleri kayıtlardan hesaplanır, veri yokken boştur'
     ),
     { average: 76, absent: 2 },
   )
+})
+
+test('DOM-AKD-074: sınıf değiştiren öğrencinin eski sınıftaki kendi ödevi teslimi varsa görünür', () => {
+  const work = (id: string, classId: string) => ({
+    id,
+    classId,
+    title: id,
+    subject: 'Matematik',
+    dueDate: '2026-10-10T20:59:00.000Z',
+    description: '',
+    teacherId: 't1',
+  })
+  const homework = [
+    work('eski-teslimli', 'c-eski'),
+    work('eski-teslimsiz', 'c-eski'),
+    work('yeni', 'c1'),
+  ]
+  const rows = profileHomeworkRows(
+    homework,
+    [{ id: 'sub1', homeworkId: 'eski-teslimli', studentId: 's1', score: 90 }],
+    { studentId: 's1', classId: 'c1', teacherId: 't1', homeroom: false, now: NOW },
+  )
+  assert.deepEqual(rows.map((row) => row.id).sort(), ['eski-teslimli', 'yeni'])
 })

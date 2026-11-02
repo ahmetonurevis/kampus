@@ -87,7 +87,7 @@ function Profile({ student, back, page }: { student: Student; back: ReactNode; p
   const { session } = useAuth()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
-  const { lookups, error, retry } = useAcademicLookups()
+  const { lookups, pending, error, retry } = useAcademicLookups()
   // Öğretmenin `teachers` okuması yalnız kendi kaydını döndürür.
   const teacherId = [...lookups.teachers.keys()][0] ?? ''
   const schoolClass = lookups.classes.get(student.classId)
@@ -147,12 +147,8 @@ function Profile({ student, back, page }: { student: Student; back: ReactNode; p
               },
               {
                 label: 'Devamsızlık',
-                value: metrics.absent === null ? '—' : `${metrics.absent} ders`,
-                note: 'Gelmedi kayıtları',
-              },
-              {
-                label: 'Dönem ilerlemesi',
-                value: typeof student.progress === 'number' ? `%${student.progress}` : '—',
+                value: metrics.absent === null ? '—' : `${metrics.absent} gün`,
+                note: 'Gelmedi kayıtları (gün bazlı)',
               },
             ]}
           />
@@ -164,6 +160,7 @@ function Profile({ student, back, page }: { student: Student; back: ReactNode; p
           <ParentContactSection
             students={[{ id: student.id, name: student.name }]}
             canReveal={modules.communication === true}
+            emptyText="Bu öğrenciye bağlı kayıtlı veli yok."
           />
         </section>
       </div>
@@ -175,7 +172,14 @@ function Profile({ student, back, page }: { student: Student; back: ReactNode; p
           onChange={selectTab}
         />
       </div>
-      <ProfileSection tab={tab} context={context} modules={modules} />
+      {error ? null : pending ? (
+        // Öğretmen kaydı gelmeden `teacherId` boştur; bölümler süzülmüş (yanlış boş) çizilmesin.
+        <p role="status" className="text-sm text-muted-foreground">
+          Profil bölümleri yükleniyor…
+        </p>
+      ) : (
+        <ProfileSection tab={tab} context={context} modules={modules} />
+      )}
     </>
   )
 }

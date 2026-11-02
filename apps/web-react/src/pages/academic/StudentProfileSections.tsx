@@ -60,7 +60,9 @@ const HOMEWORK_COLUMNS: DataColumn<HomeworkRow>[] = [
 
 /** Ödev durumu (Vue profil "Ödev durumu"): sınıfın ödevleri ve öğrencinin teslim durumu. */
 export function ProfileHomework({ context }: { context: ProfileContext }) {
-  const homework = useCoreAll('homework', { filters: { classId: context.classId } })
+  // Sınıf süzgeci yok: sınıf değiştirmiş öğrencinin eski sınıftaki ödevi de gelir, satırları
+  // `profileHomeworkRows` ayıklar. Kapsamı sunucu uygular (DOM-AKD-074).
+  const homework = useCoreAll('homework')
   const submissions = useCoreAll('submissions', { filters: { studentId: context.studentId } })
   const now = useMinuteClock()
   const rows = useMemo(() => {
@@ -109,7 +111,8 @@ const QUIZ_COLUMNS: DataColumn<QuizResultRow>[] = [
 /** Quiz sonuçları: öğrencinin denemeleri; puan sunucuda cevaplardan hesaplanmıştır. */
 export function ProfileQuizResults({ context }: { context: ProfileContext }) {
   const attempts = useCoreAll('quizAttempts', { filters: { studentId: context.studentId } })
-  const quizzes = useCoreAll('quizzes', { filters: { classId: context.classId } })
+  // Denemeler öğrenciye göre süzülür; quiz sınıfa değil öğretmene bağlı okunur (DOM-AKD-079).
+  const quizzes = useCoreAll('quizzes')
   const rows = useMemo(() => {
     if (!attempts.data || !quizzes.data) return undefined
     return quizResultRows(

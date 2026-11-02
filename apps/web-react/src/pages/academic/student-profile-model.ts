@@ -89,6 +89,7 @@ export const readsStudentWork = (
 
 type HomeworkInput = {
   id: string
+  classId: string
   title: string
   subject: string
   dueDate: string
@@ -96,14 +97,24 @@ type HomeworkInput = {
   teacherId: string
 }
 
-/** Ödev durumu satırları: durum core `homeworkStatus` ile, son tarihi yeni olan önce. */
+/**
+ * Ödev durumu satırları: durum core `homeworkStatus` ile, son tarihi yeni olan önce. Öğrencinin
+ * şimdiki sınıfının ödevleri listelenir; sınıf değiştirmiş öğrencinin eski sınıftaki ödevi ise
+ * yalnız teslimi varsa görünür (ödevin öğretmeni eski teslimi okumaya devam eder, DOM-AKD-074).
+ */
 export function profileHomeworkRows(
   homework: readonly HomeworkInput[],
   submissions: readonly SubmissionRef[],
-  input: { studentId: string; teacherId: string; homeroom: boolean; now: Date },
+  input: { studentId: string; classId: string; teacherId: string; homeroom: boolean; now: Date },
 ): HomeworkRow[] {
+  const submitted = new Set(
+    submissions
+      .filter((entry) => entry.studentId === input.studentId)
+      .map((entry) => entry.homeworkId),
+  )
   return homework
     .filter((item) => readsStudentWork(item, input.teacherId, input.homeroom))
+    .filter((item) => item.classId === input.classId || submitted.has(item.id))
     .map((item) => homeworkRow(item, submissions, input.studentId, input.now))
     .sort((left, right) => right.dueDate.localeCompare(left.dueDate))
 }

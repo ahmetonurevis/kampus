@@ -8,7 +8,15 @@ import type { RoleKey } from '../../lib/navigation.ts'
 
 /** Kullanıcının açık kararı; "declined" sunucuya yazılmaz (rıza yokluğu kayıt gerektirmez). */
 export type ConsentChoice = 'granted' | 'declined'
-export type ConsentChoices = Partial<Record<ConsentPurpose, ConsentChoice>>
+/**
+ * Karar, okunan metne bağlıdır (KVKK: rıza belirli metne verilir). Gösterilen metin sürümü
+ * (`textId`) değişince eski karar sayılmaz ve kullanıcıya yeniden sorulur.
+ */
+export interface PurposeChoice {
+  textId: string
+  choice: ConsentChoice
+}
+export type ConsentChoices = Partial<Record<ConsentPurpose, PurposeChoice>>
 
 export const CHOICE_LABELS = {
   granted: 'Onaylıyorum',
@@ -23,9 +31,12 @@ export const STUDENT_REQUIRED_INFO = 'Bu rıza öğrenci seçilmeden istenemez.'
 export const NO_TEXT_INFO = 'Rıza metni henüz yayımlanmadığı için şu amaçlarda rıza alınamıyor:'
 export const OUTDATED_NOTICE =
   'Rıza metni güncellendi. Güncel metni okuyup kararınızı yeniden verin.'
+export const GUARDIAN_GIVES_INFO = 'Rızayı veliniz verir.'
+export const ADULT_SELF_INFO = 'Öğrenci 18 yaşını doldurduğu için rızayı kendisi verir.'
+export const MINOR_ACCOUNT_INFO = 'Bu rıza 18 yaşından küçük öğrenciden alınmaz.'
 
 /** Yalnız veli ve öğrenci rıza verir; personel (yönetici, ön büro, öğretmen) veremez. */
-export function canActOnConsent(role: RoleKey | null | undefined): boolean {
+export function canActOnConsent(role: RoleKey | null | undefined): role is ConsentActorRole {
   return role === 'veli' || role === 'ogrenci'
 }
 
@@ -61,10 +72,17 @@ export type PurposeStep =
   | { purpose: ConsentPurpose; kind: 'needs-student' }
   | { purpose: ConsentPurpose; kind: 'no-text' }
   | { purpose: ConsentPurpose; kind: 'error' }
+  /** Rızayı bu oturum değil başkası verir (veli ya da reşit öğrenci); bilgi gösterilir. */
+  | { purpose: ConsentPurpose; kind: 'other-grantor'; info: string }
   | { purpose: ConsentPurpose; kind: 'choose'; textId: string }
+
+/** Rıza verebilen oturum rolü (`canActOnConsent`). */
+export type ConsentActorRole = 'veli' | 'ogrenci'
 
 export interface PurposeSource {
   purpose: ConsentPurpose
+  /** Oturumun rolü: sunucunun `grantor` sonucuyla karşılaştırılır. */
+  actor: ConsentActorRole
   /** Güncel metin sorgusunun durumu. */
   text:
     | { state: 'loading' }
@@ -77,16 +95,38 @@ export interface PurposeSource {
 }
 
 /**
+ * Bu oturum amaçta rıza veremiyorsa gösterilecek bilgi, verebiliyorsa `null` (DOM-YTK-057).
+ * Kimin verdiği (`grantor`) sunucuda core `consentGrantor` ile yaştan hesaplanır; burada yalnız
+ * oturum rolüyle eşlenir, yaş tahmin edilmez. Öğrenci amacında veli `guardian`, öğrenci `self`
+ * satırında verir; hesap amacında hesap sahibi (`self`) verir, `null` alınmaz demektir.
+ * `grantor` gelmediyse (eski yanıt) karar sunucuya bırakılır.
+ */
+export function grantorInfo(
+  actor: ConsentActorRole,
+  purpose: ConsentPurpose,
+  grantor: ConsentStatusView['grantor'],
+): string | null {
+  if (grantor === undefined) return null
+  if (grantor === null) return MINOR_ACCOUNT_INFO
+  if (!purposeNeedsStudent(purpose)) return null
+  if (actor === 'ogrenci' && grantor === 'guardian') return GUARDIAN_GIVES_INFO
+  if (actor === 'veli' && grantor === 'self') return ADULT_SELF_INFO
+  return null
+}
+
+/**
  * Amacın ekrandaki durumu. Geçerli rızası olan amaç karar beklemez (mükerrer rıza 409 olurdu);
- * öğrenci amacı öğrencisiz, metni olmayan amaç ve okunamayan veri karar bekletmez ama
- * tamamlanmayı da engellemez.
+ * rızayı başkasının verdiği amaç bilgi gösterir; öğrenci amacı öğrencisiz, metni olmayan amaç ve
+ * okunamayan veri karar bekletmez.
  */
 export function purposeStep(source: PurposeSource): PurposeStep {
   const { purpose } = source
   if (purposeNeedsStudent(purpose) && !source.studentId) return { purpose, kind: 'needs-student' }
   if (source.status === undefined) return { purpose, kind: 'loading' }
-  if (source.status.some((item) => item.purpose === purpose && item.valid))
-    return { purpose, kind: 'valid' }
+  const status = source.status.find((item) => item.purpose === purpose)
+  if (status?.valid) return { purpose, kind: 'valid' }
+  const info = grantorInfo(source.actor, purpose, status?.grantor)
+  if (info !== null) return { purpose, kind: 'other-grantor', info }
   if (source.text.state === 'loading') return { purpose, kind: 'loading' }
   if (source.text.state === 'missing') return { purpose, kind: 'no-text' }
   if (source.text.state === 'error') return { purpose, kind: 'error' }
@@ -97,19 +137,45 @@ export function choosable(steps: readonly PurposeStep[]) {
   return steps.filter((step) => step.kind === 'choose')
 }
 
-/** Karar bekleyen her amaç için açık seçim yapıldı mı (hiç karar bekleyen yoksa tamam değil). */
+/**
+ * Amacın geçerli kararı: yalnız ekrandaki metin sürümüne verilmişse. Metin sessizce tazelenince
+ * (başka sekmede yeni sürüm yayımlandı) eski karar burada düşer; kullanıcıya yeniden sorulur.
+ */
+export function choiceFor(step: PurposeStep, choices: ConsentChoices): ConsentChoice | undefined {
+  if (step.kind !== 'choose') return undefined
+  const stored = choices[step.purpose]
+  return stored?.textId === step.textId ? stored.choice : undefined
+}
+
+/** Karar eski metin sürümüne verilmiş (metin değişti): kullanıcı yeniden karar vermeli. */
+export function isStale(step: PurposeStep, choices: ConsentChoices): boolean {
+  const stored = choices[step.purpose]
+  return step.kind === 'choose' && stored !== undefined && stored.textId !== step.textId
+}
+
+/**
+ * Adım tamam mı: hiçbir amaç yüklenmiyor ya da hata vermiyor ve karar bekleyen her amaç için
+ * ekrandaki metne açık seçim yapıldı. Karar bekleyen amaç yoksa (hepsi geçerli, metni yok ya da
+ * rızayı başkası verir) adım da tamamdır: form ilerleyebilir.
+ */
 export function isComplete(steps: readonly PurposeStep[], choices: ConsentChoices): boolean {
-  const pending = choosable(steps)
-  return pending.length > 0 && pending.every((step) => choices[step.purpose] !== undefined)
+  if (steps.some((step) => step.kind === 'loading' || step.kind === 'error')) return false
+  return choosable(steps).every((step) => choiceFor(step, choices) !== undefined)
+}
+
+/** Her amaç zaten geçerli rızalı: sorulacak bir şey yok (`onComplete` kendiliğinden çağrılır). */
+export function allGranted(steps: readonly PurposeStep[]): boolean {
+  return steps.length > 0 && steps.every((step) => step.kind === 'valid')
 }
 
 /** Seçim ekler; aynı amacın önceki kararı yerine geçer. */
 export function choose(
   choices: ConsentChoices,
   purpose: ConsentPurpose,
+  textId: string,
   choice: ConsentChoice,
 ): ConsentChoices {
-  return { ...choices, [purpose]: choice }
+  return { ...choices, [purpose]: { textId, choice } }
 }
 
 /** Metin güncellenince eski karar geçersizdir: kullanıcı yeni metni okuyup yeniden seçer. */
@@ -132,21 +198,57 @@ export interface SubmitPlan {
   declined: ConsentPurpose[]
 }
 
+/** Yalnız ekrandaki metne verilmiş kararlar gönderilir; eski sürüme verilen karar yok sayılır. */
 export function submitPlan(steps: readonly PurposeStep[], choices: ConsentChoices): SubmitPlan {
   const plan: SubmitPlan = { grant: [], declined: [] }
   for (const step of choosable(steps)) {
-    if (choices[step.purpose] === 'granted')
-      plan.grant.push({ purpose: step.purpose, textId: step.textId })
-    else if (choices[step.purpose] === 'declined') plan.declined.push(step.purpose)
+    const choice = choiceFor(step, choices)
+    if (choice === 'granted') plan.grant.push({ purpose: step.purpose, textId: step.textId })
+    else if (choice === 'declined') plan.declined.push(step.purpose)
   }
   return plan
 }
 
 /** Üst bileşenin (ör. kayıt formu) izlediği durum. */
 export interface ConsentStepState {
-  /** Oturum rıza verebilir (veli ya da öğrenci). Personelde `false`: adım bilgi gösterir. */
+  /**
+   * Oturum rıza verebilir (veli ya da öğrenci). Personelde `false`: adım bilgi gösterir, hiç
+   * tamamlanmaz; çağıran adımı atlar.
+   */
   actionable: boolean
-  /** Karar bekleyen her amaç için açık seçim yapıldı. */
+  /** `isComplete`: karar bekleyen her amaç için ekrandaki metne açık seçim yapıldı ya da bekleyen yok. */
   complete: boolean
-  choices: ConsentChoices
+  /** Ekrandaki metne verilmiş kararlar (eski sürüme verilenler yok). */
+  choices: Partial<Record<ConsentPurpose, ConsentChoice>>
+  /** Amaç başına ekran durumu (`PurposeStep['kind']`), ör. hepsi `valid` ise sorulacak yok. */
+  steps: Partial<Record<ConsentPurpose, PurposeStep['kind']>>
+}
+
+/** Adımın üst bileşene bildirilen durumu (`onChange`); saf, testte de aynısı kullanılır. */
+export function stepState(
+  actionable: boolean,
+  steps: readonly PurposeStep[],
+  choices: ConsentChoices,
+): ConsentStepState {
+  const effective: Partial<Record<ConsentPurpose, ConsentChoice>> = {}
+  const kinds: Partial<Record<ConsentPurpose, PurposeStep['kind']>> = {}
+  for (const step of steps) {
+    kinds[step.purpose] = step.kind
+    const choice = choiceFor(step, choices)
+    if (choice !== undefined) effective[step.purpose] = choice
+  }
+  return {
+    actionable,
+    complete: actionable && isComplete(steps, choices),
+    choices: effective,
+    steps: kinds,
+  }
+}
+
+/**
+ * Adımın kimliği: öğrenci ya da amaç listesi değişince seçimler sıfırlanır (bileşen `key`'i).
+ * Başka öğrencinin ya da amacın kararı taşınmaz.
+ */
+export function stepKey(studentId: string | undefined, purposes: readonly ConsentPurpose[]) {
+  return `${studentId ?? ''}|${purposes.join(',')}`
 }

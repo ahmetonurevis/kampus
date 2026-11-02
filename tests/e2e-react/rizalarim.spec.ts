@@ -192,7 +192,7 @@ test.describe('Rızalarım', () => {
     expect(await consentsOf(admin, 's1')).toHaveLength(0)
   })
 
-  test('IST-017: öğrenci kendi rıza kayıtlarını verenin kimliği olmadan görür; dar ekranda taşma yok', async ({
+  test('IST-017, DOM-YTK-057, DOM-YTK-059: öğrenci kayıtlarını verenin kimliği olmadan görür, velinin satırını geri çekemez; dar ekranda taşma yok', async ({
     page,
     tenant,
     loginAs,
@@ -222,6 +222,10 @@ test.describe('Rızalarım', () => {
     await expect(row).toContainText('Geçerli')
     await expect(row).toContainText('Veli')
     await expect(row).toContainText('Metin sürümü 1')
+    // 18 yaş altı öğrenci velinin rızasını geri çekemez (canWithdraw) ve rıza formu görmez.
+    await expect(row.getByRole('button', { name: /geri çek/ })).toHaveCount(0)
+    await expect(own.getByText('Rızayı veliniz verir.')).toBeVisible()
+    await expect(own.getByRole('radiogroup')).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
 
     const student = await api(school.user('ogrenci'))

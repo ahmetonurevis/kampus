@@ -9,6 +9,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { institutions } from '../src/db/schema/auth.ts'
 import { files } from '../src/db/schema/files.ts'
+import { records } from '../src/db/schema/records.ts'
 import { resourceVersionFiles, resourceVersions } from '../src/db/schema/resources.ts'
 import { recordFileCheck } from '../src/services/files.ts'
 import {
@@ -404,7 +405,7 @@ describe('kaynak sürümü dosyaları', () => {
     assert.equal(data.version.files[0].id, own)
   })
 
-  test('DOM-KYN-006, DOM-KYN-030: taslak düzenleme listeyi bütün olarak değiştirir; çıkan dosyanın bağı kalkar, hatada kayıt değişmez', async () => {
+  test('DOM-KYN-006, DOM-KYN-030: taslak düzenleme listeyi bütün olarak değiştirir; çıkan dosyanın bağı kalkar, yazar olmayan yönetici 404, sahip ayrılınca 403; hatada kayıt değişmez', async () => {
     const t = await tenant()
     const first = await upload(t, t.cookies.teacher)
     const second = await upload(t, t.cookies.teacher)
@@ -462,15 +463,37 @@ describe('kaynak sürümü dosyaları', () => {
       detail.head.files.map((file: Json) => file.id),
       [second],
     )
+
+    // Taslağı yalnız yazarı düzenler (DOM-KYN-030): sahip etkinken yönetici taslağı görmez (404);
+    // sahip ayrılınca görür (DOM-KYN-052) ama düzenleyemez (403). Kayıt değişmez.
+    const draftBefore = await snapshot(t.institution.id)
+    fails(await patch(url, t.cookies.admin, { fileIds: [first, second] }, 3), 404, 'not_found')
+    await db
+      .update(records)
+      .set({ archivedAt: FIXED_NOW })
+      .where(
+        and(
+          eq(records.institutionId, t.institution.id),
+          eq(records.collection, 'teachers'),
+          eq(records.id, 't-mat'),
+        ),
+      )
+    fails(
+      await patch(url, t.cookies.admin, { fileIds: [first, second] }, 3),
+      403,
+      'resource_action_forbidden',
+    )
+    assert.deepEqual(await snapshot(t.institution.id), draftBefore)
   })
 
-  test('DOM-KYN-006, DOM-KYN-024: paylaşılan öğrenci ve velisi dosyayı okur; paylaşılmayan, ön büro ve başka kurum 404; modül kapalı 403', async () => {
+  test('DOM-KYN-006, DOM-KYN-024, DOM-YTK-028: paylaşılan öğrenci, velisi ve kardeş velisi dosyayı okur; taslak başka öğretmene, paylaşılmayan, ön büro ve başka kurum 404; modül kapalı 403', async () => {
     const t = await tenant()
     const other = await tenant()
     const fileId = await upload(t, t.cookies.teacher)
     const data = await create(t, text([fileId]))
-    // Taslak öğrenciye görünmez.
-    fails(await fileUrl(t.cookies.student, fileId), 404, 'not_found')
+    // Taslak öğrenciye ve kaynağı göremeyen başka öğretmene görünmez.
+    for (const cookie of [t.cookies.student, t.cookies.otherTeacher])
+      fails(await fileUrl(cookie, fileId), 404, 'not_found')
     await publishToClass(t, data)
 
     const learner = await ok(await call('GET', `/resources/${data.resource.id}`, t.cookies.student))
@@ -479,9 +502,11 @@ describe('kaynak sürümü dosyaları', () => {
       learner.version.files.map((file: Json) => [file.id, file.name]),
       [[fileId, 'kesirler.pdf']],
     )
+    // Kardeşlerin velisi paylaşılan çocuğu (Deniz) üzerinden açar (DOM-YTK-028).
     for (const cookie of [
       t.cookies.student,
       t.cookies.parent,
+      t.cookies.siblingsParent,
       t.cookies.teacher,
       t.cookies.admin,
     ]) {

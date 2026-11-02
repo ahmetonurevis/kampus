@@ -8,9 +8,12 @@ import { ADMIN_CARDS } from './AdminCards.tsx'
 import { SLA_CARDS } from './AdminSlaCard.tsx'
 import { ENROLLMENT_CARDS } from './HandoverEnrollmentCards.tsx'
 import { FINANCE_CARDS } from './HandoverFinanceCards.tsx'
+import { GRADE_TREND_CARDS } from './GradeTrendCards.tsx'
 import { LEARNER_CARDS } from './LearnerCards.tsx'
+import { NEWS_CARDS } from './NewsCard.tsx'
 import { STUDENT_CARDS } from './StudentCards.tsx'
 import { TEACHER_CARDS } from './TeacherCards.tsx'
+import { TEACHER_QUESTION_CARDS } from './TeacherQuestionCards.tsx'
 
 // Oğuzhan: akademik ve kurum kartları.
 const OGUZHAN_CARDS: readonly DashboardCard[] = [
@@ -19,6 +22,9 @@ const OGUZHAN_CARDS: readonly DashboardCard[] = [
   ...TEACHER_CARDS,
   ...STUDENT_CARDS,
   ...LEARNER_CARDS,
+  ...TEACHER_QUESTION_CARDS,
+  ...GRADE_TREND_CARDS,
+  ...NEWS_CARDS,
 ]
 
 // Onur'a devredilecek: bileşenleri Oğuzhan'ın dosyalarında duran finans ve kayıt kartları. Onur

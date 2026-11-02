@@ -232,6 +232,10 @@ const CORRECTION_HISTORY: readonly string[] = ['corrections']
 const PARENT_PRIVATE: readonly string[] = ['phone', 'email', 'relationship']
 const PARENT_RELATIONSHIP: readonly string[] = ['relationship']
 const ANSWER_KEY_FIELDS: readonly string[] = ['keyCsv', 'keys']
+// kvkk: Ç — iptal ve yedek görevlendirme gerekçesi öğretmenin izin/sağlık durumunu söyleyebilir
+// (DOM-YTK-068). Görevlendirme geçmişi gerekçeyi taşıdığı için bütünüyle gizlidir; yedek atandığı
+// `originalTeacherId` ve öğretmen alanından okunur.
+const LESSON_REASONS: readonly string[] = ['cancelReason', 'substitutions']
 const MESSAGE_HIDDEN_FIELDS: readonly string[] = ['senderUserId', 'parentUserId']
 // kvkk: Ç — kimlik no yalnız yönetici ve ön büroya, maskeli döner; doğum tarihini öğretmen görmez.
 const STUDENT_IDENTITY: readonly string[] = ['nationalId', 'birthDate']
@@ -267,6 +271,10 @@ export const PLATFORM_HIDDEN_FIELDS = {
     c.role === 'ogrenci' ? PARENT_PRIVATE : c.role === 'ogretmen' ? PARENT_RELATIONSHIP : NONE,
   grades: (c) => (personal(c) ? CORRECTION_HISTORY : NONE),
   attendance: (c) => (personal(c) ? CORRECTION_HISTORY : NONE),
+  // İptal ve yedek gerekçesi yalnız yöneticiye döner. Öğretmen (asıl ya da yedek), ön büro,
+  // öğrenci ve veli dersin iptal edildiğini ve yedek öğretmeni görür, gerekçeyi görmez
+  // (DOM-YTK-068).
+  schedule: (c) => (c.role === 'yonetici' ? NONE : LESSON_REASONS),
   // İç not yalnız rehberlik görevli öğretmene döner; yönetici, ön büro, görevsiz öğretmen, öğrenci
   // ve veli görmez (DOM-ILT-040, DOM-YTK-020).
   // TODO(IST-020): yöneticinin adli/idari soruşturma gerekçesiyle, denetim kaydına düşen erişimi.

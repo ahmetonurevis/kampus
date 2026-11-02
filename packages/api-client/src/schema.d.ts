@@ -3820,6 +3820,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lessons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ders programı
+         * @description Dersler başlangıca göre, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `dateFrom`/`dateTo` (Europe/Istanbul günü, dahil; ters aralık 400), `classId`, `teacherId` (dersi veren), `room`, `cancelled`. İptal edilen ders varsayılan olarak dönmez (günlük program); `cancelled=true` ya da `all` iptal geçmişini verir. Bilinmeyen parametre 400. Yönetici ve ön büro kurumun bütün programını, öğretmen kendi (asıl ya da yedek olduğu) derslerini, öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur (DOM-YTK-068). İptal ve görevlendirme gerekçesi (`cancelReason`, `substitutions`) yalnız yöneticiye döner; öğretmen, ön büro, öğrenci ve veli `status` ve `originalTeacherId` alanlarını görür. Modül `planning` ve `academic`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listLessons"];
+        put?: never;
+        /**
+         * Ders planla
+         * @description Yeni ders (core `runWorkflow('lesson')`, DOM-YTK-069). Ders geçmiş saate planlanamaz (422 `lesson_in_past`). Öğretmen etkin olmalı (pasif 422 `record_inactive`), sınıfın kampüsünde ve dersin branşında (422 `lesson_teacher_mismatch`). Çakışma 409: öğretmenin başka dersi `teacher_lesson_conflict`, sınıfın başka dersi `class_lesson_conflict`, aynı kampüste derslik `room_conflict` (boşluk ve büyük/küçük harf duyarsız), öğretmenin randevusu `teacher_appointment_conflict`, öğretmenin okul etkinliği `teacher_event_conflict`, öğretmenin etüdü ya da dersliğin etüdü `tutor_schedule_conflict`. İptal edilen ders saati boşaltır. Pasif sınıf 422 `record_inactive`; olmayan sınıf, öğretmen veya kampüs 404. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Roller: `yonetici`.
+         */
+        post: operations["createLesson"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lessons/{lessonId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ders
+         * @description Tek ders (iptal edilmiş olsa da). Olmayan, başka kurumun ya da aktörün göremediği ders 404. Yönetici ve ön büro kurumun bütün programını, öğretmen kendi (asıl ya da yedek olduğu) derslerini, öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur (DOM-YTK-068). İptal ve görevlendirme gerekçesi (`cancelReason`, `substitutions`) yalnız yöneticiye döner; öğretmen, ön büro, öğrenci ve veli `status` ve `originalTeacherId` alanlarını görür. Modül `planning` ve `academic`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getLesson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Dersi düzenle
+         * @description Dersin alanlarını kısmi değiştirir; gönderilmeyen alanlar dersin mevcut değeridir ve ders bütün olarak yeniden doğrulanır (core `runWorkflow('lesson')`). İptal edilmiş ders 422 `lesson_cancelled`. Yedek atanmış derste öğretmen değişmez: 422 `lesson_has_substitution` (yedek atama işlemi kullanılır). Başlamış veya geçmiş ders değişmez: 422 `lesson_in_past` (DOM-YTK-069). Öğretmen etkin olmalı (pasif 422 `record_inactive`), sınıfın kampüsünde ve dersin branşında (422 `lesson_teacher_mismatch`). Çakışma 409: öğretmenin başka dersi `teacher_lesson_conflict`, sınıfın başka dersi `class_lesson_conflict`, aynı kampüste derslik `room_conflict` (boşluk ve büyük/küçük harf duyarsız), öğretmenin randevusu `teacher_appointment_conflict`, öğretmenin okul etkinliği `teacher_event_conflict`, öğretmenin etüdü ya da dersliğin etüdü `tutor_schedule_conflict`. İptal edilen ders saati boşaltır. `If-Match` dersin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun dersi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`.
+         */
+        patch: operations["updateLesson"];
+        trace?: never;
+    };
+    "/api/v1/lessons/{lessonId}/substitute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Derse yedek öğretmen ata
+         * @description Yalnız bu derse yedek öğretmen atar (core `runWorkflow('substitute')`); asıl öğretmen `originalTeacherId`'de, görevlendirme `substitutions` geçmişinde kalır, kalıcı branş ataması değişmez. Gerekçe zorunlu (en çok 500 karakter) ve denetim kaydına yazılır. Aynı öğretmen 422 `teacher_unchanged`; iptal edilmiş ders 422 `lesson_cancelled`. Başlamış veya geçmiş ders değişmez: 422 `lesson_in_past` (DOM-YTK-069). Öğretmen etkin olmalı (pasif 422 `record_inactive`), sınıfın kampüsünde ve dersin branşında (422 `lesson_teacher_mismatch`). Çakışma 409: öğretmenin başka dersi `teacher_lesson_conflict`, sınıfın başka dersi `class_lesson_conflict`, aynı kampüste derslik `room_conflict` (boşluk ve büyük/küçük harf duyarsız), öğretmenin randevusu `teacher_appointment_conflict`, öğretmenin okul etkinliği `teacher_event_conflict`, öğretmenin etüdü ya da dersliğin etüdü `tutor_schedule_conflict`. İptal edilen ders saati boşaltır. `If-Match` dersin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun dersi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`.
+         */
+        post: operations["substituteLesson"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lessons/{lessonId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dersi iptal et
+         * @description Dersi gerekçeyle iptal eder (core `runWorkflow('lesson-cancel')`); kayıt silinmez, `cancelledAt` ve `cancelReason` yazılır, gerekçe denetim kaydına da düşer. İptal edilen ders günlük programda görünmez, `cancelled=true` ile listelenir. Gerekçe yoksa 400 `validation_failed` (`reason`). Zaten iptal 409 `lesson_already_cancelled`. Başlamış veya geçmiş ders değişmez: 422 `lesson_in_past` (DOM-YTK-069). Sınıfın ders günü için yoklama alınmışsa 422 `lesson_attendance_taken`. `If-Match` dersin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun dersi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`.
+         */
+        post: operations["cancelLesson"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/groups": {
         parameters: {
             query?: never;
@@ -4738,7 +4826,7 @@ export interface components {
             actor: components["schemas"]["AuditEventActorInput"] | null;
             /** @description Değişen alan adları (değerler hiçbir zaman dönmez); rehberlikte boştur */
             fields: string[];
-            /** @description Gerekçeli hassas okumanın gerekçesi (DOM-YTK-052); diğer kayıtlarda `null` */
+            /** @description Gerekçeli hassas okumanın (DOM-YTK-052) ya da ders iptali ve yedek görevlendirmenin (DOM-YTK-069) gerekçesi; diğer kayıtlarda `null` */
             reason: string | null;
         };
         CoordinatorDutyInput: {
@@ -5034,7 +5122,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "enrollment_completed";
+            kind: "feedback_released" | "appeal_decided" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -6349,6 +6437,44 @@ export interface components {
              */
             updatedAt?: string;
         };
+        LessonSubstitutionInput: {
+            fromTeacherId: string;
+            toTeacherId: string;
+            reason: string;
+            /** @description Görevlendirmenin yapıldığı an */
+            date: string;
+        };
+        LessonInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Ders adı; eski kayıtta boş olabilir */
+            title: string | null;
+            /** @description Dersi veren öğretmen; yedek atandıysa yedek */
+            teacherId: string;
+            /** @description Yedek atandıysa asıl öğretmen; kalıcı branş ataması değişmez */
+            originalTeacherId: string | null;
+            /** @description Ders başlangıcı, ISO 8601 UTC */
+            date: string;
+            /** @description Dakika */
+            duration: number;
+            /** @description Derslik */
+            room: string;
+            /**
+             * @description Türetilir: `cancelled` iptal, `substituted` yedek atanmış, `planned` diğerleri
+             * @enum {string}
+             */
+            status: "planned" | "substituted" | "cancelled";
+            cancelledAt: string | null;
+            /** @description İptal gerekçesi; yalnız yöneticiye döner */
+            cancelReason?: string | null;
+            /** @description Görevlendirme geçmişi (gerekçe dahil); yalnız yöneticiye döner */
+            substitutions?: components["schemas"]["LessonSubstitutionInput"][];
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+        };
         GroupSlotInput: {
             /** @description ISO hafta günü: 1 Pazartesi … 7 Pazar */
             weekday: number;
@@ -7136,7 +7262,7 @@ export interface components {
             actor: components["schemas"]["AuditEventActor"] | null;
             /** @description Değişen alan adları (değerler hiçbir zaman dönmez); rehberlikte boştur */
             fields: string[];
-            /** @description Gerekçeli hassas okumanın gerekçesi (DOM-YTK-052); diğer kayıtlarda `null` */
+            /** @description Gerekçeli hassas okumanın (DOM-YTK-052) ya da ders iptali ve yedek görevlendirmenin (DOM-YTK-069) gerekçesi; diğer kayıtlarda `null` */
             reason: string | null;
         };
         CoordinatorDuty: {
@@ -7432,7 +7558,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "enrollment_completed";
+            kind: "feedback_released" | "appeal_decided" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -8745,6 +8871,44 @@ export interface components {
              * @description Yalnız personele döner
              */
             updatedAt?: string;
+        };
+        LessonSubstitution: {
+            fromTeacherId: string;
+            toTeacherId: string;
+            reason: string;
+            /** @description Görevlendirmenin yapıldığı an */
+            date: string;
+        };
+        Lesson: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Ders adı; eski kayıtta boş olabilir */
+            title: string | null;
+            /** @description Dersi veren öğretmen; yedek atandıysa yedek */
+            teacherId: string;
+            /** @description Yedek atandıysa asıl öğretmen; kalıcı branş ataması değişmez */
+            originalTeacherId: string | null;
+            /** @description Ders başlangıcı, ISO 8601 UTC */
+            date: string;
+            /** @description Dakika */
+            duration: number;
+            /** @description Derslik */
+            room: string;
+            /**
+             * @description Türetilir: `cancelled` iptal, `substituted` yedek atanmış, `planned` diğerleri
+             * @enum {string}
+             */
+            status: "planned" | "substituted" | "cancelled";
+            cancelledAt: string | null;
+            /** @description İptal gerekçesi; yalnız yöneticiye döner */
+            cancelReason?: string | null;
+            /** @description Görevlendirme geçmişi (gerekçe dahil); yalnız yöneticiye döner */
+            substitutions?: components["schemas"]["LessonSubstitution"][];
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
         };
         GroupSlot: {
             /** @description ISO hafta günü: 1 Pazartesi … 7 Pazar */
@@ -12129,10 +12293,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description Gövdesiz komut */
         requestBody: {
             content: {
-                "application/json": Record<string, never>;
+                "application/json": {
+                    reason: string;
+                };
             };
         };
         responses: {
@@ -32556,6 +32721,617 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["Course"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLessons: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Ders başlangıcının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Ders başlangıcının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+                /** @description Sınıf */
+                classId?: string;
+                /** @description Dersi veren öğretmen (yedek atandıysa yedek; asıl öğretmen değil) */
+                teacherId?: string;
+                /** @description Derslik; baştaki/sondaki boşluk ve Türkçe büyük/küçük harf duyarsız eşitlik */
+                room?: string;
+                /** @description İptal süzgeci. Varsayılan `false`: iptal edilen ders günlük programda görünmez. `true` yalnız iptal edilenler, `all` ikisi birlikte (iptal geçmişi korunur) */
+                cancelled?: "false" | "true" | "all";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Lesson"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLesson: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    classId: string;
+                    teacherId: string;
+                    subjectId: string;
+                    date: string;
+                    duration: number;
+                    room: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Lesson"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLesson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Ders kimliği */
+                lessonId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Lesson"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateLesson: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Ders kimliği */
+                lessonId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    classId?: string;
+                    teacherId?: string;
+                    subjectId?: string;
+                    date?: string;
+                    duration?: number;
+                    room?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Lesson"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    substituteLesson: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Ders kimliği */
+                lessonId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    teacherId: string;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Lesson"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelLesson: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Ders kimliği */
+                lessonId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Lesson"];
                     };
                 };
             };

@@ -3,6 +3,11 @@ import type { z } from 'zod'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { runAssessment } from '@kampus/school-core/lib/assessment-automation.ts'
+import {
+  attendanceAlerts,
+  attendanceSnapshots,
+  type AttendanceAlert,
+} from '@kampus/school-core/lib/attendance-alerts.ts'
 import { requireAuthorized, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
 import {
   recordAttendance,
@@ -43,6 +48,7 @@ import { isRecordCollection, type CollectionName, type ScalarStateKey } from '..
 import { institutionSettings } from '../db/schema/institution-settings.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { notifyAttendanceAlerts } from './attendance-alerts.ts'
 import { commandBody } from './command-result.ts'
 import { listMembershipLinks } from './memberships.ts'
 import { getInstitutionModules } from './modules.ts'
@@ -166,6 +172,22 @@ function renewalYear(input: unknown): number | null {
   return parsed.success ? parsed.data.year : null
 }
 
+/**
+ * Gerekçe taşıyan iş akışı komutları: gerekçe denetim kaydının `reason` kolonuna da yazılır
+ * (DOM-YTK-069). Köprü ile ders uçları (`services/lessons.ts`) aynı denetim kaydını bırakır.
+ */
+const AUDIT_REASON_COMMANDS = ['substitute', 'lesson-cancel'] as const
+type AuditReasonCommand = (typeof AUDIT_REASON_COMMANDS)[number]
+const hasAuditReason = (command: WorkflowCommand): command is AuditReasonCommand =>
+  (AUDIT_REASON_COMMANDS as readonly WorkflowCommand[]).includes(command)
+
+/** Komutun denetim gerekçesi; biçim hatasını iş akışının kendi doğrulaması raporlar. */
+function workflowAuditReason(command: WorkflowCommand, input: unknown): string | undefined {
+  if (!hasAuditReason(command)) return undefined
+  const parsed = workflowSchemas[command].safeParse(input)
+  return parsed.success ? parsed.data.reason : undefined
+}
+
 /** `runWorkflow` köprüsü (api-tasarimi.md §1 geçiş köprüsü). */
 export async function executeWorkflowCommand(
   ctx: ServiceContext,
@@ -173,11 +195,13 @@ export async function executeWorkflowCommand(
   options: CommandOptions,
 ): Promise<CommandResponse> {
   const { command, input, recordId } = workflow
+  const auditReason = workflowAuditReason(command, input)
   return execute(
     ctx,
     {
       action: `workflow.${command}`,
       collections: WORKFLOW_COMMANDS[command].collections,
+      ...(auditReason === undefined ? {} : { auditReason }),
       ...(recordId !== undefined && options.expectedVersion !== null
         ? { expectedRecordVersion: { id: recordId, version: options.expectedVersion } }
         : {}),
@@ -257,6 +281,9 @@ export async function recordAttendanceCommand(
   input: z.output<typeof attendanceInputSchema>,
   options: CommandOptions,
 ): Promise<CommandResponse> {
+  // Yoklamadan çıkan devamsızlık bildirimleri `run`'da hesaplanır, `after`'da aynı transaction'da
+  // yazılır: yazma başarısızsa bildirim de yoktur (DOM-ILT-052).
+  const out: { alerts: AttendanceAlert[] } = { alerts: [] }
   return execute(
     ctx,
     {
@@ -286,13 +313,18 @@ export async function recordAttendanceCommand(
             })
             if (!state.classes.some((item) => item.id === classId)) throw new NotFoundError()
             // Gelecek gün uygulamanın saatine göre denetlenir (`ctx.now`), gerçek saate göre değil.
+            const before = attendanceSnapshots(state, date)
             recordAttendance(state, classId, date, input.marks, now, {
               reason: input.reason,
               by: ctx.actor.userId,
             })
+            out.alerts = attendanceAlerts(before, attendanceSnapshots(state, date), now)
             return { collection: 'classes', id: classId }
           },
         }
+      },
+      after: async (tx) => {
+        await notifyAttendanceAlerts(tx, ctx, out.alerts)
       },
     },
     options,

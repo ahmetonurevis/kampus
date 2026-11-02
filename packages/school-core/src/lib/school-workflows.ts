@@ -158,7 +158,9 @@ export const workflowSchemas = {
     duration: integer(10, 180),
     room: text.max(80),
   }),
-  substitute: z.object({ teacherId: identifier, reason: text }),
+  // Gerekçe denetim kaydına da yazılır (`audit_log.reason`, en çok 500 karakter; DOM-YTK-069).
+  substitute: z.object({ teacherId: identifier, reason: text.max(500) }),
+  'lesson-cancel': z.object({ reason: text.max(500) }),
   'study-task': z.object({
     studentId: identifier,
     subjectId: identifier,
@@ -580,6 +582,28 @@ function validateLesson(state: State, data: LessonSlot, ignoreId: string | undef
       'Öğretmenin bu saatte görüşme randevusu var.',
       { kind: 'conflict' },
     )
+  // Öğretmenin sorumlu olduğu (iptal edilmemiş) okul etkinliği de onu meşgul eder (DOM-YTK-069).
+  if (
+    (state.schoolEvents || []).some(
+      (e) =>
+        e.status !== 'İptal' &&
+        e.teacherId === data.teacherId &&
+        overlaps(data, {
+          date: e.date,
+          duration: (Date.parse(e.endDate) - Date.parse(e.date)) / 60000,
+        }),
+    )
+  )
+    throw new DomainError('teacher_event_conflict', 'Öğretmenin bu saatte okul etkinliği var.', {
+      kind: 'conflict',
+    })
+}
+/**
+ * Başlamış veya geçmiş ders değişmez: düzenlenmez, yedek atanmaz, iptal edilmez; ders geçmiş
+ * saate planlanmaz (DOM-YTK-069). Ders başlangıcı işlem anına eşit ya da önceyse geçmiştir.
+ */
+function requireUpcomingLesson(date: string, now: string, message: string) {
+  if (Date.parse(date) <= Date.parse(now)) throw new DomainError('lesson_in_past', message)
 }
 function validateExamResult(state: State, session: Session, input: unknown) {
   const data = workflowSchemas['exam-result'].parse(input)
@@ -1146,14 +1170,25 @@ function workflowHandlers(
     },
     lesson: () => {
       const data = workflowSchemas.lesson.parse(input)
+      const existing = recordId ? requireRecord(state.schedule, recordId) : null
+      if (existing?.cancelledAt)
+        throw new DomainError('lesson_cancelled', 'İptal edilmiş ders düzenlenemez.')
+      if (existing)
+        requireUpcomingLesson(existing.date, now, 'Başlamış veya geçmiş ders düzenlenemez.')
+      // Yedek atanmış derste öğretmen düzenlemeyle değişmez; değişiklik görevlendirme geçmişine
+      // ve denetime gerekçeyle yazılsın diye yedek atama işlemi kullanılır (DOM-YTK-069).
+      if (existing?.originalTeacherId && data.teacherId !== existing.teacherId)
+        throw new DomainError(
+          'lesson_has_substitution',
+          'Bu derse yedek atanmış; öğretmeni değiştirmek için yedek atama işlemini kullanın.',
+          { path: ['teacherId'] },
+        )
+      requireUpcomingLesson(data.date, now, 'Ders geçmiş bir saate planlanamaz.')
       validateLesson(state, data, recordId)
       const title = () => state.subjects.find((s) => s.id === data.subjectId)?.name
-      if (recordId) {
-        const entry = requireRecord(state.schedule, recordId)
-        if (entry.cancelledAt)
-          throw new DomainError('lesson_cancelled', 'İptal edilmiş ders düzenlenemez.')
-        Object.assign(entry, data, { title: title(), updatedAt: now })
-        return entry
+      if (existing) {
+        Object.assign(existing, data, { title: title(), updatedAt: now })
+        return existing
       }
       // Yeni ders, damga alanlarından sonra girdi ve ders adıyla aynı alan sırasında oluşturulur.
       const entry = {
@@ -1173,6 +1208,7 @@ function workflowHandlers(
           'lesson_cancelled',
           'İptal edilmiş ders için görevlendirme yapılamaz.',
         )
+      requireUpcomingLesson(lesson.date, now, 'Başlamış veya geçmiş derse yedek atanamaz.')
       if (lesson.teacherId === data.teacherId)
         throw new DomainError('teacher_unchanged', 'Farklı bir öğretmen seçin.')
       validateLesson(state, { ...lesson, teacherId: data.teacherId }, lesson.id)
@@ -1188,12 +1224,23 @@ function workflowHandlers(
       return lesson
     },
     'lesson-cancel': () => {
+      const data = workflowSchemas['lesson-cancel'].parse(input)
       const entry = requireRecord(state.schedule, recordId)
       if (entry.cancelledAt)
         throw new DomainError('lesson_already_cancelled', 'Ders zaten iptal edilmiş.', {
           kind: 'conflict',
         })
-      entry.cancelledAt = now
+      requireUpcomingLesson(entry.date, now, 'Başlamış veya geçmiş ders iptal edilemez.')
+      // Yoklama gün bazındadır (DOM-AKD-030 farkı): sınıfın o günü için yoklama alınmışsa
+      // dersin iptali alınmış yoklamayı anlamsızlaştırır; ders iptal edilmez (DOM-YTK-069).
+      const day = dayKey(entry.date)
+      if (state.attendance.some((a) => a.classId === entry.classId && dayKey(a.date) === day))
+        throw new DomainError(
+          'lesson_attendance_taken',
+          'Bu ders günü için sınıfın yoklaması alınmış; ders iptal edilemez.',
+        )
+      // İptal kaydı silinmez; gerekçe derste ve denetim kaydında korunur.
+      Object.assign(entry, { cancelledAt: now, cancelReason: data.reason, updatedAt: now })
       return entry
     },
     'study-task': () => {

@@ -130,8 +130,9 @@ const RECORD_CASES: Record<string, RecordCase> = {
     actor: TEACHER,
   },
   'renewal-activate': { target: B_RENEWAL, body: {}, actor: ADMIN },
+  // Başlamış ders düzenlenmez ve iptal edilmez (DOM-YTK-069): hedef ders gelecektedir.
   lesson: {
-    target: copy('schedule', SEED.schedule, 'test-b-ders-saati'),
+    target: copy('schedule', SEED.schedule, 'test-b-ders-saati', { date: LESSON.date }),
     body: LESSON,
     actor: ADMIN,
   },
@@ -144,9 +145,10 @@ const RECORD_CASES: Record<string, RecordCase> = {
     body: { teacherId: 't1', reason: 'Öğretmen raporlu' },
     actor: ADMIN,
   },
+  // İptal gerekçe ister (DOM-YTK-069).
   'lesson-cancel': {
-    target: copy('schedule', SEED.schedule, 'test-b-ders-saati'),
-    body: {},
+    target: copy('schedule', SEED.schedule, 'test-b-ders-saati', { date: LESSON.date }),
+    body: { reason: 'Okul gezisi' },
     actor: ADMIN,
   },
   'study-complete': {

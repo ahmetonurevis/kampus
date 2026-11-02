@@ -323,7 +323,9 @@ test('Mezuniyet finans kaydı eklemeden geçmişi ve veli görünümünü korur'
 })
 test('Program öğretmen, sınıf, derslik ve görüşme çakışmasını atomik engeller; geçici görev kalıcı atamayı bozmaz', () => {
   const state = seed(),
-    lesson = state.schedule.find((l) => l.classId === 'c1' && l.subjectId === 'math'),
+    lesson = state.schedule.find(
+      (l) => l.classId === 'c1' && l.subjectId === 'math' && Date.parse(l.date) > Date.parse(now),
+    ),
     input = {
       classId: lesson!.classId,
       teacherId: lesson!.teacherId,
@@ -344,8 +346,9 @@ test('Program öğretmen, sınıf, derslik ve görüşme çakışmasını atomik
   assert.equal(lesson!.teacherId, replacement.id)
   assert.equal(JSON.stringify(state.assignments), assignments)
   const entry = run(state, 'lesson', { ...input, date: '2026-10-18T06:00:00Z', teacherId: 't1' })
-  run(state, 'lesson-cancel', {}, entry.id)
+  run(state, 'lesson-cancel', { reason: 'Okul gezisi.' }, entry.id)
   assert.equal(entry.cancelledAt, now)
+  assert.equal(entry.cancelReason, 'Okul gezisi.')
   const appointment = state.appointments.find(
     (a) => a.teacherId === 't1' && a.status !== 'Reddedildi',
   )

@@ -2595,7 +2595,7 @@
             "description": "Değişen alan adları (değerler hiçbir zaman dönmez); rehberlikte boştur"
           },
           "reason": {
-            "description": "Gerekçeli hassas okumanın gerekçesi (DOM-YTK-052); diğer kayıtlarda `null`",
+            "description": "Gerekçeli hassas okumanın (DOM-YTK-052) ya da ders iptali ve yedek görevlendirmenin (DOM-YTK-069) gerekçesi; diğer kayıtlarda `null`",
             "type": [
               "string",
               "null"
@@ -3986,6 +3986,8 @@
             "enum": [
               "feedback_released",
               "appeal_decided",
+              "absence_recorded",
+              "absence_corrected",
               "enrollment_completed"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
@@ -9375,6 +9377,135 @@
           "nextCourseId"
         ]
       },
+      "LessonSubstitutionInput": {
+        "type": "object",
+        "properties": {
+          "fromTeacherId": {
+            "type": "string"
+          },
+          "toTeacherId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "Görevlendirmenin yapıldığı an"
+          }
+        },
+        "required": [
+          "fromTeacherId",
+          "toTeacherId",
+          "reason",
+          "date"
+        ]
+      },
+      "LessonInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "title": {
+            "description": "Ders adı; eski kayıtta boş olabilir",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teacherId": {
+            "type": "string",
+            "description": "Dersi veren öğretmen; yedek atandıysa yedek"
+          },
+          "originalTeacherId": {
+            "description": "Yedek atandıysa asıl öğretmen; kalıcı branş ataması değişmez",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "description": "Ders başlangıcı, ISO 8601 UTC"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dakika"
+          },
+          "room": {
+            "type": "string",
+            "description": "Derslik"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "substituted",
+              "cancelled"
+            ],
+            "description": "Türetilir: `cancelled` iptal, `substituted` yedek atanmış, `planned` diğerleri"
+          },
+          "cancelledAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancelReason": {
+            "description": "İptal gerekçesi; yalnız yöneticiye döner",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "substitutions": {
+            "description": "Görevlendirme geçmişi (gerekçe dahil); yalnız yöneticiye döner",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonSubstitutionInput"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "classId",
+          "subjectId",
+          "title",
+          "teacherId",
+          "originalTeacherId",
+          "date",
+          "duration",
+          "room",
+          "status",
+          "cancelledAt",
+          "updatedAt"
+        ]
+      },
       "GroupSlotInput": {
         "type": "object",
         "properties": {
@@ -12511,7 +12642,7 @@
             "description": "Değişen alan adları (değerler hiçbir zaman dönmez); rehberlikte boştur"
           },
           "reason": {
-            "description": "Gerekçeli hassas okumanın gerekçesi (DOM-YTK-052); diğer kayıtlarda `null`",
+            "description": "Gerekçeli hassas okumanın (DOM-YTK-052) ya da ders iptali ve yedek görevlendirmenin (DOM-YTK-069) gerekçesi; diğer kayıtlarda `null`",
             "type": [
               "string",
               "null"
@@ -13928,6 +14059,8 @@
             "enum": [
               "feedback_released",
               "appeal_decided",
+              "absence_recorded",
+              "absence_corrected",
               "enrollment_completed"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
@@ -19459,6 +19592,137 @@
           "maxLearners",
           "certified",
           "nextCourseId"
+        ],
+        "additionalProperties": false
+      },
+      "LessonSubstitution": {
+        "type": "object",
+        "properties": {
+          "fromTeacherId": {
+            "type": "string"
+          },
+          "toTeacherId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "Görevlendirmenin yapıldığı an"
+          }
+        },
+        "required": [
+          "fromTeacherId",
+          "toTeacherId",
+          "reason",
+          "date"
+        ],
+        "additionalProperties": false
+      },
+      "Lesson": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "title": {
+            "description": "Ders adı; eski kayıtta boş olabilir",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "teacherId": {
+            "type": "string",
+            "description": "Dersi veren öğretmen; yedek atandıysa yedek"
+          },
+          "originalTeacherId": {
+            "description": "Yedek atandıysa asıl öğretmen; kalıcı branş ataması değişmez",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "description": "Ders başlangıcı, ISO 8601 UTC"
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Dakika"
+          },
+          "room": {
+            "type": "string",
+            "description": "Derslik"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "substituted",
+              "cancelled"
+            ],
+            "description": "Türetilir: `cancelled` iptal, `substituted` yedek atanmış, `planned` diğerleri"
+          },
+          "cancelledAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancelReason": {
+            "description": "İptal gerekçesi; yalnız yöneticiye döner",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "substitutions": {
+            "description": "Görevlendirme geçmişi (gerekçe dahil); yalnız yöneticiye döner",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonSubstitution"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "classId",
+          "subjectId",
+          "title",
+          "teacherId",
+          "originalTeacherId",
+          "date",
+          "duration",
+          "room",
+          "status",
+          "cancelledAt",
+          "updatedAt"
         ],
         "additionalProperties": false
       },
@@ -25869,7 +26133,7 @@
                   "reason": {
                     "type": "string",
                     "minLength": 2,
-                    "maxLength": 2000
+                    "maxLength": 500
                   }
                 },
                 "required": [
@@ -26041,12 +26305,19 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {},
-                "description": "Gövdesiz komut"
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
               }
             }
-          },
-          "description": "Gövdesiz komut"
+          }
         },
         "parameters": [
           {
@@ -62970,6 +63241,986 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/Course"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lessons": {
+      "get": {
+        "operationId": "listLessons",
+        "summary": "Ders programı",
+        "tags": [
+          "lessons"
+        ],
+        "description": "Dersler başlangıca göre, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `dateFrom`/`dateTo` (Europe/Istanbul günü, dahil; ters aralık 400), `classId`, `teacherId` (dersi veren), `room`, `cancelled`. İptal edilen ders varsayılan olarak dönmez (günlük program); `cancelled=true` ya da `all` iptal geçmişini verir. Bilinmeyen parametre 400. Yönetici ve ön büro kurumun bütün programını, öğretmen kendi (asıl ya da yedek olduğu) derslerini, öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur (DOM-YTK-068). İptal ve görevlendirme gerekçesi (`cancelReason`, `substitutions`) yalnız yöneticiye döner; öğretmen, ön büro, öğrenci ve veli `status` ve `originalTeacherId` alanlarını görür. Modül `planning` ve `academic`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "description": "Ders başlangıcının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "description": "Ders başlangıcının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "description": "Sınıf"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "teacherId",
+            "required": false,
+            "description": "Dersi veren öğretmen (yedek atandıysa yedek; asıl öğretmen değil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "query",
+            "name": "room",
+            "required": false,
+            "description": "Derslik; baştaki/sondaki boşluk ve Türkçe büyük/küçük harf duyarsız eşitlik"
+          },
+          {
+            "schema": {
+              "default": "false",
+              "type": "string",
+              "enum": [
+                "false",
+                "true",
+                "all"
+              ]
+            },
+            "in": "query",
+            "name": "cancelled",
+            "required": false,
+            "description": "İptal süzgeci. Varsayılan `false`: iptal edilen ders günlük programda görünmez. `true` yalnız iptal edilenler, `all` ikisi birlikte (iptal geçmişi korunur)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Lesson"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createLesson",
+        "summary": "Ders planla",
+        "tags": [
+          "lessons"
+        ],
+        "description": "Yeni ders (core `runWorkflow('lesson')`, DOM-YTK-069). Ders geçmiş saate planlanamaz (422 `lesson_in_past`). Öğretmen etkin olmalı (pasif 422 `record_inactive`), sınıfın kampüsünde ve dersin branşında (422 `lesson_teacher_mismatch`). Çakışma 409: öğretmenin başka dersi `teacher_lesson_conflict`, sınıfın başka dersi `class_lesson_conflict`, aynı kampüste derslik `room_conflict` (boşluk ve büyük/küçük harf duyarsız), öğretmenin randevusu `teacher_appointment_conflict`, öğretmenin okul etkinliği `teacher_event_conflict`, öğretmenin etüdü ya da dersliğin etüdü `tutor_schedule_conflict`. İptal edilen ders saati boşaltır. Pasif sınıf 422 `record_inactive`; olmayan sınıf, öğretmen veya kampüs 404. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Roller: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "classId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "teacherId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "subjectId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "duration": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 180
+                  },
+                  "room": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "classId",
+                  "teacherId",
+                  "subjectId",
+                  "date",
+                  "duration",
+                  "room"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Lesson"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lessons/{lessonId}": {
+      "get": {
+        "operationId": "getLesson",
+        "summary": "Ders",
+        "tags": [
+          "lessons"
+        ],
+        "description": "Tek ders (iptal edilmiş olsa da). Olmayan, başka kurumun ya da aktörün göremediği ders 404. Yönetici ve ön büro kurumun bütün programını, öğretmen kendi (asıl ya da yedek olduğu) derslerini, öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur (DOM-YTK-068). İptal ve görevlendirme gerekçesi (`cancelReason`, `substitutions`) yalnız yöneticiye döner; öğretmen, ön büro, öğrenci ve veli `status` ve `originalTeacherId` alanlarını görür. Modül `planning` ve `academic`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "lessonId",
+            "required": true,
+            "description": "Ders kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Lesson"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateLesson",
+        "summary": "Dersi düzenle",
+        "tags": [
+          "lessons"
+        ],
+        "description": "Dersin alanlarını kısmi değiştirir; gönderilmeyen alanlar dersin mevcut değeridir ve ders bütün olarak yeniden doğrulanır (core `runWorkflow('lesson')`). İptal edilmiş ders 422 `lesson_cancelled`. Yedek atanmış derste öğretmen değişmez: 422 `lesson_has_substitution` (yedek atama işlemi kullanılır). Başlamış veya geçmiş ders değişmez: 422 `lesson_in_past` (DOM-YTK-069). Öğretmen etkin olmalı (pasif 422 `record_inactive`), sınıfın kampüsünde ve dersin branşında (422 `lesson_teacher_mismatch`). Çakışma 409: öğretmenin başka dersi `teacher_lesson_conflict`, sınıfın başka dersi `class_lesson_conflict`, aynı kampüste derslik `room_conflict` (boşluk ve büyük/küçük harf duyarsız), öğretmenin randevusu `teacher_appointment_conflict`, öğretmenin okul etkinliği `teacher_event_conflict`, öğretmenin etüdü ya da dersliğin etüdü `tutor_schedule_conflict`. İptal edilen ders saati boşaltır. `If-Match` dersin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun dersi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "classId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "teacherId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "subjectId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "duration": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 180
+                  },
+                  "room": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "lessonId",
+            "required": true,
+            "description": "Ders kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Lesson"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lessons/{lessonId}/substitute": {
+      "post": {
+        "operationId": "substituteLesson",
+        "summary": "Derse yedek öğretmen ata",
+        "tags": [
+          "lessons"
+        ],
+        "description": "Yalnız bu derse yedek öğretmen atar (core `runWorkflow('substitute')`); asıl öğretmen `originalTeacherId`'de, görevlendirme `substitutions` geçmişinde kalır, kalıcı branş ataması değişmez. Gerekçe zorunlu (en çok 500 karakter) ve denetim kaydına yazılır. Aynı öğretmen 422 `teacher_unchanged`; iptal edilmiş ders 422 `lesson_cancelled`. Başlamış veya geçmiş ders değişmez: 422 `lesson_in_past` (DOM-YTK-069). Öğretmen etkin olmalı (pasif 422 `record_inactive`), sınıfın kampüsünde ve dersin branşında (422 `lesson_teacher_mismatch`). Çakışma 409: öğretmenin başka dersi `teacher_lesson_conflict`, sınıfın başka dersi `class_lesson_conflict`, aynı kampüste derslik `room_conflict` (boşluk ve büyük/küçük harf duyarsız), öğretmenin randevusu `teacher_appointment_conflict`, öğretmenin okul etkinliği `teacher_event_conflict`, öğretmenin etüdü ya da dersliğin etüdü `tutor_schedule_conflict`. İptal edilen ders saati boşaltır. `If-Match` dersin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun dersi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "teacherId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "teacherId",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "lessonId",
+            "required": true,
+            "description": "Ders kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Lesson"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lessons/{lessonId}/cancel": {
+      "post": {
+        "operationId": "cancelLesson",
+        "summary": "Dersi iptal et",
+        "tags": [
+          "lessons"
+        ],
+        "description": "Dersi gerekçeyle iptal eder (core `runWorkflow('lesson-cancel')`); kayıt silinmez, `cancelledAt` ve `cancelReason` yazılır, gerekçe denetim kaydına da düşer. İptal edilen ders günlük programda görünmez, `cancelled=true` ile listelenir. Gerekçe yoksa 400 `validation_failed` (`reason`). Zaten iptal 409 `lesson_already_cancelled`. Başlamış veya geçmiş ders değişmez: 422 `lesson_in_past` (DOM-YTK-069). Sınıfın ders günü için yoklama alınmışsa 422 `lesson_attendance_taken`. `If-Match` dersin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun dersi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "lessonId",
+            "required": true,
+            "description": "Ders kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Lesson"
                     }
                   },
                   "required": [

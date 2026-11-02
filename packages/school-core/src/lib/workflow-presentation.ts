@@ -10,6 +10,7 @@ import {
   examProgress,
   eventStudents,
   goalProgress,
+  workflowSchemas,
 } from './school-workflows.ts'
 import { dateLabel, money, timeLabel, dayKey } from './format.ts'
 import { DEMO_TEACHER_ID, sessionTeacherId, type Redacted } from './scope.ts'
@@ -606,14 +607,24 @@ export function workflowDetails(
     if (record.status === 'Planlandı') add('renewal-activate', 'Dönem geçişini uygula')
   }
   if (kind === 'lesson') {
+    // İptal ve görevlendirme gerekçesi yalnız yöneticiye görünür; diğer roller iptali ve yedek
+    // atandığını görür (DOM-YTK-068, `PLATFORM_HIDDEN_FIELDS`).
+    const shown = scope.scope.redact('schedule', record)
     section('Ders bilgileri', [
       `${name(state, 'classes', record.classId)} · ${record.title}`,
       `${labelDate(record.date)} ${timeLabel(record.date)} · ${record.duration} dk`,
       `${name(state, 'teachers', record.teacherId)} · Derslik ${record.room}`,
-      ...(record.substitutions || []).map(
-        (s) =>
-          `${name(state, 'teachers', s.fromTeacherId)} → ${name(state, 'teachers', s.toTeacherId)} · ${s.reason}`,
-      ),
+      ...(shown.substitutions
+        ? shown.substitutions.map(
+            (s) =>
+              `${name(state, 'teachers', s.fromTeacherId)} → ${name(state, 'teachers', s.toTeacherId)} · ${s.reason}`,
+          )
+        : record.originalTeacherId
+          ? [`Yedek atandı · asıl öğretmen ${name(state, 'teachers', record.originalTeacherId)}`]
+          : []),
+      shown.cancelReason
+        ? `İptal gerekçesi: ${shown.cancelReason}`
+        : record.cancelledAt && 'Ders iptal edildi',
     ])
     if (!record.cancelledAt) {
       add('lesson', 'Dersi düzenle')
@@ -758,6 +769,9 @@ const field = (
   type: FieldType = 'text',
   extra: FieldExtra = {},
 ): WorkflowField => ({ key, label, type, ...extra })
+/** Gerekçe alanının sınırı şemadan gelir (denetim kaydı en çok 500 karakter; DOM-YTK-069). */
+const reasonLimit = (command: 'substitute' | 'lesson-cancel') =>
+  workflowSchemas[command].shape.reason.maxLength ?? undefined
 function options<T extends { id: string; name: string }>(items: readonly T[]): FieldOption[]
 function options<T extends { id: string }>(
   items: readonly T[],
@@ -1165,7 +1179,9 @@ export function workflowForm(
             }),
           ),
         ),
-        field('reason', 'Görevlendirme nedeni', 'textarea'),
+        field('reason', 'Görevlendirme nedeni', 'textarea', {
+          maxLength: reasonLimit('substitute'),
+        }),
       ],
     })
   }
@@ -1173,6 +1189,10 @@ export function workflowForm(
     assignForm({
       title: 'Dersi iptal et',
       hint: 'Ders günlük programlardan kaldırılır. Yönetim ekranında iptal kaydı korunur.',
+      initial: { reason: '' },
+      fields: () => [
+        field('reason', 'İptal gerekçesi', 'textarea', { maxLength: reasonLimit('lesson-cancel') }),
+      ],
     })
   if (command === 'study-task')
     assignForm({

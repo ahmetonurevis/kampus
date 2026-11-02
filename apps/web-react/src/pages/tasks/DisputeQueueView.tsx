@@ -15,7 +15,9 @@ import { useTaskLookups } from './use-task-lookups.ts'
 const URL_FILTERS = { overdue: 'gecikme' }
 const NO_SORT: readonly string[] = []
 const MOBILE_COLUMNS = ['learner', 'assignment', 'dueAt']
-const OVERDUE_VALUES = new Set(['true', 'false'])
+
+type Overdue = 'true' | 'false'
+const isOverdue = (value: unknown): value is Overdue => value === 'true' || value === 'false'
 
 /**
  * Uyuşmazlık kuyruğu (OG-058; IST-005, IST-048; DOM-BEC-024, DOM-YTK-027): iki puanı birden
@@ -28,10 +30,7 @@ const OVERDUE_VALUES = new Set(['true', 'false'])
 export function DisputeQueueView() {
   const list = useListState('uyusmazlik', { urlFilters: URL_FILTERS, urlPrefix: 'uk-' })
   const rawOverdue = list.state.filters.overdue
-  const overdue =
-    typeof rawOverdue === 'string' && OVERDUE_VALUES.has(rawOverdue)
-      ? (rawOverdue as 'true' | 'false')
-      : ''
+  const overdue = isOverdue(rawOverdue) ? rawOverdue : ''
   const queue = useGradingQueue({
     page: list.state.page,
     pageSize: list.state.pageSize,
@@ -42,6 +41,9 @@ export function DisputeQueueView() {
   const finalScore = useDetailPanel('son-puan')
   const openFinal = finalScore.open
 
+  // TODO(uyusmazlik-derin-baslik): Teslim ayrıntısı yanıtında görev başlığı yok; derin bağlantıyla
+  // (`?son-puan=`) açılan teslim bu sayfada değilse pencere başlığı "Görev" kalır. Ayrıntıya
+  // `assignmentTitle` eklenince buradan beslenir (API alanı Oğuzhan'ındır).
   const titles = useMemo(
     () =>
       new Map((queue.data?.data ?? []).map((item) => [item.id, item.assignmentTitle ?? undefined])),
@@ -61,7 +63,6 @@ export function DisputeQueueView() {
           <button
             type="button"
             onClick={() => openFinal(row.id)}
-            aria-label={`${row.learner} teslimine son puanı ver`}
             className="record-link max-w-[240px] truncate text-left font-medium text-primary hover:underline"
           >
             {row.learner}
@@ -90,7 +91,7 @@ export function DisputeQueueView() {
           <Button
             variant="secondary"
             size="sm"
-            aria-label={`${row.learner} teslimine son puanı ver`}
+            aria-label={`Son puanı ver: ${row.assignment}, ${row.submittedAt}`}
             onClick={() => openFinal(row.id)}
           >
             <Icon name="ClipboardCheck" size={15} aria-hidden="true" />
@@ -112,7 +113,8 @@ export function DisputeQueueView() {
           Uyuşmazlık kuyruğu
         </h2>
         <p className="text-sm text-muted-foreground">
-          {queue.data?.meta.total ?? 0} teslim · İki puanı ayrışan, son puanınızı bekleyen yazılar
+          {queue.data?.meta.total ?? 0} teslim · İki puanı ayrışan ve son puanını sizin
+          verebileceğiniz yazılar
         </p>
       </header>
       <ServerDataTable

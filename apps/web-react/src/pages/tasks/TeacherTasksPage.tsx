@@ -41,11 +41,12 @@ export function TeacherTasksPage({ page }: { page: NavPage }) {
   const { session } = useAuth()
   const duties = useCoordinatorDuties({ pageSize: 100 }, { enabled: session?.role === 'ogretmen' })
   const coordinator = (duties.data?.meta.total ?? 0) > 0
-  const options = coordinator ? [...TABS, DISPUTE_TAB] : TABS
   const requested = params.get('sekme')
-  // Görev listesi gelmeden adresteki uyuşmazlık sekmesi Ödevler'e düşürülmez.
+  // Görev listesi gelmeden adresteki uyuşmazlık sekmesi Ödevler'e düşürülmez: sekme çubuğu seçili
+  // sekmeyi adresten gösterir, içerik görev listesi gelince açılır.
   const waiting =
     requested === DISPUTE_TAB.value && duties.isPending && duties.fetchStatus !== 'idle'
+  const options = coordinator || waiting ? [...TABS, DISPUTE_TAB] : TABS
   const tab: Tab = isTab(requested, options) ? requested : 'odevler'
   return (
     <>
@@ -65,10 +66,10 @@ export function TeacherTasksPage({ page }: { page: NavPage }) {
           Yükleniyor…
         </p>
       ) : null}
-      {tab === 'odevler' && !waiting ? <TeacherHomeworkPage page={page} heading={false} /> : null}
+      {tab === 'odevler' ? <TeacherHomeworkPage page={page} heading={false} /> : null}
       {tab === 'gorevler' ? <TaskAssignmentsView /> : null}
       {tab === 'puanlama' ? <GradingQueueView /> : null}
-      {tab === 'uyusmazlik' ? <DisputeQueueView /> : null}
+      {tab === 'uyusmazlik' && !waiting ? <DisputeQueueView /> : null}
     </>
   )
 }

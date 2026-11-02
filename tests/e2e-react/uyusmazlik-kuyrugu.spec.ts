@@ -20,7 +20,6 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // puanlama isteği ve ikinci puan doğrudan veritabanına; atama, teslim ve ilk puan API'ye yazılır.
 
 const TITLE = 'Uyuşmazlıklı yazı'
-const DENIZ = 'Deniz Yılmaz'
 /** 7-A'nın İngilizce öğretmeni (seed, Kadıköy); zümre başkanlığı branşında verilir. */
 const ENGLISH_TEACHER: Pick<TenantOptions, 'teacherId'> = { teacherId: 't11' }
 
@@ -112,16 +111,19 @@ test('IST-005, DOM-BEC-024, DOM-YTK-027: zümre başkanı uyuşmazlık kuyruğun
 
   await loginAs(school.user('ogretmen'))
   await page.goto('/ogretmen/odevler?sekme=uyusmazlik')
+  // Seçili sekme adresten gelir; görev listesi yüklenirken de Ödevler seçili görünmez.
+  await expect(
+    page
+      .getByRole('toolbar', { name: 'Ödev ve görev bölümleri' })
+      .getByRole('button', { name: 'Uyuşmazlıklar', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('heading', { name: 'Uyuşmazlık kuyruğu', level: 2 })).toBeVisible()
   const rows = page.getByRole('table', { name: 'Uyuşmazlık kuyruğu' }).locator('tbody tr')
   await expect(rows).toHaveCount(1)
   await expect(rows).toContainText(TITLE)
   await expectNoHorizontalOverflow(page)
 
-  await rows
-    .getByRole('button', { name: `${DENIZ} teslimine son puanı ver`, exact: true })
-    .first()
-    .click()
+  await rows.getByRole('button', { name: `Son puanı ver: ${TITLE}` }).click()
   const dialog = page.getByRole('dialog', { name: 'Son puanı ver' })
   await expect(page).toHaveURL(new RegExp(`son-puan=${submissionId}`))
   // İki puan kriter bazında yan yana; yalnız sunucunun bildirdiği kriter uyuşmazlıktır.

@@ -97,11 +97,14 @@ describe('uyuşmazlık kuyruğu ve son puan penceresi (OG-058; DOM-BEC-024, DOM-
     )
   })
 
-  test('DOM-BEC-024: form yalnız canResolve iken açılır; puanlayıcı, kesinleşmiş ve uyuşmazlıksız durumda nedeni yazılır', () => {
+  test('DOM-BEC-024: form yalnız canResolve iken açılır; veremeyen (puanlayıcı ya da alan dışı), kesinleşmiş ve uyuşmazlıksız durumda nedeni yazılır', () => {
     assert.deepEqual(finalScoreState(grading()), { kind: 'resolve' })
     const rater = finalScoreState(grading({ canResolve: false }))
     assert.equal(rater.kind, 'notice')
-    assert.match(rater.kind === 'notice' ? rater.text : '', /bağımsız bir koordinatör/)
+    assert.match(
+      rater.kind === 'notice' ? rater.text : '',
+      /Son puanı siz veremezsiniz \(puanlayıcısınız ya da alanınız dışında\)/,
+    )
     const settled = finalScoreState(
       grading({
         status: 'settled',

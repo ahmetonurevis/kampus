@@ -75,7 +75,7 @@ export type FinalScoreState =
 
 /**
  * Pencerenin son puan bölümü: form yalnız sunucu `canResolve` derse açılır. Diğer durumlar
- * nedeniyle yazılır; puanlayıcı koordinatöre son puanın başka koordinatörce verileceği söylenir.
+ * nedeniyle yazılır; sunucu nedeni (puanlayıcı mı, alan dışı mı) ayırt etmez, metin ikisini de söyler.
  */
 export function finalScoreState(
   grading: Pick<TaskVersionGrading, 'status' | 'canResolve' | 'raterScores'> | null,
@@ -97,7 +97,7 @@ export function finalScoreState(
       kind: 'notice',
       tone: 'amber',
       label: 'Son puan bekliyor',
-      text: 'Bu teslimi siz puanladınız; son puanı bağımsız bir koordinatör verir.',
+      text: 'Son puanı siz veremezsiniz (puanlayıcısınız ya da alanınız dışında).',
     }
   }
   return {

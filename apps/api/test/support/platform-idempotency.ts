@@ -15,6 +15,8 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
     .filter(([, route]) => route.idempotency === 'required')
     .map(([command]) => `POST /api/v1/assessment/${command}`),
   'POST /api/v1/grades',
+  // Ders planlama: yeniden denemede ikinci ders açılmaz (routes/lessons.ts; DOM-YTK-069).
+  'POST /api/v1/lessons',
   // İletişim (routes/communication.ts): oluşturma ve mesaj gönderimi.
   'POST /api/v1/announcements',
   'POST /api/v1/conversations',

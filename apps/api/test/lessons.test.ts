@@ -37,7 +37,7 @@ const STUDENT_IDS = new Set(
   SEED.students.filter((item) => CLASS_IDS.includes(item.classId)).map((item) => item.id),
 )
 const T1 = SEED.teachers.find((item) => item.id === 't1')!
-const lesson = (id: string, fields: Record<string, unknown>) => ({
+const lesson = (id: string, fields: Record<string, unknown> & { date: string }) => ({
   id,
   classId: 'c1',
   teacherId: 't1',
@@ -172,14 +172,29 @@ describe('ders programı uçları', () => {
       headers: { origin: TEST_ORIGIN, ...(cookie === null ? {} : { cookie }) },
     })
   const ifMatch = (version: number) => ({ 'if-match': `"${String(version)}"` })
-  const create = (cookie: string | null, body: unknown = NEW_LESSON, headers = key()) =>
-    send('POST', '/api/v1/lessons', cookie, body, headers)
-  const patch = (cookie: string | null, id: string, body: unknown, headers = ifMatch(1)) =>
-    send('PATCH', `/api/v1/lessons/${id}`, cookie, body, headers)
-  const substitute = (cookie: string | null, id: string, body: unknown, headers = ifMatch(1)) =>
-    send('POST', `/api/v1/lessons/${id}/substitute`, cookie, body, headers)
-  const cancel = (cookie: string | null, id: string, body: unknown, headers = ifMatch(1)) =>
-    send('POST', `/api/v1/lessons/${id}/cancel`, cookie, body, headers)
+  const create = (
+    cookie: string | null,
+    body: unknown = NEW_LESSON,
+    headers: Record<string, string> = key(),
+  ) => send('POST', '/api/v1/lessons', cookie, body, headers)
+  const patch = (
+    cookie: string | null,
+    id: string,
+    body: unknown,
+    headers: Record<string, string> = ifMatch(1),
+  ) => send('PATCH', `/api/v1/lessons/${id}`, cookie, body, headers)
+  const substitute = (
+    cookie: string | null,
+    id: string,
+    body: unknown,
+    headers: Record<string, string> = ifMatch(1),
+  ) => send('POST', `/api/v1/lessons/${id}/substitute`, cookie, body, headers)
+  const cancel = (
+    cookie: string | null,
+    id: string,
+    body: unknown,
+    headers: Record<string, string> = ifMatch(1),
+  ) => send('POST', `/api/v1/lessons/${id}/cancel`, cookie, body, headers)
 
   function assertError(
     response: Awaited<ReturnType<typeof send>>,
@@ -276,7 +291,11 @@ describe('ders programı uçları', () => {
     // Başka kurumun dersi ile olmayan kimlik ayırt edilemez (kurum varlığı sızmaz).
     const missing = await read(a.adminCookie, '/api/v1/lessons/lesson-yok')
     assert.equal(missing.statusCode, foreign.statusCode)
-    assert.deepEqual({ ...missing.json(), requestId: '' }, { ...foreign.json(), requestId: '' })
+    const sameBody = (response: typeof missing) => ({
+      ...(response.json() as Record<string, unknown>),
+      requestId: '',
+    })
+    assert.deepEqual(sameBody(missing), sameBody(foreign))
     assert.equal((await read(b.adminCookie, '/api/v1/lessons/lesson-only-b')).statusCode, 200)
   })
 

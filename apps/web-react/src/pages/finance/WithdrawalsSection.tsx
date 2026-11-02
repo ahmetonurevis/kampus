@@ -208,6 +208,9 @@ function BreakdownList({ breakdown }: { breakdown: WithdrawalBreakdown }) {
       money(breakdown.usageCents),
     ],
     ['Hak edilen', money(breakdown.entitledCents)],
+    ...(breakdown.scholarshipExempt
+      ? ([['Burslu istisnası', 'Ödenenden fazlası istenmez']] as [string, string][])
+      : []),
     ['Ödenen öğrenim ücreti', money(breakdown.paidCents)],
     ...(breakdown.extras.length > 0
       ? ([['Ek hizmet bakiyesi', money(extras)]] as [string, string][])

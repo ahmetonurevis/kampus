@@ -220,7 +220,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** İade mevzuatla belirlenmiş bir hesaptır; elle yapılırsa her ayrılışta uyuşmazlık doğar.
 - **Kaynak:** ÖÖKY md. 56/3-a, b, c ve 56/4; md. 62/5. Net ücret tabanı, gün sayım esası (takvim günü mü, ders günü mü) ve ek hizmet iadesi **doğrulanmamış**; mevzuat metni bunları açıkça belirtmez.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API) — `lib/withdrawals.ts` (`quoteWithdrawal`), `POST /api/v1/students/:studentId/withdrawal-quote`; görülen ve toplam birim elle girilir, kesinti oranı sabittir (`REFUND_DEDUCTION_BASIS_POINTS`). Burslu istisnası, çalışma takvimi ve kurum profili yok.
+- **Kodda:** var (API) — `lib/withdrawals.ts` (`quoteWithdrawal`), `POST /api/v1/students/:studentId/withdrawal-quote`; görülen ve toplam birim elle girilir, kesinti oranı sabittir (`REFUND_DEDUCTION_BASIS_POINTS`). Burslu ayrılışında öğrenim için ödenenden fazlası istenmez (`scholarshipExempt`, DOM-FIN-025; ödenenin normal hesabı aşan kısmı yine iade edilir, ek hizmet istisna dışıdır; yorum **doğrulanmalı**). Çalışma takvimi ve kurum profili yok (OG-269).
 
 ### DOM-FIN-041 · İade kaydı ve atomikliği
 

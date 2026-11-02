@@ -25470,6 +25470,8 @@ export interface operations {
                                 attendedUnits: number;
                                 totalUnits: number;
                                 publicSchoolExemption: boolean;
+                                /** @description Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025) */
+                                scholarshipExempt?: boolean;
                                 /** @description Kesinti oranı, on binde birlik */
                                 deductionBasisPoints: number;
                                 /** @description Hesap tabanı: sözleşmenin net ücreti (kuruş) */
@@ -25625,6 +25627,8 @@ export interface operations {
                                 attendedUnits: number;
                                 totalUnits: number;
                                 publicSchoolExemption: boolean;
+                                /** @description Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025) */
+                                scholarshipExempt?: boolean;
                                 /** @description Kesinti oranı, on binde birlik */
                                 deductionBasisPoints: number;
                                 /** @description Hesap tabanı: sözleşmenin net ücreti (kuruş) */
@@ -25778,6 +25782,8 @@ export interface operations {
                                 attendedUnits: number;
                                 totalUnits: number;
                                 publicSchoolExemption: boolean;
+                                /** @description Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025) */
+                                scholarshipExempt?: boolean;
                                 /** @description Kesinti oranı, on binde birlik */
                                 deductionBasisPoints: number;
                                 /** @description Hesap tabanı: sözleşmenin net ücreti (kuruş) */
@@ -25927,6 +25933,8 @@ export interface operations {
                                 attendedUnits: number;
                                 totalUnits: number;
                                 publicSchoolExemption: boolean;
+                                /** @description Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025) */
+                                scholarshipExempt?: boolean;
                                 /** @description Kesinti oranı, on binde birlik */
                                 deductionBasisPoints: number;
                                 /** @description Hesap tabanı: sözleşmenin net ücreti (kuruş) */
@@ -26088,6 +26096,8 @@ export interface operations {
                                 attendedUnits: number;
                                 totalUnits: number;
                                 publicSchoolExemption: boolean;
+                                /** @description Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025) */
+                                scholarshipExempt?: boolean;
                                 /** @description Kesinti oranı, on binde birlik */
                                 deductionBasisPoints: number;
                                 /** @description Hesap tabanı: sözleşmenin net ücreti (kuruş) */

@@ -69,7 +69,10 @@ describe('ayrılış ve iade uçları', () => {
     await close()
   })
 
-  async function institution(overrides: Partial<InstitutionOverrides> = {}) {
+  async function institution(
+    overrides: Partial<InstitutionOverrides> = {},
+    contractExtra: Record<string, unknown> = {},
+  ) {
     const created = await createInstitution(app, overrides)
     assert.ok(STUDENT)
     const rows = [
@@ -96,6 +99,7 @@ describe('ayrılış ve iade uçları', () => {
           title: 'Sözleşme',
           invoiceIds: ['test-inv-1', 'test-inv-2'],
           payer: 'guardian',
+          ...contractExtra,
         },
       },
       { collection: 'invoices' as const, id: 'test-inv-1', data: invoice('test-inv-1', 1) },
@@ -219,6 +223,24 @@ describe('ayrılış ve iade uçları', () => {
       await later.close()
     }
     await untouched(a.id)
+  })
+
+  test('DOM-FIN-025: bursluya ödediğinden fazlası çıkmaz; bursu olmayanda borç kalır', async () => {
+    const plain = await institution()
+    const normal = (await quote(plain.cookie)).json().data.breakdown
+    assert.equal(normal.scholarshipExempt, false)
+    assert.ok(normal.debtCents > 0)
+
+    const a = await institution(
+      {},
+      { scholarship: { programId: 'test-program', amountCents: 100_000 } },
+    )
+    const read = await quote(a.cookie)
+    assert.equal(read.statusCode, 200, read.body)
+    const { breakdown } = read.json().data
+    assert.equal(breakdown.scholarshipExempt, true)
+    assert.equal(breakdown.entitledCents, 0)
+    assert.equal(breakdown.debtCents, 0)
   })
 
   test('DOM-FIN-040: önizleme hesabı döndürür, hiçbir kayıt yazmaz', async () => {

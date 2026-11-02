@@ -119,6 +119,34 @@ test('DOM-FIN-040: dönem başladıysa kesinti + kullanım; ödenen azsa iade s�
   assert.equal(breakdown.debtCents, 2_100_000)
 })
 
+test('DOM-FIN-025: ayrılan bursludan okuduğu süre için ücret istenmez, ek hizmet istenir', () => {
+  const { state, studentId } = fixture()
+  state.contracts[0]!.scholarship = { programId: 'p1', amountCents: 2_000_000 }
+  const { breakdown } = quoteWithdrawal(state, studentId, AFTER, context())
+  assert.equal(breakdown.scholarshipExempt, true)
+  assert.equal(breakdown.entitledCents, 0)
+  assert.equal(breakdown.refundCents, 0)
+  // Yalnız yemeğin kullanılan payı kalır.
+  assert.equal(breakdown.debtCents, 100_000)
+
+  const paid = quoteWithdrawal(
+    state,
+    studentId,
+    AFTER,
+    context({ allocated: new Map([['t-1', 5_000_000]]) }),
+  ).breakdown
+  // Ödenen, normal hesabın hak ettiğini aşıyorsa fark yine iade edilir.
+  assert.equal(paid.entitledCents, 2_000_000)
+  assert.equal(paid.refundCents, 2_900_000)
+  assert.equal(paid.debtCents, 0)
+})
+
+test('DOM-FIN-025: bursu olmayan öğrencide istisna yoktur', () => {
+  const { state, studentId } = fixture()
+  const { breakdown } = quoteWithdrawal(state, studentId, AFTER, context())
+  assert.equal(breakdown.scholarshipExempt, false)
+})
+
 test('DOM-FIN-040: hak edilen tutar tabanı aşmaz', () => {
   const { state, studentId } = fixture()
   const { breakdown } = quoteWithdrawal(

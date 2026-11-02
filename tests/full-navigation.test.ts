@@ -56,8 +56,37 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
     )
   assert.deepEqual(
     navigation.ogretmen.filter((p) => p.apiOnly).map((p) => p.path),
-    ['kurlar', 'gruplar', 'icerik-havuzu', 'duyurular', 'mesajlar'],
+    ['kurlar', 'gruplar', 'icerik-havuzu', 'duyurular', 'mesajlar', 'izin-formlari'],
   )
+})
+
+test('İzin formu sayfası yönetici ve öğretmende; ön büroda yok (IST-067, DOM-ILT-030)', () => {
+  const titles: Record<Role, string | null> = {
+    yonetici: 'İzin Formları',
+    onburo: null,
+    ogretmen: 'İzin Formları',
+    ogrenci: null,
+    veli: null,
+  }
+  for (const role of roleKeys) {
+    const page = navigation[role].find((p) => p.path === 'izin-formlari')
+    if (titles[role] === null) {
+      assert.equal(page, undefined, `${role}`)
+      continue
+    }
+    assert.ok(page, `${role}`)
+    assert.equal(page.title, titles[role])
+    assert.equal(page.module, 'communication')
+    assert.equal(page.group, 'İLETİŞİM')
+    assert.equal(page.apiOnly, true)
+    // Kurum türüne bağlı değildir: 18 yaşını dolduran öğrenci okulda da kendisi karar verir.
+    assert.equal(page.institutionTypes, undefined)
+    // Vue demosunda ve mobil demo menüsünde yoktur.
+    assert.equal(
+      demoNavigation[role].some((p: { path: string }) => p.path === 'izin-formlari'),
+      false,
+    )
+  }
 })
 
 test('Kur ve grup sayfaları yalnız dil okulunda, personelde ve kategorisinin sonunda (IST-076, IST-077)', () => {

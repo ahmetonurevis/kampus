@@ -23,6 +23,13 @@ const communicationPage = (
   apiOnly: true,
 })
 
+// Dijital veli onayı (IST-067, DOM-ILT-030…039): modül `communication`. Yönetici ve rehber
+// öğretmen form açar ve izler, veli çocuğu için, yetişkin öğrenci kendisi için karar verir; ön büro
+// görmez. Öğrenci sayfası kurum türüne bağlı değildir: 18 yaşını dolduran öğrenci okulda da vardır,
+// 18 yaş altı öğrenci yalnız durumu görür. Vue demosunun ve mobilin karşılığı yoktur (`apiOnly`).
+const permissionFormsPage = (title: string, description: string): NavigationPage =>
+  communicationPage('izin-formlari', title, 'FileCheck', description)
+
 // Temel menüde olmayan iletişim sayfaları (öğrenci ve veli için temel menüde zaten vardır). Hesap
 // grubu varsa ondan önce, yoksa sona eklenir; yönetici ve ön büro mesajı yalnız yeni web açar,
 // mobil bunlardan yalnız kendi taşıdığı sayfaları gösterir.
@@ -40,6 +47,10 @@ export const API_COMMUNICATION_PAGES: Record<Role, readonly NavigationPage[]> = 
       'MessagesSquare',
       'Öğrenci–öğretmen yazışmalarının üst verisini görün; içeriği gerekçeyle açın.',
     ),
+    permissionFormsPage(
+      'İzin Formları',
+      'Gezi ve etkinlik izin formu açın; velilerin onayını izleyin.',
+    ),
   ],
   onburo: [
     communicationPage(
@@ -56,6 +67,10 @@ export const API_COMMUNICATION_PAGES: Record<Role, readonly NavigationPage[]> = 
       'Mesajlar',
       'MessagesSquare',
       'Öğrencileriniz ve velileriyle yazışın.',
+    ),
+    permissionFormsPage(
+      'İzin Formları',
+      'Rehber olduğunuz sınıflar için izin formu açın; onay durumunu izleyin.',
     ),
   ],
   ogrenci: [],

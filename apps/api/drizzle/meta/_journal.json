@@ -274,6 +274,13 @@
       "when": 1793640343207,
       "tag": "0038_allow_prospect_notice_audience",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793642084308,
+      "tag": "0039_add_resource_subskill",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ import {
   planAttemptSubmit,
   scoreAttempt,
   submissionWindow,
+  subskillBreakdown,
   type Answers,
   type CompletedAttempt,
 } from '@kampus/school-core/skills/scoring.ts'
@@ -35,12 +36,13 @@ import { listeningSummary } from './listening-plays.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
-  assertLicenseActive,
+  assertWorkOpen,
   auditWork,
   canReadLearner,
   learnerFilter,
   ownedLearners,
   ownRecord,
+  passageFor,
   questionsFor,
   readableLearners,
   scoringContext,
@@ -142,6 +144,9 @@ function attemptView(
             possible: score.possible,
             percent: score.percent,
             items: level === 'score' ? null : score.items,
+            // Alt beceri dökümü madde sonuçlarıyla aynı anda açılır: tek maddeli alt beceri
+            // maddenin doğruluğunu verir (DOM-BEC-006, DOM-BEC-045).
+            subskills: level === 'score' ? null : subskillBreakdown(context.items, score),
             answerKey:
               level === 'full'
                 ? context.items.map((item) => ({
@@ -260,6 +265,7 @@ async function detailView(
   return {
     ...attemptView(viewer, assignment, context, attempt, learnerAttempts, ctx.now.toISOString()),
     questions: questionsFor(context, attempt.id),
+    passage: passageFor(context),
     listening: await listeningSummary(db, ctx.institutionId, assignment, attempt.id),
   }
 }
@@ -363,9 +369,12 @@ async function readBack(
 
 /**
  * Deneme başlatır (DOM-BEC-042, 043, 044; core `planAttemptStart`). Yalnız atamanın şu an
- * hedeflediği öğrenci başlatır (veli 403); lisansı dolmuş içerik 409 `resource_license_expired`
- * (DOM-KYN-021), hakkı biten 422 `attempt_limit_reached`, süren deneme varken 409
- * `attempt_in_progress`, teslim kapandıysa 422 `submission_closed`.
+ * hedeflediği öğrenci başlatır (veli 403). İçerik kuralı core planından önce gelir (süren deneme
+ * varken de; `assertWorkOpen`, yeni denemede süren iş yoktur): kaldırılmış, telif bildirimiyle
+ * incelemedeki ya da kitap sahibine sınırlı içerik 422 `content_unavailable` (DOM-KYN-021, 025,
+ * 051), lisansı dolmuş içerik 409 `resource_license_expired` (DOM-KYN-021). Sonra hakkı biten 422
+ * `attempt_limit_reached`, süren deneme varken 409 `attempt_in_progress`, teslim kapandıysa 422
+ * `submission_closed`.
  */
 export async function startTaskAttempt(
   ctx: ServiceContext,
@@ -391,9 +400,10 @@ export async function startTaskAttempt(
         // Kapsam (404): olmayan, başka kurumun, arşivli veya öğrenciyi hedeflemeyen atama.
         if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
         const learnerId = targetedLearner(viewer, assignment)
-        // Otomatik puanlanmayan görev (yazma) 422 `not_auto_scored`.
-        const context = await scoringContext(tx, ctx.institutionId, assignment)
-        assertLicenseActive(context, ctx.now)
+        await assertWorkOpen(tx, ctx, assignment, learnerId, () => Promise.resolve(false))
+        // Otomatik puanlanmayan görev (yazma) 422 `not_auto_scored`. Bağlam yalnız sıra için
+        // kurulur: puanlanamayan atamada deneme açılmaz.
+        await scoringContext(tx, ctx.institutionId, assignment)
         const attempts = await loadAttempts(tx, ctx.institutionId, assignment.id, learnerId)
         return {
           run: (_state, tools) => ({
@@ -438,8 +448,10 @@ type Owned = { attempt: StoredAttempt; assignment: StoredAssignment; context: Sc
 
 /**
  * Yazılacak deneme: öğrencinin kendi denemesi ve arşivsiz atama; değilse 404 (kapsam), veli 403.
- * Teslim ve cevap kaydı hedefe ve lisansa bakmaz: sınıf değiştiren öğrenci ve lisansı bu arada
- * dolan içerikte süren deneme bitirilebilir.
+ * Teslim ve cevap kaydı hedefe bakmaz: sınıf değiştiren öğrenci süren denemesini bitirir. İçerik
+ * kuralında deneme süren iştir (`assertWorkOpen`): lisansı bu arada dolan ve telif bildirimiyle
+ * incelemeye alınan içerikte süren deneme bitirilir; kaldırılan ya da kursiyerin kitap sahibi
+ * olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 025, 051).
  */
 async function ownedAttempt(
   tx: Database,
@@ -452,6 +464,7 @@ async function ownedAttempt(
   const assignment = await findAssignment(tx, ctx.institutionId, attempt.assignmentId)
   if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
   ownRecord(viewer, attempt.learnerId)
+  await assertWorkOpen(tx, ctx, assignment, attempt.learnerId, () => Promise.resolve(true))
   return { attempt, assignment, context: await scoringContext(tx, ctx.institutionId, assignment) }
 }
 

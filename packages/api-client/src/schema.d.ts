@@ -2751,7 +2751,7 @@ export interface paths {
         put?: never;
         /**
          * Kaynak oluştur
-         * @description Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         * @description Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`; bağlanan okuma parçası (`passageVersionId`, IST-042) için 422 `passage_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
          */
         post: operations["createResource"];
         delete?: never;
@@ -3275,7 +3275,7 @@ export interface paths {
         head?: never;
         /**
          * Deneme cevaplarını kaydet
-         * @description Süren denemeye cevap kaydı (DOM-BEC-043; core `planAnswerSave`): yalnız gönderilen sorular güncellenir. Süre dolduysa 422 `attempt_time_over`, teslim edilmiş deneme 409 `attempt_already_submitted`, soruyla uyuşmayan cevap 422 `answer_invalid`. `If-Match` zorunlu: denemenin `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Süren denemeye cevap kaydı (DOM-BEC-043; core `planAnswerSave`): yalnız gönderilen sorular güncellenir. Süre dolduysa 422 `attempt_time_over`, teslim edilmiş deneme 409 `attempt_already_submitted`, soruyla uyuşmayan cevap 422 `answer_invalid`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). `If-Match` zorunlu: denemenin `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         patch: operations["saveTaskAttemptAnswers"];
         trace?: never;
@@ -3291,7 +3291,7 @@ export interface paths {
         put?: never;
         /**
          * Görev denemesi başlat
-         * @description Atamanın şu an hedeflediği öğrenci için yeni deneme (DOM-BEC-042, 043, 044; core `planAttemptStart`). Başlangıç sunucu saatidir; süre başlangıç + süre sınırıdır ve teslim kapanışını aşmaz. Değerlendirmede başlatılan her deneme hakkı tüketir: hak dolunca 422 `attempt_limit_reached`; süren deneme varken 409 `attempt_in_progress` (eşzamanlı ikinci başlatma da); teslim kapandıysa 422 `submission_closed`; otomatik puanlanmayan görev 422 `not_auto_scored`; içeriğin (puanlama sürümü veya bir sorusu) lisansı dolduysa 409 `resource_license_expired` (DOM-KYN-021; süren deneme kaydedilir ve teslim edilir). Gövde `{}`. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve `Location`. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Atamanın şu an hedeflediği öğrenci için yeni deneme (DOM-BEC-042, 043, 044; core `planAttemptStart`). Başlangıç sunucu saatidir; süre başlangıç + süre sınırıdır ve teslim kapanışını aşmaz. Değerlendirmede başlatılan her deneme hakkı tüketir: hak dolunca 422 `attempt_limit_reached`; süren deneme varken 409 `attempt_in_progress` (eşzamanlı ikinci başlatma da); teslim kapandıysa 422 `submission_closed`; otomatik puanlanmayan görev 422 `not_auto_scored`. İçerik kuralı core kuralından önce gelir (süren deneme varken de; görev içeriğinin okuma kuralıyla aynı): içerik (sabitlenen sürüm, puanlama sürümü veya bir sorusu) kaldırıldıysa, telif bildirimiyle incelemedeyse ya da kitap sahibiyle sınırlı lisansta öğrenci kitap sahibi değilse 422 `content_unavailable` (DOM-KYN-021, 025, 051); lisansı dolduysa 409 `resource_license_expired` (DOM-KYN-021). Lisansı dolan ve incelemeye alınan içerikte süren deneme kaydedilir ve teslim edilir. Gövde `{}`. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve `Location`. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["startTaskAttempt"];
         delete?: never;
@@ -3311,7 +3311,7 @@ export interface paths {
         put?: never;
         /**
          * Denemeyi teslim et
-         * @description Denemeyi teslim eder (DOM-BEC-010, 043; core `planAttemptSubmit`). Puan sunucuda cevaplardan hesaplanır; gövdede puan veya bilinmeyen alan 400. Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (`autoSubmitted`). Son teslimden sonra geç kabul süresinde teslim `late` işaretlenir. İkinci teslim 409 `attempt_already_submitted`. `If-Match` zorunlu (denemenin `rowVersion`'ı); `Idempotency-Key` zorunlu. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Denemeyi teslim eder (DOM-BEC-010, 043; core `planAttemptSubmit`). Puan sunucuda cevaplardan hesaplanır; gövdede puan veya bilinmeyen alan 400. Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (`autoSubmitted`). Son teslimden sonra geç kabul süresinde teslim `late` işaretlenir. İkinci teslim 409 `attempt_already_submitted`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). `If-Match` zorunlu (denemenin `rowVersion`'ı); `Idempotency-Key` zorunlu. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["submitTaskAttempt"];
         delete?: never;
@@ -3399,7 +3399,7 @@ export interface paths {
         head?: never;
         /**
          * Yazma taslağını kaydet
-         * @description Taslağın otomatik kaydı (IST-047; core `planDraftSave`); kursiyer × atama başına tek taslak üzerine yazılır. `If-Match` taslağın `revision`'ıdır: yalnız henüz taslak yokken atlanabilir (ilk kayıt); taslak varken başlıksız istek 400 `if_match_required`, eski revizyon 409 `draft_conflict` (başka pencere; eşzamanlı iki kayıttan biri). Teslim kapandıysa 422 `submission_closed`, yazma dışı görevde 422 `draft_not_supported`. Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Taslağın otomatik kaydı (IST-047; core `planDraftSave`); kursiyer × atama başına tek taslak üzerine yazılır. `If-Match` taslağın `revision`'ıdır: yalnız henüz taslak yokken atlanabilir (ilk kayıt); taslak varken başlıksız istek 400 `if_match_required`, eski revizyon 409 `draft_conflict` (başka pencere; eşzamanlı iki kayıttan biri). Teslim kapandıysa 422 `submission_closed`, yazma dışı görevde 422 `draft_not_supported`. İçerik kuralı (görev içeriğinin okuma kuralıyla aynı; DOM-KYN-021, 025, 051): kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable`; taslağı ve teslimi olmayan öğrenciye telif bildirimiyle incelemedeki içerik 422 `content_unavailable`, lisansı dolmuş içerik 409 `resource_license_expired`. Taslağı ya da teslimi olan öğrencinin süren işi sürer. Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         patch: operations["saveTaskDraft"];
         trace?: never;
@@ -3415,7 +3415,7 @@ export interface paths {
         put?: never;
         /**
          * Beceri görevini teslim et
-         * @description Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core `planSubmissionVersion`). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; önceki sürümler ve metinleri değişmez. Sürüm sınırı (`maxVersions`) dolunca 422 `version_limit_reached`; puanlanmış teslimde öğretmen yeniden teslim istemeden 409 `resubmission_not_requested` (geri bildirim açılmadan genel 409 `submission_locked`; DOM-BEC-045); teslim kapandıysa (geç kabul dahil) 422 `submission_closed`; son teslimden sonra geç kabul süresindeki sürüm `late`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 `submission_not_expected`; görevin türünden başka teslim 422 `submission_kind_mismatch`. Dosyalı (`fileIds`, el yazısı görüntü/PDF) ve sesli (`recordingFileId`, konuşma kaydı) teslimde dosya kursiyerin `POST /api/v1/files` ile yüklediği, hazır ve bağlanmamış dosyadır (başkasının veya olmayan dosya genel 404 `not_found`, hazır değilse 422 `file_not_ready`, başka kayda bağlıysa 409 `file_already_attached`, rıza geri çekildiği için imhaya işaretliyse 422 `file_unavailable`); sesli teslim işlem anında geçerli rıza ister (403 `consent_required`; DOM-BEC-050), kayıt ölçülmemişse 422 `recording_not_measured`, boşsa `recording_empty`, sınırı aşıyorsa `recording_too_long` (DOM-BEC-054). Dosyalar sürüme bağlanır; konuşma kaydının saklama sonu yazılır (DOM-BEC-052). Teslim otomatik puanlanmaz. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core `planSubmissionVersion`). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; önceki sürümler ve metinleri değişmez. Sürüm sınırı (`maxVersions`) dolunca 422 `version_limit_reached`; puanlanmış teslimde öğretmen yeniden teslim istemeden 409 `resubmission_not_requested` (geri bildirim açılmadan genel 409 `submission_locked`; DOM-BEC-045); teslim kapandıysa (geç kabul dahil) 422 `submission_closed`; son teslimden sonra geç kabul süresindeki sürüm `late`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 `submission_not_expected`; görevin türünden başka teslim 422 `submission_kind_mismatch`. İçerik kuralı (görev içeriğinin okuma kuralıyla aynı; DOM-KYN-021, 025, 051): kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable`; taslağı ve teslimi olmayan öğrenciye telif bildirimiyle incelemedeki içerik 422 `content_unavailable`, lisansı dolmuş içerik 409 `resource_license_expired`. Taslağı ya da teslimi olan öğrencinin süren işi sürer. Dosyalı (`fileIds`, el yazısı görüntü/PDF) ve sesli (`recordingFileId`, konuşma kaydı) teslimde dosya kursiyerin `POST /api/v1/files` ile yüklediği, hazır ve bağlanmamış dosyadır (başkasının veya olmayan dosya genel 404 `not_found`, hazır değilse 422 `file_not_ready`, başka kayda bağlıysa 409 `file_already_attached`, rıza geri çekildiği için imhaya işaretliyse 422 `file_unavailable`); sesli teslim işlem anında geçerli rıza ister (403 `consent_required`; DOM-BEC-050), kayıt ölçülmemişse 422 `recording_not_measured`, boşsa `recording_empty`, sınırı aşıyorsa `recording_too_long` (DOM-BEC-054). Dosyalar sürüme bağlanır; konuşma kaydının saklama sonu yazılır (DOM-BEC-052). Teslim otomatik puanlanmaz. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["submitTaskSubmission"];
         delete?: never;
@@ -5560,6 +5560,8 @@ export interface components {
             primarySkill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
             skills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
             activityMode: ("reception" | "production" | "interaction" | "mediation") | null;
+            /** @description Anlama sorusunun alt becerisi (DOM-BEC-006); yalnız soruda dolar */
+            subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
             interactionChannel: ("spoken" | "written" | "online") | null;
             mediation: {
                 /** @enum {string} */
@@ -6439,6 +6441,17 @@ export interface components {
             points: number;
             earned: number;
         };
+        TaskAttemptSubskillScoreInput: {
+            /** @enum {string} */
+            subskill: "main_idea" | "detail" | "inference" | "vocabulary";
+            /** @description Bu alt beceriyle etiketli madde sayısı */
+            items: number;
+            /** @description Kazanılan puan (iki ondalık) */
+            earned: number;
+            possible: number;
+            /** @description 100 üzerinden puan */
+            percent: number;
+        };
         TaskAttemptResultInput: {
             /** @description Kazanılan puan (iki ondalık) */
             earned: number;
@@ -6447,6 +6460,8 @@ export interface components {
             percent: number;
             /** @description Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045) */
             items: components["schemas"]["TaskAttemptItemScoreInput"][] | null;
+            /** @description Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır */
+            subskills: components["schemas"]["TaskAttemptSubskillScoreInput"][] | null;
             /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) */
             answerKey: {
                 questionVersionId: string;
@@ -6617,6 +6632,8 @@ export interface components {
             questions: {
                 questionVersionId: string;
                 points: number;
+                /** @description Sorunun alt becerisi (DOM-BEC-006) */
+                subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
                 question: {
                     /** @constant */
                     questionType: "multiple_choice";
@@ -6674,6 +6691,27 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
+            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner */
+            passage: {
+                /**
+                 * Format: uuid
+                 * @description Okuma parçası sürümü
+                 */
+                versionId: string;
+                title: string;
+                body: string;
+                /** @description Sistem hesaplar (DOM-KYN-002) */
+                wordCount: number;
+                cefrLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @description Sözlükçe, yazarın sırasıyla */
+                glossary: {
+                    term: string;
+                    meaning: string;
+                    example: string | null;
+                }[];
+                /** @description Kaynak gösterimi (DOM-KYN-024) */
+                attributions: components["schemas"]["ResourceAttributionInput"][];
+            } | null;
             /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
             listening: {
                 /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
@@ -8790,6 +8828,8 @@ export interface components {
             primarySkill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
             skills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
             activityMode: ("reception" | "production" | "interaction" | "mediation") | null;
+            /** @description Anlama sorusunun alt becerisi (DOM-BEC-006); yalnız soruda dolar */
+            subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
             interactionChannel: ("spoken" | "written" | "online") | null;
             mediation: {
                 /** @enum {string} */
@@ -9669,6 +9709,17 @@ export interface components {
             points: number;
             earned: number;
         };
+        TaskAttemptSubskillScore: {
+            /** @enum {string} */
+            subskill: "main_idea" | "detail" | "inference" | "vocabulary";
+            /** @description Bu alt beceriyle etiketli madde sayısı */
+            items: number;
+            /** @description Kazanılan puan (iki ondalık) */
+            earned: number;
+            possible: number;
+            /** @description 100 üzerinden puan */
+            percent: number;
+        };
         TaskAttemptResult: {
             /** @description Kazanılan puan (iki ondalık) */
             earned: number;
@@ -9677,6 +9728,8 @@ export interface components {
             percent: number;
             /** @description Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045) */
             items: components["schemas"]["TaskAttemptItemScore"][] | null;
+            /** @description Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır */
+            subskills: components["schemas"]["TaskAttemptSubskillScore"][] | null;
             /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) */
             answerKey: {
                 questionVersionId: string;
@@ -9847,6 +9900,8 @@ export interface components {
             questions: {
                 questionVersionId: string;
                 points: number;
+                /** @description Sorunun alt becerisi (DOM-BEC-006) */
+                subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
                 question: {
                     /** @constant */
                     questionType: "multiple_choice";
@@ -9903,6 +9958,27 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
+            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner */
+            passage: {
+                /**
+                 * Format: uuid
+                 * @description Okuma parçası sürümü
+                 */
+                versionId: string;
+                title: string;
+                body: string;
+                /** @description Sistem hesaplar (DOM-KYN-002) */
+                wordCount: number;
+                cefrLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @description Sözlükçe, yazarın sırasıyla */
+                glossary: {
+                    term: string;
+                    meaning: string;
+                    example: string | null;
+                }[];
+                /** @description Kaynak gösterimi (DOM-KYN-024) */
+                attributions: components["schemas"]["ResourceAttribution"][];
+            } | null;
             /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
             listening: {
                 /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
@@ -27765,6 +27841,12 @@ export interface operations {
                         /** @enum {string} */
                         type: "reading_passage";
                         body: string;
+                        glossary?: {
+                            term: string;
+                            meaning: string;
+                            /** @default null */
+                            example?: string | null;
+                        }[];
                     } | {
                         /** @enum {string} */
                         type: "audio";
@@ -27875,6 +27957,8 @@ export interface operations {
                         timeLimitMinutes?: number | null;
                         /** @default false */
                         shuffleItems?: boolean;
+                        /** @default null */
+                        passageVersionId?: string | null;
                     } | {
                         /** @enum {string} */
                         type: "exercise_set";
@@ -27887,6 +27971,8 @@ export interface operations {
                         timeLimitMinutes?: number | null;
                         /** @default false */
                         shuffleItems?: boolean;
+                        /** @default null */
+                        passageVersionId?: string | null;
                     } | {
                         /** @enum {string} */
                         type: "homework_template";
@@ -27949,6 +28035,8 @@ export interface operations {
                         skills?: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
                         /** @default null */
                         activityMode?: ("reception" | "production" | "interaction" | "mediation") | null;
+                        /** @default null */
+                        subskill?: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
                         /** @default null */
                         interactionChannel?: ("spoken" | "written" | "online") | null;
                         /** @default null */
@@ -28310,6 +28398,12 @@ export interface operations {
                         /** @enum {string} */
                         type: "reading_passage";
                         body: string;
+                        glossary?: {
+                            term: string;
+                            meaning: string;
+                            /** @default null */
+                            example?: string | null;
+                        }[];
                     } | {
                         /** @enum {string} */
                         type: "audio";
@@ -28420,6 +28514,8 @@ export interface operations {
                         timeLimitMinutes?: number | null;
                         /** @default false */
                         shuffleItems?: boolean;
+                        /** @default null */
+                        passageVersionId?: string | null;
                     } | {
                         /** @enum {string} */
                         type: "exercise_set";
@@ -28432,6 +28528,8 @@ export interface operations {
                         timeLimitMinutes?: number | null;
                         /** @default false */
                         shuffleItems?: boolean;
+                        /** @default null */
+                        passageVersionId?: string | null;
                     } | {
                         /** @enum {string} */
                         type: "homework_template";
@@ -28494,6 +28592,8 @@ export interface operations {
                         skills?: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
                         /** @default null */
                         activityMode?: ("reception" | "production" | "interaction" | "mediation") | null;
+                        /** @default null */
+                        subskill?: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
                         /** @default null */
                         interactionChannel?: ("spoken" | "written" | "online") | null;
                         /** @default null */

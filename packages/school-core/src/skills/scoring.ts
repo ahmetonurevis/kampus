@@ -3,9 +3,11 @@ import { DomainError } from '../lib/errors.ts'
 import type { AnswerKey, QuestionBody, ResourceTags } from '../content/resource.ts'
 import {
   QUESTION_TYPES,
+  SUBSKILLS,
   enumKeys,
   type ContentType,
   type QuestionType,
+  type Subskill,
 } from '../content/taxonomy.ts'
 
 /**
@@ -266,6 +268,8 @@ export type ScoringItem = {
   answerKey: AnswerKey
   /** Kısa cevap karşılaştırma dili; çağıran açıkça seçer (`answerLocaleForTags`). */
   locale: AnswerLocale
+  /** Sorunun alt becerisi (DOM-BEC-006; soru etiketinden); dökümde kullanılır, puanı değiştirmez. */
+  subskill?: Subskill | null
 }
 
 function responseIssue(question: QuestionBody, response: TaskResponse): string | null {
@@ -490,6 +494,55 @@ export function scoreAttempt(items: readonly ScoringItem[], answers: Answers): A
     ratio,
     items: scored,
   }
+}
+
+/** Bir alt becerinin sonucu (DOM-BEC-006); denemenin puanından türer, saklanmaz. */
+export type SubskillScore = {
+  subskill: Subskill
+  /** Bu alt beceriyle etiketli madde sayısı. */
+  items: number
+  /** Kazanılan puan, iki ondalığa yuvarlanmış. */
+  earned: number
+  possible: number
+  /** 100'lük puan, tam sayıya yuvarlanır. */
+  percent: number
+}
+
+/**
+ * Alt beceri dökümü (DOM-BEC-006; IST-042): madde puanları sorunun alt becerisine göre toplanır.
+ * Her okumada denemenin puanından hesaplanır, saklanmaz; anahtar düzeltilince döküm de yeni
+ * anahtarla okunur. Etiketsiz madde dökülmez (toplam puanda kalır); yalnız maddesi olan alt
+ * beceriler, sözlük sırasıyla döner.
+ */
+export function subskillBreakdown(
+  items: readonly ScoringItem[],
+  score: AttemptScore,
+): SubskillScore[] {
+  const subskillOf = new Map(items.map((item) => [item.questionVersionId, item.subskill ?? null]))
+  const totals = new Map<Subskill, { items: number; earned: number; possible: number }>()
+  for (const item of score.items) {
+    const subskill = subskillOf.get(item.questionVersionId) ?? null
+    if (subskill === null) continue
+    const total = totals.get(subskill) ?? { items: 0, earned: 0, possible: 0 }
+    total.items += 1
+    total.earned += item.earned
+    total.possible += item.points
+    totals.set(subskill, total)
+  }
+  return enumKeys(SUBSKILLS).flatMap((subskill) => {
+    const total = totals.get(subskill)
+    if (!total) return []
+    const ratio = total.possible === 0 ? 0 : total.earned / total.possible
+    return [
+      {
+        subskill,
+        items: total.items,
+        earned: Math.round(total.earned * 100) / 100,
+        possible: total.possible,
+        percent: Math.round(ratio * 100),
+      },
+    ]
+  })
 }
 
 // --- Deneme ve süre -----------------------------------------------------------------------

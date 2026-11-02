@@ -159,6 +159,7 @@ function toStoredVersion(row: ResourceVersionRow, links: VersionLinks): StoredRe
       primarySkill: row.primarySkill,
       skills: row.skills,
       activityMode: row.activityMode,
+      subskill: row.subskill,
       interactionChannel: row.interactionChannel,
       mediation: row.mediation ?? null,
       durationMinutes: row.durationMinutes,
@@ -191,6 +192,7 @@ export function versionContentValues(version: ResourceVersion) {
     primarySkill: version.tags.primarySkill,
     skills: version.tags.skills,
     activityMode: version.tags.activityMode,
+    subskill: version.tags.subskill,
     interactionChannel: version.tags.interactionChannel,
     mediation: version.tags.mediation,
     durationMinutes: version.tags.durationMinutes,
@@ -801,20 +803,24 @@ export async function listFileVersionIds(
   return rows.map((row) => row.versionId)
 }
 
+/** Kaynağın kursiyerden çekilme nedeni: kaldırılmış ya da telif bildirimiyle incelemede. */
+export type WithdrawalKind = 'removed' | 'in_review'
+
 /**
- * Kursiyerden çekilmiş kaynaklar (DOM-KYN-025, 051), tek sorguda: bir sürümü telif bildirimiyle
- * incelemede (yayın geçmişi olan `in_review`; ilk onay sürecindeki yeni taslak sayılmaz) ya da
- * kaynak kaldırılmış. Bildirim kaynak düzeyindedir: atamanın sabitlendiği eski sürüm de gösterilmez.
+ * Kursiyerden çekilmiş kaynaklar ve nedeni (DOM-KYN-025, 051), tek sorguda: bir sürümü telif
+ * bildirimiyle incelemede (yayın geçmişi olan `in_review`; ilk onay sürecindeki yeni taslak
+ * sayılmaz) ya da kaynak kaldırılmış; ikisi birden varsa kaldırma. Bildirim kaynak düzeyindedir:
+ * atamanın sabitlendiği eski sürüm de gösterilmez.
  */
-export async function withdrawnResourceIds(
+export async function withdrawnResources(
   db: Database,
   institutionId: string,
   resourceIds: readonly string[],
-): Promise<Set<string>> {
+): Promise<Map<string, WithdrawalKind>> {
   const ids = uuidsOnly(resourceIds)
-  if (ids.length === 0) return new Set()
+  if (ids.length === 0) return new Map()
   const rows = await db
-    .selectDistinct({ resourceId: resourceVersions.resourceId })
+    .selectDistinct({ resourceId: resourceVersions.resourceId, status: resourceVersions.status })
     .from(resourceVersions)
     .where(
       and(
@@ -826,7 +832,11 @@ export async function withdrawnResourceIds(
         ),
       ),
     )
-  return new Set(rows.map((row) => row.resourceId))
+  const withdrawn = new Map<string, WithdrawalKind>()
+  for (const { resourceId, status } of rows)
+    if (status === 'removed' || !withdrawn.has(resourceId))
+      withdrawn.set(resourceId, status === 'removed' ? 'removed' : 'in_review')
+  return withdrawn
 }
 
 /** Kaynak, sahibin etkinliği ve paylaşım hedefleriyle; yoksa veya başka kurumdaysa `null`. */
@@ -989,6 +999,32 @@ export async function listCopies(
       ),
     )
     .orderBy(asc(resources.id))
+}
+
+/**
+ * Verilen okuma parçası sürümlerine bağlı quiz ve alıştırma seti sürümleri (DOM-KYN-051; IST-042).
+ * Bağ içerikteki `passageVersionId`'dir (ayrı tablo yok); sorgu kurumun sürümlerini `jsonb`
+ * alanıyla süzer. Yalnız kaldırmada (seyrek, yönetici işlemi) çalışır, indeks istemez.
+ */
+export async function listPassageContainerVersions(
+  db: Database,
+  institutionId: string,
+  passageVersionIds: readonly string[],
+): Promise<{ id: string; content: ResourceContent }[]> {
+  if (passageVersionIds.length === 0) return []
+  const rows = await db
+    .select({ id: resourceVersions.id, content: resourceVersions.content })
+    .from(resourceVersions)
+    .where(
+      and(
+        eq(resourceVersions.institutionId, institutionId),
+        inArray(sql<string>`${resourceVersions.content} ->> 'passageVersionId'`, [
+          ...passageVersionIds,
+        ]),
+      ),
+    )
+    .orderBy(asc(resourceVersions.id))
+  return rows.flatMap((row) => (row.content === null ? [] : [{ id: row.id, content: row.content }]))
 }
 
 /** Verilen soru sürümlerini içeren quiz ve alıştırma seti sürümleri (DOM-KYN-051). */

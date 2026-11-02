@@ -34,6 +34,7 @@ import {
   PRIMARY_SKILLS,
   RESOURCE_FILE_LIST_MAX,
   SHARE_SCOPES,
+  SUBSKILLS,
 } from '@kampus/school-core/content/taxonomy.ts'
 
 import { institutions } from './auth.ts'
@@ -146,6 +147,8 @@ export const resourceVersions = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     activityMode: text('activity_mode').$type<keyof typeof ACTIVITY_MODES>(),
+    /** Anlama sorusunun alt becerisi (DOM-BEC-006; migration 0039, OG-051); yalnız soruda dolar. */
+    subskill: text('subskill').$type<keyof typeof SUBSKILLS>(),
     interactionChannel: text('interaction_channel').$type<keyof typeof INTERACTION_CHANNELS>(),
     mediation: jsonb('mediation').$type<ResourceTags['mediation']>(),
     durationMinutes: integer('duration_minutes'),
@@ -183,6 +186,10 @@ export const resourceVersions = pgTable(
     check(
       'resource_versions_activity_mode_check',
       sql`${table.activityMode} is null or ${oneOf(table.activityMode, keys(ACTIVITY_MODES))}`,
+    ),
+    check(
+      'resource_versions_subskill_check',
+      sql`${table.subskill} is null or ${oneOf(table.subskill, keys(SUBSKILLS))}`,
     ),
     check(
       'resource_versions_interaction_channel_check',

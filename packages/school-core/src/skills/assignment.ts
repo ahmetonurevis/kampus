@@ -701,7 +701,7 @@ export function deadlineForVersion(
 /** Puanlanan sorunun sürümü (`content.type === 'question'`). */
 export type QuestionVersionRef = {
   id: string
-  tags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill' | 'skills'>
+  tags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill' | 'skills' | 'subskill'>
   content: ResourceContent
   answerKey: AnswerKey | null
 }
@@ -739,6 +739,7 @@ export function scoringItemsFor(input: {
       question: question.content.question,
       answerKey: question.answerKey,
       locale,
+      subskill: question.tags.subskill,
     }
   })
 }

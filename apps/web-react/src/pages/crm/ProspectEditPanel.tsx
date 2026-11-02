@@ -15,6 +15,7 @@ import {
   fieldErrors,
   type EditFormValues,
 } from './prospect-forms.ts'
+import { CONTACT_LABELS, prospectContactOwner } from './prospect-rows.ts'
 
 type Prospect = CoreRecord<'prospects'>
 type Output = z.output<typeof editFormSchema>
@@ -65,6 +66,7 @@ function EditForm({
   const busy = update.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
   const adult = prospect.minor === false
+  const contact = CONTACT_LABELS[prospectContactOwner(prospect)]
 
   const onSubmit = form.handleSubmit(async (values) => {
     const result = editBody(values, prospect)
@@ -102,7 +104,7 @@ function EditForm({
       <FormField id="duzelt-ad" label="Ad soyad" error={errors.name}>
         {(control) => <Input {...control} {...form.register('name')} disabled={busy} />}
       </FormField>
-      <FormField id="duzelt-telefon" label="Telefon" error={errors.phone}>
+      <FormField id="duzelt-telefon" label={contact.phone} error={errors.phone}>
         {(control) => (
           <Input
             {...control}
@@ -113,7 +115,7 @@ function EditForm({
           />
         )}
       </FormField>
-      <FormField id="duzelt-eposta" label="E-posta (isteğe bağlı)" error={errors.email}>
+      <FormField id="duzelt-eposta" label={`${contact.email} (isteğe bağlı)`} error={errors.email}>
         {(control) => (
           <Input {...control} {...form.register('email')} type="email" disabled={busy} />
         )}

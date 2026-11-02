@@ -475,9 +475,13 @@ test.describe('aday bilgisi düzeltme', () => {
     await loginAs(school.user('onburo'))
     await page.goto(detailUrl('onburo', 'e2e-pr-d1'))
     await expect(page.getByRole('heading', { name: 'Düzeltilecek Aday', level: 1 })).toBeVisible()
+    // 18 yaş altı adayın telefonu ve e-postası velinindir (DOM-KAY-003): kartta ve panelde söylenir.
+    await expect(page.getByText('Veli telefonu', { exact: true })).toBeVisible()
+    await expect(page.getByText('Veli e-postası', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Bilgileri düzenle' }).click()
     const panel = page.getByRole('dialog', { name: 'Aday bilgilerini düzenle' })
-    const phone = panel.getByLabel('Telefon')
+    const phone = panel.getByLabel('Veli telefonu')
+    await expect(panel.getByLabel('Veli e-postası (isteğe bağlı)')).toBeVisible()
     await expect(phone).toHaveValue('05550300071')
     // Değişiklik yapmadan kaydetmek istek atmaz.
     await panel.getByRole('button', { name: 'Kaydet' }).click()

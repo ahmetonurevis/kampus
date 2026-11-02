@@ -51,10 +51,26 @@ export const SOURCE_FILTER: FilterField = {
   options: PROSPECT_SOURCES.map((source) => ({ value: source, label: source })),
 }
 
+/**
+ * Adayın telefon ve e-postası kimin (DOM-KAY-003): 18 yaş altı adayda velinindir, yetişkinde adayın
+ * kendisinindir. Kaydında `minor` olmayan eski aday 18 yaş altı sayılır (DOM-KAY-009).
+ */
+export type ContactOwner = 'guardian' | 'self'
+export const prospectContactOwner = (prospect: { minor?: boolean | undefined }): ContactOwner =>
+  prospect.minor === false ? 'self' : 'guardian'
+
+/** İletişim alanı etiketleri: sahibi velise "Veli telefonu", adayın kendisiyse "Telefon". */
+export const CONTACT_LABELS = {
+  guardian: { phone: 'Veli telefonu', email: 'Veli e-postası' },
+  self: { phone: 'Telefon', email: 'E-posta' },
+} as const satisfies Record<ContactOwner, { phone: string; email: string }>
+
 export type ProspectRow = {
   id: string
   name: string
   phone: string
+  /** Telefonun sahibi: 18 yaş altında veli (DOM-KAY-003). */
+  phoneOwner: ContactOwner
   interest: string
   branch: string
   source: string
@@ -78,6 +94,7 @@ export function prospectRow(
     id: record.id,
     name: record.name,
     phone: record.phone,
+    phoneOwner: prospectContactOwner(record),
     interest: record.interest,
     branch: item.joined?.branchName ?? lookups.branches.get(record.branchId) ?? '—',
     source: record.source ?? '',

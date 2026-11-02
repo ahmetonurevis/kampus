@@ -25,6 +25,7 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { NEW_PROSPECT, ProspectFormPanel } from './ProspectFormPanel.tsx'
 import {
+  CONTACT_LABELS,
   prospectCsvRow,
   prospectRow,
   SOURCE_FILTER,
@@ -99,7 +100,15 @@ export function ProspectsPage({ page }: { page: NavPage }) {
               >
                 {row.name}
               </Link>
-              <small className="text-xs text-muted-foreground">{row.phone}</small>
+              <small className="text-xs text-muted-foreground">
+                {row.phoneOwner === 'guardian' ? (
+                  <>
+                    <span aria-hidden="true">Veli · </span>
+                    <span className="sr-only">{CONTACT_LABELS.guardian.phone}: </span>
+                  </>
+                ) : null}
+                {row.phone}
+              </small>
             </span>
           </span>
         ),

@@ -33,6 +33,7 @@ import {
   REFERRAL_SOURCE,
   type CreateFormValues,
 } from './prospect-forms.ts'
+import { CONTACT_LABELS } from './prospect-rows.ts'
 
 type Output = z.output<ReturnType<typeof createFormSchema>>
 const FIELDS = [
@@ -215,7 +216,7 @@ function ProspectForm({
       ) : null}
       <FormField
         id="aday-telefon"
-        label={minor ? 'Veli telefonu' : 'Telefon'}
+        label={minor ? CONTACT_LABELS.guardian.phone : CONTACT_LABELS.self.phone}
         description="05XXXXXXXXX biçiminde."
         error={errors.phone}
       >
@@ -230,7 +231,11 @@ function ProspectForm({
           />
         )}
       </FormField>
-      <FormField id="aday-eposta" label="E-posta (isteğe bağlı)" error={errors.email}>
+      <FormField
+        id="aday-eposta"
+        label={`${minor ? CONTACT_LABELS.guardian.email : CONTACT_LABELS.self.email} (isteğe bağlı)`}
+        error={errors.email}
+      >
         {(control) => (
           <Input
             {...control}

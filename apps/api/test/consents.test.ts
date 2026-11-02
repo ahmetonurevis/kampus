@@ -624,6 +624,39 @@ describe('aydınlatma ve açık rıza uçları', () => {
     )
   })
 
+  test('DOM-YTK-057 DOM-ILT-070 velayeti olmayan veli rıza veremez (403); velayetli veli verir', async () => {
+    const w = await world()
+    // Öbür velinin hesabı üyelik bağlantısıyla velayetli bağ alır (okuma kapsamı bağlantıdan).
+    const coParent = await member(w.id, 'veli', [{ kind: 'child', recordId: 's1' }])
+    const bonds = await read(w.admin, '/api/v1/students/s1/guardians')
+    const own = (bonds.json().data as Json[]).find(
+      (item) => item.membershipId === w.parent.membershipId,
+    )
+    assert.ok(own)
+    const revoked = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/students/s1/guardians/${own.id}`,
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie: w.admin,
+        'content-type': 'application/json',
+        'if-match': `"${own.rowVersion}"`,
+      },
+      payload: JSON.stringify({ custody: 'none' }),
+    })
+    assert.equal(revoked.statusCode, 200, revoked.body)
+
+    const body = { purpose: 'photo_video_sharing', studentId: 's1', textId: w.texts.sharing.id }
+    const denied = await give(w.parent.cookie, body)
+    assert.equal(denied.statusCode, 403, denied.body)
+    assert.equal(denied.json().code, 'consent_custody_required')
+    assert.equal((await consentRows(w.id)).length, 0)
+    // Velayetli öbür veli rızayı verir.
+    const granted = await give(coParent.cookie, body)
+    assert.equal(granted.statusCode, 201, granted.body)
+    assert.equal((await consentRows(w.id)).length, 1)
+  })
+
   test('400: geçersiz gövde ve gövdedeki institutionId reddedilir, kayıt açılmaz', async () => {
     const w = await world()
     const base = { purpose: 'photo_video_sharing', studentId: 's1', textId: w.texts.sharing.id }

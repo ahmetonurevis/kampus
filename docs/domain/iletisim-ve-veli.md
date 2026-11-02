@@ -138,7 +138,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Muhafazakâr yön: çocuğun katılımı için tek velinin onayı yeterli sayılsa da açık ret karşısında katılım kurumu sorumluluğa açar.
 - **Kaynak:** TMK md. 336/1 (evlilik devam ettikçe ana ve baba velayeti birlikte kullanır); retin üstün tutulması işletme kuralıdır — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — öğrenci başına tek veli.
+- **Kodda:** kısmen — açık rızada velayetsiz ebeveyn reddedilir (`student_guardians` velayeti, `DOM-YTK-057`); etkinlik izni öğrenci başına tek veli (`parentId`) okur, çelişen karar yok.
 
 ### DOM-ILT-032 · Etkinlik değişikliği izni düşürür
 
@@ -266,7 +266,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ergin olmayan çocuk velayet altındadır; velayet boşanmada çocuğun bırakıldığı tarafa aittir. Velayeti olmayan ebeveynin kişisel ilişki hakkı okulun ona kendiliğinden bilgi açmasını gerektirmez; MEB e-Okul uygulaması da erişimi velayet sahibine ve onun onayına bağlar.
 - **Kaynak:** TMK md. 335/1, 336/2-3, 337/1 (velayet), md. 182 ve 323 (kişisel ilişki); mevzuat.gov.tr konsolide metin. e-Okul uygulaması ve Kamu Denetçiliği Kurumu'nun velayeti olmayan babanın e-Okul erişim başvurusunu reddettiği karar yalnız haber kaynağından görüldü (memurlar.net, 13/7/2026) — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — veli kaydı yalnız ad ve çocuk listesi taşır (`packages/school-core/src/data/seed.js:205-212`). React randevu ekranı (W20) velayet durumunu ayırmaz: veli, bağlı olduğu her çocuk için randevu talep eder (`?cocuk=`), kapsamı sunucu `parentId` bağından uygular (`TODO(velayet-kapsam)`).
+- **Kodda:** kısmen — bağ core `lib/guardianship.ts` (`GuardianLink`: öğrenci, veli kaydı `parentId` ve/veya veli hesabı `membershipId`, yakınlık `mother`/`father`/`legal_guardian`/`other`, velayet `full`/`joint`/`none`, `contactRestricted`, `isPayer`, `canPickUp`); tablo `student_guardians` (migration `0027`, doğrulanmış eski hesap bağları `full` ve kısıtsız geri dolduruldu). Velayetli ve kısıtsız bağ `isCustodial`; erişilen öğrenciler `accessibleStudentIds`. Rıza velayeti bu tablodan okur: velayetsiz ebeveyn rıza veremez (403 `consent_custody_required`). Okuma kapsamı henüz üyelik bağlantısından (`child`) gelir: velayetsiz ebeveynin erişimsizliği ve velayet sahibinin onayıyla kapsamlı erişim yok (`TODO(velayet-kapsam)`, OG-032). React randevu ekranı (W20) velayet durumunu ayırmaz.
 
 ### DOM-ILT-071 · Velayet değişikliği belgeyle ve kayıtla işlenir
 
@@ -274,7 +274,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Velayet değiştiği gün bildirim ve izinler eski duruma göre işlemeye devam ederse çocuğun güvenliği risk altına girer.
 - **Kaynak:** İşletme kuralı; KVKK md. 12/1.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — bağı yönetici ve ön büro kurar, değiştirir, kaldırır (`guardian.manage`; core `planGuardianLink`, `planGuardianUpdate`, `planGuardianUnlink`; API `POST/PATCH/DELETE /api/v1/students/:studentId/guardians`); her değişiklik `audit_log`'a yalnız alan adlarıyla yazılır. Belge yükleme ve izin, teslim, bildirim alıcılarının yeniden hesaplanması yok (`TODO(velayet-belgesi)`); rıza kararı velayeti istek anında okur.
 
 ### DOM-ILT-072 · Vasi ve diğer yasal temsilci
 
@@ -282,7 +282,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Yasal temsil yetkisi belgeye dayanır; belgesiz kişiye veli yetkisi vermek ifşadır.
 - **Kaynak:** TMK md. 337/2 (vasi atanması), md. 404 vd. (vesayet) — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — `legal_guardian` yakınlığı velayetsiz kaydedilmez (422 `guardian_legal_custody`, `lib/guardianship.ts`); belge yok.
 
 ### DOM-ILT-073 · Ayrı veliler arasında bilgi sızmaz
 
@@ -290,7 +290,23 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ayrı yaşayan ebeveynler arasında adres ve iletişim bilgisi sızıntısı fiziksel risk doğurabilir.
 - **Kaynak:** İşletme kuralı; KVKK md. 4/2 (ölçülülük), md. 12/1.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — öğrenci başına tek veli olduğu için genel ayrım yok; bildirim merkezinde okundu bilgisi kullanıcıya özeldir (`notificationReads`, `<bildirim>:<kullanıcı>`), bir velinin okuması diğerine yansımaz, başkasının bildirimi 404 döner (F6a, `lib/notifications.ts`); velayet kapsamı yok. Randevuda görüşmeyi yalnız açan veli görür (`DOM-ILT-103`, React ekranı `?randevu=` ile başka velinin görüşmesini açamaz, 404). Yazışma ve randevu dışındaki yüzeylerde ayrım yok.
+- **Kodda:** kısmen — öğrenci başına tek veli olduğu için genel ayrım yok; bildirim merkezinde okundu bilgisi kullanıcıya özeldir (`notificationReads`, `<bildirim>:<kullanıcı>`), bir velinin okuması diğerine yansımaz, başkasının bildirimi 404 döner (F6a, `lib/notifications.ts`); velayet kapsamı yok. Randevuda görüşmeyi yalnız açan veli görür (`DOM-ILT-103`, React ekranı `?randevu=` ile başka velinin görüşmesini açamaz, 404). Yazışma ve randevu dışındaki yüzeylerde ayrım yok. Veli bağı listesinde (`GET /api/v1/students/:studentId/guardians`, core `guardianLinksView`) veli yalnız kendi bağını görür; öteki velinin varlığı ve kısıtı ve kendi bağının kısıt alanı dönmez; iletişim kısıtlı veli 404 alır.
+
+### DOM-ILT-074 · Tek ödeyici ve iletişim kısıtı
+
+- **Kural:** Öğrencinin en çok bir ödeyen velisi vardır; finans bildirimleri ödeyiciye gider. İletişim kısıtlı veli (mahkeme kararı, koruma tedbiri) öğrencinin verisini görmez, bildirim almaz ve velayet sahibi, ödeyici veya teslim alma yetkilisi olarak kaydedilemez. Kısıt kaldırılmadan bu alanlar açılmaz.
+- **Gerekçe:** İki ödeyici borç bildirimini ve tahsilatı belirsizleştirir; kısıtlı veliye giden finans bildirimi çocuğun kaydının ve okulunun varlığını sızdırır.
+- **Kaynak:** İşletme kuralı; KVKK md. 4/2, md. 12/1.
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `lib/guardianship.ts` (`payerOf`; 409 `guardian_payer_exists`, 422 `guardian_restricted_custody`, `guardian_restricted_payer`, `guardian_restricted_pickup`); tabloda kısmi benzersiz indeks `student_guardians_payer_key`. Finans bildiriminin ödeyiciye yönlendirilmesi yok (`payerOf` hazır; bildirim türleri kayıt ve finans alanındadır).
+
+### DOM-ILT-075 · Velisi olan öğrencide velayet sahibi bulunur
+
+- **Kural:** Veli bağı olan reşit olmayan öğrencinin en az bir velayet sahibi (ya da ortak velayetli veya vasi) ve kısıtsız velisi bulunur. İlk bağ velayetsiz kurulamaz; son velayetli bağın velayeti kaldırılamaz ve başka bağ dururken son velayetli bağ silinemez. Bağı hiç olmayan öğrenci (yetişkin kursiyer, `DOM-YTK-030`) bu kuraldan etkilenmez.
+- **Gerekçe:** Rıza, izin ve kurumla yazışma velayet sahibine dayanır; velayet sahibi olmayan öğrencide bu işlemlerin hiçbiri yürütülemez.
+- **Kaynak:** TMK md. 335/1, 342/1; işletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `lib/guardianship.ts` (422 `guardian_custody_required`).
 
 ## Talep ve şikayet
 
@@ -402,6 +418,6 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 | DOM-ILT-040          | İç not core kapsamında yalnız rehberlik görevli öğretmene dönüyor; yöneticinin gerekçeli erişimi ve API'nin kapsam fonksiyonunu kullanması yok (`packages/school-core/src/lib/scope.ts`).                                                                                                                                                                                     |
 | DOM-ILT-041          | Core denetim kaydı iç notu maskeliyor; bildirim, PDF ve CSV yan kanalları ayrıca denetlenmedi.                                                                                                                                                                                                                                                                                |
 | DOM-ILT-053          | Core ve API'de bildirim süre içinde geçmiş tarihi kabul ediyor, yoklama bağlantısı hesaplanıyor, gerekçe yalnız kategori; özür belgesi ve idare onayı yok. Vue demosunda geçmiş tarih engelli, serbest açıklama alınıyor ve talep kaydı açılıyor (`apps/web/src/views/Communication.vue:312-345`).                                                                            |
-| DOM-ILT-070, 073     | Velayet durumu ve çoklu veli yok; öğrenci başına tek `parentId` (`packages/school-core/src/data/seed.js:197,205-212`).                                                                                                                                                                                                                                                        |
+| DOM-ILT-070, 073     | Bağ, velayet ve kısıt core ve API'dedir (`lib/guardianship.ts`, `student_guardians`); okuma kapsamı hâlâ üyelik bağlantısından gelir, velayetsiz ebeveyn kapsam dışında kalmıyor (OG-032). Vue demosu öğrenci başına tek `parentId` kullanır.                                                                                                                                 |
 | DOM-ILT-090…093      | Kural core'dadır (`lib/questions.ts`), API uçları ve react-shared kancaları hazırdır; Vue demosu yanıtı yerinde düzenletiyor, geri çekme yok, öğretmeni pasif ders dışında sınır denetimi yok, dosya adını saklıyor (`apps/web/src/views/Learning.vue:318-360`). React ekranları W19'da geldi (`apps/web-react/src/pages/learning/`). Velinin soru görünürlüğü açık karardır. |
 | DOM-ILT-100…104      | Kural core'dadır; Vue ve telefon demosu türü rol sınırı olmadan seçtirir, talepte ders ve etkinlik çakışmasını ve pasif öğrenciyi denetlemez, red gerekçesi istemez, iptal ve geri çekme yoktur, yalnız `Reddedildi` durumunu takvimden düşer (`apps/web/src/views/Communication.vue:122-241`, `apps/mobile/src/model/operations.ts:679-790`).                                |

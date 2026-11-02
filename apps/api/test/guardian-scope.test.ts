@@ -275,6 +275,93 @@ describe('velayet ve iletişim kısıtı okuma kapsamı', () => {
     assert.equal(await messages(), 3)
   })
 
+  /** Yayımlanmış rıza metni ve veliden rıza (öğrenci 18 yaş altı sayılır). */
+  async function consentText(w: World, purpose: string) {
+    const response = await call('POST', '/api/v1/privacy-notices', w.admin.cookie, {
+      kind: 'consent_text',
+      purpose,
+      title: 'Rıza metni',
+      body: 'Açık rıza metni.',
+    })
+    assert.equal(response.statusCode, 201, response.body)
+    return response.json().data.id as string
+  }
+  async function giveConsent(cookie: string, purpose: string, textId: string) {
+    const response = await call('POST', '/api/v1/consents', cookie, {
+      purpose,
+      studentId: 's1',
+      textId,
+      decision: 'granted',
+      channel: 'web',
+    })
+    assert.equal(response.statusCode, 201, response.body)
+    return response.json().data.id as string
+  }
+  const consentIds = async (cookie: string, url: string) =>
+    ((await data(cookie, url)) as Json[]).map((row) => row.id as string).sort()
+
+  test('IST-019 DOM-ILT-071 DOM-YTK-059 velayeti kalkan veli kendi rızasını listede görür ve geri çeker; başkasının rızasını görmez', async () => {
+    const w = await world()
+    const sharing = await consentText(w, 'photo_video_sharing')
+    const speaking = await consentText(w, 'speaking_recording')
+    const own = await giveConsent(w.mother.cookie, 'photo_video_sharing', sharing)
+    const fathers = await giveConsent(w.father.cookie, 'speaking_recording', speaking)
+
+    await restrict(w)
+    // Kapsam dışı öğrenci için yalnız kendi açık satırı; babanınki ve öğrenci verisi yok.
+    const scoped = (await data(w.mother.cookie, '/api/v1/consents?studentId=s1')) as Json[]
+    assert.deepEqual(
+      scoped.map((row) => [row.id, row.subjectKind, row.subjectId, row.canWithdraw]),
+      [[own, 'student', 's1', true]],
+    )
+    assert.equal(scoped[0].grantedByUserId, undefined)
+    assert.deepEqual(
+      await consentIds(w.mother.cookie, '/api/v1/consents?studentId=s1&status=all'),
+      [own],
+    )
+    assert.deepEqual(
+      await consentIds(w.mother.cookie, '/api/v1/consents?studentId=s1&purpose=speaking_recording'),
+      [],
+    )
+    // Hesap listesi de kapsam dışı öğrencideki kendi satırını taşır (ekrandan geri çekme).
+    assert.deepEqual(await consentIds(w.mother.cookie, '/api/v1/consents'), [own])
+    // Kendi satırı olmayan kapsam dışı öğrenci ve olmayan öğrenci aynı 404.
+    for (const studentId of ['s3', 'olmayan-ogrenci']) {
+      const missing = await get(w.mother.cookie, `/api/v1/consents?studentId=${studentId}`)
+      assert.equal(missing.statusCode, 404, missing.body)
+      assert.equal(missing.json().code, 'not_found')
+    }
+    // Rızanın geçerlilik sonucu da kapsam dışıdır.
+    assert.equal(
+      (await get(w.mother.cookie, '/api/v1/consents/status?studentId=s1')).statusCode,
+      404,
+    )
+    // Başkasının rızasını geri çekemez (404); kendi rızasını çeker.
+    const foreign = await call('POST', `/api/v1/consents/${fathers}/withdraw`, w.mother.cookie, {})
+    assert.equal(foreign.statusCode, 404, foreign.body)
+    const withdrawn = await call('POST', `/api/v1/consents/${own}/withdraw`, w.mother.cookie, {})
+    assert.equal(withdrawn.statusCode, 200, withdrawn.body)
+    assert.equal(withdrawn.json().data.withdrawalReason, 'withdrawn')
+    // Açık satırı kalmayınca kapsam dışı öğrenci yeniden 404; hesap listesinde de yok.
+    const after = await get(w.mother.cookie, '/api/v1/consents?studentId=s1&status=all')
+    assert.equal(after.statusCode, 404, after.body)
+    assert.deepEqual(await consentIds(w.mother.cookie, '/api/v1/consents'), [])
+    // Velayetli baba ikisini de geçmişte görür; annenin satırını geri çekmiş görür.
+    assert.deepEqual(
+      await consentIds(w.father.cookie, '/api/v1/consents?studentId=s1&status=all'),
+      [own, fathers].sort(),
+    )
+    assert.deepEqual(await consentIds(w.father.cookie, '/api/v1/consents?studentId=s1'), [fathers])
+  })
+
+  test('IST-019 DOM-ILT-070 kapsamdaki veli kendi rızasını yalnız çocuğun listesinde görür; hesap listesinde yinelenmez', async () => {
+    const w = await world()
+    const sharing = await consentText(w, 'photo_video_sharing')
+    const own = await giveConsent(w.mother.cookie, 'photo_video_sharing', sharing)
+    assert.deepEqual(await consentIds(w.mother.cookie, '/api/v1/consents?studentId=s1'), [own])
+    assert.deepEqual(await consentIds(w.mother.cookie, '/api/v1/consents'), [])
+  })
+
   test('IST-019 DOM-ILT-074 kısıtlı veliye bildirim ulaşmaz; okunmamış sayısı da sıfırdır', async () => {
     const w = await world()
     await restrict(w)

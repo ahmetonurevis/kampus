@@ -34,12 +34,13 @@ import {
   findConsent,
   insertConsent,
   listConsentsOfSubject,
+  listOpenStudentConsentsGrantedBy,
   listPrivacyNotices,
   type StoredConsent,
 } from '../db/privacy.ts'
 import { findRecord } from '../db/records.ts'
 import { loadMembershipGuardians } from '../db/student-guardians.ts'
-import { ConflictError } from '../errors.ts'
+import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment } from './commands.ts'
 import {
@@ -436,25 +437,75 @@ export interface ConsentListInput {
  * Veri sahibinin rıza satırları, amaç ve veriliş sırasıyla (DOM-ILT-034). `studentId` yoksa
  * aktörün kendi hesap rızaları. `status=open` geri çekilmemiş satırlar (varsayılan), `all`
  * geçmiş dahil. Satırın bugün geçerli sayılıp sayılmadığı `GET /consents/status`'tadır.
+ *
+ * Velinin kendi verdiği rızalar (KVKK m.11; DOM-YTK-059, DOM-ILT-070, OG-032): velayeti kalkan,
+ * iletişimi kısıtlanan ya da bağı kaldırılan veli öğrenciyi okuma kapsamında görmez ama kendi
+ * verdiği rızayı geri çekebilmelidir. Bu yüzden velinin kendi verdiği, geri çekilmemiş öğrenci
+ * rızaları kapsamdan bağımsız döner (`ownGrantsOutsideScope`): `studentId` olmadan hesap
+ * rızalarının ardından, kapsam dışı öğrenci için `studentId` ile yalnız bunlar. Bu satırlar yalnız
+ * rızanın kendi alanlarını taşır; öğrenci adı ya da başka öğrenci verisi dönmez, başka velinin
+ * satırı dönmez. Kapsam dışı öğrencide velinin kendi açık satırı yoksa (amaç süzgecinden önce)
+ * yanıt olmayan öğrenciyle aynı 404'tür (varlık sızmaz).
  */
 export async function listConsents(ctx: ServiceContext, input: ConsentListInput) {
-  const subject = readSubject(ctx, input.studentId)
-  const rows = await readWithScope(ctx, 'consent.read', input.studentId, async (tx) => {
-    const [all, actor, student] = await Promise.all([
-      listConsentsOfSubject(tx, ctx.institutionId, {
-        ...subject,
-        openOnly: input.status === 'open',
-      }),
-      consentActorOf(tx, ctx),
-      consentStudentOf(tx, ctx.institutionId, input.studentId),
-    ])
-    return (now: string) =>
-      all
-        .filter((row) => input.purpose === undefined || row.purpose === input.purpose)
-        .map((row) => consentView(row, ctx.actor.role, withdrawable(row, actor, student, now)))
-  })
+  const parent = ctx.actor.role === 'veli'
+  const outside =
+    parent && input.studentId !== undefined && !(await inParentScope(ctx, input.studentId))
+  const subject = readSubject(ctx, outside ? undefined : input.studentId)
+  const { visible, rows } = await readWithScope(
+    ctx,
+    'consent.read',
+    outside ? undefined : input.studentId,
+    async (tx) => {
+      const [all, actor, student, own] = await Promise.all([
+        outside
+          ? Promise.resolve([])
+          : listConsentsOfSubject(tx, ctx.institutionId, {
+              ...subject,
+              openOnly: input.status === 'open',
+            }),
+        consentActorOf(tx, ctx),
+        outside ? Promise.resolve(null) : consentStudentOf(tx, ctx.institutionId, input.studentId),
+        parent && (outside || input.studentId === undefined)
+          ? ownGrantsOutsideScope(tx, ctx, input.studentId)
+          : Promise.resolve([]),
+      ])
+      return (now: string) => ({
+        visible: !outside || own.length > 0,
+        rows: [...all, ...own]
+          .filter((row) => input.purpose === undefined || row.purpose === input.purpose)
+          .map((row) => consentView(row, ctx.actor.role, withdrawable(row, actor, student, now))),
+      })
+    },
+  )
+  if (!visible) throw new NotFoundError()
   const start = (input.page - 1) * input.pageSize
   return { items: rows.slice(start, start + input.pageSize), total: rows.length }
+}
+
+/** Velinin okuma kapsamındaki çocukları (velayetli ve kısıtsız bağ; `listMembershipLinks`). */
+async function parentScopeStudentIds(tx: Database, ctx: ServiceContext) {
+  const links = await listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId)
+  return new Set(links.filter((link) => link.kind === 'child').map((link) => link.recordId))
+}
+
+const inParentScope = async (ctx: ServiceContext, studentId: string) =>
+  (await parentScopeStudentIds(ctx.db, ctx)).has(studentId)
+
+/**
+ * Velinin kendi verdiği, geri çekilmemiş ve kapsamı dışındaki öğrencilere ait rızaları (KVKK
+ * m.11). Kapsamdaki çocuğun satırları zaten o çocuğun listesindedir, burada yinelenmez.
+ */
+async function ownGrantsOutsideScope(
+  tx: Database,
+  ctx: ServiceContext,
+  studentId: string | undefined,
+): Promise<StoredConsent[]> {
+  const [rows, scope] = await Promise.all([
+    listOpenStudentConsentsGrantedBy(tx, ctx.institutionId, ctx.actor.userId, studentId),
+    parentScopeStudentIds(tx, ctx),
+  ])
+  return rows.filter((row) => !scope.has(row.subjectId))
 }
 
 /**

@@ -172,6 +172,38 @@ export async function listConsentsOfSubject(
   return rows.map(toConsent)
 }
 
+/**
+ * Kullanıcının verdiği, geri çekilmemiş öğrenci rızaları (KVKK m.11, DOM-YTK-059): erişimi
+ * kalkan velinin kendi rızasını geri çekebilmesi için. `studentId` verilirse yalnız o öğrenci.
+ */
+export async function listOpenStudentConsentsGrantedBy(
+  db: Database,
+  institutionId: string,
+  grantedByUserId: string,
+  studentId?: string,
+): Promise<StoredConsent[]> {
+  const rows = await db
+    .select()
+    .from(consents)
+    .where(
+      and(
+        eq(consents.institutionId, institutionId),
+        eq(consents.grantedByUserId, grantedByUserId),
+        eq(consents.subjectKind, 'student'),
+        ...(studentId === undefined ? [] : [eq(consents.subjectId, studentId)]),
+        isNull(consents.withdrawnAt),
+        isNull(consents.archivedAt),
+      ),
+    )
+    .orderBy(
+      asc(consents.subjectId),
+      asc(consents.purpose),
+      asc(consents.givenAt),
+      asc(consents.id),
+    )
+  return rows.map(toConsent)
+}
+
 /** Rıza satırı; olmayan ya da başka kurumun satırı `null`. */
 export async function findConsent(
   db: Database,

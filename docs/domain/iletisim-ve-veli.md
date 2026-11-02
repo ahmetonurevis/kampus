@@ -138,7 +138,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Muhafazakâr yön: çocuğun katılımı için tek velinin onayı yeterli sayılsa da açık ret karşısında katılım kurumu sorumluluğa açar.
 - **Kaynak:** TMK md. 336/1 (evlilik devam ettikçe ana ve baba velayeti birlikte kullanır); retin üstün tutulması işletme kuralıdır — **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — açık rızada velayetsiz ebeveyn reddedilir (`student_guardians` velayeti, `DOM-YTK-057`); etkinlik izni öğrenci başına tek veli (`parentId`) okur, çelişen karar yok.
+- **Kodda:** kısmen — açık rızada velayetsiz ebeveyn reddedilir (`student_guardians` velayeti, `DOM-YTK-057`); izin formunda her velinin kararı ayrıdır ve ret geçerlidir (`DOM-ILT-037`, `permissionStatus`); okul takvimi etkinlik izni öğrenci başına tek veli (`parentId`) okur, çelişen karar yok. Çelişkide etkinlik sorumlusuna ve yöneticiye bildirim yok (personel bildirimi yok).
 
 ### DOM-ILT-032 · Etkinlik değişikliği izni düşürür
 
@@ -171,6 +171,38 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Kaynak:** KVKK md. 6/1, 6/3-a, 6/3-c (hayat ve beden bütünlüğü), 6/4. Kurul'un "yeterli önlemler" kararının güncel metni **doğrulanmalı**.
 - **Kurum türü:** ikisi
 - **Kodda:** yok — öğrenci sağlık alanı yok.
+
+### DOM-ILT-036 · İzin formu konu türlüdür ve hedefi açılışta çözülür
+
+- **Kural:** Okul izin formu (dijital veli onayı) gezi, etkinlik, fotoğraf çekimi, kulüp veya diğer konu türüyle açılır; başlık, açıklama, son gün (`YYYY-MM-DD`, Europe/Istanbul) ve hedef (sınıflar ve/veya tek tek öğrenciler) taşır. Formu yönetici her sınıf ve öğrenciye, sınıf rehber öğretmeni yalnız rehberi olduğu sınıflara ve onların öğrencilerine açar; ders öğretmeni, ön büro, veli ve öğrenci açamaz. Hedef öğrenciler açılışta çözülür ve saklanır (sınıfların etkin öğrencileri ve seçilen öğrenciler); sonradan sınıfa giren öğrenci formu kendiliğinden almaz, düzenlemeyle eklenir. Son gün bugünden önce olamaz. Form açıldığında ve öğrenci düzenlemeyle hedefe girdiğinde 18 yaş altında veliye, yetişkin kursiyerde kendisine bildirim gider. İzin formu açık rıza değildir: "fotoğraf çekimi" konulu form görüntünün yayımlanmasına rıza yerine geçmez (`DOM-ILT-033`).
+- **Gerekçe:** Okul takvimindeki etkinlik onayı yalnız takvim etkinliğine bağlıdır; gezi, kulüp ve çekim gibi konular takvim kaydı olmadan da izin ister. Hedefin saklanması, kimden karar beklendiğini ("bekleyen" listesi) sınıf değişikliklerinden bağımsız ve denetlenebilir kılar.
+- **Kaynak:** İşletme kuralı; TMK md. 342/1 (`DOM-ILT-030` ile aynı).
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `packages/school-core/src/lib/permission-forms.ts` (`createPermissionForm`; 403 `permission_form_scope_denied`, 422 `permission_form_deadline_in_past`, `permission_form_no_students`, `record_inactive`, `student_inactive`), koleksiyonlar `permissionForms` ve `permissionDecisions` (modül `communication`), bildirim türü `permission_form_opened`. **Model kararı:** mevcut etkinlik onayı (`schoolEvents.requiresConsent` + `eventConsents`, iş akışı `consent` komutu) genelleştirilmedi; ayrı koleksiyon açıldı. Gerekçe: etkinlik onayı Vue demosunun ve iş akışı motorunun (`school-workflows.ts`, snapshot sürüm 3) parçasıdır, öğrenci başına tek kayıt ve üzerine yazma kullanır; genelleştirmek demo kalıcılığını ve eski kayıtları değiştirirdi. Yeni koleksiyon API'ye özgüdür, örnek veride boştur; etkinlik onayının bu modele taşınması demo kalıcılığı silinirken yapılır.
+
+### DOM-ILT-037 · Her veli kendi kararını verir; geçerli durum hesaplanır
+
+- **Kural:** Karar öğrenci başınadır ve onay ya da ret ile isteğe bağlı kısa nottan oluşur. 18 yaş altında kararı öğrencinin velayetli ve iletişim kısıtı olmayan velileri verir; her velinin kararı ayrı tutulur. 18 yaşını doldurmuş öğrencide (doğum tarihi bilinmiyorsa 18 altı sayılır) kararı öğrenci kendisi verir, veli veremez. Veli yalnız kendi çocuğu için karar verir; başka çocuk ya da formun hedefinde olmayan öğrenci bulunamadı (404) sayılır. Geçerli durum saklanmaz, kararlardan hesaplanır: öğrencinin bugünkü yaş durumuna uyan karar verenlerin her birinin son kararı alınır; bir ret varsa "reddedildi", yoksa bir onay varsa "onaylandı", hiç karar yoksa "bekliyor" (`DOM-ILT-031`). Formu açan ve öğrenciye derse giren öğretmen ile yönetici bekleyen, onaylayan ve reddeden listesini görür; veli yalnız kendi verdiği kararı ve çocuğunun geçerli durumunu görür, öbür velinin kararını ve notunu görmez (`DOM-ILT-073`). Kararı veren kullanıcının kimliği yalnız yöneticiye döner.
+- **Gerekçe:** İlk gelen kararın geçerli sayılması ikinci velinin açık reddini yok sayardı; ayrı tutmak ve reddi üstün saymak güvenli yöndür. Ayrı yaşayan veliler arasında not ve karar sızmamalıdır.
+- **Kaynak:** TMK md. 336/1, 342; işletme kuralı (`DOM-ILT-031`) — **doğrulanmalı**.
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `decidePermission` (403 `permission_guardian_required`, `permission_adult_self`; 404 `student_not_found`, `permission_form_not_found`; 422 `student_inactive`), `permissionStatus`, `permissionCounts`; kapsam `platform/scope.ts` `permissionForms`, `permissionDecisions`. Velayetsiz ve kısıtlı veli çocuk bağlantısını aktör kurulurken kaybeder (`guardedActorLinks`, `DOM-ILT-070`) ve 404 alır. Velayeti sonradan kaldırılan velinin önceden verdiği karar durum hesabında sayılmaya devam eder (`TODO(velayet-belgesi)`, `DOM-ILT-071`); öğrenci 18 yaşına girince veli kararları sayılmaz.
+
+### DOM-ILT-038 · Son günden sonra karar değişmez; kararlı form daraltılmaz
+
+- **Kural:** Karar son günün Europe/Istanbul 23:59:59'una kadar verilir ve aynı süre içinde değiştirilebilir; her karar yeni satırdır, eski karar silinmez (`DOM-ILT-034`). Son gün geçtikten sonra ve kapatılmış formda karar verilmez, değiştirilmez. Formu açan öğretmen ya da yönetici başlık, açıklama, son gün ve hedefi düzenler; konu türü değişmez. Son günü geçmiş formun son günü değiştirilemez (karar yeniden açılmaz). Kararı olan formun hedefinden sınıf ya da öğrenci çıkarılamaz, yalnız eklenebilir. Form son günden önce kapatılabilir; kararı olan form arşivlenmez, kapatılır. Formu gören ama açmayan öğretmen düzenleyemez (403); görmeyen için form yoktur (404).
+- **Gerekçe:** Son günden sonra değişen karar etkinlik hazırlığını (ulaşım, kontenjan) belirsizleştirir; kararı silinen ya da hedeften çıkarılan öğrencinin izin ispatı kaybolur.
+- **Kaynak:** İşletme kuralı; KVKK md. 12/1 (ispat kaydı, `DOM-ILT-034`).
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `updatePermissionForm`, `closePermissionForm`, `archivePermissionForm`, `isPermissionFormOpen` (422 `permission_form_deadline_passed`, `permission_form_closed`, `permission_form_scope_locked`; 409 `permission_form_closed` yeniden kapatmada, `permission_form_has_decisions`; 403 `permission_form_not_owner`).
+
+### DOM-ILT-039 · Son gün yaklaşırken karar bekleyenlere hatırlatma
+
+- **Kural:** Açık formda son güne iki gün kala ve son gün (Europe/Istanbul) kararı beklenen her öğrenci için bir kez hatırlatma bildirimi gider: 18 yaş altında veliye, yetişkin kursiyerde kendisine. Onaylamış ya da reddetmiş öğrenciye, kapalı ve son günü geçmiş forma hatırlatma gitmez. İzin bildirimleri "onay son tarihi" olduğu için konu tercihiyle kapatılamaz (`DOM-ILT-020`); bildirimde konu, açıklama ve not yoktur (`DOM-ILT-023`).
+- **Gerekçe:** Sessizlik onay değildir (`DOM-ILT-030`); yanıt vermeyen velinin çocuğu etkinliğe katılamaz, bu yüzden son gün hatırlatılır.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — saf hesap core `permissionReminders` (`PERMISSION_REMINDER_DAYS`, tekil anahtar form + son gün + kalan gün), bildirim türü `permission_form_reminder`. Zamanlanmış iş yok (`TODO(onay-hatirlatma-isi)`).
 
 ## Rehberlik gizliliği
 

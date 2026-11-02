@@ -64,6 +64,44 @@ export const PLATFORM_NOTIFICATION_TYPES = {
     },
   }),
   /**
+   * İzin formu açıldı ya da öğrenci düzenlemeyle hedefe girdi (IST-067, DOM-ILT-036, -039): 18
+   * yaş altında veliye, yetişkin kursiyerde kendisine. Karar istenen bildirimdir ve son güne
+   * bağlıdır; konu tercihiyle kapanmaz (DOM-ILT-020 "onay son tarihi"). Konu, son gün ve açıklama
+   * bildirimde yoktur, form ayrıntısında okunur (DOM-ILT-023).
+   */
+  permission_form_opened: defineNotificationType({
+    topic: 'consent',
+    category: 'service',
+    mandatory: true,
+    module: 'communication',
+    audiences: { minor: ['parent'], adult: ['student'] },
+    subjectType: 'permission_form',
+    data: z.strictObject({ formId: notificationId }),
+    subjectId: (data) => data.formId,
+    titles: {
+      student: 'Senden izin bekleyen bir form var.',
+      parent: '{öğrenci} için izin formu açıldı.',
+    },
+  }),
+  /**
+   * Son gün yaklaşırken karar bekleyen öğrenci için hatırlatma (DOM-ILT-039; `permissionReminders`
+   * saf hesaptır, zamanlanmış iş `TODO(onay-hatirlatma-isi)`). Zorunludur (DOM-ILT-020).
+   */
+  permission_form_reminder: defineNotificationType({
+    topic: 'consent',
+    category: 'service',
+    mandatory: true,
+    module: 'communication',
+    audiences: { minor: ['parent'], adult: ['student'] },
+    subjectType: 'permission_form',
+    data: z.strictObject({ formId: notificationId }),
+    subjectId: (data) => data.formId,
+    titles: {
+      student: 'İzin formunun son günü yaklaşıyor.',
+      parent: '{öğrenci} için izin formunun son günü yaklaşıyor.',
+    },
+  }),
+  /**
    * Yoklamada "gelmedi" işaretlendi (DOM-ILT-052): 18 yaş altında velilere, yetişkin kursiyerde
    * kendisine aynı gün bildirilir. Zorunludur, konu tercihiyle kapanmaz (DOM-ILT-020). Başlık
    * gün ve ders söylemez (okunduğu gün farklı olabilir); gün bildirimin kendi zamanıdır. Neden,

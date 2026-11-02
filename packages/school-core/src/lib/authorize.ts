@@ -246,6 +246,15 @@ function decide(
         (subjectId === undefined || a.subjectId === subjectId),
     )
   const classOf = (studentId: string) => source.students.find((s) => s.id === studentId)?.classId
+  // Sınıf rehber öğretmeni (`classes.teacherId`) olduğu sınıflar ve onların öğrencileri.
+  const homeroom = (classId: string | undefined) =>
+    !!teacher &&
+    classId !== undefined &&
+    source.classes.some((c) => c.id === classId && c.teacherId === teacher.id)
+  const homeroomTargets = (target: {
+    classIds: readonly string[]
+    studentIds: readonly string[]
+  }) => target.classIds.every(homeroom) && target.studentIds.every((id) => homeroom(classOf(id)))
   switch (request.action) {
     case 'invoice.pay':
     case 'payment.reverse':
@@ -440,6 +449,49 @@ function decide(
       return scope.classIds.has(request.target.classId)
         ? ALLOWED
         : deny('prospect_not_found', 'Aday bulunamadı.', 'DOM-DIL-031', 'not_found')
+    case 'permissionForm.create':
+      // Yönetici her sınıf ve öğrenciye; öğretmen yalnız rehberi olduğu sınıflara ve onların
+      // öğrencilerine izin formu açar (DOM-ILT-036).
+      return actor.role === 'yonetici' || homeroomTargets(request.target)
+        ? ALLOWED
+        : deny(
+            'permission_form_scope_denied',
+            'Yalnız rehberi olduğunuz sınıflara izin formu açabilirsiniz.',
+            'DOM-ILT-036',
+          )
+    case 'permissionForm.update':
+    case 'permissionForm.close':
+    case 'permissionForm.archive': {
+      // Formun öğretmeni ya da yönetici (DOM-ILT-038). Formu gören başka öğretmen 403 alır;
+      // görmeyen için ret 404'tür, formun varlığı sızdırılmaz.
+      const form = request.target.form
+      const targets =
+        request.action === 'permissionForm.update' ? request.target.targets : undefined
+      if (form === undefined || actor.role === 'yonetici') return ALLOWED
+      if (teacher && form.teacherId === teacher.id)
+        return targets === undefined || homeroomTargets(targets)
+          ? ALLOWED
+          : deny(
+              'permission_form_scope_denied',
+              'Yalnız rehberi olduğunuz sınıflara izin formu açabilirsiniz.',
+              'DOM-ILT-036',
+            )
+      const sees =
+        form.classIds.some((id) => scope.classIds.has(id)) ||
+        form.studentIds.some((id) => scope.studentIds.has(id))
+      return sees
+        ? deny('permission_form_not_owner', 'Bu izin formunu siz açmadınız.', 'DOM-ILT-038')
+        : deny('permission_form_not_found', 'İzin formu bulunamadı.', 'DOM-ILT-038', 'not_found')
+    }
+    case 'permissionForm.decide': {
+      // Veli yalnız velayetli ve kısıtsız bağlı çocuğu, öğrenci yalnız kendisi için karar verir;
+      // başka çocuk ve formun hedefinde olmayan öğrenci yokmuş gibi 404'tür (DOM-ILT-037).
+      const { studentId, form } = request.target
+      if (!scope.studentIds.has(studentId))
+        return deny('student_not_found', 'Öğrenci bulunamadı.', 'DOM-ILT-037', 'not_found')
+      if (form === undefined || form.studentIds.includes(studentId)) return ALLOWED
+      return deny('permission_form_not_found', 'İzin formu bulunamadı.', 'DOM-ILT-037', 'not_found')
+    }
     // Deneme dersinin kurum türü (yalnız dil okulu, DOM-DIL-030) `authorize` içinde rolden önce
     // denetlenir.
     case 'prospect.create':

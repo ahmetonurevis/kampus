@@ -175,6 +175,26 @@ export const PLATFORM_READ_RULES = {
       (!parentMeeting(r) || (c.userId !== undefined && requesterId(r) === c.userId)),
   },
   requests: { ...ADMIN_FRONT_OFFICE, ...PERSONAL },
+  // İzin formu (DOM-ILT-036, -037): öğretmen açtığı formu ve sınıflarına ya da öğrencilerine
+  // açılmış formu, öğrenci ve veli hedefinde kendisi/çocuğu olan formu görür; ön büro görmez.
+  permissionForms: {
+    ...ADMIN,
+    ogretmen: (c, r) =>
+      ownTeacher(c, r) ||
+      texts(r, 'classIds').some((id) => c.classIds.has(id)) ||
+      texts(r, 'studentIds').some((id) => c.studentIds.has(id)),
+    ogrenci: (c, r) => texts(r, 'studentIds').some((id) => c.studentIds.has(id)),
+    veli: (c, r) => texts(r, 'studentIds').some((id) => c.studentIds.has(id)),
+  },
+  // Kararı formun öğretmeni ve öğrencinin öğretmeni görür; veli yalnız kendi verdiği kararı
+  // görür, ayrı velilerin kararı ve notu birbirine görünmez (DOM-ILT-073, DOM-ILT-037).
+  permissionDecisions: {
+    ...ADMIN,
+    ogretmen: (c, r) => ownTeacher(c, r) || ownStudent(c, r),
+    ogrenci: ownStudent,
+    veli: (c, r) =>
+      ownStudent(c, r) && c.userId !== undefined && text(r, 'decidedByUserId') === c.userId,
+  },
   availability: { ...ADMIN, ogretmen: ownTeacher },
   // Denetim kaydını yalnız yönetici görür (DOM-YTK-053).
   audit: ADMIN,
@@ -240,6 +260,8 @@ const ANSWER_KEY_FIELDS: readonly string[] = ['keyCsv', 'keys']
 // `originalTeacherId` ve öğretmen alanından okunur.
 const LESSON_REASONS: readonly string[] = ['cancelReason', 'substitutions']
 const MESSAGE_HIDDEN_FIELDS: readonly string[] = ['senderUserId', 'parentUserId']
+// kvkk: K — kararı veren kullanıcı yalnız yöneticiye döner; öbürleri ilişkiyi (`relation`) görür.
+const DECIDER_FIELDS: readonly string[] = ['decidedByUserId']
 // kvkk: Ç — kimlik no yalnız yönetici ve ön büroya, maskeli döner; doğum tarihini öğretmen görmez.
 const STUDENT_IDENTITY: readonly string[] = ['nationalId', 'birthDate']
 const STUDENT_NATIONAL_ID: readonly string[] = ['nationalId']
@@ -287,6 +309,7 @@ export const PLATFORM_HIDDEN_FIELDS = {
   // Gönderenin kişi kimliği ve velinin kullanıcı kimliği kopyası hiçbir role ham dönmez;
   // gönderen tarafı `sender` alanındadır (DOM-ILT-014).
   conversationMessages: () => MESSAGE_HIDDEN_FIELDS,
+  permissionDecisions: (c) => (c.role === 'yonetici' ? NONE : DECIDER_FIELDS),
   // Öğrenci ve veli kendi analizini görür; sınavın bütün cevap anahtarını (kitapçık, tüm sorular)
   // görmez, profil onlara yalnız `revision` ile güncel analizi eşlemek için döner.
   opticalProfiles: (c) => (personal(c) ? ANSWER_KEY_FIELDS : NONE),

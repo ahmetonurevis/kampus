@@ -10,6 +10,7 @@ import type { AppointmentFields } from '../lib/appointments.ts'
 import type { QuestionFields } from '../lib/questions.ts'
 import type { HomeworkFields, SubmissionFields } from '../lib/homework.ts'
 import type { NotificationReadRecord, NotificationRecord } from '../lib/notifications.ts'
+import type { PermissionDecisionRecord, PermissionFormRecord } from '../lib/permission-forms.ts'
 import type {
   AuditEntry,
   ClubAttendanceRecord,
@@ -123,6 +124,10 @@ export type PlatformStatePatches<S extends Record<SeedCollections, unknown>> = {
   // üretir, örnek veri ve çevrimdışı demo boştur.
   notifications: NotificationRecord[]
   notificationReads: NotificationReadRecord[]
+  // Dijital veli onayı ve izin formu (lib/permission-forms.ts; IST-067): yalnız API üretir, örnek
+  // veri ve çevrimdışı demo boştur. Okul takvimindeki etkinlik onayı `eventConsents`'tedir.
+  permissionForms: PermissionFormRecord[]
+  permissionDecisions: PermissionDecisionRecord[]
   // Randevu işlemlerinin alanları (süre dakika); eski kayıtlar taşımaz (lib/appointments.ts).
   appointments: (Item<S, 'appointments'> & AppointmentFields)[]
   preferences: Record<string, unknown>

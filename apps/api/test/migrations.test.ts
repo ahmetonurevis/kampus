@@ -1188,9 +1188,18 @@ describe('0029: dil okulu grup tabloları', () => {
       group(a.id, id(3), { delivery: 'online', room: null, state: 'open', opened: true }),
     )
 
+    // Kursiyer aynı kurumun `students` kaydıdır (bileşik yabancı anahtar, üretilen koleksiyon).
+    const student = (institutionId: string, collection: string, recordId: string) =>
+      sql`insert into records (institution_id, collection, id, data, position)
+        values (${institutionId}, ${collection}, ${recordId}, '{}'::jsonb, 1)`
+    await db.execute(student(a.id, 'students', 's1'))
+    await db.execute(student(a.id, 'teachers', 's2'))
+    await db.execute(student(b.id, 'students', 's3'))
     const member = (groupId: string, studentId: string) =>
       sql`insert into language_group_members (institution_id, id, group_id, student_id, status, joined_at)
         values (${a.id}, gen_random_uuid(), ${groupId}, ${studentId}, 'active', ${FIXED_NOW})`
+    for (const missing of ['s-yok', 's2', 's3'])
+      await violates(member(id(1), missing), 'language_group_members_student_fkey')
     await db.execute(member(id(1), 's1'))
     await violates(member(id(1), 's1'), 'language_group_members_group_student_key')
     await db.execute(member(id(3), 's1'))
@@ -1212,5 +1221,35 @@ describe('0029: dil okulu grup tabloları', () => {
       'language_group_waitlist_offer_check',
     )
     await db.execute(waiting({ student: null, prospect: 'p1' }))
+  })
+
+  test('öğretmen aynı kurumun üyeliğidir; üyelik silinince yalnız öğretmen boşalır', async () => {
+    const a = await createInstitution(app, { type: 'language_school' })
+    const b = await createInstitution(app, { type: 'language_school' })
+    const courseId = '00000000-0000-4000-8000-000000000398'
+    await db.execute(sql`insert into courses (institution_id, id, name, name_key, language, level,
+        total_hours, weekly_hours, session_minutes, min_learners, max_learners, certified, status,
+        activated_at, e_ozel_approval)
+      values (${a.id}, ${courseId}, 'Kur', 'kur', 'en', 'B1', 12, 4, 45, 2, 12, false, 'active',
+        ${FIXED_NOW}, 'not_submitted')`)
+    const teacher = await createMember(app, a.id, 'ogretmen')
+    const group = (groupId: string, membershipId: string) =>
+      sql`insert into language_groups (institution_id, id, course_id, name, name_key, age_band,
+          teacher_membership_id, delivery, room, room_key, schedule, start_date, end_date, capacity,
+          state)
+        values (${a.id}, ${groupId}, ${courseId}, ${groupId}, ${groupId}, 'adult', ${membershipId},
+          'online', null, null, '[{"weekday":1,"startTime":"18:00"}]'::jsonb, '2026-10-12',
+          '2026-10-28', 10, 'planned')`
+    await violates(
+      group('00000000-0000-4000-8000-000000000301', b.adminMembershipId),
+      'language_groups_teacher_fkey',
+    )
+    const groupId = '00000000-0000-4000-8000-000000000302'
+    await db.execute(group(groupId, teacher.membershipId))
+    await db.execute(sql`delete from memberships where id = ${teacher.membershipId}`)
+    const [row] = await rows<{ institution_id: string; teacher_membership_id: string | null }>(
+      sql`select institution_id, teacher_membership_id from language_groups where id = ${groupId}`,
+    )
+    assert.deepEqual(row, { institution_id: a.id, teacher_membership_id: null })
   })
 })

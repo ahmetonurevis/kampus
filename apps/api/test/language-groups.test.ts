@@ -8,6 +8,7 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { coordinatorDuties } from '../src/db/schema/coordinator-duties.ts'
+import { records } from '../src/db/schema/records.ts'
 import {
   languageGroupMembers,
   languageGroups,
@@ -169,8 +170,21 @@ describe('dil okulu grup uçları', () => {
           eq(languageGroupMembers.groupId, groupId),
         ),
       )
-  const addMembers = (institutionId: string, groupId: string, studentIds: string[]) =>
-    db.insert(languageGroupMembers).values(
+  // Kursiyer `students` kaydıdır (yabancı anahtar); kayıt yoksa en küçük haliyle yazılır.
+  async function addMembers(institutionId: string, groupId: string, studentIds: string[]) {
+    await db
+      .insert(records)
+      .values(
+        studentIds.map((id) => ({
+          institutionId,
+          collection: 'students',
+          id,
+          data: { id },
+          position: 1,
+        })),
+      )
+      .onConflictDoNothing()
+    await db.insert(languageGroupMembers).values(
       studentIds.map((studentId) => ({
         institutionId,
         id: randomUUID(),
@@ -180,6 +194,7 @@ describe('dil okulu grup uçları', () => {
         joinedAt: FIXED_NOW,
       })),
     )
+  }
 
   test('401: oturumsuz okuma ve yazma reddedilir', async () => {
     fails(await call('GET', '/groups'), 401, 'unauthenticated')

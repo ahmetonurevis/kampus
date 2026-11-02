@@ -1,5 +1,5 @@
 {
-  "id": "488eee6d-8bc7-4a5e-8134-9dcea45ee744",
+  "id": "167532c0-5839-4a45-8a96-ce583394e4fd",
   "prevId": "043ef2b9-1d46-44bc-8180-e6176a471016",
   "version": "7",
   "dialect": "postgresql",
@@ -2419,6 +2419,16 @@
           "primaryKey": false,
           "notNull": true
         },
+        "student_collection": {
+          "name": "student_collection",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "generated": {
+            "as": "'students'",
+            "type": "stored"
+          }
+        },
         "status": {
           "name": "status",
           "type": "text",
@@ -2534,6 +2544,23 @@
           ],
           "columnsTo": [
             "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "language_group_members_student_fkey": {
+          "name": "language_group_members_student_fkey",
+          "tableFrom": "language_group_members",
+          "tableTo": "records",
+          "columnsFrom": [
+            "institution_id",
+            "student_collection",
+            "student_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "collection",
             "id"
           ],
           "onDelete": "restrict",
@@ -3118,19 +3145,6 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "language_groups_teacher_membership_id_memberships_id_fk": {
-          "name": "language_groups_teacher_membership_id_memberships_id_fk",
-          "tableFrom": "language_groups",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "teacher_membership_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
         "language_groups_course_fkey": {
           "name": "language_groups_course_fkey",
           "tableFrom": "language_groups",
@@ -3144,6 +3158,21 @@
             "id"
           ],
           "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "language_groups_teacher_fkey": {
+          "name": "language_groups_teacher_fkey",
+          "tableFrom": "language_groups",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "teacher_membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "language_groups_merged_into_fkey": {

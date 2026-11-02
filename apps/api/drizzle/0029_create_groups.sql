@@ -3,11 +3,18 @@
 -- satırında ayrıldı. Grup kura `(institution_id, course_id)` bileşik yabancı anahtarıyla bağlanır;
 -- saklanan durum `planned`/`open`/`cancelled`, `running`/`completed` tarihten türetilir. Çakışma,
 -- kapasite ve açılış kuralları core `lib/language-groups.ts`'te kurum kilidi altındadır.
+-- Elle eklenenler: öğretmen bileşik anahtarı için `memberships (institution_id, id)` tekil indeksi
+-- (Better Auth şeması üretir, elle düzenlenmez; 0001'deki indeks gibi) ve üyelik silinince yalnız
+-- öğretmen kolonunu boşaltan `on delete set null ("teacher_membership_id")` (Drizzle kolon
+-- listesini üretmez; `institution_id` boşalamaz). Kursiyer `records` öğrenci kaydına sabit
+-- `student_collection` kolonuyla bağlanır.
+CREATE UNIQUE INDEX "memberships_institution_id_id_key" ON "memberships" USING btree ("institution_id","id");--> statement-breakpoint
 CREATE TABLE "language_group_members" (
 	"institution_id" text NOT NULL,
 	"id" uuid NOT NULL,
 	"group_id" uuid NOT NULL,
 	"student_id" text NOT NULL,
+	"student_collection" text GENERATED ALWAYS AS ('students') STORED NOT NULL,
 	"status" text NOT NULL,
 	"joined_at" timestamp with time zone NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -90,13 +97,14 @@ CREATE TABLE "language_groups" (
 --> statement-breakpoint
 ALTER TABLE "language_group_members" ADD CONSTRAINT "language_group_members_institution_id_institutions_id_fk" FOREIGN KEY ("institution_id") REFERENCES "public"."institutions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "language_group_members" ADD CONSTRAINT "language_group_members_group_fkey" FOREIGN KEY ("institution_id","group_id") REFERENCES "public"."language_groups"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "language_group_members" ADD CONSTRAINT "language_group_members_student_fkey" FOREIGN KEY ("institution_id","student_collection","student_id") REFERENCES "public"."records"("institution_id","collection","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "language_group_waitlist" ADD CONSTRAINT "language_group_waitlist_institution_id_institutions_id_fk" FOREIGN KEY ("institution_id") REFERENCES "public"."institutions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "language_group_waitlist" ADD CONSTRAINT "language_group_waitlist_course_fkey" FOREIGN KEY ("institution_id","course_id") REFERENCES "public"."courses"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "language_group_waitlist" ADD CONSTRAINT "language_group_waitlist_group_fkey" FOREIGN KEY ("institution_id","group_id") REFERENCES "public"."language_groups"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "language_group_waitlist" ADD CONSTRAINT "language_group_waitlist_offer_group_fkey" FOREIGN KEY ("institution_id","offer_group_id") REFERENCES "public"."language_groups"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "language_groups" ADD CONSTRAINT "language_groups_institution_id_institutions_id_fk" FOREIGN KEY ("institution_id") REFERENCES "public"."institutions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "language_groups" ADD CONSTRAINT "language_groups_teacher_membership_id_memberships_id_fk" FOREIGN KEY ("teacher_membership_id") REFERENCES "public"."memberships"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "language_groups" ADD CONSTRAINT "language_groups_course_fkey" FOREIGN KEY ("institution_id","course_id") REFERENCES "public"."courses"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "language_groups" ADD CONSTRAINT "language_groups_teacher_fkey" FOREIGN KEY ("institution_id","teacher_membership_id") REFERENCES "public"."memberships"("institution_id","id") ON DELETE SET NULL ("teacher_membership_id") ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "language_groups" ADD CONSTRAINT "language_groups_merged_into_fkey" FOREIGN KEY ("institution_id","merged_into_group_id") REFERENCES "public"."language_groups"("institution_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "language_group_members_group_student_key" ON "language_group_members" USING btree ("institution_id","group_id","student_id") WHERE "language_group_members"."archived_at" is null;--> statement-breakpoint
 CREATE INDEX "language_group_members_student_idx" ON "language_group_members" USING btree ("institution_id","student_id");--> statement-breakpoint

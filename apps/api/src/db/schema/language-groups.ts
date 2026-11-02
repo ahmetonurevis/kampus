@@ -35,6 +35,7 @@ import {
 import { institutions, memberships } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
 import { courses } from './courses.ts'
+import { records } from './records.ts'
 
 const max = (value: number) => sql.raw(String(value))
 
@@ -49,9 +50,12 @@ const max = (value: number) => sql.raw(String(value))
  * - Haftalık kalıp `schedule` (`[{ weekday, startTime }]`) jsonb'dir: yalnız core'da okunur,
  *   üzerinde sorgu ve indeks yoktur. Çakışma denetimi kurum kilidi altında core'dadır.
  * - Ad ve derslik anahtarları core'dan türetilir (`groupNameKey`, `groupRoomKey`).
- * - Öğretmen kurumun üyeliğidir; Better Auth tablosunda bileşik anahtar olmadığından tek kolonlu
- *   yabancı anahtardır, kurum ve rol core'da (`group_teacher_invalid`) denetlenir. Üyelik silinirse
- *   grup öğretmensiz kalır.
+ * - Öğretmen aynı kurumun üyeliğidir: `(institution_id, teacher_membership_id)` bileşik yabancı
+ *   anahtarı `memberships (institution_id, id)` tekil indeksine bağlanır (indeks Better Auth
+ *   şemasında olmadığından migration'a elle eklenir, `memberships_institution_id_user_id_key`
+ *   gibi). Rol core'da (`group_teacher_invalid`) denetlenir. Üyelik silinirse yalnız
+ *   `teacher_membership_id` boşalır (`on delete set null (teacher_membership_id)`, elle; Drizzle
+ *   kolon listesini üretmez) ve grup öğretmensiz kalır.
  */
 export const languageGroups = pgTable(
   'language_groups',
@@ -65,9 +69,7 @@ export const languageGroups = pgTable(
     /** Ad tekilliği anahtarı: core `groupNameKey(name)`. */
     nameKey: text('name_key').notNull(),
     ageBand: text('age_band').$type<GroupAgeBand>().notNull(),
-    teacherMembershipId: text('teacher_membership_id').references(() => memberships.id, {
-      onDelete: 'set null',
-    }),
+    teacherMembershipId: text('teacher_membership_id'),
     delivery: text('delivery').$type<GroupDelivery>().notNull(),
     room: text('room'),
     /** Derslik çakışma anahtarı: core `groupRoomKey(room)`. */
@@ -90,6 +92,11 @@ export const languageGroups = pgTable(
       columns: [table.institutionId, table.courseId],
       foreignColumns: [courses.institutionId, courses.id],
     }).onDelete('restrict'),
+    foreignKey({
+      name: 'language_groups_teacher_fkey',
+      columns: [table.institutionId, table.teacherMembershipId],
+      foreignColumns: [memberships.institutionId, memberships.id],
+    }).onDelete('set null'),
     foreignKey({
       name: 'language_groups_merged_into_fkey',
       columns: [table.institutionId, table.mergedIntoGroupId],
@@ -142,8 +149,10 @@ export const languageGroups = pgTable(
 )
 
 /**
- * Grubun kursiyerleri (DOM-DIL-040, -045). Kursiyer `students` kaydıdır (`records`; yabancı anahtar
- * yok, `membership_links.record_id` gibi). Satır yazması kayıt ve satış akışındadır (ON-058; kural
+ * Grubun kursiyerleri (DOM-DIL-040, -045). Kursiyer aynı kurumun `students` kaydıdır: sabit
+ * `student_collection` (üretilen kolon, hep `students`) ile `records (institution_id, collection,
+ * id)` birincil anahtarına bileşik yabancı anahtar (`on delete restrict`; kayıt silinmez, arşivlenir).
+ * Satır yazması kayıt ve satış akışındadır (ON-058; kural
  * core `planGroupPlacement`); grup birleştirmede kaynak satırlar arşivlenir, hedefe yenisi yazılır
  * (geçmiş korunur). Aynı grupta bir kursiyerin tek arşivlenmemiş satırı olur.
  */
@@ -157,6 +166,10 @@ export const languageGroupMembers = pgTable(
     groupId: uuid('group_id').notNull(),
     // kvkk: K (school-core öğrenci kaydı kimliği)
     studentId: text('student_id').notNull(),
+    /** Yabancı anahtarın koleksiyon parçası; hep `students`. */
+    studentCollection: text('student_collection')
+      .notNull()
+      .generatedAlwaysAs(sql`'students'`),
     status: text('status').$type<GroupMemberStatus>().notNull(),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull(),
     ...requiredColumns(),
@@ -167,6 +180,11 @@ export const languageGroupMembers = pgTable(
       name: 'language_group_members_group_fkey',
       columns: [table.institutionId, table.groupId],
       foreignColumns: [languageGroups.institutionId, languageGroups.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'language_group_members_student_fkey',
+      columns: [table.institutionId, table.studentCollection, table.studentId],
+      foreignColumns: [records.institutionId, records.collection, records.id],
     }).onDelete('restrict'),
     check('language_group_members_status_check', oneOf(table.status, GROUP_MEMBER_STATUSES)),
     uniqueIndex('language_group_members_group_student_key')

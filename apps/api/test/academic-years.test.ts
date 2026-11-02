@@ -51,10 +51,17 @@ describe('eğitim yılı ve dönem uçları', () => {
     await close()
   })
 
-  async function tenant(type: 'school' | 'language_school' = 'school') {
+  /**
+   * Varsayılan kurum ayarsız ve yılsız açılır (`academicYear: null`): testler yılları uçlardan
+   * kurar. Ayarlı açılış (kurum açılış yolu) varsayılan etkin yılı da yazar; ayrı testte.
+   */
+  async function tenant(
+    type: 'school' | 'language_school' = 'school',
+    academicYear: number | null = null,
+  ) {
     now = FIXED_NOW
     clientIp = `10.7.${(tenantCount += 1)}.1`
-    const institution = await createInstitution(app, { type })
+    const institution = await createInstitution(app, { type, academicYear })
     const users = {
       frontDesk: await createMember(app, institution.id, 'onburo'),
       teacher: await createMember(app, institution.id, 'ogretmen'),
@@ -197,7 +204,7 @@ describe('eğitim yılı ve dönem uçları', () => {
 
   test('400: geçersiz gövde, gövdede institutionId, anahtarsız oluşturma ve If-Match eksikliği kayıt değiştirmez', async () => {
     const { institution, cookies } = await tenant()
-    const other = await createInstitution(app)
+    const other = await createInstitution(app, { academicYear: null })
     fails(await create(cookies.admin, { startYear: 1999 }), 400, 'validation_failed')
     fails(
       await create(cookies.admin, { startYear: 2026, startDate: '2026-02-30' }),
@@ -394,6 +401,22 @@ describe('eğitim yılı ve dönem uçları', () => {
       }),
       201,
     )
+    // Başlangıçtan 60 günden önce etkinleşmez; 2026 etkin kalır, kurum yılı değişmez.
+    fails(
+      await command(cookies.admin, '2027/activate', 1),
+      422,
+      'academic_year_activation_too_early',
+    )
+    assert.equal(await settingsYear(institution.id), 2026)
+    assert.deepEqual(
+      (await yearRows(institution.id)).map((row) => [row.startYear, row.status, row.version]),
+      [
+        [2026, 'active', active.rowVersion],
+        [2027, 'planned', 1],
+      ],
+    )
+    // 2 Temmuz 21.00 UTC = 3 Temmuz 00.00 İstanbul: başlangıçtan tam 60 gün önce.
+    now = new Date('2027-07-02T21:00:00.000Z')
     const next = await ok(await command(cookies.admin, '2027/activate', 1))
     assert.equal(next.status, 'active')
     assert.equal(await settingsYear(institution.id), 2027)
@@ -404,7 +427,7 @@ describe('eğitim yılı ve dönem uçları', () => {
     )
     const previous = rows.find((row) => row.startYear === 2026)
     assert.equal(previous?.status, 'closed')
-    assert.equal(previous?.closedAt?.toISOString(), FIXED_NOW.toISOString())
+    assert.equal(previous?.closedAt?.toISOString(), now.toISOString())
     const closes = await db
       .select()
       .from(auditLog)
@@ -445,8 +468,34 @@ describe('eğitim yılı ve dönem uçları', () => {
     const { cookies } = await tenant('language_school')
     await ok(await create(cookies.admin, { startYear: 2026 }), 201)
     await ok(await create(cookies.admin, { startYear: 2027 }), 201)
+    now = new Date('2027-07-10T09:00:00.000Z')
     await ok(await command(cookies.admin, '2027/activate', 1))
     fails(await command(cookies.admin, '2026/activate', 1), 422, 'academic_year_activation_order')
+  })
+
+  test('DOM-YTK-065: iki eşzamanlı etkinleştirmeden biri başarılı, diğeri 409; tek etkin yıl kalır', async () => {
+    const { institution, cookies } = await tenant()
+    await ok(await create(cookies.admin, { startYear: 2026, terms: TERMS }), 201)
+    const responses = await Promise.all([
+      call('POST', '/academic-years/2026/activate', cookies.admin, {}, { ...key(), ...match(1) }),
+      call('POST', '/academic-years/2026/activate', cookies.admin, {}, { ...key(), ...match(1) }),
+    ])
+    assert.deepEqual(responses.map((response) => response.statusCode).sort(), [200, 409])
+    const rows = await yearRows(institution.id)
+    assert.deepEqual(
+      rows.map((row) => [row.startYear, row.status, row.version]),
+      [[2026, 'active', 2]],
+    )
+    const activations = await db
+      .select()
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.institutionId, institution.id),
+          eq(auditLog.action, 'academic_year.activate'),
+        ),
+      )
+    assert.equal(activations.length, 1)
   })
 
   test('DOM-YTK-066: yalnız etkin yıl ve yalnız son gününden itibaren kapanır', async () => {
@@ -524,6 +573,82 @@ describe('eğitim yılı ve dönem uçları', () => {
     const holiday = await ok(await call('GET', '/academic-years/current', cookies.teacher))
     assert.equal(holiday.year.startYear, 2026)
     assert.equal(holiday.term, null)
+  })
+
+  test('DOM-YTK-067: /current günü Europe/Istanbul gününe göre seçer (UTC 21.00–24.00)', async () => {
+    const { cookies } = await tenant()
+    await ok(await create(cookies.admin, { startYear: 2026, terms: TERMS }), 201)
+    await ok(await command(cookies.admin, '2026/activate', 1))
+    await ok(await create(cookies.admin, { startYear: 2027 }), 201)
+    const at = async (instant: string) => {
+      now = new Date(instant)
+      return ok(await call('GET', '/academic-years/current', cookies.student))
+    }
+    // UTC 13 Eylül 20.59 = İstanbul 13 Eylül 23.59: Güz henüz başlamadı.
+    const before = await at('2026-09-13T20:59:59.999Z')
+    assert.equal(before.date, '2026-09-13')
+    assert.equal(before.term, null)
+    // UTC 13 Eylül 21.30 = İstanbul 14 Eylül 00.30: Güz'ün ilk günü.
+    const first = await at('2026-09-13T21:30:00.000Z')
+    assert.equal(first.date, '2026-09-14')
+    assert.equal(first.term?.name, 'Güz')
+    // UTC'de hâlâ 31 Ağustos, İstanbul'da 1 Eylül: gün 2027 planlı yılına düşer.
+    const lastUtc = await at('2027-08-31T23:59:59.999Z')
+    assert.equal(lastUtc.date, '2027-09-01')
+    assert.equal(lastUtc.year.startYear, 2027)
+    assert.equal(lastUtc.year.isActive, false)
+    const lastDay = await at('2027-08-31T20:59:59.999Z')
+    assert.equal(lastDay.date, '2027-08-31')
+    assert.equal(lastDay.year.startYear, 2026)
+    assert.equal(lastDay.year.isActive, true)
+  })
+
+  test('DOM-YTK-064: dönem adı tekilliği core ile aynı anahtar; "I." ile "ı." aynı, "i." ayrı ad', async () => {
+    const { institution, cookies } = await tenant()
+    await ok(
+      await create(cookies.admin, {
+        startYear: 2026,
+        terms: [{ name: 'I. dönem', startDate: '2026-09-14', endDate: '2027-01-22' }],
+      }),
+      201,
+    )
+    const add = (name: string, version: number) =>
+      call(
+        'POST',
+        '/academic-years/2026/terms',
+        cookies.admin,
+        { name, startDate: '2027-02-08', endDate: '2027-06-25' },
+        match(version),
+      )
+    fails(await add('ı. DÖNEM', 1), 409, 'academic_term_name_exists')
+    // `lower()` ile çakışırdı (genel 409); Türkçe anahtarda ayrı addır ve yazılır.
+    const year = await ok(await add('i. dönem', 1), 201)
+    assert.deepEqual(
+      year.terms.map((term: Json) => term.name),
+      ['I. dönem', 'i. dönem'],
+    )
+    assert.deepEqual((await termRows(institution.id)).map((row) => row.nameKey).sort(), [
+      'i. dönem',
+      'ı. dönem',
+    ])
+  })
+
+  test('DOM-YTK-063, 065: kurum ayarla açılınca güncel yıl dönemsiz ve etkin yazılır', async () => {
+    const { institution, cookies } = await tenant('school', 2026)
+    const current = await ok(await call('GET', '/academic-years/current', cookies.teacher))
+    assert.equal(current.year.startYear, 2026)
+    assert.equal(current.year.startDate, '2026-09-01')
+    assert.equal(current.year.endDate, '2027-08-31')
+    assert.equal(current.year.status, 'active')
+    assert.equal(current.year.rowVersion, 1)
+    assert.deepEqual(current.year.terms, [])
+    assert.equal(await settingsYear(institution.id), 2026)
+    // Yönetici dönemleri sonradan ekler.
+    const withTerm = await ok(
+      await call('POST', '/academic-years/2026/terms', cookies.admin, TERMS[0], match(1)),
+      201,
+    )
+    assert.equal(withTerm.status, 'active')
   })
 
   test('/current yıl tanımlı değilse boş döner', async () => {

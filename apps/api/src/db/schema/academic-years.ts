@@ -27,8 +27,8 @@ import { oneOf, requiredColumns } from './columns.ts'
  * Eğitim yılı ve dönemleri (IST-011; docs/domain/yetki-ve-kapsam.md DOM-YTK-063…067; kurallar
  * core `lib/academic-years.ts`). Yıl kurum içinde başlangıç yılıyla tanımlanır: birincil anahtar
  * `(institution_id, start_year)`'dır ve mevcut sayı temsiliyle (`fee_tariffs.academic_year`,
- * `institution_settings.academic_year`) aynı değerdir. Tablolar yeni ve boştur; kısıtlar tek
- * adımda eklenir.
+ * `institution_settings.academic_year`) aynı değerdir. Tablolar yenidir; kısıtlar tek adımda
+ * eklenir. Migration, ayar satırı olan her kurum için o yılı varsayılan aralıkla etkin yazar.
  *
  * Yılın satır `version`'ı yıl ve dönemlerinin bütününün iyimser kilididir: dönem eklemek,
  * değiştirmek ve kaldırmak da yılın sürümünü artırır (`If-Match`). Yılların ve dönemlerin
@@ -87,6 +87,11 @@ export const academicTerms = pgTable(
     id: uuid('id').notNull(),
     startYear: integer('start_year').notNull(),
     name: text('name').notNull(),
+    /**
+     * Ad tekilliği anahtarı: core `academicTermNameKey(name)` (NFC, kırpılmış, Türkçe küçük harf).
+     * Depo her yazmada addan türetir; `lower()` yerel ayara bağlı olduğundan core ile ayrışırdı.
+     */
+    nameKey: text('name_key').notNull(),
     startDate: date('start_date', { mode: 'string' }).notNull(),
     endDate: date('end_date', { mode: 'string' }).notNull(),
     ...requiredColumns(),
@@ -100,9 +105,9 @@ export const academicTerms = pgTable(
     }).onDelete('restrict'),
     check('academic_terms_name_check', sql`char_length(${table.name}) between 1 and 100`),
     check('academic_terms_dates_check', sql`${table.endDate} >= ${table.startDate}`),
-    // Yılda ad tekildir (büyük/küçük harf duyarsız); yabancı anahtarı da bu indeks karşılar.
+    // Yılda ad tekildir (core ile aynı anahtar, DOM-YTK-064).
     uniqueIndex('academic_terms_year_name_key')
-      .on(table.institutionId, table.startYear, sql`lower(${table.name})`)
+      .on(table.institutionId, table.startYear, table.nameKey)
       .where(sql`${table.archivedAt} is null`),
     // Yabancı anahtar indeksi (arşivli dönemler dahil; kısmi indeks onları kapsamaz) ve yılın
     // dönemlerinin gün sırasıyla okunması.

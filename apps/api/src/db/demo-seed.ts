@@ -207,14 +207,18 @@ export async function seedDemo(auth: Auth, db: Database, password: string, optio
       if (record.parentUserId !== undefined)
         if (parentUserId === undefined) delete record.parentUserId
         else record.parentUserId = parentUserId
-    await ensureInstitutionSettings(db, institutionId, { academicYear: state.academicYear })
     // Etkin örnek yıl kurum ayarındaki yılla aynıdır: okulda iki dönem, dil okulunda dönemsiz.
+    // Ayardan önce yazılır: kurum açılışının varsayılan dönemsiz yılı örnek yılın yerini almaz.
     await ensureAcademicYears(
       db,
       institutionId,
       createAcademicYears(state.academicYear, institution.type),
       options.now,
     )
+    await ensureInstitutionSettings(db, institutionId, {
+      academicYear: state.academicYear,
+      now: options.now,
+    })
     const rows = stateRecords(state)
     insertedRecords[institution.slug] = await insertMissingRecords(
       db,

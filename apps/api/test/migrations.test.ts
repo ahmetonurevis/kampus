@@ -4,13 +4,17 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
 
-import { asc, eq, sql } from 'drizzle-orm'
+import { asc, eq, inArray, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
 
+import { academicTermNameKey } from '@kampus/school-core/lib/academic-years.ts'
+
+import { loadAcademicYears } from '../src/db/academic-years.ts'
 import { MIGRATIONS_FOLDER, schema, type Database } from '../src/db/client.ts'
 import { stateRecords, demoState } from '../src/db/demo-seed.ts'
 import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
+import { academicYears } from '../src/db/schema/academic-years.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
 import {
@@ -733,6 +737,54 @@ describe('0013: beceri görevi tabloları', () => {
   })
 })
 
+describe('0026: kurum ayarından etkin yıl geri doldurması', () => {
+  const client = newPGlite()
+  const pglite = drizzle({ client, schema })
+  const db: Database = pglite
+  let folder: string
+
+  before(async () => {
+    folder = await migrationsUpTo('0025_index_notifications')
+    await migrate(pglite, { migrationsFolder: folder })
+  })
+  after(async () => {
+    await client.close()
+    await rm(folder, { recursive: true, force: true })
+  })
+
+  test('DOM-YTK-063, 065: ayar satırı olan kurum güncel yılını varsayılan aralıkla etkin alır; ayarsız kurum boş kalır', async () => {
+    const app = await buildTestApp(db)
+    try {
+      // Tablolar yokken açılış yolu yıl yazamaz; ayar satırı eski sürümdeki gibi elle eklenir.
+      const withSettings = await createInstitution(app, { academicYear: null })
+      const withoutSettings = await createInstitution(app, { academicYear: null })
+      await db.execute(
+        sql`insert into institution_settings (institution_id, academic_year) values (${withSettings.id}, 2025)`,
+      )
+
+      await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+
+      const rows = await db
+        .select()
+        .from(academicYears)
+        .where(inArray(academicYears.institutionId, [withSettings.id, withoutSettings.id]))
+      assert.equal(rows.length, 1)
+      const [row] = rows
+      assert.equal(row?.institutionId, withSettings.id)
+      assert.equal(row?.startYear, 2025)
+      assert.equal(row?.startDate, '2025-09-01')
+      assert.equal(row?.endDate, '2026-08-31')
+      assert.equal(row?.status, 'active')
+      assert.ok(row?.activatedAt)
+      assert.equal(row?.closedAt, null)
+      assert.equal(row?.version, 1)
+      assert.equal((await loadAcademicYears(db, withSettings.id))[0]?.terms.length, 0)
+    } finally {
+      await app.close()
+    }
+  })
+})
+
 describe('0026: eğitim yılı tabloları', () => {
   let db: Database
   let close: () => Promise<void>
@@ -756,8 +808,9 @@ describe('0026: eğitim yılı tabloları', () => {
   }
 
   test('DOM-YTK-063, 065: tek etkin yıl, yıl aralığı, yaşam döngüsü ve dönem kısıtları veritabanında da korunur', async () => {
-    const a = await createInstitution(app)
-    const b = await createInstitution(app)
+    // Ayarsız kurum: açılış yolu varsayılan yılı yazmaz, yıllar burada elle eklenir.
+    const a = await createInstitution(app, { academicYear: null })
+    const b = await createInstitution(app, { academicYear: null })
     const year = (institutionId: string, startYear: number, status = 'active') =>
       sql`insert into academic_years (institution_id, start_year, start_date, end_date, status, activated_at)
           values (${institutionId}, ${startYear}, ${`${startYear}-09-01`}, ${`${startYear + 1}-08-31`},
@@ -784,18 +837,21 @@ describe('0026: eğitim yılı tabloları', () => {
     )
     // Dönem başka kurumun yılına bağlanamaz (bileşik yabancı anahtar).
     await violates(
-      sql`insert into academic_terms (institution_id, id, start_year, name, start_date, end_date)
-          values (${a.id}, gen_random_uuid(), 2030, 'Güz', '2030-09-10', '2031-01-10')`,
+      sql`insert into academic_terms (institution_id, id, start_year, name, name_key, start_date, end_date)
+          values (${a.id}, gen_random_uuid(), 2030, 'Güz', 'güz', '2030-09-10', '2031-01-10')`,
       'academic_terms_year_fkey',
     )
     const term = (name: string) =>
-      sql`insert into academic_terms (institution_id, id, start_year, name, start_date, end_date)
-          values (${a.id}, gen_random_uuid(), 2026, ${name}, '2026-09-10', '2027-01-10')`
-    await db.execute(term('1. dönem'))
-    await violates(term('1. DÖNEM'.toLowerCase()), 'academic_terms_year_name_key')
+      sql`insert into academic_terms (institution_id, id, start_year, name, name_key, start_date, end_date)
+          values (${a.id}, gen_random_uuid(), 2026, ${name}, ${academicTermNameKey(name)},
+            '2026-09-10', '2027-01-10')`
+    await db.execute(term('I. dönem'))
+    await violates(term('ı. DÖNEM'), 'academic_terms_year_name_key')
+    // Tekillik core anahtarındadır, `lower()`'da değil: "i. dönem" Türkçede ayrı addır.
+    await db.execute(term('i. dönem'))
     await violates(
-      sql`insert into academic_terms (institution_id, id, start_year, name, start_date, end_date)
-          values (${a.id}, gen_random_uuid(), 2026, 'Ters', '2027-02-10', '2027-02-01')`,
+      sql`insert into academic_terms (institution_id, id, start_year, name, name_key, start_date, end_date)
+          values (${a.id}, gen_random_uuid(), 2026, 'Ters', 'ters', '2027-02-10', '2027-02-01')`,
       'academic_terms_dates_check',
     )
   })

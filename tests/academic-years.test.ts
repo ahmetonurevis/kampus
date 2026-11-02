@@ -2,12 +2,16 @@ import test, { describe } from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  ACADEMIC_YEAR_EARLY_ACTIVATION_DAYS,
+  academicTermNameKey,
   academicYearName,
   academicYearView,
   activeAcademicYear,
+  addDays,
   addOneYear,
   currentAcademicPeriod,
   defaultAcademicYearDates,
+  earliestActivationDate,
   isWithinPeriod,
   locateDay,
   orderedTerms,
@@ -241,6 +245,28 @@ describe('dönemler (DOM-YTK-064)', () => {
     assert.throws(add({ name: '', startDate: '2027-07-01', endDate: '2027-07-31' }), ZodError)
   })
 
+  test('DOM-YTK-064 ad tekilliği Türkçe küçük harf anahtarıyla; veritabanı anahtarı aynıdır', () => {
+    assert.equal(academicTermNameKey('  I. DÖNEM '), 'ı. dönem')
+    assert.equal(academicTermNameKey('İkinci'), 'ikinci')
+    // Ayrışık (NFD) "ö" birleşik biçimle aynı anahtarı verir.
+    assert.equal(academicTermNameKey('Do\u0308nem'), academicTermNameKey('Dönem'))
+    const years = [
+      year({
+        terms: [{ id: 'test-i', name: 'I. dönem', startDate: '2026-09-08', endDate: '2027-01-16' }],
+      }),
+    ]
+    const add = (name: string) => () =>
+      planTermCreation({
+        years,
+        startYear: 2026,
+        termId: 'test-x',
+        input: { name, startDate: '2027-02-02', endDate: '2027-06-26' },
+      })
+    unchangedOnFailure(years, add('ı. DÖNEM'), 'academic_term_name_exists', 'conflict')
+    // Türkçede "I" ile "i" ayrı harftir: "i. dönem" ayrı addır (veritabanı da ayırır).
+    assert.equal(add('i. dönem')().term.name, 'i. dönem')
+  })
+
   test('DOM-YTK-064 bir yılda en çok 12 dönem', () => {
     const terms = Array.from({ length: 12 }, (_, index) => ({
       id: `test-m${index}`,
@@ -381,13 +407,14 @@ describe('etkin yıl ve yıl geçişi (DOM-YTK-065, DOM-YTK-066)', () => {
 
   test('DOM-YTK-065 ilk etkinleştirmede kapanan yıl yok; dil okulunda dönemsiz yıl etkinleşir', () => {
     const years = [planned2027({ terms: [] })]
+    const now = '2027-07-10T09:00:00.000Z'
     assert.throws(
       () =>
         planAcademicYearActivation({
           years,
           startYear: 2027,
           institutionType: 'school',
-          now: NOW,
+          now,
         }),
       isDomainError('academic_terms_required'),
     )
@@ -395,7 +422,7 @@ describe('etkin yıl ve yıl geçişi (DOM-YTK-065, DOM-YTK-066)', () => {
       years,
       startYear: 2027,
       institutionType: 'language_school',
-      now: NOW,
+      now,
     })
     assert.equal(result.closed, null)
     assert.equal(result.activated.status, 'active')
@@ -422,6 +449,33 @@ describe('etkin yıl ve yıl geçişi (DOM-YTK-065, DOM-YTK-066)', () => {
     ]
     unchangedOnFailure(order, activate(order, 2026), 'academic_year_activation_order')
     assert.throws(activate(years, 2031), isDomainError('academic_year_not_found', 'not_found'))
+  })
+
+  test('DOM-YTK-065 yıl başlangıcından en çok 60 gün önce etkinleşir; sınır Europe/Istanbul günü', () => {
+    const years = [year(), planned2027()]
+    assert.equal(earliestActivationDate(planned2027()), '2027-07-03')
+    assert.equal(ACADEMIC_YEAR_EARLY_ACTIVATION_DAYS, 60)
+    const activate = (now: string) => () =>
+      planAcademicYearActivation({ years, startYear: 2027, institutionType: 'school', now })
+    // Etkin yıl içindeyken gelecek yıl erken etkinleşip bugünün yılını kapatamaz.
+    unchangedOnFailure(years, activate(NOW), 'academic_year_activation_too_early')
+    // 2027-07-02T23:59 İstanbul: sınırın bir gün öncesi (UTC'de de 2 Temmuz).
+    unchangedOnFailure(
+      years,
+      activate('2027-07-02T20:59:59.999Z'),
+      'academic_year_activation_too_early',
+    )
+    assert.throws(activate(NOW), (error: unknown) => {
+      assert.match((error as Error).message, /en çok 60 gün önce.*3 Temmuz 2027/)
+      return true
+    })
+    // UTC'de hâlâ 2 Temmuz, İstanbul'da 3 Temmuz: etkinleşir ve 2026 aynı işlemde kapanır.
+    const result = activate('2027-07-02T21:00:00.000Z')()
+    assert.equal(result.activated.status, 'active')
+    assert.equal(result.closed?.startYear, 2026)
+    // Ay ve yıl sınırı: 15 Şubat başlangıcı için en erken gün 17 Aralık (artık olmayan yıl).
+    assert.equal(earliestActivationDate({ startDate: '2027-02-15' }), '2026-12-17')
+    assert.equal(addDays('2028-02-28', 1), '2028-02-29')
   })
 
   test('DOM-YTK-066 yalnız etkin yıl ve son gününde ya da sonra kapanır', () => {

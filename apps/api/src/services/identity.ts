@@ -1,6 +1,9 @@
 import { and, eq } from 'drizzle-orm'
 
+import { defaultAcademicYearDates } from '@kampus/school-core/lib/academic-years.ts'
+
 import type { Auth, InstitutionType, Role } from '../auth.ts'
+import { ensureAcademicYears } from '../db/academic-years.ts'
 import type { Database } from '../db/client.ts'
 import { institutions, memberships } from '../db/schema/auth.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
@@ -85,17 +88,40 @@ export async function ensureInstitution(
 
 /**
  * Kurum ayar satırını açar; satır varsa dokunmaz (akademik yıl değişimi ayrı bir yönetici
- * işlemidir, tohum onu ezmez).
+ * işlemidir, tohum onu ezmez). Satır ilk kez açılınca aynı başlangıç yılı varsayılan aralıkla
+ * (1 Eylül – 31 Ağustos), dönemsiz ve etkin eğitim yılı olarak yazılır (DOM-YTK-063, -065;
+ * migration 0026'nın geri doldurmasıyla aynı). Kurumun yılı zaten varsa ya da başka yıl etkinse
+ * yıl yazılmaz.
  */
 export async function ensureInstitutionSettings(
   db: Database,
   institutionId: string,
-  input: { academicYear: number },
+  input: { academicYear: number; now?: Date },
 ): Promise<void> {
-  await db
-    .insert(institutionSettings)
-    .values({ institutionId, academicYear: input.academicYear })
-    .onConflictDoNothing()
+  const now = input.now ?? new Date()
+  await db.transaction(async (tx) => {
+    const opened = await tx
+      .insert(institutionSettings)
+      .values({ institutionId, academicYear: input.academicYear, createdAt: now, updatedAt: now })
+      .onConflictDoNothing()
+      .returning({ institutionId: institutionSettings.institutionId })
+    if (opened.length === 0) return
+    await ensureAcademicYears(
+      tx,
+      institutionId,
+      [
+        {
+          startYear: input.academicYear,
+          ...defaultAcademicYearDates(input.academicYear),
+          status: 'active',
+          activatedAt: now.toISOString(),
+          closedAt: null,
+          terms: [],
+        },
+      ],
+      now,
+    )
+  })
 }
 
 export async function ensureMember(

@@ -4,7 +4,7 @@ import type { InstitutionType } from '../modules/collection-modules.ts'
 import type { Role } from '../modules/navigation.ts'
 import { isCalendarDay } from './age.ts'
 import { DomainError } from './errors.ts'
-import { dayKey } from './format.ts'
+import { dateLabel, dayKey } from './format.ts'
 
 /**
  * Eğitim yılı ve dönem modeli (IST-011; docs/domain/yetki-ve-kapsam.md DOM-YTK-063…067).
@@ -36,6 +36,12 @@ export const ACADEMIC_YEAR_MIN = 2000
 export const ACADEMIC_YEAR_MAX = 2100
 /** Bir yıldaki en çok dönem sayısı (dil okulunda kısa modüller dahil). */
 export const MAX_TERMS_PER_YEAR = 12
+/**
+ * Yıl başlangıç gününden en çok bu kadar gün önce etkinleştirilir (DOM-YTK-065). Etkinleştirme
+ * önceki yılı geri alınamaz biçimde kapatır; çok erken geçiş içinde bulunulan yılın kurum ayarını,
+ * tarifesini ve rıza süresini kaydırırdı.
+ */
+export const ACADEMIC_YEAR_EARLY_ACTIVATION_DAYS = 60
 
 export type AcademicTerm = {
   id: string
@@ -132,8 +138,22 @@ const overlaps = (a: { startDate: string; endDate: string }, b: typeof a) =>
 const contains = (range: { startDate: string; endDate: string }, value: string) =>
   range.startDate <= value && value <= range.endDate
 
-const sameName = (a: string, b: string) =>
-  a.trim().toLocaleLowerCase('tr-TR') === b.trim().toLocaleLowerCase('tr-TR')
+/**
+ * Dönem adının tekillik anahtarı (DOM-YTK-064): NFC, baş/son boşluksuz, Türkçe küçük harf ("I" →
+ * "ı", "İ" → "i"). Veritabanı aynı anahtarı `academic_terms.name_key` kolonunda saklar ve tekil
+ * indeksi onun üzerine kurar; `lower()` yerel ayara bağlı olduğundan iki taraf ayrışırdı.
+ */
+export const academicTermNameKey = (name: string) =>
+  name.normalize('NFC').trim().toLocaleLowerCase('tr-TR')
+
+const sameName = (a: string, b: string) => academicTermNameKey(a) === academicTermNameKey(b)
+
+/** Takvim gününe (`YYYY-MM-DD`) gün ekler ya da çıkarır. */
+export function addDays(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00.000Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
 
 /** Dönemler başlangıç gününe göre; aynı günde ada göre (kararlı sıra). */
 export function orderedTerms(terms: readonly AcademicTerm[]): AcademicTerm[] {
@@ -370,9 +390,14 @@ export function activeAcademicYear(years: readonly AcademicYear[]): AcademicYear
   return years.find((year) => year.status === 'active') ?? null
 }
 
+/** Yılın en erken etkinleştirilebileceği gün: başlangıçtan 60 gün önce (DOM-YTK-065). */
+export const earliestActivationDate = (year: Pick<AcademicYear, 'startDate'>) =>
+  addDays(year.startDate, -ACADEMIC_YEAR_EARLY_ACTIVATION_DAYS)
+
 /**
  * Yılı etkinleştirir (DOM-YTK-065). Kurumda tek etkin yıl bulunur: başka etkin yıl varsa aynı
- * işlemde kapanır (yıl geçişi). Daha yeni bir yıl etkinken eski yıl etkinleştirilmez; bitmiş yıl
+ * işlemde kapanır (yıl geçişi). Yıl başlangıç gününden en çok 60 gün önce etkinleştirilir
+ * (Europe/Istanbul günü); daha yeni bir yıl etkinken eski yıl etkinleştirilmez; bitmiş yıl
  * etkinleştirilmez; okulda dönemsiz yıl etkinleştirilmez. Dil okulunda dönem isteğe bağlıdır.
  */
 export function planAcademicYearActivation(input: {
@@ -387,8 +412,15 @@ export function planAcademicYearActivation(input: {
       kind: 'conflict',
     })
   assertOpen(year)
-  if (dayKey(input.now) > year.endDate)
+  const today = dayKey(input.now)
+  if (today > year.endDate)
     throw new DomainError('academic_year_ended', 'Bitmiş eğitim yılı etkinleştirilemez.')
+  const earliest = earliestActivationDate(year)
+  if (today < earliest)
+    throw new DomainError(
+      'academic_year_activation_too_early',
+      `Eğitim yılı başlangıç gününden en çok ${ACADEMIC_YEAR_EARLY_ACTIVATION_DAYS} gün önce etkinleştirilebilir; en erken ${dateLabel(`${earliest}T12:00:00.000Z`, { year: 'numeric', month: 'long' })}.`,
+    )
   if (input.institutionType === 'school' && year.terms.length === 0)
     throw new DomainError(
       'academic_terms_required',

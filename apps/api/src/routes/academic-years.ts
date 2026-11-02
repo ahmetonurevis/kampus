@@ -265,7 +265,7 @@ export function registerAcademicYearRoutes(app: FastifyInstance) {
         operationId: 'activateAcademicYear',
         tags: ['institution'],
         summary: 'Eğitim yılını etkinleştir',
-        description: `Yılı etkinleştirir (DOM-YTK-065). Kurumda tek etkin yıl bulunur: önceki etkin yıl aynı işlemde kapanır (yıl geçişi) ve kurumun güncel yılı (\`academicYear\`: yenileme, rıza süresi, tarife varsayılanı) bu yıla eşitlenir. Zaten etkin 409 \`academic_year_already_active\`; daha yeni bir yıl etkinken eski yıl 422 \`academic_year_activation_order\`; bitmiş yıl 422 \`academic_year_ended\`; okulda (\`school\`) dönemsiz yıl 422 \`academic_terms_required\` (dil okulunda dönem isteğe bağlı). Gövde yok ya da boş nesne. ${VERSIONED} ${WRITE_ACCESS}`,
+        description: `Yılı etkinleştirir (DOM-YTK-065). Kurumda tek etkin yıl bulunur: önceki etkin yıl aynı işlemde kapanır (yıl geçişi) ve kurumun güncel yılı (\`academicYear\`: yenileme, rıza süresi, tarife varsayılanı) bu yıla eşitlenir. Zaten etkin 409 \`academic_year_already_active\`; daha yeni bir yıl etkinken eski yıl 422 \`academic_year_activation_order\`; bitmiş yıl 422 \`academic_year_ended\`; başlangıç gününden 60 günden daha önce (Europe/Istanbul günü) 422 \`academic_year_activation_too_early\`; okulda (\`school\`) dönemsiz yıl 422 \`academic_terms_required\` (dil okulunda dönem isteğe bağlı). Gövde yok ya da boş nesne. ${VERSIONED} ${WRITE_ACCESS}`,
         params: academicYearParamsSchema,
         body: emptyCommandBodySchema.strict().optional(),
         headers: versionedHeaders,

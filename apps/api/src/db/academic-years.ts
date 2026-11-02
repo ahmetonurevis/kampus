@@ -1,6 +1,10 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 
-import type { AcademicTerm, AcademicYear } from '@kampus/school-core/lib/academic-years.ts'
+import {
+  academicTermNameKey,
+  type AcademicTerm,
+  type AcademicYear,
+} from '@kampus/school-core/lib/academic-years.ts'
 
 import type { Database } from './client.ts'
 import { academicTerms, academicYears } from './schema/academic-years.ts'
@@ -89,6 +93,7 @@ const termValues = (institutionId: string, year: AcademicYear, now: Date) =>
     startYear: year.startYear,
     id: term.id,
     name: term.name,
+    nameKey: academicTermNameKey(term.name),
     startDate: term.startDate,
     endDate: term.endDate,
     createdAt: now,
@@ -148,9 +153,14 @@ export async function insertAcademicTerm(
   term: AcademicTerm,
   now: Date,
 ): Promise<void> {
-  await tx
-    .insert(academicTerms)
-    .values({ institutionId, startYear, ...term, createdAt: now, updatedAt: now })
+  await tx.insert(academicTerms).values({
+    institutionId,
+    startYear,
+    ...term,
+    nameKey: academicTermNameKey(term.name),
+    createdAt: now,
+    updatedAt: now,
+  })
 }
 
 /** Dönemin ad ve tarihlerini yazar; arşivli ya da başka yılın dönemi `false`. */
@@ -165,6 +175,7 @@ export async function updateAcademicTerm(
     .update(academicTerms)
     .set({
       name: term.name,
+      nameKey: academicTermNameKey(term.name),
       startDate: term.startDate,
       endDate: term.endDate,
       updatedAt: now,
@@ -224,8 +235,8 @@ export async function setInstitutionAcademicYear(
 }
 
 /**
- * Örnek veri: yıl ve dönemleri yoksa yazar (idempotent; var olan yıl ve dönem değişmez). Kurum
- * ayarı da örnek yılla açılır (`ensureInstitutionSettings` zaten açmışsa değişmez).
+ * Örnek veri ve kurum açılışı: yıl ve dönemleri yoksa yazar (idempotent; var olan yıl ve dönem
+ * değişmez, başka etkin yıl varken ikinci etkin yıl yazılmaz). Kurum ayarına dokunmaz.
  */
 export async function ensureAcademicYears(
   db: Database,

@@ -1,5 +1,5 @@
 {
-  "id": "dacca18e-8bc4-4f04-a78e-00f8cfa7c49a",
+  "id": "c79ab1a8-6137-4624-b25d-de04a36166c4",
   "prevId": "9a0a4b65-1483-455c-97bf-1b60322f2604",
   "version": "7",
   "dialect": "postgresql",
@@ -28,6 +28,12 @@
         },
         "name": {
           "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_key": {
+          "name": "name_key",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -89,9 +95,9 @@
               "nulls": "last"
             },
             {
-              "expression": "lower(\"name\")",
+              "expression": "name_key",
+              "isExpression": false,
               "asc": true,
-              "isExpression": true,
               "nulls": "last"
             }
           ],

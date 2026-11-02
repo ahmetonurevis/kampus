@@ -19,6 +19,7 @@ import {
   assignCoordinatorDutyRequest,
   COORDINATOR_DUTIES_KEY,
   COORDINATOR_DUTY_INVALIDATES,
+  fetchAllCoordinatorDuties,
   removeCoordinatorDutyCommand,
   removeCoordinatorDutyRequest,
 } from '../src/use-coordinator-duties.ts'
@@ -159,5 +160,42 @@ describe('koordinatör görevi komutları', () => {
       assert.equal(command.invalidates, COORDINATOR_DUTY_INVALIDATES)
       queryClient.clear()
     }
+  })
+})
+
+describe('koordinatör görevi listesi', () => {
+  test('DOM-YTK-027: bütün etkin görevler 100lük sayfalarla toplanır', async () => {
+    const urls: string[] = []
+    const duty = (index: number) => ({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      membershipId: `m${index}`,
+      kind: 'subject_head',
+      scopeId: 'math',
+      createdAt: '2026-11-02T08:00:00.000Z',
+      archivedAt: null,
+      rowVersion: 1,
+    })
+    const client = createKampusClient({
+      baseUrl: 'https://api.kampus.test',
+      credentials: 'include',
+      requestId: () => undefined,
+      fetch: async (input) => {
+        const url = new URL(input instanceof Request ? input.url : String(input))
+        urls.push(url.search)
+        const page = Number(url.searchParams.get('page'))
+        const start = (page - 1) * 100
+        const data = Array.from({ length: Math.max(0, Math.min(100, 130 - start)) }, (_, i) =>
+          duty(start + i + 1),
+        )
+        return new Response(JSON.stringify({ data, meta: { page, pageSize: 100, total: 130 } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      },
+    })
+    const duties = await fetchAllCoordinatorDuties(client)
+    assert.equal(duties.length, 130)
+    assert.equal(duties[129]?.membershipId, 'm130')
+    assert.deepEqual(urls, ['?page=1&pageSize=100', '?page=2&pageSize=100'])
   })
 })

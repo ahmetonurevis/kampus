@@ -207,6 +207,25 @@ test('Yoklama Düzeltme yalnız yöneticide, academic modülünde ve YÖNETİM k
   assert.ok(!demoNavigation.yonetici.some((p) => p.path === 'yoklama-duzeltme'))
 })
 
+test('Zümre & Koordinatörler yalnız yöneticide, academic modülünde, iki kurum türünde ve yoklama düzeltmenin ardındadır (IST-005, DOM-YTK-027)', () => {
+  for (const role of roleKeys) {
+    const page = navigation[role].find((p) => p.path === 'koordinator-gorevleri')
+    if (role !== 'yonetici') {
+      assert.equal(page, undefined, `${role} görev atamayı görmemeli`)
+      continue
+    }
+    assert.ok(page)
+    assert.equal(page.module, 'academic')
+    assert.equal(page.group, 'YÖNETİM')
+    assert.equal(page.apiOnly, true)
+    // Kurum türüne bağlı değildir: okulda zümre başkanı, dil okulunda akademik koordinatör.
+    assert.equal(page.institutionTypes, undefined)
+  }
+  const admin = navigation.yonetici.map((p) => p.path)
+  assert.equal(admin[admin.indexOf('yoklama-duzeltme') + 1], 'koordinator-gorevleri')
+  assert.ok(!demoNavigation.yonetici.some((p) => p.path === 'koordinator-gorevleri'))
+})
+
 test('DOM-KAY-035: yönetici de Kayıt İşlemleri sayfasını görür; Vue demosunda karşılığı yoktur', () => {
   const page = navigation.yonetici.find((item) => item.path === 'kayit-islemleri')
   assert.ok(page, 'yönetici menüsünde kayit-islemleri yok')

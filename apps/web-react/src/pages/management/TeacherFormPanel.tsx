@@ -19,7 +19,10 @@ import {
   isVersionConflict,
   RootError,
   useEditConflict,
+  useFocusAfterSubmit,
 } from './FormParts.tsx'
+
+const TEACHER_ROUTES = errorRoutes(TEACHER_ERROR_FIELDS)
 import {
   activeOf,
   TEACHER_ERROR_FIELDS,
@@ -115,19 +118,19 @@ function TeacherForm({ record, version = 0, lookups, reload, onClose }: FormProp
   })
   const busy = save.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
 
   const onSubmit = form.handleSubmit(async (values) => {
     const outcome = await save.submit(
       record ? { recordId: record.id, version: conflict.version, body: values } : { body: values },
-      { setError: form.setError, ...errorRoutes(TEACHER_ERROR_FIELDS) },
+      { setError: form.setError, ...TEACHER_ROUTES },
     )
     if (outcome.status === 'success') {
       notify.success(record ? 'Öğretmen güncellendi.' : 'Öğretmen eklendi.')
       onClose()
     } else if (outcome.status === 'failed') {
       if (isVersionConflict(outcome.error)) conflict.markConflict()
-      const field = TEACHER_ERROR_FIELDS[outcome.error.code as keyof typeof TEACHER_ERROR_FIELDS]
-      if (field) form.setFocus(field)
+      focusAfterSubmit(TEACHER_ROUTES.fieldFor(outcome.error))
     }
   })
 

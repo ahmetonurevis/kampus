@@ -6,6 +6,7 @@ import type { components, operations } from '@kampus/api-client/schema.d.ts'
 
 import { runRequest } from './api-result.ts'
 import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
+import { fetchAllPages, type ListPage } from './institution-lists.ts'
 import { useKampusClient } from './kampus-context.ts'
 import { institutionKey } from './query-keys.ts'
 import { useActiveInstitutionId } from './use-active-institution.ts'
@@ -74,6 +75,43 @@ export function useCoordinatorDuties(
       runRequest(() => client.GET('/api/v1/coordinator-duties', { params: { query }, signal })),
     enabled: institutionId !== null && (options.enabled ?? true),
     placeholderData: keepPreviousData,
+  })
+}
+
+async function fetchDutyPage(
+  client: KampusClient,
+  query: CoordinatorDutyListQuery,
+  signal?: AbortSignal,
+): Promise<ListPage<CoordinatorDuty>> {
+  const body = await runRequest(() =>
+    client.GET('/api/v1/coordinator-duties', { params: { query }, signal }),
+  )
+  return { rows: body.data, ...body.meta }
+}
+
+/**
+ * Kurumun bütün etkin görevleri (100'lük sayfalarla): görev sayısı öğretmen sayısıyla sınırlıdır;
+ * arama, süzgeç ve sayfalama istemcide yapılır. Sayfa sayısı sınırı aşılırsa `CollectionTooLargeError`.
+ */
+export function fetchAllCoordinatorDuties(
+  client: KampusClient,
+  signal?: AbortSignal,
+): Promise<CoordinatorDuty[]> {
+  return fetchAllPages<CoordinatorDutyListQuery, CoordinatorDuty>(
+    (query, pageSignal) => fetchDutyPage(client, query, pageSignal),
+    {},
+    signal,
+  )
+}
+
+/** Yöneticinin görev ekranı: bütün etkin görevler. */
+export function useAllCoordinatorDuties(options: { enabled?: boolean } = {}) {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQuery({
+    queryKey: institutionKey(institutionId, COORDINATOR_DUTIES_KEY, 'all'),
+    queryFn: ({ signal }) => fetchAllCoordinatorDuties(client, signal),
+    enabled: institutionId !== null && (options.enabled ?? true),
   })
 }
 

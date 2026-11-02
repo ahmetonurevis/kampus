@@ -8,8 +8,9 @@ import type { Database } from '../db/client.ts'
 import { asCoreVersion, loadVersionPairs, type StoredResourceVersion } from '../db/resources.ts'
 import type { StoredAssignment } from '../db/skills.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
-import { AppError, ForbiddenError, NotFoundError } from '../errors.ts'
+import { ForbiddenError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { assertLearnerWork } from './learner-content.ts'
 import { mapOperationError } from './operation-runner.ts'
 import { targetedLearners, visible, type Viewer } from './task-assignments.ts'
 
@@ -26,7 +27,7 @@ import { targetedLearners, visible, type Viewer } from './task-assignments.ts'
  * değiştiren öğrenci eski sınıfta yaptığı denemeyi, teslimi ve puanı görmeye devam eder.
  * Yazma (deneme başlatma, cevap, teslim, taslak) yalnız `ogrenci` rolündedir; rota ve servis ayrı
  * ayrı denetler (veli okur, yazamaz). Yeni deneme ve teslim yalnız atamanın şu an hedeflediği
- * öğrenciye açıktır.
+ * öğrenciye açıktır. Her yazma içeriğin kursiyere açık olmasını da ister (`assertWorkOpen`).
  */
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -143,7 +144,10 @@ export interface ScoringContext {
   items: ScoringItem[]
   /** Soru sürümü kimliği → sürüm satırı; öğrenci görünümü `questionsFor` ile üretilir. */
   versions: ReadonlyMap<string, StoredResourceVersion>
-  /** Puanlama sürümü, soruların ve okuma parçasının lisansları (DOM-KYN-021; `assertLicenseActive`). */
+  /**
+   * Puanlama sürümü, soruların ve okuma parçasının lisansları (DOM-KYN-021; `assertLicenseActive`,
+   * kursiyer özetindeki başlatma engeli).
+   */
   licenses: readonly StoredResourceVersion['license'][]
   /**
    * Okuma-anlama etkinliğinin parçası (IST-042; DOM-BEC-006): puanlama sürümündeki
@@ -224,6 +228,12 @@ function linkedIdsOf(scoring: StoredResourceVersion | undefined): string[] {
   return content.passageVersionId === null ? ids : [...ids, content.passageVersionId]
 }
 
+function questionIdsOf(scoring: StoredResourceVersion | undefined): string[] {
+  const content = scoring?.content ?? null
+  if (content?.type !== 'quiz' && content?.type !== 'exercise_set') return []
+  return content.items.map((item) => item.questionVersionId)
+}
+
 function buildScoringContext(
   scoring: StoredResourceVersion | undefined,
   questionPairs: ReadonlyMap<string, { version: StoredResourceVersion }>,
@@ -292,18 +302,28 @@ export const scoringLicenseExpired = (context: ScoringContext, now: Date) =>
   context.licenses.some((license) => licenseExpired(license, now))
 
 /**
- * Lisansı dolmuş içerikte yeni deneme başlamaz (DOM-KYN-021; core `licenseExpired`, bitiş günü
- * dahil geçerli): puanlama sürümünün veya sorularından birinin lisansı dolduysa 409
- * `resource_license_expired`. Süren deneme kaydedilir ve teslim edilir (kursiyerin başladığı iş
- * kaybolmaz); bu denetim yalnız başlatmadadır.
+ * Kursiyerin görevin içeriğinde çalışabilmesi (DOM-KYN-021, 025, 051; IST-036): okumayla aynı kural
+ * (`services/learner-content.ts` `assertLearnerWork`). Sınanan sürümler kursiyerin denemede veya
+ * teslimde gördükleridir: atamanın sabitlediği sürüm, puanlama sürümü ve onun soruları (bulunmayan
+ * soru da kapalıdır). Yazma transaction'ında çalışır: kapsam işlemin bağlantısıyla okunur.
  */
-export function assertLicenseActive(context: ScoringContext, now: Date) {
-  if (scoringLicenseExpired(context, now))
-    throw new AppError(
-      409,
-      'resource_license_expired',
-      'Bu içeriğin lisans süresi dolmuş; yeni deneme başlatılamaz.',
-    )
+export async function assertWorkOpen(
+  tx: Database,
+  ctx: ServiceContext,
+  assignment: StoredAssignment,
+  learnerId: string,
+  hasWork: () => Promise<boolean>,
+): Promise<void> {
+  const ids = [...new Set([assignment.resourceVersionId, assignment.scoringVersionId])]
+  const pinned = await loadVersionPairs(tx, ctx.institutionId, ids)
+  const questionIds = questionIdsOf(pinned.get(assignment.scoringVersionId)?.version)
+  const questions = await loadVersionPairs(tx, ctx.institutionId, questionIds)
+  await assertLearnerWork(
+    { ...ctx, db: tx },
+    learnerId,
+    [...ids.map((id) => pinned.get(id)), ...questionIds.map((id) => questions.get(id))],
+    hasWork,
+  )
 }
 
 /**

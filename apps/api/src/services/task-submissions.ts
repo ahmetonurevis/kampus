@@ -73,6 +73,7 @@ import {
   versionFileView,
 } from './task-submission-files.ts'
 import {
+  assertWorkOpen,
   auditWork,
   canReadLearner,
   learnerFilter,
@@ -791,6 +792,28 @@ async function writableAssignment(tx: Database, ctx: ServiceContext, viewer: Vie
   return { assignment, learnerId: targetedLearner(viewer, assignment) }
 }
 
+/**
+ * İçerik kuralı (`assertWorkOpen`; DOM-KYN-021, 025, 051): yazma görevinde süren iş taslak ya da
+ * teslimdir (görev içeriğinin okuma kuralıyla aynı). Süren işi olan kursiyer lisansı dolmuş ya da
+ * telif bildirimiyle incelemedeki içerikte taslağını kaydeder ve teslim eder; olmayan yeni iş
+ * açamaz. Kaldırılmış ya da kursiyerin kitap sahibi olmadığı içerikte 422 `content_unavailable`.
+ */
+function assertWritingOpen(
+  tx: Database,
+  ctx: ServiceContext,
+  assignment: StoredAssignment,
+  learnerId: string,
+  /** Okunmuş taslak (`null`: yok); `undefined` ise gerekirse okunur. */
+  draft: DraftRow | null | undefined,
+) {
+  return assertWorkOpen(tx, ctx, assignment, learnerId, async () => {
+    const current =
+      draft === undefined ? await loadDraft(tx, ctx.institutionId, assignment.id, learnerId) : draft
+    if (current !== null) return true
+    return (await loadSubmission(tx, ctx.institutionId, assignment.id, learnerId)) !== null
+  })
+}
+
 export interface DraftWriteInput {
   assignmentId: string
   body: string
@@ -800,7 +823,8 @@ export interface DraftWriteInput {
 
 /**
  * Taslağın otomatik kaydı (IST-047; core `planDraftSave`). Sıra: kapsam 404 → taslak varken
- * `If-Match` yoksa 400 `if_match_required` → eski revizyon 409 `draft_conflict` → kural (teslim
+ * `If-Match` yoksa 400 `if_match_required` → eski revizyon 409 `draft_conflict` → içerik kuralı
+ * (`assertWritingOpen`: 422 `content_unavailable`, 409 `resource_license_expired`) → kural (teslim
  * kapandıysa 422 `submission_closed`, yazma dışı görevde 422 `draft_not_supported`). Eşzamanlı iki
  * kayıttan biri 409 alır (kurum kilidi ve depoda revizyon koşulu). Denetime yazılmaz.
  */
@@ -835,6 +859,7 @@ export async function saveTaskDraft(
             'draft_conflict',
             'Taslak başka bir pencerede değişti; sayfayı yenileyip devam edin.',
           )
+        await assertWritingOpen(tx, ctx, assignment, learnerId, current)
         const settings = settingsOf(assignment)
         return {
           run: (_state, tools) => {
@@ -871,7 +896,10 @@ export type SubmissionVersionBody =
 
 /**
  * Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core `planSubmissionVersion`). İlk
- * gönderim kursiyerin tek teslim kaydını açar; sonrakiler değişmez sürüm ekler. Pencere ve geç
+ * gönderim kursiyerin tek teslim kaydını açar; sonrakiler değişmez sürüm ekler. Önce içerik
+ * kuralı (`assertWritingOpen`; DOM-KYN-021, 025, 051): kaldırılmış, kitap sahibine sınırlı ya da
+ * (taslak ve teslim yokken) incelemedeki içerik 422 `content_unavailable`, taslak ve teslim yokken
+ * lisansı dolmuş içerik 409 `resource_license_expired`. Pencere ve geç
  * kabul core'dandır (sürümün süresi `deadlineForVersion`). Sınır dolunca 422
  * `version_limit_reached`, teslim kapandıysa 422 `submission_closed`, otomatik puanlı görevde
  * 422 `submission_not_expected`, tür uyuşmazlığında 422 `submission_kind_mismatch`. Sözcük
@@ -916,6 +944,7 @@ export async function submitTaskSubmission(
             'submission_not_expected',
             'Bu görev teslim beklemiyor; deneme olarak çözülür.',
           )
+        await assertWritingOpen(tx, ctx, assignment, learnerId, undefined)
         const files = await usableFiles(tx, ctx, bodyFileIds(body))
         const audio = settings.submissionKind === 'audio' && body.submissionKind === 'audio'
         // Rıza ve dönem sonu yalnız sesli teslimde okunur (DOM-BEC-050, 052).

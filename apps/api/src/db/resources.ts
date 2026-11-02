@@ -803,20 +803,24 @@ export async function listFileVersionIds(
   return rows.map((row) => row.versionId)
 }
 
+/** Kaynağın kursiyerden çekilme nedeni: kaldırılmış ya da telif bildirimiyle incelemede. */
+export type WithdrawalKind = 'removed' | 'in_review'
+
 /**
- * Kursiyerden çekilmiş kaynaklar (DOM-KYN-025, 051), tek sorguda: bir sürümü telif bildirimiyle
- * incelemede (yayın geçmişi olan `in_review`; ilk onay sürecindeki yeni taslak sayılmaz) ya da
- * kaynak kaldırılmış. Bildirim kaynak düzeyindedir: atamanın sabitlendiği eski sürüm de gösterilmez.
+ * Kursiyerden çekilmiş kaynaklar ve nedeni (DOM-KYN-025, 051), tek sorguda: bir sürümü telif
+ * bildirimiyle incelemede (yayın geçmişi olan `in_review`; ilk onay sürecindeki yeni taslak
+ * sayılmaz) ya da kaynak kaldırılmış; ikisi birden varsa kaldırma. Bildirim kaynak düzeyindedir:
+ * atamanın sabitlendiği eski sürüm de gösterilmez.
  */
-export async function withdrawnResourceIds(
+export async function withdrawnResources(
   db: Database,
   institutionId: string,
   resourceIds: readonly string[],
-): Promise<Set<string>> {
+): Promise<Map<string, WithdrawalKind>> {
   const ids = uuidsOnly(resourceIds)
-  if (ids.length === 0) return new Set()
+  if (ids.length === 0) return new Map()
   const rows = await db
-    .selectDistinct({ resourceId: resourceVersions.resourceId })
+    .selectDistinct({ resourceId: resourceVersions.resourceId, status: resourceVersions.status })
     .from(resourceVersions)
     .where(
       and(
@@ -828,7 +832,11 @@ export async function withdrawnResourceIds(
         ),
       ),
     )
-  return new Set(rows.map((row) => row.resourceId))
+  const withdrawn = new Map<string, WithdrawalKind>()
+  for (const { resourceId, status } of rows)
+    if (status === 'removed' || !withdrawn.has(resourceId))
+      withdrawn.set(resourceId, status === 'removed' ? 'removed' : 'in_review')
+  return withdrawn
 }
 
 /** Kaynak, sahibin etkinliği ve paylaşım hedefleriyle; yoksa veya başka kurumdaysa `null`. */

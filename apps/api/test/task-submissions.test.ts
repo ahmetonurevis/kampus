@@ -190,6 +190,7 @@ describe('yazma görevi taslak ve teslim uçları', () => {
       institution,
       cookies,
       seed,
+      teacherId: teacher.id,
       homeworkId: await seed(homework()),
       otherHomeworkId: await seed(homework()),
       questionId: await seed(question()),
@@ -302,6 +303,87 @@ describe('yazma görevi taslak ve teslim uçları', () => {
       db.select().from(submissionDrafts).where(eq(submissionDrafts.institutionId, institutionId)),
     ])
     return { submissions: submissions.length, versions: versions.length, drafts: drafts.length }
+  }
+
+  /** Teslim, sürüm, taslak satırları (taslak revizyonuyla) ve denetim kayıtları. */
+  async function snapshot(institutionId: string) {
+    const [drafts, audits] = await Promise.all([
+      db
+        .select({ version: submissionDrafts.version, body: submissionDrafts.body })
+        .from(submissionDrafts)
+        .where(eq(submissionDrafts.institutionId, institutionId)),
+      db
+        .select({ id: auditLog.id })
+        .from(auditLog)
+        .where(eq(auditLog.institutionId, institutionId)),
+    ])
+    return { ...(await storedRows(institutionId)), drafts, audits: audits.length }
+  }
+
+  /** Öğretmenin yayındaki yazma şablonu; kaynak ve sürüm kimliğiyle. */
+  async function seedOwned(
+    t: Tenant,
+    input: Partial<ResourceVersionInput> = homework(),
+    share: { shareScope?: 'students'; sharedStudentIds?: string[] } = {},
+  ) {
+    const { resource, versions } = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      ...share,
+      versions: [{ status: 'published', input }],
+    })
+    return { resourceId: resource.id, versionId: versions[0]!.id }
+  }
+
+  /** Yönetici 9-A ve 9-B'ye yazma görevi atar: Deniz ve Can hedeflenir. */
+  async function assignBoth(t: Tenant, resourceVersionId: string) {
+    const data = await ok(
+      await call(
+        'POST',
+        '/task-assignments',
+        t.cookies.admin,
+        {
+          resourceVersionId,
+          settings: {
+            deadline: { dueAt: DUE },
+            submission: { submissionKind: 'text', maxVersions: 3 },
+            rubricVersionId: t.rubricVersionId,
+          },
+          targets: [
+            { kind: 'class', id: '9-A' },
+            { kind: 'class', id: '9-B' },
+          ],
+        },
+        key(),
+      ),
+      201,
+    )
+    return data.id as string
+  }
+
+  /** Başka kurumda aynı kayıt kimliğine (`s-1`) bağlı öğrenci. */
+  async function foreignStudent() {
+    const other = await createInstitution(app)
+    await insertMissingRecords(
+      db,
+      other.id,
+      [
+        {
+          collection: 'classes',
+          id: '9-A',
+          data: { id: '9-A', grade: 9, level: '9', branchId: 'b-1' },
+        },
+        {
+          collection: 'students',
+          id: 's-1',
+          data: { id: 's-1', name: 'Deniz Yılmaz', classId: '9-A', isActive: true },
+        },
+      ],
+      FIXED_NOW,
+    )
+    return signInAs(
+      app,
+      await createMember(app, other.id, 'ogrenci', [{ kind: 'student', recordId: 's-1' } as never]),
+    )
   }
 
   test('DOM-BEC-040, DOM-YTK-028: 401; ön büro 403; yazma ve taslak yalnız öğrenci; hedeflenmeyen öğrenci ve başka kurum 404; modül kapalıyken 403 module_disabled', async () => {
@@ -683,15 +765,24 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     // Personel görünümünde içerik eki yoktur (içeriği kaynak uçlarından okur).
     assert.ok(!('content' in (await ok(await read(t.cookies.teacher)))))
 
-    // Lisans bitiş gününden sonra: süren iş yoksa içerik gösterilmez.
-    now = new Date('2026-10-07T09:00:00.000Z')
+    // Lisans bitiş gününden sonra: süren iş yoksa içerik gösterilmez ve ilk taslak açılmaz
+    // (yeni iş; IST-036).
+    const expiredAt = new Date('2026-10-07T09:00:00.000Z')
+    now = expiredAt
     try {
       for (const cookie of [t.cookies.student, t.cookies.parent]) {
         const expired = await ok(await read(cookie))
         assert.deepEqual([expired.content, expired.contentUnavailable], [null, 'license_expired'])
       }
+      fails(
+        await saveDraft(assignmentId, t.cookies.student, 'İlk taslak'),
+        409,
+        'resource_license_expired',
+      )
       // Öğrencinin taslağı varsa süren iş sayılır: yönerge görünür (veli taslağı göremez).
+      now = FIXED_NOW
       await ok(await saveDraft(assignmentId, t.cookies.student, 'İlk taslak'))
+      now = expiredAt
       assert.equal((await ok(await read(t.cookies.student))).contentUnavailable, null)
       assert.equal((await ok(await read(t.cookies.parent))).contentUnavailable, 'license_expired')
     } finally {
@@ -781,6 +872,134 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     })
     for (const cookie of [t.cookies.student, t.cookies.parent])
       assert.deepEqual(await contentOf(cookie), ['unavailable', null])
+  })
+
+  test('DOM-KYN-025, DOM-KYN-051, IST-036: kaldırılan kaynakta taslak ve teslim 422 content_unavailable (taslak ve teslim olsa da); kayıt değişmez; aynı anahtarla mükerrer teslim yeni sürüm açmaz; başka kurum 404', async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t)
+    const assignmentId = await assign(t, {}, versionId)
+    const draft = await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    const once = key()
+    const first = await ok(await submit(assignmentId, t.cookies.student, undefined, once), 201)
+    await ok(
+      await call('POST', `/resources/${resourceId}/remove`, t.cookies.admin, {
+        reason: 'Telif ihlali kabul edildi',
+      }),
+    )
+    const before = await snapshot(t.institution.id)
+    fails(
+      await saveDraft(assignmentId, t.cookies.student, 'Yeni satır', revision(draft.revision)),
+      422,
+      'content_unavailable',
+    )
+    fails(await submit(assignmentId, t.cookies.student), 422, 'content_unavailable')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    // Mükerrer istek (aynı anahtar) kaydedilmiş yanıtı döner, yeni sürüm açmaz.
+    const replay = await ok(await submit(assignmentId, t.cookies.student, undefined, once), 201)
+    assert.deepEqual(replay, first)
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    const foreign = await foreignStudent()
+    fails(await submit(assignmentId, foreign), 404, 'not_found')
+    fails(await saveDraft(assignmentId, foreign, 'Taslak'), 404, 'not_found')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+  })
+
+  test('DOM-KYN-025, IST-036: telif bildirimiyle incelemedeki kaynakta taslağı ve teslimi olmayan öğrenci taslak açamaz ve teslim edemez (422 content_unavailable); taslağı olan teslimini tamamlar; yeniden yayında açılır', async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t)
+    const assignmentId = await assignBoth(t, versionId)
+    const draft = await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    const version = `/resources/${resourceId}/versions/${versionId}`
+    await ok(
+      await call('POST', `${version}/report`, t.cookies.teacher, {
+        reason: 'Telif ihlali şüphesi',
+      }),
+    )
+    const before = await snapshot(t.institution.id)
+    fails(
+      await saveDraft(assignmentId, t.cookies.otherStudent, 'Taslak'),
+      422,
+      'content_unavailable',
+    )
+    fails(await submit(assignmentId, t.cookies.otherStudent), 422, 'content_unavailable')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    // Süren iş biter (sabah kararı adayı): taslağı olan öğrenci kaydeder ve teslim eder.
+    await ok(
+      await saveDraft(assignmentId, t.cookies.student, 'İkinci satır', revision(draft.revision)),
+    )
+    await ok(await submit(assignmentId, t.cookies.student), 201)
+    // Yönetici yeniden yayına alır (onay koşulları bu testin konusu değil).
+    await db
+      .update(resourceVersions)
+      .set({ status: 'published' })
+      .where(
+        and(
+          eq(resourceVersions.institutionId, t.institution.id),
+          eq(resourceVersions.id, versionId),
+        ),
+      )
+    await ok(await submit(assignmentId, t.cookies.otherStudent), 201)
+  })
+
+  test('DOM-KYN-021, IST-036: kitap sahibiyle sınırlı lisansta kitap sahibi olmayan öğrenci taslak açamaz ve teslim edemez (422 content_unavailable); kitap sahibi teslim eder', async () => {
+    const t = await tenant()
+    const { versionId } = await seedOwned(
+      t,
+      {
+        ...homework(),
+        license: {
+          kind: 'licensed_publication',
+          publisher: 'Örnek Yayınevi',
+          contractNumber: 'SZ-2026-02',
+          coverage: 'Basılı kitap sahibi öğrenciler',
+          expiryDate: '2027-06-30',
+          restrictedToBookOwners: true,
+        },
+      },
+      { shareScope: 'students', sharedStudentIds: ['s-1'] },
+    )
+    const assignmentId = await assignBoth(t, versionId)
+    const before = await snapshot(t.institution.id)
+    fails(
+      await saveDraft(assignmentId, t.cookies.otherStudent, 'Taslak'),
+      422,
+      'content_unavailable',
+    )
+    fails(await submit(assignmentId, t.cookies.otherStudent), 422, 'content_unavailable')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    await ok(await submit(assignmentId, t.cookies.student), 201)
+  })
+
+  test('DOM-KYN-021, IST-036: lisansı dolmuş içerikte taslağı ve teslimi olmayan öğrenci 409 resource_license_expired; taslağı olan teslim eder, teslimi olan yeni sürüm gönderir', async () => {
+    const t = await tenant()
+    const { versionId } = await seedOwned(t, {
+      ...homework(),
+      license: {
+        kind: 'licensed_publication',
+        publisher: 'Örnek Yayınevi',
+        contractNumber: 'SZ-2026-01',
+        coverage: 'Kurumun bütün öğrencileri',
+        expiryDate: '2026-10-06',
+        restrictedToBookOwners: false,
+      },
+    })
+    const assignmentId = await assignBoth(t, versionId)
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    now = new Date(FIXED_NOW.getTime() + 24 * 60 * MINUTE)
+    try {
+      const before = await snapshot(t.institution.id)
+      fails(
+        await saveDraft(assignmentId, t.cookies.otherStudent, 'Taslak'),
+        409,
+        'resource_license_expired',
+      )
+      fails(await submit(assignmentId, t.cookies.otherStudent), 409, 'resource_license_expired')
+      assert.deepEqual(await snapshot(t.institution.id), before)
+      await ok(await submit(assignmentId, t.cookies.student), 201)
+      await ok(await submit(assignmentId, t.cookies.student), 201)
+    } finally {
+      now = FIXED_NOW
+    }
   })
 
   test('DOM-YTK-028, IST-047: servis de yalnız öğrenciye yazdırır: veli çocuğunun taslağını okuyamaz ve kaydedemez, teslim gönderemez (403); kayıt değişmez', async () => {

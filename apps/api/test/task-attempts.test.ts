@@ -172,7 +172,15 @@ describe('görev deneme uçları', () => {
       license: { kind: 'institution_original' },
       tags: { subjectId: 'ingilizce', gradeLevels: [9], primarySkill: 'reading', cefrLevel: 'A2' },
     })
-    return { institution, cookies, seed, questionId, quizId, quizItems: [first, second] as const }
+    return {
+      institution,
+      cookies,
+      seed,
+      teacherId: teacher.id,
+      questionId,
+      quizId,
+      quizItems: [first, second] as const,
+    }
   }
   type Tenant = Awaited<ReturnType<typeof tenant>>
 
@@ -300,6 +308,90 @@ describe('görev deneme uçları', () => {
       .select({ id: taskAttempts.id, version: taskAttempts.version })
       .from(taskAttempts)
       .where(eq(taskAttempts.institutionId, institutionId))
+  }
+
+  /** Deneme satırları ve denetim kayıtları: ret hiçbirini değiştirmemeli. */
+  async function stored(institutionId: string) {
+    const audits = await db
+      .select({ id: auditLog.id })
+      .from(auditLog)
+      .where(eq(auditLog.institutionId, institutionId))
+    return { attempts: await attemptRows(institutionId), audits: audits.length }
+  }
+
+  /** Öğretmenin yayındaki kaynağı; kaynak ve sürüm kimliğiyle (telif bildirimi ve kaldırma için). */
+  async function seedOwned(
+    t: Tenant,
+    input: Partial<ResourceVersionInput>,
+    share: { shareScope?: 'students'; sharedStudentIds?: string[] } = {},
+  ) {
+    const { resource, versions } = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      ...share,
+      versions: [{ status: 'published', input }],
+    })
+    return { resourceId: resource.id, versionId: versions[0]!.id }
+  }
+
+  /** Telif incelemesi sonunda yeniden yayın: sürüm doğrudan `published`'a döner. */
+  async function republish(t: Tenant, versionId: string) {
+    await db
+      .update(resourceVersions)
+      .set({ status: 'published' })
+      .where(
+        and(
+          eq(resourceVersions.institutionId, t.institution.id),
+          eq(resourceVersions.id, versionId),
+        ),
+      )
+  }
+
+  /** Yönetici 9-A ve 9-B'ye alıştırma olarak atar: Deniz ve Can hedeflenir. */
+  async function assignBoth(t: Tenant, versionId: string) {
+    const data = await ok(
+      await call(
+        'POST',
+        '/task-assignments',
+        t.cookies.admin,
+        {
+          resourceVersionId: versionId,
+          settings: { deadline: { dueAt: DUE }, attempts: { kind: 'practice' } },
+          targets: [
+            { kind: 'class', id: '9-A' },
+            { kind: 'class', id: '9-B' },
+          ],
+        },
+        key(),
+      ),
+      201,
+    )
+    return data.id as string
+  }
+
+  /** Başka kurumda aynı kayıt kimliğine (`s-1`) bağlı öğrenci. */
+  async function foreignStudent() {
+    const other = await createInstitution(app)
+    await insertMissingRecords(
+      db,
+      other.id,
+      [
+        {
+          collection: 'classes',
+          id: '9-A',
+          data: { id: '9-A', grade: 9, level: '9', branchId: 'b-1' },
+        },
+        {
+          collection: 'students',
+          id: 's-1',
+          data: { id: 's-1', name: 'Deniz Yılmaz', classId: '9-A', isActive: true },
+        },
+      ],
+      FIXED_NOW,
+    )
+    return signInAs(
+      app,
+      await createMember(app, other.id, 'ogrenci', [{ kind: 'student', recordId: 's-1' } as never]),
+    )
   }
 
   test('DOM-BEC-042, DOM-YTK-028: 401; ön büro 403; yazma yalnız öğrenci; hedeflenmeyen öğrenci ve başka kurum 404; modül kapalıyken 403 module_disabled', async () => {
@@ -828,6 +920,101 @@ describe('görev deneme uçları', () => {
     } finally {
       at(0)
     }
+  })
+
+  test('DOM-KYN-025, DOM-KYN-051, IST-036: kaldırılan kaynakta yeni deneme 422 content_unavailable; süren deneme de kaydedilemez ve teslim edilemez; hiçbir kayıt değişmez; başka kurum 404', async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t, question('Removed question?', 'a'))
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, versionId)
+    const running = await ok(await start(assignmentId, t.cookies.student), 201)
+    await ok(
+      await call('POST', `/resources/${resourceId}/remove`, t.cookies.admin, {
+        reason: 'Telif ihlali kabul edildi',
+      }),
+    )
+    const before = await stored(t.institution.id)
+    fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
+    fails(
+      await save(running.id, t.cookies.student, { [versionId]: choice('a') }, running.rowVersion),
+      422,
+      'content_unavailable',
+    )
+    fails(
+      await submit(running.id, t.cookies.student, {}, running.rowVersion),
+      422,
+      'content_unavailable',
+    )
+    assert.deepEqual(await stored(t.institution.id), before)
+    // Başka kurumun öğrencisi aynı kimliklerle atamayı ve denemeyi bulamaz (kapsam kuraldan önce).
+    const foreign = await foreignStudent()
+    fails(await start(assignmentId, foreign), 404, 'not_found')
+    fails(await submit(running.id, foreign, {}, running.rowVersion), 404, 'not_found')
+    assert.deepEqual(await stored(t.institution.id), before)
+  })
+
+  test('DOM-KYN-025, IST-036: telif bildirimiyle incelemedeki kaynakta yeni deneme 422 content_unavailable; süren deneme kaydedilir ve teslim edilir, mükerrer teslim yeni kayıt açmaz; yeniden yayında deneme açılır', async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t, question('Reported question?', 'a'))
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, versionId)
+    const running = await ok(await start(assignmentId, t.cookies.student), 201)
+    const version = `/resources/${resourceId}/versions/${versionId}`
+    await ok(
+      await call('POST', `${version}/report`, t.cookies.teacher, {
+        reason: 'Telif ihlali şüphesi',
+      }),
+    )
+    const before = await stored(t.institution.id)
+    fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
+    assert.deepEqual(await stored(t.institution.id), before)
+    // Süren deneme biter (sabah kararı adayı: askıda yeni iş yok, süren iş tamamlanır).
+    const saved = await ok(
+      await save(running.id, t.cookies.student, { [versionId]: choice('a') }, running.rowVersion),
+    )
+    const once = { ...key(), ...{ 'if-match': `"${saved.rowVersion}"` } }
+    const done = await ok(
+      await call('POST', `/task-attempts/${running.id}/submit`, t.cookies.student, {}, once),
+    )
+    assert.equal(done.result.percent, 100)
+    const finished = await stored(t.institution.id)
+    // Aynı anahtarla tekrar aynı yanıtı verir; yeni anahtarla ikinci teslim 409.
+    const replay = await ok(
+      await call('POST', `/task-attempts/${running.id}/submit`, t.cookies.student, {}, once),
+    )
+    assert.deepEqual(replay, done)
+    fails(
+      await submit(running.id, t.cookies.student, {}, done.rowVersion),
+      409,
+      'attempt_already_submitted',
+    )
+    fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
+    assert.deepEqual(await stored(t.institution.id), finished)
+    // Yönetici yeniden yayına alır (onay koşulları bu testin konusu değil): yeni deneme açılır.
+    await republish(t, versionId)
+    await ok(await start(assignmentId, t.cookies.student), 201)
+  })
+
+  test('DOM-KYN-021, IST-036: kitap sahibiyle sınırlı lisansta kitap sahibi olmayan öğrenci deneme başlatamaz (422 content_unavailable); kitap sahibi başlatır', async () => {
+    const t = await tenant()
+    const { versionId } = await seedOwned(
+      t,
+      {
+        ...question('Book owner question?', 'a'),
+        license: {
+          kind: 'licensed_publication',
+          publisher: 'Örnek Yayınevi',
+          contractNumber: 'SZ-2026-02',
+          coverage: 'Basılı kitap sahibi öğrenciler',
+          expiryDate: '2027-06-30',
+          restrictedToBookOwners: true,
+        },
+      },
+      { shareScope: 'students', sharedStudentIds: ['s-1'] },
+    )
+    const assignmentId = await assignBoth(t, versionId)
+    const before = await stored(t.institution.id)
+    fails(await start(assignmentId, t.cookies.otherStudent), 422, 'content_unavailable')
+    assert.deepEqual(await stored(t.institution.id), before)
+    await ok(await start(assignmentId, t.cookies.student), 201)
   })
 
   test('DOM-YTK-028: servis de yalnız öğrenciye yazdırır: veli çocuğunun denemesini başlatamaz, cevaplayamaz, teslim edemez (403); kayıt değişmez', async () => {

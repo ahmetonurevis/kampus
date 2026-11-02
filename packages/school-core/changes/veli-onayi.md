@@ -9,3 +9,4 @@ Dijital veli onayı ve izin formu kuralları eklendi (OG-055; IST-067, DOM-ILT-0
 - Komut ve yetki tablosuna `permissionForm.create`, `.update`, `.close`, `.archive` (yönetici, sınıf rehber öğretmeni) ve `.decide` (veli, 18 yaşını doldurmuş öğrenci) eklendi. Her velinin kararı ayrı satırdır, ret geçerlidir; son günden sonra karar değişmez (422 `permission_form_deadline_passed`); kararı olan formun hedefi daraltılamaz (422 `permission_form_scope_locked`).
 - Kapsam: veli yalnız kendi kararını görür; kararı verenin kullanıcı kimliği yalnız yöneticiye döner.
 - Yeni bildirim türleri `permission_form_opened`, `permission_form_reminder` (konu `consent`, zorunlu, 18 yaş altında veli, yetişkinde kendisi).
+- `decidePermission` kimlik satırındaki doğum tarihini `options.birthDate` ile alır; verilirse öğrenci kaydındakinin yerine geçer (API kimlik verisini `student_identities`te tutar).

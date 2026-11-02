@@ -485,6 +485,11 @@ export function archivePermissionForm(
   return form
 }
 
+export type DecideOptions = PermissionFormOptions & {
+  /** Öğrencinin kimlik satırındaki doğum tarihi; öğrenci kaydındakinin yerine geçer. */
+  birthDate?: string
+}
+
 export type DecisionOutcome = {
   decision: PermissionDecisionRecord
   /** Yeni karar satırı yazıldı mı; aynı kişinin aynı kararı ve notu yeni satır açmaz. */
@@ -499,7 +504,8 @@ export type DecisionOutcome = {
  * kendisinden alınır (veliye 403 `permission_adult_self`). Pasif öğrenci 422 `student_inactive`;
  * kapalı form 422 `permission_form_closed`; son gün geçtiyse 422 `permission_form_deadline_passed`.
  * Her karar yeni satırdır (DOM-ILT-034); aynı kişinin son kararıyla aynı karar ve not yeni satır
- * açmaz.
+ * açmaz. Yaş `options.birthDate` (API'de kimlik satırı, ADR 0006 karar 9) verilirse ondan, yoksa
+ * öğrenci kaydındaki doğum tarihinden hesaplanır.
  */
 export function decidePermission(
   state: State,
@@ -508,7 +514,7 @@ export function decidePermission(
   input: unknown,
   makeId: MakeId,
   now: string,
-  options: PermissionFormOptions = {},
+  options: DecideOptions = {},
 ): DecisionOutcome {
   const data = decidePermissionSchema.parse(input)
   const form = findForm(state, formId)
@@ -523,7 +529,10 @@ export function decidePermission(
   const student = state.students.find((s) => s.id === data.studentId)
   if (!student)
     throw new DomainError('student_not_found', 'Öğrenci bulunamadı.', { kind: 'not_found' })
-  const adult = isAdultLearner(student, now)
+  const adult = isAdultLearner(
+    options.birthDate === undefined ? student : { birthDate: options.birthDate },
+    now,
+  )
   if (by.role === 'veli' && adult)
     throw new DomainError(
       'permission_adult_self',

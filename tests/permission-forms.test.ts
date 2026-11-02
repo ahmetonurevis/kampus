@@ -419,6 +419,29 @@ test('DOM-ILT-030: 18 yaşını doldurmuş öğrenci kendisi karar verir; 18 alt
   assert.equal(permissionStatus(state.permissionDecisions, false), 'pending')
 })
 
+test('DOM-ILT-030: kimlik satırındaki doğum tarihi öğrenci kaydının yerine geçer', () => {
+  const state = seed()
+  const form = open(state)
+  unchanged(
+    state,
+    () =>
+      decidePermission(state, mother, form.id, { studentId: 's1', decision: 'approved' }, id, now, {
+        birthDate: '2008-10-06',
+      }),
+    isDomainError('permission_adult_self', 'forbidden'),
+  )
+  const own = decidePermission(
+    state,
+    studentOf('s1'),
+    form.id,
+    { studentId: 's1', decision: 'approved' },
+    id,
+    now,
+    { birthDate: '2008-10-06' },
+  )
+  assert.equal(own.decision.relation, 'self')
+})
+
 test('DOM-ILT-037: pasif öğrenci için karar verilmez', () => {
   const state = seed()
   const form = open(state)

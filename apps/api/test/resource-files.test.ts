@@ -606,6 +606,99 @@ describe('kaynak sürümü dosyaları', () => {
     assert.deepEqual(staff.version.files, [], 'kaldırılan sürümün dosya listesi gösterilmez')
   })
 
+  test('DOM-KYN-006: eski sürümdeki dosya aynı kaynağın yeni sürümüne geri eklenir; başka kaynağa bağlı dosya 422', async () => {
+    const t = await tenant()
+    const main = await upload(t, t.cookies.teacher)
+    const old = await upload(t, t.cookies.teacher)
+    const data = await create(t, text([main, old], main))
+    await publishToClass(t, data)
+    const base = `/resources/${data.resource.id}`
+    // İkinci sürüm eski dosyayı bırakır ve yayımlanır.
+    const second = await ok(
+      await post(`${base}/versions`, t.cookies.teacher, { fileIds: [main] }),
+      201,
+    )
+    await ok(await post(`${base}/versions/${second.version.id}/publish`, t.cookies.teacher))
+
+    // Yeni sürüm ucu: birinci sürümün dosyası geri eklenir, yeni bağ açılır, dosya satırı değişmez.
+    const third = await ok(
+      await post(`${base}/versions`, t.cookies.teacher, { fileIds: [main, old] }),
+      201,
+    )
+    assert.deepEqual(
+      third.version.files.map((file: Json) => file.id),
+      [main, old],
+    )
+    assert.equal((await fileRow(t.institution.id, old)).attachedId, data.version.id)
+    assert.deepEqual(
+      await linksOf(t.institution.id, old),
+      [data.version.id, third.version.id].sort(),
+    )
+
+    // Taslak düzenleme: çıkarılan eski dosyanın bağı birinci sürümde kalır, yeniden eklenebilir.
+    const url = `${base}/versions/${third.version.id}`
+    await ok(await patch(url, t.cookies.teacher, { fileIds: [main] }, 1))
+    assert.equal((await fileRow(t.institution.id, old)).attachedId, data.version.id)
+    const readded = await ok(await patch(url, t.cookies.teacher, { fileIds: [main, old] }, 2))
+    assert.deepEqual(
+      readded.version.files.map((file: Json) => file.id),
+      [main, old],
+    )
+
+    // Başka kaynağa bağlı dosya yeni dosya gibi denetlenir: 422, kayıt değişmez.
+    const foreign = await upload(t, t.cookies.teacher)
+    await create(t, text([foreign]))
+    const before = await snapshot(t.institution.id)
+    const rejected = fails(
+      await patch(url, t.cookies.teacher, { fileIds: [main, foreign] }, 3),
+      422,
+      'file_already_attached',
+    )
+    assert.deepEqual(rejected.issues[0].path, ['fileIds', '1'])
+    assert.deepEqual(await snapshot(t.institution.id), before)
+  })
+
+  test('DOM-KYN-006: silinmiş dosya yeni sürüme taşınmaz (422 file_unavailable); liste verilmese de; kayıt değişmez', async () => {
+    const t = await tenant()
+    const main = await upload(t, t.cookies.teacher)
+    const extra = await upload(t, t.cookies.teacher)
+    const data = await create(t, text([main, extra], main))
+    await publishToClass(t, data)
+    await db
+      .update(files)
+      .set({ status: 'deleted', deletedAt: FIXED_NOW })
+      .where(and(eq(files.institutionId, t.institution.id), eq(files.id, extra)))
+    const base = `/resources/${data.resource.id}`
+    const before = await snapshot(t.institution.id)
+    const listed = fails(
+      await post(`${base}/versions`, t.cookies.teacher, { fileIds: [main, extra] }),
+      422,
+      'file_unavailable',
+    )
+    assert.deepEqual(listed.issues[0].path, ['fileIds', '1'])
+    fails(await post(`${base}/versions`, t.cookies.teacher), 422, 'file_unavailable')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    const next = await ok(
+      await post(`${base}/versions`, t.cookies.teacher, { fileIds: [main] }),
+      201,
+    )
+    assert.deepEqual(
+      next.version.files.map((file: Json) => file.id),
+      [main],
+    )
+    // Taslakta kalan silinmiş dosya, liste düzenlenirken de taşınmaz.
+    fails(
+      await patch(
+        `${base}/versions/${next.version.id}`,
+        t.cookies.teacher,
+        { fileIds: [main, extra] },
+        1,
+      ),
+      422,
+      'file_unavailable',
+    )
+  })
+
   /** Görevi yönetici atar (kurumdaki her sınıfa, DOM-BEC-041); atama kimliği. */
   async function assign(t: Tenant, resourceVersionId: string, classId: string) {
     const data = await ok(

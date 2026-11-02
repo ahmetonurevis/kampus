@@ -196,6 +196,14 @@ function readableVersion(
   return version
 }
 
+/**
+ * Kaynağın sürümlerine etkin bağı olan dosyalar (DOM-KYN-006): yeni sürüm ve taslak bunları yeniden
+ * bağlamadan taşır ya da eski sürümden geri ekler (core `planVersionFiles` `kept`).
+ */
+function resourceFileIds(versions: readonly StoredResourceVersion[]): string[] {
+  return [...new Set(versions.flatMap((version) => version.fileIds))]
+}
+
 /** `If-Match` ile gelen satır sürümü tutmazsa 409 `version_conflict`. */
 function assertExpected(version: number, expected: number | null) {
   if (expected !== null && version !== expected) throw new ConflictError()
@@ -342,8 +350,9 @@ export async function updateDraftVersion(
           ...input.patch,
         }
         if (input.patch.content) await assertItemsReadable(tx, ctx, staff, input.patch.content)
-        // İçerik ya da dosya listesi değişince dosyalar yeniden denetlenir; taslakta zaten bağlı
-        // olanlar (`kept`) yeniden bağlanmaz.
+        // İçerik ya da dosya listesi değişince dosyalar yeniden denetlenir; kaynağın sürümlerine
+        // zaten bağlı olanlar (`kept`: taslağınkiler ve eski sürümden geri eklenenler) yeniden
+        // bağlanmaz, yalnız silinmiş olmadıkları denetlenir.
         const filesChanged = input.patch.content !== undefined || input.patch.fileIds !== undefined
         const files = filesChanged
           ? await loadVersionFileRows(tx, ctx.institutionId, [merged.content], merged.fileIds)
@@ -362,7 +371,7 @@ export async function updateDraftVersion(
                 content: draft.data.content,
                 fileIds: draft.data.fileIds,
                 files,
-                kept: version.fileIds,
+                kept: resourceFileIds(target.versions),
               })
             : { fileIds: draft.data.fileIds, attach: [] }
           return {
@@ -419,16 +428,15 @@ export async function openNewVersion(
       load: async (tx) => {
         const target = await loadTarget(tx, ctx, staff, resourceId)
         const requested = input.fileIds
-        // Temel sürüm core'da seçilir; satırlar her sürümün içerik dosyalarıyla birlikte okunur.
-        const files =
-          requested === undefined
-            ? []
-            : await loadVersionFileRows(
-                tx,
-                ctx.institutionId,
-                target.versions.map((version) => version.content),
-                requested,
-              )
+        // Temel sürüm core'da seçilir; satırlar bütün sürümlerin dosyalarıyla birlikte okunur
+        // (liste verilmese de temel sürümün dosyaları denetlenir).
+        const kept = resourceFileIds(target.versions)
+        const files = await loadVersionFileRows(
+          tx,
+          ctx.institutionId,
+          target.versions.map((version) => version.content),
+          [...(requested ?? []), ...kept],
+        )
         return () => {
           const base = planNewVersion({
             actor: staff.actor,
@@ -438,14 +446,13 @@ export async function openNewVersion(
             versionId,
             now: ctx.now,
           })
-          // Dosya listesi verilmezse temel sürümün listesi aynen kalır (bağlar zaten açık).
-          if (requested === undefined)
-            return { reopens: target.resource.archivedAt !== null, version: base, attach: [] }
+          // Dosya listesi verilmezse temel sürümün listesi kalır; silinmiş dosya taşınmaz (422).
+          // Aynı kaynağın eski sürümündeki dosya yeniden bağlanmadan geri eklenir (DOM-KYN-006).
           const plan = planFiles(ctx, {
             content: base.content,
-            fileIds: requested,
+            fileIds: requested ?? base.fileIds,
             files,
-            kept: base.fileIds,
+            kept,
           })
           return {
             reopens: target.resource.archivedAt !== null,

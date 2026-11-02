@@ -194,6 +194,29 @@ describe('DOM-KYN-006 kaynak sürümünün dosyaları', () => {
     })
   })
 
+  test('aynı kaynağın sürümlerinden gelen silinmiş veya reddedilmiş dosya taşınmaz: 422 file_unavailable', () => {
+    for (const status of ['deleted', 'rejected'] as const) {
+      const inherited = row('f-1', { attached: true, status })
+      rejects(
+        () => plan(fileContent('f-2'), ['f-2', 'f-1'], [row('f-2'), inherited], ['f-1']),
+        'file_unavailable',
+        ['fileIds', '1'],
+      )
+    }
+    // Satırı yüklenmemiş (başka kurumda kalmış) eski dosya da taşınmaz.
+    rejects(
+      () => plan(fileContent('f-2'), ['f-2', 'f-1'], [row('f-2')], ['f-1']),
+      'file_unavailable',
+      ['fileIds', '1'],
+    )
+    // İşlenen (dönüştürülen) dosya taşınır: bağ açılır, bağlantı hazır olunca verilir.
+    const processing = row('f-1', { attached: true, status: 'processing' })
+    assert.deepEqual(plan(fileContent('f-1'), ['f-1'], [processing], ['f-1']), {
+      fileIds: ['f-1'],
+      attach: [],
+    })
+  })
+
   test('yeni sürüm ve kopya dosya listesini miras alır; kaldırma bütün sürüm dosyalarını sayar', () => {
     const { resource, version: published } = build(
       schoolText({ content: fileContent('f-1'), fileIds: ['f-1', 'f-2'] }),

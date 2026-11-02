@@ -65,7 +65,11 @@ describe('records deposu', () => {
   }
 
   async function institutionWith(
-    items: { collection: 'invoices' | 'students'; id: string; data: Record<string, unknown> }[],
+    items: {
+      collection: 'invoices' | 'students' | 'prospects'
+      id: string
+      data: Record<string, unknown>
+    }[],
   ) {
     const { id } = await createInstitution(app)
     await insertMissingRecords(db, id, items, FIXED_NOW)
@@ -586,6 +590,56 @@ describe('records deposu', () => {
           `${field} ${from} ${to}`,
         )
       }
+    }
+  })
+
+  test('iç içe tarih alanı (trialLesson.date) SQL ile bellekte aynı sonucu verir; IST-091', async () => {
+    const shapes: [string, unknown][] = [
+      ['onceki-an', '2026-10-05T20:59:59.999Z'],
+      ['gun-basi-an', '2026-10-05T21:00:00.000Z'],
+      ['gun-biclimi', '2026-10-06'],
+      ['gun-sonu-an', '2026-10-06T20:59:59.999Z'],
+      ['sonraki-an', '2026-10-06T21:00:00.000Z'],
+      ['bozuk', 'bozuk'],
+      ['sayi', 20261006],
+      ['bos', null],
+      ['dizi', ['2026-10-06']],
+    ]
+    const prospect = (key: string, extra: Record<string, unknown>) => ({
+      collection: 'prospects' as const,
+      id: `test-p-${key}`,
+      data: { id: `test-p-${key}`, name: key, ...extra },
+    })
+    const items = [
+      ...shapes.map(([key, value]) => prospect(key, { trialLesson: { date: value } })),
+      // Üst alan nesne değilse ya da yoksa yol çözülmez; düz alan adı nokta içermez.
+      prospect('ust-metin', { trialLesson: '2026-10-06' }),
+      prospect('ust-dizi', { trialLesson: ['2026-10-06'] }),
+      prospect('ust-yok', {}),
+      prospect('duz-nokta', { 'trialLesson.date': '2026-10-06' }),
+      prospect('gorusme', { trialAt: '2026-10-06T10:00:00.000Z' }),
+    ]
+    const id = await institutionWith(items)
+    const stored = await loadRecords(db, id, ['prospects'])
+    const expected: [string | undefined, string | undefined, string[]][] = [
+      ['2026-10-06', '2026-10-06', ['gun-basi-an', 'gun-biclimi', 'gun-sonu-an']],
+      ['2026-10-06', undefined, ['gun-basi-an', 'gun-biclimi', 'gun-sonu-an', 'sonraki-an']],
+      [undefined, '2026-10-05', ['onceki-an']],
+    ]
+    for (const [from, to, keys] of expected) {
+      const filter = dayRange('trialLesson.date', from, to) ?? assert.fail()
+      const sqlIds = (await loadRecords(db, id, ['prospects'], { match: [filter] })).map(
+        (row) => row.id,
+      )
+      const memoryIds = stored
+        .filter((row) => matchesRecordFilter(row.data, filter))
+        .map((row) => row.id)
+      assert.deepEqual(sqlIds, memoryIds, `${from} ${to}`)
+      assert.deepEqual(
+        [...sqlIds].sort(),
+        keys.map((key) => `test-p-${key}`).sort(),
+        `${from} ${to}`,
+      )
     }
   })
 

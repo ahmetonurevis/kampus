@@ -41,6 +41,8 @@ import {
   invoiceStatusOf,
   matchesRecordFilter,
   monthOf,
+  rootField,
+  valueAtPath,
 } from './list-filters.ts'
 import {
   assertReadable,
@@ -191,7 +193,7 @@ function stateFiltersOf(
 const DATE_FIELDS: Partial<Record<CollectionName, readonly string[]>> = {
   students: ['joinedAt'],
   invoices: ['dueDate', 'paidAt'],
-  prospects: ['createdAt', 'trialAt'],
+  prospects: ['createdAt', 'trialAt', 'trialLesson.date'],
   quizzes: ['createdAt'],
   homework: ['dueDate', 'createdAt'],
   submissions: ['submittedAt'],
@@ -547,7 +549,10 @@ async function listFilters(
     if (filter.kind === 'settled') return ['status', 'expiresAt']
     return [filter.field]
   }
-  return filters.some((filter) => fieldOf(filter).some((field) => hidden.includes(field)))
+  // İç içe alanın (`trialLesson.date`) gizliliği en üst düzey alana bağlıdır.
+  return filters.some((filter) =>
+    fieldOf(filter).some((field) => hidden.includes(rootField(field))),
+  )
     ? null
     : filters
 }
@@ -916,7 +921,7 @@ export async function countCollection(
       // Aylık gruplama tarih alanının izin listesinden geçer; ayıklanan alanla gruplama 400.
       if (month !== null && !dateFieldsOf(collection).includes(month))
         throw hiddenFieldError('groupBy')
-      if (hidden.includes(month ?? query.groupBy)) throw hiddenFieldError('groupBy')
+      if (hidden.includes(rootField(month ?? query.groupBy))) throw hiddenFieldError('groupBy')
       if (query.sum && hidden.includes(query.sum)) throw hiddenFieldError('sum')
     },
   })
@@ -930,7 +935,7 @@ export async function countCollection(
       ? await studentClasses(ctx)
       : null
   const valueOf = (record: RecordData): GroupValue => {
-    if (month !== null) return monthOf(record[month])
+    if (month !== null) return monthOf(valueAtPath(record, month))
     if (classOf) {
       // Kaydın kendi sınıfı varsa o (`CLASS_OWN_OR_VIA`); yoksa kapsamdaki öğrencinin güncel sınıfı.
       const own = CLASS_OWN_OR_VIA.has(collection) ? record.classId : undefined

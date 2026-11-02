@@ -241,6 +241,148 @@ describe('tarih aralığı süzgeci: dateField', () => {
     })
   })
 
+  describe('aday: deneme dersi tarihi (trialLesson.date), IST-091', () => {
+    const prospect = (id: string, trialDate: unknown, extra: Record<string, unknown> = {}) => ({
+      collection: 'prospects' as const,
+      id,
+      data: {
+        id,
+        name: id,
+        stage: 'Deneme dersi',
+        ...(trialDate === undefined
+          ? {}
+          : { trialLesson: { lessonId: 'l1', classId: 'c1', date: trialDate, duration: 45 } }),
+        ...extra,
+      },
+    })
+
+    /**
+     * Europe/Istanbul gün sınırı: 2026-10-05T21:00Z = 6 Ekim 00:00. a ve b sınırın iki yanında,
+     * c gün biçimli, d ayın sonunda (30 Ekim 23:59 İstanbul = 20:59Z), e deneme dersi yok ama
+     * görüşme (`trialAt`) aynı günde: `dateField` seçilmedikçe ve seçilince farklı alanı süzer.
+     */
+    const PROSPECTS = [
+      prospect('test-p-a', '2026-10-05T21:00:00.000Z'),
+      prospect('test-p-b', '2026-10-05T20:59:59.999Z'),
+      prospect('test-p-c', '2026-10-06'),
+      prospect('test-p-d', '2026-10-30T20:59:59.999Z'),
+      prospect('test-p-e', undefined, { trialAt: '2026-10-06T10:00:00.000Z' }),
+    ]
+
+    async function withProspects() {
+      const created = await createInstitution(app, { type: 'language_school' })
+      await insertMissingRecords(db, created.id, PROSPECTS, FIXED_NOW)
+      return { ...created, adminCookie: await signInAs(app, created.admin) }
+    }
+
+    const trial = (query: string) => `dateField=trialLesson.date&${query}`
+
+    test('gün aralığı Europe/Istanbul gün başlangıcına göre, iki uç dahil', async () => {
+      const { adminCookie } = await withProspects()
+      const day = trial('dateFrom=2026-10-06&dateTo=2026-10-06')
+      // a: 6 Ekim 00:00 İstanbul (dahil), b: 5 Ekim 23:59 (dışarıda), c: gün biçimli, e: deneme yok.
+      assert.deepEqual(await ids(adminCookie, 'prospects', day), ['test-p-a', 'test-p-c'])
+      assert.deepEqual(await ids(adminCookie, 'prospects', trial('dateTo=2026-10-05')), [
+        'test-p-b',
+      ])
+      assert.deepEqual(await ids(adminCookie, 'prospects', trial('dateFrom=2026-10-31')), [])
+      assert.deepEqual(
+        await ids(adminCookie, 'prospects', trial('dateFrom=2026-10-30&dateTo=2026-10-30')),
+        ['test-p-d'],
+      )
+      assert.deepEqual(
+        await ids(adminCookie, 'prospects', trial('dateFrom=2026-10-01&dateTo=2026-10-31')),
+        ['test-p-a', 'test-p-b', 'test-p-c', 'test-p-d'],
+      )
+    })
+
+    test('görüşme alanı (trialAt) ve deneme dersi alanı birbirinden bağımsızdır', async () => {
+      const { adminCookie } = await withProspects()
+      const day = 'dateFrom=2026-10-06&dateTo=2026-10-06'
+      assert.deepEqual(await ids(adminCookie, 'prospects', `dateField=trialAt&${day}`), [
+        'test-p-e',
+      ])
+      assert.deepEqual(await ids(adminCookie, 'prospects', `dateField=createdAt&${day}`), [])
+    })
+
+    test('sayım ucu aynı kayıtları sayar', async () => {
+      const { adminCookie } = await withProspects()
+      const query = trial('dateFrom=2026-10-06&dateTo=2026-10-06')
+      const response = await get(
+        `/api/v1/collections/prospects/counts?groupBy=stage&${query}`,
+        adminCookie,
+      )
+      assert.equal(response.statusCode, 200, response.body)
+      assert.deepEqual(response.json().data, [{ value: 'Deneme dersi', count: 2 }])
+      assert.equal(response.json().meta.total, 2)
+      // Aylık gruplama aynı iç içe alanı okur.
+      const monthly = await get(
+        `/api/v1/collections/prospects/counts?groupBy=trialLesson.date:month`,
+        adminCookie,
+      )
+      assert.equal(monthly.statusCode, 200, monthly.body)
+      assert.deepEqual(monthly.json().data, [
+        { value: '2026-10', count: 4 },
+        { value: null, count: 1 },
+      ])
+    })
+
+    test('izin listesi dışı alan 400: başka koleksiyonun alanı, nesne yolu ve enjeksiyon denemesi', async () => {
+      const { adminCookie } = await withProspects()
+      const cases: [string, string][] = [
+        ['prospects', 'dateField=deadline&dateFrom=2026-10-06'],
+        ['prospects', 'dateField=trialLesson&dateFrom=2026-10-06'],
+        ['prospects', 'dateField=trialLesson.duration&dateFrom=2026-10-06'],
+        ['prospects', `dateField=${encodeURIComponent("trialLesson.date' or true --")}`],
+        // Alan yalnız aday koleksiyonunda izinlidir.
+        ['students', trial('dateFrom=2026-10-06')],
+        ['invoices', trial('dateFrom=2026-10-06')],
+      ]
+      for (const [collection, query] of cases) {
+        for (const suffix of ['', '/counts?groupBy=stage&']) {
+          const url = suffix
+            ? `/api/v1/collections/${collection}${suffix}${query}`
+            : `/api/v1/collections/${collection}?${query}`
+          const response = await get(url, adminCookie)
+          assert.equal(response.statusCode, 400, url)
+          assert.equal(response.json().code, 'validation_failed', url)
+          assert.equal(response.json().issues[0].path[0], 'dateField', url)
+        }
+      }
+    })
+
+    test('DOM-YTK-021: öğretmen yalnız kendi deneme sınıfının adayını aralıkta görür', async () => {
+      const { id } = await withProspects()
+      await insertMissingRecords(
+        db,
+        id,
+        [
+          ...sampleRows().filter((row) =>
+            ['teachers', 'classes', 'assignments'].includes(row.collection),
+          ),
+          prospect('test-p-x', '2026-10-06', {
+            trialLesson: { lessonId: 'l9', classId: 'c9', date: '2026-10-06', duration: 45 },
+          }),
+        ],
+        FIXED_NOW,
+      )
+      const teacher = await member(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+      const found = await ids(teacher, 'prospects', trial('dateFrom=2026-10-06&dateTo=2026-10-06'))
+      assert.ok(!found.includes('test-p-x'), JSON.stringify(found))
+      assert.deepEqual(found, ['test-p-a', 'test-p-c'])
+    })
+
+    test('başka kurumun adayı aralıkta görünmez', async () => {
+      await withProspects()
+      const other = await signInAs(app, (await createInstitution(app)).admin)
+      const query = trial('dateFrom=2020-01-01')
+      assert.deepEqual(await ids(other, 'prospects', query), [])
+      const counts = await get(`/api/v1/collections/prospects/counts?groupBy=stage&${query}`, other)
+      assert.equal(counts.statusCode, 200)
+      assert.equal(counts.json().meta.total, 0)
+    })
+  })
+
   describe('aylık gruplama: groupBy=<tarih alanı>:month', () => {
     const monthly = async (cookie: string, query: string) => {
       const response = await get(`/api/v1/collections/invoices/counts?${query}`, cookie)

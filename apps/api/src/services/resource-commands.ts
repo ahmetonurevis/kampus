@@ -624,9 +624,12 @@ export async function removeResource(
         })
       },
       write: async (tx, { target, plan }) => {
-        // TODO(kaynak-dosya-imhasi): `plan.fileIds` hesaplanır ama dosyalar imha edilmez; kaldırılan
-        // sürümler dosya açmaz (okuma kuralı). Kopyalar aynı dosyayı paylaştığından imha, kopyaların
-        // kaldırılıp kaldırılmadığına bakmalı (DOM-KYN-006, DOM-KYN-051).
+        // TODO(kaynak-dosya-imhasi): `plan.fileIds` hesaplanır ama dosyalar imha edilmez. Okuma
+        // kuralı kaldırılan sürüme bağlı dosyayı kopyalar ve atanmış görevler dahil hiçbir yoldan
+        // açmaz (sabah kararı 36); bağ satırları silinmez, böylece karar geri alınabilir. Kaldırma
+        // nedeni (telif / kişisel veri) saklanmaz, iki neden aynı davranır. İmha işi bağları
+        // silmeden dosya nesnesini siler ve satırı `deleted` yapar; kararın geri alınması imhadan
+        // önce olmalıdır (DOM-KYN-006, DOM-KYN-051).
         await removeResourceRows(
           tx,
           ctx.institutionId,

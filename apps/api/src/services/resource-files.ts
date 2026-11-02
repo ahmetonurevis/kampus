@@ -187,7 +187,10 @@ async function assignedLinkedVersion(
  * sabitleyen bir görevi gören kişi (`assignedLinkedVersion`). Kopya aynı dosyaya bağ açtığından
  * kopyanın okuyucusu da dosyayı okur. Ön büro içerik havuzuna ve görevlere erişmez (404).
  *
- * Kaldırılan sürüm (DOM-KYN-051) atanmış olsa da dosya açmaz. Sonradan yayımlanan sürümün yeni dosyası
+ * Kaldırma (DOM-KYN-051, sabah kararı 36): dosyaya bağ açan sürümlerden biri kaldırılmışsa dosya
+ * hiçbir yoldan açılmaz; kopyanın ve atanmış görevin bağı da kapanır. Bağ satırları silinmez,
+ * yalnız okuma kapanır: karar geri alınabilir ve imha işi dosyayı bağlı bulur. Yayından kaldırma
+ * (arşiv) kaldırma değildir: kopyanın okuyucusu açmaya devam eder. Sonradan yayımlanan sürümün yeni dosyası
  * eski sürüme atanmış göreve açılmaz: atama yalnız kendi sabitlediği sürümün bağını taşır. PGlite
  * tek bağlantılıdır: kapsam işlemin bağlantısıyla (`tx`) okunur.
  */
@@ -196,10 +199,9 @@ defineFileAttachment(RESOURCE_VERSION_ATTACHMENT, {
   canRead: async (tx, ctx, _attachedId, file) => {
     const scoped = { ...ctx, db: tx }
     const versionIds = await listFileVersionIds(tx, ctx.institutionId, file.id)
-    const linked = [...(await loadVersionPairs(tx, ctx.institutionId, versionIds)).values()].filter(
-      ({ version }) => version.status !== 'removed',
-    )
-    if (linked.length === 0) return false
+    const linked = [...(await loadVersionPairs(tx, ctx.institutionId, versionIds)).values()]
+    if (linked.length === 0 || linked.some(({ version }) => version.status === 'removed'))
+      return false
     return (
       (await readsLinkedVersion(scoped, linked)) || (await assignedLinkedVersion(scoped, linked))
     )

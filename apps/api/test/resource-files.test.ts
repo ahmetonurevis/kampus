@@ -509,7 +509,7 @@ describe('kaynak sürümü dosyaları', () => {
     fails(await fileUrl(t.cookies.otherStudent, fileId), 404, 'not_found')
   })
 
-  test('DOM-KYN-006, DOM-KYN-032, DOM-KYN-050: yeni sürüm ve kopya aynı dosyaya yeni bağ açar; kopyanın okuyucusu dosyayı okur; kaldırılan sürüm dosya açmaz', async () => {
+  test('DOM-KYN-006, DOM-KYN-032, DOM-KYN-050: yeni sürüm ve kopya aynı dosyaya yeni bağ açar; kopyanın okuyucusu dosyayı okur; kaldırılan kaynağın dosyası kopyadan da açılmaz', async () => {
     const t = await tenant()
     const fileId = await upload(t, t.cookies.teacher)
     const added = await upload(t, t.cookies.teacher)
@@ -577,13 +577,29 @@ describe('kaynak sürümü dosyaları', () => {
     })
     await ok(await fileUrl(t.cookies.otherStudent, fileId))
 
-    // Kaynak kaldırılınca onun sürümleri dosya açmaz; kopyanın okuyucusu açmaya devam eder.
+    // Kaynağın yayından kaldırılması (arşiv) kopyaya dokunmaz: kopyanın okuyucusu açmaya devam eder.
+    await ok(await post(`${base}/versions/${data.version.id}/archive`, t.cookies.teacher))
+    await ok(await fileUrl(t.cookies.otherStudent, fileId))
+
+    // Kaldırma (DOM-KYN-051, sabah kararı 36): dosya kopyalar dahil hiçbir yoldan açılmaz. Bağ
+    // satırları ve dosya satırı kalır: karar geri alınabilir, imha işi bağlı dosyayı bulur.
+    const linksBefore = await linksOf(t.institution.id, fileId)
     const removed = await ok(
       await post(`${base}/remove`, t.cookies.admin, { reason: 'Telif bildirimi doğrulandı.' }),
     )
     assert.equal(removed.affectedCopyIds.length, 2)
-    fails(await fileUrl(t.cookies.student, fileId), 404, 'not_found')
-    await ok(await fileUrl(t.cookies.otherStudent, fileId))
+    for (const cookie of [
+      t.cookies.student,
+      t.cookies.otherStudent,
+      t.cookies.parent,
+      t.cookies.teacher,
+      t.cookies.admin,
+    ])
+      fails(await fileUrl(cookie, fileId), 404, 'not_found')
+    assert.deepEqual(await linksOf(t.institution.id, fileId), linksBefore)
+    const row = await fileRow(t.institution.id, fileId)
+    assert.equal(row.attachedId, data.version.id)
+    assert.equal(row.status, 'ready')
     const staff = await ok(
       await call('GET', `${base}/versions/${data.version.id}`, t.cookies.admin),
     )

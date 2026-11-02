@@ -206,7 +206,7 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
         operationId: 'removeResource',
         tags: ['resources'],
         summary: 'Kaynağı kaldır',
-        description: `Telif ihlali veya kişisel veri nedeniyle kaynağı kaldırır (DOM-KYN-025, 051): bütün sürümlerin içeriği ve cevap anahtarı silinir; başlık, menşe, gerekçe ve tarih kalır; kaynak arşivlenir. Yalnız yönetici (öğretmen 403); \`reason\` zorunlu (422 \`reason_required\`); ikinci kez 409 \`resource_removed\`. Yanıt bu sürümlerden türetilmiş kopyaları ve soruyu içeren quiz sürümlerini listeler. \`If-Match\` isteğe bağlı: kaynağın \`rowVersion\`'ı. ${ACCESS}`,
+        description: `Telif ihlali veya kişisel veri nedeniyle kaynağı kaldırır (DOM-KYN-025, 051): bütün sürümlerin içeriği ve cevap anahtarı silinir; başlık, menşe, gerekçe ve tarih kalır; kaynak arşivlenir. Yalnız yönetici (öğretmen 403); \`reason\` zorunlu (422 \`reason_required\`); ikinci kez 409 \`resource_removed\`. Sürümlere bağlı dosyalar kopyalar ve atanmış görevler dahil hiçbir yoldan açılmaz; bağlar silinmez. Yanıt bu sürümlerden türetilmiş kopyaları ve soruyu içeren quiz sürümlerini listeler. \`If-Match\` isteğe bağlı: kaynağın \`rowVersion\`'ı. ${ACCESS}`,
         params: resourceParamsSchema,
         body: reasonBodySchema,
         headers: commandHeadersSchema('optional'),

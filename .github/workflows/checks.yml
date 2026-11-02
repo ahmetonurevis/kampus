@@ -105,6 +105,8 @@ jobs:
       - uses: ./.github/actions/kurulum
         with:
           playwright: 'true'
+      # CI'da e2e derlenmiş Vue uygulamasında (`vite preview`) koşar (playwright.config.ts).
+      - run: pnpm --filter @kampus/web build
       - run: pnpm test:e2e --shard=${{ matrix.shard }}/2
       - if: failure()
         uses: actions/upload-artifact@v7

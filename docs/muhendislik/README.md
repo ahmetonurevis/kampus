@@ -81,7 +81,7 @@ Bu bölüm öneri listesidir; uygulanmadı. Mevcut taban (`chore/ts-arac-zinciri
 
 - Push tetikleyicisine `docs/**` ve `chore/**` dalları eklenmeli (şu an yalnız `main`, `feature/**`, `fix/**`).
 - Yapıldı (OG-012): `concurrency` ile eski koşu iptali, pnpm ve Playwright önbelleği, paralel işler (`statik`, `birim`, `api` parçalı, `api-pg`, `build`, `e2e-vue` ve `e2e-react` parçalı), başarısızlıkta rapor/trace artefaktı; ayrıntı [test-stratejisi.md §8](test-stratejisi.md#8-ci-süre-bütçesi).
-- Kalan: `build` işine paket boyutu kontrolü; Vue e2e yapılandırmasında CI'da `retries: 1`.
+- Kalan: `build` işine paket boyutu kontrolü.
 - Güvenlik ve sözleşme adımları: `pnpm audit --prod --audit-level high`, `pnpm licenses list --prod` ile izinli lisans kontrolü betiği, gitleaks ile sır taraması, `drizzle-kit check` + migration farkı, `openapi:check` ve `api-client generate:check`, Better Auth şeması üretim farkı.
 - Eylemler commit SHA'sına sabitlenmeli; `permissions: contents: read` korunur.
 - Gece işi: pg-boss eşzamanlılığı (`test:pg` artık her CI koşusunda), dar ekran, koyu tema ve azaltılmış saydamlık e2e projesi, Lighthouse ölçümü.

@@ -462,7 +462,9 @@ const sameValue = (a: unknown, b: unknown) =>
  * Kuru değiştirir (DOM-DIL-005…007). Arşivli kur 409 `course_archived`. Etkin kurun program
  * alanları (`COURSE_PROGRAM_FIELDS`) değişmez: 422 `course_active_locked`. Taslakta program alanı
  * değişirse e-Özel izi sıfırlanır (`not_submitted`; program kodu kalır): kayıt yeniden işlenmeli
- * (DOM-DIL-006). Yanıt yeni kur ve gerçekten değişen alan adlarıdır (denetim).
+ * (DOM-DIL-006). En çok mevcut kapanmamış grupların kapasitesinin altına inmez (422
+ * `course_max_below_group_capacity`, DOM-DIL-008); `openGroups` `lib/language-groups.ts`
+ * `groupsBlockingCourseArchive`'dır. Yanıt yeni kur ve gerçekten değişen alan adlarıdır (denetim).
  */
 export function planCourseUpdate(input: {
   institutionType: InstitutionType
@@ -470,6 +472,7 @@ export function planCourseUpdate(input: {
   courses: readonly Course[]
   courseId: string
   input: unknown
+  openGroups?: readonly { courseId: string; name: string; capacity: number }[]
 }): { course: Course; fields: string[] } {
   assertLanguageSchoolCourses(input.institutionType)
   const data = updateCourseSchema.parse(input.input)
@@ -504,6 +507,15 @@ export function planCourseUpdate(input: {
       { path: [programChanged[0] ?? 'level'] },
     )
   assertCourse(input.courses, next)
+  const crowded = (input.openGroups ?? []).find(
+    (group) => group.courseId === current.id && group.capacity > next.maxLearners,
+  )
+  if (fields.includes('maxLearners') && crowded)
+    throw new DomainError(
+      'course_max_below_group_capacity',
+      `En çok mevcut "${crowded.name}" grubunun kapasitesinden (${crowded.capacity}) az olamaz; önce grubun kapasitesini düşürün.`,
+      { path: ['maxLearners'] },
+    )
   if (fields.includes('language') || fields.includes('level'))
     assertPreviousCourses(input.courses, next)
   const resetEOzel = programChanged.length > 0 && current.eOzel.approval !== 'not_submitted'
@@ -543,9 +555,10 @@ export function planCourseActivation(input: {
 }
 
 /**
- * Kuru arşivler (DOM-DIL-005, -007): taslak ya da etkin kur arşive alınır, arşiv geri alınmaz.
- * Arşivlenmemiş başka bir kurun sonraki kuruysa arşivlenmez (422 `course_has_dependents`); önce o
- * bağ kaldırılır.
+ * Kuru arşivler (DOM-DIL-005, -007, -008): taslak ya da etkin kur arşive alınır, arşiv geri
+ * alınmaz. Arşivlenmemiş başka bir kurun sonraki kuruysa arşivlenmez (422 `course_has_dependents`);
+ * önce o bağ kaldırılır. Planlanan, açık ya da devam eden grubu varsa arşivlenmez (422
+ * `course_has_open_groups`); `openGroups` `lib/language-groups.ts` `groupsBlockingCourseArchive`'dır.
  */
 export function planCourseArchive(input: {
   institutionType: InstitutionType
@@ -553,6 +566,7 @@ export function planCourseArchive(input: {
   courses: readonly Course[]
   courseId: string
   now: string
+  openGroups?: readonly { courseId: string; name: string }[]
 }): Course {
   assertLanguageSchoolCourses(input.institutionType)
   const course = requireCourse(input.courses, input.courseId)
@@ -565,6 +579,13 @@ export function planCourseArchive(input: {
     throw new DomainError(
       'course_has_dependents',
       `Bu kur "${dependent.name}" kurunun sonraki kuru; önce o bağı kaldırın.`,
+      { path: ['courseId'] },
+    )
+  const group = (input.openGroups ?? []).find((item) => item.courseId === course.id)
+  if (group)
+    throw new DomainError(
+      'course_has_open_groups',
+      `Bu kurun kapanmamış grubu var ("${group.name}"); önce grubu tamamlayın ya da iptal edin.`,
       { path: ['courseId'] },
     )
   return { ...course, status: 'archived', archivedAt: input.now }

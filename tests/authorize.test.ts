@@ -91,6 +91,9 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'course.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
     'course.manage': ['yonetici', 'ogretmen'],
     'course.eozel': ['yonetici'],
+    'group.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'group.manage': ['yonetici', 'ogretmen'],
+    'group.waitlist': ['yonetici', 'onburo'],
   })
   // Sıra anlamsızdır: komut tablosu iki kaynaktan birleşir (platform ve Onur bloğu).
   assert.deepEqual(Object.keys(WRITE_ACTION_ROLES).sort(), [...WRITE_ACTIONS].sort())

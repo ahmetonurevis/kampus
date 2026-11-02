@@ -92,6 +92,12 @@ export type PlatformWriteTargets = {
   'course.read': Record<string, never>
   'course.manage': Record<string, never>
   'course.eozel': Record<string, never>
+  // Dil okulu grubu (IST-077; DOM-DIL-008, -040…043): kural `lib/language-groups.ts`. Koordinatörün
+  // seviye kapsamı (`assertCourseManager`), satır kapsamı (`canReadGroup`) ve öğrenci/veli görünümü
+  // (`groupView`) orada çözülür.
+  'group.read': Record<string, never>
+  'group.manage': Record<string, never>
+  'group.waitlist': Record<string, never>
 }
 
 /** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları `lib/authorize.ts`). */
@@ -176,4 +182,10 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   'course.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
   'course.manage': ['yonetici', 'ogretmen'],
   'course.eozel': ['yonetici'],
+  // Grubu yönetici ve kurun seviyesinin akademik koordinatörü planlar; ön büro okur; öğretmen kendi
+  // grubunu, öğrenci ve veli kendi grubunu daraltılmış okur. Bekleme sırasını yönetici ve ön büro
+  // okur (DOM-DIL-043; yazma kayıt akışındadır, ON-058).
+  'group.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+  'group.manage': ['yonetici', 'ogretmen'],
+  'group.waitlist': ['yonetici', 'onburo'],
 } as const satisfies Record<PlatformAction, readonly Role[]>

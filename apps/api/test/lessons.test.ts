@@ -675,4 +675,37 @@ describe('ders programı uçları', () => {
       )
     })
   })
+
+  test('DOM-YTK-069: köprü (/workflows/substitute, /workflows/lesson-cancel) gerekçeyi denetim kaydına yazar', async () => {
+    const a = await institution()
+    const assigned = await send(
+      'POST',
+      `/api/v1/workflows/substitute/${L1.id}`,
+      a.adminCookie,
+      { teacherId: 'teacher-backup', reason: REASON },
+      key(),
+    )
+    assert.equal(assigned.statusCode, 200, assigned.body)
+    const stored = await findRecord(db, a.id, 'schedule', L1.id)
+    assert.equal(stored?.data.teacherId, 'teacher-backup')
+    assert.equal(stored?.data.originalTeacherId, 't1')
+    const [substituted] = await audits(a.id, L1.id)
+    assert.equal(substituted?.action, 'workflow.substitute')
+    assert.equal(substituted?.actorUserId, a.admin.id)
+    assert.equal(substituted?.reason, REASON)
+
+    const cancelReason = 'Sınıf müze gezisinde.'
+    const cancelled = await send(
+      'POST',
+      `/api/v1/workflows/lesson-cancel/${L2.id}`,
+      a.adminCookie,
+      { reason: cancelReason },
+      key(),
+    )
+    assert.equal(cancelled.statusCode, 200, cancelled.body)
+    assert.equal((await findRecord(db, a.id, 'schedule', L2.id))?.data.cancelReason, cancelReason)
+    const [cancelAudit] = await audits(a.id, L2.id)
+    assert.equal(cancelAudit?.action, 'workflow.lesson-cancel')
+    assert.equal(cancelAudit?.reason, cancelReason)
+  })
 })

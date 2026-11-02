@@ -46,6 +46,8 @@ type OnurWriteTargets = {
   'invoice.pay': { studentId: string }
   'payment.reverse': Record<string, never>
   'tariff.manage': Record<string, never>
+  // Burs programı ve MEBBİS işareti (DOM-FIN-025).
+  'scholarship.manage': Record<string, never>
   'student.withdraw': Record<string, never>
   'invoice.payOnline': { studentId: string }
   // Aday/CRM (`lib/prospects.ts`): kurum kapsamlıdır, hedef kaydı yetkiyi değiştirmez.
@@ -106,6 +108,8 @@ export const ONUR_WRITE_ACTION_ROLES = {
   'payment.reverse': ['yonetici'],
   // Tarife yöneticidedir, ön büro yalnız görür (DOM-FIN-052).
   'tariff.manage': ['yonetici'],
+  // Burs onayı yöneticidedir (DOM-FIN-052).
+  'scholarship.manage': ['yonetici'],
   // Ayrılış onayı ve iade yöneticidedir (DOM-FIN-052, IST-110).
   'student.withdraw': ['yonetici'],
   // Çevrim içi ödeme: veli yalnız bağlı çocuğunun taksiti için başlatır (DOM-FIN-052, DOM-YTK-025).
@@ -271,6 +275,7 @@ function decide(
     case 'invoice.pay':
     case 'payment.reverse':
     case 'tariff.manage':
+    case 'scholarship.manage':
     case 'student.withdraw':
       return ALLOWED
     case 'invoice.payOnline': {

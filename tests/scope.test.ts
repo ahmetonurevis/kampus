@@ -583,3 +583,77 @@ test('Okuma kuralı iki kaynakta (platform ve Onur bloğu) birden bulunmaz; birl
     [...COLLECTION_NAMES].sort(),
   )
 })
+
+test('DOM-DIL-031, DOM-YTK-080: öğretmen adayı yalnız kendi deneme grubunda ve ayıklanmış alanlarla okur', () => {
+  const state = createSeed(new Date(now))
+  const language = { institutionType: 'language_school' } as const
+  const t1Classes = scopeFor(state, teacher('t1'), language).classIds
+  assert.ok(t1Classes.has('c1'))
+  const other = state.classes.find((item) => !t1Classes.has(item.id))
+  assert.ok(other)
+  const trial = (classId: string) => ({
+    lessonId: `l-${classId}`,
+    classId,
+    date: '2026-10-08T09:00:00.000Z',
+    duration: 40,
+    guardianConsentAt: now,
+    scheduledAt: now,
+    by: { role: 'onburo', userId: 'u-front' },
+  })
+  const full = {
+    phone: '05550000001',
+    email: 'aday@example.com',
+    source: 'Web sitesi',
+    studentId: null,
+    trialAt: '2026-10-07T09:00:00.000Z',
+    notes: [{ id: 'n1', text: 'Özel not', author: 'Ön büro', at: now }],
+    minor: true,
+    guardianName: 'Test Veli',
+    referrerStudentId: 's1',
+    siblingOfId: 'pr2',
+    privacyNotice: { version: 'v1', shownAt: now },
+    marketingConsent: { sms: { granted: true, at: now } },
+    meeting: { date: now, duration: 30, room: 'A', teacherId: null, scheduledAt: now, by: {} },
+    createdBy: { role: 'onburo', userId: 'u-front' },
+    updatedAt: now,
+  }
+  const base = state.prospects[0]
+  assert.ok(base)
+  const mine = {
+    ...base,
+    ...full,
+    id: 'pr-own',
+    name: 'Kendi Grubum',
+    trialLesson: trial('c1'),
+  } as never
+  const foreign = { ...base, ...full, id: 'pr-foreign', trialLesson: trial(other.id) } as never
+  const noTrial = { ...base, ...full, id: 'pr-none' } as never
+  state.prospects.push(mine, foreign, noTrial)
+  const seen = visibleRecords(state, teacher('t1'), 'prospects', language)
+  assert.deepEqual(
+    seen.map((row) => row.id),
+    ['pr-own'],
+  )
+  // Öğretmene yalnız ad, kampüs, ilgi, aşama, yaş bayrağı ve deneme dersi döner.
+  assert.deepEqual(Object.keys(seen[0] ?? {}).sort(), [
+    'branchId',
+    'createdAt',
+    'id',
+    'interest',
+    'minor',
+    'name',
+    'stage',
+    'trialLesson',
+    'updatedAt',
+  ])
+  // Yönetici ve ön büro bütün adayları tam görür; öğrenci ve veli hiç görmez.
+  assert.equal(visibleRecords(state, admin, 'prospects', language).length, state.prospects.length)
+  assert.equal(
+    visibleRecords(state, frontOffice, 'prospects', language).length,
+    state.prospects.length,
+  )
+  assert.deepEqual(visibleRecords(state, student(), 'prospects', language), [])
+  assert.deepEqual(visibleRecords(state, parent(), 'prospects', language), [])
+  // Denemesi olmayan aday (okulda hepsi böyledir) öğretmene hiç görünmez.
+  assert.deepEqual(visibleRecords(createSeed(new Date(now)), teacher('t1'), 'prospects'), [])
+})

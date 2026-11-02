@@ -15,6 +15,7 @@ import {
   changeProspectStage,
   createProspect,
   scheduleProspectMeeting,
+  recordTrialResult,
   scheduleTrialLesson,
   type ProspectOptions,
 } from '@kampus/school-core/lib/prospects.ts'
@@ -65,7 +66,12 @@ import {
  */
 
 type ProspectAction =
-  'prospect.create' | 'prospect.stage' | 'prospect.note' | 'prospect.meeting' | 'prospect.trial'
+  | 'prospect.create'
+  | 'prospect.stage'
+  | 'prospect.note'
+  | 'prospect.meeting'
+  | 'prospect.trial'
+  | 'prospect.trialResult'
 type Outcome = { id: string; statusCode: number }
 
 interface ProspectRun {
@@ -366,6 +372,27 @@ export function scheduleTrialLessonCommand(
       subjectId: prospectId,
       run: (state, by, { now }, prospectOptions) => {
         scheduleTrialLesson(state, by, prospectId, input, now, prospectOptions)
+        return { id: prospectId, statusCode: 200 }
+      },
+    },
+    options,
+  )
+}
+
+/** Öğretmen deneme dersinin sonucunu yazar (DOM-DIL-031). 200. */
+export function recordTrialResultCommand(
+  ctx: ServiceContext,
+  prospectId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  return execute(
+    ctx,
+    {
+      action: 'prospect.trialResult',
+      subjectId: prospectId,
+      run: (state, by, { now }, prospectOptions) => {
+        recordTrialResult(state, by, prospectId, input, now, prospectOptions)
         return { id: prospectId, statusCode: 200 }
       },
     },

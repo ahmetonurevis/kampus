@@ -811,7 +811,7 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     assert.deepEqual(parsed.data, detail)
   })
 
-  test('DOM-KYN-025, DOM-KYN-051: kaynağın başka sürümü telif bildirimiyle incelemedeyse ya da kaynak kaldırıldıysa arşivli sürüme sabitlenen atamanın içeriği kursiyere ve veliye gösterilmez (taslak olsa da); ilk onaydaki yeni taslak etkilemez', async () => {
+  test('DOM-KYN-025, DOM-KYN-051: kaynağın başka sürümü telif bildirimiyle incelemedeyse arşivli sürüme sabitlenen atamanın içeriği yalnız taslağı olan öğrenciye gösterilir (veli taslağı görmez); kaldırıldıysa kimseye; ilk onaydaki yeni taslak etkilemez', async () => {
     const t = await tenant()
     const assignmentId = await assign(t)
     await ok(await saveDraft(assignmentId, t.cookies.student, 'İlk taslak'))
@@ -855,10 +855,11 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     await setStatus(nextId, { status: 'published', publishedAt: FIXED_NOW })
     for (const cookie of [t.cookies.student, t.cookies.parent])
       assert.deepEqual(await contentOf(cookie), [null, t.homeworkId])
-    // v2'ye telif bildirimi: kaynak öğrenci ve veliye görünmez, v1 de gösterilmez.
+    // v2'ye telif bildirimi: kaynak askıdadır. Taslağı olan öğrenci v1'in yönergesini görmeye
+    // devam eder (Sabah kararı 47); veli taslağı görmez, süren işi yok sayılır.
     await setStatus(nextId, { status: 'in_review' })
-    for (const cookie of [t.cookies.student, t.cookies.parent])
-      assert.deepEqual(await contentOf(cookie), ['unavailable', null])
+    assert.deepEqual(await contentOf(t.cookies.student), [null, t.homeworkId])
+    assert.deepEqual(await contentOf(t.cookies.parent), ['unavailable', null])
     // Yönetici yeniden yayına alır: içerik geri gelir; kaynak kaldırılırsa yine gösterilmez.
     await setStatus(nextId, { status: 'published' })
     assert.deepEqual(await contentOf(t.cookies.student), [null, t.homeworkId])
@@ -872,6 +873,73 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     })
     for (const cookie of [t.cookies.student, t.cookies.parent])
       assert.deepEqual(await contentOf(cookie), ['unavailable', null])
+  })
+
+  test('DOM-KYN-025, OG-985: telif askısında süren işi olan öğrenci yönergeyi görür ve özette teslim edebilir; işi olmayan görmez, özeti content_unavailable; kaldırılınca kimse görmez; başka kurum 404', async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t)
+    const assignmentId = await assignBoth(t, versionId)
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    await ok(
+      await call(
+        'POST',
+        `/resources/${resourceId}/versions/${versionId}/report`,
+        t.cookies.teacher,
+        {
+          reason: 'Telif ihlali şüphesi',
+        },
+      ),
+    )
+    const detail = async (cookie: string) =>
+      ok(await call('GET', `/task-assignments/${assignmentId}`, cookie))
+    const listed = async (cookie: string) =>
+      (await ok(await call('GET', '/task-assignments', cookie))).find(
+        (item: Json) => item.id === assignmentId,
+      )
+    const gate = (seen: Json) => [
+      seen.contentUnavailable,
+      seen.content?.body.instructions ?? null,
+      seen.progress[0].canAct,
+      seen.progress[0].blockedBy,
+    ]
+    // Askıda + süren iş (taslak): yönerge görünür, teslim açık.
+    assert.deepEqual(gate(await detail(t.cookies.student)), [
+      null,
+      'Hafta sonunu anlatan kısa bir metin yaz.',
+      true,
+      null,
+    ])
+    // Askıda + iş yok: içerik kapalı, özet yeni işi önermez (yazma ucu 422 verir).
+    assert.deepEqual(gate(await detail(t.cookies.otherStudent)), [
+      'unavailable',
+      null,
+      false,
+      'content_unavailable',
+    ])
+    const row = await listed(t.cookies.otherStudent)
+    assert.deepEqual(
+      [row.progress[0].canAct, row.progress[0].blockedBy, row.progress[0].actionableUntil],
+      [false, 'content_unavailable', null],
+    )
+    assert.deepEqual([(await listed(t.cookies.student)).progress[0].canAct], [true])
+    // Kaldırılmış: süren işi olan da göremez ve yazamaz.
+    await ok(
+      await call('POST', `/resources/${resourceId}/remove`, t.cookies.admin, {
+        reason: 'Telif ihlali kabul edildi',
+      }),
+    )
+    for (const cookie of [t.cookies.student, t.cookies.otherStudent])
+      assert.deepEqual(gate(await detail(cookie)), [
+        'unavailable',
+        null,
+        false,
+        'content_unavailable',
+      ])
+    fails(
+      await call('GET', `/task-assignments/${assignmentId}`, await foreignStudent()),
+      404,
+      'not_found',
+    )
   })
 
   test('DOM-KYN-025, DOM-KYN-051, IST-036: kaldırılan kaynakta taslak ve teslim 422 content_unavailable (taslak ve teslim olsa da); kayıt değişmez; aynı anahtarla mükerrer teslim yeni sürüm açmaz; başka kurum 404', async () => {
@@ -967,6 +1035,13 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     )
     fails(await submit(assignmentId, t.cookies.otherStudent), 422, 'content_unavailable')
     assert.deepEqual(await snapshot(t.institution.id), before)
+    // Özet yazma ucuyla aynı kapıdan geçer (OG-985).
+    const blockedOf = async (cookie: string) => {
+      const { progress } = await ok(await call('GET', `/task-assignments/${assignmentId}`, cookie))
+      return [progress[0].canAct, progress[0].blockedBy]
+    }
+    assert.deepEqual(await blockedOf(t.cookies.otherStudent), [false, 'content_unavailable'])
+    assert.deepEqual(await blockedOf(t.cookies.student), [true, null])
     await ok(await submit(assignmentId, t.cookies.student), 201)
   })
 
@@ -995,8 +1070,58 @@ describe('yazma görevi taslak ve teslim uçları', () => {
       )
       fails(await submit(assignmentId, t.cookies.otherStudent), 409, 'resource_license_expired')
       assert.deepEqual(await snapshot(t.institution.id), before)
+      // Özet yazma ucuyla aynı kapıdan geçer (OG-985): taslağı olana açık, olmayana lisans engeli.
+      const blockedOf = async (cookie: string) => {
+        const { progress } = await ok(
+          await call('GET', `/task-assignments/${assignmentId}`, cookie),
+        )
+        return [progress[0].canAct, progress[0].blockedBy]
+      }
+      assert.deepEqual(await blockedOf(t.cookies.otherStudent), [false, 'license_expired'])
+      assert.deepEqual(await blockedOf(t.cookies.student), [true, null])
       await ok(await submit(assignmentId, t.cookies.student), 201)
       await ok(await submit(assignmentId, t.cookies.student), 201)
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
+  test('DOM-KYN-021, OG-985: lisansı dolmuş ve teslim penceresi kapanmış yazma görevinde işi olmayan öğrencinin özeti locked değil license_expired (yazma ucu içerik kuralını pencereden önce sınar: 409 resource_license_expired)', async () => {
+    const t = await tenant()
+    const { versionId } = await seedOwned(t, {
+      ...homework(),
+      license: {
+        kind: 'licensed_publication',
+        publisher: 'Örnek Yayınevi',
+        contractNumber: 'SZ-2026-01',
+        coverage: 'Kurumun bütün öğrencileri',
+        expiryDate: '2026-10-06',
+        restrictedToBookOwners: false,
+      },
+    })
+    const assignmentId = await assignBoth(t, versionId)
+    // Son teslimden (20 Ekim) sonra: pencere kapalı, lisans dolmuş, Can'ın taslağı ve teslimi yok.
+    now = new Date('2026-10-25T09:00:00.000Z')
+    try {
+      const before = await snapshot(t.institution.id)
+      fails(
+        await saveDraft(assignmentId, t.cookies.otherStudent, 'Taslak'),
+        409,
+        'resource_license_expired',
+      )
+      fails(await submit(assignmentId, t.cookies.otherStudent), 409, 'resource_license_expired')
+      assert.deepEqual(await snapshot(t.institution.id), before)
+      const detail = await ok(
+        await call('GET', `/task-assignments/${assignmentId}`, t.cookies.otherStudent),
+      )
+      const row = (await ok(await call('GET', '/task-assignments', t.cookies.otherStudent))).find(
+        (item: Json) => item.id === assignmentId,
+      )
+      for (const progress of [detail.progress[0], row.progress[0]])
+        assert.deepEqual(
+          [progress.canAct, progress.blockedBy, progress.actionableUntil],
+          [false, 'license_expired', null],
+        )
     } finally {
       now = FIXED_NOW
     }

@@ -156,10 +156,18 @@ const learnerProgressSchema = z
         'Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045)',
       ),
     blockedBy: z
-      .enum(['in_progress', 'license_expired', 'locked', 'limit', 'graded', 'unavailable'])
+      .enum([
+        'in_progress',
+        'content_unavailable',
+        'license_expired',
+        'locked',
+        'limit',
+        'graded',
+        'unavailable',
+      ])
       .nullable()
       .describe(
-        '`canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor',
+        '`canAct` değilse neden: süren deneme, içerik kursiyere kapalı (yazma uçlarının 422 `content_unavailable` vereceği durum: kaldırılmış içerik, süren işi olmayana telif askısı, kitap sahibi olmayan; DOM-KYN-021, 025, 051; diğer engellerden önce gelir), içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor',
       ),
     score: z
       .object({
@@ -255,7 +263,7 @@ const learnerAssignmentDetailSchema = z
       .enum(['license_expired', 'unavailable'])
       .nullable()
       .describe(
-        '`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil',
+        '`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya içerik kapalı: sürüm kaldırıldı/yayında değil, kitap sahibi değil ya da telif bildirimiyle incelemede ve süren iş (süren deneme, taslak, teslim) yok (DOM-KYN-025, Sabah kararı 47)',
       ),
   })
   .meta({ id: 'TaskAssignmentLearnerDetail' })

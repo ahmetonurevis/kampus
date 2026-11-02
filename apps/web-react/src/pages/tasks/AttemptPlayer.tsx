@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { SUBSKILLS } from '@kampus/school-core/content/taxonomy.ts'
+import { TASK_CONTENT_UNAVAILABLE_MESSAGE } from '@kampus/react-shared/use-task-assignments.ts'
 import {
   useSubmitTaskAttempt,
   type TaskAttemptDetail,
@@ -12,12 +13,16 @@ import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
 import { QuestionInput } from './QuestionInput.tsx'
 import { ReadingPassage } from './ReadingPassage.tsx'
-import { answeredCount, formatRemaining, isAnswered } from './student-task-model.ts'
+import { answeredCount, attemptClock, isAnswered } from './student-task-model.ts'
 import { useAttemptAnswers, type SaveState } from './use-attempt-answers.ts'
 
 type Props = {
   title: string
   attempt: TaskAttemptDetail
+  /** Atamanın süre sınırı (dk); `null` ise geri sayım yerine son teslim yazılır (DOM-BEC-043). */
+  timeLimitMinutes: number | null
+  /** Atamanın son teslimi; yoksa `null`. */
+  dueAt: string | null
   /** Detayın okunduğu an (ms): `remainingMs` bu ana göredir; istemci saati kayması etkisizdir. */
   fetchedAt: number
   /** Süre dolduysa sunucudan güncel durumu ister (deneme kaydedilmiş cevaplarla teslim sayılır). */
@@ -39,7 +44,15 @@ const SAVE_TEXT: Record<SaveState, string> = {
  * geniş ekranda soruların solunda kendi içinde kayar, dar ekranda üstte durur; soru başında alt
  * beceri etiketi (DOM-BEC-006) yazılır.
  */
-export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }: Props) {
+export function AttemptPlayer({
+  title,
+  attempt,
+  timeLimitMinutes,
+  dueAt,
+  fetchedAt,
+  onExpired,
+  onLeave,
+}: Props) {
   const answers = useAttemptAnswers(attempt)
   const submit = useSubmitTaskAttempt()
   const [index, setIndex] = useState(0)
@@ -50,9 +63,12 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
   const total = questions.length
   const done = answeredCount(questions, answers.answers)
   const remainingAt = attempt.remainingMs === null ? null : fetchedAt + attempt.remainingMs
-  const now = useNow(remainingAt !== null)
+  const timed = timeLimitMinutes !== null
+  // Süresiz denemede saat yalnız teslim penceresinin kapanışını yakalar; saniyelik tık gerekmez.
+  const now = useNow(remainingAt !== null, timed ? 1000 : 15_000)
   const remaining = remainingAt === null ? null : remainingAt - now
   const timeOver = remaining !== null && remaining <= 0
+  const clock = attemptClock({ timeLimitMinutes, dueAt, remainingMs: remaining })
 
   useEffect(() => {
     if (!timeOver) return
@@ -82,7 +98,13 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
     onLeave()
   }
 
-  if (!question) return null
+  // Kapalı içerikte soru gelmez (`contentUnavailable`; DOM-KYN-025, 051): çözme ekranı çizilmez.
+  if (!question)
+    return attempt.contentUnavailable ? (
+      <p role="status" className="text-sm text-muted-foreground">
+        {TASK_CONTENT_UNAVAILABLE_MESSAGE}
+      </p>
+    ) : null
   const player = (
     <section
       aria-labelledby="deneme-baslik"
@@ -94,12 +116,7 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
         </h2>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge text={`${index + 1} / ${total} soru`} tone="purple" />
-          {remaining !== null ? (
-            <StatusBadge
-              text={timeOver ? 'Süre doldu' : `Kalan süre ${formatRemaining(remaining)}`}
-              tone={timeOver || remaining < 60_000 ? 'red' : 'gray'}
-            />
-          ) : null}
+          {clock ? <StatusBadge text={clock.text} tone={clock.tone} /> : null}
         </div>
       </header>
 
@@ -198,7 +215,7 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
           </Button>
         ) : null}
       </div>
-      {remaining !== null ? (
+      {timed && remaining !== null ? (
         <p className="mt-2 text-xs text-muted-foreground">
           Süre sunucu saatiyle işler; ekranı kapatsanız da durmaz.
         </p>

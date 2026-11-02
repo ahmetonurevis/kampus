@@ -1,3 +1,4 @@
+import { TASK_CONTENT_UNAVAILABLE_MESSAGE } from '@kampus/react-shared/use-task-assignments.ts'
 import type { TaskAttemptDetail } from '@kampus/react-shared/use-task-attempts.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -17,7 +18,8 @@ type Props = {
  * gelir. Açılmadıysa bu alanlar hiç çizilmez; nedenine dair ipucu verilmez. Okuma-anlama
  * etkinliğinin alt beceri dökümü (DOM-BEC-006) aynı kuralla açılır. Personel tamamlanan denemede
  * madde sonuçlarını anahtar açılmadan da alır (OG-983): soru başına cevap ve madde sonucu çizilir,
- * doğru cevap yalnız anahtar geldiyse.
+ * doğru cevap yalnız anahtar geldiyse. İçerik kapalıysa (`contentUnavailable`; kaldırma, askı ya da
+ * lisans) soru metni ve anahtar gelmez: soru listesi yerine sakin not çizilir, puan kalır.
  */
 export function AttemptResult({ attempt, title, audience = 'learner' }: Props) {
   const result = attempt.result
@@ -57,7 +59,12 @@ export function AttemptResult({ attempt, title, audience = 'learner' }: Props) {
         ) : null}
       </div>
       <SubskillBreakdown subskills={result.subskills} />
-      {items ? (
+      {attempt.contentUnavailable ? (
+        // Kapalı içerikte soru metni ve anahtar gelmez (DOM-KYN-025, 051); puan ve döküm kalır.
+        <p role="status" className="text-sm text-muted-foreground">
+          {TASK_CONTENT_UNAVAILABLE_MESSAGE}
+        </p>
+      ) : items ? (
         <ol aria-label="Soru soru sonuç" className="grid gap-3">
           {attempt.questions.map((question, index) => {
             const score = items.find(

@@ -5614,6 +5614,7 @@
                 "type": "string",
                 "enum": [
                   "in_progress",
+                  "content_unavailable",
                   "license_expired",
                   "locked",
                   "limit",
@@ -5625,7 +5626,7 @@
                 "type": "null"
               }
             ],
-            "description": "`canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor"
+            "description": "`canAct` değilse neden: süren deneme, içerik kursiyere kapalı (yazma uçlarının 422 `content_unavailable` vereceği durum: kaldırılmış içerik, süren işi olmayana telif askısı, kitap sahibi olmayan; DOM-KYN-021, 025, 051; diğer engellerden önce gelir), içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor"
           },
           "score": {
             "anyOf": [
@@ -6663,7 +6664,7 @@
                 "type": "null"
               }
             ],
-            "description": "`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil"
+            "description": "`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya içerik kapalı: sürüm kaldırıldı/yayında değil, kitap sahibi değil ya da telif bildirimiyle incelemede ve süren iş (süren deneme, taslak, teslim) yok (DOM-KYN-025, Sabah kararı 47)"
           }
         },
         "required": [
@@ -7047,7 +7048,7 @@
                 "type": "null"
               }
             ],
-            "description": "Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045)"
+            "description": "Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) ve içerik kapalı değilse (DOM-KYN-025, 051; ayrıntıdaki `contentUnavailable` kuralı)"
           }
         },
         "required": [
@@ -7941,7 +7942,7 @@
                 "question"
               ]
             },
-            "description": "Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık"
+            "description": "Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş"
           },
           "passage": {
             "anyOf": [
@@ -8036,7 +8037,22 @@
                 "type": "null"
               }
             ],
-            "description": "Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner"
+            "description": "Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner"
+          },
+          "contentUnavailable": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "license_expired",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Soru ve parça metni gösterilmiyorsa neden (DOM-KYN-021, 025, 051): kaldırılmış içerik herkese ve her denemede; öğrenci ve velide ayrıca telif bildirimiyle incelemedeki içerik ya da lisansı dolmuş içerik (yalnız kursiyerin bu görevde süren denemesi yoksa; Sabah kararı 47) ve kitap sahibi sınırı. Kapalıyken `result.answerKey` de `null`; cevaplar, madde sonucu ve puan görünür kalır"
           },
           "listening": {
             "anyOf": [
@@ -8112,6 +8128,7 @@
           "rowVersion",
           "questions",
           "passage",
+          "contentUnavailable",
           "listening"
         ]
       },
@@ -19030,6 +19047,7 @@
                 "type": "string",
                 "enum": [
                   "in_progress",
+                  "content_unavailable",
                   "license_expired",
                   "locked",
                   "limit",
@@ -19041,7 +19059,7 @@
                 "type": "null"
               }
             ],
-            "description": "`canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor"
+            "description": "`canAct` değilse neden: süren deneme, içerik kursiyere kapalı (yazma uçlarının 422 `content_unavailable` vereceği durum: kaldırılmış içerik, süren işi olmayana telif askısı, kitap sahibi olmayan; DOM-KYN-021, 025, 051; diğer engellerden önce gelir), içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor"
           },
           "score": {
             "anyOf": [
@@ -20135,7 +20153,7 @@
                 "type": "null"
               }
             ],
-            "description": "`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil"
+            "description": "`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya içerik kapalı: sürüm kaldırıldı/yayında değil, kitap sahibi değil ya da telif bildirimiyle incelemede ve süren iş (süren deneme, taslak, teslim) yok (DOM-KYN-025, Sabah kararı 47)"
           }
         },
         "required": [
@@ -20513,7 +20531,7 @@
                 "type": "null"
               }
             ],
-            "description": "Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045)"
+            "description": "Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) ve içerik kapalı değilse (DOM-KYN-025, 051; ayrıntıdaki `contentUnavailable` kuralı)"
           }
         },
         "required": [
@@ -21434,7 +21452,7 @@
               ],
               "additionalProperties": false
             },
-            "description": "Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık"
+            "description": "Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş"
           },
           "passage": {
             "anyOf": [
@@ -21531,7 +21549,22 @@
                 "type": "null"
               }
             ],
-            "description": "Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner"
+            "description": "Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner"
+          },
+          "contentUnavailable": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "license_expired",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Soru ve parça metni gösterilmiyorsa neden (DOM-KYN-021, 025, 051): kaldırılmış içerik herkese ve her denemede; öğrenci ve velide ayrıca telif bildirimiyle incelemedeki içerik ya da lisansı dolmuş içerik (yalnız kursiyerin bu görevde süren denemesi yoksa; Sabah kararı 47) ve kitap sahibi sınırı. Kapalıyken `result.answerKey` de `null`; cevaplar, madde sonucu ve puan görünür kalır"
           },
           "listening": {
             "anyOf": [
@@ -21609,6 +21642,7 @@
           "rowVersion",
           "questions",
           "passage",
+          "contentUnavailable",
           "listening"
         ],
         "additionalProperties": false

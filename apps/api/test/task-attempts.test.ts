@@ -932,6 +932,14 @@ describe('görev deneme uçları', () => {
         reason: 'Telif ihlali kabul edildi',
       }),
     )
+    // Özet yazma ucuyla aynı kapıdan geçer (OG-985): süren deneme de sürdürülemez.
+    const summary = await ok(
+      await call('GET', `/task-assignments/${assignmentId}`, t.cookies.student),
+    )
+    assert.deepEqual(
+      [summary.progress[0].canAct, summary.progress[0].blockedBy, summary.contentUnavailable],
+      [false, 'content_unavailable', 'unavailable'],
+    )
     const before = await stored(t.institution.id)
     fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
     fails(
@@ -952,6 +960,36 @@ describe('görev deneme uçları', () => {
     assert.deepEqual(await stored(t.institution.id), before)
   })
 
+  test("DOM-KYN-051, OG-985: quiz'in bağlı sorusu kaldırılınca görev ayrıntısı da içeriği göstermez (özetle aynı sürüm kümesi); özet content_unavailable; başka kurum 404", async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t, question('Linked question?', 'a'))
+    const quizId = await t.seed({
+      title: 'Bağlı soru quizi',
+      content: { type: 'quiz', items: [{ questionVersionId: versionId, points: 1 }] },
+      license: { kind: 'institution_original' },
+      tags: { subjectId: 'ingilizce', gradeLevels: [9], primarySkill: 'reading', cefrLevel: 'A2' },
+    })
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, quizId)
+    const gate = async () => {
+      const seen = await progressOf(assignmentId, t.cookies.student)
+      return [seen.contentUnavailable, seen.content?.versionId ?? null, seen.progress[0].blockedBy]
+    }
+    assert.deepEqual(await gate(), [null, quizId, null])
+    await ok(
+      await call('POST', `/resources/${resourceId}/remove`, t.cookies.admin, {
+        reason: 'Telif ihlali kabul edildi',
+      }),
+    )
+    // Quiz'in kendisi kaldırılmadı; soru kaldırıldığı için yazma ucu 422 verir, ayrıntı da kapalı.
+    assert.deepEqual(await gate(), ['unavailable', null, 'content_unavailable'])
+    fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
+    fails(
+      await call('GET', `/task-assignments/${assignmentId}`, await foreignStudent()),
+      404,
+      'not_found',
+    )
+  })
+
   test('DOM-KYN-025, IST-036: telif bildirimiyle incelemedeki kaynakta yeni deneme 422 content_unavailable; süren deneme kaydedilir ve teslim edilir, mükerrer teslim yeni kayıt açmaz; yeniden yayında deneme açılır', async () => {
     const t = await tenant()
     const { resourceId, versionId } = await seedOwned(t, question('Reported question?', 'a'))
@@ -963,6 +1001,14 @@ describe('görev deneme uçları', () => {
         reason: 'Telif ihlali şüphesi',
       }),
     )
+    // Özet (OG-985): süren deneme sürdürülür (Sabah kararı 47: içerik görünür).
+    const summary = async () => {
+      const seen = await ok(
+        await call('GET', `/task-assignments/${assignmentId}`, t.cookies.student),
+      )
+      return [seen.progress[0].canAct, seen.progress[0].blockedBy, seen.contentUnavailable]
+    }
+    assert.deepEqual(await summary(), [false, 'in_progress', null])
     const before = await stored(t.institution.id)
     fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
     assert.deepEqual(await stored(t.institution.id), before)
@@ -988,6 +1034,8 @@ describe('görev deneme uçları', () => {
     )
     fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
     assert.deepEqual(await stored(t.institution.id), finished)
+    // Tamamlanan deneme süren iş değildir: içerik kapanır, yeni deneme önerilmez.
+    assert.deepEqual(await summary(), [false, 'content_unavailable', 'unavailable'])
     // Yönetici yeniden yayına alır (onay koşulları bu testin konusu değil): yeni deneme açılır.
     await republish(t, versionId)
     await ok(await start(assignmentId, t.cookies.student), 201)
@@ -1066,7 +1114,7 @@ describe('görev deneme uçları', () => {
     )
   })
 
-  test('IST-051: puanlama bağlamı kurulamayan atama için uyarı istek başına bir kez ve yalnız atama kimliğiyle loglanır (kursiyer sayısından bağımsız); özet unavailable', async () => {
+  test('IST-051: puanlama bağlamı kurulamayan atama için uyarı istek başına bir kez ve yalnız atama kimliğiyle loglanır (kursiyer sayısından bağımsız); özet içerik kapısıyla content_unavailable', async () => {
     const t = await tenant()
     const assignmentId = await assignAsAdmin(t, [
       { kind: 'class', id: '9-A' },
@@ -1093,11 +1141,13 @@ describe('görev deneme uçları', () => {
     const [row] = (await ok(await call('GET', '/task-assignments', twins))).filter(
       (item: Json) => item.id === assignmentId,
     )
+    // İçeriği olmayan sürüm içerik kapısından da geçmez: yazma ucu 422 `content_unavailable`
+    // döneceğinden özet de onu söyler (OG-985; kapı diğer engellerden önce gelir).
     assert.deepEqual(
-      row.progress.map((item: Json) => [item.learnerId, item.blockedBy]),
+      row.progress.map((item: Json) => [item.learnerId, item.canAct, item.blockedBy]),
       [
-        ['s-1', 'unavailable'],
-        ['s-3', 'unavailable'],
+        ['s-1', false, 'content_unavailable'],
+        ['s-3', false, 'content_unavailable'],
       ],
     )
     const warnings = logs

@@ -6191,8 +6191,8 @@ export interface components {
             canAct: boolean;
             /** @description Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045) */
             actionableUntil: string | null;
-            /** @description `canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
-            blockedBy: ("in_progress" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
+            /** @description `canAct` değilse neden: süren deneme, içerik kursiyere kapalı (yazma uçlarının 422 `content_unavailable` vereceği durum: kaldırılmış içerik, süren işi olmayana telif askısı, kitap sahibi olmayan; DOM-KYN-021, 025, 051; diğer engellerden önce gelir), içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
+            blockedBy: ("in_progress" | "content_unavailable" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
             /** @description Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045) */
             score: {
                 earned: number;
@@ -6448,7 +6448,7 @@ export interface components {
             /** @description `learnerIds` sırasıyla her kişinin durumu */
             progress: components["schemas"]["TaskAssignmentLearnerProgressInput"][];
             content: components["schemas"]["TaskAssignmentLearnerContentInput"] | null;
-            /** @description `content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil */
+            /** @description `content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya içerik kapalı: sürüm kaldırıldı/yayında değil, kitap sahibi değil ya da telif bildirimiyle incelemede ve süren iş (süren deneme, taslak, teslim) yok (DOM-KYN-025, Sabah kararı 47) */
             contentUnavailable: ("license_expired" | "unavailable") | null;
         };
         TaskAssignmentInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerInput"];
@@ -6482,7 +6482,7 @@ export interface components {
             items: components["schemas"]["TaskAttemptItemScoreInput"][] | null;
             /** @description Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır */
             subskills: components["schemas"]["TaskAttemptSubskillScoreInput"][] | null;
-            /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) */
+            /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) ve içerik kapalı değilse (DOM-KYN-025, 051; ayrıntıdaki `contentUnavailable` kuralı) */
             answerKey: {
                 questionVersionId: string;
                 answerKey: {
@@ -6648,7 +6648,7 @@ export interface components {
             result: components["schemas"]["TaskAttemptResultInput"] | null;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
-            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık */
+            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş */
             questions: {
                 questionVersionId: string;
                 points: number;
@@ -6711,7 +6711,7 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
-            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner */
+            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner */
             passage: {
                 /**
                  * Format: uuid
@@ -6732,6 +6732,8 @@ export interface components {
                 /** @description Kaynak gösterimi (DOM-KYN-024) */
                 attributions: components["schemas"]["ResourceAttributionInput"][];
             } | null;
+            /** @description Soru ve parça metni gösterilmiyorsa neden (DOM-KYN-021, 025, 051): kaldırılmış içerik herkese ve her denemede; öğrenci ve velide ayrıca telif bildirimiyle incelemedeki içerik ya da lisansı dolmuş içerik (yalnız kursiyerin bu görevde süren denemesi yoksa; Sabah kararı 47) ve kitap sahibi sınırı. Kapalıyken `result.answerKey` de `null`; cevaplar, madde sonucu ve puan görünür kalır */
+            contentUnavailable: ("license_expired" | "unavailable") | null;
             /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
             listening: {
                 /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
@@ -9459,8 +9461,8 @@ export interface components {
             canAct: boolean;
             /** @description Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045) */
             actionableUntil: string | null;
-            /** @description `canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
-            blockedBy: ("in_progress" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
+            /** @description `canAct` değilse neden: süren deneme, içerik kursiyere kapalı (yazma uçlarının 422 `content_unavailable` vereceği durum: kaldırılmış içerik, süren işi olmayana telif askısı, kitap sahibi olmayan; DOM-KYN-021, 025, 051; diğer engellerden önce gelir), içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
+            blockedBy: ("in_progress" | "content_unavailable" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
             /** @description Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045) */
             score: {
                 earned: number;
@@ -9716,7 +9718,7 @@ export interface components {
             /** @description `learnerIds` sırasıyla her kişinin durumu */
             progress: components["schemas"]["TaskAssignmentLearnerProgress"][];
             content: components["schemas"]["TaskAssignmentLearnerContent"] | null;
-            /** @description `content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil */
+            /** @description `content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya içerik kapalı: sürüm kaldırıldı/yayında değil, kitap sahibi değil ya da telif bildirimiyle incelemede ve süren iş (süren deneme, taslak, teslim) yok (DOM-KYN-025, Sabah kararı 47) */
             contentUnavailable: ("license_expired" | "unavailable") | null;
         };
         TaskAssignment: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearner"];
@@ -9750,7 +9752,7 @@ export interface components {
             items: components["schemas"]["TaskAttemptItemScore"][] | null;
             /** @description Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır */
             subskills: components["schemas"]["TaskAttemptSubskillScore"][] | null;
-            /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) */
+            /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) ve içerik kapalı değilse (DOM-KYN-025, 051; ayrıntıdaki `contentUnavailable` kuralı) */
             answerKey: {
                 questionVersionId: string;
                 answerKey: {
@@ -9916,7 +9918,7 @@ export interface components {
             result: components["schemas"]["TaskAttemptResult"] | null;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
-            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık */
+            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş */
             questions: {
                 questionVersionId: string;
                 points: number;
@@ -9978,7 +9980,7 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
-            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner */
+            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner */
             passage: {
                 /**
                  * Format: uuid
@@ -9999,6 +10001,8 @@ export interface components {
                 /** @description Kaynak gösterimi (DOM-KYN-024) */
                 attributions: components["schemas"]["ResourceAttribution"][];
             } | null;
+            /** @description Soru ve parça metni gösterilmiyorsa neden (DOM-KYN-021, 025, 051): kaldırılmış içerik herkese ve her denemede; öğrenci ve velide ayrıca telif bildirimiyle incelemedeki içerik ya da lisansı dolmuş içerik (yalnız kursiyerin bu görevde süren denemesi yoksa; Sabah kararı 47) ve kitap sahibi sınırı. Kapalıyken `result.answerKey` de `null`; cevaplar, madde sonucu ve puan görünür kalır */
+            contentUnavailable: ("license_expired" | "unavailable") | null;
             /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
             listening: {
                 /** @description Atamanın dinleme hakkı (DOM-BEC-005) */

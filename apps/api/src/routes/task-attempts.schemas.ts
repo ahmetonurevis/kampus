@@ -90,7 +90,9 @@ const resultSchema = z
     answerKey: z
       .array(z.object({ questionVersionId: z.string(), answerKey: answerKeySchema }))
       .nullable()
-      .describe('Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045)'),
+      .describe(
+        'Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) ve içerik kapalı değilse (DOM-KYN-025, 051; ayrıntıdaki `contentUnavailable` kuralı)',
+      ),
   })
   .meta({ id: 'TaskAttemptResult' })
 
@@ -134,7 +136,9 @@ const taskAttemptDetailSchema = z
           question: questionBodySchema,
         }),
       )
-      .describe('Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık'),
+      .describe(
+        'Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş',
+      ),
     passage: z
       .object({
         versionId: id.describe('Okuma parçası sürümü'),
@@ -151,7 +155,13 @@ const taskAttemptDetailSchema = z
       })
       .nullable()
       .describe(
-        'Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner',
+        'Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner',
+      ),
+    contentUnavailable: z
+      .enum(['license_expired', 'unavailable'])
+      .nullable()
+      .describe(
+        'Soru ve parça metni gösterilmiyorsa neden (DOM-KYN-021, 025, 051): kaldırılmış içerik herkese ve her denemede; öğrenci ve velide ayrıca telif bildirimiyle incelemedeki içerik ya da lisansı dolmuş içerik (yalnız kursiyerin bu görevde süren denemesi yoksa; Sabah kararı 47) ve kitap sahibi sınırı. Kapalıyken `result.answerKey` de `null`; cevaplar, madde sonucu ve puan görünür kalır',
       ),
     listening: z
       .object({

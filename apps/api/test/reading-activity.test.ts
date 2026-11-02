@@ -626,4 +626,147 @@ describe('okuma-anlama etkinliği', () => {
     )
     assert.equal(done.result.earned, 1)
   })
+
+  /** Deneme ayrıntısının metin kapısı: soru, parça ve neden (DOM-KYN-025, 051; OG-985). */
+  const textOf = async (id: string, cookie: string) => {
+    const response = await detail(id, cookie)
+    const read = await ok(response)
+    return {
+      read,
+      gate: [read.questions.length, read.passage?.versionId ?? null, read.contentUnavailable],
+      leaked: ['ferry to work', 'What is the text mainly about?'].some((text) =>
+        response.body.includes(text),
+      ),
+    }
+  }
+  const taskGate = async (assignmentId: string, cookie: string) => {
+    const seen = await ok(await call('GET', `/task-assignments/${assignmentId}`, cookie))
+    return [seen.contentUnavailable, seen.progress[0].canAct, seen.progress[0].blockedBy]
+  }
+
+  test('DOM-KYN-051, DOM-KYN-025, OG-985: parça kaldırılınca süren ve tamamlanmış denemenin ayrıntısı soru ve parça metnini öğrenciye, veliye ve öğretmene göstermez; cevaplar ve puan kalır; görev ayrıntısı da kapanır; başka kurum 404', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } })
+    const first = await ok(await start(assignmentId, t.cookies.student), 201)
+    const answers = { [t.items.main]: choice('a'), [t.items.detail]: choice('b') }
+    const done = await ok(await submit(first.id, t.cookies.student, { answers }))
+    assert.equal(done.result.earned, 2)
+    const running = await ok(await start(assignmentId, t.cookies.student), 201)
+    await ok(await save(running.id, t.cookies.student, { [t.items.main]: choice('a') }))
+    await ok(
+      await call(
+        'POST',
+        `/resources/${t.passage.resourceId}/remove`,
+        t.cookies.admin,
+        { reason: 'Telif bildirimi doğrulandı.' },
+        key(),
+      ),
+    )
+    // Kaldırılmış + süren deneme: süren iş olsa da metin yok, kaydedilen cevap durur.
+    const ongoing = await textOf(running.id, t.cookies.student)
+    assert.deepEqual(ongoing.gate, [0, null, 'unavailable'])
+    assert.equal(ongoing.leaked, false)
+    assert.deepEqual(ongoing.read.answers, { [t.items.main]: choice('a') })
+    // Tamamlanmış deneme sonucu: öğrenci ve veli puanı görür, metni görmez.
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const result = await textOf(first.id, cookie)
+      assert.deepEqual(result.gate, [0, null, 'unavailable'])
+      assert.equal(result.leaked, false)
+      assert.deepEqual([result.read.result.earned, result.read.answers], [2, answers])
+      // Anahtar (açıklamasıyla) içeriğin parçasıdır: kapalı içerikte dönmez; madde sonucu kalır.
+      assert.deepEqual([result.read.result.answerKey, result.read.result.items.length], [null, 3])
+      assert.equal(JSON.stringify(result.read).includes(SECRET_EXPLANATION), false)
+    }
+    // Personel kaynak ayrıntısıyla tutarlı: kaldırılan içerik ona da gösterilmez; cevaplar ve
+    // madde sonuçları görünür.
+    const staff = await textOf(first.id, t.cookies.teacher)
+    assert.deepEqual(staff.gate, [0, null, 'unavailable'])
+    assert.equal(staff.leaked, false)
+    assert.deepEqual(
+      [staff.read.answers, staff.read.result.earned, staff.read.result.items.length],
+      [answers, 2, 3],
+    )
+    assert.equal(staff.read.result.answerKey, null)
+    assert.equal(JSON.stringify(staff.read).includes(SECRET_EXPLANATION), false)
+    // Deneme listesi de anahtarı göstermez (aynı kapı).
+    for (const cookie of [t.cookies.student, t.cookies.teacher]) {
+      const listed = await call('GET', `/task-attempts?assignmentId=${assignmentId}`, cookie)
+      const done = (await ok(listed)).find((row: Json) => row.id === first.id)
+      assert.deepEqual([done.result.answerKey, done.result.earned], [null, 2])
+      assert.equal(listed.body.includes(SECRET_EXPLANATION), false)
+    }
+    // Görev ayrıntısı özetle aynı küme üstünden sınanır: bağlı parça kapalıysa içerik de kapalı.
+    assert.deepEqual(await taskGate(assignmentId, t.cookies.student), [
+      'unavailable',
+      false,
+      'content_unavailable',
+    ])
+    const other = await createInstitution(app)
+    fails(await detail(first.id, await signInAs(app, other.admin)), 404, 'not_found')
+  })
+
+  test('DOM-KYN-025, OG-985: parça askıdayken süren denemesi olan öğrenci ve velisi soru ve parçayı görür (Sabah kararı 47); deneme bitince görmez ve görev içeriği kapanır; personel görür', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } })
+    const attempt = await ok(await start(assignmentId, t.cookies.student), 201)
+    await ok(
+      await call(
+        'POST',
+        `/resources/${t.passage.resourceId}/versions/${t.passage.versionId}/report`,
+        t.cookies.teacher,
+        { reason: 'Telif ihlali şüphesi' },
+      ),
+    )
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual((await textOf(attempt.id, cookie)).gate, [3, t.passage.versionId, null])
+    assert.deepEqual(await taskGate(assignmentId, t.cookies.student), [null, false, 'in_progress'])
+    const done = await ok(
+      await submit(attempt.id, t.cookies.student, { answers: { [t.items.main]: choice('a') } }),
+    )
+    // Süren iş kalmadı: teslim yanıtı ve sonraki okumalar metni göstermez, puan görünür.
+    assert.deepEqual(
+      [done.questions.length, done.passage, done.contentUnavailable, done.result.earned],
+      [0, null, 'unavailable', 1],
+    )
+    const after = await textOf(attempt.id, t.cookies.student)
+    assert.deepEqual([after.gate, after.leaked], [[0, null, 'unavailable'], false])
+    assert.deepEqual(await taskGate(assignmentId, t.cookies.student), [
+      'unavailable',
+      false,
+      'content_unavailable',
+    ])
+    assert.deepEqual((await textOf(attempt.id, t.cookies.teacher)).gate, [
+      3,
+      t.passage.versionId,
+      null,
+    ])
+  })
+
+  test('DOM-KYN-025, OG-985: parça askıdayken süren denemesi olan öğrenci tamamlanmış denemesinin anahtarını ve açıklamasını görür (Sabah kararı 47); personel de görür', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } })
+    const first = await ok(await start(assignmentId, t.cookies.student), 201)
+    await ok(
+      await submit(first.id, t.cookies.student, { answers: { [t.items.main]: choice('a') } }),
+    )
+    await ok(await start(assignmentId, t.cookies.student), 201)
+    await ok(
+      await call(
+        'POST',
+        `/resources/${t.passage.resourceId}/versions/${t.passage.versionId}/report`,
+        t.cookies.teacher,
+        { reason: 'Telif ihlali şüphesi' },
+      ),
+    )
+    for (const cookie of [t.cookies.student, t.cookies.teacher]) {
+      const { read, gate } = await textOf(first.id, cookie)
+      assert.deepEqual(gate, [3, t.passage.versionId, null])
+      assert.equal(read.result.answerKey.length, 3)
+      assert.equal(read.result.answerKey[0].answerKey.explanation, SECRET_EXPLANATION)
+    }
+    const listed = await ok(
+      await call('GET', `/task-attempts?assignmentId=${assignmentId}`, t.cookies.student),
+    )
+    assert.equal(listed.find((row: Json) => row.id === first.id).result.answerKey.length, 3)
+  })
 })

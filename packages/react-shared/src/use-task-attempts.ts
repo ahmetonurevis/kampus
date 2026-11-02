@@ -11,7 +11,7 @@ import { institutionKey } from './query-keys.ts'
 import { useActiveInstitutionId } from './use-active-institution.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
-import { TASK_ASSIGNMENTS_KEY } from './use-task-assignments.ts'
+import { LEARNER_CONTENT_MESSAGES, TASK_ASSIGNMENTS_KEY } from './use-task-assignments.ts'
 
 /**
  * Otomatik puanlı görev denemesi kancaları (`/api/v1/task-attempts`; ADR 0004 karar 5, 6;
@@ -51,6 +51,7 @@ export const TASK_ATTEMPT_CHANGED_MESSAGE =
   'Deneme başka bir pencerede değişti. Güncel hâli yüklendi; yeniden deneyin.'
 
 export const TASK_ATTEMPT_MESSAGES = {
+  ...LEARNER_CONTENT_MESSAGES,
   not_found: 'Görev bulunamadı.',
   version_conflict: TASK_ATTEMPT_CHANGED_MESSAGE,
   attempt_limit_reached: 'Bu görev için deneme hakkınız doldu.',

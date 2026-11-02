@@ -28,7 +28,10 @@ import {
   TASK_ATTEMPT_INVALIDATES,
   TASK_ATTEMPTS_KEY,
 } from '../src/use-task-attempts.ts'
-import { TASK_ASSIGNMENTS_KEY } from '../src/use-task-assignments.ts'
+import {
+  TASK_ASSIGNMENTS_KEY,
+  TASK_CONTENT_UNAVAILABLE_MESSAGE,
+} from '../src/use-task-assignments.ts'
 import {
   saveTaskDraftCommand,
   saveTaskDraftRequest,
@@ -153,6 +156,27 @@ describe('görev denemesi komutları', () => {
       submitTaskAttemptCommand,
     ])
       assert.equal(command.exclusive, true)
+  })
+})
+
+describe('kursiyer içerik kapısı iletileri', () => {
+  test('DOM-KYN-025, DOM-KYN-021, OG-985: deneme, taslak ve teslimde content_unavailable ve lisans engeli Türkçe; yenileme önerilmez', () => {
+    assert.equal(TASK_CONTENT_UNAVAILABLE_MESSAGE, 'Bu içerik şu an kullanıma kapalı.')
+    for (const command of [
+      startTaskAttemptCommand,
+      saveTaskAttemptAnswersCommand,
+      submitTaskAttemptCommand,
+      saveTaskDraftCommand,
+      submitTaskSubmissionCommand,
+    ]) {
+      const feedback = (status: number, code: string) =>
+        commandFeedback(new ApiError({ status, code, message: 'Sunucu mesajı.' }), command.messages)
+          .message ?? ''
+      assert.equal(feedback(422, 'content_unavailable'), TASK_CONTENT_UNAVAILABLE_MESSAGE)
+      assert.match(feedback(409, 'resource_license_expired'), /lisansının süresi doldu/)
+      for (const code of ['content_unavailable', 'resource_license_expired'])
+        assert.doesNotMatch(feedback(422, code), /yenile/i)
+    }
   })
 })
 

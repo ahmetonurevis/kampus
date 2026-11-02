@@ -10,6 +10,7 @@ import type { TaskSubmission } from '@kampus/react-shared/use-task-submissions.t
 import {
   acceptedText,
   answeredCount,
+  attemptClock,
   attemptStatusBadge,
   autoProgress,
   blockedByMessage,
@@ -278,6 +279,113 @@ describe('IST-051 liste satırı kursiyer özetinden (DOM-BEC-045)', () => {
     })
     assert.equal(summaryProgress(assignment, NOW, 'c-2')?.status, 'Tamamlandı')
     assert.equal(summaryProgress(assignment, NOW, 'c-3'), null)
+  })
+})
+
+describe('OG-985 içerik kapısı engeli (DOM-KYN-025, DOM-KYN-021)', () => {
+  const closed = entry({ canAct: false, blockedBy: 'content_unavailable' })
+
+  test('DOM-KYN-025: özet content_unavailable ise listede ve panelde birincil işlem yok, sakin not var', () => {
+    for (const assignment of [auto({ progress: [closed] }), writing({ progress: [closed] })]) {
+      const progress = summaryProgress(assignment, NOW)
+      assert.equal(progress?.canAct, false)
+      assert.equal(progress?.blockedReason, 'Bu içerik şu an kullanıma kapalı.')
+    }
+    // Kaldırılmış içerikte süren deneme de sürdürülemez: "Denemeye devam et" önerilmez.
+    const running = summaryProgress(
+      auto({ progress: [entry({ ...closed, status: 'in_progress' })] }),
+      NOW,
+    )
+    assert.equal(running?.canAct, false)
+  })
+
+  test('DOM-KYN-025: çalışma alanı da yeni deneme ve teslim önermez; yerel nedenin yerine geçer', () => {
+    const quiz = autoProgress(auto({ progress: [closed] }), [], NOW)
+    assert.deepEqual(
+      [quiz.canAct, quiz.blockedReason],
+      [false, 'Bu içerik şu an kullanıma kapalı.'],
+    )
+    const lapsed = autoProgress(
+      auto({ deadline: { dueAt: PAST, lateAcceptanceDays: 0 }, progress: [closed] }),
+      [],
+      NOW,
+    )
+    assert.equal(lapsed.blockedReason, 'Bu içerik şu an kullanıma kapalı.')
+    const draft = writingProgress(writing({ progress: [closed] }), null, NOW)
+    assert.deepEqual(
+      [draft.canAct, draft.blockedReason],
+      [false, 'Bu içerik şu an kullanıma kapalı.'],
+    )
+    const allowed = writingProgress(
+      writing({ progress: [closed] }),
+      {
+        ...submission(),
+        allowance: { canSubmit: true, blockedBy: null, limit: 3, remaining: 2 },
+      } as never,
+      NOW,
+    )
+    assert.equal(allowed.canAct, false)
+  })
+
+  test('DOM-KYN-025, DOM-KYN-051: kaldırılmış içerikte süren deneme de sürdürülmez (çözme ekranı açılmaz); askıdaki süren deneme sürer (Sabah kararı 47)', () => {
+    const ongoing = [attempt({ status: 'in_progress', completedAt: null, result: null })]
+    const removed = autoProgress(auto({ progress: [closed] }), ongoing, NOW)
+    assert.deepEqual(
+      [removed.status, removed.canAct, removed.blockedReason],
+      ['Sürüyor', false, 'Bu içerik şu an kullanıma kapalı.'],
+    )
+    // Askıda + süren deneme: özet `in_progress` der, deneme sürer.
+    const reported = entry({ status: 'in_progress', canAct: false, blockedBy: 'in_progress' })
+    const kept = autoProgress(auto({ progress: [reported] }), ongoing, NOW)
+    assert.deepEqual([kept.canAct, kept.blockedReason], [true, null])
+  })
+
+  test('DOM-KYN-021: lisans engeli çalışma alanında yalnız başka neden yokken gösterilir', () => {
+    const expired = entry({ canAct: false, blockedBy: 'license_expired' })
+    const open = autoProgress(auto({ progress: [expired] }), [], NOW)
+    assert.equal(open.canAct, false)
+    assert.match(open.blockedReason ?? '', /lisans/)
+    const late = autoProgress(
+      auto({ deadline: { dueAt: PAST, lateAcceptanceDays: 0 }, progress: [expired] }),
+      [],
+      NOW,
+    )
+    assert.equal(late.blockedReason, 'Teslim süresi doldu; yeni deneme başlatılamaz.')
+    // Özet engel söylemiyorsa yerel karar değişmez.
+    assert.equal(autoProgress(auto({ progress: [entry()] }), [], NOW).canAct, true)
+  })
+})
+
+describe('OG-986 deneme saati (DOM-BEC-043)', () => {
+  test('DOM-BEC-043: süre sınırı olmayan denemede geri sayım yok; son teslim Europe/Istanbul tarihiyle', () => {
+    // 119 saatlik pencere geri sayım olarak gösterilmez.
+    const untimed = attemptClock({
+      timeLimitMinutes: null,
+      dueAt: FUTURE,
+      remainingMs: 431_998_000,
+    })
+    assert.deepEqual(untimed, { text: 'Son teslim: 20 Eki 2026 23:59', tone: 'gray' })
+    assert.equal(attemptClock({ timeLimitMinutes: null, dueAt: null, remainingMs: null }), null)
+    // Pencere kapandıysa sunucu teslim eder; ekran bunu söyler.
+    assert.deepEqual(attemptClock({ timeLimitMinutes: null, dueAt: PAST, remainingMs: 0 }), {
+      text: 'Teslim süresi doldu',
+      tone: 'red',
+    })
+  })
+
+  test('DOM-BEC-043: süreli denemede kalan süre geri sayılır; son dakika kırmızı', () => {
+    assert.deepEqual(attemptClock({ timeLimitMinutes: 20, dueAt: FUTURE, remainingMs: 600_000 }), {
+      text: 'Kalan süre 10:00',
+      tone: 'gray',
+    })
+    assert.deepEqual(attemptClock({ timeLimitMinutes: 20, dueAt: null, remainingMs: 59_000 }), {
+      text: 'Kalan süre 00:59',
+      tone: 'red',
+    })
+    assert.deepEqual(attemptClock({ timeLimitMinutes: 20, dueAt: null, remainingMs: -5 }), {
+      text: 'Süre doldu',
+      tone: 'red',
+    })
   })
 })
 

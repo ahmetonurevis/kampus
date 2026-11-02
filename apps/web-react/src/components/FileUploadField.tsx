@@ -5,10 +5,12 @@
 // gönderir. Yükleme "İptal" ile ya da bileşen kalkınca (panel kapandı) durur. Liste çağıranındır
 // (kontrollü): `onUploaded` ekler, `onRemoved` çıkarır; örn. react-hook-form alanı. Sürükle-bırak yok.
 // Tarayıcı açıkken (ADR 0003 karar 8; OG-092) yanıtı `processing` gelen dosya güvenlik taramasındadır:
-// satırda "Taranıyor…" görünür, `useFilesProcessing` dosya hazır olana kadar yoklar ve alan o
-// sürede meşguldür (çağıranın gönderimi kilitli; OG-987). Bekleme dolarsa satırda "Yeniden dene",
-// taramada reddedilen dosyada Türkçe ileti çıkar; dosya kaldırılınca kilit açılır. Tarayıcısız
-// ortamda (`pending`) dosya izlenmez, bağlama bugünkü gibi denenir.
+// satırda "Taranıyor…" görünür, `useFilesProcessing` dosya hazır olana kadar yoklar ve o sürede
+// alan gönderimi engeller (`onBlockedChange`; OG-987): çağıran yalnız gönder düğmesini kilitler,
+// formun alanları ve vazgeç açık kalır. Yükleme meşguliyeti (`onBusyChange`) ayrıdır. Bekleme
+// dolarsa satırda "Yeniden dene", taramada reddedilen ya da artık bulunmayan dosyada Türkçe ileti
+// çıkar; dosya kaldırılınca engel kalkar. Tarayıcısız ortamda (`pending`) dosya izlenmez, bağlama
+// bugünkü gibi denenir.
 import { useEffect, useRef, useState } from 'react'
 import { useFilesProcessing } from '@kampus/react-shared/use-files.ts'
 import {
@@ -30,6 +32,7 @@ import {
   pickProblems,
   runUploadQueue,
   scanAnnouncement,
+  scanBlocksSubmit,
   scanRowView,
   scanWatchIds,
   type FileUploadItem,
@@ -57,10 +60,15 @@ type Props = {
   error?: { message?: string } | undefined
   disabled?: boolean
   /**
-   * Yükleme ya da yüklenen dosyanın güvenlik taraması başlayınca `true`, bitince `false`; çağıran
-   * gönderim düğmesini kilitler.
+   * Yükleme başlayınca (ya da yeniden denenecek dosya kalınca) `true`, bitince `false`; çağıran
+   * gönderimi kilitler.
    */
   onBusyChange?: (busy: boolean) => void
+  /**
+   * Yüklenen dosya gönderime engel olunca (taranıyor, bekleme doldu, reddedildi, bulunamadı)
+   * `true`, engel kalkınca `false`; çağıran yalnız gönder düğmesini kilitler (OG-987).
+   */
+  onBlockedChange?: (blocked: boolean) => void
   listLabel?: string
 }
 
@@ -77,6 +85,7 @@ export function FileUploadField({
   error,
   disabled = false,
   onBusyChange,
+  onBlockedChange,
   listLabel = 'Eklenen dosyalar',
 }: Props) {
   const uploader = useFileUpload()
@@ -97,11 +106,14 @@ export function FileUploadField({
   // Yükleme sürerken liste çağıranda güncellenir; döngü her turda en güncel hâli okur.
   const itemsRef = useRef(items)
   const busyChange = useRef(onBusyChange)
+  const blockedChange = useRef(onBlockedChange)
   const busyNow = useRef(false)
+  const blockedNow = useRef(false)
   // Ref'ler çizimden sonra güncellenir; yükleme döngüsü ve bildirim en güncel değeri okur.
   useEffect(() => {
     itemsRef.current = items
     busyChange.current = onBusyChange
+    blockedChange.current = onBlockedChange
   })
 
   useEffect(() => {
@@ -111,15 +123,22 @@ export function FileUploadField({
       aborter.current?.abort()
       // Yükleme sürerken ya da yeniden deneme beklerken kalkarsa çağıranın gönderim kilidi açık kalmamalı.
       if (busyNow.current) busyChange.current?.(false)
+      if (blockedNow.current) blockedChange.current?.(false)
     }
   }, [])
 
   // Yeniden denenecek dosya varken de meşgul sayılır; yoksa ağ hatasında kaydet açılır.
-  const busy = isUploadBusy(uploading, retry.length, [...scanStates.values()])
+  const busy = isUploadBusy(uploading, retry.length)
   useEffect(() => {
     busyNow.current = busy
     busyChange.current?.(busy)
   }, [busy])
+  // Taranan dosya yalnız gönderimi engeller; nedeni aşağıdaki canlı bölge duyurur.
+  const blocked = scanBlocksSubmit([...scanStates.values()])
+  useEffect(() => {
+    blockedNow.current = blocked
+    blockedChange.current?.(blocked)
+  }, [blocked])
 
   // Odak düğmeyle birlikte DOM'dan kalkınca `body`'ye düşer; yükleme bitip denetim açılınca geri alınır.
   // Kullanıcı bu arada odağı başka yere taşıdıysa ona dokunulmaz.
@@ -287,7 +306,7 @@ export function FileUploadField({
                       }
                     >
                       <Icon
-                        name={view.tone === 'danger' ? 'ShieldAlert' : 'Timer'}
+                        name={view.icon}
                         size={14}
                         className="mt-0.5 shrink-0"
                         aria-hidden="true"

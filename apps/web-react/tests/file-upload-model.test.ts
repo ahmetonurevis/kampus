@@ -16,6 +16,7 @@ import {
   pickProblems,
   runUploadQueue,
   scanAnnouncement,
+  scanBlocksSubmit,
   scanRowView,
   scanWatchIds,
   type FileUploadItem,
@@ -358,15 +359,23 @@ describe('Alan meşgul sayılır (OG-250, DOM-KYN-006)', () => {
 })
 
 describe('Yüklenen dosyanın güvenlik taraması (OG-987, IST-027; ADR 0003 karar 8)', () => {
-  test('IST-027: taranan, beklemesi dolan ya da reddedilen dosya gönderimi kilitler', () => {
-    assert.equal(isUploadBusy(false, 0, ['processing']), true)
-    assert.equal(isUploadBusy(false, 0, ['ready', 'timed_out']), true)
-    assert.equal(isUploadBusy(false, 0, ['ready', 'rejected']), true)
+  test('IST-027: taranan, beklemesi dolan, reddedilen ya da bulunamayan dosya gönderimi engeller', () => {
+    assert.equal(scanBlocksSubmit(['processing']), true)
+    assert.equal(scanBlocksSubmit(['ready', 'timed_out']), true)
+    assert.equal(scanBlocksSubmit(['ready', 'rejected']), true)
+    assert.equal(scanBlocksSubmit(['ready', 'missing']), true)
   })
 
-  test('IST-027: hazır, tarayıcısız (pending) ve okunamayan dosya kilitlemez', () => {
-    assert.equal(isUploadBusy(false, 0, ['ready', 'pending', 'failed']), false)
-    assert.equal(isUploadBusy(false, 0, []), false)
+  test('IST-027: hazır, tarayıcısız (pending) ve okunamayan dosya engellemez', () => {
+    assert.equal(scanBlocksSubmit(['ready', 'pending', 'failed']), false)
+    assert.equal(scanBlocksSubmit([]), false)
+  })
+
+  test('IST-027: tarama yükleme meşguliyeti sayılmaz (alanlar ve vazgeç açık kalır)', () => {
+    // Meşguliyet yalnız yükleme ve yeniden denenecek dosyadır; tarama engeli ayrı bildirilir.
+    assert.equal(isUploadBusy(false, 0), false)
+    assert.equal(isUploadBusy(true, 0), true)
+    assert.equal(isUploadBusy(false, 1), true)
   })
 
   test('IST-027: yalnız bu alanda yüklenip taranan ve hâlâ listede olan dosya izlenir', () => {
@@ -383,6 +392,7 @@ describe('Yüklenen dosyanın güvenlik taraması (OG-987, IST-027; ADR 0003 kar
     assert.deepEqual(scanRowView('processing'), {
       text: 'Taranıyor…',
       tone: 'muted',
+      icon: 'Timer',
       retry: false,
     })
     const timedOut = scanRowView('timed_out')
@@ -391,6 +401,14 @@ describe('Yüklenen dosyanın güvenlik taraması (OG-987, IST-027; ADR 0003 kar
     assert.deepEqual(scanRowView('rejected'), {
       text: 'Dosya güvenlik taramasından geçmedi. Başka bir dosya yükleyin.',
       tone: 'danger',
+      icon: 'ShieldAlert',
+      retry: false,
+    })
+    // 404 (silinmiş ya da bulunamayan dosya) tarama reddi gibi gösterilmez.
+    assert.deepEqual(scanRowView('missing'), {
+      text: 'Dosya artık bulunamadı. Yeniden yükleyin.',
+      tone: 'muted',
+      icon: 'Info',
       retry: false,
     })
     for (const state of ['ready', 'pending', 'failed', undefined] as const)
@@ -402,6 +420,10 @@ describe('Yüklenen dosyanın güvenlik taraması (OG-987, IST-027; ADR 0003 kar
     assert.match(scanAnnouncement(['ready', 'processing']) ?? '', /taramasında/)
     assert.match(scanAnnouncement(['processing', 'timed_out']) ?? '', /birazdan yeniden deneyin/)
     assert.match(scanAnnouncement(['timed_out', 'rejected']) ?? '', /taramasından geçmedi/)
+    assert.equal(
+      scanAnnouncement(['processing', 'missing']),
+      'Dosya artık bulunamadı. Yeniden yükleyin.',
+    )
     assert.equal(scanAnnouncement(['ready', 'ready']), 'Dosya güvenlik taramasından geçti.')
     assert.equal(scanAnnouncement(['ready', 'pending']), null)
   })

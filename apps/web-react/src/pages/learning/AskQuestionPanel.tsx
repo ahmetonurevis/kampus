@@ -49,7 +49,8 @@ export const NEW_QUESTION = 'yeni'
  * öğretmenlerine soru gönderir (DOM-ILT-090). Soru dersin öğretmenine düşer; mükerrer gönderim
  * `Idempotency-Key` ile önlenir. Özel nitelikli bilgi uyarısı formda görünür (DOM-ILT-014).
  * En çok 3 fotoğraf seçilir seçilmez yüklenir (`student_question_photo`) ve gönderimde aynı
- * işlemle soruya bağlanır (DOM-ILT-094); yükleme sürerken gönderim kilitlidir.
+ * işlemle soruya bağlanır (DOM-ILT-094); yükleme sürerken gönderim kilitlidir, güvenlik taraması
+ * sürerken yalnız gönder düğmesi kilitlidir.
  */
 export function AskQuestionPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -110,6 +111,8 @@ function AskQuestionForm({
     defaultValues: askDefaults(),
   })
   const [uploading, setUploading] = useState(false)
+  // Taranan fotoğraf yalnız gönderimi engeller; alanlar ve vazgeç açık kalır (OG-987).
+  const [scanBlocked, setScanBlocked] = useState(false)
   const busy = ask.isPending || uploading || form.formState.isSubmitting
   const errors = form.formState.errors
   const option = optionOf(options, useWatch({ control: form.control, name: 'subjectId' }))
@@ -156,7 +159,10 @@ function AskQuestionForm({
     <form
       noValidate
       aria-label="Yeni soru"
-      onSubmit={(event) => void onSubmit(event)}
+      onSubmit={(event) => {
+        if (scanBlocked) return event.preventDefault()
+        void onSubmit(event)
+      }}
       className="grid gap-5"
     >
       <p
@@ -281,9 +287,16 @@ function AskQuestionForm({
           setUploading(next)
           if (next) form.clearErrors('files')
         }}
+        onBlockedChange={setScanBlocked}
       />
       <RootError message={errors.root?.server?.message} />
-      <FormActions busy={busy} onCancel={onClose} submitLabel="Soruyu gönder" icon="ArrowRight" />
+      <FormActions
+        busy={busy}
+        disabled={scanBlocked}
+        onCancel={onClose}
+        submitLabel="Soruyu gönder"
+        icon="ArrowRight"
+      />
     </form>
   )
 }

@@ -4,6 +4,7 @@
 // Çizimden ayrıdır; `node --test` ile sınanır.
 import { keepsIdempotencyKey, type CommandOutcome } from '@kampus/react-shared/commands.ts'
 import {
+  FILE_MISSING_MESSAGE,
   FILE_REJECTED_MESSAGE,
   FILE_SCAN_WAIT_MESSAGE,
   fileBlocksAttach,
@@ -25,16 +26,19 @@ export type FileUploadItem = {
 }
 
 /**
- * Alan meşgul mü: yükleme sürüyorsa, yeniden denenecek (ağ hatasıyla yarım kalmış) dosya varsa ya
- * da listedeki bir dosya henüz bağlanamıyorsa (taranıyor, tarama beklemesi doldu ya da taramada
- * reddedildi; `fileBlocksAttach`, OG-987). Meşgulken çağıran gönderim düğmesini açmaz; yoksa kayıt
- * eksik ya da hazır olmayan dosyayla gider. Tarayıcısız ortamın (`pending`) dosyası kilitlemez.
+ * Yükleme meşgul mü: yükleme sürüyorsa ya da yeniden denenecek (ağ hatasıyla yarım kalmış) dosya
+ * varsa. Meşgulken çağıran gönderimi açmaz; yoksa kayıt eksik dosyayla gider.
  */
-export const isUploadBusy = (
-  uploading: boolean,
-  retryCount: number,
-  fileStates: readonly FileProcessing[] = [],
-) => uploading || retryCount > 0 || fileStates.some(fileBlocksAttach)
+export const isUploadBusy = (uploading: boolean, retryCount: number) => uploading || retryCount > 0
+
+/**
+ * Tarama gönderimi engelliyor mu (OG-987): listedeki bir dosya henüz bağlanamıyorsa (taranıyor,
+ * tarama beklemesi doldu, taramada reddedildi ya da artık bulunamıyor; `fileBlocksAttach`).
+ * Yalnız gönder düğmesi kilitlenir; formun alanları ve vazgeç açık kalır. Tarayıcısız ortamın
+ * (`pending`) dosyası kilitlemez.
+ */
+export const scanBlocksSubmit = (fileStates: readonly FileProcessing[]) =>
+  fileStates.some(fileBlocksAttach)
 
 /**
  * Taraması izlenecek dosyalar: bu alanda yüklenip yanıtı `processing` gelen ve hâlâ listede
@@ -48,28 +52,38 @@ export function scanWatchIds(
 }
 
 /** Satırdaki tarama durumu: metin ve görünüm; hazır ya da izlenmeyen dosyada `null`. */
-export type ScanRowView = { text: string; tone: 'muted' | 'danger'; retry: boolean }
+export type ScanRowView = {
+  text: string
+  tone: 'muted' | 'danger'
+  icon: 'Timer' | 'ShieldAlert' | 'Info'
+  retry: boolean
+}
 
 export function scanRowView(state: FileProcessing | undefined): ScanRowView | null {
   switch (state) {
     case 'processing':
-      return { text: 'Taranıyor…', tone: 'muted', retry: false }
+      return { text: 'Taranıyor…', tone: 'muted', icon: 'Timer', retry: false }
     case 'timed_out':
-      return { text: FILE_SCAN_WAIT_MESSAGE, tone: 'muted', retry: true }
+      return { text: FILE_SCAN_WAIT_MESSAGE, tone: 'muted', icon: 'Timer', retry: true }
     case 'rejected':
-      return { text: FILE_REJECTED_MESSAGE, tone: 'danger', retry: false }
+      return { text: FILE_REJECTED_MESSAGE, tone: 'danger', icon: 'ShieldAlert', retry: false }
+    // Silinmiş ya da bulunamayan dosya: nedeni bilinmez, tarama reddi gibi gösterilmez.
+    case 'missing':
+      return { text: FILE_MISSING_MESSAGE, tone: 'muted', icon: 'Info', retry: false }
     default:
       return null
   }
 }
 
 /**
- * Alanın canlı bölgesinde (`aria-live`) duyurulan tarama özeti; en önemli durum önce: ret, süre
- * dolması, süren tarama, sonra taramadan geçiş. İzlenen dosya yoksa `null`.
+ * Alanın canlı bölgesinde (`aria-live`) duyurulan tarama özeti; en önemli durum önce: ret, bulunamama,
+ * süre dolması, süren tarama, sonra taramadan geçiş. Gönder düğmesi tarama yüzünden kilitliyken
+ * nedeni de buradan ekran okuyucuya ulaşır. İzlenen dosya yoksa `null`.
  */
 export function scanAnnouncement(states: readonly FileProcessing[]): string | null {
   if (states.length === 0) return null
   if (states.includes('rejected')) return FILE_REJECTED_MESSAGE
+  if (states.includes('missing')) return FILE_MISSING_MESSAGE
   if (states.includes('timed_out')) return FILE_SCAN_WAIT_MESSAGE
   if (states.includes('processing'))
     return 'Dosya güvenlik taramasında. Tarama bitince gönderebilirsiniz.'

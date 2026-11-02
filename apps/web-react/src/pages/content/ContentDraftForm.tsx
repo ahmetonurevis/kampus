@@ -164,6 +164,8 @@ function DraftEditor({
   const update = useUpdateDraft()
   const [type, setType] = useState<AuthorableType>(initial?.content.type ?? initialType)
   const [uploading, setUploading] = useState(false)
+  // Taranan dosya yalnız kaydeti kilitler; tür seçimi dahil alanlar açık kalır (OG-987).
+  const [scanBlocked, setScanBlocked] = useState(false)
   const [declared, setDeclared] = useState(false)
   const [declarationMissing, setDeclarationMissing] = useState(false)
   // Çözümleyici birleşim girdisini (core) doğrular; form değerleri düz tipte tutulur (yollar tipli
@@ -218,7 +220,7 @@ function DraftEditor({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (uploading) return
+    if (uploading || scanBlocked) return
     // Beyan, form hatalarıyla birlikte görünsün diye doğrulamadan önce işaretlenir.
     setDeclarationMissing(!declared)
     void submit(event)
@@ -271,7 +273,13 @@ function DraftEditor({
         </div>
       </div>
 
-      <ContentFields form={form} type={type} busy={busy} onUploadingChange={setUploading} />
+      <ContentFields
+        form={form}
+        type={type}
+        busy={busy}
+        onUploadingChange={setUploading}
+        onScanBlockedChange={setScanBlocked}
+      />
       <TagFields form={form} type={type} languageSchool={languageSchool} busy={busy} />
       <LicenseFields form={form} busy={busy} />
 
@@ -305,7 +313,7 @@ function DraftEditor({
         </Button>
         <Button
           type="submit"
-          disabled={busy || uploading || conflict.conflicted}
+          disabled={busy || uploading || scanBlocked || conflict.conflicted}
           aria-busy={busy || uploading || undefined}
         >
           <Icon name="Check" size={17} aria-hidden="true" />

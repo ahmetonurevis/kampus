@@ -17,11 +17,22 @@ import { expect, test } from './support/fixtures.ts'
 // yükleyen 422 `file_rejected` alır.
 
 const STUDENT_HOMEWORK = '/ogrenci/odevler'
+const STUDENT_QUESTIONS = '/ogrenci/soru-sor'
 
 const PDF = {
   name: 'cevaplar.pdf',
   mimeType: 'application/pdf',
   buffer: Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n', 'latin1'),
+}
+
+/** İmzası geçerli küçük PNG (içerikten tür tespiti için yeterli). */
+const PHOTO = {
+  name: 'defter-sayfasi.png',
+  mimeType: 'image/png',
+  buffer: Buffer.concat([
+    Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489', 'hex'),
+    Buffer.alloc(64),
+  ]),
 }
 
 async function setFileStatus(fileId: string, status: 'ready' | 'rejected') {
@@ -141,6 +152,11 @@ test.describe('Dosya güvenlik taraması: ödev teslimi', () => {
     await expect(
       form.getByRole('status').filter({ hasText: 'güvenlik taramasında' }),
     ).toBeAttached()
+    // Tarama yalnız teslim düğmesini kilitler: açıklama yazılmaya devam eder.
+    const note = form.getByLabel('Açıklama')
+    await expect(note).toBeEnabled()
+    await note.fill('Çözümler ekte, son hâli.')
+    await expect(note).toHaveValue('Çözümler ekte, son hâli.')
     expect(await submissionFiles(teacher, homework.id)).toHaveLength(0)
 
     // Tarama temiz bitti: yoklama dosyayı hazır görür, satır sakinleşir ve teslim açılır.
@@ -187,5 +203,48 @@ test.describe('Dosya güvenlik taraması: ödev teslimi', () => {
     await submit.click()
     await expect(page.getByText('Ödev teslim edildi.')).toBeVisible()
     expect(await submissionFiles(teacher, homework.id)).toEqual([[]])
+  })
+})
+
+test.describe('Dosya güvenlik taraması: soru fotoğrafı', () => {
+  test('tarama sürerken soru metni yazılır ve vazgeç açıktır, yalnız gönder kilitlidir (IST-027, DOM-ILT-094)', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen', 'ogrenci'] })
+    await loginAs(school.user('ogrenci'))
+    const scan = await scanUploads(page)
+    await page.goto(STUDENT_QUESTIONS)
+    await page.getByRole('button', { name: 'Yeni soru' }).click()
+    const form = page.getByRole('dialog', { name: 'Yeni soru' })
+    await form.getByLabel('Ders').selectOption({ label: 'Matematik' })
+    await form.getByLabel('Fotoğraf ekle (isteğe bağlı)').setInputFiles(PHOTO)
+    const attached = form.getByRole('list', { name: 'Eklenen fotoğraflar' })
+    await expect(attached).toContainText('Taranıyor…')
+
+    const send = form.getByRole('button', { name: 'Soruyu gönder' })
+    await expect(send).toBeDisabled()
+    await expect(form.getByRole('button', { name: 'Vazgeç' })).toBeEnabled()
+    await expect(form.getByLabel('Ders')).toBeEnabled()
+    await form.getByLabel('Konu başlığı').fill('E2E taranan fotoğraflı soru')
+    await form
+      .getByLabel('Sorunuz')
+      .fill('Üçgenin alanını bulurken yüksekliği hangi kenara göre alacağız?')
+    await expect(form.getByLabel('Sorunuz')).toHaveValue(/yüksekliği hangi kenara/)
+    // Kilidin nedeni ekran okuyucuya canlı bölgeden ulaşır.
+    await expect(
+      form.getByRole('status').filter({ hasText: 'Tarama bitince gönderebilirsiniz.' }),
+    ).toBeAttached()
+    await expect(send).toBeDisabled()
+
+    await scan.finish(scan.ids[0] as string, 'ready')
+    await expect(attached).not.toContainText('Taranıyor…')
+    await expect(send).toBeEnabled()
+    await send.click()
+    await expect(
+      page.locator('[data-sonner-toast]').filter({ hasText: 'Sorunuz öğretmeninize iletildi.' }),
+    ).toBeVisible()
+    await expect(form).toBeHidden()
   })
 })

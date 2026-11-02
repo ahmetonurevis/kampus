@@ -74,13 +74,21 @@ export function filesError(form: DraftForm): { message: string } | undefined {
 type ContentProps = Omit<FieldsProps, 'languageSchool'> & {
   /** Dosya yüklemesi sürerken `true`; form kaydet düğmesini kilitler. */
   onUploadingChange: (uploading: boolean) => void
+  /** Taranan dosya kaydı engelliyor (OG-987): yalnız kaydet kilitlenir. */
+  onScanBlockedChange: (blocked: boolean) => void
 }
 
 /**
  * İçerik gövdesi: okuma metni ve sözlükçesi, çoktan seçmeli soru (kök, seçenekler, doğru cevap,
  * çözüm) ya da materyal dosyaları.
  */
-export function ContentFields({ form, type, busy, onUploadingChange }: ContentProps) {
+export function ContentFields({
+  form,
+  type,
+  busy,
+  onUploadingChange,
+  onScanBlockedChange,
+}: ContentProps) {
   return (
     <div className="grid gap-5">
       {type === 'reading_passage' ? (
@@ -93,7 +101,12 @@ export function ContentFields({ form, type, busy, onUploadingChange }: ContentPr
           <GlossaryFields form={form} busy={busy} />
         </>
       ) : type === 'file' ? (
-        <MaterialFileFields form={form} busy={busy} onUploadingChange={onUploadingChange} />
+        <MaterialFileFields
+          form={form}
+          busy={busy}
+          onUploadingChange={onUploadingChange}
+          onScanBlockedChange={onScanBlockedChange}
+        />
       ) : (
         <QuestionFields form={form} busy={busy} />
       )}
@@ -223,10 +236,12 @@ function MaterialFileFields({
   form,
   busy,
   onUploadingChange,
+  onScanBlockedChange,
 }: {
   form: DraftForm
   busy: boolean
   onUploadingChange: (uploading: boolean) => void
+  onScanBlockedChange: (blocked: boolean) => void
 }) {
   const files = useWatch({ control: form.control, name: 'files' }) ?? []
   const clear = () => {
@@ -262,6 +277,7 @@ function MaterialFileFields({
         onUploadingChange(uploading)
         if (uploading) clear()
       }}
+      onBlockedChange={onScanBlockedChange}
     />
   )
 }

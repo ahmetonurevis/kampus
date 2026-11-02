@@ -7,14 +7,16 @@ import { buildDashboardCards, type DashboardCard } from './dashboard-cards-model
 import { ADMIN_CARDS } from './AdminCards.tsx'
 import { ADMIN_TREND_CARDS } from './AdminTrendCards.tsx'
 import { SLA_CARDS } from './AdminSlaCard.tsx'
-import { ENROLLMENT_CARDS } from './HandoverEnrollmentCards.tsx'
-import { FINANCE_CARDS } from './HandoverFinanceCards.tsx'
 import { GRADE_TREND_CARDS } from './GradeTrendCards.tsx'
 import { LEARNER_CARDS } from './LearnerCards.tsx'
 import { NEWS_CARDS } from './NewsCard.tsx'
 import { STUDENT_CARDS } from './StudentCards.tsx'
 import { TEACHER_CARDS } from './TeacherCards.tsx'
 import { TEACHER_QUESTION_CARDS } from './TeacherQuestionCards.tsx'
+// Onur: kayıt ve finans
+import { ENROLLMENT_CARDS } from '../crm/EnrollmentDashboardCards.tsx'
+import { FINANCE_CARDS } from '../finance/FinanceDashboardCards.tsx'
+// Onur: kayıt ve finans sonu
 
 // Oğuzhan: akademik ve kurum kartları.
 const OGUZHAN_CARDS: readonly DashboardCard[] = [
@@ -29,15 +31,10 @@ const OGUZHAN_CARDS: readonly DashboardCard[] = [
   ...NEWS_CARDS,
 ]
 
-// Onur'a devredilecek: bileşenleri Oğuzhan'ın dosyalarında duran finans ve kayıt kartları. Onur
-// kartı `pages/finance/` ya da `pages/management/` altına taşıyıp girişini aşağıdaki Onur bloğuna
-// alır ve buradan siler.
-const DEVREDILECEK_CARDS: readonly DashboardCard[] = [...FINANCE_CARDS, ...ENROLLMENT_CARDS]
-
 // Onur: kayıt ve finans
 // Kendi dosyasında `defineCard({ id, roles, module, area, order, component })` ile yazılmış kartlar
-// buraya içe aktarılıp eklenir; örn. `import { COLLECTION_CARDS } from '../finance/DashboardCards.tsx'`.
-const ONUR_CARDS: readonly DashboardCard[] = []
+// buraya içe aktarılıp eklenir.
+const ONUR_CARDS: readonly DashboardCard[] = [...FINANCE_CARDS, ...ENROLLMENT_CARDS]
 // Onur: kayıt ve finans sonu
 
-export const DASHBOARD_CARDS = buildDashboardCards(OGUZHAN_CARDS, DEVREDILECEK_CARDS, ONUR_CARDS)
+export const DASHBOARD_CARDS = buildDashboardCards(OGUZHAN_CARDS, ONUR_CARDS)

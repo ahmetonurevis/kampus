@@ -692,6 +692,29 @@ test.describe('Finans: liste', () => {
     )
   })
 
+  test('IST-116: pano "Gecikmiş tutar" Finans toplamıyla aynıdır, kampüs seçilince çizilmez', async ({
+    page,
+    api,
+  }) => {
+    const client = await api('yonetici')
+    await page.goto('/yonetici/dashboard')
+    const card = page.getByRole('article', { name: 'Gecikmiş tutar', exact: true })
+    await expect
+      .poll(async () => {
+        const result = await client.get('/api/v1/finance/totals')
+        expect(result.status).toBe(200)
+        const { data } = result.body as { data: { overdueCents: number } }
+        const shown = cents(await card.locator('.stat-value').textContent())
+        return shown === data.overdueCents ? 'eşit' : `${shown} != ${data.overdueCents}`
+      })
+      .toBe('eşit')
+
+    // Uç kurum genelidir: seçili kampüsün rakamı sanılmasın diye kart çizilmez.
+    await page.goto('/yonetici/dashboard?sube=b2')
+    await expect(page.getByRole('article', { name: 'Bekleyen tahsilat' })).toBeVisible()
+    await expect(card).toHaveCount(0)
+  })
+
   test('durum filtresi sunucuda sayfalanır; ikinci sayfa aynı durumu verir', async ({ page }) => {
     const requests: string[] = []
     page.on('request', (request) => {

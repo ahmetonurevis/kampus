@@ -302,6 +302,9 @@ export function prepareProfile(state: State, session: Session, input: unknown, p
     })
   const data = automationSchemas.profile.parse(input),
     exam = record(state.mockExams, data.examId)
+  // Düzenlenen profil önce aranır: olmayan (ya da başka kurumun) kimliği 404'tür; sınav çakışması
+  // 409'u kimliğin bu kurumda bulunmadığını gizleyip sınavın profilini ele vermez (IST-002).
+  const existing = profileId ? record(state.opticalProfiles, profileId) : null
   if (state.opticalProfiles.some((p) => p.examId === exam.id && p.id !== profileId))
     throw new DomainError(
       'optical_profile_exists',
@@ -337,7 +340,6 @@ export function prepareProfile(state: State, session: Session, input: unknown, p
         'Kitapçık alanı kodu içerecek kadar uzun olmalıdır.',
       )
   }
-  const existing = profileId ? record(state.opticalProfiles, profileId) : null
   if (existing && existing.examId !== exam.id)
     throw new DomainError('optical_profile_exam_locked', 'Profilin sınavı değiştirilemez.')
   return {

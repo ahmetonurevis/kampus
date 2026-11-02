@@ -1643,6 +1643,15 @@ function maskAuditValues(
   }
 }
 
+/** Çevrimdışı demo oturumunda denetim girdisinin kişisi (oturum `userId` taşımıyorsa). */
+function demoAuditUserId(state: State, session: Session): string {
+  if (session.role === 'ogretmen') return sessionTeacherId(state, session) ?? ''
+  if (session.role === 'ogrenci')
+    return linkedRecordId(sessionActor(state, session), 'student') ?? ''
+  if (session.role === 'veli') return DEMO_PARENT_ID
+  return `demo-${session.role}`
+}
+
 /**
  * Okul iş akışı komutunu çalıştırır ve denetim kaydını yazar. Komut sabit verilince dönüş tipi o
  * komutun sonucudur (`WorkflowResult<'goal'>`); dışarıdan gelen dize komutta bütün sonuçların
@@ -1721,15 +1730,9 @@ export function runWorkflow(
   const entry: RecordAuditEntry = {
     id: makeId('audit'),
     actor: session.role,
-    // TODO(core-audit-user): kişi kimliği oturumdan gelince veli ve idari roller de kişiye bağlanır.
-    user_id:
-      session.role === 'ogretmen'
-        ? (sessionTeacherId(state, session) ?? '')
-        : session.role === 'ogrenci'
-          ? (linkedRecordId(sessionActor(state, session), 'student') ?? '')
-          : session.role === 'veli'
-            ? DEMO_PARENT_ID
-            : `demo-${session.role}`,
+    // Oturum kişi kimliğini taşıyorsa (API) denetim ona bağlanır; taşımıyorsa (çevrimdışı demo)
+    // rolün demo kişisi yazılır.
+    user_id: session.userId ?? demoAuditUserId(state, session),
     action: command,
     table_name: collection,
     record_id: recordId || resultId || command,

@@ -46,9 +46,16 @@ export interface ContractTerms {
   approvedByUserId: string
   payer: 'guardian' | 'student'
 }
-// Oturum: rol ve velinin seçili çocuğu. API oturumu üyelik bağlantılarını (`links`) da taşır;
-// çevrimdışı demoda bağlantılar sabit demo kimliklerinden türetilir (`lib/scope.ts`).
-export type Session = { role: Role; childId?: string; links?: readonly ActorLink[] }
+// Oturum: rol ve velinin seçili çocuğu. API oturumu üyelik bağlantılarını (`links`) ve işlemi
+// yapan kişinin kullanıcı kimliğini (`userId`) da taşır; çevrimdışı demoda bağlantılar sabit demo
+// kimliklerinden türetilir (`lib/scope.ts`) ve `userId` verilmez (denetimde demo kimliği yazılır).
+export type Session = {
+  role: Role
+  childId?: string
+  links?: readonly ActorLink[]
+  // kvkk: K — işlemi yapan kişinin kimliği; denetim girdisinin `user_id` alanına yazılır.
+  userId?: string
+}
 export type BankQuestion = (typeof questionBank)[number]
 
 export function installmentAmounts(cents: number, count: number) {

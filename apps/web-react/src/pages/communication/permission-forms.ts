@@ -9,8 +9,11 @@ import {
   PERMISSION_STATUS_LABELS,
   PERMISSION_TOPIC_LABELS,
   permissionErrorField,
+  type PermissionFormDecision,
+  type PermissionFormDetail,
   type PermissionFormKind,
   type PermissionFormListItem,
+  type PermissionFormStudent,
   type PermissionStatus,
   type UpdatePermissionFormBody,
 } from '@kampus/react-shared/permission-forms.ts'
@@ -312,6 +315,63 @@ export const permissionStatusText = (status: PermissionStatus) => PERMISSION_STA
 
 export const permissionStatusTone = (status: PermissionStatus): BadgeTone =>
   status === 'approved' ? 'green' : status === 'rejected' ? 'red' : 'amber'
+
+// --- Veli ve öğrenci kararı ------------------------------------------------------
+
+/** Karar formu: yalnız isteğe bağlı not; onay/ret düğmeyle seçilir (DOM-ILT-037). */
+export const decisionFormSchema = z.object({
+  note: z
+    .string()
+    .trim()
+    .max(
+      PERMISSION_NOTE_MAX_LENGTH,
+      `Not en fazla ${PERMISSION_NOTE_MAX_LENGTH} karakter olabilir.`,
+    ),
+})
+export type DecisionFormValues = z.input<typeof decisionFormSchema>
+
+/** Kararı kim veriyor: `guardian` 18 yaş altı çocuk için veli, `student` öğrencinin kendisi. */
+export type DecisionAudience = 'guardian' | 'student'
+
+/** Seçili çocuğun (öğrencinin) bu formdaki hedef satırı; hedef değilse `undefined`. */
+export const studentEntry = (
+  form: Pick<PermissionFormDetail, 'students'>,
+  studentId: string,
+): PermissionFormStudent | undefined => form.students.find((entry) => entry.studentId === studentId)
+
+/**
+ * Okuyanın verdiği son karar: sunucu kararları karar anına göre sıralar ve veliye yalnız kendi
+ * kararını, öğrenciye kendisininkini döner; `mine` işaretlisinin sonuncusu geçerli kararıdır.
+ */
+export function myDecision(
+  entry: Pick<PermissionFormStudent, 'decisions'> | undefined,
+): PermissionFormDecision | undefined {
+  return entry?.decisions.findLast((decision) => decision.mine)
+}
+
+/**
+ * Çocuğun formları: listede çocuğun hedef olduğu formlar; karar alanlar önce, sonra son günü yakın
+ * olan. Veli listesi tüm çocuklarını taşır, çocuk bazında süzme istemcide yapılır.
+ */
+export function formsForStudent(
+  items: readonly PermissionFormListItem[],
+  studentId: string,
+): PermissionFormListItem[] {
+  return items
+    .filter((item) => item.studentIds.includes(studentId))
+    .sort(
+      (a, b) =>
+        Number(b.acceptingDecisions) - Number(a.acceptingDecisions) ||
+        a.deadline.localeCompare(b.deadline) ||
+        a.id.localeCompare(b.id),
+    )
+}
+
+/** Karar özeti: "Onayladınız" ya da "Henüz karar vermediniz". */
+export function myDecisionText(decision: PermissionFormDecision | undefined): string {
+  if (!decision) return 'Henüz karar vermediniz.'
+  return decision.decision === 'approved' ? 'Onayladınız.' : 'Reddettiniz.'
+}
 
 // --- Hata yönlendirme ------------------------------------------------------------
 

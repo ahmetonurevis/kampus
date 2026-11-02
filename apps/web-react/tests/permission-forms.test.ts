@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
-import type { PermissionFormListItem } from '@kampus/react-shared/permission-forms.ts'
+import type {
+  PermissionFormDecision,
+  PermissionFormListItem,
+} from '@kampus/react-shared/permission-forms.ts'
 
 import {
   changedPermissionFormFields,
   countsSummary,
+  decisionFormSchema,
   extraTargetStudentIds,
+  formsForStudent,
+  myDecision,
+  myDecisionText,
   permissionActions,
   permissionFormDefaults,
   permissionFormRow,
@@ -14,6 +21,7 @@ import {
   permissionFormState,
   planPermissionFormUpdate,
   removedFromTarget,
+  studentEntry,
   targetChanged,
   type PermissionFormOutput,
 } from '../src/pages/communication/permission-forms.ts'
@@ -241,5 +249,68 @@ describe('liste satırı (DOM-ILT-038)', () => {
     assert.equal(row.topic, 'Gezi')
     assert.equal(row.status, 'Açık')
     assert.ok(row.deadlineLabel.includes('2026'))
+  })
+})
+
+describe('veli ve öğrenci kararı (DOM-ILT-030, DOM-ILT-037, DOM-ILT-038)', () => {
+  const decision = (overrides: Partial<PermissionFormDecision> = {}): PermissionFormDecision => ({
+    id: 'd1',
+    decision: 'approved',
+    note: '',
+    relation: 'guardian',
+    decidedAt: '2026-11-02T08:00:00.000Z',
+    mine: true,
+    decidedByUserId: null,
+    ...overrides,
+  })
+
+  test('not isteğe bağlıdır, kırpılır ve 500 karakteri aşamaz', () => {
+    assert.equal(decisionFormSchema.safeParse({ note: '' }).success, true)
+    assert.equal(decisionFormSchema.safeParse({ note: '  servisle  ' }).data?.note, 'servisle')
+    const long = decisionFormSchema.safeParse({ note: 'a'.repeat(501) })
+    assert.equal(long.success, false)
+    assert.equal(long.error?.issues[0]?.message, 'Not en fazla 500 karakter olabilir.')
+  })
+
+  test('geçerli karar okuyanın en son kararıdır; başkasının satırı sayılmaz', () => {
+    const entry = {
+      decisions: [
+        decision({ id: 'd1', decision: 'approved' }),
+        decision({ id: 'd0', decision: 'approved', mine: false }),
+        decision({ id: 'd2', decision: 'rejected', note: 'Vazgeçtim' }),
+      ],
+    }
+    assert.equal(myDecision(entry)?.id, 'd2')
+    assert.equal(myDecisionText(myDecision(entry)), 'Reddettiniz.')
+    assert.equal(myDecision({ decisions: [decision({ mine: false })] }), undefined)
+    assert.equal(myDecisionText(undefined), 'Henüz karar vermediniz.')
+    assert.equal(myDecisionText(decision()), 'Onayladınız.')
+  })
+
+  test('çocuğun satırı yalnız hedef olduğu formda bulunur', () => {
+    const students = [
+      { studentId: 's1', status: 'pending' as const, decisions: [] },
+      { studentId: 's2', status: 'approved' as const, decisions: [] },
+    ]
+    assert.equal(studentEntry({ students }, 's2')?.status, 'approved')
+    assert.equal(studentEntry({ students }, 's9'), undefined)
+  })
+
+  test('çocuk bazlı liste: karar alanlar önce, sonra yakın son gün; başka çocuğun formu yok', () => {
+    const items = [
+      item({ id: 'a', deadline: '2026-12-05', studentIds: ['s1'] }),
+      item({ id: 'b', deadline: '2026-11-20', studentIds: ['s1', 's2'] }),
+      item({ id: 'c', deadline: '2026-11-01', studentIds: ['s1'], acceptingDecisions: false }),
+      item({ id: 'd', deadline: '2026-11-10', studentIds: ['s2'] }),
+    ]
+    assert.deepEqual(
+      formsForStudent(items, 's1').map((form) => form.id),
+      ['b', 'a', 'c'],
+    )
+    assert.deepEqual(
+      formsForStudent(items, 's2').map((form) => form.id),
+      ['d', 'b'],
+    )
+    assert.deepEqual(formsForStudent(items, 's3'), [])
   })
 })

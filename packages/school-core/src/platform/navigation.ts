@@ -73,8 +73,18 @@ export const API_COMMUNICATION_PAGES: Record<Role, readonly NavigationPage[]> = 
       'Rehber olduğunuz sınıflar için izin formu açın; onay durumunu izleyin.',
     ),
   ],
-  ogrenci: [],
-  veli: [],
+  ogrenci: [
+    permissionFormsPage(
+      'İzin Formlarım',
+      '18 yaşını doldurduysanız izin formlarına kendiniz karar verirsiniz; değilseniz velinizin kararını burada izlersiniz.',
+    ),
+  ],
+  veli: [
+    permissionFormsPage(
+      'Onay Bekleyenler',
+      'Okulun çocuğunuz için istediği izinleri onaylayın ya da reddedin.',
+    ),
+  ],
 }
 
 // İçerik havuzu (ADR 0004, docs/domain/kaynak-platformu.md): yalnız içerik personeli (yönetici,

@@ -5,7 +5,7 @@ import { PERMISSION_FORM_TOPICS } from '@kampus/school-core/lib/permission-forms
 
 import { runRequest } from './api-result.ts'
 import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
-import type { ListPage } from './institution-lists.ts'
+import { fetchAllPages, type ListPage } from './institution-lists.ts'
 
 /**
  * İzin formu uçlarının (`/permission-forms`, IST-067; DOM-ILT-030, -031, -036…039) saf
@@ -227,6 +227,19 @@ export async function fetchPermissionFormPage(
 ): Promise<ListPage<PermissionFormListItem>> {
   const body = await runRequest(() => listPermissionFormsRequest(client, query, signal))
   return { rows: body.data, ...body.meta }
+}
+
+/** Süzgece uyan bütün formlar (veli ve öğrencinin çocuk bazlı listesi; sayfa istemcide süzülür). */
+export function fetchAllPermissionForms(
+  client: KampusClient,
+  query: Omit<PermissionFormListQuery, 'page' | 'pageSize'>,
+  signal?: AbortSignal,
+): Promise<PermissionFormListItem[]> {
+  return fetchAllPages<PermissionFormListQuery, PermissionFormListItem>(
+    (page, pageSignal) => fetchPermissionFormPage(client, page, pageSignal),
+    query,
+    signal,
+  )
 }
 
 export function getPermissionFormRequest(

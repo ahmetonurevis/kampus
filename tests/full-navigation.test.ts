@@ -49,9 +49,11 @@ test('Her yol rol içinde tek kez geçer; hesap grubu varsa iletişim ondan önc
 })
 
 test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () => {
+  // Öğrenci ve veli için yalnız izin formu API'ye özgüdür (IST-067); duyuru ve mesaj temel menüde.
   for (const role of ['ogrenci', 'veli'] as const)
-    assert.ok(
-      navigation[role].every((p) => !p.apiOnly),
+    assert.deepEqual(
+      navigation[role].filter((p) => p.apiOnly).map((p) => p.path),
+      ['izin-formlari'],
       `${role}`,
     )
   assert.deepEqual(
@@ -60,13 +62,13 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
   )
 })
 
-test('İzin formu sayfası yönetici ve öğretmende; ön büroda yok (IST-067, DOM-ILT-030)', () => {
+test('İzin formu sayfası ön büro dışındaki dört rolde, role göre adlı (IST-067, DOM-ILT-030)', () => {
   const titles: Record<Role, string | null> = {
     yonetici: 'İzin Formları',
     onburo: null,
     ogretmen: 'İzin Formları',
-    ogrenci: null,
-    veli: null,
+    ogrenci: 'İzin Formlarım',
+    veli: 'Onay Bekleyenler',
   }
   for (const role of roleKeys) {
     const page = navigation[role].find((p) => p.path === 'izin-formlari')

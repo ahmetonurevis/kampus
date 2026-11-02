@@ -6,6 +6,7 @@ import {
   closePermissionFormCommand,
   createPermissionFormCommand,
   decidePermissionCommand,
+  fetchAllPermissionForms,
   fetchPermissionFormPage,
   getPermissionFormRequest,
   permissionFormItemKey,
@@ -35,6 +36,20 @@ export function usePermissionFormList(query: PermissionFormListQuery, options: O
     queryFn: ({ signal }) => fetchPermissionFormPage(client, query, signal),
     enabled: institutionId !== null && (options.enabled ?? true),
     placeholderData: keepPreviousData,
+  })
+}
+
+/** Süzgece uyan bütün formlar; veli ve öğrenci ekranı tek listeyi çocuk bazında süzer. */
+export function useAllPermissionForms(
+  query: Omit<PermissionFormListQuery, 'page' | 'pageSize'>,
+  options: Options = {},
+) {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQuery({
+    queryKey: institutionKey(institutionId, ...permissionFormListKey(query), 'all'),
+    queryFn: ({ signal }) => fetchAllPermissionForms(client, query, signal),
+    enabled: institutionId !== null && (options.enabled ?? true),
   })
 }
 

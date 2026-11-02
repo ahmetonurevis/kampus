@@ -59,6 +59,8 @@ export const PLATFORM_MIGRATED: readonly string[] = [
   'veli/randevu-mesaj',
   'yonetici/izin-formlari',
   'ogretmen/izin-formlari',
+  'veli/izin-formlari',
+  'ogrenci/izin-formlari',
   'ogrenci/randevu-talep',
   'ogretmen/randevular',
   'ogrenci/sinav-analizi',

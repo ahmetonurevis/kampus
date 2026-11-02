@@ -14,6 +14,7 @@ import {
   decidePermissionCommand,
   decidePermissionRequest,
   decisionBlockedReason,
+  fetchAllPermissionForms,
   fetchPermissionFormPage,
   hasDecisions,
   isPermissionVersionConflict,
@@ -205,6 +206,22 @@ describe('izin formu istekleri (IST-067)', () => {
     assert.equal(page.total, 1)
     assert.equal(page.rows[0]?.id, FORM)
     assert.equal(sent[0]?.search.get('status'), 'open')
+  })
+
+  test('bütün sayfalar okunur ve süzgeç her sayfada taşınır (veli ve öğrenci listesi)', async () => {
+    const { client, sent } = fakeClient((request) => {
+      const page = Number(request.search.get('page') ?? '1')
+      const counts = { pending: 1, approved: 0, rejected: 0, total: 1 }
+      const rows =
+        page === 1
+          ? Array.from({ length: 100 }, () => ({ ...form(), counts }))
+          : [{ ...form(), counts }]
+      return json(200, { data: rows, meta: { page, pageSize: 100, total: 101 } })
+    })
+    const rows = await fetchAllPermissionForms(client, { status: 'open' })
+    assert.equal(rows.length, 101)
+    assert.equal(sent.length, 2)
+    assert.ok(sent.every((item) => item.search.get('status') === 'open'))
   })
 
   test('yazma yalnız izin formu sorgularını tazeler', () => {

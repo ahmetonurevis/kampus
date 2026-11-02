@@ -12,6 +12,7 @@ import {
   type RecordData,
 } from '../../../apps/api/src/db/collections.ts'
 import { insertMissingRecords } from '../../../apps/api/src/db/records.ts'
+import { studentIdentities } from '../../../apps/api/src/db/schema/student-identities.ts'
 import {
   ensureInstitution,
   ensureInstitutionSettings,
@@ -61,11 +62,19 @@ const ROLE_LINKS: Record<RoleKey, readonly MembershipLinkInput[]> = {
   ],
 }
 
+/** Rolün kayıt bağlantıları; velinin çocukları `childIds` ile değiştirilebilir. */
+const linksOf = (role: RoleKey, options: TenantOptions): readonly MembershipLinkInput[] =>
+  role === 'veli' && options.childIds
+    ? options.childIds.map((recordId) => ({ kind: 'child' as const, recordId }))
+    : ROLE_LINKS[role]
+
 export interface TenantOptions {
   /** Kurum türü; verilmezse `school`. Dil okulu için `language_school`. */
   type?: InstitutionType
   /** Yöneticiden başka hesabı açılacak roller; yönetici her kurumda vardır (kurumu o açar). */
   roles: readonly RoleKey[]
+  /** Veli hesabının çocukları (varsayılan s1 ve s2); çocukların kayıtları kuruma konur. */
+  childIds?: readonly string[]
   /** Kuruma konacak öğrenci kimlikleri (ve kendi attendance/grades/invoices/contracts kayıtları). */
   students?: readonly string[]
   /** Bu sınıfların bütün öğrencileri de konur. */
@@ -77,6 +86,11 @@ export interface TenantOptions {
    * yazan uç yoksa doğrudan veritabanına konur. Kimlik `recordKey` kuralıyla (`id`) belirlenir.
    */
   records?: readonly { collection: CollectionName; data: RecordData }[]
+  /**
+   * Öğrenci kimliğine yazılan doğum tarihleri (`öğrenci kimliği → YYYY-MM-DD`; seed'de kimlik
+   * satırı yoktur). 18 yaşını dolduran öğrenci izni kendisi verir (DOM-ILT-037).
+   */
+  birthDates?: Readonly<Record<string, string>>
   /** Bu eğitim yıllarına yayımlanmış tarife konur (yenileme ve kesin kayıt önkoşulu). */
   tariffYears?: readonly ('current' | 'next')[]
 }
@@ -112,7 +126,7 @@ function tenantRecords(options: TenantOptions, now: Date) {
 
   const kept = new Set(options.students ?? [])
   for (const role of options.roles)
-    for (const link of ROLE_LINKS[role]) if (link.kind !== 'teacher') kept.add(link.recordId)
+    for (const link of linksOf(role, options)) if (link.kind !== 'teacher') kept.add(link.recordId)
   const classes = new Set(options.classes ?? [])
   for (const student of state.students) if (classes.has(student.classId)) kept.add(student.id)
 
@@ -220,10 +234,19 @@ export function createTenantFactory(): TenantFactory {
         userId,
         role: ACCOUNT_ROLES[role],
       })
-      await ensureMembershipLinks(db, institutionId, id, ROLE_LINKS[role])
+      await ensureMembershipLinks(db, institutionId, id, linksOf(role, options))
     }
 
     await insertMissingRecords(db, institutionId, tenantRecords(options, now), now)
+    for (const [studentId, birthDate] of Object.entries(options.birthDates ?? {}))
+      await db.insert(studentIdentities).values({
+        institutionId,
+        studentId,
+        academicYear,
+        identityKind: 'foreign',
+        identityNumber: `E2E-${suffix}-${studentId}`,
+        birthDate,
+      })
     return {
       institutionId,
       user: (role) => {

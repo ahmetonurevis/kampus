@@ -290,11 +290,11 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 
 ### DOM-YTK-057 · Rızayı kim verir
 
-- **Kural:** Öğrenciye ait amaçlarda (fotoğraf/video, konuşma kaydı) rızayı öğrenci 18 yaşını doldurana kadar yalnız doğrulanmış bağı ve velayeti bulunan veli, 18 yaşını doldurduğu günden itibaren (Europe/Istanbul günü) yalnız öğrencinin kendisi verir. Doğum tarihi bilinmeyen öğrenci 18 yaş altı sayılır. Hesaba ait amaçta (tanıtım iletisi) rızayı yalnız hesap sahibi (veli ya da 18 yaşını doldurmuş öğrenci) verir; 18 yaş altı öğrenciden alınmaz. Personel rıza vermez. Kapsam dışı öğrenci "bulunamadı" alır.
+- **Kural:** Öğrenciye ait amaçlarda (fotoğraf/video, konuşma kaydı) rızayı öğrenci 18 yaşını doldurana kadar yalnız doğrulanmış bağı ve velayeti bulunan veli, 18 yaşını doldurduğu günden itibaren (Europe/Istanbul günü) yalnız öğrencinin kendisi verir. Doğum tarihi bilinmeyen öğrenci 18 yaş altı sayılır. Rızanın geçerliliği her kullanımda öğrencinin güncel doğum tarihiyle yeniden denetlenir: velinin rızası yalnız öğrenci 18 yaş altındayken, öğrencinin kendi rızası yalnız 18 yaşını doldurmuşken geçerlidir; doğum tarihi sonradan girilip öğrencinin 18 yaşını doldurduğu anlaşılırsa velinin rızası o anda düşer. Doğum tarihi hâlâ bilinmiyorsa velinin rızası geçerli kalır (rızayı o durumda yalnız veli verebilir; geçersiz saymak rızayı hiç alınamaz kılar). Hesaba ait amaçta (tanıtım iletisi) rızayı yalnız hesap sahibi (veli ya da 18 yaşını doldurmuş öğrenci) verir; 18 yaş altı öğrenciden alınmaz. Personel rıza vermez. Kapsam dışı öğrenci "bulunamadı" alır.
 - **Gerekçe:** Reşit olmayanın yasal temsilcisi velayet sahibidir; ergin kişinin rızasını başkası veremez (`DOM-YTK-025`, `DOM-YTK-031`).
 - **Kaynak:** TMK md. 11, 335, 342; KVKK md. 3/1-a, 5. Velayeti olmayan ebeveynin rıza veremeyeceği yorumu **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `lib/consents.ts` `requireConsentAuthority`, `canGiveConsent`, `isAdultStudent`. Velayet ve doğrulama bilgisi çağırandan (`GuardianBond`) gelir; üyelik bağlantısı bugün velayet taşımaz (`TODO(velayet-kapsam)`). Ergin kılınma ve kısıtlılık (`DOM-YTK-031`, `DOM-YTK-032`) yok.
+- **Kodda:** kısmen — `lib/consents.ts` `requireConsentAuthority`, `canGiveConsent`, `isAdultStudent`; geçerlilikte güncel yaş `hasValidConsent` (veri sahibi öğrenci kaydıyla sorgulanır). Velayet ve doğrulama bilgisi çağırandan (`GuardianBond`) gelir; üyelik bağlantısı bugün velayet taşımaz (`TODO(velayet-kapsam)`). Ergin kılınma ve kısıtlılık (`DOM-YTK-031`, `DOM-YTK-032`) yok.
 
 ### DOM-YTK-058 · Rıza amaca ve metin sürümüne bağlıdır, tek etkin rıza
 
@@ -318,7 +318,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Gerekçe:** Rıza bilgilendirilmiş olmalıdır; kişi görmediği amaca rıza vermiş sayılmaz.
 - **Kaynak:** KVKK md. 3/1-a; guvenlik-kvkk §9. Düzeltme sürümünün yeniden rıza istemeyeceği yorumu **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `lib/privacy-notices.ts` `minimumConsentTextVersion`; `hasValidConsent` `minimumTextVersion`.
+- **Kodda:** kısmen — `lib/privacy-notices.ts` `minimumConsentTextVersion`; `hasValidConsent` alt sınırı çağıranın verdiği metin listesinden kendisi hesaplar (ayrı sayı almaz, unutulamaz).
 
 ### DOM-YTK-061 · Rızaya bağlı işlem geçerli rıza ister
 
@@ -330,11 +330,11 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 
 ### DOM-YTK-062 · Öğrencinin fotoğraf itirazı
 
-- **Kural:** 18 yaş altı öğrenci fotoğraf/video amaçlarında kendisi için itiraz kaydeder; itiraz etkinken velinin rızası geçersizdir, itiraz geri çekilince rıza yeniden geçerlidir. İtirazı yalnız öğrenci geri çeker; itiraz edilemeyen amaçta ve 18 yaşını doldurmuş öğrencide itiraz kaydı alınmaz.
+- **Kural:** 18 yaş altı öğrenci fotoğraf/video amaçlarında kendisi için itiraz kaydeder; itiraz etkinken velinin rızası geçersizdir, itiraz geri çekilince rıza yeniden geçerlidir. İtiraz yalnız velinin rızasına karşıdır ve etkisi öğrencinin 18 yaşını doldurduğu gün (Europe/Istanbul) biter; 18 yaşını dolduran öğrencinin kendi rızası eski itirazdan etkilenmez. İtirazı yalnız öğrenci geri çeker; itiraz edilemeyen amaçta ve 18 yaşını doldurmuş öğrencide itiraz kaydı alınmaz.
 - **Gerekçe:** Ayırt etme gücüne sahip küçüğün görüntüsü kişiliğine sıkı sıkıya bağlıdır (`DOM-ILT-033`).
 - **Kaynak:** TMK md. 16/1; işletme kuralı (`DOM-ILT-033`).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `lib/consents.ts` `planConsent` (`decision: 'objected'`), `hasValidConsent`.
+- **Kodda:** kısmen — `lib/consents.ts` `planConsent` (`decision: 'objected'`; bitiş 18. yaş günü), `hasValidConsent` (itiraz güncel yaşla yalnız 18 yaş altında etkili).
 
 ## Mevcut kodla farklar
 

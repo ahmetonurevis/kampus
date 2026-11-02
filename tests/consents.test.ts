@@ -512,18 +512,16 @@ describe('rıza verme (IST-017, DOM-YTK-058)', () => {
     assert.equal(minimumConsentTextVersion(texts, 'speaking_recording'), 1)
     assert.throws(() => give({ texts }), isDomainError('consent_text_outdated', 'conflict'))
     const old = record(1)
-    assert.equal(
-      hasValidConsent([old], { subjectId: 's1', purpose: 'photo_video_sharing' }, NOW),
-      true,
-    )
-    assert.equal(
-      hasValidConsent(
-        [old],
-        { subjectId: 's1', purpose: 'photo_video_sharing', minimumTextVersion: 2 },
-        NOW,
-      ),
-      false,
-    )
+    const photo = {
+      purpose: 'photo_video_sharing',
+      subject: { kind: 'student', student: MINOR },
+    } as const
+    assert.equal(hasValidConsent([old], { ...photo, texts: TEXTS }, NOW), true)
+    // Alt sınır çağırandan sayı olarak alınmaz, metin listesinden hesaplanır; unutulamaz.
+    assert.equal(hasValidConsent([old], { ...photo, texts }, NOW), false)
+    // Metin listesi yüklenmemişse (amacın rıza metni yok) rıza sayılmaz.
+    assert.equal(hasValidConsent([old], { ...photo, texts: [] }, NOW), false)
+    assert.equal(hasValidConsent([old], { ...photo, texts: [SPEAKING_TEXT] }, NOW), false)
     const renewed = give({
       texts,
       consents: [old],
@@ -541,15 +539,25 @@ describe('rıza verme (IST-017, DOM-YTK-058)', () => {
 })
 
 describe('geçerli rıza ve geri çekme (DOM-YTK-059, DOM-YTK-061)', () => {
-  const query = { subjectId: 's1', purpose: 'photo_video_sharing' } as const
+  const query = {
+    purpose: 'photo_video_sharing',
+    subject: { kind: 'student', student: MINOR },
+    texts: TEXTS,
+  } as const
 
   test('DOM-YTK-061 geçerli rıza: veri sahibi, amaç, tür, başlangıç ve bitiş', () => {
     const consent = record(1)
     assert.equal(hasValidConsent([consent], query, NOW), true)
     assert.equal(hasValidConsent([], query, NOW), false)
-    assert.equal(hasValidConsent([consent], { ...query, subjectId: 's9' }, NOW), false)
+    const other = { kind: 'student', student: { id: 's9', birthDate: null } } as const
+    assert.equal(hasValidConsent([consent], { ...query, subject: other }, NOW), false)
     assert.equal(hasValidConsent([consent], { ...query, purpose: 'photo_video_print' }, NOW), false)
-    assert.equal(hasValidConsent([consent], { ...query, subjectKind: 'user' }, NOW), false)
+    const user = { kind: 'user', userId: 's1' } as const
+    assert.equal(hasValidConsent([consent], { ...query, subject: user }, NOW), false)
+    assert.equal(
+      hasValidConsent([{ ...consent, subjectKind: 'user' }], { ...query, subject: user }, NOW),
+      false,
+    )
     assert.equal(hasValidConsent([consent], query, '2026-10-06T08:59:59.999Z'), false)
     assert.equal(hasValidConsent([consent], query, '2027-06-30T20:59:59.999Z'), true)
     assert.equal(hasValidConsent([consent], query, YEAR_END), false)
@@ -569,9 +577,61 @@ describe('geçerli rıza ve geri çekme (DOM-YTK-059, DOM-YTK-061)', () => {
       now: '2026-01-10T09:00:00.000Z',
     })
     const rows = [{ id: uuid(200), ...consent }]
-    const speaking = { subjectId: 's3', purpose: 'speaking_recording' } as const
+    const speaking = {
+      purpose: 'speaking_recording',
+      subject: { kind: 'student', student: TURNING },
+      texts: TEXTS,
+    } as const
     assert.equal(hasValidConsent(rows, speaking, BEFORE_MIDNIGHT), true)
     assert.equal(hasValidConsent(rows, speaking, ISTANBUL_MIDNIGHT), false)
+  })
+
+  test('DOM-YTK-057 doğum tarihi yokken verilen veli rızası, doğum tarihi girilip öğrencinin 18 yaşını doldurduğu anlaşılınca düşer', () => {
+    const unknown: ConsentStudent = { id: 's3', birthDate: null }
+    const speaking = {
+      purpose: 'speaking_recording',
+      studentId: 's3',
+      textId: SPEAKING_TEXT.id,
+      channel: 'web',
+    }
+    const { consent } = give({
+      actor: parent('s3'),
+      student: unknown,
+      guardianBonds: [custody('s3')],
+      input: speaking,
+      now: '2026-01-10T09:00:00.000Z',
+    })
+    // Doğum tarihi bilinmeyen öğrenci 18 yaş altı sayılır: bitiş yazılamaz, veli rızası geçerlidir.
+    assert.deepEqual([consent.grantorRelation, consent.expiresAt], ['guardian', null])
+    const rows = [{ id: uuid(210), ...consent }]
+    const query = (student: ConsentStudent) =>
+      ({
+        purpose: 'speaking_recording',
+        subject: { kind: 'student', student },
+        texts: TEXTS,
+      }) as const
+    assert.equal(hasValidConsent(rows, query(unknown), NOW), true)
+    // Doğum tarihi sonradan girildi: geçerlilik her sorguda güncel yaşla hesaplanır.
+    assert.equal(hasValidConsent(rows, query(TURNING), BEFORE_MIDNIGHT), true)
+    assert.equal(hasValidConsent(rows, query(TURNING), ISTANBUL_MIDNIGHT), false)
+    assert.equal(hasValidConsent(rows, query({ ...ADULT, id: 's3' }), NOW), false)
+    // Reşit öğrenci kendi rızasını verirken eski veli rızası mükerrer sayılmaz, yenilenip kapanır.
+    const self = give({
+      actor: studentActor('s3'),
+      student: TURNING,
+      consents: rows,
+      input: speaking,
+      now: '2026-10-08T09:00:00.000Z',
+    })
+    assert.equal(self.consent.grantorRelation, 'self')
+    assert.deepEqual(
+      self.close.map((item) => [item.id, item.withdrawalReason]),
+      [[rows[0]!.id, 'renewed']],
+    )
+    // Öğrencinin kendi rızası yalnız reşitken sayılır; doğum tarihi bilinmezse 18 yaş altıdır.
+    const own = [{ id: uuid(211), ...self.consent }]
+    assert.equal(hasValidConsent(own, query(TURNING), '2026-10-09T09:00:00.000Z'), true)
+    assert.equal(hasValidConsent(own, query(unknown), '2026-10-09T09:00:00.000Z'), false)
   })
 
   const withdraw = (overrides: Partial<Parameters<typeof planConsentWithdrawal>[0]> = {}) =>
@@ -673,11 +733,16 @@ describe('öğrenci itirazı (DOM-YTK-062)', () => {
     const { consent, close } = objection()
     assert.deepEqual(
       [consent.decision, consent.grantorRelation, consent.expiresAt, close],
-      ['objected', 'self', null, []],
+      // İtiraz da velinin rızası gibi öğrencinin 18. yaş gününde biter.
+      ['objected', 'self', adulthoodStartsAt(MINOR.birthDate!), []],
     )
     const granted = record(1)
     const objected = { ...consent, id: uuid(300) }
-    const query = { subjectId: 's1', purpose: 'photo_video_sharing' } as const
+    const query = {
+      purpose: 'photo_video_sharing',
+      subject: { kind: 'student', student: MINOR },
+      texts: TEXTS,
+    } as const
     assert.equal(hasValidConsent([granted, objected], query, NOW), false)
     assert.equal(hasValidConsent([objected, granted], query, NOW), false)
     // Yalnız itiraz rıza değildir.
@@ -704,6 +769,59 @@ describe('öğrenci itirazı (DOM-YTK-062)', () => {
         }),
       isDomainError('consent_not_found', 'not_found'),
     )
+  })
+
+  test('DOM-YTK-062 17 yaşındaki itiraz velinin rızasına karşıdır; 18 yaşını dolduran öğrencinin kendi rızasını engellemez', () => {
+    const photo = {
+      purpose: 'photo_video_sharing',
+      studentId: 's3',
+      textId: PHOTO_TEXT.id,
+      channel: 'web',
+    }
+    const guardian = give({
+      actor: parent('s3'),
+      student: TURNING,
+      guardianBonds: [custody('s3')],
+      input: photo,
+      now: '2026-01-10T09:00:00.000Z',
+      academicYearEndsAt: '2026-06-30T21:00:00.000Z',
+    })
+    const objected = objection({
+      actor: studentActor('s3'),
+      student: TURNING,
+      input: { ...photo, decision: 'objected' },
+      now: '2026-05-01T09:00:00.000Z',
+    })
+    assert.equal(objected.consent.expiresAt, ISTANBUL_MIDNIGHT)
+    const rows = [
+      { id: uuid(400), ...guardian.consent },
+      { id: uuid(401), ...objected.consent },
+    ]
+    const query = (student: ConsentStudent) =>
+      ({
+        purpose: 'photo_video_sharing',
+        subject: { kind: 'student', student },
+        texts: TEXTS,
+      }) as const
+    const MAY = '2026-05-02T09:00:00.000Z'
+    // 18'e girmeden velinin rızası itiraz nedeniyle geçersiz kalır.
+    assert.equal(hasValidConsent(rows.slice(0, 1), query(TURNING), MAY), true)
+    assert.equal(hasValidConsent(rows, query(TURNING), MAY), false)
+    // 18 yaşında öğrenci rızayı kendisi verir; açık itiraz satırı mükerrer saymaz ve engellemez.
+    const self = give({
+      actor: studentActor('s3'),
+      student: TURNING,
+      consents: rows,
+      input: photo,
+      now: '2026-10-08T09:00:00.000Z',
+    })
+    assert.equal(self.consent.grantorRelation, 'self')
+    const after = [...rows, { id: uuid(402), ...self.consent }]
+    assert.equal(hasValidConsent(after, query(TURNING), '2026-10-09T09:00:00.000Z'), true)
+    // İtiraz doğum tarihi bilinmezken yazıldıysa (bitişsiz) da etkisi erginlikte biter.
+    const undated = after.map((row) => ({ ...row, expiresAt: null }))
+    assert.equal(hasValidConsent(undated, query(TURNING), '2026-10-09T09:00:00.000Z'), true)
+    assert.equal(hasValidConsent(undated, query(TURNING), MAY), false)
   })
 
   test('DOM-YTK-062 itiraz yalnız itiraz edilebilir amaçta, 18 yaş altı öğrencinin kendisinden; mükerrer reddedilir', () => {

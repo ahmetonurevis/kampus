@@ -384,7 +384,11 @@ describe('0024: aydınlatma ve rıza tabloları', () => {
     assert.equal(
       hasValidConsent(
         await listConsentsOfSubject(db, institutionId, { kind: 'student', id: MINOR.id }),
-        { subjectId: MINOR.id, purpose: 'photo_video_sharing' },
+        {
+          purpose: 'photo_video_sharing',
+          subject: { kind: 'student', student: MINOR },
+          texts: await listPrivacyNotices(db, institutionId),
+        },
         NOW,
       ),
       // Öğrencinin itirazı etkin.
@@ -425,7 +429,15 @@ describe('0024: aydınlatma ve rıza tabloları', () => {
       [later.toISOString(), PARENT.userId, 'withdrawn', 2],
     )
     assert.equal(
-      hasValidConsent([withdrawn!], { subjectId: MINOR.id, purpose: 'photo_video_sharing' }, NOW),
+      hasValidConsent(
+        [withdrawn!],
+        {
+          purpose: 'photo_video_sharing',
+          subject: { kind: 'student', student: MINOR },
+          texts: await listPrivacyNotices(db, institutionId),
+        },
+        NOW,
+      ),
       false,
     )
     // Geri çekme kolonları birlikte yazılır.

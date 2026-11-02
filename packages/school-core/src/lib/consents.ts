@@ -209,38 +209,86 @@ const ownsStudent = (actor: ConsentActor, studentId: string) =>
 
 const isOpen = (consent: ConsentRecord) => consent.withdrawnAt === null
 
-const inForce = (consent: ConsentRecord, now: number, minimumVersion: number) =>
-  isOpen(consent) &&
-  Date.parse(consent.givenAt) <= now &&
-  (consent.expiresAt === null || now < Date.parse(consent.expiresAt)) &&
-  (consent.decision === 'objected' || consent.textVersion >= minimumVersion)
+/**
+ * Satırın ilişkisi veri sahibinin bugünkü yaşına uyuyor mu (DOM-YTK-057, DOM-YTK-062). Yaş her
+ * sorguda öğrencinin güncel doğum tarihinden hesaplanır; satırdaki `expiresAt` yazıldığı andaki
+ * bilgiyi taşır ve doğum tarihi sonradan girilip düzeltilebilir.
+ *
+ * - Velinin rızası (`guardian`) ve öğrencinin itirazı (`self` + `objected`) yalnız öğrenci 18 yaş
+ *   altındayken etkilidir. İtiraz velinin rızasına karşıdır; 18 yaşını dolduran öğrencinin kendi
+ *   kararı itirazdan etkilenmez.
+ * - Öğrencinin kendi rızası (`self` + `granted`) yalnız 18 yaşını doldurmuşken etkilidir.
+ * - Doğum tarihi bilinmeyen öğrenci 18 yaş altı sayılır (DOM-YTK-057): velinin rızası geçerli kalır,
+ *   öğrencinin kendi rızası sayılmaz. Velinin rızasını geçersiz saymak rızayı hiç alınamaz kılardı
+ *   (doğum tarihi yokken rızayı yalnız veli verebilir); muhafazakâr yorum yetki tarafındadır ve
+ *   doğum tarihi girildiği anda bu denetim veli rızasını keser.
+ * - Hesap amaçlarında (`user`) yaş denetimi yoktur.
+ */
+const relationApplies = (consent: ConsentRecord, student: ConsentStudent | null, now: string) => {
+  if (consent.subjectKind === 'user') return true
+  if (student === null || student.id !== consent.subjectId) return false
+  const adult = isAdultStudent(student, now)
+  if (consent.grantorRelation === 'guardian' || consent.decision === 'objected') return !adult
+  return adult
+}
+
+const inForce = (
+  consent: ConsentRecord,
+  now: string,
+  minimumVersion: number,
+  student: ConsentStudent | null,
+) => {
+  const at = Date.parse(now)
+  return (
+    isOpen(consent) &&
+    Date.parse(consent.givenAt) <= at &&
+    (consent.expiresAt === null || at < Date.parse(consent.expiresAt)) &&
+    (consent.decision === 'objected' || consent.textVersion >= minimumVersion) &&
+    relationApplies(consent, student, now)
+  )
+}
+
+/**
+ * Rızanın veri sahibi. Öğrenci amaçlarında güncel doğum tarihiyle öğrenci kaydı (veli rızasının ve
+ * itirazın erginlikte düşmesi bundan hesaplanır), hesap amaçlarında hesabın kullanıcı kimliği.
+ */
+export type ConsentSubject =
+  { kind: 'student'; student: ConsentStudent } | { kind: 'user'; userId: string }
 
 /**
  * Geçerli rıza var mı (DOM-YTK-061): aynı veri sahibi ve amaç için geri çekilmemiş, süresi
- * dolmamış, `minimumTextVersion`'dan eski olmayan metne verilmiş `granted` satır var ve etkin bir
- * öğrenci itirazı (`objected`, DOM-YTK-062) yok. Geri çekme anında etkilidir: `withdrawnAt` dolu
- * satır hiçbir anda rıza saymaz. `subjectKind` verilmezse öğrenci.
+ * dolmamış, en düşük geçerli metin sürümünden eski olmayan metne verilmiş ve ilişkisi öğrencinin
+ * bugünkü yaşına uyan `granted` satır var ve etkin bir öğrenci itirazı (`objected`, DOM-YTK-062)
+ * yok. Geri çekme anında etkilidir: `withdrawnAt` dolu satır hiçbir anda rıza saymaz.
+ *
+ * En düşük sürüm çağıranın verdiği yayımlanmış metinlerden hesaplanır (`minimumConsentTextVersion`,
+ * DOM-YTK-060); ayrı bir sayı alınmaz ki unutulup yeniden rıza şartı sessizce düşmesin. Listede
+ * amacın hiç rıza metni yoksa liste eksik yüklenmiştir ve sonuç `false`'tur (rıza metni silinemez,
+ * arşivlenemez). Veri sahibi türü amaca uymuyorsa da `false`.
  */
 export function hasValidConsent(
   consents: readonly ConsentRecord[],
   query: {
-    subjectId: string
     purpose: ConsentPurpose
-    subjectKind?: ConsentSubjectKind
-    minimumTextVersion?: number
+    subject: ConsentSubject
+    /** Kurumun yayımlanmış bütün metinleri (`listPrivacyNotices`). */
+    texts: readonly PrivacyNotice[]
   },
   now: string,
 ): boolean {
-  const at = Date.parse(now)
-  const kind = query.subjectKind ?? 'student'
-  const minimum = query.minimumTextVersion ?? 1
+  const { subject, purpose } = query
+  if (subject.kind !== CONSENT_PURPOSES[purpose].subject) return false
+  if (latestNotice(query.texts, { kind: 'consent_text', purpose }) === null) return false
+  const subjectId = subject.kind === 'user' ? subject.userId : subject.student.id
+  const student = subject.kind === 'student' ? subject.student : null
+  const minimum = minimumConsentTextVersion(query.texts, purpose)
   let granted = false
   for (const consent of consents) {
     if (
-      consent.subjectKind !== kind ||
-      consent.subjectId !== query.subjectId ||
-      consent.purpose !== query.purpose ||
-      !inForce(consent, at, minimum)
+      consent.subjectKind !== subject.kind ||
+      consent.subjectId !== subjectId ||
+      consent.purpose !== purpose ||
+      !inForce(consent, now, minimum, student)
     )
       continue
     if (consent.decision === 'objected') return false
@@ -257,10 +305,13 @@ export function hasValidConsent(
  * - `textId` amacın son yayımlanmış rıza metni olmalıdır: metin yoksa ya da başka amacınsa 404
  *   `consent_text_not_found`, eskiyse 409 `consent_text_outdated`.
  * - Aynı veri sahibi + amaç + karar için yürürlükteki satır varsa 409 `consent_exists` /
- *   `objection_exists` (mükerrer). Açık ama süresi dolmuş ya da eski sürümlü satır `renewed`
- *   nedeniyle aynı işlemde kapatılır (`close`); tek etkin satır kısıtı böyle korunur.
+ *   `objection_exists` (mükerrer). Açık ama süresi dolmuş, eski sürümlü ya da ilişkisi öğrencinin
+ *   bugünkü yaşına uymayan satır (ör. doğum tarihi sonradan girilen reşit öğrencinin velisinin
+ *   rızası) `renewed` nedeniyle aynı işlemde kapatılır (`close`); tek etkin satır kısıtı böyle
+ *   korunur.
  * - Bitiş: eğitim yılı amaçlarında `academicYearEndsAt` (`now`'dan sonra ve en çok bir yıl
- *   içinde olmalı); veli rızası ayrıca öğrencinin 18. yaş gününde biter; erken olan geçerlidir.
+ *   içinde olmalı); veli rızası ve öğrenci itirazı ayrıca öğrencinin 18. yaş gününde biter; erken
+ *   olan geçerlidir.
  */
 export function planConsent(input: {
   actor: ConsentActor
@@ -326,6 +377,7 @@ export function planConsent(input: {
   if (subjectId === undefined) throw studentNotFound()
   const at = Date.parse(now)
   const minimum = minimumConsentTextVersion(input.texts, data.purpose)
+  const subjectStudent = subjectKind === 'student' ? student : null
   const open = input.consents.filter(
     (consent) =>
       consent.subjectKind === subjectKind &&
@@ -334,7 +386,7 @@ export function planConsent(input: {
       consent.decision === data.decision &&
       isOpen(consent),
   )
-  if (open.some((consent) => inForce(consent, at, minimum)))
+  if (open.some((consent) => inForce(consent, now, minimum, subjectStudent)))
     throw data.decision === 'granted'
       ? new DomainError('consent_exists', 'Bu amaç için geçerli bir rızanız zaten var.', {
           kind: 'conflict',
@@ -354,7 +406,9 @@ export function planConsent(input: {
       )
     ends.push(yearEnd)
   }
-  if (relation === 'guardian' && student?.birthDate)
+  // Velinin rızası ve öğrencinin itirazı yalnız öğrenci 18 yaş altındayken etkilidir; bitiş satıra
+  // da yazılır. Doğum tarihi sonradan girilirse `hasValidConsent` güncel yaşla ayrıca keser.
+  if ((relation === 'guardian' || data.decision === 'objected') && student?.birthDate)
     ends.push(Date.parse(adulthoodStartsAt(student.birthDate)))
 
   return {

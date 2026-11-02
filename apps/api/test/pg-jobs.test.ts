@@ -14,6 +14,7 @@ import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { dispatchQueueName } from '../src/jobs/dispatch.ts'
 import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
+import { HOUR_SECONDS, type AnyInstitutionJob } from '../src/jobs/types.ts'
 import {
   JOB_SCHEMA,
   JOB_TIME_ZONE,
@@ -81,6 +82,33 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
     throw new Error('beklenen durum 15 sn içinde oluşmadı')
   }
 
+  /**
+   * Bu teste özgü adlı kurum işi: ortak veritabanındaki öteki kuyrukların birikmiş işleri (dağıtım
+   * bütün kurumlara iş koyar) bu testin işinin önüne geçmez. Kuyruk ve zamanlaması sonunda silinir.
+   */
+  async function withTestJob(
+    run: AnyInstitutionJob['run'],
+    body: (queue: JobQueue, definition: AnyInstitutionJob) => Promise<void>,
+  ) {
+    const definition: AnyInstitutionJob = {
+      name: `test-${uniqueId('job').replaceAll(/[^a-z0-9]/g, '')}`,
+      cron: '0 4 * * *',
+      slotSeconds: HOUR_SECONDS,
+      run,
+    }
+    const { app, queue } = await appWithJobs({ jobs: [definition] })
+    try {
+      await body(queue, definition)
+    } finally {
+      for (const name of [definition.name, dispatchQueueName(definition)]) {
+        await queue.boss.unschedule(name)
+        await queue.boss.deleteQueue(name)
+      }
+      await app.close()
+      apps.splice(apps.indexOf(app), 1)
+    }
+  }
+
   test('kuyruk kendi şemasını kurar; zamanlama Europe/Istanbul, iki örnekte tek kayıt', async () => {
     const { queue } = await appWithJobs()
     assert.equal(await queue.boss.isInstalled(), true)
@@ -98,7 +126,36 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
     assert.equal(schedules[0]?.timezone, JOB_TIME_ZONE)
   })
 
-  test('dağıtım kurum başına tek iş açar, işleyici çalışır; ikinci dağıtım iş açmaz', async () => {
+  test('dağıtım kurum başına tek iş açar (yük yalnız kurum kimliği); ikinci dağıtım iş açmaz', async () => {
+    // İşleyici kayıt tutar; dağıtım ortak veritabanındaki bütün kurumlara iş koyar, bu yüzden
+    // test kendi kurumunun işinin tamamlanmasını beklemez (işleyicinin kuyruktan çalışması aşağıdaki
+    // testlerde doğrudan gönderilen işle sınanır).
+    await withTestJob(
+      async () => ({ ok: 1 }),
+      async (queue, definition) => {
+        const institution = await createInstitution(apps[0] as App)
+        const dispatch = dispatchQueueName(definition)
+        const dispatched = async () => {
+          const id = await queue.boss.send(dispatch, {})
+          assert.ok(id)
+          await until(
+            () => queue.boss.findJobs(dispatch, { id }),
+            (found) => found[0]?.state === 'completed',
+          )
+        }
+        const jobsOf = () =>
+          queue.boss.findJobs<{ institutionId: string }>(definition.name, { key: institution.id })
+
+        await dispatched()
+        const [job] = await jobsOf()
+        assert.deepEqual(job?.data, { institutionId: institution.id })
+        await dispatched()
+        assert.equal((await jobsOf()).length, 1)
+      },
+    )
+  })
+
+  test('idempotency.purge kuyruktan çalışır: kurumun süresi geçmiş anahtarı silinir', async () => {
     const { queue } = await appWithJobs()
     const institution = await createInstitution(apps[0] as App)
     await db.insert(idempotencyKeys).values({
@@ -117,22 +174,13 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
         .from(idempotencyKeys)
         .where(eq(idempotencyKeys.institutionId, institution.id))
 
-    await queue.boss.send(PURGE_DISPATCH, {})
+    const id = await queue.boss.send(idempotencyPurgeJob.name, { institutionId: institution.id })
+    assert.ok(id)
     await until(keys, (rows) => rows.length === 0)
-    const jobsOf = () =>
-      queue.boss.findJobs<{ institutionId: string }>(idempotencyPurgeJob.name, {
-        key: institution.id,
-      })
-    const [job] = await until(jobsOf, (found) => found[0]?.state === 'completed')
-    assert.deepEqual(job?.data, { institutionId: institution.id })
-
-    const second = await queue.boss.send(PURGE_DISPATCH, {})
-    assert.ok(second)
     await until(
-      () => queue.boss.findJobs(PURGE_DISPATCH, { id: second }),
+      () => queue.boss.findJobs(idempotencyPurgeJob.name, { id }),
       (found) => found[0]?.state === 'completed',
     )
-    assert.equal((await jobsOf()).length, 1)
   })
 
   test('uygulama kapanınca kuyruk durur', async () => {
@@ -226,15 +274,38 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
     assert.notEqual(await store.storage.head(kept.storageKey), null)
   })
 
-  test('bozuk yük yeniden denenmeden düşer: iş failed olur, deneme sayısı artmaz', async () => {
-    const { queue } = await appWithJobs()
-    const id = await queue.boss.send(idempotencyPurgeJob.name, { institutionId: 1, fazla: true })
-    assert.ok(id)
-    const [job] = await until(
-      () => queue.boss.findJobs(idempotencyPurgeJob.name, { id }),
-      (found) => found[0]?.state === 'failed' || found[0]?.state === 'retry',
+  test('her iş ayrı çekilir: bozuk yük yeniden denenmeden düşer, hata veren iş yeniden denenir, öteki iş tamamlanır', async () => {
+    const failing = uniqueId('hata')
+    const passing = uniqueId('basari')
+    await withTestJob(
+      async (_deps, { institutionId }) => {
+        if (institutionId === failing) throw new Error('beklenen test hatası')
+        return { ok: 1 }
+      },
+      async (queue, definition) => {
+        const ids = {
+          invalid: await queue.boss.send(definition.name, { institutionId: 1, fazla: true }),
+          failed: await queue.boss.send(definition.name, { institutionId: failing }),
+          completed: await queue.boss.send(definition.name, { institutionId: passing }),
+        }
+        const stateOf = async (id: string | null) => {
+          assert.ok(id)
+          return (await queue.boss.findJobs(definition.name, { id }))[0]
+        }
+        const settled = await until(
+          async () => Promise.all([ids.invalid, ids.failed, ids.completed].map(stateOf)),
+          (jobs) =>
+            jobs.every((job) => job !== undefined && !['created', 'active'].includes(job.state)),
+        )
+        const [invalid, failed, completed] = settled
+        // Bozuk yük `deadletter` sonucuyla kalan denemeleri atlar: `failed`, deneme sayısı 0.
+        assert.equal(invalid?.state, 'failed')
+        assert.equal(invalid?.retryCount, 0)
+        // İşleyici hatası geri çekilmeli yeniden denemeye düşer; öteki işler etkilenmez.
+        assert.equal(failed?.state, 'retry')
+        assert.equal(completed?.state, 'completed')
+        assert.deepEqual(completed?.output, { ok: 1 })
+      },
     )
-    assert.equal(job?.state, 'failed')
-    assert.equal(job?.retryCount, 0)
   })
 })

@@ -17,10 +17,11 @@ export const filesPurgeExpiredJob: InstitutionJob<{ purged: number; rounds: numb
   name: 'files.purge-expired',
   cron: '15 4 * * *',
   slotSeconds: DAY_SECONDS,
-  run: async ({ db, storage, log }, { institutionId }, now) => {
+  run: async ({ db, storage, log, signal }, { institutionId }, now) => {
     let purged = 0
     let rounds = 0
-    while (rounds < MAX_ROUNDS) {
+    // İptal edilen iş (süre aşımı, kapanış) yeni tura başlamaz; kalan dosyalar sonraki çalıştırmada.
+    while (rounds < MAX_ROUNDS && signal?.aborted !== true) {
       rounds += 1
       const count = await purgeExpiredFiles({ db, storage, institutionId, now, log })
       purged += count

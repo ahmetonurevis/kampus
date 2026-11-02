@@ -346,6 +346,31 @@ describe('arka plan işleri', () => {
     assert.deepEqual(await purgeAudits(a.id), [id])
   })
 
+  test('OG-048: iptal edilen iş (pg-boss job.signal: süre aşımı, kapanış) imha turuna başlamaz; dosyalar sonraki çalıştırmada silinir', async () => {
+    const a = await createInstitution(app)
+    const expired = await uploadIn(a.id)
+    const stale = await uploadIn(a.id)
+    await setRetention(a.id, expired, FIXED_NOW)
+    const controller = new AbortController()
+    controller.abort()
+    const aborted = { ...deps, signal: controller.signal }
+    const later = new Date(FIXED_NOW.getTime() + 25 * HOUR)
+    assert.deepEqual(await filesPurgeExpiredJob.run(aborted, { institutionId: a.id }, FIXED_NOW), {
+      purged: 0,
+      rounds: 0,
+    })
+    assert.deepEqual(await filesPurgeJob.run(aborted, { institutionId: a.id }, later), {
+      purged: 0,
+      rounds: 0,
+    })
+    assert.equal((await fileOf(a.id, expired))?.status, 'ready')
+    assert.equal((await fileOf(a.id, stale))?.status, 'pending')
+    assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
+      purged: 1,
+      rounds: 1,
+    })
+  })
+
   test("DOM-ILT-039: izin formu hatırlatması İstanbul saatiyle 07:00'den önce (gece tetiklemesi) hiçbir şey yazmadan çıkar", async () => {
     const a = await createInstitution(app)
     // 03:30 UTC = 06:30 İstanbul; 04:00 UTC = 07:00 İstanbul.

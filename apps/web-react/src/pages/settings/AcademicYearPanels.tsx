@@ -23,6 +23,7 @@ import {
   type Reloaded,
   RootError,
   useEditConflict,
+  useFocusAfterSubmit,
 } from '../management/FormParts.tsx'
 import {
   createDefaults,
@@ -47,6 +48,9 @@ import {
   type YearUpdateOutput,
   type YearUpdateValues,
 } from './academic-year-rows.ts'
+
+const YEAR_ROUTES = errorRoutes(YEAR_ERROR_FIELDS)
+const TERM_ROUTES = errorRoutes(TERM_ERROR_FIELDS)
 
 type PanelProps = {
   target: PanelTarget | null
@@ -161,6 +165,7 @@ function YearCreateForm({ rows, onClose }: { rows: readonly YearRow[]; onClose: 
     defaultValues: createDefaults(rows, todayKey()),
   })
   const busy = create.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const errors = form.formState.errors
   const startDate = useWatch({ control: form.control, name: 'startDate' })
   const endDate = useWatch({ control: form.control, name: 'endDate' })
@@ -186,7 +191,7 @@ function YearCreateForm({ rows, onClose }: { rows: readonly YearRow[]; onClose: 
     }
     const outcome = await create.submit(body, {
       setError: form.setError,
-      ...errorRoutes(YEAR_ERROR_FIELDS),
+      ...YEAR_ROUTES,
     })
     if (outcome.status === 'success') {
       notify.success(
@@ -194,8 +199,7 @@ function YearCreateForm({ rows, onClose }: { rows: readonly YearRow[]; onClose: 
       )
       onClose()
     } else if (outcome.status === 'failed') {
-      const field = YEAR_ERROR_FIELDS[outcome.error.code as keyof typeof YEAR_ERROR_FIELDS]
-      if (field) form.setFocus(field)
+      focusAfterSubmit(YEAR_ROUTES.fieldFor(outcome.error))
     }
   })
 
@@ -272,6 +276,7 @@ function YearEditForm({ year, version, fresh, onClose }: EditProps<YearRow> & { 
     apply: (values) => form.reset(values),
   })
   const busy = update.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const errors = form.formState.errors
   const startDate = useWatch({ control: form.control, name: 'startDate' })
   const endDate = useWatch({ control: form.control, name: 'endDate' })
@@ -279,15 +284,14 @@ function YearEditForm({ year, version, fresh, onClose }: EditProps<YearRow> & { 
   const onSubmit = form.handleSubmit(async (values) => {
     const outcome = await update.submit(
       { startYear: year.startYear, version: conflict.version, body: values },
-      { setError: form.setError, ...errorRoutes(YEAR_ERROR_FIELDS) },
+      { setError: form.setError, ...YEAR_ROUTES },
     )
     if (outcome.status === 'success') {
       notify.success(`${year.name} eğitim yılı güncellendi.`)
       onClose()
     } else if (outcome.status === 'failed') {
       if (isVersionConflict(outcome.error)) conflict.markConflict()
-      const field = YEAR_ERROR_FIELDS[outcome.error.code as keyof typeof YEAR_ERROR_FIELDS]
-      if (field === 'startDate' || field === 'endDate') form.setFocus(field)
+      focusAfterSubmit(YEAR_ROUTES.fieldFor(outcome.error))
     }
   })
 
@@ -354,12 +358,13 @@ function TermForm({
     apply: (values) => form.reset(values),
   })
   const busy = add.isPending || edit.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const errors = form.formState.errors
   const startDate = useWatch({ control: form.control, name: 'startDate' })
   const endDate = useWatch({ control: form.control, name: 'endDate' })
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const options = { setError: form.setError, ...errorRoutes(TERM_ERROR_FIELDS) }
+    const options = { setError: form.setError, ...TERM_ROUTES }
     const outcome = term
       ? await edit.submit(
           { startYear: year.startYear, termId: term.id, version: conflict.version, body: values },
@@ -374,8 +379,7 @@ function TermForm({
       onClose()
     } else if (outcome.status === 'failed') {
       if (isVersionConflict(outcome.error)) conflict.markConflict()
-      const field = TERM_ERROR_FIELDS[outcome.error.code as keyof typeof TERM_ERROR_FIELDS]
-      if (field) form.setFocus(field)
+      focusAfterSubmit(TERM_ROUTES.fieldFor(outcome.error))
     }
   })
 

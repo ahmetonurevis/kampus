@@ -17,9 +17,12 @@ import {
   isVersionConflict,
   RootError,
   useEditConflict,
+  useFocusAfterSubmit,
 } from './FormParts.tsx'
 import { BRANCH_ERROR_FIELDS, branchDefaults, type BranchFormValues } from './management-forms.ts'
 import { SummaryLoading } from './SummaryParts.tsx'
+
+const BRANCH_ROUTES = errorRoutes(BRANCH_ERROR_FIELDS)
 
 type Branch = CoreRecord<'branches'>
 type BranchOutput = z.output<typeof branchSchema>
@@ -95,19 +98,19 @@ function CampusForm({ record, version = 0, reload, onClose }: FormProps) {
   })
   const busy = save.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
 
   const onSubmit = form.handleSubmit(async (values) => {
     const outcome = await save.submit(
       record ? { recordId: record.id, version: conflict.version, body: values } : { body: values },
-      { setError: form.setError, ...errorRoutes(BRANCH_ERROR_FIELDS) },
+      { setError: form.setError, ...BRANCH_ROUTES },
     )
     if (outcome.status === 'success') {
       notify.success(record ? 'Kampüs güncellendi.' : 'Kampüs eklendi.')
       onClose()
     } else if (outcome.status === 'failed') {
       if (isVersionConflict(outcome.error)) conflict.markConflict()
-      const field = BRANCH_ERROR_FIELDS[outcome.error.code as keyof typeof BRANCH_ERROR_FIELDS]
-      if (field) form.setFocus(field)
+      focusAfterSubmit(BRANCH_ROUTES.fieldFor(outcome.error))
     }
   })
 

@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useStableCallback } from '@/hooks/use-stable-callback.ts'
 import { notify } from '@/lib/notify.ts'
-import { errorRoutes, RootError } from './FormParts.tsx'
+import { errorRoutes, RootError, useFocusAfterSubmit } from './FormParts.tsx'
 import {
   ARCHIVE_ERROR_CODES,
   ARCHIVE_NOTES,
@@ -28,8 +28,8 @@ export type ArchiveTarget = { kind: ManagedKind; id: string }
 
 type FormValues = { replacementId: string }
 
-const ARCHIVE_FIELDS = Object.fromEntries(
-  [...ARCHIVE_ERROR_CODES].map((code) => [code, 'replacementId']),
+const ARCHIVE_ROUTES = errorRoutes(
+  Object.fromEntries([...ARCHIVE_ERROR_CODES].map((code) => [code, 'replacementId'])),
 )
 
 type Props = {
@@ -75,6 +75,7 @@ function ArchiveForm({
   const archive = useArchiveRecord(kind)
   const form = useForm<FormValues>({ defaultValues: { replacementId: '' } })
   const busy = archive.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const name = recordName(kind, id, lookups) ?? 'Kayıt'
   const destinations = archiveDestinations(kind, id, lookups)
   const dependents = archiveDependents(kind, id, lookups)
@@ -83,7 +84,7 @@ function ArchiveForm({
   const onSubmit = form.handleSubmit(async ({ replacementId }) => {
     const outcome = await archive.submit(
       { recordId: id, ...(replacementId ? { replacementId } : {}) },
-      { setError: form.setError, ...errorRoutes(ARCHIVE_FIELDS) },
+      { setError: form.setError, ...ARCHIVE_ROUTES },
     )
     if (outcome.status === 'success') {
       // Toast'ta hedefin yalnız adı (seçenek etiketindeki boş yer bilgisi arşivden önceki durumdur).
@@ -95,9 +96,9 @@ function ArchiveForm({
           .join(' '),
       )
       onClose()
-    } else if (outcome.status === 'failed' && ARCHIVE_ERROR_CODES.has(outcome.error.code)) {
+    } else if (outcome.status === 'failed') {
       // Aktarım hedefi hatası yalnız seçimin altında görünür; diğer hatalar toast'tur.
-      form.setFocus('replacementId')
+      focusAfterSubmit(ARCHIVE_ROUTES.fieldFor(outcome.error))
     }
   })
 

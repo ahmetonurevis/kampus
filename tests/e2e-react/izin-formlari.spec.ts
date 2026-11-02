@@ -22,6 +22,8 @@ interface FormView {
   deadline: string
   classIds?: string[]
   studentIds: string[]
+  targetStudentIds?: string[]
+  hasDecisions?: boolean
   teacherId?: string | null
   status: 'open' | 'closed'
   closedAt: string | null
@@ -294,6 +296,42 @@ test.describe('İzin formları: rehber öğretmen ve yönetici', () => {
       description: 'Yönetici açıklaması: yer değişti.',
       version: theirs.version + 1,
     })
+  })
+
+  test('eşzamanlı düzenlemede başkasının tek tek eklediği öğrenci uyarısız düşmez (DOM-ILT-036, DOM-ILT-038)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['yonetici', 'ogretmen', 'veli'], classes: ['c1'] })
+    const teacher = await api(school.user('ogretmen'))
+    const admin = await api(school.user('yonetici'))
+    const created = await openForm(teacher, 'Bilim şenliği izni')
+    expect(created.targetStudentIds).toEqual([])
+    await loginAs(school.user('ogretmen'), { fresh: true })
+
+    // İlk oturum: öğretmen düzenleme formunu açar.
+    await page.goto(`${STAFF_PAGE}?izin-form=${created.id}`)
+    const edit = panelOf(page, 'İzin formunu düzenle')
+    await expect(edit.getByLabel('Başlık')).toHaveValue(created.title)
+    await expect(edit.getByRole('list', { name: 'Seçilen öğrenciler' })).toHaveCount(0)
+
+    // İkinci oturum: yönetici bu arada Ece'yi (s2) tek tek hedefe ekler.
+    const theirs = await patchForm(admin, created, { classIds: ['c1'], studentIds: ['s2'] })
+    expect(theirs.targetStudentIds).toEqual(['s2'])
+
+    // Öğretmen de hedefe Deniz'i ekler: hedef iki tarafta değişti, uyarı çıkar, kayıt yazılmaz.
+    await edit.getByLabel('Öğrenci ara').fill('Deniz')
+    await edit.getByRole('button', { name: 'Deniz Yılmaz öğrencisini ekle' }).click()
+    await edit.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(edit).toContainText(
+      'Hedef: kayıtlı değer 1 sınıf, 1 tek öğrenci, sizin girdiğiniz 1 sınıf, 1 tek öğrenci.',
+    )
+    const kept = await formOf(teacher, created.id)
+    expect(kept.version).toBe(theirs.version)
+    expect(kept.targetStudentIds).toEqual(['s2'])
+    expect(kept.studentIds).toContain('s2')
   })
 
   test('kapatılmış formun düzenleme adresi form çizmez', async ({ page, loginAs, api, tenant }) => {

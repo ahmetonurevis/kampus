@@ -249,12 +249,12 @@ describe('karar verilebilirlik (DOM-ILT-038)', () => {
     assert.ok(late?.includes('Son gün geçti'))
   })
 
-  test('kararı olan form sayılardan anlaşılır', () => {
-    assert.equal(
-      hasDecisions({ counts: { pending: 2, approved: 0, rejected: 0, total: 2 } }),
-      false,
-    )
-    assert.equal(hasDecisions({ counts: { pending: 1, approved: 0, rejected: 1, total: 2 } }), true)
+  test('DOM-ILT-038: karar kilidi sunucunun hasDecisions alanıdır, sayılardan çıkarılmaz', () => {
+    // Velayeti kalkan velinin kararı sayılmaz ama kilitler: sayılar sıfırken alan doğrudur.
+    assert.equal(hasDecisions({ hasDecisions: true }), true)
+    assert.equal(hasDecisions({ hasDecisions: false }), false)
+    // Alan yalnız formu yönetene döner; yoksa ekran kilit göstermez, sunucu yine reddeder.
+    assert.equal(hasDecisions({}), false)
   })
 })
 

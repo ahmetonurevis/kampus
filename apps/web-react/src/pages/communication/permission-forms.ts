@@ -103,55 +103,40 @@ export type PermissionFormOutput = z.output<typeof permissionFormSchema>
 
 type EditableForm = Pick<
   PermissionFormListItem,
-  'topic' | 'title' | 'description' | 'deadline' | 'classIds'
+  'topic' | 'title' | 'description' | 'deadline' | 'classIds' | 'targetStudentIds'
 >
 
+export type PermissionTarget = { classIds: readonly string[]; studentIds: readonly string[] }
+
 /**
- * Düzenleme varsayılanı: hedef sınıflar yanıttaki `classIds`'tir. Sınıf dışında tek tek seçilen
- * öğrenciler yanıtta ayrı gelmez; çözülmüş öğrencilerden hedef sınıfların üyesi olmayan, etkin
- * olanlar tek tek seçilmiş sayılır (`extraStudentIds`).
+ * Kayıtlı hedef: sınıflar (`classIds`) ve tek tek hedeflenen öğrenciler (`targetStudentIds`).
+ * İkisini de sunucu formu yönetene (yönetici, formun öğretmeni) döndürür; çözülmüş öğrenci
+ * listesinden tahmin edilmez (sınıf değiştiren ya da hem sınıfta hem tek seçili öğrenci ayırt
+ * edilemez). Alanı olmayan eski kayıt yalnız sınıf hedeflidir.
  */
-export function permissionFormDefaults(
-  form?: EditableForm,
-  extraStudentIds: readonly string[] = [],
-): PermissionFormValues {
+export const permissionTarget = (form: EditableForm): PermissionTarget => ({
+  classIds: form.classIds ?? [],
+  studentIds: form.targetStudentIds ?? [],
+})
+
+/** Düzenleme varsayılanı kayıtlı hedeftir; yeni formda alanlar boştur. */
+export function permissionFormDefaults(form?: EditableForm): PermissionFormValues {
   return {
     topic: form?.topic ?? '',
     title: form?.title ?? '',
     description: form?.description ?? '',
     deadline: form?.deadline ?? '',
     classIds: [...(form?.classIds ?? [])],
-    studentIds: [...extraStudentIds],
+    studentIds: [...(form?.targetStudentIds ?? [])],
   }
-}
-
-/**
- * Çözülmüş hedef öğrencilerden hedef sınıfların üyesi olmayanlar: tek tek seçilmiş sayılır. Pasif
- * öğrenci listede yoktur ve atlanır (sunucu pasif öğrenciyi hedefe almaz).
- */
-export function extraTargetStudentIds(
-  resolvedStudentIds: readonly string[],
-  classIds: readonly string[],
-  students: readonly { id: string; classId?: string | undefined; isActive?: boolean | undefined }[],
-): string[] {
-  const inClass = new Set(classIds)
-  const byId = new Map(students.map((student) => [student.id, student]))
-  return resolvedStudentIds.filter((id) => {
-    const student = byId.get(id)
-    return (
-      student !== undefined && student.isActive !== false && !inClass.has(student.classId ?? '')
-    )
-  })
 }
 
 const sameSet = (left: readonly string[], right: readonly string[]) =>
   left.length === right.length && left.every((item) => right.includes(item))
 
 /** Hedef iki listeden biri değiştiyse "hedef değişti" sayılır (sunucu ikisini birlikte ister). */
-export const targetChanged = (
-  opened: { classIds: readonly string[]; studentIds: readonly string[] },
-  values: { classIds: readonly string[]; studentIds: readonly string[] },
-) => !sameSet(opened.classIds, values.classIds) || !sameSet(opened.studentIds, values.studentIds)
+export const targetChanged = (opened: PermissionTarget, values: PermissionTarget) =>
+  !sameSet(opened.classIds, values.classIds) || !sameSet(opened.studentIds, values.studentIds)
 
 /**
  * Düzenlemede değişen alanlar (`PATCH` kısmidir; konu değişmez). `opened` karşılaştırılan
@@ -161,17 +146,16 @@ export const targetChanged = (
 export function changedPermissionFormFields(
   opened: EditableForm,
   values: PermissionFormOutput,
-  openedExtraStudentIds: readonly string[],
 ): UpdatePermissionFormBody {
   const changed: UpdatePermissionFormBody = {}
   if (values.title !== opened.title) changed.title = values.title
   if (values.description !== opened.description) changed.description = values.description
   if (values.deadline !== opened.deadline) changed.deadline = values.deadline
   if (
-    targetChanged(
-      { classIds: opened.classIds ?? [], studentIds: openedExtraStudentIds },
-      { classIds: values.classIds ?? [], studentIds: values.studentIds ?? [] },
-    )
+    targetChanged(permissionTarget(opened), {
+      classIds: values.classIds ?? [],
+      studentIds: values.studentIds ?? [],
+    })
   ) {
     changed.classIds = [...(values.classIds ?? [])]
     changed.studentIds = [...(values.studentIds ?? [])]
@@ -204,25 +188,25 @@ const preview = (value: string) => {
   const text = value.replace(/\s+/g, ' ').trim()
   return text.length > TEXT_PREVIEW ? `${text.slice(0, TEXT_PREVIEW)}…` : text
 }
-const targetText = (classIds: readonly string[], studentIds: readonly string[]) =>
-  `${classIds.length} sınıf, ${studentIds.length} tek öğrenci`
+const targetText = (target: PermissionTarget) =>
+  `${target.classIds.length} sınıf, ${target.studentIds.length} tek öğrenci`
 
 /**
  * Gönderim anındaki taze kayda göre düzenleme planı (ödev düzenlemesindeki `planHomeworkUpdate`
  * kalıbı): kullanıcının değiştirdiği alanlar formun açıldığı andaki kayıtla karşılaştırılır; yalnız
  * onlar gider, böylece dokunmadığı ve başkasının değiştirdiği alanlar eski değere geri yazılmaz.
  * `overlaps`: kullanıcının değiştirdiği bir alanı başkası da değiştirmişse iki değer gösterilir.
- * Hedefte tek tek öğrenci karşılaştırması taze kaydın çözülmüş öğrencilerinden hesaplanamadığı
- * için sınıf kümesi karşılaştırılır; ek öğrenci kümesi açılıştaki ile aynı kabul edilir.
+ * Hedef tek alandır (sınıflar ve tek tek öğrenciler birlikte gider): başkası sınıf ya da öğrenci
+ * listesinden birini değiştirdiyse ve kullanıcı da hedefe dokunduysa uyarı çıkar; böylece
+ * başkasının eklediği öğrenci uyarısız düşmez. Kullanıcı hedefe dokunmadıysa hedef gönderilmez.
  */
 export function planPermissionFormUpdate(
   opened: EditableForm,
   fresh: EditableForm,
   values: PermissionFormOutput,
-  openedExtraStudentIds: readonly string[],
 ): { body: UpdatePermissionFormBody; overlaps: PermissionOverlap[] } {
-  const mine = changedPermissionFormFields(opened, values, openedExtraStudentIds)
-  const differsFromFresh = changedPermissionFormFields(fresh, values, openedExtraStudentIds)
+  const mine = changedPermissionFormFields(opened, values)
+  const differsFromFresh = changedPermissionFormFields(fresh, values)
   const body: UpdatePermissionFormBody = {}
   const overlaps: PermissionOverlap[] = []
   const text = {
@@ -245,12 +229,12 @@ export function planPermissionFormUpdate(
   if ('classIds' in mine && 'classIds' in differsFromFresh) {
     body.classIds = mine.classIds
     body.studentIds = mine.studentIds
-    if (!sameSet(opened.classIds ?? [], fresh.classIds ?? []))
+    if (targetChanged(permissionTarget(opened), permissionTarget(fresh)))
       overlaps.push({
         field: 'target',
         label: PERMISSION_FIELD_LABELS.target,
-        theirs: targetText(fresh.classIds ?? [], openedExtraStudentIds),
-        mine: targetText(values.classIds ?? [], values.studentIds ?? []),
+        theirs: targetText(permissionTarget(fresh)),
+        mine: targetText({ classIds: values.classIds ?? [], studentIds: values.studentIds ?? [] }),
       })
   }
   return { body, overlaps }
@@ -258,8 +242,8 @@ export function planPermissionFormUpdate(
 
 /** Kararı olan formda hedeften çıkarılan sınıf ve öğrenciler (sunucu 422 `scope_locked` verir). */
 export function removedFromTarget(
-  opened: { classIds: readonly string[]; studentIds: readonly string[] },
-  values: { classIds: readonly string[]; studentIds: readonly string[] },
+  opened: PermissionTarget,
+  values: PermissionTarget,
 ): { classIds: string[]; studentIds: string[] } {
   return {
     classIds: opened.classIds.filter((id) => !values.classIds.includes(id)),

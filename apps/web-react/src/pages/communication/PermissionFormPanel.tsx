@@ -154,7 +154,10 @@ function PermissionFormDetailView({
           ['Son gün', dateLabel(form.deadline, { year: 'numeric' })],
           ['Durum', <StatusBadge key="durum" text={state} tone={permissionFormTone(state)} />],
           ...(form.closedAt ? ([['Kapatıldı', when(form.closedAt)]] as const) : []),
-          ['Hedef sınıflar', target.length ? target.join(', ') : 'Tek tek öğrenciler'],
+          ['Hedef sınıflar', target.length ? target.join(', ') : 'Yok'],
+          ...(form.targetStudentIds?.length
+            ? ([['Tek tek öğrenciler', `${form.targetStudentIds.length} öğrenci`]] as const)
+            : []),
         ]}
       />
       {actions.manage ? (

@@ -27,7 +27,6 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { CheckGroup } from './CheckGroup.tsx'
 import {
   changedPermissionFormFields,
-  extraTargetStudentIds,
   permissionActions,
   permissionErrorRoutes,
   permissionFormDefaults,
@@ -35,6 +34,7 @@ import {
   PERMISSION_FORM_DESCRIPTION_MAX_LENGTH,
   PERMISSION_FORM_TITLE_MAX_LENGTH,
   PERMISSION_FORM_TOPIC_KEYS,
+  permissionTarget,
   planPermissionFormUpdate,
   removedFromTarget,
   type PermissionActor,
@@ -184,16 +184,15 @@ function PermissionFormEditor({
     () => students.data?.map((row) => row.record) ?? NONE,
     [students.data],
   )
-  // Sınıf dışında tek tek seçilen öğrenciler yanıtta ayrı gelmez: hedef sınıflara girmeyen
-  // çözülmüş öğrenciler tek tek seçilmiş sayılır.
-  const openedExtras = useMemo(
-    () =>
-      opened ? extraTargetStudentIds(opened.studentIds, opened.classIds ?? [], allStudents) : [],
-    [opened, allStudents],
+  // Kayıtlı hedefte seçilebilir listede olmayan öğrenci (sınıf değiştirmiş, pasif) de adıyla görünür.
+  const studentNames = useMemo(
+    () => new Map(allStudents.map((student) => [student.id, student.name])),
+    [allStudents],
   )
+  // Varsayılan hedef sunucunun kayıtlı hedefidir (`classIds`, `targetStudentIds`).
   const form = useForm<PermissionFormValues, unknown, PermissionFormOutput>({
     resolver: zodResolver(permissionFormSchema),
-    defaultValues: permissionFormDefaults(opened, openedExtras),
+    defaultValues: permissionFormDefaults(opened),
   })
   const [stale, setStale] = useState<Stale | null>(null)
   const guard = useRouteDiscardGuard(form.formState.isDirty)
@@ -257,31 +256,35 @@ function PermissionFormEditor({
         setStale({ kind: 'closed' })
         return { status: 'busy' as const }
       }
-      const removed = removedFromTarget(
-        { classIds: opened.classIds ?? [], studentIds: openedExtras },
-        { classIds: values.classIds ?? [], studentIds: values.studentIds ?? [] },
-      )
-      if (hasDecisions(fresh) && (removed.classIds.length > 0 || removed.studentIds.length > 0)) {
-        form.setError('classIds', {
-          type: 'manual',
-          message: 'Karar verilmiş formun hedefinden sınıf ya da öğrenci çıkarılamaz.',
-        })
-        return { status: 'busy' as const }
-      }
-      const plan = planPermissionFormUpdate(opened, fresh, values, openedExtras)
+      const plan = planPermissionFormUpdate(opened, fresh, values)
       if (Object.keys(plan.body).length === 0) {
-        const touched =
-          Object.keys(changedPermissionFormFields(opened, values, openedExtras)).length > 0
+        const touched = Object.keys(changedPermissionFormFields(opened, values)).length > 0
         form.setError('root.server', {
           type: 'manual',
           message: touched ? 'Form zaten bu değerlerde kayıtlı.' : 'Değişiklik yapmadınız.',
         })
         return { status: 'busy' as const }
       }
+      // Hedefi başkası da değiştirdiyse önce iki değer gösterilir; ikinci kayıt onaydır.
       const confirmed = shown?.kind === 'overlap' && shown.version === fresh.version
       if (plan.overlaps.length > 0 && !confirmed) {
         setStale({ kind: 'overlap', overlaps: plan.overlaps, version: fresh.version })
         return { status: 'busy' as const }
+      }
+      // Daraltma, yazılacak kayda (taze hedef) göre ölçülür: başkasının eklediğini çıkarmak da
+      // daraltmadır (DOM-ILT-038).
+      if (plan.body.classIds !== undefined && hasDecisions(fresh)) {
+        const removed = removedFromTarget(permissionTarget(fresh), {
+          classIds: plan.body.classIds,
+          studentIds: plan.body.studentIds ?? [],
+        })
+        if (removed.classIds.length > 0 || removed.studentIds.length > 0) {
+          form.setError('classIds', {
+            type: 'manual',
+            message: 'Karar verilmiş formun hedefinden sınıf ya da öğrenci çıkarılamaz.',
+          })
+          return { status: 'busy' as const }
+        }
       }
       return update.submit({ formId: fresh.id, version: fresh.version, body: plan.body }, routes)
     })
@@ -421,6 +424,7 @@ function PermissionFormEditor({
           render={({ field }) => (
             <StudentTargetPicker
               students={pickable}
+              names={studentNames}
               value={field.value}
               onChange={field.onChange}
               disabled={busy}

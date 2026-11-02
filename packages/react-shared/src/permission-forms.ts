@@ -342,9 +342,14 @@ export function decisionBlockedReason(
     : 'Son gün geçti; artık karar verilemez ya da değiştirilemez.'
 }
 
-/** Kararı olan formda hedeften çıkarma yasaktır; sayılar okuyanın gördüğü öğrencilerdendir. */
-export const hasDecisions = (form: Pick<PermissionFormListItem, 'counts'>) =>
-  form.counts.approved + form.counts.rejected > 0
+/**
+ * Kararı olan formda hedeften çıkarma ve arşiv yasaktır (DOM-ILT-038). Hakem sunucunun
+ * `hasDecisions` alanıdır: herhangi bir karar satırı (velayeti kalkan velinin geçerli sayılmayan
+ * kararı da) kilitler; görünen onay/ret sayıları bunu söyleyemez. Alan yalnız formu yönetene
+ * (yönetici, formun öğretmeni) döner; yoksa kilit yok sayılır, sunucu yine reddeder.
+ */
+export const hasDecisions = (form: Pick<PermissionForm, 'hasDecisions'>) =>
+  form.hasDecisions === true
 
 const target = (input: { version: number }) => input.version
 

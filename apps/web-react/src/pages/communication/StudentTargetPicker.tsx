@@ -13,6 +13,8 @@ const fold = (value: string) => value.toLocaleLowerCase('tr').normalize('NFC')
 
 type Props = {
   students: readonly PickableStudent[]
+  /** Seçilebilir listede olmayan seçili öğrencilerin adları (kayıtlı hedef). */
+  names?: ReadonlyMap<string, string>
   value: readonly string[]
   onChange: (value: string[]) => void
   disabled?: boolean
@@ -23,7 +25,14 @@ type Props = {
  * Sınıf dışında tek tek öğrenci seçimi: ada göre arama (en az 2 karakter), sonuçlardan ekleme ve
  * seçilenleri tek tek kaldırma. Binlerce öğrenciyi seçenek listesi olarak çizmez.
  */
-export function StudentTargetPicker({ students, value, onChange, disabled = false, error }: Props) {
+export function StudentTargetPicker({
+  students,
+  names,
+  value,
+  onChange,
+  disabled = false,
+  error,
+}: Props) {
   const id = useId()
   const [query, setQuery] = useState('')
   const byId = useMemo(() => new Map(students.map((student) => [student.id, student])), [students])
@@ -47,7 +56,7 @@ export function StudentTargetPicker({ students, value, onChange, disabled = fals
         <ul aria-label="Seçilen öğrenciler" className="flex flex-wrap gap-2">
           {value.map((studentId) => {
             const student = byId.get(studentId)
-            const name = student?.name ?? 'Öğrenci'
+            const name = student?.name ?? names?.get(studentId) ?? 'Öğrenci'
             return (
               <li
                 key={studentId}

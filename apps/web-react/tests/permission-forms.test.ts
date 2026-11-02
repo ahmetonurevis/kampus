@@ -10,7 +10,6 @@ import {
   changedPermissionFormFields,
   countsSummary,
   decisionFormSchema,
-  extraTargetStudentIds,
   formsForStudent,
   myDecision,
   myDecisionText,
@@ -19,6 +18,7 @@ import {
   permissionFormRow,
   permissionFormSchema,
   permissionFormState,
+  permissionTarget,
   planPermissionFormUpdate,
   removedFromTarget,
   studentEntry,
@@ -34,6 +34,7 @@ const opened = {
   description: 'Servisle gidilir.',
   deadline: '2026-12-01',
   classIds: ['c1'],
+  targetStudentIds: [] as string[],
 }
 const values = (overrides: Partial<PermissionFormOutput> = {}): PermissionFormOutput => ({
   topic: 'trip',
@@ -142,25 +143,34 @@ describe('form şeması core kuralıdır', () => {
 })
 
 describe('düzenleme: yalnız değişen alanlar gider', () => {
-  test('varsayılanlar kaydı ve tek tek öğrencileri taşır; yeni formda boştur', () => {
-    assert.deepEqual(permissionFormDefaults(opened, ['s7']), {
-      ...opened,
+  test('DOM-ILT-036: varsayılan hedef sunucunun kayıtlı hedefidir; yeni formda boştur', () => {
+    assert.deepEqual(permissionFormDefaults({ ...opened, targetStudentIds: ['s7'] }), {
+      topic: opened.topic,
+      title: opened.title,
+      description: opened.description,
+      deadline: opened.deadline,
+      classIds: ['c1'],
       studentIds: ['s7'],
+    })
+    // Alanı olmayan eski kayıt ve formu yönetmeyen okuyucu: yalnız sınıf hedefi.
+    assert.deepEqual(permissionTarget({ ...opened, targetStudentIds: undefined }), {
+      classIds: ['c1'],
+      studentIds: [],
     })
     assert.equal(permissionFormDefaults().topic, '')
     assert.deepEqual(permissionFormDefaults().classIds, [])
   })
 
   test('hiç değişiklik yoksa gövde boştur', () => {
-    assert.deepEqual(changedPermissionFormFields(opened, values(), []), {})
+    assert.deepEqual(changedPermissionFormFields(opened, values()), {})
   })
 
   test('hedef değişirse iki liste birlikte gider', () => {
-    assert.deepEqual(changedPermissionFormFields(opened, values({ classIds: ['c1', 'c2'] }), []), {
+    assert.deepEqual(changedPermissionFormFields(opened, values({ classIds: ['c1', 'c2'] })), {
       classIds: ['c1', 'c2'],
       studentIds: [],
     })
-    assert.deepEqual(changedPermissionFormFields(opened, values({ studentIds: ['s9'] }), []), {
+    assert.deepEqual(changedPermissionFormFields(opened, values({ studentIds: ['s9'] })), {
       classIds: ['c1'],
       studentIds: ['s9'],
     })
@@ -182,7 +192,6 @@ describe('düzenleme: yalnız değişen alanlar gider', () => {
       opened,
       fresh,
       values({ title: 'Benim başlığım', description: 'Yeni açıklama' }),
-      [],
     )
     // Son gün kullanıcı tarafından değiştirilmedi: taze değer korunur, gövdede yok.
     assert.deepEqual(plan.body, { title: 'Benim başlığım', description: 'Yeni açıklama' })
@@ -194,16 +203,40 @@ describe('düzenleme: yalnız değişen alanlar gider', () => {
 
   test('taze kayıt zaten kullanıcının değerindeyse gönderilecek bir şey kalmaz', () => {
     const fresh = { ...opened, title: 'Yeni' }
-    const plan = planPermissionFormUpdate(opened, fresh, values({ title: 'Yeni' }), [])
+    const plan = planPermissionFormUpdate(opened, fresh, values({ title: 'Yeni' }))
     assert.deepEqual(plan.body, {})
     assert.deepEqual(plan.overlaps, [])
   })
 
   test('hedefi başkası da değiştirdiyse hedef uyarısı çıkar', () => {
     const fresh = { ...opened, classIds: ['c1', 'c3'] }
-    const plan = planPermissionFormUpdate(opened, fresh, values({ classIds: ['c1', 'c2'] }), [])
+    const plan = planPermissionFormUpdate(opened, fresh, values({ classIds: ['c1', 'c2'] }))
     assert.deepEqual(plan.body, { classIds: ['c1', 'c2'], studentIds: [] })
     assert.equal(plan.overlaps[0]?.field, 'target')
+  })
+
+  test('DOM-ILT-036: başkasının tek tek eklediği öğrenci uyarısız düşmez', () => {
+    // B, Ece'yi (s9) ekledi; A sınıf eklerse hedef çakışması gösterilir.
+    const fresh = { ...opened, targetStudentIds: ['s9'] }
+    const plan = planPermissionFormUpdate(opened, fresh, values({ classIds: ['c1', 'c2'] }))
+    assert.deepEqual(
+      plan.overlaps.map((entry) => [entry.field, entry.theirs, entry.mine]),
+      [['target', '1 sınıf, 1 tek öğrenci', '2 sınıf, 0 tek öğrenci']],
+    )
+    // A hedefe dokunmadıysa hedef gönderilmez: B'nin eklediği kalır.
+    const titleOnly = planPermissionFormUpdate(opened, fresh, values({ title: 'Yeni başlık' }))
+    assert.deepEqual(titleOnly.body, { title: 'Yeni başlık' })
+    assert.deepEqual(titleOnly.overlaps, [])
+  })
+
+  test('DOM-ILT-036: hem sınıfta hem tek seçili öğrenci sınıf çıkarılınca hedefte kalır', () => {
+    const both = { ...opened, classIds: ['c1', 'c2'], targetStudentIds: ['s2'] }
+    const plan = planPermissionFormUpdate(
+      both,
+      both,
+      values({ classIds: ['c1'], studentIds: ['s2'] }),
+    )
+    assert.deepEqual(plan.body, { classIds: ['c1'], studentIds: ['s2'] })
   })
 
   test('kararlı formda hedeften çıkarılanlar bulunur', () => {
@@ -214,15 +247,6 @@ describe('düzenleme: yalnız değişen alanlar gider', () => {
       ),
       { classIds: ['c2'], studentIds: [] },
     )
-  })
-
-  test('tek tek seçilmiş öğrenciler hedef sınıfların dışındaki etkin öğrencilerdir', () => {
-    const students = [
-      { id: 's1', classId: 'c1', isActive: true },
-      { id: 's2', classId: 'c9', isActive: true },
-      { id: 's3', classId: 'c9', isActive: false },
-    ]
-    assert.deepEqual(extraTargetStudentIds(['s1', 's2', 's3', 's4'], ['c1'], students), ['s2'])
   })
 })
 

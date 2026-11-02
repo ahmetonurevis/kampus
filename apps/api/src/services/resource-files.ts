@@ -22,7 +22,7 @@ import { loadVersionsAssignments } from '../db/skills.ts'
 import { ForbiddenError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { defineFileAttachment } from './file-registry.ts'
-import { attachFile, detachFile } from './files.ts'
+import { attachFile, detachFile, FileRejectedError, isScanRejected } from './files.ts'
 import { learnerContentGate } from './learner-content.ts'
 import { RESOURCE_VERSION_ATTACHMENT } from './listening-plays.ts'
 import { contentReader } from './resources.ts'
@@ -74,6 +74,20 @@ export function planFiles(
     kept: readonly string[]
   },
 ): VersionFilesPlan {
+  // Yazarın kendi taramada reddedilmiş yeni dosyası ayrı kodla döner (Sabah kararı 42); core
+  // planı ötekini `file_unavailable` ile reddeder. Sıra core'un tekilleştirdiği listeyle aynıdır.
+  const kept = new Set(input.kept)
+  const rows = new Map(input.files.map((file) => [file.id, file]))
+  const rejected = [...new Set(input.fileIds)].findIndex((id) => {
+    const row = rows.get(id)
+    return (
+      row !== undefined &&
+      !kept.has(id) &&
+      row.uploadedByUserId === ctx.actor.userId &&
+      isScanRejected(row)
+    )
+  })
+  if (rejected >= 0) throw new FileRejectedError(['fileIds', rejected])
   return planVersionFiles({ actorUserId: ctx.actor.userId, ...input })
 }
 

@@ -3,6 +3,7 @@ import type { FastifyBaseLogger, FastifyInstance } from 'fastify'
 import type { Database } from '../db/client.ts'
 import { purgeExpiredIdempotencyKeys } from '../db/idempotency.ts'
 import type { StorageDriver } from '../storage/storage.ts'
+import { InlineScanScheduler, recoverStaleScans, SCAN_RECOVERY_LOCK_NAME } from './file-scan.ts'
 import { jobErrorInfo } from './job-error.ts'
 import {
   InlineTranscodeScheduler,
@@ -23,6 +24,8 @@ export interface BootJobsInput {
   start?: (app: FastifyInstance, options: StartJobsOptions) => Promise<JobQueue>
   /** Kuyruksuz açılış kurtarmasının tekil kilidi; varsayılan `connectionString` üstünde oturum kilidi. */
   recoveryLock?: SessionLock
+  /** Kuyruksuz tarama kurtarmasının tekil kilidi; varsayılan ayrı adlı oturum kilidi. */
+  scanRecoveryLock?: SessionLock
 }
 
 /**
@@ -36,6 +39,10 @@ export interface BootJobsInput {
  * beklemeden arka planda ve `pg_try_advisory_lock` altında tek denemeyle işlenir (kilit başka
  * süreçteyse atlanır), başarısız olan dosya reddedilir (ADR 0003 karar 10). `listen` gecikmez;
  * bitişi `InlineTranscodeScheduler.idle()` ile beklenir.
+ *
+ * Tarayıcı açıkken (`FILE_SCANNER=clamav`) dosya taraması da aynı biçimde süreç içinde çalışır;
+ * yarıda kalmış taramalar (`processing`, ses dışı, 15 dakikadan eski) ayrı bir kilit altında
+ * yeniden denenir. Tarama hatası dosyayı reddetmez ve `ready` yapmaz (ADR 0003 karar 8).
  */
 export async function bootJobs(input: BootJobsInput): Promise<JobQueue | null> {
   const { app, db, log } = input
@@ -67,6 +74,18 @@ export async function bootJobs(input: BootJobsInput): Promise<JobQueue | null> {
         })
       } catch (error) {
         log.error({ event: 'media.transcode_recovery_failed', ...jobErrorInfo(error) })
+      }
+    })
+  }
+  const scanScheduler = app.fileScan.scheduler
+  if (scanScheduler instanceof InlineScanScheduler) {
+    const lock =
+      input.scanRecoveryLock ?? postgresSessionLock(input.connectionString, SCAN_RECOVERY_LOCK_NAME)
+    void scanScheduler.background(async () => {
+      try {
+        await recoverStaleScans({ db, log, clock: app.clock, scheduler: scanScheduler, lock })
+      } catch (error) {
+        log.error({ event: 'file.scan_recovery_failed', ...jobErrorInfo(error) })
       }
     })
   }

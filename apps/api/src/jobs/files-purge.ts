@@ -11,7 +11,9 @@ const MAX_ROUNDS = 20
 /**
  * Bağlanmamış ya da reddedilmiş yüklemelerin temizliği (ADR 0003 karar 5, guvenlik-kvkk.md §10):
  * 24 saatte bir kayda bağlanmayan dosyanın nesnesi silinir, satırı `deleted` kalır. Saatlik
- * çalışır (her saatin 17. dakikası, Europe/Istanbul): dosya en geç 25 saatte silinir. Kurum başına
+ * çalışır (her saatin 17. dakikası, Europe/Istanbul): dosya en geç 25 saatte silinir;
+ * işlenmeyi (tarama, dönüşüm) bekleyen `processing` dosya yüklemeden 7 gün sonra
+ * (`PROCESSING_FILE_TTL_MS`; tarayıcı kesintisi bağlanmamış dosyayı taramadan önce sildirmez). Kurum başına
  * tur tur (`PURGE_BATCH_SIZE`) ilerler; dolu tur bir sonrakini başlatır. İdempotenttir: silinmiş
  * dosya taramaya girmez.
  *

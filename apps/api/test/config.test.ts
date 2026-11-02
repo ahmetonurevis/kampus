@@ -4,6 +4,7 @@ import { describe, test } from 'node:test'
 import {
   DEFAULT_STORAGE_DIR,
   DISK_STORAGE_IN_PRODUCTION_MESSAGE,
+  fileScannerDriver,
   isDevelopmentLike,
   loadConfig,
   parseConfig,
@@ -112,6 +113,42 @@ describe('ortam yapılandırması', () => {
         driver,
       )
     assert.throws(() => parseConfig({ ...base, MAIL_DRIVER: 'smtp' }), /MAIL_DRIVER/)
+  })
+
+  test('OG-092, ADR 0003 karar 8: FILE_SCANNER üretimde clamav, başka ortamda off varsayılır; üretimde clamav dışı reddedilir', () => {
+    assert.equal(fileScannerDriver(loadConfig(base)), 'off')
+    assert.equal(fileScannerDriver(loadConfig({ ...base, NODE_ENV: 'test' })), 'off')
+    assert.equal(fileScannerDriver(parseConfig(production)), 'clamav')
+    assert.equal(fileScannerDriver(loadConfig({ ...base, FILE_SCANNER: 'clamav' })), 'clamav')
+    assert.equal(
+      fileScannerDriver(parseConfig({ ...production, FILE_SCANNER: 'clamav' })),
+      'clamav',
+    )
+    assert.throws(() => parseConfig({ ...production, FILE_SCANNER: 'off' }), /FILE_SCANNER/)
+    for (const driver of ['fake', 'none', 'clamdscan'])
+      assert.throws(() => parseConfig({ ...base, FILE_SCANNER: driver }), /FILE_SCANNER/, driver)
+    const defaults = loadConfig(base)
+    assert.equal(defaults.CLAMAV_HOST, '127.0.0.1')
+    assert.equal(defaults.CLAMAV_PORT, 3310)
+    assert.equal(defaults.CLAMAV_TIMEOUT_MS, 120_000)
+    // `.env.example`'taki boş değer varsayılana düşer.
+    const blank = loadConfig({ ...base, FILE_SCANNER: '', CLAMAV_PORT: '', CLAMAV_TIMEOUT_MS: '' })
+    assert.deepEqual(
+      [fileScannerDriver(blank), blank.CLAMAV_PORT, blank.CLAMAV_TIMEOUT_MS],
+      ['off', 3310, 120_000],
+    )
+    const custom = loadConfig({
+      ...base,
+      CLAMAV_HOST: 'clamav',
+      CLAMAV_PORT: '3311',
+      CLAMAV_TIMEOUT_MS: '30000',
+    })
+    assert.deepEqual(
+      [custom.CLAMAV_HOST, custom.CLAMAV_PORT, custom.CLAMAV_TIMEOUT_MS],
+      ['clamav', 3311, 30_000],
+    )
+    assert.throws(() => loadConfig({ ...base, CLAMAV_PORT: '0' }), /CLAMAV_PORT/)
+    assert.throws(() => loadConfig({ ...base, CLAMAV_TIMEOUT_MS: '10' }), /CLAMAV_TIMEOUT_MS/)
   })
 
   test('TRUST_PROXY hop sayısı veya vekil IP/CIDR listesi kabul eder, true reddedilir', () => {

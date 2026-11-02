@@ -3,12 +3,28 @@ import { PgBoss, type Job, type JobResult, type QueueOptions } from 'pg-boss'
 
 import type { StorageDriver } from '../storage/storage.ts'
 import { dispatchInstitutionJobs, dispatchQueueName, type JobSender } from './dispatch.ts'
+import { scanStoredFile, type ScanDeps } from '../services/file-scan.ts'
 import { transcodeAudioFile, type TranscodeDeps } from '../services/media-transcode.ts'
+import {
+  FILE_SCAN_JOB,
+  FILE_SCAN_REQUEUE_JOB,
+  queuedScanScheduler,
+  requeueStaleScans,
+  runScanRequeue,
+  SCAN_QUEUE_OPTIONS,
+  SCAN_REQUEUE_CRON,
+  SCAN_REQUEUE_LOCK_NAME,
+  SCAN_REQUEUE_QUEUE_OPTIONS,
+  SCAN_WORK_OPTIONS,
+  scanJobDataSchema,
+  scanSummary,
+} from './file-scan.ts'
 import { jobErrorInfo } from './job-error.ts'
 import {
   MEDIA_QUEUE_OPTIONS,
   MEDIA_TRANSCODE_JOB,
   MEDIA_WORK_OPTIONS,
+  postgresSessionLock,
   queuedTranscodeScheduler,
   requeueStaleTranscodes,
   transcodeJobDataSchema,
@@ -16,6 +32,7 @@ import {
 } from './media-transcode.ts'
 import { INSTITUTION_JOBS, RETIRED_JOBS } from './registry.ts'
 import { institutionJobDataSchema, type AnyInstitutionJob, type JobDeps } from './types.ts'
+import type { SessionLock } from './media-transcode.ts'
 
 /**
  * Arka plan iş kuyruğu (ADR 0002, ADR 0003; `pg-boss`). Yalnız sunucu süreci açar
@@ -74,6 +91,8 @@ export interface StartJobsOptions {
   jobs?: readonly AnyInstitutionJob[]
   /** Zamanlaması silinecek emekli iş adları; varsayılan `RETIRED_JOBS`. */
   retiredJobs?: readonly string[]
+  /** `file.scan-requeue` işçisinin tekil kilidi; varsayılan ayrı adlı oturum kilidi. */
+  scanRequeueLock?: SessionLock
 }
 
 export interface JobQueue {
@@ -171,6 +190,48 @@ async function runTranscodeJob(
 }
 
 /**
+ * Tek `file.scan` işini çalıştırır (ADR 0003 karar 8). Bozuk yük `deadletter`; tarayıcıya
+ * ulaşılamaması ve depo hatası `failed` (geri çekilmeli yeniden deneme). Son denemede de dosya
+ * reddedilmez ve `ready` olmaz: `processing` kalır, açılışta yeniden kuyruğa girer. Zararlı dosya
+ * işi düşürmez: dosya reddedilir, iş `completed` olur.
+ */
+export async function runScanJob(
+  app: FastifyInstance,
+  deps: Omit<ScanDeps, 'signal'>,
+  job: Job<unknown>,
+): Promise<JobResult> {
+  const parsed = scanJobDataSchema.safeParse(job.data)
+  if (!parsed.success) {
+    deps.log.error({
+      event: 'job.failed',
+      job: FILE_SCAN_JOB,
+      retryCount: job.retryCount,
+      reason: 'invalid_payload',
+    })
+    return { id: job.id, status: 'deadletter', output: { reason: 'invalid_payload' } }
+  }
+  const data = parsed.data
+  try {
+    const result = await scanStoredFile({ ...deps, signal: job.signal }, data, app.clock())
+    const summary = scanSummary(result)
+    deps.log.info({ event: 'job.completed', job: FILE_SCAN_JOB, ...data, ...summary })
+    return { id: job.id, status: 'completed', output: summary }
+  } catch (error) {
+    const info = jobErrorInfo(error)
+    const exhausted = job.retryCount >= SCAN_QUEUE_OPTIONS.retryLimit
+    deps.log.error({
+      event: exhausted ? 'file.scan_retries_exhausted' : 'job.failed',
+      job: FILE_SCAN_JOB,
+      ...data,
+      retryCount: job.retryCount,
+      code: info.code,
+      message: info.message,
+    })
+    return { id: job.id, status: 'failed', output: info }
+  }
+}
+
+/**
  * Kuyruğu açar, kuyrukları ve zamanlamaları kurar, işleyicileri bağlar; uygulama kapanınca
  * kuyruğu durdurur. `app.ready()`'den önce çağrılır (kapanış kancası eklenir).
  */
@@ -256,6 +317,48 @@ export async function startJobs(
       { perJobResults: true, ...MEDIA_WORK_OPTIONS },
       async (batch) => Promise.all(batch.map((job) => runTranscodeJob(app, mediaDeps, job))),
     )
+    // Olaya bağlı dosya taraması (tarayıcı kapalıysa kuyruk kurulmaz, dosyalar `pending` kalır).
+    const scanner = app.fileScan.scanner
+    if (scanner !== null) {
+      await boss.createQueue(FILE_SCAN_JOB, SCAN_QUEUE_OPTIONS)
+      const scanQueue = await boss.getQueue(FILE_SCAN_JOB)
+      if (scanQueue?.policy !== SCAN_QUEUE_OPTIONS.policy)
+        log.warn({
+          event: 'file.scan_queue_policy_mismatch',
+          policy: scanQueue?.policy ?? null,
+          expected: SCAN_QUEUE_OPTIONS.policy,
+        })
+      const scanDeps = { db: app.db, storage: options.storage, scanner, log }
+      await boss.work<unknown>(
+        FILE_SCAN_JOB,
+        { perJobResults: true, ...SCAN_WORK_OPTIONS },
+        async (batch) => Promise.all(batch.map((job) => runScanJob(app, scanDeps, job))),
+      )
+      // Denemeleri biten taramalar süreç yeniden başlamadan kuyruğa döner (15 dakikada bir).
+      await boss.createQueue(FILE_SCAN_REQUEUE_JOB, SCAN_REQUEUE_QUEUE_OPTIONS)
+      await boss.schedule(FILE_SCAN_REQUEUE_JOB, SCAN_REQUEUE_CRON, null, {
+        tz: JOB_TIME_ZONE,
+        missed: 'once',
+      })
+      const lock =
+        options.scanRequeueLock ??
+        postgresSessionLock(options.connectionString, SCAN_REQUEUE_LOCK_NAME)
+      await boss.work(FILE_SCAN_REQUEUE_JOB, async () => {
+        try {
+          return { queued: await runScanRequeue({ db: app.db, boss, log, clock: app.clock, lock }) }
+        } catch (error) {
+          const info = jobErrorInfo(error)
+          log.error({ event: 'file.scan_requeue_failed', ...info })
+          // pg-boss hata nesnesini saklar; yalnız süzülmüş mesaj gider (`cause` bilerek yok).
+          // eslint-disable-next-line preserve-caught-error
+          throw new Error(info.message)
+        }
+      })
+    } else {
+      // Tarayıcı kapalı ortamda eski zamanlama işçisiz kuyrukta iş biriktirmesin.
+      for (const schedule of await boss.getSchedules(FILE_SCAN_REQUEUE_JOB))
+        await boss.unschedule(schedule.name, schedule.key)
+    }
     // Yalnız açıkça emekli edilen işlerin zamanlaması silinir; listede olmayan zamanlamaya
     // dokunulmaz (başka sürümün işi olabilir).
     for (const name of options.retiredJobs ?? RETIRED_JOBS)
@@ -266,18 +369,31 @@ export async function startJobs(
     await stop().catch(() => undefined)
     throw error
   }
-  // Kuyruk tümüyle kurulduktan sonra yükleme dönüşümü kuyruğa koyar (kurulum düşerse süreç içi
-  // dönüşüm kalır).
+  // Kuyruk tümüyle kurulduktan sonra yükleme dönüşümü ve taramayı kuyruğa koyar (kurulum düşerse
+  // süreç içi yol kalır).
   app.media.scheduler = queuedTranscodeScheduler(boss)
+  const scanning = app.fileScan.scanner !== null
+  if (scanning) app.fileScan.scheduler = queuedScanScheduler(boss)
   try {
     const requeued = await requeueStaleTranscodes(app.db, boss, app.clock())
     log.info({ event: 'media.transcode_requeued', count: requeued })
   } catch (error) {
     log.error({ event: 'media.transcode_requeue_failed', ...jobErrorInfo(error) })
   }
+  if (scanning)
+    try {
+      const requeued = await requeueStaleScans(app.db, boss, app.clock())
+      log.info({ event: 'file.scan_requeued', count: requeued })
+    } catch (error) {
+      log.error({ event: 'file.scan_requeue_failed', ...jobErrorInfo(error) })
+    }
   log.info({
     event: 'jobs.started',
-    jobs: [...jobs.map((job) => job.name), MEDIA_TRANSCODE_JOB],
+    jobs: [
+      ...jobs.map((job) => job.name),
+      MEDIA_TRANSCODE_JOB,
+      ...(scanning ? [FILE_SCAN_JOB, FILE_SCAN_REQUEUE_JOB] : []),
+    ],
   })
   return { boss, jobs }
 }

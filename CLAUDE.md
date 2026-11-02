@@ -17,7 +17,7 @@ Proje çevrimdışı Vue/JS demosundan TypeScript, React ve gerçek API'li platf
 
 ## Mimari
 
-- `packages/school-core`: platformdan bağımsız iş kuralları, Zod şemaları, örnek veri, müfredat, soru bankası, rol/modül kaydı, belge verisi, `content/` (içerik havuzu kuralları), `skills/`, `cefr/`. Web, mobil ve API aynı kuralları çalıştırır.
+- `packages/school-core`: platformdan bağımsız iş kuralları, Zod şemaları, örnek veri, müfredat, soru bankası, rol/modül kaydı, belge verisi, `content/` (içerik havuzu kuralları), `skills/`, `cefr/`, `platform/` (Oğuzhan'ın komut ve menü girdileri; ortak `modules/` birleştirir). Web, mobil ve API aynı kuralları çalıştırır.
 - `apps/api`: Fastify 5 + TypeScript, PostgreSQL 16, Drizzle. İşlemler school-core kurallarıyla doğrulanır ve tek veritabanı işleminde yazılır. Kurum ve rol kapsamı sunucuda uygulanır; istemciye güvenilmez.
 - `packages/api-client` (tipli HTTP istemcisi) ve `packages/react-shared` (ortak React hook'ları) web ile mobil arasında paylaşılır.
 - `apps/web-react`: React 19 + TypeScript + Vite. `apps/mobile`: Expo SDK 57, React Native, React Navigation native stack.

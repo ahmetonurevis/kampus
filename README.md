@@ -55,6 +55,7 @@ Platform geçişinin ([ADR 0001](docs/adr/0001-platform-mimarisi.md), [ADR 0002]
 
 ```bash
 docker compose up -d                       # PostgreSQL 16, 127.0.0.1:5433
+docker compose --profile clamav up -d      # isteğe bağlı ClamAV (3310); API'de FILE_SCANNER=clamav
 cp apps/api/.env.example apps/api/.env     # BETTER_AUTH_SECRET'ı değiştirin
 pnpm --filter @kampus/api db:migrate
 pnpm --filter @kampus/api db:seed          # idempotent demo kurumları, kullanıcıları ve kayıtları

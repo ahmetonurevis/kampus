@@ -145,12 +145,16 @@ export const configSchema = z
     FILE_SCANNER: optional(z.enum(['clamav', 'off'])),
     /** `clamd` TCP adresi (`compose.yaml` `clamav` profili: 127.0.0.1:3310). */
     CLAMAV_HOST: optional(z.string().min(1)).transform((value) => value ?? '127.0.0.1'),
-    CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
+    CLAMAV_PORT: optional(z.coerce.number().int().min(1).max(65535)).transform(
+      (value) => value ?? 3310,
+    ),
     /**
      * Tek taramanın üst süresi (ms): bağlantı, akış ve yanıt dahil. Aşılırsa tarama geçici hatadır
      * ve iş yeniden denenir. En büyük yükleme (200 MB video) yerel ağda bu sürede taranır.
      */
-    CLAMAV_TIMEOUT_MS: z.coerce.number().int().min(1000).max(600_000).default(120_000),
+    CLAMAV_TIMEOUT_MS: optional(z.coerce.number().int().min(1000).max(600_000)).transform(
+      (value) => value ?? 120_000,
+    ),
   })
   .superRefine((config, ctx) => {
     if (config.NODE_ENV !== 'production') return

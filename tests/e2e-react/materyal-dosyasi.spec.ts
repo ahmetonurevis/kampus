@@ -24,8 +24,9 @@ const toast = (page: Page, text: string) =>
   page.locator('[data-sonner-toast]').filter({ hasText: text })
 
 /**
- * Dosya tarama işi (TODO(F3c2-scan)) yokken yüklenen dosya `pending` kalır; test kendi kurumunun
- * dosyalarını doğrudan `ready` yapar (taramadan geçmiş gibi; `sorular.spec.ts` ile aynı).
+ * E2E API'si tarayıcısız koşar (`FILE_SCANNER=off`, clamd yok): yüklenen dosya `pending` kalır;
+ * test kendi kurumunun dosyalarını doğrudan `ready` yapar (taramadan geçmiş gibi;
+ * `sorular.spec.ts` ile aynı).
  */
 async function markFilesReady(institutionId: string): Promise<void> {
   const client = new pg.Client({ connectionString: e2e.databaseUrl })

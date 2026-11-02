@@ -80,8 +80,8 @@ async function submissionsOf(client: ApiClient, homeworkId: string): Promise<Sub
 }
 
 /**
- * Dosya tarama işi (TODO(F3c2-scan)) yokken yüklenen dosya `pending` kalır; test kendi kurumunun
- * dosyalarını doğrudan `ready` yapar (taramadan geçmiş gibi).
+ * E2E API'si tarayıcısız koşar (`FILE_SCANNER=off`, clamd yok): yüklenen dosya `pending` kalır;
+ * test kendi kurumunun dosyalarını doğrudan `ready` yapar (taramadan geçmiş gibi).
  */
 async function markFilesReady(institutionId: string): Promise<void> {
   const client = new pg.Client({ connectionString: e2e.databaseUrl })

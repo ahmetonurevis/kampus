@@ -131,6 +131,12 @@ describe('ortam yapılandırması', () => {
     assert.equal(defaults.CLAMAV_HOST, '127.0.0.1')
     assert.equal(defaults.CLAMAV_PORT, 3310)
     assert.equal(defaults.CLAMAV_TIMEOUT_MS, 120_000)
+    // `.env.example`'taki boş değer varsayılana düşer.
+    const blank = loadConfig({ ...base, FILE_SCANNER: '', CLAMAV_PORT: '', CLAMAV_TIMEOUT_MS: '' })
+    assert.deepEqual(
+      [fileScannerDriver(blank), blank.CLAMAV_PORT, blank.CLAMAV_TIMEOUT_MS],
+      ['off', 3310, 120_000],
+    )
     const custom = loadConfig({
       ...base,
       CLAMAV_HOST: 'clamav',

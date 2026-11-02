@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import type { ResourceVersionInput } from '@kampus/school-core/content/resource.ts'
 
@@ -1708,5 +1708,185 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
         and(eq(records.institutionId, t.institution.id), eq(records.collection, 'notifications')),
       )
     assert.equal(rows.length, 0)
+  })
+  /** Kurumun bildirim kayıtları: tür, kitle, öğrenci ve konu teslimi (sıralı). */
+  async function noticeRows(institutionId: string) {
+    const rows = await db
+      .select({ data: records.data })
+      .from(records)
+      .where(and(eq(records.institutionId, institutionId), eq(records.collection, 'notifications')))
+    return rows
+      .map(({ data }) => {
+        const row = data as Json
+        return [row.kind, row.audience, row.studentId, row.subject.id] as const
+      })
+      .sort()
+  }
+  /** Aktörün itiraz kararı bildirimleri ve başlıkları (liste ucundan). */
+  async function appealNotices(cookie: string) {
+    const list = (await ok(await call('GET', '/notifications', cookie))) as Json[]
+    return list
+      .filter((n) => n.kind === 'appeal_decided')
+      .map((n) => [n.audience, n.studentId, n.subject.id, n.title] as const)
+  }
+  const UPHELD = {
+    outcome: 'upheld',
+    reason: 'GIZLI-KARAR kriterler yeniden okundu',
+    score: {
+      criteria: [
+        { criterionId: 'task', band: 5, comment: null },
+        { criterionId: 'grammar', band: 5, comment: null },
+      ],
+      overallComment: 'Yeniden değerlendirme sonucu.',
+    },
+  }
+  const REJECTED = { outcome: 'rejected', reason: 'GIZLI-KARAR puan doğru bulundu' }
+  /** Puanlı, itirazı açılmış teslim; karar `colleague` ile verilir (`rowVersion` personelin). */
+  async function appealed(t: Tenant, submissionId: string) {
+    await ok(await score(submissionId, t.cookies.teacher, 1), 201)
+    const filed = await ok(await appeal(submissionId, t.cookies.student), 201)
+    const rowVersion = (await ok(await detail(submissionId, t.cookies.teacher))).rowVersion
+    return { appealId: filed.versions[0].appeal.id as string, rowVersion: rowVersion as number }
+  }
+  const OTHERS = (t: Tenant) => [
+    t.cookies.otherStudent,
+    t.cookies.otherParent,
+    t.cookies.teacher,
+    t.cookies.colleague,
+    t.cookies.admin,
+  ]
+
+  for (const [outcome, body] of [
+    ['upheld', UPHELD],
+    ['rejected', REJECTED],
+  ] as const)
+    test(`DOM-BEC-025, DOM-ILT-023, IST-065: itiraz kararı (${outcome}) aynı işlemde öğrenciye ve veliye tek appeal_decided bildirimi yazar; puan değişmediği retle de bildirilir; ikinci feedback_released yok; başkasına gitmez; bildirimde sonuç, gerekçe ve puan yok`, async () => {
+      const { t, submission } = await setup()
+      const id = submission.id as string
+      const { appealId, rowVersion } = await appealed(t, id)
+      // Puanın kendisi geri bildirimi zaten açmıştı: yalnız o bildirim var.
+      assert.deepEqual(await noticeRows(t.institution.id), [
+        ['feedback_released', 'parent', 's-1', id],
+        ['feedback_released', 'student', 's-1', id],
+      ])
+      await ok(await decide(id, appealId, t.cookies.colleague, rowVersion, body))
+      assert.deepEqual(await noticeRows(t.institution.id), [
+        ['appeal_decided', 'parent', 's-1', id],
+        ['appeal_decided', 'student', 's-1', id],
+        ['feedback_released', 'parent', 's-1', id],
+        ['feedback_released', 'student', 's-1', id],
+      ])
+      assert.deepEqual(await appealNotices(t.cookies.student), [
+        ['student', 's-1', id, 'Görev itirazın sonuçlandı.'],
+      ])
+      assert.deepEqual(await appealNotices(t.cookies.parent), [
+        ['parent', 's-1', id, 'Deniz için görev itirazı sonuçlandı.'],
+      ])
+      for (const cookie of OTHERS(t)) assert.deepEqual(await appealNotices(cookie), [])
+      for (const cookie of [t.cookies.student, t.cookies.parent]) {
+        const text = (await call('GET', '/notifications', cookie)).body
+        for (const hidden of ['GIZLI-', 'upheld', 'rejected', 'percent', 'band'])
+          assert.ok(!text.includes(hidden), hidden)
+      }
+      // Sonuçlanmış karar yeniden verilemez; ikinci bildirim yazılmaz.
+      fails(
+        await decide(id, appealId, t.cookies.colleague, rowVersion + 1, body),
+        409,
+        'appeal_decided',
+      )
+      assert.equal((await noticeRows(t.institution.id)).length, 4)
+    })
+
+  test('DOM-BEC-025, IST-065: aynı Idempotency-Key ile karar tekrarı yanıtı yeniden oynatır ve tek bildirim bırakır', async () => {
+    const { t, submission } = await setup()
+    const id = submission.id as string
+    const { appealId, rowVersion } = await appealed(t, id)
+    const send = () =>
+      call(
+        'POST',
+        `/task-submissions/${id}/appeals/${appealId}/decision`,
+        t.cookies.colleague,
+        REJECTED,
+        { ...match(rowVersion), 'idempotency-key': 'karar-tekrar-1' },
+      )
+    await ok(await send())
+    await ok(await send())
+    const decided = (await noticeRows(t.institution.id)).filter(
+      ([kind]) => kind === 'appeal_decided',
+    )
+    assert.deepEqual(decided, [
+      ['appeal_decided', 'parent', 's-1', id],
+      ['appeal_decided', 'student', 's-1', id],
+    ])
+  })
+
+  test('DOM-BEC-025, IST-065: karar işlem içinde başarısız olursa ne karar, ne yeni puan ne bildirim kalır (atomik); aynı karar sonra geçer ve bir kez bildirir', async () => {
+    const { t, submission } = await setup()
+    const id = submission.id as string
+    const { appealId, rowVersion } = await appealed(t, id)
+    const before = await noticeRows(t.institution.id)
+    await db.execute(sql`
+      CREATE FUNCTION og021_fail_final() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'karar çakışması' USING ERRCODE = '40001';
+      END $$ LANGUAGE plpgsql`)
+    await db.execute(
+      sql.raw(`CREATE TRIGGER og021_fail_final BEFORE INSERT ON rubric_scores
+        FOR EACH ROW WHEN (NEW.rater_role = 'final') EXECUTE FUNCTION og021_fail_final()`),
+    )
+    try {
+      const failed = await decide(id, appealId, t.cookies.colleague, rowVersion, UPHELD)
+      assert.equal(failed.statusCode, 409, failed.body)
+    } finally {
+      await db.execute(sql`DROP TRIGGER og021_fail_final ON rubric_scores`)
+      await db.execute(sql`DROP FUNCTION og021_fail_final()`)
+    }
+    assert.deepEqual(await noticeRows(t.institution.id), before)
+    assert.equal((await storedRows(t.institution.id)).scores, 1)
+    assert.equal((await ok(await detail(id, t.cookies.teacher))).versions[0].appeal.outcome, null)
+    await ok(await decide(id, appealId, t.cookies.colleague, rowVersion, UPHELD))
+    assert.equal(
+      (await noticeRows(t.institution.id)).filter(([kind]) => kind === 'appeal_decided').length,
+      2,
+    )
+  })
+
+  for (const closed of ['communication', 'learning'] as const)
+    test(`DOM-YTK-040, IST-065: ${closed} modülü kapanınca itiraz kararı (iletişimde yazılır, öğrenmede 403) appeal_decided bildirimi üretmez`, async () => {
+      // Modül itiraz açıldıktan sonra kapanır: kapalı modülde itiraz ucu zaten 403 verir.
+      const { t, submission } = await setup()
+      const id = submission.id as string
+      const { appealId, rowVersion } = await appealed(t, id)
+      await db.execute(
+        sql`UPDATE institutions SET enabled_modules = enabled_modules || ${JSON.stringify({ [closed]: false })}::jsonb WHERE id = ${t.institution.id}`,
+      )
+      const before = await noticeRows(t.institution.id)
+      const response = await decide(id, appealId, t.cookies.colleague, rowVersion, REJECTED)
+      if (closed === 'communication') await ok(response)
+      else fails(response, 403, 'module_disabled')
+      assert.deepEqual(await noticeRows(t.institution.id), before)
+    })
+
+  test('IST-065: başka kurumun itiraz kararı bu kurumun öğrenci ve velisine bildirim düşürmez', async () => {
+    const { t, submission } = await setup()
+    const { t: other, submission: otherSubmission } = await setup()
+    const { appealId, rowVersion } = await appealed(other, otherSubmission.id as string)
+    await ok(
+      await decide(
+        otherSubmission.id as string,
+        appealId,
+        other.cookies.colleague,
+        rowVersion,
+        REJECTED,
+      ),
+    )
+    assert.deepEqual(await noticeRows(t.institution.id), [])
+    for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.teacher])
+      assert.deepEqual(await appealNotices(cookie), [])
+    assert.equal(submission.id === otherSubmission.id, false)
+    assert.equal(
+      (await noticeRows(other.institution.id)).filter(([kind]) => kind === 'appeal_decided').length,
+      2,
+    )
   })
 })

@@ -104,7 +104,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Mevcut müşteriye satış iletisi de ticari ileti onayına tabi olabilir.
 - **Kaynak:** 6563 sayılı Kanun md. 6 ve Ticari İletişim ve Ticari Elektronik İletiler Hakkında Yönetmelik — **doğrulanmalı** (mevcut müşteri istisnası ve uygulama içi bildirimin kapsamı).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/notifications.ts` her türü `service`/`commercial` sınıfıyla kaydeder; bugünkü iki tür (`feedback_released`, `enrollment_completed`) hizmet bildirimidir, ticari tür ileti onayı denetimi gelmeden eklenmez. `enrollment_completed` türü kayıtlıdır ama kesin kayıt henüz üretmiyor (`TODO(onur-istek)`: kesin kayıt bildirimi).
+- **Kodda:** kısmen — core `lib/notifications.ts` her türü `service`/`commercial` sınıfıyla kaydeder; bugünkü türler (`feedback_released`, `appeal_decided`, `enrollment_completed`) hizmet bildirimidir, ticari tür ileti onayı denetimi gelmeden eklenmez. `enrollment_completed` türü kayıtlıdır ama kesin kayıt henüz üretmiyor (`TODO(onur-istek)`: kesin kayıt bildirimi).
 
 ### DOM-ILT-023 · Bildirim gövdesinde kişisel ayrıntı yok
 

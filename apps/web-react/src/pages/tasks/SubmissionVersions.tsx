@@ -16,11 +16,16 @@ const stamp = (iso: string) => `${dateLabel(iso, { year: 'numeric' })} ${timeLab
 export function SubmissionVersions({
   versions,
   audience = 'learner',
+  headingLevel = 3,
 }: {
   versions: readonly Version[]
   audience?: ResultAudience
+  /** Sürüm başlığı düzeyi; geri bildirim başlığı bir alt düzeydedir. Varsayılan öğrenci ekranıdır. */
+  headingLevel?: 3 | 4
 }) {
   if (versions.length === 0) return null
+  const VersionHeading = `h${headingLevel}` as const
+  const FeedbackHeading = headingLevel === 3 ? 'h4' : 'h5'
   return (
     <ol aria-label="Gönderilen sürümler" className="grid gap-4">
       {[...versions].reverse().map((version) => {
@@ -28,7 +33,7 @@ export function SubmissionVersions({
         return (
           <li key={version.id} className="rounded-card border p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold">{version.number}. sürüm</h3>
+              <VersionHeading className="font-semibold">{version.number}. sürüm</VersionHeading>
               <span className="text-sm text-muted-foreground">{stamp(version.submittedAt)}</span>
               {version.late ? <StatusBadge text="Geç teslim" tone="amber" /> : null}
               {version.wordCount ? (
@@ -51,7 +56,7 @@ export function SubmissionVersions({
             ) : null}
             {score ? (
               <div className="mt-3 grid gap-2 border-t pt-3 text-sm">
-                <h4 className="font-medium">Öğretmen geri bildirimi</h4>
+                <FeedbackHeading className="font-medium">Öğretmen geri bildirimi</FeedbackHeading>
                 {score.overallComment ? (
                   <p className="[overflow-wrap:anywhere]">{score.overallComment}</p>
                 ) : null}

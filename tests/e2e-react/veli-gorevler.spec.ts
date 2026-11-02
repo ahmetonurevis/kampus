@@ -93,6 +93,7 @@ test('OG-992, DOM-BEC-045: veli çocuğunun tamamlanan okuma denemesinin puanın
   await expect(panel.getByLabel('Puan 100 üzerinden 25')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(panel).toBeHidden()
+  await expect(page).not.toHaveURL(/[?&]gorev=/)
 
   // Çocuk değişince liste o çocuğa daralır.
   await page.getByRole('combobox', { name: 'Çocuk seç' }).selectOption({ label: 'Ece Yılmaz' })
@@ -100,6 +101,14 @@ test('OG-992, DOM-BEC-045: veli çocuğunun tamamlanan okuma denemesinin puanın
   const eceRow = table.locator('tbody tr').filter({ hasText: ECE_TASK })
   await expect(eceRow).toContainText('Başlanmadı')
   await expect(table.getByText(DENIZ_TASK)).toHaveCount(0)
+
+  // Öbür çocuğun görevine doğrudan adresle gidilince panel görevi bulamaz, başlığı sızmaz.
+  await page.goto(`/veli/akademik-takip?cocuk=s2&sekme=gorevler&gorev=${denizId}`)
+  await expect(panel.getByText('Görev bulunamadı.', { exact: false })).toBeVisible()
+  await expect(panel.getByRole('heading', { name: DENIZ_TASK })).toHaveCount(0)
+  await expect(page.getByText(DENIZ_TASK)).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(panel).toBeHidden()
 
   await page.setViewportSize({ width: 390, height: 844 })
   await expectNoHorizontalOverflow(page)

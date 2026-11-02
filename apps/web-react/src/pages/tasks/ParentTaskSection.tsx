@@ -105,10 +105,12 @@ export function ParentTaskSection({ childId }: { childId: string }) {
   )
 
   const selected = items.find((item) => item.id === panel.selectedId)
+  // Sonraki sayfalar sürerken ya da liste kesildiyse çocuğun görevleri henüz görünmemiş olabilir.
+  const listIncomplete = assignments.isLoadingMore || assignments.truncated
 
   return (
     <>
-      {rows && rows.length === 0 ? (
+      {rows && rows.length === 0 && !listIncomplete ? (
         <EmptyState icon="BookOpen" title="Bu çocuğa atanmış görev yok." />
       ) : (
         <section
@@ -124,13 +126,8 @@ export function ParentTaskSection({ childId }: { childId: string }) {
           <TableGate
             error={assignments.isReady ? null : assignments.error}
             onRetry={() => void assignments.refetch()}
-            loading={rows === undefined}
+            loading={rows === undefined || (rows.length === 0 && assignments.isLoadingMore)}
           >
-            {assignments.truncated ? (
-              <p role="status" className="px-6 pb-3 text-sm text-muted-foreground">
-                Görev sayısı çok fazla; yalnız en yeni kayıtlar gösteriliyor.
-              </p>
-            ) : null}
             <DataTable
               listKey="veli-gorevler"
               rows={rows ?? NONE}
@@ -140,6 +137,11 @@ export function ParentTaskSection({ childId }: { childId: string }) {
               searchKeys={['title', 'type']}
               onRowClick={(row) => openPanel(row.id)}
             />
+            {assignments.truncated ? (
+              <p role="status" className="px-6 py-3 text-sm text-muted-foreground">
+                Bütün görevler yüklenemedi; liste eksik olabilir.
+              </p>
+            ) : null}
           </TableGate>
         </section>
       )}
@@ -151,6 +153,8 @@ export function ParentTaskSection({ childId }: { childId: string }) {
       >
         {selected ? (
           <ParentTaskDetail assignment={selected} childId={childId} now={now} />
+        ) : assignments.error ? (
+          <QueryError error={assignments.error} onRetry={() => void assignments.refetch()} />
         ) : assignments.isReady && !assignments.isLoadingMore ? (
           <p role="status" className="text-sm text-muted-foreground">
             Görev bulunamadı. Bu çocuğa atanmamış ya da kaldırılmış olabilir.
@@ -242,7 +246,7 @@ function SubmissionSummary({ submissionId }: { submissionId: string }) {
       <h3 id="veli-teslim-baslik" className="font-semibold">
         Gönderilen sürümler
       </h3>
-      <SubmissionVersions versions={submission.versions} audience="parent" />
+      <SubmissionVersions versions={submission.versions} audience="parent" headingLevel={4} />
     </section>
   )
 }

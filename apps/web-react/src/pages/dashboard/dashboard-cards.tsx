@@ -5,8 +5,8 @@
 // "Pano kartı ekleme".
 import { buildDashboardCards, type DashboardCard } from './dashboard-cards-model.ts'
 import { ADMIN_CARDS } from './AdminCards.tsx'
-import { ENROLLMENT_CARDS } from './EnrollmentCards.tsx'
-import { FINANCE_CARDS } from './FinanceCards.tsx'
+import { ENROLLMENT_CARDS } from './HandoverEnrollmentCards.tsx'
+import { FINANCE_CARDS } from './HandoverFinanceCards.tsx'
 import { STUDENT_CARDS } from './StudentCards.tsx'
 import { TEACHER_CARDS } from './TeacherCards.tsx'
 

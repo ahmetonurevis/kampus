@@ -86,4 +86,4 @@ import { COLLECTION_CARDS } from '../finance/DashboardCards.tsx'
 const ONUR_CARDS: readonly DashboardCard[] = [...COLLECTION_CARDS]
 ```
 
-Bugünkü finans ve kayıt kartları (yönetici tahsilat sayaçları, taksit durumu, aylık tahsilat; ön büro taksit sayaçları ve listeleri; veli bakiyesi; ön büro CRM aday kartları) bileşen olarak `FinanceCards.tsx` ve `EnrollmentCards.tsx` dosyalarında, girişleri `dashboard-cards.tsx` "Onur'a devredilecek" listesindedir (ON-032). Onur kartı kendi klasörüne taşıyınca girişi Onur bloğuna alır, devredilecek listeden siler. Testler: `apps/web-react/tests/dashboard-cards.test.ts`.
+Bugünkü finans ve kayıt kartları (yönetici tahsilat sayaçları, taksit durumu, aylık tahsilat; ön büro taksit sayaçları ve listeleri; veli bakiyesi; ön büro CRM aday kartları) bileşen olarak `HandoverFinanceCards.tsx` ve `HandoverEnrollmentCards.tsx` dosyalarında (Oğuzhan alanında, ad bilerek Onur desenleri dışında), girişleri `dashboard-cards.tsx` "Onur'a devredilecek" listesindedir (ON-032). Onur kartı kendi klasörüne taşıyınca girişi Onur bloğuna alır, devredilecek listeden siler. Testler: `apps/web-react/tests/dashboard-cards.test.ts`.

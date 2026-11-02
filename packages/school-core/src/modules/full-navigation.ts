@@ -59,9 +59,34 @@ function withCommunication(role: Role): NavigationPage[] {
   return at < 0 ? [...base, ...extra] : [...base.slice(0, at), ...extra, ...base.slice(at)]
 }
 
+// Onur: kayıt ve finans
+/**
+ * Yönetici de kesin kayıt yapabilir (`prospect.enroll`: yonetici + onburo, DOM-KAY-035); temel
+ * menüde yalnız ön büroda bulunan Kayıt İşlemleri yöneticiye API'li yüzeylerde eklenir. Vue
+ * demosunda yönetici karşılığı yoktur (`apiOnly`). RAPORLAR'dan (yoksa SİSTEM'den) önce girer.
+ */
+const ENROLLMENT_PAGE: NavigationPage = {
+  path: 'kayit-islemleri',
+  title: 'Kayıt İşlemleri',
+  icon: 'UserRoundPlus',
+  module: 'crm',
+  view: 'Crm',
+  description: 'Yeni öğrencinizi kaydedin, sözleşme ve ödeme planını oluşturun.',
+  group: 'KAYIT & SATIŞ',
+  apiOnly: true,
+}
+
+function withEnrollment(pages: NavigationPage[]): NavigationPage[] {
+  if (pages.some((page) => page.path === ENROLLMENT_PAGE.path)) return pages
+  const before = pages.findIndex((page) => page.group === 'RAPORLAR' || page.group === 'SİSTEM')
+  const at = before >= 0 ? before : pages.length
+  return [...pages.slice(0, at), ENROLLMENT_PAGE, ...pages.slice(at)]
+}
+// Onur: kayıt ve finans sonu
+
 // Anahtar sırası temel menüdekiyle aynıdır.
 export const navigation: Record<Role, NavigationPage[]> = {
-  yonetici: withCommunication('yonetici'),
+  yonetici: withEnrollment(withCommunication('yonetici')),
   onburo: withCommunication('onburo'),
   ogretmen: withCommunication('ogretmen'),
   ogrenci: withCommunication('ogrenci'),

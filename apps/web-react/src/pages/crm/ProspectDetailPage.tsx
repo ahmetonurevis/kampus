@@ -85,7 +85,7 @@ export function ProspectDetailPage({ page }: { page: NavPage }) {
       listHref={listHref}
       listLabel={role === 'onburo' ? 'Aday listesine dön' : 'Panele dön'}
       canPickTeacher={role === 'yonetici'}
-      canEnroll={role === 'onburo'}
+      canEnroll={role === 'onburo' || role === 'yonetici'}
     />
   )
 }
@@ -103,10 +103,11 @@ function Detail({
   listHref: string
   listLabel: string
   canPickTeacher: boolean
-  /** Kesin kayıt formu ön büronun Kayıt İşlemleri sayfasındadır (tarifeli, adımlı form). */
+  /** Kesin kayıt formu Kayıt İşlemleri sayfasındadır (tarifeli, adımlı form); ön büro ve yönetici. */
   canEnroll: boolean
 }) {
   const { session } = useAuth()
+  const role = session?.role ?? 'onburo'
   const type = session?.institution.type ?? 'school'
   // Kesin kayıt taksit ve sözleşme yazar: `crm` ve `finance` birlikte açık olmalıdır (liste ile aynı).
   const enrollModulesOpen = session?.modules.crm === true && session.modules.finance === true
@@ -149,7 +150,7 @@ function Detail({
             {canEnroll ? (
               open && enrollModulesOpen ? (
                 <Button asChild>
-                  <Link to={`/onburo/kayit-islemleri?aday=${encodeURIComponent(prospect.id)}`}>
+                  <Link to={`/${role}/kayit-islemleri?aday=${encodeURIComponent(prospect.id)}`}>
                     <Icon name="UserRoundPlus" size={17} aria-hidden="true" />
                     Kesin kayda dönüştür
                   </Link>

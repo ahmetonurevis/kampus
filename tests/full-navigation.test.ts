@@ -128,3 +128,16 @@ test('Yoklama Düzeltme yalnız yöneticide, academic modülünde ve YÖNETİM k
   assert.equal(admin[admin.indexOf('personel') + 1], 'yoklama-duzeltme')
   assert.ok(!demoNavigation.yonetici.some((p) => p.path === 'yoklama-duzeltme'))
 })
+
+test('DOM-KAY-035: yönetici de Kayıt İşlemleri sayfasını görür; Vue demosunda karşılığı yoktur', () => {
+  const page = navigation.yonetici.find((item) => item.path === 'kayit-islemleri')
+  assert.ok(page, 'yönetici menüsünde kayit-islemleri yok')
+  assert.equal(page.module, 'crm')
+  assert.equal(page.apiOnly, true)
+  assert.equal(navigation.yonetici.filter((item) => item.path === 'kayit-islemleri').length, 1)
+  const at = navigation.yonetici.findIndex((item) => item.path === 'kayit-islemleri')
+  const reports = navigation.yonetici.findIndex((item) => item.group === 'RAPORLAR')
+  assert.ok(at < reports, 'Kayıt İşlemleri RAPORLAR kategorisinden önce gelmeli')
+  assert.ok(!demoNavigation.yonetici.some((item) => item.path === 'kayit-islemleri'))
+  assert.ok(navigation.onburo.some((item) => item.path === 'kayit-islemleri'))
+})

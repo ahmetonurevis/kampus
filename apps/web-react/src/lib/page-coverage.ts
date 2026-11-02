@@ -25,6 +25,7 @@ export const ONUR_MIGRATED: readonly string[] = [
   'onburo/adaylar',
   'onburo/deneme-dersi-takvimi',
   'onburo/kayit-islemleri',
+  'yonetici/kayit-islemleri',
   'onburo/aday',
   'yonetici/aday',
   'yonetici/kayit-raporlari',

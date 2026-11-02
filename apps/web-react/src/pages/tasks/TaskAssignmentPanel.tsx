@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, type Resolver } from 'react-hook-form'
 import {
@@ -43,6 +43,12 @@ type Props = {
   onGrade: (submissionId: string) => void
   /** Otomatik puanlı görevde denemenin ayrıntısını açar (`?deneme=`). */
   onReview: (attemptId: string) => void
+  /**
+   * Panelin üstünde açılan pencereler (deneme ayrıntısı). React ağacında panelin içinde durmaları
+   * gerekir: Radix yığını, ağaç dışındaki pencereye geçen odağı "dışarı" sayıp paneli kapatırdı
+   * (adresle ikisi birlikte açıldığında).
+   */
+  children?: ReactNode
 }
 
 /**
@@ -51,7 +57,7 @@ type Props = {
  * ayrıntı `?deneme=`). Atamayı atayan ve yönetici değiştirir; atayan olmayan ama kapsamındaki
  * sınıf yüzünden gören öğretmen salt okur görür (DOM-YTK-028) ve puanlayabilir.
  */
-export function TaskAssignmentPanel({ assignmentId, onClose, onGrade, onReview }: Props) {
+export function TaskAssignmentPanel({ assignmentId, onClose, onGrade, onReview, children }: Props) {
   return (
     <SidePanel
       open={assignmentId !== ''}
@@ -61,11 +67,16 @@ export function TaskAssignmentPanel({ assignmentId, onClose, onGrade, onReview }
       {assignmentId ? (
         <AssignmentDetail assignmentId={assignmentId} onGrade={onGrade} onReview={onReview} />
       ) : null}
+      {children}
     </SidePanel>
   )
 }
 
-function AssignmentDetail({ assignmentId, onGrade, onReview }: Omit<Props, 'onClose'>) {
+function AssignmentDetail({
+  assignmentId,
+  onGrade,
+  onReview,
+}: Omit<Props, 'onClose' | 'children'>) {
   const { session } = useAuth()
   const detail = useTaskAssignment(assignmentId)
   const { names } = useTaskLookups()

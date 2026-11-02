@@ -104,8 +104,17 @@ test.describe('personel deneme görünümü', () => {
     await expect(review).toHaveCount(0)
     await expect(open).toBeFocused()
 
-    // Dar ekranda pencere taşmaz.
+    // Adres paylaşılabilir: yenilenince pencere panelin üstünde açılır (erişilebilirlik ağacında
+    // üstteki pencere görünür); kapatınca panel yerinde kalır.
     await open.click()
+    await page.reload()
+    await expect(review.getByRole('list', { name: 'Soru soru sonuç' })).toBeVisible()
+    await review.getByRole('button', { name: 'Pencereyi kapat' }).click()
+    await expect(review).toHaveCount(0)
+    await expect(panel).toBeVisible()
+    await open.click()
+
+    // Dar ekranda pencere taşmaz.
     await page.setViewportSize({ width: 390, height: 844 })
     await expect(breakdown).toBeVisible()
     await expectNoHorizontalOverflow(page)

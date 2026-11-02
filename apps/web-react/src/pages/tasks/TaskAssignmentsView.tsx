@@ -56,6 +56,8 @@ export function TaskAssignmentsView() {
   const form = useDetailPanel('gorev-form')
   const grading = useDetailPanel('puanla')
   const review = useDetailPanel(ATTEMPT_PARAM)
+  // Panel açıkken deneme penceresi panelin içinde (iç içe pencere), değilse tek başına çizilir.
+  const reviewModal = <AttemptReviewModal attemptId={review.selectedId} onClose={review.close} />
   const openPanel = panel.open
   const navigate = useNavigate()
   /** Yeni görev kaydedilince form kapanır, yeni kaydın ayrıntısı açılır (tek geçmiş adımı). */
@@ -179,14 +181,16 @@ export function TaskAssignmentsView() {
         onClose={panel.close}
         onGrade={grading.open}
         onReview={review.open}
-      />
+      >
+        {panel.selectedId ? reviewModal : null}
+      </TaskAssignmentPanel>
       <TaskAssignmentForm
         open={form.selectedId === NEW_ASSIGNMENT}
         onClose={form.close}
         onCreated={showCreated}
       />
       <SubmissionGradingModal submissionId={grading.selectedId} onClose={grading.close} />
-      <AttemptReviewModal attemptId={review.selectedId} onClose={review.close} />
+      {panel.selectedId ? null : reviewModal}
     </section>
   )
 }

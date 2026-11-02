@@ -4,6 +4,7 @@ import { createSeed } from '@kampus/school-core/data/seed.ts'
 import {
   progressByVideo,
   progressText,
+  resumeByVideo,
   videoRow,
   watchAction,
   watchState,
@@ -75,4 +76,18 @@ test('videoRow: yalnız künye olan kayıtta oynatılabilir dosya adresi yoktur'
   assert.equal(row.src, null)
   assert.equal(row.poster, null)
   assert.equal(row.captions, null)
+})
+
+test('DOM-KYN-005 resumeByVideo: son konum yüzdeyle birlikte gelir, aynı videoda en yüksek yüzdeli kayıt geçerlidir', () => {
+  const byVideo = resumeByVideo([
+    { studentId: 's1', videoId: 'v1', progress: 35 },
+    { studentId: 's1', videoId: 'v1', progress: 60, positionSeconds: 72, durationSeconds: 120 },
+    { studentId: 's1', videoId: 'v1', progress: 20, positionSeconds: 10, durationSeconds: 120 },
+    { studentId: 's1', videoId: 'v2', progress: 140, positionSeconds: 5, durationSeconds: 50 },
+    { studentId: 's1', videoId: 'v3', progress: 0 },
+  ])
+  assert.deepEqual(byVideo.get('v1'), { progress: 60, positionSeconds: 72 })
+  assert.deepEqual(byVideo.get('v2'), { progress: 100, positionSeconds: 5 })
+  assert.deepEqual(byVideo.get('v3'), { progress: 0, positionSeconds: undefined })
+  assert.equal(byVideo.get('v4'), undefined)
 })

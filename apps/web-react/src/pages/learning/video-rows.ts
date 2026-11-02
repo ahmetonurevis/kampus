@@ -1,10 +1,20 @@
 // Ders Videoları saf hesapları (Vue `Learning.vue` `videolar`): kapsamdaki video kayıtları ve
 // öğrencinin kendi izleme ilerlemesi. Kapsamı sunucu uygular (öğrenci yalnız kendi düzeyinin
 // videolarını ve kendi ilerlemesini okur); ilerleme yüzdesi ve durum kayıtlardan türetilir.
+import type { ResumeSource } from '@kampus/react-shared/video-progress.ts'
 import type { CoreRow } from '@/hooks/use-core-collection.ts'
 
-/** `videoProgress` kaydı: core örnek verisinde kimlik yoktur, anahtar öğrenci + video çiftidir. */
-export type VideoProgress = { studentId: string; videoId: string; progress: number }
+/**
+ * `videoProgress` kaydı: core örnek verisinde kimlik yoktur, anahtar öğrenci + video çiftidir.
+ * `positionSeconds` oynatıcının son konumudur (DOM-KYN-005); örnek ve eski kayıtlarda yoktur.
+ */
+export type VideoProgress = {
+  studentId: string
+  videoId: string
+  progress: number
+  positionSeconds?: number
+  durationSeconds?: number
+}
 
 export type WatchState = 'completed' | 'started' | 'new'
 
@@ -50,6 +60,21 @@ export function progressByVideo(progress: readonly VideoProgress[]): Map<string,
   for (const entry of progress) {
     const value = clampProgress(entry.progress)
     byVideo.set(entry.videoId, Math.max(byVideo.get(entry.videoId) ?? 0, value))
+  }
+  return byVideo
+}
+
+/**
+ * Video → kaldığı yer eşlemesi (kaydedilmiş yüzde ve son konum); aynı video için en yüksek
+ * yüzdeli kayıt geçerlidir. Oynatıcı açılışta buradan konumlanır (`resumePosition`).
+ */
+export function resumeByVideo(progress: readonly VideoProgress[]): Map<string, ResumeSource> {
+  const byVideo = new Map<string, ResumeSource>()
+  for (const entry of progress) {
+    const value = clampProgress(entry.progress)
+    const current = byVideo.get(entry.videoId)
+    if (current && current.progress >= value) continue
+    byVideo.set(entry.videoId, { progress: value, positionSeconds: entry.positionSeconds })
   }
   return byVideo
 }

@@ -1,22 +1,25 @@
+import type { ResumeSource } from '@kampus/react-shared/video-progress.ts'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreItem } from '@/hooks/use-core-collection.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { LessonPlayer } from './LessonPlayer.tsx'
 
 type Props = {
   videoId: string
-  /** Öğrencinin bu videodaki izleme yüzdesi (0–100). */
-  progress: number
+  /** Öğrencinin bu videodaki kayıtlı ilerlemesi: yüzde (0–100) ve son konum (DOM-KYN-005). */
+  resume: ResumeSource
   teacher: string
   onClose: () => void
 }
 
 /**
  * Video oynatıcı penceresi (`?video=<kimlik>`): video tek kayıt ucundan okunur, bağlantıyla gelinen
- * ya da kapsam dışı kimlik "Kayıt bulunamadı" verir. Altyazı varsa Türkçe parça varsayılandır.
+ * ya da kapsam dışı kimlik "Kayıt bulunamadı" verir. Oynatıcı kaldığı yerden başlar ve ilerlemeyi
+ * API'ye yazar (`LessonPlayer`).
  */
-export function VideoPanel({ videoId, progress, teacher, onClose }: Props) {
+export function VideoPanel({ videoId, resume, teacher, onClose }: Props) {
   const item = useCoreItem('videos', videoId === '' ? null : videoId)
   const video = item.data?.record
   return (
@@ -33,21 +36,15 @@ export function VideoPanel({ videoId, progress, teacher, onClose }: Props) {
       ) : (
         <div className="grid gap-4">
           {video.src ? (
-            <video
+            <LessonPlayer
               key={video.id}
-              controls
-              playsInline
-              preload="metadata"
+              videoId={video.id}
+              title={video.title}
+              src={video.src}
               poster={video.poster}
-              aria-label={video.title}
-              className="lesson-player aspect-video w-full rounded-card bg-black"
-            >
-              <source src={video.src} type="video/mp4" />
-              {video.captions ? (
-                <track kind="captions" src={video.captions} srcLang="tr" label="Türkçe" default />
-              ) : null}
-              Tarayıcınız video oynatmayı desteklemiyor.
-            </video>
+              captions={video.captions}
+              resume={resume}
+            />
           ) : (
             <p className="rounded-card border bg-surface-soft p-4 text-sm">
               Bu video için oynatılabilir dosya yok.
@@ -61,7 +58,7 @@ export function VideoPanel({ videoId, progress, teacher, onClose }: Props) {
                 {video.description}
               </p>
             </div>
-            <StatusBadge text={`%${progress} izlendi`} />
+            <StatusBadge text={`%${resume.progress} izlendi`} />
           </div>
           {video.transcript.length ? (
             <details className="lesson-transcript rounded-card border p-4 text-sm">

@@ -65,7 +65,8 @@ export const ASSESSMENT_COMMANDS = {
 } as const satisfies Record<string, ModuleCommandSpec>
 /** Temel yazma işlemleri (anahtarlar `lib/authorize.ts` eylem adlarıdır); kayıt ve finans dışında. */
 export const PLATFORM_OPERATION_COMMANDS = {
-  'attendance.record': spec('academic', [...SCOPE, 'attendance']),
+  // `schedule`: geç kalma dakikası günün ders süresiyle sınırlanır (DOM-AKD-036).
+  'attendance.record': spec('academic', [...SCOPE, 'attendance', 'schedule']),
   'grade.record': spec('academic', [...SCOPE, 'grades', 'quizzes', 'quizAttempts']),
   'grade.update': spec('academic', [...SCOPE, 'grades']),
   'record.archive': spec(null, [

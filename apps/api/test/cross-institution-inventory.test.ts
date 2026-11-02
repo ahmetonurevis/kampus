@@ -149,9 +149,10 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'GET /api/v1/collections/:collection/:id': COLLECTIONS,
 
   // --- Akademik -------------------------------------------------------------------------------
+  // `lateMinutes` (OG-042) aynı ucun gövdesidir; B sınıfına A'dan yoklama 404 ve B değişmez.
   'POST /api/v1/classes/:classId/attendance': kayit(
-    'platform-commands.test.ts',
-    'başka kurumun sınıfı 404 ve B değişmez',
+    'attendance-late.test.ts',
+    'başka kurumun sınıfı 404',
   ),
   'POST /api/v1/grades': govde('grades.test.ts', 'gövdedeki institutionId etkisiz'),
   'PATCH /api/v1/grades/:gradeId': kayit(

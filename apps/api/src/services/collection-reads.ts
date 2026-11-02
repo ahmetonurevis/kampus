@@ -231,6 +231,23 @@ function dateFieldOf(collection: CollectionName, requested: string | undefined):
 }
 
 /**
+ * Yoklama geçmişi için en uzun gün aralığı (IST-093): bir takvim yılı. Başlangıçtan bir yıl sonraki
+ * gün dahildir; ondan sonrası 400. Yalnız iki uç da verilmişse denetlenir (sıra denetimi sorgu
+ * şemasındadır). Diğer koleksiyonlarda aralık sınırı yoktur.
+ */
+const ATTENDANCE_RANGE_TOO_LONG = 'Tarih aralığı en fazla 1 yıl olabilir.'
+
+function checkAttendanceRange(collection: CollectionName, query: CollectionReadQuery): void {
+  if (collection !== 'attendance' || !query.dateFrom || !query.dateTo) return
+  const limit = new Date(`${query.dateFrom}T00:00:00Z`)
+  limit.setUTCFullYear(limit.getUTCFullYear() + 1)
+  if (query.dateTo > limit.toISOString().slice(0, 10))
+    throw new ValidationError([
+      { path: ['dateTo'], code: 'too_big', message: ATTENDANCE_RANGE_TOO_LONG },
+    ])
+}
+
+/**
  * Sıralama alanları. `createdAt`/`updatedAt` kayıt kolonudur; bağlı alanlar (`JOINED_FIELDS`)
  * yalnız tanımlı oldukları koleksiyonda geçerlidir (başkasında 400); diğerleri veri alanıdır.
  */
@@ -483,6 +500,7 @@ async function listFilters(
 ): Promise<RecordFilter[] | null> {
   // Alan izin listesinden geçer (aralık yoksa etkisizdir ama geçersiz alan yine 400'dür).
   const dateField = dateFieldOf(collection, query.dateField)
+  checkAttendanceRange(collection, query)
   const stateFilters = stateFiltersOf(collection, query.states)
   const filters: RecordFilter[] = []
   for (const field of FILTER_FIELDS) {

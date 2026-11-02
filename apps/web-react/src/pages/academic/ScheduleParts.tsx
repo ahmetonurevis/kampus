@@ -6,17 +6,22 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { noon, type ScheduleLesson } from './schedule-model.ts'
+import { TUTORING_LABEL } from './schedule-tutoring.ts'
 
 type DaysProps = {
   days: readonly string[]
   byDay: ReadonlyMap<string, readonly ScheduleLesson[]>
-  onOpen: (lessonId: string) => void
+  /** Ders kimliği ve türü; etüt (`tutoring`) kendi panelinde açılır. */
+  onOpen: (id: string, kind: ScheduleLesson['kind']) => void
   label: string
   /** Haftalık görünümde boş hafta sonu günleri gizlenir. */
   hideEmptyWeekend?: boolean
 }
 
-/** Gün kutuları; her ders paneli açan bir düğmedir (saat, ad, alt metin, yedek, iptal). */
+/**
+ * Gün kutuları; her ders ya da etüt paneli açan bir düğmedir (saat, ad, alt metin, yedek, iptal).
+ * Etüt kartı "Etüt" etiketi taşır; ayrım yalnız renkle yapılmaz.
+ */
 export function ScheduleDays({ days, byDay, onOpen, label, hideEmptyWeekend = true }: DaysProps) {
   const shown = days.filter(
     (key, index) => !hideEmptyWeekend || index < 5 || (byDay.get(key)?.length ?? 0) > 0,
@@ -39,10 +44,10 @@ export function ScheduleDays({ days, byDay, onOpen, label, hideEmptyWeekend = tr
             {list.length ? (
               <ul className="grid gap-2">
                 {list.map((lesson) => (
-                  <li key={lesson.id}>
+                  <li key={`${lesson.kind}-${lesson.id}`}>
                     <button
                       type="button"
-                      onClick={() => onOpen(lesson.id)}
+                      onClick={() => onOpen(lesson.id, lesson.kind)}
                       className={cn(
                         'lesson-card grid min-h-11 w-full gap-0.5 rounded-xl border bg-surface px-3 py-2 text-left hover:bg-secondary',
                         lesson.cancelled && 'text-muted-foreground',
@@ -50,6 +55,9 @@ export function ScheduleDays({ days, byDay, onOpen, label, hideEmptyWeekend = tr
                     >
                       <span className="flex flex-wrap items-center justify-between gap-1 text-xs text-muted-foreground">
                         {lesson.time} · {lesson.duration} dk
+                        {lesson.kind === 'tutoring' ? (
+                          <StatusBadge text={TUTORING_LABEL} tone="purple" />
+                        ) : null}
                         {lesson.cancelled ? <StatusBadge text="İptal edildi" tone="red" /> : null}
                       </span>
                       <strong

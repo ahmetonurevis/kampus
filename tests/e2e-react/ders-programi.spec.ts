@@ -109,6 +109,51 @@ async function weekHasRoom(page: Page, path: string, monday: string, room: strin
   return (await page.getByRole('button', { name: /dk/ }).filter({ hasText: room }).count()) > 0
 }
 
+/** Programdaki etüt kaydı (seed'de etüt yoktur; plan ucunun üreteceği biçimde doğrudan konur). */
+function tutorRecord(
+  id: string,
+  over: { studentIds: string[]; topic: string; room: string; date: string; status?: string },
+) {
+  const stamp = new Date().toISOString()
+  return {
+    collection: 'tutorSessions' as const,
+    data: {
+      id,
+      examId: 'exam-7-1',
+      branchId: 'b1',
+      grade: 7,
+      subjectId: 'math',
+      topic: over.topic,
+      studentIds: over.studentIds,
+      scores: over.studentIds.map((studentId) => ({ studentId, percent: 25 })),
+      teacherId: 't1',
+      date: over.date,
+      duration: 30,
+      room: over.room,
+      roomClassId: 'c1',
+      capacity: 6,
+      status: over.status ?? 'Planlandı',
+      attendance: {},
+      threshold: 70,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+  }
+}
+
+async function setModule(admin: ApiClient, moduleKey: string, enabled: boolean) {
+  const settings = await admin.get('/api/v1/modules')
+  expect(settings.status).toBe(200)
+  const { version } = (settings.body as { data: { version: number } }).data
+  const response = await admin.context.patch(`/api/v1/modules/${moduleKey}`, {
+    data: { enabled },
+    headers: { 'if-match': `"${version}"`, 'idempotency-key': randomUUID() },
+  })
+  expect(response.status()).toBe(200)
+}
+
+const weekList = (page: Page) => page.getByRole('list', { name: 'Haftalık ders programı' })
+
 test.describe('ders programı', () => {
   test('yönetici ders ekler, çakışma alanda görünür, yedek atar; öğretmen gerekçeyi görmez', async ({
     loginAs,
@@ -405,6 +450,127 @@ test.describe('ders programı', () => {
     await expect(card).toContainText('Yedek: Selin Kaya')
     await expect(week.getByRole('button').filter({ hasText: cancelledRoom })).toHaveCount(0)
     await expect(page.getByText('Nil Hoca seminerde.')).toHaveCount(0)
+  })
+
+  test('programda kazanım etütleri: öğretmen, öğrenci ve veli kendi kapsamını görür (IST-096)', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const suffix = randomUUID().slice(0, 6)
+    const { day, monday } = farDay(170)
+    const at = `${day}T12:00:00.000Z`
+    const own = { room: `ET-A-${suffix}`, topic: `Denklemler ${suffix}` }
+    const other = { room: `ET-B-${suffix}`, topic: `Oran ${suffix}` }
+    const sibling = { room: `ET-D-${suffix}`, topic: `Kesirler ${suffix}` }
+    const cancelled = { room: `ET-C-${suffix}`, topic: `Iptal ${suffix}` }
+    const school = await tenant({
+      roles: ['ogretmen', 'ogrenci', 'veli'],
+      students: ['s1', 's2', 's3'],
+      records: [
+        tutorRecord(`etut-a-${suffix}`, { ...own, studentIds: ['s1', 's3'], date: at }),
+        tutorRecord(`etut-b-${suffix}`, { ...other, studentIds: ['s3'], date: at }),
+        tutorRecord(`etut-d-${suffix}`, { ...sibling, studentIds: ['s2'], date: at }),
+        tutorRecord(`etut-c-${suffix}`, {
+          ...cancelled,
+          studentIds: ['s1'],
+          date: at,
+          status: 'İptal',
+        }),
+      ],
+    })
+
+    // Öğretmen: kendi etütlerinin hepsi, iptal hariç; panelde öğrenci listesi vardır.
+    const page = await loginAs(school.user('ogretmen'))
+    await page.goto(`/ogretmen/ders-programi?hafta=${monday}`)
+    const week = weekList(page)
+    const card = week.getByRole('button').filter({ hasText: own.room })
+    await expect(card).toContainText('Etüt · Matematik · ' + own.topic)
+    await expect(card).toContainText(`2 öğrenci · Derslik ${own.room}`)
+    await expect(card.getByText('Etüt', { exact: true })).toBeVisible()
+    await expect(week.getByRole('button').filter({ hasText: other.room })).toHaveCount(1)
+    await expect(week.getByRole('button').filter({ hasText: sibling.room })).toHaveCount(1)
+    await expect(week.getByRole('button').filter({ hasText: cancelled.room })).toHaveCount(0)
+    await card.click()
+    const teacherPanel = page.getByRole('dialog', { name: 'Etüt ayrıntısı' })
+    await expect(teacherPanel).toContainText('Matematik')
+    await expect(teacherPanel).toContainText(own.topic)
+    await expect(teacherPanel).toContainText('Selin Kaya')
+    await expect(teacherPanel).toContainText(own.room)
+    await expect(teacherPanel.getByText('Öğrenci sayısı')).toBeVisible()
+    await expect(teacherPanel.getByRole('heading', { name: 'Öğrenciler' })).toBeVisible()
+    await expect(teacherPanel.getByText('Deniz Yılmaz')).toBeVisible()
+
+    // Öğrenci (Deniz): yalnız kendi etüdü, grup arkadaşı sayılmaz; panelde öğrenci listesi yok.
+    const studentPage = await loginAs(school.user('ogrenci'))
+    await studentPage.goto(`/ogrenci/ders-programi?hafta=${monday}`)
+    const studentWeek = weekList(studentPage)
+    const studentCard = studentWeek.getByRole('button').filter({ hasText: own.room })
+    await expect(studentCard).toContainText(`1 öğrenci · Derslik ${own.room}`)
+    for (const hidden of [other.room, sibling.room, cancelled.room])
+      await expect(studentWeek.getByRole('button').filter({ hasText: hidden })).toHaveCount(0)
+    await studentCard.click()
+    const studentPanel = studentPage.getByRole('dialog', { name: 'Etüt ayrıntısı' })
+    await expect(studentPanel).toContainText(own.topic)
+    await expect(studentPanel.getByText('Öğrenci sayısı')).toBeVisible()
+    await expect(studentPanel.getByRole('heading', { name: 'Öğrenciler' })).toHaveCount(0)
+    await expect(studentPanel.getByText('Zeynep Demir')).toHaveCount(0)
+    // Sunucu kapsamı: yanıtta grup arkadaşının kimliği ve başkasının etüdü yoktur (iptal geçmişi
+    // sunucuda kalır, program göstermez).
+    const studentApi = await api(school.user('ogrenci'))
+    const read = await studentApi.get('/api/v1/collections/tutorSessions?pageSize=100')
+    const rows = (read.body as { data: { record: { room: string; studentIds: string[] } }[] }).data
+    expect(rows.map((row) => row.record.room).sort()).toEqual([own.room, cancelled.room].sort())
+    for (const row of rows) expect(row.record.studentIds).toEqual(['s1'])
+
+    // Veli: seçili çocuğun etüdü; çocuk değişince diğer çocuğunki.
+    const parentPage = await loginAs(school.user('veli'))
+    await parentPage.goto(`/veli/akademik-takip?sekme=program&hafta=${monday}&cocuk=s1`)
+    const parentWeek = weekList(parentPage)
+    await expect(parentWeek.getByRole('button').filter({ hasText: own.room })).toContainText(
+      '1 öğrenci',
+    )
+    for (const hidden of [other.room, sibling.room, cancelled.room])
+      await expect(parentWeek.getByRole('button').filter({ hasText: hidden })).toHaveCount(0)
+    await parentPage.goto(`/veli/akademik-takip?sekme=program&hafta=${monday}&cocuk=s2`)
+    await expect(parentWeek.getByRole('button').filter({ hasText: sibling.room })).toHaveCount(1)
+    await expect(parentWeek.getByRole('button').filter({ hasText: own.room })).toHaveCount(0)
+  })
+
+  test('etüt modülü kapanınca etütler programdan çıkar, dersler kalır (IST-096)', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const suffix = randomUUID().slice(0, 6)
+    const { day, monday } = farDay(180)
+    const tutoring = { room: `ET-M-${suffix}`, topic: `Cebir ${suffix}` }
+    const lessonRoom = `E2E-${suffix}`
+    const school = await tenant({
+      roles: ['ogrenci'],
+      students: ['s1'],
+      records: [
+        tutorRecord(`etut-m-${suffix}`, {
+          ...tutoring,
+          studentIds: ['s1'],
+          date: `${day}T12:00:00.000Z`,
+        }),
+      ],
+    })
+    const admin = await api(school.user('yonetici'))
+    await planLesson(admin, { teacherId: 't1', date: `${day}T06:00:00.000Z`, room: lessonRoom })
+
+    const page = await loginAs(school.user('ogrenci'))
+    await page.goto(`/ogrenci/ders-programi?hafta=${monday}`)
+    const week = weekList(page)
+    await expect(week.getByRole('button').filter({ hasText: tutoring.room })).toBeVisible()
+    await expect(week.getByRole('button').filter({ hasText: lessonRoom })).toBeVisible()
+
+    await setModule(admin, 'tutoring', false)
+    await page.goto(`/ogrenci/ders-programi?hafta=${monday}`)
+    await expect(week.getByRole('button').filter({ hasText: lessonRoom })).toBeVisible()
+    await expect(week.getByRole('button').filter({ hasText: tutoring.room })).toHaveCount(0)
+    await expect(page.getByRole('alert')).toHaveCount(0)
   })
 
   test('öğretmen adres parametresiyle ders formunu açamaz', async ({ loginAs }) => {

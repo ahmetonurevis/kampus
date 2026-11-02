@@ -464,6 +464,10 @@ async function applyOperation<R>(
 ): Promise<OperationResult<R>> {
   if (request.auditPolicy !== undefined && !FIRST_WRITE_AUDIT_ACTIONS.has(request.action))
     throw programmingError(`auditPolicy not allowed for action: ${request.action}`)
+  // TODO(perf-video-progress): her video ilerleme isteği (öğrenci başına 15 sn'de bir) kurumun tek
+  // danışma kilidini alır; 300 eşzamanlı izleyici ≈ 20 işlem/sn ile yoklama, ödeme gibi bütün
+  // yazmalarla aynı kuyruğa girer (ölçülmedi). Çözüm adayı: tek kayıt upsert'i için kurum yerine
+  // kayıt (öğrenci/video) düzeyinde kilit ya da kilitsiz yol; ölçüm sonrası karar.
   // Yüklemeden önce: aynı kurumun eşzamanlı işlemi bu görüntüyü bayatlatamaz.
   await lockInstitution(tx, ctx.institutionId)
   const { rows, partial } = await loadOperationRecords(tx, ctx, collections, request.loadScope)

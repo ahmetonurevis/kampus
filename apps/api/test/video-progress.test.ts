@@ -337,4 +337,23 @@ describe('video izleme ilerlemesi ucu', () => {
     const all = await videoAudit()
     assert.deepEqual(all.map((row) => row.entityId).sort(), ['s1:v2', 's25:v2'])
   })
+
+  test('DOM-KYN-005: kullanıcı başına dakikada 12 istek; aşılırsa 429 rate_limited, kayıt değişmez', async () => {
+    const a = await institution()
+    const s1 = await student(a.id)
+    const other = await student(a.id, 's25')
+    for (let i = 1; i <= 12; i += 1) {
+      const ok = await post(s1, 'v2', { positionSeconds: i, durationSeconds: 120 })
+      assert.equal(ok.statusCode, 200, `${i}. istek: ${ok.body}`)
+    }
+    const before = await stored(a.id, 's1', 'v2')
+    const limited = await post(s1, 'v2', { positionSeconds: 100, durationSeconds: 120 })
+    assertError(limited, 429, 'rate_limited')
+    assert.ok(Number(limited.headers['retry-after']) > 0)
+    const after = await stored(a.id, 's1', 'v2')
+    assert.equal(after.version, before.version)
+    assert.equal(after.data.positionSeconds, 12)
+    // Sınır kullanıcıya özeldir: aynı kurumdaki başka öğrenci etkilenmez.
+    assert.equal((await post(other, 'v2', BODY)).statusCode, 200)
+  })
 })

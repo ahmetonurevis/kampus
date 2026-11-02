@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
 import { WRITE_ACTION_ROLES } from '@kampus/school-core/lib/authorize.ts'
@@ -21,12 +21,31 @@ import { videoProgressParamsSchema, videoProgressResponseSchema } from './video-
 
 const LEARNING = OPERATION_COMMANDS['video.progress'].module ?? 'learning'
 
+/**
+ * Kullanıcı başına dakikada en çok bu kadar istek: istemci en çok 15 sn'de bir (dakikada 4) yazar,
+ * duraklatma, bitiş ve sekme gizlenmesi payı kalır. Her istek kurumun tek danışma kilidini alır
+ * (`lockInstitution`), bu yüzden kontrolsüz bir istemci kurumun bütün yazmalarını yavaşlatamaz.
+ */
+const PROGRESS_RATE_PER_MINUTE = 12
+
+/** Sayaç doğrulanmış kullanıcıyadır; istemcinin değiştirebildiği başlığa bağlanmaz. */
+const progressRateKey = (request: FastifyRequest): string => request.auth?.userId ?? request.ip
+
 export function registerVideoProgressRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
 
   typed.post(
     '/api/v1/videos/:videoId/progress',
     {
+      config: {
+        // `preHandler`: kimlik `preValidation`'da doğrulanır, anahtar kullanıcı kimliği olur.
+        rateLimit: {
+          max: PROGRESS_RATE_PER_MINUTE,
+          timeWindow: '1 minute',
+          hook: 'preHandler',
+          keyGenerator: progressRateKey,
+        },
+      },
       preValidation: [
         app.authenticate,
         app.requireModule(LEARNING),
@@ -37,7 +56,7 @@ export function registerVideoProgressRoutes(app: FastifyInstance) {
         operationId: 'recordVideoProgress',
         tags: ['videos'],
         summary: 'Video izleme ilerlemesini yaz',
-        description: `Öğrenci kendi video izleme ilerlemesini yazar (core \`recordVideoProgress\`, DOM-KYN-005). Öğrenci oturumdan gelir; gövdede oynatıcının son konumu (\`positionSeconds\`) ve video süresi (\`durationSeconds\`, saniye) bulunur. Yüzde sunucuda hesaplanır, 0–100'e sıkıştırılır ve geri gitmez (izlenen en yüksek değer); son konum her istekte güncellenir ve konum süreyi aşamaz. İlk istek kaydı açar, sonrakiler günceller; aynı istek tekrarlanınca kayıt değişmez. Öğrencinin düzeyi dışındaki video, olmayan video ve başka kurumun videosu 404 \`not_found\`, bağlantısız öğrenci 403 \`student_scope_denied\`, pasif öğrenci 422 \`student_inactive\`. Okuma \`GET /collections/videoProgress\`'tedir (öğrenci yalnız kendi kaydını, veli çocuğununkini, öğretmen sınıflarındakini görür). Sık çağrılır (istemci 15 sn'de bir): denetim satırı yalnız ilk kayıtta yazılır, sonraki güncellemelerde yazılmaz. \`Idempotency-Key\` isteğe bağlıdır, \`If-Match\` kabul edilmez. Modül \`learning\`. Roller: ${WRITE_ACTION_ROLES['video.progress'].map((role) => `\`${role}\``).join(', ')}.`,
+        description: `Öğrenci kendi video izleme ilerlemesini yazar (core \`recordVideoProgress\`, DOM-KYN-005). Öğrenci oturumdan gelir; gövdede oynatıcının son konumu (\`positionSeconds\`) ve video süresi (\`durationSeconds\`, saniye) bulunur. Yüzde sunucuda hesaplanır, 0–100'e sıkıştırılır ve geri gitmez (izlenen en yüksek değer); son konum her istekte güncellenir ve konum süreyi aşamaz. İlk istek kaydı açar, sonrakiler günceller; aynı istek tekrarlanınca kayıt değişmez. Öğrencinin düzeyi dışındaki video, olmayan video ve başka kurumun videosu 404 \`not_found\`, bağlantısız öğrenci 403 \`student_scope_denied\`, pasif öğrenci 422 \`student_inactive\`. Okuma \`GET /collections/videoProgress\`'tedir (öğrenci yalnız kendi kaydını, veli çocuğununkini, öğretmen sınıflarındakini görür). Sık çağrılır (istemci 15 sn'de bir): denetim satırı yalnız ilk kayıtta yazılır, sonraki güncellemelerde yazılmaz. Kullanıcı başına dakikada 12 istek; aşılırsa 429 \`rate_limited\`. \`Idempotency-Key\` isteğe bağlıdır, \`If-Match\` kabul edilmez. Modül \`learning\`. Roller: ${WRITE_ACTION_ROLES['video.progress'].map((role) => `\`${role}\``).join(', ')}.`,
         headers: commandHeadersSchema('optional', { ifMatch: false }),
         params: videoProgressParamsSchema,
         body: recordVideoProgressSchema,

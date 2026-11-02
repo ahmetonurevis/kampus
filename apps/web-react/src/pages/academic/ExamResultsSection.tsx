@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from 'react-router'
 import { isUnreadableCollectionError } from '@kampus/react-shared/collections.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
+import { keptHistoryState } from '@/lib/history-state.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { combineStates, DashboardGrid, ListCard } from '../dashboard/DashboardParts.tsx'
@@ -65,8 +66,8 @@ export function ExamResultsSection({ studentId }: { studentId: string }) {
           else next.delete(EXAM_PARAM)
           return next
         },
-        // `state.from` (geri dönüş adresi) seçimle silinmez.
-        { preventScrollReset: true, state: historyState },
+        // `state.from` (geri dönüş adresi) seçimle silinmez; panel işaretçisi taşınmaz.
+        { preventScrollReset: true, state: keptHistoryState(historyState) },
       ),
     [setParams, historyState],
   )

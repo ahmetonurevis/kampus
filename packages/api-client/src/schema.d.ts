@@ -4349,7 +4349,7 @@ export interface paths {
         };
         /**
          * İzin formları
-         * @description İzin formları son güne göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `status` (`open` karar alan, `closed` kapatılmış ya da son günü geçmiş, `all`), `topic`. Her satır okuyanın gördüğü öğrencilerin bekleyen, onay ve ret sayılarını taşır (`counts`; durum kararlardan hesaplanır, bir ret onayın önüne geçer, DOM-ILT-031). Bilinmeyen parametre 400. Yönetici bütün formları, öğretmen açtığı ve sınıflarına ya da öğrencilerine açılmış formları, veli çocuğunun, öğrenci kendisinin hedefte olduğu formları okur; ön büro okumaz (403). Hedef öğrencilerden yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli çocuğunu, öğrenci kendisini görür; sayılar yalnız görünen öğrencilerdendir. Görmediği ve başka kurumun formu olmayan kimlikle aynı 404. Modül `communication`; kapalıysa 403 `module_disabled`.
+         * @description İzin formları son güne göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `status` (`open` karar alan, `closed` kapatılmış ya da son günü geçmiş, `all`), `topic`, `q` (başlıkta harf ve aksan duyarsız arama; okuma kapsamından sonra). Her satır okuyanın gördüğü öğrencilerin bekleyen, onay ve ret sayılarını taşır (`counts`; durum kararlardan hesaplanır, bir ret onayın önüne geçer, DOM-ILT-031). Yönetici ve formun öğretmeni `targetStudentIds` ve `hasDecisions`, veli ve öğrenci öğrenci satırlarını (`students`, `canDecide` ile) alır. Bilinmeyen parametre 400. Yönetici bütün formları, öğretmen açtığı ve sınıflarına ya da öğrencilerine açılmış formları, veli çocuğunun, öğrenci kendisinin hedefte olduğu formları okur; ön büro okumaz (403). Hedef öğrencilerden yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli çocuğunu, öğrenci kendisini görür; sayılar yalnız görünen öğrencilerdendir. Görmediği ve başka kurumun formu olmayan kimlikle aynı 404. Modül `communication`; kapalıysa 403 `module_disabled`.
          */
         get: operations["listPermissionForms"];
         put?: never;
@@ -4373,7 +4373,7 @@ export interface paths {
         };
         /**
          * İzin formu
-         * @description Tek form; okuyanın gördüğü her öğrencinin geçerli durumu ve görebildiği kararlar (`students`). Veli yalnız kendi kararını ve notunu görür, öbür velinin reddi durumda görünür (DOM-ILT-037). Karar verenin kullanıcı kimliği yalnız yöneticiye döner. Yönetici bütün formları, öğretmen açtığı ve sınıflarına ya da öğrencilerine açılmış formları, veli çocuğunun, öğrenci kendisinin hedefte olduğu formları okur; ön büro okumaz (403). Hedef öğrencilerden yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli çocuğunu, öğrenci kendisini görür; sayılar yalnız görünen öğrencilerdendir. Görmediği ve başka kurumun formu olmayan kimlikle aynı 404. Modül `communication`; kapalıysa 403 `module_disabled`.
+         * @description Tek form; okuyanın gördüğü her öğrencinin geçerli durumu ve görebildiği kararlar (`students`). Veli yalnız kendi kararını ve notunu görür, öbür velinin reddi durumda görünür (DOM-ILT-037). Karar verenin kullanıcı kimliği yalnız yöneticiye döner. Her öğrenci satırı okuyanın o öğrenci için karar veren taraf olup olmadığını taşır (`canDecide`, core `permissionDecider`). Yönetici bütün formları, öğretmen açtığı ve sınıflarına ya da öğrencilerine açılmış formları, veli çocuğunun, öğrenci kendisinin hedefte olduğu formları okur; ön büro okumaz (403). Hedef öğrencilerden yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli çocuğunu, öğrenci kendisini görür; sayılar yalnız görünen öğrencilerdendir. Görmediği ve başka kurumun formu olmayan kimlikle aynı 404. Modül `communication`; kapalıysa 403 `module_disabled`.
          */
         get: operations["getPermissionForm"];
         put?: never;
@@ -7317,6 +7317,10 @@ export interface components {
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
+            /** @description Sınıf dışında ya da sınıfın bir kısmı için tek tek hedeflenen öğrenciler (girildiği gibi; düzenlemede `studentIds` gövdesi). Yalnız yönetici ve formun öğretmenine döner; alanı olmayan eski kayıtta boş */
+            targetStudentIds?: string[];
+            /** @description Formda herhangi bir karar satırı var mı (geçerli sayılmayanlar dahil): varsa hedef daraltılamaz, form arşivlenemez. Yalnız yönetici ve formun öğretmenine döner */
+            hasDecisions?: boolean;
             /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
             teacherId?: string | null;
             /**
@@ -7363,6 +7367,8 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "approved" | "rejected";
+            /** @description Okuyan bu öğrenci için karar veren taraf mı (core `permissionDecider`): veli 18 yaş altındaki çocuğu, öğrenci 18 yaşını doldurduysa kendisi için; personelde `false`. Formun karar alıp almadığı `acceptingDecisions` */
+            canDecide: boolean;
             /** @description Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`) */
             decisions: components["schemas"]["PermissionDecisionInput"][];
         };
@@ -7385,6 +7391,10 @@ export interface components {
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
+            /** @description Sınıf dışında ya da sınıfın bir kısmı için tek tek hedeflenen öğrenciler (girildiği gibi; düzenlemede `studentIds` gövdesi). Yalnız yönetici ve formun öğretmenine döner; alanı olmayan eski kayıtta boş */
+            targetStudentIds?: string[];
+            /** @description Formda herhangi bir karar satırı var mı (geçerli sayılmayanlar dahil): varsa hedef daraltılamaz, form arşivlenemez. Yalnız yönetici ve formun öğretmenine döner */
+            hasDecisions?: boolean;
             /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
             teacherId?: string | null;
             /**
@@ -7400,6 +7410,8 @@ export interface components {
             /** @description Kaydın son değiştiği an */
             updatedAt: string;
             counts: components["schemas"]["PermissionCountsInput"];
+            /** @description Yalnız veli ve öğrenci satırında: görünen öğrencilerin durumu, kendi kararları ve `canDecide` (karar kartı ayrıntı isteği atmaz) */
+            students?: components["schemas"]["PermissionFormStudentInput"][];
         };
         PermissionFormDetailInput: {
             id: string;
@@ -7420,6 +7432,10 @@ export interface components {
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
+            /** @description Sınıf dışında ya da sınıfın bir kısmı için tek tek hedeflenen öğrenciler (girildiği gibi; düzenlemede `studentIds` gövdesi). Yalnız yönetici ve formun öğretmenine döner; alanı olmayan eski kayıtta boş */
+            targetStudentIds?: string[];
+            /** @description Formda herhangi bir karar satırı var mı (geçerli sayılmayanlar dahil): varsa hedef daraltılamaz, form arşivlenemez. Yalnız yönetici ve formun öğretmenine döner */
+            hasDecisions?: boolean;
             /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
             teacherId?: string | null;
             /**
@@ -10256,6 +10272,10 @@ export interface components {
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
+            /** @description Sınıf dışında ya da sınıfın bir kısmı için tek tek hedeflenen öğrenciler (girildiği gibi; düzenlemede `studentIds` gövdesi). Yalnız yönetici ve formun öğretmenine döner; alanı olmayan eski kayıtta boş */
+            targetStudentIds?: string[];
+            /** @description Formda herhangi bir karar satırı var mı (geçerli sayılmayanlar dahil): varsa hedef daraltılamaz, form arşivlenemez. Yalnız yönetici ve formun öğretmenine döner */
+            hasDecisions?: boolean;
             /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
             teacherId?: string | null;
             /**
@@ -10302,6 +10322,8 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "approved" | "rejected";
+            /** @description Okuyan bu öğrenci için karar veren taraf mı (core `permissionDecider`): veli 18 yaş altındaki çocuğu, öğrenci 18 yaşını doldurduysa kendisi için; personelde `false`. Formun karar alıp almadığı `acceptingDecisions` */
+            canDecide: boolean;
             /** @description Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`) */
             decisions: components["schemas"]["PermissionDecision"][];
         };
@@ -10324,6 +10346,10 @@ export interface components {
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
+            /** @description Sınıf dışında ya da sınıfın bir kısmı için tek tek hedeflenen öğrenciler (girildiği gibi; düzenlemede `studentIds` gövdesi). Yalnız yönetici ve formun öğretmenine döner; alanı olmayan eski kayıtta boş */
+            targetStudentIds?: string[];
+            /** @description Formda herhangi bir karar satırı var mı (geçerli sayılmayanlar dahil): varsa hedef daraltılamaz, form arşivlenemez. Yalnız yönetici ve formun öğretmenine döner */
+            hasDecisions?: boolean;
             /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
             teacherId?: string | null;
             /**
@@ -10339,6 +10365,8 @@ export interface components {
             /** @description Kaydın son değiştiği an */
             updatedAt: string;
             counts: components["schemas"]["PermissionCounts"];
+            /** @description Yalnız veli ve öğrenci satırında: görünen öğrencilerin durumu, kendi kararları ve `canDecide` (karar kartı ayrıntı isteği atmaz) */
+            students?: components["schemas"]["PermissionFormStudent"][];
         };
         PermissionFormDetail: {
             id: string;
@@ -10359,6 +10387,10 @@ export interface components {
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
+            /** @description Sınıf dışında ya da sınıfın bir kısmı için tek tek hedeflenen öğrenciler (girildiği gibi; düzenlemede `studentIds` gövdesi). Yalnız yönetici ve formun öğretmenine döner; alanı olmayan eski kayıtta boş */
+            targetStudentIds?: string[];
+            /** @description Formda herhangi bir karar satırı var mı (geçerli sayılmayanlar dahil): varsa hedef daraltılamaz, form arşivlenemez. Yalnız yönetici ve formun öğretmenine döner */
+            hasDecisions?: boolean;
             /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
             teacherId?: string | null;
             /**
@@ -37634,6 +37666,8 @@ export interface operations {
                 status?: "all" | "open" | "closed";
                 /** @description Konu türü */
                 topic?: "trip" | "event" | "photo" | "club" | "other";
+                /** @description Başlık araması; Türkçe büyük/küçük harf ve aksan duyarsız, parça eşleşir */
+                q?: string;
             };
             header?: never;
             path?: never;

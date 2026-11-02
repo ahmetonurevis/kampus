@@ -95,18 +95,19 @@ export function registerPermissionFormRoutes(app: FastifyInstance) {
         operationId: 'listPermissionForms',
         tags: ['permission-forms'],
         summary: 'İzin formları',
-        description: `İzin formları son güne göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: \`status\` (\`open\` karar alan, \`closed\` kapatılmış ya da son günü geçmiş, \`all\`), \`topic\`. Her satır okuyanın gördüğü öğrencilerin bekleyen, onay ve ret sayılarını taşır (\`counts\`; durum kararlardan hesaplanır, bir ret onayın önüne geçer, DOM-ILT-031). Bilinmeyen parametre 400. ${READ_ACCESS}`,
+        description: `İzin formları son güne göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: \`status\` (\`open\` karar alan, \`closed\` kapatılmış ya da son günü geçmiş, \`all\`), \`topic\`, \`q\` (başlıkta harf ve aksan duyarsız arama; okuma kapsamından sonra). Her satır okuyanın gördüğü öğrencilerin bekleyen, onay ve ret sayılarını taşır (\`counts\`; durum kararlardan hesaplanır, bir ret onayın önüne geçer, DOM-ILT-031). Yönetici ve formun öğretmeni \`targetStudentIds\` ve \`hasDecisions\`, veli ve öğrenci öğrenci satırlarını (\`students\`, \`canDecide\` ile) alır. Bilinmeyen parametre 400. ${READ_ACCESS}`,
         querystring: permissionFormListQuerySchema,
         response: { 200: permissionFormListResponseSchema, ...readErrors },
       },
     },
     async (request) => {
-      const { page, pageSize, status, topic } = request.query
+      const { page, pageSize, status, topic, q } = request.query
       const result = await listPermissionForms(contextOf(request), {
         page,
         pageSize,
         status,
         topic,
+        q,
       })
       return { data: result.items, meta: { page, pageSize, total: result.total } }
     },
@@ -120,7 +121,7 @@ export function registerPermissionFormRoutes(app: FastifyInstance) {
         operationId: 'getPermissionForm',
         tags: ['permission-forms'],
         summary: 'İzin formu',
-        description: `Tek form; okuyanın gördüğü her öğrencinin geçerli durumu ve görebildiği kararlar (\`students\`). Veli yalnız kendi kararını ve notunu görür, öbür velinin reddi durumda görünür (DOM-ILT-037). Karar verenin kullanıcı kimliği yalnız yöneticiye döner. ${READ_ACCESS}`,
+        description: `Tek form; okuyanın gördüğü her öğrencinin geçerli durumu ve görebildiği kararlar (\`students\`). Veli yalnız kendi kararını ve notunu görür, öbür velinin reddi durumda görünür (DOM-ILT-037). Karar verenin kullanıcı kimliği yalnız yöneticiye döner. Her öğrenci satırı okuyanın o öğrenci için karar veren taraf olup olmadığını taşır (\`canDecide\`, core \`permissionDecider\`). ${READ_ACCESS}`,
         params: permissionFormParamsSchema,
         response: { 200: permissionFormDetailResponseSchema, ...readErrors },
       },

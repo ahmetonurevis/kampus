@@ -23,6 +23,13 @@ const communicationPage = (
   apiOnly: true,
 })
 
+// Dijital veli onayı (IST-067, DOM-ILT-030…039): modül `communication`. Yönetici ve rehber
+// öğretmen form açar ve izler, veli çocuğu için, yetişkin öğrenci kendisi için karar verir; ön büro
+// görmez. Öğrenci sayfası kurum türüne bağlı değildir: 18 yaşını dolduran öğrenci okulda da vardır,
+// 18 yaş altı öğrenci yalnız durumu görür. Vue demosunun ve mobilin karşılığı yoktur (`apiOnly`).
+const permissionFormsPage = (title: string, description: string): NavigationPage =>
+  communicationPage('izin-formlari', title, 'FileCheck', description)
+
 // Temel menüde olmayan iletişim sayfaları (öğrenci ve veli için temel menüde zaten vardır). Hesap
 // grubu varsa ondan önce, yoksa sona eklenir; yönetici ve ön büro mesajı yalnız yeni web açar,
 // mobil bunlardan yalnız kendi taşıdığı sayfaları gösterir.
@@ -39,6 +46,10 @@ export const API_COMMUNICATION_PAGES: Record<Role, readonly NavigationPage[]> = 
       'Mesajlar',
       'MessagesSquare',
       'Öğrenci–öğretmen yazışmalarının üst verisini görün; içeriği gerekçeyle açın.',
+    ),
+    permissionFormsPage(
+      'İzin Formları',
+      'Gezi ve etkinlik izin formu açın; velilerin onayını izleyin.',
     ),
   ],
   onburo: [
@@ -57,9 +68,23 @@ export const API_COMMUNICATION_PAGES: Record<Role, readonly NavigationPage[]> = 
       'MessagesSquare',
       'Öğrencileriniz ve velileriyle yazışın.',
     ),
+    permissionFormsPage(
+      'İzin Formları',
+      'Rehber olduğunuz sınıflar için izin formu açın; onay durumunu izleyin.',
+    ),
   ],
-  ogrenci: [],
-  veli: [],
+  ogrenci: [
+    permissionFormsPage(
+      'İzin Formlarım',
+      '18 yaşını doldurduysanız izin formlarına kendiniz karar verirsiniz; değilseniz velinizin kararını burada izlersiniz.',
+    ),
+  ],
+  veli: [
+    permissionFormsPage(
+      'Onay Bekleyenler',
+      'Okulun çocuğunuz için istediği izinleri onaylayın ya da reddedin.',
+    ),
+  ],
 }
 
 // İçerik havuzu (ADR 0004, docs/domain/kaynak-platformu.md): yalnız içerik personeli (yönetici,

@@ -36,6 +36,13 @@ export const permissionFormListQuerySchema = pageQuerySchema
       .default('all')
       .describe('`open` karar alan, `closed` kapatılmış ya da son günü geçmiş; varsayılan `all`'),
     topic: z.enum(PERMISSION_FORM_TOPIC_KEYS).optional().describe('Konu türü'),
+    q: z
+      .string()
+      .trim()
+      .min(2)
+      .max(100)
+      .optional()
+      .describe('Başlık araması; Türkçe büyük/küçük harf ve aksan duyarsız, parça eşleşir'),
   })
   .strict()
 
@@ -64,6 +71,18 @@ export const permissionFormSchema = z
       .array(z.string())
       .describe(
         'Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür',
+      ),
+    targetStudentIds: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Sınıf dışında ya da sınıfın bir kısmı için tek tek hedeflenen öğrenciler (girildiği gibi; düzenlemede `studentIds` gövdesi). Yalnız yönetici ve formun öğretmenine döner; alanı olmayan eski kayıtta boş',
+      ),
+    hasDecisions: z
+      .boolean()
+      .optional()
+      .describe(
+        'Formda herhangi bir karar satırı var mı (geçerli sayılmayanlar dahil): varsa hedef daraltılamaz, form arşivlenemez. Yalnız yönetici ve formun öğretmenine döner',
       ),
     teacherId: z
       .string()
@@ -116,6 +135,11 @@ export const permissionStudentSchema = z
   .object({
     studentId: z.string(),
     status: permissionStatusSchema,
+    canDecide: z
+      .boolean()
+      .describe(
+        'Okuyan bu öğrenci için karar veren taraf mı (core `permissionDecider`): veli 18 yaş altındaki çocuğu, öğrenci 18 yaşını doldurduysa kendisi için; personelde `false`. Formun karar alıp almadığı `acceptingDecisions`',
+      ),
     decisions: z
       .array(permissionDecisionSchema)
       .describe(
@@ -125,7 +149,15 @@ export const permissionStudentSchema = z
   .meta({ id: 'PermissionFormStudent' })
 
 export const permissionFormListItemSchema = permissionFormSchema
-  .extend({ counts: permissionCountsSchema })
+  .extend({
+    counts: permissionCountsSchema,
+    students: z
+      .array(permissionStudentSchema)
+      .optional()
+      .describe(
+        'Yalnız veli ve öğrenci satırında: görünen öğrencilerin durumu, kendi kararları ve `canDecide` (karar kartı ayrıntı isteği atmaz)',
+      ),
+  })
   .meta({ id: 'PermissionFormListItem' })
 
 export const permissionFormDetailSchema = permissionFormListItemSchema

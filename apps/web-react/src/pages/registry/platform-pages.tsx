@@ -107,6 +107,13 @@ const MessagesPage = lazy(async () => ({
 const AppointmentsPage = lazy(async () => ({
   default: (await import('../communication/AppointmentsPage.tsx')).AppointmentsPage,
 }))
+const PermissionFormsPage = lazy(async () => ({
+  default: (await import('../communication/PermissionFormsPage.tsx')).PermissionFormsPage,
+}))
+const FamilyPermissionFormsPage = lazy(async () => ({
+  default: (await import('../communication/FamilyPermissionFormsPage.tsx'))
+    .FamilyPermissionFormsPage,
+}))
 const ParentMessagesPage = lazy(async () => ({
   default: (await import('../communication/ParentMessagesPage.tsx')).ParentMessagesPage,
 }))
@@ -218,6 +225,13 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
       return <AppointmentsPage page={page} audience="student" />
     case 'ogretmen/randevular':
       return <AppointmentsPage page={page} audience="teacher" />
+    case 'yonetici/izin-formlari':
+    case 'ogretmen/izin-formlari':
+      return <PermissionFormsPage page={page} />
+    case 'veli/izin-formlari':
+      return <FamilyPermissionFormsPage page={page} audience="guardian" />
+    case 'ogrenci/izin-formlari':
+      return <FamilyPermissionFormsPage page={page} audience="student" />
     case 'veli/randevu-mesaj':
       return <ParentMessagesPage page={page} />
     case 'veli/sikayet-talep':

@@ -41,6 +41,7 @@ import { studentIdentities } from '../db/schema/student-identities.ts'
 import { loadGuardianAccounts } from '../db/student-guardians.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { searchKey } from './collection-reads.ts'
 import { environment } from './commands.ts'
 import { getInstitutionModules } from './modules.ts'
 import { notify } from './notify.ts'
@@ -116,13 +117,21 @@ const accepting = (record: RecordData, now: Date) =>
  * Formun yanıt görünümü (beyaz liste). `studentIds` okuyanın gördüğü hedef öğrencilerdir;
  * `visible` verilmezse hepsi (yazma yanıtı: yazan yönetici ya da formun öğretmenidir). Veli ve
  * öğrenci (`personal`) hedef sınıfları ve formu açan öğretmeni görmez: başka sınıfların ve
- * öğretmenin kimliği onlara gerekmez.
+ * öğretmenin kimliği onlara gerekmez. Formu yönetene (`manage`: yönetici ve formun öğretmeni)
+ * düzenleme için tek tek hedeflenen öğrenciler (`targetStudentIds`) ve formda herhangi bir karar
+ * satırı olup olmadığı (`hasDecisions`, DOM-ILT-038: hedef daraltma ve arşiv kilidi) döner.
+ * `targetStudentIds` form açılışından beri (OG-055) core kaydında ayrı alandır; alanı olmayan kayıt
+ * boş liste (yalnız sınıf hedefi) sayılır.
  */
 function formView(
   record: RecordData,
   meta: RowMeta,
   now: Date,
-  view: { visible?: (studentId: string) => boolean; personal?: boolean } = {},
+  view: {
+    visible?: (studentId: string) => boolean
+    personal?: boolean
+    manage?: { hasDecisions: boolean }
+  } = {},
 ) {
   const deadline = deadlineOf(record)
   const open = accepting(record, now)
@@ -137,6 +146,12 @@ function formView(
     deadlineEndsAt: permissionDeadlineEndsAt(deadline),
     ...(view.personal ? {} : { classIds: texts(record.classIds) }),
     studentIds: view.visible ? studentIds.filter(view.visible) : studentIds,
+    ...(view.manage
+      ? {
+          targetStudentIds: texts(record.targetStudentIds),
+          hasDecisions: view.manage.hasDecisions,
+        }
+      : {}),
     ...(view.personal ? {} : { teacherId: text(record.teacherId) }),
     status: open ? ('open' as const) : ('closed' as const),
     closedAt: text(record.closedAt),
@@ -298,12 +313,21 @@ async function readerOf(ctx: ServiceContext): Promise<Reader> {
 const personalRole = (reader: Reader) =>
   reader.scope.actor.role === 'veli' || reader.scope.actor.role === 'ogrenci'
 
+/** Formu yönetiyor mu: yönetici ya da formu açan öğretmen (DOM-ILT-038). */
+function manages(reader: Reader, record: RecordData): boolean {
+  const { scope } = reader
+  if (scope.actor.role === 'yonetici') return true
+  return (
+    scope.actor.role === 'ogretmen' &&
+    scope.teacher !== undefined &&
+    text(record.teacherId) === scope.teacher.id
+  )
+}
+
 /** Okuyanın formda gördüğü hedef öğrenciler (DOM-ILT-037). */
 function studentVisibility(reader: Reader, record: RecordData): (studentId: string) => boolean {
   const { scope, guarded } = reader
-  const role = scope.actor.role
-  const owner = scope.teacher !== undefined && text(record.teacherId) === scope.teacher.id
-  if (role === 'yonetici' || (role === 'ogretmen' && owner)) return () => true
+  if (manages(reader, record)) return () => true
   if (guarded !== null) return (studentId) => guarded.has(studentId)
   return (studentId) => scope.studentIds.has(studentId)
 }
@@ -344,6 +368,9 @@ interface FormSummary {
   meta: RowMeta
   visibleStudents: string[]
   statuses: Map<string, PermissionStatus>
+  /** Görünen öğrencilerin kararını kim verir (core `permissionDecider`). */
+  deciders: ReadonlyMap<string, PermissionDecider>
+  /** Formun bütün karar satırları (kapsamsız). */
   decisions: StoredRecord[]
 }
 
@@ -384,19 +411,81 @@ async function summarize(
       meta: metaOf(row),
       visibleStudents,
       statuses,
+      deciders: new Map(
+        visibleStudents.map((studentId) => [
+          studentId,
+          (deciders.get(studentId) ?? NOBODY).decider,
+        ]),
+      ),
       decisions: formDecisions,
     }
   })
 }
 
+/**
+ * Okuyan bu öğrenci için karar veren taraf mı (core `permissionDecider` sonucundan; kuralı ikinci
+ * kez yazmaz): veli 18 yaş altındaki çocuğu, öğrenci 18 yaşını doldurduysa kendisi için. Personel
+ * karar vermez. Formun karar alıp almadığı ayrıdır (`acceptingDecisions`).
+ */
+function canDecideFor(reader: Reader, decider: PermissionDecider | undefined): boolean {
+  if (reader.scope.actor.role === 'veli') return decider === 'guardians'
+  if (reader.scope.actor.role === 'ogrenci') return decider === 'self'
+  return false
+}
+
+/**
+ * Görünen öğrencilerin durumları, okuyanın görebildiği kararları (core kapsamı: veli yalnız kendi
+ * kararını, derse giren öğretmen hiçbirini görmez; DOM-ILT-037) ve okuyanın karar verip
+ * veremeyeceği.
+ */
+function studentEntries(ctx: ServiceContext, reader: Reader, summary: FormSummary) {
+  const { scope } = reader
+  const readable = summary.decisions
+    .filter((decision) => scope.canRead(DECISIONS, decision.data))
+    .sort(
+      (a, b) =>
+        (text(a.data.decidedAt) ?? '').localeCompare(text(b.data.decidedAt) ?? '') ||
+        a.id.localeCompare(b.id),
+    )
+  return summary.visibleStudents.map((studentId) => ({
+    studentId,
+    status: summary.statuses.get(studentId) ?? 'pending',
+    canDecide: canDecideFor(reader, summary.deciders.get(studentId)),
+    decisions: readable
+      .filter((decision) => decision.data.studentId === studentId)
+      .map((decision) => {
+        const shown = scope.redact(DECISIONS, decision.data)
+        return {
+          id: decision.id,
+          decision: factsOf(decision.data).decision,
+          note: text(shown.note) ?? '',
+          relation: factsOf(decision.data).relation,
+          decidedAt: text(decision.data.decidedAt) ?? '',
+          // Ham kayıttan: kimlik yanıtta yöneticiye döner, `mine` herkese.
+          mine: text(decision.data.decidedByUserId) === ctx.actor.userId,
+          decidedByUserId: text(shown.decidedByUserId),
+        }
+      }),
+  }))
+}
+
+/**
+ * Liste satırı. Veli ve öğrenci satırı kartın ihtiyacı olan öğrenci satırlarını da (`students`)
+ * taşır: aile ekranı her form için ayrı ayrıntı isteği atmaz.
+ */
 function listItem(ctx: ServiceContext, reader: Reader, summary: FormSummary) {
   const visible = new Set(summary.visibleStudents)
+  const personal = personalRole(reader)
   return {
     ...formView(reader.scope.redact(FORMS, summary.record), summary.meta, ctx.now, {
       visible: (id) => visible.has(id),
-      personal: personalRole(reader),
+      personal,
+      ...(manages(reader, summary.record)
+        ? { manage: { hasDecisions: summary.decisions.length > 0 } }
+        : {}),
     }),
     counts: permissionCounts(summary.statuses.values()),
+    ...(personal ? { students: studentEntries(ctx, reader, summary) } : {}),
   }
 }
 
@@ -405,20 +494,24 @@ export interface PermissionFormListInput {
   pageSize: number
   status: FormStatus | 'all'
   topic?: string | undefined
+  /** Başlık araması; harf ve aksan duyarsız (`searchKey`). */
+  q?: string | undefined
 }
 
 /**
  * İzin formu listesi: son güne göre yeniden eskiye, sonra kimliğe göre, sayfalı. Konu süzgeci
- * SQL'de, durum (`open`/`closed`) bellekte ana göre. Her satır okuyanın gördüğü öğrencilerin
- * bekleyen, onay ve ret sayılarını taşır.
+ * SQL'de, başlık araması (`q`) ve durum (`open`/`closed`) okunabilir satırlar üzerinde bellekte
+ * ana göre. Her satır okuyanın gördüğü öğrencilerin bekleyen, onay ve ret sayılarını taşır.
  */
 export async function listPermissionForms(ctx: ServiceContext, input: PermissionFormListInput) {
   const reader = await readerOf(ctx)
   const match: RecordFilter[] = []
   if (input.topic) match.push({ kind: 'equals', field: 'topic', values: [input.topic] })
   const rows = await loadRecords(ctx.db, ctx.institutionId, [FORMS], { match })
+  const needle = input.q === undefined ? null : searchKey(input.q.trim())
   const visible = rows
     .filter((row) => formReadable(reader, row.data))
+    .filter((row) => needle === null || searchKey(text(row.data.title) ?? '').includes(needle))
     .filter((row) => {
       if (input.status === 'all') return true
       const open = accepting(row.data, ctx.now)
@@ -442,39 +535,13 @@ export async function listPermissionForms(ctx: ServiceContext, input: Permission
  */
 export async function getPermissionForm(ctx: ServiceContext, formId: string) {
   const reader = await readerOf(ctx)
-  const { scope } = reader
   const row = await findRecord(ctx.db, ctx.institutionId, FORMS, formId)
   if (!row || !formReadable(reader, row.data)) throw new NotFoundError()
   const [summary] = await summarize(ctx, reader, [row])
   if (!summary) throw new NotFoundError()
-  const readable = summary.decisions
-    .filter((decision) => scope.canRead(DECISIONS, decision.data))
-    .sort(
-      (a, b) =>
-        (text(a.data.decidedAt) ?? '').localeCompare(text(b.data.decidedAt) ?? '') ||
-        a.id.localeCompare(b.id),
-    )
   return {
     ...listItem(ctx, reader, summary),
-    students: summary.visibleStudents.map((studentId) => ({
-      studentId,
-      status: summary.statuses.get(studentId) ?? 'pending',
-      decisions: readable
-        .filter((decision) => decision.data.studentId === studentId)
-        .map((decision) => {
-          const shown = scope.redact(DECISIONS, decision.data)
-          return {
-            id: decision.id,
-            decision: factsOf(decision.data).decision,
-            note: text(shown.note) ?? '',
-            relation: factsOf(decision.data).relation,
-            decidedAt: text(decision.data.decidedAt) ?? '',
-            // Ham kayıttan: kimlik yanıtta yöneticiye döner, `mine` herkese.
-            mine: text(decision.data.decidedByUserId) === ctx.actor.userId,
-            decidedByUserId: text(shown.decidedByUserId),
-          }
-        }),
-    })),
+    students: studentEntries(ctx, reader, summary),
   }
 }
 
@@ -494,6 +561,8 @@ type Outcome =
       statusCode: 200 | 201
       /** Bildirim gidecek öğrenciler (açılış ya da hedefe yeni giren). */
       notifyStudentIds: readonly string[]
+      /** Formda karar satırı var mı (yanıttaki `hasDecisions`). */
+      hasDecisions: boolean
     }
   | {
       collection: 'permissionDecisions'
@@ -540,8 +609,16 @@ function respond(ctx: ServiceContext, outcome: OperationResult<Outcome>, fallbac
     version: written?.version ?? fallback,
     updatedAt: ctx.now.toISOString(),
   }
+  // Yazan yönetici ya da formun öğretmenidir (core yetkisi): yanıt yöneten görünümüdür.
   if (result.collection === 'permissionForms')
-    return { statusCode: result.statusCode, body: { data: formView(result.record, meta, ctx.now) } }
+    return {
+      statusCode: result.statusCode,
+      body: {
+        data: formView(result.record, meta, ctx.now, {
+          manage: { hasDecisions: result.hasDecisions },
+        }),
+      },
+    }
   const { record } = result
   const facts = factsOf(record)
   return {
@@ -630,7 +707,12 @@ function execute(
   )
 }
 
+/**
+ * Form yazma sonucu. `hasDecisions` State'teki karar satırlarındandır: açarken karar yoktur,
+ * diğer işlemler formun kararlarını yükler (`decisionsOfForm`).
+ */
 const formOutcome = (
+  state: State,
   form: { id: string },
   statusCode: 200 | 201,
   notifyStudentIds: readonly string[] = [],
@@ -639,6 +721,7 @@ const formOutcome = (
   record: stored(form),
   statusCode,
   notifyStudentIds,
+  hasDecisions: state.permissionDecisions.some((decision) => decision.formId === form.id),
 })
 
 const decisionsOfForm = (formId: string): LoadScope => ({
@@ -671,7 +754,7 @@ export function createPermissionFormCommand(
       expected: null,
       run: (state, by, { now, makeId }, { institutionType }) => {
         const form = createPermissionForm(state, by, input, makeId, now, { institutionType })
-        return formOutcome(form, 201, form.studentIds)
+        return formOutcome(state, form, 201, form.studentIds)
       },
     },
     idempotency,
@@ -706,7 +789,7 @@ export function editPermissionForm(
           now,
           { institutionType },
         )
-        return formOutcome(form, 200, addedStudentIds)
+        return formOutcome(state, form, 200, addedStudentIds)
       },
     },
     idempotency,
@@ -723,10 +806,18 @@ export function closePermissionFormCommand(
     ctx,
     {
       action: 'permissionForm.close',
-      loadScope: { permissionForms: { ids: [target.formId] }, permissionDecisions: NONE },
+      // Kararlar yalnız yanıttaki `hasDecisions` için okunur; kapatma kararlara bakmaz.
+      loadScope: {
+        permissionForms: { ids: [target.formId] },
+        permissionDecisions: decisionsOfForm(target.formId),
+      },
       expected: expectedForm(target),
       run: (state, by, { now }, { institutionType }) =>
-        formOutcome(closePermissionForm(state, by, target.formId, now, { institutionType }), 200),
+        formOutcome(
+          state,
+          closePermissionForm(state, by, target.formId, now, { institutionType }),
+          200,
+        ),
     },
     idempotency,
   )
@@ -748,7 +839,11 @@ export function archivePermissionFormCommand(
       },
       expected: expectedForm(target),
       run: (state, by, _tools, { institutionType }) =>
-        formOutcome(archivePermissionForm(state, by, target.formId, { institutionType }), 200),
+        formOutcome(
+          state,
+          archivePermissionForm(state, by, target.formId, { institutionType }),
+          200,
+        ),
     },
     idempotency,
   )

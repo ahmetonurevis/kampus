@@ -196,6 +196,34 @@ test('DOM-ILT-038: kararı olmayan formun hedefi daraltılır; kararlı form dar
   assert.ok(!widened.addedStudentIds.includes('s1'))
 })
 
+test('DOM-ILT-036, DOM-ILT-038: tek tek hedef ayrı saklanır; alanı olmayan eski kayıt boş hedef sayılır', () => {
+  const state = seed()
+  // Ece (s2) hem tek tek seçili hem 5-A'da: sınıf çıkarılınca hedefte kalır.
+  const form = open(state, admin, { ...FORM, classIds: ['c1', 'c2'], studentIds: ['s2'] })
+  assert.deepEqual(form.targetStudentIds, ['s2'])
+  const narrowed = updatePermissionForm(
+    state,
+    admin,
+    form.id,
+    { classIds: ['c1'], studentIds: ['s2'] },
+    now,
+  )
+  assert.ok(narrowed.form.studentIds.includes('s2'))
+  // Alanı olmayan kayıt: kararlıyken genişletme daraltma sayılmaz.
+  const legacy = open(state, admin)
+  Reflect.deleteProperty(legacy, 'targetStudentIds')
+  decidePermission(state, mother, legacy.id, { studentId: 's1', decision: 'approved' }, id, now)
+  const widened = updatePermissionForm(
+    state,
+    admin,
+    legacy.id,
+    { classIds: ['c1'], studentIds: ['s2'] },
+    now,
+  )
+  assert.deepEqual(widened.form.targetStudentIds, ['s2'])
+  assert.deepEqual(widened.addedStudentIds, ['s2'])
+})
+
 test('DOM-ILT-038: öğretmen hedefi rehberi olmadığı sınıfa genişletemez', () => {
   const state = seed()
   const form = open(state)

@@ -322,13 +322,19 @@ describe('OG-985 içerik kapısı engeli (DOM-KYN-025, DOM-KYN-021)', () => {
       NOW,
     )
     assert.equal(allowed.canAct, false)
-    // Süren deneme çözme ekranında sürer; son söz yazma ucunundur.
-    const running = autoProgress(
-      auto({ progress: [closed] }),
-      [attempt({ status: 'in_progress', completedAt: null, result: null })],
-      NOW,
+  })
+
+  test('DOM-KYN-025, DOM-KYN-051: kaldırılmış içerikte süren deneme de sürdürülmez (çözme ekranı açılmaz); askıdaki süren deneme sürer (Sabah kararı 47)', () => {
+    const ongoing = [attempt({ status: 'in_progress', completedAt: null, result: null })]
+    const removed = autoProgress(auto({ progress: [closed] }), ongoing, NOW)
+    assert.deepEqual(
+      [removed.status, removed.canAct, removed.blockedReason],
+      ['Sürüyor', false, 'Bu içerik şu an kullanıma kapalı.'],
     )
-    assert.equal(running.canAct, true)
+    // Askıda + süren deneme: özet `in_progress` der, deneme sürer.
+    const reported = entry({ status: 'in_progress', canAct: false, blockedBy: 'in_progress' })
+    const kept = autoProgress(auto({ progress: [reported] }), ongoing, NOW)
+    assert.deepEqual([kept.canAct, kept.blockedReason], [true, null])
   })
 
   test('DOM-KYN-021: lisans engeli çalışma alanında yalnız başka neden yokken gösterilir', () => {

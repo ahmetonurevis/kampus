@@ -150,10 +150,13 @@ export function autoProgress(
       : limitReached
         ? 'Deneme hakkınız doldu.'
         : null
-  // Süren deneme çözme ekranında sürer (yazma ucu son sözü söyler); yeni deneme içerik kapısına
-  // takılırsa önerilmez.
+  // Süren deneme çözme ekranında sürer; kaldırılmış içerikte yazma ucu süren denemeyi de reddeder
+  // (422 `content_unavailable`), çözme ekranı açılmaz. Telif askısında süren deneme sürer (özet
+  // `in_progress`; Sabah kararı 47). Yeni deneme içerik kapısına takılırsa önerilmez.
   const { canAct, blockedReason } = running
-    ? { canAct: true, blockedReason: null }
+    ? contentBlock(assignment)?.overrides
+      ? { canAct: false, blockedReason: TASK_CONTENT_UNAVAILABLE_MESSAGE }
+      : { canAct: true, blockedReason: null }
     : withContentBlock(assignment, localReason === null, localReason)
 
   if (running)

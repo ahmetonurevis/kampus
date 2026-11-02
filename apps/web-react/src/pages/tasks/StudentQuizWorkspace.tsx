@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { learnerAttemptsQuery } from '@kampus/react-shared/use-learner-task-progress.ts'
-import { useTaskAssignment } from '@kampus/react-shared/use-task-assignments.ts'
+import {
+  TASK_CONTENT_UNAVAILABLE_MESSAGE,
+  useTaskAssignment,
+} from '@kampus/react-shared/use-task-assignments.ts'
 import {
   useStartTaskAttempt,
   useTaskAttempt,
@@ -62,11 +65,13 @@ export function StudentQuizWorkspace({
   const running = runningAttempt(attempts)
   const finished = attempts.filter((attempt) => attempt.status !== 'in_progress')
   const result = viewed ? finished.find((attempt) => attempt.id === viewed) : shownAttempt(attempts)
-  const detailId = running?.id ?? result?.id ?? ''
-  const detail = useTaskAttempt(detailId)
   // Pencere kapanışı saate bağlıdır: yarım dakikada bir yeniden hesaplanır.
   const nowMs = useNow(true, 30_000)
   const progress = assignment ? autoProgress(assignment, attempts, new Date(nowMs)) : null
+  // Kapalı içerikteki süren deneme açılmaz: ayrıntısı da istenmez.
+  const runningBlocked = !!running && progress?.canAct === false
+  const detailId = runningBlocked ? '' : (running?.id ?? result?.id ?? '')
+  const detail = useTaskAttempt(detailId)
   // Sorgu sonucu nesneleri her render'da yenilenir; kimliği sabit işlev AttemptPlayer'ın süre dolum
   // zamanlayıcısının her saniye yeniden kurulmasını önler.
   const refreshExpired = useStableCallback(() => {
@@ -127,7 +132,13 @@ export function StudentQuizWorkspace({
         description={`${taskTypeLabel(assignment)} · ${taskKindLabel(assignment)}`}
         actions={back}
       />
-      {running ? (
+      {runningBlocked ? (
+        // Kaldırılmış içerikte süren deneme de sürdürülemez (422 `content_unavailable`): çözme
+        // ekranı açılmaz, soru ve metin istenmez (DOM-KYN-025, DOM-KYN-051).
+        <p role="status" className="text-sm text-muted-foreground">
+          {progress.blockedReason ?? TASK_CONTENT_UNAVAILABLE_MESSAGE}
+        </p>
+      ) : running ? (
         attempt && attempt.id === running.id ? (
           <AttemptPlayer
             key={attempt.id}

@@ -48,8 +48,8 @@ import type { Actor } from './scope.ts'
  */
 // TODO(F6-anlik-bildirim): anlık bildirim, e-posta ve SMS kanalı, sessiz saatler (DOM-ILT-021) ve
 // konu bazında kanal tercihi (DOM-ILT-020) sonraki F6 işleridir; hedefli duyuru (IST-066),
-// dijital veli onayı (IST-067), kurallı mesaj (IST-070) ve devamsızlık bildirimi (IST-072,
-// DOM-ILT-052) de bildirim üretmez.
+// dijital veli onayı (IST-067) ve kurallı mesaj (IST-070) de bildirim üretmez. Devamsızlık
+// bildirimi (IST-072, DOM-ILT-052) yoklamadan üretilir (`lib/attendance-alerts.ts`).
 // Veli kitlesi (`parent`) aktörün çocuk bağlantılarından çözülür; velayeti olmayan ya da
 // iletişim kısıtlı velinin bağlantısı aktör kurulurken düştüğü için bildirim ona ulaşmaz
 // (`lib/guardianship.ts` `guardedActorLinks`; DOM-ILT-070, -074).

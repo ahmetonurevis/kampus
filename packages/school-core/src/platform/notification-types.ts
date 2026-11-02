@@ -43,4 +43,44 @@ export const PLATFORM_NOTIFICATION_TYPES = {
       parent: '{öğrenci} için görev itirazı sonuçlandı.',
     },
   }),
+  /**
+   * Yoklamada "gelmedi" işaretlendi (DOM-ILT-052): 18 yaş altında velilere, yetişkin kursiyerde
+   * kendisine aynı gün bildirilir. Zorunludur, konu tercihiyle kapanmaz (DOM-ILT-020). Başlık
+   * gün ve ders söylemez (okunduğu gün farklı olabilir); gün bildirimin kendi zamanıdır. Neden,
+   * mazeret ve sağlık bilgisi bildirimde yoktur (DOM-ILT-023).
+   */
+  absence_recorded: defineNotificationType({
+    topic: 'attendance',
+    category: 'service',
+    mandatory: true,
+    module: 'academic',
+    audiences: { minor: ['parent'], adult: ['student'] },
+    subjectType: 'attendance',
+    data: z.strictObject({ attendanceId: notificationId }),
+    subjectId: (data) => data.attendanceId,
+    titles: {
+      student: 'Yoklamada gelmedi olarak işaretlendin.',
+      parent: '{öğrenci} yoklamada gelmedi olarak işaretlendi.',
+    },
+  }),
+  /**
+   * "Gelmedi" kaydı sonradan düzeltildi (DOM-ILT-052). Önceki bildirim geri çekilmez, tarihçe
+   * kalır; düzeltme ayrı bildirimle belirtilir. Yalnız gelmedi bildirimi gitmiş alıcıya yazılır
+   * (`services/attendance-alerts.ts`). Yeni durum bildirimde yoktur: mazeret ve sağlık bilgisi
+   * sızmaz.
+   */
+  absence_corrected: defineNotificationType({
+    topic: 'attendance',
+    category: 'service',
+    mandatory: true,
+    module: 'academic',
+    audiences: { minor: ['parent'], adult: ['student'] },
+    subjectType: 'attendance',
+    data: z.strictObject({ attendanceId: notificationId }),
+    subjectId: (data) => data.attendanceId,
+    titles: {
+      student: 'Gelmedi kaydın düzeltildi.',
+      parent: '{öğrenci} için gelmedi kaydı düzeltildi.',
+    },
+  }),
 } as const

@@ -120,8 +120,11 @@ function programmingError(what: string, cause?: unknown): AppError {
   })
 }
 
-/** `dedupeKey`li bildirimin kimliği: aynı olay, kitle ve öğrenci için hep aynı. */
-function dedupedId(
+/**
+ * `dedupeKey`li bildirimin kimliği: aynı olay, kitle ve öğrenci için hep aynı. Önceki bildirimin
+ * yazılıp yazılmadığını soran işlem (devamsızlık düzeltmesi) kimliği buradan hesaplar.
+ */
+export function dedupedNotificationId(
   type: string,
   key: string,
   audience: NotificationAudience,
@@ -207,7 +210,7 @@ export async function notify<T extends NotificationType>(
           id:
             input.dedupeKey === undefined
               ? `ntf-${randomUUID()}`
-              : dedupedId(input.type, input.dedupeKey, audience, studentId),
+              : dedupedNotificationId(input.type, input.dedupeKey, audience, studentId),
           kind: input.type,
           audience,
           studentId,

@@ -71,3 +71,20 @@ test('DOM-KAY-007: aday detayında oturum yoksa giriş, rol geçersizse kabuk d�
   assert.equal(decision.kind, 'module-closed')
   assert.equal(decision.kind === 'module-closed' && decision.to, '/onburo/dashboard')
 })
+
+test('dil okulu kur ve grup sayfaları okulda yoktur, dil okulunda açılır (IST-076, IST-077)', () => {
+  const school = { role: 'yonetici' as const, modules, institution: { type: 'school' as const } }
+  const language = { ...school, institution: { type: 'language_school' as const } }
+  for (const path of ['kurlar', 'gruplar']) {
+    assert.deepEqual(resolveShell(school, 'yonetici', path), { kind: 'not-found' })
+    // Tür bilinmiyorsa okul sayılır.
+    assert.deepEqual(resolveShell({ role: 'yonetici', modules }, 'yonetici', path), {
+      kind: 'not-found',
+    })
+    const decision = resolveShell(language, 'yonetici', path)
+    assert.equal(decision.kind, 'page')
+  }
+  // Öğrenci ve velinin ayrı sayfası yoktur.
+  const student = { role: 'ogrenci' as const, modules, institution: language.institution }
+  assert.deepEqual(resolveShell(student, 'ogrenci', 'gruplar'), { kind: 'not-found' })
+})

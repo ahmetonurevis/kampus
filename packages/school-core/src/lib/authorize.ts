@@ -54,7 +54,7 @@ type OnurWriteTargets = {
   'prospect.note': Record<string, never>
   'prospect.meeting': Record<string, never>
   'prospect.trial': Record<string, never>
-  // Kesin kayıt (`enrollProspect`, `lib/domain.ts`); işlem yetkiyi kendisi denetlemez, çağıran
+  // Kesin kayıt (`enrollProspect`, `lib/enrollment.ts`); işlem yetkiyi kendisi denetlemez, çağıran
   // önce `requireAuthorized` çalıştırır.
   'prospect.enroll': Record<string, never>
 }

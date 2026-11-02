@@ -24,7 +24,7 @@ const SWITCH_FAILED = 'Kurum değiştirilemedi. Lütfen tekrar deneyin.'
 
 /** Sağ üstteki isim/avatar menüsü: hesap sayfaları, kurum değiştirme ve oturum kapatma burada. */
 export function AccountMenu({ session, onSignOut }: AccountMenuProps) {
-  const pages = accountPages(session.role, session.modules)
+  const pages = accountPages(session.role, session.modules, session.institution.type)
   const navigate = useNavigate()
   const { switchInstitution } = useActiveInstitution()
 

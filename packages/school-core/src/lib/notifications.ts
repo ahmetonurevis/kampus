@@ -168,7 +168,7 @@ export type LearnerAgeFacts = {
 /**
  * Öğrenci 18 yaş altında mı (bildirimin veliye gidip gitmeyeceği). Okulda her öğrenci velilidir.
  * Dil okulunda doğum tarihi, yoksa kesin kayda alınan adayın 18 yaş seçimi belirler; ikisi de
- * yoksa kesin kayıttaki varsayılan gibi 18 yaş altı sayılır (`lib/domain.ts` `enrollProspect`).
+ * yoksa kesin kayıttaki varsayılan gibi 18 yaş altı sayılır (`lib/enrollment.ts` `enrollProspect`).
  */
 export function isMinorLearner(
   facts: LearnerAgeFacts,

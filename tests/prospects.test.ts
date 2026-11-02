@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
 import type { Participant } from '../packages/school-core/src/lib/communication.ts'
 import { authorize } from '../packages/school-core/src/lib/authorize.ts'
-import { enrollProspect } from '../packages/school-core/src/lib/domain.ts'
+import { enrollProspect } from '../packages/school-core/src/lib/enrollment.ts'
 import { DomainError } from '../packages/school-core/src/lib/errors.ts'
 import * as prospects from '../packages/school-core/src/lib/prospects.ts'
 import {

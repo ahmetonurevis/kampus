@@ -153,6 +153,9 @@ jobs:
       - uses: ./.github/actions/kurulum
         with:
           playwright: 'true'
+      # Konuşma görevi e2e'si (ogrenci-konusma.spec.ts) API sürecinde ses dönüşümü için
+      # ffmpeg/ffprobe ister; CI'da ikili yoksa senaryo atlanmaz, açık hatayla başarısız olur.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       # Veritabanı (kampus_e2e), migrate, seed, API ve web derlemesi global kurulumda yapılır.
       - run: pnpm test:e2e:react --shard=${{ matrix.shard }}/3
       - if: failure()

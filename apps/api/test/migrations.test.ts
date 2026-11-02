@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { after, before, describe, test } from 'node:test'
@@ -738,7 +738,13 @@ describe('0013: beceri görevi tabloları', () => {
         await readFile(path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'),
       )
       assert.equal(first, journal.entries.length)
-      assert.equal(journal.entries.at(-1)?.tag, '0030_create_attempt_media_plays')
+      // Son kayıt dizindeki son `.sql` dosyasıdır; sabit ad beklenmez, yeni migration bu testi
+      // değiştirmeden eklenir (#16).
+      const sqlFiles = (await readdir(MIGRATIONS_FOLDER))
+        .filter((name) => name.endsWith('.sql'))
+        .sort()
+      assert.equal(journal.entries.length, sqlFiles.length)
+      assert.equal(`${journal.entries.at(-1)?.tag}.sql`, sqlFiles.at(-1))
       await migrate(fresh, { migrationsFolder: MIGRATIONS_FOLDER })
       assert.equal(await count(), first)
     } finally {

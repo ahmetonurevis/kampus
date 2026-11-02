@@ -67,10 +67,7 @@ test.use({
   },
 })
 
-test.skip(
-  !hasFfmpeg && !process.env.CI,
-  'ffmpeg/ffprobe PATH üzerinde yok: ses dönüşümü denenemez',
-)
+test.skip(!hasFfmpeg && !process.env.CI, 'ffmpeg/ffprobe PATH üzerinde yok: ses dönüşümü denenemez')
 test.beforeAll(() => {
   if (hasFfmpeg) writeFileSync(wavPath, sineWav(4))
 })
@@ -89,13 +86,17 @@ interface Setup {
   tenant: Tenant
   admin: ApiClient
   assignmentId: string
+  /** `second` doluysa aynı öğrenciye atanmış ikinci konuşma görevinin ataması. */
+  secondAssignmentId: string | null
 }
+
+const SECOND_TITLE = 'Hayalimdeki tatil'
 
 /** Kurum, konuşma görevi ve ataması; `consent` doluysa veli s1 için ses kaydı rızası verir. */
 async function speakingSchool(
   tenantFactory: (options: TenantOptions) => Promise<Tenant>,
   api: (principal: Principal | null) => Promise<ApiClient>,
-  options: { consent: boolean },
+  options: { consent: boolean; second?: boolean },
 ): Promise<Setup> {
   const tenant = await tenantFactory({ roles: ['yonetici', 'veli', 'ogrenci'], students: ['s1'] })
   const admin = await api(tenant.user('yonetici'))
@@ -123,21 +124,34 @@ async function speakingSchool(
     expect(given.status, JSON.stringify(given.body)).toBe(201)
   }
   const ownerId = await userIdOf(admin)
-  const homework = await seedSpeakingHomework(tenant.institutionId, ownerId, MAIN_TITLE)
-  const assignmentId = await assignTask(admin, {
-    resourceVersionId: homework,
-    settings: {
-      submission: {
-        submissionKind: 'audio',
-        maxVersions: 3,
-        speakingAttempts: 2,
-        preparationSeconds: 3,
-        speakingSeconds: 10,
-      },
-      rubricVersionId: await seedSpeakingRubric(tenant.institutionId, ownerId),
+  const rubricVersionId = await seedSpeakingRubric(tenant.institutionId, ownerId)
+  const settings = {
+    submission: {
+      submissionKind: 'audio',
+      maxVersions: 3,
+      speakingAttempts: 2,
+      preparationSeconds: 3,
+      speakingSeconds: 10,
     },
-  })
-  return { tenant, admin, assignmentId }
+    rubricVersionId,
+  }
+  const homework = await seedSpeakingHomework(tenant.institutionId, ownerId, MAIN_TITLE)
+  const assignmentId = await assignTask(admin, { resourceVersionId: homework, settings })
+  let secondAssignmentId: string | null = null
+  if (options.second) {
+    const other = await seedSpeakingHomework(tenant.institutionId, ownerId, SECOND_TITLE)
+    secondAssignmentId = await assignTask(admin, { resourceVersionId: other, settings })
+  }
+  return { tenant, admin, assignmentId, secondAssignmentId }
+}
+
+/** Ödevlerim listesinden görevin ayrıntı panelini açıp `Kayda başla` ile çalışma alanına girer. */
+async function openSpeakingTask(page: Page, title: string) {
+  await page.getByRole('button', { name: `${title} ayrıntısını aç` }).click()
+  await page
+    .getByRole('dialog', { name: 'Görev ayrıntısı' })
+    .getByRole('button', { name: 'Kayda başla' })
+    .click()
 }
 
 const recorder = (page: Page) => page.getByRole('region', { name: 'Ses kaydı' })
@@ -231,5 +245,46 @@ test.describe('öğrenci konuşma görevi', () => {
       `/api/v1/task-submissions?assignmentId=${school.assignmentId}&page=1&pageSize=20`,
     )
     expect((list.body as { data: unknown[] }).data).toHaveLength(0)
+  })
+
+  test('IST-051, DOM-BEC-054: başka göreve geçince önceki görevin kaydı taşınmaz', async ({
+    page,
+    context,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await speakingSchool(tenant, api, { consent: true, second: true })
+    await context.grantPermissions(['microphone'])
+    await loginAs(school.tenant.user('ogrenci'))
+    // İkinci görev önce açılıp kapatılır: verisi önbellekte kalır, sonradan geçişte yükleme
+    // ekranı çıkmaz ve bileşen sökülmeden aynı ekranda yeniden kullanılır.
+    await page.goto('/ogrenci/odevler')
+    await openSpeakingTask(page, SECOND_TITLE)
+    await expect(page.getByRole('heading', { name: SECOND_TITLE }).first()).toBeVisible()
+    await expect(recorder(page)).toBeVisible()
+    await page.getByRole('button', { name: 'Listeye dön' }).click()
+    await page.getByRole('dialog', { name: 'Görev ayrıntısı' }).press('Escape')
+    await expect(page.getByRole('dialog', { name: 'Görev ayrıntısı' })).toHaveCount(0)
+    await openSpeakingTask(page, MAIN_TITLE)
+    const box = recorder(page)
+    await box.getByRole('button', { name: 'Hazırlığa başla' }).click()
+    await box.getByRole('button', { name: 'Hazırım, kayda başla' }).click()
+    await expect(box.getByRole('timer')).toContainText(/00:0[2-9] \/ 00:10/)
+    await box.getByRole('button', { name: 'Kaydı bitir' }).click()
+    await expect(box.getByLabel(/Kaydınızı dinleyin/)).toBeVisible()
+
+    // Liste ekranına uğramadan ikinci göreve geçilir (geçmiş girdisi/derin bağlantı; `popstate`
+    // yönlendiriciye sayfa içi geçiş olarak ulaşır): ikinci görevde ilk görevin kaydı, dinleyicisi
+    // ve gönder düğmesi bulunmaz.
+    await page.evaluate((id) => {
+      window.history.pushState({}, '', `/ogrenci/odevler?yaz=${id}`)
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    }, school.secondAssignmentId)
+    await expect(page).toHaveURL(new RegExp(`yaz=${school.secondAssignmentId}`))
+    await expect(page.getByRole('heading', { name: SECOND_TITLE }).first()).toBeVisible()
+    await expect(box.getByRole('button', { name: 'Hazırlığa başla' })).toBeVisible()
+    await expect(box.getByLabel(/Kaydınızı dinleyin/)).toHaveCount(0)
+    await expect(box.getByRole('button', { name: 'Kaydı gönder' })).toHaveCount(0)
   })
 })

@@ -87,6 +87,7 @@ export const FILTER_FIELDS = [
   'category',
   'type',
   'grade',
+  'level',
 ] as const
 export type FilterField = (typeof FILTER_FIELDS)[number]
 
@@ -813,8 +814,8 @@ export async function listCollection(
   }
 }
 
-/** Gruplanabilen alanlar (beyaz liste): eşitlik süzgeci alanları, `isActive` ve `level`. */
-export const GROUP_FIELDS = [...FILTER_FIELDS, 'isActive', 'level'] as const
+/** Gruplanabilen alanlar (beyaz liste): eşitlik süzgeci alanları ve `isActive`. */
+export const GROUP_FIELDS = [...FILTER_FIELDS, 'isActive'] as const
 export type GroupField = (typeof GROUP_FIELDS)[number]
 
 const MONTH_SUFFIX = ':month'

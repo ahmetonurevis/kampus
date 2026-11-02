@@ -11434,6 +11434,8 @@ export interface operations {
                 type?: string | string[];
                 /** @description `grade` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 grade?: string | string[];
+                /** @description `level` eşitlik filtresi (düzey; IST-035); çoklu değer parametre tekrarıyla. Değer CEFR seviyesi (`Pre-A1`, `A1`, `A2`, `A2+`, `B1`, `B1+`, `B2`, `B2+`, `C1`, `C2`) ya da `N. Sınıf` (5–12) olmalıdır; başka değer 400. Örnek: `materials` düzeyi `7. Sınıf` */
+                level?: string | string[];
                 /** @description En çok üç alan, virgülle; eksi azalan (ör. `-createdAt,name`). Alanlar: id, createdAt, updatedAt, name, title, date, dueDate, deadline, followUp, status, stage, grade, score, amount, installment, number, studentName, studentNumber, className, branchName. Bağlı alanlar yalnız tanımlı listede: `branchName` `classes`; `studentName`, `studentNumber`, `className` `invoices`, `grades`, `attendance` (başka listede 400). `invoices` `status`u türetilmiş durumdur. Verilmezse deponun sırası */
                 sort?: string;
             };
@@ -11569,8 +11571,10 @@ export interface operations {
                 type?: string | string[];
                 /** @description `grade` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 grade?: string | string[];
+                /** @description `level` eşitlik filtresi (düzey; IST-035); çoklu değer parametre tekrarıyla. Değer CEFR seviyesi (`Pre-A1`, `A1`, `A2`, `A2+`, `B1`, `B1+`, `B2`, `B2+`, `C1`, `C2`) ya da `N. Sınıf` (5–12) olmalıdır; başka değer 400. Örnek: `materials` düzeyi `7. Sınıf` */
+                level?: string | string[];
                 /** @description Gruplama alanı (zorunlu) ya da aylık gruplama `<tarih alanı>:month` (ör. `paidAt:month`, `dueDate:month`; değer `YYYY-MM`, Europe/Istanbul ayı; tarih alanı `dateField` izin listesindedir, dışındaki 400; tarih olmayan değer `null` grubudur). Rolün göremediği alan 400. `isActive` alanı olmayan kayıt `true`; `invoices` `status`u türetilmiş durumdur; kaydında sınıf olmayan öğrenci koleksiyonlarında (`classId` süzgeciyle aynı liste) `classId` öğrencinin güncel sınıfıdır */
-                groupBy: "studentId" | "classId" | "teacherId" | "subjectId" | "branchId" | "parentId" | "examId" | "clubId" | "routeId" | "quizId" | "homeworkId" | "videoId" | "status" | "stage" | "source" | "category" | "type" | "grade" | "isActive" | "level" | "date:month" | "joinedAt:month" | "dueDate:month" | "paidAt:month" | "createdAt:month" | "trialAt:month" | "submittedAt:month" | "answeredAt:month" | "followUp:month" | "deadline:month" | "reviewedAt:month" | "endDate:month" | "consentDeadline:month";
+                groupBy: "studentId" | "classId" | "teacherId" | "subjectId" | "branchId" | "parentId" | "examId" | "clubId" | "routeId" | "quizId" | "homeworkId" | "videoId" | "status" | "stage" | "source" | "category" | "type" | "grade" | "level" | "isActive" | "date:month" | "joinedAt:month" | "dueDate:month" | "paidAt:month" | "createdAt:month" | "trialAt:month" | "submittedAt:month" | "answeredAt:month" | "followUp:month" | "deadline:month" | "reviewedAt:month" | "endDate:month" | "consentDeadline:month";
                 /** @description Grup başına toplanacak sayısal alan; sayı olmayan değer toplama girmez. `amount` kuruştur. Rolün göremediği alan 400 */
                 sum?: "amount" | "capacity" | "score" | "progress" | "attendanceRate" | "homeworkRate";
             };

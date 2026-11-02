@@ -25923,6 +25923,31 @@
           },
           {
             "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              ]
+            },
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "description": "`level` eşitlik filtresi (düzey; IST-035); çoklu değer parametre tekrarıyla. Değer CEFR seviyesi (`Pre-A1`, `A1`, `A2`, `A2+`, `B1`, `B1+`, `B2`, `B2+`, `C1`, `C2`) ya da `N. Sınıf` (5–12) olmalıdır; başka değer 400. Örnek: `materials` düzeyi `7. Sınıf`"
+          },
+          {
+            "schema": {
               "type": "string",
               "pattern": "^-?(id|createdAt|updatedAt|name|title|date|dueDate|deadline|followUp|status|stage|grade|score|amount|installment|number|studentName|studentNumber|className|branchName)(,-?(id|createdAt|updatedAt|name|title|date|dueDate|deadline|followUp|status|stage|grade|score|amount|installment|number|studentName|studentNumber|className|branchName)){0,2}$"
             },
@@ -26603,6 +26628,31 @@
           },
           {
             "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              ]
+            },
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "description": "`level` eşitlik filtresi (düzey; IST-035); çoklu değer parametre tekrarıyla. Değer CEFR seviyesi (`Pre-A1`, `A1`, `A2`, `A2+`, `B1`, `B1+`, `B2`, `B2+`, `C1`, `C2`) ya da `N. Sınıf` (5–12) olmalıdır; başka değer 400. Örnek: `materials` düzeyi `7. Sınıf`"
+          },
+          {
+            "schema": {
               "type": "string",
               "enum": [
                 "studentId",
@@ -26623,8 +26673,8 @@
                 "category",
                 "type",
                 "grade",
-                "isActive",
                 "level",
+                "isActive",
                 "date:month",
                 "joinedAt:month",
                 "dueDate:month",

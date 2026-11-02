@@ -3,6 +3,7 @@
 // alanındandır), tablo satırı ve özet çıkar. Ödev durumu core'dan (`homeworkStatus`), quiz puanı
 // sunucunun cevaplardan hesapladığı sonuçtan (`attempts[].result`, DOM-AKD-078) gelir; burada
 // yeniden hesaplanmaz ve saklanmaz.
+import { CEFR_LEVELS, GRADE_LEVEL_RANGE } from '@kampus/school-core/content/taxonomy.ts'
 import { homeworkStatus } from '@kampus/school-core/lib/format.ts'
 import type { Homework, HomeworkListItem } from '@kampus/react-shared/homework.ts'
 import { attemptOf, type QuizListItem } from '@kampus/react-shared/quizzes.ts'
@@ -14,15 +15,22 @@ type Submission = CoreRecord<'submissions'>
 type Material = CoreRecord<'materials'>
 type Student = CoreRecord<'students'>
 
-/**
- * TODO(api-filter-level): materyalin düzey (`level`) alanı sunucuda süzülemez; öğretmen listesi
- * ders filtresi ve başlık aramasıyla yetinir.
- */
+/** Öğretmen materyal listesi: ders ve düzey süzgeçleri ile başlık sırası sunucuda uygulanır (IST-035). */
 export const MATERIAL_LIST = {
   sortFields: { title: 'title' },
-  filterFields: { subjectId: 'subjectId' },
+  filterFields: { subjectId: 'subjectId', level: 'level' },
   defaultSort: ['title', 'id'],
 } satisfies CollectionListConfig
+
+/**
+ * Düzey süzgeci seçenekleri (sunucunun kabul ettiği değerler): okulda `N. Sınıf`, dil okulunda
+ * CEFR seviyesi. Materyalin `level` alanı bu biçimlerde saklanır.
+ */
+export function materialLevelOptions(type: 'school' | 'language_school'): string[] {
+  if (type === 'language_school') return Object.keys(CEFR_LEVELS)
+  const { min, max } = GRADE_LEVEL_RANGE
+  return Array.from({ length: max - min + 1 }, (_, index) => `${min + index}. Sınıf`)
+}
 
 /** Bir sınıfın aktif öğrencileri, ad sırasıyla (Türkçe). */
 export function activeRoster(students: readonly CoreRow<'students'>[]): Student[] {

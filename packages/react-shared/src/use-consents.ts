@@ -1,9 +1,20 @@
+import { useQueries, type UseQueryOptions } from '@tanstack/react-query'
+
 import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { ApiError } from '@kampus/api-client/errors.ts'
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
+import { runRequest } from './api-result.ts'
 import type { CommandHeaders, CommandMessages } from './commands.ts'
-import { consentListKey, consentsPrefix, consentStatusKey, consentTextKey } from './query-keys.ts'
+import { useKampusClient } from './kampus-context.ts'
+import {
+  consentListKey,
+  consentsPrefix,
+  consentStatusKey,
+  consentTextKey,
+  institutionKey,
+} from './query-keys.ts'
+import { useActiveInstitutionId } from './use-active-institution.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 
@@ -172,6 +183,25 @@ export function useConsentText(purpose: ConsentPurposeKey, options: { enabled?: 
     key: consentTextKey(purpose),
     request: (client, signal) => consentTextRequest(client, purpose, signal),
     ...(options.enabled === undefined ? {} : { enabled: options.enabled }),
+  })
+}
+
+/**
+ * Birden çok amacın güncel metni (rıza adımı): `useConsentText` ile aynı sorgu anahtarı, ama
+ * amaç listesi değişebilir. Sonuçlar `purposes` sırasındadır.
+ */
+export function useConsentTexts(
+  purposes: readonly ConsentPurposeKey[],
+  options: { enabled?: boolean } = {},
+) {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQueries({
+    queries: purposes.map((purpose): UseQueryOptions<TextResponse, ApiError> => ({
+      queryKey: institutionKey(institutionId, ...consentTextKey(purpose)),
+      queryFn: ({ signal }) => runRequest(() => consentTextRequest(client, purpose, signal)),
+      enabled: institutionId !== null && (options.enabled ?? true),
+    })),
   })
 }
 

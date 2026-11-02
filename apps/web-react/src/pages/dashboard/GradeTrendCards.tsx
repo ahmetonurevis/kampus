@@ -102,6 +102,9 @@ function LearnerGradeTrend({ ctx }: { ctx: StudentContext }) {
 function TeacherGradeTrend({ ctx }: { ctx: DashboardCardContext }) {
   const teachers = useCoreAll('teachers')
   const subjectId = teachers.data?.[0]?.record.subjectId
+  // Branşı kayıtlı olmayan öğretmende süzgeç boş kalır ve sayım bütün dersleri kapsardı; bu,
+  // "branş ortalaması" olmadığından kart gizlenir.
+  if (teachers.data && !subjectId) return null
   const state: CardState = {
     isPending: ctx.state.isPending || teachers.isPending,
     error: ctx.state.error ?? teachers.error,
@@ -115,7 +118,7 @@ function TeacherGradeTrend({ ctx }: { ctx: DashboardCardContext }) {
       title="Sınıf branş ortalaması"
       description="Sınıflarınızdaki öğrencilerin branşınızdaki aylık not ortalaması"
       subject="Sınıflarınızın branş ortalaması"
-      filters={teachers.data ? (subjectId ? { subjectId } : {}) : null}
+      filters={subjectId ? { subjectId } : null}
       state={state}
       action={{ label: 'Sınıf analizini aç', href: dashboardHref(ctx.role, 'sinif-analizi') }}
     />

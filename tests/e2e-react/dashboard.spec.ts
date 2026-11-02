@@ -968,6 +968,32 @@ test.describe('Genel Bakış: haberler, yanıt bekleyen sorular ve not eğilimi'
     await expect(trend.locator('.trend-bars')).toHaveAttribute('aria-hidden', 'true')
   })
 
+  test('öğretmen: branşı kayıtlı değilse branş ortalaması kartı gizlenir ve tüm dersler sayılmaz', async ({
+    page,
+    loginAs,
+  }) => {
+    // Öğretmen kaydından branş çıkarılır; süzgeçsiz sayım bütün dersleri "branş ortalaması" yapardı.
+    await page.route(/\/collections\/teachers\?/, async (route) => {
+      const response = await route.fetch()
+      const body = (await response.json()) as { data: { record: Record<string, unknown> }[] }
+      const data = body.data.map((row) => {
+        const record = { ...row.record }
+        delete record.subjectId
+        return { ...row, record }
+      })
+      await route.fulfill({ status: response.status(), json: { ...body, data } })
+    })
+    const countRequests: string[] = []
+    page.on('request', (request) => {
+      if (/\/collections\/grades\/counts/.test(request.url())) countRequests.push(request.url())
+    })
+    await loginAs('ogretmen')
+    await openDashboard(page, 'ogretmen')
+    await expectCardsLoaded(page)
+    await expect(region(page, 'Sınıf branş ortalaması')).toHaveCount(0)
+    expect(countRequests, 'not sayımı istenmez').toEqual([])
+  })
+
   test('iki aydan az notta grafik yerine kısa metin gösterilir', async ({ page, loginAs }) => {
     // Sayım ucu tek aylık seri döndürür; gerçek kayıt yazılmaz.
     await page.route(/\/collections\/grades\/counts/, (route) =>

@@ -36,3 +36,12 @@ export function sessionExpired(
 ): boolean {
   return previous === 'signed-in' && next === 'signed-out' && !intentionalSignOut
 }
+
+/**
+ * Bilinçli çıkış bayrağı oturum kapalı kaldıkça korunur; yeni bir oturum açılınca düşer.
+ * Kabuk çıkıştan sonra yönlendirme bitmeden yeniden çizilebilir; bayrak erken düşerse giriş
+ * adresine dönüş adresi (`?donus=`) eklenirdi.
+ */
+export function keepsIntentionalSignOut(current: boolean, status: AuthState['status']): boolean {
+  return current && (status === 'signed-out' || status === 'loading')
+}

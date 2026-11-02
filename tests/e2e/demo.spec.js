@@ -16,13 +16,23 @@ test('Giriş ve beş rol arasında geçiş', async ({ page }) => {
     await expect(page.locator('main h1')).toBeVisible()
   }
 })
-for (const [role, pages] of Object.entries(navigation))
-  test(`${role}: tüm sayfalar masaüstünde ve mobilde açılır`, async ({ page }) => {
+// Her rolün sayfaları küçük gruplara bölünür: tek testte bütün sayfaları gezmek CI'daki 45 sn
+// sınırını aşıyordu (.claude/rules/testler.md).
+const PAGES_PER_GROUP = 6
+const extraRoutes = { onburo: ['/onburo/aday/pr1'], ogretmen: ['/ogretmen/ogrenci/s1'] }
+const routeGroups = Object.entries(navigation).flatMap(([role, pages]) => {
+  const routes = [...pages.map((p) => `/${role}/${p.path}`), ...(extraRoutes[role] ?? [])]
+  const count = Math.ceil(routes.length / PAGES_PER_GROUP)
+  return Array.from({ length: count }, (_, index) => ({
+    role,
+    label: `${index + 1}/${count}`,
+    routes: routes.slice(index * PAGES_PER_GROUP, (index + 1) * PAGES_PER_GROUP),
+  }))
+})
+for (const { role, label, routes } of routeGroups)
+  test(`${role}: tüm sayfalar masaüstünde ve mobilde açılır (grup ${label})`, async ({ page }) => {
     const errors = []
     page.on('pageerror', (error) => errors.push(error.message))
-    const routes = pages.map((p) => `/${role}/${p.path}`)
-    if (role === 'onburo') routes.push('/onburo/aday/pr1')
-    if (role === 'ogretmen') routes.push('/ogretmen/ogrenci/s1')
     for (const path of routes) {
       await page.setViewportSize({ width: 1440, height: 1000 })
       await page.goto(path)

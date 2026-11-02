@@ -626,8 +626,9 @@ describe('bölüm girişi ve bitiş (DOM-DIL-010, IST-058)', () => {
         { id: 'a', text: 'A' },
         { id: 'b', text: 'B' },
       ],
+      imageFileId: null,
     },
-    answerKey: { questionType: 'multiple_choice', correctOptionId, explanation: null },
+    answerKey: { questionType: 'multiple_choice', correctOptionId, explanation: 'Açıklama.' },
     locale: 'en',
   })
   const readingItems = [mc('test-q1', 'a'), mc('test-q2', 'b')]

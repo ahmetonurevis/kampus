@@ -101,8 +101,7 @@ export function StaffPage({ page }: { page: NavPage }) {
     canManage,
     onEdit: openTeacherForm,
     onArchive: (id) => setArchiveTarget({ kind: 'teacher', id }),
-    onRestore: (id) =>
-      void restoreTeacher.restore(id, lookups.teachers.get(id)?.name ?? 'Öğretmen'),
+    onRestore: (id) => restoreTeacher.restore(id, lookups.teachers.get(id)?.name ?? 'Öğretmen'),
     restoring: restoreTeacher.pending,
   }
 
@@ -161,7 +160,7 @@ export function StaffPage({ page }: { page: NavPage }) {
               canManage={canManage}
               onEdit={openTeacherForm}
               onArchive={(id) => setArchiveTarget({ kind: 'teacher', id })}
-              onRestore={(id) => void restoreTeacher.restore(id, row.name)}
+              onRestore={(id) => restoreTeacher.restore(id, row.name)}
               restoring={restoreTeacher.pending}
             />
           </span>

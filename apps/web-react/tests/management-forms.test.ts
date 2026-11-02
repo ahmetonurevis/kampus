@@ -4,6 +4,7 @@ import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { subjectsForGrade } from '@kampus/school-core/data/curriculum.ts'
 import {
   ARCHIVE_ERROR_CODES,
+  archiveDependents,
   archiveDestinations,
   assignedTeachers,
   branchDefaults,
@@ -14,6 +15,7 @@ import {
   classStepOf,
   fillSubjectTeachers,
   missingTeachers,
+  NO_DESTINATION,
   recordName,
   teacherDefaults,
   transferSummary,
@@ -204,4 +206,30 @@ test('arşiv sonucu aktarılan kayıtları Türkçe sayar; aktarım yoksa boş d
     '1 öğrenci Ataşehir Kampüsü hedefine aktarıldı.',
   )
   assert.doesNotMatch(text, /bilinmeyen/)
+})
+
+test('arşiv penceresi bağlı aktif kayıtları sayar; bağ yoksa hedef istenmez (IST-010)', () => {
+  const data = lookups()
+  assert.deepEqual(archiveDependents('class', 'c1', data), ['10 öğrenci'])
+  // t1 (Selin Kaya): 8 ders ataması, 4 sınıfın danışmanı.
+  assert.deepEqual(archiveDependents('teacher', 't1', data), [
+    '8 ders ataması',
+    '4 sınıf danışmanlığı',
+  ])
+  assert.deepEqual(archiveDependents('branch', 'b3', data), [
+    '8 sınıf',
+    '80 öğrenci',
+    '16 öğretmen',
+  ])
+
+  // Arşivdeki sınıfın atamaları ve danışmanlığı sayılmaz; öğrencisiz sınıf hedef istemez.
+  const archived = lookups((state) => {
+    for (const item of state.classes) if (item.teacherId === 't1') item.isActive = false
+    for (const item of state.assignments) if (item.teacherId === 't1') item.classId = 'c1'
+    for (const student of state.students) if (student.classId === 'c2') student.isActive = false
+  })
+  assert.deepEqual(archiveDependents('teacher', 't1', archived), [])
+  assert.deepEqual(archiveDependents('class', 'c2', archived), [])
+  assert.match(NO_DESTINATION.teacher, /aynı branştan/)
+  assert.ok(ARCHIVE_ERROR_CODES.has('tutor_schedule_conflict'))
 })

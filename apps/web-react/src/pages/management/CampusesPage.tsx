@@ -124,14 +124,14 @@ export function CampusesPage({ page }: { page: NavPage }) {
     canManage,
     onEdit: openClassForm,
     onArchive: (id) => setArchiveTarget({ kind: 'class', id }),
-    onRestore: (id) => void restoreClass.restore(id, lookups.classes.get(id)?.name ?? 'Sınıf'),
+    onRestore: (id) => restoreClass.restore(id, lookups.classes.get(id)?.name ?? 'Sınıf'),
     restoring: restoreClass.pending,
   }
   const campusActions: RecordActionHandlers = {
     canManage,
     onEdit: openCampusForm,
     onArchive: (id) => setArchiveTarget({ kind: 'branch', id }),
-    onRestore: (id) => void restoreCampus.restore(id, lookups.branches.get(id)?.name ?? 'Kampüs'),
+    onRestore: (id) => restoreCampus.restore(id, lookups.branches.get(id)?.name ?? 'Kampüs'),
     restoring: restoreCampus.pending,
   }
 
@@ -189,7 +189,7 @@ export function CampusesPage({ page }: { page: NavPage }) {
               canManage={canManage}
               onEdit={openClassForm}
               onArchive={(id) => setArchiveTarget({ kind: 'class', id })}
-              onRestore={(id) => void restoreClass.restore(id, row.name)}
+              onRestore={(id) => restoreClass.restore(id, row.name)}
               restoring={restoreClass.pending}
             />
           </span>

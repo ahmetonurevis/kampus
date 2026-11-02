@@ -104,6 +104,8 @@ test.describe('Finans: tahsilat', () => {
     await expect(dialog).toBeVisible()
     await expect(page).toHaveURL(/[?&]tahsilat=inv-s10-5/)
     await expect(dialog).toContainText('Emir Kaya · 6. taksit')
+    await dialog.getByLabel('Ödeme yöntemi').selectOption('Senet')
+    await expect(dialog.getByLabel('Senet numarası')).toBeVisible()
     await dialog.getByLabel('Ödeme yöntemi').selectOption('Banka havalesi')
     await fillReference(dialog)
     await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()

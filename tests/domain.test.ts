@@ -200,7 +200,7 @@ test('Domain işlemleri DomainError, kod ve tür ile reddeder', () => {
 })
 
 test('Ödeme yöntemleri ve tahsilat girdi şeması', () => {
-  assert.deepEqual([...PAYMENT_METHODS], ['Banka havalesi', 'Nakit', 'Kredi kartı'])
+  assert.deepEqual([...PAYMENT_METHODS], ['Banka havalesi', 'Nakit', 'Kredi kartı', 'Senet'])
   for (const method of PAYMENT_METHODS) {
     assert.equal(PAYMENT_METHOD_LABELS[method], method)
     assert.equal(paymentInputSchema.parse({ method }).method, method)

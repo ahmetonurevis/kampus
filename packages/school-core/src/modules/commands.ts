@@ -63,7 +63,8 @@ export const ONUR_WORKFLOW_COMMANDS = {
 
 /** Tahsilat, tarife, ayrılış, aday/CRM ve kesin kayıt işlemleri. */
 export const ONUR_OPERATION_COMMANDS = {
-  'invoice.pay': spec('finance', [...SCOPE, 'invoices']),
+  // Sözleşme bursu senet yasağı içindir (DOM-FIN-025).
+  'invoice.pay': spec('finance', [...SCOPE, 'contracts', 'invoices']),
   'payment.reverse': spec('finance', [...SCOPE, 'invoices']),
   'tariff.manage': spec('finance', [...SCOPE]),
   'scholarship.manage': spec('finance', [...SCOPE]),

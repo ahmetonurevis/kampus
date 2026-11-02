@@ -91,7 +91,10 @@ export const payments = pgTable(
     index('payments_bank_account_idx').on(table.institutionId, table.bankAccountId),
     check('payments_amount_cents_check', sql`${table.amountCents} > 0`),
     check('payments_currency_check', sql`${table.currency} = 'TRY'`),
-    check('payments_method_check', oneOf(table.method, ['bank_transfer', 'cash', 'card'])),
+    check(
+      'payments_method_check',
+      oneOf(table.method, ['bank_transfer', 'cash', 'card', 'promissory_note']),
+    ),
     check(
       'payments_reversal_check',
       sql`(${table.reversedAt} is null and ${table.reversedByUserId} is null and ${table.reversalReason} is null) or (${table.reversedAt} is not null and ${table.reversedByUserId} is not null and ${table.reversalReason} is not null)`,
@@ -153,4 +156,5 @@ export const PAYMENT_METHOD_KEYS = {
   'Banka havalesi': 'bank_transfer',
   Nakit: 'cash',
   'Kredi kartı': 'card',
+  Senet: 'promissory_note',
 } as const satisfies Record<PaymentMethod, string>

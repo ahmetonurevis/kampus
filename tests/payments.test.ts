@@ -273,6 +273,33 @@ test('DOM-FIN-031: tahsilat formu nakit dışında referans ister', () => {
   )
 })
 
+test('IST-106: senet numara ister, banka hesabına bağlanmaz, burslu öğrenciden alınmaz', () => {
+  const { state, studentId } = fixture()
+  const note = { studentId, amountCents: 4_000, method: 'Senet' }
+  const accounts = { bankAccountIds: ['a1'] }
+  assert.throws(
+    () => planPayment(state, note, context(accounts)),
+    isDomainError('payment_reference_required'),
+  )
+  const plan = planPayment(state, { ...note, reference: 'SNT-1' }, context(accounts))
+  assert.equal(plan.method, 'Senet')
+  assert.equal(plan.bankAccountId, null)
+
+  const before = structuredClone(state.invoices)
+  state.contracts = [
+    { ...state.contracts[0]!, studentId, scholarship: { programId: 'p1', amountCents: 100 } },
+  ]
+  assert.throws(
+    () => planPayment(state, { ...note, reference: 'SNT-2' }, context(accounts)),
+    isDomainError('scholarship_promissory_note'),
+  )
+  assert.deepEqual(state.invoices, before)
+  assert.equal(
+    planPayment(state, { ...bank, studentId, amountCents: 4_000 }, context()).method,
+    'Banka havalesi',
+  )
+})
+
 test('DOM-FIN-032: hesap tanımlıysa nakit dışı tahsilat hesap ister, nakit istemez', () => {
   const { state, studentId } = fixture()
   const accounts = { bankAccountIds: ['a1'] }

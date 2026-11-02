@@ -6,7 +6,14 @@ import {
   type ModuleKey,
 } from '@kampus/school-core/modules/collection-modules.ts'
 import { ROLE_KEYS, rolePages, type RoleKey } from '../src/lib/navigation.ts'
-import { isMigratedPage } from '../src/lib/page-coverage.ts'
+import {
+  isMigratedPage,
+  MIGRATED,
+  ONUR_MIGRATED,
+  ONUR_WORKFLOW_PATHS,
+  WORKFLOW_PATHS,
+} from '../src/lib/page-coverage.ts'
+import { PLATFORM_MIGRATED, PLATFORM_WORKFLOW_PATHS } from '../src/lib/page-coverage/platform.ts'
 
 /**
  * React'te henüz yer tutucu olan menü sayfaları (`rol/yol`). Liste yalnız küçülebilir: sayfa
@@ -49,4 +56,29 @@ test('izin listesi güncel kalır: taşınan ya da menüden kalkan sayfa listede
   })
   assert.deepEqual(stale, [])
   assert.equal(new Set(KNOWN_PLACEHOLDERS).size, KNOWN_PLACEHOLDERS.length)
+})
+
+test('kapsam anahtarı yalnız bir kaynakta bulunur (platform ve Onur bloğu birleşimi)', () => {
+  for (const [ad, ilk, ikinci] of [
+    ['sayfa', PLATFORM_MIGRATED, ONUR_MIGRATED],
+    ['iş akışı', PLATFORM_WORKFLOW_PATHS, ONUR_WORKFLOW_PATHS],
+  ] as const) {
+    assert.deepEqual(
+      ilk.filter((key, index) => ilk.indexOf(key) !== index),
+      [],
+      `platform ${ad} anahtarı yinelenmiş`,
+    )
+    assert.deepEqual(
+      ikinci.filter((key, index) => ikinci.indexOf(key) !== index),
+      [],
+      `Onur ${ad} anahtarı yinelenmiş`,
+    )
+    assert.deepEqual(
+      ilk.filter((key) => ikinci.includes(key)),
+      [],
+      `${ad} anahtarı iki kaynakta da var`,
+    )
+  }
+  assert.equal(MIGRATED.size, PLATFORM_MIGRATED.length + ONUR_MIGRATED.length)
+  assert.equal(WORKFLOW_PATHS.size, PLATFORM_WORKFLOW_PATHS.length + ONUR_WORKFLOW_PATHS.length)
 })

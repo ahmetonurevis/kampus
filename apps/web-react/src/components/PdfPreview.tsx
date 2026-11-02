@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useDocumentPdf, type DocumentPdf } from '@/hooks/use-document-pdf.ts'
 import { saveBlob } from '@/lib/download.ts'
 import { notify } from '@/lib/notify.ts'
-import { DOCUMENT_TITLES, type PdfDocumentType } from '@/lib/pdf/templates.ts'
+import { DOCUMENT_TITLES, type PdfDocumentType } from '@/lib/pdf/templates/shared.ts'
 
 /** Görüntüleyici paketi yüklenemediğinde (ağ) gösterilir; indirme yine çalışır. */
 const ViewerUnavailable: ComponentType<PdfPagesProps> = () => (

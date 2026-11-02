@@ -15,7 +15,7 @@ import type { State } from '@kampus/school-core/data/seed.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import type { CollectionName } from '@kampus/school-core/modules/collection-modules.ts'
 import { buildWorkflowState } from '../../pages/workflows/workflow-state.ts'
-import type { PdfDocumentType } from './templates.ts'
+import type { PdfDocumentType } from './templates/shared.ts'
 
 type Read = <K extends CollectionName>(collection: K, id: string) => Promise<State[K][number]>
 

@@ -3,7 +3,8 @@ import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { documentData } from '@kampus/school-core/lib/document-data.ts'
 import { PAGE } from '../src/lib/pdf/layout.ts'
-import { documentFilename, paymentPlanDocument } from '../src/lib/pdf/templates.ts'
+import { paymentPlanDocument } from '../src/lib/pdf/templates/payment-plan.ts'
+import { documentFilename } from '../src/lib/pdf/templates/shared.ts'
 import { allTexts, measurer, texts } from './support/pdf-measurer.ts'
 
 const NOW = new Date('2026-10-15T09:00:00.000Z')

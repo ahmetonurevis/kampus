@@ -158,4 +158,9 @@ export const PLATFORM_OPERATION_COMMANDS = {
   // koleksiyon yüklenmez, liste yalnız tablo okumasıdır.
   'academicYear.read': spec(null, [...SCOPE]),
   'academicYear.manage': spec(null, [...SCOPE]),
+  // Dil okulu kur programı (`lib/courses.ts`; DOM-DIL-005…007): modüle bağlı değildir, kurum türüne
+  // bağlıdır (yalnız `language_school`; okulda 404). Kayıtlar ilişkisel tablodadır (`courses`).
+  'course.read': spec(null, [...SCOPE]),
+  'course.manage': spec(null, [...SCOPE]),
+  'course.eozel': spec(null, [...SCOPE]),
 } as const satisfies Record<string, CommandSpec>

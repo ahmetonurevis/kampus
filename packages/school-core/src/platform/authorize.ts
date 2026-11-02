@@ -75,6 +75,11 @@ export type PlatformWriteTargets = {
   // `academicYearView`'dadır (öğrenci ve veli yalnız ad, tarih, etkinlik).
   'academicYear.read': Record<string, never>
   'academicYear.manage': Record<string, never>
+  // Dil okulu kur programı (DOM-DIL-005…007): kural `lib/courses.ts`. Koordinatörün seviye kapsamı
+  // (`assertCourseManager`) ve öğrenci/veli görünümü (`courseView`) orada çözülür.
+  'course.read': Record<string, never>
+  'course.manage': Record<string, never>
+  'course.eozel': Record<string, never>
 }
 
 /** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları `lib/authorize.ts`). */
@@ -149,4 +154,10 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   // yönetir (DOM-YTK-067, DOM-YTK-020).
   'academicYear.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
   'academicYear.manage': ['yonetici'],
+  // Kur kataloğunu beş rol okur (öğrenci ve veli yalnız etkin kurları, daraltılmış). Kuru yönetici
+  // ve seviyenin akademik koordinatörü (öğretmen + görev, DOM-YTK-027) yönetir; e-Özel kaydını
+  // yalnız yönetici işaretler (DOM-DIL-005, -006; IST-076).
+  'course.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+  'course.manage': ['yonetici', 'ogretmen'],
+  'course.eozel': ['yonetici'],
 } as const satisfies Record<PlatformAction, readonly Role[]>

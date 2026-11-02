@@ -8,6 +8,7 @@ import {
   parseInstant,
   responseHours,
   responseText,
+  slaBreachTotal,
   slaRows,
   slaSummary,
 } from '../src/pages/management/sla-rows.ts'
@@ -205,4 +206,59 @@ test('tarihi bozuk soru SLA sayılarına girmez; API ile aynı kural', () => {
   )
   assert.equal(isBreach({ createdAt: ago(30), answeredAt: '2026-13-40T00:00:00Z' }, +NOW), true)
   assert.equal(responseHours({ createdAt: ago(30), answeredAt: '2026-13-40T00:00:00Z' }), null)
+})
+
+// --- Genel Bakış "SLA ihlali" sayacı (OG-978) -------------------------------------------------
+
+/**
+ * Sunucunun `/teacher-metrics` toplamı (API `teacherQuestionRows`): arşivsiz öğretmen başına
+ * geri çekilmemiş, geçerli `createdAt`'li sorunun ihlal sayısı; ihlal kuralı rapordakiyle aynı
+ * `isBreach`'tir.
+ */
+function metricsOf(
+  teachers: readonly { id: string }[],
+  questions: readonly {
+    record: Parameters<typeof isBreach>[0] & { teacherId: string; withdrawnAt?: string | null }
+  }[],
+) {
+  return teachers.map(({ id }) => ({
+    teacherId: id,
+    breaches: questions.filter(
+      ({ record }) =>
+        record.teacherId === id &&
+        !record.withdrawnAt &&
+        parseInstant(record.createdAt) !== null &&
+        isBreach(record, +NOW),
+    ).length,
+  }))
+}
+
+test('slaBreachTotal: dashboard sayacı rapordaki "Süre aşımı" toplamıyla aynıdır', () => {
+  const questions = [
+    question('q-d-1', first.id, 30, null), // bekliyor, 30 saat: ihlal
+    question('q-d-2', first.id, 10, null), // bekliyor, 10 saat: değil
+    question('q-d-3', first.id, 50, 30), // 30 saatte yanıt: ihlal
+    question('q-d-4', second.id, 40, 2), // 2 saatte yanıt: değil
+    question('q-d-5', second.id, 90, null), // bekliyor: ihlal
+    wrap([{ ...question('q-d-6', second.id, 99, null).record, withdrawnAt: ago(1) }])[0]!, // geri çekilmiş
+    wrap([{ ...question('q-d-7', second.id, 99, null).record, createdAt: 'bozuk' }])[0]!, // tarihi bozuk
+  ]
+  const teachers = wrap([first, second])
+  const report = slaSummary(slaRows(teachers, questions, lookups, +NOW)).breaches
+  assert.equal(report, 3)
+  assert.equal(slaBreachTotal(teachers, metricsOf(teachers, questions)), report)
+})
+
+test('slaBreachTotal: aktif olmayan öğretmenin ve kadroda olmayan kimliğin ihlali sayılmaz (rapor gibi)', () => {
+  const questions = [question('q-d-8', first.id, 30, null), question('q-d-9', second.id, 30, null)]
+  const teachers = wrap([first, { ...second, isActive: false }])
+  const report = slaSummary(slaRows(teachers, questions, lookups, +NOW)).breaches
+  const metrics = [...metricsOf([first, second], questions), { teacherId: 'yok', breaches: 5 }]
+  assert.equal(report, 1)
+  assert.equal(slaBreachTotal(teachers, metrics), report)
+})
+
+test('slaBreachTotal: ölçü ya da öğretmen yoksa sıfır', () => {
+  assert.equal(slaBreachTotal([], []), 0)
+  assert.equal(slaBreachTotal(wrap([first]), []), 0)
 })

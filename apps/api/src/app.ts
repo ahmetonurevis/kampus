@@ -17,7 +17,7 @@ import { z } from 'zod'
 import { createAuth, type Auth } from './auth.ts'
 import { isDevelopmentLike, publicUrl, type Config } from './config.ts'
 import type { Database } from './db/client.ts'
-import { inlineTranscodeScheduler } from './jobs/media-transcode.ts'
+import { InlineTranscodeScheduler, inlineTranscodeScheduler } from './jobs/media-transcode.ts'
 import { registerAuthenticate } from './plugins/authenticate.ts'
 import { registerBetterAuth } from './plugins/better-auth.ts'
 import { registerCsrfGuard } from './plugins/csrf.ts'
@@ -233,12 +233,12 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   const transcoder =
     options.media?.transcoder ??
     createFfmpegTranscoder({ ffmpegPath: config.FFMPEG_PATH, ffprobePath: config.FFPROBE_PATH })
-  const media: MediaRuntime = {
-    transcoder,
-    scheduler:
-      options.media?.scheduler ??
-      inlineTranscodeScheduler({ db, storage, transcoder, log: app.log, clock }),
-  }
+  const scheduler =
+    options.media?.scheduler ??
+    inlineTranscodeScheduler({ db, storage, transcoder, log: app.log, clock })
+  // Kuyruksuz dönüşümler kapanışta iptal edilir ve bitmeleri beklenir (veritabanı sonra kapanır).
+  if (scheduler instanceof InlineTranscodeScheduler) app.addHook('onClose', () => scheduler.close())
+  const media: MediaRuntime = { transcoder, scheduler }
   app.decorate('media', media)
 
   registerErrorHandler(app)

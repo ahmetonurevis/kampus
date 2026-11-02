@@ -13,6 +13,7 @@ import { bootJobs } from '../src/jobs/boot.ts'
 import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { filesPurgeJob } from '../src/jobs/files-purge.ts'
 import {
+  InlineTranscodeScheduler,
   STALE_TRANSCODE_MS,
   transactionConnection,
   transcodeJobDataSchema,
@@ -66,7 +67,7 @@ describe('ses dönüştürme (media.transcode)', () => {
       logs,
       media: { transcoder, scheduler },
     })
-    // Kuyruk kapalı: dönüşüm yanıttan önce süreç içinde, tek denemeyle.
+    // Kuyruk kapalı: dönüşüm yanıttan sonra süreç içinde, arka planda, tek denemeyle.
     inlineApp = await buildTestApp(db, {
       storage: store.storage,
       clock: () => now,
@@ -491,10 +492,47 @@ describe('ses dönüştürme (media.transcode)', () => {
     assert.equal((await rowOf(t, documentId)).status, 'pending')
   })
 
-  test('kuyruksuz: dönüşüm yanıttan önce süreç içinde çalışır; geçici hata kalıcı ret olur, dosya processing kalmaz', async () => {
+  /** Kuyruksuz uygulamanın süreç içi zamanlayıcısı (arka plan dönüşümlerini beklemek için). */
+  function inlineScheduler(target: App = inlineApp): InlineTranscodeScheduler {
+    const current = target.media.scheduler
+    assert.ok(current instanceof InlineTranscodeScheduler)
+    return current
+  }
+
+  /** Dönüştürücüyü `release()` çağrılana dek bekletir. */
+  function hold(target: FakeTranscoder) {
+    let release = () => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let started = () => {}
+    const entered = new Promise<void>((resolve) => (started = resolve))
+    target.during = async () => {
+      started()
+      await gate
+    }
+    return {
+      entered,
+      release: () => {
+        target.during = null
+        release()
+      },
+    }
+  }
+
+  test('kuyruksuz: yükleme yanıtı dönüşümü beklemez; dönüşüm arka planda bitince ready olur, geçici hata kalıcı ret olur', async () => {
     const t = await tenant()
-    const response = await upload(t, inlineApp)
-    const id = response.json().data.id as string
+    const held = hold(inlineTranscoder)
+    let id: string
+    try {
+      const response = await upload(t, inlineApp)
+      id = response.json().data.id as string
+      // Dönüşüm sürerken yanıt dönmüştür.
+      assert.equal(response.json().data.status, 'processing')
+      await held.entered
+      assert.equal((await rowOf(t, id)).status, 'processing')
+    } finally {
+      held.release()
+    }
+    await inlineScheduler().idle()
     const row = await rowOf(t, id)
     assert.equal(row.status, 'ready')
     assert.equal(row.durationMs, 30_000)
@@ -502,20 +540,79 @@ describe('ses dönüştürme (media.transcode)', () => {
     inlineTranscoder.result = new MediaToolError('media_timeout')
     try {
       const failed = (await upload(t, inlineApp)).json().data.id as string
+      await inlineScheduler().idle()
       assert.equal((await rowOf(t, failed)).status, 'rejected')
       assert.deepEqual(await objectsOf(failed), [])
     } finally {
       inlineTranscoder.result = { durationMs: 30_000, silent: false }
     }
-    assert.equal(logs.join('').includes(FILE_NAME), false)
+    const log = logs.join('')
+    assert.ok(log.includes('"event":"media.transcode_failed"'))
+    assert.equal(log.includes(FILE_NAME), false)
   })
 
-  test('kuyruksuz açılış: 15 dakikadır processing kalan dönüşüm işlenir, yeni olana dokunulmaz', async () => {
+  test('kuyruksuz, DOM-BEC-052: özgün nesne silinemezse dosya ready olur, nesne izde kalır ve kaybolmaz', async () => {
+    const t = await tenant()
+    store.storage.failDeletes = true
+    let id: string
+    try {
+      id = (await upload(t, inlineApp)).json().data.id as string
+      await inlineScheduler().idle()
+    } finally {
+      store.storage.failDeletes = false
+    }
+    const row = await rowOf(t, id)
+    assert.equal(row.status, 'ready')
+    assert.ok(row.supersededStorageKey)
+    assert.notEqual(await store.storage.head(row.supersededStorageKey), null)
+    assert.deepEqual(
+      (await objectsOf(id)).sort(),
+      [`${store.root}/${row.storageKey}`, `${store.root}/${row.supersededStorageKey}`].sort(),
+    )
+  })
+
+  test('kuyruksuz açılış: kurtarma açılışı beklemez, kilit altında arka planda 15 dakikadır processing kalan dönüşümü işler; yeni olana dokunulmaz', async () => {
     const t = await tenant()
     const stale = await uploaded(t)
     now = new Date(FIXED_NOW.getTime() + STALE_TRANSCODE_MS + 1000)
+    const held = hold(inlineTranscoder)
+    let locks = 0
     try {
       const fresh = await uploaded(t)
+      const queue = await bootJobs({
+        app: inlineApp,
+        db,
+        log: inlineApp.log,
+        enabled: false,
+        connectionString: '',
+        storage: store.storage,
+        recoveryLock: async (work) => {
+          locks += 1
+          return { acquired: true, value: await work() }
+        },
+      })
+      // bootJobs döndüğünde dönüşüm hâlâ sürüyor: `listen` kurtarmayı beklemez.
+      assert.equal(queue, null)
+      await held.entered
+      assert.equal((await rowOf(t, stale)).status, 'processing')
+      held.release()
+      await inlineScheduler().idle()
+      assert.equal(locks, 1)
+      assert.equal((await rowOf(t, stale)).status, 'ready')
+      assert.equal((await rowOf(t, fresh)).status, 'processing')
+      assert.ok(logs.join('').includes('"event":"media.transcode_recovered"'))
+    } finally {
+      held.release()
+      now = FIXED_NOW
+    }
+  })
+
+  test('kuyruksuz açılış: kilit başka süreçteyse kurtarma atlanır, dosyaya dokunulmaz', async () => {
+    const t = await tenant()
+    const stale = await uploaded(t)
+    now = new Date(FIXED_NOW.getTime() + STALE_TRANSCODE_MS + 1000)
+    const calls = inlineTranscoder.calls.length
+    try {
       await bootJobs({
         app: inlineApp,
         db,
@@ -523,12 +620,56 @@ describe('ses dönüştürme (media.transcode)', () => {
         enabled: false,
         connectionString: '',
         storage: store.storage,
+        recoveryLock: async () => ({ acquired: false }),
       })
-      assert.equal((await rowOf(t, stale)).status, 'ready')
-      assert.equal((await rowOf(t, fresh)).status, 'processing')
+      await inlineScheduler().idle()
     } finally {
       now = FIXED_NOW
     }
+    assert.equal((await rowOf(t, stale)).status, 'processing')
+    assert.equal(inlineTranscoder.calls.length, calls)
+    assert.ok(logs.join('').includes('"event":"media.transcode_recovery_skipped"'))
+  })
+
+  test('kuyruksuz: kapanışta süren dönüşüm iptal edilir ve beklenir; dosya reddedilmez, processing kalır', async () => {
+    const t = await tenant()
+    const closingTranscoder = new FakeTranscoder()
+    const closing = await buildTestApp(db, {
+      storage: store.storage,
+      clock: () => now,
+      logs,
+      media: { transcoder: closingTranscoder },
+    })
+    // Gerçek ffmpeg gibi: iptal sinyali gelince süreç öldürülür, geçici hata fırlar.
+    let started = () => {}
+    const entered = new Promise<void>((resolve) => (started = resolve))
+    closingTranscoder.during = (input) =>
+      new Promise((_resolve, reject) => {
+        started()
+        input.signal?.addEventListener('abort', () => reject(new MediaToolError('media_aborted')))
+      })
+    const cookie = await signInAs(closing, t.institution.admin)
+    const body = multipart(uploadParts('listening_audio', MP3, FILE_NAME, 'audio/mpeg'))
+    const response = await closing.inject({
+      method: 'POST',
+      url: '/api/v1/files',
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie,
+        'content-type': body.contentType,
+        'idempotency-key': `test-media-close-${++serial}`,
+      },
+      payload: body.payload,
+    })
+    assert.equal(response.statusCode, 201, response.body)
+    const id = response.json().data.id as string
+    await entered
+    // `onClose` dönüşümü iptal eder ve bitmesini bekler.
+    await closing.close()
+    const row = await rowOf(t, id)
+    assert.equal(row.status, 'processing')
+    assert.notEqual(await store.storage.head(row.storageKey), null)
+    assert.ok(logs.join('').includes('"event":"media.transcode_interrupted"'))
   })
 
   test('iş yükü yalnız kurum ve dosya kimliğidir; fazladan alan ve bozuk kimlik reddedilir', () => {

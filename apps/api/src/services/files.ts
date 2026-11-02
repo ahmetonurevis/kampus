@@ -222,8 +222,9 @@ async function storeStream(
  * nesne silinir.
  *
  * Ses (`speaking_recording`, `listening_audio`) `processing` başlar ve `media.transcode` işi satırla
- * aynı transaction'da kuyruğa girer (ADR 0003 karar 10); kuyruk kapalıysa dönüşüm yanıt
- * dönmeden süreç içinde bir kez denenir (`scheduler.afterCommit`). Tekrarlanan istek iş açmaz.
+ * aynı transaction'da kuyruğa girer (ADR 0003 karar 10); kuyruk kapalıysa dönüşüm yanıtı
+ * beklemeden süreç içinde, arka planda bir kez denenir (`scheduler.afterCommit`). Tekrarlanan istek
+ * iş açmaz.
  */
 export async function uploadFile(
   ctx: ServiceContext,
@@ -320,7 +321,8 @@ export async function uploadFile(
       { key: input.idempotencyKey, fingerprint },
     )
     keep = !response.replayed
-    if (transcode && keep) await scheduler.afterCommit({ institutionId: ctx.institutionId, fileId })
+    // Kuyruksuz yolda dönüşüm arka planda başlar; yanıt beklemez (hatası zamanlayıcıda loglanır).
+    if (transcode && keep) void scheduler.afterCommit({ institutionId: ctx.institutionId, fileId })
     ctx.log.info({
       event: 'file.uploaded',
       purpose,

@@ -12,7 +12,7 @@ import { insertFile } from '../src/db/files.ts'
 import { files } from '../src/db/schema/files.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { dispatchQueueName } from '../src/jobs/dispatch.ts'
-import { MEDIA_TRANSCODE_JOB } from '../src/jobs/media-transcode.ts'
+import { MEDIA_TRANSCODE_JOB, postgresSessionLock } from '../src/jobs/media-transcode.ts'
 import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
 import { HOUR_SECONDS, type AnyInstitutionJob } from '../src/jobs/types.ts'
@@ -376,5 +376,39 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
     const find = (data: object) => queue.boss.findJobs(MEDIA_TRANSCODE_JOB, { data })
     assert.equal((await find(kept)).length, 1)
     assert.equal((await find(dropped)).length, 0)
+  })
+
+  test('OG-262: kuyruksuz açılış kurtarmasının oturum kilidi tekildir; ikinci süreç atlar, kilit iş bitince ya da hatada bırakılır', async () => {
+    assert.ok(TEST_PG_URL)
+    const name = `test-recovery-${randomUUID()}`
+    const first = postgresSessionLock(TEST_PG_URL, name)
+    const second = postgresSessionLock(TEST_PG_URL, name)
+    let release = () => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let entered = () => {}
+    const inside = new Promise<void>((resolve) => (entered = resolve))
+    const holder = first(async () => {
+      entered()
+      await gate
+      return 'birinci'
+    })
+    await inside
+    let ran = false
+    assert.deepEqual(
+      await second(async () => {
+        ran = true
+      }),
+      { acquired: false },
+    )
+    assert.equal(ran, false)
+    release()
+    assert.deepEqual(await holder, { acquired: true, value: 'birinci' })
+    await assert.rejects(
+      second(async () => {
+        throw new Error('kurtarma hatası')
+      }),
+      /kurtarma hatası/,
+    )
+    assert.deepEqual(await first(async () => 'yeniden'), { acquired: true, value: 'yeniden' })
   })
 })

@@ -1,6 +1,7 @@
 import type { FastifyBaseLogger } from 'fastify'
 import { sql, type SQL } from 'drizzle-orm'
 import type { Db, PgBoss, QueueOptions, SendOptions } from 'pg-boss'
+import pg from 'pg'
 import { z } from 'zod'
 
 import type { Database } from '../db/client.ts'
@@ -30,9 +31,9 @@ import { jobErrorInfo } from './job-error.ts'
  *   `processing` kalır ve açılışta yeniden kuyruğa girer (`requeueStaleTranscodes`); bağlanamayan
  *   dosya en geç 24 saatte `files.purge-unattached` ile silinir.
  * - Kuyruk kapalıyken (`JOBS_ENABLED=false` ya da açılamadı) dönüşüm yüklemenin transaction'ından
- *   sonra süreç içinde tek denemeyle çalışır ve her hata dosyayı reddeder; yarıda kalanlar (süreç
- *   çöktü) açılışta aynı yoldan işlenir (`bootJobs`). `Idempotency-Key` temizliğinin açılış yolu
- *   ile aynı desendir.
+ *   sonra süreç içinde, arka planda (yanıt beklemez) tek denemeyle çalışır ve her hata dosyayı
+ *   reddeder (`InlineTranscodeScheduler`); yarıda kalanlar (süreç çöktü ya da kapandı) açılıştan
+ *   sonra arka planda, tekil kilit altında aynı yoldan işlenir (`recoverStaleTranscodes`).
  */
 
 export const MEDIA_TRANSCODE_JOB = 'media.transcode'
@@ -111,9 +112,13 @@ export interface InlineTranscodeDeps extends Omit<TranscodeDeps, 'signal'> {
   clock: () => Date
 }
 
-/** Kuyruksuz tek deneme: hata fırlatmaz, her hata dosyayı reddeder; yalnız kimlik ve kod loglanır. */
+/**
+ * Kuyruksuz tek deneme: hata fırlatmaz, her hata dosyayı reddeder; yalnız kimlik ve kod loglanır.
+ * Kapanışta iptal edilen deneme (`signal`) dosyayı reddetmez: dosya `processing` kalır ve sonraki
+ * açılışın kurtarmasına girer.
+ */
 export async function runInlineTranscode(
-  deps: InlineTranscodeDeps,
+  deps: InlineTranscodeDeps & { signal?: AbortSignal },
   data: TranscodeJobData,
 ): Promise<TranscodeOutcome | null> {
   try {
@@ -121,19 +126,70 @@ export async function runInlineTranscode(
     deps.log.info({ event: 'media.transcode_inline', ...data, ...transcodeSummary(result) })
     return result
   } catch (error) {
-    deps.log.error({ event: 'media.transcode_failed', ...data, ...jobErrorInfo(error) })
+    if (deps.signal?.aborted === true)
+      deps.log.warn({ event: 'media.transcode_interrupted', ...data })
+    else deps.log.error({ event: 'media.transcode_failed', ...data, ...jobErrorInfo(error) })
     return null
   }
 }
 
-/** Kuyruk kapalıyken: iş eklenmez, dönüşüm yanıt dönmeden süreç içinde bir kez denenir. */
-export function inlineTranscodeScheduler(deps: InlineTranscodeDeps): MediaTranscodeScheduler {
-  return {
-    async enqueue() {},
-    async afterCommit(data) {
-      await runInlineTranscode(deps, data)
-    },
+/**
+ * Kuyruk kapalıyken dönüşüm (ADR 0003 karar 10): iş eklenmez; yükleme yanıtı dönüşümü beklemez,
+ * dönüşüm transaction'dan sonra süreç içinde tek denemeyle ve arka planda çalışır (hata
+ * fırlatmaz, loglanır). Dönüşümler sırayla, birer birer çalışır (ffmpeg işlemciyi yoğun kullanır;
+ * kuyruktaki `localConcurrency: 1` ile aynı). İstemci durumu `GET /files/{id}` ile izler.
+ *
+ * `afterCommit`'in döndürdüğü promise o dosyanın dönüşümü bitince çözülür; `idle()` başlatılmış
+ * bütün işler (açılış kurtarması dahil) bitene kadar bekler (test ve kapanış için deterministik
+ * bekleme). `close()` (uygulama `onClose`) yeni işi almaz, sürenleri iptal eder ve bitmelerini
+ * bekler; yarım kalan dosya `processing` kalır.
+ */
+export class InlineTranscodeScheduler implements MediaTranscodeScheduler {
+  readonly #deps: InlineTranscodeDeps
+  readonly #controller = new AbortController()
+  readonly #pending = new Set<Promise<unknown>>()
+  #tail: Promise<unknown> = Promise.resolve()
+
+  constructor(deps: InlineTranscodeDeps) {
+    this.#deps = deps
   }
+
+  async enqueue(): Promise<void> {}
+
+  afterCommit(data: TranscodeJobData): Promise<void> {
+    if (this.#controller.signal.aborted) return Promise.resolve()
+    const signal = this.#controller.signal
+    const run = this.#tail.then(async () => {
+      await runInlineTranscode({ ...this.#deps, signal }, data)
+    })
+    this.#tail = run.catch(() => undefined)
+    return this.background(() => run)
+  }
+
+  /** Arka plan işini izler: `idle()` ve `close()` onu da bekler. İşin hatası loglanır, fırlamaz. */
+  background<T>(work: (signal: AbortSignal) => Promise<T>): Promise<T | undefined> {
+    const tracked = work(this.#controller.signal).catch((error: unknown) => {
+      this.#deps.log.error({ event: 'media.background_failed', ...jobErrorInfo(error) })
+      return undefined
+    })
+    this.#pending.add(tracked)
+    void tracked.finally(() => this.#pending.delete(tracked))
+    return tracked
+  }
+
+  /** Başlatılmış bütün işler (bu arada başlayanlar dahil) bitince çözülür. */
+  async idle(): Promise<void> {
+    while (this.#pending.size > 0) await Promise.allSettled([...this.#pending])
+  }
+
+  async close(): Promise<void> {
+    this.#controller.abort()
+    await this.idle()
+  }
+}
+
+export function inlineTranscodeScheduler(deps: InlineTranscodeDeps): InlineTranscodeScheduler {
+  return new InlineTranscodeScheduler(deps)
 }
 
 /** Kurumların uzun süredir `processing` kalan ses dosyaları (işi kaybolmuş dönüşümler). */
@@ -171,20 +227,77 @@ export async function requeueStaleTranscodes(
 }
 
 /**
- * Kuyruk kapalıyken açılışta: önce silinemeyip izde kalan özgün nesneler silinir (kuyruksuzken
- * saatlik `files.purge-unattached` çalışmaz), sonra yarıda kalmış dönüşümler süreç içinde tek
- * denemeyle işlenir. İşlenen dönüşüm sayısı döner.
+ * Oturum düzeyi tekil kilit: kilit alınırsa iş çalışır ve sonucu döner, alınamazsa iş çalışmaz.
+ * Kilit iş bitince (hata dahil) bırakılır; süreç çökerse bağlantıyla birlikte düşer.
+ */
+export type SessionLock = <T>(
+  work: () => Promise<T>,
+) => Promise<{ acquired: true; value: T } | { acquired: false }>
+
+/** Kuyruksuz açılış kurtarmasının kilidi (`pg_try_advisory_lock` iki tamsayılı biçim). */
+export const RECOVERY_LOCK_NAMESPACE = 0x4b4d504d
+export const RECOVERY_LOCK_NAME = 'media.transcode-recovery'
+
+/**
+ * PostgreSQL oturum kilidi: kendi bağlantısını açar (havuzdaki bağlantılar sorgudan sorguya
+ * değiştiğinden oturum kilidi havuzla tutulamaz), `pg_try_advisory_lock` alınamazsa hemen döner.
+ * Böylece birden çok API süreci aynı anda açılsa da kurtarmayı yalnız biri yapar.
+ */
+export function postgresSessionLock(
+  connectionString: string,
+  name: string = RECOVERY_LOCK_NAME,
+): SessionLock {
+  return async (work) => {
+    const client = new pg.Client({ connectionString, application_name: 'kampus-recovery' })
+    // Bağlantı kopması kilidi düşürür; olay yakalanmazsa süreç çöker.
+    client.on('error', () => undefined)
+    await client.connect()
+    try {
+      const { rows } = await client.query<{ locked: boolean }>(
+        'select pg_try_advisory_lock($1::int, hashtext($2)) as locked',
+        [RECOVERY_LOCK_NAMESPACE, name],
+      )
+      if (rows[0]?.locked !== true) return { acquired: false }
+      try {
+        return { acquired: true, value: await work() }
+      } finally {
+        await client.query('select pg_advisory_unlock($1::int, hashtext($2))', [
+          RECOVERY_LOCK_NAMESPACE,
+          name,
+        ])
+      }
+    } finally {
+      await client.end()
+    }
+  }
+}
+
+/**
+ * Kuyruk kapalıyken açılış kurtarması (`bootJobs` arka planda başlatır; `listen`'i geciktirmez).
+ * Tekil kilit altında: önce silinemeyip izde kalan özgün nesneler silinir (kuyruksuzken saatlik
+ * `files.purge-unattached` çalışmaz), sonra yarıda kalmış dönüşümler süreç içi sıraya girer ve
+ * bitmeleri beklenir (kilit o süre boyunca tutulur: başka süreç aynı dosyaları dönüştürmez).
+ * Kilit alınamazsa (başka süreç kurtarıyor) atlanır ve `null` döner; yoksa işlenen dönüşüm sayısı.
  */
 export async function recoverStaleTranscodes(input: {
   db: Database
   storage: StorageDriver
-  transcoder: TranscodeDeps['transcoder']
   log: FastifyBaseLogger
   clock: () => Date
-}): Promise<number> {
-  for (const institutionId of await listInstitutionIds(input.db))
-    await purgeSupersededObjects({ ...input, institutionId })
-  const stale = await staleTranscodes(input.db, input.clock())
-  for (const data of stale) await runInlineTranscode(input, data)
-  return stale.length
+  scheduler: InlineTranscodeScheduler
+  lock: SessionLock
+}): Promise<number | null> {
+  const outcome = await input.lock(async () => {
+    for (const institutionId of await listInstitutionIds(input.db))
+      await purgeSupersededObjects({ ...input, institutionId })
+    const stale = await staleTranscodes(input.db, input.clock())
+    await Promise.all(stale.map((data) => input.scheduler.afterCommit(data)))
+    return stale.length
+  })
+  if (!outcome.acquired) {
+    input.log.info({ event: 'media.transcode_recovery_skipped' })
+    return null
+  }
+  input.log.info({ event: 'media.transcode_recovered', count: outcome.value })
+  return outcome.value
 }

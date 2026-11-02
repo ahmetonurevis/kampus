@@ -4,7 +4,12 @@ import type { Database } from '../db/client.ts'
 import { purgeExpiredIdempotencyKeys } from '../db/idempotency.ts'
 import type { StorageDriver } from '../storage/storage.ts'
 import { jobErrorInfo } from './job-error.ts'
-import { recoverStaleTranscodes } from './media-transcode.ts'
+import {
+  InlineTranscodeScheduler,
+  postgresSessionLock,
+  recoverStaleTranscodes,
+  type SessionLock,
+} from './media-transcode.ts'
 import { startJobs, type JobQueue, type StartJobsOptions } from './queue.ts'
 
 export interface BootJobsInput {
@@ -16,6 +21,8 @@ export interface BootJobsInput {
   storage: StorageDriver
   /** Testte başlatma hatası taklit etmek için; varsayılan `startJobs`. */
   start?: (app: FastifyInstance, options: StartJobsOptions) => Promise<JobQueue>
+  /** Kuyruksuz açılış kurtarmasının tekil kilidi; varsayılan `connectionString` üstünde oturum kilidi. */
+  recoveryLock?: SessionLock
 }
 
 /**
@@ -25,8 +32,10 @@ export interface BootJobsInput {
  * açıksa kuyruktur, değilse `null`.
  *
  * Kuyruksuz açılışta ses dönüşümü yüklemeden sonra süreç içinde çalışır (`app.media.scheduler`
- * olduğu gibi kalır); yarıda kalmış (`processing`, 15 dakikadan eski) dönüşümler burada tek
- * denemeyle işlenir, başarısız olan dosya reddedilir (ADR 0003 karar 10).
+ * olduğu gibi kalır); yarıda kalmış (`processing`, 15 dakikadan eski) dönüşümler açılışı
+ * beklemeden arka planda ve `pg_try_advisory_lock` altında tek denemeyle işlenir (kilit başka
+ * süreçteyse atlanır), başarısız olan dosya reddedilir (ADR 0003 karar 10). `listen` gecikmez;
+ * bitişi `InlineTranscodeScheduler.idle()` ile beklenir.
  */
 export async function bootJobs(input: BootJobsInput): Promise<JobQueue | null> {
   const { app, db, log } = input
@@ -43,13 +52,23 @@ export async function bootJobs(input: BootJobsInput): Promise<JobQueue | null> {
   // Kuyruk kapalıyken ya da açılamadığında günlük iş çalışmaz; açılışta bir kez temizlenir.
   const purged = await purgeExpiredIdempotencyKeys(db, new Date())
   log.info({ event: 'idempotency.purged', purged })
-  const recovered = await recoverStaleTranscodes({
-    db,
-    storage: input.storage,
-    transcoder: app.media.transcoder,
-    log,
-    clock: app.clock,
-  })
-  log.info({ event: 'media.transcode_recovered', count: recovered })
+  const scheduler = app.media.scheduler
+  if (scheduler instanceof InlineTranscodeScheduler) {
+    const lock = input.recoveryLock ?? postgresSessionLock(input.connectionString)
+    void scheduler.background(async () => {
+      try {
+        await recoverStaleTranscodes({
+          db,
+          storage: input.storage,
+          log,
+          clock: app.clock,
+          scheduler,
+          lock,
+        })
+      } catch (error) {
+        log.error({ event: 'media.transcode_recovery_failed', ...jobErrorInfo(error) })
+      }
+    })
+  }
   return null
 }

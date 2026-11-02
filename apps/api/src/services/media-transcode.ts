@@ -49,12 +49,15 @@ export interface TranscodeJobData {
 /**
  * Dönüşümü kuyruğa koyan taraf. Kuyruk açıkken pg-boss iş satırı yüklemeyi yazan transaction'da
  * eklenir (yükleme geri alınırsa iş de yoktur); kuyruk kapalıyken dönüşüm transaction'dan sonra
- * süreç içinde, tek denemeyle çalışır (`jobs/media-transcode.ts`).
+ * süreç içinde, arka planda ve tek denemeyle çalışır (`jobs/media-transcode.ts`).
  */
 export interface MediaTranscodeScheduler {
   /** Yüklemeyi yazan transaction içinde çağrılır. */
   enqueue(tx: Database, data: TranscodeJobData): Promise<void>
-  /** Transaction yazıldıktan sonra çağrılır; hata fırlatmaz. */
+  /**
+   * Transaction yazıldıktan sonra çağrılır; hata fırlatmaz. Yükleme yanıtı dönen promise'i
+   * beklemez (dönüşüm arka planda sürer); promise yalnız testte ve kurtarmada beklenir.
+   */
   afterCommit(data: TranscodeJobData): Promise<void>
 }
 
@@ -128,7 +131,8 @@ async function discard(deps: TranscodeDeps, data: TranscodeJobData, key: string)
  * Tek dönüşüm denemesi. İçerik hatası (`MediaContentError`, sessiz/boş kayıt, sınır aşımı) dosyayı
  * reddeder ve sonuç döner; geçici hata (depo, araç, süre aşımı, iptal) fırlatılır ve iş yeniden
  * denenir. `finalAttempt` verilirse (son deneme ya da kuyruksuz tek deneme) satır yazılmadan
- * önceki geçici hata da dosyayı reddeder: dosya sonsuza dek `processing` kalmaz.
+ * önceki geçici hata da dosyayı reddeder: dosya sonsuza dek `processing` kalmaz. İptal
+ * (`signal`) bunun dışındadır: dosya `processing` kalır, açılış kurtarması yeniden dener.
  */
 export async function transcodeAudioFile(
   deps: TranscodeDeps,
@@ -235,7 +239,9 @@ export async function transcodeAudioFile(
     log.info({ event: 'media.transcoded', ...data, durationMs: result.durationMs, byteSize })
     return { outcome: 'ready', durationMs: result.durationMs }
   } catch (error) {
-    if (options.finalAttempt === true && !committed) {
+    // İptal (kapanış, pg-boss süre aşımı) dosyayı reddetmez: dosya `processing` kalır ve açılışta
+    // yeniden ele alınır.
+    if (options.finalAttempt === true && !committed && deps.signal?.aborted !== true) {
       const code: unknown = typeof error === 'object' && error ? Reflect.get(error, 'code') : null
       log.warn({
         event: 'media.transcode_failed',

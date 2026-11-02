@@ -80,12 +80,11 @@ Bu bölüm öneri listesidir; uygulanmadı. Mevcut taban (`chore/ts-arac-zinciri
 ### CI (`.github/workflows/checks.yml`)
 
 - Push tetikleyicisine `docs/**` ve `chore/**` dalları eklenmeli (şu an yalnız `main`, `feature/**`, `fix/**`).
-- `concurrency: { group: ${{ github.ref }}, cancel-in-progress: true }`.
-- pnpm deposu önbelleği açılmalı (`package-manager-cache: false` kaldırılıp `actions/setup-node` `cache: pnpm`).
-- İşler paralel: `static` (format, lint, typecheck) · `unit` (kapsam eşikli) · `api` (PGlite) · `build` (+ paket boyutu kontrolü) · `e2e` (build'e bağlı, gerekirse 2 parça, `retries: 1`, başarısızlıkta rapor ve trace artifact).
+- Yapıldı (OG-012): `concurrency` ile eski koşu iptali, pnpm ve Playwright önbelleği, paralel işler (`statik`, `birim`, `api` parçalı, `api-pg`, `build`, `e2e-vue` ve `e2e-react` parçalı), başarısızlıkta rapor/trace artefaktı; ayrıntı [test-stratejisi.md §8](test-stratejisi.md#8-ci-süre-bütçesi).
+- Kalan: `build` işine paket boyutu kontrolü; Vue e2e yapılandırmasında CI'da `retries: 1`.
 - Güvenlik ve sözleşme adımları: `pnpm audit --prod --audit-level high`, `pnpm licenses list --prod` ile izinli lisans kontrolü betiği, gitleaks ile sır taraması, `drizzle-kit check` + migration farkı, `openapi:check` ve `api-client generate:check`, Better Auth şeması üretim farkı.
 - Eylemler commit SHA'sına sabitlenmeli; `permissions: contents: read` korunur.
-- Gece işi: PostgreSQL 16 ile `test:pg` (eşzamanlılık, pg-boss), dar ekran, koyu tema ve azaltılmış saydamlık e2e projesi, Lighthouse ölçümü.
+- Gece işi: pg-boss eşzamanlılığı (`test:pg` artık her CI koşusunda), dar ekran, koyu tema ve azaltılmış saydamlık e2e projesi, Lighthouse ölçümü.
 
 ## Açık sorular
 

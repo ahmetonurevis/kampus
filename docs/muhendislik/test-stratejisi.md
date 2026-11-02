@@ -88,7 +88,7 @@ export async function buildTestApp() {
 
 - Test yalıtımı kurum düzeyindedir: her test dosyası `before` içinde kendi kurumlarını (A ve B) ve rol başına bir üyeyi kurar, oturumları bir kez açar (scrypt her testte tekrarlanmasın). Her test kendi kayıtlarını önekli kimlikle oluşturur; tablo boşaltma veya test sırası varsayımı yok.
 - Migration süresi dosya başına 1 sn'yi aşarsa bir kez migrate edilmiş veri dizini dökülüp (`dumpDataDir`) her dosyada yüklenir.
-- PGlite tek bağlantılıdır. Eşzamanlılık (iki isteğin aynı `version` ile yarışması, `FOR UPDATE`, kilit beklemesi) ve PostgreSQL'e özgü uzantı davranışı PGlite'ta doğrulanamaz; bunlar Docker'da PostgreSQL 16 ile koşan ayrı `test:pg` takımındadır. Bu takım `apps/api/src/db/**` veya `apps/api/drizzle/**` değişince ve gece koşar.
+- PGlite tek bağlantılıdır. Eşzamanlılık (iki isteğin aynı `version` ile yarışması, `FOR UPDATE`, kilit beklemesi) ve PostgreSQL'e özgü uzantı davranışı PGlite'ta doğrulanamaz; bunlar Docker'da PostgreSQL 16 ile koşan ayrı `test:pg` takımındadır. Yerelde bu takım `apps/api/src/db/**` veya `apps/api/drizzle/**` değişince koşulur; CI'da her koşuda `api-pg` işinde PostgreSQL 16 servisiyle koşar.
 - `test:pg` dosyaları `apps/api/test/pg-*.test.ts`; adres `TEST_PG_URL` ile verilir, yoksa takım atlanır (olağan `test` koşusunda da). Adres atılabilir ayrı bir veritabanı olmalıdır: `docker compose up -d`, `docker compose exec postgres createdb -U kampus kampus_test`, ardından `TEST_PG_URL=postgres://kampus:kampus-yerel@127.0.0.1:5433/kampus_test pnpm --filter @kampus/api test:pg`. Migration'lar her koşuda uygulanır; her test kendi kurumunu kurar.
 
 ## 5. Kiracı izolasyonu ve yetki testleri
@@ -133,7 +133,7 @@ Genel güvenlik ağı: `onRoute` kancasıyla toplanan bütün rotalar tek testte
 
 ### React web + API düzeni (`tests/e2e-react/`)
 
-Vue demosunun e2e'sinden (`tests/e2e/`, `pnpm test:e2e`, `playwright.config.ts`) ayrıdır; komut `pnpm test:e2e:react` (`playwright.react.config.ts`). Yerelde `docker compose up -d` (PostgreSQL 16, 5433) gerekir; CI'da `e2e-react` işi aynı bilgilerle PostgreSQL 16 servisi açar.
+Vue demosunun e2e'sinden (`tests/e2e/`, `pnpm test:e2e`, `playwright.config.ts`) ayrıdır; komut `pnpm test:e2e:react` (`playwright.react.config.ts`). Yerelde `docker compose up -d` (PostgreSQL 16, 5433) gerekir; CI'da `e2e-react` işinin her parçası (`--shard`) aynı bilgilerle kendi PostgreSQL 16 servisini açar.
 
 - **Global kurulum** (`support/global-setup.ts`): `kampus_e2e` veritabanı düşürülüp sıfırdan oluşturulur (yalnız `kampus_e2e` önekli adlar; `kampus` ve diğer veritabanlarına dokunulmaz) → `db:migrate` → `db:seed` → API `NODE_ENV=test`, port 3020 → web-react derlenir ve `vite preview` 4180'de açılır (`/api` vekil hedefi `KAMPUS_API_URL` ile 3020) → beş rol için oturum önbelleği yazılır. Bitince API ve önizleme kapanır. Gizli anahtar her koşuda rastgele üretilir, yalnız alt sürecin ortamına verilir. Günlükler `artifacts/e2e-react/*.log`.
 - **Ortam değişkenleri**: `E2E_API_PORT`, `E2E_WEB_PORT`, `E2E_DB_NAME` (`kampus_e2e…` önekli), `E2E_ADMIN_DATABASE_URL`, `E2E_SKIP_BUILD=1` (derleme güncelse atla).
@@ -152,7 +152,7 @@ Vue demosunun e2e'sinden (`tests/e2e/`, `pnpm test:e2e`, `playwright.config.ts`)
 
 ## 8. CI süre bütçesi
 
-Toplam duvar saati hedefi **12 dk** (iş zaman aşımı 15 dk). Bütçe aşılırsa önce paralelleştirilir ve bölünür, zaman aşımı yükseltilmez.
+Toplam duvar saati hedefi **12 dk** (iş zaman aşımı 15 dk). Bütçe aşılırsa önce paralelleştirilir ve bölünür, zaman aşımı yükseltilmez. `.github/workflows/checks.yml` işleri paralel koşar: `statik` (biçim, lint, typecheck, hook testleri, `openapi:check`, `generate:check`), `birim` (kök birim, kapsam eşikli api-client, react-shared), `api` (PGlite, `--test-shard` ile 3 parça), `api-pg` (PostgreSQL 16 servisiyle `test:pg`), `build`, `e2e-vue` (2 parça) ve `e2e-react` (3 parça, her parçada PostgreSQL 16). Ortak kurulum `.github/actions/kurulum` içindedir (pnpm deposu ve Playwright tarayıcısı önbellekli); e2e başarısızlığında rapor, trace ve sunucu günlükleri artefakt olarak yüklenir. Aynı daldaki yeni push eski koşuyu iptal eder.
 
 | Adım                                | Bütçe  |
 | ----------------------------------- | ------ |

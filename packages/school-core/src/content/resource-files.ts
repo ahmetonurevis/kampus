@@ -6,6 +6,7 @@ import {
   type ContentType,
   type FileCandidate,
   type FilePurpose,
+  type FileStatus,
   type ResourceFileRule,
 } from './taxonomy.ts'
 
@@ -25,8 +26,23 @@ import {
  * `attachFile`, öteki dosya bağlayan uçlarla aynı); planın ret kodu 422'dir, kod aynıdır.
  */
 
-/** Dosya satırının durumu (`files.status`, ADR 0003 karar 4). */
-export type ResourceFileStatus = 'pending' | 'processing' | 'ready' | 'rejected' | 'deleted'
+/** Dosya satırının durumu (`files.status`; core `FILE_STATUSES`). */
+export type ResourceFileStatus = FileStatus
+
+/**
+ * Sürüm dosyasının gösterilen durumları: bağlama `ready` ister; sonra dönüştürülebilir
+ * (`processing`) ya da imha edilebilir (`deleted`). Bağlanamayan durumdaki (`pending`, `rejected`)
+ * dosya sürüm yanıtına girmez. API yanıt şeması (`ResourceFile`) aynı listeyi kullanır.
+ */
+export const RESOURCE_FILE_SHOWN_STATUSES = [
+  'processing',
+  'ready',
+  'deleted',
+] as const satisfies readonly FileStatus[]
+export type ResourceFileShownStatus = (typeof RESOURCE_FILE_SHOWN_STATUSES)[number]
+
+export const isResourceFileShown = (status: FileStatus): status is ResourceFileShownStatus =>
+  (RESOURCE_FILE_SHOWN_STATUSES as readonly FileStatus[]).includes(status)
 
 /** Servisin yüklediği dosya satırı; kurum dışındaki kimlik listede yoktur. */
 export type ResourceFileRow = FileCandidate & {

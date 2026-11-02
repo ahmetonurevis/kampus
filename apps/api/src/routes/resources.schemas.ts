@@ -11,6 +11,7 @@ import {
   resourceVersionInputSchema,
   transitionReasonSchema,
 } from '@kampus/school-core/content/resource.ts'
+import { RESOURCE_FILE_SHOWN_STATUSES } from '@kampus/school-core/content/resource-files.ts'
 import { shareTargetsSchema } from '@kampus/school-core/content/visibility.ts'
 import {
   ACTIVITY_MODES,
@@ -144,7 +145,7 @@ const resourceFileSchema = z
       .nullable()
       .describe('Ses/video süresi; ölçülmediyse `null`'),
     status: z
-      .enum(['processing', 'ready', 'deleted'])
+      .enum(RESOURCE_FILE_SHOWN_STATUSES)
       .describe(
         '`processing` dönüştürülüyor (bağlantı verilmez); `deleted` saklama sonunda silindi',
       ),

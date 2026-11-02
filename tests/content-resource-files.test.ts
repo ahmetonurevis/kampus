@@ -9,12 +9,15 @@ import {
   type ResourceContent,
 } from '../packages/school-core/src/content/resource.ts'
 import {
+  isResourceFileShown,
   planVersionFiles,
+  RESOURCE_FILE_SHOWN_STATUSES,
   resourceFileCountIssue,
   type ResourceFileRow,
 } from '../packages/school-core/src/content/resource-files.ts'
 import {
   CONTENT_TYPES,
+  FILE_STATUSES,
   RESOURCE_FILE_LIST_MAX,
   RESOURCE_FILE_RULES,
   type ContentType,
@@ -192,6 +195,15 @@ describe('DOM-KYN-006 kaynak sürümünün dosyaları', () => {
       fileIds: ['f-1', 'f-2'],
       attach: ['f-2'],
     })
+  })
+
+  test('sürüm yanıtında yalnız bağlı dosyanın durumları gösterilir; liste dosya durumlarından türer', () => {
+    assert.deepEqual(
+      FILE_STATUSES.filter((status) => isResourceFileShown(status)),
+      [...RESOURCE_FILE_SHOWN_STATUSES],
+    )
+    assert.equal(isResourceFileShown('pending'), false)
+    assert.equal(isResourceFileShown('rejected'), false)
   })
 
   test('aynı kaynağın sürümlerinden gelen silinmiş veya reddedilmiş dosya taşınmaz: 422 file_unavailable', () => {

@@ -10,6 +10,10 @@ import {
   type PublicationIssue,
   type ResourceStatus,
 } from '@kampus/school-core/content/resource.ts'
+import {
+  isResourceFileShown,
+  type ResourceFileShownStatus,
+} from '@kampus/school-core/content/resource-files.ts'
 import { CEFR_LEVELS, type CefrLevel } from '@kampus/school-core/content/taxonomy.ts'
 import {
   canReadVersion,
@@ -109,22 +113,17 @@ function versionSummary(version: StoredResourceVersion) {
 }
 
 /** Sürüm dosyasının yanıttaki meta verisi (`ResourceFile`); içerik bağlantısı `GET /files/:id/url`. */
-export type ResourceFileView = {
-  id: string
-  name: string | null
-  contentType: string
-  byteSize: number
-  purpose: StoredFile['purpose']
-  durationMs: number | null
-  status: 'processing' | 'ready' | 'deleted'
-}
+export type ResourceFileView = Pick<
+  StoredFile,
+  'id' | 'contentType' | 'byteSize' | 'purpose' | 'durationMs'
+> & { name: StoredFile['originalName']; status: ResourceFileShownStatus }
 
 /** Sürüm başına dosya meta verisi (sürüm kimliği → sıralı liste). */
 export type VersionFiles = ReadonlyMap<string, readonly ResourceFileView[]>
 
 function fileMeta(row: StoredFile): ResourceFileView | null {
   const status = row.status
-  if (status !== 'processing' && status !== 'ready' && status !== 'deleted') return null
+  if (!isResourceFileShown(status)) return null
   return {
     id: row.id,
     name: row.originalName,

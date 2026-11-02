@@ -496,6 +496,62 @@ describe('okuma-anlama etkinliği', () => {
     assert.deepEqual(await versionRows(t.institution.id), before)
   })
 
+  test('IST-042, DOM-KYN-002: parça yerine soru sürümü bağlanan etkinlik onaya gönderilemez (422 passage_not_reading); kayıt değişmez', async () => {
+    const t = await tenant()
+    const created = await ok(
+      await call('POST', '/resources', t.cookies.teacher, {
+        title: 'Parçası soru olan etkinlik',
+        content: {
+          type: 'quiz',
+          items: [{ questionVersionId: t.items.detail }],
+          passageVersionId: t.items.main,
+        },
+        license: { kind: 'institution_original' },
+        tags: TAGS,
+      }),
+      201,
+    )
+    const before = await versionRows(t.institution.id)
+    fails(
+      await call(
+        'POST',
+        `/resources/${created.resource.id}/versions/${created.version.id}/submit`,
+        t.cookies.teacher,
+        {},
+      ),
+      422,
+      'passage_not_reading',
+    )
+    assert.deepEqual(await versionRows(t.institution.id), before)
+  })
+
+  test('IST-042, DOM-KYN-013: başka öğretmenin özel (paylaşılmamış) parçası bağlanamaz (422 passage_missing); kayıt değişmez', async () => {
+    const t = await tenant()
+    const colleague = await createMember(app, t.institution.id, 'ogretmen', [
+      { kind: 'teacher', recordId: 't-mat' } as never,
+    ])
+    const seeded = await seedResource(db, t.institution.id, {
+      ownerUserId: colleague.id,
+      versions: [{ status: 'published', input: passage() }],
+    })
+    const before = await versionRows(t.institution.id)
+    fails(
+      await call('POST', '/resources', t.cookies.teacher, {
+        title: 'Özel parçalı etkinlik',
+        content: {
+          type: 'quiz',
+          items: [{ questionVersionId: t.items.main }],
+          passageVersionId: seeded.versions[0]!.id,
+        },
+        license: { kind: 'institution_original' },
+        tags: TAGS,
+      }),
+      422,
+      'passage_missing',
+    )
+    assert.deepEqual(await versionRows(t.institution.id), before)
+  })
+
   test('DOM-KYN-051, IST-042: parça kaldırılınca bağlı etkinlik etkilenen içerik olur; denemede parça null, puan sürer', async () => {
     const t = await tenant()
     const assignmentId = await assign(t, { attempts: { kind: 'practice' } })

@@ -70,8 +70,7 @@ export const HOMEWORK_MESSAGES = {
   submission_graded: 'Teslimin değerlendirildi; değerlendirilmiş teslim değiştirilemez.',
   student_inactive: 'Kaydınız pasif olduğu için ödev teslim edilemez.',
   file_unavailable: 'Eklenen dosyalardan biri bulunamadı. Dosyayı kaldırıp yeniden yükleyin.',
-  file_not_ready:
-    'Eklenen dosyalar güvenlik denetiminden henüz geçmedi. Birkaç dakika sonra yeniden deneyin.',
+  file_not_ready: 'Dosyanız güvenlik taramasında, birazdan yeniden deneyin.',
   file_already_attached:
     'Eklenen dosyalardan biri başka bir kayda bağlı. Dosyayı kaldırıp yeniden yükleyin.',
 } as const satisfies CommandMessages

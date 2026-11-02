@@ -67,7 +67,7 @@ export function StudentHomeworkPage({ page }: { page: NavPage }) {
   if (writing) return <StudentWritingWorkspace page={page} assignmentId={writing} />
   return (
     <LearningStudentGate page={page} before={<StudentTaskSection mode="teacher" />}>
-      {(student) => <StudentHomeworkView student={student} title="Ödevlerim" />}
+      {(student) => <StudentHomeworkView student={student} title="Ödevlerim" mode="student" />}
     </LearningStudentGate>
   )
 }

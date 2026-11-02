@@ -1,39 +1,52 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import type { HomeworkDetail as HomeworkRecord } from '@kampus/react-shared/homework.ts'
+import { useAllHomework, useHomework } from '@kampus/react-shared/use-homework.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
+import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
-import { useCoreAll, useCoreItem, type CoreRecord } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, type CoreRecord } from '@/hooks/use-core-collection.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
-import { SidePanel } from '@/components/SidePanel.tsx'
+import { useMinuteClock } from '@/hooks/use-minute-clock.ts'
 import { SummaryLoading, SummarySection } from '../management/SummaryParts.tsx'
+import { submissionWindow } from './homework-forms.ts'
 import { Facts, SummaryTitle, TableGate } from './LearningParts.tsx'
 import { homeworkRow, type HomeworkRow } from './learning-rows.ts'
+import { StudentSubmissionForm } from './StudentSubmissionForm.tsx'
+import { SubmissionFileList } from './SubmissionFiles.tsx'
 
 type Student = CoreRecord<'students'>
-type Props = { student: Student; title: string }
+/** `student`: kendi ödevleri, teslim formuyla; `parent`: seçili çocuğun ödevleri, salt okur. */
+export type HomeworkViewMode = 'student' | 'parent'
+type Props = { student: Student; title: string; mode: HomeworkViewMode }
 
 const NONE: readonly never[] = []
 const MOBILE_COLUMNS = ['subject', 'dueDate', 'status']
 
+const dueText = (value: string) =>
+  dateLabel(value, { year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
 /**
- * Seçili öğrencinin ödevleri (öğrencide kendisi, velide seçili çocuk): sınıfının ödevleri ve
- * kendi teslimleri. Durum core `homeworkStatus` ile hesaplanır, saklanmaz. Teslim yazma
- * TODO(api-homework-submit): dosya depolama ADR'si (0003) onaylanınca eklenir.
+ * Seçili öğrencinin ödevleri (öğrencide kendisi, velide seçili çocuk; IST-095, DOM-AKD-072…074):
+ * sınıfının ödevleri `/homework` ucundan, öğrencinin teslim durumu ve puanı kendi teslim
+ * kayıtlarından. Durum core `homeworkStatus` ile hesaplanır, saklanmaz. Öğrenci panelden not ve
+ * dosyayla teslim eder; veli teslim durumunu, puanı ve geri bildirimi salt okur.
  */
-export function StudentHomeworkView({ student, title }: Props) {
-  const homework = useCoreAll('homework', { filters: { classId: student.classId } })
+export function StudentHomeworkView({ student, title, mode }: Props) {
+  const homework = useAllHomework({ classId: student.classId })
+  // Velinin iki çocuğu aynı sınıfta olabilir: durum ve puan seçili çocuğun teslimlerinden.
   const submissions = useCoreAll('submissions', { filters: { studentId: student.id } })
   const classes = useCoreAll('classes')
+  const now = useMinuteClock()
   const rows = useMemo(() => {
     if (!homework.data || !submissions.data) return undefined
     const entries = submissions.data.map((row) => row.record)
-    const now = new Date()
-    return homework.data.map((item) => homeworkRow(item.record, entries, student.id, now))
-  }, [homework.data, submissions.data, student.id])
+    return homework.data.map((item) => homeworkRow(item, entries, student.id, new Date(now)))
+  }, [homework.data, submissions.data, student.id, now])
 
   const panel = useDetailPanel('odev')
   const openHomework = panel.open
@@ -96,13 +109,14 @@ export function StudentHomeworkView({ student, title }: Props) {
         <TableGate
           error={error}
           onRetry={() => {
-            for (const query of [homework, submissions, classes])
-              if (query.error) void query.refetch()
+            if (homework.error) void homework.refetch()
+            if (submissions.error) void submissions.refetch()
+            if (classes.error) void classes.refetch()
           }}
           loading={rows === undefined}
         >
           <DataTable
-            listKey="odevlerim"
+            listKey={mode === 'student' ? 'odevlerim' : 'cocuk-odevleri'}
             rows={rows ?? NONE}
             columns={columns}
             mobileColumns={MOBILE_COLUMNS}
@@ -112,86 +126,73 @@ export function StudentHomeworkView({ student, title }: Props) {
           />
         </TableGate>
       </section>
-      <StudentHomeworkPanel
-        homeworkId={panel.selectedId}
-        studentId={student.id}
-        classNameOf={(classId) =>
-          classes.data?.find((row) => row.record.id === classId)?.record.name ?? '—'
-        }
-        onClose={panel.close}
-      />
+      <SidePanel
+        open={panel.selectedId !== ''}
+        onOpenChange={(open) => (open ? undefined : panel.close())}
+        title="Ödev ayrıntısı"
+      >
+        {panel.selectedId ? (
+          <HomeworkDetail
+            key={panel.selectedId}
+            homeworkId={panel.selectedId}
+            studentId={student.id}
+            mode={mode}
+            classNameOf={(classId) =>
+              classes.data?.find((row) => row.record.id === classId)?.record.name ?? '—'
+            }
+          />
+        ) : null}
+      </SidePanel>
     </>
   )
 }
 
-type PanelProps = {
+function HomeworkDetail({
+  homeworkId,
+  studentId,
+  mode,
+  classNameOf,
+}: {
   homeworkId: string
   studentId: string
+  mode: HomeworkViewMode
   classNameOf: (classId: string) => string
-  onClose: () => void
-}
-
-function StudentHomeworkPanel({ homeworkId, studentId, classNameOf, onClose }: PanelProps) {
-  return (
-    <SidePanel
-      open={homeworkId !== ''}
-      onOpenChange={(open) => (open ? undefined : onClose())}
-      title="Ödev ayrıntısı"
-    >
-      {homeworkId ? (
-        <HomeworkDetail homeworkId={homeworkId} studentId={studentId} classNameOf={classNameOf} />
-      ) : null}
-    </SidePanel>
-  )
-}
-
-function HomeworkDetail({ homeworkId, studentId, classNameOf }: Omit<PanelProps, 'onClose'>) {
-  // Tek kayıt ucu kapsamı uygular: kapsam dışı ödev 404 döner ve "bulunamadı" görünür.
-  const item = useCoreItem('homework', homeworkId)
-  const submissions = useCoreAll('submissions', { filters: { homeworkId, studentId } })
-  const [now] = useState(() => new Date())
-  const error = item.error ?? submissions.error
-  if (error)
-    return (
-      <QueryError
-        error={error}
-        onRetry={() => {
-          if (item.error) void item.refetch()
-          if (submissions.error) void submissions.refetch()
-        }}
-      />
-    )
-  if (!item.data || !submissions.data) return <SummaryLoading />
-  const row = homeworkRow(
-    item.data.record,
-    submissions.data.map((entry) => entry.record),
-    studentId,
-    now,
-  )
-  const submission = submissions.data[0]?.record
+}) {
+  // Tek kayıt ucu kapsamı uygular: kapsam dışı ödev 404 döner ve "bulunamadı" görünür. Teslimler
+  // okuyanın gördükleridir (öğrencide kendisininki, velide çocuklarınınki; DOM-AKD-074).
+  const item = useHomework(homeworkId)
+  const now = useMinuteClock()
+  if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
+  const homework = item.data?.data
+  if (!homework) return <SummaryLoading />
+  const submission = homework.submissions.find((entry) => entry.studentId === studentId)
+  const row = homeworkRow(homework, homework.submissions, studentId, new Date(now))
+  const phase = submissionWindow(homework, submission, now)
   return (
     <>
       <SummaryTitle
         icon="NotebookPen"
         title={row.title}
-        subtitle={`${classNameOf(item.data.record.classId)} · ${row.subject}`}
+        subtitle={`${classNameOf(homework.classId)} · ${row.subject}`}
       />
       <Facts
         items={[
-          ['Durum', <StatusBadge key="durum" text={row.status} />],
-          ['Son teslim', dateLabel(row.dueDate, { year: 'numeric' })],
           [
-            'Teslim tarihi',
-            submission
-              ? dateLabel(submission.submittedAt, { year: 'numeric' })
-              : 'Henüz teslim edilmedi',
+            'Durum',
+            <span key="durum" className="inline-flex flex-wrap justify-end gap-2">
+              {submission?.late ? <StatusBadge text="Geç teslim" tone="amber" /> : null}
+              <StatusBadge text={row.status} />
+            </span>,
           ],
-          ['Teslim dosyası', submission?.fileName ?? '—'],
+          ['Son teslim', dueText(homework.dueDate)],
+          ['Geç teslim', homework.allowLate ? 'Kabul edilir' : 'Kabul edilmez'],
+          ['Teslim tarihi', submission ? dueText(submission.submittedAt) : 'Henüz teslim edilmedi'],
+          ['Teslim dosyası', fileSummary(submission)],
           ['Not', row.score === null ? '—' : row.score],
         ]}
       />
       <SummarySection title="Ödev açıklaması">
-        <p className="text-sm [overflow-wrap:anywhere]">{row.description}</p>
+        <p className="text-sm whitespace-pre-line [overflow-wrap:anywhere]">{row.description}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <PdfButton
             type="homework"
@@ -204,9 +205,66 @@ function HomeworkDetail({ homeworkId, studentId, classNameOf }: Omit<PanelProps,
       </SummarySection>
       {submission?.feedback ? (
         <SummarySection title="Öğretmen geri bildirimi">
-          <p className="text-sm [overflow-wrap:anywhere]">{submission.feedback}</p>
+          <p className="text-sm whitespace-pre-line [overflow-wrap:anywhere]">
+            {submission.feedback}
+          </p>
         </SummarySection>
       ) : null}
+      {submission ? (
+        <SummarySection title={mode === 'student' ? 'Teslimin' : 'Teslim'}>
+          <p className="text-sm whitespace-pre-line [overflow-wrap:anywhere]">
+            {submission.note || 'Açıklama yazılmadı.'}
+          </p>
+          {submission.fileIds.length ? (
+            <div className="mt-3">
+              <SubmissionFileList fileIds={submission.fileIds} />
+            </div>
+          ) : null}
+        </SummarySection>
+      ) : null}
+      {mode === 'student' ? (
+        <SubmissionArea homework={homework} submission={submission} phase={phase} />
+      ) : null}
     </>
+  )
+}
+
+/** Teslim dosyası özeti: eski kayıtlarda dosya adı, yeni teslimde dosya sayısı. */
+function fileSummary(submission: HomeworkRecord['submissions'][number] | undefined): string {
+  if (!submission) return '—'
+  if (submission.fileName) return submission.fileName
+  return submission.fileIds.length ? `${submission.fileIds.length} dosya` : '—'
+}
+
+function SubmissionArea({
+  homework,
+  submission,
+  phase,
+}: {
+  homework: HomeworkRecord
+  submission: HomeworkRecord['submissions'][number] | undefined
+  phase: ReturnType<typeof submissionWindow>
+}) {
+  if (phase === 'graded')
+    return (
+      <p role="status" className="rounded-card border bg-muted p-4 text-sm">
+        Teslimin değerlendirildi; değerlendirilmiş teslim değiştirilemez.
+      </p>
+    )
+  if (phase === 'closed')
+    return (
+      <p role="status" className="rounded-card border bg-muted p-4 text-sm">
+        Teslim süresi doldu; bu ödev geç teslime kapalı.
+      </p>
+    )
+  return (
+    <SummarySection title={submission ? 'Teslimi güncelle' : 'Teslim et'}>
+      <StudentSubmissionForm
+        key={`${submission?.id ?? 'yeni'}-${submission?.version ?? 0}`}
+        homeworkId={homework.id}
+        submission={submission}
+        late={phase === 'late'}
+      />
+    </SummarySection>
   )
 }

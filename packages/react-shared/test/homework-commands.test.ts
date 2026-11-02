@@ -276,7 +276,7 @@ describe('ödev hata metinleri ve alanları (DOM-AKD-070…073)', () => {
     ['homework_has_submissions', 409, 'arşivlenemez'],
     ['homework_closed', 422, 'süresi doldu'],
     ['submission_graded', 409, 'değiştirilemez'],
-    ['file_not_ready', 422, 'güvenlik denetiminden'],
+    ['file_not_ready', 422, 'güvenlik taramasında'],
     ['homework_not_owner', 403, 'öğretmeni değilsiniz'],
     ['version_conflict', 409, HOMEWORK_CHANGED_MESSAGE],
   ]

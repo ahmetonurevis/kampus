@@ -115,6 +115,15 @@ Oturum ve kimlik yapılandırması için bir kez (uç başına değil, `auth.tes
 
 Genel güvenlik ağı: `onRoute` kancasıyla toplanan bütün rotalar tek testte gezilir; açık uç listesinde (`/api/v1/auth/*` Better Auth uçları, `/api/v1/health`) olmayan her rota kimliksiz istekte 401 dönmelidir. Yeni açık uç bu listeye gerekçeyle eklenir.
 
+### Çapraz kurum envanteri (IST-002)
+
+`apps/api/test/cross-institution-inventory.test.ts` uygulamanın bütün rotalarını (`app.routeModules()`) okur ve her `method + url` için madde 3–5'in hangi testte sınandığını gösterir. Kural: başka kurumun kaydı 404 döner ve yanıt olmayan kimlikle aynıdır (varlık sızmaz); liste ve sayımlarda B'nin satırı görünmez ve değişmez.
+
+- Sınıflar: `kayıt` (yol kimliği kurum kaydı; B kaydına okuma/yazma 404, B değişmez), `liste` (kimliksiz okuma, sayım, özet, güncel kayıt; B yok), `gövde` (kimliksiz oluşturma; gövdedeki `institutionId` ya da B kaydının kimliği etkisiz), `yok` (kurum kaydı almaz ve dönmez; gerekçe zorunlu). Yol kimliği taşıyan uç `kayıt` dışında sınıflanamaz.
+- Kanıt denetimi metinseldir: satırın gösterdiği dosyada adı satırdaki parçayı içeren ve çapraz kurum senaryosunu anan (`başka kurum`, `kurumlar arası`, `institutionId` …) bir test bulunur; dosyada uç yolu ya da satırın `marker`'ı geçer. Sınıflanmamış uç, uygulamada olmayan satır ya da silinen test envanteri kırar.
+- Tablo kalıbı: `support/cross-institution.ts` koşucusu (`runCrossCase`) B'de kaydı kurar, A'dan olmayan kimlikle ve B kimliğiyle aynı isteği yapar, yanıtların `status/code/message` eşitliğini ve iki kurumun satır özetinin değişmediğini doğrular; sonra aynı isteği A'nın kendi kaydıyla yapar (2xx, 409 ya da 422: 404 rol ya da gövdeden gelmiyor). İstek A'da işi yapmaya yetkili rolle yapılır; yönetici rolüyle 403 kurum sınırını sınamaz. Örnekler: `cross-institution-platform`, `-learning`, `-access`, `-finance`, `-workflows`.
+- Yeni uç eklerken: çapraz kurum testini yaz (tablo dosyasına satır ya da uç testinde adı `başka kurum` içeren test), envantere uygun sınıfla satır ekle. `TODO` listesi boştur; yeni uç oraya değil tabloya testiyle girer. Karşı geliştiricinin ucunda açık bulunursa test `{ todo: '…' }` ile işaretlenir ve sahibine issue açılır.
+
 ## 6. Uçtan uca (e2e) kurallar
 
 - Playwright, `tests/e2e/<akış>.spec.ts`. Seçiciler erişilebilir rol ve etiketle (`getByRole`, `getByLabel`); CSS sınıfı yalnız rolü olmayan yapıda.

@@ -309,6 +309,42 @@ describe('dil okulu grup uçları', () => {
     assert.deepEqual(await groupRows(a.institution.id), before)
   })
 
+  test('IST-002: başka kurumun grubu açılmaz ve birleştirilmez (404); B kaynağı A hedefine taşınmaz; okulda her grup ucu 404', async () => {
+    const a = await tenant()
+    const b = await tenant()
+    const foreign = await ok(await create(b.cookies.admin, b.body()), 201)
+    await addMembers(b.institution.id, foreign.id, ['s1', 's2', 's3'])
+    const own = await ok(await create(a.cookies.admin, a.body()), 201)
+    const before = { a: await groupRows(a.institution.id), b: await groupRows(b.institution.id) }
+    const foreignMembers = await memberRows(b.institution.id, foreign.id)
+    const merge = { sourceGroupId: foreign.id, sourceVersion: 1 }
+    fails(await command(a.cookies.admin, foreign.id, 'open', 1), 404, 'not_found')
+    fails(await command(a.cookies.admin, foreign.id, 'merge', 1, merge), 404, 'not_found')
+    // A'nın hedefine B'nin kaynak grubu: olmayan kaynakla aynı 404, kursiyerler B'de kalır.
+    const missing = await command(a.cookies.admin, own.id, 'merge', 1, {
+      sourceGroupId: randomUUID(),
+      sourceVersion: 1,
+    })
+    fails(missing, 404, 'not_found')
+    const crossed = await command(a.cookies.admin, own.id, 'merge', 1, merge)
+    fails(crossed, 404, 'not_found')
+    assert.equal(crossed.json().message, missing.json().message)
+    assert.deepEqual(await groupRows(a.institution.id), before.a)
+    assert.deepEqual(await groupRows(b.institution.id), before.b)
+    assert.deepEqual(await memberRows(b.institution.id, foreign.id), foreignMembers)
+    assert.deepEqual(await memberRows(a.institution.id, own.id), [])
+
+    // Okulda grup yoktur: kimlikli uçlar da rol ve gövdeden önce 404 (DOM-DIL-008).
+    const school = await tenant('school')
+    for (const cookie of [school.cookies.admin, school.cookies.student]) {
+      fails(await call('GET', `/groups/${foreign.id}`, cookie), 404, 'not_found')
+      fails(await patch(cookie, foreign.id, { name: 'X' }, 1), 404, 'not_found')
+      for (const verb of ['open', 'cancel', 'merge'])
+        fails(await command(cookie, foreign.id, verb, 1, merge), 404, 'not_found')
+    }
+    assert.deepEqual(await groupRows(b.institution.id), before.b)
+  })
+
   test('409: bayat If-Match reddedilir ve grup değişmez; değişiklik sürümü artırır', async () => {
     const { institution, cookies, body } = await tenant()
     const group = await ok(await create(cookies.admin, body()), 201)

@@ -145,6 +145,18 @@ test('Alan konumlarıyla DAT/TXT okuma başlıkları atlar; boş cevap alanları
     /çakışmamalı/,
   )
 })
+test('IST-002: olmayan profil kimliğiyle düzenleme sınav çakışmasından önce record_not_found döner', () => {
+  // Başka kurumun profili bu kurumda olmayan kimliktir: yanıt sınavın kendi profilini ele vermez.
+  const state = seed(),
+    profile = state.opticalProfiles[0]
+  const before = structuredClone(state.opticalProfiles)
+  assert.throws(
+    () => runAssessment(state, admin, 'profile', { ...profile }, id, 'test-profil-yok', now),
+    isDomainError('record_not_found', 'not_found'),
+  )
+  assert.deepEqual(state.opticalProfiles, before)
+})
+
 test('Optik aktarım hatalı kimlik, tekrar, kitapçık, cevap ve kapsam durumlarında atomik reddedilir', () => {
   const state = seed()
   for (const text of [

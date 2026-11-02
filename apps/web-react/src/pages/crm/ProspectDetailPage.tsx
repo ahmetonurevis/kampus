@@ -16,6 +16,7 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { ProspectNoteForm } from './ProspectNoteForm.tsx'
 import { ProspectPlanPanel } from './ProspectPlanPanel.tsx'
 import { ProspectConsentPanel } from './ProspectConsentPanel.tsx'
+import { ProspectEditPanel } from './ProspectEditPanel.tsx'
 import { ProspectStageForm } from './ProspectStageForm.tsx'
 import { ProspectStageRevertForm } from './ProspectStageRevertForm.tsx'
 import { dateTimeLabel, isOpenStage, slotLabel, stageTone } from './prospect-rows.ts'
@@ -114,6 +115,7 @@ function Detail({
   // Kesin kayıt taksit ve sözleşme yazar: `crm` ve `finance` birlikte açık olmalıdır (liste ile aynı).
   const enrollModulesOpen = session?.modules.crm === true && session.modules.finance === true
   const plan = useDetailPanel('planlama')
+  const edit = useDetailPanel('duzenle')
   const branches = useCoreAll('branches')
   const branch = branches.data?.find((entry) => entry.record.id === prospect.branchId)?.record.name
   const classes = useCoreAll(
@@ -138,6 +140,10 @@ function Detail({
                 <Icon name="ArrowLeft" size={16} aria-hidden="true" />
                 {listLabel}
               </Link>
+            </Button>
+            <Button variant="secondary" onClick={() => edit.open('bilgi')}>
+              <Icon name="Pencil" size={17} aria-hidden="true" />
+              Bilgileri düzenle
             </Button>
             <Button variant="secondary" onClick={() => plan.open('gorusme')} disabled={!open}>
               <Icon name="CalendarDays" size={17} aria-hidden="true" />
@@ -318,6 +324,12 @@ function Detail({
           ) : null}
         </div>
       </div>
+      <ProspectEditPanel
+        open={edit.selectedId === 'bilgi'}
+        prospect={prospect}
+        version={version}
+        onClose={edit.close}
+      />
       <ProspectPlanPanel
         kind={plan.selectedId}
         prospect={prospect}

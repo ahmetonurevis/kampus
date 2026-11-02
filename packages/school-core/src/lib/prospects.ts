@@ -189,6 +189,21 @@ export type MarketingConsent = Record<MarketingChannel, { granted: boolean; at: 
  * Ticari ileti onayı olayı (DOM-KAY-004): her verme ve geri alma ayrı satırdır, geçmiş silinmez;
  * güncel durum `marketingConsent`'tedir. İlk onay seçimi aday açılırken `marketingConsent`'e yazılır.
  */
+/** Düzeltilebilen aday bilgisi alanları (KVKK md. 11 düzeltme hakkı). */
+export const PROSPECT_EDITABLE_FIELDS = [
+  'name',
+  'phone',
+  'email',
+  'interest',
+  'guardianName',
+] as const
+export type ProspectEditableField = (typeof PROSPECT_EDITABLE_FIELDS)[number]
+/** Düzeltme kaydı: değerler değil yalnız alan adları saklanır; eski değer kişisel veri olarak tutulmaz. */
+export type ProspectProfileEdit = {
+  fields: ProspectEditableField[]
+  at: string
+  by: RequestActor
+}
 export type MarketingConsentEvent = {
   channel: MarketingChannel
   granted: boolean
@@ -210,6 +225,8 @@ export type ProspectFields = {
   marketingConsent?: MarketingConsent
   /** Açılıştan sonraki verme ve geri alma olayları, eskiden yeniye (DOM-KAY-004). */
   marketingConsentHistory?: MarketingConsentEvent[]
+  /** Aday bilgisi düzeltmeleri, eskiden yeniye; yalnız dokunulan alan adları saklanır (DOM-KAY-003). */
+  profileEdits?: ProspectProfileEdit[]
   lostReason?: ProspectLostReason
   lostAt?: string
   /** Planlanan tanışma görüşmesi; `trialAt` eski okuyucular için görüşme anını taşır. */
@@ -330,6 +347,19 @@ export const setMarketingConsentSchema = z.strictObject({
   granted: z.boolean('Onay verilecek mi geri alınacak mı belirtin.'),
 })
 export type SetMarketingConsentInput = z.input<typeof setMarketingConsentSchema>
+
+export const updateProspectDetailsSchema = z
+  .strictObject({
+    name: createProspectSchema.shape.name.optional(),
+    phone: createProspectSchema.shape.phone.optional(),
+    email: createProspectSchema.shape.email,
+    interest: createProspectSchema.shape.interest.optional(),
+    guardianName: createProspectSchema.shape.guardianName,
+  })
+  .refine((data) => Object.values(data).some((value) => value !== undefined), {
+    message: 'Düzeltilecek en az bir bilgi gönderin.',
+  })
+export type UpdateProspectDetailsInput = z.input<typeof updateProspectDetailsSchema>
 
 export const addProspectNoteSchema = z.strictObject({
   text: z
@@ -563,8 +593,7 @@ export function createProspect(
     createdBy: actorOf(by),
   }
   // TODO(crm-consent): İYS bildirimi (OG-108) ve adayın aydınlatma metninin platform metin
-  // deposundan gösterilmesi (aday kitlesi platformda yok, iş isteği #14) ayrıdır; aday bilgisi
-  // düzeltme işlemi de yok.
+  // deposundan gösterilmesi (aday kitlesi platformda yok, iş isteği #14) ayrıdır.
   state.prospects.unshift(prospect)
   return prospect
 }
@@ -801,6 +830,81 @@ export function setProspectMarketingConsent(
   prospect.marketingConsentHistory = [
     ...(prospect.marketingConsentHistory ?? []),
     { channel: data.channel, granted: data.granted, at: now, by: actorOf(by) },
+  ]
+  prospect.updatedAt = now
+  return prospect
+}
+
+/**
+ * Aday bilgisini düzeltir (KVKK md. 11 düzeltme hakkı, DOM-KAY-003): ad, telefon, e-posta, ilgi ve
+ * 18 yaş altında veli adı. Yalnız gönderilen alanlar değişir; hiçbiri farklı değilse 409
+ * `prospect_unchanged`. Açık adayda ad, telefon ve e-posta mükerrer denetiminden yeniden geçer
+ * (kardeş seçilmiş adayda ortak iletişim kabul edilir). Onayı verilmiş e-posta silinemez (önce
+ * onay geri alınır). Yetişkin adayda veli adı tutulmaz. Kayda yalnız düzeltilen alan adları
+ * yazılır; kesin kayda dönmüş adayın düzeltmesi öğrenci ve veli kaydına yansımaz. Aşamayı ve
+ * ticari ileti onayını değiştirmez.
+ */
+export function updateProspectDetails(
+  state: State,
+  by: Participant,
+  prospectId: string,
+  input: unknown,
+  now: string,
+  options: ProspectOptions = {},
+): ProspectRecord {
+  const data = updateProspectDetailsSchema.parse(input)
+  requireAuthorized(by, 'prospect.update', {}, state, options)
+  const prospect = requireProspect(state, prospectId)
+  const next = {
+    name: data.name ?? prospect.name,
+    phone: data.phone ?? prospect.phone,
+    email: data.email ?? prospect.email ?? '',
+    interest: data.interest ?? prospect.interest,
+    guardianName: data.guardianName ?? prospect.guardianName,
+  }
+  const current: Record<ProspectEditableField, string | undefined> = {
+    name: prospect.name,
+    phone: prospect.phone,
+    email: prospect.email ?? '',
+    interest: prospect.interest,
+    guardianName: prospect.guardianName,
+  }
+  const changed = PROSPECT_EDITABLE_FIELDS.filter(
+    (field) => data[field] !== undefined && data[field] !== current[field],
+  )
+  if (changed.length === 0)
+    throw new DomainError('prospect_unchanged', 'Aday bilgisinde değişiklik yok.', {
+      kind: 'conflict',
+    })
+  if (data.guardianName !== undefined && prospect.minor === false)
+    throw new DomainError('guardian_not_applicable', 'Yetişkin adayda veli bilgisi tutulmaz.', {
+      path: ['guardianName'],
+    })
+  if (changed.includes('email') && next.email === '' && hasMarketingConsent(prospect, 'email'))
+    throw new DomainError(
+      'consent_contact_in_use',
+      'E-posta onayı varken e-posta silinemez; önce e-posta onayını geri alın.',
+      { path: ['email'] },
+    )
+  if (
+    isOpen(prospect.stage) &&
+    PROSPECT_EDITABLE_FIELDS.slice(0, 3).some((f) => changed.includes(f))
+  )
+    rejectDuplicate(
+      findProspectDuplicate(
+        state.prospects,
+        { name: next.name, phone: next.phone, email: next.email },
+        prospect.id,
+      ),
+      prospect.siblingOfId !== undefined,
+    )
+  for (const field of changed) {
+    if (field === 'guardianName') prospect.guardianName = next.guardianName
+    else prospect[field] = next[field]
+  }
+  prospect.profileEdits = [
+    ...(prospect.profileEdits ?? []),
+    { fields: changed, at: now, by: actorOf(by) },
   ]
   prospect.updatedAt = now
   return prospect

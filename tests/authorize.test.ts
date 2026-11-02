@@ -84,6 +84,7 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'prospect.stage': ['yonetici', 'onburo'],
     'prospect.stageRevert': ['yonetici'],
     'prospect.consent': ['yonetici', 'onburo'],
+    'prospect.update': ['yonetici', 'onburo'],
     'prospect.note': ['yonetici', 'onburo'],
     'prospect.meeting': ['yonetici', 'onburo'],
     'prospect.trial': ['yonetici', 'onburo'],

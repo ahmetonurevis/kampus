@@ -453,6 +453,56 @@ test.describe('aday detayı', () => {
   })
 })
 
+test.describe('aday bilgisi düzeltme', () => {
+  test('ön büro adayın bilgisini sağ panelde düzeltir; mükerrer telefon alan hatası verir, kart güncellenir (DOM-KAY-003)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({ id: 'e2e-pr-d1', name: 'Düzeltilecek Aday', phone: '05550300071' }),
+        prospect({
+          id: 'e2e-pr-d2',
+          name: 'Düzeltilecek Aday',
+          phone: '05550300072',
+          stage: 'İletişime geçildi',
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-d1'))
+    await expect(page.getByRole('heading', { name: 'Düzeltilecek Aday', level: 1 })).toBeVisible()
+    await page.getByRole('button', { name: 'Bilgileri düzenle' }).click()
+    const panel = page.getByRole('dialog', { name: 'Aday bilgilerini düzenle' })
+    const phone = panel.getByLabel('Telefon')
+    await expect(phone).toHaveValue('05550300071')
+    // Değişiklik yapmadan kaydetmek istek atmaz.
+    await panel.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(panel.getByText('Değişiklik yapılmadı.')).toBeVisible()
+    // Aynı ad ve başka adayın telefonu mükerrerdir; hata telefon alanında görünür.
+    await phone.fill('05550300072')
+    await panel.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(panel.getByText(SAME_MESSAGE)).toBeVisible()
+    // Geçerli düzeltme kaydedilir, panel kapanır, kart yeni değeri gösterir.
+    await phone.fill('0555 030 00 99')
+    await panel.getByLabel('İlgilendiği program').fill('B2 konuşma kursu')
+    await panel.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(toast(page, 'Aday bilgileri güncellendi.')).toBeVisible()
+    await expect(page.getByRole('dialog', { name: 'Aday bilgilerini düzenle' })).toHaveCount(0)
+    await expect(page.getByText('05550300099')).toBeVisible()
+    const client = await api(school.user('onburo'))
+    await expect
+      .poll(async () => {
+        const item = (await prospectsOf(client)).find((entry) => entry.id === 'e2e-pr-d1')
+        return (item?.record as { interest?: string }).interest
+      })
+      .toBe('B2 konuşma kursu')
+  })
+})
+
 test.describe('ticari ileti onayı', () => {
   test('ön büro kanal onayını kaydeder ve tek tıkla geri alır; değişiklikler geçmişte görünür (DOM-KAY-004)', async ({
     page,

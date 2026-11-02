@@ -1,6 +1,7 @@
 import { SCOPE_SOURCE_COLLECTIONS } from '@kampus/school-core/lib/scope.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
 import {
+  hiddenNotificationKinds,
   markAllNotificationsRead,
   markNotificationRead,
   notificationAudienceOf,
@@ -20,6 +21,7 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
 import { listMembershipLinks } from './memberships.ts'
+import { getInstitutionModules } from './modules.ts'
 import { runCommand, type CommandResponse, type LoadScope } from './operation-runner.ts'
 
 /**
@@ -50,6 +52,15 @@ async function audienceOf(ctx: ServiceContext): Promise<AudienceIds> {
   return notificationAudienceOf({ role: ctx.actor.role, links })
 }
 
+/**
+ * Kapalı modülün bildirim türleri liste ve okunmamış sayısından süzülür (DOM-YTK-040); bildirim
+ * merkezi (`communication`) rotada denetlenir, burada türün kendi modülü kalır.
+ */
+async function hiddenKindsOf(ctx: ServiceContext): Promise<readonly string[]> {
+  const institution = await getInstitutionModules(ctx.db, ctx.institutionId)
+  return hiddenNotificationKinds(institution?.modules ?? {})
+}
+
 export interface NotificationListInput {
   cursor?: string | undefined
   limit: number
@@ -62,7 +73,10 @@ export interface NotificationListInput {
  */
 export async function listNotifications(ctx: ServiceContext, input: NotificationListInput) {
   const audience = await audienceOf(ctx)
-  const page = await notificationPage(ctx.db, ctx.institutionId, ctx.actor.userId, audience, input)
+  const page = await notificationPage(ctx.db, ctx.institutionId, ctx.actor.userId, audience, {
+    ...input,
+    hiddenKinds: await hiddenKindsOf(ctx),
+  })
   if (!page)
     throw new ValidationError([
       { path: ['querystring', 'cursor'], code: 'invalid_value', message: 'Sayfa imleci geçersiz.' },
@@ -97,7 +111,13 @@ export async function countUnreadNotifications(ctx: ServiceContext) {
   const audience = await audienceOf(ctx)
   return {
     data: {
-      unread: await unreadNotificationTotal(ctx.db, ctx.institutionId, ctx.actor.userId, audience),
+      unread: await unreadNotificationTotal(
+        ctx.db,
+        ctx.institutionId,
+        ctx.actor.userId,
+        audience,
+        await hiddenKindsOf(ctx),
+      ),
     },
   }
 }

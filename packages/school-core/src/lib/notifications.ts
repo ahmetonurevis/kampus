@@ -114,6 +114,17 @@ export function notificationEnabled(
   return modules.communication === true && (spec.module === null || modules[spec.module] === true)
 }
 
+/**
+ * Bu kurumda gösterilmeyen bildirim türleri: `notificationEnabled` olmayanlar (DOM-YTK-040).
+ * Modül kapanmadan önce yazılmış bildirim silinmez; liste ve okunmamış sayısından düşer, modül
+ * yeniden açılınca geri gelir. Kapalı modülün bildirimi kapalı sayfaya bağlantı vermez.
+ */
+export function hiddenNotificationKinds(
+  modules: Partial<Readonly<Record<ModuleKey, boolean>>>,
+): NotificationKind[] {
+  return NOTIFICATION_KIND_NAMES.filter((kind) => !notificationEnabled(kind, modules))
+}
+
 /** Alıcı öğrenciye ait karar: türün kitlesinden hangileri (`learnerIsMinor`). */
 export function notificationAudiences(
   kind: NotificationKind,

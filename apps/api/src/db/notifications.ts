@@ -1,4 +1,16 @@
-import { and, count, desc, eq, inArray, isNull, max, or, sql, type SQL } from 'drizzle-orm'
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  max,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 import type {
@@ -31,10 +43,18 @@ const reads = alias(records, 'notification_reads')
 
 export type AudienceIds = Readonly<Record<NotificationAudience, readonly string[]>>
 
-const field = (name: 'audience' | 'studentId') => sql`(${records.data} ->> ${sql.raw(`'${name}'`)})`
+const field = (name: 'audience' | 'studentId' | 'kind') =>
+  sql`(${records.data} ->> ${sql.raw(`'${name}'`)})`
 
-/** Aktörün gördüğü bildirimler; görebileceği bildirim yoksa `null`. */
-export function visibleTo(institutionId: string, audience: AudienceIds): SQL | null {
+/**
+ * Aktörün gördüğü bildirimler; görebileceği bildirim yoksa `null`. `hiddenKinds` kurumda kapalı
+ * modülün türleridir (core `hiddenNotificationKinds`; DOM-YTK-040): satırlar silinmez, süzülür.
+ */
+export function visibleTo(
+  institutionId: string,
+  audience: AudienceIds,
+  hiddenKinds: readonly string[] = [],
+): SQL | null {
   const parts = Object.entries(audience)
     .filter(([, ids]) => ids.length > 0)
     .map(
@@ -47,6 +67,7 @@ export function visibleTo(institutionId: string, audience: AudienceIds): SQL | n
     eq(records.collection, NOTIFICATIONS),
     isNull(records.archivedAt),
     or(...parts),
+    ...(hiddenKinds.length > 0 ? [notInArray(field('kind'), [...hiddenKinds])] : []),
   ) as SQL
 }
 
@@ -84,9 +105,19 @@ export async function notificationPage(
   institutionId: string,
   userId: string,
   audience: AudienceIds,
-  { cursor, limit, unread }: { cursor?: string | undefined; limit: number; unread: boolean },
+  {
+    cursor,
+    limit,
+    unread,
+    hiddenKinds = [],
+  }: {
+    cursor?: string | undefined
+    limit: number
+    unread: boolean
+    hiddenKinds?: readonly string[]
+  },
 ): Promise<NotificationPage | null> {
-  const visible = visibleTo(institutionId, audience)
+  const visible = visibleTo(institutionId, audience, hiddenKinds)
   if (visible === null) return cursor === undefined ? { rows: [], more: false } : null
   const where: SQL[] = [visible]
   if (unread) where.push(isNull(reads.id))
@@ -115,8 +146,9 @@ export async function unreadNotificationTotal(
   institutionId: string,
   userId: string,
   audience: AudienceIds,
+  hiddenKinds: readonly string[] = [],
 ): Promise<number> {
-  const visible = visibleTo(institutionId, audience)
+  const visible = visibleTo(institutionId, audience, hiddenKinds)
   if (visible === null) return 0
   const [row] = await db
     .select({ total: count() })

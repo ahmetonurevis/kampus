@@ -319,6 +319,49 @@ describe('bildirim merkezi uçları', () => {
     assert.deepEqual(await readRows(institution.id), [])
   })
 
+  test('DOM-YTK-040, IST-009: türün modülü kapalıyken bildirim listeden ve sayıdan düşer, açılınca döner', async () => {
+    const { ids, cookies } = await tenant()
+    async function setLearning(enabled: boolean) {
+      const settings = await ok(await call('GET', '/modules', cookies.admin))
+      await ok(
+        await app.inject({
+          method: 'PATCH',
+          url: '/api/v1/modules/learning',
+          headers: {
+            origin: TEST_ORIGIN,
+            cookie: cookies.admin,
+            'content-type': 'application/json',
+            'if-match': `"${settings.data.version}"`,
+            'idempotency-key': randomUUID(),
+          },
+          payload: JSON.stringify({ enabled }),
+        }),
+      )
+    }
+    const shown = [ids.denizParentLater, ids.denizParent]
+    assert.deepEqual(
+      (await ok(await list(cookies.parent))).data.map((n: Json) => n.id),
+      shown,
+    )
+    assert.equal(await unread(cookies.parent), 2)
+
+    // `feedback_released` öğrenme modülünündür: bildirim merkezi açık kalsa da gösterilmez.
+    await setLearning(false)
+    assert.deepEqual(await ok(await list(cookies.parent)), { data: [], meta: { nextCursor: null } })
+    assert.deepEqual((await ok(await list(cookies.parent, '?unread=true'))).data, [])
+    assert.equal(await unread(cookies.parent), 0)
+    // Gizli bildirimin kimliği imleç olarak da kullanılamaz (varlığı sızmaz).
+    fails(await list(cookies.parent, `?cursor=${ids.denizParent}`), 400, 'validation_failed')
+
+    // Kayıt silinmedi: modül açılınca aynı bildirimler okunmamış olarak döner.
+    await setLearning(true)
+    assert.deepEqual(
+      (await ok(await list(cookies.parent))).data.map((n: Json) => n.id),
+      shown,
+    )
+    assert.equal(await unread(cookies.parent), 2)
+  })
+
   test('DOM-YTK-040: sıra 401 → 403 module_disabled → 400; modül kapalıyken geçersiz sorgu da 403', async () => {
     const closed = await tenant({ enabledModules: { communication: false } })
     const open = await tenant()

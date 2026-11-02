@@ -352,9 +352,10 @@ async function writeScore(
               input: input.score,
               now: tools.now,
             })
-            // Puanı kesinleştiren yazma geri bildirimi o anda açar (DOM-BEC-045): öğrenciye ve
-            // (18 yaş altında) veliye uygulama içi bildirim aynı transaction'da eklenir. Bildirim
-            // puan ve geri bildirim metni taşımaz (DOM-ILT-023).
+            // Puanı kesinleştiren yazma geri bildirimi o anda açar (DOM-BEC-045): ilk puan,
+            // uyuşan ikinci puan ya da uyuşmazlıkta koordinatör son puanı. Öğrenciye ve (18 yaş
+            // altında) veliye uygulama içi bildirim aynı transaction'da eklenir; yazma başarısızsa
+            // bildirim de geri alınır. Bildirim puan ve geri bildirim metni taşımaz (DOM-ILT-023).
             const released = releasesFeedback({
               scores: grading.scores.filter(
                 (s) => s.submissionVersionId === draft.submissionVersionId,

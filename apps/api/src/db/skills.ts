@@ -1136,10 +1136,11 @@ export async function loadAttemptsAmong(
 }
 
 /**
- * İçerik sürümüne sabitlenmiş, arşivlenmemiş ve dinleme hakkı sınırlı atamalar (DOM-BEC-005).
- * Dinleme kaydının bağlantısı istendiğinde hakkın hangi denemeden düşeceği bunlardan bulunur.
+ * İçerik sürümüne sabitlenmiş, arşivlenmemiş atamalar, sınırlı ve sınırsız dinleme hakkıyla
+ * (DOM-BEC-005). Dinleme kaydının bağlantısı istendiğinde hakkın hangi denemeden düşeceği bunlardan
+ * bulunur; sınırsız atamanın süren denemesi de karara girer (`services/listening-plays.ts`).
  */
-export async function loadListeningAssignments(
+export async function loadVersionAssignments(
   db: Database,
   institutionId: string,
   resourceVersionId: string,
@@ -1153,7 +1154,6 @@ export async function loadListeningAssignments(
         eq(taskAssignments.institutionId, institutionId),
         eq(taskAssignments.resourceVersionId, resourceVersionId),
         isNull(taskAssignments.archivedAt),
-        sql`${taskAssignments.listeningPlays} is not null`,
       ),
     )
     .orderBy(asc(taskAssignments.createdAt), asc(taskAssignments.id))
@@ -1162,8 +1162,10 @@ export async function loadListeningAssignments(
 
 // --- Dinleme sayımı -----------------------------------------------------------------------
 
-/** Sayılmış bir dinleme (`attempt_media_plays`; değişmez). */
-export type StoredMediaPlay = { fileId: string; playNumber: number; playedAt: string }
+type MediaPlayRow = typeof attemptMediaPlays.$inferSelect
+
+/** Sayılmış bir dinleme (`attempt_media_plays`; değişmez); zaman ISO 8601 UTC. */
+export type StoredMediaPlay = Pick<MediaPlayRow, 'fileId' | 'playNumber'> & { playedAt: string }
 
 /** Denemenin sayılmış dinlemeleri, dosya ve sıra numarasıyla. */
 export async function loadMediaPlays(
@@ -1195,15 +1197,18 @@ export async function loadMediaPlays(
 export function insertMediaPlay(
   tx: Database,
   institutionId: string,
-  play: { id: string; attemptId: string; fileId: string; playNumber: number; playedAt: Date },
-): Promise<unknown> {
+  play: Pick<MediaPlayRow, 'id' | 'attemptId' | 'fileId' | 'playNumber' | 'playedAt'>,
+): Promise<void> {
   return constraintAs(
-    tx.insert(attemptMediaPlays).values({
-      institutionId,
-      ...play,
-      createdAt: play.playedAt,
-      updatedAt: play.playedAt,
-    }),
+    tx
+      .insert(attemptMediaPlays)
+      .values({
+        institutionId,
+        ...play,
+        createdAt: play.playedAt,
+        updatedAt: play.playedAt,
+      })
+      .then(() => undefined),
     {
       attempt_media_plays_attempt_file_number_key: conflict(
         'listening_play_conflict',

@@ -10,12 +10,12 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { files } from '../src/db/schema/files.ts'
-import { attemptMediaPlays } from '../src/db/schema/skills.ts'
+import { attemptMediaPlays, taskAssignments } from '../src/db/schema/skills.ts'
 import { insertMediaPlay } from '../src/db/skills.ts'
 import { AppError } from '../src/errors.ts'
 import { defineFileAttachment } from '../src/services/file-registry.ts'
 import {
-  LISTENING_REPLAY_WINDOW_MS,
+  listeningWindowMs,
   planListeningPlay,
   RESOURCE_VERSION_ATTACHMENT,
 } from '../src/services/listening-plays.ts'
@@ -32,10 +32,16 @@ import { tempStorage } from './support/files-sample.ts'
 import { seedResource } from './support/resources-sample.ts'
 
 /**
- * Dinleme hakkı sayımı (OG-049; IST-045; ADR 0003 karar 6, ADR 0004 karar 6; DOM-BEC-005).
- * Hak `GET /files/:fileId/url` ile verilen imzalı bağlantıda, öğrencinin süren denemesinde sayılır.
- * İçerik sürümüne dosya bağlama işlemi (F4b4) henüz olmadığından dinleme kaydı satırı doğrudan
- * yazılır ve kayıt türünün okuma kuralı testte herkese açıktır; kapsamı deneme ve kurum sağlar.
+ * Altyapı birimi: dinleme hakkı sayımı (OG-049; IST-045; ADR 0003 karar 6, ADR 0004 karar 6;
+ * DOM-BEC-005). Hak `GET /files/:fileId/url` ile verilen imzalı bağlantıda, öğrencinin süren
+ * denemesinde sayılır.
+ *
+ * Bu testler gerçek akışı iddia etmez: sayılacak şekil bugün core ve API'yle kurulamaz. Core içerik
+ * modeli dinleme kaydını atanabilen türlere bağlamaz ve API 1 veya 2 hakkı 422
+ * `listening_plays_unavailable` ile reddeder (gerçek akış `task-assignments.test.ts`'tedir). Burada
+ * şekil elle kurulur: dosya satırı soru sürümüne doğrudan bağlanır, kayıt türünün okuma kuralı
+ * sahtedir (herkese açık; kapsamı deneme ve kurum sağlar) ve atamanın hakkı veritabanında verilir.
+ * TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türe bağlayınca testler gerçek akışa geçer.
  */
 
 type Json = ReturnType<typeof JSON.parse>
@@ -46,6 +52,8 @@ defineFileAttachment(RESOURCE_VERSION_ATTACHMENT, {
 })
 
 const DUE = '2026-10-20T20:59:00.000Z'
+/** Süresi ölçülmemiş kaydın penceresi: 15 dk kayıt üst sınırı + 60 sn. */
+const WINDOW = listeningWindowMs(null)
 const AFTER_DUE = Date.parse(DUE) - FIXED_NOW.getTime() + 60_000
 
 const listeningQuestion = (): Partial<ResourceVersionInput> => ({
@@ -72,7 +80,7 @@ const listeningQuestion = (): Partial<ResourceVersionInput> => ({
   tags: { subjectId: 'ingilizce', gradeLevels: [9], primarySkill: 'listening', cefrLevel: 'A2' },
 })
 
-describe('dinleme hakkı sayımı', () => {
+describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
@@ -184,15 +192,25 @@ describe('dinleme hakkı sayımı', () => {
     return response.json() as Json
   }
 
-  async function assign(t: Tenant, settings: Record<string, unknown> = {}) {
+  /**
+   * API ataması dinleme hakkını sınırsız saklar (dolu hak 422); sınırlı hak altyapı birimi için
+   * veritabanında verilir.
+   */
+  async function assign(t: Tenant, listeningPlays: 1 | 2 | null = 2) {
     const data = await ok(
       await call('POST', '/task-assignments', t.cookies.teacher, {
         resourceVersionId: t.versionId,
-        settings: { deadline: { dueAt: DUE }, ...settings },
+        settings: { deadline: { dueAt: DUE } },
         targets: [{ kind: 'class', id: '9-A' }],
       }),
       201,
     )
+    assert.equal(data.listeningPlays, null)
+    if (listeningPlays !== null)
+      await db
+        .update(taskAssignments)
+        .set({ listeningPlays })
+        .where(eq(taskAssignments.id, data.id as string))
     return data.id as string
   }
   const start = async (t: Tenant, assignmentId: string) =>
@@ -223,26 +241,26 @@ describe('dinleme hakkı sayımı', () => {
       remaining: 1,
       counted: true,
     })
-    const expiresAt = new Date(FIXED_NOW.getTime() + LISTENING_REPLAY_WINDOW_MS).toISOString()
+    const expiresAt = new Date(FIXED_NOW.getTime() + WINDOW).toISOString()
     assert.equal(first.expiresAt, expiresAt)
 
     // Sayfa yenileme: pencere içinde yeni bağlantı sayılmaz, bitiş ilk sayımın bitişidir.
-    at(LISTENING_REPLAY_WINDOW_MS - 1000)
+    at(WINDOW - 1000)
     const replay = await ok(await url(t, t.cookies.student))
     assert.equal(replay.listening.counted, false)
     assert.equal(replay.listening.used, 1)
     assert.equal(replay.expiresAt, expiresAt)
     assert.equal((await playsOf(t.institution.id)).length, 1)
 
-    at(LISTENING_REPLAY_WINDOW_MS)
+    at(WINDOW)
     const second = await ok(await url(t, t.cookies.student))
     assert.deepEqual([second.listening.used, second.listening.remaining], [2, 0])
     assert.equal(second.listening.counted, true)
 
     // Son dinlemenin penceresinde yeniden bağlantı hâlâ verilir, sonra hak biter.
-    at(2 * LISTENING_REPLAY_WINDOW_MS - 1)
+    at(2 * WINDOW - 1)
     assert.equal((await ok(await url(t, t.cookies.student))).listening.counted, false)
-    at(2 * LISTENING_REPLAY_WINDOW_MS)
+    at(2 * WINDOW)
     const exhausted = fails(await url(t, t.cookies.student), 422, 'listening_plays_exhausted')
     assert.match(exhausted.message, /dinleme hakkı doldu/)
     assert.deepEqual(await playsOf(t.institution.id), [
@@ -255,7 +273,7 @@ describe('dinleme hakkı sayımı', () => {
       limit: 2,
       media: [{ fileId: t.fileId, used: 2, remaining: 0 }],
     })
-    // Öğretmen de aynı sayımı görür (dinleme sayısı teslimle kaydedilir).
+    // Öğretmen de aynı sayımı deneme ayrıntısında görür (teslime yazılmaz, TODO(dinleme-teslim-sayisi)).
     const staff = await ok(await call('GET', `/task-attempts/${attempt.id}`, t.cookies.teacher))
     assert.deepEqual(staff.listening, detail.listening)
     // Sayım logu yalnız sayım bilgisini taşır; dosya ve kursiyer kimliği yoktur.
@@ -267,14 +285,14 @@ describe('dinleme hakkı sayımı', () => {
 
   test('IST-045 (OG-049): eşzamanlı iki istek hakkı aşmaz; çift sayım tekil indeksle 409 listening_play_conflict', async () => {
     const t = await tenant()
-    const assignmentId = await assign(t, { listeningPlays: 1 })
+    const assignmentId = await assign(t, 1)
     const attempt = await start(t, assignmentId)
     const responses = await Promise.all([url(t, t.cookies.student), url(t, t.cookies.student)])
     const bodies = await Promise.all(responses.map((response) => ok(response)))
     assert.deepEqual(bodies.map((body) => body.listening.counted).sort(), [false, true])
     assert.equal(bodies[0].expiresAt, bodies[1].expiresAt)
     assert.equal((await playsOf(t.institution.id)).length, 1)
-    at(LISTENING_REPLAY_WINDOW_MS)
+    at(WINDOW)
     const late = await Promise.all([url(t, t.cookies.student), url(t, t.cookies.student)])
     for (const response of late) fails(response, 422, 'listening_plays_exhausted')
     assert.equal((await playsOf(t.institution.id)).length, 1)
@@ -308,14 +326,76 @@ describe('dinleme hakkı sayımı', () => {
     assert.deepEqual(await playsOf(t.institution.id), [])
 
     const u = await tenant()
-    const unlimited = await assign(u, { listeningPlays: null })
+    const unlimited = await assign(u, null)
     const attempt = await start(u, unlimited)
     assert.equal(attempt.listening, null)
     for (let i = 0; i < 3; i++) {
-      at(i * LISTENING_REPLAY_WINDOW_MS)
+      at(i * WINDOW)
       assert.equal((await ok(await url(u, u.cookies.student))).listening, null)
     }
     assert.deepEqual(await playsOf(u.institution.id), [])
+  })
+
+  test('IST-045, DOM-BEC-005 (OG-049): aynı sürümde sınırsız atamanın denemesi sürerken başlatılmamış sınırlı atama 422 vermez, bağlantı sayılmaz; sınırlı deneme başlayınca hak ondan düşer', async () => {
+    const t = await tenant()
+    const unlimited = await assign(t, null)
+    const running = await start(t, unlimited)
+    // Açık atamalar çakışmasın diye sınırsız atama geçici kapatılıp ikinci atama yapılır.
+    const close = (dueAt: Date) =>
+      db.update(taskAssignments).set({ dueAt }).where(eq(taskAssignments.id, unlimited))
+    await close(new Date(FIXED_NOW.getTime() - 60_000))
+    const limited = await assign(t, 2)
+    await close(new Date(DUE))
+
+    const data = await ok(await url(t, t.cookies.student))
+    assert.equal(data.listening, null)
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    const detail = await ok(await call('GET', `/task-attempts/${running.id}`, t.cookies.student))
+    assert.equal(detail.listening, null)
+
+    const attempt = await start(t, limited)
+    const counted = await ok(await url(t, t.cookies.student))
+    assert.equal(counted.listening.attemptId, attempt.id)
+    assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: attempt.id, playNumber: 1 }])
+  })
+
+  test('DOM-BEC-005 (OG-049): dinleme kaydı olmayan sınırlı atamanın deneme özeti null; uygulanmayan sınır gösterilmez', async () => {
+    const t = await tenant()
+    await db
+      .update(files)
+      .set({ attachedType: null, attachedId: null, attachedAt: null })
+      .where(eq(files.id, t.fileId))
+    const attempt = await start(t, await assign(t, 2))
+    assert.equal(attempt.listening, null)
+  })
+
+  test('DOM-BEC-005 (OG-049): dinleme bağlantısı ve penceresi kayıt süresi + 60 sn, en az 5 dk; süre yoksa 15 dk + 60 sn', async () => {
+    assert.equal(listeningWindowMs(null), 16 * 60_000)
+    assert.equal(listeningWindowMs(0), 5 * 60_000)
+    assert.equal(listeningWindowMs(2 * 60_000), 5 * 60_000)
+    assert.equal(listeningWindowMs(4 * 60_000 + 1), 5 * 60_000 + 1)
+    assert.equal(listeningWindowMs(10 * 60_000), 11 * 60_000)
+    assert.equal(listeningWindowMs(15 * 60_000), 16 * 60_000)
+
+    const t = await tenant()
+    // Personel bağlantısı da kaydın sonuna kadar yaşar; süre ölçülmemişse üst sınır esas alınır.
+    const staff = await ok(await url(t, t.cookies.teacher))
+    assert.equal(staff.expiresAt, new Date(FIXED_NOW.getTime() + WINDOW).toISOString())
+    await db
+      .update(files)
+      .set({ durationMs: 10 * 60_000 })
+      .where(eq(files.id, t.fileId))
+    const measured = await ok(await url(t, t.cookies.teacher))
+    assert.equal(measured.expiresAt, new Date(FIXED_NOW.getTime() + 11 * 60_000).toISOString())
+
+    await start(t, await assign(t, 1))
+    const first = await ok(await url(t, t.cookies.student))
+    assert.equal(first.listening.counted, true)
+    assert.equal(first.expiresAt, measured.expiresAt)
+    at(11 * 60_000 - 1)
+    assert.equal((await ok(await url(t, t.cookies.student))).listening.counted, false)
+    at(11 * 60_000)
+    fails(await url(t, t.cookies.student), 422, 'listening_plays_exhausted')
   })
 
   test('IST-045: süren deneme yokken açık görevde 422 listening_attempt_required; teslim edilmiş deneme sayılmaz; teslim kapanınca bağlantı sayılmadan verilir', async () => {
@@ -373,25 +453,25 @@ describe('dinleme hakkı sayımı', () => {
 
   test('DOM-BEC-005: yeniden bağlantı penceresi son sayılan dinlemenin bağlantı ömrüdür (saf karar)', () => {
     const plays = [{ playNumber: 1, playedAt: FIXED_NOW.toISOString() }]
-    const inWindow = new Date(FIXED_NOW.getTime() + LISTENING_REPLAY_WINDOW_MS - 1)
-    assert.deepEqual(planListeningPlay({ limit: 1, plays, now: inWindow }), {
+    const inWindow = new Date(FIXED_NOW.getTime() + WINDOW - 1)
+    assert.deepEqual(planListeningPlay({ limit: 1, plays, now: inWindow, windowMs: WINDOW }), {
       kind: 'reuse',
-      expiresAt: new Date(FIXED_NOW.getTime() + LISTENING_REPLAY_WINDOW_MS),
+      expiresAt: new Date(FIXED_NOW.getTime() + WINDOW),
     })
-    const outside = new Date(FIXED_NOW.getTime() + LISTENING_REPLAY_WINDOW_MS)
+    const outside = new Date(FIXED_NOW.getTime() + WINDOW)
     assert.throws(
-      () => planListeningPlay({ limit: 1, plays, now: outside }),
+      () => planListeningPlay({ limit: 1, plays, now: outside, windowMs: WINDOW }),
       (error: unknown) => error instanceof AppError && error.code === 'listening_plays_exhausted',
     )
-    assert.deepEqual(planListeningPlay({ limit: 2, plays, now: outside }), {
+    assert.deepEqual(planListeningPlay({ limit: 2, plays, now: outside, windowMs: WINDOW }), {
       kind: 'count',
       playNumber: 2,
-      expiresAt: new Date(outside.getTime() + LISTENING_REPLAY_WINDOW_MS),
+      expiresAt: new Date(outside.getTime() + WINDOW),
     })
-    assert.deepEqual(planListeningPlay({ limit: 1, plays: [], now: FIXED_NOW }), {
+    assert.deepEqual(planListeningPlay({ limit: 1, plays: [], now: FIXED_NOW, windowMs: WINDOW }), {
       kind: 'count',
       playNumber: 1,
-      expiresAt: new Date(FIXED_NOW.getTime() + LISTENING_REPLAY_WINDOW_MS),
+      expiresAt: new Date(FIXED_NOW.getTime() + WINDOW),
     })
   })
 })

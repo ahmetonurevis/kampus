@@ -1,7 +1,11 @@
 import { z } from 'zod'
 
 import { CONTENT_TYPES, enumKeys, SUBMISSION_KINDS } from '@kampus/school-core/content/taxonomy.ts'
-import { assignmentInputSchema, TARGET_KINDS } from '@kampus/school-core/skills/assignment.ts'
+import {
+  assignmentInputSchema,
+  assignmentSettingsSchema,
+  TARGET_KINDS,
+} from '@kampus/school-core/skills/assignment.ts'
 import {
   attemptRulesSchema,
   deadlineSchema,
@@ -36,11 +40,27 @@ export const taskAssignmentListQuerySchema = pageQuerySchema
   .strict()
 
 /**
- * Yeni atama: core `assignmentInputSchema` (içerik sürümü, ayarlar, hedefler). Dinleme hakkı core
- * varsayılanıdır (DOM-BEC-005): gönderilmezse 2, 1 veya 2 seçilebilir, `null` sınırsız. Hak
- * `attempt_media_plays` ile sayılır (OG-049, `services/listening-plays.ts`).
+ * Yeni atama: core `assignmentInputSchema` (içerik sürümü, ayarlar, hedefler). Tek fark dinleme
+ * hakkının varsayılanıdır: core değerlendirmede 2 verir (DOM-BEC-005), ama core içerik modeli
+ * dinleme kaydını (`listening_audio`) atanabilen türlere (soru, quiz, alıştırma seti, ödev şablonu)
+ * bağlamaz; sayım altyapısı (`attempt_media_plays`, OG-049) sayacak kayıt bulamaz. Gönderilmeyen
+ * hak sınırsız (`null`) saklanır; dolu hak (1 veya 2) serviste 422 `listening_plays_unavailable`
+ * alır (ADR 0004 karar 6 uygulama notu, OG-049).
  */
-export const taskAssignmentBodySchema = assignmentInputSchema
+// TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türlere bağlayınca core varsayılanına (2) dönülür.
+export const taskAssignmentBodySchema = assignmentInputSchema.extend({
+  settings: assignmentSettingsSchema
+    .safeExtend({
+      listeningPlays: z
+        .union([z.literal(1), z.literal(2)])
+        .nullable()
+        .default(null)
+        .describe(
+          'Dinleme hakkı; gönderilmezse sınırsız. Dinleme sayımı açılana kadar yalnız sınırsız kabul edilir.',
+        ),
+    })
+    .prefault({}),
+})
 
 /**
  * Değişiklik: yalnız `deadline` (son teslim ve geç kabul) uzatılır. Bilinmeyen alanlar core'a

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
+import { FILE_PURPOSES } from '@kampus/school-core/content/taxonomy.ts'
 import { attemptState, isClosed } from '@kampus/school-core/skills/scoring.ts'
 
 import type { Database } from '../db/client.ts'
@@ -8,8 +9,8 @@ import {
   findAttempt,
   insertMediaPlay,
   loadAttemptsAmong,
-  loadListeningAssignments,
   loadMediaPlays,
+  loadVersionAssignments,
   type StoredAssignment,
   type StoredAttempt,
   type StoredMediaPlay,
@@ -21,10 +22,18 @@ import { viewerOf, visible, type Viewer } from './task-assignments.ts'
 import { timingOf } from './task-work.ts'
 
 /**
- * Dinleme hakkı sayımı (OG-049; IST-045; ADR 0003 karar 6, ADR 0004 karar 6; DOM-BEC-005). Hak
- * dinleme kaydının imzalı bağlantısı verilirken sayılır (`services/files.ts` `getFileUrl`) ve
- * `attempt_media_plays` satırı olarak bağlantıyla aynı transaction'da yazılır; hak bitince bağlantı
- * verilmez.
+ * Dinleme hakkı sayım altyapısı (OG-049; IST-045; ADR 0003 karar 6, ADR 0004 karar 6;
+ * DOM-BEC-005). Hak dinleme kaydının imzalı bağlantısı verilirken sayılır (`services/files.ts`
+ * `getFileUrl`) ve `attempt_media_plays` satırı olarak bağlantıyla aynı transaction'da yazılır; hak
+ * bitince bağlantı verilmez.
+ *
+ * Bugün devrede değildir: sayım, atamanın sabitlediği içerik sürümüne bağlı `listening_audio`
+ * dosyası ve hakkı sınırlı (1 veya 2) bir atama ister. Core içerik modeli dinleme kaydını yalnız
+ * atanamayan `audio` türünde taşır (`content/resource.ts` `contentFileRefs`); atanabilen türler
+ * (soru, quiz, alıştırma seti, ödev şablonu) ses kaydı bağlamaz. Bu yüzden atama 1 veya 2 hakkı 422
+ * `listening_plays_unavailable` ile reddeder (`services/task-assignments.ts`) ve burası her istekte
+ * `null` döner. TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türlere bağlayınca atama
+ * kapısı kalkar ve sayım kendiliğinden devreye girer.
  *
  * Kurallar:
  * - Yalnız öğrencide sayılır. Öğretmen, yönetici (değerlendirme, dinleyip puanlama) ve veli
@@ -32,15 +41,21 @@ import { timingOf } from './task-work.ts'
  * - Denemenin dinleme kaydı, atamanın sabitlediği içerik sürümüne bağlı (`attached_type =
  *   'resource_version'`) `listening_audio` dosyasıdır. Hak deneme × dosya başınadır; sınırı atama
  *   sabitler (1 veya 2; `null` sınırsız, sayılmaz).
- * - Süren deneme varsa hak ondan düşer. Süren deneme yokken görev kursiyere açık ve teslim
- *   penceresi kapanmamışsa bağlantı verilmez (422 `listening_attempt_required`): deneme dışından
- *   sınırsız dinleme hakkı anlamsız kılardı. Teslim kapandıktan sonra bağlantı sayılmadan verilir.
- * - Bir dinleme bir bağlantı ömrüdür: son sayılan dinlemenin bağlantısı geçerliyken (dinleme
- *   bağlantısı 5 dk) aynı deneme ve dosya için yeni bağlantı istenirse hak yeniden sayılmaz, aynı
- *   bitiş anıyla yeni imzalı bağlantı döner (sayfa yenileme, oynatıcının yeniden bağlanması).
- *   Aralık (`Range`) istekleri imzalı bağlantının kendisine gider ve hiç sayılmaz.
+ * - Karar öğrencinin aynı sürümdeki süren denemelerinden verilir: sınırlı atamanın süren denemesi
+ *   varsa hak ondan düşer (birden çoksa en erken başlayan); yalnız sınırsız atamanın süren denemesi
+ *   varsa bağlantı sayılmadan verilir. Süren deneme hiç yokken sınırlı atama kursiyere açık ve
+ *   teslim penceresi kapanmamışsa bağlantı verilmez (422 `listening_attempt_required`): deneme
+ *   dışından sınırsız dinleme hakkı anlamsız kılardı. Teslim kapandıktan sonra bağlantı sayılmadan
+ *   verilir.
+ * - Bir dinleme bir bağlantı ömrüdür (`listeningWindowMs`): son sayılan dinlemenin penceresinde
+ *   aynı deneme ve dosya için yeni bağlantı istenirse hak yeniden sayılmaz, aynı bitiş anıyla yeni
+ *   imzalı bağlantı döner (sayfa yenileme, oynatıcının yeniden bağlanması). Aralık (`Range`)
+ *   istekleri imzalı bağlantının kendisine gider ve hiç sayılmaz.
  * - Eşzamanlılık: deneme satırı `for update` ile kilitlenir; aynı denemenin sayımları ve teslimi
  *   sıraya girer. `(institution_id, attempt_id, file_id, play_number)` tekil indeksi son güvencedir.
+ * - TODO(dinleme-teslim-sayisi): DOM-BEC-005 "dinleme sayısı teslimle birlikte kaydedilir" der;
+ *   sayım `attempt_media_plays`'te kalır ve deneme ayrıntısında okunur, teslimin kendisine
+ *   yazılmaz (deneme kapanınca sabitlenmiş bir dinleme sayısı yoktur).
  */
 
 /** İçerik sürümüne bağlı dosyanın kayıt türü (ADR 0003 karar 5; bağlama işlemi F4b4'tedir). */
@@ -51,8 +66,22 @@ export const LISTENING_MESSAGES = {
   listening_attempt_required: 'Dinleme kaydı görevin denemesi içinde açılır; önce görevi başlatın.',
 } as const
 
-/** Aynı dinlemenin yeniden bağlantı penceresi: dinleme bağlantısının ömrü. */
-export const LISTENING_REPLAY_WINDOW_MS = FILE_PURPOSE_ACCESS.listening_audio.linkTtlSeconds * 1000
+/** Kaydın sonundaki pay: yükleme ve oynatıcı gecikmesi. */
+const LISTENING_SLACK_MS = 60_000
+/** En kısa pencere: dosyaların varsayılan bağlantı ömrü (ADR 0003 karar 6). */
+const LISTENING_MIN_WINDOW_MS = FILE_PURPOSE_ACCESS.listening_audio.linkTtlSeconds * 1000
+/** Süresi ölçülmemiş kaydın penceresi core kayıt üst sınırından (15 dk, DOM-KYN-004) çıkar. */
+const LISTENING_MAX_AUDIO_MS = FILE_PURPOSES.listening_audio.maxDurationSeconds * 1000
+
+/**
+ * Bir dinlemenin penceresi ve dinleme bağlantısının ömrü: kayıt süresi + 60 sn, en az 5 dk.
+ * Süre ölçülmemişse (`files.duration_ms` boş, F3c2b) kayıt üst sınırı esas alınır: 15 dk + 60 sn.
+ * Sabit 5 dk, 15 dk'lık kaydı ortasında keserdi.
+ */
+export function listeningWindowMs(durationMs: number | null): number {
+  if (durationMs === null) return LISTENING_MAX_AUDIO_MS + LISTENING_SLACK_MS
+  return Math.max(LISTENING_MIN_WINDOW_MS, durationMs + LISTENING_SLACK_MS)
+}
 
 export type ListeningPlan =
   { kind: 'count'; playNumber: number; expiresAt: Date } | { kind: 'reuse'; expiresAt: Date }
@@ -65,13 +94,14 @@ export function planListeningPlay(input: {
   limit: number
   plays: readonly Pick<StoredMediaPlay, 'playNumber' | 'playedAt'>[]
   now: Date
+  windowMs: number
 }): ListeningPlan {
   const last = input.plays.reduce<(typeof input.plays)[number] | null>(
     (latest, play) => (latest === null || play.playNumber > latest.playNumber ? play : latest),
     null,
   )
   if (last !== null) {
-    const windowEnds = Date.parse(last.playedAt) + LISTENING_REPLAY_WINDOW_MS
+    const windowEnds = Date.parse(last.playedAt) + input.windowMs
     if (windowEnds > input.now.getTime()) return { kind: 'reuse', expiresAt: new Date(windowEnds) }
   }
   if (input.plays.length >= input.limit)
@@ -82,7 +112,7 @@ export function planListeningPlay(input: {
   return {
     kind: 'count',
     playNumber: input.plays.length + 1,
-    expiresAt: new Date(input.now.getTime() + LISTENING_REPLAY_WINDOW_MS),
+    expiresAt: new Date(input.now.getTime() + input.windowMs),
   }
 }
 
@@ -121,26 +151,32 @@ export async function grantListeningPlay(
     file.attachedId === null
   )
     return null
-  const assignments = await loadListeningAssignments(tx, ctx.institutionId, file.attachedId)
-  if (assignments.length === 0) return null
+  const assignments = await loadVersionAssignments(tx, ctx.institutionId, file.attachedId)
+  const limited = assignments.filter((assignment) => assignment.listeningPlays !== null)
+  if (limited.length === 0) return null
   // Kapsam işlemin bağlantısıyla okunur: PGlite tek bağlantılıdır, `ctx.db` burada beklerdi.
   const viewer = await viewerOf({ ...ctx, db: tx })
   const learnerId = learnerOf(viewer)
   if (learnerId === null) return null
   const byId = new Map(assignments.map((assignment) => [assignment.id, assignment]))
   const attempts = await loadAttemptsAmong(tx, ctx.institutionId, [...byId.keys()], [learnerId])
-  const candidate = attempts
+  const runningAttempts = attempts
     .filter((attempt) => {
       const assignment = byId.get(attempt.assignmentId)
       return assignment !== undefined && running(assignment, attempt, ctx.now)
     })
-    .sort((a, b) => a.startedAt.localeCompare(b.startedAt))[0]
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+  const candidate = runningAttempts.find(
+    (attempt) => byId.get(attempt.assignmentId)?.listeningPlays !== null,
+  )
+  // Yalnız sınırsız atamanın denemesi sürüyorsa hak düşülecek deneme yoktur, bağlantı sayılmaz.
+  if (candidate === undefined && runningAttempts.length > 0) return null
   // Kilitten sonra yeniden okunur: bu arada teslim edilmiş deneme sayılmaz.
   const locked =
     candidate && (await findAttempt(tx, ctx.institutionId, candidate.id, { lock: true }))
   const assignment = locked ? byId.get(locked.assignmentId) : undefined
   if (!locked || !assignment || !running(assignment, locked, ctx.now)) {
-    const open = assignments.some(
+    const open = limited.some(
       (item) => visible(viewer, item) && !isClosed(item.deadline, ctx.now.toISOString()),
     )
     if (open)
@@ -155,7 +191,12 @@ export async function grantListeningPlay(
   const plays = (await loadMediaPlays(tx, ctx.institutionId, locked.id)).filter(
     (play) => play.fileId === file.id,
   )
-  const plan = planListeningPlay({ limit, plays, now: ctx.now })
+  const plan = planListeningPlay({
+    limit,
+    plays,
+    now: ctx.now,
+    windowMs: listeningWindowMs(file.durationMs),
+  })
   if (plan.kind === 'count')
     await insertMediaPlay(tx, ctx.institutionId, {
       id: randomUUID(),
@@ -178,7 +219,8 @@ export async function grantListeningPlay(
 
 /**
  * Deneme okumasındaki dinleme özeti: sınırlı atamada içerik sürümünün dinleme kayıtları ve
- * sayılmış dinlemeler (kayıt sonradan silindiyse de sayım görünür). Sınırsız atamada `null`.
+ * sayılmış dinlemeler (kayıt sonradan silindiyse de sayım görünür). Sınırsız atamada ve sayacak
+ * dinleme kaydı olmayan atamada `null`: uygulanmayan sınır gösterilmez.
  */
 export async function listeningSummary(
   db: Database,
@@ -195,6 +237,7 @@ export async function listeningSummary(
   })
   const plays = await loadMediaPlays(db, institutionId, attemptId)
   const fileIds = [...new Set([...media.map((file) => file.id), ...plays.map((p) => p.fileId)])]
+  if (fileIds.length === 0) return null
   return {
     limit,
     media: fileIds.sort().map((fileId) => {

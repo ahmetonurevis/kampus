@@ -547,7 +547,7 @@ describe('görev atama uçları', () => {
     assert.deepEqual(await snapshot(t.institution.id), before)
   })
 
-  test('ADR 0004 karar 6: dosyalı ve sesli teslim 422 submission_kind_unavailable; DOM-BEC-005 (OG-049): dinleme hakkı core varsayılanıyla 2, 1 ve sınırsız seçilebilir, 3 400', async () => {
+  test('ADR 0004 karar 6 (F4b2b, OG-049): dosyalı ve sesli teslim 422 submission_kind_unavailable; DOM-BEC-005: dinleme görevi gönderilmeyen hakla sınırsız atanır, dolu hak 422 listening_plays_unavailable', async () => {
     const t = await tenant()
     const before = await snapshot(t.institution.id)
     for (const submission of [
@@ -566,51 +566,32 @@ describe('görev atama uçları', () => {
       ownerUserId: t.teacher.id,
       versions: [{ status: 'published', input: listeningQuestion() }],
     })
-    const others = await Promise.all(
-      [0, 1].map(() =>
-        seedResource(db, t.institution.id, {
-          ownerUserId: t.teacher.id,
-          versions: [{ status: 'published', input: listeningQuestion() }],
-        }),
-      ),
-    )
-    const listening = (settings: Record<string, unknown>, versionId = versions[0]!.id) => ({
-      resourceVersionId: versionId,
+    const listening = (settings: Record<string, unknown>) => ({
+      resourceVersionId: versions[0]!.id,
       settings: { deadline: { dueAt: DUE }, ...settings },
       targets: [{ kind: 'class', id: '9-A' }],
     })
-    const invalid = await create(t.cookies.teacher, listening({ listeningPlays: 3 }))
-    assert.equal(invalid.statusCode, 400, invalid.body)
+    // Core içerik modeli dinleme kaydını atanabilen türe bağlamadığından hak sayılamaz: 1 ve 2
+    // reddedilir (TODO(dinleme-icerik-bagi)); kabul edilse sessizce sınırsız olurdu.
+    for (const listeningPlays of [1, 2]) {
+      const rejected = await create(t.cookies.teacher, listening({ listeningPlays }))
+      fails(rejected, 422, 'listening_plays_unavailable')
+      assert.deepEqual(rejected.json().issues?.[0]?.path, ['settings', 'listeningPlays'])
+      assert.match(rejected.json().message, /boş bırakın/)
+    }
     assert.deepEqual(await snapshot(t.institution.id), before)
-    // Gönderilmeyen hak core varsayılanıdır (2).
+    // Gönderilmeyen hak core varsayılanı (2) yerine sınırsız saklanır.
     const data = await ok(await create(t.cookies.teacher, listening({})), 201)
-    assert.equal(data.listeningPlays, 2)
+    assert.equal(data.listeningPlays, null)
     assert.equal(data.scoringMode, 'auto')
-    const storedPlays = async (assignmentId: string) =>
-      (
-        await db
-          .select({ listeningPlays: taskAssignments.listeningPlays })
-          .from(taskAssignments)
-          .where(eq(taskAssignments.id, assignmentId))
-      )[0]?.listeningPlays
-    assert.equal(await storedPlays(data.id), 2)
-    // 1 ve açık sınırsız da kabul edilir.
-    const once = await ok(
-      await create(t.cookies.teacher, listening({ listeningPlays: 1 }, others[0]!.versions[0]!.id)),
-      201,
-    )
-    assert.equal(await storedPlays(once.id), 1)
-    const unlimited = await ok(
-      await create(
-        t.cookies.teacher,
-        listening({ listeningPlays: null }, others[1]!.versions[0]!.id),
-      ),
-      201,
-    )
-    assert.equal(await storedPlays(unlimited.id), null)
-    // Aynı kursiyerlere ikinci açık atama 409.
+    const [stored] = await db
+      .select({ listeningPlays: taskAssignments.listeningPlays })
+      .from(taskAssignments)
+      .where(eq(taskAssignments.id, data.id))
+    assert.equal(stored?.listeningPlays, null)
+    // Açık sınırsız da kabul edilir (aynı kursiyerlere ikinci açık atama 409).
     fails(
-      await create(t.cookies.teacher, listening({ listeningPlays: 1 })),
+      await create(t.cookies.teacher, listening({ listeningPlays: null })),
       409,
       'assignment_duplicate',
     )
@@ -619,7 +600,7 @@ describe('görev atama uçları', () => {
     for (const cookie of [t.cookies.student, t.cookies.parent]) {
       const detail = await ok(await call('GET', `/task-assignments/${data.id}`, cookie))
       assert.equal(detail.view, 'learner')
-      assert.equal(detail.listeningPlays, 2)
+      assert.equal(detail.listeningPlays, null)
       for (const text of ['GIZLI-COZUM', 'correctOptionId', 'answerKey'])
         assert.ok(!JSON.stringify(detail).includes(text), `${text} kursiyere gitti`)
     }

@@ -128,7 +128,7 @@ const taskAttemptDetailSchema = z
       })
       .nullable()
       .describe(
-        'Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız veya dinleme görevi değilse `null`',
+        'Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`',
       ),
   })
   .meta({ id: 'TaskAttemptDetail' })

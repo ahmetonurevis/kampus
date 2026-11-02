@@ -8,12 +8,9 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { files } from '../src/db/schema/files.ts'
-import { attemptMediaPlays } from '../src/db/schema/skills.ts'
+import { attemptMediaPlays, taskAssignments } from '../src/db/schema/skills.ts'
 import { defineFileAttachment } from '../src/services/file-registry.ts'
-import {
-  LISTENING_REPLAY_WINDOW_MS,
-  RESOURCE_VERSION_ATTACHMENT,
-} from '../src/services/listening-plays.ts'
+import { listeningWindowMs, RESOURCE_VERSION_ATTACHMENT } from '../src/services/listening-plays.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -27,11 +24,15 @@ import { createPgDatabase, PG_SKIP } from './support/pg.ts'
 import { seedResource } from './support/resources-sample.ts'
 
 /**
- * PostgreSQL 16: dinleme hakkının eşzamanlı sayımı (OG-049; IST-045, DOM-BEC-005). Deneme satırı
- * `for update` ile kilitlenir; aynı anda gelen bağlantı isteklerinden yalnız biri sayar, ötekiler
- * yeniden bağlantı penceresinde sayılmadan bağlantı alır. PGlite tek bağlantılı olduğundan gerçek
- * eşzamanlılık yalnız burada sınanır.
+ * Altyapı birimi, PostgreSQL 16: dinleme hakkının eşzamanlı sayımı (OG-049; IST-045, DOM-BEC-005).
+ * Deneme satırı `for update` ile kilitlenir; aynı anda gelen bağlantı isteklerinden yalnız biri
+ * sayar, ötekiler yeniden bağlantı penceresinde sayılmadan bağlantı alır. PGlite tek bağlantılı
+ * olduğundan gerçek eşzamanlılık yalnız burada sınanır. Gerçek akışı iddia etmez: dosya soru
+ * sürümüne elle bağlanır, okuma kuralı sahtedir ve atamanın hakkı veritabanında verilir (API dolu
+ * hakkı 422 ile reddeder; `TODO(dinleme-icerik-bagi)`, ayrıntı `listening-plays.test.ts`).
  */
+
+const WINDOW = listeningWindowMs(null)
 
 defineFileAttachment(RESOURCE_VERSION_ATTACHMENT, {
   purposes: ['listening_audio'],
@@ -71,7 +72,7 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
     })
   }
 
-  /** Deniz (`s-1`) 9-A'da; yönetici dinleme sorusunu verilen hakla 9-A'ya atar, Deniz başlatır. */
+  /** Deniz (`s-1`) 9-A'da; yönetici dinleme sorusunu 9-A'ya atar, hak veritabanında verilir, Deniz başlatır. */
   async function setup(listeningPlays: 1 | 2) {
     now = FIXED_NOW
     const institution = await createInstitution(app)
@@ -148,10 +149,14 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
     })
     const created = await call('POST', '/task-assignments', admin, {
       resourceVersionId: versionId,
-      settings: { deadline: { dueAt: '2026-10-20T20:59:00.000Z' }, listeningPlays },
+      settings: { deadline: { dueAt: '2026-10-20T20:59:00.000Z' } },
       targets: [{ kind: 'class', id: '9-A' }],
     })
     assert.equal(created.statusCode, 201, created.body)
+    await db
+      .update(taskAssignments)
+      .set({ listeningPlays })
+      .where(eq(taskAssignments.id, created.json().data.id as string))
     const started = await call(
       'POST',
       `/task-assignments/${created.json().data.id}/attempts`,
@@ -177,7 +182,7 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
     assert.equal(counted.length, 1)
     assert.equal((await playRows(institution.id)).length, 1)
 
-    now = new Date(FIXED_NOW.getTime() + LISTENING_REPLAY_WINDOW_MS)
+    now = new Date(FIXED_NOW.getTime() + WINDOW)
     const late = await Promise.all([request(), request()])
     for (const response of late) {
       assert.equal(response.statusCode, 422, response.body)
@@ -190,7 +195,7 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
     const { institution, student, fileId } = await setup(2)
     const request = () => call('GET', `/files/${fileId}/url`, student)
     assert.equal((await request()).statusCode, 200)
-    now = new Date(FIXED_NOW.getTime() + LISTENING_REPLAY_WINDOW_MS)
+    now = new Date(FIXED_NOW.getTime() + WINDOW)
     const responses = await Promise.all([request(), request()])
     for (const response of responses) assert.equal(response.statusCode, 200, response.body)
     assert.deepEqual(

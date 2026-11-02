@@ -106,7 +106,7 @@ export async function environment(
       .where(eq(institutionSettings.institutionId, ctx.institutionId))
       .limit(1),
   ])
-  const session: Session = { role: ctx.actor.role, links }
+  const session: Session = { role: ctx.actor.role, links, userId: ctx.actor.userId }
   if (childId !== undefined) session.childId = childId
   // Yalnız komutun okuduğu skalerler verilir (core `scalars`); okunmayan alan görünümde yoktur.
   const scalars: Partial<Pick<State, ScalarStateKey>> = {}

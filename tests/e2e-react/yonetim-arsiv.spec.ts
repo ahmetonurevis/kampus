@@ -103,6 +103,7 @@ test.describe('yönetici: dolu arşiv (IST-010)', () => {
       'Hedef sınıfta tüm öğrenciler için yeterli kontenjan yok.',
     )
     await expect(select).toBeFocused()
+    await expect(select).toHaveAttribute('aria-invalid', 'true')
     await expect(toast(page, /kontenjan/)).toHaveCount(0)
     await expect(dialog).toBeVisible()
     expect((await one<ClassRecord>(client, 'classes/c1')).record.isActive).toBe(true)

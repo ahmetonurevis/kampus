@@ -101,6 +101,7 @@ test('yönetici yıl oluşturur, dönem ekler, örtüşmede Türkçe hata görü
     panel.getByText('Dönem, yılın başka bir dönemiyle çakışıyor. Tarihleri değiştirin.'),
   ).toBeVisible()
   await expect(panel.getByLabel('Başlangıç günü')).toBeFocused()
+  await expect(panel.getByLabel('Başlangıç günü')).toHaveAttribute('aria-invalid', 'true')
   await expect(page.getByRole('dialog', { name: 'Dönem ekle' })).toBeVisible()
   expect((await yearsOf(admin)).find((year) => year.startYear === target)?.terms).toHaveLength(1)
 
@@ -112,6 +113,8 @@ test('yönetici yıl oluşturur, dönem ekler, örtüşmede Türkçe hata görü
   await expect(
     panel.getByText('Bu yılda aynı adlı bir dönem var. Farklı bir ad yazın.'),
   ).toBeVisible()
+  await expect(panel.getByLabel('Dönem adı')).toBeFocused()
+  await expect(panel.getByLabel('Dönem adı')).toHaveAttribute('aria-invalid', 'true')
 
   await panel.getByLabel('Dönem adı').fill('2. Dönem')
   await panel.getByRole('button', { name: 'Kaydet' }).click()

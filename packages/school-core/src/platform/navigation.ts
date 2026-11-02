@@ -89,6 +89,7 @@ export const API_COMMUNICATION_PAGES: Record<Role, readonly NavigationPage[]> = 
 
 // İçerik havuzu (ADR 0004, docs/domain/kaynak-platformu.md): yalnız içerik personeli (yönetici,
 // öğretmen; DOM-YTK-021). Öğrenci ve veli içeriği paylaşım ve atamayla görür, ön büro görmez.
+// Sayfa kendi kategorisinin (`group`) sonuna girer.
 // Vue demosunun karşılığı yoktur; mobil API menüsü yalnız taşıdığı sayfaları gösterir.
 const contentPoolPage = (description: string): NavigationPage => ({
   path: 'icerik-havuzu',
@@ -110,7 +111,21 @@ export const API_LEARNING_PAGES: Record<Role, readonly NavigationPage[]> = {
     contentPoolPage('Okuma parçası ve soru hazırlayın, onaya gönderin, yayındaki içeriği izleyin.'),
   ],
   ogrenci: [],
-  veli: [],
+  // Veli Materyaller (OG-982; DOM-KYN-041): öğrencinin "Paylaşılan dosyalar" sekmesinin karşılığı,
+  // seçili çocuğa paylaşılan yayındaki materyal dosyaları salt okunur. Modül öğrencinin
+  // Materyaller sayfasıyla aynıdır (`learning`); kapalıysa menüden ve rotadan kalkar.
+  veli: [
+    {
+      path: 'materyaller',
+      title: 'Materyaller',
+      icon: 'FolderOpen',
+      module: 'learning',
+      view: 'Learning',
+      description: 'Öğretmenlerin çocuğunuzla paylaştığı materyal dosyaları.',
+      group: 'AKADEMİK',
+      apiOnly: true,
+    },
+  ],
 }
 
 // Akademik yönetim (IST-093, DOM-AKD-035): geçmiş günün yoklamasını yalnız yönetici gerekçeyle

@@ -88,6 +88,14 @@ export const resourceListQuerySchema = pageQuerySchema
       .max(200)
       .optional()
       .describe('Kaynak sahibi. Yalnız personel; öğrenci ve velide 400 `staff_only_filter`'),
+    studentId: z
+      .string()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe(
+        'Yalnız öğrenci ve velide: bu öğrencinin gördüğü kaynaklar (DOM-KYN-041). Velide seçili çocuk (velayetli ve kısıtsız bağlı); öğrencide yalnız kendi kaydı. Kapsam dışı öğrenci 404; personelde 400 `learner_only_filter`',
+      ),
     sort: z
       .enum(RESOURCE_SORTS)
       .default('-updatedAt')

@@ -49,11 +49,16 @@ test('Her yol rol içinde tek kez geçer; hesap grubu varsa iletişim ondan önc
 })
 
 test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () => {
-  // Öğrenci ve veli için yalnız izin formu API'ye özgüdür (IST-067); duyuru ve mesaj temel menüde.
+  // Öğrenci ve veli için iletişimde yalnız izin formu API'ye özgüdür (IST-067); duyuru ve mesaj
+  // temel menüde. Velinin Materyaller sayfası da API'ye özgüdür (OG-982).
+  const apiOnly: Record<'ogrenci' | 'veli', string[]> = {
+    ogrenci: ['izin-formlari'],
+    veli: ['materyaller', 'izin-formlari'],
+  }
   for (const role of ['ogrenci', 'veli'] as const)
     assert.deepEqual(
       navigation[role].filter((p) => p.apiOnly).map((p) => p.path),
-      ['izin-formlari'],
+      apiOnly[role],
       `${role}`,
     )
   assert.deepEqual(
@@ -131,6 +136,30 @@ test('Kur ve grup sayfaları yalnız dil okulunda, personelde ve kategorisinin s
       ),
       role,
     )
+})
+
+test('Veli Materyaller sayfası learning modülüne bağlı, AKADEMİK kategorisinin sonunda; Vue demosunda yok (OG-982, DOM-KYN-041)', () => {
+  const pages = navigation.veli
+  const page = pages.find((p) => p.path === 'materyaller')
+  assert.ok(page)
+  assert.equal(page.title, 'Materyaller')
+  assert.equal(page.module, 'learning')
+  assert.equal(page.group, 'AKADEMİK')
+  assert.equal(page.apiOnly, true)
+  assert.equal(page.institutionTypes, undefined)
+  const groups = pages.map((p) => p.group)
+  assert.equal(groups.lastIndexOf('AKADEMİK'), pages.indexOf(page))
+  assert.equal(
+    demoNavigation.veli.some((p: { path: string }) => p.path === 'materyaller'),
+    false,
+  )
+  // Öğrencinin karşılığıyla aynı modül, ad ve simge.
+  const student = navigation.ogrenci.find((p) => p.path === 'materyaller')
+  assert.ok(student)
+  assert.deepEqual(
+    [student.module, student.title, student.icon],
+    ['learning', page.title, page.icon],
+  )
 })
 
 test('İçerik Havuzu yalnız yönetici ve öğretmende, learning modülüne bağlı ve ÖĞRENME kategorisindedir (DOM-YTK-021)', () => {

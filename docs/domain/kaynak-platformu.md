@@ -229,7 +229,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Öğrenci kütüphanesi kendi düzeyindeki içeriği göstermeli; kapsam sızıntısı sunucuda engellenmelidir.
 - **Kaynak:** İşletme kuralı; ADR 0001 karar 7.
 - **Kurum türü:** ikisi
-- **Kodda:** çelişiyor — öğrenci tüm düzeylerin materyallerini görür, düzey yalnız kullanıcının seçtiği filtredir (`apps/web/src/views/Learning.vue:123-133`). Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/visibility.ts` (`canReadVersion`). API: `GET /api/v1/resources` ve ayrıntı (`apps/api/src/services/resources.ts`): öğrenci/veli yalnız güncel yayın sürümünü cevap anahtarsız görür; SQL süzgeci core ile eşit (`apps/api/test/resource-visibility.test.ts`).
+- **Kodda:** çelişiyor — öğrenci tüm düzeylerin materyallerini görür, düzey yalnız kullanıcının seçtiği filtredir (`apps/web/src/views/Learning.vue:123-133`). Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/visibility.ts` (`canReadVersion`). API: `GET /api/v1/resources` ve ayrıntı (`apps/api/src/services/resources.ts`): öğrenci/veli yalnız güncel yayın sürümünü cevap anahtarsız görür; SQL süzgeci core ile eşit (`apps/api/test/resource-visibility.test.ts`). Veli listede `studentId` ile tek çocuğun gördüğüne daraltır (velayetli ve kısıtsız bağ; bağlı olmayan çocuk 404); web'de Materyaller sayfası (`/veli/materyaller`, OG-982).
 
 ### DOM-KYN-042 · Zümre içinde okuma, sahiplikte yazma
 

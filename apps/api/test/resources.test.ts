@@ -463,6 +463,74 @@ describe('içerik havuzu okuma uçları', () => {
     assert.equal((await get(`/resources/${ten.resource.id}`, t.cookies.student)).statusCode, 404)
   })
 
+  test('DOM-KYN-041: velide studentId görünümü seçili çocuğa daraltır; bağlı olmayan ve başka kurumun öğrencisi 404, öğrencide yalnız kendisi, personelde 400', async () => {
+    const t = await tenant()
+    const nine = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'classes',
+      sharedClassIds: ['9-A'],
+      versions: [{ status: 'published', input: { tags: { gradeLevels: [9] } } }],
+    })
+    const ten = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'students',
+      sharedStudentIds: ['s-2'],
+      versions: [{ status: 'published', input: { tags: { gradeLevels: [10] } } }],
+    })
+    const list = (query: string, cookie?: string) => get(`/resources?${query}`, cookie)
+    assert.deepEqual(idsOf((await list('studentId=s-1', t.cookies.twoChildParent)).json()), [
+      nine.resource.id,
+    ])
+    const ece = (await list('studentId=s-2', t.cookies.twoChildParent)).json()
+    assert.deepEqual(idsOf(ece), [ten.resource.id])
+    assert.equal(ece.meta.total, 1)
+    assert.equal(ece.data[0].view, 'learner')
+    // Seçimsiz liste iki çocuğun birleşimidir (değişmedi).
+    assert.deepEqual(
+      idsOf((await list('page=1', t.cookies.twoChildParent)).json()),
+      [nine.resource.id, ten.resource.id].sort(),
+    )
+
+    // Yalnız Deniz'in velisi Ece'yi seçemez; olmayan ve başka kurumun öğrencisi de 404.
+    const b = await tenant()
+    await insertMissingRecords(
+      db,
+      b.institution.id,
+      [
+        {
+          collection: 'students',
+          id: 's-b',
+          data: { id: 's-b', name: 'Başka Öğrenci', classId: '9-A', isActive: true },
+        },
+      ],
+      FIXED_NOW,
+    )
+    for (const [query, cookie] of [
+      ['studentId=s-2', t.cookies.parent],
+      ['studentId=s-yok', t.cookies.twoChildParent],
+      ['studentId=s-b', t.cookies.twoChildParent],
+      ['studentId=s-2', t.cookies.student],
+    ] as const) {
+      const response = await list(query, cookie)
+      assert.equal(response.statusCode, 404, query)
+      assert.equal(response.json().code, 'not_found')
+    }
+    assert.deepEqual(idsOf((await list('studentId=s-1', t.cookies.student)).json()), [
+      nine.resource.id,
+    ])
+
+    const staff = await list('studentId=s-1', t.cookies.teacher)
+    assert.equal(staff.statusCode, 400)
+    assert.equal(staff.json().issues[0].code, 'learner_only_filter')
+    assert.equal((await list('studentId=', t.cookies.twoChildParent)).statusCode, 400)
+    assert.equal((await list('studentId=s-1')).statusCode, 401)
+    assert.equal((await list('studentId=s-1', t.cookies.frontDesk)).statusCode, 403)
+    const closed = await tenant({ enabledModules: { learning: false } })
+    const disabled = await list('studentId=s-1', closed.cookies.twoChildParent)
+    assert.equal(disabled.statusCode, 403)
+    assert.equal(disabled.json().code, 'module_disabled')
+  })
+
   test('DOM-KYN-032/051: personel arşivli sürümü /versions/:id ile okur; öğrenci okuyamaz', async () => {
     const t = await tenant()
     const { resource, versions } = await seedResource(db, t.institution.id, {

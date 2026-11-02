@@ -52,6 +52,7 @@ export const PLATFORM_MIGRATED: readonly string[] = [
   'ogretmen/quiz-olustur',
   'ogrenci/odevler',
   'ogrenci/materyaller',
+  'veli/materyaller',
   'ogrenci/videolar',
   'ogrenci/soru-coz',
   'ogrenci/soru-sor',

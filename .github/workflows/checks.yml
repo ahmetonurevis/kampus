@@ -53,6 +53,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/kurulum
+      # Ses dönüşümü testi (media-ffmpeg.test.ts) ffmpeg/ffprobe ister; ikili yoksa test atlanır.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - working-directory: apps/api
         run: node --test --test-shard=${{ matrix.shard }}/3 'test/**/*.test.ts'
 

@@ -47,10 +47,22 @@ function fakeClient(respond: (url: URL) => Response) {
 }
 
 describe('dashboardKey', () => {
-  test('etkin kurum, rol ve seçili çocuk anahtardadır; boş çocuk null', () => {
+  test('etkin kurum, rol, seçili çocuk ve kampüs anahtardadır; boş değer null', () => {
     assert.deepEqual(
       dashboardKey('inst-a', 'veli', { studentId: 's2' }),
-      institutionKey('inst-a', 'dashboard', 'veli', { studentId: 's2' }),
+      institutionKey('inst-a', 'dashboard', 'veli', { studentId: 's2', branchId: null }),
+    )
+    assert.deepEqual(
+      dashboardKey('inst-a', 'yonetici', { branchId: 'b2' }),
+      institutionKey('inst-a', 'dashboard', 'yonetici', { studentId: null, branchId: 'b2' }),
+    )
+    assert.notDeepEqual(
+      dashboardKey('inst-a', 'yonetici', { branchId: 'b1' }),
+      dashboardKey('inst-a', 'yonetici', { branchId: 'b2' }),
+    )
+    assert.deepEqual(
+      dashboardKey('inst-a', 'yonetici', { branchId: '' }),
+      dashboardKey('inst-a', 'yonetici'),
     )
     assert.deepEqual(dashboardKey('inst-a', 'yonetici'), dashboardKey('inst-a', 'yonetici', {}))
     assert.deepEqual(
@@ -63,11 +75,14 @@ describe('dashboardKey', () => {
 })
 
 describe('fetchDashboard', () => {
-  test('tek GET /api/v1/dashboard; studentId yalnız verilirse gider', async () => {
+  test('tek GET /api/v1/dashboard; studentId ve branchId yalnız verilirse gider', async () => {
     const { client, urls } = fakeClient(() => json(200, { data: teacher }))
     assert.deepEqual(await fetchDashboard(client), teacher)
     await fetchDashboard(client, { studentId: 's2' })
-    assert.equal(urls.length, 2)
+    await fetchDashboard(client, { branchId: 'b2' })
+    assert.equal(urls.length, 3)
+    assert.equal(urls[2]?.searchParams.get('branchId'), 'b2')
+    assert.equal(urls[2]?.searchParams.get('studentId'), null)
     assert.equal(urls[0]?.pathname, '/api/v1/dashboard')
     assert.equal(urls[0]?.search, '')
     assert.equal(urls[1]?.searchParams.get('studentId'), 's2')

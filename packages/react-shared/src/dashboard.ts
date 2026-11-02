@@ -19,12 +19,14 @@ export type DashboardOf<R extends DashboardRole> = Extract<Dashboard, { role: R 
 export interface DashboardQuery {
   /** Yalnız velide: seçili çocuk. Öğrencide sunucu kendi kaydını seçer. */
   studentId?: string | undefined
+  /** Yalnız yönetici ve ön büroda: özeti daraltılacak kampüs; yoksa tüm kampüsler. */
+  branchId?: string | undefined
 }
 
 export const DASHBOARD_KEY_ROOT = 'dashboard'
 
 /**
- * Sorgu anahtarı: etkin kurum, rol ve seçili çocuk. Rol anahtardadır; aynı kurumda rol değişirse
+ * Sorgu anahtarı: etkin kurum, rol, seçili çocuk ve kampüs süzgeci. Rol anahtardadır; aynı kurumda rol değişirse
  * önceki rolün özeti yeni rolün ekranında görünmez.
  */
 export function dashboardKey(
@@ -34,6 +36,7 @@ export function dashboardKey(
 ) {
   return institutionKey(institutionId, DASHBOARD_KEY_ROOT, role, {
     studentId: query.studentId || null,
+    branchId: query.branchId || null,
   })
 }
 
@@ -44,7 +47,12 @@ export async function fetchDashboard(
 ): Promise<Dashboard> {
   const body = await runRequest(() =>
     client.GET('/api/v1/dashboard', {
-      params: { query: query.studentId ? { studentId: query.studentId } : {} },
+      params: {
+        query: {
+          ...(query.studentId ? { studentId: query.studentId } : {}),
+          ...(query.branchId ? { branchId: query.branchId } : {}),
+        },
+      },
       ...(signal ? { signal } : {}),
     }),
   )

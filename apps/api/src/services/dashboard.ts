@@ -38,11 +38,14 @@ const SHORT_LIST = 5
 const LESSON_LIST = 20
 /** Ad eşlemesi için okunan başvuru koleksiyonlarının üst sınırı (web `useCoreAll` ile aynı). */
 const ALL_ROWS = 5000
-/** Aylık tahsilat grafiği ve haftalık devamsızlık grafiğinin dilim sayısı. */
-const MONTHS = 6
+/**
+ * Aylık tahsilat serisinin ay sayısı: web dönem seçicisi (son 6 / 12 ay) aynı yanıtı keser, dönem
+ * değişince yeni istek atılmaz. Haftalık devamsızlık grafiğinin dilim sayısı `WEEKS`'tir.
+ */
+const MONTHS = 12
 const WEEKS = 8
 
-export type DashboardQuery = { studentId?: string | undefined }
+export type DashboardQuery = { studentId?: string | undefined; branchId?: string | undefined }
 
 type Counts = Awaited<ReturnType<typeof countCollection>>
 
@@ -120,6 +123,39 @@ const section = <T>(open: boolean, build: () => Promise<T>): Promise<T | null> =
 
 const ACTIVE = { isActive: true } as const
 
+// --- Kampüs süzgeci (yönetici, ön büro) ------------------------------------------------------
+
+/**
+ * Hiçbir sınıfa karşılık gelmeyen kimlik: sınıfı olmayan kampüste `classId` süzgeci boş dizi olarak
+ * gönderilirse süzgeç hiç uygulanmaz (tüm kurum döner); bu değer boş sonucu garanti eder.
+ */
+const NO_CLASS = '__kampusta-sinif-yok__'
+
+export interface BranchScope {
+  branchId: string
+  /** Kampüsün bütün sınıfları (pasif ve arşivli dahil; geçmiş taksit ve yoklama onlara bağlıdır). */
+  classFilter: { classId: string[] }
+}
+
+/**
+ * Seçili kampüsün sınıf süzgeci; kampüs yoksa ya da aktörün kapsamında değilse 404 (varlık
+ * sızdırılmaz). Taksit, yoklama ve öğrenci okumaları `classId` süzgeciyle aynı okuma servisinden
+ * geçer; öğrencinin güncel sınıfı kapsam kaynağıdır (`CLASS_VIA_STUDENT`).
+ */
+async function branchScope(
+  ctx: ServiceContext,
+  branchId: string | undefined,
+): Promise<BranchScope | null> {
+  if (branchId === undefined) return null
+  const [branches, classes] = await Promise.all([
+    all(ctx, 'branches'),
+    all(ctx, 'classes', { filters: { branchId: [branchId] } }),
+  ])
+  if (!branches.some((item) => item.id === branchId)) throw new NotFoundError()
+  const ids = classes.map((item) => item.id)
+  return { branchId, classFilter: { classId: ids.length > 0 ? ids : [NO_CLASS] } }
+}
+
 // --- Ortak parçalar ---------------------------------------------------------------------------
 
 export interface StatusTotal {
@@ -157,10 +193,15 @@ const invoicesByStatus = (ctx: ServiceContext, filters: CollectionCountQuery['fi
   count(ctx, 'invoices', { groupBy: 'status', sum: 'amount', filters }).then(invoiceSummary)
 
 /** Bugün ödenen taksitler (`paidAt` günü). */
-async function collectedToday(ctx: ServiceContext, today: string): Promise<StatusTotal> {
+async function collectedToday(
+  ctx: ServiceContext,
+  today: string,
+  filters: CollectionCountQuery['filters'] = {},
+): Promise<StatusTotal> {
   const counts = await count(ctx, 'invoices', {
     groupBy: 'status',
     sum: 'amount',
+    filters,
     dateField: 'paidAt',
     dateFrom: today,
     dateTo: today,
@@ -187,8 +228,12 @@ function attendanceCounts(counts: Counts): AttendanceCounts {
   }
 }
 
-const attendanceOfDay = (ctx: ServiceContext, today: string) =>
-  count(ctx, 'attendance', { groupBy: 'status', dateFrom: today, dateTo: today }).then(
+const attendanceOfDay = (
+  ctx: ServiceContext,
+  today: string,
+  filters: CollectionCountQuery['filters'] = {},
+) =>
+  count(ctx, 'attendance', { groupBy: 'status', filters, dateFrom: today, dateTo: today }).then(
     attendanceCounts,
   )
 
@@ -201,11 +246,16 @@ export interface MonthlyCollection {
   months: { month: string; count: number; amount: number }[]
 }
 
-async function monthlyCollection(ctx: ServiceContext, today: string): Promise<MonthlyCollection> {
+async function monthlyCollection(
+  ctx: ServiceContext,
+  today: string,
+  filters: CollectionCountQuery['filters'] = {},
+): Promise<MonthlyCollection> {
   const months = monthKeys(today)
   const counts = await count(ctx, 'invoices', {
     groupBy: 'paidAt:month',
     sum: 'amount',
+    filters,
     dateField: 'paidAt',
     dateFrom: `${months[0] ?? today.slice(0, 7)}-01`,
     dateTo: today,
@@ -254,16 +304,24 @@ function campusOccupancy(
   }))
 }
 
-async function adminDashboard(ctx: ServiceContext, scope: Scope, today: string) {
+async function adminDashboard(
+  ctx: ServiceContext,
+  scope: Scope,
+  today: string,
+  branch: BranchScope | null,
+) {
+  const ofBranch = branch?.classFilter ?? {}
+  const inBranch = branch ? { branchId: [branch.branchId] } : {}
   const [students, studentsByClass, classes, teachers, recent, classRefs, branchRefs] =
     await Promise.all([
-      count(ctx, 'students', { groupBy: 'isActive' }),
-      count(ctx, 'students', { groupBy: 'classId', isActive: true }),
-      count(ctx, 'classes', { groupBy: 'branchId', sum: 'capacity', ...ACTIVE }),
+      count(ctx, 'students', { groupBy: 'isActive', filters: ofBranch }),
+      count(ctx, 'students', { groupBy: 'classId', isActive: true, filters: ofBranch }),
+      count(ctx, 'classes', { groupBy: 'branchId', sum: 'capacity', filters: inBranch, ...ACTIVE }),
       count(ctx, 'teachers', { groupBy: 'isActive' }),
       list(ctx, 'students', {
         pageSize: SHORT_LIST,
         sort: [{ field: 'createdAt', descending: true }],
+        filters: ofBranch,
         ...ACTIVE,
       }),
       all(ctx, 'classes'),
@@ -272,13 +330,13 @@ async function adminDashboard(ctx: ServiceContext, scope: Scope, today: string) 
   const [finance, attendanceToday] = await Promise.all([
     section(opens(scope, 'invoices'), async () => {
       const [invoices, today_, monthly] = await Promise.all([
-        invoicesByStatus(ctx),
-        collectedToday(ctx, today),
-        monthlyCollection(ctx, today),
+        invoicesByStatus(ctx, ofBranch),
+        collectedToday(ctx, today, ofBranch),
+        monthlyCollection(ctx, today, ofBranch),
       ])
       return { invoices, collectedToday: today_, monthlyCollection: monthly }
     }),
-    section(opens(scope, 'attendance'), () => attendanceOfDay(ctx, today)),
+    section(opens(scope, 'attendance'), () => attendanceOfDay(ctx, today, ofBranch)),
   ])
   return {
     role: 'yonetici' as const,
@@ -297,7 +355,12 @@ async function adminDashboard(ctx: ServiceContext, scope: Scope, today: string) 
       number: text(item.record.number),
       className: item.joined?.className,
     })),
-    campuses: campusOccupancy(branchRefs, classRefs, studentsByClass, classes),
+    campuses: campusOccupancy(
+      branch ? branchRefs.filter((item) => item.id === branch.branchId) : branchRefs,
+      classRefs,
+      studentsByClass,
+      classes,
+    ),
   }
 }
 
@@ -324,23 +387,41 @@ function invoiceRow(item: CollectionItem): InvoiceRow {
   }
 }
 
-const invoiceList = (ctx: ServiceContext, status: string, sort: CollectionListQuery['sort']) =>
-  list(ctx, 'invoices', { pageSize: SHORT_LIST, filters: { status: [status] }, sort }).then(
-    (result) => result.items.map(invoiceRow),
-  )
+const invoiceList = (
+  ctx: ServiceContext,
+  status: string,
+  sort: CollectionListQuery['sort'],
+  filters: CollectionCountQuery['filters'] = {},
+) =>
+  list(ctx, 'invoices', {
+    pageSize: SHORT_LIST,
+    filters: { ...filters, status: [status] },
+    sort,
+  }).then((result) => result.items.map(invoiceRow))
 
-async function frontDeskDashboard(ctx: ServiceContext, scope: Scope, today: string) {
+async function frontDeskDashboard(
+  ctx: ServiceContext,
+  scope: Scope,
+  today: string,
+  branch: BranchScope | null,
+) {
+  const ofBranch = branch?.classFilter ?? {}
   const [finance, prospects] = await Promise.all([
     section(opens(scope, 'invoices'), async () => {
       const [invoices, paidToday, overdue, upcoming, recentPayments] = await Promise.all([
-        invoicesByStatus(ctx),
-        collectedToday(ctx, today),
-        invoiceList(ctx, OVERDUE, [{ field: 'dueDate', descending: false }]),
-        invoiceList(ctx, UPCOMING, [{ field: 'dueDate', descending: false }]),
-        invoiceList(ctx, PAID, [
-          { field: 'updatedAt', descending: true },
-          { field: 'dueDate', descending: true },
-        ]),
+        invoicesByStatus(ctx, ofBranch),
+        collectedToday(ctx, today, ofBranch),
+        invoiceList(ctx, OVERDUE, [{ field: 'dueDate', descending: false }], ofBranch),
+        invoiceList(ctx, UPCOMING, [{ field: 'dueDate', descending: false }], ofBranch),
+        invoiceList(
+          ctx,
+          PAID,
+          [
+            { field: 'updatedAt', descending: true },
+            { field: 'dueDate', descending: true },
+          ],
+          ofBranch,
+        ),
       ])
       return { invoices, collectedToday: paidToday, overdue, upcoming, recentPayments }
     }),
@@ -627,13 +708,21 @@ export async function getDashboard(
         message: 'Öğrenci seçimi yalnız öğrenci ve veli özetinde kullanılır.',
       },
     ])
+  if (query.branchId !== undefined && role !== 'yonetici' && role !== 'onburo')
+    throw new ValidationError([
+      {
+        path: ['branchId'],
+        code: 'invalid_value',
+        message: 'Kampüs süzgeci yalnız yönetici ve ön büro özetinde kullanılır.',
+      },
+    ])
   const scope = await readScope(ctx)
   const today = dayKey(ctx.now)
   switch (role) {
     case 'yonetici':
-      return adminDashboard(ctx, scope, today)
+      return adminDashboard(ctx, scope, today, await branchScope(ctx, query.branchId))
     case 'onburo':
-      return frontDeskDashboard(ctx, scope, today)
+      return frontDeskDashboard(ctx, scope, today, await branchScope(ctx, query.branchId))
     case 'ogretmen':
       return teacherDashboard(ctx, scope, today)
     case 'ogrenci':

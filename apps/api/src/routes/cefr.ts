@@ -143,7 +143,7 @@ export function registerCefrRoutes(app: FastifyInstance) {
         operationId: 'scorePlacementSection',
         tags: ['learning'],
         summary: 'Tespit bölümünü puanla',
-        description: `Bölüm girişi (DOM-DIL-010, IST-058). Dil kullanımı, okuma ve dinleme \`answers\` taşır; puan formun o bölümdeki sorularının anahtarıyla sunucuda hesaplanır, yalnız süren oturumda (409 \`placement_completed\`), formda bölüm yoksa 422 \`placement_section_empty\`. Yazma ve konuşma yayındaki rubrik sürümüyle (404, 409 \`rubric_version_unpublished\`) kriter bantı ve görevin hedef seviyesini taşır; oturum bittikten sonra da girilir. Her bölüm bir kez (409 \`placement_section_scored\`); karar verilmiş oturumda giriş yok (409 \`placement_already_decided\`). ${VERSIONED} ${PLACEMENT_ACCESS}`,
+        description: `Bölüm girişi (DOM-DIL-010, IST-058). Dil kullanımı, okuma ve dinleme \`answers\` taşır; puan formun o bölümdeki sorularının anahtarıyla sunucuda hesaplanır, yalnız süren oturumda (409 \`placement_completed\`), formda bölüm yoksa 422 \`placement_section_empty\`. Yazma ve konuşma yayındaki, bölümle aynı becerideki rubrik sürümüyle (404, 409 \`rubric_version_unpublished\`, 422 \`placement_rubric_skill_mismatch\`) kriter bantı ve görevin hedef seviyesini taşır; oturum bittikten sonra da girilir. Her bölüm bir kez (409 \`placement_section_scored\`); karar verilmiş oturumda giriş yok (409 \`placement_already_decided\`). ${VERSIONED} ${PLACEMENT_ACCESS}`,
         params: placementSessionParamsSchema,
         body: scorePlacementSectionBodySchema,
         headers,

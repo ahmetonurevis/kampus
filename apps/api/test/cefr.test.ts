@@ -111,7 +111,7 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
 
   /**
    * Dil okulu: Deniz (`s-deniz`) öğretmenin grubundadır, Ece (`s-ece`) hiçbir grupta değildir.
-   * Aday `p-aday`. Form üç otomatik bölümde ikişer B1 sorusu taşır; rubrik yayındadır.
+   * Aday `p-aday`. Form üç otomatik bölümde ikişer B1 sorusu taşır; yazma ve konuşma rubrikleri yayındadır.
    */
   async function tenant(type: 'school' | 'language_school' = 'language_school') {
     clientIp = `10.54.${(tenantCount += 1)}.1`
@@ -172,25 +172,42 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
       license: { kind: 'institution_original' },
       tags: { subjectId: 'ingilizce', gradeLevels: [9] },
     })
-    const rubricId = randomUUID()
-    const rubricVersionId = randomUUID()
+    // Yazma ve konuşma için birer yayındaki rubrik; kriter kimlikleri ortaktır (`bands`).
     const at = { createdAt: FIXED_NOW, updatedAt: FIXED_NOW }
-    await db.insert(rubrics).values({
-      institutionId: institution.id,
-      id: rubricId,
-      ownerUserId: institution.admin.id,
-      ...at,
-    })
-    await db.insert(rubricVersions).values({
-      institutionId: institution.id,
-      id: rubricVersionId,
-      rubricId,
-      versionNumber: 1,
-      status: 'published',
-      ...sampleRubricData(),
-      publishedAt: FIXED_NOW,
-      ...at,
-    })
+    const writing = sampleRubricData()
+    const speaking = {
+      ...writing,
+      title: 'Konuşma rubriği',
+      skill: 'speaking' as const,
+      criteria: writing.criteria.map((criterion, index) => ({
+        ...criterion,
+        aspect: index === 0 ? 'range' : 'accuracy',
+      })),
+    }
+    const rubricVersionIds: Record<string, string> = {}
+    for (const [section, data] of [
+      ['writing', writing],
+      ['speaking', speaking],
+    ] as const) {
+      const rubricId = randomUUID()
+      rubricVersionIds[section] = randomUUID()
+      await db.insert(rubrics).values({
+        institutionId: institution.id,
+        id: rubricId,
+        ownerUserId: institution.admin.id,
+        ...at,
+      })
+      await db.insert(rubricVersions).values({
+        institutionId: institution.id,
+        id: rubricVersionIds[section]!,
+        rubricId,
+        versionNumber: 1,
+        status: 'published',
+        ...data,
+        publishedAt: FIXED_NOW,
+        ...at,
+      })
+    }
     const openBody = (overrides: Record<string, unknown> = {}) => ({
       learnerKind: 'student',
       learnerId: 's-deniz',
@@ -199,7 +216,7 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
       mode: 'in_person',
       ...overrides,
     })
-    const t = { institution, users, cookies, questions, openBody, rubricVersionId }
+    const t = { institution, users, cookies, questions, openBody, rubricVersionIds }
     if (type === 'language_school') await joinTeacherGroup(t)
     return t
   }
@@ -291,7 +308,7 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
   const rubricBody = (t: Tenant, section: string, version: number, band = 3) => ({
     version,
     section,
-    rubricVersionId: t.rubricVersionId,
+    rubricVersionId: t.rubricVersionIds[section],
     targetLevel: 'B1',
     criteria: bands(band),
   })
@@ -512,7 +529,7 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
     return current
   }
 
-  test('DOM-DIL-010 sürüm tutmazsa 409; bölüm bir kez, otomatik bölüm bitişten sonra girilmez', async () => {
+  test('DOM-DIL-010 sürüm tutmazsa 409; bölüm bir kez, otomatik bölüm bitişten sonra girilmez; rubrik becerisi bölümle aynı', async () => {
     const t = await tenant()
     const session = await ok(await open(t), 201)
     fails(
@@ -546,6 +563,30 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
       await command(t.cookies.teacher, session.id, 'decide', decideBody(done.version)),
       422,
       'placement_production_missing',
+    )
+    // Taslak rubrik sürümüyle puanlanmaz.
+    await db
+      .update(rubricVersions)
+      .set({ status: 'draft', publishedAt: null })
+      .where(eq(rubricVersions.id, t.rubricVersionIds.speaking!))
+    fails(
+      await command(
+        t.cookies.teacher,
+        session.id,
+        'score',
+        rubricBody(t, 'speaking', done.version),
+      ),
+      409,
+      'rubric_version_unpublished',
+    )
+    // Rubriğin becerisi bölümle aynı olmalı: yazma rubriğiyle konuşma puanlanmaz.
+    fails(
+      await command(t.cookies.teacher, session.id, 'score', {
+        ...rubricBody(t, 'speaking', done.version),
+        rubricVersionId: t.rubricVersionIds.writing,
+      }),
+      422,
+      'placement_rubric_skill_mismatch',
     )
     fails(
       await command(t.cookies.teacher, session.id, 'score', {

@@ -534,10 +534,23 @@ export function scorePlacementSection(
         } else {
           const rubric = await loadRubric(tx, ctx, String(body.rubricVersionId))
           if (rubric.status !== 'published') {
-            throw new DomainError(
-              'rubric_version_unpublished',
-              'Yalnız yayındaki rubrik sürümüyle puanlanır.',
-              { kind: 'conflict', path: ['rubricVersionId'] },
+            throw mapOperationError(
+              new DomainError(
+                'rubric_version_unpublished',
+                'Yalnız yayındaki rubrik sürümüyle puanlanır.',
+                { kind: 'conflict', path: ['rubricVersionId'] },
+              ),
+            )
+          }
+          // Yazma bölümü yazma, konuşma bölümü konuşma rubriğiyle puanlanır; başka becerinin
+          // kriterleri bölümün seviye kanıtı olamaz.
+          if (rubric.skill !== body.section) {
+            throw mapOperationError(
+              new DomainError(
+                'placement_rubric_skill_mismatch',
+                'Rubriğin becerisi puanlanan bölümle aynı olmalıdır.',
+                { path: ['rubricVersionId'] },
+              ),
             )
           }
           scoring = { mode: 'rubric', rubric }

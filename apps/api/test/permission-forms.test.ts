@@ -215,6 +215,42 @@ describe('izin formu uçları', () => {
     (await loadRecords(db, institutionId, ['notifications']))
       .map((row) => row.data)
       .filter((n) => n.kind === kind)
+  /** Velinin öğrenci bağını yönetici olarak değiştirir (velayet, iletişim kısıtı). */
+  async function setBond(
+    institution: { adminCookie: string },
+    membershipId: string,
+    body: Record<string, unknown>,
+    studentId = 's1',
+  ) {
+    const bonds = await read(institution.adminCookie, `/api/v1/students/${studentId}/guardians`)
+    assert.equal(bonds.statusCode, 200, bonds.body)
+    const own = (bonds.json().data as Json[]).find((bond) => bond.membershipId === membershipId)
+    assert.ok(own)
+    const changed = await send(
+      'PATCH',
+      `/api/v1/students/${studentId}/guardians/${own.id as string}`,
+      institution.adminCookie,
+      body,
+      ifMatch(own.rowVersion as number),
+    )
+    assert.equal(changed.statusCode, 200, changed.body)
+  }
+  const identity = (institutionId: string, studentId: string, birthDate: string) =>
+    db.insert(studentIdentities).values({
+      institutionId,
+      studentId,
+      academicYear: 2026,
+      identityKind: 'foreign',
+      identityNumber: `YK-${studentId}`,
+      birthDate,
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })
+  const studentOf = (form: Json, studentId: string): Json => {
+    const found = (form.students as Json[]).find((item) => item.studentId === studentId)
+    assert.ok(found, `${studentId} formda yok`)
+    return found
+  }
   async function detail(cookie: string, id: string): Promise<Json> {
     const response = await read(cookie, `/api/v1/permission-forms/${id}`)
     assert.equal(response.statusCode, 200, response.body)
@@ -458,20 +494,7 @@ describe('izin formu uçları', () => {
     const anne = await mother(a.id)
     // Öğrencide velayetli bir veli kalmalı (DOM-ILT-075): baba velayetli kalır.
     await father(a.id)
-    const bonds = await read(a.adminCookie, '/api/v1/students/s1/guardians')
-    assert.equal(bonds.statusCode, 200, bonds.body)
-    const own = (bonds.json().data as Json[]).find(
-      (bond) => bond.membershipId === anne.membershipId,
-    )
-    assert.ok(own)
-    const lifted = await send(
-      'PATCH',
-      `/api/v1/students/s1/guardians/${own.id as string}`,
-      a.adminCookie,
-      { custody: 'none' },
-      ifMatch(own.rowVersion as number),
-    )
-    assert.equal(lifted.statusCode, 200, lifted.body)
+    await setBond(a, anne.membershipId, { custody: 'none' })
     await unchanged(a.id, async () => {
       assertError(await decide(anne.cookie, form.id, APPROVE), 404, 'not_found')
       assertError(await read(anne.cookie, `/api/v1/permission-forms/${form.id as string}`), 404)
@@ -518,7 +541,7 @@ describe('izin formu uçları', () => {
     assert.equal((await closeForm(t1, closedForm.id, ifMatch(1))).statusCode, 200)
     const anne = await mother(a.id)
     // Son gün (9 Ekim) Europe/Istanbul gün sonuna kadar karar alınır.
-    now = new Date('2026-10-09T20:59:00.000Z')
+    now = new Date('2026-10-09T20:59:59.000Z')
     try {
       assert.equal((await decide(anne.cookie, form.id, APPROVE)).statusCode, 201)
       now = new Date('2026-10-09T21:00:00.000Z')
@@ -540,6 +563,169 @@ describe('izin formu uçları', () => {
     } finally {
       now = FIXED_NOW
     }
+  })
+
+  test('DOM-ILT-071: kararın ardından velayeti kaldırılan velinin kararı sayılmaz, durum yeniden bekliyor', async () => {
+    const a = await institution()
+    const form = await opened(await teacher(a.id, 't1'))
+    const anne = await mother(a.id)
+    const baba = await father(a.id)
+    const approved = await decide(anne.cookie, form.id, APPROVE)
+    assert.equal(approved.json().data.studentStatus, 'approved')
+    assert.equal(studentOf(await detail(a.adminCookie, form.id), 's1').status, 'approved')
+
+    await setBond(a, anne.membershipId, { custody: 'none' })
+    // Annenin kararı geçmiş olarak kalır, durumu etkilemez; baba karar vermedi.
+    const after = await detail(a.adminCookie, form.id)
+    const deniz = studentOf(after, 's1')
+    assert.equal(deniz.status, 'pending')
+    assert.equal(after.counts.approved, 0)
+    assert.deepEqual(
+      (deniz.decisions as Json[]).map((d) => [d.decision, d.decidedByUserId]),
+      [['approved', anne.id]],
+    )
+    // Velayetli babanın kararı sayılır.
+    const rejected = await decide(baba.cookie, form.id, REJECT)
+    assert.equal(rejected.json().data.studentStatus, 'rejected')
+    const fixed = await decide(baba.cookie, form.id, APPROVE)
+    assert.equal(fixed.json().data.studentStatus, 'approved')
+    assert.equal(studentOf(await detail(a.adminCookie, form.id), 's1').status, 'approved')
+  })
+
+  test('DOM-ILT-074, DOM-ILT-037: iletişimi kısıtlanan veli formu okuyamaz, karar veremez (404); eski kararı sayılmaz', async () => {
+    const a = await institution()
+    const form = await opened(await teacher(a.id, 't1'))
+    const anne = await mother(a.id)
+    await father(a.id)
+    assert.equal((await decide(anne.cookie, form.id, REJECT)).statusCode, 201)
+    assert.equal(studentOf(await detail(a.adminCookie, form.id), 's1').status, 'rejected')
+
+    await setBond(a, anne.membershipId, { custody: 'none', contactRestricted: true })
+    await unchanged(a.id, async () => {
+      assertError(await decide(anne.cookie, form.id, APPROVE), 404, 'not_found')
+      assertError(await read(anne.cookie, `/api/v1/permission-forms/${form.id as string}`), 404)
+    })
+    assert.equal((await read(anne.cookie, '/api/v1/permission-forms')).json().meta.total, 0)
+    // Kısıtlı velinin reddi durumu belirlemez.
+    assert.equal(studentOf(await detail(a.adminCookie, form.id), 's1').status, 'pending')
+  })
+
+  test('DOM-ILT-036, DOM-ILT-037: okulda 18 yaşını doldurmuş öğrencinin bildirimi kendisine gider, form veliye görünmez', async () => {
+    const a = await institution()
+    await identity(a.id, 's1', '2008-01-15')
+    const form = await opened(await teacher(a.id, 't1'))
+    const sent = await notices(a.id)
+    assert.deepEqual(
+      sent
+        .filter((n) => n.studentId === 's1')
+        .map((n) => n.audience)
+        .sort(),
+      ['student'],
+    )
+    assert.ok(sent.filter((n) => n.studentId !== 's1').every((n) => n.audience === 'parent'))
+    // Annenin formdaki tek çocuğu Deniz yetişkin: form ona görünmez, karar 404 değil 403'tür.
+    const anne = await mother(a.id)
+    assert.equal((await read(anne.cookie, '/api/v1/permission-forms')).json().meta.total, 0)
+    assertError(await read(anne.cookie, `/api/v1/permission-forms/${form.id as string}`), 404)
+    // Deniz kendi kararını verir ve formu görür.
+    const deniz = await student(a.id, 's1')
+    const own = await decide(deniz, form.id, APPROVE)
+    assert.equal(own.statusCode, 201, own.body)
+    assert.equal(own.json().data.relation, 'self')
+    assert.equal(studentOf(await detail(deniz, form.id), 's1').status, 'approved')
+  })
+
+  test('DOM-ILT-030: dil okulunda adayı minor:false olan, kimlik satırı bulunmayan kursiyer kendi kararını verir', async () => {
+    const a = await institution(
+      { type: 'language_school' },
+      {
+        prospects: [
+          {
+            id: 'pr-s2',
+            studentId: 's2',
+            minor: false,
+            stage: 'Kayıt oldu',
+            createdAt: '2026-09-01T09:00:00.000Z',
+          },
+        ],
+      },
+    )
+    const form = await opened(a.adminCookie, { ...FORM, classIds: [], studentIds: ['s1', 's2'] })
+    assert.deepEqual((await notices(a.id)).map((n) => [n.audience, n.studentId]).sort(), [
+      ['parent', 's1'],
+      ['student', 's2'],
+    ])
+    const anne = await mother(a.id)
+    await unchanged(a.id, async () => {
+      assertError(
+        await decide(anne.cookie, form.id, { ...APPROVE, studentId: 's2' }),
+        403,
+        'permission_adult_self',
+      )
+    })
+    const own = await decide(await student(a.id, 's2'), form.id, { ...APPROVE, studentId: 's2' })
+    assert.equal(own.statusCode, 201, own.body)
+    assert.equal(own.json().data.relation, 'self')
+    assert.equal(own.json().data.studentStatus, 'approved')
+    // Anne yalnız Deniz'i görür.
+    assert.deepEqual((await detail(anne.cookie, form.id)).studentIds, ['s1'])
+  })
+
+  test('DOM-ILT-037: öğrenci ve veli yalnız kendisini/çocuğunu görür; hedef sınıf ve öğretmen dönmez', async () => {
+    const a = await institution()
+    const form = await opened(await teacher(a.id, 't1'))
+    for (const cookie of [await student(a.id, 's1'), (await mother(a.id)).cookie]) {
+      const seen = await detail(cookie, form.id)
+      assert.deepEqual(seen.studentIds, ['s1'])
+      assert.deepEqual(
+        (seen.students as Json[]).map((item) => item.studentId),
+        ['s1'],
+      )
+      assert.deepEqual(seen.counts, { pending: 1, approved: 0, rejected: 0, total: 1 })
+      assert.equal('classIds' in seen, false)
+      assert.equal('teacherId' in seen, false)
+      const listed = (await read(cookie, '/api/v1/permission-forms')).json().data[0] as Json
+      assert.equal('classIds' in listed, false)
+      assert.equal('teacherId' in listed, false)
+    }
+    const admin = await detail(a.adminCookie, form.id)
+    assert.deepEqual(admin.classIds, ['c1'])
+    assert.equal(admin.teacherId, 't1')
+  })
+
+  test('DOM-ILT-037: derse giren öğretmen velinin notunu ve karar satırını görmez, rehber ve yönetici görür', async () => {
+    const a = await institution()
+    const form = await opened(await teacher(a.id, 't1'))
+    const baba = await father(a.id)
+    assert.equal((await decide(baba.cookie, form.id, REJECT)).statusCode, 201)
+    const notes = (seen: Json) =>
+      (studentOf(seen, 's1').decisions as Json[]).map((d) => [d.decision, d.note])
+    const lesson = await detail(await teacher(a.id, 't2'), form.id)
+    assert.equal(studentOf(lesson, 's1').status, 'rejected')
+    assert.deepEqual(notes(lesson), [])
+    assert.equal(JSON.stringify(lesson).includes(REJECT.note), false)
+    const expected = [['rejected', REJECT.note]]
+    assert.deepEqual(notes(await detail(await teacher(a.id, 't1'), form.id)), expected)
+    assert.deepEqual(notes(await detail(a.adminCookie, form.id)), expected)
+    assert.deepEqual(notes(await detail(baba.cookie, form.id)), expected)
+    assert.deepEqual(notes(await detail(await student(a.id, 's1'), form.id)), expected)
+  })
+
+  test('DOM-ILT-031, DOM-ILT-034: eşzamanlı kararlar sırayla yazılır; aynı kişinin aynı kararı tek satır', async () => {
+    const a = await institution()
+    const form = await opened(await teacher(a.id, 't1'))
+    const anne = await mother(a.id)
+    const baba = await father(a.id)
+    const [first, second, third] = await Promise.all([
+      decide(anne.cookie, form.id, APPROVE),
+      decide(baba.cookie, form.id, REJECT),
+      decide(anne.cookie, form.id, APPROVE),
+    ])
+    assert.equal(second?.statusCode, 201, second?.body)
+    assert.deepEqual([first?.statusCode, third?.statusCode].sort(), [200, 201])
+    assert.equal(first?.json().data.id, third?.json().data.id)
+    assert.equal((await loadRecords(db, a.id, ['permissionDecisions'])).length, 2)
+    assert.equal(studentOf(await detail(a.adminCookie, form.id), 's1').status, 'rejected')
   })
 
   // --- Bildirim --------------------------------------------------------------------------------

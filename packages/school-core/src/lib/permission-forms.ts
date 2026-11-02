@@ -8,6 +8,7 @@ import type { Participant } from './communication.ts'
 import type { MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
+import type { LearnerAgeFacts } from './notifications.ts'
 import type { RequestActor } from './requests.ts'
 
 /**
@@ -25,9 +26,10 @@ import type { RequestActor } from './requests.ts'
  * - Formu yönetici her sınıf ve öğrenciye, sınıf rehber öğretmeni yalnız rehberi olduğu sınıflara
  *   ve o sınıfların öğrencilerine açar; hedef öğrenciler açılışta çözülür ve saklanır (DOM-ILT-036).
  * - Karar öğrenci başınadır: 18 yaş altında velayetli ve kısıtsız her veli kendi kararını verir,
- *   18 yaşını doldurmuş öğrenci kendisi verir. Her karar yeni satırdır; geçerli durum her
- *   karar verenin son kararından hesaplanır, saklanmaz; bir ret onayın önüne geçer (DOM-ILT-031,
- *   DOM-ILT-034, DOM-ILT-037).
+ *   18 yaşını doldurmuş öğrenci kendisi verir (`permissionDecider`; bildirim kitlesi de buradan).
+ *   Her karar yeni satırdır; geçerli durum bugün karar vermeye yetkili olanların son kararından
+ *   hesaplanır, saklanmaz; velayeti kalkan velinin eski kararı sayılmaz; bir ret onayın önüne
+ *   geçer (DOM-ILT-031, DOM-ILT-034, DOM-ILT-037, DOM-ILT-071).
  * - Son gün Europe/Istanbul'a göre o günün sonuna kadardır; sonra ve kapalı formda karar
  *   verilmez, değişmez (DOM-ILT-030, DOM-ILT-038).
  * - Kararı olan formun hedefi daraltılamaz, form arşivlenemez (kapatılır); son günü geçmiş formun
@@ -199,7 +201,7 @@ const formNotFound = () =>
 const partiesOf = (form: PermissionFormRecord | undefined): PermissionFormParties | undefined =>
   form && { teacherId: form.teacherId, classIds: form.classIds, studentIds: form.studentIds }
 
-/** Doğum tarihi (`YYYY-MM-DD`); kayıtta yoksa ya da geçersizse `null` (öğrenci 18 yaş altı sayılır). */
+/** Doğum tarihi (`YYYY-MM-DD`); kayıtta yoksa ya da geçersizse `null`. */
 export function studentBirthDate(student: object): string | null {
   const value: unknown = Object.hasOwn(student, 'birthDate')
     ? Reflect.get(student, 'birthDate')
@@ -207,13 +209,28 @@ export function studentBirthDate(student: object): string | null {
   return typeof value === 'string' && isCalendarDay(value) ? value : null
 }
 
+/** Öğrencinin izin kararını kim verir: kendisi (`self`) ya da velayetli velileri (`guardians`). */
+export type PermissionDecider = 'self' | 'guardians'
+
 /**
- * Öğrenci `now` anında 18 yaşını doldurmuş mu (Europe/Istanbul günü); doğum tarihi bilinmiyorsa
- * hayır (en korumalı yorum, DOM-KAY-009 ve `lib/consents.ts` ile aynı).
+ * İzin kararını veren tarafın tek kaynağı (DOM-ILT-030, DOM-ILT-037): karar yetkisi, bildirim
+ * kitlesi (form açılışı, hatırlatma) ve velinin formu görmesi bu sonuca göredir. Doğum tarihi
+ * (API'de `student_identities`, ADR 0006 karar 9) biliniyorsa `now` anındaki Europe/Istanbul
+ * gününe göre 18 yaşını dolduran öğrenci kendisi karar verir; kurum türü fark etmez (18 yaşındaki
+ * lise öğrencisi de kendisi verir). Doğum tarihi yoksa en korumalı yorum 18 altıdır; yalnız dil
+ * okulunda adayın açık `minor: false` seçimiyle kesin kayda alınan kursiyer yetişkindir (`prospects`
+ * kaydı, DOM-DIL-091; okulda aday `minor: false` olamaz).
  */
-export function isAdultLearner(student: object, now: string): boolean {
-  const birthDate = studentBirthDate(student)
-  return birthDate !== null && ageOn(birthDate, now) >= ADULT_AGE
+export function permissionDecider(
+  facts: LearnerAgeFacts,
+  options: { institutionType?: InstitutionType | undefined; now: string },
+): PermissionDecider {
+  const birthDate =
+    facts.birthDate !== undefined && isCalendarDay(facts.birthDate) ? facts.birthDate : null
+  if (birthDate !== null) return ageOn(birthDate, options.now) >= ADULT_AGE ? 'self' : 'guardians'
+  return options.institutionType === 'language_school' && facts.prospectMinor === false
+    ? 'self'
+    : 'guardians'
 }
 
 /** Son günün bittiği an (UTC ISO): Europe/Istanbul günü sonu; Türkiye sabit UTC+3'tür. */
@@ -486,8 +503,12 @@ export function archivePermissionForm(
 }
 
 export type DecideOptions = PermissionFormOptions & {
-  /** Öğrencinin kimlik satırındaki doğum tarihi; öğrenci kaydındakinin yerine geçer. */
-  birthDate?: string
+  /**
+   * Öğrencinin yaşına dair bilinenler (API'de kimlik satırının doğum tarihi ve adayın 18 yaş
+   * seçimi). Verilmezse yalnız öğrenci kaydındaki doğum tarihi okunur: aday koleksiyonu karar
+   * komutunun koleksiyonlarında değildir (`modules/commands.ts`).
+   */
+  learner?: LearnerAgeFacts
 }
 
 export type DecisionOutcome = {
@@ -504,8 +525,8 @@ export type DecisionOutcome = {
  * kendisinden alınır (veliye 403 `permission_adult_self`). Pasif öğrenci 422 `student_inactive`;
  * kapalı form 422 `permission_form_closed`; son gün geçtiyse 422 `permission_form_deadline_passed`.
  * Her karar yeni satırdır (DOM-ILT-034); aynı kişinin son kararıyla aynı karar ve not yeni satır
- * açmaz. Yaş `options.birthDate` (API'de kimlik satırı, ADR 0006 karar 9) verilirse ondan, yoksa
- * öğrenci kaydındaki doğum tarihinden hesaplanır.
+ * açmaz. Karar veren taraf `permissionDecider`'dandır: `options.learner` (API'de kimlik satırı,
+ * ADR 0006 karar 9, ve aday) verilirse ondan, yoksa öğrenci kaydındaki doğum tarihinden.
  */
 export function decidePermission(
   state: State,
@@ -529,10 +550,11 @@ export function decidePermission(
   const student = state.students.find((s) => s.id === data.studentId)
   if (!student)
     throw new DomainError('student_not_found', 'Öğrenci bulunamadı.', { kind: 'not_found' })
-  const adult = isAdultLearner(
-    options.birthDate === undefined ? student : { birthDate: options.birthDate },
-    now,
-  )
+  const learner: LearnerAgeFacts = options.learner ?? {
+    birthDate: studentBirthDate(student) ?? undefined,
+  }
+  const adult =
+    permissionDecider(learner, { institutionType: options.institutionType, now }) === 'self'
   if (by.role === 'veli' && adult)
     throw new DomainError(
       'permission_adult_self',
@@ -592,20 +614,36 @@ export function latestDecisions<
 }
 
 /**
- * Öğrencinin geçerli izin durumu (DOM-ILT-031, -037). Yalnız öğrencinin bugünkü durumuna uyan
- * kararlar sayılır: 18 yaş altında veli (`guardian`), 18 yaşını doldurmuşsa kendisi (`self`).
- * Her karar verenin son kararı alınır; bir ret varsa `rejected`, yoksa bir onay `approved`, hiç
- * karar yoksa `pending` (sessizlik onay değildir, DOM-ILT-030).
+ * Öğrencinin bugün kararı sayılanlar: karar veren taraf (`permissionDecider`) ve velayetli,
+ * iletişim kısıtı olmayan velilerin kullanıcı kimlikleri (API'de `student_guardians`,
+ * `lib/guardianship.ts` `isCustodial`; DOM-ILT-070…072).
+ */
+export type PermissionDeciders = {
+  decider: PermissionDecider
+  guardianUserIds: ReadonlySet<string>
+}
+
+/**
+ * Öğrencinin geçerli izin durumu (DOM-ILT-031, -037, -071). Yalnız bugün karar vermeye yetkili
+ * olanların kararları sayılır: 18 yaşını doldurmuşsa öğrencinin kendisi (`self`), 18 yaş altında
+ * bugün velayetli ve kısıtsız veliler (`guardian`). Velayeti kalkan ya da iletişimi kısıtlanan
+ * velinin kararı satır olarak kalır (ispat, DOM-ILT-034) ama durumu etkilemez. Her karar verenin
+ * son kararı alınır; bir ret varsa `rejected`, yoksa bir onay `approved`, hiç karar yoksa
+ * `pending` (sessizlik onay değildir, DOM-ILT-030).
  */
 export function permissionStatus(
   decisions: readonly Pick<
     PermissionDecisionRecord,
     'decidedByUserId' | 'decidedAt' | 'decision' | 'relation'
   >[],
-  adult: boolean,
+  deciders: PermissionDeciders,
 ): PermissionStatus {
-  const relation = adult ? 'self' : 'guardian'
-  const latest = latestDecisions(decisions.filter((d) => d.relation === relation))
+  const counted = decisions.filter((d) =>
+    deciders.decider === 'self'
+      ? d.relation === 'self'
+      : d.relation === 'guardian' && deciders.guardianUserIds.has(d.decidedByUserId),
+  )
+  const latest = latestDecisions(counted)
   if (latest.some((d) => d.decision === 'rejected')) return 'rejected'
   if (latest.some((d) => d.decision === 'approved')) return 'approved'
   return 'pending'
@@ -638,7 +676,7 @@ const dayNumber = (day: string) => Date.parse(`${day}T00:00:00Z`) / 86_400_000
 /**
  * Hatırlatılacaklar (DOM-ILT-039): açık formlarda son güne `PERMISSION_REMINDER_DAYS` gün kalan
  * (Europe/Istanbul günü) ve kararı beklenen (`pending`) öğrenciler. Saf hesaptır; reddetmiş veya
- * onaylamış öğrenciye hatırlatma gitmez. `adult` öğrencinin bugünkü yaş durumudur.
+ * onaylamış öğrenciye hatırlatma gitmez. `deciders` öğrencinin bugün kararı sayılanlarıdır.
  */
 export function permissionReminders(input: {
   forms: readonly Pick<PermissionFormRecord, 'id' | 'deadline' | 'status' | 'studentIds'>[]
@@ -646,7 +684,7 @@ export function permissionReminders(input: {
     PermissionDecisionRecord,
     'formId' | 'studentId' | 'decidedByUserId' | 'decidedAt' | 'decision' | 'relation'
   >[]
-  adult: (studentId: string) => boolean
+  deciders: (studentId: string) => PermissionDeciders
   now: string
 }): PermissionReminder[] {
   const today = dayKey(input.now)
@@ -666,7 +704,7 @@ export function permissionReminders(input: {
       (studentId) =>
         permissionStatus(
           decisions.filter((d) => d.studentId === studentId),
-          input.adult(studentId),
+          input.deciders(studentId),
         ) === 'pending',
     )
     if (studentIds.length > 0)

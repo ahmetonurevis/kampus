@@ -10,10 +10,12 @@ import {
   isPermissionFormOpen,
   permissionCounts,
   permissionDeadlineEndsAt,
+  permissionDecider,
   permissionReminders,
   permissionStatus,
   updatePermissionForm,
   type PermissionDecisionRecord,
+  type PermissionDeciders,
 } from '../packages/school-core/src/lib/permission-forms.ts'
 import { scopeFor, type ScopeSource } from '../packages/school-core/src/lib/scope.ts'
 import { NOTIFICATION_TYPES } from '../packages/school-core/src/modules/notification-types.ts'
@@ -57,6 +59,13 @@ function unchanged(state: State, action: () => unknown, check: (e: unknown) => b
   assert.throws(action, check)
   assert.equal(snapshot(state), before)
 }
+
+/** Bugün kararı sayılanlar: varsayılan anne ve baba velayetli (`student_guardians`). */
+const guardians = (...userIds: string[]): PermissionDeciders => ({
+  decider: 'guardians',
+  guardianUserIds: new Set(userIds.length > 0 ? userIds : ['u-p1', 'u-p1b']),
+})
+const SELF: PermissionDeciders = { decider: 'self', guardianUserIds: new Set(['u-p1', 'u-p1b']) }
 
 const open = (state: State, by: Participant = teacher('t1'), input: object = FORM) =>
   createPermissionForm(state, by, input, id, now)
@@ -284,7 +293,7 @@ test('DOM-ILT-037: veli kendi çocuğu için karar verir; değişiklik yeni sat�
   )
   assert.equal(changed.created, true)
   assert.equal(state.permissionDecisions.length, 2)
-  assert.equal(permissionStatus(state.permissionDecisions, false), 'rejected')
+  assert.equal(permissionStatus(state.permissionDecisions, guardians()), 'rejected')
 })
 
 test('DOM-ILT-037: veli başka çocuk ve hedefte olmayan çocuk için karar veremez (404)', () => {
@@ -414,9 +423,9 @@ test('DOM-ILT-030: 18 yaşını doldurmuş öğrenci kendisi karar verir; 18 alt
     now,
   )
   assert.equal(own.decision.relation, 'self')
-  assert.equal(permissionStatus(state.permissionDecisions, true), 'approved')
+  assert.equal(permissionStatus(state.permissionDecisions, SELF), 'approved')
   // Veli kararı yetişkin öğrencide sayılmaz.
-  assert.equal(permissionStatus(state.permissionDecisions, false), 'pending')
+  assert.equal(permissionStatus(state.permissionDecisions, guardians()), 'pending')
 })
 
 test('DOM-ILT-030: kimlik satırındaki doğum tarihi öğrenci kaydının yerine geçer', () => {
@@ -426,7 +435,7 @@ test('DOM-ILT-030: kimlik satırındaki doğum tarihi öğrenci kaydının yerin
     state,
     () =>
       decidePermission(state, mother, form.id, { studentId: 's1', decision: 'approved' }, id, now, {
-        birthDate: '2008-10-06',
+        learner: { birthDate: '2008-10-06' },
       }),
     isDomainError('permission_adult_self', 'forbidden'),
   )
@@ -437,7 +446,73 @@ test('DOM-ILT-030: kimlik satırındaki doğum tarihi öğrenci kaydının yerin
     { studentId: 's1', decision: 'approved' },
     id,
     now,
-    { birthDate: '2008-10-06' },
+    { learner: { birthDate: '2008-10-06' } },
+  )
+  assert.equal(own.decision.relation, 'self')
+})
+
+test('DOM-ILT-030, DOM-ILT-037: permissionDecider karar vereni tek kaynaktan seçer', () => {
+  const at = (institutionType: 'school' | 'language_school') => ({ institutionType, now })
+  // Doğum tarihi biliniyorsa kurum türü fark etmez: 18 yaşındaki lise öğrencisi kendisi verir.
+  assert.equal(permissionDecider({ birthDate: '2008-10-06' }, at('school')), 'self')
+  assert.equal(permissionDecider({ birthDate: '2008-10-07' }, at('school')), 'guardians')
+  assert.equal(permissionDecider({ birthDate: '2008-10-06' }, at('language_school')), 'self')
+  // Doğum günü Europe/Istanbul gününe göredir: 5 Ekim 21:00Z İstanbul'da 6 Ekim'dir.
+  assert.equal(
+    permissionDecider(
+      { birthDate: '2008-10-06' },
+      { institutionType: 'school', now: '2026-10-05T21:00:00.000Z' },
+    ),
+    'self',
+  )
+  assert.equal(
+    permissionDecider(
+      { birthDate: '2008-10-06' },
+      { institutionType: 'school', now: '2026-10-05T20:59:59.000Z' },
+    ),
+    'guardians',
+  )
+  // Doğum tarihi yoksa 18 altı; yalnız dil okulunda adayın açık `minor: false` seçimi yetişkindir.
+  assert.equal(permissionDecider({}, at('school')), 'guardians')
+  assert.equal(permissionDecider({}, at('language_school')), 'guardians')
+  assert.equal(permissionDecider({ prospectMinor: false }, at('language_school')), 'self')
+  assert.equal(permissionDecider({ prospectMinor: true }, at('language_school')), 'guardians')
+  assert.equal(permissionDecider({ prospectMinor: false }, at('school')), 'guardians')
+  // Doğum tarihi aday seçiminin önüne geçer; geçersiz tarih bilinmiyor sayılır.
+  assert.equal(
+    permissionDecider({ birthDate: '2015-01-01', prospectMinor: false }, at('language_school')),
+    'guardians',
+  )
+  assert.equal(permissionDecider({ birthDate: '2008-02-30' }, at('school')), 'guardians')
+})
+
+test('DOM-ILT-030: dil okulunda adayı minor:false kursiyer kendi kararını verir, veli 403', () => {
+  const state = seed()
+  const form = open(state, admin, { ...FORM, classIds: [], studentIds: ['s1'] })
+  // Kimlik satırı yok; kesin kayda alınan adayın 18 yaş seçimini servis verir.
+  const options = { institutionType: 'language_school' as const, learner: { prospectMinor: false } }
+  unchanged(
+    state,
+    () =>
+      decidePermission(
+        state,
+        mother,
+        form.id,
+        { studentId: 's1', decision: 'approved' },
+        id,
+        now,
+        options,
+      ),
+    isDomainError('permission_adult_self', 'forbidden'),
+  )
+  const own = decidePermission(
+    state,
+    studentOf('s1'),
+    form.id,
+    { studentId: 's1', decision: 'approved' },
+    id,
+    now,
+    options,
   )
   assert.equal(own.decision.relation, 'self')
 })
@@ -467,13 +542,14 @@ test('DOM-ILT-031: iki velinin çelişen kararında ret geçerlidir; durum son k
     decision: value,
     relation: 'guardian',
   })
-  assert.equal(permissionStatus([], false), 'pending')
+  const both = guardians('a', 'b')
+  assert.equal(permissionStatus([], both), 'pending')
   assert.equal(
-    permissionStatus([decision('a', 'approved', '1'), decision('b', 'rejected', '1')], false),
+    permissionStatus([decision('a', 'approved', '1'), decision('b', 'rejected', '1')], both),
     'rejected',
   )
   assert.equal(
-    permissionStatus([decision('a', 'rejected', '1'), decision('a', 'approved', '2')], false),
+    permissionStatus([decision('a', 'rejected', '1'), decision('a', 'approved', '2')], both),
     'approved',
   )
   assert.deepEqual(permissionCounts(['pending', 'approved', 'approved', 'rejected']), {
@@ -482,6 +558,33 @@ test('DOM-ILT-031: iki velinin çelişen kararında ret geçerlidir; durum son k
     rejected: 1,
     total: 4,
   })
+})
+
+test('DOM-ILT-071: velayeti kalkan ya da kısıtlanan velinin kararı satır olarak kalır, sayılmaz', () => {
+  const decision = (
+    by: string,
+    value: 'approved' | 'rejected',
+  ): Pick<PermissionDecisionRecord, 'decidedByUserId' | 'decidedAt' | 'decision' | 'relation'> => ({
+    decidedByUserId: by,
+    decidedAt: now,
+    decision: value,
+    relation: 'guardian',
+  })
+  const decisions = [decision('u-p1', 'approved'), decision('u-p1b', 'rejected')]
+  assert.equal(permissionStatus(decisions, guardians('u-p1', 'u-p1b')), 'rejected')
+  // Babanın velayeti kalktı: reddi sayılmaz, annenin onayı geçerli.
+  assert.equal(permissionStatus(decisions, guardians('u-p1')), 'approved')
+  // Anne onayladı, sonra velayeti kalktı; baba karar vermedi: bekliyor.
+  assert.equal(permissionStatus([decisions[0]!], guardians('u-p1b')), 'pending')
+  // Yetişkin öğrencide velayetli velinin kararı da sayılmaz.
+  assert.equal(permissionStatus(decisions, SELF), 'pending')
+  assert.equal(
+    permissionStatus(
+      [{ decidedByUserId: 'u-s1', decidedAt: now, decision: 'approved', relation: 'self' }],
+      guardians('u-s1'),
+    ),
+    'pending',
+  )
 })
 
 // --- Hatırlatma ve bildirim --------------------------------------------------------------------
@@ -495,7 +598,7 @@ test('DOM-ILT-039: hatırlatma son güne 2 gün kala ve son gün yalnız bekleye
     permissionReminders({
       forms: state.permissionForms,
       decisions: state.permissionDecisions,
-      adult: () => false,
+      deciders: () => guardians(),
       now: at,
     })
   // 6 Ekim: son güne 3 gün var, hatırlatma yok.
@@ -565,7 +668,12 @@ test('DOM-ILT-037, DOM-ILT-073: form ve karar okuma kapsamı; veli yalnız kendi
   )
   assert.equal(scope(mother).canRead('permissionDecisions', mine.decision), true)
   assert.equal(scope(mother).canRead('permissionDecisions', theirs.decision), false)
+  // Velinin notunu rehber öğretmen görür; derse giren öğretmen karar satırını görmez.
   assert.equal(scope(teacher('t1')).canRead('permissionDecisions', theirs.decision), true)
+  assert.equal(scope(teacher('t2')).canRead('permissionDecisions', theirs.decision), false)
+  assert.equal(scope(teacher('t5')).canRead('permissionDecisions', theirs.decision), false)
+  assert.equal(scope(studentOf('s1')).canRead('permissionDecisions', theirs.decision), true)
+  assert.equal(scope(studentOf('s25')).canRead('permissionDecisions', theirs.decision), false)
   assert.ok(scope(teacher('t1')).hiddenFields('permissionDecisions').includes('decidedByUserId'))
   assert.deepEqual(scope(admin).hiddenFields('permissionDecisions'), [])
 })

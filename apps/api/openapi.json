@@ -10482,21 +10482,21 @@
             "description": "Son günün bittiği an, ISO 8601 UTC"
           },
           "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "Hedef sınıflar"
+            }
           },
           "studentIds": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür"
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
           },
           "teacherId": {
-            "description": "Formu açan öğretmen; yönetici açtıysa `null`",
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
             "type": [
               "string",
               "null"
@@ -10542,9 +10542,7 @@
           "description",
           "deadline",
           "deadlineEndsAt",
-          "classIds",
           "studentIds",
-          "teacherId",
           "status",
           "closedAt",
           "acceptingDecisions",
@@ -10654,7 +10652,7 @@
             "items": {
               "$ref": "#/components/schemas/PermissionDecisionInput"
             },
-            "description": "Okuyanın görebildiği kararlar, karar anına göre (veli yalnız kendi kararını görür)"
+            "description": "Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`)"
           }
         },
         "required": [
@@ -10702,21 +10700,21 @@
             "description": "Son günün bittiği an, ISO 8601 UTC"
           },
           "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "Hedef sınıflar"
+            }
           },
           "studentIds": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür"
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
           },
           "teacherId": {
-            "description": "Formu açan öğretmen; yönetici açtıysa `null`",
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
             "type": [
               "string",
               "null"
@@ -10765,9 +10763,7 @@
           "description",
           "deadline",
           "deadlineEndsAt",
-          "classIds",
           "studentIds",
-          "teacherId",
           "status",
           "closedAt",
           "acceptingDecisions",
@@ -10815,21 +10811,21 @@
             "description": "Son günün bittiği an, ISO 8601 UTC"
           },
           "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "Hedef sınıflar"
+            }
           },
           "studentIds": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür"
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
           },
           "teacherId": {
-            "description": "Formu açan öğretmen; yönetici açtıysa `null`",
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
             "type": [
               "string",
               "null"
@@ -10884,9 +10880,7 @@
           "description",
           "deadline",
           "deadlineEndsAt",
-          "classIds",
           "studentIds",
-          "teacherId",
           "status",
           "closedAt",
           "acceptingDecisions",
@@ -21707,21 +21701,21 @@
             "description": "Son günün bittiği an, ISO 8601 UTC"
           },
           "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "Hedef sınıflar"
+            }
           },
           "studentIds": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür"
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
           },
           "teacherId": {
-            "description": "Formu açan öğretmen; yönetici açtıysa `null`",
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
             "type": [
               "string",
               "null"
@@ -21767,9 +21761,7 @@
           "description",
           "deadline",
           "deadlineEndsAt",
-          "classIds",
           "studentIds",
-          "teacherId",
           "status",
           "closedAt",
           "acceptingDecisions",
@@ -21882,7 +21874,7 @@
             "items": {
               "$ref": "#/components/schemas/PermissionDecision"
             },
-            "description": "Okuyanın görebildiği kararlar, karar anına göre (veli yalnız kendi kararını görür)"
+            "description": "Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`)"
           }
         },
         "required": [
@@ -21931,21 +21923,21 @@
             "description": "Son günün bittiği an, ISO 8601 UTC"
           },
           "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "Hedef sınıflar"
+            }
           },
           "studentIds": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür"
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
           },
           "teacherId": {
-            "description": "Formu açan öğretmen; yönetici açtıysa `null`",
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
             "type": [
               "string",
               "null"
@@ -21994,9 +21986,7 @@
           "description",
           "deadline",
           "deadlineEndsAt",
-          "classIds",
           "studentIds",
-          "teacherId",
           "status",
           "closedAt",
           "acceptingDecisions",
@@ -22045,21 +22035,21 @@
             "description": "Son günün bittiği an, ISO 8601 UTC"
           },
           "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "Hedef sınıflar"
+            }
           },
           "studentIds": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür"
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
           },
           "teacherId": {
-            "description": "Formu açan öğretmen; yönetici açtıysa `null`",
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
             "type": [
               "string",
               "null"
@@ -22114,9 +22104,7 @@
           "description",
           "deadline",
           "deadlineEndsAt",
-          "classIds",
           "studentIds",
-          "teacherId",
           "status",
           "closedAt",
           "acceptingDecisions",

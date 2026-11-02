@@ -10,6 +10,7 @@ import {
   classOrBranch,
   classOrEveryone,
   gradeReader,
+  homeroomStudent,
   member,
   NONE,
   ownBranch,
@@ -186,11 +187,13 @@ export const PLATFORM_READ_RULES = {
     ogrenci: (c, r) => texts(r, 'studentIds').some((id) => c.studentIds.has(id)),
     veli: (c, r) => texts(r, 'studentIds').some((id) => c.studentIds.has(id)),
   },
-  // Kararı formun öğretmeni ve öğrencinin öğretmeni görür; veli yalnız kendi verdiği kararı
-  // görür, ayrı velilerin kararı ve notu birbirine görünmez (DOM-ILT-073, DOM-ILT-037).
+  // Kararı ve velinin notunu (kvkk: Ç) yönetici, öğrencinin sınıf rehber öğretmeni ve öğrencinin
+  // kendisi görür; veli yalnız kendi verdiği kararı görür, ayrı velilerin kararı ve notu
+  // birbirine görünmez (DOM-ILT-073). Derse giren öğretmen (formu açan da olsa rehber değilse)
+  // karar satırını görmez, öğrencinin hesaplanan durumunu görür (DOM-ILT-037).
   permissionDecisions: {
     ...ADMIN,
-    ogretmen: (c, r) => ownTeacher(c, r) || ownStudent(c, r),
+    ogretmen: homeroomStudent,
     ogrenci: ownStudent,
     veli: (c, r) =>
       ownStudent(c, r) && c.userId !== undefined && text(r, 'decidedByUserId') === c.userId,

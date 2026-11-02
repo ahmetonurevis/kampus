@@ -13,7 +13,9 @@ import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts
 /**
  * İzin formu uçlarının şemaları (IST-067; docs/domain/iletisim-ve-veli.md DOM-ILT-030, -031,
  * -036…039). Gövdeler core işlem şemalarıdır (`lib/permission-forms.ts`), katıdır (bilinmeyen
- * alan 400). Yanıt beyaz listedir: karar verenin kullanıcı kimliği yalnız yöneticiye döner.
+ * alan 400). Yanıt beyaz listedir: karar verenin kullanıcı kimliği yalnız yöneticiye döner;
+ * hedef sınıflar ve formu açan öğretmen veli ve öğrenciye dönmez; karar satırı ve velinin notu
+ * yalnız yönetici, rehber öğretmen, kararı veren veli ve öğrenciye döner (DOM-ILT-037).
  */
 
 const identifier = z.string().min(1).max(200)
@@ -54,13 +56,20 @@ export const permissionFormSchema = z
       .date()
       .describe('Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)'),
     deadlineEndsAt: instant.describe('Son günün bittiği an, ISO 8601 UTC'),
-    classIds: z.array(z.string()).describe('Hedef sınıflar'),
+    classIds: z
+      .array(z.string())
+      .optional()
+      .describe('Hedef sınıflar; yalnız yönetici ve öğretmene döner'),
     studentIds: z
       .array(z.string())
       .describe(
-        'Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür',
+        'Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür',
       ),
-    teacherId: z.string().nullable().describe('Formu açan öğretmen; yönetici açtıysa `null`'),
+    teacherId: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner'),
     status: z
       .enum(PERMISSION_FORM_STATUSES)
       .describe('Türetilir: kapatılmış ya da son günü geçmişse `closed`'),
@@ -110,7 +119,7 @@ export const permissionStudentSchema = z
     decisions: z
       .array(permissionDecisionSchema)
       .describe(
-        'Okuyanın görebildiği kararlar, karar anına göre (veli yalnız kendi kararını görür)',
+        'Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`)',
       ),
   })
   .meta({ id: 'PermissionFormStudent' })

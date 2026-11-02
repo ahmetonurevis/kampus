@@ -1,21 +1,25 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
+import { isCustodial } from '@kampus/school-core/lib/guardianship.ts'
+import type { LearnerAgeFacts } from '@kampus/school-core/lib/notifications.ts'
 import {
   archivePermissionForm,
   closePermissionForm,
   createPermissionForm,
   decidePermission,
   decidePermissionSchema,
-  isAdultLearner,
   isPermissionFormOpen,
   permissionCounts,
   permissionDeadlineEndsAt,
+  permissionDecider,
   permissionStatus,
   PERMISSION_FORM_TOPIC_KEYS,
   updatePermissionForm,
+  type PermissionDecider,
   type PermissionDecisionRecord,
+  type PermissionDeciders,
   type PermissionFormTopic,
   type PermissionStatus,
 } from '@kampus/school-core/lib/permission-forms.ts'
@@ -24,17 +28,13 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import type { CollectionName, RecordData } from '../db/collections.ts'
-import {
-  findRecord,
-  loadRecords,
-  loadRecordsByIds,
-  type RecordFilter,
-  type StoredRecord,
-} from '../db/records.ts'
+import { findRecord, loadRecords, type RecordFilter, type StoredRecord } from '../db/records.ts'
 import { studentIdentities } from '../db/schema/student-identities.ts'
+import { loadGuardianAccounts } from '../db/student-guardians.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment } from './commands.ts'
+import { getInstitutionModules } from './modules.ts'
 import { notify } from './notify.ts'
 import {
   runCommand,
@@ -57,10 +57,14 @@ import { assertReadable, readScope } from './read-scope.ts'
  * Okuma core kapsamıyladır: yönetici bütün formları, öğretmen açtığı ve sınıflarına ya da
  * öğrencilerine açılmış formları, veli ve öğrenci hedefinde çocuğu/kendisi olan formları görür;
  * ön büro okumaz (403). Formun hedef öğrencilerinden yönetici ve formun öğretmeni hepsini, öbür
- * öğretmen kapsamındakileri, veli çocuğunu, öğrenci kendisini görür. Öğrencinin durumu formun
- * bütün kararlarından hesaplanır (saklanmaz, DOM-ILT-037): veli öbür velinin kararını ve notunu
- * görmez ama reddi durumda görür. Yaş kimlik satırındaki doğum tarihinden (`student_identities`,
- * ADR 0006 karar 9), yoksa öğrenci kaydından okunur; bilinmiyorsa öğrenci 18 yaş altıdır.
+ * öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür; yetişkin
+ * öğrencinin formu veliye görünmez ve bildirimi veliye gitmez. Öğrencinin durumu formun bugün
+ * sayılan kararlarından hesaplanır (saklanmaz, DOM-ILT-037, DOM-ILT-071): yetişkinde kendisi,
+ * 18 yaş altında bugün velayetli ve kısıtsız veliler (`student_guardians`). Veli öbür velinin
+ * kararını ve notunu görmez ama reddi durumda görür. Karar satırını ve notu yönetici, rehber
+ * öğretmen, kararı veren veli ve öğrenci görür; derse giren öğretmen yalnız durumu görür. Karar
+ * veren taraf tek kaynaktandır (core `permissionDecider`): kimlik satırındaki doğum tarihi
+ * (`student_identities`, ADR 0006 karar 9), yoksa dil okulunda adayın 18 yaş seçimi.
  *
  * Yazmalar kurumun bütün formlarını kurum kilidi altında yüklemez: açarken hiçbirini, diğer
  * işlemlerde hedef formu ve (gerekiyorsa) kararlarını yükler. Karar notu loglanmaz (pino
@@ -102,13 +106,15 @@ const accepting = (record: RecordData, now: Date) =>
 
 /**
  * Formun yanıt görünümü (beyaz liste). `studentIds` okuyanın gördüğü hedef öğrencilerdir;
- * `visible` verilmezse hepsi (yazma yanıtı: yazan yönetici ya da formun öğretmenidir).
+ * `visible` verilmezse hepsi (yazma yanıtı: yazan yönetici ya da formun öğretmenidir). Veli ve
+ * öğrenci (`personal`) hedef sınıfları ve formu açan öğretmeni görmez: başka sınıfların ve
+ * öğretmenin kimliği onlara gerekmez.
  */
 function formView(
   record: RecordData,
   meta: RowMeta,
   now: Date,
-  visible?: (studentId: string) => boolean,
+  view: { visible?: (studentId: string) => boolean; personal?: boolean } = {},
 ) {
   const deadline = deadlineOf(record)
   const open = accepting(record, now)
@@ -121,9 +127,9 @@ function formView(
     description: text(record.description) ?? '',
     deadline,
     deadlineEndsAt: permissionDeadlineEndsAt(deadline),
-    classIds: texts(record.classIds),
-    studentIds: visible ? studentIds.filter(visible) : studentIds,
-    teacherId: text(record.teacherId),
+    ...(view.personal ? {} : { classIds: texts(record.classIds) }),
+    studentIds: view.visible ? studentIds.filter(view.visible) : studentIds,
+    ...(view.personal ? {} : { teacherId: text(record.teacherId) }),
     status: open ? ('open' as const) : ('closed' as const),
     closedAt: text(record.closedAt),
     acceptingDecisions: open,
@@ -134,43 +140,12 @@ function formView(
 
 type Scope = Awaited<ReturnType<typeof readScope>>
 
-async function readableScope(ctx: ServiceContext) {
-  const scope = await readScope(ctx)
-  // Modül (`communication`) ve rol kuralı; kapalıysa 403 `module_disabled`, ön büro 403.
-  assertReadable(ctx, scope, FORMS)
-  assertReadable(ctx, scope, DECISIONS)
-  return scope
-}
-
-/** Okuyanın formda gördüğü hedef öğrenciler (DOM-ILT-037). */
-function studentVisibility(scope: Scope, record: RecordData): (studentId: string) => boolean {
-  const role = scope.actor.role
-  const owner = scope.teacher !== undefined && text(record.teacherId) === scope.teacher.id
-  if (role === 'yonetici' || (role === 'ogretmen' && owner)) return () => true
-  return (studentId) => scope.studentIds.has(studentId)
-}
-
 /**
- * Öğrencilerin doğum tarihleri: kimlik satırı (ADR 0006 karar 9), yoksa öğrenci kaydındaki alan;
- * ikisi de yoksa `null`. Kişisel veri; yalnız yaş hesabında kullanılır, yanıta girmez.
+ * Öğrencilerin doğum tarihleri, kimlik satırından (ADR 0006 karar 9). Kurumda öğrencinin tek
+ * kimlik satırı vardır (birincil anahtar kurum + öğrenci); anahtar değişse de sonuç belirsiz
+ * kalmasın diye arşivlenmemiş satır, sonra en son eğitim yılı ve en son güncellenen seçilir.
+ * Kişisel veri; yalnız yaş hesabında kullanılır, yanıta ve loga girmez.
  */
-async function birthDatesOf(
-  db: Database,
-  institutionId: string,
-  studentIds: readonly string[],
-): Promise<Map<string, string | null>> {
-  const ids = [...new Set(studentIds)]
-  const result = new Map<string, string | null>(ids.map((id) => [id, null]))
-  if (ids.length === 0) return result
-  for (const row of await loadRecordsByIds(db, institutionId, 'students', ids)) {
-    const birthDate = text(row.data.birthDate)
-    if (birthDate !== null) result.set(row.id, birthDate)
-  }
-  const identities = await identityBirthDates(db, institutionId, ids)
-  for (const [studentId, birthDate] of identities) result.set(studentId, birthDate)
-  return result
-}
-
 async function identityBirthDates(
   db: Database,
   institutionId: string,
@@ -184,11 +159,151 @@ async function identityBirthDates(
       and(
         eq(studentIdentities.institutionId, institutionId),
         inArray(studentIdentities.studentId, [...studentIds]),
-        isNull(studentIdentities.archivedAt),
       ),
     )
-  return new Map(rows.map((row) => [row.studentId, row.birthDate]))
+    .orderBy(
+      asc(studentIdentities.studentId),
+      sql`${studentIdentities.archivedAt} is null desc`,
+      desc(studentIdentities.academicYear),
+      desc(studentIdentities.updatedAt),
+    )
+  const result = new Map<string, string>()
+  for (const row of rows) if (!result.has(row.studentId)) result.set(row.studentId, row.birthDate)
+  return result
 }
+
+/**
+ * Öğrencilerin yaşına dair bilinenler (core `permissionDecider` girdisi): kimlik satırındaki
+ * doğum tarihi ve kesin kayda alınan adayın 18 yaş seçimi (`prospects.minor`; birden çok aday
+ * varsa en son güncellenenin açık seçimi). Sorgular sıralıdır: transaction tek bağlantıdır.
+ */
+async function learnerFactsOf(
+  db: Database,
+  institutionId: string,
+  studentIds: readonly string[],
+): Promise<Map<string, LearnerAgeFacts>> {
+  const ids = [...new Set(studentIds)]
+  const facts = new Map<string, LearnerAgeFacts>(ids.map((id) => [id, {}]))
+  if (ids.length === 0) return facts
+  const births = await identityBirthDates(db, institutionId, ids)
+  const prospects = await loadRecords(db, institutionId, ['prospects'], {
+    match: [{ kind: 'equals', field: 'studentId', values: ids }],
+  })
+  const chosen = new Map<string, StoredRecord>()
+  for (const row of prospects) {
+    const studentId = text(row.data.studentId)
+    if (studentId === null || typeof row.data.minor !== 'boolean') continue
+    const current = chosen.get(studentId)
+    if (!current || row.updatedAt > current.updatedAt) chosen.set(studentId, row)
+  }
+  for (const id of ids) {
+    const birthDate = births.get(id)
+    const minor = chosen.get(id)?.data.minor
+    facts.set(id, {
+      ...(birthDate === undefined ? {} : { birthDate }),
+      ...(typeof minor === 'boolean' ? { prospectMinor: minor } : {}),
+    })
+  }
+  return facts
+}
+
+/** Öğrencilerin kararını kim verir (core `permissionDecider`); bilinmeyen öğrenci veliyle. */
+async function decidersFor(
+  db: Database,
+  institutionId: string,
+  institutionType: InstitutionType,
+  studentIds: readonly string[],
+  now: Date,
+): Promise<Map<string, PermissionDecider>> {
+  const facts = await learnerFactsOf(db, institutionId, studentIds)
+  const at = now.toISOString()
+  return new Map(
+    [...facts].map(([id, learner]) => [
+      id,
+      permissionDecider(learner, { institutionType, now: at }),
+    ]),
+  )
+}
+
+/**
+ * Öğrencilerin bugün velayetli ve iletişim kısıtı olmayan velilerinin kullanıcı kimlikleri
+ * (`student_guardians`, core `isCustodial`; DOM-ILT-070…072). Hesabı olmayan veli karar veremez.
+ */
+async function custodialUserIds(
+  db: Database,
+  institutionId: string,
+  studentIds: readonly string[],
+): Promise<Map<string, Set<string>>> {
+  const result = new Map<string, Set<string>>(studentIds.map((id) => [id, new Set<string>()]))
+  for (const link of await loadGuardianAccounts(db, institutionId, [...new Set(studentIds)]))
+    if (link.userId !== null && isCustodial(link)) result.get(link.studentId)?.add(link.userId)
+  return result
+}
+
+/** Öğrencilerin bugün kararı sayılanları (DOM-ILT-037, DOM-ILT-071). */
+async function decidersOf(
+  db: Database,
+  institutionId: string,
+  institutionType: InstitutionType,
+  studentIds: readonly string[],
+  now: Date,
+): Promise<Map<string, PermissionDeciders>> {
+  const deciders = await decidersFor(db, institutionId, institutionType, studentIds, now)
+  const guardians = await custodialUserIds(db, institutionId, studentIds)
+  return new Map(
+    [...deciders].map(([id, decider]) => [
+      id,
+      { decider, guardianUserIds: guardians.get(id) ?? new Set<string>() },
+    ]),
+  )
+}
+
+const NOBODY: PermissionDeciders = { decider: 'guardians', guardianUserIds: new Set() }
+
+/**
+ * Okuyan: kapsam, kurum türü ve veli için kararı velilerce verilen (18 yaş altı) çocukları.
+ * Yetişkin öğrencinin formu veliye görünmez (DOM-ILT-037).
+ */
+interface Reader {
+  scope: Scope
+  institutionType: InstitutionType
+  /** Veli: kararını verdiği çocuklar; diğer roller `null`. */
+  guarded: ReadonlySet<string> | null
+}
+
+async function readerOf(ctx: ServiceContext): Promise<Reader> {
+  const scope = await readScope(ctx)
+  // Modül (`communication`) ve rol kuralı; kapalıysa 403 `module_disabled`, ön büro 403.
+  assertReadable(ctx, scope, FORMS)
+  assertReadable(ctx, scope, DECISIONS)
+  const institutionType = (await getInstitutionModules(ctx.db, ctx.institutionId))?.type ?? 'school'
+  if (scope.actor.role !== 'veli') return { scope, institutionType, guarded: null }
+  const children = [...scope.studentIds]
+  const deciders = await decidersFor(ctx.db, ctx.institutionId, institutionType, children, ctx.now)
+  return {
+    scope,
+    institutionType,
+    guarded: new Set(children.filter((id) => deciders.get(id) === 'guardians')),
+  }
+}
+
+const personalRole = (reader: Reader) =>
+  reader.scope.actor.role === 'veli' || reader.scope.actor.role === 'ogrenci'
+
+/** Okuyanın formda gördüğü hedef öğrenciler (DOM-ILT-037). */
+function studentVisibility(reader: Reader, record: RecordData): (studentId: string) => boolean {
+  const { scope, guarded } = reader
+  const role = scope.actor.role
+  const owner = scope.teacher !== undefined && text(record.teacherId) === scope.teacher.id
+  if (role === 'yonetici' || (role === 'ogretmen' && owner)) return () => true
+  if (guarded !== null) return (studentId) => guarded.has(studentId)
+  return (studentId) => scope.studentIds.has(studentId)
+}
+
+/** Form okuyana görünür mü: core kapsamı ve velide 18 yaş altı bir çocuğun hedefte olması. */
+const formReadable = (reader: Reader, record: RecordData) =>
+  reader.scope.canRead(FORMS, record) &&
+  (reader.guarded === null || texts(record.studentIds).some((id) => reader.guarded?.has(id)))
 
 /** Formların bütün kararları (kapsamsız; durum hesabı için), form kimliğine göre. */
 async function decisionsOf(
@@ -227,7 +342,7 @@ interface FormSummary {
 /** Formların görünen öğrencileri ve onların geçerli durumları (DOM-ILT-031, -037). */
 async function summarize(
   ctx: ServiceContext,
-  scope: Scope,
+  reader: Reader,
   rows: readonly StoredRecord[],
 ): Promise<FormSummary[]> {
   const decisions = await decisionsOf(
@@ -235,12 +350,15 @@ async function summarize(
     rows.map((row) => row.id),
   )
   const visible = rows.map((row) =>
-    texts(row.data.studentIds).filter(studentVisibility(scope, row.data)),
+    texts(row.data.studentIds).filter(studentVisibility(reader, row.data)),
   )
-  const birthDates = await birthDatesOf(ctx.db, ctx.institutionId, visible.flat())
-  const now = ctx.now.toISOString()
-  const adult = (studentId: string) =>
-    isAdultLearner({ birthDate: birthDates.get(studentId) ?? undefined }, now)
+  const deciders = await decidersOf(
+    ctx.db,
+    ctx.institutionId,
+    reader.institutionType,
+    visible.flat(),
+    ctx.now,
+  )
   return rows.map((row, index) => {
     const formDecisions = decisions.get(row.id) ?? []
     const visibleStudents = visible[index] ?? []
@@ -249,7 +367,7 @@ async function summarize(
         studentId,
         permissionStatus(
           formDecisions.filter((d) => d.data.studentId === studentId).map((d) => factsOf(d.data)),
-          adult(studentId),
+          deciders.get(studentId) ?? NOBODY,
         ),
       ]),
     )
@@ -263,12 +381,13 @@ async function summarize(
   })
 }
 
-function listItem(ctx: ServiceContext, scope: Scope, summary: FormSummary) {
+function listItem(ctx: ServiceContext, reader: Reader, summary: FormSummary) {
   const visible = new Set(summary.visibleStudents)
   return {
-    ...formView(scope.redact(FORMS, summary.record), summary.meta, ctx.now, (id) =>
-      visible.has(id),
-    ),
+    ...formView(reader.scope.redact(FORMS, summary.record), summary.meta, ctx.now, {
+      visible: (id) => visible.has(id),
+      personal: personalRole(reader),
+    }),
     counts: permissionCounts(summary.statuses.values()),
   }
 }
@@ -286,12 +405,12 @@ export interface PermissionFormListInput {
  * bekleyen, onay ve ret sayılarını taşır.
  */
 export async function listPermissionForms(ctx: ServiceContext, input: PermissionFormListInput) {
-  const scope = await readableScope(ctx)
+  const reader = await readerOf(ctx)
   const match: RecordFilter[] = []
   if (input.topic) match.push({ kind: 'equals', field: 'topic', values: [input.topic] })
   const rows = await loadRecords(ctx.db, ctx.institutionId, [FORMS], { match })
   const visible = rows
-    .filter((row) => scope.canRead(FORMS, row.data))
+    .filter((row) => formReadable(reader, row.data))
     .filter((row) => {
       if (input.status === 'all') return true
       const open = accepting(row.data, ctx.now)
@@ -301,19 +420,24 @@ export async function listPermissionForms(ctx: ServiceContext, input: Permission
       (a, b) => deadlineOf(b.data).localeCompare(deadlineOf(a.data)) || a.id.localeCompare(b.id),
     )
   const start = (input.page - 1) * input.pageSize
-  const summaries = await summarize(ctx, scope, visible.slice(start, start + input.pageSize))
-  return { items: summaries.map((summary) => listItem(ctx, scope, summary)), total: visible.length }
+  const summaries = await summarize(ctx, reader, visible.slice(start, start + input.pageSize))
+  return {
+    items: summaries.map((summary) => listItem(ctx, reader, summary)),
+    total: visible.length,
+  }
 }
 
 /**
- * Tek form ve okuyanın gördüğü öğrencilerin durumları ile görebildiği kararlar (veli yalnız kendi
- * kararını görür). Olmayan, başka kurumun ya da görmediği form 404.
+ * Tek form ve okuyanın gördüğü öğrencilerin durumları ile görebildiği kararlar (core kapsamı:
+ * veli yalnız kendi kararını, derse giren öğretmen hiçbirini görmez; DOM-ILT-037). Olmayan,
+ * başka kurumun ya da görmediği form 404.
  */
 export async function getPermissionForm(ctx: ServiceContext, formId: string) {
-  const scope = await readableScope(ctx)
+  const reader = await readerOf(ctx)
+  const { scope } = reader
   const row = await findRecord(ctx.db, ctx.institutionId, FORMS, formId)
-  if (!row || !scope.canRead(FORMS, row.data)) throw new NotFoundError()
-  const [summary] = await summarize(ctx, scope, [row])
+  if (!row || !formReadable(reader, row.data)) throw new NotFoundError()
+  const [summary] = await summarize(ctx, reader, [row])
   if (!summary) throw new NotFoundError()
   const readable = summary.decisions
     .filter((decision) => scope.canRead(DECISIONS, decision.data))
@@ -323,7 +447,7 @@ export async function getPermissionForm(ctx: ServiceContext, formId: string) {
         a.id.localeCompare(b.id),
     )
   return {
-    ...listItem(ctx, scope, summary),
+    ...listItem(ctx, reader, summary),
     students: summary.visibleStudents.map((studentId) => ({
       studentId,
       status: summary.statuses.get(studentId) ?? 'pending',
@@ -370,17 +494,25 @@ type Outcome =
       studentStatus: PermissionStatus
     }
 
+interface Prepared {
+  learner?: LearnerAgeFacts
+  guardianUserIds?: ReadonlySet<string>
+}
+
 interface PermissionRun {
   action: PermissionAction
   loadScope: Partial<Record<CollectionName, LoadScope>>
   expected: ExpectedVersion | null
-  /** Kurum kilidinden sonra, core işleminden önce okunan doğum tarihi (karar). */
-  prepare?: (tx: Database) => Promise<{ birthDate?: string }>
+  /**
+   * Kurum kilidinden sonra, core işleminden önce okunanlar (karar): öğrencinin yaş bilgileri ve
+   * bugün velayetli velilerinin kullanıcı kimlikleri.
+   */
+  prepare?: (tx: Database) => Promise<Prepared>
   run: (
     state: State,
     by: Participant,
     tools: OperationTools,
-    options: { institutionType: InstitutionType; birthDate?: string },
+    options: { institutionType: InstitutionType } & Prepared,
   ) => Outcome
 }
 
@@ -434,6 +566,7 @@ function execute(
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   const spec = OPERATION_COMMANDS[command.action]
+  let institutionType: InstitutionType = 'school'
   return runCommand<Outcome>(
     ctx,
     {
@@ -449,7 +582,9 @@ function execute(
             : (text(outcome.record.formId) ?? ''),
       }),
       load: async (tx) => {
-        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        const env = await environment(tx, ctx, spec)
+        const { actor, scalars } = env
+        institutionType = env.institutionType
         const by: Participant = { ...actor, userId: ctx.actor.userId }
         const extra = command.prepare ? await command.prepare(tx) : {}
         return {
@@ -460,11 +595,23 @@ function execute(
       after: async (tx, outcome) => {
         if (outcome.collection !== 'permissionForms' || outcome.notifyStudentIds.length === 0)
           return
-        // İletişim modülü kapalıysa `notify` yazmadan döner (DOM-YTK-040). Aynı form aynı
-        // öğrenciye ikinci kez bildirilmez (`dedupeKey`): hedeften çıkıp geri giren öğrenci.
+        // Kitle kararı verenle aynı kaynaktan (`permissionDecider`): 18 yaş altında veliye,
+        // kendisi karar veren öğrenciye; yetişkin öğrencinin formu veliye bildirilmez. İletişim
+        // modülü kapalıysa `notify` yazmadan döner (DOM-YTK-040). Aynı form aynı öğrenciye ikinci
+        // kez bildirilmez (`dedupeKey`): hedeften çıkıp geri giren öğrenci.
+        const deciders = await decidersFor(
+          tx,
+          ctx.institutionId,
+          institutionType,
+          outcome.notifyStudentIds,
+          ctx.now,
+        )
         await notify(tx, ctx, {
           type: 'permission_form_opened',
-          recipients: { studentIds: outcome.notifyStudentIds },
+          recipients: {
+            studentIds: outcome.notifyStudentIds,
+            minor: new Map([...deciders].map(([id, decider]) => [id, decider === 'guardians'])),
+          },
           data: { formId: outcome.record.id },
           dedupeKey: outcome.record.id,
         })
@@ -601,8 +748,9 @@ export function archivePermissionFormCommand(
 
 /**
  * Veli ya da 18 yaşını doldurmuş öğrenci kararı (core `decidePermission`, DOM-ILT-030, -031,
- * -037): yeni karar 201, son kararla aynı karar ve not 200 (yeni satır yok). Yaş kimlik
- * satırındaki doğum tarihinden okunur (ADR 0006 karar 9); yoksa öğrenci kaydından.
+ * -037): yeni karar 201, son kararla aynı karar ve not 200 (yeni satır yok). Karar veren taraf
+ * `permissionDecider`'dandır (kimlik satırının doğum tarihi, ADR 0006 karar 9; dil okulunda
+ * adayın 18 yaş seçimi); yanıttaki durum bugün velayetli velilerin kararlarından hesaplanır.
  */
 export function decidePermissionCommand(
   ctx: ServiceContext,
@@ -622,19 +770,26 @@ export function decidePermissionCommand(
       prepare: async (tx) => {
         const parsed = decidePermissionSchema.safeParse(input)
         if (!parsed.success) return {}
-        const identity = await identityBirthDates(tx, ctx.institutionId, [parsed.data.studentId])
-        const birthDate = identity.get(parsed.data.studentId)
-        return birthDate === undefined ? {} : { birthDate }
+        const { studentId } = parsed.data
+        const facts = await learnerFactsOf(tx, ctx.institutionId, [studentId])
+        const guardians = await custodialUserIds(tx, ctx.institutionId, [studentId])
+        return {
+          learner: facts.get(studentId) ?? {},
+          guardianUserIds: guardians.get(studentId) ?? new Set<string>(),
+        }
       },
-      run: (state, by, { now, makeId }, { institutionType, birthDate }) => {
+      run: (state, by, { now, makeId }, { institutionType, learner, guardianUserIds }) => {
         const outcome = decidePermission(state, by, formId, input, makeId, now, {
           institutionType,
-          ...(birthDate === undefined ? {} : { birthDate }),
+          learner: learner ?? {},
         })
         const { studentId, relation } = outcome.decision
         const studentStatus = permissionStatus(
           state.permissionDecisions.filter((d) => d.formId === formId && d.studentId === studentId),
-          relation === 'self',
+          {
+            decider: relation === 'self' ? 'self' : 'guardians',
+            guardianUserIds: guardianUserIds ?? new Set<string>(),
+          },
         )
         return {
           collection: 'permissionDecisions',

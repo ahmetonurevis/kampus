@@ -64,6 +64,12 @@ export interface NotifyContext {
 export interface NotifyRecipients {
   /** Olayın ait olduğu öğrenciler; veli ve kursiyer kitlesi türün kuralıyla seçilir. */
   studentIds: readonly string[]
+  /**
+   * Açık kitle: alanın kendi kuralıyla çözdüğü "öğrenci 18 yaş altı mı" (ör. izin formunda
+   * `permissionDecider`, DOM-ILT-037). Haritada olan öğrencide `learnerMinor` okunmaz; olmayan
+   * öğrenci genel kuralla çözülür. Verilmezse davranış değişmez.
+   */
+  minor?: ReadonlyMap<string, boolean>
 }
 
 export type NotificationData<T extends NotificationType> = z.input<
@@ -203,7 +209,9 @@ export async function notify<T extends NotificationType>(
   const createdAt = ctx.now.toISOString()
   const drafts: NotificationRecord[] = []
   for (const studentId of students) {
-    const minor = await learnerMinor(tx, ctx, institution.type, studentId)
+    const minor =
+      input.recipients.minor?.get(studentId) ??
+      (await learnerMinor(tx, ctx, institution.type, studentId))
     for (const audience of notificationAudiences(input.type, minor))
       drafts.push(
         notificationRecordSchema.parse({

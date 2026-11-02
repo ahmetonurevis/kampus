@@ -6954,12 +6954,12 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
-            /** @description Hedef sınıflar */
-            classIds: string[];
-            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür */
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
-            /** @description Formu açan öğretmen; yönetici açtıysa `null` */
-            teacherId: string | null;
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
             /**
              * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
              * @enum {string}
@@ -7004,7 +7004,7 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "approved" | "rejected";
-            /** @description Okuyanın görebildiği kararlar, karar anına göre (veli yalnız kendi kararını görür) */
+            /** @description Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`) */
             decisions: components["schemas"]["PermissionDecisionInput"][];
         };
         PermissionFormListItemInput: {
@@ -7022,12 +7022,12 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
-            /** @description Hedef sınıflar */
-            classIds: string[];
-            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür */
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
-            /** @description Formu açan öğretmen; yönetici açtıysa `null` */
-            teacherId: string | null;
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
             /**
              * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
              * @enum {string}
@@ -7057,12 +7057,12 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
-            /** @description Hedef sınıflar */
-            classIds: string[];
-            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür */
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
-            /** @description Formu açan öğretmen; yönetici açtıysa `null` */
-            teacherId: string | null;
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
             /**
              * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
              * @enum {string}
@@ -9686,12 +9686,12 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
-            /** @description Hedef sınıflar */
-            classIds: string[];
-            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür */
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
-            /** @description Formu açan öğretmen; yönetici açtıysa `null` */
-            teacherId: string | null;
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
             /**
              * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
              * @enum {string}
@@ -9736,7 +9736,7 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "approved" | "rejected";
-            /** @description Okuyanın görebildiği kararlar, karar anına göre (veli yalnız kendi kararını görür) */
+            /** @description Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`) */
             decisions: components["schemas"]["PermissionDecision"][];
         };
         PermissionFormListItem: {
@@ -9754,12 +9754,12 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
-            /** @description Hedef sınıflar */
-            classIds: string[];
-            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür */
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
-            /** @description Formu açan öğretmen; yönetici açtıysa `null` */
-            teacherId: string | null;
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
             /**
              * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
              * @enum {string}
@@ -9789,12 +9789,12 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
-            /** @description Hedef sınıflar */
-            classIds: string[];
-            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, veli çocuğunu, öğrenci kendisini görür */
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
             studentIds: string[];
-            /** @description Formu açan öğretmen; yönetici açtıysa `null` */
-            teacherId: string | null;
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
             /**
              * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
              * @enum {string}

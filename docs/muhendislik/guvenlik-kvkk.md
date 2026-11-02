@@ -177,7 +177,7 @@ form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 - CI'da `pnpm audit --prod --audit-level high`; yüksek/kritik açık birleştirmeyi engeller. Düzeltme yoksa istisna kayıt numarası ve son tarihle `pnpm-workspace.yaml`'da tutulur.
 - pnpm yayın yaşı beklemesi (`minimumReleaseAge`) ve kurulum betiği izinleri (`allowBuilds`, `onlyBuiltDependencies`) korunur.
 - Bağımlılık güncellemeleri haftalık toplu PR ile; güvenlik güncellemesi beklemeden.
-- GitHub Actions adımları sürüm etiketine değil commit SHA'sına sabitlenir.
+- GitHub Actions adımları sürüm etiketine değil commit SHA'sına sabitlenir; satır sonundaki yorum sürümü yazar (`# v7.0.1`). CI `statik` işi sabitlenmemiş `uses:` satırında kırılır. Güncelleme elle yapılır: `gh api repos/<sahip>/<eylem>/commits/<etiket> -q .sha`.
 - Lisans ve ekleme politikası: [kod-yazim.md](kod-yazim.md#8-bağımlılık-ekleme-politikası).
 
 ## 16. Olay müdahalesi

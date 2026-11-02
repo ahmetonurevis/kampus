@@ -8,8 +8,8 @@ runs:
   using: composite
   steps:
     # pnpm sürümü kök package.json `packageManager` alanından okunur; setup-node önbelleği pnpm'i ister.
-    - uses: pnpm/action-setup@v6
-    - uses: actions/setup-node@v7
+    - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version-file: .nvmrc
         cache: pnpm
@@ -21,7 +21,7 @@ runs:
       run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
     - if: inputs.playwright == 'true'
       id: playwright-cache
-      uses: actions/cache@v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/ms-playwright
         key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium

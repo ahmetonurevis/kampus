@@ -112,3 +112,26 @@ test('iletişim sayfaları hesap grubundan önce, iletişim kategorisinde durur'
   assert.ok(communication.pages.some((page) => page.path === 'duyurular'))
   assert.ok(!labels.includes('Hesap'))
 })
+
+test('kur sayfası yalnız dil okulu menüsündedir (IST-076)', () => {
+  for (const role of ['yonetici', 'onburo', 'ogretmen'] as const) {
+    const school = visiblePages(role, allOpen, 'school').map((page) => page.path)
+    const language = visiblePages(role, allOpen, 'language_school').map((page) => page.path)
+    assert.ok(!school.includes('kurlar'), role)
+    assert.ok(language.includes('kurlar'), role)
+    // Tür verilmezse okul sayılır.
+    assert.ok(!visiblePages(role, allOpen).some((page) => page.path === 'kurlar'), role)
+    const groups = sidebarGroups(role, allOpen, 'language_school')
+    assert.ok(
+      groups.some((group) => group.pages.some((page) => page.path === 'kurlar')),
+      role,
+    )
+  }
+  for (const role of ['ogrenci', 'veli'] as const)
+    assert.ok(
+      !visiblePages(role, allOpen, 'language_school').some((page) => page.path === 'kurlar'),
+    )
+  assert.equal(findPage('yonetici', 'kurlar')?.group, 'YÖNETİM')
+  assert.equal(findPage('onburo', 'kurlar')?.group, 'KAYIT & SATIŞ')
+  assert.equal(findPage('ogretmen', 'kurlar')?.group, 'AKADEMİK')
+})

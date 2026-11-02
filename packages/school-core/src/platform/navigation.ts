@@ -109,3 +109,39 @@ export const API_ACADEMIC_PAGES: Record<Role, readonly NavigationPage[]> = {
   ogrenci: [],
   veli: [],
 }
+
+// Dil okulu kur ve grup sayfaları (IST-076, IST-077; DOM-DIL-005, -008): modüle değil kurum
+// türüne bağlıdır (`institutionTypes`), okul kurumunda menüde yoktur ve doğrudan adresi kapalıdır
+// (API de 404 döner). Yazma yönetici ve seviyenin akademik koordinatörü öğretmendedir; ön büro
+// okur ve bekleme sırasını görür. Öğrenci ve veli kendi grubunun takvimini ders programı
+// ekranlarında görür; ayrı sayfaları yoktur. Vue demosunun ve mobilin karşılığı yoktur.
+const languageSchoolPage = (
+  path: string,
+  title: string,
+  icon: string,
+  description: string,
+  group: string,
+): NavigationPage => ({
+  path,
+  title,
+  icon,
+  module: null,
+  view: 'LanguageSchool',
+  description,
+  group,
+  apiOnly: true,
+  institutionTypes: ['language_school'],
+})
+
+const coursesPage = (group: string, description: string) =>
+  languageSchoolPage('kurlar', 'Kurlar', 'Languages', description, group)
+
+export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> = {
+  yonetici: [
+    coursesPage('YÖNETİM', 'Kur programını tanımlayın, etkinleştirin ve e-Özel kaydını izleyin.'),
+  ],
+  onburo: [coursesPage('KAYIT & SATIŞ', 'Etkin kurları ve kapasitelerini inceleyin.')],
+  ogretmen: [coursesPage('AKADEMİK', 'Koordinatörü olduğunuz seviyelerin kurlarını yönetin.')],
+  ogrenci: [],
+  veli: [],
+}

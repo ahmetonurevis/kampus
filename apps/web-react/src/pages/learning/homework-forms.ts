@@ -233,8 +233,12 @@ export function pickSubject(current: string, options: readonly Option[]): string
 
 // --- Teslim ------------------------------------------------------------------
 
-/** Formdaki dosya: yüklenmiş (`id`) ya da önceki teslimden gelen. */
-export type SubmissionFile = { id: string; name: string }
+/**
+ * Formdaki dosya: yüklenmiş (`id`) ya da önceki teslimden gelen. `key` yüklenirken seçilen
+ * dosyanın yerel kimliğidir (ad, boyut, değişiklik zamanı); aynı dosyanın yeniden seçilmesini
+ * yüklemeden önce yakalar (her yükleme farklı `id` üretir).
+ */
+export type SubmissionFile = { id: string; name: string; key?: string }
 
 export const submissionFormSchema = z
   .object({
@@ -246,7 +250,7 @@ export const submissionFormSchema = z
         `En fazla ${SUBMISSION_NOTE_MAX_LENGTH} karakter yazabilirsiniz.`,
       ),
     files: z
-      .array(z.object({ id: z.string().min(1), name: z.string() }))
+      .array(z.object({ id: z.string().min(1), name: z.string(), key: z.string().optional() }))
       .max(SUBMISSION_FILE_LIMIT, `En fazla ${SUBMISSION_FILE_LIMIT} dosya ekleyebilirsiniz.`),
   })
   .refine((value) => value.note.length > 0 || value.files.length > 0, {
@@ -272,15 +276,15 @@ export function submissionWindow(
 }
 
 /**
- * Yeni seçilen dosyalardan sığanlar ve sığmayan sayısı (en çok 5). Aynı dosya iki kez seçilirse
- * (`identity` aynı) bir kez alınır ve sığmayan sayılmaz.
+ * Yeni seçilen dosyalardan sığanlar (en çok 5), zaten ekli ya da aynı seçimde yinelenen dosyalar
+ * (`identity` aynı) bir kez alınır ve `duplicates` olarak sayılır; sığmayanlar `dropped`'tır.
  */
 export function fitFiles<T>(
   current: readonly SubmissionFile[],
   picked: readonly T[],
   identity: (item: T) => string = String,
-): { accepted: T[]; dropped: number } {
-  const seen = new Set<string>()
+): { accepted: T[]; dropped: number; duplicates: number } {
+  const seen = new Set(current.flatMap((file) => (file.key === undefined ? [] : [file.key])))
   const unique = picked.filter((item) => {
     const key = identity(item)
     if (seen.has(key)) return false
@@ -288,7 +292,11 @@ export function fitFiles<T>(
     return true
   })
   const room = Math.max(0, SUBMISSION_FILE_LIMIT - current.length)
-  return { accepted: unique.slice(0, room), dropped: Math.max(0, unique.length - room) }
+  return {
+    accepted: unique.slice(0, room),
+    dropped: Math.max(0, unique.length - room),
+    duplicates: picked.length - unique.length,
+  }
 }
 
 /**

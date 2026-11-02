@@ -114,6 +114,18 @@ describe('teslim dosyaları (OG-047, DOM-AKD-072)', () => {
     const result = fitFiles([], ['x', 'y', 'x', 'y', 'x'])
     assert.deepEqual(result.accepted, ['x', 'y'])
     assert.equal(result.dropped, 0)
+    assert.equal(result.duplicates, 3)
+  })
+
+  test('zaten eklenmiş dosya yeniden seçilirse yüklenmeden atlanır (anahtarına göre)', () => {
+    const current = [
+      { id: 'a', name: 'a.pdf', key: 'a.pdf|1' },
+      { id: 'b', name: 'b.pdf' },
+    ]
+    const result = fitFiles(current, ['a.pdf|1', 'c.pdf|1'])
+    assert.deepEqual(result.accepted, ['c.pdf|1'])
+    assert.equal(result.duplicates, 1)
+    assert.equal(result.dropped, 0)
   })
 
   test('kimlik işlevi: aynı ad, boyut ve tarihli dosya yinelenir sayılır', () => {

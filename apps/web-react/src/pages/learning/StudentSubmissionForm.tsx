@@ -70,7 +70,11 @@ export function StudentSubmissionForm({ homeworkId, submission, late, closed = f
 
   async function addFiles(picked: readonly File[]) {
     form.clearErrors('files')
-    const { accepted, dropped } = fitFiles(form.getValues('files'), picked, fileIdentity)
+    const { accepted, dropped, duplicates } = fitFiles(
+      form.getValues('files'),
+      picked,
+      fileIdentity,
+    )
     const controller = new AbortController()
     aborter.current = controller
     // Dosya alanına tek hata yazılır: tüm uyarılar birleştirilir (sonuncusu öncekini ezmez).
@@ -99,7 +103,11 @@ export function StudentSubmissionForm({ homeworkId, submission, late, closed = f
         }
         form.setValue(
           'files',
-          addUploadedFile(current, { id: uploaded.id, name: uploaded.originalName ?? file.name }),
+          addUploadedFile(current, {
+            id: uploaded.id,
+            name: uploaded.originalName ?? file.name,
+            key: fileIdentity(file),
+          }),
           { shouldDirty: true },
         )
       }
@@ -109,6 +117,7 @@ export function StudentSubmissionForm({ homeworkId, submission, late, closed = f
         if (input.current) input.current.value = ''
       }
     }
+    if (duplicates > 0) problems.push(`${duplicates} dosya zaten ekli olduğu için atlandı.`)
     if (dropped > 0)
       problems.push(
         `En fazla ${SUBMISSION_FILE_LIMIT} dosya ekleyebilirsiniz; ${dropped} dosya eklenmedi.`,

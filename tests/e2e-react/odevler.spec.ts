@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { writeFileSync } from 'node:fs'
 
 import type { Locator, Page } from '@playwright/test'
 import pg from 'pg'
@@ -501,16 +502,21 @@ test.describe('Ödevler: öğrenci teslim formu', () => {
     const form = panelOf(page, 'Ödev ayrıntısı').getByRole('form', { name: 'Ödevi teslim et' })
     const attached = form.getByRole('list', { name: 'Eklenen dosyalar' })
     const picker = form.getByLabel('Dosya ekle')
-    const file = (name: string) => ({
-      name,
-      mimeType: PDF.mimeType,
-      buffer: Buffer.from(`${PDF.buffer.toString('latin1')}% ${name}\n`, 'latin1'),
-    })
+    // Diskte duran gerçek dosyalar: aynı dosyanın yeniden seçilmesi aynı ad, boyut ve zamanı verir.
+    const file = (name: string) => {
+      const path = test.info().outputPath(name)
+      writeFileSync(path, `${PDF.buffer.toString('latin1')}% ${name}\n`, 'latin1')
+      return path
+    }
 
-    // Aynı dosya iki kez seçilirse bir kez eklenir.
-    await picker.setInputFiles([file('a.pdf'), file('a.pdf')])
+    // Aynı dosya yeniden seçilirse yüklenmeden atlanır ve uyarı tek satırdır.
+    const first = file('a.pdf')
+    await picker.setInputFiles(first)
     await expect(attached.getByRole('listitem')).toHaveCount(1)
     await expect(form.getByText('Dosya yükleniyor…')).toHaveCount(0)
+    await picker.setInputFiles(first)
+    await expect(form).toContainText('1 dosya zaten ekli olduğu için atlandı.')
+    await expect(attached.getByRole('listitem')).toHaveCount(1)
 
     // Dört yer kalmışken beş dosya seçilir: dördü eklenir, fazlası tek uyarıyla bildirilir.
     await picker.setInputFiles([

@@ -36,7 +36,7 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { ModuleDisabledError } from '../plugins/modules.ts'
 import { meterUpload, StreamLimitError } from '../storage/meter.ts'
 import { storageKeyFor, type StorageDriver } from '../storage/storage.ts'
-import { actorStudentHasConsent } from './consents.ts'
+import { actorStudentConsent, actorStudentHasConsent } from './consents.ts'
 import { contentTypeMismatch, detectContentType, dispositionFor } from './file-detection.ts'
 import { FILE_PURPOSE_ACCESS, fileAttachmentKind } from './file-registry.ts'
 import { requestFingerprint } from './idempotency.ts'
@@ -415,6 +415,11 @@ export const ATTACH_MESSAGES = {
  * transaction'ında çağırır. Dosya aynı kurumda, aynı yükleyicinin, `ready` ve bağsız olmalı;
  * amacı kayıt türünün kabul ettikleri arasında olmalı. Başkasının veya olmayan dosyası ayırt
  * edilmez (422 `file_unavailable`).
+ *
+ * Rıza gereken amaçta (konuşma kaydı; karar 9, DOM-BEC-050, DOM-YTK-059, DOM-YTK-061) veri sahibi
+ * çağırandan alınmaz (`dataSubjectId` yok sayılır): yükleyenin `student` bağlantısından türetilir
+ * ve o öğrencinin geçerli rızası bağlama anında yeniden denetlenir. Rıza yoksa (yükleme sürerken
+ * geri çekilmiş olabilir) 403 `consent_required` ve hiçbir kayıt değişmez.
  * TODO(F3c2-retention): `retention_until` amaç ve kurum türüne göre bağlanma anında hesaplanır
  * (karar 13); süreler doğrulanınca.
  */
@@ -439,11 +444,21 @@ export async function attachFile(
     throw new AppError(409, 'file_already_attached', ATTACH_MESSAGES.file_already_attached)
   if (row.status !== 'ready')
     throw new RuleViolationError('file_not_ready', ATTACH_MESSAGES.file_not_ready)
+  let dataSubjectId = input.dataSubjectId
+  const rule: FilePurposeRule = FILE_PURPOSES[row.purpose]
+  if (rule.requiresConsent === true) {
+    const consent = await actorStudentConsent(tx, ctx, 'speaking_recording')
+    if (!consent.valid || consent.studentId === null) {
+      ctx.log.info({ event: 'file.attach_consent_missing', purpose: row.purpose })
+      throw new AppError(403, 'consent_required', FILE_MESSAGES.consent_required)
+    }
+    dataSubjectId = consent.studentId
+  }
   const updated = await attachFileRow(
     tx,
     ctx.institutionId,
     row,
-    { type: input.attachedType, id: input.attachedId, dataSubjectId: input.dataSubjectId },
+    { type: input.attachedType, id: input.attachedId, dataSubjectId },
     ctx.now,
   )
   if (!updated) throw new ConflictError()

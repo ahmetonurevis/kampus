@@ -37,7 +37,7 @@ import { findRecord } from '../db/records.ts'
 import { ConflictError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment } from './commands.ts'
-import { getInstitution, listMembershipLinks } from './memberships.ts'
+import { getInstitution, listMembershipLinks, listStudentAccountUserIds } from './memberships.ts'
 import {
   runCommand,
   runReadOnly,
@@ -232,12 +232,14 @@ export function giveConsent(
  * Rızayı ya da itirazı geri çeker (DOM-YTK-059): tek işlem, anında etkili; ikinci geri çekme 409
  * `consent_already_withdrawn`. Kapsam dışı ya da başka kurumun satırı 404. Geri çekilen rıza
  * dosya yüklemesine dayanıyorsa (`speaking_recording`) veri sahibinin o amaçtaki dosyaları aynı
- * işlemde imhaya işaretlenir (ADR 0003 karar 9, 13: `retention_until = now`).
+ * işlemde imhaya işaretlenir (ADR 0003 karar 9, 13: `retention_until = now`): kayda bağlanmış
+ * dosyalar (`data_subject_id`) ve öğrencinin hesabının yüklediği henüz bağlanmamış dosyalar.
  *
  * TODO(F3c2-imha): saklama sonu gelen dosyayı silen `pg-boss` imha işi henüz yok (`src/jobs` ve
  * zamanlayıcı kurulmadı; `purgeUnattachedFiles` yalnız bağlanmamış dosyayı siler). İş kurulunca
  * `retention_until <= now` dosyalar oradan silinir; bu işaret kuyruğun girdisidir. Bağlanmamış
- * kayıt (`data_subject_id` boş) 24 saatlik bağlanmamış dosya temizliğiyle (karar 5) silinir.
+ * kayıt ayrıca 24 saatlik bağlanmamış dosya temizliğiyle (karar 5) silinir; geri çekmeden sonra
+ * bağlanamaz (`attachFile` rızayı yeniden denetler).
  */
 export function withdrawConsent(
   ctx: ServiceContext,
@@ -297,7 +299,15 @@ export function withdrawConsent(
           const marked = await scheduleSubjectFilesPurge(
             tx,
             ctx.institutionId,
-            { purpose: 'speaking_recording', dataSubjectId: consent.subjectId },
+            {
+              purpose: 'speaking_recording',
+              dataSubjectId: consent.subjectId,
+              uploaderUserIds: await listStudentAccountUserIds(
+                tx,
+                ctx.institutionId,
+                consent.subjectId,
+              ),
+            },
             ctx.now,
           )
           for (const fileId of marked)
@@ -419,26 +429,37 @@ export function consentStatus(
 }
 
 /**
- * Aktörün kendi öğrenci kaydı için bu amaçta geçerli rıza var mı (dosya yüklemesi; ADR 0003 karar
- * 9, DOM-YTK-061). 18 yaş altında velinin, 18 ve üstünde öğrencinin kendi rızası sayılır (core
- * `hasValidConsent`, yaş güncel doğum tarihinden). Öğrenci bağlantısı olmayan aktör için `false`.
+ * Aktörün kendi öğrenci kaydı (`student` bağlantısı) ve bu amaçta geçerli rıza var mı (dosya
+ * yükleme ve bağlama; ADR 0003 karar 9, DOM-YTK-061). 18 yaş altında velinin, 18 ve üstünde
+ * öğrencinin kendi rızası sayılır (core `hasValidConsent`, yaş güncel doğum tarihinden). Öğrenci
+ * bağlantısı olmayan aktör için `{ studentId: null, valid: false }`. Çağıranın işlemiyle okur.
  */
+export async function actorStudentConsent(
+  tx: Database,
+  ctx: ServiceContext,
+  purpose: ConsentPurpose,
+): Promise<{ studentId: string | null; valid: boolean }> {
+  const links = await listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId)
+  const student = await consentStudentOf(tx, ctx.institutionId, ownStudentId(links))
+  if (student === null) return { studentId: null, valid: false }
+  const [rows, texts] = await Promise.all([
+    listConsentsOfSubject(tx, ctx.institutionId, { kind: 'student', id: student.id }),
+    listPrivacyNotices(tx, ctx.institutionId),
+  ])
+  return {
+    studentId: student.id,
+    valid: hasValidConsent(
+      rows,
+      { purpose, subject: { kind: 'student', student }, texts },
+      ctx.now.toISOString(),
+    ),
+  }
+}
+
+/** `actorStudentConsent` kendi işlemiyle; yalnız sonuç (yükleme öncesi denetim). */
 export async function actorStudentHasConsent(
   ctx: ServiceContext,
   purpose: ConsentPurpose,
 ): Promise<boolean> {
-  return ctx.db.transaction(async (tx) => {
-    const links = await listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId)
-    const student = await consentStudentOf(tx, ctx.institutionId, ownStudentId(links))
-    if (student === null) return false
-    const [rows, texts] = await Promise.all([
-      listConsentsOfSubject(tx, ctx.institutionId, { kind: 'student', id: student.id }),
-      listPrivacyNotices(tx, ctx.institutionId),
-    ])
-    return hasValidConsent(
-      rows,
-      { purpose, subject: { kind: 'student', student }, texts },
-      ctx.now.toISOString(),
-    )
-  })
+  return ctx.db.transaction(async (tx) => (await actorStudentConsent(tx, ctx, purpose)).valid)
 }

@@ -80,6 +80,37 @@ export async function listMembershipLinks(
     .orderBy(asc(membershipLinks.kind), asc(membershipLinks.recordId))
 }
 
+/**
+ * Öğrenci kaydına `student` bağlantısıyla bağlı hesapların kullanıcı kimlikleri (rıza geri
+ * çekmede öğrencinin yüklediği bağlanmamış dosyaları bulmak için; DOM-YTK-059). Arşivlenmiş
+ * bağlantılar da sayılır: bağlantı kapansa da hesabın daha önce yüklediği kayıt öğrencinindir.
+ */
+export async function listStudentAccountUserIds(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ userId: memberships.userId })
+    .from(membershipLinks)
+    .innerJoin(
+      memberships,
+      and(
+        eq(memberships.id, membershipLinks.membershipId),
+        eq(memberships.institutionId, membershipLinks.institutionId),
+      ),
+    )
+    .where(
+      and(
+        eq(membershipLinks.institutionId, institutionId),
+        eq(membershipLinks.kind, 'student'),
+        eq(membershipLinks.recordId, studentId),
+      ),
+    )
+    .orderBy(asc(memberships.userId))
+  return rows.map((row) => row.userId)
+}
+
 /** Oturum sahibinin bütün kurumlardaki üyelikleri (kurum değiştirme menüsü için). */
 export async function listUserMemberships(db: Database, userId: string) {
   return db

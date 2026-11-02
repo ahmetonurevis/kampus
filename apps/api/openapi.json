@@ -57425,7 +57425,7 @@
         "tags": [
           "privacy"
         ],
-        "description": "Rızayı ya da itirazı geri çeker (DOM-YTK-059): tek işlem, anında etkili; `GET /consents/status` hemen yok döner. Geri çekme rızayı veren tarafındır (18 yaş altında velayetli veli, 18 ve üstünde öğrenci). Konuşma kaydı rızası geri çekilirse öğrencinin o amaçtaki dosyaları aynı işlemde imhaya işaretlenir (`retention_until = now`). İkinci geri çekme 409 `consent_already_withdrawn`; olmayan, kapsam dışı ya da başka kurumun kaydı 404. Gövde yok ya da boş nesne. `Idempotency-Key` isteğe bağlı. Roller: `ogrenci`, `veli`.",
+        "description": "Rızayı ya da itirazı geri çeker (DOM-YTK-059): tek işlem, anında etkili; `GET /consents/status` hemen yok döner. Geri çekme rızayı veren tarafındır (18 yaş altında velayetli veli, 18 ve üstünde öğrenci). Konuşma kaydı rızası geri çekilirse öğrencinin o amaçtaki dosyaları (kayda bağlanmış ve öğrencinin hesabının yüklediği henüz bağlanmamış) aynı işlemde imhaya işaretlenir (`retention_until = now`); bağlanmamış kayıt artık bağlanamaz. İkinci geri çekme 409 `consent_already_withdrawn`; olmayan, kapsam dışı ya da başka kurumun kaydı 404. Gövde yok ya da boş nesne. `Idempotency-Key` isteğe bağlı. Roller: `ogrenci`, `veli`.",
         "requestBody": {
           "required": true,
           "content": {

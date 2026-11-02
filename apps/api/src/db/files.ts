@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
+import { and, asc, eq, gt, inArray, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
 
 import type { Database } from './client.ts'
 import { files, type FileStatus } from './schema/files.ts'
@@ -161,14 +161,21 @@ export function markFileDeleted(
 /**
  * Rızaya dayalı dosyaların imha işareti (ADR 0003 karar 9, 13; DOM-YTK-059): veri sahibinin bu
  * amaçtaki silinmemiş dosyalarının saklama sonu `now`'a çekilir; daha erken saklama sonu korunur.
- * Nesneyi imha işi siler. İşaretlenen dosyaların kimliklerini döndürür.
+ * Henüz bağlanmamış dosyada veri sahibi yazılı değildir: veri sahibinin hesaplarının
+ * (`uploaderUserIds`) yüklediği bağlanmamış dosyalar da işaretlenir. Nesneyi imha işi siler.
+ * İşaretlenen dosyaların kimliklerini döndürür.
  */
 export async function scheduleSubjectFilesPurge(
   tx: Database,
   institutionId: string,
-  subject: { purpose: StoredFile['purpose']; dataSubjectId: string },
+  subject: {
+    purpose: StoredFile['purpose']
+    dataSubjectId: string
+    uploaderUserIds: readonly string[]
+  },
   now: Date,
 ): Promise<string[]> {
+  const owned = eq(files.dataSubjectId, subject.dataSubjectId)
   const rows = await tx
     .update(files)
     .set({ retentionUntil: now, updatedAt: now, version: sql`${files.version} + 1` })
@@ -176,7 +183,15 @@ export async function scheduleSubjectFilesPurge(
       and(
         eq(files.institutionId, institutionId),
         eq(files.purpose, subject.purpose),
-        eq(files.dataSubjectId, subject.dataSubjectId),
+        subject.uploaderUserIds.length === 0
+          ? owned
+          : or(
+              owned,
+              and(
+                isNull(files.attachedId),
+                inArray(files.uploadedByUserId, [...subject.uploaderUserIds]),
+              ),
+            ),
         ne(files.status, 'deleted'),
         or(isNull(files.retentionUntil), gt(files.retentionUntil, now)),
       ),

@@ -1,5 +1,5 @@
 {
-  "id": "23db8e44-6280-42a0-a0cb-c27ac7d36692",
+  "id": "5047dec5-e1b7-4810-9dba-60e261a28120",
   "prevId": "0caf9040-ad1e-4e76-915d-d828db3554d8",
   "version": "7",
   "dialect": "postgresql",
@@ -3296,7 +3296,7 @@
       "checkConstraints": {
         "files_purpose_check": {
           "name": "files_purpose_check",
-          "value": "\"files\".\"purpose\" in ('submission', 'material', 'question_image', 'listening_audio', 'speaking_recording', 'document')"
+          "value": "\"files\".\"purpose\" in ('submission', 'material', 'question_image', 'student_question_photo', 'listening_audio', 'speaking_recording', 'document')"
         },
         "files_status_check": {
           "name": "files_status_check",
@@ -6525,150 +6525,6 @@
         "resource_shares_target_kind_check": {
           "name": "resource_shares_target_kind_check",
           "value": "\"resource_shares\".\"target_kind\" in ('student', 'class')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.resource_version_files": {
-      "name": "resource_version_files",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version_id": {
-          "name": "version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "file_id": {
-          "name": "file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "resource_version_files_file_idx": {
-          "name": "resource_version_files_file_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "file_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "resource_version_files_institution_id_institutions_id_fk": {
-          "name": "resource_version_files_institution_id_institutions_id_fk",
-          "tableFrom": "resource_version_files",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "resource_version_files_version_fkey": {
-          "name": "resource_version_files_version_fkey",
-          "tableFrom": "resource_version_files",
-          "tableTo": "resource_versions",
-          "columnsFrom": [
-            "institution_id",
-            "version_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "resource_version_files_file_fkey": {
-          "name": "resource_version_files_file_fkey",
-          "tableFrom": "resource_version_files",
-          "tableTo": "files",
-          "columnsFrom": [
-            "institution_id",
-            "file_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "resource_version_files_pkey": {
-          "name": "resource_version_files_pkey",
-          "columns": [
-            "institution_id",
-            "version_id",
-            "file_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "resource_version_files_position_check": {
-          "name": "resource_version_files_position_check",
-          "value": "\"resource_version_files\".\"position\" >= 0 and \"resource_version_files\".\"position\" < 50"
         }
       },
       "isRLSEnabled": false

@@ -18,6 +18,7 @@ import {
   SummarySection,
 } from '../management/SummaryParts.tsx'
 import { QuestionAnswerForm } from './QuestionAnswerForm.tsx'
+import { SubmissionFileList } from './SubmissionFiles.tsx'
 import {
   questionRow,
   questionStamp,
@@ -44,7 +45,8 @@ const STATE_TONES = {
 /**
  * Soru ayrıntısı: tek kayıt ucundan okunur; kapsam dışı soru (başka öğrencinin ya da başka
  * öğretmenin sorusu) 404 ile "bulunamadı" olur. Yanıtlar ve ek yanıtlar kronolojik listelenir;
- * verilmiş yanıt değişmez, düzenleme düğmesi yoktur (DOM-ILT-092). Öğrencide yanıtsız soru geri
+ * verilmiş yanıt değişmez, düzenleme düğmesi yoktur (DOM-ILT-092). Soru fotoğrafları kullanıcı
+ * "Aç" dediğinde kısa ömürlü imzalı bağlantıyla açılır; her bağlantı denetimdir (DOM-ILT-094). Öğrencide yanıtsız soru geri
  * çekilebilir (DOM-ILT-091), öğretmende yanıt veya ek yanıt formu bulunur.
  */
 export function QuestionPanel({ questionId, onClose, audience, lookups }: Props) {
@@ -100,6 +102,11 @@ function QuestionDetail({
       <SummarySection title="Soru">
         <p className="text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">{row.text}</p>
       </SummarySection>
+      {row.fileIds.length > 0 ? (
+        <SummarySection title="Fotoğraflar">
+          <SubmissionFileList fileIds={row.fileIds} label="Soru fotoğrafları" />
+        </SummarySection>
+      ) : null}
       <SummarySection title="Yanıtlar">
         {row.answers.length === 0 ? (
           <p className="text-sm text-muted-foreground">

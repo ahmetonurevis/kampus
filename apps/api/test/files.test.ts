@@ -191,7 +191,7 @@ describe('dosya uçları', () => {
     assert.equal((await rowsOf(t.institution.id)).length, 1)
   })
 
-  test('amaç × rol: teslim yalnız öğrenci, materyal personel, kurum belgesi yönetici ve ön büro', async () => {
+  test('amaç × rol: teslim ve soru fotoğrafı yalnız öğrenci, materyal personel, kurum belgesi yönetici ve ön büro', async () => {
     const t = await tenant()
     const cases: [string, string, Buffer, string, string, number][] = [
       ['student', 'submission', PDF, 'a.pdf', 'application/pdf', 201],
@@ -204,13 +204,17 @@ describe('dosya uçları', () => {
       ['frontDesk', 'document', PDF, 'a.pdf', 'application/pdf', 201],
       ['teacher', 'document', PDF, 'a.pdf', 'application/pdf', 403],
       ['teacher', 'question_image', png(), 'a.png', 'image/png', 201],
+      // DOM-ILT-094: soru fotoğrafını yalnız öğrenci yükler.
+      ['student', 'student_question_photo', png(), 'a.png', 'image/png', 201],
+      ['teacher', 'student_question_photo', png(), 'a.png', 'image/png', 403],
+      ['parent', 'student_question_photo', png(), 'a.png', 'image/png', 403],
     ]
     for (const [who, purpose, data, name, type, status] of cases) {
       const person = t[who as 'student']
       const response = await upload(person.cookie, uploadParts(purpose, data, name, type))
       assert.equal(response.statusCode, status, `${who} ${purpose}: ${response.body}`)
     }
-    assert.equal((await rowsOf(t.institution.id)).length, 5)
+    assert.equal((await rowsOf(t.institution.id)).length, 6)
   })
 
   test('DOM-BEC-050 konuşma kaydı rıza kaydı olmadan 403 consent_required; nesne yazılmaz', async () => {

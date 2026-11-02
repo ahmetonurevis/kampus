@@ -98,6 +98,24 @@ test('Dosya amacı türü ve boyutu içerik türüne göre kabul eder', () => {
   assert.equal(FILE_PURPOSES.speaking_recording.requiresConsent, true)
 })
 
+test('DOM-ILT-094: soru fotoğrafı JPEG/PNG/WEBP, en çok 5 MB ve soru başına 3 dosyadır', () => {
+  const rule = FILE_PURPOSES.student_question_photo
+  assert.deepEqual(rule.mimeTypes, [MIME.jpeg, MIME.png, MIME.webp])
+  assert.equal(rule.maxFiles, 3)
+  assert.doesNotThrow(() =>
+    assertFileAllowed('student_question_photo', { contentType: MIME.webp, byteSize: 5 * MB }),
+  )
+  assert.throws(
+    () =>
+      assertFileAllowed('student_question_photo', { contentType: MIME.png, byteSize: 5 * MB + 1 }),
+    isDomainError('file_too_large'),
+  )
+  assert.throws(
+    () => assertFileAllowed('student_question_photo', { contentType: MIME.pdf, byteSize: 1000 }),
+    isDomainError('file_type_not_allowed'),
+  )
+})
+
 test('Dosya amacı yanlış türü, büyük dosyayı ve uzun kaydı reddeder', () => {
   assert.throws(
     () => assertFileAllowed('question_image', { contentType: 'image/svg+xml', byteSize: 1000 }),

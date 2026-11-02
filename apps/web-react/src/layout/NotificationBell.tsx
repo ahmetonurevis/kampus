@@ -65,6 +65,7 @@ export function NotificationBell({ session }: { session: Session }) {
       <PopoverContent
         align="end"
         sideOffset={10}
+        collisionPadding={12}
         aria-label="Bildirimler"
         className="w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl p-1.5"
       >

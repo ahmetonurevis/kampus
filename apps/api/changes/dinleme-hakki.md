@@ -2,10 +2,10 @@
 etki: minor
 ---
 
-Dinleme hakkı sayımı (OG-049; IST-045; DOM-BEC-005; ADR 0003 karar 6).
+Dinleme hakkı sayım altyapısı (OG-049; IST-045; DOM-BEC-005; ADR 0003 karar 6). Altyapı devrede değildir: core içerik modeli dinleme kaydını atanabilen türlere bağlamaz (`TODO(dinleme-icerik-bagi)`).
 
 - Migration `0030_create_attempt_media_plays`: deneme × dosya × sıra tekil, değişmez sayım satırları.
-- `GET /api/v1/files/:fileId/url`: öğrencinin süren denemesinde, atamanın içerik sürümüne bağlı `listening_audio` kaydının bağlantısı hakkı deneme × kayıt başına sayar; yanıtta yeni `listening` alanı (`attemptId`, `limit`, `used`, `remaining`, `counted`; diğer durumlarda `null`). Hak bitince 422 `listening_plays_exhausted`; süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`. Son sayımın bağlantısı geçerliyken (5 dk) yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner. Öğretmen, yönetici, veli ve teslim kapandıktan sonraki bağlantı sayılmaz.
-- `GET /api/v1/task-attempts/:attemptId` ve deneme yazma yanıtları `listening` özetini döner (`limit`, kayıt başına `used`/`remaining`; sınırsızda `null`).
-- `POST /api/v1/task-assignments`: dinleme hakkı core varsayılanına döndü (gönderilmezse 2; 1 veya `null` seçilebilir); 422 `listening_plays_unavailable` kaldırıldı.
+- `POST /api/v1/task-assignments`: değişmedi; dinleme hakkı gönderilmezse sınırsız, 1 veya 2 için 422 `listening_plays_unavailable`.
+- `GET /api/v1/files/:fileId/url`: dinleme kaydının (`listening_audio`) bağlantısı kayıt süresi + 60 sn yaşar (en az 5 dk; süre ölçülmemişse 16 dk). Yanıtta yeni `listening` alanı (`attemptId`, `limit`, `used`, `remaining`, `counted`); hakkı sınırlı süren deneme olmadıkça `null`. Altyapı devreye girince hak bitince 422 `listening_plays_exhausted`, süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`; son sayımın penceresinde yeni istek sayılmaz.
+- `GET /api/v1/task-attempts/:attemptId` ve deneme yazma yanıtları `listening` özetini döner (`limit`, kayıt başına `used`/`remaining`); sınırsızda ya da sayacak kayıt yoksa `null`.
 - OpenAPI ve api-client şeması yeniden üretildi.

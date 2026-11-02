@@ -13,8 +13,11 @@ import { useApiCommand, type SubmitOptions } from './use-api-command.ts'
 /**
  * Dosya yükleme kancası (`POST /api/v1/files`; ADR 0003 karar 2, 3; DOM-KYN-004). Tür ve boyut
  * önce core'daki amaç tablosuyla (`assertFileAllowed`) burada denetlenir, sunucu içerikten yeniden
- * denetler; tarayıcının bildirdiği tür yalnız erken uyarıdır. Yüklenen dosya `pending` başlar ve
- * bir kayda bağlanana kadar yalnız yükleyene görünür; bağlama tüketici modülün işidir (F4b4).
+ * denetler; tarayıcının bildirdiği tür yalnız erken uyarıdır. Yüklenen dosya bir kayda bağlanana
+ * kadar yalnız yükleyene görünür; bağlama tüketici modülün işidir. Bağlama `ready` ister: tarayıcı
+ * açıkken (ADR 0003 karar 8) ses dışı dosya `processing` başlar ve tüketici `useFilesProcessing`
+ * (`use-files.ts`) ile hazır olmasını bekler (OG-987); tarayıcısız ortamda (`FILE_SCANNER=off`)
+ * dosya `pending` kalır ve bağlamayı sunucu yanıtlar.
  */
 
 export type UploadedFile = components['schemas']['File']

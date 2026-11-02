@@ -10,10 +10,7 @@ import {
   type PublicationIssue,
   type ResourceStatus,
 } from '@kampus/school-core/content/resource.ts'
-import {
-  isResourceFileShown,
-  type ResourceFileShownStatus,
-} from '@kampus/school-core/content/resource-files.ts'
+import { isResourceFileShown } from '@kampus/school-core/content/resource-files.ts'
 import { CEFR_LEVELS, type CefrLevel } from '@kampus/school-core/content/taxonomy.ts'
 import {
   canReadVersion,
@@ -36,6 +33,7 @@ import {
 } from '../db/resources.ts'
 import { ForbiddenError, NotFoundError, ValidationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import type { ResourceFile } from '../routes/resources.schemas.ts'
 import { readScope, readSource } from './read-scope.ts'
 
 /**
@@ -112,11 +110,11 @@ function versionSummary(version: StoredResourceVersion) {
   }
 }
 
-/** Sürüm dosyasının yanıttaki meta verisi (`ResourceFile`); içerik bağlantısı `GET /files/:id/url`. */
-export type ResourceFileView = Pick<
-  StoredFile,
-  'id' | 'contentType' | 'byteSize' | 'purpose' | 'durationMs'
-> & { name: StoredFile['originalName']; status: ResourceFileShownStatus }
+/**
+ * Sürüm dosyasının yanıttaki meta verisi; tip yanıt şemasından (`ResourceFile`) türer, ikinci
+ * bir şekil yazılmaz. İçerik bağlantısı `GET /files/:id/url`.
+ */
+export type ResourceFileView = ResourceFile
 
 /** Sürüm başına dosya meta verisi (sürüm kimliği → sıralı liste). */
 export type VersionFiles = ReadonlyMap<string, readonly ResourceFileView[]>

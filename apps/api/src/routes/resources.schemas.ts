@@ -152,6 +152,9 @@ const resourceFileSchema = z
   })
   .meta({ id: 'ResourceFile' })
 
+/** Sürüm dosyasının yanıttaki meta verisi; servis görünümü bu şemadan türer. */
+export type ResourceFile = z.output<typeof resourceFileSchema>
+
 const filesSchema = z
   .array(resourceFileSchema)
   .describe('Sürümün dosyaları, `fileIds` sırasıyla; kaldırılan sürümde boş (DOM-KYN-051)')

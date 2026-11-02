@@ -4,12 +4,15 @@ import test from 'node:test'
 import {
   emptyTariffForm,
   feeTariffFormSchema,
+  freeQuotaCount,
   isOutsideAnnouncementPeriod,
   planTariffCreate,
   planTariffPublish,
   planTariffUpdate,
   tariffFormToBody,
   tariffToForm,
+  tuitionAfterDiscountLoss,
+  tuitionIncreaseCeiling,
   type FeeItem,
 } from '../packages/school-core/src/lib/fee-tariffs.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -182,4 +185,68 @@ test('DOM-FIN-002: okulda ilan dönemi ocak–mayıstır, dil okulu bağlı değ
   assert.equal(isOutsideAnnouncementPeriod('2026-06-01', 'school'), true)
   assert.equal(isOutsideAnnouncementPeriod('2026-12-31', 'school'), true)
   assert.equal(isOutsideAnnouncementPeriod('2026-12-31', 'language_school'), false)
+})
+
+// --- Mevzuat hesapları -----------------------------------------------------------------------
+
+test('DOM-FIN-005: tavan baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100); kuruş aşağı yuvarlanır', () => {
+  // ÜFE %30, TÜFE %40: ortalama %35, ek 5 puanla %40.
+  assert.equal(
+    tuitionIncreaseCeiling(30_000_000, { ppiBasisPoints: 3000, cpiBasisPoints: 4000 }),
+    42_000_000,
+  )
+  // Ek puan profil değeridir.
+  assert.equal(
+    tuitionIncreaseCeiling(30_000_000, { ppiBasisPoints: 3000, cpiBasisPoints: 4000 }, 0),
+    40_500_000,
+  )
+  // 10.001 × 1,00005 = 10.001,50005: tavan aşılmasın diye aşağı.
+  assert.equal(tuitionIncreaseCeiling(10_001, { ppiBasisPoints: 1, cpiBasisPoints: 0 }, 0), 10_001)
+  assert.equal(tuitionIncreaseCeiling(0, { ppiBasisPoints: 3000, cpiBasisPoints: 4000 }), 0)
+})
+
+test('DOM-FIN-005: geçersiz tutar ve oran reddedilir; taşan çarpım sessizce yuvarlanmaz', () => {
+  const rates = { ppiBasisPoints: 3000, cpiBasisPoints: 4000 }
+  for (const base of [-1, 1.5, Number.NaN])
+    assert.throws(() => tuitionIncreaseCeiling(base, rates), isDomainError('tuition_base_invalid'))
+  assert.throws(
+    () => tuitionIncreaseCeiling(Number.MAX_SAFE_INTEGER, rates),
+    isDomainError('tuition_base_invalid'),
+  )
+  for (const bad of [
+    { ppiBasisPoints: -1, cpiBasisPoints: 0 },
+    { ppiBasisPoints: 0, cpiBasisPoints: 0.5 },
+  ])
+    assert.throws(() => tuitionIncreaseCeiling(100, bad), isDomainError('tuition_rate_invalid'))
+})
+
+test('DOM-FIN-023: koşul kalkınca ücret indirimsiz kayıt ücretine her yılın oranı sırayla uygulanarak bulunur', () => {
+  // 1. yıl (%10 + %10) / 2 + 5 = %15; 2. yıl (%20 + %20) / 2 + 5 = %25.
+  assert.equal(
+    tuitionAfterDiscountLoss(10_000_000, [
+      { ppiBasisPoints: 1000, cpiBasisPoints: 1000 },
+      { ppiBasisPoints: 2000, cpiBasisPoints: 2000 },
+    ]),
+    14_375_000,
+  )
+  // Geçen yıl yoksa indirimsiz ücret aynen kalır.
+  assert.equal(tuitionAfterDiscountLoss(10_000_000, []), 10_000_000)
+})
+
+test('DOM-FIN-026: ücretsiz kontenjan %3; 0,5 ve üstü yukarı yuvarlanır; oran profil değeridir', () => {
+  for (const [students, expected] of [
+    [0, 0],
+    [16, 0],
+    [17, 1],
+    [50, 2],
+    [100, 3],
+    [116, 3],
+    [117, 4],
+  ] as const)
+    assert.equal(freeQuotaCount(students), expected, String(students))
+  assert.equal(freeQuotaCount(33, 1000), 3)
+  assert.equal(freeQuotaCount(35, 1000), 4)
+  for (const bad of [-1, 2.5])
+    assert.throws(() => freeQuotaCount(bad), isDomainError('free_quota_input_invalid'))
+  assert.throws(() => freeQuotaCount(10, -1), isDomainError('tuition_rate_invalid'))
 })

@@ -44,7 +44,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevcut veliyi sözleşme sonrası fahiş artıştan korur; MEB bu sınırı denetler.
 - **Kaynak:** ÖÖKY md. 53/1 (RG 5/8/2023-32270 değişikliği).
 - **Kurum türü:** `school`
-- **Kodda:** yok — `packages/school-core/src/lib/school-workflows.js:435-450` (`renewalQuote`) önceki sözleşmeye bakmaz, artış denetimi yapmaz.
+- **Kodda:** kısmen — tavan hesabı core `tuitionIncreaseCeiling` (`lib/fee-tariffs.ts`, kuruş tamsayısı, tavan aşılmasın diye aşağı yuvarlanır). Uygulanmıyor: `renewalQuote` (`lib/school-workflows.ts`) önceki sözleşmeye bakmaz, ÜFE/TÜFE değerlerinin yıl bazında girileceği profil yok; yenileme API'siyle bağlanır (ON-030).
 
 ### DOM-FIN-006 · Ücret birimi kurum türüne göre
 
@@ -120,7 +120,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat indirim şartı kalkan öğrencinin sonraki yıl ücretinin nasıl bulunacağını ayrıca düzenler.
 - **Kaynak:** ÖÖKY md. 53/1 son cümle. Cari yıl sözleşmesinin korunması işletme kuralıdır.
 - **Kurum türü:** `school`
-- **Kodda:** yok.
+- **Kodda:** kısmen — hesap core `tuitionAfterDiscountLoss` (`lib/fee-tariffs.ts`). Yenileme planında gerekçesiyle gösterim ve koşulun kalktığının tespiti yok (ON-030).
 
 ### DOM-FIN-024 · Referans indirimi
 
@@ -150,7 +150,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kanuni yükümlülüktür ve denetimde sayısal olarak aranır.
 - **Kaynak:** 5580 md. 13/3 (mevzuat.gov.tr metni okundu); ÖÖKY md. 57-61.
 - **Kurum türü:** ikisi (kurslar da kapsamdadır)
-- **Kodda:** yok.
+- **Kodda:** kısmen — sayı hesabı core `freeQuotaCount` (`lib/fee-tariffs.ts`, oran parametreli). Seçim, atama, iade süresi ve MEBBİS işareti yok.
 
 ## Tahsilat ve gecikme
 

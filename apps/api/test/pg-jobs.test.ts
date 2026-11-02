@@ -214,7 +214,9 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
           .where(and(eq(files.institutionId, institution.id), eq(files.id, id)))
       )[0]?.status
 
-    await queue.boss.send(dispatchQueueName(filesPurgeExpiredJob), {})
+    // Kurum işi doğrudan kuyruğa konur: dağıtım (bütün kurumlar) önceki testte sınanır; sonuç
+    // ortak veritabanındaki kurum sayısına bağlı kalmaz.
+    await queue.boss.send(filesPurgeExpiredJob.name, { institutionId: institution.id })
     await until(
       () => statusOf(expired.id),
       (status) => status === 'deleted',

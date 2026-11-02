@@ -28,6 +28,14 @@ export const JOB_SCHEMA = 'pgboss'
 export const JOB_TIME_ZONE = 'Europe/Istanbul'
 const STOP_TIMEOUT_MS = 10_000
 
+/**
+ * Kurum başına işlerin bir çekimdeki iş sayısı. Dağıtım her kuruma bir iş koyar; tek tek ve her
+ * çekimden sonra 2 sn beklenerek işlenseydi N kurum N × 2 sn sürerdi. Dolu çekim beklemeden
+ * yenisini başlatır (`burstWhenBatchFull`); çekimdeki işler sırayla çalışır, böylece kuyruk API
+ * havuzundan aynı anda tek bağlantı kullanır ve her iş kendi süre sınırı içinde kalır.
+ */
+const INSTITUTION_BATCH_SIZE = 5
+
 /** Kurum başına işlerin ve dağıtım işlerinin yeniden deneme ayarı (geri çekilmeli, sınırlı). */
 const QUEUE_OPTIONS: QueueOptions = {
   retryLimit: 3,
@@ -153,8 +161,14 @@ export async function startJobs(
           throw new Error(info.message)
         }
       })
-      await boss.work<unknown>(definition.name, { perJobResults: true }, async (batch) =>
-        Promise.all(batch.map((job) => runInstitutionJob(app, deps, definition, job))),
+      await boss.work<unknown>(
+        definition.name,
+        { perJobResults: true, batchSize: INSTITUTION_BATCH_SIZE, burstWhenBatchFull: true },
+        async (batch) => {
+          const results: JobResult[] = []
+          for (const job of batch) results.push(await runInstitutionJob(app, deps, definition, job))
+          return results
+        },
       )
     }
     // Yalnız açıkça emekli edilen işlerin zamanlaması silinir; listede olmayan zamanlamaya

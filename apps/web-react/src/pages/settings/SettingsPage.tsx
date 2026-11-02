@@ -18,7 +18,7 @@ import {
 
 /**
  * Ayarlar (yönetici; Vue `Settings.vue`): sekmeler `settings-sections.tsx` kaydından çizilir
- * (şimdilik "Kurum & Modüller", "Kullanıcı & Yetkiler" ve "İşlem Geçmişi"). Sekme adreste
+ * (şimdilik "Kurum & Modüller", "Kullanıcı & Yetkiler", "Eğitim yılı" ve "İşlem Geçmişi"). Sekme adreste
  * `?sekme=` ile tutulur (yoksa ilk sekme); sekme değişince öteki sekmenin liste ve panel
  * parametreleri adresten silinir. Diğer roller bu sayfaya bağlı değildir (kayıt
  * `page-registry.tsx`; onlar için `PersonalSettingsPage`).

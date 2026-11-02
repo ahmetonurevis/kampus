@@ -1,3 +1,5 @@
+import { useQueryClient } from '@tanstack/react-query'
+
 import {
   ACADEMIC_YEAR_MESSAGES,
   ACADEMIC_YEARS_KEY,
@@ -16,11 +18,11 @@ import {
   type UpdateAcademicTermBody,
   type UpdateAcademicYearBody,
 } from './academic-years.ts'
+import { ME_QUERY_KEY } from './query-keys.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 
-// Eğitim yılı kancaları (`/academic-years`, IST-011). Yazma komutları `exclusive`: alan hatası
-// formda, yolsuz hata tek toast olur. `If-Match` yılın `rowVersion`'ıdır (`version` girdisi);
+// Eğitim yılı kancaları (`/academic-years`, IST-011). `If-Match` yılın `rowVersion`'ıdır (`version` girdisi);
 // `Idempotency-Key` kanca içinde yönetilir (`useApiCommand`).
 
 /** Kurumun eğitim yılları (yeni yıl önce) ve dönemleri; tek sayfada. */
@@ -43,10 +45,11 @@ export function useCurrentAcademicPeriod() {
   })
 }
 
+// `exclusive` değildir: kural hatasının alanı `fieldFor` ile koddan belirlenir ve mesaj Türkçe
+// sözlükten (`ACADEMIC_YEAR_MESSAGES`) gelir; `exclusive` sunucu maddesini sözlüğün önüne alırdı.
 const base = {
   invalidates: [ACADEMIC_YEARS_KEY],
   messages: ACADEMIC_YEAR_MESSAGES,
-  exclusive: true,
 } as const
 
 export function useCreateAcademicYear() {
@@ -93,21 +96,34 @@ export function useRemoveAcademicTerm() {
   })
 }
 
+/**
+ * Oturumdaki kurum yılı (`/me` `academicYear`, üst çubuktaki "2026–2027 Eğitim Dönemi") etkin
+ * yılı izler; etkinleştirme ve kapatma sonrası oturum tazelenir.
+ */
+function useRefreshSession() {
+  const queryClient = useQueryClient()
+  return () => queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY })
+}
+
 /** Yılı etkinleştirir; önceki etkin yıl aynı işlemde kapanır ve bu geri alınamaz. */
 export function useActivateAcademicYear() {
+  const refreshSession = useRefreshSession()
   return useApiCommand({
     request: (client, input: AcademicYearTarget, headers) =>
       activateAcademicYearRequest(client, input, headers),
     version: (input) => input.version,
+    onSuccess: refreshSession,
     ...base,
   })
 }
 
 export function useCloseAcademicYear() {
+  const refreshSession = useRefreshSession()
   return useApiCommand({
     request: (client, input: AcademicYearTarget, headers) =>
       closeAcademicYearRequest(client, input, headers),
     version: (input) => input.version,
+    onSuccess: refreshSession,
     ...base,
   })
 }

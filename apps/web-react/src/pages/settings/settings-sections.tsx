@@ -3,6 +3,7 @@
 // Süzme, sıra ve adres anahtarı mantığı `settings-tabs.ts` içindedir; sayfa `SettingsPage.tsx`.
 // Yeni sekme/bölüm eklemek için `docs/sayfalar/platform.md` "Ayar sekmesi ekleme".
 import type { ComponentType } from 'react'
+import { AcademicYearSection } from './AcademicYearSection.tsx'
 import { AuditSection } from './AuditSection.tsx'
 import { ModuleSettingsSection } from './ModuleSettingsSection.tsx'
 import { UsersSection } from './UsersSection.tsx'
@@ -44,6 +45,15 @@ const PLATFORM_SETTINGS_SECTIONS: readonly SettingsEntry<ComponentType>[] = [
     roles: ['yonetici'],
     order: 20,
     component: UsersSection,
+  },
+  {
+    kind: 'tab',
+    id: 'academic-year',
+    label: 'Eğitim yılı',
+    param: 'egitim-yili',
+    roles: ['yonetici'],
+    order: 25,
+    component: AcademicYearSection,
   },
   {
     kind: 'tab',

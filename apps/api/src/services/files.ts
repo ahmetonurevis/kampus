@@ -442,10 +442,20 @@ export const ATTACH_MESSAGES = {
 } as const
 
 /**
+ * Saklama sonu gelmiş (imhaya işaretli) dosya: `retention_until <= now`. Rıza geri çekilince
+ * yüklenmiş kayda bu işaret düşer (DOM-YTK-059); dosya yeni rızadan sonra da bağlanamaz, imha işi
+ * (`files.purge-expired`) siler.
+ */
+export function isPurgeDue(row: Pick<StoredFile, 'retentionUntil'>, now: Date): boolean {
+  return row.retentionUntil !== null && row.retentionUntil.getTime() <= now.getTime()
+}
+
+/**
  * Dosyayı kayda bağlar (karar 5): bağlayan işlem (teslim, kaynak sürümü, soru; F4b4) kendi
  * transaction'ında çağırır. Dosya aynı kurumda, aynı yükleyicinin, `ready` ve bağsız olmalı;
- * amacı kayıt türünün kabul ettikleri arasında olmalı. Başkasının veya olmayan dosyası ayırt
- * edilmez (422 `file_unavailable`).
+ * amacı kayıt türünün kabul ettikleri arasında olmalı. Başkasının, olmayan ya da saklama sonu
+ * gelmiş (imhaya işaretli, `isPurgeDue`) dosya ayırt edilmez (422 `file_unavailable`; kullanıcı
+ * yeniden yükler).
  *
  * Rıza gereken amaçta (konuşma kaydı; karar 9, DOM-BEC-050, DOM-YTK-059, DOM-YTK-061) veri sahibi
  * çağırandan alınmaz (`dataSubjectId` yok sayılır): yükleyenin `student` bağlantısından türetilir
@@ -494,6 +504,9 @@ export async function attachFile(
     }
     dataSubjectId = consent.studentId
   }
+  // Rıza denetiminden sonra: geri çekilmiş rıza 403 kalır, yeni rızayla eski işaretli kayıt 422.
+  if (isPurgeDue(row, ctx.now))
+    throw new RuleViolationError('file_unavailable', ATTACH_MESSAGES.file_unavailable)
   const updated = await attachFileRow(
     tx,
     ctx.institutionId,

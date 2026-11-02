@@ -54,7 +54,8 @@ export function bodyFileIds(
  * Kursiyerin teslimde kullanabileceği dosyalar (core `SubmissionFile`): aynı kurumda, kendi
  * yüklediği, silinmemiş ve reddedilmemiş. Başkasının ya da olmayan dosyası listede yoktur; core
  * bunu `submission_file_not_found` ile reddeder, API genel 404 döner (varlığı sızmaz). Hazır
- * olmayan ya da başka kayda bağlı dosyayı bağlama reddeder (`attachFile`). Süre milisaniyeden
+ * olmayan, başka kayda bağlı ya da saklama sonu gelmiş (rıza geri çekilince imhaya işaretlenen)
+ * dosyayı bağlama satır kilidi altında reddeder (`attachFile`, 422 `file_unavailable`). Süre milisaniyeden
  * saniyeye çevrilir; ölçülmemiş süre `null` kalır (core `recording_not_measured`).
  */
 export async function usableFiles(

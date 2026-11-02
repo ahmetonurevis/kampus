@@ -397,7 +397,7 @@ describe('beceri görevinde dosyalı ve sesli teslim', () => {
     )
   })
 
-  test('DOM-BEC-050, DOM-BEC-052, DOM-BEC-054: sesli teslim işlem anında rıza ister (403, satır değişmez); ölçülmemiş, boş ve sınırı aşan kayıt 422; kayıt sürüme bağlanır, veri sahibi ve saklama sonu yazılır', async () => {
+  test('DOM-BEC-050, DOM-BEC-052, DOM-BEC-054, DOM-YTK-059: sesli teslim işlem anında rıza ister (403, satır değişmez); geri çekmeyle imhaya işaretli kayıt yeni rızayla da 422; ölçülmemiş, boş ve sınırı aşan kayıt 422; kayıt sürüme bağlanır, veri sahibi ve saklama sonu yazılır', async () => {
     const t = await tenant()
     const assignmentId = await assign(t, 'audio')
     const { given, consentId } = await consent(t)
@@ -446,7 +446,20 @@ describe('beceri görevinde dosyalı ve sesli teslim', () => {
     assert.equal((await versionRows(t)).length, 0)
     assert.deepEqual(await fileRow(t, fileId), before)
 
+    // DOM-YTK-059: yeni rızadan sonra da imhaya işaretli eski kayıt bağlanmaz (422, satır
+    // değişmez); kursiyer yeniden kaydeder.
     await given()
+    fails(
+      await submit(assignmentId, t.cookies.student, {
+        submissionKind: 'audio',
+        recordingFileId: fileId,
+      }),
+      422,
+      'file_unavailable',
+    )
+    assert.equal((await versionRows(t)).length, 0)
+    assert.deepEqual(await fileRow(t, fileId), before)
+
     const recordingId = await recording(t, 42_000)
     const created = await ok(
       await submit(assignmentId, t.cookies.student, {

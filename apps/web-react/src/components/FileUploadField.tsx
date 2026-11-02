@@ -75,6 +75,8 @@ export function FileUploadField({
   const input = useRef<HTMLInputElement>(null)
   const aborter = useRef<AbortController | null>(null)
   const unmounted = useRef(false)
+  // Kalkan düğmeden (iptal, yeniden dene, vazgeç) sonra odak dosya seçme denetimine döner.
+  const restoreFocus = useRef(false)
   // Yükleme sürerken liste çağıranda güncellenir; döngü her turda en güncel hâli okur.
   const itemsRef = useRef(items)
   const busyChange = useRef(onBusyChange)
@@ -95,6 +97,16 @@ export function FileUploadField({
   useEffect(() => {
     busyChange.current?.(uploading)
   }, [uploading])
+
+  // Odak düğmeyle birlikte DOM'dan kalkınca `body`'ye düşer; yükleme bitip denetim açılınca geri alınır.
+  // Kullanıcı bu arada odağı başka yere taşıdıysa ona dokunulmaz.
+  useEffect(() => {
+    if (!restoreFocus.current || uploading) return
+    restoreFocus.current = false
+    const active = document.activeElement
+    if (active && active !== document.body && active !== input.current) return
+    input.current?.focus()
+  })
 
   async function runQueue(queue: readonly File[], fit: { dropped: number; duplicates: number }) {
     const controller = new AbortController()
@@ -174,7 +186,10 @@ export function FileUploadField({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => aborter.current?.abort()}
+            onClick={() => {
+              restoreFocus.current = true
+              aborter.current?.abort()
+            }}
           >
             <Icon name="X" size={15} aria-hidden="true" />
             Yüklemeyi iptal et
@@ -188,7 +203,10 @@ export function FileUploadField({
             variant="outline"
             size="sm"
             disabled={disabled}
-            onClick={() => void runQueue(retry, { dropped: 0, duplicates: 0 })}
+            onClick={() => {
+              restoreFocus.current = true
+              void runQueue(retry, { dropped: 0, duplicates: 0 })
+            }}
           >
             <Icon name="RotateCcw" size={15} aria-hidden="true" />
             Yeniden dene
@@ -198,6 +216,7 @@ export function FileUploadField({
             variant="ghost"
             size="sm"
             onClick={() => {
+              restoreFocus.current = true
               setRetry([])
               setNotice(null)
               if (input.current) input.current.value = ''

@@ -150,6 +150,26 @@ test.describe('DOM-FIN-052 veli: Finans, Dekontlar ve Ödeme Yap', () => {
     await expect(page.getByRole('heading', { name: 'Taksit taahhütnamesi' })).toHaveCount(0)
   })
 
+  test('IST-107: veli cari ekstreyi görür ve PDF indirir; dekontlar sayfasında ekstre yoktur', async ({
+    page,
+  }) => {
+    await page.goto('/veli/finans?cocuk=s1')
+    const section = page.getByRole('region', { name: 'Cari ekstre' })
+    await expect(section.getByRole('table', { name: 'Hesap hareketleri' })).toContainText(
+      '1. taksit',
+    )
+    await expect(section.getByRole('button', { name: 'Filtreler' })).toHaveCount(0)
+    const downloading = page.waitForEvent('download')
+    await section.getByRole('button', { name: 'Ekstreyi indir' }).click()
+    expect((await downloading).suggestedFilename()).toBe('cari-ekstre-s1.pdf')
+    await expect(page.getByText('PDF belgeniz indirildi.')).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+
+    await page.goto('/veli/dekontlar?cocuk=s1')
+    await expect(page.getByRole('heading', { name: 'Ödeme dekontları' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Cari ekstre' })).toHaveCount(0)
+  })
+
   test('Sözleşmeler seçili çocuğun belgelerini listeler; 390 px yatay taşmaz', async ({ page }) => {
     await page.goto('/veli/sozlesmeler?cocuk=s2')
     await expect(summary(page)).toContainText('Ece Yılmaz')

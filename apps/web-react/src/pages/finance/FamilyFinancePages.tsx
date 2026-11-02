@@ -2,6 +2,7 @@ import { use, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { hasScholarshipContract } from '@kampus/school-core/lib/payments.ts'
+import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { EmptyState } from '@/components/EmptyState.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -14,6 +15,7 @@ import { useMediaQuery } from '@/hooks/use-media-query.ts'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { FamilyInvoicesView } from './FamilyInvoicesView.tsx'
+import { StudentStatementSection } from './StudentStatementSection.tsx'
 import { invoiceRow } from './finance-rows.ts'
 
 /** Telefon genişliği (tablodaki kart görünümüyle aynı sınır). Öğrenci ödemeleri burada gösterilmez. */
@@ -75,8 +77,15 @@ export function ParentFinancePage({ page, receipts }: { page: NavPage; receipts:
         receiptsOnly={receipts}
         title={receipts ? 'Ödeme dekontları' : 'Taksit listesi'}
       />
+      {receipts ? null : <ChildStatement childId={childId} />}
     </>
   )
+}
+
+function ChildStatement({ childId }: { childId: string }) {
+  const student = useCoreItem('students', childId)
+  if (!student.data) return null
+  return <StudentStatementSection studentId={childId} studentName={student.data.record.name} />
 }
 
 /**
@@ -252,8 +261,20 @@ export function StudentPaymentsPage({ page }: { page: NavPage }) {
           description="Ödeme planınızı bilgisayardan veya tabletten görüntüleyebilirsiniz."
         />
       ) : (
-        <FamilyInvoicesView audience="student" studentId="" title="Ödemelerim" />
+        <>
+          <FamilyInvoicesView audience="student" studentId="" title="Ödemelerim" />
+          <OwnStatement />
+        </>
       )}
     </>
   )
+}
+
+/** Öğrencinin kendi ekstresi; öğrenci kimliği oturum bağından gelir. */
+function OwnStatement() {
+  const { session } = useAuth()
+  const studentId = session?.links.find((link) => link.kind === 'student')?.recordId
+  const student = useCoreItem('students', studentId ?? null)
+  if (!studentId || !student.data) return null
+  return <StudentStatementSection studentId={studentId} studentName={student.data.record.name} />
 }

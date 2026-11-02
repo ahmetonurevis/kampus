@@ -278,7 +278,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Veliye verilen ekstre taksit ve tahsilat kayıtlarıyla kuruşu kuruşuna tutmalıdır (IST-107).
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var (core ve API) — `lib/finance-statement.ts`, `GET /api/v1/finance/students/:studentId/statement`. Ekran ve PDF ON-022'dedir.
+- **Kodda:** var (core ve API) — `lib/finance-statement.ts`, `GET /api/v1/finance/students/:studentId/statement`. Veli `/veli/finans` ve öğrenci `/ogrenci/odemelerim` ekranında hareketler ve PDF, kurum görevlisinde taksit panelinde PDF (`StudentStatementSection.tsx`, `templates/finance-statement.ts`). PDF önizlemesi #20'de beklemektedir, belge doğrudan iner.
 
 ## Mevcut kodla farklar
 

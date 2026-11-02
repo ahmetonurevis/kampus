@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  statementLineLabel,
   studentStatement,
   type StatementInvoice,
   type StatementPayment,
@@ -198,4 +199,25 @@ test('IST-107: gün Europe/Istanbul ile yazılır; aynı gün önce borç gelir'
       ['payment', '2026-10-15'],
     ],
   )
+})
+
+test('IST-107: satır açıklaması tür, yöntem ve dekont numarasını yazar', () => {
+  const { lines } = studentStatement(
+    's1',
+    [invoice(1), invoice(2, { paidAt: '2026-10-12T09:00:00.000Z', method: 'Nakit' })],
+    [
+      payment('p1', [{ invoiceId: 'inv-1', amountCents: 1_000 }], {
+        reversedAt: '2026-10-20T09:00:00.000Z',
+        receiptNumber: 7,
+      }),
+    ],
+    TODAY,
+  )
+  assert.deepEqual(lines.map(statementLineLabel), [
+    'Tahsilat · Banka havalesi · Dekont 2026-7',
+    '2. taksit ödemesi · Nakit',
+    '1. taksit · Gecikmiş',
+    'Tahsilat iptali · Dekont 2026-7',
+    '2. taksit',
+  ])
 })

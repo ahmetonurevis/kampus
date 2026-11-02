@@ -43,7 +43,11 @@ export function correctionDay(requested: string | null, today: string): string {
   return previousDay(today)
 }
 
-export type CorrectionChange = 'same' | 'changed' | 'new'
+/**
+ * `unselected`: kaydı olmayan öğrenciye henüz durum seçilmedi. İlk kayıt yazılacağı için varsayılan
+ * durum yoktur; her öğrenci için açık seçim (ya da toplu "Geldi") gerekir.
+ */
+export type CorrectionChange = 'same' | 'changed' | 'new' | 'unselected'
 
 export type CorrectionRow = {
   studentId: string
@@ -51,8 +55,8 @@ export type CorrectionRow = {
   /** O gün kayıtlı durum; kayıt yoksa `null`. */
   current: AttendanceStatus | null
   currentLabel: string
-  /** Gönderilecek durum: kullanıcının seçimi, yoksa kayıtlı durum, o da yoksa "Geldi". */
-  next: AttendanceStatus
+  /** Gönderilecek durum: kullanıcının seçimi, yoksa kayıtlı durum; ikisi de yoksa `null`. */
+  next: AttendanceStatus | null
   change: CorrectionChange
 }
 
@@ -61,7 +65,8 @@ const isStatus = (value: string | undefined): value is AttendanceStatus =>
 
 /**
  * Sınıfın aktif öğrencileri için mevcut ve yeni durum. Kaydı olmayan öğrenci (gün hiç alınmamış ya
- * da öğrenci sonradan katılmış) `new` olur: gönderim onun ilk kaydını yazar.
+ * da öğrenci sonradan katılmış) seçim yapılana kadar `unselected`, seçilince `new` olur: gönderim
+ * onun ilk kaydını yazar. Kayıtlı öğrencide seçim yoksa durum kayıtlı olandır (`same`).
  */
 export function correctionRows(
   students: readonly { id: string; name: string }[],
@@ -72,31 +77,121 @@ export function correctionRows(
   return students.map((student) => {
     const stored = savedBy.get(student.id)
     const current = isStatus(stored) ? stored : null
-    const next = edits[student.id] ?? current ?? 'present'
+    const next = edits[student.id] ?? current
     return {
       studentId: student.id,
       name: student.name,
       current,
       currentLabel: stored === undefined ? NOT_RECORDED : attendanceStatusLabel(stored),
       next,
-      change: current === null ? 'new' : current === next ? 'same' : 'changed',
+      change:
+        next === null
+          ? 'unselected'
+          : current === null
+            ? 'new'
+            : current === next
+              ? 'same'
+              : 'changed',
     }
   })
 }
 
 export function correctionCounts(rows: readonly CorrectionRow[]) {
-  return {
-    changed: rows.filter((row) => row.change === 'changed').length,
-    added: rows.filter((row) => row.change === 'new').length,
-  }
+  const count = (change: CorrectionChange) => rows.filter((row) => row.change === change).length
+  return { changed: count('changed'), added: count('new'), unselected: count('unselected') }
 }
 
-/** Gönderilecek bir şey var mı: değişen ya da ilk kez yazılacak öğrenci. */
-export const hasCorrection = (rows: readonly CorrectionRow[]) =>
-  rows.some((row) => row.change !== 'same')
+/**
+ * Gönderilebilir mi: durumu seçilmemiş öğrenci kalmamış ve en az bir öğrenci değişmiş ya da ilk
+ * kez yazılacak. Seçilmemiş tek satır bile kaydı kapatır (sunucu da tüm öğrenciyi ister).
+ */
+export function canSubmitCorrection(rows: readonly CorrectionRow[]): boolean {
+  return (
+    rows.length > 0 &&
+    rows.every((row) => row.change !== 'unselected') &&
+    rows.some((row) => row.change !== 'same')
+  )
+}
+
+/** Toplu eylem: seçilmemiş öğrencileri "Geldi" yapar; yapılmış seçimlere ve kayıtlara dokunmaz. */
+export function markUnselectedPresent(
+  rows: readonly CorrectionRow[],
+  edits: Readonly<Record<string, AttendanceStatus>>,
+): Record<string, AttendanceStatus> {
+  const next = { ...edits }
+  for (const row of rows) if (row.change === 'unselected') next[row.studentId] = 'present'
+  return next
+}
 
 export const correctionMarks = (rows: readonly CorrectionRow[]) =>
-  Object.fromEntries(rows.map((row) => [row.studentId, row.next]))
+  Object.fromEntries(rows.flatMap((row) => (row.next === null ? [] : [[row.studentId, row.next]])))
+
+/**
+ * Formda kullanıcının girdiği, henüz kaydedilmemiş bir şey var mı: değişen ya da seçilen satır
+ * ya da gerekçe. Gezinirken onay istemenin ölçütüdür.
+ */
+export function correctionDirty(rows: readonly CorrectionRow[], reason: string): boolean {
+  return (
+    reason.trim() !== '' || rows.some((row) => row.change === 'changed' || row.change === 'new')
+  )
+}
+
+/**
+ * İlk yoklamada gerekçe saklanmaz: core `recordAttendance` ilk kayda gerekçe ve düzelteni yazmaz,
+ * `audit_log` yalnız alan adlarını tutar (`changes.fields`). Gerekçe yine zorunludur, çünkü API
+ * yönetici isteğinde ister; yalnız durumu değişen kayıtların düzeltme geçmişine yazılır.
+ */
+export const FIRST_ENTRY_NOTE = 'İlk yoklamada gerekçe saklanmaz.'
+
+/** Başarı toast'ı: gerekçenin nereye yazıldığı gerçeğe uygun söylenir. */
+export function savedMessage(counts: { changed: number; added: number }): string {
+  if (counts.added === 0) return 'Yoklama düzeltildi.'
+  if (counts.changed === 0) return `Yoklama kaydedildi. ${FIRST_ENTRY_NOTE}`
+  return `Yoklama düzeltildi. İlk kez kaydedilenler için gerekçe saklanmadı.`
+}
+
+/** Ekranın gösterdiği kayıtlarla sunucudan yeni okunanlar aynı mı (öğrenci → durum). */
+export function sameStatuses(
+  shown: readonly { studentId: string; status: string }[],
+  fresh: readonly { studentId: string; status: string }[],
+): boolean {
+  const left = new Map(shown.map((item) => [item.studentId, item.status]))
+  const right = new Map(fresh.map((item) => [item.studentId, item.status]))
+  return left.size === right.size && [...left].every(([id, status]) => right.get(id) === status)
+}
+
+export type FreshSubmitResult<TOutcome> =
+  | { kind: 'sent'; outcome: TOutcome }
+  /** Ekrandaki yoklama sunucudakinden eski: gönderilmedi, güncel veri yüklendi. */
+  | { kind: 'stale' }
+  /** Güncel sınıf sürümü ya da yoklama okunamadı: gönderilmedi. */
+  | { kind: 'unavailable'; cause: unknown }
+
+/**
+ * Gönderimden hemen önce sınıf sürümü ve yoklama yeniden okunur; kayıp güncelleme olmasın diye
+ * sıra önemlidir: sürüm önce, yoklama sonra okunur. Arada başkası yazarsa sürüm eskide kalır ve
+ * sunucu 409 verir; sürüm yoklamadan yeni olamaz. Okunan yoklama ekrandakinden farklıysa
+ * (başkası düzeltmiş) kullanıcı farkı görmeden istek atılmaz.
+ */
+export async function submitWithFreshState<TOutcome>(
+  shown: readonly { studentId: string; status: string }[],
+  deps: {
+    refreshClassVersion: () => Promise<number>
+    refreshSaved: () => Promise<readonly { studentId: string; status: string }[]>
+    send: (classVersion: number) => Promise<TOutcome>
+  },
+): Promise<FreshSubmitResult<TOutcome>> {
+  let version: number
+  let fresh: readonly { studentId: string; status: string }[]
+  try {
+    version = await deps.refreshClassVersion()
+    fresh = await deps.refreshSaved()
+  } catch (cause) {
+    return { kind: 'unavailable', cause }
+  }
+  if (!sameStatuses(shown, fresh)) return { kind: 'stale' }
+  return { kind: 'sent', outcome: await deps.send(version) }
+}
 
 export type CorrectionEntry = {
   key: string
@@ -149,15 +244,19 @@ export function correctorIds(records: readonly CorrectedRecord[]): string[] {
   ].filter(Boolean)
 }
 
+export type CorrectionFormState = {
+  edits: Readonly<Record<string, AttendanceStatus>>
+  reason: string
+}
+
 /**
  * Gönderimden sonra formun durumu. Başarıda işaretler ve gerekçe temizlenir (liste yeni kayıttan
  * gelir). Sürüm çakışmasında (409) veri tazelenir ama kullanıcının işaretleri ve gerekçesi kalır;
  * güncel duruma bakıp yeniden kaydedebilir. Diğer hatalarda hiçbir şey kaybolmaz.
  */
-export function afterCorrection(outcome: { status: 'success' | 'failed' | 'busy' }): {
-  clearEdits: boolean
-  clearReason: boolean
-} {
-  const done = outcome.status === 'success'
-  return { clearEdits: done, clearReason: done }
+export function formAfterSubmit(
+  form: CorrectionFormState,
+  outcome: { status: 'success' | 'failed' | 'busy' },
+): CorrectionFormState {
+  return outcome.status === 'success' ? { edits: {}, reason: '' } : form
 }

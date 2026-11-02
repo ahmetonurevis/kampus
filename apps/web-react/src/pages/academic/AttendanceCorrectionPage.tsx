@@ -1,22 +1,35 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useId, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { useSearchParams } from 'react-router'
+import { useEffect, useId, useMemo, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
+import { useBlocker, useSearchParams } from 'react-router'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
-import { useCorrectAttendance } from '@kampus/react-shared/use-academic-commands.ts'
-import { useInstitutionMembers } from '@kampus/react-shared/use-institution-lists.ts'
+import {
+  ATTENDANCE_CORRECTION_CHANGED_MESSAGE,
+  useCorrectAttendance,
+} from '@kampus/react-shared/use-academic-commands.ts'
+import { useInstitutionMembersAll } from '@kampus/react-shared/use-institution-lists.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { useCoreAll, type CoreRecord } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, useCoreItem, type CoreRecord } from '@/hooks/use-core-collection.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
@@ -29,15 +42,20 @@ import {
   type AttendanceStatus,
 } from './academic-rows.ts'
 import {
-  afterCorrection,
+  canSubmitCorrection,
   correctionCounts,
   correctionDay,
+  correctionDirty,
   correctionFormSchema,
   correctionHistory,
   correctionMarks,
   correctionRows,
   correctorIds,
-  hasCorrection,
+  FIRST_ENTRY_NOTE,
+  formAfterSubmit,
+  markUnselectedPresent,
+  savedMessage,
+  submitWithFreshState,
   type CorrectionFormInput,
   type CorrectionFormOutput,
 } from './attendance-correction.ts'
@@ -51,8 +69,10 @@ const dayLabel = (day: string) => dateLabel(`${day}T09:00:00.000Z`, DAY_LABEL)
  * Yoklama Düzeltme (yönetici, IST-093, DOM-AKD-035): sınıf ve geçmiş gün seçilir (adreste
  * `?sinif=`, `?tarih=`; ileri tarih seçilemez), o günün öğrencileri mevcut ve yeni durumla gelir.
  * Değişen satırlar vurgulanır; gerekçe zorunludur ve "Düzeltmeyi kaydet" tek istek atar (`If-Match`
- * sınıf sürümü). Başkası araya girdiyse (409) veri tazelenir, seçimler ve gerekçe formda kalır.
- * Gün hiç alınmamışsa bu açıkça yazılır; API ilk kaydı da aynı kuralla (gerekçeyle) yazar.
+ * sınıf sürümü; gönderimden hemen önce sürüm ve yoklama yeniden okunur). Başkası araya girdiyse
+ * (409) veri tazelenir, seçimler ve gerekçe formda kalır. Kaydı olmayan öğrencinin varsayılan
+ * durumu yoktur: hepsi seçilmeden (ya da toplu "Geldi" denmeden) kayıt kapalıdır; ilk yoklamada
+ * gerekçe saklanmaz ve bu açıkça yazılır. Kirli formdan gezinmek onay ister.
  */
 export function AttendanceCorrectionPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -123,11 +143,10 @@ export function AttendanceCorrectionPage({ page }: { page: NavPage }) {
         </div>
         {selected ? (
           <CorrectionSheet
-            // Sınıf ya da gün değişince işaretler ve gerekçe sıfırlanır; sürüm değişince kalır.
+            // Sınıf ya da gün değişince form yeniden kurulur (kirliyse önce onay istenir).
             key={`${selected.id}-${day}`}
             classId={selected.id}
             className={selected.record.name}
-            classVersion={selected.version}
             day={day}
             lookups={data.lookups}
           />
@@ -146,17 +165,18 @@ export function AttendanceCorrectionPage({ page }: { page: NavPage }) {
 type SheetProps = {
   classId: string
   className: string
-  classVersion: number
   day: string
   lookups: AcademicLookups
 }
 
-function CorrectionSheet({ classId, className, classVersion, day, lookups }: SheetProps) {
+function CorrectionSheet({ classId, className, day, lookups }: SheetProps) {
   const students = useMemo(
     () => lookups.studentsByClass.get(classId) ?? [],
     [lookups.studentsByClass, classId],
   )
   const saved = useCoreAll('attendance', { filters: { classId, ...attendanceDayFilters(day) } })
+  // Gönderimden hemen önce güncel sürüm bu sorgudan okunur (liste sürümü eskimiş olabilir).
+  const classItem = useCoreItem('classes', classId)
   const correct = useCorrectAttendance()
   const [edits, setEdits] = useState<Record<string, AttendanceStatus>>({})
   const form = useForm<CorrectionFormInput, unknown, CorrectionFormOutput>({
@@ -164,27 +184,73 @@ function CorrectionSheet({ classId, className, classVersion, day, lookups }: She
     defaultValues: { reason: '' },
   })
 
+  const reasonValue = useWatch({ control: form.control, name: 'reason' })
   const records = useMemo(() => saved.data?.map((row) => row.record) ?? [], [saved.data])
   const rows = useMemo(() => correctionRows(students, records, edits), [students, records, edits])
   const counts = correctionCounts(rows)
   const notTaken = !saved.isPending && records.length === 0
+  const firstEntries = counts.added + counts.unselected > 0
   const busy = correct.isPending || form.formState.isSubmitting
-  const canSave = hasCorrection(rows) && !saved.isPending && students.length > 0
+  const canSave = canSubmitCorrection(rows) && !saved.isPending && students.length > 0
+  const dirty = correctionDirty(rows, reasonValue ?? '')
+
+  // Kirli formdan sınıf/gün değiştirmek, geri/ileri ve başka sayfaya geçmek onay ister.
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirty &&
+      (currentLocation.pathname !== nextLocation.pathname ||
+        currentLocation.search !== nextLocation.search),
+  )
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
 
   const onSubmit = form.handleSubmit(async ({ reason }) => {
-    const outcome = await correct.submit(
-      { classId, date: day, marks: correctionMarks(rows), reason, classVersion },
-      {
-        setError: form.setError,
-        // Gerekçe kuralı sunucudan da gelirse mesaj alanın altında görünür (toast değil).
-        fieldFor: (error) => (error.code === 'correction_reason_required' ? 'reason' : undefined),
+    if (!canSave) return
+    const sent = counts
+    const marks = correctionMarks(rows)
+    const result = await submitWithFreshState(records, {
+      refreshClassVersion: async () => {
+        const fresh = await classItem.refetch({ throwOnError: true })
+        if (!fresh.data) throw new Error('Sınıf kaydı okunamadı.')
+        return fresh.data.version
       },
-    )
-    const next = afterCorrection(outcome)
-    if (next.clearEdits) setEdits({})
-    if (next.clearReason) form.reset({ reason: '' })
-    if (outcome.status === 'success')
-      notify.success(notTaken ? 'Yoklama gerekçesiyle kaydedildi.' : 'Yoklama düzeltildi.')
+      refreshSaved: async () => {
+        const fresh = await saved.refetch({ throwOnError: true })
+        return (fresh.data ?? []).map((row) => row.record)
+      },
+      send: (classVersion) =>
+        correct.submit(
+          { classId, date: day, marks, reason, classVersion },
+          {
+            setError: form.setError,
+            // Gerekçe kuralı sunucudan da gelirse mesaj alanın altında görünür (toast değil).
+            fieldFor: (error) =>
+              error.code === 'correction_reason_required' ? 'reason' : undefined,
+          },
+        ),
+    })
+    if (result.kind === 'stale') {
+      // Güncel yoklama yüklendi; seçimler ve gerekçe formda kalır, kullanıcı kontrol eder.
+      notify.error(ATTENDANCE_CORRECTION_CHANGED_MESSAGE)
+      return
+    }
+    if (result.kind === 'unavailable') {
+      notify.error(
+        'Güncel yoklama okunamadı. Bağlantıyı kontrol edip yeniden deneyin.',
+        result.cause,
+      )
+      return
+    }
+    const next = formAfterSubmit({ edits, reason }, result.outcome)
+    if (result.outcome.status === 'success') {
+      setEdits({ ...next.edits })
+      form.reset({ reason: next.reason })
+      notify.success(savedMessage(sent))
+    }
   })
 
   if (saved.error)
@@ -204,11 +270,30 @@ function CorrectionSheet({ classId, className, classVersion, day, lookups }: She
           <strong className="font-semibold">{className}</strong> · {students.length} öğrenci ·{' '}
           {dayLabel(day)}
         </p>
-        {notTaken && students.length > 0 ? (
-          <p role="status" className="border-t bg-surface-soft px-6 py-2 text-sm max-[650px]:px-4">
-            Bu gün için yoklama alınmamış. Kaydetmek günün ilk yoklamasını yazar; gerekçe yine
-            zorunludur.
-          </p>
+        {firstEntries && students.length > 0 ? (
+          <div
+            role="status"
+            className="flex flex-wrap items-center justify-between gap-3 border-t bg-surface-soft px-6 py-2 text-sm max-[650px]:px-4"
+          >
+            <p className="m-0">
+              {notTaken
+                ? 'Bu gün için yoklama alınmamış.'
+                : 'Bu günde kaydı olmayan öğrenciler var.'}{' '}
+              Her öğrencinin durumunu seçin ya da toplu işaretleyin; hepsi seçilmeden kaydedilemez.{' '}
+              {FIRST_ENTRY_NOTE} Gerekçe yine zorunludur.
+            </p>
+            {counts.unselected > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => setEdits(markUnselectedPresent(rows, edits))}
+              >
+                Seçilmeyenleri Geldi işaretle
+              </Button>
+            ) : null}
+          </div>
         ) : null}
         {saved.isPending ? (
           <p className="border-t px-6 py-5 text-sm text-muted-foreground max-[650px]:px-4">
@@ -239,6 +324,8 @@ function CorrectionSheet({ classId, className, classVersion, day, lookups }: She
                   </span>
                   {row.change === 'changed' ? (
                     <StatusBadge text="Değişecek" tone="amber" />
+                  ) : row.change === 'unselected' ? (
+                    <StatusBadge text="Seçim bekliyor" tone="amber" />
                   ) : row.change === 'new' && !notTaken ? (
                     <StatusBadge text="Yeni kayıt" tone="gray" />
                   ) : null}
@@ -247,7 +334,7 @@ function CorrectionSheet({ classId, className, classVersion, day, lookups }: She
                   type="single"
                   variant="outline"
                   spacing={2}
-                  value={row.next}
+                  value={row.next ?? ''}
                   onValueChange={(value) => {
                     if (value)
                       setEdits((current) => ({
@@ -278,7 +365,11 @@ function CorrectionSheet({ classId, className, classVersion, day, lookups }: She
           <FormField
             id="yoklama-duzeltme-gerekce"
             label="Düzeltme gerekçesi"
-            description="Değişen her öğrencinin düzeltme geçmişine eski durumla birlikte yazılır."
+            description={
+              firstEntries
+                ? `Durumu değişen öğrencinin düzeltme geçmişine eski durumla birlikte yazılır. ${FIRST_ENTRY_NOTE}`
+                : 'Değişen her öğrencinin düzeltme geçmişine eski durumla birlikte yazılır.'
+            }
             error={form.formState.errors.reason}
           >
             {(control) => (
@@ -295,6 +386,7 @@ function CorrectionSheet({ classId, className, classVersion, day, lookups }: She
             <p className="text-sm text-muted-foreground" aria-live="polite">
               {counts.changed} öğrencinin durumu değişecek
               {counts.added > 0 ? ` · ${counts.added} öğrenci ilk kez kaydedilecek` : ''}
+              {counts.unselected > 0 ? ` · ${counts.unselected} öğrencinin durumu seçilmedi` : ''}
             </p>
             <Button
               type="submit"
@@ -309,6 +401,33 @@ function CorrectionSheet({ classId, className, classVersion, day, lookups }: She
         </div>
       </form>
       <CorrectionHistory records={records} lookups={lookups} />
+      <AlertDialog
+        open={blocker.state === 'blocked'}
+        onOpenChange={(open) => {
+          if (!open && blocker.state === 'blocked') blocker.reset()
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Kaydedilmemiş değişiklikler var</AlertDialogTitle>
+            <AlertDialogDescription>
+              Yoklama seçimleriniz ve gerekçeniz kaydedilmedi. Sayfadan ayrılırsanız silinir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Düzenlemeye devam et</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                // Radix kendi kapanışını yapmasın; gezinme sürer ve sayfa yeniden kurulur.
+                event.preventDefault()
+                if (blocker.state === 'blocked') blocker.proceed()
+              }}
+            >
+              Değişiklikleri at
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
@@ -328,17 +447,15 @@ function CorrectionHistory({
 }) {
   const headingId = useId()
   const hasHistory = correctorIds(records).length > 0
-  const admins = useInstitutionMembers({ role: 'yonetici', pageSize: 100 }, { enabled: hasHistory })
-  const teachers = useInstitutionMembers(
-    { role: 'ogretmen', pageSize: 100 },
-    { enabled: hasHistory },
-  )
+  // Rol başına bütün kullanıcılar çekilir; sayfa sınırı kalabalık kurumda adı düşürürdü.
+  const admins = useInstitutionMembersAll({ role: 'yonetici' }, { enabled: hasHistory })
+  const teachers = useInstitutionMembersAll({ role: 'ogretmen' }, { enabled: hasHistory })
   const entries = useMemo(() => {
     const studentNames = new Map(
       [...lookups.students.values()].map((student) => [student.id, student.name]),
     )
     const userNames = new Map(
-      [...(admins.data?.rows ?? []), ...(teachers.data?.rows ?? [])].map((member) => [
+      [...(admins.data ?? []), ...(teachers.data ?? [])].map((member) => [
         member.userId,
         member.name,
       ]),

@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
-import { FormActions, RootError } from '../management/FormParts.tsx'
+import { FormActions, RootError, useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import {
   createBody,
@@ -155,11 +155,12 @@ function ProspectForm({
     { enabled: askSibling },
   )
   const busy = create.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const errors = form.formState.errors
 
   const onSubmit = form.handleSubmit(async (values) => {
     const outcome = await create.submit(createBody(values, type), {
-      setError: fieldErrors(FIELDS, form.setError),
+      setError: fieldErrors(FIELDS, form.setError, focusAfterSubmit),
     })
     if (outcome.status === 'success') {
       notify.success('Aday eklendi.')
@@ -167,7 +168,7 @@ function ProspectForm({
     } else if (outcome.status === 'failed' && outcome.error.code === 'prospect_contact_shared') {
       setAskSibling(true)
     } else if (outcome.status === 'failed' && isDuplicateCode(outcome.error.code)) {
-      form.setFocus('phone')
+      focusAfterSubmit('phone')
     }
   })
 

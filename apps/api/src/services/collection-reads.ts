@@ -1,4 +1,10 @@
 import { dayKey } from '@kampus/school-core/lib/format.ts'
+import {
+  isQuizStaff,
+  isScoredAttempt,
+  QUIZ_SUBMIT_GRACE_SECONDS,
+  withheldAttemptFields,
+} from '@kampus/school-core/lib/quiz.ts'
 import type { Scope } from '@kampus/school-core/lib/scope.ts'
 
 import type { CollectionName, RecordData } from '../db/collections.ts'
@@ -8,6 +14,7 @@ import {
   INVOICE_STATUS_LABELS,
   loadRecordPage,
   loadRecords,
+  loadRecordsByIds,
   type InvoiceStatusLabel,
   type RecordFilter,
   type SearchMatch,
@@ -303,6 +310,80 @@ export function parseSort(raw: string | undefined): SortKey[] {
   })
 }
 
+/**
+ * Genel okumada hiçbir role dönmeyen geçici satır: süresi işleyen quiz denemesi (DOM-AKD-077,
+ * -078). Kayıttaki sonuç alanları başlatmada yazılan boş cevaplı yer tutucudur (0); koleksiyondan
+ * okuyan eski görünüm onu sonuç ve ortalamaya (DOM-AKD-079) katar. Süren deneme quiz uçlarından
+ * `in_progress` olarak, sonuçsuz okunur (`GET /quizzes/:quizId`); süresi dolmuş deneme 0 ile
+ * görünür, o gerçek sonuçtur. Satır zamana bağlıdır (`ctx.now`), kapsam kuralı statik olduğu
+ * için kapsamda değil burada süzülür; liste, sayım, toplam ve tekil okuma aynı kararı verir.
+ * Koşul SQL'de de uygulanır (`settledFilters`); bellekteki karar core `isScoredAttempt`'tir.
+ */
+function transientRow(ctx: ServiceContext, collection: CollectionName, record: RecordData) {
+  if (collection !== 'quizAttempts') return false
+  const status = record.status === 'started' ? 'started' : undefined
+  const expiresAt = typeof record.expiresAt === 'string' ? record.expiresAt : undefined
+  return !isScoredAttempt(
+    { ...(status ? { status } : {}), ...(expiresAt ? { expiresAt } : {}) },
+    ctx.now.toISOString(),
+  )
+}
+
+/**
+ * Geçici satırı (`transientRow`) dışlayan SQL koşulu: sayfa ve toplam veritabanında doğru olur,
+ * bellek yolu da süren denemeleri yüklemez. Kesin koşuldur (`SettledMatch`).
+ */
+function settledFilters(ctx: ServiceContext, collection: CollectionName): RecordFilter[] {
+  if (collection !== 'quizAttempts') return []
+  const expiredBefore = new Date(ctx.now.getTime() - QUIZ_SUBMIT_GRACE_SECONDS * 1000)
+  return [{ kind: 'settled', expiredBefore: expiredBefore.toISOString() }]
+}
+
+/** Satırın yanıt kaydı: kapsam ayıklaması ve gerekirse zamana bağlı alan çıkarma. */
+type Redactor = (row: StoredRecord) => RecordData
+
+/**
+ * Satırların ayıklayıcısı. Öğrenci ve veli quiz denemesinde kendi cevaplarını ve konu yüzdelerini
+ * quizin son tarihi geçene ya da quiz kapanana (arşiv) kadar görmez (core
+ * `withheldAttemptFields`, DOM-AKD-078); alan yanıtta, aramada ve sayımda yoktur. Satırların
+ * quizleri (arşivliler dahil) bir kez yüklenir; quizi bulunamayan denemede alanlar kapalı kalır.
+ * Diğer koleksiyon ve rollerde yalnız kapsam ayıklamasıdır (`scope.redact`).
+ */
+async function redactorFor(
+  ctx: ServiceContext,
+  scope: Scope,
+  collection: CollectionName,
+  rows: readonly StoredRecord[],
+): Promise<Redactor> {
+  const redact: Redactor = (row) => scope.redact(collection, row.data)
+  const role = scope.actor.role
+  if (collection !== 'quizAttempts' || isQuizStaff(role)) return redact
+  const quizIds = [
+    ...new Set(
+      rows.flatMap((row) => (typeof row.data.quizId === 'string' ? [row.data.quizId] : [])),
+    ),
+  ]
+  const quizzes = new Map(
+    (
+      await loadRecordsByIds(ctx.db, ctx.institutionId, 'quizzes', quizIds, {
+        includeArchived: true,
+      })
+    ).map((row) => [row.id, row]),
+  )
+  const now = ctx.now.toISOString()
+  return (row) => {
+    const record = redact(row)
+    const quiz = typeof row.data.quizId === 'string' ? quizzes.get(row.data.quizId) : undefined
+    const dueDate = typeof quiz?.data.dueDate === 'string' ? quiz.data.dueDate : undefined
+    const withheld = quiz
+      ? withheldAttemptFields(role, { dueDate, archived: quiz.archivedAt !== null }, now)
+      : withheldAttemptFields(role, {}, now)
+    return withheld.length === 0
+      ? record
+      : Object.fromEntries(Object.entries(record).filter(([key]) => !withheld.includes(key)))
+  }
+}
+
 /** Kapsamdan geçmiş satır ve rolün görebildiği alanları (ayıklanmış kopya). */
 interface VisibleRow {
   row: StoredRecord
@@ -443,6 +524,7 @@ async function listFilters(
     if (filter.kind === 'invoiceStatus') return ['paidAt', 'dueDate']
     if (filter.kind === 'any') return filter.matches.map((match) => match.field)
     if (filter.kind === 'ownOrVia') return [filter.field, filter.viaField]
+    if (filter.kind === 'settled') return ['status', 'expiresAt']
     return [filter.field]
   }
   return filters.some((filter) => fieldOf(filter).some((field) => hidden.includes(field)))
@@ -541,6 +623,8 @@ interface ReadResult {
   matches: (item: VisibleRow) => boolean
   /** Bağlı alan istendiyse değerleri veren işlev. */
   joiner: Joiner | null
+  /** Satırın yanıt kaydı (`redactorFor`). */
+  redact: Redactor
 }
 
 interface ReadOptions {
@@ -613,7 +697,7 @@ async function readRows(
   }
   const loaded = await loadRecords(ctx.db, ctx.institutionId, [collection], {
     includeArchived: query.archived !== undefined,
-    match: prefilter ? [prefilter, ...filters] : filters,
+    match: [...(prefilter ? [prefilter] : []), ...filters, ...settledFilters(ctx, collection)],
     ...(search ? { search } : {}),
   })
   // Ayıklama alan çıkarır veya daraltır, eklemez: ham kayıtta eşleşmeyen ayıklanmışta da
@@ -628,22 +712,17 @@ async function readRows(
     (row) =>
       (query.archived !== 'only' || row.archivedAt !== null) &&
       scope.canRead(collection, row.data) &&
+      !transientRow(ctx, collection, row.data) &&
       (!narrowed || candidate(row.data)),
   )
-  return { collection, scope, rows, narrowed, matches, joiner }
+  const redact = await redactorFor(ctx, scope, collection, rows)
+  return { collection, scope, rows, narrowed, matches, joiner, redact }
 }
 
 /** Ayıklanmış kayıtlar; daraltılmış sorguda son karar burada verilir. */
-function visibleRows({
-  collection,
-  scope,
-  rows,
-  narrowed,
-  matches,
-  joiner,
-}: ReadResult): VisibleRow[] {
+function visibleRows({ rows, narrowed, matches, joiner, redact }: ReadResult): VisibleRow[] {
   const items = rows.map((row): VisibleRow => {
-    const record = scope.redact(collection, row.data)
+    const record = redact(row)
     // Bağlı kaydın kimliği de ayıklanmış kayıttan okunur.
     return joiner ? { row, record, joined: joiner.values(record) } : { row, record }
   })
@@ -675,21 +754,28 @@ async function sqlPage(
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, collection)
   if (!scope.readsWhole(collection)) return null
+  // Süren quiz denemesi (`transientRow`) sayfada ve toplamda yoktur: koşul SQL'dedir.
   const { rows, total } = await loadRecordPage(ctx.db, ctx.institutionId, collection, {
     archived: query.archived,
     offset: (query.page - 1) * query.pageSize,
     limit: query.pageSize,
+    match: settledFilters(ctx, collection),
   })
-  if (!rows.every((row) => scope.canRead(collection, row.data))) {
+  if (
+    !rows.every(
+      (row) => scope.canRead(collection, row.data) && !transientRow(ctx, collection, row.data),
+    )
+  ) {
     ctx.log.warn({ event: 'collection.sql_page_scope_mismatch', collection })
     return null
   }
+  const redact = await redactorFor(ctx, scope, collection, rows)
   return {
     items: await toItems(
       ctx,
       scope,
       collection,
-      rows.map((row) => ({ row, record: scope.redact(collection, row.data) })),
+      rows.map((row) => ({ row, record: redact(row) })),
     ),
     total,
   }
@@ -707,7 +793,7 @@ export async function listCollection(
     joined: sort.flatMap((key) => (isJoinedField(key.field) ? [key.field] : [])),
   })
   if (result === null) return { items: [], total: 0 }
-  const { collection, scope, rows, narrowed } = result
+  const { collection, scope, rows, narrowed, redact } = result
   const start = (query.page - 1) * query.pageSize
   if (!narrowed && sort.length === 0)
     // Arama ve sıralama yoksa yalnız istenen sayfa ayıklanır.
@@ -716,9 +802,7 @@ export async function listCollection(
         ctx,
         scope,
         collection,
-        rows
-          .slice(start, start + query.pageSize)
-          .map((row) => ({ row, record: scope.redact(collection, row.data) })),
+        rows.slice(start, start + query.pageSize).map((row) => ({ row, record: redact(row) })),
       ),
       total: rows.length,
     }
@@ -875,10 +959,10 @@ export async function getCollectionItem(
   const row = await findRecord(ctx.db, ctx.institutionId, collection, id, {
     includeArchived: options.archived === 'include',
   })
-  if (!row || !scope.canRead(collection, row.data)) throw new NotFoundError()
-  const [item] = await toItems(ctx, scope, collection, [
-    { row, record: scope.redact(collection, row.data) },
-  ])
+  if (!row || !scope.canRead(collection, row.data) || transientRow(ctx, collection, row.data))
+    throw new NotFoundError()
+  const redact = await redactorFor(ctx, scope, collection, [row])
+  const [item] = await toItems(ctx, scope, collection, [{ row, record: redact(row) }])
   if (!item) throw new NotFoundError()
   return item
 }

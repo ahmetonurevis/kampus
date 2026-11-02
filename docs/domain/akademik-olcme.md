@@ -280,11 +280,55 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 - **Kurum türü:** `school`
 - **Kodda:** kısmen — okuma kapsamı `packages/school-core/src/lib/scope.ts` (`scopeFor`, not için notun sınıfı da kapsam verir), yazma yetkisi `lib/authorize.ts` (`grade.record`, `grade.update`, `attendance.record`); API oturumu üyelik bağlantılarından gelir. Çelişen kısım: yayım adımı yok (`DOM-AKD-053`); çevrimdışı demo öğretmeni sabit `t1` kimliğine eşlenir (`sessionActor`).
 
+## Quiz
+
+Quiz, öğretmenin soru bankasından hazırladığı, otomatik puanlanan kısa ölçmedir; sonucu resmî not değildir, dönem puanına ancak `DOM-AKD-060` ile ve açıkça aktarılarak girer. Kayıtlar `quizzes` ve `quizAttempts` koleksiyonlarındadır; modül `learning`, kapalıysa quiz uçları kapanır (`DOM-YTK-040`). İçerik havuzundaki quiz kaynağı (ADR 0004, `resources`) ayrı kuraldır (`DOM-KYN`).
+
+### DOM-AKD-075 · Quiz hazırlama
+
+- **Kural:** Quizi yönetici ya da sınıfın o dersine atanmış öğretmen hazırlar. Öğretmen yalnız derse girdiği sınıf ve branşa hazırlar; sınıfa tek dersle giriyorsa ders seçilmez. Quizin öğretmeni sınıfın o dersine atanmış aktif öğretmendir; atama yoksa quiz hazırlanmaz. Pasif ya da arşivlenmiş sınıfa quiz hazırlanmaz. Sorular kurumun soru bankasından seçilir (en az 1, en çok 50, her soru bir kez): bankada olmayan soru ve quizin dersi ya da sınıfın düzeyi dışındaki soru reddedilir. Çözme süresi 5–120 dakikadır. Son tarih isteğe bağlıdır; saat dilimli an olarak girilir, UTC saklanır ve verildiği anda geçmişte olamaz. Ön büro quiz görmez ve yazmaz (`DOM-YTK-021`).
+- **Gerekçe:** Branş ya da düzey dışı soru, öğrencinin işlenmemiş konudan ölçülmesine yol açar; bankada olmayan soru puanlanamaz.
+- **Kaynak:** İşletme kuralı; öğretmenin kapsamı `DOM-YTK-022`. Vue demosu aynı ders ve düzey denetimini yapar (`apps/web/src/views/Learning.vue:363-404`).
+- **Kurum türü:** ikisi
+- **Kodda:** var — `packages/school-core/src/lib/quiz.ts` (`createQuiz`), yetki `lib/authorize.ts` (`quiz.create`); API `POST /api/v1/quizzes` (`apps/api/src/routes/quizzes.ts`).
+
+### DOM-AKD-076 · Quiz düzenleme ve arşiv
+
+- **Kural:** Quizi yönetici ya da sınıfın o dersine atanmış öğretmen düzenler: başlık, süre, son tarih ve sorular. Sınıf ve ders değişmez; yanlış sınıfa hazırlanan quiz arşivlenip yeniden hazırlanır. Deneme kaydı olan (başlatılmış ya da tamamlanmış) quizin soruları değişmez ve quiz arşivlenmez. Süre ve son tarih değişikliği yalnız sonraki denemeleri etkiler; başlamış denemenin bitiş anı korunur. Quizi gören (aynı sınıfa giren ya da dersten alınmış eski) başka öğretmen düzenleyemez; görmeyen için quiz yoktur. Ders öğretmeni değişince deneme kaydı olmayan quiz yeni öğretmene geçer (`DOM-YTK-022`).
+- **Gerekçe:** Çözülmüş quizin sorusunu değiştirmek verilmiş cevapları anlamsızlaştırır ve puanı geriye dönük değiştirir; arşiv öğrencinin sonucunu ve aktarılmış notun kaynağını siler.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `lib/quiz.ts` (`updateQuiz`, `archiveQuiz`); API `PATCH` ve `DELETE /api/v1/quizzes/:quizId`.
+
+### DOM-AKD-077 · Quiz çözme: tek deneme, süre ve son tarih
+
+- **Kural:** Öğrenci yalnız kendi sınıfının quizini çözer; pasif öğrenci çözmez. Her öğrencinin quiz başına tek denemesi vardır. Deneme başlatılınca süre işler: bitiş anı başlangıç + süredir, son tarih daha erkense son tarihtir. Başlamış deneme yeniden açılınca aynı deneme ve aynı bitiş anı döner (yenileme süreyi baştan başlatmaz). Son tarihten sonra deneme başlatılmaz. Cevaplar bitiş anından sonra en çok 60 saniyelik ağ payı içinde kabul edilir; payı aşan gönderim reddedilir ve deneme boş cevaplı sonucuyla (0) kalır. Boş bırakılan soru yanlış sayılır. Gönderilmiş ya da süresi dolmuş denemeden sonra ikinci deneme ve ikinci gönderim reddedilir (409); ağ yinelemesi aynı `Idempotency-Key` ile ilk yanıtı alır. `DOM-AKD-060`'taki tekrar çözme ve "ilk tamamlanan deneme" eski kayıtlar içindir.
+- **Gerekçe:** Süre istemcide tutulursa sayfa yenilemesiyle uzatılabilir; tekrar gönderim sonucu iyileştirmeye ve cevabı arkadaştan öğrenip yeniden çözmeye izin verir. İkinci gönderimin sessizce ilk sonucu döndürmesi, yeni cevapların puanlandığı yanılgısını doğurur.
+- **Kaynak:** İşletme kuralı. Vue demosunda süre yalnız önerilir ve quiz tekrar çözülür (`apps/web/src/views/Learning.vue:405-436`).
+- **Kurum türü:** ikisi
+- **Kodda:** var — `lib/quiz.ts` (`startQuiz`, `submitQuiz`, `quizAttemptStatus`); nota aktarım süresi işleyen denemeyi saymaz (`lib/grades.ts`); API `POST /api/v1/quizzes/:quizId/attempt` ve `/attempt/submit`.
+
+### DOM-AKD-078 · Sunucu puanlaması ve cevap anahtarının gizliliği
+
+- **Kural:** Puan yalnız öğrencinin gönderdiği cevaplardan, soru bankasındaki anahtarla sunucuda hesaplanır; istemciden puan, doğru sayısı ya da sonuç alınmaz. Gösterilen sonuç her okumada cevaplardan yeniden hesaplanır; kayıttaki sonuç alanları eski görünümler için yazılan kopyadır. Cevap anahtarı (doğru şık) ve çözüm açıklaması öğrenci ve veliye hiçbir yanıtta dönmez; yalnız yönetici ve öğretmen bankadan okur. Öğrenci soru metnini ve şıklarını deneme başlatınca görür; veli çocuğunun denemesi sonuçlanınca görür. Deneme sonuçlanınca (gönderilmiş ya da süresi dolmuş) öğrenci ve veliye yalnız puan, doğru ve soru sayısı açılır. Öğrencinin kendi cevapları ve konu yüzdeleri quizin son tarihi geçince ya da quiz kapanınca (arşiv) açılır; son tarihsiz quizde quiz kapanana ya da öğretmenin verdiği son tarih geçene kadar açılmaz. Soru bazında doğru/yanlış işareti hiç açılmaz. Süre işlerken sonuç da cevaplar da dönmez. Kural quiz uçlarında ve genel koleksiyon okumasında (yanıt, arama, sayım) aynıdır.
+- **Gerekçe:** Doğru şık ya da soru bazında doğru/yanlış, quizi henüz çözmemiş sınıf arkadaşına anahtarı taşır. Dolaylı yol da aynı sonucu verir: tam puan alan öğrencinin cevapları anahtarın kendisidir, tek sorulu konunun yüzdesi o sorunun doğru olup olmadığını söyler. Herkesin çözme süresi bitince bu bilgi kazanım analizinin amacına hizmet eder (`DOM-AKD-060`).
+- **Kaynak:** İşletme kuralı. Vue demosu çözümden sonra doğru şıkkı ve açıklamayı gösterir (`apps/web/src/views/Learning.vue:976-997`); bilinçli olarak değiştirildi.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `lib/quiz.ts` (`quizQuestionsView`, `quizAttemptResult`, `quizAttemptView`, `canSeeQuizQuestions`; inceleme `quizReviewOpen`, `withheldAttemptFields`); soru bankası öğrenci ve veliye okunmaz (`platform/scope.ts` `bank`); API yanıt şeması role özgüdür (`apps/api/src/routes/quizzes.schemas.ts`: anahtar yalnız `QuizStaffDetail`'de, `answers` ve `topicScores` isteğe bağlı), genel koleksiyon okuması inceleme alanlarını öğrenci ve veliden çıkarır ve süren denemeyi SQL'de dışlar (`apps/api/src/services/collection-reads.ts` `redactorFor`, `settledFilters`).
+
+### DOM-AKD-079 · Quiz ortalaması ve görünürlük
+
+- **Kural:** Quiz ortalaması saklanmaz; her okumada sonuçlanmış denemelerin cevaplardan hesaplanan puanlarıyla bulunur ve tam sayıya yuvarlanır. Süresi işleyen deneme ortalamaya girmez; süresi dolmuş deneme 0 ile girer. Eski kayıtta öğrencinin birden çok denemesi varsa ilk deneme sayılır (`DOM-AKD-060`). Deneme yoksa ortalama boştur. Denemeyi (cevaplar, puan) yönetici, quizin öğretmeni ve öğrencinin sınıf rehber öğretmeni okur; ortalama yalnız okuyabildiği denemelerden hesaplanır. Quizin öğretmeni, ataması sona erse ya da öğrenci sınıf değiştirse de kendi quizinin denemelerini okur (geçmiş kayıtları okuma, `DOM-YTK-022`). Aynı sınıfa başka dersle giren öğretmen quizi görür, denemeleri ve ortalamayı görmez. Öğrenci kendi denemesini, veli bağlı çocuğunun denemesini görür; sınıf ortalaması ve başka öğrencinin sonucu açılmaz. Ön büro görmez. Kural quiz uçlarında ve genel koleksiyon okumasında aynıdır.
+- **Gerekçe:** Saklanan ortalama her yeni denemede ve soru düzeltmesinde bayatlar; başka öğrencinin sonucu kişisel veridir ve değerlendirme görevi olmayan öğretmenin okuması veri en aza indirme ilkesine aykırıdır (`DOM-AKD-074` ile aynı).
+- **Kaynak:** KVKK md. 4/2-ç, md. 12; `DOM-YTK-022`, `DOM-YTK-025`.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `lib/quiz.ts` (`quizStatistics`); okuma kapsamı `platform/scope.ts` (`quizzes`, `quizAttempts`: `quizAttemptReader`, `modules/scope-builders.ts` `ownWorkOrHomeroom`); quiz → öğretmen kapsam kaynağında (`lib/scope.ts` `ScopeSource.quizzes`, `Scope.quizIds`; API yalnız öğretmenin kendi quizlerini yükler: `apps/api/src/services/read-scope.ts`). API `GET /api/v1/quizzes` ve `/quizzes/:quizId` (`statistics`, `attempts`) ve genel `/collections/quizAttempts` okuması.
+
 ## Deneme ve optik
 
 ### DOM-AKD-060 · Deneme ve kurum içi ölçme resmî not değildir
 
-- **Kural:** Deneme sınavı (LGS/YKS formatı), kazanım testi, hazırbulunuşluk ve quiz sonuçları dönem puanına, karneye ve sınıf geçmeye girmez. Bunlar net, kazanım analizi ve hedef ilerlemesi üretir. Öğretmen bir kurum içi ölçmeyi resmî performans çalışması olarak kullanmak isterse puanı `DOM-AKD-004` türünde, açıkça seçerek ve tek kayıt olarak aktarır. Otomatik aktarım yoktur. Öğrencinin bir quizi tekrar çözmesi alıştırmadır ve yeni not oluşturmaz. Notlu quizde ilk tamamlanan deneme sayılır (beceri görevleri için `DOM-BEC`).
+- **Kural:** Deneme sınavı (LGS/YKS formatı), kazanım testi, hazırbulunuşluk ve quiz sonuçları dönem puanına, karneye ve sınıf geçmeye girmez. Bunlar net, kazanım analizi ve hedef ilerlemesi üretir. Öğretmen bir kurum içi ölçmeyi resmî performans çalışması olarak kullanmak isterse puanı `DOM-AKD-004` türünde, açıkça seçerek ve tek kayıt olarak aktarır. Otomatik aktarım yoktur. Öğrencinin bir quizi tekrar çözmesi alıştırmadır ve yeni not oluşturmaz. Notlu quizde ilk tamamlanan deneme sayılır (beceri görevleri için `DOM-BEC`). Platform quizinde deneme tektir (`DOM-AKD-077`); tekrar çözme eski kayıtlarda görülür.
 - **Gerekçe:** Resmî puan türleri ve sayıları mevzuatla sınırlıdır. Her quiz denemesinin not olması ortalamayı şişirir ve tekrar çözerek not yükseltmeye izin verir.
 - **Kaynak:** OİKY md. 22, 27; OKY md. 50/8, 51. Tek sayılan deneme işletme kuralıdır.
 - **Kurum türü:** `school` (dil okulu için `DOM-BEC`)

@@ -7,6 +7,7 @@ import { requireAuthorized } from './authorize.ts'
 import { daySchema, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { average, dayKey } from './format.ts'
+import { isScoredAttempt } from './quiz.ts'
 import { linkedRecordId, requireReadable, scopeFor, type Actor } from './scope.ts'
 
 /**
@@ -195,9 +196,11 @@ export function recordGrade(
       throw new DomainError('quiz_already_graded', 'Bu quiz zaten not olarak aktarıldı.', {
         kind: 'conflict',
       })
-    // Tekrar çözmek alıştırmadır; ilk tamamlanan deneme sayılır (DOM-AKD-060).
+    // Tekrar çözmek alıştırmadır; ilk tamamlanan deneme sayılır (DOM-AKD-060). Süresi işleyen
+    // deneme henüz sonuçlanmamıştır; süresi dolmuş deneme boş cevaplı sonucuyla sayılır
+    // (DOM-AKD-077).
     const [first] = state.quizAttempts
-      .filter((a) => a.quizId === quiz.id && a.studentId === student.id)
+      .filter((a) => a.quizId === quiz.id && a.studentId === student.id && isScoredAttempt(a, now))
       .sort((a, b) => a.date.localeCompare(b.date))
     if (!first) throw new DomainError('quiz_not_attempted', 'Öğrenci bu quizi henüz tamamlamadı.')
     gradeScore = first.score

@@ -23,6 +23,7 @@ import {
   parentMeeting,
   PERSONAL,
   personal,
+  quizAttemptReader,
   requesterId,
   submissionReader,
   text,
@@ -107,7 +108,9 @@ export const PLATFORM_READ_RULES = {
     ogrenci: ownClass,
     veli: ownClass,
   },
-  quizAttempts: { ...ADMIN, ogretmen: ownStudent, ...PERSONAL },
+  // Denemeyi quizin öğretmeni ve öğrencinin sınıf rehber öğretmeni okur; aynı sınıfa başka dersle
+  // giren öğretmen cevapları ve puanı görmez (DOM-AKD-079, DOM-YTK-022).
+  quizAttempts: { ...ADMIN, ogretmen: quizAttemptReader, ...PERSONAL },
   homework: {
     ...ADMIN,
     ogretmen: (c, r) => ownClass(c, r) || ownTeacher(c, r),

@@ -152,6 +152,19 @@ export interface OwnOrViaMatch {
   viaValues: readonly string[]
 }
 
+/**
+ * Sonuçlanmış deneme süzgeci (quiz denemesi, DOM-AKD-077): `status` metni `started` olmayan ya da
+ * `expiresAt` anı `expiredBefore`'dan önce olan satır (süresi ve ağ payı geçmiş deneme). Sınır
+ * isteğin anı eksi ağ payıdır (`QUIZ_SUBMIT_GRACE_SECONDS`). An `toISOString` biçiminde olmalıdır
+ * (`INSTANT_PATTERN`; core denemeyi böyle yazar) ve bayt sırasıyla karşılaştırılır; başka biçimli
+ * ya da eksik `expiresAt` süren deneme sayılır. Kesin koşuldur: bellekteki `matchesSettled` ile ve
+ * iyi biçimli kayıtta core `isScoredAttempt` ile aynı sonucu verir.
+ */
+export interface SettledMatch {
+  kind: 'settled'
+  expiredBefore: string
+}
+
 export type RecordFilter =
   | FieldMatch
   | EqualsMatch
@@ -161,6 +174,7 @@ export type RecordFilter =
   | DayRangeMatch
   | InvoiceStatusMatch
   | OwnOrViaMatch
+  | SettledMatch
 
 /** Gün ve an biçimleri; SQL (`~`) ve bellek (`RegExp`) aynı metni kullanır. */
 export const DAY_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
@@ -286,6 +300,13 @@ function invoiceStatusMatch(match: InvoiceStatusMatch): SQL {
   return parts.length === 0 ? sql`false` : sql`(${sql.join(parts, sql` or `)})`
 }
 
+function settledMatch({ expiredBefore }: SettledMatch): SQL {
+  const status = sql`coalesce(${records.data} ->> 'status', '')`
+  const expiresAt = sql`(${records.data} ->> 'expiresAt')`
+  const expired = sql`(jsonb_typeof(${records.data} -> 'expiresAt') = 'string' and ${expiresAt} ~ ${INSTANT_PATTERN} and (${expiresAt} collate "C") < (${expiredBefore}::text collate "C"))`
+  return sql`(${status} <> 'started' or ${expired})`
+}
+
 /** Süzgecin SQL koşulu (alan adı ve değerler parametredir). */
 export function recordFilter(filter: RecordFilter): SQL {
   switch (filter.kind) {
@@ -308,6 +329,8 @@ export function recordFilter(filter: RecordFilter): SQL {
       return invoiceStatusMatch(filter)
     case 'ownOrVia':
       return ownOrViaMatch(filter)
+    case 'settled':
+      return settledMatch(filter)
     default:
       return filter satisfies never
   }
@@ -399,7 +422,8 @@ export async function loadRecords(
 }
 
 /**
- * Bir koleksiyonun verilen kimlikli (arşivlenmemiş) kayıtları, deponun sırasıyla. Birincil
+ * Bir koleksiyonun verilen kimlikli kayıtları (arşivliler yalnız `includeArchived` ile), deponun
+ * sırasıyla. Birincil
  * anahtar indeksini kullanır; bağlı ad çözümünde yalnız sayfanın kimlikleri yüklenir.
  */
 export async function loadRecordsByIds(
@@ -407,6 +431,7 @@ export async function loadRecordsByIds(
   institutionId: string,
   collection: CollectionName,
   ids: readonly string[],
+  options: Pick<LoadOptions, 'includeArchived'> = {},
 ): Promise<StoredRecord[]> {
   if (ids.length === 0) return []
   assertCollections([collection])
@@ -418,7 +443,7 @@ export async function loadRecordsByIds(
         eq(records.institutionId, institutionId),
         eq(records.collection, collection),
         inArray(records.id, [...ids]),
-        isNull(records.archivedAt),
+        options.includeArchived ? undefined : isNull(records.archivedAt),
       ),
     )
     .orderBy(asc(records.position), asc(records.id))
@@ -428,13 +453,19 @@ export async function loadRecordsByIds(
 /**
  * Koleksiyonun bir sayfası ve toplamı, deponun sırasıyla (`position`, kimlik). Yalnız süzgeçsiz,
  * sıralamasız ve aktörün koleksiyonun tamamını okuduğu listede kullanılır
- * (`collection-reads.ts`); diğer listeler aday satırları yükler.
+ * (`collection-reads.ts`); diğer listeler aday satırları yükler. `match` kesin koşullardır
+ * (ör. süren quiz denemesi sayfada ve toplamda yok); sayfa ve toplam aynı koşulla hesaplanır.
  */
 export async function loadRecordPage(
   db: Database,
   institutionId: string,
   collection: CollectionName,
-  options: { archived?: 'include' | 'only' | undefined; offset: number; limit: number },
+  options: {
+    archived?: 'include' | 'only' | undefined
+    offset: number
+    limit: number
+    match?: readonly RecordFilter[]
+  },
 ): Promise<{ rows: StoredRecord[]; total: number }> {
   assertCollections([collection])
   const filters: SQL[] = [
@@ -443,6 +474,7 @@ export async function loadRecordPage(
   ]
   if (options.archived === undefined) filters.push(isNull(records.archivedAt))
   if (options.archived === 'only') filters.push(isNotNull(records.archivedAt))
+  for (const match of options.match ?? []) filters.push(recordFilter(match))
   const where = and(...filters)
   const [rows, [counted]] = await Promise.all([
     db

@@ -69,6 +69,7 @@ type Assignment = State['assignments'][number]
 type Club = State['clubs'][number]
 type MockExam = State['mockExams'][number]
 type Homework = State['homework'][number]
+type Quiz = State['quizzes'][number]
 
 /** Kapsamı hesaplamak için gereken koleksiyonlar; API bunları kurumdan bir kez yükler. */
 export const SCOPE_SOURCE_COLLECTIONS = [
@@ -94,6 +95,12 @@ export type ScopeSource = {
    * ödevlerini yükler; verilmezse öğretmen yalnız rehberi olduğu sınıfın teslimlerini görür.
    */
   homework?: readonly Pick<Homework, 'id' | 'teacherId'>[]
+  /**
+   * Deneme kapsamı için quiz → öğretmen (DOM-AKD-079): öğretmen kendi hazırladığı quizin
+   * denemelerini okur. `homework` gibi isteğe bağlıdır; verilmezse öğretmen yalnız rehberi olduğu
+   * sınıfın denemelerini görür.
+   */
+  quizzes?: readonly Pick<Quiz, 'id' | 'teacherId'>[]
   /** Modül anahtarı → açık mı; haritada olmayan modül kapalıdır. */
   modules: Readonly<Record<string, boolean>>
 }
@@ -132,6 +139,8 @@ export type Scope = {
   readonly classIds: ReadonlySet<string>
   /** Öğretmen aktörün verdiği ödevler (kaynaktaki `homework`; teslim kapsamı, DOM-AKD-074). */
   readonly homeworkIds: ReadonlySet<string>
+  /** Öğretmen aktörün hazırladığı quizler (kaynaktaki `quizzes`; deneme kapsamı, DOM-AKD-079). */
+  readonly quizIds: ReadonlySet<string>
   access(collection: string): ReadDecision
   /**
    * Rol bu koleksiyonu satır ayrımı olmadan bütünüyle okur (erişim açık ve satır kuralı koşulsuz).
@@ -348,15 +357,17 @@ function buildContext(source: ScopeSource, actor: Actor, role: Role | undefined)
   const clubIds = new Set(
     teacher ? source.clubs.filter((c) => c.teacherId === teacher.id).map((c) => c.id) : [],
   )
-  // Tembel: yalnız teslim kuralı sorulunca okunur. Ödevi yüklemeyen işlemler (komut tablosunda
-  // `homework` olmayan) kaynağın bu anahtarına hiç dokunmaz.
-  let homeworkIds: ReadonlySet<string> | undefined
-  const ownHomework = () =>
-    (homeworkIds ??= new Set(
-      teacher
-        ? (source.homework ?? []).filter((h) => h.teacherId === teacher.id).map((h) => h.id)
-        : [],
-    ))
+  // Tembel: yalnız teslim ya da deneme kuralı sorulunca okunur. Ödevi ya da quizi yüklemeyen
+  // işlemler (komut tablosunda koleksiyon yok) kaynağın bu anahtarına hiç dokunmaz.
+  const ownWork = (items: () => readonly { id: string; teacherId: string }[] | undefined) => {
+    let ids: ReadonlySet<string> | undefined
+    return () =>
+      (ids ??= new Set(
+        teacher ? (items() ?? []).filter((w) => w.teacherId === teacher.id).map((w) => w.id) : [],
+      ))
+  }
+  const ownHomework = ownWork(() => source.homework)
+  const ownQuizzes = ownWork(() => source.quizzes)
   return {
     role,
     userId: actor.userId,
@@ -371,6 +382,9 @@ function buildContext(source: ScopeSource, actor: Actor, role: Role | undefined)
     clubIds,
     get homeworkIds() {
       return ownHomework()
+    },
+    get quizIds() {
+      return ownQuizzes()
     },
     classTeacherIds,
     studentClass,
@@ -449,6 +463,9 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     classIds: context.classIds,
     get homeworkIds() {
       return context.homeworkIds
+    },
+    get quizIds() {
+      return context.quizIds
     },
     access,
     readsWhole,

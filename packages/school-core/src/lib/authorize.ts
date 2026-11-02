@@ -492,6 +492,47 @@ function decide(
       if (studentId === undefined || scope.studentIds.has(studentId)) return ALLOWED
       return deny('consent_student_not_found', 'Öğrenci bulunamadı.', 'DOM-YTK-057', 'not_found')
     }
+    case 'quiz.create': {
+      // Öğretmen yalnız derse girdiği sınıf ve branşa quiz hazırlar; yönetici her sınıfa
+      // (DOM-AKD-075, DOM-YTK-022).
+      if (actor.role === 'yonetici') return ALLOWED
+      const { classId, subjectId } = request.target
+      return teaches(classId, subjectId)
+        ? ALLOWED
+        : deny(
+            'quiz_scope_denied',
+            'Yalnız derse girdiğiniz sınıf ve branşa quiz hazırlayabilirsiniz.',
+            'DOM-AKD-075',
+          )
+    }
+    case 'quiz.update':
+    case 'quiz.archive': {
+      // Yönetici ya da sınıfın o dersine atanmış öğretmen (DOM-AKD-076). Quizi okuyabilen başka
+      // öğretmen (aynı sınıfa giren ya da dersten alınmış eski öğretmen) 403 alır; okuyamayan için
+      // ret 404'tür, quizin varlığı sızdırılmaz.
+      const quiz = request.target.quiz
+      if (quiz === undefined || actor.role === 'yonetici') return ALLOWED
+      if (teaches(quiz.classId, quiz.subjectId)) return ALLOWED
+      return scope.classIds.has(quiz.classId) || (!!teacher && quiz.teacherId === teacher.id)
+        ? deny('quiz_not_owner', 'Bu quizin dersine girmiyorsunuz.', 'DOM-AKD-076')
+        : deny('quiz_not_found', 'Quiz bulunamadı.', 'DOM-AKD-076', 'not_found')
+    }
+    case 'quiz.start':
+    case 'quiz.submit': {
+      // Öğrenci yalnız kendisi için ve kendi sınıfının quizini çözer (DOM-AKD-077); başka sınıfın
+      // quizi olmayan quizle aynı 404'tür.
+      const { studentId, quiz } = request.target
+      if (studentId === undefined || !scope.studentIds.has(studentId))
+        return deny(
+          'student_scope_denied',
+          'Bu öğrenci için işlem yetkiniz bulunmuyor.',
+          'DOM-AKD-077',
+        )
+      if (quiz === undefined) return ALLOWED
+      return classOf(studentId) === quiz.classId
+        ? ALLOWED
+        : deny('quiz_not_found', 'Quiz bulunamadı.', 'DOM-AKD-077', 'not_found')
+    }
     default:
       return request satisfies never
   }

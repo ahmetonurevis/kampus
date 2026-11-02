@@ -3,6 +3,7 @@ import type { HomeworkParties } from '../lib/homework.ts'
 import type { AnnouncementPublisher, AnnouncementTarget } from '../lib/communication.ts'
 import type { ConversationParties } from '../lib/communication-access.ts'
 import type { ArchiveKind } from '../lib/school-management.ts'
+import type { QuizParties } from '../lib/quiz.ts'
 import type { Role } from '../modules/navigation.ts'
 import type { PLATFORM_OPERATION_COMMANDS } from './commands.ts'
 
@@ -106,6 +107,13 @@ export type PlatformWriteTargets = {
   'group.read': Record<string, never>
   'group.manage': Record<string, never>
   'group.waitlist': Record<string, never>
+  // Quiz (`lib/quiz.ts`; DOM-AKD-075…078): sınıf ve ders gövdeden, öğrenci oturumdan gelir;
+  // kayıt yoksa `undefined` (varlık işlemin işidir, 404).
+  'quiz.create': { classId: string; subjectId: string }
+  'quiz.update': { quiz: QuizParties | undefined }
+  'quiz.archive': { quiz: QuizParties | undefined }
+  'quiz.start': { studentId: string | undefined; quiz: { classId: string } | undefined }
+  'quiz.submit': { studentId: string | undefined; quiz: { classId: string } | undefined }
 }
 
 /** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları `lib/authorize.ts`). */
@@ -204,4 +212,12 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   'group.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
   'group.manage': ['yonetici', 'ogretmen'],
   'group.waitlist': ['yonetici', 'onburo'],
+  // Quizi yönetici ya da sınıfın o dersine atanmış öğretmen hazırlar, düzenler ve arşivler;
+  // denemeyi öğrenci başlatır ve gönderir. Veli çocuğunun sonucunu salt okur, ön büro quiz
+  // görmez (DOM-AKD-075…079, DOM-YTK-021).
+  'quiz.create': ['yonetici', 'ogretmen'],
+  'quiz.update': ['yonetici', 'ogretmen'],
+  'quiz.archive': ['yonetici', 'ogretmen'],
+  'quiz.start': ['ogrenci'],
+  'quiz.submit': ['ogrenci'],
 } as const satisfies Record<PlatformAction, readonly Role[]>

@@ -177,9 +177,14 @@ function QuizResultDetail({ quizId, studentId }: Omit<PanelProps, 'onClose'>) {
             Çözülme tarihi: {dateLabel(attempt.date, { year: 'numeric' })}
           </p>
           <SummarySection title="Konu bazında başarı">
+            {/* Konu yüzdeleri quizin son tarihi geçince ya da quiz kapanınca açılır (DOM-AKD-078). */}
             <SummaryList
-              empty="Konu bazında sonuç yok."
-              items={attempt.topicScores.map((topic) => ({
+              empty={
+                Array.isArray(attempt.topicScores)
+                  ? 'Konu bazında sonuç yok.'
+                  : 'Konu bazında sonuç quizin son tarihi geçince açılır.'
+              }
+              items={(attempt.topicScores ?? []).map((topic) => ({
                 key: topic.topic,
                 label: topic.topic,
                 value: `%${topic.score}`,

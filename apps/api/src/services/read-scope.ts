@@ -70,8 +70,9 @@ const mockExamSource = z.object({ id: z.string(), grade: z.number() }) satisfies
   ScopeSource['mockExams'][number]
 >
 
-const homeworkSource = z.object({ id: z.string(), teacherId: z.string() }) satisfies z.ZodType<
-  NonNullable<ScopeSource['homework']>[number]
+// Öğretmenin kendi işi (ödev, quiz): kimlik ve öğretmen.
+const ownWorkSource = z.object({ id: z.string(), teacherId: z.string() }) satisfies z.ZodType<
+  NonNullable<ScopeSource['homework'] | ScopeSource['quizzes']>[number]
 >
 
 type SourceCollection = (typeof SCOPE_SOURCE_COLLECTIONS)[number]
@@ -110,15 +111,23 @@ async function buildScope(ctx: ServiceContext): Promise<ScopeState> {
   )
   for (const row of rows) byCollection.get(row.collection)?.push(row.data)
   const data = (name: SourceCollection) => byCollection.get(name) ?? []
-  // Teslim kapsamı (DOM-AKD-074): öğretmen kendi verdiği ödevin teslimlerini okur. Kurumun bütün
-  // ödevi her istekte yüklenmez; yalnız öğretmenin bağlı olduğu öğretmen kaydının ödevleri.
+  // Teslim ve deneme kapsamı (DOM-AKD-074, DOM-AKD-079): öğretmen kendi verdiği ödevin
+  // teslimlerini ve kendi hazırladığı quizin denemelerini okur. Kurumun bütün ödev ve quizi her
+  // istekte yüklenmez; tek sorguda yalnız öğretmenin bağlı olduğu öğretmen kaydının işleri.
   const teacherIds = links.filter((link) => link.kind === 'teacher').map((link) => link.recordId)
-  const homework =
+  const ownWork =
     ctx.actor.role === 'ogretmen' && teacherIds.length > 0
-      ? await loadRecords(ctx.db, ctx.institutionId, ['homework'], {
+      ? await loadRecords(ctx.db, ctx.institutionId, ['homework', 'quizzes'], {
           match: [{ kind: 'equals', field: 'teacherId', values: teacherIds }],
         })
       : []
+  const workOf = (collection: 'homework' | 'quizzes') =>
+    parseRows(
+      ctx,
+      collection,
+      ownWork.filter((row) => row.collection === collection).map((row) => row.data),
+      ownWorkSource,
+    )
   const source: ScopeSource = {
     students: parseRows(ctx, 'students', data('students'), studentSource),
     teachers: parseRows(ctx, 'teachers', data('teachers'), teacherSource),
@@ -126,12 +135,8 @@ async function buildScope(ctx: ServiceContext): Promise<ScopeState> {
     assignments: parseRows(ctx, 'assignments', data('assignments'), assignmentSource),
     clubs: parseRows(ctx, 'clubs', data('clubs'), clubSource),
     mockExams: parseRows(ctx, 'mockExams', data('mockExams'), mockExamSource),
-    homework: parseRows(
-      ctx,
-      'homework',
-      homework.map((row) => row.data),
-      homeworkSource,
-    ),
+    homework: workOf('homework'),
+    quizzes: workOf('quizzes'),
     modules: institution?.modules ?? {},
   }
   const actor: Actor = { role: ctx.actor.role, links, userId: ctx.actor.userId }
@@ -224,12 +229,13 @@ export function assertReadable(ctx: ServiceContext, scope: Scope, collection: Co
   }
 }
 
-type ScopeKey = 'studentId' | 'classId' | 'homeworkId' | 'teacherId'
+type ScopeKey = 'studentId' | 'classId' | 'homeworkId' | 'quizId' | 'teacherId'
 
 /**
  * SQL ön süzgeci (performans): büyük kişisel koleksiyonlarda rolün core kuralı satırın öğrencisinin
- * veya sınıfının (teslimde öğretmenin ödevinin) kapsamda olmasını gerektirir (`ownStudent`,
- * `ownClass`, `subjectOrHomeroom`, `gradeReader`, `submissionReader`). Veritabanı yalnız bu kimliklerin satırlarını döndürür; her satır yine core
+ * veya sınıfının (teslim ve denemede öğretmenin ödevinin ya da quizinin) kapsamda olmasını
+ * gerektirir (`ownStudent`, `ownClass`, `subjectOrHomeroom`, `gradeReader`, `submissionReader`,
+ * `quizAttemptReader`). Veritabanı yalnız bu kimliklerin satırlarını döndürür; her satır yine core
  * `canRead` ile süzülür. Süzgeç gerekli koşuldur: yalnız adayları daraltır, kararı core verir;
  * core'un görünür saydığı hiçbir satırı dışlamamalıdır. Birden çok anahtar "biri yeter" demektir:
  * öğretmen notu, verildiği sınıf (`classId`) kapsamdaysa (öğrenci sonradan sınıf değiştirmiş olsa
@@ -253,7 +259,13 @@ const PREFILTER: Partial<Record<CollectionName, Partial<Record<Role, readonly Sc
     ogrenci: ['studentId'],
     veli: ['studentId'],
   },
-  quizAttempts: { ogretmen: ['studentId'], ogrenci: ['studentId'], veli: ['studentId'] },
+  // Öğretmen denemeyi kendi quizinden (`quizId`, sınıftan ayrılmış olsa da) ya da rehberi olduğu
+  // sınıfın öğrencisinden (`studentId`) görür (`quizAttemptReader`, DOM-AKD-079).
+  quizAttempts: {
+    ogretmen: ['studentId', 'quizId'],
+    ogrenci: ['studentId'],
+    veli: ['studentId'],
+  },
   schedule: { ogrenci: ['classId'], veli: ['classId'] },
 }
 
@@ -265,6 +277,8 @@ function keyValues(scope: Scope, key: ScopeKey): string[] {
       return [...scope.classIds]
     case 'homeworkId':
       return [...scope.homeworkIds]
+    case 'quizId':
+      return [...scope.quizIds]
     case 'teacherId':
       return scope.teacher ? [scope.teacher.id] : []
     default:

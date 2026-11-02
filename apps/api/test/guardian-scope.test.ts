@@ -220,6 +220,12 @@ describe('velayet ve iletişim kısıtı okuma kapsamı', () => {
 
     await lift(w)
     assert.deepEqual(await ids(w.mother.cookie, '?studentId=s1'), [deniz])
+
+    // Velayeti olmayan kısıtsız veli de çocuğu seçemez (DOM-ILT-070 varsayılan erişimsiz).
+    await setMotherBond(w, { custody: 'none' })
+    assert.equal((await get(w.mother.cookie, '/api/v1/resources?studentId=s1')).statusCode, 404)
+    assert.equal((await get(w.mother.cookie, `/api/v1/resources/${deniz}`)).statusCode, 404)
+    assert.deepEqual(await ids(w.mother.cookie), [ece])
   })
 
   test('IST-019 DOM-ILT-074 kısıtlı veli yazışmasını görmez; öğretmenin veli listesinde yoktur, yazışma başlatılamaz', async () => {

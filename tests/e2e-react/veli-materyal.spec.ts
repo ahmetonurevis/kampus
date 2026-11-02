@@ -57,7 +57,7 @@ test('DOM-KYN-041: veli çocuğunu seçer, ona paylaşılan materyal dosyasını
   await expect(panel).toBeHidden()
 
   // Çocuk değişince liste o çocuğa daralır: Deniz'in materyali Ece'de görünmez.
-  await page.getByLabel('Çocuk seç').selectOption({ label: 'Ece Yılmaz' })
+  await page.getByRole('combobox', { name: 'Çocuk seç' }).selectOption({ label: 'Ece Yılmaz' })
   await expect(page).toHaveURL(/[?&]cocuk=s2/)
   await expect(open(ECE.title)).toBeVisible()
   await expect(open(DENIZ.title)).toHaveCount(0)

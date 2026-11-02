@@ -371,16 +371,33 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
     assert.equal((await sessionRows(t.institution.id)).length, 0)
   })
 
-  test('DOM-DIL-010 IST-060 ön büro, öğrenci ve veli tespit yapamaz; ön büro profili göremez', async () => {
+  test('DOM-DIL-010 IST-060 ön büro, öğrenci ve veli tespit uçlarında 403; ön büro profili göremez', async () => {
     const t = await tenant()
-    for (const cookie of [t.cookies.frontDesk, t.cookies.student, t.cookies.parent])
+    const session = await ok(await open(t), 201)
+    for (const cookie of [t.cookies.frontDesk, t.cookies.student, t.cookies.parent]) {
+      fails(
+        await call('GET', '/placement-sessions?learnerKind=student&learnerId=s-deniz', cookie),
+        403,
+        'forbidden',
+      )
+      fails(await call('GET', `/placement-sessions/${session.id}`, cookie), 403, 'forbidden')
       fails(await open(t, {}, cookie), 403, 'forbidden')
+      fails(await command(cookie, session.id, 'score', autoBody(t, 'reading', 1)), 403, 'forbidden')
+      fails(await command(cookie, session.id, 'complete', { version: 1 }), 403, 'forbidden')
+      fails(await command(cookie, session.id, 'decide', decideBody(1)), 403, 'forbidden')
+    }
     fails(
       await call('GET', '/students/s-deniz/cefr-profile', t.cookies.frontDesk),
       403,
       'forbidden',
     )
-    assert.equal((await sessionRows(t.institution.id)).length, 0)
+    const rows = await sessionRows(t.institution.id)
+    assert.equal(rows.length, 1)
+    assert.deepEqual(
+      [rows[0]?.version, rows[0]?.sectionEntries, rows[0]?.completedAt],
+      [1, [], null],
+    )
+    assert.equal((await decisionRows(t.institution.id)).length, 0)
   })
 
   test('IST-058 geçersiz gövde 400 ve kayıt değişmez; bilinmeyen kişi ve form 404', async () => {

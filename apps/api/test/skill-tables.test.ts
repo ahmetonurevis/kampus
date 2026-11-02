@@ -5,7 +5,9 @@ import { after, before, describe, test } from 'node:test'
 import { and, eq, sql, type SQL } from 'drizzle-orm'
 
 import type { Database } from '../src/db/client.ts'
+import { files } from '../src/db/schema/files.ts'
 import {
+  attemptMediaPlays,
   resubmissionRequests,
   rubrics,
   rubricScores,
@@ -588,6 +590,92 @@ describe('0013: beceri görevi tabloları', () => {
     )
     await violates(attempt({ attemptNumber: 0 }), 'task_attempts_number_check')
     await violates(attempt({ attemptNumber: 2, answers: [] }), 'task_attempts_answers_check')
+  })
+
+  test('IST-045, DOM-BEC-005 (OG-049): dinleme sayımı deneme × dosya × sırada tekil, en çok 2; deneme ve dosya aynı kurumun; satır değişmez, yalnız imha siler', async () => {
+    const { institutionId, owner, chain: c } = await chain()
+    const other = await chain()
+    const attemptOf = async (institution: string, assignmentId: string) => {
+      const id = randomUUID()
+      await db.insert(taskAttempts).values({
+        institutionId: institution,
+        id,
+        assignmentId,
+        learnerId: LEARNER,
+        attemptNumber: 1,
+        startedAt: FIXED_NOW,
+        ...at,
+      })
+      return id
+    }
+    const fileOf = async (institution: string, uploader: string) => {
+      const id = randomUUID()
+      await db.insert(files).values({
+        institutionId: institution,
+        id,
+        purpose: 'listening_audio',
+        status: 'ready',
+        storageKey: `${institution}/listening_audio/2026/10/${id}`,
+        contentType: 'audio/mpeg',
+        byteSize: 1024,
+        sha256: 'a'.repeat(64),
+        uploadedByUserId: uploader,
+        ...at,
+      })
+      return id
+    }
+    const attemptId = await attemptOf(institutionId, c.assignmentId)
+    const fileId = await fileOf(institutionId, owner)
+    const otherAttempt = await attemptOf(other.institutionId, other.chain.assignmentId)
+    const otherFile = await fileOf(other.institutionId, other.owner)
+    const play = (columns: Record<string, unknown> = {}) =>
+      db.insert(attemptMediaPlays).values({
+        institutionId,
+        id: randomUUID(),
+        attemptId,
+        fileId,
+        playNumber: 1,
+        playedAt: FIXED_NOW,
+        ...at,
+        ...columns,
+      })
+    await play()
+    await violates(play(), 'attempt_media_plays_attempt_file_number_key', '23505')
+    await play({ playNumber: 2 })
+    await violates(play({ playNumber: 3 }), 'attempt_media_plays_play_number_check')
+    await violates(play({ playNumber: 0 }), 'attempt_media_plays_play_number_check')
+    await violates(
+      play({ attemptId: otherAttempt, playNumber: 1 }),
+      'attempt_media_plays_attempt_fkey',
+      '23503',
+    )
+    await violates(
+      play({ fileId: otherFile, playNumber: 1 }),
+      'attempt_media_plays_file_fkey',
+      '23503',
+    )
+    await violates(
+      play({ fileId: otherFile, attemptId: randomUUID(), version: 2 }),
+      'attempt_media_plays_version_check',
+    )
+    const own = sql`attempt_media_plays.institution_id = ${institutionId}`
+    await rejectsImmutable(
+      db.execute(sql`update attempt_media_plays set play_number = 1 where ${own}`),
+      'attempt_media_plays',
+    )
+    await rejectsImmutable(
+      db.execute(sql`delete from attempt_media_plays where ${own}`),
+      'attempt_media_plays',
+    )
+    await rejectsImmutable(db.execute(sql`truncate attempt_media_plays`), 'attempt_media_plays')
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`set local kampus.allow_immutable_purge = 'on'`)
+      await tx.execute(sql`delete from attempt_media_plays where ${own}`)
+    })
+    const [remaining] = await rows<{ n: number }>(
+      sql`select count(*)::int as n from attempt_media_plays where ${own}`,
+    )
+    assert.equal(remaining?.n, 0)
   })
 
   test('IST-047: taslak kursiyer × atama başına tek satır; metin sınırı', async () => {

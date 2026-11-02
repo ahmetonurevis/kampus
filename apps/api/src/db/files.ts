@@ -55,6 +55,30 @@ export async function findFile(
   return row ?? null
 }
 
+/**
+ * Kayda bağlı, verilen amaçtaki görünür dosyalar (silinmiş ve reddedilmiş hariç), kimlik sırasıyla.
+ * Dinleme denemesinin kayıtları (`services/listening-plays.ts`) böyle bulunur.
+ */
+export async function listAttachedFiles(
+  db: Database,
+  institutionId: string,
+  attached: { type: string; id: string; purpose: StoredFile['purpose'] },
+): Promise<StoredFile[]> {
+  return db
+    .select()
+    .from(files)
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        eq(files.attachedType, attached.type),
+        eq(files.attachedId, attached.id),
+        eq(files.purpose, attached.purpose),
+        notInArray(files.status, QUOTA_EXCLUDED),
+      ),
+    )
+    .orderBy(asc(files.id))
+}
+
 /** Kurumun depoda tuttuğu toplam bayt (karar 3: `files` tablosundan toplanır). */
 export async function usedStorageBytes(tx: Database, institutionId: string): Promise<number> {
   const [row] = await tx

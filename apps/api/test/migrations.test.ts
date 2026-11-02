@@ -738,7 +738,7 @@ describe('0013: beceri görevi tabloları', () => {
         await readFile(path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'),
       )
       assert.equal(first, journal.entries.length)
-      assert.equal(journal.entries.at(-1)?.tag, '0029_create_groups')
+      assert.equal(journal.entries.at(-1)?.tag, '0030_create_attempt_media_plays')
       await migrate(fresh, { migrationsFolder: MIGRATIONS_FOLDER })
       assert.equal(await count(), first)
     } finally {
